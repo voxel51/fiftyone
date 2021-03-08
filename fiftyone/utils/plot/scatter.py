@@ -34,13 +34,13 @@ def scatterplot(
     labels=None,
     classes=None,
     session=None,
-    buttons=None,
     marker_size=None,
     cmap=None,
     ax=None,
     ax_equal=False,
     figsize=None,
     style="seaborn-ticks",
+    buttons=None,
     block=False,
     **kwargs,
 ):
@@ -92,8 +92,6 @@ def scatterplot(
             Only applicable when ``labels`` contains strings
         session (None): a :class:`fiftyone.core.session.Session` object to
             link with the interactive plot
-        buttons (None): a dict mapping button names to callbacks defining
-            buttons to add to the plot
         marker_size (None): the marker size to use
         cmap (None): a colormap recognized by ``matplotlib``
         ax (None): an optional matplotlib axis to plot in
@@ -101,6 +99,8 @@ def scatterplot(
         figsize (None): an optional ``(width, height)`` for the figure, in
             inches
         style ("seaborn-ticks"): a style to use for the plot
+        buttons (None): a list of ``(label, icon_image, callback)`` tuples
+            defining buttons to add to the plot
         block (False): whether to block execution when the plot is
             displayed via ``matplotlib.pyplot.show(block=block)``
         **kwargs: optional keyword arguments for matplotlib's ``scatter()``

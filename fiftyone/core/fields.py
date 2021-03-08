@@ -54,14 +54,26 @@ class Field(mongoengine.fields.BaseField):
         return etau.get_class_name(self)
 
 
-class IntField(mongoengine.IntField, Field):
+class IntField(mongoengine.fields.IntField, Field):
     """A 32 bit integer field."""
 
     pass
 
 
-class ObjectIdField(mongoengine.ObjectIdField, Field):
+class ObjectIdField(mongoengine.fields.ObjectIdField, Field):
     """An Object ID field."""
+
+    pass
+
+
+class UUIDField(mongoengine.fields.UUIDField, Field):
+    """A UUID field."""
+
+    pass
+
+
+class BooleanField(mongoengine.fields.BooleanField, Field):
+    """A boolean field."""
 
     pass
 
@@ -76,19 +88,7 @@ class FrameNumberField(IntField):
             self.error(str(e))
 
 
-class UUIDField(mongoengine.UUIDField, Field):
-    """A UUID field."""
-
-    pass
-
-
-class BooleanField(mongoengine.BooleanField, Field):
-    """A boolean field."""
-
-    pass
-
-
-class FloatField(mongoengine.FloatField, Field):
+class FloatField(mongoengine.fields.FloatField, Field):
     """A floating point number field."""
 
     def validate(self, value):
@@ -106,13 +106,13 @@ class FloatField(mongoengine.FloatField, Field):
             self.error("Float value is too large")
 
 
-class StringField(mongoengine.StringField, Field):
+class StringField(mongoengine.fields.StringField, Field):
     """A unicode string field."""
 
     pass
 
 
-class ListField(mongoengine.ListField, Field):
+class ListField(mongoengine.fields.ListField, Field):
     """A list field that wraps a standard :class:`Field`, allowing multiple
     instances of the field to be stored as a list in the database.
 
@@ -143,7 +143,7 @@ class ListField(mongoengine.ListField, Field):
         return etau.get_class_name(self)
 
 
-class DictField(mongoengine.DictField, Field):
+class DictField(mongoengine.fields.DictField, Field):
     """A dictionary field that wraps a standard Python dictionary.
 
     If this field is not set, its default value is ``{}``.
@@ -352,7 +352,7 @@ class TargetsField(IntDictField):
         super().__init__(field=StringField(), **kwargs)
 
 
-class EmbeddedDocumentField(mongoengine.EmbeddedDocumentField, Field):
+class EmbeddedDocumentField(mongoengine.fields.EmbeddedDocumentField, Field):
     """A field that stores instances of a given type of
     :class:`fiftyone.core.odm.BaseEmbeddedDocument` object.
 
@@ -368,7 +368,9 @@ class EmbeddedDocumentField(mongoengine.EmbeddedDocumentField, Field):
         )
 
 
-class EmbeddedDocumentListField(mongoengine.EmbeddedDocumentListField, Field):
+class EmbeddedDocumentListField(
+    mongoengine.fields.EmbeddedDocumentListField, Field
+):
     """A field that stores a list of a given type of
     :class:`fiftyone.core.odm.BaseEmbeddedDocument` objects.
 
