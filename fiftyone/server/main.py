@@ -732,6 +732,9 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         if selected:
             view = view.select(state.selected)
 
+        if active_labels:
+            view = view.select_fields(active_labels)
+
         if untag and target_labels:
             view.untag_labels(tag, active_labels)
         elif target_labels:

@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import styled, { ThemeProvider } from "styled-components";
+import styled from "styled-components";
 import { useRecoilValue } from "recoil";
 import { Checkbox } from "@material-ui/core";
 
@@ -7,6 +7,8 @@ import DropdownHandle from "./DropdownHandle";
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
 import { useTheme } from "../utils/hooks";
+import * as fieldAtoms from "./Filters/utils";
+import { packageMessage } from "../utils/socket";
 
 type Props = {
   showSidebar: boolean;
@@ -34,10 +36,6 @@ const SamplesHeader = styled.div`
   flex-grow: 1;
 `;
 
-const OptionsContainer = styled.div`
-  display: flex;
-`;
-
 const OptionTextDiv = styled.div`
   padding-right: 0.25rem;
   display: flex;
@@ -62,6 +60,7 @@ const TagItemsDiv = styled.div`
   margin-left: 2rem;
   background: ${({ theme }) => theme.backgroundDark};
   display: flex;
+  padding-right: 0.5rem;
 `;
 
 const StringInput = styled.input`
@@ -83,8 +82,9 @@ const TagOptions = styled.div`
 `;
 
 const CheckboxOptionDiv = styled.div`
-  margin-left: -1rem;
   display: flex;
+  font-weight: bold;
+  line-height: 3;
 `;
 
 type CheckboxOptionProps = {
@@ -113,8 +113,10 @@ const TagItems = () => {
   const [invert, setInvert] = useState(false);
   const [targetLabels, setTargetLabels] = useState(false);
   const selectedSamples = useRecoilValue(atoms.selectedSamples);
-
   const isInSelection = selectedSamples.size > 0;
+  const [value, setValue] = useState("");
+  const socket = useRecoilValue(selectors.socket);
+  const activeLabels = useRecoilValue(fieldAtoms.activeFields(false));
 
   return (
     <TagItemsDiv>
@@ -128,7 +130,20 @@ const TagItems = () => {
             ? "shown labels"
             : "samples"
         }`}
-        value=""
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        onKeyPress={(e) => {
+          if (e.key === "Enter") {
+            socket.send(
+              packageMessage("tag", {
+                untag: invert,
+                target_labels: targetLabels,
+                selected: isInSelection,
+                activeLabels: activeLabels,
+              })
+            );
+          }
+        }}
       />
       <TagOptions>
         <CheckboxOption
@@ -138,8 +153,8 @@ const TagItems = () => {
         />
         <CheckboxOption
           onCheck={() => setTargetLabels(!targetLabels)}
-          value={invert}
-          text={"target labels"}
+          value={targetLabels}
+          text={"labels"}
         />
       </TagOptions>
     </TagItemsDiv>
