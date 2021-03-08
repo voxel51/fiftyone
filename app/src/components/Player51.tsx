@@ -146,29 +146,9 @@ const ContentItem = ({
   );
 };
 
-const ClassificationInfo = ({ info, style }) => {
-  return (
-    <AttrBlock style={{ borderColor: info.color, ...style }}>
-      <AttrInfo field={info.field} id={info.id} />
-    </AttrBlock>
-  );
-};
-
 const useTarget = (field, target) => {
   const getTarget = useRecoilValue(selectors.getTarget);
   return getTarget(field, target);
-};
-
-const MaskInfo = ({ info, style }) => {
-  const targetValue = useTarget(info.field, info.target);
-
-  return (
-    <AttrBlock style={{ borderColor: info.color, ...style }}>
-      <AttrInfo field={info.field} id={info.id}>
-        <ContentItem key={"target-value"} name={"label"} value={targetValue} />
-      </AttrInfo>
-    </AttrBlock>
-  );
 };
 
 const AttrInfo = ({ field, id, children }) => {
@@ -179,34 +159,45 @@ const AttrInfo = ({ field, id, children }) => {
   }
   let etc = null;
 
-  if (attrs.length > 4) {
-    const extra = entries.length - 4;
-    etc = `and ${extra} more attribue${extra > 1 ? "s" : ""}`;
-    // entries = entries.slice(0, 4);
-  }
+  const defaults = entries.filter(([name]) =>
+    ["label", "confidence"].includes(name)
+  );
+
+  const other = entries.filter(
+    ([name]) => !["label", "confidence"].includes(name)
+  );
   const mapper = ([name, value]) => (
     <ContentItem key={name} name={name} value={value} />
   );
 
   return (
     <>
-      {entries.map(mapper)}
+      {defaults.map(mapper)}
       {children}
+      {other.map(mapper)}
     </>
   );
 };
 
-const DetectionInfo = ({ info, style }) => {
+const ClassificationInfo = ({ info }) => {
   return (
-    <AttrBlock style={{ borderColor: info.color, ...style }}>
+    <AttrBlock style={{ borderColor: info.color }}>
       <AttrInfo field={info.field} id={info.id} />
     </AttrBlock>
   );
 };
 
-const KeypointInfo = ({ info, style }) => {
+const DetectionInfo = ({ info }) => {
   return (
-    <AttrBlock style={{ borderColor: info.color, ...style }}>
+    <AttrBlock style={{ borderColor: info.color }}>
+      <AttrInfo field={info.field} id={info.id} />
+    </AttrBlock>
+  );
+};
+
+const KeypointInfo = ({ info }) => {
+  return (
+    <AttrBlock style={{ borderColor: info.color }}>
       <AttrInfo field={info.field} id={info.id}>
         <ContentItem
           key={"# keypoints"}
@@ -218,9 +209,20 @@ const KeypointInfo = ({ info, style }) => {
   );
 };
 
-const PolylineInfo = ({ info, style }) => {
+const MaskInfo = ({ info }) => {
+  const targetValue = useTarget(info.field, info.target);
+
   return (
-    <AttrBlock style={{ borderColor: info.color, ...style }}>
+    <AttrBlock style={{ borderColor: info.color }}>
+      <ContentItem key={"target-value"} name={"label"} value={targetValue} />
+      <AttrInfo field={info.field} id={info.id} />
+    </AttrBlock>
+  );
+};
+
+const PolylineInfo = ({ info }) => {
+  return (
+    <AttrBlock style={{ borderColor: info.color }}>
       <AttrInfo field={info.field} id={info.id}>
         <ContentItem key={"# points"} name={"# points"} value={info.points} />
       </AttrInfo>
