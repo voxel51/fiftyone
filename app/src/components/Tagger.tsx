@@ -298,6 +298,7 @@ const Tagger = ({ modal }: TaggerProps) => {
     const newState = JSON.parse(JSON.stringify(stateDescription));
     newState.selected = [];
     setStateDescription(newState);
+    setFocused(false);
     socket.send(packageMessage("clear_selection", {}));
   };
 
