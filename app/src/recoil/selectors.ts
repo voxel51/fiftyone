@@ -309,6 +309,8 @@ export const view = selector<[]>({
     const newState = {
       ...state,
       view: stages,
+      selected: [],
+      selected_labels: [],
     };
     set(atoms.stateDescription, newState);
     get(socket).send(packageMessage("update", { state: newState }));
@@ -429,6 +431,13 @@ export const filteredCount = selector<number>({
       (acc, cur) => (cur.name === null ? cur.result : acc),
       null
     );
+  },
+});
+
+export const currentCount = selector<number | null>({
+  key: "currentCount",
+  get: ({ get }) => {
+    return get(filteredCount) || get(totalCount);
   },
 });
 

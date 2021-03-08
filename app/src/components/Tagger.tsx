@@ -15,7 +15,7 @@ import * as selectors from "../recoil/selectors";
 const ActionOptionDiv = animated(styled.div`
   cursor: pointer;
   margin: 0.25rem 0.25rem;
-  padding: 0.25rem;
+  padding: 0.25rem 0.5rem;
   font-weight: bold;
   display: flex;
   justify-content: center;
@@ -70,6 +70,7 @@ const CheckboxOptionDiv = animated(styled.div`
     align-content: center;
     flex-direction: column;
     cursor: inherit;
+    padding-right: 0.5rem;
   }
 `);
 
@@ -117,7 +118,7 @@ const OptionsDiv = animated(styled.div`
   max-height: 328px;
   overflow-y: scroll;
   scrollbar-width: none;
-  width: 12rem;
+  min-width: 12rem;
   font-size: 14px;
 
   &::-webkit-scrollbar {
@@ -169,16 +170,23 @@ const IconDiv = styled.div`
 
 type IconProps = {
   focused: boolean;
-  tagging: boolean;
+  loading: boolean;
   onClick: () => void;
 };
 
-const Icon = React.memo(({ focused, tagging, onClick }: IconProps) => {
+const Icon = React.memo(({ focused, loading, onClick }: IconProps) => {
   const theme = useTheme();
   return (
     <IconDiv>
-      {tagging ? (
-        <CircularProgress />
+      {loading ? (
+        <CircularProgress
+          style={{
+            color: theme.font,
+            height: 16,
+            width: 16,
+            marginTop: "0.75rem",
+          }}
+        />
       ) : focused ? (
         <ArrowDropUp style={{ cursor: "pointer" }} onClick={onClick} />
       ) : (
@@ -228,6 +236,43 @@ type TaggerProps = {
   modal: boolean;
 };
 
+const untagDirections = (isInSelection, targetLabels) =>
+  `Untag ${
+    isInSelection && targetLabels
+      ? "shown labels in selected samples"
+      : isInSelection
+      ? "selected samples"
+      : targetLabels
+      ? "shown labels"
+      : "shown samples"
+  }`;
+
+const targetLabelsDirections = (isInSelection, untag) =>
+  `${untag ? "Untag" : "Tag"} shown labels ${
+    isInSelection ? "in selected samples" : ""
+  }`;
+
+const placeholderDirections = (
+  isInSelection,
+  numSamples,
+  untag,
+  targetLabels
+) => {
+  if (typeof numSamples !== "number") {
+    return "loading...";
+  }
+
+  if (numSamples === 0) {
+    return "no samples";
+  }
+
+  return `${untag ? "- untag" : "+ tag"}${
+    targetLabels ? " shown labels in" : ""
+  } ${numSamples} ${isInSelection ? "selected" : ""}${` sample${
+    numSamples > 1 ? "s" : ""
+  }`}`;
+};
+
 const Tagger = ({ modal }: TaggerProps) => {
   const [untag, setUntag] = useState(false);
   const [targetLabels, setTargetLabels] = useState(false);
@@ -244,6 +289,7 @@ const Tagger = ({ modal }: TaggerProps) => {
   const [stateDescription, setStateDescription] = useRecoilState(
     atoms.stateDescription
   );
+  const count = useRecoilValue(selectors.currentCount);
   const ref = useRef();
   useOutsideClick(ref, () => setFocused(false));
 
@@ -269,23 +315,23 @@ const Tagger = ({ modal }: TaggerProps) => {
     callback();
   };
 
+  const disabled = tagging || typeof count !== "number";
+
   return (
     <TaggingContainerInput ref={ref}>
       <TaggingInput
-        placeholder={`${untag ? "- untag" : "+ tag"} ${
-          isInSelection && !targetLabels
-            ? `${selectedSamples.size} selected sample${
-                selectedSamples.size > 1 ? "s" : ""
-              }`
-            : targetLabels
-            ? "shown labels"
-            : "samples"
-        }`}
+        placeholder={placeholderDirections(
+          isInSelection,
+          isInSelection ? selectedSamples.size : count,
+          untag,
+          targetLabels
+        )}
         value={value}
         onChange={(e) => setValue(e.target.value)}
         onKeyPress={(e) => {
           if (e.key === "Enter") {
             setTagging(true);
+            setFocused(false);
             setValue("");
             socket.send(
               packageMessage("tag", {
@@ -299,11 +345,11 @@ const Tagger = ({ modal }: TaggerProps) => {
           }
         }}
         onFocus={() => setFocused(true)}
-        disabled={tagging}
+        disabled={disabled}
       />
       <Icon
         focused={focused}
-        tagging={tagging}
+        loading={disabled}
         onClick={() => setFocused(!focused)}
       />
       {focused && (
@@ -311,15 +357,15 @@ const Tagger = ({ modal }: TaggerProps) => {
           focused={focused}
           checkboxes={[
             {
-              text: "untag",
+              text: "Untag",
               onCheck: () => setUntag(!untag),
-              title: "title",
+              title: untagDirections(isInSelection, targetLabels),
               value: untag,
             },
             {
-              text: "labels",
+              text: "Target shown labels",
               onCheck: () => setTargetLabels(!targetLabels),
-              title: "labels",
+              title: targetLabelsDirections(isInSelection, untag),
               value: targetLabels,
             },
           ]}
