@@ -315,7 +315,7 @@ const Tagger = ({ modal }: TaggerProps) => {
     callback();
   };
 
-  const disabled = tagging || typeof count !== "number";
+  const disabled = tagging || typeof count !== "number" || count === 0;
 
   return (
     <TaggingContainerInput ref={ref}>
@@ -349,7 +349,7 @@ const Tagger = ({ modal }: TaggerProps) => {
       />
       <Icon
         focused={focused}
-        loading={disabled}
+        loading={tagging || typeof count !== "number"}
         onClick={() => setFocused(!focused)}
       />
       {focused && (
