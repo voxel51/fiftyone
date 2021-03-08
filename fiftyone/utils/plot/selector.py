@@ -57,7 +57,7 @@ class PointSelector(object):
             defining buttons to add to the plot
         alpha_other (0.25): a transparency value for unselected points
         expand_selected (3.0): expand the size of selected points by this
-            amount
+            multiple
         click_tolerance (0.02): a click distance tolerance in ``[0, 1]`` when
             clicking individual points
     """
@@ -109,9 +109,6 @@ class PointSelector(object):
         self._fc = collection.get_facecolors()
         self._ms = collection.get_sizes()
         self._init_ms = self._ms[0]
-        self._click_thresh = click_tolerance * min(
-            np.max(self._xy, axis=0) - np.min(self._xy, axis=0)
-        )
 
         self._inds = np.array([], dtype=int)
         self._selected_sample_ids = None
@@ -419,7 +416,7 @@ class PointSelector(object):
     def _init_hud(self):
         # Button styling
         gap = 0.02
-        size = 0.1
+        size = 0.08
         color = "#DBEBFC"
         hovercolor = "#499CEF"
 
@@ -469,10 +466,16 @@ class PointSelector(object):
             self._canvas.draw_idle()
 
     def _onselect(self, vertices):
-        if self._is_click(vertices):
+        x1, x2 = self.ax.get_xlim()
+        y1, y2 = self.ax.get_ylim()
+        click_thresh = self.click_tolerance * min(abs(x2 - x1), abs(y2 - y1))
+
+        is_click = np.abs(np.diff(vertices, axis=0)).sum() < click_thresh
+
+        if is_click:
             dists = skp.euclidean_distances(self._xy, np.array([vertices[0]]))
             click_ind = np.argmin(dists)
-            if dists[click_ind] < self._click_thresh:
+            if dists[click_ind] < click_thresh:
                 inds = [click_ind]
             else:
                 inds = []
@@ -492,9 +495,6 @@ class PointSelector(object):
 
     def _ondisconnect(self, event):
         self.disconnect()
-
-    def _is_click(self, vertices):
-        return np.abs(np.diff(vertices, axis=0)).sum() < self._click_thresh
 
     def _select_inds(self, inds):
         if self._shift:
