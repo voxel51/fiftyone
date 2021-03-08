@@ -416,18 +416,26 @@ class PointSelector(object):
     def _init_hud(self):
         # Button styling
         gap = 0.02
-        size = 0.08
+        size = 0.06
         color = "#DBEBFC"
         hovercolor = "#499CEF"
 
         self._title = self.ax.set_title("")
 
         num_buttons = len(self._button_defs)
+
+        def _button_pos(i):
+            # top of right-side
+            # return [1 + gap, 1 - (i + 1) * size - i * gap, size, size]
+
+            # right-side of top
+            i = num_buttons - 1 - i
+            return [1 - (i + 1) * size - i * gap, 1 + gap, size, size]
+
         self._buttons = []
         for i, (label, icon_img, _) in enumerate(self._button_defs):
             bax = self.ax.figure.add_axes([0, 0, 1, 1], label=label)
-            bpos = [1 + gap, 1 - (i + 1) * size - i * gap, size, size]
-            bax.set_axes_locator(InsetPosition(self.ax, bpos))
+            bax.set_axes_locator(InsetPosition(self.ax, _button_pos(i)))
             button = Button(
                 bax, "", color=color, hovercolor=hovercolor, image=icon_img
             )
