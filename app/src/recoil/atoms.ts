@@ -64,6 +64,11 @@ export const loading = atom({
   default: false,
 });
 
+export const tagging = atomFamily({
+  key: "tagging",
+  default: false,
+});
+
 export const stateDescription = atom({
   key: "stateDescription",
   default: {},

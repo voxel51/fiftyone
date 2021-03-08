@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import styled from "styled-components";
-import { useRecoilValue } from "recoil";
-import { Checkbox } from "@material-ui/core";
+import { useRecoilState, useRecoilValue } from "recoil";
+import { Checkbox, CircularProgress } from "@material-ui/core";
 
 import DropdownHandle from "./DropdownHandle";
 import * as atoms from "../recoil/atoms";
@@ -117,6 +117,8 @@ const TagItems = () => {
   const [value, setValue] = useState("");
   const socket = useRecoilValue(selectors.socket);
   const activeLabels = useRecoilValue(fieldAtoms.activeFields(false));
+  const [tagging, setTagging] = useRecoilState(atoms.tagging("grid"));
+  const theme = useTheme();
 
   return (
     <TagItemsDiv>
@@ -134,17 +136,29 @@ const TagItems = () => {
         onChange={(e) => setValue(e.target.value)}
         onKeyPress={(e) => {
           if (e.key === "Enter") {
+            setTagging(true);
             socket.send(
               packageMessage("tag", {
                 untag: invert,
                 target_labels: targetLabels,
                 selected: isInSelection,
-                activeLabels: activeLabels,
+                active_labels: activeLabels,
+                tag: value,
               })
             );
           }
         }}
       />
+      {tagging && (
+        <CircularProgress
+          style={{
+            color: theme.font,
+            height: 16,
+            width: 16,
+            minWidth: 16,
+          }}
+        />
+      )}
       <TagOptions>
         <CheckboxOption
           onCheck={() => setInvert(!invert)}

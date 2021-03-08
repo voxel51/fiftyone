@@ -258,7 +258,9 @@ const useSelect = (id: string, index: number) => {
         setOne();
       }
       set(atoms.selectedSamples, newSelected);
-      socket.send(packageMessage("set_selection", { _ids: newSelected }));
+      socket.send(
+        packageMessage("set_selection", { _ids: Array.from(newSelected) })
+      );
       set(atoms.stateDescription, {
         ...stateDescription,
         selected: [...newSelected],
