@@ -268,7 +268,7 @@ const placeholderDirections = (
 
   return `${untag ? "- untag" : "+ tag"}${
     targetLabels ? " shown labels in" : ""
-  } ${numSamples} ${isInSelection ? "selected" : ""}${` sample${
+  } ${numSamples}${isInSelection ? " selected" : ""}${` sample${
     numSamples > 1 ? "s" : ""
   }`}`;
 };
