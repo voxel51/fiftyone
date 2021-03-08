@@ -729,15 +729,17 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         state = fos.StateDescription.from_dict(StateHandler.state)
         view = state.view or state.dataset
         view = _get_extended_view(view, state.filters)
+        if selected:
+            view = view.select(state.selected)
 
-        if untag and selected:
-            view.untag_samples(tag)
-        elif selected:
-            view.tag_samples(tag)
-        elif untag and target_labels:
+        if untag and target_labels:
             view.untag_labels(tag, active_labels)
         elif target_labels:
             view.tag_labels(tag, active_labels)
+        elif untag:
+            view.untag_samples(tag)
+        else:
+            view.tag_samples(tag)
 
         StateHandler.on_update(caller, StateHandler.state)
 
