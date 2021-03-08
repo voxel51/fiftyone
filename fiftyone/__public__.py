@@ -55,6 +55,12 @@ from .core.fields import (
     EmbeddedDocumentField,
     VectorField,
     ArrayField,
+    GeoPointField,
+    GeoLineStringField,
+    GeoPolygonField,
+    GeoMultiPointField,
+    GeoMultiLineStringField,
+    GeoMultiPolygonField,
 )
 from .core.frame import Frame
 from .core.labels import (
@@ -74,6 +80,7 @@ from .core.labels import (
     Keypoint,
     Keypoints,
     Segmentation,
+    GeoLocation,
 )
 from .core.metadata import (
     Metadata,

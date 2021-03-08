@@ -866,6 +866,53 @@ class Segmentation(ImageLabel, _HasID):
         return cls(mask=mask)
 
 
+class GeoLocation(ImageLabel, _HasID):
+    """Location data in GeoJSON format.
+
+    Args:
+        point (None): a ``[longitude, latitude]`` point
+        line (None): a line defined by coordinates as shown below::
+
+                [[lon1, lat1], [lon2, lat2], ...]
+
+        polygon (None): a polygon defined by coorindates as shown below::
+
+                [
+                    [[lon1, lat1], [lon2, lat2], ...],
+                    [[lon1, lat1], [lon2, lat2], ...],
+                    ...
+                ]
+
+            where the first outer list describes the boundary of the polygon
+            and any remaining entries describe holes
+    """
+
+    meta = {"allow_inheritance": True}
+
+    point = fof.GeoPointField(auto_index=False)
+    line = fof.GeoLineStringField(auto_index=False)
+    polygon = fof.GeoPolygonField(auto_index=False)
+
+
+class GeoLocations(ImageLabel, _HasID):
+    """A batch of location data in GeoJSON format.
+
+    The attributes of this class accept lists of data in the format of the
+    corresponding attributes of :class:`GeoLocation`.
+
+    Args:
+        points (None): a list of points
+        lines (None): a list of lines
+        polygons (None): a list of polygons
+    """
+
+    meta = {"allow_inheritance": True}
+
+    points = fof.GeoMultiPointField(auto_index=False)
+    lines = fof.GeoMultiLineStringField(auto_index=False)
+    polygons = fof.GeoMultiPolygonField(auto_index=False)
+
+
 class _FrameLabels(Label):
     """Private label class used for storing labels for the first frame of video
     samples.

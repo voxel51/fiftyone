@@ -197,7 +197,94 @@ class PolylinePointsField(ListField):
             )
 
 
-class DictField(mongoengine.DictField, Field):
+class GeoPointField(mongoengine.fields.PointField, Field):
+    """A GeoJSON field storing a longitude and latitude coordinate point.
+
+    The data is stored as ``[longitude, latitude]``.
+    """
+
+    pass
+
+
+class GeoLineStringField(mongoengine.fields.LineStringField, Field):
+    """A GeoJSON field storing a line of longitude and latitude coordinates.
+
+    The data is stored as follow::
+
+        [[lon1, lat1], [lon2, lat2], ...]
+    """
+
+    pass
+
+
+class GeoPolygonField(mongoengine.fields.PolygonField, Field):
+    """A GeoJSON field storing a polygon of longitude and latitude coordinates.
+
+    The data is stored as follows::
+
+        [
+            [[lon1, lat1], [lon2, lat2], ...],
+            [[lon1, lat1], [lon2, lat2], ...],
+            ...
+        ]
+
+    where the first element describes the boundary of the polygon and any
+    remaining entries describe holes.
+    """
+
+    pass
+
+
+class GeoMultiPointField(mongoengine.fields.MultiPointField, Field):
+    """A GeoJSON field storing a list of points.
+
+    The data is stored as follows::
+
+        [[lon1, lat1], [lon2, lat2], ...]
+    """
+
+    pass
+
+
+class GeoMultiLineStringField(mongoengine.fields.MultiLineStringField, Field):
+    """A GeoJSON field storing a list of lines.
+
+    The data is stored as follows::
+
+        [
+            [[lon1, lat1], [lon2, lat2], ...],
+            [[lon1, lat1], [lon2, lat2], ...],
+            ...
+        ]
+    """
+
+    pass
+
+
+class GeoMultiPolygonField(mongoengine.fields.MultiPolygonField, Field):
+    """A GeoJSON field storing a list of polygons.
+
+    The data is stored as follows::
+
+        [
+            [
+                [[lon1, lat1], [lon2, lat2], ...],
+                [[lon1, lat1], [lon2, lat2], ...],
+                ...
+            ],
+            [
+                [[lon1, lat1], [lon2, lat2], ...],
+                [[lon1, lat1], [lon2, lat2], ...],
+                ...
+            ],
+            ...
+        ]
+    """
+
+    pass
+
+
+class DictField(mongoengine.fields.DictField, Field):
     """A dictionary field that wraps a standard Python dictionary.
 
     If this field is not set, its default value is ``{}``.

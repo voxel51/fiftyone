@@ -11,6 +11,8 @@ import matplotlib.pyplot as plt
 
 import eta.core.utils as etau
 
+import fiftyone.core.fields as fof
+import fiftyone.core.labels as fol
 import fiftyone.core.utils as fou
 
 from .scatter import scatterplot
@@ -18,14 +20,31 @@ from .utils import load_button_icon
 
 
 def location_scatterplot(
-    locations,
-    ax=None,
+    locations=None,
+    samples=None,
+    location_field=None,
     map_type="satellite",
     show_scale_bar=False,
     api_key=None,
+    label_field=None,
+    field=None,
+    labels=None,
+    classes=None,
+    session=None,
+    marker_size=None,
+    cmap=None,
+    ax=None,
+    ax_equal=False,
+    figsize=None,
+    style="seaborn-ticks",
+    buttons=None,
+    block=False,
     **kwargs,
 ):
     """Generates an interactive scatterplot of the given location coordinates.
+
+    The location data to use can be specified either via the ``locations`` or
+    ``location_field`` parameters.
 
     This method is a thin layer on top of
     :meth:`fiftyone.utils.plot.scatter.scatterplot` that renders a background
@@ -35,15 +54,39 @@ def location_scatterplot(
     See :meth:`fiftyone.utils.plot.scatter.scatterplot` for more usage details.
 
     Args:
-        locations: a ``num_samples x 2`` array of ``(longitude, latitude)``
-            coordinates
-        ax (None): an optional matplotlib axis to plot in
+        locations (None): a ``num_samples x 2`` array of
+            ``(longitude, latitude)`` coordinates
+        samples (None): the :class:`fiftyone.core.collections.SampleCollection`
+            whose data is being visualized
+        location_field (None): the name of a
+            :class:`fiftyone.core.labels.GeoLocation` field with
+            ``(longitude, latitude)`` coordinates in its ``point`` attribute
         map_type ("satellite"): the map type to render. Supported values are
             ``("roadmap", "satellite", "hybrid", "terrain")``
         show_scale_bar (False): whether to render a scale bar on the plot
         api_key (None): a Google Maps API key to use
-        **kwargs: keyword arguments for
-            :meth:`fiftyone.utils.plot.scatter.scatterplot`
+        label_field (None): a :class:`fiftyone.core.labels.Label` field
+            containing labels for each location
+        field (None): a sample field or ``embedded.field.name`` to use to
+            color the points. Can be numeric or strings
+        labels (None): a list of numeric or string values to use to color
+            the points
+        classes (None): an optional list of classes whose points to plot.
+            Only applicable when ``labels`` contains strings
+        session (None): a :class:`fiftyone.core.session.Session` object to
+            link with the interactive plot
+        marker_size (None): the marker size to use
+        cmap (None): a colormap recognized by ``matplotlib``
+        ax (None): an optional matplotlib axis to plot in
+        ax_equal (False): whether to set ``axis("equal")``
+        figsize (None): an optional ``(width, height)`` for the figure, in
+            inches
+        style ("seaborn-ticks"): a style to use for the plot
+        buttons (None): a list of ``(label, icon_image, callback)`` tuples
+            defining buttons to add to the plot
+        block (False): whether to block execution when the plot is
+            displayed via ``matplotlib.pyplot.show(block=block)``
+        **kwargs: optional keyword arguments for matplotlib's ``scatter()``
 
     Returns:
         a :class:`fiftyone.utils.plot.selector.PointSelector`
@@ -54,11 +97,40 @@ def location_scatterplot(
     else:
         fig = ax.figure
 
+    if location_field is not None:
+        if samples is None:
+            raise ValueError(
+                "You must provide `samples` in order to extract location "
+                "coordinates from a field"
+            )
+
+        samples.validate_field_type(
+            location_field,
+            fof.EmbeddedDocumentField,
+            embedded_doc_type=fol.GeoLocation,
+        )
+
+        locations = samples.values(location_field + ".point.coordinates")
+    elif locations is None:
+        raise ValueError(
+            "You must provide either ``locations`` or ``location_field``"
+        )
+
     locations = np.asarray(locations)
 
     locations = _plot_map_background(
         ax, locations, api_key, map_type, show_scale_bar
     )
+
+    """
+    def _onzoom(ax):
+        x1, x2 = ax.get_xlim()
+        y1, y2 = ax.get_ylim()
+        # @todo update map
+
+    ax.callbacks.connect("xlim_changed", _onzoom)
+    ax.callbacks.connect("ylim_changed", _onzoom)
+    """
 
     def _onclick(event):
         for child in ax.get_children():
@@ -67,10 +139,30 @@ def location_scatterplot(
 
         ax.figure.canvas.draw_idle()
 
-    map_icon = load_button_icon("map")
-    buttons = [("map", map_icon, _onclick)]
+    if buttons is None:
+        buttons = []
 
-    return scatterplot(locations, ax=ax, buttons=buttons, **kwargs)
+    map_icon = load_button_icon("map")
+    buttons.append(("map", map_icon, _onclick))
+
+    return scatterplot(
+        locations,
+        samples=samples,
+        label_field=label_field,
+        field=field,
+        labels=labels,
+        classes=classes,
+        session=session,
+        marker_size=marker_size,
+        cmap=cmap,
+        ax=ax,
+        ax_equal=ax_equal,
+        figsize=figsize,
+        style=style,
+        buttons=buttons,
+        block=block,
+        **kwargs,
+    )
 
 
 def _plot_map_background(ax, locations, api_key, map_type, show_scale_bar):
