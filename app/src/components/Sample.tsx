@@ -294,7 +294,7 @@ const Selector = ({
         style={{
           color: theme.brand,
         }}
-        title={"Click to select sample"}
+        title={"Click to select sample, Ctrl+Click to select a range"}
       />
     </SelectorDiv>
   );
