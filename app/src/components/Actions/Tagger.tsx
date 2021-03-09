@@ -92,15 +92,13 @@ const TaggingInput = styled.input`
   }
 `;
 
-const Section = ({ modal, title, placeholder, submit, loading }) => {
+const Section = ({ modal, title, placeholder, submit, taggingAtom }) => {
   const count = useRecoilValue(selectors.currentCount);
-  const [tagging, setTagging] = useRecoilState(atoms.tagging(modal));
+  const [tagging, setTagging] = useRecoilState(taggingAtom);
   const [untag, setUntag] = useState(false);
   const selectedSamples = useRecoilValue(atoms.selectedSamples);
   const isInSelection = selectedSamples.size > 0;
   const [value, setValue] = useState("");
-  const socket = useRecoilValue(selectors.socket);
-  const activeLabels = useRecoilValue(fieldAtoms.activeFields(false));
   const disabled = tagging || typeof count !== "number" || count === 0;
 
   const numSamples = isInSelection ? selectedSamples.size : count;
@@ -121,15 +119,7 @@ const Section = ({ modal, title, placeholder, submit, loading }) => {
             if (e.key === "Enter") {
               setTagging(true);
               setValue("");
-              socket.send(
-                packageMessage("tag", {
-                  untag,
-                  target_labels: targetLabels,
-                  selected: isInSelection,
-                  active_labels: activeLabels,
-                  tag: value,
-                })
-              );
+              submit(value, untag, isInSelection);
             }
           }}
           disabled={disabled}
@@ -139,15 +129,15 @@ const Section = ({ modal, title, placeholder, submit, loading }) => {
       <Options
         options={[
           {
-            active: untag ? "- untag" : "+ tag",
+            active: untag ? "- remove" : "+ add",
             options: [
               {
-                text: "+ tag",
+                text: "+ add",
                 title: "tag items, if necessary",
                 onClick: () => setUntag(false),
               },
               {
-                text: "- untag",
+                text: "- remove",
                 title: "untag items, if necessary",
                 onClick: () => setUntag(true),
               },
@@ -173,9 +163,11 @@ const Tagger = ({ modal }: TaggerProps) => {
       duration: 100,
     },
   });
+  const socket = useRecoilValue(selectors.socket);
+  const activeLabels = useRecoilValue(fieldAtoms.activeFields(false));
 
   return (
-    <PopoutDiv style={show}>
+    <PopoutDiv style={{ ...show, width: "18rem" }}>
       <Section
         modal={modal}
         title={"Samples"}
@@ -193,6 +185,48 @@ const Tagger = ({ modal }: TaggerProps) => {
             num === 1 ? "" : "s"
           }`;
         }}
+        submit={(value, untag, selected) =>
+          socket.send(
+            packageMessage("tag", {
+              untag,
+              target_labels: false,
+              selected: selected,
+              active_labels: activeLabels,
+              tag: value,
+            })
+          )
+        }
+        taggingAtom={atoms.tagging({ modal, labels: false })}
+      />
+      <Section
+        modal={modal}
+        title={"Labels"}
+        placeholder={(selection, num, untag) => {
+          if (num === 0) {
+            return "no samples";
+          }
+          if (selection) {
+            return `${
+              untag ? "- untag" : "+ tag"
+            } shown labels in ${num} selected sample${num === 1 ? "" : "s"}`;
+          }
+
+          return `${
+            untag ? "- untag" : "+ tag"
+          } shown labels in  ${num} sample${num === 1 ? "" : "s"}`;
+        }}
+        submit={(value, untag, selected) =>
+          socket.send(
+            packageMessage("tag", {
+              untag,
+              target_labels: true,
+              selected: selected,
+              active_labels: activeLabels,
+              tag: value,
+            })
+          )
+        }
+        taggingAtom={atoms.tagging({ modal, labels: true })}
       />
     </PopoutDiv>
   );

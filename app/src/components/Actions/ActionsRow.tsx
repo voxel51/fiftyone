@@ -30,12 +30,22 @@ const Tag = ({ modal }) => {
   );
 };
 
-const Selected = ({ modal }) => {
+const Selected = ({ modal, frameNumberRef }) => {
   const [open, setOpen] = useState(false);
   const selectedSamples = useRecoilValue(atoms.selectedSamples);
+  const selectedObjects = useRecoilValue(atoms.selectedObjects);
+  const hiddenObjects = useRecoilValue(atoms.hiddenObjects);
   const ref = useRef();
   useOutsideClick(ref, () => open && setOpen(false));
-  if (selectedSamples.size < 1) {
+  if (!modal && selectedSamples.size < 1) {
+    return null;
+  }
+
+  if (
+    modal &&
+    Object.keys(selectedObjects).length < 1 &&
+    Object.keys(hiddenObjects).length < 1
+  ) {
     return null;
   }
 
@@ -48,7 +58,13 @@ const Selected = ({ modal }) => {
         highlight={Boolean(selectedSamples.size) || open}
         text={`${selectedSamples.size}`}
       />
-      {open && <Selector modal={modal} close={() => setOpen(false)} />}
+      {open && (
+        <Selector
+          modal={modal}
+          close={() => setOpen(false)}
+          frameNumberRef={frameNumberRef}
+        />
+      )}
     </div>
   );
 };
@@ -83,14 +99,15 @@ const ActionsRowDiv = styled.div`
 
 type ActionsRowProps = {
   modal: boolean;
+  frameNumberRef?: any;
 };
 
-const ActionsRow = ({ modal }: ActionsRowProps) => {
+const ActionsRow = ({ modal, frameNumberRef }: ActionsRowProps) => {
   return (
     <ActionsRowDiv>
       <Options modal={modal} />
       <Tag modal={modal} />
-      <Selected modal={modal} />
+      <Selected modal={modal} frameNumberRef={frameNumberRef} />
     </ActionsRowDiv>
   );
 };

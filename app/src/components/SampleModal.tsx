@@ -4,6 +4,7 @@ import styled from "styled-components";
 import { Close, Fullscreen, FullscreenExit } from "@material-ui/icons";
 import { useRecoilValue, useSetRecoilState } from "recoil";
 
+import Actions from "./Actions";
 import FieldsSidebar from "./FieldsSidebar";
 import JSONView from "./JSONView";
 import Player51 from "./Player51";
@@ -43,6 +44,8 @@ const Container = styled.div`
   }
 
   h2 {
+    margin-top: 0.25rem;
+    margin-bottom: 0.25rem;
     clear: both;
   }
 
@@ -407,16 +410,11 @@ const SampleModal = (
             {formatMetadata(sample.metadata).map(({ name, value }) => (
               <Row key={"metadata-" + name} name={name} value={value} />
             ))}
+            <Actions modal={true} frameNumberRef={frameNumberRef} />
             <h2>
               Fields
               <span className="push-right" />
             </h2>
-            <div className="select-objects-wrapper">
-              <SelectLabelsMenu
-                sample={sample}
-                frameNumberRef={frameNumberRef}
-              />
-            </div>
             <FieldsSidebar
               modal={true}
               style={{
