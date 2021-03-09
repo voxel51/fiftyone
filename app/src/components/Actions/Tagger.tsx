@@ -1,9 +1,8 @@
 import React, { useState } from "react";
 import styled from "styled-components";
-import { animated, useSpring } from "react-spring";
+import { animated, useSprings } from "react-spring";
 import { useRecoilState, useRecoilValue } from "recoil";
-import { Checkbox, CircularProgress } from "@material-ui/core";
-import { ArrowDropDown, ArrowDropUp } from "@material-ui/icons";
+import { CircularProgress } from "@material-ui/core";
 import AutosizeInput from "react-input-autosize";
 
 import { useTheme } from "../../utils/hooks";
@@ -24,53 +23,24 @@ const ActionOptionDiv = animated(styled.div`
   color: ${({ theme }) => theme.fontDark};
 `);
 
-type ActionOptionProps = {
-  onClick: () => void;
-  text: string;
-  title: string;
-};
-
-const useHighlightHover = () => {
-  const [hovering, setHovering] = useState(false);
-  const theme = useTheme();
-  const style = useSpring({
-    backgroundColor: hovering ? theme.backgroundLight : theme.backgroundDark,
-    color: hovering ? theme.font : theme.fontDark,
-  });
-
-  const onMouseEnter = () => setHovering(true);
-
-  const onMouseLeave = () => setHovering(false);
-
-  return {
-    style,
-    onMouseEnter,
-    onMouseLeave,
-  };
-};
-
-const ActionOption = ({ onClick, text, title }: ActionOptionProps) => {
-  const props = useHighlightHover();
-  return (
-    <ActionOptionDiv title={title} onClick={onClick} {...props}>
-      {text}
-    </ActionOptionDiv>
-  );
-};
-
 const TabOptionDiv = animated(styled.div`
   display: flex;
   font-weight: bold;
   cursor: pointer;
-  margin: 0.25rem 0.25rem;
+  justify-content: space-between;
+  border-radius: 8px;
+  margin-bottom: 0.25rem;
+  border: 1px solid ${({ theme }) => theme.background};
 
-  & > span {
+  & > div {
     display: flex;
     justify-content: center;
     align-content: center;
     flex-direction: column;
     cursor: inherit;
-    padding-right: 0.5rem;
+    flex-grow: 1;
+    text-align: center;
+    overflow: hidden;
   }
 `);
 
@@ -89,14 +59,38 @@ type TabOption = {
 
 const TabOption = ({ active, options }: TabOptionProps) => {
   const theme = useTheme();
-  const props = useHighlightHover();
+  const [hovering, setHovering] = useState(options.map((o) => false));
+  const styles = useSprings(
+    options.length,
+    options.map((o, i) => ({
+      backgroundColor:
+        o.text === active
+          ? theme.brand
+          : hovering[i]
+          ? theme.background
+          : theme.backgroundLight,
+      color: hovering ? theme.font : theme.fontDark,
+    }))
+  );
+
   return (
     <TabOptionDiv>
-      {options.map(({ text, title, onClick }, i) => {
-        <Tab onClick={onClick} title={title}>
+      {options.map(({ text, title, onClick }, i) => (
+        <Tab
+          onClick={onClick}
+          title={title}
+          style={styles[i]}
+          onMouseEnter={() =>
+            setHovering(hovering.map((_, j) => (j === i ? true : _)))
+          }
+          onMouseLeave={() =>
+            setHovering(hovering.map((_, j) => (j === i ? false : _)))
+          }
+          key={i}
+        >
           {text}
-        </Tab>;
-      })}
+        </Tab>
+      ))}
     </TabOptionDiv>
   );
 };
@@ -116,6 +110,7 @@ const ActionsDiv = animated(styled.div`
   scrollbar-width: none;
   min-width: 12rem;
   font-size: 14px;
+  padding: 0 0.25rem 0.25rem 0.25rem;
 
   &::-webkit-scrollbar {
     width: 0px;
@@ -129,19 +124,14 @@ const ActionsDiv = animated(styled.div`
 `);
 
 type OptionsProps = {
-  tabOptions: Array<TabOptionProps>;
-  actions: Array<ActionOptionProps>;
-  focused: boolean;
+  options: Array<TabOptionProps>;
 };
 
-const Options = React.memo(({ tabOptions, actions, focused }: OptionsProps) => {
+const Options = React.memo(({ options }: OptionsProps) => {
   return (
     <>
-      {tabOptions.map((props, key) => (
-        <TabOption {...props} key={`checkbox-${key}`} />
-      ))}
-      {actions.map((props, key) => (
-        <ActionOption {...props} key={`action-${key}`} />
+      {options.map((props, key) => (
+        <TabOption {...props} key={key} />
       ))}
     </>
   );
@@ -182,33 +172,27 @@ const Loading = React.memo(({ loading }: { loading: boolean }) => {
 const TaggingContainerInput = styled.div`
   font-size: 14px;
   border-bottom: 1px ${({ theme }) => theme.brand} solid;
-  margin: 0.5rem;
   position: relative;
+  margin-bottom: 0.5rem;
 `;
 
-const TaggingInput = styled(AutosizeInput)`
-  min-width: 8rem;
-  padding-right: 1.5rem;
-  & input {
-    background-color: transparent;
-    border: none;
-    color: ${({ theme }) => theme.font};
-    height: 2rem;
-    margin-top: 0.4rem;
-    font-size: 14px;
-    border: none;
-    align-items: center;
-    font-weight: bold;
-    width: 100%;
-  }
+const TaggingInput = styled.input`
+  background-color: transparent;
+  border: none;
+  color: ${({ theme }) => theme.font};
+  height: 2rem;
+  font-size: 14px;
+  border: none;
+  align-items: center;
+  font-weight: bold;
 
-  & input:focus {
+  &:focus {
     border: none;
     outline: none;
     font-weight: bold;
   }
 
-  & ::placeholder {
+  &::placeholder {
     color: ${({ theme }) => theme.fontDark};
     font-weight: bold;
   }
@@ -217,22 +201,6 @@ const TaggingInput = styled(AutosizeInput)`
 type TaggerProps = {
   modal: boolean;
 };
-
-const untagDirections = (isInSelection, targetLabels) =>
-  `Untag ${
-    isInSelection && targetLabels
-      ? "shown labels in selected samples"
-      : isInSelection
-      ? "selected samples"
-      : targetLabels
-      ? "shown labels"
-      : "shown samples"
-  }`;
-
-const targetLabelsDirections = (isInSelection, untag) =>
-  `${untag ? "Untag" : "Tag"} shown labels ${
-    isInSelection ? "in selected samples" : ""
-  }`;
 
 const placeholderDirections = (
   isInSelection,
@@ -332,45 +300,38 @@ const Tagger = ({ modal }: TaggerProps) => {
         <Loading loading={tagging || typeof count !== "number"} />
       </TaggingContainerInput>
       <Options
-        focused={focused}
-        tabOptions={[
+        options={[
           {
             active: targetLabels ? "labels" : "samples",
             options: [
-              {
-                text: "labels",
-                title: "tag visible labels",
-                onClick: () => setTargetLabels(true),
-              },
               {
                 text: "samples",
                 title: "tag samples",
                 onClick: () => setTargetLabels(false),
               },
+              {
+                text: "labels",
+                title: "tag visible labels",
+                onClick: () => setTargetLabels(true),
+              },
+            ],
+          },
+          {
+            active: untag ? "- untag" : "+ tag",
+            options: [
+              {
+                text: "+ tag",
+                title: "tag items, if necessary",
+                onClick: () => setUntag(false),
+              },
+              {
+                text: "- untag",
+                title: "untag items, if necessary",
+                onClick: () => setUntag(true),
+              },
             ],
           },
         ]}
-        actions={
-          isInSelection
-            ? [
-                {
-                  text: "Clear selected samples",
-                  title: "Deselect all selected samples",
-                  onClick: clearSelection,
-                },
-                {
-                  text: "Only show selected samples",
-                  title: "Hide all other samples",
-                  onClick: () => addStage("Select", clearSelection),
-                },
-                {
-                  text: "Hide selected samples",
-                  title: "Show only unselected samples",
-                  onClick: () => addStage("Exclude", clearSelection),
-                },
-              ]
-            : []
-        }
       />
     </ActionsDiv>
   );

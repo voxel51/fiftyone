@@ -34,6 +34,7 @@ const grey60 = "hsl(230, 3%, 60%)";
 const grey68 = "hsl(220, 2%, 68%)";
 
 const orange49 = "hsl(27, 95%, 49%)";
+const orange45 = "hsl(27, 95%, 45%)";
 const orange49a0 = "hsla(27, 95%, 49%, 0)";
 const orange49a10 = "hsla(27, 95%, 49%, 0.1)";
 const orange49a40 = "hsla(27, 95%, 49%, 0.4)";
@@ -64,6 +65,7 @@ export type ColorTheme = {
   darkerShadow: string;
 
   brand: string;
+  brandDark: string;
   brandTransparent: string;
   brandMoreTransparent: string;
   brandFullyTransparent: string;
@@ -99,6 +101,7 @@ export const darkTheme: ColorTheme = {
   darkerShadow: black0a25,
 
   brand: orange49,
+  brandDark: orange45,
   brandTransparent: orange49a40,
   brandMoreTransparent: orange49a10,
   brandFullyTransparent: orange49a0,

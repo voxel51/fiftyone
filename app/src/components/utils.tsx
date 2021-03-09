@@ -132,12 +132,13 @@ type PillButton = {
   onClick: () => void;
   open: boolean;
   highlight: boolean;
-  text: string;
+  text?: string;
   icon: any;
+  arrow?: boolean;
 };
 
 export const PillButton = React.memo(
-  ({ onClick, open, text, icon, highlight }: PillButton) => {
+  ({ onClick, open, text, icon, highlight, arrow = false }: PillButton) => {
     const theme = useTheme();
     const props = useSpring({
       opacity: 1,
@@ -149,8 +150,8 @@ export const PillButton = React.memo(
     return (
       <PillButtonDiv onClick={onClick} style={props}>
         {icon}
-        <span>{text}</span>
-        {open ? <KeyboardArrowUp /> : <KeyboardArrowDown />}
+        {text && <span>{text}</span>}
+        {arrow && (open ? <KeyboardArrowUp /> : <KeyboardArrowDown />)}
       </PillButtonDiv>
     );
   }

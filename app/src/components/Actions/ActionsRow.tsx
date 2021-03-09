@@ -7,17 +7,18 @@ import { PillButton } from "../utils";
 import * as atoms from "../../recoil/atoms";
 
 import Tagger from "./Tagger";
+import { useOutsideClick } from "../../utils/hooks";
 
 const Tag = ({ modal }) => {
   const [open, setOpen] = useState(false);
   const selectedSamples = useRecoilValue(atoms.selectedSamples);
   const ref = useRef();
+  useOutsideClick(ref, () => open && setOpen(false));
 
   return (
     <div ref={ref}>
       <PillButton
         icon={<LocalOffer />}
-        text={"tag"}
         open={open}
         onClick={() => setOpen(!open)}
         highlight={Boolean(selectedSamples.size) || open}
