@@ -893,6 +893,19 @@ class GeoLocation(ImageLabel, _HasID):
     line = fof.GeoLineStringField(auto_index=False)
     polygon = fof.GeoPolygonField(auto_index=False)
 
+    @classmethod
+    def from_geo_json(cls, d):
+        """Creates a :class:`GeoLocation` from a GeoJSON dictionary.
+
+        Args:
+            d: a GeoJSON dict
+
+        Returns:
+            a :class:`GeoLocation`
+        """
+        point, line, polygon = _from_geo_json_single(d)
+        return cls(point=point, line=line, polygon=polygon)
+
 
 class GeoLocations(ImageLabel, _HasID):
     """A batch of location data in GeoJSON format.
@@ -912,13 +925,18 @@ class GeoLocations(ImageLabel, _HasID):
     lines = fof.GeoMultiLineStringField(auto_index=False)
     polygons = fof.GeoMultiPolygonField(auto_index=False)
 
+    @classmethod
+    def from_geo_json(cls, d):
+        """Creates a :class:`GeoLocation` from a GeoJSON dictionary.
 
-class _FrameLabels(Label):
-    """Private label class used for storing labels for the first frame of video
-    samples.
-    """
+        Args:
+            d: a GeoJSON dict
 
-    pass
+        Returns:
+            a :class:`GeoLocation`
+        """
+        points, lines, polygons = _from_geo_json(d)
+        return cls(points=points, lines=lines, polygons=polygons)
 
 
 _SINGLE_LABEL_FIELDS = (
@@ -930,6 +948,59 @@ _SINGLE_LABEL_FIELDS = (
 )
 _LABEL_LIST_FIELDS = (Classifications, Detections, Polylines, Keypoints)
 _LABEL_FIELDS = _SINGLE_LABEL_FIELDS + _LABEL_LIST_FIELDS
+
+
+def _from_geo_json_single(d):
+    points, lines, polygons = _from_geo_json(d)
+
+    if not points:
+        point = None
+    elif len(points) == 1:
+        point = points[0]
+    else:
+        raise ValueError(
+            "%s can contain only one point. Use %s to store multiple "
+            "points" % (GeoLocation, GeoLocations)
+        )
+
+    if not lines:
+        line = None
+    elif len(lines) == 1:
+        line = lines[0]
+    else:
+        raise ValueError(
+            "%s can contain only one line. Use %s to store multiple lines"
+            % (GeoLocation, GeoLocations)
+        )
+
+    if not polygons:
+        polygon = None
+    elif len(polygons) == 1:
+        polygon = polygons[0]
+    else:
+        raise ValueError(
+            "%s can contain only one polygon. Use %s to store multiple "
+            "polygons" % (GeoLocation, GeoLocations)
+        )
+
+    return point, line, polygon
+
+
+def _from_geo_json(d):
+    import fiftyone.utils.geojson as foug
+
+    points, lines, polygons = foug.extract_coordinates(d)
+
+    if not points:
+        points = None
+
+    if not lines:
+        lines = None
+
+    if not polygons:
+        polygons = None
+
+    return points, lines, polygons
 
 
 def _from_eta_attributes(attrs):

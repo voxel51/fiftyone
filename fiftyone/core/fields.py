@@ -5,6 +5,7 @@ Dataset sample fields.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+from bson import SON
 from bson.binary import Binary
 import mongoengine.fields
 import numpy as np
@@ -227,16 +228,41 @@ class PolylinePointsField(ListField):
             )
 
 
-class GeoPointField(mongoengine.fields.PointField, Field):
+class _GeoField(Field):
+    """Base class for GeoJSON fields."""
+
+    # The GeoJSON type of the field. Subclasses must implement this
+    _TYPE = None
+
+    def to_mongo(self, value):
+        if isinstance(value, dict):
+            return value
+
+        return SON([("type", self._TYPE), ("coordinates", value)])
+
+    def to_python(self, value):
+        if isinstance(value, dict):
+            return value["coordinates"]
+
+        return value
+
+
+class GeoPointField(_GeoField, mongoengine.fields.PointField):
     """A GeoJSON field storing a longitude and latitude coordinate point.
 
     The data is stored as ``[longitude, latitude]``.
     """
 
-    pass
+    _TYPE = "Point"
+
+    def validate(self, value):
+        if isinstance(value, dict):
+            self.error("Geo fields expect coordinate lists, but found dict")
+
+        super().validate(value)
 
 
-class GeoLineStringField(mongoengine.fields.LineStringField, Field):
+class GeoLineStringField(_GeoField, mongoengine.fields.LineStringField):
     """A GeoJSON field storing a line of longitude and latitude coordinates.
 
     The data is stored as follow::
@@ -244,10 +270,16 @@ class GeoLineStringField(mongoengine.fields.LineStringField, Field):
         [[lon1, lat1], [lon2, lat2], ...]
     """
 
-    pass
+    _TYPE = "LineString"
+
+    def validate(self, value):
+        if isinstance(value, dict):
+            self.error("Geo fields expect coordinate lists, but found dict")
+
+        super().validate(value)
 
 
-class GeoPolygonField(mongoengine.fields.PolygonField, Field):
+class GeoPolygonField(_GeoField, mongoengine.fields.PolygonField):
     """A GeoJSON field storing a polygon of longitude and latitude coordinates.
 
     The data is stored as follows::
@@ -262,10 +294,16 @@ class GeoPolygonField(mongoengine.fields.PolygonField, Field):
     remaining entries describe holes.
     """
 
-    pass
+    _TYPE = "Polygon"
+
+    def validate(self, value):
+        if isinstance(value, dict):
+            self.error("Geo fields expect coordinate lists, but found dict")
+
+        super().validate(value)
 
 
-class GeoMultiPointField(mongoengine.fields.MultiPointField, Field):
+class GeoMultiPointField(_GeoField, mongoengine.fields.MultiPointField):
     """A GeoJSON field storing a list of points.
 
     The data is stored as follows::
@@ -273,10 +311,18 @@ class GeoMultiPointField(mongoengine.fields.MultiPointField, Field):
         [[lon1, lat1], [lon2, lat2], ...]
     """
 
-    pass
+    _TYPE = "MultiPoint"
+
+    def validate(self, value):
+        if isinstance(value, dict):
+            self.error("Geo fields expect coordinate lists, but found dict")
+
+        super().validate(value)
 
 
-class GeoMultiLineStringField(mongoengine.fields.MultiLineStringField, Field):
+class GeoMultiLineStringField(
+    _GeoField, mongoengine.fields.MultiLineStringField
+):
     """A GeoJSON field storing a list of lines.
 
     The data is stored as follows::
@@ -288,10 +334,16 @@ class GeoMultiLineStringField(mongoengine.fields.MultiLineStringField, Field):
         ]
     """
 
-    pass
+    _TYPE = "MultiLineString"
+
+    def validate(self, value):
+        if isinstance(value, dict):
+            self.error("Geo fields expect coordinate lists, but found dict")
+
+        super().validate(value)
 
 
-class GeoMultiPolygonField(mongoengine.fields.MultiPolygonField, Field):
+class GeoMultiPolygonField(_GeoField, mongoengine.fields.MultiPolygonField):
     """A GeoJSON field storing a list of polygons.
 
     The data is stored as follows::
@@ -311,7 +363,13 @@ class GeoMultiPolygonField(mongoengine.fields.MultiPolygonField, Field):
         ]
     """
 
-    pass
+    _TYPE = "MultiPolygon"
+
+    def validate(self, value):
+        if isinstance(value, dict):
+            self.error("Geo fields expect coordinate lists, but found dict")
+
+        super().validate(value)
 
 
 class VectorField(mongoengine.fields.BinaryField, Field):

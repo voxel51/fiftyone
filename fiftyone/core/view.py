@@ -519,7 +519,7 @@ class DatasetView(foc.SampleCollection):
         """
         return self._dataset.list_indexes()
 
-    def create_index(self, field_name, unique=False):
+    def create_index(self, field_name, unique=False, sphere2d=False):
         """Creates an index on the given field.
 
         If the given field already has a unique index, it will be retained
@@ -533,8 +533,12 @@ class DatasetView(foc.SampleCollection):
         Args:
             field_name: the field name or ``embedded.field.name``
             unique (False): whether to add a uniqueness constraint to the index
+            sphere2d (False): whether the field is a GeoJSON field that
+                requires a sphere2d index
         """
-        self._dataset.create_index(field_name, unique=unique)
+        self._dataset.create_index(
+            field_name, unique=unique, sphere2d=sphere2d
+        )
 
     def drop_index(self, field_name):
         """Drops the index on the given field.

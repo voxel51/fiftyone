@@ -157,13 +157,7 @@ def _parse_locations(locations, location_field, samples):
             embedded_doc_type=fol.GeoLocation,
         )
     else:
-        geo_schema = samples.get_field_schema(
-            ftype=fof.EmbeddedDocumentField, embedded_doc_type=fol.GeoLocation,
-        )
-        if not geo_schema:
-            raise ValueError("No %s field found to use" % fol.GeoLocation)
-
-        location_field = next(iter(geo_schema.keys()))
+        location_field = samples._get_geo_location_field()
 
     locations = samples.values(location_field + ".point.coordinates")
 

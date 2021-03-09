@@ -27,6 +27,7 @@ from fiftyone.core.odm.document import MongoEngineBaseDocument
 from fiftyone.core.odm.frame import DatasetFrameSampleDocument
 from fiftyone.core.odm.mixins import default_sample_fields
 from fiftyone.core.odm.sample import DatasetSampleDocument
+import fiftyone.utils.geojson as foug
 
 
 class ViewStage(object):
@@ -809,7 +810,7 @@ class FilterField(ViewStage):
     Args:
         field: the name of the field to filter
         filter: a :class:`fiftyone.core.expressions.ViewExpression` or
-            `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+            `MongoDB aggregation expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
             that returns a boolean describing the filter to apply
         only_matches (True): whether to only include samples that match the
             filter (True) or include all samples (False)
@@ -902,8 +903,8 @@ class FilterField(ViewStage):
     def _validate_params(self):
         if not isinstance(self._filter, (foe.ViewExpression, dict)):
             raise ValueError(
-                "Filter must be a ViewExpression or a MongoDB expression; "
-                "found '%s'" % self._filter
+                "Filter must be a ViewExpression or a MongoDB aggregation "
+                "expression; found '%s'" % self._filter
             )
 
     def validate(self, sample_collection):
@@ -1298,7 +1299,7 @@ class FilterLabels(FilterField):
     Args:
         field: the labels field to filter
         filter: a :class:`fiftyone.core.expressions.ViewExpression` or
-            `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+            `MongoDB aggregation expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
             that returns a boolean describing the filter to apply
         only_matches (True): whether to only include samples with at least
             one label after filtering (True) or include all samples (False)
@@ -1563,7 +1564,7 @@ class FilterClassifications(_FilterListField):
         field: the field to filter, which must be a
             :class:`fiftyone.core.labels.Classifications`
         filter: a :class:`fiftyone.core.expressions.ViewExpression` or
-            `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+            `MongoDB aggregation expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
             that returns a boolean describing the filter to apply
         only_matches (True): whether to only include samples with at least
             one classification after filtering (True) or include all samples
@@ -1597,7 +1598,7 @@ class FilterDetections(_FilterListField):
         field: the field to filter, which must be a
             :class:`fiftyone.core.labels.Detections`
         filter: a :class:`fiftyone.core.expressions.ViewExpression` or
-            `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+            `MongoDB aggregation expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
             that returns a boolean describing the filter to apply
         only_matches (True): whether to only include samples with at least
             one detection after filtering (True) or include all samples (False)
@@ -1630,7 +1631,7 @@ class FilterPolylines(_FilterListField):
         field: the field to filter, which must be a
             :class:`fiftyone.core.labels.Polylines`
         filter: a :class:`fiftyone.core.expressions.ViewExpression` or
-            `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+            `MongoDB aggregation expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
             that returns a boolean describing the filter to apply
         only_matches (True): whether to only include samples with at least
             one polyline after filtering (True) or include all samples (False)
@@ -1663,7 +1664,7 @@ class FilterKeypoints(_FilterListField):
         field: the field to filter, which must be a
             :class:`fiftyone.core.labels.Keypoints`
         filter: a :class:`fiftyone.core.expressions.ViewExpression` or
-            `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+            `MongoDB aggregation expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
             that returns a boolean describing the filter to apply
         only_matches (True): whether to only include samples with at least
             one keypoint after filtering (True) or include all samples (False)
@@ -1682,46 +1683,136 @@ class FilterKeypoints(_FilterListField):
 
 
 class _GeoStage(ViewStage):
-    def __init__(self, field):
-        self._field = field
-        self._location_field = None
+    def __init__(self, location_field):
+        self._location_field = location_field
+        self._location_key = None
 
     @property
-    def field(self):
+    def location_field(self):
         """The location field."""
-        return self._field
+        return self._location_field
 
     def validate(self, sample_collection):
-        if sample_collection._is_label_field(self._field, fol.GeoLocation):
-            # Assume the user meant the `.point` field
-            self._location_field = self._field + ".point"
-        else:
-            # Assume the user specified which sub-field to use
-            self._location_field = self._field
+        if self._location_field is None:
+            self._location_field = sample_collection._get_geo_location_field()
 
-        # This operation requires a `sphere2d` index
-        sample_collection.create_index(self._location_field)
+        if sample_collection._is_label_field(
+            self._location_field, fol.GeoLocation
+        ):
+            # Assume the user meant the `.point` field
+            self._location_key = self._location_field + ".point"
+        else:
+            # Assume the user directly specified the subfield to use
+            self._location_key = self._location_field
+
+        # These operations require a `sphere2d` index
+        sample_collection.create_index(self._location_key, sphere2d=True)
 
 
 class GeoNear(_GeoStage):
+    """Sorts the samples in a collection by their proximity to a specified
+    geo-location.
+
+    .. note::
+
+        This stage must be the **first stage** in any
+        :class:`fiftyone.core.view.DatasetView` in which it appears.
+
+    Examples::
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+        import fiftyone.utils.geojson as foug
+
+        NYC = [-73.935242, 40.730610]
+
+        MANHATTAN = [
+            [
+                [-73.949701, 40.834487],
+                [-73.896611, 40.815076],
+                [-73.998083, 40.696534],
+                [-74.031751, 40.715273],
+                [-73.949701, 40.834487],
+            ]
+        ]
+
+        dataset = foz.load_zoo_dataset("quickstart-geo")
+
+        #
+        # Sort the samples by their proximity to New York City
+        #
+
+        stage = fo.GeoNear(NYC)
+        view = dataset.add_stage(stage)
+
+        #
+        # Sort the samples by their proximity to New York City, and only
+        # include samples that are within 80km of city center
+        #
+
+        stage = fo.GeoNear(NYC, max_distance=80000)
+        view = dataset.add_stage(stage)
+
+        #
+        # Sort the samples by their proximity to New York City, and only
+        # include samples that are within a pre-defined polygon
+        #
+
+        in_manhattan = foug.geo_within("location.point", MANHATTAN)
+
+        stage = fo.GeoNear(NYC, location_field="location", query=in_manhattan)
+        view = dataset.add_stage(stage)
+
+    Args:
+        point: the reference point to compute distances to. Can be any of the
+            following:
+
+            -   A ``[longitude, latitude]`` list
+            -   A GeoJSON dict with ``Point`` type
+            -   A :class:`fiftyone.core.labels.GeoLocation` instance whose
+                ``point`` attribute contains the point
+
+        location_field (None): the location data of each sample to use. Can be
+            any of the following:
+
+            -   The name of a :class:`fiftyone.core.fields.GeoLocation` field
+                whose ``point`` attribute to use as location data
+            -   An ``embedded.field.name`` containing GeoJSON data to use as
+                location data
+            -   ``None``, in which case there must be a single
+                :class:`fiftyone.core.fields.GeoLocation` field on the samples
+
+        min_distance (None): filter samples that are less than this distance
+            (in meters) from ``point``
+        max_distance (None): filter samples that are greater than this distance
+            (in meters) from ``point``
+        query (None): an optional dict defining a
+            `MongoDB read query <https://docs.mongodb.com/manual/tutorial/query-documents/#read-operations-query-argument>`_
+            that samples must match in order to be included in this view
+    """
+
     def __init__(
-        self, field, point, query=None, min_distance=None, max_distance=None
+        self,
+        point,
+        location_field=None,
+        min_distance=None,
+        max_distance=None,
+        query=None,
     ):
-        super().__init__(field)
-        self._point = self._parse_point(point)
-        self._query = self._parse_query(query)
+        if isinstance(query, foe.ViewExpression):
+            query = query.to_mongo()
+
+        super().__init__(location_field)
+
+        self._point = foug.parse_point(point)
         self._min_distance = min_distance
         self._max_distance = max_distance
+        self._query = query
 
     @property
     def point(self):
         """The point to search proximity to."""
         return self._point
-
-    @property
-    def query(self):
-        """A query dict specifying a match condition."""
-        return self._query
 
     @property
     def min_distance(self):
@@ -1733,18 +1824,20 @@ class GeoNear(_GeoStage):
         """The maximum distance for matches, in meters."""
         return self._max_distance
 
+    @property
+    def query(self):
+        """A query dict specifying a match condition."""
+        return self._query
+
     def to_mongo(self, _, **__):
-        distance_field = self._field + "._distance"
+        distance_field = self._location_field + "._distance"
 
         geo_near_expr = {
             "near": self._point,
-            "key": self._location_field,
+            "key": self._location_key,
             "distanceField": distance_field,
             "spherical": True,
         }
-
-        if self._query is not None:
-            geo_near_expr["query"] = self._query
 
         if self._min_distance is not None:
             geo_near_expr["minDistance"] = self._min_distance
@@ -1752,57 +1845,104 @@ class GeoNear(_GeoStage):
         if self._max_distance is not None:
             geo_near_expr["maxDistance"] = self._max_distance
 
+        if self._query is not None:
+            geo_near_expr["query"] = self._query
+
         return [{"$geoNear": geo_near_expr}, {"$unset": distance_field}]
 
     def _kwargs(self):
         return [
-            ["field", self._field],
             ["point", self._point],
-            ["query", self._query],
+            ["location_field", self._location_field],
             ["min_distance", self._min_distance],
             ["max_distance", self._max_distance],
+            ["query", self._query],
         ]
 
     @classmethod
     def _params(self):
         return [
-            {"name": "field", "type": "field"},
             {"name": "point", "type": "dict", "placeholder": ""},
+            {
+                "name": "location_field",
+                "type": "NoneType|field",
+                "placeholder": "",
+                "default": "None",
+            },
+            {
+                "name": "min_distance",
+                "type": "NoneType|float",
+                "placeholder": "min distance (meters)",
+                "default": "None",
+            },
+            {
+                "name": "max_distance",
+                "type": "NoneType|float",
+                "placeholder": "max distance (meters)",
+                "default": "None",
+            },
             {
                 "name": "query",
                 "type": "NoneType|dict",
                 "placeholder": "",
                 "default": "None",
             },
-            {"name": "min_distance", "type": "float", "placeholder": "meters"},
-            {"name": "max_distance", "type": "float", "placeholder": "meters"},
         ]
-
-    @staticmethod
-    def _parse_point(point):
-        if isinstance(point, dict):
-            point = point["coordinates"]
-
-        if isinstance(point, list):
-            point = fol.GeoLocation(point=point)
-
-        if isinstance(point, fol.GeoLocation):
-            return {"type": "Point", "coordinates": point.point}
-
-        raise ValueError("Unsupported point format: %s" % point)
-
-    @staticmethod
-    def _parse_query(query):
-        if not isinstance(query, foe.ViewExpression):
-            return query
-
-        return query.to_mongo()
 
 
 class GeoWithin(_GeoStage):
-    def __init__(self, field, boundary, strict=True):
-        super().__init__(field)
-        self._boundary = self._parse_polygon(boundary)
+    """Filters the samples in a collection to only match samples whose
+    geo-location is within a specified boundary.
+
+    Examples::
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+        from fiftyone import ViewField as F
+
+        MANHATTAN = [
+            [
+                [-73.949701, 40.834487],
+                [-73.896611, 40.815076],
+                [-73.998083, 40.696534],
+                [-74.031751, 40.715273],
+                [-73.949701, 40.834487],
+            ]
+        ]
+
+        dataset = foz.load_zoo_dataset("quickstart-geo")
+
+        #
+        # Create a view that only contains samples in the Manhattan area
+        #
+
+        stage = fo.GeoWithin(MANHATTAN)
+        view = dataset.add_stage(stage)
+
+    Args:
+        boundary: a :class:`fiftyone.core.labels.GeoLocation`,
+            :class:`fiftyone.core.labels.GeoLocations`, GeoJSON dict, or list
+            of coordinates that define a ``Polygon`` or ``MultiPolygon`` to
+            search within
+        location_field (None): the location data of each sample to use. Can be
+            any of the following:
+
+            -   The name of a :class:`fiftyone.core.fields.GeoLocation` field
+                whose ``point`` attribute to use as location data
+            -   An ``embedded.field.name`` that directly contains the GeoJSON
+                location data to use
+            -   ``None``, in which case there must be a single
+                :class:`fiftyone.core.fields.GeoLocation` field on the samples,
+                which is used by default
+
+        strict (True): whether a sample's location data must strictly fall
+            within boundary (True) in order to match, or whether any
+            intersection suffices (False)
+    """
+
+    def __init__(self, boundary, location_field=None, strict=True):
+        super().__init__(location_field)
+        self._boundary = foug.parse_polygon(boundary)
         self._strict = strict
 
     @property
@@ -1820,22 +1960,28 @@ class GeoWithin(_GeoStage):
         return [
             {
                 "$match": {
-                    self._location_field: {op: {"$geometry": self._boundary}}
+                    self._location_key: {op: {"$geometry": self._boundary}}
                 }
             }
         ]
 
     def _kwargs(self):
         return [
-            ["field", self._field],
             ["boundary", self._boundary],
+            ["location_field", self._location_field],
+            ["strict", self._strict],
         ]
 
     @classmethod
     def _params(self):
         return [
-            {"name": "field", "type": "field"},
             {"name": "boundary", "type": "dict", "placeholder": ""},
+            {
+                "name": "location_field",
+                "type": "NoneType|field",
+                "placeholder": "",
+                "default": "None",
+            },
             {
                 "name": "strict",
                 "type": "bool",
@@ -1843,25 +1989,6 @@ class GeoWithin(_GeoStage):
                 "placeholder": "strict (default=True)",
             },
         ]
-
-    @staticmethod
-    def _parse_polygon(boundary):
-        if isinstance(boundary, dict):
-            boundary = boundary["coordinates"]
-
-        if isinstance(boundary, list):
-            try:
-                boundary = fol.GeoLocations(polygons=boundary)
-            except:
-                boundary = fol.GeoLocation(polygon=boundary)
-
-        if isinstance(boundary, fol.GeoLocation):
-            return {"type": "Polygon", "coordinates": boundary.polygon}
-
-        if isinstance(boundary, fol.GeoLocations):
-            return {"type": "MultiPolygon", "coordinates": boundary.polygons}
-
-        raise ValueError("Unsupported boundary format: %s" % boundary)
 
 
 class Limit(ViewStage):
@@ -2273,7 +2400,7 @@ class SetField(ViewStage):
     Args:
         field: the field or embedded field to set
         expr: a :class:`fiftyone.core.expressions.ViewExpression` or
-            `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+            `MongoDB aggregation expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
             that defines the field value to set
     """
 
@@ -2437,7 +2564,7 @@ class Match(ViewStage):
 
     Args:
         filter: a :class:`fiftyone.core.expressions.ViewExpression` or
-            `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+            `MongoDB aggregation expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
             that returns a boolean describing the filter to apply
     """
 
@@ -2465,8 +2592,8 @@ class Match(ViewStage):
     def _validate_params(self):
         if not isinstance(self._filter, (foe.ViewExpression, dict)):
             raise ValueError(
-                "Filter must be a ViewExpression or a MongoDB expression; "
-                "found '%s'" % self._filter
+                "Filter must be a ViewExpression or a MongoDB aggregation "
+                "expression; found '%s'" % self._filter
             )
 
     @classmethod
@@ -3284,7 +3411,7 @@ class SortBy(ViewStage):
 
     When sorting by an expression, ``field_or_expr`` can either be a
     :class:`fiftyone.core.expressions.ViewExpression` or a
-    `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+    `MongoDB aggregation expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
     that defines the quantity to sort by.
 
     Examples::

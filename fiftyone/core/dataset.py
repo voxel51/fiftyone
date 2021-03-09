@@ -28,7 +28,6 @@ import fiftyone.constants as focn
 import fiftyone.core.collections as foc
 import fiftyone.core.fields as fof
 import fiftyone.core.frame as fofr
-import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 import fiftyone.migrations as fomi
 import fiftyone.core.odm as foo
@@ -2318,7 +2317,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         index_fields = [v["key"][0][0] for v in index_info.values()]
         return [f for f in index_fields if not f.startswith("_")]
 
-    def create_index(self, field_name, unique=False):
+    def create_index(self, field_name, unique=False, sphere2d=False):
         """Creates an index on the given field.
 
         If the given field already has a unique index, it will be retained
@@ -2332,6 +2331,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Args:
             field_name: the field name or ``embedded.field.name``
             unique (False): whether to add a uniqueness constraint to the index
+            sphere2d (False): whether the field is a GeoJSON field that
+                requires a sphere2d index
         """
         root = field_name.split(".", 1)[0]
 
@@ -2351,7 +2352,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             # Must drop existing index
             self.drop_index(field_name)
 
-        if self._is_label_field(root, fol.GeoLocation):
+        if sphere2d:
             index_spec = [(field_name, "2dsphere")]
         else:
             index_spec = field_name

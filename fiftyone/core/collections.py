@@ -2020,22 +2020,163 @@ class SampleCollection(object):
 
     @view_stage
     def geo_near(
-        self, field, point, query=None, min_distance=None, max_distance=None
+        self,
+        point,
+        location_field=None,
+        min_distance=None,
+        max_distance=None,
+        query=None,
     ):
+        """Sorts the samples in the collection by their proximity to a
+        specified geo-location.
+
+        .. note::
+
+            This stage must be the **first stage** in any
+            :class:`fiftyone.core.view.DatasetView` in which it appears.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+            import fiftyone.utils.geojson as foug
+
+            NYC = [-73.935242, 40.730610]
+
+            MANHATTAN = [
+                [
+                    [-73.949701, 40.834487],
+                    [-73.896611, 40.815076],
+                    [-73.998083, 40.696534],
+                    [-74.031751, 40.715273],
+                    [-73.949701, 40.834487],
+                ]
+            ]
+
+            dataset = foz.load_zoo_dataset("quickstart-geo")
+
+            #
+            # Sort the samples by their proximity to New York City
+            #
+
+            view = dataset.geo_near(NYC)
+
+            #
+            # Sort the samples by their proximity to New York City, and only
+            # include samples that are within 80km of city center
+            #
+
+            view = dataset.geo_near(NYC, max_distance=80000)
+
+            #
+            # Sort the samples by their proximity to New York City, and only
+            # include samples that are within a pre-defined polygon
+            #
+
+            in_manhattan = foug.geo_within("location.point", MANHATTAN)
+
+            view = dataset.geo_near(
+                NYC, location_field="location", query=in_manhattan
+            )
+
+        Args:
+            point: the reference point to compute distances to. Can be any of
+                the following:
+
+                -   A ``[longitude, latitude]`` list
+                -   A GeoJSON dict with ``Point`` type
+                -   A :class:`fiftyone.core.labels.GeoLocation` instance whose
+                    ``point`` attribute contains the point
+
+            location_field (None): the location data of each sample to use. Can
+                be any of the following:
+
+                -   The name of a :class:`fiftyone.core.fields.GeoLocation`
+                    field whose ``point`` attribute to use as location data
+                -   An ``embedded.field.name`` containing GeoJSON data to use
+                    as location data
+                -   ``None``, in which case there must be a single
+                    :class:`fiftyone.core.fields.GeoLocation` field on the
+                    samples
+
+            min_distance (None): filter samples that are less than this
+                distance (in meters) from ``point``
+            max_distance (None): filter samples that are greater than this
+                distance (in meters) from ``point``
+            query (None): an optional dict defining a
+                `MongoDB read query <https://docs.mongodb.com/manual/tutorial/query-documents/#read-operations-query-argument>`_
+                that samples must match in order to be included in this view
+
+        Returns:
+            a :class:`fiftyone.core.view.DatasetView`
+        """
         return self._add_view_stage(
             fos.GeoNear(
-                field,
                 point,
-                query=query,
+                location_field=location_field,
                 min_distance=min_distance,
                 max_distance=max_distance,
+                query=query,
             )
         )
 
     @view_stage
-    def geo_within(self, field, boundary, strict=True):
+    def geo_within(self, boundary, location_field=None, strict=True):
+        """Filters the samples in this collection to only include samples whose
+        geo-location is within a specified boundary.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            MANHATTAN = [
+                [
+                    [-73.949701, 40.834487],
+                    [-73.896611, 40.815076],
+                    [-73.998083, 40.696534],
+                    [-74.031751, 40.715273],
+                    [-73.949701, 40.834487],
+                ]
+            ]
+
+            dataset = foz.load_zoo_dataset("quickstart-geo")
+
+            #
+            # Create a view that only contains samples in the Manhattan area
+            #
+
+            stage = fo.GeoWithin(MANHATTAN)
+            view = dataset.add_stage(stage)
+
+        Args:
+            boundary: a :class:`fiftyone.core.labels.GeoLocation`,
+                :class:`fiftyone.core.labels.GeoLocations`, GeoJSON dict, or
+                list of coordinates that define a ``Polygon`` or
+                ``MultiPolygon`` to search within
+            location_field (None): the location data of each sample to use. Can
+                be any of the following:
+
+                -   The name of a :class:`fiftyone.core.fields.GeoLocation`
+                    field whose ``point`` attribute to use as location data
+                -   An ``embedded.field.name`` that directly contains the
+                    GeoJSON location data to use
+                -   ``None``, in which case there must be a single
+                    :class:`fiftyone.core.fields.GeoLocation` field on the
+                    samples, which is used by default
+
+            strict (True): whether a sample's location data must strictly fall
+                within boundary (True) in order to match, or whether any
+                intersection suffices (False)
+
+        Returns:
+            a :class:`fiftyone.core.view.DatasetView`
+        """
         return self._add_view_stage(
-            fos.GeoWithin(field, boundary, strict=strict)
+            fos.GeoWithin(
+                boundary, location_field=location_field, strict=strict
+            )
         )
 
     @view_stage
@@ -3935,7 +4076,7 @@ class SampleCollection(object):
         """
         raise NotImplementedError("Subclass must implement list_indexes()")
 
-    def create_index(self, field_name, unique=False):
+    def create_index(self, field_name, unique=False, sphere2d=False):
         """Creates an index on the given field.
 
         If the given field already has a unique index, it will be retained
@@ -3949,6 +4090,8 @@ class SampleCollection(object):
         Args:
             field_name: the field name or ``embedded.field.name``
             unique (False): whether to add a uniqueness constraint to the index
+            sphere2d (False): whether the field is a GeoJSON field that
+                requires a sphere2d index
         """
         raise NotImplementedError("Subclass must implement create_index()")
 
@@ -4354,6 +4497,21 @@ class SampleCollection(object):
 
         field_path = field_name + "." + subfield
         return label_type, field_path
+
+    def _get_geo_location_field(self):
+        geo_schema = self.get_field_schema(
+            ftype=fof.EmbeddedDocumentField, embedded_doc_type=fol.GeoLocation
+        )
+        if not geo_schema:
+            raise ValueError("No %s field found to use" % fol.GeoLocation)
+
+        if len(geo_schema) > 1:
+            raise ValueError(
+                "Multiple %s fields found; you must specify which to use"
+                % fol.GeoLocation
+            )
+
+        return next(iter(geo_schema.keys()))
 
     def _is_array_field(self, field_name):
         return _is_array_field(self, field_name)
