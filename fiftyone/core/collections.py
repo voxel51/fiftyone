@@ -2097,7 +2097,7 @@ class SampleCollection(object):
                     as location data
                 -   ``None``, in which case there must be a single
                     :class:`fiftyone.core.fields.GeoLocation` field on the
-                    samples
+                    samples, which is used by default
 
             min_distance (None): filter samples that are less than this
                 distance (in meters) from ``point``
@@ -3975,8 +3975,9 @@ class SampleCollection(object):
                 exporter can handle dictionaries of frame-level labels
             overwrite (False): when an ``export_dir`` is provided, whether to
                 delete the existing directory before performing the export
-            **kwargs: optional keyword arguments to pass to
-                ``dataset_type.get_dataset_exporter_cls(export_dir, **kwargs)``
+            **kwargs: optional keyword arguments to pass to the dataset
+                exporter's constructor via
+                ``DatasetExporter(export_dir, **kwargs)``
         """
         if dataset_type is None and dataset_exporter is None:
             raise ValueError(

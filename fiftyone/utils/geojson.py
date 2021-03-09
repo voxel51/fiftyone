@@ -5,8 +5,48 @@ GeoJSON utilities.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-import fiftyone.core.expressions as foe
+import os
+
+import eta.core.serial as etas
+import eta.core.utils as etau
+
 import fiftyone.core.labels as fol
+import fiftyone.core.sample as fos
+import fiftyone.core.utils as fou
+from fiftyone.utils.data.exporters import GenericSampleDatasetExporter
+from fiftyone.utils.data.importers import GenericSampleDatasetImporter
+
+
+def to_geo_json_geometry(label):
+    """Returns a GeoJSON ``geometry`` dict representation for the given
+    location.
+
+    Args:
+        label: a :class:`fiftyone.core.labels.GeoLocation` o
+            :class:`fiftyone.core.labels.GeoLocations` instance
+
+    Returns:
+        a GeoJSON dict
+    """
+    if isinstance(label, fol.GeoLocations):
+        return _to_multi_geo_collection(label)
+
+    if not isinstance(label, fol.GeoLocation):
+        return None
+
+    num_shapes = (
+        int(label.point is not None)
+        + int(label.line is not None)
+        + int(label.polygon is not None)
+    )
+
+    if num_shapes == 0:
+        return None
+
+    if num_shapes == 1:
+        return _to_geo_primitive(label)
+
+    return _to_geo_collection(label)
 
 
 def parse_point(arg):
@@ -81,11 +121,11 @@ def geo_within(location_field, boundary, strict=True):
             or intersect (False) the boundary
 
     Returns:
-        a :class:`ViewExpression`
+        a MongoDB query dict
     """
     op = "$geoWithin" if strict else "$geoIntersects"
     boundary = parse_polygon(boundary)
-    return foe.ViewExpression({location_field: {op: {"$geometry": boundary}}})
+    return {location_field: {op: {"$geometry": boundary}}}
 
 
 def extract_coordinates(d):
@@ -118,6 +158,251 @@ def extract_coordinates(d):
         geometries = [d]
 
     return _parse_geometries(geometries)
+
+
+class GeoJSONImageDatasetImporter(GenericSampleDatasetImporter):
+    """Importer for image datasets whose labels and location data are stored in
+    GeoJSON format.
+
+    See :class:`fiftyone.types.dataset_types.GeoJSONImageDataset` for format
+    details.
+
+    Args:
+        dataset_dir: the dataset directory
+        location_field ("location"): the name of the field in which to store
+            the location data
+        multi_location (False): whether this GeoJSON may contain multiple
+            shapes for each sample and thus its location data should be stored
+            in a :class:`fiftyone.core.labels.GeoLocations` field rather than
+            the default :class:`fiftyone.core.labels.GeoLocation` field
+        property_parsers (None): an optional dict mapping property names to
+            functions that parse the property values (e.g., into the
+            appropriate) :class:`fiftyone.core.labels.Label` types). By
+            default, all properies are stored as primitive field values
+        shuffle (False): whether to randomly shuffle the order in which the
+            samples are imported
+        seed (None): a random seed to use when shuffling
+        max_samples (None): a maximum number of samples to import. By default,
+            all samples are imported
+    """
+
+    def __init__(
+        self,
+        dataset_dir,
+        location_field="location",
+        multi_location=False,
+        property_parsers=None,
+        shuffle=False,
+        seed=None,
+        max_samples=None,
+    ):
+        super().__init__(
+            dataset_dir, shuffle=shuffle, seed=seed, max_samples=max_samples
+        )
+        self.location_field = location_field
+        self.multi_location = multi_location
+        self.property_parsers = property_parsers
+        self._data_dir = None
+        self._features = None
+        self._iter_features = None
+        self._num_features = None
+
+    def __iter__(self):
+        self._iter_features = iter(self._features)
+        return self
+
+    def __len__(self):
+        return self._num_features
+
+    def __next__(self):
+        d = next(self._iter_features)
+
+        if self.multi_location:
+            location = fol.GeoLocations.from_geo_json(d)
+        else:
+            location = fol.GeoLocation.from_geo_json(d)
+
+        props = d["properties"]
+        if "filepath" in props:
+            filepath = props.pop("filepath")
+        else:
+            filepath = os.path.join(self._data_dir, props.pop("filename"))
+
+        fields = {}
+        if self.property_parsers:
+            for key, value in props.items():
+                fields[key] = self.property_parsers[key](value)
+        else:
+            fields.update(props)
+
+        fields[self.location_field] = location
+
+        return fos.Sample(filepath=filepath, **fields)
+
+    @property
+    def has_sample_field_schema(self):
+        return False
+
+    @property
+    def has_dataset_info(self):
+        return False
+
+    def setup(self):
+        self._data_dir = os.path.join(self.dataset_dir, "data")
+        json_path = os.path.join(self.dataset_dir, "labels.json")
+
+        geojson = etas.load_json(json_path)
+
+        _type = geojson.get("type", "")
+        if _type != "FeatureCollection":
+            raise ValueError(
+                "Unsupported GeoJSON type '%s'; must be 'FeatureCollection'"
+                % _type
+            )
+
+        features = geojson.get("features", [])
+
+        self._features = self._preprocess_list(features)
+        self._num_features = len(self._features)
+
+
+class GeoJSONImageDatasetExporter(GenericSampleDatasetExporter):
+    """Exporter for image datasets whose labels and location data are stored in
+    GeoJSON format.
+
+    See :class:`fiftyone.types.dataset_types.GeoJSONImageDataset` for format
+    details.
+
+    Args:
+        export_dir: the directory to write the export
+        location_field (None): the name of the field containing the location
+            data for each sample. Can be any of the following:
+
+            -   The name of a :class:`fiftyone.core.fields.GeoLocation` field
+            -   The name of a :class:`fiftyone.core.fields.GeoLocations` field
+            -   ``None``, in which case there must be a single
+                :class:`fiftyone.core.fields.GeoLocation` field on the samples,
+                which is used by default
+
+        property_makers (None): an optional dict mapping sample field names to
+            functions that convert the field values to property values to be
+            stored in the ``properties`` field of the GeoJSON ``Feature`` for
+            the sample. By default, no properties are written
+        copy_media (True): whether to copy the source media into the export
+            directory (True) or simply embed the input filepaths in the output
+            JSON (False)
+        pretty_print (False): whether to render the JSON in human readable
+            format with newlines and indentations
+    """
+
+    def __init__(
+        self,
+        export_dir,
+        location_field=None,
+        property_makers=None,
+        copy_media=True,
+        pretty_print=False,
+    ):
+        super().__init__(export_dir)
+        self.location_field = location_field
+        self.property_makers = property_makers
+        self.copy_media = copy_media
+        self.pretty_print = pretty_print
+        self._data_dir = None
+        self._labels_path = None
+        self._features = []
+        self._location_field = None
+        self._filename_maker = None
+
+    def setup(self):
+        self._data_dir = os.path.join(self.export_dir, "data")
+        self._labels_path = os.path.join(self.export_dir, "labels.json")
+        self._filename_maker = fou.UniqueFilenameMaker(
+            output_dir=self._data_dir
+        )
+
+    def log_collection(self, sample_collection):
+        if self.location_field is None:
+            self.location_field = sample_collection._get_geo_location_field()
+
+    def export_sample(self, sample):
+        props = {}
+
+        if self.property_makers:
+            for key, fn in self.property_makers.items():
+                props[key] = fn(sample[key])
+
+        if self.copy_media:
+            out_filepath = self._filename_maker.get_output_path(
+                sample.filepath
+            )
+            etau.copy_file(sample.filepath, out_filepath)
+            props["filename"] = os.path.basename(out_filepath)
+        else:
+            props["filepath"] = sample.filepath
+
+        location = sample[self.location_field]
+        if location is not None:
+            geometry = location.to_geo_json()
+        else:
+            geometry = None
+
+        self._features.append(
+            {"type": "Feature", "geometry": geometry, "properties": props}
+        )
+
+    def close(self, *args):
+        features = {"type": "FeatureCollection", "features": self._features}
+        etas.write_json(
+            features, self._labels_path, pretty_print=self.pretty_print
+        )
+
+
+def _to_geo_primitive(label):
+    if label.point is not None:
+        return _make_geometry("Point", label.point)
+
+    if label.line is not None:
+        return _make_geometry("LineString", label.line)
+
+    if label.polygon is not None:
+        return _make_geometry("Polygon", label.polygon)
+
+    return None
+
+
+def _to_geo_collection(label):
+    geometries = []
+
+    if label.point is not None:
+        geometries.append(_make_geometry("Point", label.point))
+
+    if label.line is not None:
+        geometries.append(_make_geometry("LineString", label.line))
+
+    if label.polygon is not None:
+        geometries.append(_make_geometry("Polygon", label.polygon))
+
+    return {"type": "GeometryCollection", "geometries": geometries}
+
+
+def _to_multi_geo_collection(label):
+    geometries = []
+
+    if label.points is not None:
+        geometries.append(_make_geometry("MultiPoint", label.points))
+
+    if label.lines is not None:
+        geometries.append(_make_geometry("MultiLineString", label.lines))
+
+    if label.polygons is not None:
+        geometries.append(_make_geometry("MultiPolygon", label.polygons))
+
+    return {"type": "GeometryCollection", "geometries": geometries}
+
+
+def _make_geometry(type_, coordinates):
+    return {"type": type_, "coordinates": coordinates}
 
 
 def _parse_geometries(geometries):

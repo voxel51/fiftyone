@@ -69,9 +69,9 @@ def export_samples(
             ``dataset_exporter`` is a :class:`LabeledVideoDatasetExporter`
         num_samples (None): the number of samples in ``samples``. If omitted,
             this is computed (if possible) via ``len(samples)``
-        **kwargs: optional keyword arguments to pass to
-            ``dataset_type.get_dataset_exporter_cls(export_dir, **kwargs)``
-    """
+        **kwargs: optional keyword arguments to pass to the dataset exporter's
+            constructor via ``DatasetExporter(export_dir, **kwargs)``
+        """
     dataset_exporter = _get_dataset_exporter(
         export_dir, dataset_type, dataset_exporter, **kwargs
     )
@@ -371,7 +371,7 @@ class DatasetExporter(object):
     """
 
     def __init__(self, export_dir):
-        self.export_dir = export_dir
+        self.export_dir = os.path.abspath(os.path.expanduser(export_dir))
 
     def __enter__(self):
         self.setup()
@@ -813,7 +813,6 @@ class FiftyOneDatasetExporter(GenericSampleDatasetExporter):
     """
 
     def __init__(self, export_dir, move_media=False, pretty_print=False):
-        export_dir = os.path.abspath(os.path.expanduser(export_dir))
         super().__init__(export_dir)
         self.move_media = move_media
         self.pretty_print = pretty_print

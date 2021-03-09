@@ -260,7 +260,7 @@ class DatasetImporter(object):
     def __init__(
         self, dataset_dir, shuffle=False, seed=None, max_samples=None
     ):
-        self.dataset_dir = dataset_dir
+        self.dataset_dir = os.path.abspath(os.path.expanduser(dataset_dir))
         self.shuffle = shuffle
         self.seed = seed
         self.max_samples = max_samples
@@ -804,7 +804,6 @@ class FiftyOneDatasetImporter(GenericSampleDatasetImporter):
     def __init__(
         self, dataset_dir, shuffle=False, seed=None, max_samples=None
     ):
-        dataset_dir = os.path.abspath(os.path.expanduser(dataset_dir))
         super().__init__(
             dataset_dir, shuffle=shuffle, seed=seed, max_samples=max_samples
         )
@@ -823,14 +822,6 @@ class FiftyOneDatasetImporter(GenericSampleDatasetImporter):
         return self._num_samples
 
     def __next__(self):
-        """Returns the next sample in the dataset.
-
-        Returns:
-            a :class:`fiftyone.core.sample.Sample`
-
-        Raises:
-            StopIteration: if there are no more samples to import
-        """
         d = next(self._iter_samples)
 
         # Convert filepath to absolute path

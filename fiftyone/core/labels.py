@@ -17,6 +17,9 @@ import eta.core.utils as etau
 
 from fiftyone.core.odm.document import DynamicEmbeddedDocument
 import fiftyone.core.fields as fof
+import fiftyone.core.utils as fou
+
+foug = fou.lazy_import("fiftyone.utils.geojson")
 
 
 class _NoDefault(object):
@@ -893,6 +896,14 @@ class GeoLocation(ImageLabel, _HasID):
     line = fof.GeoLineStringField(auto_index=False)
     polygon = fof.GeoPolygonField(auto_index=False)
 
+    def to_geo_json(self):
+        """Returns a GeoJSON ``geometry`` dict for this instance.
+
+        Returns:
+            a GeoJSON dict
+        """
+        return foug.to_geo_json_geometry(self)
+
     @classmethod
     def from_geo_json(cls, d):
         """Creates a :class:`GeoLocation` from a GeoJSON dictionary.
@@ -924,6 +935,14 @@ class GeoLocations(ImageLabel, _HasID):
     points = fof.GeoMultiPointField(auto_index=False)
     lines = fof.GeoMultiLineStringField(auto_index=False)
     polygons = fof.GeoMultiPolygonField(auto_index=False)
+
+    def to_geo_json(self):
+        """Returns a GeoJSON ``geometry`` dict for this instance.
+
+        Returns:
+            a GeoJSON dict
+        """
+        return foug.to_geo_json_geometry(self)
 
     @classmethod
     def from_geo_json(cls, d):
@@ -987,8 +1006,6 @@ def _from_geo_json_single(d):
 
 
 def _from_geo_json(d):
-    import fiftyone.utils.geojson as foug
-
     points, lines, polygons = foug.extract_coordinates(d)
 
     if not points:

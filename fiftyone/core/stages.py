@@ -22,12 +22,14 @@ from fiftyone.core.expressions import ViewField as F
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
-import fiftyone.core.sample as fos
 from fiftyone.core.odm.document import MongoEngineBaseDocument
 from fiftyone.core.odm.frame import DatasetFrameSampleDocument
 from fiftyone.core.odm.mixins import default_sample_fields
 from fiftyone.core.odm.sample import DatasetSampleDocument
-import fiftyone.utils.geojson as foug
+import fiftyone.core.sample as fos
+import fiftyone.core.utils as fou
+
+foug = fou.lazy_import("fiftyone.utils.geojson")
 
 
 class ViewStage(object):
@@ -1780,7 +1782,8 @@ class GeoNear(_GeoStage):
             -   An ``embedded.field.name`` containing GeoJSON data to use as
                 location data
             -   ``None``, in which case there must be a single
-                :class:`fiftyone.core.fields.GeoLocation` field on the samples
+                :class:`fiftyone.core.fields.GeoLocation` field on the samples,
+                which is used by default
 
         min_distance (None): filter samples that are less than this distance
             (in meters) from ``point``
