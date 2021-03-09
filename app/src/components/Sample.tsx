@@ -250,7 +250,6 @@ const useSelect = (id: string, index: number) => {
         const best = entries[argMin(entries.map((e) => e[2]))][1];
 
         const [start, end] = best > index ? [index, best] : [best, index];
-        console.log(rev);
         for (let idx = start; idx <= end; idx++) {
           newSelected.add(rev[idx]);
         }

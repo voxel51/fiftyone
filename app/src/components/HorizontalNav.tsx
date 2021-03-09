@@ -149,6 +149,7 @@ const HorizontalNav = ({ entries }: Props) => {
             open={expanded}
             icon={<Assessment />}
             highlight={!expanded}
+            arrow={true}
           />
         </NavButtons>
       </Nav>

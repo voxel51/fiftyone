@@ -114,12 +114,13 @@ const PillButtonDiv = animated(styled.div`
   font-weight: bold;
   display: flex;
   justify-content: space-between;
+  box-shadow: 0 2px 10px ${({ theme }) => theme.backgroundDarker};
 
   &.hidden {
     background-color: ${({ theme }) => theme.brand};
   }
   & > span {
-    margin-left: 0.25rem;
+    margin: 0 0.25rem;
   }
   & > svg {
     display: inline-block;
@@ -156,3 +157,19 @@ export const PillButton = React.memo(
     );
   }
 );
+
+export const PopoutDiv = animated(styled.div`
+  background-color: ${({ theme }) => theme.backgroundDark};
+  border: 1px solid ${({ theme }) => theme.backgroundDarkBorder};
+  border-radius: 2px;
+  box-shadow: 0 2px 20px ${({ theme }) => theme.backgroundDark};
+  box-sizing: border-box;
+  margin-top: 0.6rem;
+  position: fixed;
+  width: auto;
+  z-index: 801;
+  max-height: 328px;
+  width: 18rem;
+  font-size: 14px;
+  padding: 0 0.5rem 0 0.5rem;
+`);

@@ -1,36 +1,24 @@
 import React, { useState } from "react";
 import styled from "styled-components";
-import { animated, useSprings } from "react-spring";
+import { animated, useSpring, useSprings } from "react-spring";
 import { useRecoilState, useRecoilValue } from "recoil";
 import { CircularProgress } from "@material-ui/core";
-import AutosizeInput from "react-input-autosize";
 
 import { useTheme } from "../../utils/hooks";
 import * as fieldAtoms from "../Filters/utils";
 import { packageMessage } from "../../utils/socket";
 import * as atoms from "../../recoil/atoms";
 import * as selectors from "../../recoil/selectors";
-
-const ActionOptionDiv = animated(styled.div`
-  cursor: pointer;
-  margin: 0.25rem 0.25rem;
-  padding: 0.25rem 0.5rem;
-  font-weight: bold;
-  display: flex;
-  justify-content: center;
-  align-content: center;
-  flex-direction: column;
-  color: ${({ theme }) => theme.fontDark};
-`);
+import { PopoutDiv } from "../utils";
 
 const TabOptionDiv = animated(styled.div`
   display: flex;
   font-weight: bold;
   cursor: pointer;
   justify-content: space-between;
-  border-radius: 8px;
-  margin-bottom: 0.25rem;
-  border: 1px solid ${({ theme }) => theme.background};
+  margin: 0.5rem 0;
+  border-radius: 4px;
+  height: 2rem;
 
   & > div {
     display: flex;
@@ -39,8 +27,10 @@ const TabOptionDiv = animated(styled.div`
     flex-direction: column;
     cursor: inherit;
     flex-grow: 1;
+    flex-basis: 0;
     text-align: center;
     overflow: hidden;
+    border-radius: 4px;
   }
 `);
 
@@ -73,8 +63,16 @@ const TabOption = ({ active, options }: TabOptionProps) => {
     }))
   );
 
+  const [style, set] = useSpring(() => ({
+    background: theme.backgroundLight,
+  }));
+
   return (
-    <TabOptionDiv>
+    <TabOptionDiv
+      style={style}
+      onMouseEnter={() => set({ background: theme.background })}
+      onMouseLeave={() => set({ background: theme.backgroundLight })}
+    >
       {options.map(({ text, title, onClick }, i) => (
         <Tab
           onClick={onClick}
@@ -94,34 +92,6 @@ const TabOption = ({ active, options }: TabOptionProps) => {
     </TabOptionDiv>
   );
 };
-
-const ActionsDiv = animated(styled.div`
-  background-color: ${({ theme }) => theme.backgroundDark};
-  border: 1px solid ${({ theme }) => theme.backgroundDarkBorder};
-  border-radius: 2px;
-  box-shadow: 0 2px 20px ${({ theme }) => theme.backgroundDark};
-  box-sizing: border-box;
-  margin-top: 0.6rem;
-  position: fixed;
-  width: auto;
-  z-index: 801;
-  max-height: 328px;
-  overflow-y: scroll;
-  scrollbar-width: none;
-  min-width: 12rem;
-  font-size: 14px;
-  padding: 0 0.25rem 0.25rem 0.25rem;
-
-  &::-webkit-scrollbar {
-    width: 0px;
-    background: transparent;
-    display: none;
-  }
-  &::-webkit-scrollbar-thumb {
-    width: 0px;
-    display: none;
-  }
-`);
 
 type OptionsProps = {
   options: Array<TabOptionProps>;
@@ -173,7 +143,7 @@ const TaggingContainerInput = styled.div`
   font-size: 14px;
   border-bottom: 1px ${({ theme }) => theme.brand} solid;
   position: relative;
-  margin-bottom: 0.5rem;
+  margin: 0.5rem 0;
 `;
 
 const TaggingInput = styled.input`
@@ -185,6 +155,7 @@ const TaggingInput = styled.input`
   border: none;
   align-items: center;
   font-weight: bold;
+  width: 100%;
 
   &:focus {
     border: none;
@@ -226,48 +197,19 @@ const placeholderDirections = (
 const Tagger = ({ modal }: TaggerProps) => {
   const [untag, setUntag] = useState(false);
   const [targetLabels, setTargetLabels] = useState(false);
-  const [selectedSamples, setSelectedSamples] = useRecoilState(
-    atoms.selectedSamples
-  );
+  const selectedSamples = useRecoilValue(atoms.selectedSamples);
   const isInSelection = selectedSamples.size > 0;
   const [value, setValue] = useState("");
   const socket = useRecoilValue(selectors.socket);
   const activeLabels = useRecoilValue(fieldAtoms.activeFields(false));
   const [tagging, setTagging] = useRecoilState(atoms.tagging("grid"));
-  const [focused, setFocused] = useState(false);
 
-  const [stateDescription, setStateDescription] = useRecoilState(
-    atoms.stateDescription
-  );
   const count = useRecoilValue(selectors.currentCount);
-
-  const clearSelection = () => {
-    setSelectedSamples(new Set());
-    const newState = JSON.parse(JSON.stringify(stateDescription));
-    newState.selected = [];
-    setStateDescription(newState);
-    setFocused(false);
-    socket.send(packageMessage("clear_selection", {}));
-  };
-
-  const addStage = (name, callback = () => {}) => {
-    const newState = JSON.parse(JSON.stringify(stateDescription));
-    const newView = newState.view || [];
-    newView.push({
-      _cls: `fiftyone.core.stages.${name}`,
-      kwargs: [["sample_ids", Array.from(selectedSamples)]],
-    });
-    newState.view = newView;
-    newState.selected = [];
-    socket.send(packageMessage("update", { state: newState }));
-    setStateDescription(newState);
-    callback();
-  };
 
   const disabled = tagging || typeof count !== "number" || count === 0;
 
   return (
-    <ActionsDiv>
+    <PopoutDiv>
       <TaggingContainerInput>
         <TaggingInput
           placeholder={placeholderDirections(
@@ -281,7 +223,6 @@ const Tagger = ({ modal }: TaggerProps) => {
           onKeyPress={(e) => {
             if (e.key === "Enter") {
               setTagging(true);
-              setFocused(false);
               setValue("");
               socket.send(
                 packageMessage("tag", {
@@ -294,28 +235,12 @@ const Tagger = ({ modal }: TaggerProps) => {
               );
             }
           }}
-          onFocus={() => setFocused(true)}
           disabled={disabled}
         />
         <Loading loading={tagging || typeof count !== "number"} />
       </TaggingContainerInput>
       <Options
         options={[
-          {
-            active: targetLabels ? "labels" : "samples",
-            options: [
-              {
-                text: "samples",
-                title: "tag samples",
-                onClick: () => setTargetLabels(false),
-              },
-              {
-                text: "labels",
-                title: "tag visible labels",
-                onClick: () => setTargetLabels(true),
-              },
-            ],
-          },
           {
             active: untag ? "- untag" : "+ tag",
             options: [
@@ -331,9 +256,24 @@ const Tagger = ({ modal }: TaggerProps) => {
               },
             ],
           },
+          {
+            active: targetLabels ? "labels" : "samples",
+            options: [
+              {
+                text: "samples",
+                title: "tag samples",
+                onClick: () => setTargetLabels(false),
+              },
+              {
+                text: "labels",
+                title: "tag visible labels",
+                onClick: () => setTargetLabels(true),
+              },
+            ],
+          },
         ]}
       />
-    </ActionsDiv>
+    </PopoutDiv>
   );
 };
 
