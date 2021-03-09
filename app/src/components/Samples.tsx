@@ -1,13 +1,14 @@
 import React, { useEffect } from "react";
 import InfiniteScroll from "react-infinite-scroller";
 import useMeasure from "react-use-measure";
-import { useSetRecoilState } from "recoil";
+import { useSetRecoilState, useRecoilValue } from "recoil";
 import styled from "styled-components";
-import Loading from "./Loading";
 
+import Loading from "./Loading";
 import Sample from "./Sample";
 import tile from "./Samples.hooks";
 import * as atoms from "../recoil/atoms";
+import * as selectors from "../recoil/selectors";
 import { scrollbarStyles } from "./utils";
 
 const Container = styled.div`
@@ -17,7 +18,7 @@ const Container = styled.div`
   height: 100%;
 `;
 
-function Samples({ setView }) {
+function Samples() {
   const setCurrentSamples = useSetRecoilState(atoms.currentSamples);
   const [containerRef, bounds] = useMeasure();
 
@@ -26,6 +27,7 @@ function Samples({ setView }) {
     scrollState.initialized &&
       setCurrentSamples(scrollState.rows.map((row) => row.samples).flat());
   }, [scrollState.rows]);
+  const indices = useRecoilValue(selectors.selectedSampleIndices);
 
   return (
     <Container ref={containerRef}>
@@ -56,7 +58,7 @@ function Samples({ setView }) {
                     <Sample
                       sample={s.sample}
                       metadata={s.metadata}
-                      setView={setView}
+                      index={indices[s.sample._id]}
                     />
                   </div>
                   {j < r.samples.length - 1 && (

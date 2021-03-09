@@ -1152,6 +1152,9 @@ class Values(Aggregation):
         if self._found_array_field:
             return _deserialize_arrays(d["values"])
 
+        if self._field_name == "id":
+            return [str(_id) for _id in d["values"]]
+
         return d["values"]
 
     def to_mongo(self, sample_collection):

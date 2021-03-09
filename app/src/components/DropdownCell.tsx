@@ -33,11 +33,12 @@ const BoxedBody = styled(Box)`
 `;
 
 type Props = {
-  label: string;
+  label: string | React.ReactElement<any>;
   title: string;
   expanded: boolean;
   onExpand: (expanded: boolean) => void;
-  boxed: boolean;
+  boxed?: boolean;
+  children: React.ReactElement[];
 };
 
 const DropdownCell = ({

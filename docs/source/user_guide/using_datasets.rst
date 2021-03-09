@@ -149,35 +149,35 @@ If you upgrade your `fiftyone` package and then load a dataset that was created
 with an older version of the package, it will be automatically migrated to the
 new package version (if necessary) the first time you load it.
 
-Storing dataset information
----------------------------
+.. _storing-info:
+
+Storing info
+------------
 
 All |Dataset| instances have an
 :meth:`info <fiftyone.core.dataset.Dataset.info>` property, which contains a
-dictionary that you can use to store any (JSON-serializable) information you
-wish about your dataset.
+dictionary that you can use to store any JSON-serializable information you wish
+about your dataset.
 
-A typical use case is to store the class list for a classification/detection
-model:
-
-.. code-block:: python
-
-    # Store a class list in the dataset's info
-    dataset1.info["classes"] = ["bird", "cat", "deer", "dog", "frog", "horse"]
-    dataset1.save()
-
-In a new Python session:
+Datasets can also store more specific types of ancillary information such as
+:ref:`class lists <storing-classes>` and
+:ref:`mask targets <storing-mask-targets>`.
 
 .. code-block:: python
-    :linenos:
 
     import fiftyone as fo
 
-    dataset = fo.load_dataset("my_first_dataset")
+    dataset = fo.Dataset()
 
-    # Load the class list for the dataset
-    classes = dataset.info["classes"]
-    print(classes)  # ['bird', 'cat', 'deer', ...]
+    # Store a class list in the dataset's info
+    dataset.info = {
+        "dataset_source": "https://...",
+        "author": "...",
+    }
+
+    # Edit existing info
+    dataset.info["owner"] = "..."
+    dataset.save()  # must save after edits
 
 .. note::
 
@@ -185,6 +185,122 @@ In a new Python session:
     :meth:`dataset.save() <fiftyone.core.dataset.Dataset.save>` after updating
     the dataset's :meth:`info <fiftyone.core.dataset.Dataset.info>` property to
     save the changes to the database.
+
+.. _storing-classes:
+
+Storing class lists
+-------------------
+
+All |Dataset| instances have
+:meth:`classes <fiftyone.core.dataset.Dataset.classes>` and
+:meth:`default_classes <fiftyone.core.dataset.Dataset.default_classes>`
+properties that you can use to store the lists of possible classes for your
+annotations/models.
+
+The :meth:`classes <fiftyone.core.dataset.Dataset.classes>` property is a
+dictionary mapping field names to class lists for a single |Label| field of the
+dataset.
+
+If all |Label| fields in your dataset have the same semantics, you can store a
+single class list in the store a single target dictionary in the
+:meth:`default_classes <fiftyone.core.dataset.Dataset.default_classes>`
+property of your dataset.
+
+These class lists are automatically used, if available, by methods such as
+:meth:`evaluate_classifications() <fiftyone.core.collections.SampleCollection.evaluate_classifications>`
+and
+:meth:`evaluate_detections() <fiftyone.core.collections.SampleCollection.evaluate_detections>`
+that require knowledge of the possible classes in a field.
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    dataset = fo.Dataset()
+
+    # Set default classes
+    dataset.default_classes = ["cat", "dog"]
+
+    # Edit the default classes
+    dataset.default_classes.append("other")
+    dataset.save()  # must save after edits
+
+    # Set classes for the `ground_truth` and `predictions` fields
+    dataset.classes = {
+        "ground_truth": ["cat", "dog"],
+        "predictions": ["cat", "dog", "other"],
+    }
+
+    # Edit a field's classes
+    dataset.classes["ground_truth"].append("other")
+    dataset.save()  # must save after edits
+
+.. note::
+
+    You must call
+    :meth:`dataset.save() <fiftyone.core.dataset.Dataset.save>` after updating
+    the dataset's :meth:`classes <fiftyone.core.dataset.Dataset.classes>` and
+    :meth:`default_classes <fiftyone.core.dataset.Dataset.default_classes>`
+    properties to save the changes to the database.
+
+.. _storing-mask-targets:
+
+Storing mask targets
+--------------------
+
+All |Dataset| instances have
+:meth:`mask_targets <fiftyone.core.dataset.Dataset.mask_targets>` and
+:meth:`default_mask_targets <fiftyone.core.dataset.Dataset.default_mask_targets>`
+properties that you can use to store label strings for the pixel values of
+|Segmentation| field masks.
+
+The :meth:`mask_targets <fiftyone.core.dataset.Dataset.mask_targets>` property
+is a dictionary mapping field names to target dicts, each of which is a
+dictionary defining the mapping between pixel values and label strings for the
+|Segmentation| masks in the specified field of the dataset.
+
+If all |Segmentation| fields in your dataset have the same semantics, you can
+store a single target dictionary in the
+:meth:`default_mask_targets <fiftyone.core.dataset.Dataset.default_mask_targets>`
+property of your dataset.
+
+When you load datasets with |Segmentation| fields in the App that have
+corresponding mask targets, the label strings will appear in the App's tooltip
+when you hover over pixels.
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    dataset = fo.Dataset()
+
+    # Set default mask targets
+    dataset.default_mask_targets = {1: "cat", 2: "dog"}
+
+    # Edit the default mask targets
+    dataset.default_mask_targets[255] = "other"
+    dataset.save()  # must save after edits
+
+    # Set mask targets for the `ground_truth` and `predictions` fields
+    dataset.mask_targets = {
+        "ground_truth": {1: "cat", 2: "dog"},
+        "predictions": {1: "cat", 2: "dog", 255: "other"},
+    }
+
+    # Edit an existing mask target
+    dataset.mask_targets["ground_truth"][255] = "other"
+    dataset.save()  # must save after edits
+
+.. note::
+
+    You must call
+    :meth:`dataset.save() <fiftyone.core.dataset.Dataset.save>` after updating
+    the dataset's
+    :meth:`mask_targets <fiftyone.core.dataset.Dataset.mask_targets>` and
+    :meth:`default_mask_targets <fiftyone.core.dataset.Dataset.default_mask_targets>`
+    properties to save the changes to the database.
 
 Deleting a dataset
 ------------------
@@ -479,7 +595,6 @@ printing it:
     Media type:     image
     Num samples:    0
     Persistent:     False
-    Info:           {}
     Tags:           []
     Sample fields:
         media_type: fiftyone.core.fields.StringField
@@ -523,7 +638,6 @@ updated to reflect the new field:
     Media type:     image
     Num samples:    0
     Persistent:     False
-    Info:           {}
     Tags:           []
     Sample fields:
         media_type:    fiftyone.core.fields.StringField
@@ -890,6 +1004,11 @@ be visualized in the App or used by Brain methods, e.g., when
         }>,
     }>
 
+.. note::
+
+    Did you know? You can :ref:`store class lists <storing-classes>` for your
+    models on your datasets.
+
 .. _multilabel-classification:
 
 Multilabel classification
@@ -988,6 +1107,11 @@ overarching model (if applicable) in the
         }>,
     }>
 
+.. note::
+
+    Did you know? You can :ref:`store class lists <storing-classes>` for your
+    models on your datasets.
+
 .. _object-detection:
 
 Object detection
@@ -1074,6 +1198,11 @@ detection can be stored in the
             ]),
         }>,
     }>
+
+.. note::
+
+    Did you know? You can :ref:`store class lists <storing-classes>` for your
+    models on your datasets.
 
 .. _objects-with-instance-segmentations:
 
@@ -1296,7 +1425,7 @@ Polylines can also have string labels, which are stored in their
     polyline1 = fo.Polyline(
         points=[[(0.3, 0.3), (0.7, 0.3), (0.7, 0.3)]],
         closed=False,
-        filled=False
+        filled=False,
     )
 
     # A closed, filled polygon with a label
@@ -1304,7 +1433,7 @@ Polylines can also have string labels, which are stored in their
         label="triangle",
         points=[[(0.1, 0.1), (0.3, 0.1), (0.3, 0.3)]],
         closed=True,
-        filled=True
+        filled=True,
     )
 
     sample["polylines"] = fo.Polylines(polylines=[polyline1, polyline2])
@@ -1606,6 +1735,21 @@ stretched as necessary to fit the image's extent when visualizing in the App.
                    [0, 2, 5, ..., 5, 3, 2]]),
         }>,
     }>
+
+When you load datasets with |Segmentation| fields in the App, each pixel value
+is rendered as a distinct color.
+
+.. note::
+
+    The mask value ``0`` is a reserved "background" class that is rendered as
+    invislble in the App.
+
+.. note::
+
+    Did you know? You can :ref:`store semantic labels <storing-mask-targets>`
+    for your segmentation fields on your dataset. Then, when you view the
+    dataset in the App, label strings will appear in the App's tooltip when you
+    hover over pixels.
 
 .. _video-frame-labels:
 

@@ -217,16 +217,22 @@ class AppConfig(EnvConfig):
             env_var="FIFTYONE_APP_NOTEBOOK_HEIGHT",
             default=800,
         )
+        self.show_attributes = self.parse_bool(
+            d,
+            "show_attributes",
+            env_var="FIFTYONE_APP_SHOW_ATTRIBUTES",
+            default=True,
+        )
         self.show_confidence = self.parse_bool(
             d,
             "show_confidence",
             env_var="FIFTYONE_APP_SHOW_CONFIDENCE",
             default=True,
         )
-        self.show_attributes = self.parse_bool(
+        self.show_tooltip = self.parse_bool(
             d,
-            "show_attributes",
-            env_var="FIFTYONE_APP_SHOW_ATTRIBUTES",
+            "show_tooltip",
+            env_var="FIFTYONE_APP_SHOW_TOOLTIP",
             default=True,
         )
 

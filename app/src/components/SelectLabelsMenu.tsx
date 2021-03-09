@@ -3,7 +3,7 @@ import { useRecoilState, useRecoilValue, useResetRecoilState } from "recoil";
 
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
-import { useFastRerender, useSendMessage } from "../utils/hooks";
+import { useSendMessage } from "../utils/hooks";
 import { listSampleObjects } from "../utils/labels";
 import {
   SelectedObjectMap,
@@ -23,9 +23,7 @@ const SelectLabelsMenu = ({ sample, frameNumberRef }) => {
     SelectedObjectMap
   >(atoms.selectedObjects);
   const resetSelectedObjects = useResetRecoilState(atoms.selectedObjects);
-  const [hiddenObjects, setHiddenObjects] = useRecoilState<Set<string>>(
-    atoms.hiddenObjects
-  );
+  const [hiddenObjects, setHiddenObjects] = useRecoilState(atoms.hiddenObjects);
   const resetHiddenObjects = useResetRecoilState(atoms.hiddenObjects);
 
   const sampleFrameData =
@@ -115,16 +113,13 @@ const SelectLabelsMenu = ({ sample, frameNumberRef }) => {
     );
   };
 
-  const refresh = useFastRerender();
-
   return (
     <DropdownTag
       name={`${numTotalSelectedObjects} label${
         numTotalSelectedObjects == 1 ? "" : "s"
       } selected`}
       onSelect={(item) => item.action()}
-      onOpen={() => refresh()}
-      title="Click on labels in the media viewer to select them"
+      title="Click on objects in the media viewer to select them"
       menuItems={[
         sampleObjects.length && {
           name: "Select all (current sample)",

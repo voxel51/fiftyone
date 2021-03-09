@@ -610,33 +610,14 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         asyncio.gather(*awaitables)
 
     @staticmethod
-    async def on_add_selection(self, _id):
-        """Event for adding a :class:`fiftyone.core.samples.Sample` _id to the
-        currently selected sample _ids.
-
-        Sends state updates to all active clients.
+    async def on_set_selection(self, _ids):
+        """Event for setting the selected
+        :class:`fiftyone.core.samples.Sample` _ids
 
         Args:
-            _id: a sample _id
+            _ids: a list of sample _id
         """
-        selected = set(StateHandler.state["selected"])
-        selected.add(_id)
-        StateHandler.state["selected"] = selected
-        await self.send_updates(ignore=self)
-
-    @staticmethod
-    async def on_remove_selection(self, _id):
-        """Event for removing a :class:`fiftyone.core.samples.Sample` _id from the
-        currently selected sample _ids
-
-        Sends state updates to all active clients.
-
-        Args:
-            _id: a sample _id
-        """
-        selected = set(StateHandler.state["selected"])
-        selected.remove(_id)
-        StateHandler.state["selected"] = selected
+        StateHandler.state["selected"] = _ids
         await self.send_updates(ignore=self)
 
     @staticmethod
@@ -818,25 +799,25 @@ class StateHandler(tornado.websocket.WebSocketHandler):
 
             stats = fos.DatasetStatistics(view)
             aggs = stats.aggregations
+            exists_aggs = stats.exists_aggregations
+            num_aggs = len(aggs)
+
             results = await view._async_aggregate(
-                cls.sample_collection(), aggs
+                cls.sample_collection(), aggs + exists_aggs
             )
-            start_none_idx = len(aggs) - stats._none_len
-            none_aggs = aggs[start_none_idx:]
-            none_results = results[start_none_idx:]
-            aggs = aggs[:start_none_idx]
-            results = results[:start_none_idx]
+            aggs_results = results[:num_aggs]
+            exists_results = results[num_aggs:]
 
             for a, r, k in [
-                (aggs, results, "main"),
-                (none_aggs, none_results, "none"),
+                (aggs, aggs_results, "main"),
+                (exists_aggs, exists_results, "none"),
             ]:
                 for agg, result in zip(a, r):
                     data[k].append(
                         {
-                            "result": result,
                             "_CLS": agg.__class__.__name__,
                             "name": agg.field_name,
+                            "result": result,
                         }
                     )
 

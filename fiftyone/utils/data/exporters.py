@@ -348,23 +348,10 @@ def _check_classification_to_detections(dataset_exporter, label):
 
 
 class DatasetExporter(object):
-    """Base interface for exporting collections of
-    :class:`fiftyone.core.sample.Sample` instances to disk.
+    """Base interface for exporting datsets.
 
-    Example usage::
-
-        import fiftyone as fo
-
-        samples = ...  # a SampleCollection (e.g., Dataset or DatasetView)
-
-        exporter = GenericSampleDatasetExporter(export_dir, ...)
-        with exporter:
-            exporter.log_collection(samples)
-
-            for sample in samples:
-                # Extract relevant information from `sample` and feed to
-                # `export_sample()`
-                exporter.export_sample(*args, **kwargs)
+    See `this page <https://voxel51.com/docs/fiftyone/user_guide/export_datasets.html#writing-a-custom-datasetexporter>`_
+    for information about implementing/using dataset exporters.
 
     Args:
         export_dir: the directory to write the export
@@ -396,8 +383,8 @@ class DatasetExporter(object):
 
         Subclasses can optionally implement this method if their export format
         can record information such as the
-        :meth:`fiftyone.core.collections.SampleCollection.name` and
-        :meth:`fiftyone.core.collections.SampleCollection.info` of the
+        :meth:`fiftyone.core.collections.SampleCollection.info` or
+        :meth:`fiftyone.core.collections.SampleCollection.classes` of the
         collection being exported.
 
         By convention, this method must be optional; i.e., if it is not called
@@ -504,18 +491,8 @@ class GenericSampleDatasetExporter(DatasetExporter):
     """Interface for exporting datasets of arbitrary
     :class:`fiftyone.core.sample.Sample` instances.
 
-    Example usage::
-
-        import fiftyone as fo
-
-        samples = ...  # a SampleCollection (e.g., Dataset or DatasetView)
-
-        exporter = GenericSampleDatasetExporter(export_dir, ...)
-        with exporter:
-            exporter.log_collection(samples)
-
-            for sample in samples:
-                exporter.export_sample(sample)
+    See `this page <https://voxel51.com/docs/fiftyone/user_guide/export_datasets.html#writing-a-custom-datasetexporter>`_
+    for information about implementing/using dataset exporters.
 
     Args:
         export_dir: the directory to write the export
@@ -533,24 +510,8 @@ class GenericSampleDatasetExporter(DatasetExporter):
 class UnlabeledImageDatasetExporter(DatasetExporter, ExportsImages):
     """Interface for exporting datasets of unlabeled image samples.
 
-    Example usage::
-
-        import fiftyone as fo
-
-        samples = ...  # a SampleCollection (e.g., Dataset or DatasetView)
-
-        exporter = UnlabeledImageDatasetExporter(export_dir, ...)
-        with exporter:
-            exporter.log_collection(samples)
-
-            for sample in samples:
-                image_path = sample.filepath
-
-                metadata = sample.metadata
-                if exporter.requires_image_metadata and metadata is None:
-                    metadata = fo.ImageMetadata.build_for(image_path)
-
-                exporter.export_sample(image_path, metadata=metadata)
+    See `this page <https://voxel51.com/docs/fiftyone/user_guide/export_datasets.html#writing-a-custom-datasetexporter>`_
+    for information about implementing/using dataset exporters.
 
     Args:
         export_dir: the directory to write the export
@@ -581,24 +542,8 @@ class UnlabeledImageDatasetExporter(DatasetExporter, ExportsImages):
 class UnlabeledVideoDatasetExporter(DatasetExporter, ExportsVideos):
     """Interface for exporting datasets of unlabeled video samples.
 
-    Example usage::
-
-        import fiftyone as fo
-
-        samples = ...  # a SampleCollection (e.g., Dataset or DatasetView)
-
-        exporter = UnlabeledVideoDatasetExporter(export_dir, ...)
-        with exporter:
-            exporter.log_collection(samples)
-
-            for sample in samples:
-                video_path = sample.filepath
-
-                metadata = sample.metadata
-                if exporter.requires_video_metadata and metadata is None:
-                    metadata = fo.VideoMetadata.build_for(video_path)
-
-                exporter.export_sample(video_path, metadata=metadata)
+    See `this page <https://voxel51.com/docs/fiftyone/user_guide/export_datasets.html#writing-a-custom-datasetexporter>`_
+    for information about implementing/using dataset exporters.
 
     Args:
         export_dir: the directory to write the export
@@ -629,28 +574,8 @@ class UnlabeledVideoDatasetExporter(DatasetExporter, ExportsVideos):
 class LabeledImageDatasetExporter(DatasetExporter, ExportsImages):
     """Interface for exporting datasets of labeled image samples.
 
-    Example usage::
-
-        import fiftyone as fo
-
-        samples = ...  # a SampleCollection (e.g., Dataset or DatasetView)
-        label_field = ...
-
-        exporter = LabeledImageDatasetExporter(export_dir, ...)
-        with exporter:
-            exporter.log_collection(samples)
-
-            for sample in samples:
-                image_path = sample.filepath
-
-                metadata = sample.metadata
-                if exporter.requires_image_metadata and metadata is None:
-                    metadata = fo.ImageMetadata.build_for(image_path)
-
-                # Assumes single label field case
-                label = sample[label_field]
-
-                exporter.export_sample(image_path, label, metadata=metadata)
+    See `this page <https://voxel51.com/docs/fiftyone/user_guide/export_datasets.html#writing-a-custom-datasetexporter>`_
+    for information about implementing/using dataset exporters.
 
     Args:
         export_dir: the directory to write the export
@@ -702,32 +627,8 @@ class LabeledImageDatasetExporter(DatasetExporter, ExportsImages):
 class LabeledVideoDatasetExporter(DatasetExporter, ExportsVideos):
     """Interface for exporting datasets of labeled video samples.
 
-    Example usage::
-
-        import fiftyone as fo
-
-        samples = ...  # a SampleCollection (e.g., Dataset or DatasetView)
-
-        exporter = LabeledVideoDatasetExporter(export_dir, ...)
-        with exporter:
-            exporter.log_collection(samples)
-
-            for sample in samples:
-                video_path = sample.filepath
-
-                metadata = sample.metadata
-                if exporter.requires_video_metadata and metadata is None:
-                    metadata = fo.VideoMetadata.build_for(video_path)
-
-                # Extract relevant sample-level labels to export
-                label = ...
-
-                # Extract relevant frame-level labels to export
-                frames = ...
-
-                exporter.export_sample(
-                    video_path, label, frames, metadata=metadata
-                )
+    See `this page <https://voxel51.com/docs/fiftyone/user_guide/export_datasets.html#writing-a-custom-datasetexporter>`_
+    for information about implementing/using dataset exporters.
 
     Args:
         export_dir: the directory to write the export
@@ -849,7 +750,18 @@ class FiftyOneDatasetExporter(GenericSampleDatasetExporter):
             schema = sample_collection._serialize_frame_field_schema()
             self._metadata["frame_fields"] = schema
 
-        self._metadata["info"] = sample_collection.info
+        info = dict(sample_collection.info)
+
+        # Package classes and mask targets into `info`, since the import API
+        # only supports checking for `info`
+        info["classes"] = sample_collection.classes
+        info["default_classes"] = sample_collection.default_classes
+        info["mask_targets"] = sample_collection._serialize_mask_targets()
+        info[
+            "default_mask_targets"
+        ] = sample_collection._serialize_default_mask_targets()
+
+        self._metadata["info"] = info
 
     def export_sample(self, sample):
         out_filepath = self._filename_maker.get_output_path(sample.filepath)
@@ -1017,9 +929,16 @@ class FiftyOneImageClassificationDatasetExporter(LabeledImageDatasetExporter):
         self._parse_classes()
 
     def log_collection(self, sample_collection):
-        if self.classes is None and "classes" in sample_collection.info:
-            self.classes = sample_collection.info["classes"]
-            self._parse_classes()
+        if self.classes is None:
+            if sample_collection.default_classes:
+                self.classes = sample_collection.default_classes
+                self._parse_classes()
+            elif sample_collection.classes:
+                self.classes = next(iter(sample_collection.classes.values()))
+                self._parse_classes()
+            elif "classes" in sample_collection.info:
+                self.classes = sample_collection.info["classes"]
+                self._parse_classes()
 
     def export_sample(self, image_or_path, classification, metadata=None):
         out_image_path = self._export_image_or_path(
@@ -1239,9 +1158,16 @@ class FiftyOneImageDetectionDatasetExporter(LabeledImageDatasetExporter):
         self._parse_classes()
 
     def log_collection(self, sample_collection):
-        if self.classes is None and "classes" in sample_collection.info:
-            self.classes = sample_collection.info["classes"]
-            self._parse_classes()
+        if self.classes is None:
+            if sample_collection.default_classes:
+                self.classes = sample_collection.default_classes
+                self._parse_classes()
+            elif sample_collection.classes:
+                self.classes = next(iter(sample_collection.classes.values()))
+                self._parse_classes()
+            elif "classes" in sample_collection.info:
+                self.classes = sample_collection.info["classes"]
+                self._parse_classes()
 
     def export_sample(self, image_or_path, detections, metadata=None):
         out_image_path = self._export_image_or_path(

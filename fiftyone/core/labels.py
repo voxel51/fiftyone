@@ -232,7 +232,7 @@ class Classification(ImageLabel, _HasID):
         image_labels = etai.ImageLabels()
         image_labels.add_attribute(
             etad.CategoricalAttribute(
-                name, self.label, confidence=self.confidence
+                name, self.label, confidence=self.confidence,
             )
         )
         return image_labels
