@@ -5,16 +5,152 @@ GeoJSON utilities.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import logging
 import os
 
 import eta.core.serial as etas
 import eta.core.utils as etau
 
+import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.sample as fos
 import fiftyone.core.utils as fou
+import fiftyone.core.validation as fov
 from fiftyone.utils.data.exporters import GenericSampleDatasetExporter
 from fiftyone.utils.data.importers import GenericSampleDatasetImporter
+
+
+logger = logging.getLogger(__name__)
+
+
+def load_location_data(
+    samples, geojson_or_path, location_field=None, skip_missing=True
+):
+    """Loads geo-location data for the given samples from the given GeoJSON
+    data.
+
+    The GeoJSON data must be a ``FeatureCollection`` whose features have either
+    their ``filename`` (name only) or ``filepath`` (absolute path) properties
+    populated, which are used to match the provided samples.
+
+    Example GeoJSON data::
+
+        {
+            "type": "FeatureCollection",
+            "features": [
+                {
+                    "type": "Feature",
+                    "geometry": {
+                        "type": "Point",
+                        "coordinates": [
+                            -73.99496451958454,
+                            40.66338032487842
+                        ]
+                    },
+                    "properties": {
+                        "filename": "b1c66a42-6f7d68ca.jpg"
+                    }
+                },
+                {
+                    "type": "Feature",
+                    "geometry": {
+                        "type": "LineString",
+                        "coordinates": [
+                            [
+                                -73.80992143421788,
+                                40.65611832778962
+                            ],
+                            [
+                                -74.02930609818584,
+                                40.60505054722865
+                            ]
+                        ]
+                    },
+                    "properties": {
+                        "filepath": "/path/to/b1c81faa-3df17267.jpg"
+                    }
+                },
+            ]
+        }
+
+    Args:
+        samples: a :class:`fiftyone.core.collections.SampleCollection`
+        geojson_or_path: a GeoJSON ``FeatureCollection`` dict or the path to
+            one on disk
+        location_field (None): the name of the location field in which to store
+            the location data, which can be either a
+            :class:`fiftyone.core.labels.GeoLocation` or
+            :class:`fiftyone.core.labels.GeoLocations` field. If not specified,
+            then, if there is an existing
+            :class:`fiftyone.core.labels.GeoLocation` field, that field is
+            used, else a new "location" field is created
+        skip_missing (True): whether to skip GeoJSON features with no
+            ``filename`` or ``filepath`` properties (True) or raise an error
+            (False)
+    """
+    if location_field is None:
+        try:
+            location_field = samples._get_geo_location_field()
+        except:
+            location_field = "location"
+            samples._dataset.add_sample_field(
+                "location",
+                fof.EmbeddedDocumentField,
+                embedded_doc_type=fol.GeoLocation,
+            )
+
+    fov.validate_collection_label_fields(
+        samples, location_field, (fol.GeoLocation, fol.GeoLocations)
+    )
+
+    location_cls = samples._get_label_field_type(location_field)
+
+    if etau.is_str(geojson_or_path):
+        d = etas.read_json(geojson_or_path)
+    else:
+        d = geojson_or_path
+
+    _ensure_type(d, "FeatureCollection")
+
+    geometries = {}
+    for feature in d.get("features", []):
+        props = feature["properties"]
+        if "filepath" in props:
+            key = props["filepath"]
+        elif "filename" in props:
+            key = props["filename"]
+        elif not skip_missing:
+            raise ValueError(
+                "Found feature with no `filename` or `filepath` property"
+            )
+        else:
+            continue
+
+        geometries[key] = feature["geometry"]
+
+    lookup = {}
+
+    # @todo use `samples.values("id")` when available
+    sample_ids = [str(_id) for _id in samples._get_sample_ids()]
+    for sample_id, filepath in zip(sample_ids, samples.values("filepath")):
+        filename = os.path.basename(filepath)
+        lookup[filepath] = sample_id
+        lookup[filename] = sample_id
+
+    found_keys = set(lookup.keys()) & set(geometries.keys())
+
+    if not found_keys:
+        logger.info("No matching location data found")
+        return
+
+    logger.info("Loading location data for %d samples...", len(found_keys))
+    with fou.ProgressBar() as pb:
+        for key in pb(found_keys):
+            sample_id = lookup[key]
+            geometry = geometries[key]
+            sample = samples[sample_id]
+            sample[location_field] = location_cls.from_geo_json(geometry)
+            sample.save()
 
 
 def to_geo_json_geometry(label):
@@ -252,14 +388,7 @@ class GeoJSONImageDatasetImporter(GenericSampleDatasetImporter):
         json_path = os.path.join(self.dataset_dir, "labels.json")
 
         geojson = etas.load_json(json_path)
-
-        _type = geojson.get("type", "")
-        if _type != "FeatureCollection":
-            raise ValueError(
-                "Unsupported GeoJSON type '%s'; must be 'FeatureCollection'"
-                % _type
-            )
-
+        _ensure_type(geojson, "FeatureCollection")
         features = geojson.get("features", [])
 
         self._features = self._preprocess_list(features)
@@ -428,3 +557,11 @@ def _parse_geometries(geometries):
             polygons.extend(_coords)
 
     return points, lines, polygons
+
+
+def _ensure_type(d, type_):
+    _type = d.get("type", "")
+    if _type != type_:
+        raise ValueError(
+            "Unsupported GeoJSON type '%s'; must be '%s'" % (_type, type_)
+        )
