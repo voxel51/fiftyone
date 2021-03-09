@@ -2195,7 +2195,7 @@ class SampleCollection(object):
             # include samples within 5km
             #
 
-            view = dataset.GeoNear(TIMES_SQUARE, max_distance=5000)
+            view = dataset.geo_near(TIMES_SQUARE, max_distance=5000)
 
             #
             # Sort the samples by their proximity to Times Square, and only
