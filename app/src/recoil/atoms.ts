@@ -4,7 +4,7 @@ import { SelectedObjectMap } from "../utils/selection";
 
 export const colorSeed = atomFamily<number, boolean>({
   key: "colorSeed",
-  default: 0,
+  default: 1,
 });
 
 export const modal = atom({

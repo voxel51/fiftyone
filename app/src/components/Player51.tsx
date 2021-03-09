@@ -360,6 +360,7 @@ export default ({
     mime.lookup(sample.filepath) ||
     "image/jpg";
   const activeLabelPaths = useRecoilValue(activeLabelsAtom);
+  const colorGenerator = useRecoilValue(selectors.colorGenerator(!thumbnail));
 
   const [player] = useState(() => {
     try {
@@ -372,6 +373,7 @@ export default ({
         colorMap,
         activeLabels: activeLabelPaths,
         filter,
+        colorGenerator,
         enableOverlayOptions: {
           attrRenderMode: false,
           attrsOnlyOnClick: false,
@@ -410,6 +412,7 @@ export default ({
         filter,
         colorMap,
         fps,
+        colorGenerator,
       });
       player.updateOverlayOptions(overlayOptions);
       if (!thumbnail) {
@@ -428,6 +431,7 @@ export default ({
     overlayOptions,
     defaultTargets,
     selectedObjects,
+    colorGenerator,
   ]);
 
   useEffect(() => {
