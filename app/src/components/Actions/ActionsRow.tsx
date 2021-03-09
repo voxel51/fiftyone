@@ -1,12 +1,14 @@
 import React, { useRef, useState } from "react";
 import { useRecoilValue } from "recoil";
 import styled from "styled-components";
-import { Check, LocalOffer } from "@material-ui/icons";
+import { Check, LocalOffer, Settings } from "@material-ui/icons";
 
 import { PillButton } from "../utils";
 import * as atoms from "../../recoil/atoms";
 
 import Tagger from "./Tagger";
+import Selector from "./Selected";
+import Coloring from "./Options";
 import { useOutsideClick } from "../../utils/hooks";
 
 const Tag = ({ modal }) => {
@@ -46,7 +48,25 @@ const Selected = ({ modal }) => {
         highlight={Boolean(selectedSamples.size) || open}
         text={`${selectedSamples.size}`}
       />
-      {open && <Tagger modal={modal} />}
+      {open && <Selector modal={modal} close={() => setOpen(false)} />}
+    </div>
+  );
+};
+
+const Options = ({ modal }) => {
+  const [open, setOpen] = useState(false);
+  const ref = useRef();
+  useOutsideClick(ref, () => open && setOpen(false));
+
+  return (
+    <div ref={ref}>
+      <PillButton
+        icon={<Settings />}
+        open={open}
+        onClick={() => setOpen(!open)}
+        highlight={open}
+      />
+      {open && <Coloring modal={modal} />}
     </div>
   );
 };
@@ -68,6 +88,7 @@ type ActionsRowProps = {
 const ActionsRow = ({ modal }: ActionsRowProps) => {
   return (
     <ActionsRowDiv>
+      <Options modal={modal} />
       <Tag modal={modal} />
       <Selected modal={modal} />
     </ActionsRowDiv>

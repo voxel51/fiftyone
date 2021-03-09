@@ -33,7 +33,7 @@ function App() {
   const setSelectedObjects = useSetRecoilState(atoms.selectedObjects);
   const handle = useRecoilValue(selectors.handleId);
   const isNotebook = useRecoilValue(selectors.isNotebook);
-  const setTagging = useSetRecoilState(atoms.tagging("grid"));
+  const setTagging = useSetRecoilState(selectors.anyTagging);
   const handleStateUpdate = (state) => {
     setStateDescription(state);
     setSelectedSamples(new Set(state.selected));

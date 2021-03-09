@@ -908,3 +908,23 @@ export const colorGenerator = selectorFamily<any, boolean>({
     return new ColorGenerator(get(atoms.colorSeed(modal)));
   },
 });
+
+export const anyTagging = selector<boolean>({
+  key: "anyTagging",
+  get: ({ get }) => {
+    let values = [];
+    [true, false].forEach((i) =>
+      [true, false].forEach((j) => {
+        values.push(get(atoms.tagging({ modal: i, labels: j })));
+      })
+    );
+    return values.some((v) => v);
+  },
+  set: ({ set }, value) => {
+    [true, false].forEach((i) =>
+      [true, false].forEach((j) => {
+        set(atoms.tagging({ modal: i, labels: j }), value);
+      })
+    );
+  },
+});

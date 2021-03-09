@@ -1,6 +1,6 @@
-import React from "react";
+import React, { useState } from "react";
 import styled from "styled-components";
-import { animated, useSpring } from "react-spring";
+import { animated, useSpring, useSprings } from "react-spring";
 import { KeyboardArrowUp, KeyboardArrowDown } from "@material-ui/icons";
 
 import { useTheme } from "../utils/hooks";
@@ -169,7 +169,101 @@ export const PopoutDiv = animated(styled.div`
   width: auto;
   z-index: 801;
   max-height: 328px;
-  width: 18rem;
   font-size: 14px;
   padding: 0 0.5rem 0 0.5rem;
+  min-width: 14rem;
 `);
+
+export const PopoutSectionTitle = styled.div`
+  margin: 0 -0.5rem;
+  padding: 0 0.5rem;
+  border-bottom: 1px solid ${({ theme }) => theme.backgroundLight};
+  font-size: 1rem;
+  line-height: 2;
+  font-weight: bold;
+`;
+
+const TabOptionDiv = animated(styled.div`
+  display: flex;
+  font-weight: bold;
+  cursor: pointer;
+  justify-content: space-between;
+  margin: 0.5rem 0;
+  border-radius: 3px;
+  height: 2rem;
+
+  & > div {
+    display: flex;
+    justify-content: center;
+    align-content: center;
+    flex-direction: column;
+    cursor: inherit;
+    flex-grow: 1;
+    flex-basis: 0;
+    text-align: center;
+    overflow: hidden;
+    border-radius: 3px;
+  }
+`);
+
+const Tab = animated(styled.div``);
+
+type TabOption = {
+  text: string;
+  onClick: () => void;
+  title: string;
+};
+
+export type TabOptionProps = {
+  active: string;
+  options: TabOption[];
+};
+
+export const TabOption = ({ active, options }: TabOptionProps) => {
+  const theme = useTheme();
+  const [hovering, setHovering] = useState(options.map((o) => false));
+  const styles = useSprings(
+    options.length,
+    options.map((o, i) => ({
+      backgroundColor:
+        o.text === active
+          ? theme.brand
+          : hovering[i]
+          ? theme.background
+          : theme.backgroundLight,
+      color: hovering ? theme.font : theme.fontDark,
+    }))
+  );
+
+  const [style, set] = useSpring(() => ({
+    background: theme.backgroundLight,
+  }));
+
+  return (
+    <TabOptionDiv
+      style={style}
+      onMouseEnter={() => set({ background: theme.background })}
+      onMouseLeave={() => set({ background: theme.backgroundLight })}
+    >
+      {options.map(({ text, title, onClick }, i) => (
+        <Tab
+          onClick={onClick}
+          title={title}
+          style={{
+            ...styles[i],
+            cursor: text === active ? "default" : "pointer",
+          }}
+          onMouseEnter={() =>
+            setHovering(hovering.map((_, j) => (j === i ? true : _)))
+          }
+          onMouseLeave={() =>
+            setHovering(hovering.map((_, j) => (j === i ? false : _)))
+          }
+          key={i}
+        >
+          {text}
+        </Tab>
+      ))}
+    </TabOptionDiv>
+  );
+};

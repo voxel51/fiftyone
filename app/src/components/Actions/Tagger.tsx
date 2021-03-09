@@ -9,89 +9,12 @@ import * as fieldAtoms from "../Filters/utils";
 import { packageMessage } from "../../utils/socket";
 import * as atoms from "../../recoil/atoms";
 import * as selectors from "../../recoil/selectors";
-import { PopoutDiv } from "../utils";
-
-const TabOptionDiv = animated(styled.div`
-  display: flex;
-  font-weight: bold;
-  cursor: pointer;
-  justify-content: space-between;
-  margin: 0.5rem 0;
-  border-radius: 4px;
-  height: 2rem;
-
-  & > div {
-    display: flex;
-    justify-content: center;
-    align-content: center;
-    flex-direction: column;
-    cursor: inherit;
-    flex-grow: 1;
-    flex-basis: 0;
-    text-align: center;
-    overflow: hidden;
-    border-radius: 4px;
-  }
-`);
-
-const Tab = animated(styled.div``);
-
-type TabOptionProps = {
-  active: string;
-  options: TabOption[];
-};
-
-type TabOption = {
-  text: string;
-  onClick: () => void;
-  title: string;
-};
-
-const TabOption = ({ active, options }: TabOptionProps) => {
-  const theme = useTheme();
-  const [hovering, setHovering] = useState(options.map((o) => false));
-  const styles = useSprings(
-    options.length,
-    options.map((o, i) => ({
-      backgroundColor:
-        o.text === active
-          ? theme.brand
-          : hovering[i]
-          ? theme.background
-          : theme.backgroundLight,
-      color: hovering ? theme.font : theme.fontDark,
-    }))
-  );
-
-  const [style, set] = useSpring(() => ({
-    background: theme.backgroundLight,
-  }));
-
-  return (
-    <TabOptionDiv
-      style={style}
-      onMouseEnter={() => set({ background: theme.background })}
-      onMouseLeave={() => set({ background: theme.backgroundLight })}
-    >
-      {options.map(({ text, title, onClick }, i) => (
-        <Tab
-          onClick={onClick}
-          title={title}
-          style={styles[i]}
-          onMouseEnter={() =>
-            setHovering(hovering.map((_, j) => (j === i ? true : _)))
-          }
-          onMouseLeave={() =>
-            setHovering(hovering.map((_, j) => (j === i ? false : _)))
-          }
-          key={i}
-        >
-          {text}
-        </Tab>
-      ))}
-    </TabOptionDiv>
-  );
-};
+import {
+  PopoutDiv,
+  PopoutSectionTitle,
+  TabOptionProps,
+  TabOption,
+} from "../utils";
 
 type OptionsProps = {
   options: Array<TabOptionProps>;
@@ -131,7 +54,7 @@ const Loading = React.memo(({ loading }: { loading: boolean }) => {
             color: theme.font,
             height: 16,
             width: 16,
-            marginTop: "0.75rem",
+            marginTop: "0.25rem",
           }}
         />
       )}
@@ -169,55 +92,29 @@ const TaggingInput = styled.input`
   }
 `;
 
-type TaggerProps = {
-  modal: boolean;
-};
-
-const placeholderDirections = (
-  isInSelection,
-  numSamples,
-  untag,
-  targetLabels
-) => {
-  if (typeof numSamples !== "number") {
-    return "loading...";
-  }
-
-  if (numSamples === 0) {
-    return "no samples";
-  }
-
-  return `${untag ? "- untag" : "+ tag"}${
-    targetLabels ? " shown labels in" : ""
-  } ${numSamples}${isInSelection ? " selected" : ""}${` sample${
-    numSamples > 1 ? "s" : ""
-  }`}`;
-};
-
-const Tagger = ({ modal }: TaggerProps) => {
+const Section = ({ modal, title, placeholder, submit, loading }) => {
+  const count = useRecoilValue(selectors.currentCount);
+  const [tagging, setTagging] = useRecoilState(atoms.tagging(modal));
   const [untag, setUntag] = useState(false);
-  const [targetLabels, setTargetLabels] = useState(false);
   const selectedSamples = useRecoilValue(atoms.selectedSamples);
   const isInSelection = selectedSamples.size > 0;
   const [value, setValue] = useState("");
   const socket = useRecoilValue(selectors.socket);
   const activeLabels = useRecoilValue(fieldAtoms.activeFields(false));
-  const [tagging, setTagging] = useRecoilState(atoms.tagging("grid"));
-
-  const count = useRecoilValue(selectors.currentCount);
-
   const disabled = tagging || typeof count !== "number" || count === 0;
 
+  const numSamples = isInSelection ? selectedSamples.size : count;
+
   return (
-    <PopoutDiv>
+    <>
+      <PopoutSectionTitle>{title}</PopoutSectionTitle>
       <TaggingContainerInput>
         <TaggingInput
-          placeholder={placeholderDirections(
-            isInSelection,
-            isInSelection ? selectedSamples.size : count,
-            untag,
-            targetLabels
-          )}
+          placeholder={
+            disabled
+              ? "loading..."
+              : placeholder(isInSelection, numSamples, untag)
+          }
           value={value}
           onChange={(e) => setValue(e.target.value)}
           onKeyPress={(e) => {
@@ -256,22 +153,46 @@ const Tagger = ({ modal }: TaggerProps) => {
               },
             ],
           },
-          {
-            active: targetLabels ? "labels" : "samples",
-            options: [
-              {
-                text: "samples",
-                title: "tag samples",
-                onClick: () => setTargetLabels(false),
-              },
-              {
-                text: "labels",
-                title: "tag visible labels",
-                onClick: () => setTargetLabels(true),
-              },
-            ],
-          },
         ]}
+      />
+    </>
+  );
+};
+
+type TaggerProps = {
+  modal: boolean;
+};
+
+const Tagger = ({ modal }: TaggerProps) => {
+  const show = useSpring({
+    opacity: 1,
+    from: {
+      opacity: 0,
+    },
+    config: {
+      duration: 100,
+    },
+  });
+
+  return (
+    <PopoutDiv style={show}>
+      <Section
+        modal={modal}
+        title={"Samples"}
+        placeholder={(selection, num, untag) => {
+          if (num === 0) {
+            return "no samples";
+          }
+          if (selection) {
+            return `${untag ? "- untag" : "+ tag"} ${num} selected sample${
+              num === 1 ? "" : "s"
+            }`;
+          }
+
+          return `${untag ? "- untag" : "+ tag"} ${num} sample${
+            num === 1 ? "" : "s"
+          }`;
+        }}
       />
     </PopoutDiv>
   );

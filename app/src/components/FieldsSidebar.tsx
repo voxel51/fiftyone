@@ -409,62 +409,6 @@ export const Button = ({ onClick, text, children, style }) => {
   );
 };
 
-export const RefreshButton = ({ modal }) => {
-  const [colorSeed, setColorSeed] = useRecoilState(
-    atoms.colorSeed(Boolean(modal))
-  );
-  const theme = useTheme();
-  return (
-    <Button
-      onClick={() => setColorSeed(colorSeed + 1)}
-      text={"Refresh colors"}
-      style={{ fontFamily: `"Roboto", "Helvetica", "Arial", sans-serif"` }}
-    >
-      <Autorenew style={{ height: "1.5rem", color: "inherit" }} />
-    </Button>
-  );
-};
-
-type OptionsCellProps = {
-  modal: boolean;
-};
-
-const OptionsCell = ({ modal }: OptionsCellProps) => {
-  const [colorByLabel, setColorByLabel] = useRecoilState(
-    atoms.colorByLabel(modal)
-  );
-  const theme = useTheme();
-
-  return (
-    <Cell
-      label={"Options"}
-      icon={<Settings />}
-      entries={[
-        {
-          name: "Color by value",
-          title: "Color by value",
-          selected: colorByLabel,
-          color: theme.brand,
-          hasDropdown: false,
-          hideCheckbox: false,
-          disabled: false,
-          totalCount: null,
-          path: null,
-          data: null,
-          filteredCount: null,
-          icon: <Brush />,
-        },
-      ]}
-      title={"Field options"}
-      modal={modal}
-      onSelect={() => setColorByLabel(!colorByLabel)}
-      handleClear={() => setColorByLabel(false)}
-    >
-      <RefreshButton modal={modal} />
-    </Cell>
-  );
-};
-
 type FieldsSidebarProps = {
   modal: boolean;
   style: object;
@@ -482,7 +426,6 @@ const FieldsSidebar = React.forwardRef(
         {isVideo && <LabelsCell modal={modal} frames={true} />}
         <ScalarsCell modal={modal} />
         <UnsupportedCell modal={modal} />
-        <OptionsCell modal={modal} />
       </Container>
     );
   }
