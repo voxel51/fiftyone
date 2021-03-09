@@ -14,6 +14,7 @@ import {
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
 import { convertSelectedObjectsListToMap } from "../utils/selection";
+import { refreshColorGenerator } from "player51";
 
 import Error from "./Error";
 import Setup from "./Setup";

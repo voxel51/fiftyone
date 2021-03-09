@@ -56,7 +56,7 @@ export function generateColorMap(
   }
   let idx = 0;
   let offset = Object.keys(newMap).length;
-  keys.sort().forEach((key) => {
+  [...keys, undefined, null].sort().forEach((key) => {
     if (!newMap[key]) {
       let color = (offset + idx) % colors.length;
       if (isNaN(color)) {

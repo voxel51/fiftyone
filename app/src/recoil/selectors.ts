@@ -3,6 +3,7 @@ import ReconnectingWebSocket from "reconnecting-websocket";
 import uuid from "uuid-v4";
 
 import * as atoms from "./atoms";
+import { ColorGenerator } from "player51";
 import { generateColorMap } from "../utils/colors";
 import { isElectron } from "../utils/generic";
 import {
@@ -897,6 +898,13 @@ export const modalLabelTags = selectorFamily<
     const tags = get(modalLabelAttrs(params)).filter(
       ([k, v]) => k === "tags"
     )[0][1];
-    return tags ? Array.from(tags).sort() : [];
+    return tags ? Array.from(tags) : [];
+  },
+});
+
+export const colorGenerator = selectorFamily<any, boolean>({
+  key: "colorGenerator",
+  get: (modal) => ({ get }) => {
+    return new ColorGenerator(get(atoms.colorSeed(modal)));
   },
 });

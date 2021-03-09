@@ -42,9 +42,13 @@ const InfoWrapper = styled.div`
 `;
 
 const TagBlock = styled.div`
-  padding: 0.5rem 0 0;
-  border-top: 2px solid ${({ theme }) => theme.font};
   margin: 0;
+`;
+
+const BorderDiv = styled.div`
+  border-top: 2px solid ${({ theme }) => theme.font};
+  width: 100%;
+  padding: 0.5rem 0 0;
 `;
 
 const AttrBlock = styled.div`
@@ -142,30 +146,12 @@ const ContentItem = ({
   );
 };
 
-const ClassificationInfo = ({ info, style }) => {
-  return (
-    <AttrBlock style={{ borderColor: info.color, ...style }}>
-      <AttrInfo field={info.field} id={info.id} />
-    </AttrBlock>
-  );
-};
-
 const useTarget = (field, target) => {
   const getTarget = useRecoilValue(selectors.getTarget);
   return getTarget(field, target);
 };
 
-const MaskInfo = ({ info, style }) => {
-  const targetValue = useTarget(info.field, info.target);
-  return (
-    <AttrBlock style={{ borderColor: info.color, ...style }}>
-      <AttrInfo field={info.field} id={info.id} />
-      <ContentItem key={"target-value"} name={"label"} value={targetValue} />
-    </AttrBlock>
-  );
-};
-
-const AttrInfo = ({ field, id }) => {
+const AttrInfo = ({ field, id, children }) => {
   const attrs = useRecoilValue(selectors.modalLabelAttrs({ field, id }));
   let entries = attrs.filter(([k, v]) => k !== "tags");
   if (!entries || !entries.length) {
@@ -173,48 +159,87 @@ const AttrInfo = ({ field, id }) => {
   }
   let etc = null;
 
-  if (attrs.length > 4) {
-    const extra = entries.length - 4;
-    etc = `and ${extra} more attribue${extra > 1 ? "s" : ""}`;
-    // entries = entries.slice(0, 4);
-  }
+  const defaults = entries.filter(([name]) =>
+    ["label", "confidence"].includes(name)
+  );
+
+  const other = entries.filter(
+    ([name]) => !["label", "confidence"].includes(name)
+  );
+  const mapper = ([name, value]) => (
+    <ContentItem key={name} name={name} value={value} />
+  );
 
   return (
     <>
-      {entries.map(([name, value]) => (
-        <ContentItem key={name} name={name} value={value} />
-      ))}
+      {defaults.map(mapper)}
+      {children}
+      {other.map(mapper)}
     </>
   );
 };
 
-const DetectionInfo = ({ info, style }) => {
+const ClassificationInfo = ({ info }) => {
   return (
-    <AttrBlock style={{ borderColor: info.color, ...style }}>
+    <AttrBlock style={{ borderColor: info.color }}>
       <AttrInfo field={info.field} id={info.id} />
     </AttrBlock>
   );
 };
 
-const KeypointInfo = ({ info, style }) => {
+const DetectionInfo = ({ info }) => {
   return (
-    <AttrBlock style={{ borderColor: info.color, ...style }}>
+    <AttrBlock style={{ borderColor: info.color }}>
       <AttrInfo field={info.field} id={info.id} />
-      <ContentItem
-        key={"# keypoints"}
-        name={"# keypoints"}
-        value={info.numPoints}
-      />
     </AttrBlock>
   );
 };
 
-const PolylineInfo = ({ info, style }) => {
+const KeypointInfo = ({ info }) => {
   return (
-    <AttrBlock style={{ borderColor: info.color, ...style }}>
-      <AttrInfo field={info.field} id={info.id} />
-      <ContentItem key={"# points"} name={"# points"} value={info.points} />
+    <AttrBlock style={{ borderColor: info.color }}>
+      <AttrInfo field={info.field} id={info.id}>
+        <ContentItem
+          key={"# keypoints"}
+          name={"# keypoints"}
+          value={info.numPoints}
+        />
+      </AttrInfo>
     </AttrBlock>
+  );
+};
+
+const MaskInfo = ({ info }) => {
+  const targetValue = useTarget(info.field, info.target);
+
+  return (
+    <AttrBlock style={{ borderColor: info.color }}>
+      <ContentItem key={"target-value"} name={"label"} value={targetValue} />
+      <AttrInfo field={info.field} id={info.id} />
+    </AttrBlock>
+  );
+};
+
+const PolylineInfo = ({ info }) => {
+  return (
+    <AttrBlock style={{ borderColor: info.color }}>
+      <AttrInfo field={info.field} id={info.id}>
+        <ContentItem key={"# points"} name={"# points"} value={info.points} />
+      </AttrInfo>
+    </AttrBlock>
+  );
+};
+
+const Border = ({ color, id }) => {
+  const selectedObjects = useRecoilValue(selectors.selectedObjectIds);
+  return (
+    <BorderDiv
+      style={{
+        borderTop: `2px ${
+          selectedObjects.has(id) ? "dashed" : "solid"
+        } ${color}`,
+      }}
+    />
   );
 };
 
@@ -226,17 +251,11 @@ const OVERLAY_INFO = {
   polyline: PolylineInfo,
 };
 
-const TagInfo = ({ field, id, color }) => {
+const TagInfo = ({ field, id }) => {
   const tags = useRecoilValue(selectors.modalLabelTags({ field, id }));
-  const selectedObjects = useRecoilValue(selectors.selectedObjectIds);
+  if (!tags.length) return null;
   return (
-    <TagBlock
-      style={{
-        borderTop: `2px ${
-          selectedObjects.has(id) ? "dashed" : "solid"
-        } ${color}`,
-      }}
-    >
+    <TagBlock>
       <ContentItem
         key={"tags"}
         name={"tags"}
@@ -291,12 +310,8 @@ const TooltipInfo = ({ player, moveRef }) => {
           ref={ref}
         >
           <ContentHeader key="header">{overlay.field}</ContentHeader>
-          <TagInfo
-            key={"tags"}
-            field={overlay.field}
-            id={overlay.id}
-            color={overlay.color}
-          />
+          <Border color={overlay.color} id={overlay.id} />
+          <TagInfo key={"tags"} field={overlay.field} id={overlay.id} />
 
           <Component key={"attrs"} info={overlay} />
         </TooltipDiv>,
@@ -345,6 +360,7 @@ export default ({
     mime.lookup(sample.filepath) ||
     "image/jpg";
   const activeLabelPaths = useRecoilValue(activeLabelsAtom);
+  const colorGenerator = useRecoilValue(selectors.colorGenerator(!thumbnail));
 
   const [player] = useState(() => {
     try {
@@ -357,6 +373,7 @@ export default ({
         colorMap,
         activeLabels: activeLabelPaths,
         filter,
+        colorGenerator,
         enableOverlayOptions: {
           attrRenderMode: false,
           attrsOnlyOnClick: false,
@@ -395,6 +412,7 @@ export default ({
         filter,
         colorMap,
         fps,
+        colorGenerator,
       });
       player.updateOverlayOptions(overlayOptions);
       if (!thumbnail) {
@@ -413,6 +431,7 @@ export default ({
     overlayOptions,
     defaultTargets,
     selectedObjects,
+    colorGenerator,
   ]);
 
   useEffect(() => {
