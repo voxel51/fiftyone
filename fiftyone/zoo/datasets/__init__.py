@@ -142,6 +142,8 @@ def load_zoo_dataset(
     dataset_dir=None,
     download_if_necessary=True,
     drop_existing_dataset=False,
+    overwrite=False,
+    cleanup=True,
     **kwargs
 ):
     """Loads the dataset of the given name from the FiftyOne Dataset Zoo as
@@ -177,6 +179,10 @@ def load_zoo_dataset(
             not found in the specified dataset directory
         drop_existing_dataset (False): whether to drop an existing dataset
             with the same name if it exists
+        overwrite (False): whether to overwrite any existing files if the
+            dataset is to be downloaded
+        cleanup (True): whether to cleanup any temporary files generated during
+            download
         **kwargs: optional arguments to pass to the
             :class:`fiftyone.utils.data.importers.DatasetImporter` constructor.
             If ``download_if_necessary == True``, then ``kwargs`` can also
@@ -194,7 +200,12 @@ def load_zoo_dataset(
         )
 
         info, dataset_dir = download_zoo_dataset(
-            name, splits=splits, dataset_dir=dataset_dir, **download_kwargs
+            name,
+            splits=splits,
+            dataset_dir=dataset_dir,
+            overwrite=overwrite,
+            cleanup=cleanup,
+            **download_kwargs
         )
         zoo_dataset = info.get_zoo_dataset()
     else:
@@ -749,6 +760,14 @@ class ZooDataset(object):
         return self.supported_splits is not None
 
     @property
+    def supports_paritial_download(self):
+        """Whether the dataset supports download specified subsets of data and
+        labels. This determines if _download_and_prepare should be run even if split directories
+           already exist.
+        """
+        return False
+
+    @property
     def requires_manual_download(self):
         """Whether this dataset requires some files to be manually downloaded.
         """
@@ -889,16 +908,17 @@ class ZooDataset(object):
                             )
                             etau.delete_dir(split_dir)
                         elif split in info.downloaded_splits:
-                            if self.requires_manual_download:
-                                logger.info(
-                                    "Split '%s' already prepared", split
-                                )
-                            else:
-                                logger.info(
-                                    "Split '%s' already downloaded", split
-                                )
+                            if not self.supports_paritial_download:
+                                if self.requires_manual_download:
+                                    logger.info(
+                                        "Split '%s' already prepared", split
+                                    )
+                                else:
+                                    logger.info(
+                                        "Split '%s' already downloaded", split
+                                    )
 
-                            continue
+                                continue
 
                     _splits.append(split)
 

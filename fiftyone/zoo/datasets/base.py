@@ -20,6 +20,7 @@ import fiftyone.utils.data as foud
 import fiftyone.utils.hmdb51 as fouh
 import fiftyone.utils.kitti as fouk
 import fiftyone.utils.lfw as foul
+import fiftyone.utils.openimages as fouo
 import fiftyone.utils.ucf101 as fouu
 import fiftyone.zoo.datasets as fozd
 
@@ -847,6 +848,110 @@ class LabeledFacesInTheWildDataset(FiftyOneDataset):
         return dataset_type, num_samples, classes
 
 
+class OpenImagesV6Dataset(FiftyOneDataset):
+    """`Open Images v6 dataset <https://storage.googleapis.com/openimages/web/index.html>`_ with annotations.
+
+    Example usage::
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("open-images-v6")
+
+        session = fo.launch_app(dataset)
+
+    Dataset size
+        561 GB 
+
+    Source
+        https://storage.googleapis.com/openimages/web/index.html
+
+    Args:
+        label_types (None): a list of types of labels to load. Values are
+            ``("detections", "classifications", "relationships", "segmentations")``. 
+            By default, all labels are loaded but not every sample will include
+            each label type. If ``max_samples`` and ``label_types`` are both
+            specified, then every sample will include the specified label types.
+        classes (None): a list of strings specifying required classes to load. Only samples
+            containing at least one instance of a specified classes will be
+            downloaded. See available classes with `get_classes()`
+        attrs (None): a list of strings for relationship attributes to load
+        max_samples (None): a maximum number of samples to import per split. By default,
+            all samples are imported
+        image_ids (None): list of specific image ids to load either in the form
+            of ``<split>/<image-id>`` or just a list of ``<image-id>``.
+            ``image_ids`` takes precedence if both ``image_ids`` and
+            ``image_ids_file`` are provided.
+        image_ids_file (None): path to a newline separated text, json, or csv file containing a
+            list of image ids to load either in the form
+            of ``<split>/<image-id>`` or just a list of ``<image-id>``.
+            ``image_ids`` takes precedence if both ``image_ids`` and
+            ``image_ids_file`` are provided.
+        num_workers (None): the number of processes to use to download images. By default,
+            ``multiprocessing.cpu_count()`` is used
+    """
+
+    def __init__(
+        self,
+        label_types=None,
+        classes=None,
+        attrs=None,
+        max_samples=None,
+        image_ids=None,
+        image_ids_file=None,
+        num_workers=None,
+    ):
+
+        self.label_types = label_types
+        self.classes = classes
+        self.attrs = attrs
+        self.max_samples = max_samples
+        self.image_ids = image_ids
+        self.image_ids_file = image_ids_file
+        self.num_workers = num_workers
+
+    @property
+    def name(self):
+        return "open-images-v6"
+
+    @property
+    def tags(self):
+        return (
+            "image",
+            "detection",
+            "segmentation",
+            "classification",
+            "visual-relationships",
+        )
+
+    @property
+    def supported_splits(self):
+        return ("train", "test", "validation")
+
+    @property
+    def supports_paritial_download(self):
+        return True
+
+    def _download_and_prepare(self, dataset_dir, scratch_dir, split):
+        dataset_base_dir = os.path.dirname(dataset_dir)  # remove split dir
+        num_samples, classes = fouo.download_open_images_v6_split(
+            dataset_base_dir,
+            scratch_dir,
+            split,
+            self.label_types,
+            self.classes,
+            self.attrs,
+            self.max_samples,
+            self.image_ids,
+            self.image_ids_file,
+            self.num_workers,
+        )
+        dataset_type = fot.FiftyOneDataset()
+        logger.info("Found %d samples", num_samples)
+
+        return dataset_type, num_samples, classes
+
+
 class QuickstartDataset(FiftyOneDataset):
     """A small dataset with ground truth bounding boxes and predictions.
 
@@ -1053,6 +1158,7 @@ AVAILABLE_DATASETS = {
     "imagenet-sample": ImageNetSampleDataset,
     "kitti": KITTIDataset,
     "lfw": LabeledFacesInTheWildDataset,
+    "open-images-v6": OpenImagesV6Dataset,
     "quickstart": QuickstartDataset,
     "quickstart-video": QuickstartVideoDataset,
     "ucf101": UCF101Dataset,

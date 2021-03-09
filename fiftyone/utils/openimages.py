@@ -76,6 +76,173 @@ def load_existing_dataset(
     return dataset
 
 
+def download_open_images_v6_split(
+    dataset_dir,
+    scratch_dir,
+    split,
+    label_types,
+    classes,
+    attrs,
+    max_samples,
+    image_ids,
+    image_ids_file,
+    num_workers,
+):
+    """Utility to download the `Open Images v6 dataset <https://storage.googleapis.com/openimages/web/index.html>`_ with annotations.
+
+    Args:
+        dataset_dir (None): the directory to which the dataset will be
+            downloaded
+        scratch_dir (None): the temporary directory that raw data and
+            annotations will be downloaded to initially
+        split (None) a split to download, if applicable. Values are
+            ``("train", "validation", "test")``. If neither ``split`` nor
+            ``splits`` are provided, all available splits are downloaded.
+        label_types (None): a list of types of labels to load. Values are
+            ``("detections", "classifications", "relationships", "segmentations")``. 
+            By default, all labels are loaded but not every sample will include
+            each label type. If ``max_samples`` and ``label_types`` are both
+            specified, then every sample will include the specified label types.
+        classes (None): a list of strings specifying required classes to load. Only samples
+            containing at least one instance of a specified classes will be
+            downloaded. See available classes with `get_classes()`
+        attrs (None): a list of strings for relationship attributes to load
+        max_samples (None): a maximum number of samples to import per split. By default,
+            all samples are imported
+        image_ids (None): list of specific image ids to load either in the form
+            of ``<split>/<image-id>`` or just a list of ``<image-id>``.
+            ``image_ids`` takes precedence if both ``image_ids`` and
+            ``image_ids_file`` are provided.
+        image_ids_file (None): path to a newline separated text, json, or csv file containing a
+            list of image ids to load either in the form
+            of ``<split>/<image-id>`` or just a list of ``<image-id>``.
+            ``image_ids`` takes precedence if both ``image_ids`` and
+            ``image_ids_file`` are provided.
+        num_workers (None): the number of processes to use to download images. By default,
+            ``multiprocessing.cpu_count()`` is used
+    """
+    if max_samples and label_types:
+        # Only samples with every specified label type will be loaded
+        guarantee_all_types = True
+    else:
+        # Samples may not contain multiple label types, but will contain at
+        # least one
+        guarantee_all_types = False
+
+    if num_workers is None:
+        num_workers = multiprocessing.cpu_count()
+
+    label_types = _parse_label_types(label_types)
+
+    split_image_ids = _parse_image_ids(
+        image_ids, image_ids_file, label_types, [split], scratch_dir
+    )
+
+    dataset = fod.Dataset("open-images-v6-temp-%s" % split)
+    dataset.persistent = False
+
+    # Map of class IDs to class names
+    classes_map = _get_classes_map(scratch_dir)
+
+    all_classes = sorted(list(classes_map.values()))
+    dataset.info["classes_map"] = classes_map
+    dataset.info["classes"] = all_classes
+
+    if classes == None:
+        oi_classes = list(classes_map.keys())
+        classes = list(classes_map.values())
+
+    else:
+        oi_classes = []
+        classes_map_rev = {v: k for k, v in classes_map.items()}
+        missing_classes = []
+        filtered_classes = []
+        for c in classes:
+            try:
+                oi_classes.append(classes_map_rev[c])
+                filtered_classes.append(c)
+            except:
+                missing_classes.append(c)
+        classes = filtered_classes
+        if missing_classes:
+            logger.info(
+                "The following are not available classes: %s\n\nSee available classes with fouo.get_classes()\n"
+                % ",".join(missing_classes)
+            )
+
+    if "relationships" in label_types:
+        # Map of attribute IDs to attribute names
+        attrs_map = _get_attrs_map(scratch_dir)
+
+        all_attrs = sorted(list(attrs_map.values()))
+        dataset.info["attributes_map"] = attrs_map
+        dataset.info["attributes"] = all_attrs
+
+        if attrs == None:
+            oi_attrs = list(attrs_map.keys())
+            attrs = list(attrs_map.values())
+
+        else:
+            oi_attrs = []
+            attrs_map_rev = {v: k for k, v in attrs_map.items()}
+            missing_attrs = []
+            filtered_attrs = []
+            for a in attrs:
+                try:
+                    oi_attrs.append(attrs_map_rev[a])
+                    filtered_attrs.append(a)
+                except:
+                    missing_attrs.append(a)
+
+            attrs = filtered_attrs
+            if missing_attrs:
+                logger.info(
+                    "The following are not available attributes: %s\n\nSee available attributes with fouo.get_attributes()\n"
+                    % ",".join(missing_attrs)
+                )
+
+    seg_classes = []
+    if "segmentations" in label_types:
+        seg_classes = get_segmentation_classes(scratch_dir, classes_map)
+
+        dataset.info["segmentation_classes"] = seg_classes
+
+    else:
+        attrs = []
+        attrs_map = {}
+        oi_attrs = []
+
+    dataset = _load_open_images_split(
+        dataset,
+        label_types,
+        guarantee_all_types,
+        split_image_ids,
+        classes_map,
+        attrs_map,
+        oi_classes,
+        oi_attrs,
+        seg_classes,
+        dataset_dir,
+        scratch_dir,
+        split,
+        classes,
+        attrs,
+        max_samples,
+        num_workers,
+    )
+
+    # Export the labels of each split in FiftyOneDataset format
+    export_dir = os.path.join(dataset_dir, split)
+    logger.info("Writing annotations for split (%s) to disk" % split)
+    dataset.export(
+        export_dir, dataset_type=fot.FiftyOneDataset, export_media=False
+    )
+    num_samples = len(dataset)
+    dataset.delete()
+
+    return num_samples, all_classes
+
+
 def load_open_images_v6(
     label_types=None,
     classes=None,
@@ -622,6 +789,7 @@ def _get_label_data(
     label_id_data = {}
     relevant_ids = set()
     oi_classes_attrs = set(oi_classes) | set(oi_attrs)
+    # First row is always headers
     for l in data[1:]:
         image_id = l[id_ind]
         if image_id not in label_id_data:
@@ -781,7 +949,6 @@ def _load_open_images_split(
             valid_ids = ids_any_labels
 
     valid_ids = list(valid_ids)
-    print(len(valid_ids))
     if max_samples:
         random.shuffle(valid_ids)
         valid_ids = valid_ids[:max_samples]
