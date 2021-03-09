@@ -3,7 +3,7 @@ import styled from "styled-components";
 import { useRecoilValue } from "recoil";
 
 import DropdownHandle from "./DropdownHandle";
-import Tagger from "./Tagger";
+import Actions from "./Actions";
 import * as selectors from "../recoil/selectors";
 
 type Props = {
@@ -26,10 +26,11 @@ const SamplesHeader = styled.div`
   display: flex;
   justify-content: space-between;
   overflow-x: hidden;
-  margin-left: -1rem;
+  margin-left: 1rem;
   margin-right: -1rem;
   margin-bottom: -0.5rem;
   flex-grow: 1;
+  height: 37px;
 `;
 
 const CountDiv = styled.div`
@@ -60,10 +61,10 @@ const ImageContainerHeader = ({ showSidebar, onShowSidebar }: Props) => {
         label="Fields"
         expanded={showSidebar}
         onClick={onShowSidebar && (() => onShowSidebar(!showSidebar))}
-        style={{ width: 240 }}
+        style={{ width: 240, padding: "0.25rem 0.5rem" }}
       />
       <SamplesHeader>
-        <Tagger modal={false} />
+        <Actions modal={false} />
         {countStr !== null ? (
           <CountDiv>
             <div>

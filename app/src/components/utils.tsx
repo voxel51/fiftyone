@@ -1,4 +1,9 @@
+import React from "react";
 import styled from "styled-components";
+import { animated, useSpring } from "react-spring";
+import { KeyboardArrowUp, KeyboardArrowDown } from "@material-ui/icons";
+
+import { useTheme } from "../utils/hooks";
 
 export const Box = styled.div`
   padding: 1em;
@@ -97,3 +102,56 @@ export const ContentHeader = styled.div`
   display: flex;
   padding-bottom: 0.5rem;
 `;
+
+const PillButtonDiv = animated(styled.div`
+  line-height: 1.5rem;
+  padding: 0.25rem 0.75rem;
+  cursor: pointer;
+  background-color: ${({ theme }) => theme.button};
+  height: 2rem;
+  border-radius: 1rem;
+  border: none;
+  font-weight: bold;
+  display: flex;
+  justify-content: space-between;
+
+  &.hidden {
+    background-color: ${({ theme }) => theme.brand};
+  }
+  & > span {
+    margin-left: 0.25rem;
+  }
+  & > svg {
+    display: inline-block;
+    height: 1.5rem;
+    width: 1.5rem;
+  }
+`);
+
+type PillButton = {
+  onClick: () => void;
+  open: boolean;
+  highlight: boolean;
+  text: string;
+  icon: any;
+};
+
+export const PillButton = React.memo(
+  ({ onClick, open, text, icon, highlight }: PillButton) => {
+    const theme = useTheme();
+    const props = useSpring({
+      opacity: 1,
+      backgroundColor: !highlight ? theme.button : theme.brand,
+      from: {
+        opacity: 0,
+      },
+    });
+    return (
+      <PillButtonDiv onClick={onClick} style={props}>
+        {icon}
+        <span>{text}</span>
+        {open ? <KeyboardArrowUp /> : <KeyboardArrowDown />}
+      </PillButtonDiv>
+    );
+  }
+);

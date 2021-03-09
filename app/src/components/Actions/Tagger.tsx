@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useState } from "react";
 import styled from "styled-components";
 import { animated, useSpring } from "react-spring";
 import { useRecoilState, useRecoilValue } from "recoil";
@@ -6,11 +6,11 @@ import { Checkbox, CircularProgress } from "@material-ui/core";
 import { ArrowDropDown, ArrowDropUp } from "@material-ui/icons";
 import AutosizeInput from "react-input-autosize";
 
-import { useOutsideClick, useTheme } from "../utils/hooks";
-import * as fieldAtoms from "./Filters/utils";
-import { packageMessage } from "../utils/socket";
-import * as atoms from "../recoil/atoms";
-import * as selectors from "../recoil/selectors";
+import { useTheme } from "../../utils/hooks";
+import * as fieldAtoms from "../Filters/utils";
+import { packageMessage } from "../../utils/socket";
+import * as atoms from "../../recoil/atoms";
+import * as selectors from "../../recoil/selectors";
 
 const ActionOptionDiv = animated(styled.div`
   cursor: pointer;
@@ -58,7 +58,7 @@ const ActionOption = ({ onClick, text, title }: ActionOptionProps) => {
   );
 };
 
-const CheckboxOptionDiv = animated(styled.div`
+const TabOptionDiv = animated(styled.div`
   display: flex;
   font-weight: bold;
   cursor: pointer;
@@ -74,38 +74,34 @@ const CheckboxOptionDiv = animated(styled.div`
   }
 `);
 
-type CheckboxOptionProps = {
-  onCheck: () => void;
-  title: string;
-  value: boolean;
-  text: string;
+const Tab = animated(styled.div``);
+
+type TabOptionProps = {
+  active: string;
+  options: TabOption[];
 };
 
-const CheckboxOption = ({
-  onCheck,
-  value,
-  text,
-  title,
-}: CheckboxOptionProps) => {
+type TabOption = {
+  text: string;
+  onClick: () => void;
+  title: string;
+};
+
+const TabOption = ({ active, options }: TabOptionProps) => {
   const theme = useTheme();
   const props = useHighlightHover();
   return (
-    <CheckboxOptionDiv onClick={onCheck} title={title} {...props}>
-      <Checkbox
-        checked={value}
-        onChange={onCheck}
-        style={{
-          color: theme.brand,
-          padding: "0.25rem",
-          height: "2rem",
-        }}
-      />
-      <span>{text}</span>
-    </CheckboxOptionDiv>
+    <TabOptionDiv>
+      {options.map(({ text, title, onClick }, i) => {
+        <Tab onClick={onClick} title={title}>
+          {text}
+        </Tab>;
+      })}
+    </TabOptionDiv>
   );
 };
 
-const OptionsDiv = animated(styled.div`
+const ActionsDiv = animated(styled.div`
   background-color: ${({ theme }) => theme.backgroundDark};
   border: 1px solid ${({ theme }) => theme.backgroundDarkBorder};
   border-radius: 2px;
@@ -133,24 +129,21 @@ const OptionsDiv = animated(styled.div`
 `);
 
 type OptionsProps = {
-  checkboxes: Array<CheckboxOptionProps>;
+  tabOptions: Array<TabOptionProps>;
   actions: Array<ActionOptionProps>;
   focused: boolean;
 };
 
-const Options = React.memo(({ checkboxes, actions, focused }: OptionsProps) => {
-  const props = useSpring({
-    opacity: focused ? 1 : 0,
-  });
+const Options = React.memo(({ tabOptions, actions, focused }: OptionsProps) => {
   return (
-    <OptionsDiv style={props}>
-      {checkboxes.map((props, key) => (
-        <CheckboxOption {...props} key={`checkbox-${key}`} />
+    <>
+      {tabOptions.map((props, key) => (
+        <TabOption {...props} key={`checkbox-${key}`} />
       ))}
       {actions.map((props, key) => (
         <ActionOption {...props} key={`action-${key}`} />
       ))}
-    </OptionsDiv>
+    </>
   );
 });
 
@@ -168,17 +161,11 @@ const IconDiv = styled.div`
   }
 `;
 
-type IconProps = {
-  focused: boolean;
-  loading: boolean;
-  onClick: () => void;
-};
-
-const Icon = React.memo(({ focused, loading, onClick }: IconProps) => {
+const Loading = React.memo(({ loading }: { loading: boolean }) => {
   const theme = useTheme();
   return (
     <IconDiv>
-      {loading ? (
+      {loading && (
         <CircularProgress
           style={{
             color: theme.font,
@@ -187,10 +174,6 @@ const Icon = React.memo(({ focused, loading, onClick }: IconProps) => {
             marginTop: "0.75rem",
           }}
         />
-      ) : focused ? (
-        <ArrowDropUp style={{ cursor: "pointer" }} onClick={onClick} />
-      ) : (
-        <ArrowDropDown style={{ cursor: "pointer" }} onClick={onClick} />
       )}
     </IconDiv>
   );
@@ -199,8 +182,7 @@ const Icon = React.memo(({ focused, loading, onClick }: IconProps) => {
 const TaggingContainerInput = styled.div`
   font-size: 14px;
   border-bottom: 1px ${({ theme }) => theme.brand} solid;
-  margin-bottom: 0.5rem;
-  margin-left: 2rem;
+  margin: 0.5rem;
   position: relative;
 `;
 
@@ -290,8 +272,6 @@ const Tagger = ({ modal }: TaggerProps) => {
     atoms.stateDescription
   );
   const count = useRecoilValue(selectors.currentCount);
-  const ref = useRef();
-  useOutsideClick(ref, () => setFocused(false));
 
   const clearSelection = () => {
     setSelectedSamples(new Set());
@@ -319,81 +299,80 @@ const Tagger = ({ modal }: TaggerProps) => {
   const disabled = tagging || typeof count !== "number" || count === 0;
 
   return (
-    <TaggingContainerInput ref={ref}>
-      <TaggingInput
-        placeholder={placeholderDirections(
-          isInSelection,
-          isInSelection ? selectedSamples.size : count,
-          untag,
-          targetLabels
-        )}
-        value={value}
-        onChange={(e) => setValue(e.target.value)}
-        onKeyPress={(e) => {
-          if (e.key === "Enter") {
-            setTagging(true);
-            setFocused(false);
-            setValue("");
-            socket.send(
-              packageMessage("tag", {
-                untag,
-                target_labels: targetLabels,
-                selected: isInSelection,
-                active_labels: activeLabels,
-                tag: value,
-              })
-            );
-          }
-        }}
-        onFocus={() => setFocused(true)}
-        disabled={disabled}
-      />
-      <Icon
-        focused={focused}
-        loading={tagging || typeof count !== "number"}
-        onClick={() => setFocused(!focused)}
-      />
-      {focused && (
-        <Options
-          focused={focused}
-          checkboxes={[
-            {
-              text: "Untag",
-              onCheck: () => setUntag(!untag),
-              title: untagDirections(isInSelection, targetLabels),
-              value: untag,
-            },
-            {
-              text: "Target shown labels",
-              onCheck: () => setTargetLabels(!targetLabels),
-              title: targetLabelsDirections(isInSelection, untag),
-              value: targetLabels,
-            },
-          ]}
-          actions={
-            isInSelection
-              ? [
-                  {
-                    text: "Clear selected samples",
-                    title: "Deselect all selected samples",
-                    onClick: clearSelection,
-                  },
-                  {
-                    text: "Only show selected samples",
-                    title: "Hide all other samples",
-                    onClick: () => addStage("Select", clearSelection),
-                  },
-                  {
-                    text: "Hide selected samples",
-                    title: "Show only unselected samples",
-                    onClick: () => addStage("Exclude", clearSelection),
-                  },
-                ]
-              : []
-          }
+    <ActionsDiv>
+      <TaggingContainerInput>
+        <TaggingInput
+          placeholder={placeholderDirections(
+            isInSelection,
+            isInSelection ? selectedSamples.size : count,
+            untag,
+            targetLabels
+          )}
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          onKeyPress={(e) => {
+            if (e.key === "Enter") {
+              setTagging(true);
+              setFocused(false);
+              setValue("");
+              socket.send(
+                packageMessage("tag", {
+                  untag,
+                  target_labels: targetLabels,
+                  selected: isInSelection,
+                  active_labels: activeLabels,
+                  tag: value,
+                })
+              );
+            }
+          }}
+          onFocus={() => setFocused(true)}
+          disabled={disabled}
         />
-      )}
-    </TaggingContainerInput>
+        <Loading loading={tagging || typeof count !== "number"} />
+      </TaggingContainerInput>
+      <Options
+        focused={focused}
+        tabOptions={[
+          {
+            active: targetLabels ? "labels" : "samples",
+            options: [
+              {
+                text: "labels",
+                title: "tag visible labels",
+                onClick: () => setTargetLabels(true),
+              },
+              {
+                text: "samples",
+                title: "tag samples",
+                onClick: () => setTargetLabels(false),
+              },
+            ],
+          },
+        ]}
+        actions={
+          isInSelection
+            ? [
+                {
+                  text: "Clear selected samples",
+                  title: "Deselect all selected samples",
+                  onClick: clearSelection,
+                },
+                {
+                  text: "Only show selected samples",
+                  title: "Hide all other samples",
+                  onClick: () => addStage("Select", clearSelection),
+                },
+                {
+                  text: "Hide selected samples",
+                  title: "Show only unselected samples",
+                  onClick: () => addStage("Exclude", clearSelection),
+                },
+              ]
+            : []
+        }
+      />
+    </ActionsDiv>
   );
 };
 
