@@ -3,6 +3,7 @@ import ReconnectingWebSocket from "reconnecting-websocket";
 import uuid from "uuid-v4";
 
 import * as atoms from "./atoms";
+import { ColorGenerator } from "player51";
 import { generateColorMap } from "../utils/colors";
 import { isElectron } from "../utils/generic";
 import {
@@ -12,6 +13,8 @@ import {
   makeLabelNameGroups,
   labelTypeHasColor,
   AGGS,
+  VALID_LIST_TYPES,
+  HIDDEN_LABEL_ATTRS,
 } from "../utils/labels";
 import { packageMessage } from "../utils/socket";
 import { viewsAreEqual } from "../utils/view";
@@ -408,9 +411,9 @@ export const extendedDatasetStats = selector({
   },
 });
 
-export const totalCount = selector({
+export const totalCount = selector<number>({
   key: "totalCount",
-  get: ({ get }): number => {
+  get: ({ get }) => {
     const stats = get(datasetStats) || [];
     return stats.reduce(
       (acc, cur) => (cur.name === null ? cur.result : acc),
@@ -419,9 +422,9 @@ export const totalCount = selector({
   },
 });
 
-export const filteredCount = selector({
+export const filteredCount = selector<number>({
   key: "filteredCount",
-  get: ({ get }): number => {
+  get: ({ get }) => {
     const stats = get(extendedDatasetStats) || [];
     return stats.reduce(
       (acc, cur) => (cur.name === null ? cur.result : acc),
@@ -430,7 +433,7 @@ export const filteredCount = selector({
   },
 });
 
-export const tagNames = selector({
+export const tagNames = selector<string[]>({
   key: "tagNames",
   get: ({ get }) => {
     return (get(datasetStats) ?? []).reduce((acc, cur) => {
@@ -482,7 +485,11 @@ const labelFilter = (f) => {
 };
 
 const scalarFilter = (f) => {
-  return VALID_SCALAR_TYPES.includes(f.ftype);
+  return (
+    VALID_SCALAR_TYPES.includes(f.ftype) &&
+    !f.name.startsWith("_") &&
+    f.name !== "filepath"
+  );
 };
 
 const fields = selectorFamily({
@@ -538,9 +545,11 @@ export const defaultPlayerOverlayOptions = selector({
   get: ({ get }) => {
     const showAttrs = get(appConfig).show_attributes;
     const showConfidence = get(appConfig).show_confidence;
+    const showTooltip = get(appConfig).show_tooltip;
     return {
       showAttrs,
       showConfidence,
+      showTooltip,
     };
   },
 });
@@ -575,17 +584,21 @@ export const fieldPaths = selector({
   },
 });
 
-const labels = selectorFamily({
+const labels = selectorFamily<
+  { name: string; embedded_doc_type: string }[],
+  string
+>({
   key: "labels",
   get: (dimension: string) => ({ get }) => {
     const fieldsValue = get(selectedFields(dimension));
     return Object.keys(fieldsValue)
       .map((k) => fieldsValue[k])
-      .filter(labelFilter);
+      .filter(labelFilter)
+      .sort((a, b) => (a.name < b.name ? -1 : 1));
   },
 });
 
-export const labelNames = selectorFamily({
+export const labelNames = selectorFamily<string[], string>({
   key: "labelNames",
   get: (dimension: string) => ({ get }) => {
     const l = get(labels(dimension));
@@ -593,7 +606,7 @@ export const labelNames = selectorFamily({
   },
 });
 
-export const labelPaths = selector({
+export const labelPaths = selector<string[]>({
   key: "labelPaths",
   get: ({ get }) => {
     const sampleLabels = get(labelNames("sample"));
@@ -618,9 +631,9 @@ export const labelTypesMap = selector<{ [key: string]: string }>({
   },
 });
 
-export const labelTypes = selectorFamily({
+export const labelTypes = selectorFamily<string[], string>({
   key: "labelTypes",
-  get: (dimension: string) => ({ get }) => {
+  get: (dimension) => ({ get }) => {
     return get(labels(dimension)).map((l) => {
       return l.embedded_doc_type.split(".").slice(-1)[0];
     });
@@ -650,54 +663,6 @@ export const scalarTypes = selectorFamily({
   get: (dimension: string) => ({ get }) => {
     const l = get(scalars(dimension));
     return l.map((l) => l.ftype);
-  },
-});
-
-const COUNT_CLS = "Count";
-
-const catchLabelCount = (names, prefix, cur, acc) => {
-  if (
-    cur.name &&
-    names.includes(cur.name.slice(prefix.length).split(".")[0]) &&
-    cur._CLS === COUNT_CLS
-  ) {
-    acc[cur.name.slice(prefix.length).split(".")[0]] = cur.result;
-  }
-};
-
-export const labelSampleCounts = selectorFamily({
-  key: "labelSampleCounts",
-  get: (dimension: string) => ({ get }) => {
-    const names = get(labelNames(dimension)).concat(
-      get(scalarNames(dimension))
-    );
-    const prefix = dimension === "sample" ? "" : "frames.";
-    const stats = get(datasetStats);
-    if (stats === null) {
-      return null;
-    }
-    return stats.reduce((acc, cur) => {
-      catchLabelCount(names, prefix, cur, acc);
-      return acc;
-    }, {});
-  },
-});
-
-export const filteredLabelSampleCounts = selectorFamily({
-  key: "filteredLabelSampleCounts",
-  get: (dimension: string) => ({ get }) => {
-    const names = get(labelNames(dimension)).concat(
-      get(scalarNames(dimension))
-    );
-    const prefix = dimension === "sample" ? "" : "frames.";
-    const stats = get(extendedDatasetStats);
-    if (stats === null) {
-      return null;
-    }
-    return stats.reduce((acc, cur) => {
-      catchLabelCount(names, prefix, cur, acc);
-      return acc;
-    }, {});
   },
 });
 
@@ -750,13 +715,13 @@ export const colorPool = selector({
   },
 });
 
-export const colorMap = selector({
+export const colorMap = selectorFamily<{ [key: string]: string }, boolean>({
   key: "colorMap",
-  get: ({ get }) => {
-    const colorByLabel = get(atoms.colorByLabel);
+  get: (modal) => ({ get }) => {
+    const colorByLabel = get(atoms.colorByLabel(modal));
     let pool = get(colorPool);
     pool = pool.length ? pool : [lightTheme.brand];
-    const seed = get(atoms.colorSeed);
+    const seed = get(atoms.colorSeed(modal));
     if (colorByLabel) {
       let values = ["true", "false"];
       const stats = get(datasetStats);
@@ -801,4 +766,136 @@ export const labelNameGroups = selectorFamily({
       get(labelNames(dimension)),
       get(labelTypes(dimension))
     ),
+});
+
+export const defaultTargets = selector({
+  key: "defaultTargets",
+  get: ({ get }) => {
+    const targets =
+      get(atoms.stateDescription).dataset?.default_mask_targets || {};
+    return Object.fromEntries(
+      Object.entries(targets).map(([k, v]) => [parseInt(k, 10), v])
+    );
+  },
+});
+
+export const targets = selector({
+  key: "targets",
+  get: ({ get }) => {
+    const defaults =
+      get(atoms.stateDescription).dataset?.default_mask_targets || {};
+    const labelTargets =
+      get(atoms.stateDescription).dataset?.mask_targets || {};
+    return {
+      defaults,
+      fields: labelTargets,
+    };
+  },
+});
+
+export const getTarget = selector({
+  key: "getTarget",
+  get: ({ get }) => {
+    const { defaults, fields } = get(targets);
+    return (field, target) => {
+      if (field in fields) {
+        return fields[field][target];
+      }
+      return defaults[target];
+    };
+  },
+});
+
+export const modalSample = selector({
+  key: "modalSample",
+  get: ({ get }) => {
+    return get(atoms.modal).sample;
+  },
+});
+
+export const tagSampleModalCounts = selector<{ [key: string]: number }>({
+  key: "tagSampleModalCounts",
+  get: ({ get }) => {
+    const sample = get(modalSample);
+    const tags = get(tagNames);
+    return tags.reduce((acc, cur) => {
+      acc[cur] = sample.tags.includes(cur) ? 1 : 0;
+      return acc;
+    }, {});
+  },
+});
+
+export const selectedObjectIds = selector<Set<string>>({
+  key: "selectedObjectIds",
+  get: ({ get }) => {
+    const objs = get(atoms.selectedObjects);
+    return new Set(Object.keys(objs));
+  },
+});
+
+export const selectedSampleIndices = selector<{ [key: string]: number }>({
+  key: "selectedSampleIndices",
+  get: ({ get }) => {
+    const samples = get(atoms.currentSamples);
+    return Object.fromEntries(
+      samples.map(({ sample }, index) => [sample._id, index])
+    );
+  },
+});
+
+export const modalLabelAttrs = selectorFamily<
+  [string, string | null | number],
+  { field: string; id: string }
+>({
+  key: "modalLabelAttrs",
+  get: ({ field, id }) => ({ get }) => {
+    const sample = get(modalSample);
+    const type = get(labelTypesMap)[field];
+    let label = sample[field];
+    if (VALID_LIST_TYPES.includes(type)) {
+      label = label[type.toLocaleLowerCase()].filter((l) => l._id === id)[0];
+    }
+
+    const hidden = HIDDEN_LABEL_ATTRS[label._cls];
+    let attrs = Object.entries(label)
+      .filter((a) => !hidden.includes(a[0]) && !a[0].startsWith("_"))
+      .map(([k, v]) => [
+        k,
+        typeof v === "object" && k !== "tags"
+          ? Array.isArray(v)
+            ? "[...]"
+            : "{...}"
+          : v,
+      ]);
+    if (label.attributes) {
+      attrs = [
+        ...Object.entries(label.attributes).map(([k, v]) => [
+          `attributes.${k}`,
+          v.value,
+        ]),
+        ...attrs,
+      ];
+    }
+    return attrs.sort((a, b) => (a[0] < b[0] ? -1 : 1));
+  },
+});
+
+export const modalLabelTags = selectorFamily<
+  string[],
+  { field: string; id: string }
+>({
+  key: "modalLabelTags",
+  get: (params) => ({ get }) => {
+    const tags = get(modalLabelAttrs(params)).filter(
+      ([k, v]) => k === "tags"
+    )[0][1];
+    return tags ? Array.from(tags) : [];
+  },
+});
+
+export const colorGenerator = selectorFamily<any, boolean>({
+  key: "colorGenerator",
+  get: (modal) => ({ get }) => {
+    return new ColorGenerator(get(atoms.colorSeed(modal)));
+  },
 });

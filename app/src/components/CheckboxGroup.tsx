@@ -1,5 +1,5 @@
 import React, { useContext, useState } from "react";
-import styled, { ThemeContext } from "styled-components";
+import styled from "styled-components";
 import {
   Checkbox,
   FormControlLabel,
@@ -13,12 +13,13 @@ import * as atoms from "../recoil/atoms";
 import { fieldIsFiltered } from "./Filters/LabelFieldFilters.state";
 import { isBooleanField, isNumericField, isStringField } from "./Filters/utils";
 import { SampleContext } from "../utils/context";
-import { labelTypeIsFilterable, LABEL_LISTS } from "../utils/labels";
+import { labelTypeIsFilterable } from "../utils/labels";
 
 import LabelFieldFilter from "./Filters/LabelFieldFilter";
 import NumericFieldFilter from "./Filters/NumericFieldFilter";
 import StringFieldFilter from "./Filters/StringFieldFilter";
 import BooleanFieldFilter from "./Filters/BooleanFieldFilter";
+import { useTheme } from "../utils/hooks";
 
 const Body = styled.div`
   vertical-align: middle;
@@ -120,72 +121,81 @@ const CheckboxContainer = animated(styled.div``);
 export type Entry = {
   name: string;
   selected: boolean;
-  data: Any;
+  data: string | null | any;
   color: string;
   disabled: boolean;
-  type?: string;
-  prefix: string;
+  labelType?: string;
+  path: string;
+  hasDropdown: boolean;
+  hideCheckbox: boolean;
+  title: string;
+  totalCount: number;
+  filteredCount: number;
+  canFilter?: boolean;
+  icon?: any;
 };
 
-type Props = {
-  entries: Entry[];
-  onCheck: (entry: Entry) => void;
+type EntryProps = {
+  entry: Entry;
   modal: boolean;
+  onCheck: (entry: Entry) => void;
 };
 
-const Entry = ({ entry, onCheck, modal }) => {
+const Entry = ({ entry, onCheck, modal }: EntryProps) => {
+  const {
+    data,
+    disabled,
+    color,
+    hasDropdown,
+    hideCheckbox,
+    name,
+    path,
+    selected,
+    title,
+    canFilter,
+    icon,
+  } = entry;
   const [expanded, setExpanded] = useState(false);
-  const theme = useContext(ThemeContext);
-  const fieldFiltered = useRecoilValue(
-    fieldIsFiltered({ path: entry.path, modal: Boolean(modal) })
-  );
-  const isNumeric = useRecoilValue(isNumericField(entry.path));
-  const isString = useRecoilValue(isStringField(entry.path));
-  const isBoolean = useRecoilValue(isBooleanField(entry.path));
-
-  const handleCheck = (entry) => {
-    if (onCheck) {
-      onCheck({ ...entry, selected: !entry.selected });
-    }
-  };
+  const theme = useTheme();
+  const fieldFiltered =
+    useRecoilValue(fieldIsFiltered({ path, modal })) && canFilter;
+  const isNumeric = useRecoilValue(isNumericField(path));
+  const isString = useRecoilValue(isStringField(path));
+  const isBoolean = useRecoilValue(isBooleanField(path));
 
   const sample = useContext(SampleContext);
   const hiddenObjects = useRecoilValue(atoms.hiddenObjects);
   const hasHiddenObjects = sample
     ? Object.entries(hiddenObjects).some(
-        ([_, data]) =>
-          data.sample_id === sample._id && data.field === entry.name
+        ([_, data]) => data.sample_id === sample._id && data.field === name
       )
     : false;
 
-  const checkboxClass = entry.hideCheckbox ? "no-checkbox" : "with-checkbox";
+  const checkboxClass = hideCheckbox ? "no-checkbox" : "with-checkbox";
   const containerProps = useSpring({
     backgroundColor:
       fieldFiltered || hasHiddenObjects
         ? "#6C757D"
-        : entry.hideCheckbox || entry.selected
+        : hideCheckbox || selected
         ? theme.backgroundLight
         : theme.background,
   });
   const ArrowType = expanded ? ArrowDropUp : ArrowDropDown;
-
   return (
-    <CheckboxContainer key={entry.name} style={containerProps}>
+    <CheckboxContainer style={containerProps}>
       <FormControlLabel
-        disabled={entry.disabled}
+        disabled={disabled}
         label={
           <>
-            <span className="name" title={entry.name}>
-              {entry.name}
+            <span className="name" title={name}>
+              {name}
             </span>
-            {entry.data !== null ? (
+            {data !== null ? (
               <>
-                <span className="count" title={entry.data}>
-                  {entry.data}
+                <span className="count" title={title}>
+                  {data}
                 </span>
-                {!(entry.icon && !LABEL_LISTS.includes(entry.type)) &&
-                ((entry.type && labelTypeIsFilterable(entry.type)) ||
-                  ((isNumeric || isString || isBoolean) && !modal)) ? (
+                {hasDropdown && (
                   <ArrowType
                     onClick={(e) => {
                       e.preventDefault();
@@ -193,8 +203,10 @@ const Entry = ({ entry, onCheck, modal }) => {
                     }}
                     style={{ marginRight: -4 }}
                   />
-                ) : null}
+                )}
               </>
+            ) : icon ? (
+              icon
             ) : (
               <CircularProgress
                 style={{
@@ -214,7 +226,7 @@ const Entry = ({ entry, onCheck, modal }) => {
         style={{
           width: "100%",
           color:
-            entry.selected || entry.hideCheckbox
+            selected || hideCheckbox
               ? theme.font
               : entry.disabled
               ? theme.fontDarkest
@@ -222,14 +234,14 @@ const Entry = ({ entry, onCheck, modal }) => {
         }}
         control={
           <Checkbox
-            checked={entry.selected}
-            onChange={() => handleCheck(entry)}
+            checked={selected}
+            onChange={() => onCheck({ ...entry, selected: !entry.selected })}
             style={{
-              display: entry.hideCheckbox ? "none" : "block",
+              display: hideCheckbox ? "none" : "block",
               color:
-                entry.selected || entry.hideCheckbox
-                  ? entry.color
-                  : entry.disabled
+                selected || hideCheckbox
+                  ? color
+                  : disabled
                   ? theme.fontDarkest
                   : theme.fontDark,
             }}
@@ -239,14 +251,20 @@ const Entry = ({ entry, onCheck, modal }) => {
       {isNumeric && <NumericFieldFilter expanded={expanded} entry={entry} />}
       {isString && <StringFieldFilter expanded={expanded} entry={entry} />}
       {isBoolean && <BooleanFieldFilter expanded={expanded} entry={entry} />}
-      {entry.type && labelTypeIsFilterable(entry.type) ? (
+      {entry.labelType && labelTypeIsFilterable(entry.labelType) ? (
         <LabelFieldFilter expanded={expanded} entry={entry} modal={modal} />
       ) : null}
     </CheckboxContainer>
   );
 };
 
-const CheckboxGrid = ({ entries, onCheck, modal }: Props) => {
+type CheckboxGroupProps = {
+  entries: Entry[];
+  onCheck: (entry: Entry) => void;
+  modal: boolean;
+};
+
+const CheckboxGroup = ({ entries, onCheck, modal }: CheckboxGroupProps) => {
   return (
     <Body>
       {entries.map((entry) => (
@@ -256,4 +274,4 @@ const CheckboxGrid = ({ entries, onCheck, modal }: Props) => {
   );
 };
 
-export default CheckboxGrid;
+export default CheckboxGroup;

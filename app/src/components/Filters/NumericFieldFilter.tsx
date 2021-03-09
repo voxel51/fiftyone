@@ -53,12 +53,17 @@ const setFilter = (
   const bounds = get(boundsAtom({ path, defaultRange }));
   const filter = {
     range: bounds,
-    ...getFilter(get, path),
+    ...getFilter(get, path, defaultRange),
     [key]: value,
     _CLS: "numeric",
   };
 
-  if (meetsDefault(filter, bounds)) {
+  const check = { ...filter, none: true };
+  if (key === "none") {
+    check[key] = Boolean(value);
+  }
+
+  if (meetsDefault(check, bounds)) {
     set(selectors.filterStage(path), null);
   } else {
     set(selectors.filterStage(path), filter);

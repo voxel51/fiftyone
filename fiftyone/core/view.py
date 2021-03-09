@@ -109,10 +109,41 @@ class DatasetView(foc.SampleCollection):
 
     @property
     def info(self):
-        """The :meth:`fiftyone.core.dataset.Dataset.info` dict of the
-        underlying dataset.
+        """The info dict of the underlying dataset.
+
+        See :meth:`fiftyone.core.dataset.Dataset.info` for more information.
         """
         return self._dataset.info
+
+    @info.setter
+    def info(self, info):
+        self._dataset.info = info
+
+    @property
+    def default_mask_targets(self):
+        """The default mask targets of the underlying dataset.
+
+        See :meth:`fiftyone.core.dataset.Dataset.default_mask_targets` for more
+        information.
+        """
+        return self._dataset.default_mask_targets
+
+    @default_mask_targets.setter
+    def default_mask_targets(self, targets):
+        self._dataset.default_mask_targets = targets
+
+    @property
+    def mask_targets(self):
+        """The mask targets of the underlying dataset.
+
+        See :meth:`fiftyone.core.dataset.Dataset.mask_targets` for more
+        information.
+        """
+        return self._dataset.mask_targets
+
+    @mask_targets.setter
+    def mask_targets(self, targets):
+        self._dataset.mask_targets = targets
 
     @property
     def stages(self):

@@ -1,11 +1,15 @@
-import React from "react";
+import React, { useState } from "react";
 import styled from "styled-components";
-import { useRecoilValue } from "recoil";
+import { useRecoilState, useRecoilValue } from "recoil";
+import { Checkbox } from "@material-ui/core";
+import { Autorenew } from "@material-ui/icons";
+import { animated, useSpring } from "react-spring";
 
 import DropdownHandle from "./DropdownHandle";
 import SelectionMenu from "./SelectionMenu";
+import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
-import { count } from "console";
+import { useTheme } from "../utils/hooks";
 
 type Props = {
   showSidebar: boolean;
@@ -26,17 +30,36 @@ const Wrapper = styled.div`
 const SamplesHeader = styled.div`
   display: flex;
   justify-content: space-between;
-  flex-grow: 1;
-  height: 45px;
   overflow-x: hidden;
   margin-left: 1rem;
   margin-right: -1rem;
-  padding: 0.5rem 0;
+  flex-grow: 1;
 `;
+
+const OptionsContainer = styled.div`
+  display: flex;
+`;
+
+const OptionTextDiv = styled.div`
+  padding-right: 0.25rem;
+  display: flex;
+  justify-content: center;
+  align-content: center;
+  flex-direction: column;
+`;
+
+export const OptionText = ({ style, children }) => {
+  return (
+    <OptionTextDiv style={style}>
+      <span>{children}</span>
+    </OptionTextDiv>
+  );
+};
 
 const ImageContainerHeader = ({ showSidebar, onShowSidebar }: Props) => {
   const totalCount = useRecoilValue(selectors.totalCount);
   const filteredCount = useRecoilValue(selectors.filteredCount);
+
   let countStr = null;
   if (
     typeof filteredCount === "number" &&
@@ -56,11 +79,17 @@ const ImageContainerHeader = ({ showSidebar, onShowSidebar }: Props) => {
         style={{ width: 240 }}
       />
       <SamplesHeader>
-        <SelectionMenu />
+        <OptionsContainer>
+          <OptionText>
+            <SelectionMenu />
+          </OptionText>
+        </OptionsContainer>
         {countStr !== null ? (
-          <div className="total" style={{ paddingRight: "1rem" }}>
-            Viewing <strong>{countStr} samples</strong>
-          </div>
+          <OptionTextDiv>
+            <div className="total" style={{ paddingRight: "1rem" }}>
+              Viewing <strong>{countStr} samples</strong>
+            </div>
+          </OptionTextDiv>
         ) : null}
       </SamplesHeader>
     </Wrapper>

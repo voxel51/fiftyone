@@ -1,5 +1,3 @@
-import { Theme } from "@material-ui/core";
-
 export const white100 = "hsl(0, 0%, 100%)";
 export const white96 = "hsl(0, 0%, 96%)";
 export const white85 = "hsl(0, 0%, 85%)";
@@ -45,12 +43,47 @@ const blue92 = "hsl(211, 85%, 92%)";
 
 const red = "hsl(0, 87%, 53%)";
 
-export const darkTheme = {
+export type ColorTheme = {
+  background: string;
+  backgroundDark: string;
+  backgroundDarker: string;
+  backgroundLight: string;
+  backgroundLightBorder: string; // i.e. for components with the light background color
+  backgroundDarkBorder: string;
+  backgroundTransparent: string;
+  border: string;
+  borderLight: string;
+  button: string;
+  buttonBorder: string;
+  overlay: string;
+  overlayButton: string;
+  overlayButtonHover: string;
+  menuBackground: string;
+  menuBorder: string;
+  darkShadow: string;
+  darkerShadow: string;
+
+  brand: string;
+  brandTransparent: string;
+  brandMoreTransparent: string;
+  brandFullyTransparent: string;
+
+  font: string;
+  fontDark: string;
+  fontDarkest: string;
+
+  secondary: string;
+  secondaryLight: string;
+
+  error: string;
+};
+
+export const darkTheme: ColorTheme = {
   background: grey19,
   backgroundDark: grey15,
   backgroundDarker: grey11,
   backgroundLight: grey24,
-  backgroundLightBorder: grey15, // i.e. for components with the light background color
+  backgroundLightBorder: grey15,
   backgroundDarkBorder: grey11,
   backgroundTransparent: grey19a50,
   border: grey37,

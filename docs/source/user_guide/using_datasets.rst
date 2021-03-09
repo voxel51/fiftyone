@@ -179,6 +179,10 @@ In a new Python session:
     classes = dataset.info["classes"]
     print(classes)  # ['bird', 'cat', 'deer', ...]
 
+Datasets can also store more specific types of ancillary information such as
+mask targets for |Segmentation| fields. See
+:ref:`this section <storing-mask-targets>` for more details.
+
 .. note::
 
     You must call
@@ -1606,6 +1610,73 @@ stretched as necessary to fit the image's extent when visualizing in the App.
                    [0, 2, 5, ..., 5, 3, 2]]),
         }>,
     }>
+
+When you load datasets with |Segmentation| fields in the App, each pixel value
+is rendered as a distinct color.
+
+.. note::
+
+    The mask value ``0`` is a reserved "background" class that is rendered as
+    invislble in the App.
+
+.. _storing-mask-targets:
+
+Storing mask targets
+--------------------
+
+All |Dataset| instances have
+:meth:`mask_targets <fiftyone.core.dataset.Dataset.mask_targets>` and
+:meth:`default_mask_targets <fiftyone.core.dataset.Dataset.default_mask_targets>`
+properties that you can use to store label strings for the pixel values of
+|Segmentation| field masks.
+
+The :meth:`mask_targets <fiftyone.core.dataset.Dataset.mask_targets>` property
+is a dictionary mapping field names to target dicts, each of which is a
+dictionary defining the mapping between pixel values and label strings for the
+|Segmentation| masks in the specified field of the dataset.
+
+If all |Segmentation| fields in your dataset have the same semantics, you can
+store a single target dictionary in the
+:meth:`default_mask_targets <fiftyone.core.dataset.Dataset.default_mask_targets>`
+property of your dataset.
+
+When you load datasets with |Segmentation| fields in the App that have
+corresponding mask targets, the label strings will appear in the App's tooltip
+when you hover over pixels.
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    dataset = fo.Dataset()
+
+    # Set default mask targets
+    dataset.default_mask_targets = {1: "cat", 2: "dog"}
+
+    # Edit the default mask targets
+    dataset.default_mask_targets[255] = "other"
+    dataset.save()  # must save after edits
+
+    # Set mask targets for the `ground_truth` and `predictions` fields
+    dataset.mask_targets = {
+        "ground_truth": {1: "cat", 2: "dog"},
+        "predictions": {1: "cat": 2: "dog", 255: "other"},
+    }
+
+    # Edit an existing mask target
+    dataset.mask_targets["ground_truth"][255] = "other"
+    dataset.save()  # must save after edits
+
+.. note::
+
+    You must call
+    :meth:`dataset.save() <fiftyone.core.dataset.Dataset.save>` after updating
+    the dataset's
+    :meth:`default_mask_targets <fiftyone.core.dataset.Dataset.default_mask_targets>`
+    and
+    :meth:`mask_targets <fiftyone.core.dataset.Dataset.mask_targets>`
+    properties to save the changes to the database.
 
 .. _video-frame-labels:
 
