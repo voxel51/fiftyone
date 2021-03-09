@@ -1511,7 +1511,8 @@ class SampleCollection(object):
     @view_stage
     def exists(self, field, bool=True):
         """Returns a view containing the samples in the collection that have
-        (or do not have) a non-``None`` value for the given field.
+        (or do not have) a non-``None`` value for the given field or embedded
+        field.
 
         Examples::
 
@@ -1532,10 +1533,15 @@ class SampleCollection(object):
                     ),
                     fo.Sample(
                         filepath="/path/to/image3.png",
+                        ground_truth=fo.Classification(label="dog"),
+                        predictions=fo.Classification(label="dog"),
+                    ),
+                    fo.Sample(
+                        filepath="/path/to/image4.png",
                         ground_truth=None,
                         predictions=None,
                     ),
-                    fo.Sample(filepath="/path/to/image4.png"),
+                    fo.Sample(filepath="/path/to/image5.png"),
                 ]
             )
 
@@ -1553,8 +1559,14 @@ class SampleCollection(object):
 
             view = dataset.exists("predictions", False)
 
+            #
+            # Only include samples that have prediction confidences
+            #
+
+            view = dataset.exists("predictions.confidence")
+
         Args:
-            field: the field name
+            field: the field name or ``embedded.field.name``
             bool (True): whether to check if the field exists (True) or does
                 not exist (False)
 

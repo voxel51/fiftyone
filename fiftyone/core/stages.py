@@ -673,7 +673,7 @@ class ExcludeLabels(ViewStage):
 
 class Exists(ViewStage):
     """Returns a view containing the samples in a collection that have (or do
-    not have) a non-``None`` value for the given field.
+    not have) a non-``None`` value for the given field or embedded field.
 
     Examples::
 
@@ -694,10 +694,15 @@ class Exists(ViewStage):
                 ),
                 fo.Sample(
                     filepath="/path/to/image3.png",
+                    ground_truth=fo.Classification(label="dog"),
+                    predictions=fo.Classification(label="dog"),
+                ),
+                fo.Sample(
+                    filepath="/path/to/image4.png",
                     ground_truth=None,
                     predictions=None,
                 ),
-                fo.Sample(filepath="/path/to/image4.png"),
+                fo.Sample(filepath="/path/to/image5.png"),
             ]
         )
 
@@ -716,8 +721,15 @@ class Exists(ViewStage):
         stage = fo.Exists("predictions", False)
         view = dataset.add_stage(stage)
 
+        #
+        # Only include samples that have prediction confidences
+        #
+
+        stage = fo.Exists("predictions.confidence")
+        view = dataset.add_stage(stage)
+
     Args:
-        field: the field name
+        field: the field name or ``embedded.field.name``
         bool (True): whether to check if the field exists (True) or does not
             exist (False)
     """
@@ -1802,11 +1814,7 @@ class GeoNear(_GeoStage):
         max_distance=None,
         query=None,
     ):
-        if isinstance(query, foe.ViewExpression):
-            query = query.to_mongo()
-
         super().__init__(location_field)
-
         self._point = foug.parse_point(point)
         self._min_distance = min_distance
         self._max_distance = max_distance

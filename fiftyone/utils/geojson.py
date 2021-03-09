@@ -144,11 +144,12 @@ def load_location_data(
         return
 
     logger.info("Loading location data for %d samples...", len(found_keys))
+    _samples = samples.select_fields(location_field)
     with fou.ProgressBar() as pb:
         for key in pb(found_keys):
             sample_id = lookup[key]
             geometry = geometries[key]
-            sample = samples[sample_id]
+            sample = _samples[sample_id]
             sample[location_field] = location_cls.from_geo_json(geometry)
             sample.save()
 
