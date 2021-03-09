@@ -27,21 +27,22 @@ from .document import Document, BaseEmbeddedDocument, SampleDocument
 logger = logging.getLogger(__name__)
 
 
-def default_sample_fields(cls, include_private=False, include_id=False):
-    """Returns the default fields present on all instances of the given
-    :class:`SampleDocument` class.
+def get_default_fields(cls, include_private=False, include_id=False):
+    """Gets the default fields present on all instances of the given
+    :class:`DatasetMixin` class.
 
     Args:
-        cls: the :class:`SampleDocument` class
+        cls: the :class:`DatasetMixin` class
         include_private (False): whether to include fields that start with `_`
-        include_id (False): whether to include the ``id`` field
+        include_id (False): whether to include the `_id` field
 
     Returns:
         a tuple of field names
     """
     fields = cls._get_fields_ordered(include_private=include_private)
+
     if include_id:
-        fields = ("id",) + fields
+        fields += ("_id",)
 
     return fields
 
@@ -291,11 +292,11 @@ class DatasetMixin(object):
             new_field_names: an iterable of new field names
             are_frame_fields (False): whether these are frame-level fields
         """
-        default_fields = default_sample_fields(
+        default_fields = get_default_fields(
             cls.__bases__[0], include_private=True, include_id=True
         )
         for field_name in field_names:
-            if field_name in default_fields:
+            if field_name == "id" or field_name in default_fields:
                 raise ValueError(
                     "Cannot rename default field '%s'" % field_name
                 )
@@ -433,13 +434,14 @@ class DatasetMixin(object):
                 1: log warning if a field cannot be deleted
                 2: ignore fields that cannot be deleted
         """
-        _field_names = []
-        default_fields = default_sample_fields(
+        default_fields = get_default_fields(
             cls.__bases__[0], include_private=True, include_id=True
         )
+
+        _field_names = []
         for field_name in field_names:
             # pylint: disable=no-member
-            if field_name in default_fields:
+            if field_name == "id" or field_name in default_fields:
                 _handle_error(
                     ValueError(
                         "Cannot delete default field '%s'" % field_name

@@ -563,9 +563,8 @@ class PointSelector(object):
             view = self._init_view
 
         with fou.SetAttributes(self, _lock_session=True):
-            # Temporarily set `session._auto` to False since this update should
-            # not spawn a new App instance in notebook contexts
-            with fou.SetAttributes(self._session, _auto=False):
+            # Don't spawn a new App instance in notebook contexts here
+            with self._session.no_show():
                 self._session.view = view
 
     def _prep_collection(self):

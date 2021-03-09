@@ -25,15 +25,12 @@ import fiftyone.core.expressions as foe
 from fiftyone.core.expressions import ViewField as F
 import fiftyone.core.evaluation as foev
 import fiftyone.core.fields as fof
+import fiftyone.core.frame as fofr
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 import fiftyone.core.metadata as fomt
 import fiftyone.core.models as fomo
-from fiftyone.core.odm.frame import DatasetFrameSampleDocument
-from fiftyone.core.odm.sample import (
-    DatasetSampleDocument,
-    default_sample_fields,
-)
+import fiftyone.core.sample as fosa
 import fiftyone.core.stages as fos
 import fiftyone.core.utils as fou
 
@@ -428,13 +425,12 @@ class SampleCollection(object):
 
         if fields:
             schema = self.get_field_schema(include_private=True)
+
             default_fields = set(
-                default_sample_fields(
-                    DatasetSampleDocument,
-                    include_private=True,
-                    include_id=True,
-                )
+                fosa.get_default_sample_fields(include_private=True)
+                + ("id", "_id")
             )
+
             for field in fields:
                 # We only validate that the root field exists
                 field_name = field.split(".", 1)[0]
@@ -449,13 +445,12 @@ class SampleCollection(object):
 
         if frame_fields:
             frame_schema = self.get_frame_field_schema(include_private=True)
+
             default_frame_fields = set(
-                default_sample_fields(
-                    DatasetFrameSampleDocument,
-                    include_private=True,
-                    include_id=True,
-                )
+                fofr.get_default_frame_fields(include_private=True)
+                + ("id", "_id")
             )
+
             for field in frame_fields:
                 # We only validate that the root field exists
                 field_name = field.split(".", 2)[1]  # removes "frames."
@@ -463,7 +458,9 @@ class SampleCollection(object):
                     field_name not in frame_schema
                     and field_name not in default_frame_fields
                 ):
-                    raise ValueError("Field '%s' does not exist" % field_name)
+                    raise ValueError(
+                        "Frame field '%s' does not exist" % field_name
+                    )
 
     def validate_field_type(
         self, field_name, ftype, embedded_doc_type=None, subfield=None
@@ -636,6 +633,46 @@ class SampleCollection(object):
             tags = _transform_values(tags, edit_fcn, level=level)
             self.set_values(tags_path, tags)
 
+    def _get_selected_labels(self, ids=None, tags=None, fields=None):
+        view = self.select_labels(ids=ids, tags=tags, fields=fields)
+
+        labels = []
+        for label_field in view._get_label_fields():
+            sample_ids = view._get_sample_ids()
+
+            _, id_path = view._get_label_field_path(label_field, "_id")
+            label_ids = view.values(id_path)
+
+            if self._is_frame_field(label_field):
+                frame_numbers = view.values("frames.frame_number")
+                for sample_id, sample_frame_numbers, sample_label_ids in zip(
+                    sample_ids, frame_numbers, label_ids
+                ):
+                    for frame_number, frame_label_ids in zip(
+                        sample_frame_numbers, sample_label_ids
+                    ):
+                        for label_id in frame_label_ids:
+                            labels.append(
+                                {
+                                    "sample_id": str(sample_id),
+                                    "frame_number": frame_number,
+                                    "field": label_field,
+                                    "label_id": str(label_id),
+                                }
+                            )
+            else:
+                for sample_id, _label_ids in zip(sample_ids, label_ids):
+                    for label_id in _label_ids:
+                        labels.append(
+                            {
+                                "sample_id": str(sample_id),
+                                "field": label_field,
+                                "label_id": str(label_id),
+                            }
+                        )
+
+        return labels
+
     def count_label_tags(self, label_fields=None):
         """Counts the occurrences of all label tags in the specified label
         field(s) of this collection.
@@ -801,6 +838,9 @@ class SampleCollection(object):
 
         ops = []
         for _id, _elem_ids, _values in zip(ids, elem_ids, values):
+            if not _elem_ids:
+                continue
+
             for _elem_id, value in zip(_elem_ids, _values):
                 if _elem_id is None:
                     raise ValueError(
@@ -1538,9 +1578,9 @@ class SampleCollection(object):
 
         Args:
             labels (None): a list of dicts specifying the labels to exclude
-            ids (None): a list of IDs of the labels to exclude
-            tags (None): a list of tags of labels to exclude
-            fields (None): a list of fields from which to exclude labels
+            ids (None): an ID or iterable of IDs of the labels to exclude
+            tags (None): a tag or iterable of tags of labels to exclude
+            fields (None): a field or iterable of fields from which to exclude
         """
         return self._add_view_stage(
             fos.ExcludeLabels(labels=labels, ids=ids, tags=tags, fields=fields)
@@ -2796,9 +2836,9 @@ class SampleCollection(object):
 
         Args:
             labels (None): a list of dicts specifying the labels to select
-            ids (None): a list of IDs of the labels to select
-            tags (None): a list of tags of labels to select
-            fields (None): a list of fields from which to select labels
+            ids (None): an ID or iterable of IDs of the labels to select
+            tags (None): a tag or iterable of tags of labels to select
+            fields (None): a field or iterable of fields from which to select
 
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
@@ -4347,12 +4387,13 @@ class SampleCollection(object):
 
         if self.media_type == fom.VIDEO:
             fields.extend(
-                list(
-                    self.get_frame_field_schema(
+                [
+                    self._FRAMES_PREFIX + field
+                    for field in self.get_frame_field_schema(
                         ftype=fof.EmbeddedDocumentField,
                         embedded_doc_type=fol.Label,
                     ).keys()
-                )
+                ]
             )
 
         return fields
@@ -4672,6 +4713,9 @@ def _get_field_with_type(label_fields, label_cls):
 
 
 def _parse_field_name(sample_collection, field_name, auto_unwind):
+    if field_name == "id":
+        return "_id", False, [], []
+
     field_name, is_frame_field = sample_collection._handle_frame_field(
         field_name
     )
