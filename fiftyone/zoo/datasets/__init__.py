@@ -240,7 +240,7 @@ def load_zoo_dataset(
         dataset.add_dir(dataset_dir, dataset_type, **kwargs)
 
     if info.classes is not None:
-        dataset.info["classes"] = info.classes
+        dataset.default_classes = info.classes
         dataset.save()
 
     logger.info("Dataset '%s' created", dataset.name)

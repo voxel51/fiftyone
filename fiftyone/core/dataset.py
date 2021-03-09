@@ -377,6 +377,94 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self._doc.save()
 
     @property
+    def classes(self):
+        """A dict mapping field names to list of class label strings for the
+        corresponding fields of the dataset.
+
+        Examples::
+
+            import fiftyone as fo
+
+            dataset = fo.Dataset()
+
+            # Set classes for the `ground_truth` and `predictions` fields
+            dataset.classes = {
+                "ground_truth": ["cat", "dog"],
+                "predictions": ["cat", "dog", "other"],
+            }
+
+            # Edit an existing classes list
+            dataset.classes["ground_truth"].append("other")
+            dataset.save()  # must save after edits
+        """
+        return self._doc.classes
+
+    @classes.setter
+    def classes(self, classes):
+        self._doc.classes = classes
+        self.save()
+
+    @property
+    def default_classes(self):
+        """A list of class label strings for all
+        :class:`fiftyone.core.labels.Label` fields of this dataset that do not
+        have customized classes defined in :meth:`classes`.
+
+        Examples::
+
+            import fiftyone as fo
+
+            dataset = fo.Dataset()
+
+            # Set default classes
+            dataset.default_classes = ["cat", "dog"]
+
+            # Edit the default classes
+            dataset.default_classes.append("rabbit")
+            dataset.save()  # must save after edits
+        """
+        return self._doc.default_classes
+
+    @default_classes.setter
+    def default_classes(self, classes):
+        self._doc.default_classes = classes
+        self.save()
+
+    @property
+    def mask_targets(self):
+        """A dict mapping field names to mask target dicts, each of which
+        defines a mapping between pixel values and label strings for the
+        segmentation masks in the corresponding field of the dataset.
+
+        .. note::
+
+            The pixel value `0` is a reserved "background" class that is
+            rendered as invislble in the App.
+
+        Examples::
+
+            import fiftyone as fo
+
+            dataset = fo.Dataset()
+
+            # Set mask targets for the `ground_truth` and `predictions` fields
+            dataset.mask_targets = {
+                "ground_truth": {1: "cat", 2: "dog"},
+                "predictions": {1: "cat", 2: "dog", 255: "other"},
+            }
+
+            # Edit an existing mask target
+            dataset.mask_targets["ground_truth"][255] = "other"
+            dataset.save()  # must save after edits
+        """
+        return self._doc.mask_targets
+
+    @mask_targets.setter
+    def mask_targets(self, targets):
+        self._doc.mask_targets = targets
+        self.save()
+
+    @property
     def default_mask_targets(self):
         """A dict defining a default mapping between pixel values and label
         strings for the segmentation masks of all
@@ -409,40 +497,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self.save()
 
     @property
-    def mask_targets(self):
-        """A dict mapping field names to mask target dicts, each of which
-        defines a mapping between pixel values and label strings for the
-        segmentation masks in the corresponding field of the dataset.
-
-        .. note::
-
-            The pixel value `0` is a reserved "background" class that is
-            rendered as invislble in the App.
-
-        Examples::
-
-            import fiftyone as fo
-
-            dataset = fo.Dataset()
-
-            # Set mask targets for the `ground_truth` and `predictions` fields
-            dataset.mask_targets = {
-                "ground_truth": {1: "cat", 2: "dog"},
-                "predictions": {1: "cat": 2: "dog", 255: "other"},
-            }
-
-            # Edit an existing mask target
-            dataset.mask_targets["ground_truth"][255] = "other"
-            dataset.save()  # must save after edits
-        """
-        return self._doc.mask_targets
-
-    @mask_targets.setter
-    def mask_targets(self, targets):
-        self._doc.mask_targets = targets
-        self.save()
-
-    @property
     def deleted(self):
         """Whether the dataset is deleted."""
         return self._deleted
@@ -461,7 +515,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             "Media type:     %s" % self.media_type,
             "Num samples:    %d" % aggs[0],
             "Persistent:     %s" % self.persistent,
-            "Info:           %s" % _info_repr.repr(self.info),
             "Tags:           %s" % aggs[1],
             "Sample fields:",
             self._to_fields_str(self.get_field_schema()),
@@ -2494,11 +2547,15 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             dataset._apply_frame_field_schema(d["frame_fields"])
 
         dataset.info = d.get("info", {})
-        dataset.default_mask_targets = dataset._parse_default_mask_targets(
-            d.get("default_mask_targets", {})
-        )
+
+        dataset.classes = d.get("classes", {})
+        dataset.default_classes = d.get("default_classes", [])
+
         dataset.mask_targets = dataset._parse_mask_targets(
             d.get("mask_targets", {})
+        )
+        dataset.default_mask_targets = dataset._parse_default_mask_targets(
+            d.get("default_mask_targets", {})
         )
 
         def parse_sample(sd):
@@ -2770,24 +2827,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     def _reload(self):
         self._doc.reload()
-
-
-class _DatasetInfoRepr(reprlib.Repr):
-    def repr_BaseList(self, obj, level):
-        return self.repr_list(obj, level)
-
-    def repr_BaseDict(self, obj, level):
-        return self.repr_dict(obj, level)
-
-
-_info_repr = _DatasetInfoRepr()
-_info_repr.maxlevel = 2
-_info_repr.maxdict = 3
-_info_repr.maxlist = 3
-_info_repr.maxtuple = 3
-_info_repr.maxset = 3
-_info_repr.maxstring = 63
-_info_repr.maxother = 63
 
 
 def _get_random_characters(n):

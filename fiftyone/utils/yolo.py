@@ -237,10 +237,19 @@ class YOLODatasetExporter(foud.LabeledImageDatasetExporter):
         self._parse_classes()
 
     def log_collection(self, sample_collection):
-        if self.classes is None and "classes" in sample_collection.info:
-            self.classes = sample_collection.info["classes"]
-            self._parse_classes()
-            self._dynamic_classes = False
+        if self.classes is None:
+            if sample_collection.default_classes:
+                self.classes = sample_collection.default_classes
+                self._parse_classes()
+                self._dynamic_classes = False
+            elif sample_collection.classes:
+                self.classes = next(iter(sample_collection.classes.values()))
+                self._parse_classes()
+                self._dynamic_classes = False
+            elif "classes" in sample_collection.info:
+                self.classes = sample_collection.info["classes"]
+                self._parse_classes()
+                self._dynamic_classes = False
 
     def export_sample(self, image_or_path, detections, metadata=None):
         out_image_path = self._export_image_or_path(

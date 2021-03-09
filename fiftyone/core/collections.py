@@ -126,6 +126,44 @@ class SampleCollection(object):
         raise NotImplementedError("Subclass must implement info")
 
     @property
+    def classes(self):
+        """The classes of the underlying dataset.
+
+        See :meth:`fiftyone.core.dataset.Dataset.classes` for more information.
+        """
+        raise NotImplementedError("Subclass must implement classes")
+
+    @classes.setter
+    def classes(self, classes):
+        raise NotImplementedError("Subclass must implement classes")
+
+    @property
+    def default_classes(self):
+        """The default classes of the underlying dataset.
+
+        See :meth:`fiftyone.core.dataset.Dataset.default_classes` for more
+        information.
+        """
+        raise NotImplementedError("Subclass must implement default_classes")
+
+    @default_classes.setter
+    def default_classes(self, classes):
+        raise NotImplementedError("Subclass must implement default_classes")
+
+    @property
+    def mask_targets(self):
+        """The mask targets of the underlying dataset.
+
+        See :meth:`fiftyone.core.dataset.Dataset.mask_targets` for more
+        information.
+        """
+        raise NotImplementedError("Subclass must implement mask_targets")
+
+    @mask_targets.setter
+    def mask_targets(self, targets):
+        raise NotImplementedError("Subclass must implement mask_targets")
+
+    @property
     def default_mask_targets(self):
         """The default mask targets of the underlying dataset.
 
@@ -141,19 +179,6 @@ class SampleCollection(object):
         raise NotImplementedError(
             "Subclass must implement default_mask_targets"
         )
-
-    @property
-    def mask_targets(self):
-        """The mask targets of the underlying dataset.
-
-        See :meth:`fiftyone.core.dataset.Dataset.mask_targets` for more
-        information.
-        """
-        raise NotImplementedError("Subclass must implement mask_targets")
-
-    @mask_targets.setter
-    def mask_targets(self, targets):
-        raise NotImplementedError("Subclass must implement mask_targets")
 
     def summary(self):
         """Returns a string summary of the collection.
@@ -1073,9 +1098,12 @@ class SampleCollection(object):
                 instances
             eval_key (None): an evaluation key to use to refer to this
                 evaluation
-            classes (None): the list of possible classes. If not provided, the
-                observed ground truth/predicted labels are used for results
-                purposes
+            classes (None): the list of possible classes. If not provided,
+                classes are loaded from
+                :meth:`fiftyone.core.dataset.Dataset.classes` or
+                :meth:`fiftyone.core.dataset.Dataset.default_classes` if
+                possible, or else the observed ground truth/predicted labels
+                are used
             missing (None): a missing label string. Any None-valued labels
                 are given this label for results purposes
             method ("simple"): a string specifying the evaluation method to use.
@@ -1154,8 +1182,12 @@ class SampleCollection(object):
                 ground truth :class:`fiftyone.core.labels.Detections`
             eval_key (None): an evaluation key to use to refer to this
                 evaluation
-            classes (None): the list of possible classes. If not provided, the
-                observed ground truth/predicted labels are used
+            classes (None): the list of possible classes. If not provided,
+                classes are loaded from
+                :meth:`fiftyone.core.dataset.Dataset.classes` or
+                :meth:`fiftyone.core.dataset.Dataset.default_classes` if
+                possible, or else the observed ground truth/predicted labels
+                are used
             missing (None): a missing label string. Any unmatched objects are
                 given this label for evaluation purposes
             method ("coco"): a string specifying the evaluation method to use.
@@ -1233,10 +1265,8 @@ class SampleCollection(object):
                 instances
             eval_key (None): an evaluation key to use to refer to this
                 evaluation
-            mask_targets (None): a dict mapping mask values to labels. May
-                contain a subset of the possible classes if you wish to
-                evaluate a subset of the semantic classes. If not provided,
-                mask targets are loaded from
+            mask_targets (None): a dict mapping mask values to labels. If not
+                provided, mask targets are loaded from
                 :meth:`fiftyone.core.dataset.Dataset.mask_targets` or
                 :meth:`fiftyone.core.dataset.Dataset.default_mask_targets` if
                 possible, or else the observed pixel values are used
@@ -4081,8 +4111,12 @@ class SampleCollection(object):
             d["frame_fields"] = self._serialize_frame_field_schema()
 
         d["info"] = self.info
-        d["default_mask_targets"] = self._serialize_default_mask_targets()
+
+        d["classes"] = self.classes
+        d["default_classes"] = self.default_classes
+
         d["mask_targets"] = self._serialize_mask_targets()
+        d["default_mask_targets"] = self._serialize_default_mask_targets()
 
         # Serialize samples
         samples = []
