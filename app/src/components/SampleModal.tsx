@@ -1,20 +1,18 @@
 import React, { useState, useEffect, useRef } from "react";
 import styled from "styled-components";
 
-import { Check, Close, Fullscreen, FullscreenExit } from "@material-ui/icons";
-import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
+import { Close, Fullscreen, FullscreenExit } from "@material-ui/icons";
+import { useRecoilValue, useSetRecoilState } from "recoil";
 
 import FieldsSidebar from "./FieldsSidebar";
 import JSONView from "./JSONView";
 import Player51 from "./Player51";
+import { ModalFooter } from "./utils";
 import SelectLabelsMenu from "./SelectLabelsMenu";
-import { Button, ModalFooter } from "./utils";
 import * as selectors from "../recoil/selectors";
 import * as atoms from "../recoil/atoms";
-import {
-  labelFilters,
-  sampleModalFilter,
-} from "./Filters/LabelFieldFilters.state";
+import * as labelAtoms from "./Filters/utils";
+import { labelFilters } from "./Filters/LabelFieldFilters.state";
 import { SampleContext } from "../utils/context";
 
 import {
@@ -23,13 +21,9 @@ import {
   useResizeHandler,
   useVideoData,
 } from "../utils/hooks";
-import { formatMetadata, stringify } from "../utils/labels";
+import { formatMetadata } from "../utils/labels";
 import { useToggleSelectionObject } from "../utils/selection";
-
-type Props = {
-  sample: object;
-  sampleUrl: string;
-};
+import { Button } from "./FieldsSidebar";
 
 const Container = styled.div`
   position: relative;
@@ -142,10 +136,6 @@ const Container = styled.div`
       width: 0px;
       display: none;
     }
-
-    ${ModalFooter} {
-      align-items: flex-start;
-    }
   }
 
   .row {
@@ -214,9 +204,16 @@ const TopRightNavButton = ({ icon, title, onClick, ...rest }) => {
   );
 };
 
-const Row = ({ name, renderedName, value, children, ...rest }) => (
+type RowProps = {
+  name: string;
+  value: string;
+  style?: any;
+  children?: React.ReactElement<any>[];
+};
+
+const Row = ({ name, value, children, ...rest }: RowProps) => (
   <div className="row" {...rest}>
-    <label>{renderedName || name}&nbsp;</label>
+    <label>{name}&nbsp;</label>
     <div>
       <span title={value}>{value}</span>
     </div>
@@ -224,69 +221,52 @@ const Row = ({ name, renderedName, value, children, ...rest }) => (
   </div>
 );
 
+type Props = {
+  sample: object;
+  sampleUrl: string;
+  colorMap: { [key: string]: string };
+  onClose: () => void;
+  onNext: () => void;
+  onPrevious: () => void;
+};
+
 const SampleModal = (
-  { sample, sampleUrl, metadata, colorMap = {}, onClose, port, ...rest }: Props,
+  { sampleUrl, onClose, onNext, onPrevious }: Props,
   ref
 ) => {
+  const { sample } = useRecoilValue(atoms.modal);
   const playerContainerRef = useRef();
   const [playerStyle, setPlayerStyle] = useState({
     height: "100%",
     width: "100%",
   });
+  const colorMap = useRecoilValue(selectors.colorMap(true));
   const setModalFilters = useSetRecoilState(labelFilters(true));
   const [showJSON, setShowJSON] = useState(false);
   const [enableJSONFilter, setEnableJSONFilter] = useState(true);
   const [fullscreen, setFullscreen] = useState(false);
-  const [activeLabels, setActiveLabels] = useRecoilState(
-    atoms.modalActiveLabels("sample")
-  );
-  const [activeFrameLabels, setActiveFrameLabels] = useRecoilState(
-    atoms.modalActiveLabels("frame")
-  );
   const mediaType = useRecoilValue(selectors.mediaType);
-  const filter = useRecoilValue(sampleModalFilter);
-  const activeTags = useRecoilValue(atoms.modalActiveTags);
-  const tagNames = useRecoilValue(selectors.tagNames);
   const fieldSchema = useRecoilValue(selectors.fieldSchema("sample"));
-  const labelNameGroups = useRecoilValue(selectors.labelNameGroups("sample"));
-  const frameLabelNameGroups = useRecoilValue(
-    selectors.labelNameGroups("frame")
-  );
-  const colorByLabel = useRecoilValue(atoms.modalColorByLabel);
+  const colorByLabel = useRecoilValue(atoms.colorByLabel(true));
   const socket = useRecoilValue(selectors.socket);
   const viewCounter = useRecoilValue(atoms.viewCounter);
   const [requested, requestLabels] = useVideoData(socket, sample);
-  const frameData = useRecoilValue(atoms.sampleFrameData(sample._id));
   const videoLabels = useRecoilValue(atoms.sampleVideoLabels(sample._id));
   useEffect(() => {
     mediaType === "video" && requested !== viewCounter && requestLabels();
   }, [requested]);
-
-  useEffect(() => {
-    setActiveLabels(rest.activeLabels);
-  }, [rest.activeLabels]);
-  useEffect(() => {
-    setActiveFrameLabels(rest.activeFrameLabels);
-  }, [rest.activeFrameLabels]);
   useEffect(() => {
     setModalFilters(null);
   }, []);
 
   const toggleSelectedObject = useToggleSelectionObject(atoms.selectedObjects);
-  const selectedObjectIDs = Object.keys(useRecoilValue(atoms.selectedObjects));
+  const selectedObjectIDs = Array.from(
+    useRecoilValue(selectors.selectedObjectIds)
+  );
 
   // save overlay options when navigating - these are restored by passing them
   // in defaultOverlayOptions when the new player is created
   const playerRef = useRef();
-  const wrapNavigationFunc = (callback) => {
-    if (callback) {
-      return () => {
-        callback();
-      };
-    }
-  };
-  const onPrevious = wrapNavigationFunc(rest.onPrevious);
-  const onNext = wrapNavigationFunc(rest.onNext);
 
   const handleResize = () => {
     if (!playerRef.current || !playerContainerRef.current || showJSON) {
@@ -348,127 +328,6 @@ const SampleModal = (
     frameNumberRef.current = e.data.frame_number;
   });
 
-  const getDisplayOptions = (
-    values,
-    countOrExists,
-    selected,
-    hideCheckbox = false,
-    filteredCountOrExists
-  ) => {
-    return [...values].sort().map(({ name, type }) => ({
-      hideCheckbox,
-      name,
-      type,
-      icon: ["boolean", "undefined"].includes(typeof countOrExists[name]) ? (
-        countOrExists[name] ? (
-          <Check style={{ color: colorMap[name] }} />
-        ) : (
-          <Close style={{ color: colorMap[name] }} />
-        )
-      ) : undefined,
-      totalCount: countOrExists[name],
-      filteredCount: filteredCountOrExists
-        ? filteredCountOrExists[name]
-        : undefined,
-      selected: Boolean(selected[name]),
-    }));
-  };
-
-  const handleSetDisplayOption = (setSelected) => (entry) => {
-    setSelected((selected) => ({
-      ...selected,
-      [entry.name]: entry.selected,
-    }));
-  };
-
-  const tagSampleExists = tagNames.reduce(
-    (acc, tag) => ({
-      ...acc,
-      [tag]: sample.tags.includes(tag),
-    }),
-    {}
-  );
-
-  const labelSampleValuesReducer = (s, groups, filterData = false) => {
-    const isVideo = s._media_type === "video";
-    return groups.labels.reduce((obj, { name, type }) => {
-      let value = 0;
-      const resolver = (frame, prefix = "") => {
-        const path = prefix + name;
-        if (!frame[path]) return 0;
-        return ["Detections", "Classifications", "Polylines"].includes(type)
-          ? frame[path][type.toLowerCase()].length
-          : type === "Keypoints"
-          ? frame[path].keypoints.reduce(
-              (acc, cur) => acc + cur.points.length,
-              0
-            )
-          : type === "Keypoint"
-          ? frame[path].points.length
-          : 1;
-      };
-
-      if (!(name in s) && isVideo && frameData) {
-        for (const frame of frameData) {
-          const pathFrame = Object.keys(frame).reduce(
-            (acc, cur) => ({
-              ...acc,
-              ["frames." + cur]: frame[cur],
-            }),
-            {}
-          );
-          if (frame[name])
-            value += resolver(
-              filterData ? filter(pathFrame) : pathFrame,
-              "frames."
-            );
-        }
-      } else if (!(name in s) && isVideo) {
-        value = "-";
-      } else {
-        value += resolver(s);
-      }
-      return {
-        ...obj,
-        [name]: value,
-      };
-    }, {});
-  };
-
-  const labelSampleValues = labelSampleValuesReducer(sample, labelNameGroups);
-  const filteredLabelSampleValues = labelSampleValuesReducer(
-    filter(sample),
-    labelNameGroups,
-    true
-  );
-  const frameLabelSampleValues = labelSampleValuesReducer(
-    sample,
-    frameLabelNameGroups
-  );
-  const filteredFrameLabelSampleValues = labelSampleValuesReducer(
-    filter(sample),
-    frameLabelNameGroups,
-    true
-  );
-
-  const scalarSampleValues = labelNameGroups.scalars.reduce(
-    (obj, { name }) => ({
-      ...obj,
-      [name]:
-        sample[name] !== undefined && sample[name] !== null
-          ? stringify(sample[name])
-          : undefined,
-    }),
-    {}
-  );
-
-  const otherSampleValues = labelNameGroups.unsupported.reduce((obj, label) => {
-    return {
-      ...obj,
-      [label]: label in sample,
-    };
-  }, {});
-
   return (
     <SampleContext.Provider value={sample}>
       <Container
@@ -495,11 +354,8 @@ const SampleModal = (
               sample={sample}
               keep={true}
               overlay={videoLabels}
-              metadata={metadata}
-              colorMap={colorMap}
               colorByLabel={colorByLabel}
-              activeLabels={activeLabels}
-              activeFrameLabels={activeFrameLabels}
+              activeLabelsAtom={labelAtoms.activeFields(true)}
               fieldSchema={fieldSchema}
               filterSelector={labelFilters(true)}
               playerRef={playerRef}
@@ -562,48 +418,12 @@ const SampleModal = (
               />
             </div>
             <FieldsSidebar
-              colorMap={colorMap}
-              tags={getDisplayOptions(
-                tagNames.map((t) => ({ name: t })),
-                tagSampleExists,
-                activeTags,
-                true
-              )}
-              labels={getDisplayOptions(
-                labelNameGroups.labels,
-                labelSampleValues,
-                activeLabels,
-                false,
-                filteredLabelSampleValues
-              )}
-              frameLabels={getDisplayOptions(
-                frameLabelNameGroups.labels,
-                frameLabelSampleValues,
-                activeFrameLabels,
-                false,
-                filteredFrameLabelSampleValues
-              )}
-              onSelectLabel={handleSetDisplayOption(setActiveLabels)}
-              onSelectFrameLabel={handleSetDisplayOption(setActiveFrameLabels)}
-              scalars={getDisplayOptions(
-                labelNameGroups.scalars,
-                scalarSampleValues,
-                activeLabels,
-                true
-              )}
-              onSelectScalar={() => {}}
-              unsupported={getDisplayOptions(
-                labelNameGroups.unsupported,
-                otherSampleValues,
-                activeLabels
-              )}
+              modal={true}
               style={{
                 overflowY: "auto",
                 overflowX: "hidden",
                 height: "auto",
               }}
-              colorByLabelAtom={atoms.modalColorByLabel}
-              modal={true}
             />
             <TopRightNavButton
               onClick={onClose}
@@ -612,10 +432,20 @@ const SampleModal = (
               style={{ position: "absolute", top: 0, right: 0 }}
             />
           </div>
-          <ModalFooter>
-            <Button onClick={() => setShowJSON(!showJSON)}>
-              {showJSON ? "Hide" : "Show"} JSON
-            </Button>
+          <ModalFooter style={{ display: "block" }}>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                width: "100%",
+                marginTop: -3,
+              }}
+            >
+              <Button
+                onClick={() => setShowJSON(!showJSON)}
+                text={`${showJSON ? "Hide" : "Show"} JSON`}
+              />
+            </div>
           </ModalFooter>
         </div>
       </Container>

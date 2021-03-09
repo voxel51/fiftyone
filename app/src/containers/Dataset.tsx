@@ -19,6 +19,7 @@ import {
   useOutsideClick,
   useSendMessage,
   useScreenshot,
+  useGA,
 } from "../utils/hooks";
 import Loading from "../components/Loading";
 
@@ -49,43 +50,21 @@ const applyActiveLabels = (tuples, current, setter) => {
   setter(newSelection);
 };
 
-function Dataset(props) {
+function Dataset() {
   const [modal, setModal] = useRecoilState(atoms.modal);
   const http = useRecoilValue(selectors.http);
   const hasDataset = useRecoilValue(selectors.hasDataset);
-  const colorMap = useRecoilValue(selectors.colorMap);
-  const datasetName = useRecoilValue(selectors.datasetName);
   const currentSamples = useRecoilValue(atoms.currentSamples);
-  const labelTuples = useRecoilValue(selectors.labelTuples("sample"));
-  const frameLabelTuples = useRecoilValue(selectors.labelTuples("frame"));
   const setExtendedDatasetStats = useSetRecoilState(
     atoms.extendedDatasetStatsRaw
   );
+  useGA();
   const setDatasetStats = useSetRecoilState(atoms.datasetStatsRaw);
-  const [activeLabels, setActiveLabels] = useRecoilState(
-    atoms.activeLabels("sample")
-  );
-  const [activeFrameLabels, setActiveFrameLabels] = useRecoilState(
-    atoms.activeLabels("frame")
-  );
-  const activeOther = useRecoilValue(atoms.activeOther("sample"));
-  const activeFrameOther = useRecoilValue(atoms.activeOther("frame"));
 
   useMessageHandler("statistics", ({ stats, view, filters }) => {
     filters && setExtendedDatasetStats({ stats, view, filters });
     !filters && setDatasetStats({ stats, view });
   });
-
-  // select any new labels by default
-
-  useEffect(() => {
-    applyActiveLabels(labelTuples, activeLabels, setActiveLabels);
-    applyActiveLabels(
-      frameLabelTuples,
-      activeFrameLabels,
-      setActiveFrameLabels
-    );
-  }, [datasetName, labelTuples, frameLabelTuples]);
 
   // reset selected/hidden objects when the modal closes (subject to change) -
   // the socket update is needed here because SampleModal and SelectObjectsMenu
@@ -93,7 +72,7 @@ function Dataset(props) {
   const resetSelectedObjects = useResetRecoilState(atoms.selectedObjects);
   const resetHiddenObjects = useResetRecoilState(atoms.hiddenObjects);
   const handleHideModal = () => {
-    setModal({ visible: false, sample: null });
+    setModal({ visible: false, sample: null, metadata: null });
     resetSelectedObjects();
     resetHiddenObjects();
   };
@@ -102,22 +81,6 @@ function Dataset(props) {
 
   useEffect(() => {
     document.body.classList.toggle("noscroll", modal.visible);
-
-    setModal({
-      ...modal,
-      activeLabels: modal.visible
-        ? {
-            ...activeLabels,
-            ...activeOther,
-          }
-        : {},
-      activeFrameLabels: modal.visible
-        ? {
-            ...activeFrameLabels,
-            ...activeFrameOther,
-          }
-        : {},
-    });
   }, [modal.visible]);
 
   const hideModal = useMemo(() => {
@@ -173,11 +136,6 @@ function Dataset(props) {
       {modal.visible ? (
         <ModalWrapper>
           <SampleModal
-            activeLabels={modal.activeLabels}
-            activeFrameLabels={modal.activeFrameLabels}
-            colorMap={colorMap}
-            sample={modal.sample}
-            metadata={modal.metadata}
             sampleUrl={src}
             onClose={handleHideModal}
             {...modalProps}
@@ -189,18 +147,7 @@ function Dataset(props) {
         {hasDataset && <HorizontalNav entries={PLOTS} />}
         {hasDataset ? (
           <Body>
-            <SamplesContainer
-              {...props.socket}
-              setView={(sample, metadata) =>
-                setModal({
-                  ...modal,
-                  visible: true,
-                  sample,
-                  metadata,
-                })
-              }
-              colorMap={colorMap}
-            />
+            <SamplesContainer />
           </Body>
         ) : (
           <Loading text={"No dataset selected"} />

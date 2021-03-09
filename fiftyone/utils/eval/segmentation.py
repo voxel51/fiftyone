@@ -27,7 +27,7 @@ def evaluate_segmentations(
     pred_field,
     gt_field="ground_truth",
     eval_key=None,
-    mask_index=None,
+    mask_targets=None,
     method="simple",
     config=None,
     **kwargs,
@@ -64,10 +64,11 @@ def evaluate_segmentations(
         gt_field ("ground_truth"): the name of the field containing the ground
             truth :class:`fiftyone.core.labels.Segmentation` instances
         eval_key (None): an evaluation key to use to refer to this evaluation
-        mask_index (None): a dict mapping mask values to labels. May contain
-            a subset of the possible classes if you wish to evaluate a subset
-            of the semantic classes. By default, the observed mask values are
-            used as labels
+        mask_targets (None): a dict mapping mask values to labels. If not
+            provided, mask targets are loaded from
+            :meth:`fiftyone.core.dataset.Dataset.mask_targets` or
+            :meth:`fiftyone.core.dataset.Dataset.default_mask_targets` if
+            possible, or else the observed pixel values are used
         method ("simple"): a string specifying the evaluation method to use.
             Supported values are ``("simple")``
         config (None): a :class:`SegmentationEvaluationConfig` specifying the
@@ -79,12 +80,24 @@ def evaluate_segmentations(
     Returns:
         a :class:`SegmentationResults`
     """
+    if mask_targets is None:
+        if pred_field in samples.mask_targets:
+            mask_targets = samples.mask_targets[pred_field]
+        elif gt_field in samples.mask_targets:
+            mask_targets = samples.mask_targets[gt_field]
+        elif samples.default_mask_targets:
+            mask_targets = samples.default_mask_targets
+
     config = _parse_config(config, pred_field, gt_field, method, **kwargs)
     eval_method = config.build()
     eval_method.register_run(samples, eval_key)
-    return eval_method.evaluate_samples(
-        samples, eval_key=eval_key, mask_index=mask_index
+
+    results = eval_method.evaluate_samples(
+        samples, eval_key=eval_key, mask_targets=mask_targets
     )
+    eval_method.save_run_results(samples, eval_key, results)
+
+    return results
 
 
 class SegmentationEvaluationConfig(foe.EvaluationMethodConfig):
@@ -110,14 +123,14 @@ class SegmentationEvaluation(foe.EvaluationMethod):
         config: a :class:`SegmentationEvaluationConfig`
     """
 
-    def evaluate_samples(self, samples, eval_key=None, mask_index=None):
+    def evaluate_samples(self, samples, eval_key=None, mask_targets=None):
         """Evaluates the predicted segmentation masks in the given samples with
         respect to the specified ground truth masks.
 
         Args:
             samples: a :class:`fiftyone.core.collections.SampleCollection`
             eval_key (None): an evaluation key for this evaluation
-            mask_index (None): a dict mapping mask values to labels. May
+            mask_targets (None): a dict mapping mask values to labels. May
                 contain a subset of the possible classes if you wish to
                 evaluate a subset of the semantic classes. By default, the
                 observed pixel values are used as labels
@@ -193,12 +206,12 @@ class SimpleEvaluation(SegmentationEvaluation):
         config: a :class:`SegmentationEvaluationConfig`
     """
 
-    def evaluate_samples(self, samples, eval_key=None, mask_index=None):
+    def evaluate_samples(self, samples, eval_key=None, mask_targets=None):
         pred_field = self.config.pred_field
         gt_field = self.config.gt_field
 
-        if mask_index is not None:
-            values, classes = zip(*sorted(mask_index.items()))
+        if mask_targets is not None:
+            values, classes = zip(*sorted(mask_targets.items()))
         else:
             logger.info("Computing possible mask values...")
             values = _get_mask_values(samples, pred_field, gt_field)
@@ -280,12 +293,34 @@ class SegmentationResults(ClassificationResults):
     """Class that stores the results of a segmentation evaluation.
 
     Args:
-        confusion_matrix: a pixel value confusion matrix
+        pixel_confusion_matrix: a pixel value confusion matrix
         classes: a list of class labels corresponding to the confusion matrix
         missing (None): a missing (background) class
     """
 
-    def __init__(self, confusion_matrix, classes, missing=None):
+    def __init__(self, pixel_confusion_matrix, classes, missing=None):
+        ytrue, ypred, weights = self._parse_confusion_matrix(
+            pixel_confusion_matrix, classes
+        )
+        super().__init__(
+            ytrue, ypred, weights=weights, classes=classes, missing=missing
+        )
+        self.pixel_confusion_matrix = pixel_confusion_matrix
+
+    def attributes(self):
+        return ["cls", "pixel_confusion_matrix", "classes", "missing"]
+
+    @classmethod
+    def _from_dict(cls, d, samples, **kwargs):
+        return cls(
+            d["pixel_confusion_matrix"],
+            d["classes"],
+            missing=d.get("missing", None),
+            **kwargs,
+        )
+
+    @staticmethod
+    def _parse_confusion_matrix(confusion_matrix, classes):
         ytrue = []
         ypred = []
         weights = []
@@ -298,14 +333,7 @@ class SegmentationResults(ClassificationResults):
                     ypred.append(classes[j])
                     weights.append(cij)
 
-        super().__init__(
-            ytrue,
-            ypred,
-            None,
-            weights=weights,
-            classes=classes,
-            missing=missing,
-        )
+        return ytrue, ypred, weights
 
 
 def _parse_config(config, pred_field, gt_field, method, **kwargs):

@@ -908,7 +908,7 @@ You can use a |SampleParser| to
 | <fiftyone.utils.kitti.KITTIDetectionSampleParser>`                     |                                                                                                                 |
 +------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------+
 | :class:`YOLOSampleParser                                               | Parser for samples in `YOLO format <https://github.com/AlexeyAB/darknet>`_.                                     |
-| <fiftyone.utils.kitti.YOLOSampleParser>`                               |                                                                                                                 |
+| <fiftyone.utils.yolo.YOLOSampleParser>`                                |                                                                                                                 |
 +------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------+
 | :class:`CVATImageSampleParser                                          | Parser for samples in `CVAT image format <https://github.com/opencv/cvat>`_.                                    |
 | <fiftyone.utils.cvat.CVATImageSampleParser>`                           |                                                                                                                 |

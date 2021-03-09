@@ -2,9 +2,9 @@ import { atom, atomFamily } from "recoil";
 
 import { SelectedObjectMap } from "../utils/selection";
 
-export const colorSeed = atom<number>({
+export const colorSeed = atomFamily<number, boolean>({
   key: "colorSeed",
-  default: 0,
+  default: 1,
 });
 
 export const modal = atom({
@@ -13,7 +13,6 @@ export const modal = atom({
     visible: false,
     sample: null,
     metadata: null,
-    activeLabels: {},
   },
 });
 
@@ -70,7 +69,7 @@ export const stateDescription = atom({
   default: {},
 });
 
-export const selectedSamples = atom({
+export const selectedSamples = atom<Set<string>>({
   key: "selectedSamples",
   default: new Set(),
 });
@@ -100,36 +99,6 @@ export const currentSamples = atom({
   default: [],
 });
 
-export const activeLabels = atomFamily({
-  key: "activeLabels",
-  default: {},
-});
-
-export const modalActiveLabels = atomFamily({
-  key: "modalActiveLabels",
-  default: {},
-});
-
-export const activeOther = atomFamily({
-  key: "activeOther",
-  default: {},
-});
-
-export const modalActiveOther = atomFamily({
-  key: "modalActiveOther",
-  default: {},
-});
-
-export const activeTags = atom({
-  key: "activeTags",
-  default: {},
-});
-
-export const modalActiveTags = atom({
-  key: "modalActiveTags",
-  default: {},
-});
-
 export const sampleVideoLabels = atomFamily({
   key: "sampleVideoLabels",
   default: null,
@@ -155,13 +124,8 @@ export const viewCounter = atom({
   default: 0,
 });
 
-export const colorByLabel = atom({
+export const colorByLabel = atomFamily<boolean, boolean>({
   key: "colorByLabel",
-  default: false,
-});
-
-export const modalColorByLabel = atom({
-  key: "modalColorByLabel",
   default: false,
 });
 

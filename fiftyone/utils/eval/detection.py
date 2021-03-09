@@ -7,6 +7,8 @@ Detection evaluation.
 """
 import logging
 
+import numpy as np
+
 import fiftyone.core.evaluation as foe
 import fiftyone.core.utils as fou
 
@@ -68,9 +70,11 @@ def evaluate_detections(
         gt_field ("ground_truth"): the name of the field containing the ground
             truth :class:`fiftyone.core.labels.Detections`
         eval_key (None): an evaluation key to use to refer to this evaluation
-        classes (None): the list of possible classes. If not provided, the
-            observed ground truth/predicted labels are used for results
-            purposes
+        classes (None): the list of possible classes. If not provided, classes
+            are loaded from :meth:`fiftyone.core.dataset.Dataset.classes` or
+            :meth:`fiftyone.core.dataset.Dataset.default_classes` if
+            possible, or else the observed ground truth/predicted labels are
+            used
         missing (None): a missing label string. Any unmatched objects are given
             this label for results purposes
         method ("coco"): a string specifying the evaluation method to use.
@@ -88,6 +92,14 @@ def evaluate_detections(
     Returns:
         a :class:`DetectionResults`
     """
+    if classes is None:
+        if pred_field in samples.classes:
+            classes = samples.classes[pred_field]
+        elif gt_field in samples.classes:
+            classes = samples.classes[gt_field]
+        elif samples.default_classes:
+            classes = samples.default_classes
+
     config = _parse_config(
         config,
         pred_field,
@@ -141,9 +153,12 @@ def evaluate_detections(
                 sample["%s_fn" % eval_key] = sample_fn
                 sample.save()
 
-    return eval_method.generate_results(
-        samples, matches, eval_key=eval_key, classes=classes, missing=missing,
+    results = eval_method.generate_results(
+        samples, matches, eval_key=eval_key, classes=classes, missing=missing
     )
+    eval_method.save_run_results(samples, eval_key, results)
+
+    return results
 
 
 class DetectionEvaluationConfig(foe.EvaluationMethodConfig):
@@ -286,8 +301,17 @@ class DetectionResults(ClassificationResults):
 
     def __init__(self, matches, classes=None, missing=None):
         ytrue, ypred, ious, confs = zip(*matches)
-        super().__init__(ytrue, ypred, confs, classes=classes, missing=missing)
-        self.ious = ious
+        super().__init__(
+            ytrue, ypred, confs=confs, classes=classes, missing=missing
+        )
+        self.ious = np.array(ious)
+
+    @classmethod
+    def _from_dict(cls, d, samples, **kwargs):
+        matches = list(zip(d["ytrue"], d["ypred"], d["ious"], d["confs"]))
+        classes = d.get("classes", None)
+        missing = d.get("missing", None)
+        return cls(matches, classes=classes, missing=missing, **kwargs)
 
 
 def _parse_config(config, pred_field, gt_field, method, **kwargs):

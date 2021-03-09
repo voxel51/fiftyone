@@ -10881,11 +10881,12 @@ __metadata:
     mini-css-extract-plugin: ^0.9.0
     modclean: ^3.0.0-beta.1
     node-sass: ^4.13.1
+    numeral: ^2.0.6
     opencollective-postinstall: ^2.0.2
     optimize-css-assets-webpack-plugin: ^5.0.3
     patch-package: 6.2.0
     path: ^0.12.7
-    player51: "file:./player51"
+    player51: ./player51
     postinstall-postinstall: ^2.1.0
     prettier: ^2.1.0
     prop-types: ^15.7.2
@@ -10902,11 +10903,12 @@ __metadata:
     react-is: ^17.0.1
     react-spring: 8.0.1
     react-test-renderer: ^16.12.0
+    react-use-gesture: ^9.0.0
     react-use-measure: ^2.0.1
     react-uuid: ^1.0.2
     recharts: ^1.8.5
     recharts-scale: ^0.4.3
-    recoil: ^0.0.13
+    recoil: latest
     reconnecting-websocket: ^4.4.0
     resize-observer-polyfill: ^1.5.1
     rimraf: ^3.0.0
@@ -17025,6 +17027,13 @@ modclean-patterns-default@latest:
   languageName: node
   linkType: hard
 
+"numeral@npm:^2.0.6":
+  version: 2.0.6
+  resolution: "numeral@npm:2.0.6"
+  checksum: 962d3200e283add3e47dae023fa9f928c749c90cbf393fc17924954b59ae49dd9bafa9cd8bb1257d551cea54278ca3a07a30df8e0a8b85388dd78a13cf89b118
+  languageName: node
+  linkType: hard
+
 "nwsapi@npm:^2.2.0":
   version: 2.2.0
   resolution: "nwsapi@npm:2.2.0"
@@ -17957,11 +17966,11 @@ modclean-patterns-default@latest:
 
 "player51@file:./player51::locator=fiftyone%40workspace%3A.":
   version: 1.0.0
-  resolution: "player51@file:./player51#./player51::hash=e012cf&locator=fiftyone%40workspace%3A."
+  resolution: "player51@file:./player51#./player51::hash=f20fe5&locator=fiftyone%40workspace%3A."
   dependencies:
     "@ungap/event-target": ^0.2.2
     event-target: ^1.2.3
-  checksum: e6800bdedcb553105e6243ba42a89e641211285927329027a8339e2c435e1d26dac5d9b252431686b33c878ca95b7920e7552a85795ed631e5f93b02fb2094f5
+  checksum: 983e98272089ff8e6adc00f9492e9a86b80005fffa6bec7f6bc8e9e2d1a28e61db736e09ee39770d9261e860664260c7200394d3a17b83043a3a44d60ee81401
   languageName: node
   linkType: hard
 
@@ -19805,6 +19814,15 @@ modclean-patterns-default@latest:
   languageName: node
   linkType: hard
 
+"react-use-gesture@npm:^9.0.0":
+  version: 9.0.4
+  resolution: "react-use-gesture@npm:9.0.4"
+  peerDependencies:
+    react: ">= 16.8.0"
+  checksum: 0c1849de6de372c525893258056562ee5d6ab8be1f8e3686ff2e7efc53cccfabafe6dd7fd34b24a658a2f75d0eaba6a266202aa750ce966ac255bbdcdcf77ba4
+  languageName: node
+  linkType: hard
+
 "react-use-measure@npm:^2.0.1":
   version: 2.0.3
   resolution: "react-use-measure@npm:2.0.3"
@@ -20114,13 +20132,17 @@ modclean-patterns-default@latest:
   languageName: node
   linkType: hard
 
-"recoil@npm:^0.0.13":
-  version: 0.0.13
-  resolution: "recoil@npm:0.0.13"
+"recoil@npm:latest":
+  version: 0.1.2
+  resolution: "recoil@npm:0.1.2"
   peerDependencies:
     react: ^16.13.1
-    react-dom: ^16.13.1
-  checksum: a170fa37268b3818c7a29c93f9e3a7a4995c1cd6f15bdd246bddaca9ba4a9252ef599b1d1554b42578e228ca580964f149c2787d09b36b9debb19f02a34fd9aa
+  peerDependenciesMeta:
+    react-dom:
+      optional: true
+    react-native:
+      optional: true
+  checksum: c69105dd7da74430b2c58d17a9c690ebe6e6364c8a7e79e08ff732d4a3d6154a365dc698113ac29639948a6f0ddee05a34201375235f370fc9e3dc17234ed7b2
   languageName: node
   linkType: hard
 

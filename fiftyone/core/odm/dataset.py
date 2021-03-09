@@ -5,15 +5,18 @@ Documents that track datasets and their sample schemas in the database.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from mongoengine import (
+import eta.core.utils as etau
+
+from fiftyone.core.fields import (
     BooleanField,
+    ClassesField,
     DictField,
     EmbeddedDocumentField,
     EmbeddedDocumentListField,
+    IntDictField,
     StringField,
+    TargetsField,
 )
-
-import eta.core.utils as etau
 
 from .document import Document, EmbeddedDocument
 from .runs import RunDocument
@@ -102,15 +105,15 @@ class DatasetDocument(Document):
     name = StringField(unique=True, required=True)
     sample_collection_name = StringField(unique=True, required=True)
     persistent = BooleanField(default=False)
-    info = DictField(default=dict)
-    evaluations = DictField(
-        EmbeddedDocumentField(document_type=RunDocument), default=dict
-    )
-    brain_methods = DictField(
-        EmbeddedDocumentField(document_type=RunDocument), default=dict
-    )
+    info = DictField()
+    evaluations = DictField(EmbeddedDocumentField(document_type=RunDocument))
+    brain_methods = DictField(EmbeddedDocumentField(document_type=RunDocument))
     sample_fields = EmbeddedDocumentListField(
         document_type=SampleFieldDocument
     )
     frame_fields = EmbeddedDocumentListField(document_type=SampleFieldDocument)
+    classes = DictField(ClassesField())
+    default_classes = ClassesField()
+    mask_targets = DictField(TargetsField())
+    default_mask_targets = TargetsField()
     version = StringField(required=True, null=True)

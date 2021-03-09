@@ -17,7 +17,6 @@ from mpl_toolkits.mplot3d import Axes3D  # pylint: disable=unused-import
 import eta.core.utils as etau
 
 import fiftyone.core.labels as fol
-import fiftyone.core.utils as fou
 from fiftyone.core.view import DatasetView
 
 from .selector import PointSelector
@@ -34,13 +33,13 @@ def scatterplot(
     labels=None,
     classes=None,
     session=None,
-    buttons=None,
     marker_size=None,
     cmap=None,
     ax=None,
     ax_equal=False,
     figsize=None,
     style="seaborn-ticks",
+    buttons=None,
     block=False,
     **kwargs,
 ):
@@ -92,8 +91,6 @@ def scatterplot(
             Only applicable when ``labels`` contains strings
         session (None): a :class:`fiftyone.core.session.Session` object to
             link with the interactive plot
-        buttons (None): a dict mapping button names to callbacks defining
-            buttons to add to the plot
         marker_size (None): the marker size to use
         cmap (None): a colormap recognized by ``matplotlib``
         ax (None): an optional matplotlib axis to plot in
@@ -101,6 +98,8 @@ def scatterplot(
         figsize (None): an optional ``(width, height)`` for the figure, in
             inches
         style ("seaborn-ticks"): a style to use for the plot
+        buttons (None): a list of ``(label, icon_image, callback)`` tuples
+            defining buttons to add to the plot
         block (False): whether to block execution when the plot is
             displayed via ``matplotlib.pyplot.show(block=block)``
         **kwargs: optional keyword arguments for matplotlib's ``scatter()``
@@ -191,9 +190,8 @@ def scatterplot(
                 sample_ids = sample_ids[inds]
 
     if session is not None:
-        # Temporarily set `session._auto` to False since this update should not
-        # spawn new a App instance in notebook contexts
-        with fou.SetAttributes(session, _auto=False):
+        # Don't spawn a new App instance in notebook contexts here
+        with session.no_show():
             if isinstance(samples, DatasetView):
                 session.view = samples
             else:

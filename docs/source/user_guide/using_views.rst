@@ -754,7 +754,6 @@ Let's say you have a dataset that looks like this:
     Name:           open-images-v4-test
     Num samples:    1000
     Persistent:     True
-    Info:           {}
     Tags:           []
     Sample fields:
         filepath:                 StringField

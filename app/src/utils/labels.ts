@@ -20,6 +20,14 @@ export const VALID_LABEL_TYPES = [
   ...VALID_MASK_TYPES,
 ];
 
+export const HIDDEN_LABEL_ATTRS = {
+  Classification: ["logits"],
+  Detection: ["bounding_box", "attributes", "mask"],
+  Polyline: ["points", "attributes"],
+  Keypoint: ["points", "attributes"],
+  Segmentation: ["mask"],
+};
+
 export const OBJECT_TYPES = [
   "Detection",
   "Detections",
@@ -97,6 +105,7 @@ export const RESERVED_DETECTION_FIELDS = [
   "confidence",
   "attributes",
   "mask",
+  "target",
 ];
 
 export const METADATA_FIELDS = [
@@ -238,6 +247,7 @@ const FIFTYONE_TO_ETA_CONVERTERS = {
         _id: obj._id,
         confidence: obj.confidence,
         value: obj.label,
+        target: obj.target,
       };
     },
   },
@@ -247,6 +257,7 @@ const FIFTYONE_TO_ETA_CONVERTERS = {
       const bb = obj.bounding_box;
       const attrs = convertAttributesToETA(getDetectionAttributes(obj));
       const base = frame_number ? { frame_number } : {};
+
       return {
         ...base,
         type: "eta.core.objects.DetectedObject",
@@ -256,6 +267,7 @@ const FIFTYONE_TO_ETA_CONVERTERS = {
         index: obj.index,
         confidence: obj.confidence,
         mask: obj.mask,
+        target: obj.target,
         bounding_box: bb
           ? {
               top_left: { x: bb[0], y: bb[1] },
@@ -277,6 +289,7 @@ const FIFTYONE_TO_ETA_CONVERTERS = {
         _id: obj._id,
         label: obj.label,
         points: obj.points,
+        target: obj.target,
       };
     },
   },
@@ -290,6 +303,7 @@ const FIFTYONE_TO_ETA_CONVERTERS = {
         points: obj.points,
         closed: Boolean(obj.closed),
         filled: Boolean(obj.filled),
+        target: obj.target,
       };
     },
   },
@@ -364,6 +378,7 @@ const convertImageSampleToETA = (
       imgLabels.masks.push({
         name: prefix + sampleField,
         mask: field.mask,
+        _id: field._id,
       });
     } else if (VALID_SCALAR_TYPES.includes(fieldSchema[sampleField])) {
       _addToETAContainer(imgLabels, "attrs", {
@@ -381,7 +396,7 @@ export const listSampleObjects = (sample) => {
     if (
       field === null ||
       field === undefined ||
-      !VALID_OBJECT_TYPES.includes(field._cls)
+      !VALID_LABEL_TYPES.includes(field._cls)
     )
       continue;
     if (FIFTYONE_TO_ETA_CONVERTERS[field._cls]) {
@@ -394,6 +409,13 @@ export const listSampleObjects = (sample) => {
           FIFTYONE_TO_ETA_CONVERTERS[object._cls].convert(fieldName, object)
         );
       }
+    } else {
+      objects.push({
+        name: fieldName,
+        _id: field._id,
+        frame_number: field.frame_number,
+        sample_id: sample._id,
+      });
     }
   }
   return objects;

@@ -10,7 +10,6 @@ import mongoengine.fields
 import numpy as np
 import six
 
-import eta.core.image as etai
 import eta.core.utils as etau
 
 import fiftyone.core.utils as fou
@@ -55,26 +54,26 @@ class Field(mongoengine.fields.BaseField):
         return etau.get_class_name(self)
 
 
-class ObjectIdField(mongoengine.ObjectIdField, Field):
+class IntField(mongoengine.fields.IntField, Field):
+    """A 32 bit integer field."""
+
+    pass
+
+
+class ObjectIdField(mongoengine.fields.ObjectIdField, Field):
     """An Object ID field."""
 
     pass
 
 
-class UUIDField(mongoengine.UUIDField, Field):
+class UUIDField(mongoengine.fields.UUIDField, Field):
     """A UUID field."""
 
     pass
 
 
-class BooleanField(mongoengine.BooleanField, Field):
+class BooleanField(mongoengine.fields.BooleanField, Field):
     """A boolean field."""
-
-    pass
-
-
-class IntField(mongoengine.IntField, Field):
-    """A 32 bit integer field."""
 
     pass
 
@@ -89,7 +88,7 @@ class FrameNumberField(IntField):
             self.error(str(e))
 
 
-class FloatField(mongoengine.FloatField, Field):
+class FloatField(mongoengine.fields.FloatField, Field):
     """A floating point number field."""
 
     def validate(self, value):
@@ -107,13 +106,13 @@ class FloatField(mongoengine.FloatField, Field):
             self.error("Float value is too large")
 
 
-class StringField(mongoengine.StringField, Field):
+class StringField(mongoengine.fields.StringField, Field):
     """A unicode string field."""
 
     pass
 
 
-class ListField(mongoengine.ListField, Field):
+class ListField(mongoengine.fields.ListField, Field):
     """A list field that wraps a standard :class:`Field`, allowing multiple
     instances of the field to be stored as a list in the database.
 
@@ -142,6 +141,82 @@ class ListField(mongoengine.ListField, Field):
             )
 
         return etau.get_class_name(self)
+
+
+class DictField(mongoengine.fields.DictField, Field):
+    """A dictionary field that wraps a standard Python dictionary.
+
+    If this field is not set, its default value is ``{}``.
+
+    Args:
+        field (None): an optional :class:`Field` instance describing the type
+            of the values in the dict
+    """
+
+    def __init__(self, field=None, **kwargs):
+        if field is not None:
+            if not isinstance(field, Field):
+                raise ValueError(
+                    "Invalid field type '%s'; must be a subclass of %s"
+                    % (type(field), Field)
+                )
+
+        super().__init__(field=field, **kwargs)
+
+    def __str__(self):
+        if self.field is not None:
+            return "%s(%s)" % (
+                etau.get_class_name(self),
+                etau.get_class_name(self.field),
+            )
+
+        return etau.get_class_name(self)
+
+    def validate(self, value):
+        if not isinstance(value, dict):
+            self.error("Value must be a dict")
+
+        if not all(map(lambda k: etau.is_str(k), value)):
+            self.error("Dict fields must have string keys")
+
+        if self.field is not None:
+            for _value in value.values():
+                self.field.validate(_value)
+
+
+class IntDictField(DictField):
+    """A :class:`DictField` whose keys are integers.
+
+    If this field is not set, its default value is ``{}``.
+
+    Args:
+        field (None): an optional :class:`Field` instance describing the type
+            of the values in the dict
+    """
+
+    def to_mongo(self, value):
+        if value is None:
+            return None
+
+        value = {str(k): v for k, v in value.items()}
+        return super().to_mongo(value)
+
+    def to_python(self, value):
+        if value is None:
+            return None
+
+        return {int(k): v for k, v in value.items()}
+
+    def validate(self, value):
+        if not isinstance(value, dict):
+            self.error("Value must be a dict")
+
+        if not all(map(lambda k: isinstance(k, six.integer_types), value)):
+            self.error("Int dict fields must have integer keys")
+
+        if self.field is not None:
+            for _value in value.values():
+                self.field.validate(_value)
 
 
 class KeypointsField(ListField):
@@ -195,36 +270,6 @@ class PolylinePointsField(ListField):
                 "Polyline points fields must contain a list of lists of "
                 "(x, y) pairs"
             )
-
-
-class DictField(mongoengine.DictField, Field):
-    """A dictionary field that wraps a standard Python dictionary.
-
-    If this field is not set, its default value is ``{}``.
-
-    Args:
-        field (None): an optional :class:`Field` instance describing the type
-            of the values in the dict
-    """
-
-    def __init__(self, field=None, **kwargs):
-        if field is not None:
-            if not isinstance(field, Field):
-                raise ValueError(
-                    "Invalid field type '%s'; must be a subclass of %s"
-                    % (type(field), Field)
-                )
-
-        super().__init__(field=field, **kwargs)
-
-    def __str__(self):
-        if self.field is not None:
-            return "%s(%s)" % (
-                etau.get_class_name(self),
-                etau.get_class_name(self.field),
-            )
-
-        return etau.get_class_name(self)
 
 
 class VectorField(mongoengine.fields.BinaryField, Field):
@@ -286,7 +331,28 @@ class ArrayField(mongoengine.fields.BinaryField, Field):
             self.error("Only numpy arrays may be used in an array field")
 
 
-class EmbeddedDocumentField(mongoengine.EmbeddedDocumentField, Field):
+class ClassesField(ListField):
+    """A :class:`ListField` that stores class label strings.
+
+    If this field is not set, its default value is ``{}``.
+    """
+
+    def __init__(self, **kwargs):
+        super().__init__(field=StringField(), **kwargs)
+
+
+class TargetsField(IntDictField):
+    """An :class:`DictField` that stores mapping between integer keys and
+    string targets.
+
+    If this field is not set, its default value is ``{}``.
+    """
+
+    def __init__(self, **kwargs):
+        super().__init__(field=StringField(), **kwargs)
+
+
+class EmbeddedDocumentField(mongoengine.fields.EmbeddedDocumentField, Field):
     """A field that stores instances of a given type of
     :class:`fiftyone.core.odm.BaseEmbeddedDocument` object.
 
@@ -295,23 +361,26 @@ class EmbeddedDocumentField(mongoengine.EmbeddedDocumentField, Field):
             stored in this field
     """
 
-    def __init__(self, document_type, **kwargs):
-        #
-        # @todo resolve circular import errors in `fiftyone.core.odm.sample`
-        # so that this validation can occur here
-        #
-        # import fiftyone.core.odm as foo
-        #
-        # if not issubclass(document_type, foo.BaseEmbeddedDocument):
-        #     raise ValueError(
-        #         "Invalid document type %s; must be a subclass of %s"
-        #         % (document_type, foo.BaseEmbeddedDocument)
-        #     )
-        #
+    def __str__(self):
+        return "%s(%s)" % (
+            etau.get_class_name(self),
+            etau.get_class_name(self.document_type),
+        )
 
-        super().__init__(document_type, **kwargs)
+
+class EmbeddedDocumentListField(
+    mongoengine.fields.EmbeddedDocumentListField, Field
+):
+    """A field that stores a list of a given type of
+    :class:`fiftyone.core.odm.BaseEmbeddedDocument` objects.
+
+    Args:
+        document_type: the :class:`fiftyone.core.odm.BaseEmbeddedDocument` type
+            stored in this field
+    """
 
     def __str__(self):
+        # pylint: disable=no-member
         return "%s(%s)" % (
             etau.get_class_name(self),
             etau.get_class_name(self.document_type),

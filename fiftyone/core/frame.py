@@ -14,11 +14,25 @@ from pymongo import ReplaceOne
 from fiftyone.core.expressions import ViewField as F
 from fiftyone.core.document import Document
 import fiftyone.core.frame_utils as fofu
-from fiftyone.core.odm.frame import (
-    NoDatasetFrameSampleDocument,
-    DatasetFrameSampleDocument,
-)
+import fiftyone.core.odm as foo
 import fiftyone.core.utils as fou
+
+
+def get_default_frame_fields(include_private=False, include_id=False):
+    """Returns the default fields present on all frames.
+
+    Args:
+        include_private (False): whether to include fields that start with `_`
+        include_id (False): whether to include ID fields
+
+    Returns:
+        a tuple of field names
+    """
+    return foo.get_default_fields(
+        foo.DatasetFrameSampleDocument,
+        include_private=include_private,
+        include_id=include_id,
+    )
 
 
 #
@@ -168,7 +182,9 @@ class Frames(object):
             )
             self._set_replacement(frame)
         else:
-            frame = Frame.from_doc(NoDatasetFrameSampleDocument(**default_d))
+            frame = Frame.from_doc(
+                foo.NoDatasetFrameSampleDocument(**default_d)
+            )
             self._set_replacement(frame)
 
         return frame
@@ -393,11 +409,11 @@ class Frame(Document):
     # Instance references keyed by [collection_name][sample_id][frame_number]
     _instances = defaultdict(lambda: defaultdict(weakref.WeakValueDictionary))
 
-    _COLL_CLS = DatasetFrameSampleDocument
-    _NO_COLL_CLS = NoDatasetFrameSampleDocument
+    _COLL_CLS = foo.DatasetFrameSampleDocument
+    _NO_COLL_CLS = foo.NoDatasetFrameSampleDocument
 
     def __init__(self, **kwargs):
-        self._doc = NoDatasetFrameSampleDocument(**kwargs)
+        self._doc = foo.NoDatasetFrameSampleDocument(**kwargs)
         super().__init__()
 
     def __str__(self):
@@ -450,7 +466,7 @@ class Frame(Document):
         Returns:
             a :class:`Frame`
         """
-        if isinstance(doc, NoDatasetFrameSampleDocument):
+        if isinstance(doc, foo.NoDatasetFrameSampleDocument):
             frame = cls.__new__(cls)
             frame._dataset = None
             frame._doc = doc

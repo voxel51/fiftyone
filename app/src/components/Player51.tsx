@@ -1,15 +1,19 @@
 import mime from "mime-types";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
+import ReactDOM from "react-dom";
 import styled from "styled-components";
 import uuid from "react-uuid";
 import { useRecoilState, useRecoilValue } from "recoil";
 import CircularProgress from "@material-ui/core/CircularProgress";
 import { Warning } from "@material-ui/icons";
+import { animated, useSpring } from "react-spring";
 
+import { ContentDiv, ContentHeader } from "./utils";
 import ExternalLink from "./ExternalLink";
 import Player51 from "player51";
-import { useEventHandler } from "../utils/hooks";
+import { useEventHandler, useTheme } from "../utils/hooks";
 import { convertSampleToETA } from "../utils/labels";
+import { useMove } from "react-use-gesture";
 
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
@@ -37,20 +41,297 @@ const InfoWrapper = styled.div`
   }
 `;
 
+const TagBlock = styled.div`
+  margin: 0;
+`;
+
+const BorderDiv = styled.div`
+  border-top: 2px solid ${({ theme }) => theme.font};
+  width: 100%;
+  padding: 0.5rem 0 0;
+`;
+
+const AttrBlock = styled.div`
+  padding: 0.1rem 0 0 0;
+  margin: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-row-gap: 0.1rem;
+  grid-column-gap: 0.5rem;
+`;
+
+const TooltipDiv = animated(styled(ContentDiv)`
+  position: absolute;
+  margin-top: 0;
+  left: -1000;
+  top: -1000;
+  z-index: 20000;
+  pointer-events: none;
+`);
+
+const computeCoordinates = (
+  [x, y]: [number, number],
+  ref: { current: HTMLElement | null }
+): { bottom?: string | number; top?: string | number; left?: number } => {
+  if (!ref.current) {
+    return {};
+  }
+  x +=
+    x < window.innerWidth / 2
+      ? 24
+      : -24 - ref.current.getBoundingClientRect().width;
+  let top: string | number = y,
+    bottom: string | number = "unset";
+  if (y > window.innerHeight / 2) {
+    bottom = window.innerHeight - y;
+    top = "unset";
+  }
+
+  return {
+    bottom,
+    top,
+    left: x,
+  };
+};
+
+const ContentItemDiv = styled.div`
+  margin: 0;
+  padding: 0;
+  max-width: 10rem;
+  word-wrap: break-word;
+`;
+
+const ContentValue = styled.div`
+  font-size: 0.8rem;
+  font-weight: bold;
+  color: ${({ theme }) => theme.font};
+`;
+
+const ContentName = styled.div`
+  font-size: 0.7rem;
+  font-weight: bold;
+  padding-bottom: 0.3rem;
+  color: ${({ theme }) => theme.fontDark};
+`;
+
+const ContentItem = ({
+  name,
+  value,
+  style,
+}: {
+  name: string;
+  value?: number | string;
+  style?: object;
+}) => {
+  return (
+    <ContentItemDiv style={style}>
+      <ContentValue>
+        {(() => {
+          switch (typeof value) {
+            case "number":
+              return Number.isInteger(value) ? value : value.toFixed(3);
+            case "string":
+              return value;
+            case "boolean":
+              return value ? "True" : "False";
+            case "object":
+              return Array.isArray(value) ? "[...]" : "{...}";
+            default:
+              return "None";
+          }
+        })()}
+      </ContentValue>
+      <ContentName>{name}</ContentName>
+    </ContentItemDiv>
+  );
+};
+
+const useTarget = (field, target) => {
+  const getTarget = useRecoilValue(selectors.getTarget);
+  return getTarget(field, target);
+};
+
+const AttrInfo = ({ field, id, children }) => {
+  const attrs = useRecoilValue(selectors.modalLabelAttrs({ field, id }));
+  let entries = attrs.filter(([k, v]) => k !== "tags");
+  if (!entries || !entries.length) {
+    return null;
+  }
+  let etc = null;
+
+  const defaults = entries.filter(([name]) =>
+    ["label", "confidence"].includes(name)
+  );
+
+  const other = entries.filter(
+    ([name]) => !["label", "confidence"].includes(name)
+  );
+  const mapper = ([name, value]) => (
+    <ContentItem key={name} name={name} value={value} />
+  );
+
+  return (
+    <>
+      {defaults.map(mapper)}
+      {children}
+      {other.map(mapper)}
+    </>
+  );
+};
+
+const ClassificationInfo = ({ info }) => {
+  return (
+    <AttrBlock style={{ borderColor: info.color }}>
+      <AttrInfo field={info.field} id={info.id} />
+    </AttrBlock>
+  );
+};
+
+const DetectionInfo = ({ info }) => {
+  return (
+    <AttrBlock style={{ borderColor: info.color }}>
+      <AttrInfo field={info.field} id={info.id} />
+    </AttrBlock>
+  );
+};
+
+const KeypointInfo = ({ info }) => {
+  return (
+    <AttrBlock style={{ borderColor: info.color }}>
+      <AttrInfo field={info.field} id={info.id}>
+        <ContentItem
+          key={"# keypoints"}
+          name={"# keypoints"}
+          value={info.numPoints}
+        />
+      </AttrInfo>
+    </AttrBlock>
+  );
+};
+
+const MaskInfo = ({ info }) => {
+  const targetValue = useTarget(info.field, info.target);
+
+  return (
+    <AttrBlock style={{ borderColor: info.color }}>
+      <ContentItem key={"target-value"} name={"label"} value={targetValue} />
+      <AttrInfo field={info.field} id={info.id} />
+    </AttrBlock>
+  );
+};
+
+const PolylineInfo = ({ info }) => {
+  return (
+    <AttrBlock style={{ borderColor: info.color }}>
+      <AttrInfo field={info.field} id={info.id}>
+        <ContentItem key={"# points"} name={"# points"} value={info.points} />
+      </AttrInfo>
+    </AttrBlock>
+  );
+};
+
+const Border = ({ color, id }) => {
+  const selectedObjects = useRecoilValue(selectors.selectedObjectIds);
+  return (
+    <BorderDiv
+      style={{
+        borderTop: `2px ${
+          selectedObjects.has(id) ? "dashed" : "solid"
+        } ${color}`,
+      }}
+    />
+  );
+};
+
+const OVERLAY_INFO = {
+  classification: ClassificationInfo,
+  detection: DetectionInfo,
+  keypoints: KeypointInfo,
+  mask: MaskInfo,
+  polyline: PolylineInfo,
+};
+
+const TagInfo = ({ field, id }) => {
+  const tags = useRecoilValue(selectors.modalLabelTags({ field, id }));
+  if (!tags.length) return null;
+  return (
+    <TagBlock>
+      <ContentItem
+        key={"tags"}
+        name={"tags"}
+        value={tags.length ? tags.join(", ") : "No tags"}
+        style={{ maxWidth: "20rem" }}
+      />
+    </TagBlock>
+  );
+};
+
+const TooltipInfo = ({ player, moveRef }) => {
+  const [display, setDisplay] = useState(false);
+  const [coords, setCoords] = useState({
+    top: -1000,
+    left: -1000,
+    bottom: "unset",
+  });
+  const position = display
+    ? coords
+    : { top: -1000, left: -1000, bottom: "unset" };
+  const coordsProps = useSpring({
+    ...position,
+    config: {
+      duration: 0,
+    },
+  });
+  const [overlay, setOverlay] = useState(null);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEventHandler(player, "tooltipinfo", (e) => {
+    setOverlay(e.data.overlays.length ? e.data.overlays[0] : null);
+  });
+  useEventHandler(player, "mouseenter", () => setDisplay(true));
+  useEventHandler(player, "mouseleave", () => setDisplay(false));
+
+  useEffect(() => {
+    moveRef.current = ({ values }) => {
+      setCoords(computeCoordinates(values, ref));
+    };
+  });
+
+  const showProps = useSpring({
+    display: display ? "block" : "none",
+    opacity: display && overlay ? 1 : 0,
+  });
+  const Component = overlay ? OVERLAY_INFO[overlay.type] : null;
+
+  return Component
+    ? ReactDOM.createPortal(
+        <TooltipDiv
+          style={{ ...coordsProps, ...showProps, position: "fixed" }}
+          ref={ref}
+        >
+          <ContentHeader key="header">{overlay.field}</ContentHeader>
+          <Border color={overlay.color} id={overlay.id} />
+          <TagInfo key={"tags"} field={overlay.field} id={overlay.id} />
+
+          <Component key={"attrs"} info={overlay} />
+        </TooltipDiv>,
+        document.body
+      )
+    : null;
+};
+
 export default ({
   thumbnail,
   sample,
   src,
   style,
   onClick,
-  onDoubleClick,
   overlay = null,
   onLoad = () => {},
   onMouseEnter = () => {},
   onMouseLeave = () => {},
   keep = false,
-  activeLabels,
-  activeFrameLabels,
+  activeLabelsAtom,
   colorByLabel,
   fieldSchema = {},
   filterSelector,
@@ -62,10 +343,11 @@ export default ({
   const filter = useRecoilValue(filterSelector);
   const fps = useRecoilValue(atoms.sampleFrameRate(sample._id));
   const overlayOptions = useRecoilValue(selectors.playerOverlayOptions);
+  const defaultTargets = useRecoilValue(selectors.defaultTargets);
   const [savedOverlayOptions, setSavedOverlayOptions] = useRecoilState(
     atoms.savedPlayerOverlayOptions
   );
-  const colorMap = useRecoilValue(selectors.colorMap);
+  const colorMap = useRecoilValue(selectors.colorMap(!thumbnail));
   if (overlay === null) {
     overlay = convertSampleToETA(sample, fieldSchema);
   }
@@ -77,15 +359,8 @@ export default ({
     (sample.metadata && sample.metadata.mime_type) ||
     mime.lookup(sample.filepath) ||
     "image/jpg";
-  const playerActiveLabels = {
-    ...activeLabels,
-    ...Object.keys(activeFrameLabels).reduce((acc, cur) => {
-      return {
-        ...acc,
-        ["frames." + cur]: activeFrameLabels[cur],
-      };
-    }, {}),
-  };
+  const activeLabelPaths = useRecoilValue(activeLabelsAtom);
+  const colorGenerator = useRecoilValue(selectors.colorGenerator(!thumbnail));
 
   const [player] = useState(() => {
     try {
@@ -96,8 +371,9 @@ export default ({
         },
         overlay,
         colorMap,
-        activeLabels: playerActiveLabels,
+        activeLabels: activeLabelPaths,
         filter,
+        colorGenerator,
         enableOverlayOptions: {
           attrRenderMode: false,
           attrsOnlyOnClick: false,
@@ -105,7 +381,6 @@ export default ({
         },
         defaultOverlayOptions: {
           ...overlayOptions,
-          ...savedOverlayOptions,
           action: "hover",
           attrRenderMode: "attr-value",
           smoothMasks: false,
@@ -119,7 +394,7 @@ export default ({
   if (playerRef) {
     playerRef.current = player;
   }
-  const props = thumbnail ? { onClick, onDoubleClick } : {};
+  const props = thumbnail ? { onClick } : {};
   useEffect(() => {
     if (!player || error) {
       return;
@@ -132,14 +407,16 @@ export default ({
       setInitLoad(true);
     } else {
       player.updateOptions({
-        activeLabels: playerActiveLabels,
+        activeLabels: activeLabelPaths,
         colorByLabel,
         filter,
         colorMap,
         fps,
+        colorGenerator,
       });
       player.updateOverlayOptions(overlayOptions);
       if (!thumbnail) {
+        player.updateOptions({ selectedObjects });
         player.updateOverlay(overlay);
       }
     }
@@ -147,18 +424,15 @@ export default ({
     player,
     filter,
     overlay,
-    playerActiveLabels,
+    activeLabelPaths,
     colorMap,
     colorByLabel,
     fps,
     overlayOptions,
+    defaultTargets,
+    selectedObjects,
+    colorGenerator,
   ]);
-
-  useEffect(() => {
-    if (player && selectedObjects) {
-      player.updateOptions({ selectedObjects });
-    }
-  }, [player, selectedObjects]);
 
   useEffect(() => {
     return () => player && !keep && player.destroy();
@@ -190,6 +464,7 @@ export default ({
       </>
     )
   );
+
   useEventHandler(player, "mouseenter", onMouseEnter);
   useEventHandler(player, "mouseleave", onMouseLeave);
   useEventHandler(player, "select", (e) => {
@@ -199,19 +474,30 @@ export default ({
       onSelectObject({ id, name });
     }
   });
+  const ref = useRef(null);
+  const containerRef = useRef(null);
+  const bind = useMove((s) => ref.current && ref.current(s));
+
   useEventHandler(
     player,
     "options",
-    ({ data: { showAttrs, showConfidence } }) => {
+    ({ data: { showAttrs, showConfidence, showTooltip } }) => {
       setSavedOverlayOptions({
         showAttrs,
         showConfidence,
+        showTooltip,
       });
     }
   );
 
   return (
-    <div id={id} style={style} {...props}>
+    <animated.div
+      id={id}
+      style={style}
+      {...props}
+      {...bind()}
+      ref={containerRef}
+    >
       {error || mediaLoading ? (
         <InfoWrapper>
           {error ? (
@@ -224,6 +510,7 @@ export default ({
           ) : null}
         </InfoWrapper>
       ) : null}
-    </div>
+      <TooltipInfo player={player} moveRef={ref} containerRef={containerRef} />
+    </animated.div>
   );
 };

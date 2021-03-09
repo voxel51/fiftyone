@@ -28,6 +28,7 @@ import fiftyone.constants as focn
 import fiftyone.core.collections as foc
 import fiftyone.core.fields as fof
 import fiftyone.core.frame as fofr
+import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 import fiftyone.migrations as fomi
 import fiftyone.core.odm as foo
@@ -181,9 +182,11 @@ def delete_non_persistent_datasets(verbose=False):
         verbose (False): whether to log the names of deleted datasets
     """
     for name in list_datasets():
-        did_delete = _drop_dataset(name, drop_persistent=False)
-        if did_delete and verbose:
-            logger.info("Dataset '%s' deleted", name)
+        dataset = Dataset(name, _create=False, _migrate=False)
+        if not dataset.persistent and not dataset.deleted:
+            dataset.delete()
+            if verbose:
+                logger.info("Dataset '%s' deleted", name)
 
 
 class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
@@ -210,7 +213,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     """
 
     def __init__(
-        self, name=None, persistent=False, overwrite=False, _create=True
+        self,
+        name=None,
+        persistent=False,
+        overwrite=False,
+        _create=True,
+        _migrate=True,
     ):
         if name is None and _create:
             name = get_default_dataset_name()
@@ -229,7 +237,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 self._doc,
                 self._sample_doc_cls,
                 self._frame_doc_cls,
-            ) = _load_dataset(name)
+            ) = _load_dataset(name, migrate=_migrate)
 
         self._deleted = False
 
@@ -346,12 +354,147 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     @property
     def info(self):
-        """A dictionary of information about the dataset."""
+        """A user-facing dictionary of information about the dataset.
+
+        Examples::
+
+            import fiftyone as fo
+
+            dataset = fo.Dataset()
+
+            # Store a class list in the dataset's info
+            dataset.info = {"classes": ["cat", "dog"]}
+
+            # Edit the info
+            dataset.info["other_classes"] = ["bird", "plane"]
+            dataset.save()  # must save after edits
+        """
         return self._doc.info
 
     @info.setter
     def info(self, info):
         self._doc.info = info
+        self._doc.save()
+
+    @property
+    def classes(self):
+        """A dict mapping field names to list of class label strings for the
+        corresponding fields of the dataset.
+
+        Examples::
+
+            import fiftyone as fo
+
+            dataset = fo.Dataset()
+
+            # Set classes for the `ground_truth` and `predictions` fields
+            dataset.classes = {
+                "ground_truth": ["cat", "dog"],
+                "predictions": ["cat", "dog", "other"],
+            }
+
+            # Edit an existing classes list
+            dataset.classes["ground_truth"].append("other")
+            dataset.save()  # must save after edits
+        """
+        return self._doc.classes
+
+    @classes.setter
+    def classes(self, classes):
+        self._doc.classes = classes
+        self.save()
+
+    @property
+    def default_classes(self):
+        """A list of class label strings for all
+        :class:`fiftyone.core.labels.Label` fields of this dataset that do not
+        have customized classes defined in :meth:`classes`.
+
+        Examples::
+
+            import fiftyone as fo
+
+            dataset = fo.Dataset()
+
+            # Set default classes
+            dataset.default_classes = ["cat", "dog"]
+
+            # Edit the default classes
+            dataset.default_classes.append("rabbit")
+            dataset.save()  # must save after edits
+        """
+        return self._doc.default_classes
+
+    @default_classes.setter
+    def default_classes(self, classes):
+        self._doc.default_classes = classes
+        self.save()
+
+    @property
+    def mask_targets(self):
+        """A dict mapping field names to mask target dicts, each of which
+        defines a mapping between pixel values and label strings for the
+        segmentation masks in the corresponding field of the dataset.
+
+        .. note::
+
+            The pixel value `0` is a reserved "background" class that is
+            rendered as invislble in the App.
+
+        Examples::
+
+            import fiftyone as fo
+
+            dataset = fo.Dataset()
+
+            # Set mask targets for the `ground_truth` and `predictions` fields
+            dataset.mask_targets = {
+                "ground_truth": {1: "cat", 2: "dog"},
+                "predictions": {1: "cat", 2: "dog", 255: "other"},
+            }
+
+            # Edit an existing mask target
+            dataset.mask_targets["ground_truth"][255] = "other"
+            dataset.save()  # must save after edits
+        """
+        return self._doc.mask_targets
+
+    @mask_targets.setter
+    def mask_targets(self, targets):
+        self._doc.mask_targets = targets
+        self.save()
+
+    @property
+    def default_mask_targets(self):
+        """A dict defining a default mapping between pixel values and label
+        strings for the segmentation masks of all
+        :class:`fiftyone.core.labels.Segmentation` fields of this dataset that
+        do not have customized mask targets defined in :meth:`mask_targets`.
+
+        .. note::
+
+            The pixel value `0` is a reserved "background" class that is
+            rendered as invislble in the App.
+
+        Examples::
+
+            import fiftyone as fo
+
+            dataset = fo.Dataset()
+
+            # Set default mask targets
+            dataset.default_mask_targets = {1: "cat", 2: "dog"}
+
+            # Edit the default mask targets
+            dataset.default_mask_targets[255] = "other"
+            dataset.save()  # must save after edits
+        """
+        return self._doc.default_mask_targets
+
+    @default_mask_targets.setter
+    def default_mask_targets(self, targets):
+        self._doc.default_mask_targets = targets
+        self.save()
 
     @property
     def deleted(self):
@@ -372,7 +515,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             "Media type:     %s" % self.media_type,
             "Num samples:    %d" % aggs[0],
             "Persistent:     %s" % self.persistent,
-            "Info:           %s" % _info_repr.repr(self.info),
             "Tags:           %s" % aggs[1],
             "Sample fields:",
             self._to_fields_str(self.get_field_schema()),
@@ -513,7 +655,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     @classmethod
     def get_default_sample_fields(cls, include_private=False):
-        """Get the default fields present on any :class:`Dataset`.
+        """Gets the default fields present on all :class:`Dataset` instances.
 
         Args:
             include_private (False): whether or not to return fields prefixed
@@ -522,13 +664,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             a tuple of field names
         """
-        return foos.default_sample_fields(
-            foo.DatasetSampleDocument, include_private=include_private
-        )
+        return fos.get_default_sample_fields(include_private=include_private)
 
     @classmethod
     def get_default_frame_fields(cls, include_private=False):
-        """Get the default fields present on any :class:`Frame`.
+        """Gets the default fields present on all
+        :class:`fiftyone.core.frame.Frame` instances.
 
         Args:
             include_private (False): whether or not to return fields prefixed
@@ -537,9 +678,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             a tuple of field names
         """
-        return foos.default_sample_fields(
-            foo.DatasetFrameSampleDocument, include_private=include_private
-        )
+        return fofr.get_default_frame_fields(include_private=include_private)
 
     def get_field_schema(
         self, ftype=None, embedded_doc_type=None, include_private=False
@@ -1492,9 +1631,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self._sample_doc_cls.drop_collection()
         fos.Sample._reset_docs(self._sample_collection_name)
 
-        if self.media_type == fom.VIDEO:
-            self._frame_doc_cls.drop_collection()
-            fofr.Frame._reset_docs(self._frame_collection_name)
+        self._frame_doc_cls.drop_collection()
+        fofr.Frame._reset_docs(self._frame_collection_name)
 
     def delete(self):
         """Deletes the dataset.
@@ -1506,7 +1644,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         updated such that ``sample.in_dataset == False``.
         """
         self.clear()
-        self._doc.delete()
+        _delete_dataset_doc(self._doc)
         self._deleted = True
 
     def add_dir(
@@ -2409,7 +2547,16 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             dataset._apply_frame_field_schema(d["frame_fields"])
 
         dataset.info = d.get("info", {})
-        dataset.save()
+
+        dataset.classes = d.get("classes", {})
+        dataset.default_classes = d.get("default_classes", [])
+
+        dataset.mask_targets = dataset._parse_mask_targets(
+            d.get("mask_targets", {})
+        )
+        dataset.default_mask_targets = dataset._parse_default_mask_targets(
+            d.get("default_mask_targets", {})
+        )
 
         def parse_sample(sd):
             if rel_dir and not sd["filepath"].startswith(os.path.sep):
@@ -2682,24 +2829,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self._doc.reload()
 
 
-class _DatasetInfoRepr(reprlib.Repr):
-    def repr_BaseList(self, obj, level):
-        return self.repr_list(obj, level)
-
-    def repr_BaseDict(self, obj, level):
-        return self.repr_dict(obj, level)
-
-
-_info_repr = _DatasetInfoRepr()
-_info_repr.maxlevel = 2
-_info_repr.maxdict = 3
-_info_repr.maxlist = 3
-_info_repr.maxtuple = 3
-_info_repr.maxset = 3
-_info_repr.maxstring = 63
-_info_repr.maxother = 63
-
-
 def _get_random_characters(n):
     return "".join(
         random.choice(string.ascii_lowercase + string.digits) for _ in range(n)
@@ -2915,8 +3044,9 @@ def _create_frame_document_cls(frame_collection_name):
     return type(frame_collection_name, (foo.DatasetFrameSampleDocument,), {})
 
 
-def _load_dataset(name):
-    fomi.migrate_dataset_if_necessary(name, destination=focn.VERSION)
+def _load_dataset(name, migrate=True):
+    if migrate:
+        fomi.migrate_dataset_if_necessary(name, destination=focn.VERSION)
 
     try:
         # pylint: disable=no-member
@@ -2940,7 +3070,7 @@ def _load_dataset(name):
     if is_video:
         for frame_field in dataset_doc.frame_fields:
             subfield = (
-                etau.get_class(frame_field.subfield)
+                etau.get_class(frame_field.subfield)()
                 if frame_field.subfield
                 else None
             )
@@ -2962,7 +3092,7 @@ def _load_dataset(name):
             continue
 
         subfield = (
-            etau.get_class(sample_field.subfield)
+            etau.get_class(sample_field.subfield)()
             if sample_field.subfield
             else None
         )
@@ -2987,29 +3117,33 @@ def _load_dataset(name):
     return dataset_doc, sample_doc_cls, frame_doc_cls
 
 
-def _drop_dataset(name, drop_persistent=True):
-    try:
-        # pylint: disable=no-member
-        dataset_doc = foo.DatasetDocument.objects.get(name=name)
-    except moe.DoesNotExist:
-        raise ValueError("Dataset '%s' not found" % name)
+def _drop_samples(dataset_doc):
+    conn = foo.get_db_conn()
 
-    if dataset_doc.persistent and not drop_persistent:
-        return False
+    sample_collection_name = dataset_doc.sample_collection_name
+    sample_collection = conn[sample_collection_name]
+    sample_collection.drop()
 
-    sample_doc_cls = _create_sample_document_cls(
-        dataset_doc.sample_collection_name
-    )
-    sample_doc_cls.drop_collection()
+    frame_collection_name = "frames." + dataset_doc.sample_collection_name
+    frame_collection = conn[frame_collection_name]
+    frame_collection.drop()
 
-    frame_doc_cls = _create_frame_document_cls(
-        "frames." + dataset_doc.sample_collection_name
-    )
-    frame_doc_cls.drop_collection()
+
+def _delete_dataset_doc(dataset_doc):
+    #
+    # Must manually cleanup run results, which are stored using GridFS
+    # https://docs.mongoengine.org/guide/gridfs.html#deletion
+    #
+
+    for run_doc in dataset_doc.evaluations.values():
+        if run_doc.results is not None:
+            run_doc.results.delete()
+
+    for run_doc in dataset_doc.brain_methods.values():
+        if run_doc.results is not None:
+            run_doc.results.delete()
 
     dataset_doc.delete()
-
-    return True
 
 
 def _get_sample_ids(samples_or_ids):

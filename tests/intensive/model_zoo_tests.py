@@ -1,6 +1,10 @@
 """
 Model zoo tests.
 
+All of these tests are designed to be run manually via::
+
+    pytest tests/intensive/model_zoo_tests.py -s -k test_<name>
+
 | Copyright 2017-2021, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
@@ -12,61 +16,51 @@ import fiftyone.zoo as foz
 from fiftyone import ViewField as F
 
 
-@unittest.skip("Must be run manually")
 def test_all_models():
     all_models = foz.list_zoo_models()
     _apply_models(all_models)
 
 
-@unittest.skip("Must be run manually")
 def test_classification_models():
     models = _get_models_with_tag("classification")
     _apply_models(models)
 
 
-@unittest.skip("Must be run manually")
 def test_detection_models():
     models = _get_models_with_tag("detection")
     _apply_models(models)
 
 
-@unittest.skip("Must be run manually")
 def test_instance_segmentation_models():
     models = _get_models_with_tag("instances")
     _apply_models(models)
 
 
-@unittest.skip("Must be run manually")
 def test_semantic_segmentation_models():
     models = _get_models_with_tag("segmentation")
     _apply_models(models)
 
 
-@unittest.skip("Must be run manually")
 def test_keypoint_models():
     models = _get_models_with_tag("keypoints")
     _apply_person_keypoint_models(models)
 
 
-@unittest.skip("Must be run manually")
 def test_embedding_models():
     all_models = foz.list_zoo_models()
     _apply_embedding_models(all_models)
 
 
-@unittest.skip("Must be run manually")
 def test_logits_models():
     models = _get_models_with_tag("logits")
     _apply_models_with_logits(models, store_logits=True)
 
 
-@unittest.skip("Must be run manually")
 def test_logits_models_no_logits():
     models = _get_models_with_tag("logits")
     _apply_models_with_logits(models, store_logits=False)
 
 
-@unittest.skip("Must be run manually")
 def test_no_confidence_thresh():
     all_models = foz.list_zoo_models()
     _apply_models(
@@ -74,7 +68,6 @@ def test_no_confidence_thresh():
     )
 
 
-@unittest.skip("Must be run manually")
 def test_confidence_thresh():
     all_models = foz.list_zoo_models()
     _apply_models(
@@ -82,7 +75,6 @@ def test_confidence_thresh():
     )
 
 
-@unittest.skip("Must be run manually")
 def test_batch_size():
     all_models = foz.list_zoo_models()
     _apply_models(all_models, batch_size=5)
