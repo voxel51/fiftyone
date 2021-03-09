@@ -2179,44 +2179,46 @@ class SampleCollection(object):
 
             import fiftyone as fo
             import fiftyone.zoo as foz
-            import fiftyone.utils.geojson as foug
 
-            NYC = [-73.935242, 40.730610]
-
-            MANHATTAN = [
-                [
-                    [-73.949701, 40.834487],
-                    [-73.896611, 40.815076],
-                    [-73.998083, 40.696534],
-                    [-74.031751, 40.715273],
-                    [-73.949701, 40.834487],
-                ]
-            ]
+            TIMES_SQUARE = [-73.9855, 40.7580]
 
             dataset = foz.load_zoo_dataset("quickstart-geo")
 
             #
-            # Sort the samples by their proximity to New York City
+            # Sort the samples by their proximity to Times Square
             #
 
-            view = dataset.geo_near(NYC)
+            view = dataset.geo_near(TIMES_SQUARE)
 
             #
-            # Sort the samples by their proximity to New York City, and only
-            # include samples that are within 80km of city center
+            # Sort the samples by their proximity to Times Square, and only
+            # include samples within 5km
             #
 
-            view = dataset.geo_near(NYC, max_distance=80000)
+            view = dataset.GeoNear(TIMES_SQUARE, max_distance=5000)
 
             #
-            # Sort the samples by their proximity to New York City, and only
-            # include samples that are within a pre-defined polygon
+            # Sort the samples by their proximity to Times Square, and only
+            # include samples that are in Manhattan
             #
 
-            in_manhattan = foug.geo_within("location.point", MANHATTAN)
+            import fiftyone.utils.geojson as foug
+
+            in_manhattan = foug.geo_within(
+                "location.point",
+                [
+                    [
+                        [-73.949701, 40.834487],
+                        [-73.896611, 40.815076],
+                        [-73.998083, 40.696534],
+                        [-74.031751, 40.715273],
+                        [-73.949701, 40.834487],
+                    ]
+                ]
+            )
 
             view = dataset.geo_near(
-                NYC, location_field="location", query=in_manhattan
+                TIMES_SQUARE, location_field="location", query=in_manhattan
             )
 
         Args:
@@ -2269,7 +2271,6 @@ class SampleCollection(object):
 
             import fiftyone as fo
             import fiftyone.zoo as foz
-            from fiftyone import ViewField as F
 
             MANHATTAN = [
                 [
@@ -2284,11 +2285,10 @@ class SampleCollection(object):
             dataset = foz.load_zoo_dataset("quickstart-geo")
 
             #
-            # Create a view that only contains samples in the Manhattan area
+            # Create a view that only contains samples in Manhattan
             #
 
-            stage = fo.GeoWithin(MANHATTAN)
-            view = dataset.add_stage(stage)
+            view = dataset.geo_within(MANHATTAN)
 
         Args:
             boundary: a :class:`fiftyone.core.labels.GeoLocation`,
