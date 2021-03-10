@@ -328,29 +328,6 @@ def _get_label_object_ids(label):
     raise TypeError("Cannot serialize label type: " + str(type(label)))
 
 
-def _make_frame_labels(name, label, frame_number, prefix=""):
-    label = fol.ImageLabel.from_dict(label)
-    labels = etav.VideoFrameLabels.from_image_labels(
-        label.to_image_labels(name=prefix + name), frame_number,
-    )
-
-    for obj in labels.objects:
-        obj.frame_number = frame_number
-
-    for attr in labels.attributes():
-        container = getattr(labels, attr)
-        if isinstance(container, etal.LabelsContainer):
-            object_ids = _get_label_object_ids(label)
-            assert len(container) == len(object_ids)
-            for (obj, object_id) in zip(container, object_ids):
-                # force _id to be serialized
-                obj._id = object_id
-                attrs = obj.attributes() + ["_id"]
-                obj.attributes = lambda: attrs
-
-    return labels
-
-
 class StateHandler(tornado.websocket.WebSocketHandler):
     """WebSocket handler for bi-directional state communication.
 
@@ -535,24 +512,9 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         if view.media_type == fom.VIDEO:
             view = view.set_field("frames", F("frames")[0])
 
-        pipeline = view._pipeline()
-        samples = (
-            await cls.sample_collection()
-            .aggregate(pipeline)
-            .to_list(page_length + 1)
+        results, more = await _get_sample_data(
+            cls.sample_collection(), view, page_length, page
         )
-        convert(samples)
-        more = False
-        if len(samples) > page_length:
-            samples = samples[:page_length]
-            more = page + 1
-
-        results = [{"sample": s} for s in samples]
-        for r in results:
-            w, h = get_file_dimensions(r["sample"]["filepath"])
-            r["width"] = w
-            r["height"] = h
-            # default to image
 
         message = {
             "type": "page",
@@ -661,51 +623,10 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         """
         state = fos.StateDescription.from_dict(StateHandler.state)
         view = state.view or state.dataset
-        view = view.select(_id)
-        pipeline = view._pipeline()
-        sample = (
-            await self.sample_collection().aggregate(pipeline).to_list(1)
-        )[0]
 
-        frames = sample["frames"]
-        convert(frames)
-
-        labels = etav.VideoLabels()
-        for frame_dict in frames:
-            frame_number = frame_dict["frame_number"]
-            frame_labels = etav.VideoFrameLabels(frame_number=frame_number)
-            for k, v in frame_dict.items():
-                if isinstance(v, dict) and "_cls" in v:
-                    field_labels = _make_frame_labels(
-                        k, v, frame_number, prefix=view._FRAMES_PREFIX
-                    )
-                    frame_labels.merge_labels(field_labels)
-
-            labels.add_frame(frame_labels)
-
-        sample_schema = state.dataset.get_field_schema()
-        for frame_number in range(
-            1, etav.get_frame_count(sample["filepath"]) + 1
-        ):
-            frame_labels = etav.VideoFrameLabels(frame_number=frame_number)
-            for k, v in sample.items():
-                if k not in sample_schema:
-                    continue
-
-                field = sample_schema[k]
-                if not isinstance(field, fof.EmbeddedDocumentField):
-                    continue
-
-                if not issubclass(field.document_type, fol.Label):
-                    continue
-
-                field_labels = _make_frame_labels(k, v, frame_number)
-                for obj in field_labels.objects:
-                    obj.frame_number = frame_number
-
-                frame_labels.merge_labels(field_labels)
-
-            labels.add_frame(frame_labels, overwrite=False)
+        sample, frames, labels = await _get_video_data(
+            self.sample_collection(), state, view, _id
+        )
 
         fps = etav.get_frame_rate(sample["filepath"])
         self.write_message(
@@ -719,36 +640,50 @@ class StateHandler(tornado.websocket.WebSocketHandler):
 
     @staticmethod
     async def on_tag(
-        caller,
-        tag,
-        untag=False,
-        target_labels=False,
-        selected=False,
-        active_labels=None,
-        modal=False,
+        caller, tag, untag=False, target_labels=False, active_labels=None,
     ):
         state = fos.StateDescription.from_dict(StateHandler.state)
         view = state.view or state.dataset
         view = _get_extended_view(view, state.filters)
-        if selected and modal:
-            view = view.select_labels(labels=state.selected_labels)
-        elif selected:
-            view = view.select(labels=state.selected)
+        if state.selected:
+            view = view.select(state.selected)
 
-        if active_labels:
-            view = view.select_fields(active_labels)
-
-        if untag and target_labels:
-            view.untag_labels(tag, active_labels)
-        elif target_labels:
-            view.tag_labels(tag, active_labels)
-        elif untag:
-            view.untag_samples(tag)
-        else:
-            view.tag_samples(tag)
+        _tag(view, tag, untag, target_labels, active_labels)
 
         StateHandler.state["refresh"] = not state.refresh
         await StateHandler.on_update(caller, StateHandler.state)
+
+    @staticmethod
+    async def on_tag_modal(
+        caller,
+        sample_id,
+        tag,
+        untag=False,
+        target_labels=False,
+        active_labels=None,
+        filters={},
+    ):
+        state = fos.StateDescription.from_dict(StateHandler.state)
+        view = state.view or state.dataset
+        tag_view = view.select(sample_id)
+        tag_view = _get_extended_view(view, filters)
+
+        _tag(tag_view, tag, untag, target_labels, active_labels)
+        asyncio.gather(
+            StateHandler.send_sample(caller, sample_id),
+            StateHandler.send_statistics(view),
+        )
+
+    @classmethod
+    async def send_sample(cls, view, sample_id):
+        state = fos.StateDescription.from_dict(StateHandler.state)
+        view = state.view or state.dataset
+        if view.media_type == fom.VIDEO:
+            sample, frames, labels = _get_video_data(
+                cls.sample_collection(), state, view, sample_id
+            )
+        else:
+            pass
 
     @classmethod
     def get_statistics_awaitables(cls, only=None):
@@ -1198,6 +1133,109 @@ def _make_filter_stages(dataset, filters):
                 stages.append(fosg.Match(expr))
 
     return stages
+
+
+def _tag(view, tag, untag, target_labels, active_labels):
+    if untag and target_labels:
+        view.untag_labels(tag, active_labels)
+    elif target_labels:
+        view.tag_labels(tag, active_labels)
+    elif untag:
+        view.untag_samples(tag)
+    else:
+        view.tag_samples(tag)
+
+
+async def _get_sample_data(col, view, page_length, page):
+    pipeline = view._pipeline()
+    samples = await col.aggregate(pipeline).to_list(page_length + 1)
+    convert(samples)
+    more = False
+    if len(samples) > page_length:
+        samples = samples[:page_length]
+        more = page + 1
+
+    results = [{"sample": s} for s in samples]
+    for r in results:
+        w, h = get_file_dimensions(r["sample"]["filepath"])
+        r["width"] = w
+        r["height"] = h
+
+    return results, more
+
+
+async def _get_video_data(col, state, view, _id):
+    view = view.select(_id)
+    pipeline = view._pipeline()
+    sample = (await col.aggregate(pipeline).to_list(1))[0]
+
+    frames = sample["frames"]
+    convert(frames)
+    labels = _make_video_labels(state, view, sample, frames)
+
+    return sample, frames, labels
+
+
+def _make_frame_labels(name, label, frame_number, prefix=""):
+    label = fol.ImageLabel.from_dict(label)
+    labels = etav.VideoFrameLabels.from_image_labels(
+        label.to_image_labels(name=prefix + name), frame_number,
+    )
+
+    for obj in labels.objects:
+        obj.frame_number = frame_number
+
+    for attr in labels.attributes():
+        container = getattr(labels, attr)
+        if isinstance(container, etal.LabelsContainer):
+            object_ids = _get_label_object_ids(label)
+            assert len(container) == len(object_ids)
+            for (obj, object_id) in zip(container, object_ids):
+                # force _id to be serialized
+                obj._id = object_id
+                attrs = obj.attributes() + ["_id"]
+                obj.attributes = lambda: attrs
+
+    return labels
+
+
+def _make_video_labels(state, view, sample, frames):
+    labels = etav.VideoLabels()
+    for frame_dict in frames:
+        frame_number = frame_dict["frame_number"]
+        frame_labels = etav.VideoFrameLabels(frame_number=frame_number)
+        for k, v in frame_dict.items():
+            if isinstance(v, dict) and "_cls" in v:
+                field_labels = _make_frame_labels(
+                    k, v, frame_number, prefix=view._FRAMES_PREFIX
+                )
+                frame_labels.merge_labels(field_labels)
+
+        labels.add_frame(frame_labels)
+
+    sample_schema = state.dataset.get_field_schema()
+    for frame_number in range(1, etav.get_frame_count(sample["filepath"]) + 1):
+        frame_labels = etav.VideoFrameLabels(frame_number=frame_number)
+        for k, v in sample.items():
+            if k not in sample_schema:
+                continue
+
+            field = sample_schema[k]
+            if not isinstance(field, fof.EmbeddedDocumentField):
+                continue
+
+            if not issubclass(field.document_type, fol.Label):
+                continue
+
+            field_labels = _make_frame_labels(k, v, frame_number)
+            for obj in field_labels.objects:
+                obj.frame_number = frame_number
+
+            frame_labels.merge_labels(field_labels)
+
+        labels.add_frame(frame_labels, overwrite=False)
+
+    return labels
 
 
 _DEFAULT_NUM_HISTOGRAM_BINS = 25

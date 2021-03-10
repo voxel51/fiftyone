@@ -352,20 +352,12 @@ export const labelCount = selectorFamily<number | null, boolean>({
   get: (modal) => ({ get }) => {
     const labels = get(activeLabels({ modal, frames: false }));
     const frameLabels = get(activeLabels({ modal, frames: false }));
-    const hasFilters = Object.keys(get(selectors.filterStages)).length;
+    const hasFilters = Object.keys(get(selectors.filterStages)).length > 0;
 
     const [counts, frameCounts] = modal
       ? [
-          get(
-            hasFilters
-              ? filteredLabelSampleModalCounts("sample")
-              : labelSampleModalCounts("sample")
-          ),
-          get(
-            hasFilters
-              ? filteredLabelSampleModalCounts("frame")
-              : labelSampleModalCounts("frame")
-          ),
+          get(filteredLabelSampleModalCounts("sample")),
+          get(filteredLabelSampleModalCounts("frame")),
         ]
       : [
           get(
