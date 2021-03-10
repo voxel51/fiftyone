@@ -1700,7 +1700,7 @@ class _GeoStage(ViewStage):
 
 class GeoNear(_GeoStage):
     """Sorts the samples in a collection by their proximity to a specified
-    geo-location.
+    geolocation.
 
     .. note::
 
@@ -1882,7 +1882,7 @@ class GeoNear(_GeoStage):
 
 class GeoWithin(_GeoStage):
     """Filters the samples in a collection to only match samples whose
-    geo-location is within a specified boundary.
+    geolocation is within a specified boundary.
 
     Examples::
 

@@ -1229,7 +1229,7 @@ class BDDDataset(ImageLabelsDataset):
 
 
 class GeoJSONImageDataset(ImageLabelsDataset):
-    """An image dataset whose geo-location data and optional properties are
+    """An image dataset whose geolocation data and optional properties are
     stored in `GeoJSON format <https://en.wikipedia.org/wiki/GeoJSON>`_.
 
     Datasets of this type are read/written in the following format::

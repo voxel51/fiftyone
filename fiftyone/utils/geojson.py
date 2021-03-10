@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 def load_location_data(
     samples, geojson_or_path, location_field=None, skip_missing=True
 ):
-    """Loads geo-location data for the given samples from the given GeoJSON
+    """Loads geolocation data for the given samples from the given GeoJSON
     data.
 
     The GeoJSON data must be a ``FeatureCollection`` whose features have either

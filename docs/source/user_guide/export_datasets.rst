@@ -1752,7 +1752,7 @@ GeoJSONImageDataset
 
 The :class:`fiftyone.types.GeoJSONImageDataset <fiftyone.types.dataset_types.GeoJSONImageDataset>`
 type represents a dataset consisting of images and their associated
-geo-location data and optional properties stored in
+geolocation data and optional properties stored in
 `GeoJSON format <https://en.wikipedia.org/wiki/GeoJSON>`_.
 
 Datasets of this type are exported in the following format:

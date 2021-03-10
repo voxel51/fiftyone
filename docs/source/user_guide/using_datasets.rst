@@ -1751,10 +1751,10 @@ is rendered as a distinct color.
     dataset in the App, label strings will appear in the App's tooltip when you
     hover over pixels.
 
-.. _geo-location:
+.. _geolocation:
 
-Geo-location
-------------
+Geolocation
+-----------
 
 The |GeoLocation| class can store single pieces of location data in its
 properties:
@@ -1779,7 +1779,7 @@ properties:
 
 .. note::
 
-    All geo-location coordinates are stored in ``[longitude, latitude]``
+    All geolocation coordinates are stored in ``[longitude, latitude]``
     format.
 
 If you have multiple geometries of each type that you wish to store on a single
@@ -1836,7 +1836,7 @@ properites to do so.
 .. note::
 
     Did you know? You can create
-    :ref:`location-based views <geo-location-views>` that filter your data by
+    :ref:`location-based views <geolocation-views>` that filter your data by
     their location!
 
 All location data is stored in

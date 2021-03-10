@@ -556,12 +556,12 @@ stage to filter the contents of arbitrarily-typed fields:
             # are deleted
             sample.save()
 
-.. _geo-location-views:
+.. _geolocation-views:
 
-Geo-location
-____________
+Geolocation
+___________
 
-If your samples have :ref:`geo-location data <geo-location>`, then you can
+If your samples have :ref:`geolocation data <geolocation>`, then you can
 use the
 :meth:`geo_near() <fiftyone.core.collections.SampleCollection.geo_near>` and
 :meth:`geo_within() <fiftyone.core.collections.SampleCollection.geo_within>`

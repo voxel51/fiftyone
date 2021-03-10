@@ -2168,7 +2168,7 @@ class SampleCollection(object):
         query=None,
     ):
         """Sorts the samples in the collection by their proximity to a
-        specified geo-location.
+        specified geolocation.
 
         .. note::
 
@@ -2265,7 +2265,7 @@ class SampleCollection(object):
     @view_stage
     def geo_within(self, boundary, location_field=None, strict=True):
         """Filters the samples in this collection to only include samples whose
-        geo-location is within a specified boundary.
+        geolocation is within a specified boundary.
 
         Examples::
 

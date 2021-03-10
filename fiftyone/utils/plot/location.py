@@ -50,7 +50,7 @@ def location_scatterplot(
     This method is a thin layer on top of
     :meth:`fiftyone.utils.plot.scatter.scatterplot` that renders a background
     image using Google Maps and performs the necessary coordinate
-    transformations to correctly render a geo-location scatterplot.
+    transformations to correctly render a geolocation scatterplot.
 
     See :meth:`fiftyone.utils.plot.scatter.scatterplot` for more usage details.
 
