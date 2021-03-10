@@ -933,7 +933,7 @@ class QuickstartGeoDataset(FiftyOneDataset):
 
     @property
     def tags(self):
-        return ("image", "quickstart", "location")
+        return ("image", "location", "quickstart")
 
     @property
     def supported_splits(self):

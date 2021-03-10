@@ -54,6 +54,8 @@ This page lists all of the datasets available in the Dataset Zoo.
     +--------------------------------------------------------------------+---------------------------------------------+
     | :ref:`Quickstart <dataset-zoo-quickstart>`                         | image, quickstart                           |
     +--------------------------------------------------------------------+---------------------------------------------+
+    | :ref:`Quickstart Geo <dataset-zoo-quickstart-geo>`                 | image, location, quickstart                 |
+    +--------------------------------------------------------------------+---------------------------------------------+
     | :ref:`Quickstart Video <dataset-zoo-quickstart-video>`             | video, quickstart                           |
     +--------------------------------------------------------------------+---------------------------------------------+
     | :ref:`UCF101 <dataset-zoo-ucf101>`                                 | video, action-recognition                   |
@@ -1213,6 +1215,53 @@ from
 
 .. image:: ../../images/dataset_zoo/quickstart.png
    :alt: quickstart
+   :align: center
+
+.. _dataset-zoo-quickstart-geo:
+
+Quickstart Geo
+--------------
+
+A small dataset with geolocation data.
+
+The dataset consists of 500 images from the validation split of the BDD100K
+dataset in the New York City area with object detections and GPS timestamps.
+
+**Details**
+
+-   Dataset name: ``quickstart-geo``
+-   Dataset size: 33.50 MB
+-   Tags: ``image, location, quickstart``
+-   Supported splits: ``N/A``
+-   ZooDataset class:
+    :class:`QuickstartGeoDataset <fiftyone.zoo.datasets.base.QuickstartGeoDataset>`
+
+**Example usage**
+
+.. tabs::
+
+  .. group-tab:: Python
+
+    .. code-block:: python
+        :linenos:
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("quickstart-geo")
+
+        session = fo.launch_app(dataset)
+
+  .. group-tab:: CLI
+
+    .. code-block:: shell
+
+        fiftyone zoo datasets load quickstart-geo
+
+        fiftyone app launch quickstart-geo
+
+.. image:: ../../images/dataset_zoo/quickstart-geo.png
+   :alt: quickstart-geo
    :align: center
 
 .. _dataset-zoo-quickstart-video:
