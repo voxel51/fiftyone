@@ -4,6 +4,7 @@ import { animated, useSpring } from "react-spring";
 import { useRecoilState, useRecoilValue } from "recoil";
 import { CircularProgress } from "@material-ui/core";
 
+import * as labelAtoms from "../Filters/LabelFieldFilters.state";
 import { useTheme } from "../../utils/hooks";
 import * as fieldAtoms from "../Filters/utils";
 import { packageMessage } from "../../utils/socket";
@@ -88,19 +89,26 @@ const TaggingInput = styled.input`
   }
 `;
 
-const Section = ({ modal, placeholder, submit, taggingAtom }) => {
+const Section = ({
+  modal,
+  placeholder,
+  submit,
+  taggingAtom,
+  labels = false,
+}) => {
   const count = useRecoilValue(selectors.currentCount);
+  const labelCount = useRecoilValue(labelAtoms.labelCount(modal));
   const [tagging, setTagging] = useRecoilState(taggingAtom);
   const [untag, setUntag] = useState(false);
   const numSelected = modal
     ? Object.keys(useRecoilValue(atoms.selectedObjects)).length
     : useRecoilValue(atoms.selectedSamples).size;
   const isInSelection = numSelected > 0;
-  console.log(isInSelection);
   const [value, setValue] = useState("");
   const disabled = tagging || typeof count !== "number" || count === 0;
 
-  const numSamples = isInSelection ? numSelected : count;
+  const numLabels = modal && isInSelection ? numSelected : labelCount;
+  const numSamples = isInSelection && !modal ? numSelected : modal ? 1 : count;
 
   return (
     <>
@@ -109,7 +117,7 @@ const Section = ({ modal, placeholder, submit, taggingAtom }) => {
           placeholder={
             disabled
               ? "loading..."
-              : placeholder(isInSelection, numSamples, untag)
+              : placeholder(isInSelection, numLabels, numSamples, untag)
           }
           value={value}
           onChange={(e) => setValue(e.target.value)}
@@ -170,43 +178,56 @@ type TaggerProps = {
   modal: boolean;
 };
 
-const labelsPlaceholder = (selection, num, untag) => {
-  if (num === 0) {
+const labelsPlaceholder = (selection, numLabels, numSamples, untag) => {
+  if (numSamples === 0) {
     return "no samples";
   }
+  if (numLabels === 0) {
+    return "no labels";
+  }
   if (selection) {
-    return `${
-      untag ? "- untag" : "+ tag"
-    } selected labels in ${num} selected sample${num === 1 ? "" : "s"}`;
+    return `${untag ? "- untag" : "+ tag"} ${
+      numLabels > 1 ? `${numLabels} ` : ""
+    }shown label${numLabels > 1 ? "s" : ""} in ${
+      numSamples > 1 ? numSamples : " "
+    }selected sample${numSamples === 1 ? "" : "s"}`;
   }
 
-  return `${untag ? "- untag" : "+ tag"} shown labels in  ${num} sample${
-    num === 1 ? "" : "s"
+  return `${untag ? "- untag" : "+ tag"} ${numLabels} shown label${
+    numLabels > 1 ? "s" : ""
+  } in ${numSamples > 1 ? `${numSamples} ` : ""}sample${
+    numSamples === 1 ? "" : "s"
   }`;
 };
 
-const labelsModalPlaceholder = (selection, num, untag) => {
+const labelsModalPlaceholder = (selection, numLabels, numSamples, untag) => {
   if (selection) {
-    return `${untag ? "- untag" : "+ tag"} ${num} selected labels`;
+    return `${untag ? "- untag" : "+ tag"} ${
+      numLabels > 1 ? `${numLabels} ` : ""
+    }selected label`;
   }
 
-  return `${untag ? "- untag" : "+ tag"} ${num} visible labels`;
+  return `${untag ? "- untag" : "+ tag"} ${
+    numLabels > 1 ? `${numLabels} ` : ""
+  }shown labels`;
 };
 
-const samplesPlaceholder = (selection, num, untag) => {
-  if (num === 0) {
+const samplesPlaceholder = (selection, numLabels, numSamples, untag) => {
+  if (numSamples === 0) {
     return "no samples";
   }
   if (selection) {
-    return `${untag ? "- untag" : "+ tag"} ${num} selected sample${
-      num === 1 ? "" : "s"
-    }`;
+    return `${untag ? "- untag" : "+ tag"} ${
+      numSamples > 1 ? `${numSamples} ` : ""
+    }selected sample${numSamples === 1 ? "" : "s"}`;
   }
 
-  return `${untag ? "- untag" : "+ tag"} ${num} sample${num === 1 ? "" : "s"}`;
+  return `${untag ? "- untag" : "+ tag"} ${
+    numSamples > 1 ? `${numSamples} ` : ""
+  }sample${numSamples === 1 ? "" : "s"}`;
 };
 
-const samplePlaceholder = (_, __, untag) => {
+const samplePlaceholder = (_, __, ___, untag) => {
   if (untag) {
     return "- untag sample";
   }
@@ -267,6 +288,7 @@ const Tagger = ({ modal, bounds }: TaggerProps) => {
             })
           )
         }
+        labels={labels}
         taggingAtom={atoms.tagging({ modal, labels })}
       />
     </Popout>

@@ -3,6 +3,7 @@ import { atomFamily, selector, selectorFamily } from "recoil";
 import { Range } from "./RangeSlider";
 import {
   activeFields,
+  activeLabels,
   isBooleanField,
   isNumericField,
   isStringField,
@@ -343,5 +344,53 @@ export const filteredLabelSampleModalCounts = selectorFamily<
       }
       return acc;
     }, {});
+  },
+});
+
+export const labelCount = selectorFamily<number | null, boolean>({
+  key: "labelCount",
+  get: (modal) => ({ get }) => {
+    const labels = get(activeLabels({ modal, frames: false }));
+    const frameLabels = get(activeLabels({ modal, frames: false }));
+    const hasFilters = Object.keys(get(selectors.filterStages)).length;
+
+    const [counts, frameCounts] = modal
+      ? [
+          get(
+            hasFilters
+              ? filteredLabelSampleModalCounts("sample")
+              : labelSampleModalCounts("sample")
+          ),
+          get(
+            hasFilters
+              ? filteredLabelSampleModalCounts("frame")
+              : labelSampleModalCounts("frame")
+          ),
+        ]
+      : [
+          get(
+            hasFilters
+              ? filteredLabelSampleCounts("sample")
+              : labelSampleCounts("sample")
+          ),
+          get(
+            hasFilters
+              ? filteredLabelSampleCounts("frame")
+              : labelSampleCounts("frame")
+          ),
+        ];
+
+    let sum = 0;
+
+    labels.forEach((l) => {
+      if (!counts[l]) return;
+      sum += counts[l];
+    });
+
+    frameLabels.forEach((l) => {
+      if (!frameCounts[l]) return;
+      sum += frameCounts[l];
+    });
+    return sum;
   },
 });
