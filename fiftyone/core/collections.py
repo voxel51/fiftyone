@@ -4288,11 +4288,17 @@ class SampleCollection(object):
 
         d["info"] = self.info
 
-        d["classes"] = self.classes
-        d["default_classes"] = self.default_classes
+        if self.classes:
+            d["classes"] = self.classes
 
-        d["mask_targets"] = self._serialize_mask_targets()
-        d["default_mask_targets"] = self._serialize_default_mask_targets()
+        if self.default_classes:
+            d["default_classes"] = self.default_classes
+
+        if self.mask_targets:
+            d["mask_targets"] = self._serialize_mask_targets()
+
+        if self.default_mask_targets:
+            d["default_mask_targets"] = self._serialize_default_mask_targets()
 
         # Serialize samples
         samples = []

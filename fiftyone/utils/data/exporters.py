@@ -754,12 +754,20 @@ class FiftyOneDatasetExporter(GenericSampleDatasetExporter):
 
         # Package classes and mask targets into `info`, since the import API
         # only supports checking for `info`
-        info["classes"] = sample_collection.classes
-        info["default_classes"] = sample_collection.default_classes
-        info["mask_targets"] = sample_collection._serialize_mask_targets()
-        info[
-            "default_mask_targets"
-        ] = sample_collection._serialize_default_mask_targets()
+
+        if sample_collection.classes:
+            info["classes"] = sample_collection.classes
+
+        if sample_collection.default_classes:
+            info["default_classes"] = sample_collection.default_classes
+
+        if sample_collection.mask_targets:
+            info["mask_targets"] = sample_collection._serialize_mask_targets()
+
+        if sample_collection.default_mask_targets:
+            info[
+                "default_mask_targets"
+            ] = sample_collection._serialize_default_mask_targets()
 
         self._metadata["info"] = info
 
