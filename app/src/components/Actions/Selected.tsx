@@ -1,5 +1,10 @@
 import React, { useState } from "react";
-import { useRecoilState, useRecoilValue, useResetRecoilState } from "recoil";
+import {
+  useRecoilState,
+  useRecoilValue,
+  useResetRecoilState,
+  useSetRecoilState,
+} from "recoil";
 import { animated, useSpring } from "react-spring";
 import styled from "styled-components";
 
@@ -14,7 +19,6 @@ import {
   removeMatchingObjectsFromSelection,
   convertSelectedObjectsMapToList,
 } from "../../utils/selection";
-import useMeasure from "react-use-measure";
 
 const useHighlightHover = (disabled) => {
   const [hovering, setHovering] = useState(false);
@@ -93,15 +97,16 @@ const getGridActions = (close) => {
   const socket = useRecoilValue(selectors.socket);
 
   const clearSelection = () => {
+    close();
     setSelectedSamples(new Set());
     const newState = JSON.parse(JSON.stringify(stateDescription));
     newState.selected = [];
     setStateDescription(newState);
     socket.send(packageMessage("clear_selection", {}));
-    close();
   };
 
   const addStage = (name, callback = () => {}) => {
+    close();
     const newState = JSON.parse(JSON.stringify(stateDescription));
     const newView = newState.view || [];
     newView.push({
@@ -112,7 +117,6 @@ const getGridActions = (close) => {
     newState.selected = [];
     socket.send(packageMessage("update", { state: newState }));
     setStateDescription(newState);
-    close();
     callback();
   };
 
@@ -144,8 +148,8 @@ const getModalActions = (frameNumberRef, close) => {
     atoms.selectedObjects
   );
   const resetSelectedObjects = useResetRecoilState(atoms.selectedObjects);
-  const [hiddenObjects, setHiddenObjects] = useRecoilState(atoms.hiddenObjects);
-  const resetHiddenObjects = useResetRecoilState(atoms.hiddenObjects);
+  const setHiddenObjects = useSetRecoilState(atoms.hiddenObjects);
+  const hiddenObjectIds = useRecoilValue(selectors.hiddenObjectIds);
 
   const sampleFrameData =
     useRecoilValue(atoms.sampleFrameData(sample._id)) || [];
@@ -162,13 +166,16 @@ const getModalActions = (frameNumberRef, close) => {
   const sampleObjects = isVideo
     ? sampleFrameData
         .map(listSampleObjects)
+        .filter((o) => hiddenObjectIds.has(o._id))
         .map((arr, i) => _addFrameNumberToObjects(arr, i + 1))
         .flat()
     : listSampleObjects(sample);
   const frameObjects =
     isVideo && frameNumber && sampleFrameData[frameNumber - 1]
       ? _addFrameNumberToObjects(
-          listSampleObjects(sampleFrameData[frameNumber - 1]),
+          listSampleObjects(sampleFrameData[frameNumber - 1]).filter(
+            (o) => !hiddenObjectIds.has(o._id)
+          ),
           frameNumber
         )
       : [];
@@ -264,7 +271,10 @@ const getModalActions = (frameNumberRef, close) => {
     {
       text: "Clear selection",
       disabled: !numTotalSelectedObjects,
-      onClick: () => resetSelectedObjects(),
+      onClick: () => {
+        close();
+        resetSelectedObjects();
+      },
     },
     {
       text: "Hide selected",

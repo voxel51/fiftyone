@@ -49,7 +49,7 @@ const Selected = ({ modal, frameNumberRef, ...rest }) => {
     ? Object.keys(selectedObjects).length
     : selectedSamples.size;
 
-  if (numItems < 1) {
+  if (numItems < 1 && !modal) {
     return null;
   }
   return (
@@ -58,7 +58,7 @@ const Selected = ({ modal, frameNumberRef, ...rest }) => {
         icon={<Check />}
         open={open}
         onClick={() => setOpen(!open)}
-        highlight={true}
+        highlight={numItems > 0 || open}
         text={`${numItems}`}
         ref={mRef}
       />

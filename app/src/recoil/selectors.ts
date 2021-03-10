@@ -928,3 +928,10 @@ export const anyTagging = selector<boolean>({
     );
   },
 });
+
+export const hiddenObjectIds = selector({
+  key: "hiddenObjectIds",
+  get: ({ get }) => {
+    return new Set(Object.keys(get(atoms.hiddenObjects)));
+  },
+});
