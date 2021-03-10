@@ -155,6 +155,9 @@ format when reading the dataset from disk.
     | :ref:`BDDDataset <BDDDataset-import>`                                                 | A labeled dataset consisting of images and their associated multitask predictions  |
     |                                                                                       | saved in `Berkeley DeepDrive (BDD) format <https://bdd-data.berkeley.edu>`_.       |
     +---------------------------------------------------------------------------------------+------------------------------------------------------------------------------------+
+    | :ref:`GeoJSONImageDataset <GeoJSONImageDataset-import>`                               | An image dataset whose labels and location data are stored in                      |
+    |                                                                                       | `GeoJSON format <https://en.wikipedia.org/wiki/GeoJSON>`_.                         |
+    +---------------------------------------------------------------------------------------+------------------------------------------------------------------------------------+
     | :ref:`FiftyOneVideoLabelsDataset <FiftyOneVideoLabelsDataset-import>`                 | A labeled dataset consisting of videos and their associated multitask predictions  |
     |                                                                                       | stored in `ETA VideoLabels format \                                                |
     |                                                                                       | <https://github.com/voxel51/eta/blob/develop/docs/video_labels_guide.md>`_.        |
@@ -234,7 +237,7 @@ You can create a FiftyOne dataset from a directory of images as follows:
 
         DATASET_DIR=/path/to/images-dir
 
-        # View the dataset in the app
+        # View the dataset in the App
         fiftyone app view \
             --dataset-dir $DATASET_DIR \
             --type fiftyone.types.ImageDirectory
@@ -307,7 +310,7 @@ You can create a FiftyOne dataset from a directory of videos as follows:
 
         DATASET_DIR=/path/to/videos-dir
 
-        # View the dataset in the app
+        # View the dataset in the App
         fiftyone app view \
             --dataset-dir $DATASET_DIR \
             --type fiftyone.types.VideoDirectory
@@ -407,7 +410,7 @@ in the above format as follows:
 
         DATASET_DIR=/path/to/image-classification-dataset
 
-        # View the dataset in the app
+        # View the dataset in the App
         fiftyone app view \
             --dataset-dir $DATASET_DIR \
             --type fiftyone.types.FiftyOneImageClassificationDataset
@@ -490,7 +493,7 @@ stored in the above format as follows:
 
         DATASET_DIR=/path/to/image-classification-dir-tree
 
-        # View the dataset in the app
+        # View the dataset in the App
         fiftyone app view \
             --dataset-dir $DATASET_DIR \
             --type fiftyone.types.ImageClassificationDirectoryTree
@@ -573,7 +576,7 @@ stored in the above format as follows:
 
         DATASET_DIR=/path/to/video-classification-dir-tree
 
-        # View the dataset in the app
+        # View the dataset in the App
         fiftyone app view \
             --dataset-dir $DATASET_DIR \
             --type fiftyone.types.VideoClassificationDirectoryTree
@@ -684,7 +687,7 @@ as a directory of TFRecords in the above format as follows:
 
         DATASET_DIR=/path/to/tf-image-classification-dataset
 
-        # View the dataset in the app
+        # View the dataset in the App
         fiftyone app view \
             --dataset-dir $DATASET_DIR \
             --type fiftyone.types.TFImageClassificationDataset
@@ -803,7 +806,7 @@ above format as follows:
 
         DATASET_DIR=/path/to/image-detection-dataset
 
-        # View the dataset in the app
+        # View the dataset in the App
         fiftyone app view \
             --dataset-dir $DATASET_DIR \
             --type fiftyone.types.FiftyOneImageDetectionDataset
@@ -934,7 +937,7 @@ above format as follows:
 
         DATASET_DIR=/path/to/coco-detection-dataset
 
-        # View the dataset in the app
+        # View the dataset in the App
         fiftyone app view \
             --dataset-dir $DATASET_DIR \
             --type fiftyone.types.COCODetectionDataset
@@ -1063,7 +1066,7 @@ above format as follows:
 
         DATASET_DIR=/path/to/voc-detection-dataset
 
-        # View the dataset in the app
+        # View the dataset in the App
         fiftyone app view \
             --dataset-dir $DATASET_DIR \
             --type fiftyone.types.VOCDetectionDataset
@@ -1185,7 +1188,7 @@ above format as follows:
 
         DATASET_DIR=/path/to/kitti-detection-dataset
 
-        # View the dataset in the app
+        # View the dataset in the App
         fiftyone app view \
             --dataset-dir $DATASET_DIR \
             --type fiftyone.types.KITTIDetectionDataset
@@ -1296,7 +1299,7 @@ format as follows:
 
         DATASET_DIR=/path/to/yolo-dataset
 
-        # View the dataset in the app
+        # View the dataset in the App
         fiftyone app view \
             --dataset-dir $DATASET_DIR \
             --type fiftyone.types.YOLODataset
@@ -1427,7 +1430,7 @@ directory of TFRecords in the above format as follows:
 
         DATASET_DIR=/path/to/tf-object-detection-dataset
 
-        # View the dataset in the app
+        # View the dataset in the App
         fiftyone app view \
             --dataset-dir $DATASET_DIR \
             --type fiftyone.types.TFObjectDetectionDataset
@@ -1555,7 +1558,7 @@ format as follows:
 
         DATASET_DIR=/path/to/cvat-image-dataset
 
-        # View the dataset in the app
+        # View the dataset in the App
         fiftyone app view \
             --dataset-dir $DATASET_DIR \
             --type fiftyone.types.CVATImageDataset
@@ -1715,7 +1718,7 @@ format as follows:
 
         DATASET_DIR=/path/to/cvat-video-dataset
 
-        # View the dataset in the app
+        # View the dataset in the App
         fiftyone app view \
             --dataset-dir $DATASET_DIR \
             --type fiftyone.types.CVATVideoDataset
@@ -1822,7 +1825,7 @@ above format as follows:
 
         DATASET_DIR=/path/to/image-labels-dataset
 
-        # View the dataset in the app
+        # View the dataset in the App
         fiftyone app view \
             --dataset-dir $DATASET_DIR \
             --type fiftyone.types.FiftyOneImageLabelsDataset
@@ -1929,7 +1932,7 @@ above format as follows:
 
         DATASET_DIR=/path/to/video-labels-dataset
 
-        # View the dataset in the app
+        # View the dataset in the App
         fiftyone app view \
             --dataset-dir $DATASET_DIR \
             --type fiftyone.types.FiftyOneVideoLabelsDataset
@@ -2087,10 +2090,141 @@ as follows:
 
         DATASET_DIR=/path/to/bdd-dataset
 
-        # View the dataset in the app
+        # View the dataset in the App
         fiftyone app view \
             --dataset-dir $DATASET_DIR \
             --type fiftyone.types.BDDDataset
+
+.. _GeoJSONImageDataset-import:
+
+GeoJSONImageDataset
+-------------------
+
+The :class:`fiftyone.types.GeoJSONImageDataset <fiftyone.types.dataset_types.GeoJSONImageDataset>`
+type represents a dataset consisting of images and their associated
+geo-location data and optional properties stored in
+`GeoJSON format <https://en.wikipedia.org/wiki/GeoJSON>`_.
+
+Datasets of this type are read in the following format:
+
+.. code-block:: text
+
+    <dataset_dir>/
+        data/
+            <filename1>.<ext>
+            <filename2>.<ext>
+            ...
+        labels.json
+
+where ``labels.json`` is a GeoJSON file containing a ``FeatureCollection`` in
+the following format:
+
+.. code-block:: text
+
+    {
+        "type": "FeatureCollection",
+        "features": [
+            {
+                "type": "Feature",
+                "geometry": {
+                    "type": "Point",
+                    "coordinates": [
+                        -73.99496451958454,
+                        40.66338032487842
+                    ]
+                },
+                "properties": {
+                    "filename": <filename1>.<ext>,
+                    ...
+                }
+            },
+            {
+                "type": "Feature",
+                "geometry": {
+                    "type": "Point",
+                    "coordinates": [
+                        -73.80992143421788,
+                        40.65611832778962
+                    ]
+                },
+                "properties": {
+                    "filename": <filename2>.<ext>,
+                    ...
+                }
+            },
+            ...
+        ]
+    }
+
+where the ``geometry`` field may contain any valid GeoJSON geometry object, and
+the ``filename`` property encodes the name of the corresponding image in the
+``data/`` folder.
+
+You can also specify a ``filepath`` property rather than ``filename``, in which
+case the path is interpreted as an absolute path to the corresponding image,
+which may or may not be in ``data/`` folder.
+
+Images with no location data will have a null ``geometry`` field.
+
+The ``properties`` field of each feature can contain additional labels that
+can be imported when working with datasets of this type.
+
+You can create a FiftyOne dataset from a GeoJSON image dataset stored in the
+above format as follows:
+
+.. tabs::
+
+  .. group-tab:: Python
+
+    .. code-block:: python
+        :linenos:
+
+        import fiftyone as fo
+
+        name = "my-geojson-image-dataset"
+        dataset_dir = "/path/to/geojson-image-dataset"
+
+        # Create the dataset
+        dataset = fo.Dataset.from_dir(
+            dataset_dir, fo.types.GeoJSONImageDataset, name=name
+        )
+
+        # View summary info about the dataset
+        print(dataset)
+
+        # Print the first few samples in the dataset
+        print(dataset.head())
+
+  .. group-tab:: CLI
+
+    .. code-block:: shell
+
+        NAME=my-geojson-image-dataset
+        DATASET_DIR=/path/to/geojson-image-dataset
+
+        # Create the dataset
+        fiftyone datasets create \
+            --name $NAME \
+            --dataset-dir $DATASET_DIR \
+            --type fiftyone.types.GeoJSONImageDataset
+
+        # View summary info about the dataset
+        fiftyone datasets info $NAME
+
+        # Print the first few samples in the dataset
+        fiftyone datasets head $NAME
+
+    To view a GeoJSON image dataset stored in the above format in the FiftyOne
+    App without creating a persistent FiftyOne dataset, you can execute:
+
+    .. code-block:: shell
+
+        DATASET_DIR=/path/to/geojson-image-dataset
+
+        # View the dataset in the App
+        fiftyone app view \
+            --dataset-dir $DATASET_DIR \
+            --type fiftyone.types.GeoJSONImageDataset
 
 .. _FiftyOneDataset-import:
 
@@ -2187,7 +2321,7 @@ follows:
 
         DATASET_DIR=/path/to/fiftyone-dataset
 
-        # View the dataset in the app
+        # View the dataset in the App
         fiftyone app view \
             --dataset-dir $DATASET_DIR \
             --type fiftyone.types.FiftyOneDataset

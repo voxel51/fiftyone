@@ -556,6 +556,61 @@ stage to filter the contents of arbitrarily-typed fields:
             # are deleted
             sample.save()
 
+.. _geo-location-views:
+
+Geo-location
+____________
+
+If your samples have :ref:`geo-location data <geo-location>`, then you can
+use the
+:meth:`geo_near() <fiftyone.core.collections.SampleCollection.geo_near>` and
+:meth:`geo_within() <fiftyone.core.collections.SampleCollection.geo_within>`
+stages to filter your data based on their location.
+
+For example, you can use
+:meth:`geo_near() <fiftyone.core.collections.SampleCollection.geo_near>` to
+sort your samples by proximity to a location:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    TIMES_SQUARE = [-73.9855, 40.7580]
+
+    dataset = foz.load_zoo_dataset("quickstart-geo")
+
+    # Sort the samples by their proximity to Times Square, and only include
+    # samples within 5km
+    view = dataset.geo_near(TIMES_SQUARE, max_distance=5000)
+
+Or, you can use
+:meth:`geo_within() <fiftyone.core.collections.SampleCollection.geo_within>` to
+only include samples that lie within a longitude-latitude polygon of your
+choice:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    MANHATTAN = [
+        [
+            [-73.949701, 40.834487],
+            [-73.896611, 40.815076],
+            [-73.998083, 40.696534],
+            [-74.031751, 40.715273],
+            [-73.949701, 40.834487],
+        ]
+    ]
+
+    dataset = foz.load_zoo_dataset("quickstart-geo")
+
+    # Only contains samples in Manhattan
+    view = dataset.geo_within(MANHATTAN)
+
 Modifying fields
 ________________
 

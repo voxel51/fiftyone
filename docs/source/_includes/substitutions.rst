@@ -31,6 +31,8 @@
 .. |Keypoint| replace:: :class:`Keypoint <fiftyone.core.labels.Keypoint>`
 .. |Keypoints| replace:: :class:`Keypoints <fiftyone.core.labels.Keypoints>`
 .. |Segmentation| replace:: :class:`Segmentation <fiftyone.core.labels.Segmentation>`
+.. |GeoLocation| replace:: :class:`GeoLocation <fiftyone.core.labels.GeoLocation>`
+.. |GeoLocations| replace:: :class:`GeoLocations <fiftyone.core.labels.GeoLocations>`
 
 .. |Attribute| replace:: :class:`Attribute <fiftyone.core.labels.Attribute>`
 .. |BooleanAttribute| replace:: :class:`BooleanAttribute <fiftyone.core.labels.BooleanAttribute>`

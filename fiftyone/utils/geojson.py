@@ -114,11 +114,11 @@ def load_location_data(
 
     geometries = {}
     for feature in d.get("features", []):
-        props = feature["properties"]
-        if "filepath" in props:
-            key = props["filepath"]
-        elif "filename" in props:
-            key = props["filename"]
+        properties = feature["properties"]
+        if "filepath" in properties:
+            key = properties["filepath"]
+        elif "filename" in properties:
+            key = properties["filename"]
         elif not skip_missing:
             raise ValueError(
                 "Found feature with no `filename` or `filepath` property"
@@ -316,6 +316,9 @@ class GeoJSONImageDatasetImporter(GenericSampleDatasetImporter):
             functions that parse the property values (e.g., into the
             appropriate) :class:`fiftyone.core.labels.Label` types). By
             default, all properies are stored as primitive field values
+        skip_unlabeled (False): whether to skip unlabeled images when importing
+        skip_missing_media (False): whether to skip features with no
+            ``filename`` or ``filepath`` property
         shuffle (False): whether to randomly shuffle the order in which the
             samples are imported
         seed (None): a random seed to use when shuffling
@@ -329,6 +332,8 @@ class GeoJSONImageDatasetImporter(GenericSampleDatasetImporter):
         location_field="location",
         multi_location=False,
         property_parsers=None,
+        skip_unlabeled=False,
+        skip_missing_media=False,
         shuffle=False,
         seed=None,
         max_samples=None,
@@ -339,38 +344,41 @@ class GeoJSONImageDatasetImporter(GenericSampleDatasetImporter):
         self.location_field = location_field
         self.multi_location = multi_location
         self.property_parsers = property_parsers
+        self.skip_unlabeled = skip_unlabeled
+        self.skip_missing_media = skip_missing_media
         self._data_dir = None
-        self._features = None
-        self._iter_features = None
-        self._num_features = None
+        self._features_map = None
+        self._filepaths = None
+        self._iter_filepaths = None
+        self._num_samples = None
 
     def __iter__(self):
-        self._iter_features = iter(self._features)
+        self._iter_filepaths = iter(self._filepaths)
         return self
 
     def __len__(self):
-        return self._num_features
+        return self._num_samples
 
     def __next__(self):
-        d = next(self._iter_features)
+        filepath = next(self._iter_filepaths)
 
-        if self.multi_location:
-            location = fol.GeoLocations.from_geo_json(d)
-        else:
-            location = fol.GeoLocation.from_geo_json(d)
+        feature = self._features_map.get(filepath, None)
+        if feature is None:
+            return fos.Sample(filepath=filepath)
 
-        props = d["properties"]
-        if "filepath" in props:
-            filepath = props.pop("filepath")
-        else:
-            filepath = os.path.join(self._data_dir, props.pop("filename"))
+        properties = feature.get("properties", {})
 
         fields = {}
         if self.property_parsers:
-            for key, value in props.items():
+            for key, value in properties.items():
                 fields[key] = self.property_parsers[key](value)
         else:
-            fields.update(props)
+            fields.update(properties)
+
+        if self.multi_location:
+            location = fol.GeoLocations.from_geo_json(feature)
+        else:
+            location = fol.GeoLocation.from_geo_json(feature)
 
         fields[self.location_field] = location
 
@@ -390,10 +398,33 @@ class GeoJSONImageDatasetImporter(GenericSampleDatasetImporter):
 
         geojson = etas.load_json(json_path)
         _ensure_type(geojson, "FeatureCollection")
-        features = geojson.get("features", [])
 
-        self._features = self._preprocess_list(features)
-        self._num_features = len(self._features)
+        features_map = {}
+        for feature in geojson.get("features", []):
+            properties = feature["properties"]
+            if "filepath" in properties:
+                filepath = properties.pop("filepath")
+            elif "filename" in properties:
+                filepath = os.path.join(
+                    self._data_dir, properties.pop("filename")
+                )
+            elif self.skip_missing_media:
+                continue
+            else:
+                raise ValueError(
+                    "Found feature with no ``filepath`` or ``filename`` "
+                    "property"
+                )
+
+            features_map[filepath] = feature
+
+        filepaths = set(features_map.keys())
+        if not self.skip_unlabeled and os.path.isdir(self._data_dir):
+            filepaths.update(etau.list_files(self._data_dir, abs_paths=True))
+
+        self._features_map = features_map
+        self._filepaths = self._preprocess_list(list(filepaths))
+        self._num_samples = len(self._filepaths)
 
 
 class GeoJSONImageDatasetExporter(GenericSampleDatasetExporter):
@@ -418,6 +449,8 @@ class GeoJSONImageDatasetExporter(GenericSampleDatasetExporter):
             functions that convert the field values to property values to be
             stored in the ``properties`` field of the GeoJSON ``Feature`` for
             the sample. By default, no properties are written
+        omit_none_fields (True): whether to omit ``None``-valued Sample fields
+            from the output properties
         copy_media (True): whether to copy the source media into the export
             directory (True) or simply embed the input filepaths in the output
             JSON (False)
@@ -430,12 +463,14 @@ class GeoJSONImageDatasetExporter(GenericSampleDatasetExporter):
         export_dir,
         location_field=None,
         property_makers=None,
+        omit_none_fields=True,
         copy_media=True,
         pretty_print=False,
     ):
         super().__init__(export_dir)
         self.location_field = location_field
         self.property_makers = property_makers
+        self.omit_none_fields = omit_none_fields
         self.copy_media = copy_media
         self.pretty_print = pretty_print
         self._data_dir = None
@@ -456,20 +491,22 @@ class GeoJSONImageDatasetExporter(GenericSampleDatasetExporter):
             self.location_field = sample_collection._get_geo_location_field()
 
     def export_sample(self, sample):
-        props = {}
+        properties = {}
 
         if self.property_makers:
             for key, fn in self.property_makers.items():
-                props[key] = fn(sample[key])
+                value = sample[key]
+                if value is not None or not self.omit_none_fields:
+                    properties[key] = fn(value)
 
         if self.copy_media:
             out_filepath = self._filename_maker.get_output_path(
                 sample.filepath
             )
             etau.copy_file(sample.filepath, out_filepath)
-            props["filename"] = os.path.basename(out_filepath)
+            properties["filename"] = os.path.basename(out_filepath)
         else:
-            props["filepath"] = sample.filepath
+            properties["filepath"] = sample.filepath
 
         location = sample[self.location_field]
         if location is not None:
@@ -478,7 +515,7 @@ class GeoJSONImageDatasetExporter(GenericSampleDatasetExporter):
             geometry = None
 
         self._features.append(
-            {"type": "Feature", "geometry": geometry, "properties": props}
+            {"type": "Feature", "geometry": geometry, "properties": properties}
         )
 
     def close(self, *args):

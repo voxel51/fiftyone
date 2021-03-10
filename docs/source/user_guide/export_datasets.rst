@@ -149,6 +149,9 @@ format when writing the dataset to disk.
     | :ref:`BDDDataset <BDDDataset-export>`                              | A labeled dataset consisting of images and their associated multitask predictions  |
     |                                                                    | saved in `Berkeley DeepDrive (BDD) format <https://bdd-data.berkeley.edu>`_.       |
     +--------------------------------------------------------------------+------------------------------------------------------------------------------------+
+    | :ref:`GeoJSONImageDataset <GeoJSONImageDataset-export>`            | An image dataset whose labels and location data are stored in                      |
+    |                                                                    | `GeoJSON format <https://en.wikipedia.org/wiki/GeoJSON>`_.                         |
+    +--------------------------------------------------------------------+------------------------------------------------------------------------------------+
     | :ref:`FiftyOneDataset <FiftyOneDataset-export>`                    | A dataset consisting of an arbitrary serialized |Dataset| and its associated       |
     |                                                                    | source data.                                                                       |
     +--------------------------------------------------------------------+------------------------------------------------------------------------------------+
@@ -1741,6 +1744,115 @@ follows:
             --export-dir $EXPORT_DIR \
             --label-field $LABEL_FIELD \
             --type fiftyone.types.BDDDataset
+
+.. _GeoJSONImageDataset-export:
+
+GeoJSONImageDataset
+-------------------
+
+The :class:`fiftyone.types.GeoJSONImageDataset <fiftyone.types.dataset_types.GeoJSONImageDataset>`
+type represents a dataset consisting of images and their associated
+geo-location data and optional properties stored in
+`GeoJSON format <https://en.wikipedia.org/wiki/GeoJSON>`_.
+
+Datasets of this type are exported in the following format:
+
+.. code-block:: text
+
+    <dataset_dir>/
+        data/
+            <filename1>.<ext>
+            <filename2>.<ext>
+            ...
+        labels.json
+
+where ``labels.json`` is a GeoJSON file containing a ``FeatureCollection`` in
+the following format:
+
+.. code-block:: text
+
+    {
+        "type": "FeatureCollection",
+        "features": [
+            {
+                "type": "Feature",
+                "geometry": {
+                    "type": "Point",
+                    "coordinates": [
+                        -73.99496451958454,
+                        40.66338032487842
+                    ]
+                },
+                "properties": {
+                    "filename": <filename1>.<ext>,
+                    ...
+                }
+            },
+            {
+                "type": "Feature",
+                "geometry": {
+                    "type": "Point",
+                    "coordinates": [
+                        -73.80992143421788,
+                        40.65611832778962
+                    ]
+                },
+                "properties": {
+                    "filename": <filename2>.<ext>,
+                    ...
+                }
+            },
+            ...
+        ]
+    }
+
+where the ``geometry`` field may contain any valid GeoJSON geometry object, and
+the ``filename`` property encodes the name of the corresponding image in the
+``data/`` folder.
+
+Alternatively, the ``filepath`` property may be specified rather than
+``filename``, in which case the path is interpreted as an absolute path to the
+corresponding image.
+
+Images with no location data will have a null ``geometry`` field.
+
+The ``properties`` field of each feature can contain additional labels for
+each sample.
+
+You can export a FiftyOne dataset as a GeoJSON image dataset in the above
+format as follows:
+
+.. tabs::
+
+  .. group-tab:: Python
+
+    .. code-block:: python
+        :linenos:
+
+        import fiftyone as fo
+
+        export_dir = "/path/for/geojson-image-dataset"
+
+        # The Dataset or DatasetView to export
+        dataset_or_view = fo.Dataset(...)
+
+        # Export the dataset
+        dataset_or_view.export(
+            export_dir=export_dir,
+            dataset_type=fo.types.GeoJSONImageDataset,
+        )
+
+  .. group-tab:: CLI
+
+    .. code-block:: shell
+
+        NAME=my-dataset
+        EXPORT_DIR=/path/for/geojson-image-dataset
+
+        # Export the dataset
+        fiftyone datasets export $NAME \
+            --export-dir $EXPORT_DIR \
+            --type fiftyone.types.GeoJSONImageDataset
 
 .. _FiftyOneDataset-export:
 

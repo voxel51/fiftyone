@@ -1229,20 +1229,20 @@ class BDDDataset(ImageLabelsDataset):
 
 
 class GeoJSONImageDataset(ImageLabelsDataset):
-    """An image dataset whose labels and location data are stored in
-    `GeoJSON format <https://en.wikipedia.org/wiki/GeoJSON>`_.
+    """An image dataset whose geo-location data and optional properties are
+    stored in `GeoJSON format <https://en.wikipedia.org/wiki/GeoJSON>`_.
 
     Datasets of this type are read/written in the following format::
 
         <dataset_dir>/
             data/
-                <filename1>
-                <filename2>
+                <filename1>.<ext>
+                <filename2>.<ext>
                 ...
             labels.json
 
     where ``labels.json`` is a GeoJSON file containing a ``FeatureCollection``
-    with a ``filename`` property that encodes the filenames
+    in the following format::
 
         {
             "type": "FeatureCollection",
@@ -1257,7 +1257,7 @@ class GeoJSONImageDataset(ImageLabelsDataset):
                         ]
                     },
                     "properties": {
-                        "filename": <filename1>,
+                        "filename": <filename1>.<ext>,
                         ...
                     }
                 },
@@ -1271,16 +1271,26 @@ class GeoJSONImageDataset(ImageLabelsDataset):
                         ]
                     },
                     "properties": {
-                        "filename": <filename2>,
+                        "filename": <filename2>.<ext>,
                         ...
                     }
                 },
+                ...
+            ]
+        }
 
-    where the ``geometry`` field may contain any valid GeoJSON geometry object.
+    where the ``geometry`` field may contain any valid GeoJSON geometry object,
+    and the ``filename`` property encodes the name of the corresponding image
+    in the ``data/`` folder.
 
     You can also specify a ``filepath`` property rather than ``filename``, in
     which case the path is interpreted as an absolute path to the corresponding
     image, which may or may not be in ``data/`` folder.
+
+    Images with no location data will have a null ``geometry`` field.
+
+    The ``properties`` field of each feature can contain additional labels that
+    can be imported/exported when working with datasets of this type.
     """
 
     def get_dataset_importer_cls(self):
