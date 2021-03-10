@@ -16,6 +16,11 @@ export const modal = atom({
   },
 });
 
+export const showModalJSON = atom({
+  key: "showModalJSON",
+  default: false,
+});
+
 export const connected = atom({
   key: "connected",
   default: false,

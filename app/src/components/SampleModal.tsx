@@ -246,9 +246,8 @@ const SampleModal = (
     height: "100%",
     width: "100%",
   });
-  const colorMap = useRecoilValue(selectors.colorMap(true));
   const setModalFilters = useSetRecoilState(labelFilters(true));
-  const [showJSON, setShowJSON] = useState(false);
+  const showJSON = useRecoilValue(atoms.showModalJSON);
   const [enableJSONFilter, setEnableJSONFilter] = useState(true);
   const [fullscreen, setFullscreen] = useState(false);
   const mediaType = useRecoilValue(selectors.mediaType);

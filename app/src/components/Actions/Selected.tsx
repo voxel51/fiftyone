@@ -68,6 +68,9 @@ const ActionOption = ({
   disabled,
 }: ActionOptionProps) => {
   const props = useHighlightHover(disabled);
+  if (disabled) {
+    return null;
+  }
   return (
     <ActionOptionDiv
       title={title ? title : text}
@@ -253,12 +256,12 @@ const getModalActions = (frameNumberRef, close) => {
       onClick: () => selectAllInFrame(),
     },
     frameObjects.length && {
-      name: "Unselect all (current frame)",
+      text: "Unselect all (current frame)",
       disabled: !numFrameSelectedObjects,
       onClick: () => unselectAllInFrame(),
     },
     {
-      name: "Clear selection",
+      text: "Clear selection",
       disabled: !numTotalSelectedObjects,
       onClick: () => resetSelectedObjects(),
     },
@@ -276,11 +279,6 @@ const getModalActions = (frameNumberRef, close) => {
       text: "Hide others (current frame)",
       disabled: numFrameSelectedObjects == 0,
       onClick: () => hideOthers(frameObjects),
-    },
-    {
-      text: "Show all labels",
-      disabled: hiddenObjects.size == 0,
-      onClick: () => resetHiddenObjects(),
     },
   ].filter(Boolean);
 };

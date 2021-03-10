@@ -1,7 +1,13 @@
 import React, { useRef, useState } from "react";
-import { useRecoilValue } from "recoil";
+import { useRecoilState, useRecoilValue } from "recoil";
 import styled from "styled-components";
-import { Check, LocalOffer, Settings } from "@material-ui/icons";
+import {
+  Check,
+  Code,
+  LocalOffer,
+  Settings,
+  VisibilityOff,
+} from "@material-ui/icons";
 
 import { PillButton } from "../utils";
 import * as atoms from "../../recoil/atoms";
@@ -38,29 +44,24 @@ const Selected = ({ modal, frameNumberRef }) => {
   const [open, setOpen] = useState(false);
   const selectedSamples = useRecoilValue(atoms.selectedSamples);
   const selectedObjects = useRecoilValue(atoms.selectedObjects);
-  const hiddenObjects = useRecoilValue(atoms.hiddenObjects);
   const ref = useRef();
   useOutsideClick(ref, () => open && setOpen(false));
-  if (!modal && selectedSamples.size < 1) {
+
+  const numItems = modal
+    ? Object.keys(selectedObjects).length
+    : selectedSamples.size;
+
+  if (numItems < 1) {
     return null;
   }
-
-  if (
-    modal &&
-    Object.keys(selectedObjects).length < 1 &&
-    Object.keys(hiddenObjects).length < 1
-  ) {
-    return null;
-  }
-
   return (
     <ActionDiv ref={ref}>
       <PillButton
         icon={<Check />}
         open={open}
         onClick={() => setOpen(!open)}
-        highlight={Boolean(selectedSamples.size) || open}
-        text={`${selectedSamples.size}`}
+        highlight={true}
+        text={`${numItems}`}
       />
       {open && (
         <Selector
@@ -91,6 +92,37 @@ const Options = ({ modal }) => {
   );
 };
 
+const ShowJSON = () => {
+  const [showJSON, setShowJSON] = useRecoilState(atoms.showModalJSON);
+  return (
+    <PillButton
+      open={false}
+      onClick={() => setShowJSON(!showJSON)}
+      highlight={showJSON}
+      text={"JSON"}
+    />
+  );
+};
+
+const Hidden = () => {
+  const [hiddenObjects, setHiddenObjects] = useRecoilState(atoms.hiddenObjects);
+  const count = Object.keys(hiddenObjects).length;
+
+  if (count < 1) {
+    return null;
+  }
+
+  return (
+    <PillButton
+      icon={<VisibilityOff />}
+      open={true}
+      onClick={() => setHiddenObjects({})}
+      highlight={true}
+      text={`${count}`}
+    />
+  );
+};
+
 const ActionsRowDiv = styled.div`
   display: flex;
   justify-content: ltr;
@@ -104,13 +136,16 @@ const ActionsRowDiv = styled.div`
 type ActionsRowProps = {
   modal: boolean;
   frameNumberRef?: any;
+  children: any;
 };
 
 const ActionsRow = ({ modal, frameNumberRef }: ActionsRowProps) => {
   return (
     <ActionsRowDiv>
+      {modal && <ShowJSON />}
       <Options modal={modal} />
       <Tag modal={modal} />
+      {modal && <Hidden />}
       <Selected modal={modal} frameNumberRef={frameNumberRef} />
     </ActionsRowDiv>
   );

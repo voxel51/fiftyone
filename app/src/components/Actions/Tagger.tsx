@@ -92,12 +92,15 @@ const Section = ({ modal, placeholder, submit, taggingAtom }) => {
   const count = useRecoilValue(selectors.currentCount);
   const [tagging, setTagging] = useRecoilState(taggingAtom);
   const [untag, setUntag] = useState(false);
-  const selectedSamples = useRecoilValue(atoms.selectedSamples);
-  const isInSelection = selectedSamples.size > 0;
+  const numSelected = modal
+    ? Object.keys(useRecoilValue(atoms.selectedObjects)).length
+    : useRecoilValue(atoms.selectedSamples).size;
+  const isInSelection = numSelected > 0;
+  console.log(isInSelection);
   const [value, setValue] = useState("");
   const disabled = tagging || typeof count !== "number" || count === 0;
 
-  const numSamples = isInSelection ? selectedSamples.size : count;
+  const numSamples = isInSelection ? numSelected : count;
 
   return (
     <>
@@ -119,7 +122,7 @@ const Section = ({ modal, placeholder, submit, taggingAtom }) => {
           }}
           disabled={disabled}
         />
-        <Loading loading={tagging || typeof count !== "number"} />
+        <Loading loading={Boolean(tagging || typeof count !== "number")} />
       </TaggingContainerInput>
       <Options
         options={[
@@ -167,6 +170,49 @@ type TaggerProps = {
   modal: boolean;
 };
 
+const labelsPlaceholder = (selection, num, untag) => {
+  if (num === 0) {
+    return "no samples";
+  }
+  if (selection) {
+    return `${
+      untag ? "- untag" : "+ tag"
+    } selected labels in ${num} selected sample${num === 1 ? "" : "s"}`;
+  }
+
+  return `${untag ? "- untag" : "+ tag"} shown labels in  ${num} sample${
+    num === 1 ? "" : "s"
+  }`;
+};
+
+const labelsModalPlaceholder = (selection, num, untag) => {
+  if (selection) {
+    return `${untag ? "- untag" : "+ tag"} ${num} selected labels`;
+  }
+
+  return `${untag ? "- untag" : "+ tag"} ${num} visible labels`;
+};
+
+const samplesPlaceholder = (selection, num, untag) => {
+  if (num === 0) {
+    return "no samples";
+  }
+  if (selection) {
+    return `${untag ? "- untag" : "+ tag"} ${num} selected sample${
+      num === 1 ? "" : "s"
+    }`;
+  }
+
+  return `${untag ? "- untag" : "+ tag"} ${num} sample${num === 1 ? "" : "s"}`;
+};
+
+const samplePlaceholder = (_, __, untag) => {
+  if (untag) {
+    return "- untag sample";
+  }
+  return "+ tag sample";
+};
+
 const Tagger = ({ modal }: TaggerProps) => {
   const [labels, setLabels] = useState(modal);
   const theme = useTheme();
@@ -189,7 +235,7 @@ const Tagger = ({ modal }: TaggerProps) => {
           style={sampleProps}
           onClick={() => labels && setLabels(false)}
         >
-          Samples
+          Sample{modal ? "" : "s"}
         </SwitchDiv>
         <SwitchDiv
           style={labelProps}
@@ -201,37 +247,13 @@ const Tagger = ({ modal }: TaggerProps) => {
       <Section
         modal={modal}
         placeholder={
-          labels
-            ? (selection, num, untag) => {
-                if (num === 0) {
-                  return "no samples";
-                }
-                if (selection) {
-                  return `${
-                    untag ? "- untag" : "+ tag"
-                  } shown labels in ${num} selected sample${
-                    num === 1 ? "" : "s"
-                  }`;
-                }
-
-                return `${
-                  untag ? "- untag" : "+ tag"
-                } shown labels in  ${num} sample${num === 1 ? "" : "s"}`;
-              }
-            : (selection, num, untag) => {
-                if (num === 0) {
-                  return "no samples";
-                }
-                if (selection) {
-                  return `${
-                    untag ? "- untag" : "+ tag"
-                  } ${num} selected sample${num === 1 ? "" : "s"}`;
-                }
-
-                return `${untag ? "- untag" : "+ tag"} ${num} sample${
-                  num === 1 ? "" : "s"
-                }`;
-              }
+          labels && !modal
+            ? labelsPlaceholder
+            : !modal
+            ? samplesPlaceholder
+            : labels
+            ? labelsModalPlaceholder
+            : samplePlaceholder
         }
         submit={(value, untag, selected) =>
           socket.send(
@@ -241,6 +263,7 @@ const Tagger = ({ modal }: TaggerProps) => {
               selected: selected,
               active_labels: activeLabels,
               tag: value,
+              modal: modal,
             })
           )
         }

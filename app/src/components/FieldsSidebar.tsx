@@ -2,15 +2,13 @@ import React, { useState } from "react";
 import styled from "styled-components";
 import { useRecoilValue, useRecoilState } from "recoil";
 import {
-  Autorenew,
   BarChart,
   Check,
   Close,
   Help,
   Label,
+  LocalOffer,
   PhotoLibrary,
-  Settings,
-  Brush,
 } from "@material-ui/icons";
 import { animated, useSpring } from "react-spring";
 
@@ -153,7 +151,7 @@ const TagsCell = ({ modal }: TagsCellProps) => {
   return (
     <Cell
       label="Tags"
-      icon={<PhotoLibrary />}
+      icon={<LocalOffer />}
       entries={tags.map((name) => ({
         name,
         disabled: false,

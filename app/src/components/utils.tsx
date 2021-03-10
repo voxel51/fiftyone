@@ -134,7 +134,7 @@ type PillButton = {
   open: boolean;
   highlight: boolean;
   text?: string;
-  icon: any;
+  icon?: any;
   arrow?: boolean;
 };
 
