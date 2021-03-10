@@ -74,7 +74,7 @@ def download_zoo_dataset(
     splits=None,
     dataset_dir=None,
     overwrite=False,
-    cleanup=True,
+    cleanup=None,
     **kwargs
 ):
     """Downloads the dataset of the given name from the FiftyOne Dataset Zoo.
@@ -99,8 +99,10 @@ def download_zoo_dataset(
             By default, it is downloaded to a subdirectory of
             ``fiftyone.config.dataset_zoo_dir``
         overwrite (False): whether to overwrite any existing files
-        cleanup (True): whether to cleanup any temporary files generated during
-            download
+        cleanup (None): whether to cleanup any temporary files generated
+            during download, usually default to True unless the dataset
+            supports partial downloads (ex: Open Images V6)
+
         **kwargs: optional arguments for the :class:`ZooDataset` constructor
 
     Returns:
@@ -143,7 +145,7 @@ def load_zoo_dataset(
     download_if_necessary=True,
     drop_existing_dataset=False,
     overwrite=False,
-    cleanup=True,
+    cleanup=None,
     **kwargs
 ):
     """Loads the dataset of the given name from the FiftyOne Dataset Zoo as
@@ -181,8 +183,9 @@ def load_zoo_dataset(
             with the same name if it exists
         overwrite (False): whether to overwrite any existing files if the
             dataset is to be downloaded
-        cleanup (True): whether to cleanup any temporary files generated during
-            download
+        cleanup (None): whether to cleanup any temporary files generated
+            during download, usually default to True unless the dataset
+            supports partial downloads (ex: Open Images V6)
         **kwargs: optional arguments to pass to the
             :class:`fiftyone.utils.data.importers.DatasetImporter` constructor.
             If ``download_if_necessary == True``, then ``kwargs`` can also
@@ -773,6 +776,14 @@ class ZooDataset(object):
         """
         return False
 
+    @property
+    def cleanup(self):
+        """Whether to delete temporary download folders. This usually defaults
+        to True unless a dataset supports partial downloads and needs to retain
+        raw annotation data, for example ``OpenImagesV6Dataset``
+        """
+        return True
+
     def has_tag(self, tag):
         """Whether the dataset has the given tag.
 
@@ -839,7 +850,7 @@ class ZooDataset(object):
         split=None,
         splits=None,
         overwrite=False,
-        cleanup=True,
+        cleanup=None,
     ):
         """Downloads the dataset and prepares it for use.
 
@@ -857,8 +868,9 @@ class ZooDataset(object):
                 neither ``split`` nor ``splits`` are provided, the full dataset
                 is  downloaded
             overwrite (False): whether to overwrite any existing files
-            cleanup (True): whether to cleanup any temporary files generated
-                during download
+            cleanup (None): whether to cleanup any temporary files generated
+                during download, usually default to True unless the dataset
+                supports partial downloads (ex: Open Images V6)
 
         Returns:
             tuple of
@@ -984,6 +996,9 @@ class ZooDataset(object):
             logger.info("Dataset info written to '%s'", info_path)
 
         # Cleanup scratch directory, if necessary
+        if cleanup is None:
+            cleanup = self.cleanup
+
         if cleanup:
             etau.delete_dir(scratch_dir)
 
