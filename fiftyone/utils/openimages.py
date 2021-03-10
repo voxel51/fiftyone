@@ -46,6 +46,11 @@ def download_open_images_v6_split(
     num_workers,
 ):
     """Utility to download the `Open Images v6 dataset <https://storage.googleapis.com/openimages/web/index.html>`_ with annotations.
+    This specifically downloads the subsets of annotations corresponding to the
+    600 boxable classes of Open Images.
+
+    All download information can be found here under the `Open Images v6
+    downloads page. <https://storage.googleapis.com/openimages/web/download.html>`_
 
     Args:
         dataset_dir (None): the directory to which the dataset will be
@@ -78,7 +83,7 @@ def download_open_images_v6_split(
         num_workers (None): the number of processes to use to download images. By default,
             ``multiprocessing.cpu_count()`` is used
     """
-    if max_samples and label_types:
+    if max_samples and (label_types or classes or attrs):
         # Only samples with every specified label type will be loaded
         guarantee_all_types = True
     else:
@@ -89,11 +94,28 @@ def download_open_images_v6_split(
     if num_workers is None:
         num_workers = multiprocessing.cpu_count()
 
-    label_types = _parse_label_types(label_types)
+    # No matter what classes or attributes you specify, they will not be loaded
+    # if you do not want to load labels
+    if label_types == []:
+        classes = []
+        attrs = []
 
-    split_image_ids = _parse_image_ids(
-        image_ids, image_ids_file, label_types, [split], scratch_dir
-    )
+    # Determine the image IDs to load
+    if not image_ids and not image_ids_file:
+        if not label_types or (classes == [] and attrs == []):
+            # No IDs were provided and no labels are being loaded
+            # Load all image IDs
+            split_image_ids = _download_image_ids(scratch_dir, split)
+        else:
+            # No specific image IDs were given, load all relevant images from the
+            # given labels later
+            split_image_ids = None
+    else:
+        split_image_ids = _parse_image_ids(
+            image_ids, image_ids_file, split, scratch_dir
+        )
+
+    label_types = _parse_label_types(label_types)
 
     dataset = fod.Dataset("open-images-v6-temp-%s" % split)
     dataset.persistent = False
@@ -109,7 +131,7 @@ def download_open_images_v6_split(
 
     if classes == None:
         oi_classes = list(classes_map.keys())
-        classes = list(classes_map.values())
+        classes = all_classes
 
     else:
         oi_classes = []
@@ -144,19 +166,19 @@ def download_open_images_v6_split(
 
         if attrs == None:
             oi_attrs = list(attrs_map.keys())
-            attrs = list(attrs_map.values())
+            attrs = all_attrs
 
         else:
             attrs_map_rev = {v: k for k, v in attrs_map.items()}
             missing_attrs = []
-            attrs = []
+            filtered_attrs = []
             for a in attrs:
                 try:
                     oi_attrs.append(attrs_map_rev[a])
-                    attrs.append(a)
+                    filtered_attrs.append(a)
                 except:
                     missing_attrs.append(a)
-
+            attrs = filtered_attrs
             if missing_attrs:
                 logger.info(
                     "The following are not available attributes: %s\n\nSee available attributes with fouo.get_attributes()\n"
@@ -528,28 +550,7 @@ def _parse_csv(filename):
     return data
 
 
-def _parse_image_ids(
-    image_ids, image_ids_file, label_types, splits, scratch_dir
-):
-    if not image_ids and not image_ids_file:
-        if label_types:
-            # No specific image IDs were given, load all relevant images from the
-            # given labels later
-            return {s: None for s in splits}
-        else:
-            # No IDs were provided and no labels are being loaded
-            # Load all image IDs
-            _split_image_ids = {}
-            for split in splits:
-                _split_image_ids[split] = _download_image_ids(
-                    scratch_dir, split
-                )
-            _split_image_ids[_UNSPECIFIED_SPLIT] = []
-            return _split_image_ids
-
-    _split_image_ids = {s: [] for s in splits}
-    _split_image_ids[_UNSPECIFIED_SPLIT] = []
-
+def _parse_image_ids(image_ids, image_ids_file, split, scratch_dir):
     if image_ids:
         # image_ids has precedence over image_ids_file
         _image_ids = image_ids
@@ -576,31 +577,33 @@ def _parse_image_ids(
                 % ext
             )
 
+    split_image_ids = []
+    unspecified_split_ids = []
+
     # Parse each provided ID into the given split
     for i in _image_ids:
         if "/" in i:
-            split, image_id = i.split("/")
-            if split not in _DEFAULT_SPLITS:
+            id_split, image_id = i.split("/")
+            if id_split not in _DEFAULT_SPLITS:
                 raise ValueError(
                     "Split %s does not exist. Options are (train, test, validation)"
-                    % split
+                    % id_split
                 )
         else:
-            split = _UNSPECIFIED_SPLIT
-            image_id = i
+            image_id = i.rstrip().replace(".jpg", "")
+            unspecified_split_ids.append(image_id)
 
-        if split not in _split_image_ids:
+        if id_split != split:
             continue
 
         image_id = image_id.rstrip().replace(".jpg", "")
-        _split_image_ids[split].append(image_id)
+        split_image_ids.append(image_id)
 
-    for split in splits:
-        _split_image_ids = _verify_image_ids(
-            _split_image_ids, scratch_dir, split
-        )
+    split_image_ids = _verify_image_ids(
+        split_image_ids, unspecified_split_ids, scratch_dir, split
+    )
 
-    return _split_image_ids
+    return split_image_ids
 
 
 def _parse_label_types(label_types):
@@ -611,7 +614,7 @@ def _parse_label_types(label_types):
     for l in label_types:
         if l not in _DEFAULT_LABEL_TYPES:
             raise ValueError(
-                'Label type %s is not supported. Options include ("detections", "classifications", "relationships", "segmentations")'
+                'Label type %s is not supported. Options are ("detections", "classifications", "relationships", "segmentations")'
                 % l
             )
         else:
@@ -645,12 +648,13 @@ def _verify_field(dataset, field_name, label_class):
     return dataset
 
 
-def _verify_image_ids(_split_image_ids, download_dir, split):
+def _verify_image_ids(
+    selected_split_ids, unspecified_ids, download_dir, split
+):
     # Download all image IDs, verify given IDs, sort unspecified IDs into current split
     split_ids = _download_image_ids(download_dir, split)
 
     # Need to verify image IDs are in correct split
-    selected_split_ids = _split_image_ids[split]
     sid_set = set(split_ids)
     ssid_set = set(selected_split_ids)
     verified_split_ids = sid_set & ssid_set
@@ -662,17 +666,12 @@ def _verify_image_ids(_split_image_ids, download_dir, split):
         )
 
     # Find any unspecified IDs in this split and add them
-    unspecified_ids = _split_image_ids[_UNSPECIFIED_SPLIT]
     uids_set = set(unspecified_ids)
     unspecified_ids_in_split = sid_set & uids_set
-    uids_set -= unspecified_ids_in_split
 
-    _split_image_ids[split] = list(verified_split_ids) + list(
-        unspecified_ids_in_split
-    )
-    _split_image_ids[_UNSPECIFIED_SPLIT] = list(uids_set)
+    split_image_ids = list(verified_split_ids) + list(unspecified_ids_in_split)
 
-    return _split_image_ids
+    return split_image_ids
 
 
 def _get_label_data(
@@ -845,7 +844,7 @@ def _load_open_images_split(
 
         ids_any_labels = ids_any_labels | seg_ids
 
-    valid_ids = split_image_ids[split]
+    valid_ids = split_image_ids
 
     if valid_ids is None:
         # No IDs specified, load all IDs relevant to given classes
