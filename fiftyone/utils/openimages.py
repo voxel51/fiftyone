@@ -129,6 +129,9 @@ def download_open_images_v6_split(
                 % ",".join(missing_classes)
             )
 
+    attrs = []
+    attrs_map = {}
+    oi_attrs = []
     if "relationships" in label_types:
         # Map of attribute IDs to attribute names
         attrs_map = _get_attrs_map(
@@ -144,18 +147,16 @@ def download_open_images_v6_split(
             attrs = list(attrs_map.values())
 
         else:
-            oi_attrs = []
             attrs_map_rev = {v: k for k, v in attrs_map.items()}
             missing_attrs = []
-            filtered_attrs = []
+            attrs = []
             for a in attrs:
                 try:
                     oi_attrs.append(attrs_map_rev[a])
-                    filtered_attrs.append(a)
+                    attrs.append(a)
                 except:
                     missing_attrs.append(a)
 
-            attrs = filtered_attrs
             if missing_attrs:
                 logger.info(
                     "The following are not available attributes: %s\n\nSee available attributes with fouo.get_attributes()\n"
@@ -171,11 +172,6 @@ def download_open_images_v6_split(
         )
 
         dataset.info["segmentation_classes"] = seg_classes
-
-    else:
-        attrs = []
-        attrs_map = {}
-        oi_attrs = []
 
     # Add class hierarchy to dataset.info, used in evaluation
     hierarchy = _get_hierarchy(
