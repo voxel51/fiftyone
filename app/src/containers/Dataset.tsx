@@ -40,16 +40,6 @@ const Body = styled.div`
   overflow: hidden;
 `;
 
-const applyActiveLabels = (tuples, current, setter) => {
-  const newSelection = { ...current };
-  for (const [label, type] of tuples) {
-    if (newSelection[label] === undefined && VALID_LABEL_TYPES.includes(type)) {
-      newSelection[label] = true;
-    }
-  }
-  setter(newSelection);
-};
-
 function Dataset() {
   const [modal, setModal] = useRecoilState(atoms.modal);
   const http = useRecoilValue(selectors.http);

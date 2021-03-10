@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
 import styled from "styled-components";
-
 import { Close, Fullscreen, FullscreenExit } from "@material-ui/icons";
 import { useRecoilValue, useSetRecoilState } from "recoil";
 
@@ -9,9 +8,8 @@ import FieldsSidebar from "./FieldsSidebar";
 import JSONView from "./JSONView";
 import Player51 from "./Player51";
 import { ModalFooter } from "./utils";
-import SelectLabelsMenu from "./SelectLabelsMenu";
-import * as selectors from "../recoil/selectors";
 import * as atoms from "../recoil/atoms";
+import * as selectors from "../recoil/selectors";
 import * as labelAtoms from "./Filters/utils";
 import { labelFilters } from "./Filters/LabelFieldFilters.state";
 import { SampleContext } from "../utils/context";
@@ -21,10 +19,10 @@ import {
   useKeydownHandler,
   useResizeHandler,
   useVideoData,
+  useTheme,
 } from "../utils/hooks";
 import { formatMetadata } from "../utils/labels";
 import { useToggleSelectionObject } from "../utils/selection";
-import { Button } from "./FieldsSidebar";
 
 const Container = styled.div`
   position: relative;
@@ -323,6 +321,7 @@ const SampleModal = (
       onNext();
     }
   });
+  const theme = useTheme();
 
   // store in a ref to avoid re-rendering this component when the frame number
   // changes
@@ -429,10 +428,16 @@ const SampleModal = (
               style={{ position: "absolute", top: 0, right: 0 }}
             />
           </div>
-          <ModalFooter>
-            <Actions modal={true} frameNumberRef={frameNumberRef} />
-          </ModalFooter>
         </div>
+        <ModalFooter
+          style={{
+            overlflowX: "auto",
+            width: 280,
+            borderLeft: `2px solid ${theme.border}`,
+          }}
+        >
+          <Actions modal={true} frameNumberRef={frameNumberRef} />
+        </ModalFooter>
       </Container>
     </SampleContext.Provider>
   );

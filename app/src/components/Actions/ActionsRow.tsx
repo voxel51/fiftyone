@@ -37,7 +37,7 @@ const Tag = ({ modal }) => {
   );
 };
 
-const Selected = ({ modal, frameNumberRef }) => {
+const Selected = ({ modal, frameNumberRef, ...rest }) => {
   const [open, setOpen] = useState(false);
   const selectedSamples = useRecoilValue(atoms.selectedSamples);
   const selectedObjects = useRecoilValue(atoms.selectedObjects);
@@ -142,14 +142,14 @@ type ActionsRowProps = {
 };
 
 const ActionsRow = ({ modal, frameNumberRef }: ActionsRowProps) => {
+  const style = modal ? { width: "100%" } : {};
   return (
-    <ActionsRowDiv>
+    <ActionsRowDiv style={style}>
       {modal && <ShowJSON />}
       <Options modal={modal} />
       <Tag modal={modal} />
       {modal && <Hidden />}
       <Selected modal={modal} frameNumberRef={frameNumberRef} />
-      <div style={{ width: 8, height: 5 }}></div>
     </ActionsRowDiv>
   );
 };

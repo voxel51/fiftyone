@@ -56,20 +56,12 @@ export const ModalFooter = styled.div`
   border-top: 2px solid ${({ theme }) => theme.border};
   padding: 1em;
   background-color: ${({ theme }) => theme.backgroundLight};
-  overflow-x: auto;
   z-index: 9000;
+  position: absolute;
+  right: 0;
+  bottom: 0;
   width: 100%;
-  scrollbar-width: none;
-
-  &::-webkit-scrollbar {
-    width: 0px;
-    background: transparent;
-    display: none;
-  }
-  &::-webkit-scrollbar-thumb {
-    width: 0px;
-    display: none;
-  }
+  height: 64.5px;
 `;
 
 export const scrollbarStyles = ({ theme }) => `

@@ -284,7 +284,7 @@ const getModalActions = (frameNumberRef, close) => {
   ].filter(Boolean);
 };
 
-const SelectionActions = ({ modal, bounds, close, frameNumberRef }) => {
+const SelectionActions = ({ modal, close, frameNumberRef, bounds }) => {
   const actions = modal
     ? getModalActions(frameNumberRef, close)
     : getGridActions(close);

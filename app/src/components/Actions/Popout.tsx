@@ -1,11 +1,10 @@
 import React from "react";
-import ReactDOM from "react-dom";
 import { useSpring } from "react-spring";
-
-import { PopoutDiv } from "../utils";
 import { useWindowSize } from "../../utils/hooks";
 
-const Popout = ({ modal, bounds, children, style = {} }) => {
+import { PopoutDiv } from "../utils";
+
+const Popout = ({ modal, children, style = {}, bounds }) => {
   const show = useSpring({
     opacity: 1,
     from: {
@@ -16,25 +15,18 @@ const Popout = ({ modal, bounds, children, style = {} }) => {
     },
   });
   const { height, width } = useWindowSize();
-
-  if (modal) {
-    console.log(bounds);
-    return ReactDOM.createPortal(
-      <PopoutDiv
-        style={{
-          ...show,
-          ...style,
-          bottom: height - bounds.top + 8,
+  const position =
+    modal && bounds
+      ? {
+          position: "fixed",
           right: width - bounds.right,
-          zIndex: 20000,
-        }}
-      >
-        {children}
-      </PopoutDiv>,
-      document.body
-    );
-  }
-  return <PopoutDiv style={{ ...show, ...style }}>{children}</PopoutDiv>;
+          bottom: height - bounds.top + 8,
+        }
+      : {};
+
+  return (
+    <PopoutDiv style={{ ...show, ...position, ...style }}>{children}</PopoutDiv>
+  );
 };
 
 export default React.memo(Popout);
