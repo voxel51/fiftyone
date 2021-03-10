@@ -351,7 +351,7 @@ export const labelCount = selectorFamily<number | null, boolean>({
   key: "labelCount",
   get: (modal) => ({ get }) => {
     const labels = get(activeLabels({ modal, frames: false }));
-    const frameLabels = get(activeLabels({ modal, frames: false }));
+    const frameLabels = get(activeLabels({ modal, frames: true }));
     const hasFilters = Object.keys(get(selectors.filterStages)).length > 0;
 
     const [counts, frameCounts] = modal
@@ -379,10 +379,13 @@ export const labelCount = selectorFamily<number | null, boolean>({
       sum += counts[l];
     });
 
-    frameLabels.forEach((l) => {
-      if (!frameCounts[l]) return;
-      sum += frameCounts[l];
-    });
+    frameLabels
+      .map((l) => l.slice("frames.".length))
+      .forEach((l) => {
+        if (!frameCounts[l]) return;
+        sum += frameCounts[l];
+      });
+
     return sum;
   },
 });
