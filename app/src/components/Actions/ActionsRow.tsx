@@ -130,6 +130,21 @@ const ActionsRowDiv = styled.div`
   justify-content: ltr;
   margin-top: 2.5px;
 
+  scrollbar-width: none;
+  @-moz-document url-prefix() {
+    padding-right: 16px;
+  }
+
+  ::-webkit-scrollbar {
+    width: 0px;
+    background: transparent;
+    display: none;
+  }
+  ::-webkit-scrollbar-thumb {
+    width: 0px;
+    display: none;
+  }
+
   & > div {
     margin-right: 0.5rem;
   }
@@ -142,7 +157,14 @@ type ActionsRowProps = {
 };
 
 const ActionsRow = ({ modal, frameNumberRef }: ActionsRowProps) => {
-  const style = modal ? { width: "100%" } : {};
+  const style = modal
+    ? {
+        overflowX: "auto",
+        overflowY: "hidden",
+        margin: "0 -1em",
+        padding: "0 1em",
+      }
+    : {};
   return (
     <ActionsRowDiv style={style}>
       {modal && <ShowJSON />}
