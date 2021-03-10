@@ -11,7 +11,7 @@ import { animated, useSpring } from "react-spring";
 import { ContentDiv, ContentHeader } from "./utils";
 import ExternalLink from "./ExternalLink";
 import Player51 from "player51";
-import { useEventHandler, useTheme } from "../utils/hooks";
+import { useEventHandler } from "../utils/hooks";
 import { convertSampleToETA } from "../utils/labels";
 import { useMove } from "react-use-gesture";
 

@@ -213,7 +213,7 @@ const samplePlaceholder = (_, __, untag) => {
   return "+ tag sample";
 };
 
-const Tagger = ({ modal }: TaggerProps) => {
+const Tagger = ({ modal, bounds }: TaggerProps) => {
   const [labels, setLabels] = useState(modal);
   const theme = useTheme();
   const socket = useRecoilValue(selectors.socket);
@@ -229,7 +229,7 @@ const Tagger = ({ modal }: TaggerProps) => {
   });
 
   return (
-    <Popout style={{ width: "18rem" }} modal={modal}>
+    <Popout style={{ width: "18rem" }} modal={modal} bounds={bounds}>
       <SwitcherDiv>
         <SwitchDiv
           style={sampleProps}

@@ -14,6 +14,7 @@ import {
   removeMatchingObjectsFromSelection,
   convertSelectedObjectsMapToList,
 } from "../../utils/selection";
+import useMeasure from "react-use-measure";
 
 const useHighlightHover = (disabled) => {
   const [hovering, setHovering] = useState(false);
@@ -283,13 +284,13 @@ const getModalActions = (frameNumberRef, close) => {
   ].filter(Boolean);
 };
 
-const SelectionActions = ({ modal, close, frameNumberRef }) => {
+const SelectionActions = ({ modal, bounds, close, frameNumberRef }) => {
   const actions = modal
     ? getModalActions(frameNumberRef, close)
     : getGridActions(close);
 
   return (
-    <Popout modal={modal}>
+    <Popout modal={modal} bounds={bounds}>
       {actions.map((props) => (
         <ActionOption {...props} />
       ))}

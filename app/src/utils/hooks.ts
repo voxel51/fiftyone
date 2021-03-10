@@ -153,8 +153,8 @@ export const useVideoData = (socket, sample, callback = null) => {
 
 export const useWindowSize = () => {
   const [windowSize, setWindowSize] = useState({
-    width: undefined,
-    height: undefined,
+    width: 0,
+    height: 0,
   });
 
   const handleResize = () => {

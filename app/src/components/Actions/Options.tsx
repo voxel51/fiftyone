@@ -12,7 +12,6 @@ export const RefreshButton = ({ modal }) => {
   const [colorSeed, setColorSeed] = useRecoilState(
     atoms.colorSeed(Boolean(modal))
   );
-  const theme = useTheme();
   return (
     <>
       <PopoutSectionTitle></PopoutSectionTitle>
@@ -60,9 +59,9 @@ type OptionsProps = {
   modal: boolean;
 };
 
-const Options = ({ modal }: OptionsProps) => {
+const Options = ({ modal, bounds }: OptionsProps) => {
   return (
-    <Popout modal={modal}>
+    <Popout modal={modal} bounds={bounds}>
       <ColorBy modal={modal} />
       <RefreshButton modal={modal} />
     </Popout>

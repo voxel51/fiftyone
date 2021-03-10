@@ -52,9 +52,24 @@ export const ModalWrapper = styled.div`
 `;
 
 export const ModalFooter = styled.div`
+  display: block;
   border-top: 2px solid ${({ theme }) => theme.border};
   padding: 1em;
   background-color: ${({ theme }) => theme.backgroundLight};
+  overflow-x: auto;
+  z-index: 9000;
+  width: 100%;
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    width: 0px;
+    background: transparent;
+    display: none;
+  }
+  &::-webkit-scrollbar-thumb {
+    width: 0px;
+    display: none;
+  }
 `;
 
 export const scrollbarStyles = ({ theme }) => `
@@ -139,23 +154,28 @@ type PillButton = {
 };
 
 export const PillButton = React.memo(
-  ({ onClick, open, text, icon, highlight, arrow = false }: PillButton) => {
-    const theme = useTheme();
-    const props = useSpring({
-      opacity: 1,
-      backgroundColor: !highlight ? theme.button : theme.brand,
-      from: {
-        opacity: 0,
-      },
-    });
-    return (
-      <PillButtonDiv onClick={onClick} style={props}>
-        {icon}
-        {text && <span>{text}</span>}
-        {arrow && (open ? <KeyboardArrowUp /> : <KeyboardArrowDown />)}
-      </PillButtonDiv>
-    );
-  }
+  React.forwardRef(
+    (
+      { onClick, open, text, icon, highlight, arrow = false }: PillButton,
+      ref
+    ) => {
+      const theme = useTheme();
+      const props = useSpring({
+        opacity: 1,
+        backgroundColor: !highlight ? theme.button : theme.brand,
+        from: {
+          opacity: 0,
+        },
+      });
+      return (
+        <PillButtonDiv onClick={onClick} style={props} ref={ref}>
+          {icon}
+          {text && <span>{text}</span>}
+          {arrow && (open ? <KeyboardArrowUp /> : <KeyboardArrowDown />)}
+        </PillButtonDiv>
+      );
+    }
+  )
 );
 
 export const PopoutDiv = animated(styled.div`

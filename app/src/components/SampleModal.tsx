@@ -44,7 +44,7 @@ const Container = styled.div`
   }
 
   h2 {
-    margin: 0.5rem -1em;
+    margin: 0.5rem -1rem;
     padding: 0 1rem;
     border-bottom: 2px solid ${({ theme }) => theme.backgroundLight};
     clear: both;
@@ -113,19 +113,17 @@ const Container = styled.div`
 
   .sidebar {
     position: relative;
-    overflow: visible;
-    display: flex;
-    flex-direction: column;
-    border-left: 2px solid ${({ theme }) => theme.border};
+    height: 100%;
     max-height: 100%;
+    overflow: hidden;
+    border-left: 2px solid ${({ theme }) => theme.border};
 
     .sidebar-content {
-      padding-left: 1em;
-      padding-right: 1em;
-      padding-bottom: 1em;
-      flex-grow: 1;
-      overflow-y: auto;
-      overflow: hidden;
+      padding-left: 1rem;
+      padding-right: 1rem;
+      padding-bottom: 1rem;
+      overflow-y: scroll;
+      height: calc(100% - 64.5px);
       max-height: calc(100% - 64.5px);
       scrollbar-width: none;
       @-moz-document url-prefix() {
@@ -431,7 +429,7 @@ const SampleModal = (
               style={{ position: "absolute", top: 0, right: 0 }}
             />
           </div>
-          <ModalFooter style={{ display: "block" }}>
+          <ModalFooter>
             <Actions modal={true} frameNumberRef={frameNumberRef} />
           </ModalFooter>
         </div>
