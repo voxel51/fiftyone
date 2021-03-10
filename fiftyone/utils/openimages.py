@@ -33,49 +33,6 @@ import botocore
 logger = logging.getLogger(__name__)
 
 
-def load_existing_dataset(
-    dataset_dir=None, split=None, splits=None, name=None
-):
-    """Utility to load the `Open Images v6 dataset
-    <https://storage.googleapis.com/openimages/web/index.html>`_ with
-    annotations that was previously downloaded.
-
-    Args:
-        dataset_dir (None): the directory to which the dataset was
-            downloaded
-        split (None) a split to download, if applicable. Values are
-            ``("train", "validation", "test")``. If neither ``split`` nor
-            ``splits`` are provided, all available splits are downloaded.
-        splits (None): a list of splits to download, if applicable. 
-            Values are ``("train", "validation", "test")``. If neither
-            ``split`` nor ``splits`` are provided, all available splits are
-            downloaded. 
-        name (None): name for the :class:`Dataset` that will be created
-
-
-    Returns:
-        a :class:`fiftyone.core.dataset.Dataset`
-    """
-    if not dataset_dir:
-        dataset_dir = os.path.join(fo.config.dataset_zoo_dir, "open-images-v6")
-
-    splits = _parse_splits(split, splits)
-
-    if not name or not isinstance(name, str):
-        name = "open-images-v6"
-
-    dataset = fod.Dataset(name)
-
-    for split in splits:
-        split_path = os.path.join(dataset_dir, split)
-        if os.path.exists(split_path):
-            split_dataset = dataset.add_dir(
-                split_path, dataset_type=fot.FiftyOneDataset,
-            )
-
-    return dataset
-
-
 def download_open_images_v6_split(
     dataset_dir,
     scratch_dir,
@@ -142,7 +99,9 @@ def download_open_images_v6_split(
     dataset.persistent = False
 
     # Map of class IDs to class names
-    classes_map = _get_classes_map(scratch_dir)
+    classes_map = _get_classes_map(
+        dataset_dir=dataset_dir, scratch_dir=scratch_dir
+    )
 
     all_classes = sorted(list(classes_map.values()))
     dataset.info["classes_map"] = classes_map
@@ -172,7 +131,9 @@ def download_open_images_v6_split(
 
     if "relationships" in label_types:
         # Map of attribute IDs to attribute names
-        attrs_map = _get_attrs_map(scratch_dir)
+        attrs_map = _get_attrs_map(
+            dataset_dir=dataset_dir, scratch_dir=scratch_dir
+        )
 
         all_attrs = sorted(list(attrs_map.values()))
         dataset.info["attributes_map"] = attrs_map
@@ -203,7 +164,11 @@ def download_open_images_v6_split(
 
     seg_classes = []
     if "segmentations" in label_types:
-        seg_classes = get_segmentation_classes(scratch_dir, classes_map)
+        seg_classes = get_segmentation_classes(
+            dataset_dir=dataset_dir,
+            scratch_dir=scratch_dir,
+            classes_map=classes_map,
+        )
 
         dataset.info["segmentation_classes"] = seg_classes
 
@@ -211,6 +176,14 @@ def download_open_images_v6_split(
         attrs = []
         attrs_map = {}
         oi_attrs = []
+
+    # Add class hierarchy to dataset.info, used in evaluation
+    hierarchy = _get_hierarchy(
+        dataset_dir=dataset_dir,
+        scratch_dir=scratch_dir,
+        classes_map=classes_map,
+    )
+    dataset.info["hierarchy"] = hierarchy
 
     dataset = _load_open_images_split(
         dataset,
@@ -233,7 +206,7 @@ def download_open_images_v6_split(
 
     # Export the labels of each split in FiftyOneDataset format
     export_dir = os.path.join(dataset_dir, split)
-    logger.info("Writing annotations for split (%s) to disk" % split)
+    logger.info("Writing annotations for %s split to disk" % split)
     dataset.export(
         export_dir, dataset_type=fot.FiftyOneDataset, export_media=False
     )
@@ -243,303 +216,154 @@ def download_open_images_v6_split(
     return num_samples, all_classes
 
 
-def load_open_images_v6(
-    label_types=None,
-    classes=None,
-    split=None,
-    splits=None,
-    attrs=None,
-    name=None,
-    max_samples=None,
-    dataset_dir=None,
-    image_ids=None,
-    image_ids_file=None,
-    num_workers=None,
-    cleanup=True,
-):
-    """Utility to download the `Open Images v6 dataset <https://storage.googleapis.com/openimages/web/index.html>`_ with annotations.
-
-    Args:
-        label_types (None): a list of types of labels to load. Values are
-            ``("detections", "classifications", "relationships", "segmentations")``. 
-            By default, all labels are loaded but not every sample will include
-            each label type. If ``max_samples`` and ``label_types`` are both
-            specified, then every sample will include the specified label types.
-        classes (None): a list of strings specifying required classes to load. Only samples
-            containing at least one instance of a specified classes will be
-            downloaded. See available classes with `get_classes()`
-        split (None) a split to download, if applicable. Values are
-            ``("train", "validation", "test")``. If neither ``split`` nor
-            ``splits`` are provided, all available splits are downloaded.
-        splits (None): a list of splits to download, if applicable. 
-            Values are ``("train", "validation", "test")``. If neither
-            ``split`` nor ``splits`` are provided, all available splits are
-            downloaded. 
-        attrs (None): a list of strings for relationship attributes to load
-        name (None): name for the :class:`Dataset` that will be created
-        max_samples (None): a maximum number of samples to import per split. By default,
-            all samples are imported
-        dataset_dir (None): the directory to which the dataset will be
-            downloaded
-        image_ids (None): list of specific image ids to load either in the form
-            of ``<split>/<image-id>`` or just a list of ``<image-id>``.
-            ``image_ids`` takes precedence if both ``image_ids`` and
-            ``image_ids_file`` are provided.
-        image_ids_file (None): path to a newline separated text, json, or csv file containing a
-            list of image ids to load either in the form
-            of ``<split>/<image-id>`` or just a list of ``<image-id>``.
-            ``image_ids`` takes precedence if both ``image_ids`` and
-            ``image_ids_file`` are provided.
-        num_workers (None): the number of processes to use to download images. By default,
-            ``multiprocessing.cpu_count()`` is used
-        cleanup (True): whether to cleanup any temporary files generated during
-            download. It is recommended to set cleanup to ``False`` if you plan
-            to run ``load_open_images_v6`` multiple times
-
-
-    Returns:
-        a :class:`fiftyone.core.dataset.Dataset`
-    """
-    if max_samples and label_types:
-        # Only samples with every specified label type will be loaded
-        guarantee_all_types = True
-    else:
-        # Samples may not contain multiple label types, but will contain at
-        # least one
-        guarantee_all_types = False
-
-    if num_workers is None:
-        num_workers = multiprocessing.cpu_count()
-
-    label_types = _parse_label_types(label_types)
-    splits = _parse_splits(split, splits)
-
-    if not name or not isinstance(name, str):
-        name = "open-images-v6"
-
-    if not dataset_dir:
-        dataset_dir = os.path.join(fo.config.dataset_zoo_dir, "open-images-v6")
-
-    scratch_dir = os.path.join(dataset_dir, "tmp-download")
-
-    split_image_ids = _parse_image_ids(
-        image_ids, image_ids_file, label_types, splits, scratch_dir
-    )
-
-    dataset = fod.Dataset(name)
-
-    info = {}
-
-    # Map of class IDs to class names
-    classes_map = _get_classes_map(scratch_dir)
-
-    all_classes = sorted(list(classes_map.values()))
-    info["classes_map"] = classes_map
-    dataset.info["classes_map"] = classes_map
-    info["classes"] = all_classes
-    dataset.info["classes"] = all_classes
-
-    if classes == None:
-        oi_classes = list(classes_map.keys())
-        classes = list(classes_map.values())
-
-    else:
-        oi_classes = []
-        classes_map_rev = {v: k for k, v in classes_map.items()}
-        missing_classes = []
-        filtered_classes = []
-        for c in classes:
-            try:
-                oi_classes.append(classes_map_rev[c])
-                filtered_classes.append(c)
-            except:
-                missing_classes.append(c)
-        classes = filtered_classes
-        if missing_classes:
-            logger.info(
-                "The following are not available classes: %s\n\nSee available classes with fouo.get_classes()\n"
-                % ",".join(missing_classes)
-            )
-
-    if "relationships" in label_types:
-        # Map of attribute IDs to attribute names
-        attrs_map = _get_attrs_map(scratch_dir)
-
-        all_attrs = sorted(list(attrs_map.values()))
-        info["attributes_map"] = attrs_map
-        dataset.info["attributes_map"] = attrs_map
-        info["attributes"] = all_attrs
-        dataset.info["attributes"] = all_attrs
-
-        if attrs == None:
-            oi_attrs = list(attrs_map.keys())
-            attrs = list(attrs_map.values())
-
-        else:
-            oi_attrs = []
-            attrs_map_rev = {v: k for k, v in attrs_map.items()}
-            missing_attrs = []
-            filtered_attrs = []
-            for a in attrs:
-                try:
-                    oi_attrs.append(attrs_map_rev[a])
-                    filtered_attrs.append(a)
-                except:
-                    missing_attrs.append(a)
-
-            attrs = filtered_attrs
-            if missing_attrs:
-                logger.info(
-                    "The following are not available attributes: %s\n\nSee available attributes with fouo.get_attributes()\n"
-                    % ",".join(missing_attrs)
-                )
-
-    seg_classes = []
-    if "segmentations" in label_types:
-        seg_classes = get_segmentation_classes(scratch_dir, classes_map)
-
-        info["segmentation_classes"] = seg_classes
-        dataset.info["segmentation_classes"] = seg_classes
-
-    else:
-        attrs = []
-        attrs_map = {}
-        oi_attrs = []
-
-    for split in splits:
-        dataset = _load_open_images_split(
-            dataset,
-            label_types,
-            guarantee_all_types,
-            split_image_ids,
-            classes_map,
-            attrs_map,
-            oi_classes,
-            oi_attrs,
-            seg_classes,
-            dataset_dir,
-            scratch_dir,
-            split,
-            classes,
-            attrs,
-            max_samples,
-            num_workers,
-        )
-
-        # Export the labels of each split in FiftyOneDataset format
-        view = dataset.match_tags([split])
-        export_dir = os.path.join(dataset_dir, split)
-        logger.info("Writing annotations for split (%s) to disk" % split)
-        view.export(
-            export_dir, dataset_type=fot.FiftyOneDataset, export_media=False
-        )
-
-    info_path = os.path.join(dataset_dir, "info.json")
-    etas.write_json(info, info_path)
-
-    if cleanup:
-        etau.delete_dir(scratch_dir)
-
-    return dataset
-
-
-def get_attributes(dataset_dir=None):
+def get_attributes(dataset_dir=None, scratch_dir=None):
     """List the attributes that exist in the relationships in Open Images V6.
 
     Args:
         dataset_dir (None): the root directory the in which the dataset is
-            downloaded 
+            downloaded
+        scratch_dir (None): scratch directory used to download 
+            attributes file if it is not available in ``metadata.json`` in the
+            ``dataset_dir`` splits
 
     Returns:
         a sorted list of attribute name strings
     """
-    if dataset_dir:
-        info_path = os.path.join(dataset_dir, "info.json")
-    else:
-        info_path = os.path.join(
-            fo.config.dataset_zoo_dir, "open-images-v6", "info.json"
-        )
+    for split in _DEFAULT_SPLITS:
+        if dataset_dir:
+            metadata_path = os.path.join(dataset_dir, split, "metadata.json")
+        else:
+            metadata_path = os.path.join(
+                fo.config.dataset_zoo_dir,
+                "open-images-v6",
+                split,
+                "metadata.json",
+            )
 
-    if os.path.exists(info_path):
-        info = etas.load_json(info_path)
-        if "attributes" in info.keys():
-            return info["attributes"]
+        if os.path.exists(metadata_path):
+            metadata = etas.load_json(metadata_path)
+            if (
+                "info" in metadata.keys()
+                and "attributes" in metadata["info"].keys()
+            ):
+                return metadata["info"]["attributes"]
 
-    if not dataset_dir:
-        dataset_dir = os.path.join(
-            fo.config.dataset_zoo_dir, "open-images-v6", "tmp-download"
-        )
+    if not scratch_dir:
+        if not dataset_dir:
+            scratch_dir = os.path.join(
+                fo.config.dataset_zoo_dir, "open-images-v6", "tmp-download"
+            )
 
-    attrs_map = _get_attrs_map(dataset_dir)
+        else:
+            scratch_dir = os.path.join(dataset_dir, "tmp-download")
+
+    attrs_map = _get_attrs_map(
+        dataset_dir=dataset_dir, scratch_dir=scratch_dir
+    )
     return sorted(list(attrs_map.values()))
 
 
-def get_classes(dataset_dir=None):
+def get_classes(dataset_dir=None, scratch_dir=None):
     """List the 601 boxable classes that exist in classifications, detections,
     and relationships in Open Images V6.
 
     Args:
         dataset_dir (None): the root directory the in which the dataset is
-            downloaded 
+            downloaded and ``info.json`` is stored 
+        scratch_dir (None): scratch directory used to download 
+            classes file if it is not available in ``info.json`` in the
+            ``dataset_dir``
 
     Returns:
         a sorted list of class name strings
     """
-    if dataset_dir:
-        info_path = os.path.join(dataset_dir, "info.json")
-    else:
-        info_path = os.path.join(
-            fo.config.dataset_zoo_dir, "open-images-v6", "info.json"
-        )
+    for split in _DEFAULT_SPLITS:
+        if dataset_dir:
+            metadata_path = os.path.join(dataset_dir, split, "metadata.json")
+        else:
+            metadata_path = os.path.join(
+                fo.config.dataset_zoo_dir,
+                "open-images-v6",
+                split,
+                "metadata.json",
+            )
 
-    if os.path.exists(info_path):
-        info = etas.load_json(info_path)
-        return info["classes"]
+        if os.path.exists(metadata_path):
+            metadata = etas.load_json(metadata_path)
+            if (
+                "info" in metadata.keys()
+                and "classes" in metadata["info"].keys()
+            ):
+                return metadata["info"]["classes"]
 
-    if not dataset_dir:
-        dataset_dir = os.path.join(
-            fo.config.dataset_zoo_dir, "open-images-v6", "tmp-download"
-        )
+    if not scratch_dir:
+        if not dataset_dir:
+            scratch_dir = os.path.join(
+                fo.config.dataset_zoo_dir, "open-images-v6", "tmp-download"
+            )
 
-    classes_map = _get_classes_map(dataset_dir)
+        else:
+            scratch_dir = os.path.join(dataset_dir, "tmp-download")
+
+    classes_map = _get_classes_map(
+        dataset_dir=dataset_dir, scratch_dir=scratch_dir
+    )
     return sorted(list(classes_map.values()))
 
 
-def get_segmentation_classes(dataset_dir=None, classes_map=None):
+def get_segmentation_classes(
+    dataset_dir=None, scratch_dir=None, classes_map=None
+):
     """List the 350 classes that are labeled with segmentations in Open Images V6.
 
     Args:
         dataset_dir (None): the root directory the in which the dataset is
-            downloaded 
+            downloaded and ``info.json`` is stored 
+        scratch_dir (None): scratch directory used to download segmentation
+            class file if it is not available in ``info.json`` in the
+            ``dataset_dir``
         classes_map (None): a dict mapping the Open Images IDs of classes to
             the string class names
 
     Returns:
         a sorted list of segmentation class name strings
     """
-    if dataset_dir:
-        info_path = os.path.join(dataset_dir, "info.json")
-    else:
-        info_path = os.path.join(
-            fo.config.dataset_zoo_dir, "open-images-v6", "info.json"
-        )
+    for split in _DEFAULT_SPLITS:
+        if dataset_dir:
+            metadata_path = os.path.join(dataset_dir, split, "metadata.json")
+        else:
+            metadata_path = os.path.join(
+                fo.config.dataset_zoo_dir,
+                "open-images-v6",
+                split,
+                "metadata.json",
+            )
 
-    if os.path.exists(info_path):
-        info = etas.load_json(info_path)
-        if "segmentation_classes" in info.keys():
-            return info["segmentation_classes"]
+        if os.path.exists(metadata_path):
+            metadata = etas.load_json(metadata_path)
+            if (
+                "info" in metadata.keys()
+                and "segmentation_classes" in metadata["info"].keys()
+            ):
+                return metadata["info"]["segmentation_classes"]
 
-    if not dataset_dir:
-        dataset_dir = os.path.join(
-            fo.config.dataset_zoo_dir, "open-images-v6", "tmp-download"
-        )
+    if not scratch_dir:
+        if not dataset_dir:
+            scratch_dir = os.path.join(
+                fo.config.dataset_zoo_dir, "open-images-v6", "tmp-download"
+            )
+
+        else:
+            scratch_dir = os.path.join(dataset_dir, "tmp-download")
 
     if not classes_map:
-        classes_map = _get_classes_map(dataset_dir)
+        classes_map = _get_classes_map(
+            dataset_dir=dataset_dir, scratch_dir=scratch_dir
+        )
 
     annot_link = _ANNOTATION_DOWNLOAD_LINKS["general"]["segmentation_classes"]
     seg_cls_txt_filename = os.path.basename(annot_link)
-    seg_cls_txt = os.path.join(dataset_dir, "general", seg_cls_txt_filename)
+    seg_cls_txt = os.path.join(scratch_dir, "general", seg_cls_txt_filename)
     _download_if_necessary(
         seg_cls_txt, annot_link,
     )
@@ -552,59 +376,147 @@ def get_segmentation_classes(dataset_dir=None, classes_map=None):
     return sorted(seg_classes)
 
 
-def _get_attrs_map(dataset_dir=None):
-    if dataset_dir:
-        info_path = os.path.join(dataset_dir, "info.json")
-    else:
-        info_path = os.path.join(
-            fo.config.dataset_zoo_dir, "open-images-v6", "info.json"
-        )
+def _get_attrs_map(dataset_dir=None, scratch_dir=None):
+    for split in _DEFAULT_SPLITS:
+        if dataset_dir:
+            metadata_path = os.path.join(dataset_dir, split, "metadata.json")
+        else:
+            metadata_path = os.path.join(
+                fo.config.dataset_zoo_dir,
+                "open-images-v6",
+                split,
+                "metadata.json",
+            )
 
-    if os.path.exists(info_path):
-        info = etas.load_json(info_path)
-        if "attributes_map" in info.keys():
-            return info["attributes_map"]
+        if os.path.exists(metadata_path):
+            metadata = etas.load_json(metadata_path)
+            if (
+                "info" in metadata.keys()
+                and "attributes_map" in metadata["info"].keys()
+            ):
+                return metadata["info"]["attributes_map"]
 
-    if not dataset_dir:
-        dataset_dir = os.path.join(
-            fo.config.dataset_zoo_dir, "open-images-v6", "tmp-download"
-        )
+    if not scratch_dir:
+        if not dataset_dir:
+            scratch_dir = os.path.join(
+                fo.config.dataset_zoo_dir, "open-images-v6", "tmp-download"
+            )
+        else:
+            scratch_dir = os.path.join(dataset_dir, "tmp-download")
 
     annot_link = _ANNOTATION_DOWNLOAD_LINKS["general"]["attr_names"]
     attrs_csv_name = os.path.basename(annot_link)
-    attrs_csv = os.path.join(dataset_dir, "general", attrs_csv_name)
+    attrs_csv = os.path.join(scratch_dir, "general", attrs_csv_name)
     _download_if_necessary(attrs_csv, annot_link)
     attrs_data = _parse_csv(attrs_csv)
     attrs_map = {k: v for k, v in attrs_data}
     return attrs_map
 
 
-def _get_classes_map(dataset_dir=None):
-    if dataset_dir:
-        info_path = os.path.join(dataset_dir, "info.json")
-    else:
-        info_path = os.path.join(
-            fo.config.dataset_zoo_dir, "open-images-v6", "info.json"
-        )
+def _get_classes_map(dataset_dir=None, scratch_dir=None):
+    for split in _DEFAULT_SPLITS:
+        if dataset_dir:
+            metadata_path = os.path.join(dataset_dir, split, "metadata.json")
+        else:
+            metadata_path = os.path.join(
+                fo.config.dataset_zoo_dir,
+                "open-images-v6",
+                split,
+                "metadata.json",
+            )
 
-    if os.path.exists(info_path):
-        info = etas.load_json(info_path)
-        if "classes_map" in info.keys():
-            return info["classes_map"]
+        if os.path.exists(metadata_path):
+            metadata = etas.load_json(metadata_path)
+            if (
+                "info" in metadata.keys()
+                and "classes_map" in metadata["info"].keys()
+            ):
+                return metadata["info"]["classes_map"]
 
-    if not dataset_dir:
-        dataset_dir = os.path.join(
-            fo.config.dataset_zoo_dir, "open-images-v6", "tmp-download"
-        )
+    if not scratch_dir:
+        if not dataset_dir:
+            scratch_dir = os.path.join(
+                fo.config.dataset_zoo_dir, "open-images-v6", "tmp-download"
+            )
+
+        else:
+            scratch_dir = os.path.join(dataset_dir, "tmp-download")
 
     # Map of class IDs to class names
     annot_link = _ANNOTATION_DOWNLOAD_LINKS["general"]["class_names"]
     cls_csv_name = os.path.basename(annot_link)
-    cls_csv = os.path.join(dataset_dir, "general", cls_csv_name)
+    cls_csv = os.path.join(scratch_dir, "general", cls_csv_name)
     _download_if_necessary(cls_csv, annot_link)
     cls_data = _parse_csv(cls_csv)
     classes_map = {k: v for k, v in cls_data}
     return classes_map
+
+
+def _get_hierarchy(dataset_dir=None, scratch_dir=None, classes_map=None):
+    for split in _DEFAULT_SPLITS:
+        if dataset_dir:
+            metadata_path = os.path.join(dataset_dir, split, "metadata.json")
+        else:
+            metadata_path = os.path.join(
+                fo.config.dataset_zoo_dir,
+                "open-images-v6",
+                split,
+                "metadata.json",
+            )
+
+        if os.path.exists(metadata_path):
+            metadata = etas.load_json(metadata_path)
+            if (
+                "info" in metadata.keys()
+                and "hierarchy" in metadata["info"].keys()
+            ):
+                return metadata["info"]["hierarchy"]
+
+    if not scratch_dir:
+        if not dataset_dir:
+            scratch_dir = os.path.join(
+                fo.config.dataset_zoo_dir, "open-images-v6", "tmp-download"
+            )
+
+        else:
+            scratch_dir = os.path.join(dataset_dir, "tmp-download")
+
+    link_path = _ANNOTATION_DOWNLOAD_LINKS["general"]["hierarchy"]
+    fn = os.path.basename(link_path)
+    filepath = os.path.join(scratch_dir, "general", fn)
+    _download_if_necessary(filepath, link_path)
+    hierarchy = etas.load_json(filepath)
+
+    if classes_map is None:
+        classes_map = _get_classes_map(
+            dataset_dir=dataset_dir, scratch_dir=scratch_dir
+        )
+
+    # Not included in standard classes
+    entity_classes_map = {"/m/0bl9f": "Entity"}
+    entity_classes_map.update(classes_map)
+    renamed_hierarchy = _rename_subcategories(hierarchy, entity_classes_map)
+    return renamed_hierarchy
+
+
+def _rename_subcategories(hierarchy, classes_map):
+    if "LabelName" in hierarchy.keys():
+        curr_label = hierarchy["LabelName"]
+        hierarchy["LabelName"] = classes_map[curr_label]
+
+    if "Subcategory" in hierarchy.keys():
+        subs = []
+        for sub in hierarchy["Subcategory"]:
+            subs.append(_rename_subcategories(sub, classes_map))
+        hierarchy["Subcategory"] = subs
+
+    if "Part" in hierarchy.keys():
+        parts = []
+        for part in hierarchy["Part"]:
+            parts.append(_rename_subcategories(part, classes_map))
+        hierarchy["Part"] = parts
+
+    return hierarchy
 
 
 def _parse_csv(filename):
