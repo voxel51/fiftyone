@@ -120,7 +120,7 @@ export const useFollow = (leaderRef, followerRef, set) => {
 };
 
 export const useVideoData = (socket, sample, callback = null) => {
-  const { _id: sampleId, filepath } = sample;
+  const { _id: sampleId } = sample;
   const [requested, setRequested] = useRecoilState(
     atoms.sampleVideoDataRequested(sampleId)
   );
@@ -141,9 +141,7 @@ export const useVideoData = (socket, sample, callback = null) => {
           callback && callback({ labels, frames }, ...args);
         };
         attachDisposableHandler(socket, event, handler);
-        socket.send(
-          packageMessage("get_video_data", { _id: sampleId, filepath })
-        );
+        socket.send(packageMessage("get_video_data", { _id: sampleId }));
       } else {
         callback && callback(null, ...args);
       }
