@@ -64,10 +64,9 @@ def evaluate_segmentations(
         gt_field ("ground_truth"): the name of the field containing the ground
             truth :class:`fiftyone.core.labels.Segmentation` instances
         eval_key (None): an evaluation key to use to refer to this evaluation
-        mask_targets (None): a dict mapping mask values to labels. May contain
-            a subset of the possible classes if you wish to evaluate a subset
-            of the semantic classes. If not provided, mask targets are loaded
-            from :meth:`fiftyone.core.dataset.Dataset.mask_targets` or
+        mask_targets (None): a dict mapping mask values to labels. If not
+            provided, mask targets are loaded from
+            :meth:`fiftyone.core.dataset.Dataset.mask_targets` or
             :meth:`fiftyone.core.dataset.Dataset.default_mask_targets` if
             possible, or else the observed pixel values are used
         method ("simple"): a string specifying the evaluation method to use.

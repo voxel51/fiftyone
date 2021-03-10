@@ -10,7 +10,7 @@ from collections import OrderedDict
 from fiftyone.core.fields import FrameNumberField, ObjectIdField
 
 from .document import Document, SampleDocument
-from .mixins import DatasetMixin, default_sample_fields, NoDatasetMixin
+from .mixins import DatasetMixin, get_default_fields, NoDatasetMixin
 
 
 class DatasetFrameSampleDocument(DatasetMixin, Document, SampleDocument):
@@ -33,14 +33,13 @@ class NoDatasetFrameSampleDocument(NoDatasetMixin, SampleDocument):
 
     # pylint: disable=no-member
     default_fields = DatasetFrameSampleDocument._fields
-    default_fields_ordered = default_sample_fields(
+    default_fields_ordered = get_default_fields(
         DatasetFrameSampleDocument, include_private=True
     )
 
     def __init__(self, **kwargs):
         self._data = OrderedDict()
         for field_name in self.default_fields_ordered:
-
             value = kwargs.pop(field_name, None)
 
             if value is None and field_name != "_sample_id":

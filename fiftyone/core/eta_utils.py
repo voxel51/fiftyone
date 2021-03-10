@@ -103,6 +103,20 @@ class ETAModel(fom.Model, fom.EmbeddingsMixin, fom.LogitsMixin):
             return None
 
     @property
+    def preprocess(self):
+        try:
+            return self._model.preprocess
+        except AttributeError:
+            return False
+
+    @preprocess.setter
+    def preprocess(self, value):
+        try:
+            self._model.preprocess = value
+        except AttributeError:
+            pass
+
+    @property
     def has_logits(self):
         return (
             isinstance(self._model, etal.ExposesProbabilities)

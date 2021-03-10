@@ -168,8 +168,6 @@ def _update_state(auto_show=False):
         @wraps(func)
         def wrapper(self, *args, **kwargs):
             result = func(self, *args, **kwargs)
-            self.state.datasets = fod.list_datasets()
-            self.state.refresh = not self.state.refresh
             if auto_show:
                 self._auto_show()
 
@@ -293,7 +291,7 @@ class Session(foc.HasClient):
 
         state.datasets = fod.list_datasets()
         state.active_handle = self._auto_show()
-        self._update_state(state)
+        self.state = state
 
         if self._remote:
             if self._context != focx._NONE:
@@ -470,7 +468,7 @@ class Session(foc.HasClient):
 
     @_update_state()
     def refresh(self):
-        """Refreshes the App, reloading the current dataset/view."""
+        """Refreshes the current App window."""
         pass
 
     @property
@@ -491,13 +489,20 @@ class Session(foc.HasClient):
         self.state.selected = []
 
     @_update_state()
-    def select_samples(self, sample_ids):
-        """Selects the samples with the given IDs in the App.
+    def select_samples(self, ids=None, tags=None):
+        """Selects the specified samples in the current view in the App,
 
         Args:
-            sample_ids: an iterable of sample IDs
+            ids (None): an ID or iterable of IDs of samples to select
+            tags (None): a tag or iterable of tags of samples to select
         """
-        self.state.selected = list(sample_ids)
+        if tags is not None:
+            ids = self._collection.match_tags(tags).values("id")
+
+        if ids is None:
+            ids = []
+
+        self.state.selected = list(ids)
 
     @property
     def selected_labels(self):
@@ -520,7 +525,7 @@ class Session(foc.HasClient):
 
     @_update_state()
     def select_labels(self, labels=None, ids=None, tags=None, fields=None):
-        """Selects the specified labels in the App.
+        """Selects the specified labels in the current view in the App.
 
         This method uses the same interface as
         :meth:`fiftyone.core.collections.SampleCollection.select_labels` to
@@ -678,6 +683,7 @@ class Session(foc.HasClient):
 
         webbrowser.open(self.url, new=2)
 
+    @_update_state()
     def show(self, height=None):
         """Opens the App in the output of the current notebook cell.
 
@@ -687,7 +693,6 @@ class Session(foc.HasClient):
             height (None): a height, in pixels, for the App
         """
         self._show(height)
-        self._update_state()
 
     def no_show(self):
         """Returns a context manager that temporarily prevents new App
@@ -817,7 +822,6 @@ class Session(foc.HasClient):
 
         import IPython.display
 
-        self.state.datasets = fod.list_datasets()
         handle = IPython.display.display(display_id=True)
         uuid = str(uuid4())
         self.state.active_handle = uuid
@@ -830,9 +834,12 @@ class Session(foc.HasClient):
         _display(self, handle, uuid, self._port, height=height)
         return uuid
 
-    def _update_state(self, state=None):
-        # see fiftyone.core.client if you would like to understand this
-        self.state = state or self.state
+    def _update_state(self):
+        self.state.datasets = fod.list_datasets()
+        self.state.refresh = not self.state.refresh
+
+        # See ``fiftyone.core.client`` to understand this
+        self.state = self.state
 
 
 def _display(session, handle, uuid, port=None, height=None, update=False):

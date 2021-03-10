@@ -68,15 +68,8 @@ import fiftyone.core.media as fomm
 import fiftyone.core.utils as fou
 
 from .dataset import SampleFieldDocument, DatasetDocument
-from .document import (
-    Document,
-    SampleDocument,
-)
-from .mixins import (
-    DatasetMixin,
-    default_sample_fields,
-    NoDatasetMixin,
-)
+from .document import Document, SampleDocument
+from .mixins import DatasetMixin, get_default_fields, NoDatasetMixin
 
 
 # Use our own Random object to avoid messing with the user's seed
@@ -119,7 +112,7 @@ class NoDatasetSampleDocument(NoDatasetMixin, SampleDocument):
 
     # pylint: disable=no-member
     default_fields = DatasetSampleDocument._fields
-    default_fields_ordered = default_sample_fields(
+    default_fields_ordered = get_default_fields(
         DatasetSampleDocument, include_private=True
     )
 

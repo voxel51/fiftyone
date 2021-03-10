@@ -20,17 +20,20 @@ import fiftyone.core.media as fomm
 import fiftyone.core.odm as foo
 
 
-def get_default_sample_fields(include_private=False):
+def get_default_sample_fields(include_private=False, include_id=False):
     """Returns the default fields present on all samples.
 
     Args:
         include_private (False): whether to include fields that start with `_`
+        include_id (False): whether to include ID fields
 
     Returns:
         a tuple of field names
     """
-    return foo.default_sample_fields(
-        foo.DatasetSampleDocument, include_private=include_private
+    return foo.get_default_fields(
+        foo.DatasetSampleDocument,
+        include_private=include_private,
+        include_id=include_id,
     )
 
 

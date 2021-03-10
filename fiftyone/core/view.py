@@ -120,17 +120,29 @@ class DatasetView(foc.SampleCollection):
         self._dataset.info = info
 
     @property
-    def default_mask_targets(self):
-        """The default mask targets of the underlying dataset.
+    def classes(self):
+        """The classes of the underlying dataset.
 
-        See :meth:`fiftyone.core.dataset.Dataset.default_mask_targets` for more
+        See :meth:`fiftyone.core.dataset.Dataset.classes` for more information.
+        """
+        return self._dataset.classes
+
+    @classes.setter
+    def classes(self, classes):
+        self._dataset.classes = classes
+
+    @property
+    def default_classes(self):
+        """The default classes of the underlying dataset.
+
+        See :meth:`fiftyone.core.dataset.Dataset.default_classes` for more
         information.
         """
-        return self._dataset.default_mask_targets
+        return self._dataset.default_classes
 
-    @default_mask_targets.setter
-    def default_mask_targets(self, targets):
-        self._dataset.default_mask_targets = targets
+    @default_classes.setter
+    def default_classes(self, classes):
+        self._dataset.default_classes = classes
 
     @property
     def mask_targets(self):
@@ -144,6 +156,19 @@ class DatasetView(foc.SampleCollection):
     @mask_targets.setter
     def mask_targets(self, targets):
         self._dataset.mask_targets = targets
+
+    @property
+    def default_mask_targets(self):
+        """The default mask targets of the underlying dataset.
+
+        See :meth:`fiftyone.core.dataset.Dataset.default_mask_targets` for more
+        information.
+        """
+        return self._dataset.default_mask_targets
+
+    @default_mask_targets.setter
+    def default_mask_targets(self, targets):
+        self._dataset.default_mask_targets = targets
 
     @property
     def stages(self):
@@ -735,14 +760,14 @@ class DatasetView(foc.SampleCollection):
         excluded_fields = set()
 
         for stage in self._stages:
-            _selected_fields = stage.get_selected_fields(frames=frames)
+            _selected_fields = stage.get_selected_fields(self, frames=frames)
             if _selected_fields:
                 if selected_fields is None:
                     selected_fields = set(_selected_fields)
                 else:
                     selected_fields.intersection_update(_selected_fields)
 
-            _excluded_fields = stage.get_excluded_fields(frames=frames)
+            _excluded_fields = stage.get_excluded_fields(self, frames=frames)
             if _excluded_fields:
                 excluded_fields.update(_excluded_fields)
 

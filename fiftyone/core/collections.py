@@ -25,15 +25,12 @@ import fiftyone.core.expressions as foe
 from fiftyone.core.expressions import ViewField as F
 import fiftyone.core.evaluation as foev
 import fiftyone.core.fields as fof
+import fiftyone.core.frame as fofr
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 import fiftyone.core.metadata as fomt
 import fiftyone.core.models as fomo
-from fiftyone.core.odm.frame import DatasetFrameSampleDocument
-from fiftyone.core.odm.sample import (
-    DatasetSampleDocument,
-    default_sample_fields,
-)
+import fiftyone.core.sample as fosa
 import fiftyone.core.stages as fos
 import fiftyone.core.utils as fou
 
@@ -129,6 +126,44 @@ class SampleCollection(object):
         raise NotImplementedError("Subclass must implement info")
 
     @property
+    def classes(self):
+        """The classes of the underlying dataset.
+
+        See :meth:`fiftyone.core.dataset.Dataset.classes` for more information.
+        """
+        raise NotImplementedError("Subclass must implement classes")
+
+    @classes.setter
+    def classes(self, classes):
+        raise NotImplementedError("Subclass must implement classes")
+
+    @property
+    def default_classes(self):
+        """The default classes of the underlying dataset.
+
+        See :meth:`fiftyone.core.dataset.Dataset.default_classes` for more
+        information.
+        """
+        raise NotImplementedError("Subclass must implement default_classes")
+
+    @default_classes.setter
+    def default_classes(self, classes):
+        raise NotImplementedError("Subclass must implement default_classes")
+
+    @property
+    def mask_targets(self):
+        """The mask targets of the underlying dataset.
+
+        See :meth:`fiftyone.core.dataset.Dataset.mask_targets` for more
+        information.
+        """
+        raise NotImplementedError("Subclass must implement mask_targets")
+
+    @mask_targets.setter
+    def mask_targets(self, targets):
+        raise NotImplementedError("Subclass must implement mask_targets")
+
+    @property
     def default_mask_targets(self):
         """The default mask targets of the underlying dataset.
 
@@ -144,19 +179,6 @@ class SampleCollection(object):
         raise NotImplementedError(
             "Subclass must implement default_mask_targets"
         )
-
-    @property
-    def mask_targets(self):
-        """The mask targets of the underlying dataset.
-
-        See :meth:`fiftyone.core.dataset.Dataset.mask_targets` for more
-        information.
-        """
-        raise NotImplementedError("Subclass must implement mask_targets")
-
-    @mask_targets.setter
-    def mask_targets(self, targets):
-        raise NotImplementedError("Subclass must implement mask_targets")
 
     def summary(self):
         """Returns a string summary of the collection.
@@ -428,13 +450,12 @@ class SampleCollection(object):
 
         if fields:
             schema = self.get_field_schema(include_private=True)
+
             default_fields = set(
-                default_sample_fields(
-                    DatasetSampleDocument,
-                    include_private=True,
-                    include_id=True,
-                )
+                fosa.get_default_sample_fields(include_private=True)
+                + ("id", "_id")
             )
+
             for field in fields:
                 # We only validate that the root field exists
                 field_name = field.split(".", 1)[0]
@@ -449,13 +470,12 @@ class SampleCollection(object):
 
         if frame_fields:
             frame_schema = self.get_frame_field_schema(include_private=True)
+
             default_frame_fields = set(
-                default_sample_fields(
-                    DatasetFrameSampleDocument,
-                    include_private=True,
-                    include_id=True,
-                )
+                fofr.get_default_frame_fields(include_private=True)
+                + ("id", "_id")
             )
+
             for field in frame_fields:
                 # We only validate that the root field exists
                 field_name = field.split(".", 2)[1]  # removes "frames."
@@ -463,7 +483,9 @@ class SampleCollection(object):
                     field_name not in frame_schema
                     and field_name not in default_frame_fields
                 ):
-                    raise ValueError("Field '%s' does not exist" % field_name)
+                    raise ValueError(
+                        "Frame field '%s' does not exist" % field_name
+                    )
 
     def validate_field_type(
         self, field_name, ftype, embedded_doc_type=None, subfield=None
@@ -841,6 +863,9 @@ class SampleCollection(object):
 
         ops = []
         for _id, _elem_ids, _values in zip(ids, elem_ids, values):
+            if not _elem_ids:
+                continue
+
             for _elem_id, value in zip(_elem_ids, _values):
                 if _elem_id is None:
                     raise ValueError(
@@ -905,6 +930,7 @@ class SampleCollection(object):
         confidence_thresh=None,
         store_logits=False,
         batch_size=None,
+        num_workers=None,
     ):
         """Applies the :class:`fiftyone.core.models.Model` to the samples in
         the collection.
@@ -920,6 +946,8 @@ class SampleCollection(object):
                 has logits, ``model.has_logits == True``
             batch_size (None): an optional batch size to use. Only applicable
                 for image samples
+            num_workers (None): the number of workers to use when loading
+                images. Only applicable for Torch models
         """
         fomo.apply_model(
             self,
@@ -928,10 +956,11 @@ class SampleCollection(object):
             confidence_thresh=confidence_thresh,
             store_logits=store_logits,
             batch_size=batch_size,
+            num_workers=num_workers,
         )
 
     def compute_embeddings(
-        self, model, embeddings_field=None, batch_size=None
+        self, model, embeddings_field=None, batch_size=None, num_workers=None
     ):
         """Computes embeddings for the samples in the collection using the
         given :class:`fiftyone.core.models.Model`.
@@ -948,6 +977,8 @@ class SampleCollection(object):
                 embeddings
             batch_size (None): an optional batch size to use. Only applicable
                 for image samples
+            num_workers (None): the number of workers to use when loading
+                images. Only applicable for Torch models
 
         Returns:
             ``None``, if an ``embeddings_field`` is provided; otherwise, a
@@ -959,6 +990,7 @@ class SampleCollection(object):
             model,
             embeddings_field=embeddings_field,
             batch_size=batch_size,
+            num_workers=num_workers,
         )
 
     def compute_patch_embeddings(
@@ -966,9 +998,11 @@ class SampleCollection(object):
         model,
         patches_field,
         embeddings_field=None,
-        batch_size=None,
         force_square=False,
         alpha=None,
+        handle_missing="skip",
+        batch_size=None,
+        num_workers=None,
     ):
         """Computes embeddings for the image patches defined by
         ``patches_field`` of the samples in the collection using the given
@@ -989,7 +1023,6 @@ class SampleCollection(object):
                 image patches in each sample to embed
             embeddings_field (None): the name of a field in which to store the
                 embeddings
-            batch_size (None): an optional batch size to use
             force_square (False): whether to minimally manipulate the patch
                 bounding boxes into squares prior to extraction
             alpha (None): an optional expansion/contraction to apply to the
@@ -998,6 +1031,16 @@ class SampleCollection(object):
                 contracted, when ``alpha < 0``) by ``(100 * alpha)%``. For
                 example, set ``alpha = 1.1`` to expand the boxes by 10%, and
                 set ``alpha = 0.9`` to contract the boxes by 10%
+            handle_missing ("skip"): how to handle images with no patches.
+                Supported values are:
+
+                -   "skip": skip the image and assign its embedding as ``None``
+                -   "image": use the whole image as a single patch
+                -   "error": raise an error
+
+            batch_size (None): an optional batch size to use
+            num_workers (None): the number of workers to use when loading
+                images. Only applicable for Torch models
 
         Returns:
             ``None``, if an ``embeddings_field`` is provided; otherwise, a dict
@@ -1009,8 +1052,10 @@ class SampleCollection(object):
             patches_field,
             embeddings_field=embeddings_field,
             batch_size=batch_size,
+            num_workers=num_workers,
             force_square=force_square,
             alpha=alpha,
+            handle_missing=handle_missing,
         )
 
     def evaluate_classifications(
@@ -1053,9 +1098,12 @@ class SampleCollection(object):
                 instances
             eval_key (None): an evaluation key to use to refer to this
                 evaluation
-            classes (None): the list of possible classes. If not provided, the
-                observed ground truth/predicted labels are used for results
-                purposes
+            classes (None): the list of possible classes. If not provided,
+                classes are loaded from
+                :meth:`fiftyone.core.dataset.Dataset.classes` or
+                :meth:`fiftyone.core.dataset.Dataset.default_classes` if
+                possible, or else the observed ground truth/predicted labels
+                are used
             missing (None): a missing label string. Any None-valued labels
                 are given this label for results purposes
             method ("simple"): a string specifying the evaluation method to use.
@@ -1134,8 +1182,12 @@ class SampleCollection(object):
                 ground truth :class:`fiftyone.core.labels.Detections`
             eval_key (None): an evaluation key to use to refer to this
                 evaluation
-            classes (None): the list of possible classes. If not provided, the
-                observed ground truth/predicted labels are used
+            classes (None): the list of possible classes. If not provided,
+                classes are loaded from
+                :meth:`fiftyone.core.dataset.Dataset.classes` or
+                :meth:`fiftyone.core.dataset.Dataset.default_classes` if
+                possible, or else the observed ground truth/predicted labels
+                are used
             missing (None): a missing label string. Any unmatched objects are
                 given this label for evaluation purposes
             method ("coco"): a string specifying the evaluation method to use.
@@ -1213,10 +1265,8 @@ class SampleCollection(object):
                 instances
             eval_key (None): an evaluation key to use to refer to this
                 evaluation
-            mask_targets (None): a dict mapping mask values to labels. May
-                contain a subset of the possible classes if you wish to
-                evaluate a subset of the semantic classes. If not provided,
-                mask targets are loaded from
+            mask_targets (None): a dict mapping mask values to labels. If not
+                provided, mask targets are loaded from
                 :meth:`fiftyone.core.dataset.Dataset.mask_targets` or
                 :meth:`fiftyone.core.dataset.Dataset.default_mask_targets` if
                 possible, or else the observed pixel values are used
@@ -4061,8 +4111,12 @@ class SampleCollection(object):
             d["frame_fields"] = self._serialize_frame_field_schema()
 
         d["info"] = self.info
-        d["default_mask_targets"] = self._serialize_default_mask_targets()
+
+        d["classes"] = self.classes
+        d["default_classes"] = self.default_classes
+
         d["mask_targets"] = self._serialize_mask_targets()
+        d["default_mask_targets"] = self._serialize_default_mask_targets()
 
         # Serialize samples
         samples = []
@@ -4713,6 +4767,9 @@ def _get_field_with_type(label_fields, label_cls):
 
 
 def _parse_field_name(sample_collection, field_name, auto_unwind):
+    if field_name == "id":
+        return "_id", False, [], []
+
     field_name, is_frame_field = sample_collection._handle_frame_field(
         field_name
     )
