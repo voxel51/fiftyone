@@ -129,13 +129,10 @@ def load_location_data(
         geometries[key] = feature["geometry"]
 
     lookup = {}
-
-    # @todo use `samples.values("id")` when available
-    sample_ids = [str(_id) for _id in samples._get_sample_ids()]
-    for sample_id, filepath in zip(sample_ids, samples.values("filepath")):
+    for _id, filepath in zip(samples.values("id"), samples.values("filepath")):
         filename = os.path.basename(filepath)
-        lookup[filepath] = sample_id
-        lookup[filename] = sample_id
+        lookup[filepath] = _id
+        lookup[filename] = _id
 
     found_keys = set(lookup.keys()) & set(geometries.keys())
 
