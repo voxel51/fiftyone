@@ -114,7 +114,7 @@ const PillButtonDiv = animated(styled.div`
   font-weight: bold;
   display: flex;
   justify-content: space-between;
-  box-shadow: 0 2px 10px ${({ theme }) => theme.backgroundDarker};
+  box-shadow: 0 1px 0 ${({ theme }) => theme.backgroundDarker};
 
   &.hidden {
     background-color: ${({ theme }) => theme.brand};
@@ -165,10 +165,9 @@ export const PopoutDiv = animated(styled.div`
   box-shadow: 0 2px 20px ${({ theme }) => theme.backgroundDark};
   box-sizing: border-box;
   margin-top: 0.6rem;
-  position: fixed;
+  position: absolute;
   width: auto;
   z-index: 801;
-  max-height: 328px;
   font-size: 14px;
   padding: 0 0.5rem 0 0.5rem;
   min-width: 14rem;

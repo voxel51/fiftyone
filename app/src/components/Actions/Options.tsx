@@ -1,11 +1,10 @@
 import React from "react";
 import { useRecoilState } from "recoil";
-import styled from "styled-components";
 import { Autorenew } from "@material-ui/icons";
-import { useSpring } from "react-spring";
 
+import Popout from "./Popout";
 import { useTheme } from "../../utils/hooks";
-import { PopoutDiv, PopoutSectionTitle, TabOption } from "../utils";
+import { PopoutSectionTitle, TabOption } from "../utils";
 import * as atoms from "../../recoil/atoms";
 import { Button } from "../FieldsSidebar";
 
@@ -62,20 +61,11 @@ type OptionsProps = {
 };
 
 const Options = ({ modal }: OptionsProps) => {
-  const show = useSpring({
-    opacity: 1,
-    from: {
-      opacity: 0,
-    },
-    config: {
-      duration: 100,
-    },
-  });
   return (
-    <PopoutDiv style={show}>
+    <Popout modal={modal}>
       <ColorBy modal={modal} />
       <RefreshButton modal={modal} />
-    </PopoutDiv>
+    </Popout>
   );
 };
 

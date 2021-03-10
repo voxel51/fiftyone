@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import styled from "styled-components";
-import { animated, useSpring, useSprings } from "react-spring";
+import { animated, useSpring } from "react-spring";
 import { useRecoilState, useRecoilValue } from "recoil";
 import { CircularProgress } from "@material-ui/core";
 
@@ -9,12 +9,8 @@ import * as fieldAtoms from "../Filters/utils";
 import { packageMessage } from "../../utils/socket";
 import * as atoms from "../../recoil/atoms";
 import * as selectors from "../../recoil/selectors";
-import {
-  PopoutDiv,
-  PopoutSectionTitle,
-  TabOptionProps,
-  TabOption,
-} from "../utils";
+import Popout from "./Popout";
+import { TabOptionProps, TabOption } from "../utils";
 
 type OptionsProps = {
   options: Array<TabOptionProps>;
@@ -92,7 +88,7 @@ const TaggingInput = styled.input`
   }
 `;
 
-const Section = ({ modal, title, placeholder, submit, taggingAtom }) => {
+const Section = ({ modal, placeholder, submit, taggingAtom }) => {
   const count = useRecoilValue(selectors.currentCount);
   const [tagging, setTagging] = useRecoilState(taggingAtom);
   const [untag, setUntag] = useState(false);
@@ -105,7 +101,6 @@ const Section = ({ modal, title, placeholder, submit, taggingAtom }) => {
 
   return (
     <>
-      <PopoutSectionTitle>{title}</PopoutSectionTitle>
       <TaggingContainerInput>
         <TaggingInput
           placeholder={
@@ -149,86 +144,109 @@ const Section = ({ modal, title, placeholder, submit, taggingAtom }) => {
   );
 };
 
+const SwitcherDiv = styled.div`
+  border-bottom: 1px solid ${({ theme }) => theme.background};
+  display: flex;
+  margin: 0 -0.5rem;
+  padding: 0 0.5rem;
+`;
+
+const SwitchDiv = animated(styled.div`
+  flex-basis: 0;
+  flex-grow: 1;
+  font-size: 1rem;
+  padding-left: 0.4rem;
+  line-height: 2;
+  font-weight: bold;
+  border-bottom-color: ${({ theme }) => theme.brand};
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+`);
+
 type TaggerProps = {
   modal: boolean;
 };
 
 const Tagger = ({ modal }: TaggerProps) => {
-  const show = useSpring({
-    opacity: 1,
-    from: {
-      opacity: 0,
-    },
-    config: {
-      duration: 100,
-    },
-  });
+  const [labels, setLabels] = useState(modal);
+  const theme = useTheme();
   const socket = useRecoilValue(selectors.socket);
   const activeLabels = useRecoilValue(fieldAtoms.activeFields(false));
+  const sampleProps = useSpring({
+    borderBottomColor: labels ? theme.backgroundDark : theme.brand,
+    cursor: labels ? "pointer" : "default",
+  });
+
+  const labelProps = useSpring({
+    borderBottomColor: labels ? theme.brand : theme.backgroundDark,
+    cursor: labels ? "default" : "pointer",
+  });
 
   return (
-    <PopoutDiv style={{ ...show, width: "18rem" }}>
+    <Popout style={{ width: "18rem" }} modal={modal}>
+      <SwitcherDiv>
+        <SwitchDiv
+          style={sampleProps}
+          onClick={() => labels && setLabels(false)}
+        >
+          Samples
+        </SwitchDiv>
+        <SwitchDiv
+          style={labelProps}
+          onClick={() => !labels && setLabels(true)}
+        >
+          Labels
+        </SwitchDiv>
+      </SwitcherDiv>
       <Section
         modal={modal}
-        title={"Samples"}
-        placeholder={(selection, num, untag) => {
-          if (num === 0) {
-            return "no samples";
-          }
-          if (selection) {
-            return `${untag ? "- untag" : "+ tag"} ${num} selected sample${
-              num === 1 ? "" : "s"
-            }`;
-          }
+        placeholder={
+          labels
+            ? (selection, num, untag) => {
+                if (num === 0) {
+                  return "no samples";
+                }
+                if (selection) {
+                  return `${
+                    untag ? "- untag" : "+ tag"
+                  } shown labels in ${num} selected sample${
+                    num === 1 ? "" : "s"
+                  }`;
+                }
 
-          return `${untag ? "- untag" : "+ tag"} ${num} sample${
-            num === 1 ? "" : "s"
-          }`;
-        }}
+                return `${
+                  untag ? "- untag" : "+ tag"
+                } shown labels in  ${num} sample${num === 1 ? "" : "s"}`;
+              }
+            : (selection, num, untag) => {
+                if (num === 0) {
+                  return "no samples";
+                }
+                if (selection) {
+                  return `${
+                    untag ? "- untag" : "+ tag"
+                  } ${num} selected sample${num === 1 ? "" : "s"}`;
+                }
+
+                return `${untag ? "- untag" : "+ tag"} ${num} sample${
+                  num === 1 ? "" : "s"
+                }`;
+              }
+        }
         submit={(value, untag, selected) =>
           socket.send(
             packageMessage("tag", {
               untag,
-              target_labels: false,
+              target_labels: labels,
               selected: selected,
               active_labels: activeLabels,
               tag: value,
             })
           )
         }
-        taggingAtom={atoms.tagging({ modal, labels: false })}
+        taggingAtom={atoms.tagging({ modal, labels })}
       />
-      <Section
-        modal={modal}
-        title={"Labels"}
-        placeholder={(selection, num, untag) => {
-          if (num === 0) {
-            return "no samples";
-          }
-          if (selection) {
-            return `${
-              untag ? "- untag" : "+ tag"
-            } shown labels in ${num} selected sample${num === 1 ? "" : "s"}`;
-          }
-
-          return `${
-            untag ? "- untag" : "+ tag"
-          } shown labels in  ${num} sample${num === 1 ? "" : "s"}`;
-        }}
-        submit={(value, untag, selected) =>
-          socket.send(
-            packageMessage("tag", {
-              untag,
-              target_labels: true,
-              selected: selected,
-              active_labels: activeLabels,
-              tag: value,
-            })
-          )
-        }
-        taggingAtom={atoms.tagging({ modal, labels: true })}
-      />
-    </PopoutDiv>
+    </Popout>
   );
 };
 

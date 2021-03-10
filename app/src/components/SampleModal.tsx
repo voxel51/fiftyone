@@ -44,8 +44,9 @@ const Container = styled.div`
   }
 
   h2 {
-    margin-top: 0.25rem;
-    margin-bottom: 0.25rem;
+    margin: 0.5rem -1em;
+    padding: 0 1rem;
+    border-bottom: 2px solid ${({ theme }) => theme.backgroundLight};
     clear: both;
   }
 
@@ -112,11 +113,11 @@ const Container = styled.div`
 
   .sidebar {
     position: relative;
+    overflow: visible;
     display: flex;
     flex-direction: column;
     border-left: 2px solid ${({ theme }) => theme.border};
     max-height: 100%;
-    overflow-y: auto;
 
     .sidebar-content {
       padding-left: 1em;
@@ -124,6 +125,8 @@ const Container = styled.div`
       padding-bottom: 1em;
       flex-grow: 1;
       overflow-y: auto;
+      overflow: hidden;
+      max-height: calc(100% - 64.5px);
       scrollbar-width: none;
       @-moz-document url-prefix() {
         padding-right: 16px;
@@ -410,7 +413,6 @@ const SampleModal = (
             {formatMetadata(sample.metadata).map(({ name, value }) => (
               <Row key={"metadata-" + name} name={name} value={value} />
             ))}
-            <Actions modal={true} frameNumberRef={frameNumberRef} />
             <h2>
               Fields
               <span className="push-right" />
@@ -431,19 +433,7 @@ const SampleModal = (
             />
           </div>
           <ModalFooter style={{ display: "block" }}>
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                width: "100%",
-                marginTop: -3,
-              }}
-            >
-              <Button
-                onClick={() => setShowJSON(!showJSON)}
-                text={`${showJSON ? "Hide" : "Show"} JSON`}
-              />
-            </div>
+            <Actions modal={true} frameNumberRef={frameNumberRef} />
           </ModalFooter>
         </div>
       </Container>

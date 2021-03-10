@@ -25,7 +25,7 @@ const Wrapper = styled.div`
 const SamplesHeader = styled.div`
   display: flex;
   justify-content: space-between;
-  overflow-x: hidden;
+  overflow: visible;
   margin-left: 1rem;
   margin-right: -1rem;
   margin-bottom: -0.5rem;

@@ -5,7 +5,7 @@ import styled from "styled-components";
 
 import * as atoms from "../../recoil/atoms";
 import * as selectors from "../../recoil/selectors";
-import { PopoutDiv } from "../utils";
+import Popout from "./Popout";
 import { packageMessage } from "../../utils/socket";
 import { listSampleObjects } from "../../utils/labels";
 import { useTheme, useSendMessage } from "../../utils/hooks";
@@ -286,26 +286,16 @@ const getModalActions = (frameNumberRef, close) => {
 };
 
 const SelectionActions = ({ modal, close, frameNumberRef }) => {
-  const show = useSpring({
-    opacity: 1,
-    from: {
-      opacity: 0,
-    },
-    config: {
-      duration: 100,
-    },
-  });
-
   const actions = modal
     ? getModalActions(frameNumberRef, close)
     : getGridActions(close);
 
   return (
-    <PopoutDiv style={show}>
+    <Popout modal={modal}>
       {actions.map((props) => (
         <ActionOption {...props} />
       ))}
-    </PopoutDiv>
+    </Popout>
   );
 };
 

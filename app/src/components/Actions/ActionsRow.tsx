@@ -11,6 +11,10 @@ import Selector from "./Selected";
 import Coloring from "./Options";
 import { useOutsideClick } from "../../utils/hooks";
 
+const ActionDiv = styled.div`
+  position: relative;
+`;
+
 const Tag = ({ modal }) => {
   const [open, setOpen] = useState(false);
   const selectedSamples = useRecoilValue(atoms.selectedSamples);
@@ -18,7 +22,7 @@ const Tag = ({ modal }) => {
   useOutsideClick(ref, () => open && setOpen(false));
 
   return (
-    <div ref={ref}>
+    <ActionDiv ref={ref}>
       <PillButton
         icon={<LocalOffer />}
         open={open}
@@ -26,7 +30,7 @@ const Tag = ({ modal }) => {
         highlight={Boolean(selectedSamples.size) || open}
       />
       {open && <Tagger modal={modal} />}
-    </div>
+    </ActionDiv>
   );
 };
 
@@ -50,7 +54,7 @@ const Selected = ({ modal, frameNumberRef }) => {
   }
 
   return (
-    <div ref={ref}>
+    <ActionDiv ref={ref}>
       <PillButton
         icon={<Check />}
         open={open}
@@ -65,7 +69,7 @@ const Selected = ({ modal, frameNumberRef }) => {
           frameNumberRef={frameNumberRef}
         />
       )}
-    </div>
+    </ActionDiv>
   );
 };
 
@@ -75,7 +79,7 @@ const Options = ({ modal }) => {
   useOutsideClick(ref, () => open && setOpen(false));
 
   return (
-    <div ref={ref}>
+    <ActionDiv ref={ref}>
       <PillButton
         icon={<Settings />}
         open={open}
@@ -83,7 +87,7 @@ const Options = ({ modal }) => {
         highlight={open}
       />
       {open && <Coloring modal={modal} />}
-    </div>
+    </ActionDiv>
   );
 };
 
