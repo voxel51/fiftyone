@@ -725,12 +725,15 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         target_labels=False,
         selected=False,
         active_labels=None,
+        modal=False,
     ):
         state = fos.StateDescription.from_dict(StateHandler.state)
         view = state.view or state.dataset
         view = _get_extended_view(view, state.filters)
-        if selected:
-            view = view.select(state.selected)
+        if selected and modal:
+            view = view.select_labels(labels=state.selected_labels)
+        elif selected:
+            view = view.select(labels=state.selected)
 
         if active_labels:
             view = view.select_fields(active_labels)
