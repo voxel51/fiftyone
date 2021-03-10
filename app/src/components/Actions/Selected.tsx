@@ -13,6 +13,7 @@ import * as selectors from "../../recoil/selectors";
 import Popout from "./Popout";
 import { packageMessage } from "../../utils/socket";
 import { listSampleObjects } from "../../utils/labels";
+import * as labelAtoms from "../Filters/LabelFieldFilters.state";
 import { useTheme, useSendMessage } from "../../utils/hooks";
 import {
   addObjectsToSelection,
@@ -147,6 +148,7 @@ const getModalActions = (frameNumberRef, close) => {
   const [selectedObjects, setSelectedObjects] = useRecoilState(
     atoms.selectedObjects
   );
+  const filter = useRecoilValue(labelAtoms.sampleModalFilter);
   const resetSelectedObjects = useResetRecoilState(atoms.selectedObjects);
   const setHiddenObjects = useSetRecoilState(atoms.hiddenObjects);
   const hiddenObjectIds = useRecoilValue(selectors.hiddenObjectIds);
@@ -169,13 +171,13 @@ const getModalActions = (frameNumberRef, close) => {
         .filter((o) => hiddenObjectIds.has(o._id))
         .map((arr, i) => _addFrameNumberToObjects(arr, i + 1))
         .flat()
-    : listSampleObjects(sample);
+    : listSampleObjects(filter(sample));
   const frameObjects =
     isVideo && frameNumber && sampleFrameData[frameNumber - 1]
       ? _addFrameNumberToObjects(
-          listSampleObjects(sampleFrameData[frameNumber - 1]).filter(
-            (o) => !hiddenObjectIds.has(o._id)
-          ),
+          listSampleObjects(
+            filter(sampleFrameData[frameNumber - 1], "frames.")
+          ).filter((o) => !hiddenObjectIds.has(o._id)),
           frameNumber
         )
       : [];
