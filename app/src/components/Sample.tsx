@@ -126,13 +126,14 @@ const revealSample = () => {
   });
 };
 
-const SampleInfo = ({ sample }) => {
+const SampleInfo = ({ sample_id }) => {
   const activeFields = useRecoilValue(labelAtoms.activeFields(false));
   const colorMap = useRecoilValue(selectors.colorMap(false));
   const scalars = useRecoilValue(selectors.scalarNames("sample"));
   const colorByLabel = useRecoilValue(atoms.colorByLabel(false));
   const labelTypes = useRecoilValue(selectors.labelTypesMap);
   const theme = useTheme();
+  const sample = useRecoilValue(selectors.sample(sample_id));
   const bubbles = activeFields.reduce((acc, cur) => {
     if (
       cur.startsWith("tags.") &&
@@ -300,10 +301,11 @@ const Selector = ({
   );
 };
 
-const Sample = ({ sample, metadata, index }) => {
+const Sample = ({ sample_id, metadata, index }) => {
   const http = useRecoilValue(selectors.http);
   const setModal = useSetRecoilState(atoms.modal);
-  const id = sample._id;
+  const sample = useRecoilValue(selectors.sample(sample_id));
+  const id = sample_id;
   const src = `${http}/filepath/${encodeURI(sample.filepath)}?id=${id}`;
   const socket = useRecoilValue(selectors.socket);
   const colorByLabel = useRecoilValue(atoms.colorByLabel(false));
@@ -329,7 +331,7 @@ const Sample = ({ sample, metadata, index }) => {
         onMouseLeave={() => setHovering(false)}
       >
         <Selector key={id} id={id} spring={selectorSpring} index={index} />
-        <SampleInfo sample={sample} />
+        <SampleInfo sample_id={sample_id} />
         <Player51
           src={src}
           style={{

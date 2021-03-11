@@ -44,7 +44,7 @@ function Dataset() {
   const [modal, setModal] = useRecoilState(atoms.modal);
   const http = useRecoilValue(selectors.http);
   const hasDataset = useRecoilValue(selectors.hasDataset);
-  const currentSamples = useRecoilValue(atoms.currentSamples);
+  const currentSamples = useRecoilValue(selectors.currentSamples);
   const setExtendedDatasetStats = useSetRecoilState(
     atoms.extendedDatasetStatsRaw
   );
@@ -97,8 +97,6 @@ function Dataset() {
   const ref = useRef();
 
   useOutsideClick(ref, handleHideModal);
-
-  console.log(modal);
   return (
     <>
       {modal.visible ? (

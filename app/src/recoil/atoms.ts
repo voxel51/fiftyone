@@ -105,9 +105,17 @@ export const sidebarVisible = atom({
   default: true,
 });
 
-export const currentSamples = atom({
-  key: "currentSamples",
-  default: [],
+export const scrollState = atom({
+  key: "scrollState",
+  default: {
+    initialized: false,
+    loadMore: false,
+    isLoading: false,
+    hasMore: true,
+    pageToLoad: 1,
+    rows: [],
+    remainder: [],
+  },
 });
 
 export const sampleVideoLabels = atomFamily({

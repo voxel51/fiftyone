@@ -19,6 +19,7 @@ import {
 import { packageMessage } from "../utils/socket";
 import { viewsAreEqual } from "../utils/view";
 import { lightTheme } from "../shared/colors";
+import { Rowing } from "@material-ui/icons";
 
 class HTTPSSocket {
   location: string;
@@ -846,7 +847,7 @@ export const selectedObjectIds = selector<Set<string>>({
 export const sampleIndices = selector<{ [key: string]: number }>({
   key: "sampleIndices",
   get: ({ get }) => {
-    const samples = get(atoms.currentSamples);
+    const samples = get(currentSamples);
     return Object.fromEntries(
       samples.map(({ sample }, index) => [sample._id, index])
     );
@@ -856,7 +857,7 @@ export const sampleIndices = selector<{ [key: string]: number }>({
 export const sampleIds = selector<{ [key: number]: string }>({
   key: "sampleIdx",
   get: ({ get }) => {
-    const samples = get(atoms.currentSamples);
+    const samples = get(currentSamples);
     return Object.fromEntries(
       samples.map(({ sample }, index) => [index, sample._id])
     );
@@ -947,10 +948,29 @@ export const hiddenObjectIds = selector({
   },
 });
 
+export const currentSamples = selector<SerializableParam[]>({
+  key: "currentSamples",
+  get: ({ get }) =>
+    get(atoms.scrollState)
+      .rows.map((row) => row.samples)
+      .flat(),
+  set: ({ get, set }, value) => {
+    const state = get(atoms.scrollState);
+    const mapping = Object.fromEntries(value.map((s) => [s.sample._id, s]));
+    set(atoms.scrollState, {
+      ...state,
+      rows: state.rows.map((row) => ({
+        ...row,
+        samples: row.samples.map((s) => mapping[s.sample._id]),
+      })),
+    });
+  },
+});
+
 export const sampleMap = selector<{ [id: string]: SerializableParam }>({
   key: "sampleMap",
   get: ({ get }) => {
-    const samples = get(atoms.currentSamples);
+    const samples = get(currentSamples);
     return Object.fromEntries(
       samples.map(({ sample }) => [sample._id, sample])
     );
@@ -963,9 +983,9 @@ export const sample = selectorFamily<SerializableParam, string>({
     return get(sampleMap)[id];
   },
   set: (id) => ({ get, set }, value) => {
-    const samples = get(atoms.currentSamples);
+    const samples = get(currentSamples);
     return set(
-      atoms.currentSamples,
+      currentSamples,
       samples.map((s) => (s.sample._id === id ? { ...s, sample: value } : s))
     );
   },
@@ -974,6 +994,6 @@ export const sample = selectorFamily<SerializableParam, string>({
 export const currentSamplesSize = selector<number>({
   key: "currentSamplesSize",
   get: ({ get }) => {
-    return get(atoms.currentSamples).length;
+    return get(currentSamples).length;
   },
 });

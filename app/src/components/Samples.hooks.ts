@@ -1,5 +1,10 @@
 import { useEffect, useState } from "react";
-import { useRecoilValue } from "recoil";
+import {
+  useRecoilValue,
+  useRecoilState,
+  atom,
+  useResetRecoilState,
+} from "recoil";
 import { useMessageHandler } from "../utils/hooks";
 import tile from "../utils/tile";
 import { packageMessage } from "../utils/socket";
@@ -25,31 +30,36 @@ export default () => {
   const datasetName = useRecoilValue(selectors.datasetName);
   const view = useRecoilValue(selectors.view);
   const refresh = useRecoilValue(selectors.refresh);
-
-  const empty = {
-    initialized: false,
-    loadMore: false,
-    isLoading: false,
-    hasMore: true,
-    pageToLoad: 1,
-    rows: [],
-    remainder: [],
-  };
-  const [state, setState] = useState(empty);
+  const [state, setState] = useRecoilState(atoms.scrollState);
+  const reset = useResetRecoilState(atoms.scrollState);
+  const [page, setPage] = useState(null);
 
   useMessageHandler("page", ({ results, more }) => {
     setState(tile(results, more, state));
   });
 
   useEffect(() => {
-    setState(empty);
+    reset();
   }, [filterView(view), datasetName, refresh, stringifyObj(filters)]);
 
   useEffect(() => {
-    if (!state.loadMore || state.isLoading || !state.hasMore) return;
-    setState({ ...state, isLoading: true, loadMore: false, initialized: true });
+    if (
+      !state.loadMore ||
+      state.isLoading ||
+      !state.hasMore ||
+      page === state.pageToLoad
+    )
+      return;
+    setPage(state.pageToLoad);
+    setState({
+      ...state,
+      isLoading: true,
+      loadMore: false,
+      initialized: true,
+      pageToLoad: state.pageToLoad + 1,
+    });
     socket.send(packageMessage("page", { page: state.pageToLoad }));
-  }, [state.loadMore, state.pageToLoad, state.hasMore]);
+  }, [state.loadMore, state.pageToLoad, state.hasMore, state.isLoading, page]);
 
   return [state, setState];
 };

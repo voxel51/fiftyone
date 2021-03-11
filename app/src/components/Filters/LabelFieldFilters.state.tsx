@@ -276,7 +276,7 @@ export const labelSampleModalCounts = selectorFamily<Counts | null, string>({
   get: (dimension) => ({ get }) => {
     const labels = get(selectors.labelNames(dimension));
     const types = get(selectors.labelTypesMap);
-    const sample = get(atoms.modal).sample || {};
+    const sample = get(selectors.modalSample) || {};
     const frameData = get(atoms.sampleFrameData(sample._id));
 
     if (dimension === "frame") {
@@ -320,7 +320,7 @@ export const filteredLabelSampleModalCounts = selectorFamily<
     const labels = get(selectors.labelNames(dimension));
     const types = get(selectors.labelTypesMap);
     const filter = get(sampleModalFilter);
-    const sample = filter(get(atoms.modal).sample || {});
+    const sample = filter(get(selectors.modalSample) || {});
     const frameData = get(atoms.sampleFrameData(sample._id));
     if (dimension === "frame") {
       return labels.reduce((acc, path) => {

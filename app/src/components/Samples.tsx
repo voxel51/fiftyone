@@ -19,14 +19,9 @@ const Container = styled.div`
 `;
 
 function Samples() {
-  const setCurrentSamples = useSetRecoilState(atoms.currentSamples);
   const [containerRef, bounds] = useMeasure();
 
   const [scrollState, setScrollState] = tile();
-  useEffect(() => {
-    scrollState.initialized &&
-      setCurrentSamples(scrollState.rows.map((row) => row.samples).flat());
-  }, [scrollState.rows]);
   const indices = useRecoilValue(selectors.sampleIndices);
 
   return (
@@ -56,7 +51,7 @@ function Samples() {
                 <React.Fragment key={j}>
                   <div key={"column"} style={{ padding: 0, width: "100%" }}>
                     <Sample
-                      sample={s.sample}
+                      sample_id={s.sample._id}
                       metadata={s.metadata}
                       index={indices[s.sample._id]}
                     />
