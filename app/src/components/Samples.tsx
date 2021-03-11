@@ -27,7 +27,7 @@ function Samples() {
     scrollState.initialized &&
       setCurrentSamples(scrollState.rows.map((row) => row.samples).flat());
   }, [scrollState.rows]);
-  const indices = useRecoilValue(selectors.selectedSampleIndices);
+  const indices = useRecoilValue(selectors.sampleIndices);
 
   return (
     <Container ref={containerRef}>

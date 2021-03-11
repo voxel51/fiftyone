@@ -1,4 +1,4 @@
-import { selector, selectorFamily } from "recoil";
+import { selector, selectorFamily, SerializableParam } from "recoil";
 import ReconnectingWebSocket from "reconnecting-websocket";
 import uuid from "uuid-v4";
 
@@ -818,7 +818,8 @@ export const getTarget = selector({
 export const modalSample = selector({
   key: "modalSample",
   get: ({ get }) => {
-    return get(atoms.modal).sample;
+    const id = get(atoms.modal).sample_id;
+    return get(sample(id));
   },
 });
 
@@ -842,12 +843,22 @@ export const selectedObjectIds = selector<Set<string>>({
   },
 });
 
-export const selectedSampleIndices = selector<{ [key: string]: number }>({
-  key: "selectedSampleIndices",
+export const sampleIndices = selector<{ [key: string]: number }>({
+  key: "sampleIndices",
   get: ({ get }) => {
     const samples = get(atoms.currentSamples);
     return Object.fromEntries(
       samples.map(({ sample }, index) => [sample._id, index])
+    );
+  },
+});
+
+export const sampleIds = selector<{ [key: number]: string }>({
+  key: "sampleIdx",
+  get: ({ get }) => {
+    const samples = get(atoms.currentSamples);
+    return Object.fromEntries(
+      samples.map(({ sample }, index) => [index, sample._id])
     );
   },
 });
@@ -933,5 +944,36 @@ export const hiddenObjectIds = selector({
   key: "hiddenObjectIds",
   get: ({ get }) => {
     return new Set(Object.keys(get(atoms.hiddenObjects)));
+  },
+});
+
+export const sampleMap = selector<{ [id: string]: SerializableParam }>({
+  key: "sampleMap",
+  get: ({ get }) => {
+    const samples = get(atoms.currentSamples);
+    return Object.fromEntries(
+      samples.map(({ sample }) => [sample._id, sample])
+    );
+  },
+});
+
+export const sample = selectorFamily<SerializableParam, string>({
+  key: "sample",
+  get: (id) => ({ get }) => {
+    return get(sampleMap)[id];
+  },
+  set: (id) => ({ get, set }, value) => {
+    const samples = get(atoms.currentSamples);
+    return set(
+      atoms.currentSamples,
+      samples.map((s) => (s.sample._id === id ? { ...s, sample: value } : s))
+    );
+  },
+});
+
+export const currentSamplesSize = selector<number>({
+  key: "currentSamplesSize",
+  get: ({ get }) => {
+    return get(atoms.currentSamples).length;
   },
 });

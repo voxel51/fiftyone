@@ -1,7 +1,12 @@
 import React, { useState, useEffect, useRef } from "react";
 import styled from "styled-components";
 import { Close, Fullscreen, FullscreenExit } from "@material-ui/icons";
-import { useRecoilValue, useSetRecoilState } from "recoil";
+import {
+  useRecoilValue,
+  useSetRecoilState,
+  useRecoilState,
+  selector,
+} from "recoil";
 
 import Actions from "./Actions";
 import FieldsSidebar from "./FieldsSidebar";
@@ -23,6 +28,34 @@ import {
 } from "../utils/hooks";
 import { formatMetadata } from "../utils/labels";
 import { useToggleSelectionObject } from "../utils/selection";
+
+const modalSrc = selector<string>({
+  key: "modalSrc",
+  get: ({ get }) => {
+    const sample = get(selectors.modalSample);
+    if (sample) {
+      const http = get(selectors.http);
+      return `${http}/filepath/${encodeURI(sample.filepath)}?id=${sample._id}`;
+    }
+  },
+});
+
+const modalIndex = selector<number>({
+  key: "modalIndex",
+  get: ({ get }) => {
+    const { sample_id } = get(atoms.modal);
+    return get(selectors.sampleIndices)[sample_id];
+  },
+  set: ({ get, set }, value) => {
+    if (typeof value !== "number") {
+      value = 0;
+    }
+    set(atoms.modal, {
+      visible: true,
+      sample_id: get(selectors.sampleIds)[value],
+    });
+  },
+});
 
 const Container = styled.div`
   position: relative;
@@ -225,19 +258,14 @@ const Row = ({ name, value, children, ...rest }: RowProps) => (
 );
 
 type Props = {
-  sample: object;
-  sampleUrl: string;
-  colorMap: { [key: string]: string };
   onClose: () => void;
-  onNext: () => void;
-  onPrevious: () => void;
 };
 
-const SampleModal = (
-  { sampleUrl, onClose, onNext, onPrevious }: Props,
-  ref
-) => {
-  const { sample } = useRecoilValue(atoms.modal);
+const SampleModal = ({ onClose }: Props, ref) => {
+  const sample = useRecoilValue(selectors.modalSample);
+  const sampleUrl = useRecoilValue(modalSrc);
+  const [index, setIndex] = useRecoilState(modalIndex);
+  const numSamples = useRecoilValue(selectors.currentSamplesSize);
   const playerContainerRef = useRef();
   const [playerStyle, setPlayerStyle] = useState({
     height: "100%",
@@ -316,10 +344,10 @@ const SampleModal = (
       } else if (onClose) {
         onClose();
       }
-    } else if (e.key == "ArrowLeft" && onPrevious) {
-      onPrevious();
-    } else if (e.key == "ArrowRight" && onNext) {
-      onNext();
+    } else if (e.key == "ArrowLeft" && index > 0) {
+      setIndex(index - 1);
+    } else if (e.key == "ArrowRight" && index < numSamples - 1) {
+      setIndex(index + 1);
     }
   });
   const theme = useTheme();
@@ -372,19 +400,19 @@ const SampleModal = (
               }}
             />
           )}
-          {onPrevious ? (
+          {index > 0 ? (
             <div
               className="nav-button left"
-              onClick={onPrevious}
+              onClick={() => setIndex(index - 1)}
               title="Previous sample (Left arrow)"
             >
               &lt;
             </div>
           ) : null}
-          {onNext ? (
+          {index < numSamples - 1 ? (
             <div
               className="nav-button right"
-              onClick={onNext}
+              onClick={() => setIndex(index + 1)}
               title="Next sample (Right arrow)"
             >
               &gt;

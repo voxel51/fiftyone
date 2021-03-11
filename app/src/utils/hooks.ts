@@ -1,5 +1,10 @@
 import { useCallback, useContext, useEffect, useRef, useState } from "react";
-import { useRecoilState, useSetRecoilState, useRecoilValue } from "recoil";
+import {
+  useRecoilCallback,
+  useRecoilState,
+  useSetRecoilState,
+  useRecoilValue,
+} from "recoil";
 import ResizeObserver from "resize-observer-polyfill";
 import ReactGA from "react-ga";
 import { ThemeContext } from "styled-components";
@@ -147,6 +152,19 @@ export const useVideoData = (socket, sample, callback = null) => {
       }
     },
   ];
+};
+
+export const useSampleUpdate = () => {
+  const handler = useRecoilCallback(
+    ({ set }) => async ({ samples }) => {
+      samples.forEach(({ sample }) => {
+        set(selectors.sample(sample._id), sample);
+      });
+      set(selectors.anyTagging, false);
+    },
+    []
+  );
+  useMessageHandler("samples_update", handler);
 };
 
 export const useWindowSize = () => {

@@ -11,8 +11,7 @@ export const modal = atom({
   key: "modal",
   default: {
     visible: false,
-    sample: null,
-    metadata: null,
+    sample_id: null,
   },
 });
 

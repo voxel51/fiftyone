@@ -13,12 +13,12 @@ import SampleModal from "../components/SampleModal";
 import { ModalWrapper } from "../components/utils";
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
-import { VALID_LABEL_TYPES } from "../utils/labels";
 import {
   useMessageHandler,
   useOutsideClick,
   useSendMessage,
   useScreenshot,
+  useSampleUpdate,
   useGA,
 } from "../utils/hooks";
 import Loading from "../components/Loading";
@@ -49,6 +49,7 @@ function Dataset() {
     atoms.extendedDatasetStatsRaw
   );
   useGA();
+  useSampleUpdate();
   const setDatasetStats = useSetRecoilState(atoms.datasetStatsRaw);
 
   useMessageHandler("statistics", ({ stats, view, filters }) => {
@@ -62,7 +63,7 @@ function Dataset() {
   const resetSelectedObjects = useResetRecoilState(atoms.selectedObjects);
   const resetHiddenObjects = useResetRecoilState(atoms.hiddenObjects);
   const handleHideModal = () => {
-    setModal({ visible: false, sample: null, metadata: null });
+    setModal({ visible: false, sample_id: null });
     resetSelectedObjects();
     resetHiddenObjects();
   };
@@ -76,7 +77,7 @@ function Dataset() {
   const hideModal = useMemo(() => {
     return (
       modal.visible &&
-      !currentSamples.some((i) => i.sample._id === modal.sample._id)
+      !currentSamples.some((i) => i.sample._id === modal.sample_id)
     );
   }, [currentSamples]);
 
@@ -85,52 +86,24 @@ function Dataset() {
     if (!hideModal && modal.visible) {
       setModal({
         ...modal,
-        sample: currentSamples.filter(
-          (i) => i.sample._id === modal.sample._id
-        )[0].sample,
+        sample_id: currentSamples.filter(
+          (i) => i.sample._id === modal.sample_id
+        )[0].sample._id,
       });
     }
   }, [hideModal]);
 
   useSendMessage("set_selected_labels", { selected_labels: [] }, !hideModal);
-
-  let src = null;
-  let s = null;
-  if (modal.sample) {
-    const path = modal.sample.filepath;
-    const id = modal.sample._id;
-    src = `${http}/filepath/${encodeURI(path)}?id=${id}`;
-    s = modal.sample;
-  }
-
-  let modalProps = {};
-  if (modal.visible && modal.sample) {
-    const currentSampleIndex = currentSamples.findIndex(
-      ({ sample }) => sample._id == modal.sample._id
-    );
-    const previousSample = currentSamples[currentSampleIndex - 1];
-    if (previousSample) {
-      modalProps.onPrevious = () => setModal({ ...modal, ...previousSample });
-    }
-    const nextSample = currentSamples[currentSampleIndex + 1];
-    if (nextSample) {
-      modalProps.onNext = () => setModal({ ...modal, ...nextSample });
-    }
-  }
   const ref = useRef();
 
   useOutsideClick(ref, handleHideModal);
 
+  console.log(modal);
   return (
     <>
       {modal.visible ? (
         <ModalWrapper>
-          <SampleModal
-            sampleUrl={src}
-            onClose={handleHideModal}
-            {...modalProps}
-            ref={ref}
-          />
+          <SampleModal onClose={handleHideModal} ref={ref} />
         </ModalWrapper>
       ) : null}
       <Container>

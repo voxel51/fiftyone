@@ -242,16 +242,9 @@ const packageGrid = ({ untag, targetLabels, activeLabels, tag }) =>
     tag,
   });
 
-const packageModal = ({
-  untag,
-  activeLabels = null,
-  labels = null,
-  sample_id = null,
-  tag,
-}) =>
+const packageModal = ({ untag, labels = null, sample_id = null, tag }) =>
   packageMessage("tag_modal", {
     untag,
-    active_labels: activeLabels,
     tag,
     labels,
     sample_id,
@@ -269,7 +262,8 @@ const useTagCallback = (modal, targetLabels) => {
           Object.keys(await snapshot.getPromise(atoms.selectedObjects)).length >
           0;
         if (!targetLabels) {
-          const sample_id = await snapshot.getPromise(selectors.modalSample);
+          const sample_id = (await snapshot.getPromise(selectors.modalSample))
+            ._id;
           socket.send(packageModal({ sample_id, tag, untag }));
         } else if (hasSelectedLabels) {
           socket.send(packageModal({ tag, untag }));

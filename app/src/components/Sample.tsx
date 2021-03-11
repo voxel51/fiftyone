@@ -239,7 +239,7 @@ const useSelect = (id: string, index: number) => {
           newSelected.add(id);
         }
       };
-      const ind = await snapshot.getPromise(selectors.selectedSampleIndices);
+      const ind = await snapshot.getPromise(selectors.sampleIndices);
       const rev = Object.fromEntries(
         Object.entries(ind).map((i) => [i[1], i[0]])
       );
@@ -349,7 +349,7 @@ const Sample = ({ sample, metadata, index }) => {
           onClick={(e) =>
             selectedSamples.size
               ? selectSample(e)
-              : setModal({ visible: true, sample, metadata })
+              : setModal({ visible: true, sample_id: sample._id })
           }
         />
         {bar.map(({ key, props }) => (
