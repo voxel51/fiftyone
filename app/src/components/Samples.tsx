@@ -1,13 +1,12 @@
-import React, { useEffect } from "react";
+import React from "react";
 import InfiniteScroll from "react-infinite-scroller";
 import useMeasure from "react-use-measure";
-import { useSetRecoilState, useRecoilValue } from "recoil";
+import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 
 import Loading from "./Loading";
 import Sample from "./Sample";
 import tile from "./Samples.hooks";
-import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
 import { scrollbarStyles } from "./utils";
 
@@ -21,7 +20,7 @@ const Container = styled.div`
 function Samples() {
   const [containerRef, bounds] = useMeasure();
 
-  const [scrollState, setScrollState] = tile();
+  const [rows, scrollState, setScrollState] = tile();
   const indices = useRecoilValue(selectors.sampleIndices);
 
   return (
@@ -37,7 +36,7 @@ function Samples() {
         hasMore={scrollState.hasMore}
         useWindow={false}
       >
-        {scrollState.rows.map((r, i) => (
+        {rows.map((r, i) => (
           <React.Fragment key={i}>
             <div
               columns={r.columns}
@@ -77,9 +76,7 @@ function Samples() {
           </React.Fragment>
         ))}
       </InfiniteScroll>
-      {scrollState.isLoading && scrollState.rows.length === 0 ? (
-        <Loading />
-      ) : null}
+      {scrollState.isLoading && rows.length === 0 ? <Loading /> : null}
     </Container>
   );
 }

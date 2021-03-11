@@ -1,10 +1,5 @@
 import { useEffect, useState } from "react";
-import {
-  useRecoilValue,
-  useRecoilState,
-  atom,
-  useResetRecoilState,
-} from "recoil";
+import { useRecoilValue, useRecoilState } from "recoil";
 import { useMessageHandler } from "../utils/hooks";
 import tile from "../utils/tile";
 import { packageMessage } from "../utils/socket";
@@ -24,42 +19,45 @@ const stringifyObj = (obj) => {
   );
 };
 
+const empty = {
+  loadMore: false,
+  isLoading: false,
+  hasMore: true,
+  pageToLoad: null,
+};
+
 export default () => {
   const socket = useRecoilValue(selectors.socket);
   const filters = useRecoilValue(selectors.filterStages);
   const datasetName = useRecoilValue(selectors.datasetName);
   const view = useRecoilValue(selectors.view);
   const refresh = useRecoilValue(selectors.refresh);
-  const [state, setState] = useRecoilState(atoms.scrollState);
-  const reset = useResetRecoilState(atoms.scrollState);
-  const [page, setPage] = useState(null);
+  const [state, setState] = useState(empty);
+  const [rows, setRows] = useRecoilState(atoms.scrollRows);
 
   useMessageHandler("page", ({ results, more }) => {
-    setState(tile(results, more, state));
+    const [newState, newRows] = tile(results, more, state, rows);
+
+    setState(newState);
+    setRows(newRows);
   });
 
   useEffect(() => {
-    reset();
+    setState(empty);
+    setRows({ rows: [], remainder: [] });
   }, [filterView(view), datasetName, refresh, stringifyObj(filters)]);
 
   useEffect(() => {
-    if (
-      !state.loadMore ||
-      state.isLoading ||
-      !state.hasMore ||
-      page === state.pageToLoad
-    )
-      return;
-    setPage(state.pageToLoad);
+    if (!state.loadMore || state.isLoading || !state.hasMore) return;
+    const page = state.pageToLoad ? state.pageToLoad + 1 : 1;
     setState({
       ...state,
       isLoading: true,
       loadMore: false,
-      initialized: true,
-      pageToLoad: state.pageToLoad + 1,
+      pageToLoad: page,
     });
-    socket.send(packageMessage("page", { page: state.pageToLoad }));
-  }, [state.loadMore, state.pageToLoad, state.hasMore, state.isLoading, page]);
+    socket.send(packageMessage("page", { page }));
+  }, [state]);
 
-  return [state, setState];
+  return [rows.rows, state, setState];
 };

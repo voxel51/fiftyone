@@ -951,15 +951,15 @@ export const hiddenObjectIds = selector({
 export const currentSamples = selector<SerializableParam[]>({
   key: "currentSamples",
   get: ({ get }) =>
-    get(atoms.scrollState)
+    get(atoms.scrollRows)
       .rows.map((row) => row.samples)
       .flat(),
   set: ({ get, set }, value) => {
-    const state = get(atoms.scrollState);
+    const rows = get(atoms.scrollRows);
     const mapping = Object.fromEntries(value.map((s) => [s.sample._id, s]));
-    set(atoms.scrollState, {
-      ...state,
-      rows: state.rows.map((row) => ({
+    set(atoms.scrollRows, {
+      remainder: rows.remainder,
+      rows: rows.rows.map((row) => ({
         ...row,
         samples: row.samples.map((s) => mapping[s.sample._id]),
       })),

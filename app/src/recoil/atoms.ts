@@ -105,14 +105,9 @@ export const sidebarVisible = atom({
   default: true,
 });
 
-export const scrollState = atom({
-  key: "scrollState",
+export const scrollRows = atom({
+  key: "scrollRows",
   default: {
-    initialized: false,
-    loadMore: false,
-    isLoading: false,
-    hasMore: true,
-    pageToLoad: 1,
     rows: [],
     remainder: [],
   },

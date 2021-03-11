@@ -20,9 +20,14 @@ const lastRowRefWidth = (row) => {
   }
 };
 
-export default function tile(data, newHasMore, state) {
-  const samplesToFit = [...state.remainder, ...data];
-  const rows = [...state.rows];
+export default function tile(
+  data,
+  newHasMore,
+  state,
+  { rows, remainder: oldRemainder }
+) {
+  const samplesToFit = [...oldRemainder, ...data];
+  rows = [...rows];
   const newRows = [];
   let currentRow = [];
   let currentWidth = null;
@@ -109,13 +114,13 @@ export default function tile(data, newHasMore, state) {
     });
   }
 
-  return {
-    hasMore: Boolean(newHasMore),
-    rows: rows,
-    isLoading: false,
-    loadMore: false,
-    remainder: remainder,
-    pageToLoad: state.pageToLoad,
-    initialized: true,
-  };
+  return [
+    {
+      hasMore: Boolean(newHasMore),
+      isLoading: false,
+      loadMore: false,
+      pageToLoad: state.pageToLoad,
+    },
+    { rows, remainder },
+  ];
 }
