@@ -691,8 +691,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             ]
         else:
             view = view.select(sample_ids)
-            samples, _ = _get_sample_data(col, view, len(sample_ids), 1)
-            result = [{"sample": sample} for sample in samples]
+            result, _ = await _get_sample_data(col, view, len(sample_ids), 1)
 
         _write_message({"type": "samples_update", "samples": result}, app=True)
 
@@ -1175,6 +1174,10 @@ async def _get_video_data(col, state, view, _ids):
     results = []
     async for sample in col.aggregate(pipeline):
         frames = sample["frames"]
+        if frames:
+            sample["frames"] = frames[0]
+        else:
+            sample["frames"] = None
         convert(frames)
         labels = _make_video_labels(state, view, sample, frames)
         results.append((sample, frames, labels))
