@@ -124,21 +124,20 @@ export const useFollow = (leaderRef, followerRef, set) => {
   useObserve(followerRef ? followerRef.current : null, follow);
 };
 
-export const useVideoData = (socket, sample, callback = null) => {
-  const { _id: sampleId } = sample;
+export const useVideoData = (socket, id, callback = null) => {
   const [requested, setRequested] = useRecoilState(
-    atoms.sampleVideoDataRequested(sampleId)
+    atoms.sampleVideoDataRequested(id)
   );
-  const setVideoLabels = useSetRecoilState(atoms.sampleVideoLabels(sampleId));
-  const setFrameData = useSetRecoilState(atoms.sampleFrameData(sampleId));
-  const setFrameRate = useSetRecoilState(atoms.sampleFrameRate(sampleId));
+  const setVideoLabels = useSetRecoilState(atoms.sampleVideoLabels(id));
+  const setFrameData = useSetRecoilState(atoms.sampleFrameData(id));
+  const setFrameRate = useSetRecoilState(atoms.sampleFrameRate(id));
   const viewCounter = useRecoilValue(atoms.viewCounter);
   return [
     requested,
     (...args) => {
       if (requested !== viewCounter) {
         setRequested(viewCounter);
-        const event = `video_data-${sampleId}`;
+        const event = `video_data-${id}`;
         const handler = ({ labels, frames, fps }) => {
           setVideoLabels(labels);
           setFrameData(frames);
@@ -146,7 +145,7 @@ export const useVideoData = (socket, sample, callback = null) => {
           callback && callback({ labels, frames }, ...args);
         };
         attachDisposableHandler(socket, event, handler);
-        socket.send(packageMessage("get_video_data", { _id: sampleId }));
+        socket.send(packageMessage("get_video_data", { _id: id }));
       } else {
         callback && callback(null, ...args);
       }
@@ -158,7 +157,7 @@ export const useSampleUpdate = () => {
   const handler = useRecoilCallback(
     ({ set }) => async ({ samples }) => {
       samples.forEach(({ sample }) => {
-        set(selectors.sample(sample._id), sample);
+        set(atoms.sample(sample._id), sample);
       });
       set(selectors.anyTagging, false);
     },

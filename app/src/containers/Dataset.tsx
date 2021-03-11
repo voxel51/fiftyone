@@ -76,8 +76,7 @@ function Dataset() {
 
   const hideModal = useMemo(() => {
     return (
-      modal.visible &&
-      !currentSamples.some((i) => i.sample._id === modal.sample_id)
+      modal.visible && !currentSamples.some((id) => id === modal.sample_id)
     );
   }, [currentSamples]);
 
@@ -86,9 +85,7 @@ function Dataset() {
     if (!hideModal && modal.visible) {
       setModal({
         ...modal,
-        sample_id: currentSamples.filter(
-          (i) => i.sample._id === modal.sample_id
-        )[0].sample._id,
+        sample_id: currentSamples.filter((id) => id === modal.sample_id)[0],
       });
     }
   }, [hideModal]);

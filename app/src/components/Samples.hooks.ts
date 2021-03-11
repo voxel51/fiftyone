@@ -1,5 +1,10 @@
 import { useEffect, useState } from "react";
-import { useRecoilValue, useRecoilState } from "recoil";
+import {
+  useRecoilCallback,
+  useRecoilValue,
+  useRecoilState,
+  useResetRecoilState,
+} from "recoil";
 import { useMessageHandler } from "../utils/hooks";
 import tile from "../utils/tile";
 import { packageMessage } from "../utils/socket";
@@ -19,12 +24,15 @@ const stringifyObj = (obj) => {
   );
 };
 
-const empty = {
-  loadMore: false,
-  isLoading: false,
-  hasMore: true,
-  pageToLoad: null,
-};
+const scrollState = atom({
+  key: "scrollState",
+  default: {
+    loadMore: false,
+    isLoading: false,
+    hasMore: true,
+    pageToLoad: null,
+  },
+});
 
 export default () => {
   const socket = useRecoilValue(selectors.socket);
@@ -32,19 +40,32 @@ export default () => {
   const datasetName = useRecoilValue(selectors.datasetName);
   const view = useRecoilValue(selectors.view);
   const refresh = useRecoilValue(selectors.refresh);
-  const [state, setState] = useState(empty);
-  const [rows, setRows] = useRecoilState(atoms.scrollRows);
+  const state = useRecoilValue(scrollState);
+  const resetState = useResetRecoilState(scrollState);
+  const resetRows = useResetRecoilState(atoms.gridRows);
 
-  useMessageHandler("page", ({ results, more }) => {
-    const [newState, newRows] = tile(results, more, state, rows);
+  const handlePage = useRecoilCallback(
+    ({ snapshot, set }) => async ({ results, more }) => {
+      const [state, rows] = await Promise.all([
+        snapshot.getPromise(scrollState),
+        snapshot.getPromise(atoms.gridRows),
+      ]);
+      const [newState, newRows] = tile(results, more, state, rows);
+      results.forEach(({ sample, width, height }) => {
+        set(atoms.sample(sample._id), sample);
+        set(atoms.sampleDimensions(sample._id), { width, height });
+      });
+      set(scrollState, newState);
+      set(atoms.gridRows, newRows);
+    },
+    []
+  );
 
-    setState(newState);
-    setRows(newRows);
-  });
+  useMessageHandler("page", handlePage);
 
   useEffect(() => {
-    setState(empty);
-    setRows({ rows: [], remainder: [] });
+    resetState();
+    resetRows();
   }, [filterView(view), datasetName, refresh, stringifyObj(filters)]);
 
   useEffect(() => {

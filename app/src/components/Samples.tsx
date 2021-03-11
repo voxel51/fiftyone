@@ -7,7 +7,7 @@ import styled from "styled-components";
 import Loading from "./Loading";
 import Sample from "./Sample";
 import tile from "./Samples.hooks";
-import * as selectors from "../recoil/selectors";
+import * as atoms from "../recoil/atoms";
 import { scrollbarStyles } from "./utils";
 
 const Container = styled.div`
@@ -20,8 +20,8 @@ const Container = styled.div`
 function Samples() {
   const [containerRef, bounds] = useMeasure();
 
-  const [rows, scrollState, setScrollState] = tile();
-  const indices = useRecoilValue(selectors.sampleIndices);
+  const [scrollState, setScrollState] = tile();
+  const rows = useRecoilValue(atoms.gridRows);
 
   return (
     <Container ref={containerRef}>
@@ -46,14 +46,10 @@ function Samples() {
               }}
               key={i}
             >
-              {r.samples.map((s, j) => (
+              {r.samples.map((id, j) => (
                 <React.Fragment key={j}>
                   <div key={"column"} style={{ padding: 0, width: "100%" }}>
-                    <Sample
-                      sample_id={s.sample._id}
-                      metadata={s.metadata}
-                      index={indices[s.sample._id]}
-                    />
+                    <Sample id={id} />
                   </div>
                   {j < r.samples.length - 1 && (
                     <div

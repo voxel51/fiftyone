@@ -1,4 +1,4 @@
-import { atom, atomFamily } from "recoil";
+import { atom, atomFamily, SerializableParam } from "recoil";
 
 import { SelectedObjectMap } from "../utils/selection";
 
@@ -105,11 +105,27 @@ export const sidebarVisible = atom({
   default: true,
 });
 
-export const scrollRows = atom({
-  key: "scrollRows",
+export const gridRows = atom({
+  key: "gridRows",
   default: {
     rows: [],
     remainder: [],
+  },
+});
+
+export const sample = atomFamily<SerializableParam, string>({
+  key: "sample",
+  default: null,
+});
+
+export const sampleDimensions = atomFamily<
+  { width: number | null; height: number | null },
+  string
+>({
+  key: "sampleDimensions",
+  default: {
+    width: null,
+    height: null,
   },
 });
 

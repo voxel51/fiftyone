@@ -844,24 +844,24 @@ export const selectedObjectIds = selector<Set<string>>({
   },
 });
 
+export const currentSamples = selector<string[]>({
+  key: "currentSamples",
+  get: ({ get }) => {
+    const { rows } = get(atoms.gridRows);
+    return rows.map((r) => r.samples).flat();
+  },
+});
+
 export const sampleIndices = selector<{ [key: string]: number }>({
   key: "sampleIndices",
-  get: ({ get }) => {
-    const samples = get(currentSamples);
-    return Object.fromEntries(
-      samples.map(({ sample }, index) => [sample._id, index])
-    );
-  },
+  get: ({ get }) =>
+    Object.fromEntries(get(currentSamples).map((id, i) => [id, i])),
 });
 
 export const sampleIds = selector<{ [key: number]: string }>({
   key: "sampleIdx",
-  get: ({ get }) => {
-    const samples = get(currentSamples);
-    return Object.fromEntries(
-      samples.map(({ sample }, index) => [index, sample._id])
-    );
-  },
+  get: ({ get }) =>
+    Object.fromEntries(get(currentSamples).map((id, i) => [i, id])),
 });
 
 export const modalLabelAttrs = selectorFamily<
@@ -945,49 +945,6 @@ export const hiddenObjectIds = selector({
   key: "hiddenObjectIds",
   get: ({ get }) => {
     return new Set(Object.keys(get(atoms.hiddenObjects)));
-  },
-});
-
-export const currentSamples = selector<SerializableParam[]>({
-  key: "currentSamples",
-  get: ({ get }) =>
-    get(atoms.scrollRows)
-      .rows.map((row) => row.samples)
-      .flat(),
-  set: ({ get, set }, value) => {
-    const rows = get(atoms.scrollRows);
-    const mapping = Object.fromEntries(value.map((s) => [s.sample._id, s]));
-    set(atoms.scrollRows, {
-      remainder: rows.remainder,
-      rows: rows.rows.map((row) => ({
-        ...row,
-        samples: row.samples.map((s) => mapping[s.sample._id]),
-      })),
-    });
-  },
-});
-
-export const sampleMap = selector<{ [id: string]: SerializableParam }>({
-  key: "sampleMap",
-  get: ({ get }) => {
-    const samples = get(currentSamples);
-    return Object.fromEntries(
-      samples.map(({ sample }) => [sample._id, sample])
-    );
-  },
-});
-
-export const sample = selectorFamily<SerializableParam, string>({
-  key: "sample",
-  get: (id) => ({ get }) => {
-    return get(sampleMap)[id];
-  },
-  set: (id) => ({ get, set }, value) => {
-    const samples = get(currentSamples);
-    return set(
-      currentSamples,
-      samples.map((s) => (s.sample._id === id ? { ...s, sample: value } : s))
-    );
   },
 });
 

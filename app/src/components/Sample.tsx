@@ -64,8 +64,9 @@ const LoadingBar = animated(styled.div`
   height: 0.2em;
 `);
 
-const useHoverLoad = (socket, sample) => {
-  if (sample._media_type !== "video") {
+const useHoverLoad = (socket, id) => {
+  const isVideo = useRecoilValue(selectors.isVideoDataset);
+  if (!isVideo) {
     return [[], (e) => {}, (e) => {}];
   }
   const [barItem, setBarItem] = useState([]);
@@ -74,7 +75,7 @@ const useHoverLoad = (socket, sample) => {
 
   const [requested, requestLabels] = useVideoData(
     socket,
-    sample,
+    id,
     (data, player) => {
       if (!data) return;
       const { labels } = data;
@@ -126,14 +127,14 @@ const revealSample = () => {
   });
 };
 
-const SampleInfo = ({ sample_id }) => {
+const SampleInfo = ({ id }) => {
   const activeFields = useRecoilValue(labelAtoms.activeFields(false));
   const colorMap = useRecoilValue(selectors.colorMap(false));
   const scalars = useRecoilValue(selectors.scalarNames("sample"));
   const colorByLabel = useRecoilValue(atoms.colorByLabel(false));
   const labelTypes = useRecoilValue(selectors.labelTypesMap);
   const theme = useTheme();
-  const sample = useRecoilValue(selectors.sample(sample_id));
+  const sample = useRecoilValue(atoms.sample(id));
   const bubbles = activeFields.reduce((acc, cur) => {
     if (
       cur.startsWith("tags.") &&
@@ -301,11 +302,10 @@ const Selector = ({
   );
 };
 
-const Sample = ({ sample_id, metadata, index }) => {
+const Sample = ({ id, index }) => {
   const http = useRecoilValue(selectors.http);
   const setModal = useSetRecoilState(atoms.modal);
-  const sample = useRecoilValue(selectors.sample(sample_id));
-  const id = sample_id;
+  const sample = useRecoilValue(atoms.sample(id));
   const src = `${http}/filepath/${encodeURI(sample.filepath)}?id=${id}`;
   const socket = useRecoilValue(selectors.socket);
   const colorByLabel = useRecoilValue(atoms.colorByLabel(false));
@@ -331,7 +331,7 @@ const Sample = ({ sample_id, metadata, index }) => {
         onMouseLeave={() => setHovering(false)}
       >
         <Selector key={id} id={id} spring={selectorSpring} index={index} />
-        <SampleInfo sample_id={sample_id} />
+        <SampleInfo id={id} />
         <Player51
           src={src}
           style={{
@@ -340,8 +340,7 @@ const Sample = ({ sample_id, metadata, index }) => {
             position: "absolute",
             cursor: "pointer",
           }}
-          sample={sample}
-          metadata={metadata}
+          id={id}
           thumbnail={true}
           activeLabelsAtom={labelAtoms.activeFields(false)}
           colorByLabel={colorByLabel}
@@ -351,7 +350,7 @@ const Sample = ({ sample_id, metadata, index }) => {
           onClick={(e) =>
             selectedSamples.size
               ? selectSample(e)
-              : setModal({ visible: true, sample_id: sample._id })
+              : setModal({ visible: true, sample_id: id })
           }
         />
         {bar.map(({ key, props }) => (

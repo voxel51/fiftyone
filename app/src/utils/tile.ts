@@ -1,5 +1,32 @@
 const THRESHOLD = 5;
 
+interface State {
+  hasMore: boolean;
+  isLoading: boolean;
+  loadMore: boolean;
+  pageToLoad: number | null;
+}
+
+interface RowStyle {
+  display: string;
+  gridTemplateColums: string;
+  width: string;
+  margin: number;
+}
+
+interface Row {
+  style: RowStyle;
+  columns: number;
+  samples: string[];
+  aspectRation: number;
+  extraMargin: number;
+}
+
+interface Rows {
+  rows: Row[];
+  remainder: Row[];
+}
+
 const lastRowRefWidth = (row) => {
   const baseAspectRatio = row[0].width / row[0].height;
   const sameAspectRatios = row
@@ -21,11 +48,11 @@ const lastRowRefWidth = (row) => {
 };
 
 export default function tile(
-  data,
-  newHasMore,
-  state,
+  data: object[],
+  newHasMore: boolean,
+  state: State,
   { rows, remainder: oldRemainder }
-) {
+): [State, Rows] {
   const samplesToFit = [...oldRemainder, ...data];
   rows = [...rows];
   const newRows = [];
@@ -37,18 +64,18 @@ export default function tile(
     if (currentWidth === null) {
       currentWidth = s.width;
       currentHeight = s.height;
-      currentRow.push(s);
+      currentRow.push(s.sample._id);
       continue;
     }
 
     if (currentWidth / currentHeight >= THRESHOLD) {
       newRows.push(currentRow);
-      currentRow = [s];
+      currentRow = [s.sample._id];
       currentWidth = s.width;
       currentHeight = s.height;
       continue;
     }
-    currentRow.push(s);
+    currentRow.push(s.sample._id);
     currentWidth += (currentHeight / s.height) * s.width;
   }
 
@@ -105,7 +132,7 @@ export default function tile(
     rows.push({
       style: rowStyle,
       columns: gridColumnsLength,
-      samples: row.map(({ sample, ...rest }) => ({ sample, metadata: rest })),
+      samples: row,
       aspectRatio:
         (refWidth +
           ((columns.length - 1 + extraMargins) / 5) * (refWidth / 100)) /
