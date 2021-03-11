@@ -624,9 +624,10 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         state = fos.StateDescription.from_dict(StateHandler.state)
         view = state.view or state.dataset
 
-        sample, frames, labels = await _get_video_data(
-            self.sample_collection(), state, view, _id
+        result = await _get_video_data(
+            self.sample_collection(), state, view, [_id]
         )
+        sample, frames, labels = result[0]
 
         fps = etav.get_frame_rate(sample["filepath"])
         self.write_message(
@@ -674,19 +675,26 @@ class StateHandler(tornado.websocket.WebSocketHandler):
 
         asyncio.gather(
             StateHandler.send_samples(caller, sample_ids),
-            StateHandler.send_statistics(view),
+            StateHandler.send_statistics(view, only=caller),
         )
 
     @classmethod
     async def send_samples(cls, view, sample_ids):
         state = fos.StateDescription.from_dict(StateHandler.state)
         view = state.view or state.dataset
+        col = cls.sample_collection()
         if view.media_type == fom.VIDEO:
-            sample, frames, labels = _get_video_data(
-                cls.sample_collection(), state, view, sample_ids
-            )
+            samples = _get_video_data(col, state, view, sample_ids)
+            result = [
+                {"sample": s, "frames": f, "labels": l}
+                for (s, f, l) in samples
+            ]
         else:
-            pass
+            view = view.select(sample_ids)
+            samples, _ = _get_sample_data(col, view, len(sample_ids), 1)
+            result = [{"sample": sample} for sample in samples]
+
+        _write_message({"type": "samples_update", "samples": result}, app=True)
 
     @classmethod
     def get_statistics_awaitables(cls, only=None):
@@ -724,26 +732,11 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             ignore (None): a client to not send the update to
             only (None): a client to restrict the updates to
         """
-        response = {"type": "update", "state": StateHandler.state}
-        if only:
-            only.write_message(response)
-            return
-
-        global _notebook_clients
-        global _deactivated_clients
-        active_handle = StateHandler.state["active_handle"]
-        for client in cls.clients:
-            if client in _notebook_clients:
-                uuid = _notebook_clients[client]
-                if uuid != active_handle and uuid not in _deactivated_clients:
-                    _deactivated_clients.add(uuid)
-                    client.write_message({"type": "deactivate"})
-                    continue
-
-            if client == ignore:
-                continue
-
-            client.write_message(response)
+        _write_message(
+            {"type": "update", "state": StateHandler.state},
+            ignore=ignore,
+            only=only,
+        )
 
     @classmethod
     async def send_statistics(cls, view, filters=None, only=None):
@@ -798,19 +791,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             "filters": filters,
         }
 
-        if only:
-            only.write_message(message)
-        else:
-            global _notebook_clients
-            active_handle = StateHandler.state["active_handle"]
-            for client in StateHandler.app_clients:
-                if (
-                    active_handle
-                    and _notebook_clients.get(client, None) != active_handle
-                ):
-                    continue
-
-                client.write_message(message)
+        _write_message(message, app=True, only=only)
 
     @classmethod
     async def on_distributions(cls, self, group):
@@ -886,6 +867,29 @@ class StateHandler(tornado.websocket.WebSocketHandler):
 
         results = sorted(results, key=lambda i: i["name"])
         self.write_message({"type": "distributions", "results": results})
+
+
+def _write_message(message, app=False, ignore=None, only=None):
+    if only:
+        only.write_message(message)
+        return
+
+    global _notebook_clients
+    global _deactivated_clients
+    active_handle = StateHandler.state["active_handle"]
+    clients = StateHandler.app_clients if app else StateHandler.clients
+    for client in clients:
+        if client in _notebook_clients:
+            uuid = _notebook_clients[client]
+            if uuid != active_handle and uuid not in _deactivated_clients:
+                _deactivated_clients.add(uuid)
+                client.write_message({"type": "deactivate"})
+                continue
+
+        if client == ignore:
+            continue
+
+        client.write_message(message)
 
 
 def _get_extended_view(view, filters, hide_result=False):
@@ -1165,16 +1169,17 @@ async def _get_sample_data(col, view, page_length, page):
     return results, more
 
 
-async def _get_video_data(col, state, view, _id):
-    view = view.select(_id)
+async def _get_video_data(col, state, view, _ids):
+    view = view.select(_ids)
     pipeline = view._pipeline()
-    sample = (await col.aggregate(pipeline).to_list(1))[0]
+    results = []
+    async for sample in col.aggregate(pipeline):
+        frames = sample["frames"]
+        convert(frames)
+        labels = _make_video_labels(state, view, sample, frames)
+        results.append((sample, frames, labels))
 
-    frames = sample["frames"]
-    convert(frames)
-    labels = _make_video_labels(state, view, sample, frames)
-
-    return sample, frames, labels
+    return results
 
 
 def _make_frame_labels(name, label, frame_number, prefix=""):
