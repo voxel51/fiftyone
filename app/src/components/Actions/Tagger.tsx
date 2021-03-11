@@ -125,7 +125,7 @@ const Section = ({
             if (e.key === "Enter") {
               setTagging(true);
               setValue("");
-              submit(value, untag, isInSelection);
+              submit({ tag: value, untag });
             }
           }}
           disabled={disabled}
@@ -234,39 +234,54 @@ const samplePlaceholder = (_, __, ___, untag) => {
   return "+ tag sample";
 };
 
-const packageGrid = ({ untag, targetLabels, activeLabels, value }) =>
+const packageGrid = ({ untag, targetLabels, activeLabels, tag }) =>
   packageMessage("tag", {
     untag,
     target_labels: targetLabels,
     active_labels: activeLabels,
-    tag: value,
+    tag,
   });
 
-const packageModal = (untag, labels, activeLabels, selected, value) =>
+const packageModal = ({
+  untag,
+  activeLabels = null,
+  labels = null,
+  sample_id = null,
+  tag,
+}) =>
   packageMessage("tag_modal", {
     untag,
-    target_labels: labels,
-    selected: selected,
     active_labels: activeLabels,
-    tag: value,
+    tag,
+    labels,
+    sample_id,
   });
 
-const useTagCallback = (untag, value, modal, targetLabels) => {
+const useTagCallback = (modal, targetLabels) => {
   return useRecoilCallback(
-    ({ snapshot, set }) => async (e: {
-      ctrlKey: boolean;
-      preventDefault: () => void;
-    }) => {
+    ({ snapshot }) => async ({ tag, untag }) => {
       const socket = await snapshot.getPromise(selectors.socket);
       const activeLabels = await snapshot.getPromise(
         fieldAtoms.activeFields(modal)
       );
       if (modal) {
+        const hasSelectedLabels =
+          Object.keys(await snapshot.getPromise(atoms.selectedObjects)).length >
+          0;
+        if (!targetLabels) {
+          const sample_id = await snapshot.getPromise(selectors.modalSample);
+          socket.send(packageModal({ sample_id, tag, untag }));
+        } else if (hasSelectedLabels) {
+          socket.send(packageModal({ tag, untag }));
+        } else {
+          const labels = await snapshot.getPromise(labelAtoms.modalLabels);
+          socket.send(packageModal({ tag, untag, labels }));
+        }
       } else {
-        socket.send(packageGrid({ untag, targetLabels, activeLabels, value }));
+        socket.send(packageGrid({ untag, targetLabels, activeLabels, tag }));
       }
     },
-    [untag, value, modal, targetLabels]
+    [modal, targetLabels]
   );
 };
 
@@ -283,7 +298,7 @@ const Tagger = ({ modal, bounds }: TaggerProps) => {
     cursor: labels ? "default" : "pointer",
   });
 
-  const submit = useTagCallback(untag, value, modal, labels);
+  const submit = useTagCallback(modal, labels);
 
   return (
     <Popout style={{ width: "18rem" }} modal={modal} bounds={bounds}>

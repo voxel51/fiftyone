@@ -655,14 +655,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
 
     @staticmethod
     async def on_tag_modal(
-        caller,
-        tag,
-        untag=False,
-        target_labels=False,
-        active_labels=None,
-        filters={},
-        sample_id=None,
-        labels=None,
+        caller, tag, untag=False, sample_id=None, labels=None,
     ):
         state = fos.StateDescription.from_dict(StateHandler.state)
         view = state.view or state.dataset
@@ -670,13 +663,15 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         if sample_id:
             sample_ids = [sample_id]
             tag_view = view.select(sample_id)
+            _tag(tag_view, tag, untag, False, None)
         else:
-            sample_ids = list({l["sample_id"] for l in labels.values()})
+            if state.selected_labels:
+                labels = state.selected_labels
+
+            sample_ids = list({l["sample_id"] for l in labels})
             tag_view = view.select_labels(labels=labels)
+            _tag(tag_view, tag, untag, True, None)
 
-        tag_view = _get_extended_view(view, filters)
-
-        _tag(tag_view, tag, untag, target_labels, active_labels)
         asyncio.gather(
             StateHandler.send_samples(caller, sample_ids),
             StateHandler.send_statistics(view),
@@ -1139,6 +1134,9 @@ def _make_filter_stages(dataset, filters):
 
 
 def _tag(view, tag, untag, target_labels, active_labels):
+    if active_labels:
+        view = view.select_fields(active_labels)
+
     if untag and target_labels:
         view.untag_labels(tag, active_labels)
     elif target_labels:
