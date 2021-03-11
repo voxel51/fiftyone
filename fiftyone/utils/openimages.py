@@ -83,6 +83,12 @@ def download_open_images_v6_split(
         num_workers (None): the number of processes to use to download images. By default,
             ``multiprocessing.cpu_count()`` is used
     """
+    # CLI compatibility, parse list inputs if they are in the form of a string
+    label_types = _parse_string_list(label_types)
+    classes = _parse_string_list(classes)
+    attrs = _parse_string_list(attrs)
+    image_ids = _parse_string_list(image_ids)
+
     if max_samples and (label_types or classes or attrs):
         # Only samples with every specified label type will be loaded
         guarantee_all_types = True
@@ -102,7 +108,7 @@ def download_open_images_v6_split(
 
     # Determine the image IDs to load
     if not image_ids and not image_ids_file:
-        if not label_types or (classes == [] and attrs == []):
+        if not label_types and not classes and not attrs:
             # No IDs were provided and no labels are being loaded
             # Load all image IDs
             split_image_ids = _download_image_ids(scratch_dir, split)
@@ -621,6 +627,16 @@ def _parse_label_types(label_types):
             _label_types.append(l)
 
     return _label_types
+
+
+def _parse_string_list(l):
+    if isinstance(l, str):
+        if l[0] == "[":
+            l = l[1:-1]
+            l = [i.strip() for i in l.split(",")]
+        else:
+            l = [l]
+    return l
 
 
 def _parse_splits(split, splits):

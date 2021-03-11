@@ -849,16 +849,47 @@ class LabeledFacesInTheWildDataset(FiftyOneDataset):
 
 
 class OpenImagesV6Dataset(FiftyOneDataset):
-    """`Open Images v6 dataset <https://storage.googleapis.com/openimages/web/index.html>`_ with annotations.
-
-    Example usage::
-
+    """`Open Images <https://storage.googleapis.com/openimages/web/index.html>`_ is a dataset of totalling ~9 million images. Roughly 2 million are
+    annotated and available in this dataset zoo. This dataset contains annotations
+    for classification, detection, segmentation, and visual relationship tasks
+    across 601 object classes.  
+    
+    Open Images V6 was released in February 2020 providing updates to the dataset
+    as well as new annotations for `Localized Narratives <https://google.github.io/localized-narratives/>`_ (not yet supported in this zoo).
+    
+    Notes:
+    
+    - Not all images contain all types of labels
+    - This dataset supports partial downloads 
+    - View all parameters in the class definition of :class:`OpenImagesV6Dataset <fiftyone.zoo.datasets.base.OpenImagesV6Dataset>`
+    - Specify subsets of data to download with ``classes``,
+      ``attributes``, ``label_types``, and ``max_sampes``
+    - Specify images to load by their ID using ``image_ids`` or ``image_ids_file``
+    - Train size:  1,743,042 images (513 GB)
+    - Test size: 125,436 images (36 GB)
+    - Validation size: 41,620 images (12 GB)
+    - This dataset defaults to ``cleanup=False`` and will not delete the temporary
+      directory storing downloaded annotation files. 
+    - All images have been rescaled so that their largest side is at most 1024 pixels.
+       
+    Example usage
+    
         import fiftyone as fo
         import fiftyone.zoo as foz
-
-        dataset = foz.load_zoo_dataset("open-images-v6")
-
+    
+        dataset = foz.load_zoo_dataset("open-images-v6", split="validation", max_samples=50)
+    
         session = fo.launch_app(dataset)
+    
+        subset = foz.load_zoo_dataset(
+            "open-images-v6", 
+            split="validation", 
+            label_types=["detections", "relationships"],
+            classes=["Fedora", "Piano"], 
+            max_samples=50,
+        )
+    
+        session.dataset = subset
 
     Dataset size
         561 GB 
@@ -921,7 +952,7 @@ class OpenImagesV6Dataset(FiftyOneDataset):
             "detection",
             "segmentation",
             "classification",
-            "visual-relationships",
+            "visual-relationship",
         )
 
     @property
