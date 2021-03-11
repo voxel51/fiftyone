@@ -264,7 +264,8 @@ const useSelect = (id: string, index: number) => {
         ...stateDescription,
         selected: [...newSelected],
       });
-    }
+    },
+    [id, index]
   );
 };
 

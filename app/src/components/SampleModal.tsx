@@ -119,8 +119,9 @@ const Container = styled.div`
     .sidebar-content {
       padding-left: 1rem;
       padding-right: 1rem;
-      padding-bottom: 1rem;
       overflow-y: scroll;
+      flex-grow: 1;
+      overflow-y: auto;
       height: calc(100% - 64.5px);
       max-height: calc(100% - 64.5px);
       scrollbar-width: none;

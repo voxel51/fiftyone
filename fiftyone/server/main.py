@@ -656,31 +656,39 @@ class StateHandler(tornado.websocket.WebSocketHandler):
     @staticmethod
     async def on_tag_modal(
         caller,
-        sample_id,
         tag,
         untag=False,
         target_labels=False,
         active_labels=None,
         filters={},
+        sample_id=None,
+        labels=None,
     ):
         state = fos.StateDescription.from_dict(StateHandler.state)
         view = state.view or state.dataset
-        tag_view = view.select(sample_id)
+
+        if sample_id:
+            sample_ids = [sample_id]
+            tag_view = view.select(sample_id)
+        else:
+            sample_ids = list({l["sample_id"] for l in labels.values()})
+            tag_view = view.select_labels(labels=labels)
+
         tag_view = _get_extended_view(view, filters)
 
         _tag(tag_view, tag, untag, target_labels, active_labels)
         asyncio.gather(
-            StateHandler.send_sample(caller, sample_id),
+            StateHandler.send_samples(caller, sample_ids),
             StateHandler.send_statistics(view),
         )
 
     @classmethod
-    async def send_sample(cls, view, sample_id):
+    async def send_samples(cls, view, sample_ids):
         state = fos.StateDescription.from_dict(StateHandler.state)
         view = state.view or state.dataset
         if view.media_type == fom.VIDEO:
             sample, frames, labels = _get_video_data(
-                cls.sample_collection(), state, view, sample_id
+                cls.sample_collection(), state, view, sample_ids
             )
         else:
             pass
@@ -949,7 +957,6 @@ async def _gather_results(col, aggs, fields, view, ticks=None):
             cls = field.document_type
         except:
             type_ = field.__class__.__name__
-            is_label = False
             cls = None
 
         name = agg.field_name
@@ -987,7 +994,7 @@ def _count_values(f, view):
         schemas.append((view.get_frame_field_schema(), view._FRAMES_PREFIX))
 
     for schema, prefix in schemas:
-        for name, field in schema.items():
+        for field in schema.values():
             path = f(field)
             if path is None:
                 continue
@@ -998,12 +1005,8 @@ def _count_values(f, view):
     return aggregations, fields
 
 
-def _numeric_bounds(fields, paths):
-    aggregations = []
-    for field, path in zip(fields, paths):
-        aggregations.append(foa.Bounds(path))
-
-    return aggregations
+def _numeric_bounds(paths):
+    return [foa.Bounds(path) for path in paths]
 
 
 async def _numeric_histograms(coll, view, schema, prefix=""):
@@ -1018,7 +1021,7 @@ async def _numeric_histograms(coll, view, schema, prefix=""):
             paths.append("%s%s" % (prefix, name))
             fields.append(field)
 
-    aggs = _numeric_bounds(fields, paths)
+    aggs = _numeric_bounds(paths)
     bounds = await view._async_aggregate(coll, aggs)
     aggregations = []
     ticks = []

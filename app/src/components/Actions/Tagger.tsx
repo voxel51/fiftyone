@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import styled from "styled-components";
 import { animated, useSpring } from "react-spring";
-import { useRecoilState, useRecoilValue } from "recoil";
+import { useRecoilCallback, useRecoilState, useRecoilValue } from "recoil";
 import { CircularProgress } from "@material-ui/core";
 
 import * as labelAtoms from "../Filters/LabelFieldFilters.state";
@@ -234,11 +234,45 @@ const samplePlaceholder = (_, __, ___, untag) => {
   return "+ tag sample";
 };
 
+const packageGrid = ({ untag, targetLabels, activeLabels, value }) =>
+  packageMessage("tag", {
+    untag,
+    target_labels: targetLabels,
+    active_labels: activeLabels,
+    tag: value,
+  });
+
+const packageModal = (untag, labels, activeLabels, selected, value) =>
+  packageMessage("tag_modal", {
+    untag,
+    target_labels: labels,
+    selected: selected,
+    active_labels: activeLabels,
+    tag: value,
+  });
+
+const useTagCallback = (untag, value, modal, targetLabels) => {
+  return useRecoilCallback(
+    ({ snapshot, set }) => async (e: {
+      ctrlKey: boolean;
+      preventDefault: () => void;
+    }) => {
+      const socket = await snapshot.getPromise(selectors.socket);
+      const activeLabels = await snapshot.getPromise(
+        fieldAtoms.activeFields(modal)
+      );
+      if (modal) {
+      } else {
+        socket.send(packageGrid({ untag, targetLabels, activeLabels, value }));
+      }
+    },
+    [untag, value, modal, targetLabels]
+  );
+};
+
 const Tagger = ({ modal, bounds }: TaggerProps) => {
   const [labels, setLabels] = useState(modal);
   const theme = useTheme();
-  const socket = useRecoilValue(selectors.socket);
-  const activeLabels = useRecoilValue(fieldAtoms.activeFields(false));
   const sampleProps = useSpring({
     borderBottomColor: labels ? theme.backgroundDark : theme.brand,
     cursor: labels ? "pointer" : "default",
@@ -248,6 +282,8 @@ const Tagger = ({ modal, bounds }: TaggerProps) => {
     borderBottomColor: labels ? theme.brand : theme.backgroundDark,
     cursor: labels ? "default" : "pointer",
   });
+
+  const submit = useTagCallback(untag, value, modal, labels);
 
   return (
     <Popout style={{ width: "18rem" }} modal={modal} bounds={bounds}>
@@ -276,18 +312,7 @@ const Tagger = ({ modal, bounds }: TaggerProps) => {
             ? labelsModalPlaceholder
             : samplePlaceholder
         }
-        submit={(value, untag, selected) =>
-          socket.send(
-            packageMessage("tag", {
-              untag,
-              target_labels: labels,
-              selected: selected,
-              active_labels: activeLabels,
-              tag: value,
-              modal: modal,
-            })
-          )
-        }
+        submit={submit}
         labels={labels}
         taggingAtom={atoms.tagging({ modal, labels })}
       />

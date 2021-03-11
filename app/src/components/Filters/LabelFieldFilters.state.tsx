@@ -14,6 +14,7 @@ import * as stringField from "./StringFieldFilter";
 import * as atoms from "../../recoil/atoms";
 import * as selectors from "../../recoil/selectors";
 import { RESERVED_FIELDS, VALID_LIST_TYPES } from "../../utils/labels";
+import { SelectedObject } from "../../utils/selection";
 
 const COUNT_CLS = "Count";
 
@@ -117,7 +118,7 @@ export const labelFilters = selectorFamily<LabelFilters, boolean>({
 
       set(
         numericField.noneModalAtom({ path: cPath, defaultRange: [0, 1] }),
-        get(numericField.noneModalAtom({ path: cPath, defaultRange: [0, 1] }))
+        get(numericField.noneAtom({ path: cPath, defaultRange: [0, 1] }))
       );
 
       set(
@@ -387,5 +388,18 @@ export const labelCount = selectorFamily<number | null, boolean>({
       });
 
     return sum;
+  },
+});
+
+export const modalLabels = selector<SelectedObject[]>({
+  key: "modalLabels",
+  get: ({ get }) => {
+    const selectedObjects = Object.entries(
+      get(atoms.selectedObjects)
+    ).map(([label_id, v]) => ({ label_id, ...v }));
+    if (selectedObjects.length) {
+      return selectedObjects;
+    }
+    return [];
   },
 });
