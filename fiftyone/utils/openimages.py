@@ -157,9 +157,10 @@ def download_open_images_v6_split(
                 missing_classes.append(c)
         classes = filtered_classes
         if missing_classes:
-            logger.info(
-                "The following are not available classes: %s\n\nSee available "
-                "classes with fouo.get_classes()\n" % ",".join(missing_classes)
+            logger.warning(
+                "The following are not available classes: %s\n\nYou can view "
+                "the available classes via `get_classes()`\n"
+                % ",".join(missing_classes)
             )
 
     attrs = []
@@ -191,10 +192,10 @@ def download_open_images_v6_split(
                     missing_attrs.append(a)
             attrs = filtered_attrs
             if missing_attrs:
-                logger.info(
-                    "The following are not available attributes: %s\n\nSee "
-                    "available attributes with fouo.get_attributes()\n"
-                    % ",".join(missing_attrs)
+                logger.warning(
+                    "The following are not available attributes: %s\n\nYou "
+                    "can view the available attributes via "
+                    "`get_attributes()`\n" % ",".join(missing_attrs)
                 )
 
     seg_classes = []
@@ -842,9 +843,10 @@ def _load_open_images_split(
         # Notify which classes do not exist only when the user specified
         # classes
         if non_seg_classes and len(classes) != 601:
-            logger.info(
-                "No segmentations exist for classes: %s\n\nView available "
-                "segmentation classes with fouo.get_segmentation_classes()\n"
+            logger.warning(
+                "No segmentations exist for classes: %s\n\nYou can view the "
+                "available segmentation classes via "
+                "`get_segmentation_classes()`\n"
                 % ",".join(list(non_seg_classes))
             )
 
