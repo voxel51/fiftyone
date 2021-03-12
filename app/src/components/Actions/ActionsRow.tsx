@@ -37,7 +37,7 @@ const Tag = ({ modal }) => {
   );
 };
 
-const Selected = ({ modal, frameNumberRef, ...rest }) => {
+const Selected = ({ modal, frameNumberRef }) => {
   const [open, setOpen] = useState(false);
   const selectedSamples = useRecoilValue(atoms.selectedSamples);
   const selectedObjects = useRecoilValue(atoms.selectedObjects);

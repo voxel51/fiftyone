@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import {
+  useRecoilCallback,
   useRecoilState,
   useRecoilValue,
   useResetRecoilState,
@@ -88,54 +89,59 @@ const ActionOption = ({
   );
 };
 
-const getGridActions = (close) => {
-  const [selectedSamples, setSelectedSamples] = useRecoilState(
-    atoms.selectedSamples
+const getGridActions = (close: () => void) => {
+  const clearSelection = useRecoilCallback(
+    ({ snapshot, set, reset }) => async (close: () => void) => {
+      const [oldSelected, state] = await Promise.all([
+        snapshot.getPromise(atoms.selectedSamples),
+        snapshot.getPromise(atoms.stateDescription),
+      ]);
+      oldSelected.forEach((s) => reset(atoms.isSelectedSample(s)));
+      const newState = JSON.parse(JSON.stringify(stateDescription));
+      newState.selected = [];
+      set(atoms.stateDescription, newState);
+      reset(atoms.selectedSamples);
+      (await snapshot.getPromise(selectors.socket)).send(
+        packageMessage("clear_selection", {})
+      );
+      close();
+    }
   );
-  const [stateDescription, setStateDescription] = useRecoilState(
-    atoms.stateDescription
+  const addStage = useRecoilCallback(
+    ({ snapshot, set }) => async (name, callback: () => void) => {
+      close();
+      const state = await snapshot.getPromise(atoms.stateDescription);
+      const newState = JSON.parse(JSON.stringify(state));
+      const newView = newState.view || [];
+      newView.push({
+        _cls: `fiftyone.core.stages.${name}`,
+        kwargs: [["sample_ids", state.selected_samples]],
+      });
+      newState.view = newView;
+      newState.selected = [];
+      (await snapshot.getPromise(selectors.socket)).send(
+        packageMessage("update", { state: newState })
+      );
+      set(atoms.stateDescription, newState);
+      callback();
+    }
   );
-  const socket = useRecoilValue(selectors.socket);
-
-  const clearSelection = () => {
-    close();
-    setSelectedSamples(new Set());
-    const newState = JSON.parse(JSON.stringify(stateDescription));
-    newState.selected = [];
-    setStateDescription(newState);
-    socket.send(packageMessage("clear_selection", {}));
-  };
-
-  const addStage = (name, callback = () => {}) => {
-    close();
-    const newState = JSON.parse(JSON.stringify(stateDescription));
-    const newView = newState.view || [];
-    newView.push({
-      _cls: `fiftyone.core.stages.${name}`,
-      kwargs: [["sample_ids", Array.from(selectedSamples)]],
-    });
-    newState.view = newView;
-    newState.selected = [];
-    socket.send(packageMessage("update", { state: newState }));
-    setStateDescription(newState);
-    callback();
-  };
 
   return [
     {
       text: "Clear selected samples",
       title: "Deselect all selected samples",
-      onClick: clearSelection,
+      onClick: clearSelection(close),
     },
     {
       text: "Only show selected samples",
       title: "Hide all other samples",
-      onClick: () => addStage("Select", clearSelection),
+      onClick: () => addStage("Select", clearSelection(close)),
     },
     {
       text: "Hide selected samples",
       title: "Show only unselected samples",
-      onClick: () => addStage("Exclude", clearSelection),
+      onClick: () => addStage("Exclude", clearSelection(close)),
     },
   ];
 };

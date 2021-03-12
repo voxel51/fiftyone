@@ -127,7 +127,7 @@ const revealSample = () => {
   });
 };
 
-const SampleInfo = ({ id }) => {
+const SampleInfo = React.memo(({ id }) => {
   const activeFields = useRecoilValue(labelAtoms.activeFields(false));
   const colorMap = useRecoilValue(selectors.colorMap(false));
   const scalars = useRecoilValue(selectors.scalarNames("sample"));
@@ -200,7 +200,7 @@ const SampleInfo = ({ id }) => {
   });
 
   return <SampleInfoDiv style={props}>{bubbles}</SampleInfoDiv>;
-};
+});
 
 const SelectorDiv = animated(styled.div`
   position: absolute;
@@ -223,7 +223,7 @@ const argMin = (array) => {
 
 const useSelect = (id: string) => {
   return useRecoilCallback(
-    ({ snapshot, set }) => async (e: {
+    ({ snapshot, set, reset }) => async (e: {
       ctrlKey: boolean;
       preventDefault: () => void;
     }) => {
@@ -265,6 +265,12 @@ const useSelect = (id: string) => {
       } else {
         setOne();
       }
+      selectedSamples.forEach(
+        (s) => !newSelected.has(s) && reset(atoms.isSelectedSample(s))
+      );
+      newSelected.forEach(
+        (s) => !selectedSamples.has(s) && set(atoms.isSelectedSample(s), true)
+      );
       set(atoms.selectedSamples, newSelected);
       socket.send(
         packageMessage("set_selection", { _ids: Array.from(newSelected) })
@@ -278,10 +284,9 @@ const useSelect = (id: string) => {
   );
 };
 
-const Selector = ({ id, spring }: { id: string; spring: any }) => {
+const Selector = React.memo(({ id, spring }: { id: string; spring: any }) => {
   const theme = useTheme();
-
-  const selectedSamples = useRecoilValue(atoms.selectedSamples);
+  const isSelected = useRecoilValue(atoms.isSelectedSample(id));
 
   const handleClick = useSelect(id);
   return (
@@ -291,7 +296,7 @@ const Selector = ({ id, spring }: { id: string; spring: any }) => {
       title={"Click to select sample, Ctrl+Click to select a range"}
     >
       <Checkbox
-        checked={selectedSamples.has(id)}
+        checked={isSelected}
         style={{
           color: theme.brand,
         }}
@@ -299,7 +304,7 @@ const Selector = ({ id, spring }: { id: string; spring: any }) => {
       />
     </SelectorDiv>
   );
-};
+});
 
 const Sample = ({ id }) => {
   const http = useRecoilValue(selectors.http);
@@ -309,14 +314,27 @@ const Sample = ({ id }) => {
   const socket = useRecoilValue(selectors.socket);
   const colorByLabel = useRecoilValue(atoms.colorByLabel(false));
   const [hovering, setHovering] = useState(false);
-  const selectedSamples = useRecoilValue(atoms.selectedSamples);
+  const isSelected = useRecoilValue(atoms.isSelectedSample(id));
 
   const [bar, onMouseEnter, onMouseLeave] = useHoverLoad(socket, sample);
   const selectorSpring = useSpring({
-    opacity: hovering || selectedSamples.has(id) ? 1 : 0,
+    opacity: hovering || isSelected ? 1 : 0,
   });
 
   const selectSample = useSelect(id);
+
+  const onClick = useRecoilCallback(
+    ({ snapshot }) => async (e) => {
+      const hasSelected = (await snapshot.getPromise(atoms.selectedSamples))
+        .size;
+      if (hasSelected) {
+        selectSample(e);
+      } else {
+        setModal({ visible: true, sample_id: id });
+      }
+    },
+    [id]
+  );
 
   return (
     <SampleDiv className="sample" style={revealSample()}>
@@ -346,11 +364,7 @@ const Sample = ({ id }) => {
           filterSelector={labelFilters(false)}
           onMouseEnter={onMouseEnter}
           onMouseLeave={onMouseLeave}
-          onClick={(e) =>
-            selectedSamples.size
-              ? selectSample(e)
-              : setModal({ visible: true, sample_id: id })
-          }
+          onClick={onClick}
         />
         {bar.map(({ key, props }) => (
           <LoadingBar key={key} style={props} />

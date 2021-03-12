@@ -85,6 +85,11 @@ export const selectedSamples = atom<Set<string>>({
   default: new Set(),
 });
 
+export const isSelectedSample = atomFamily<boolean, string>({
+  key: "isSelectedSample",
+  default: false,
+});
+
 export const selectedObjects = atom<SelectedObjectMap>({
   key: "selectedObjects",
   default: {},

@@ -1,5 +1,10 @@
 import React, { useState, useRef, Suspense } from "react";
-import { useRecoilState, useSetRecoilState, useRecoilValue } from "recoil";
+import {
+  useRecoilState,
+  useSetRecoilState,
+  useRecoilValue,
+  useRecoilCallback,
+} from "recoil";
 import { ErrorBoundary } from "react-error-boundary";
 import NotificationHub from "../components/NotificationHub";
 
@@ -21,6 +26,27 @@ import Setup from "./Setup";
 import "player51/src/css/player51.css";
 import "../app.global.css";
 
+const useStateUpdate = () => {
+  return useRecoilCallback(({ snapshot, set, reset }) => async (state) => {
+    const newSamples = new Set<string>(state.selected);
+    const oldSamples = await snapshot.getPromise(atoms.selectedSamples);
+    oldSamples.forEach(
+      (s) => !newSamples.has(s) && reset(atoms.isSelectedSample(s))
+    );
+    newSamples.forEach(
+      (s) => !oldSamples.has(s) && set(atoms.isSelectedSample(s), true)
+    );
+
+    set(atoms.selectedSamples, newSamples);
+    set(atoms.stateDescription, state);
+    set(selectors.anyTagging, false);
+    set(
+      atoms.selectedObjects,
+      convertSelectedObjectsListToMap(state.selected_labels)
+    );
+  });
+};
+
 function App() {
   const addNotification = useRef(null);
   const [reset, setReset] = useState(false);
@@ -28,18 +54,11 @@ function App() {
   const [loading, setLoading] = useRecoilState(atoms.loading);
   const socket = useRecoilValue(selectors.socket);
   const setStateDescription = useSetRecoilState(atoms.stateDescription);
-  const setSelectedSamples = useSetRecoilState(atoms.selectedSamples);
   const [viewCounterValue, setViewCounter] = useRecoilState(atoms.viewCounter);
-  const setSelectedObjects = useSetRecoilState(atoms.selectedObjects);
   const handle = useRecoilValue(selectors.handleId);
   const isNotebook = useRecoilValue(selectors.isNotebook);
-  const setTagging = useSetRecoilState(selectors.anyTagging);
-  const handleStateUpdate = (state) => {
-    setStateDescription(state);
-    setSelectedSamples(new Set(state.selected));
-    setTagging(false);
-    setSelectedObjects(convertSelectedObjectsListToMap(state.selected_labels));
-  };
+
+  const handleStateUpdate = useStateUpdate();
 
   useEventHandler(socket, "open", () => {
     setConnected(true);
