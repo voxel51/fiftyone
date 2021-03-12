@@ -1,5 +1,8 @@
 """
-Open Images V6  utilities.
+Utilities for working with the
+`Open Images V6 <https://storage.googleapis.com/openimages/web/index.html>`
+dataset.
+
 | Copyright 2017-2021, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
@@ -22,8 +25,8 @@ import fiftyone.core.dataset as fod
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.sample as fos
-import fiftyone.types as fot
 import fiftyone.core.utils as fou
+import fiftyone.types as fot
 import fiftyone.utils.data as foud
 
 boto3 = fou.lazy_import("boto3", callback=fou.ensure_boto3)
@@ -45,12 +48,14 @@ def download_open_images_v6_split(
     image_ids_file,
     num_workers,
 ):
-    """Utility to download the `Open Images v6 dataset <https://storage.googleapis.com/openimages/web/index.html>`_ with annotations.
+    """Utility to download the
+    `Open Images V6 dataset <https://storage.googleapis.com/openimages/web/index.html>`_
+
     This specifically downloads the subsets of annotations corresponding to the
     600 boxable classes of Open Images.
 
-    All download information can be found here under the `Open Images v6
-    downloads page. <https://storage.googleapis.com/openimages/web/download.html>`_
+    All download information can be found under the Open Images V6
+    `downloads page. <https://storage.googleapis.com/openimages/web/download.html>`_.
 
     Args:
         dataset_dir (None): the directory to which the dataset will be
@@ -61,27 +66,27 @@ def download_open_images_v6_split(
             ``("train", "validation", "test")``. If neither ``split`` nor
             ``splits`` are provided, all available splits are downloaded.
         label_types (None): a list of types of labels to load. Values are
-            ``("detections", "classifications", "relationships", "segmentations")``. 
+            ``("detections", "classifications", "relationships", "segmentations")``.
             By default, all labels are loaded but not every sample will include
             each label type. If ``max_samples`` and ``label_types`` are both
-            specified, then every sample will include the specified label types.
-        classes (None): a list of strings specifying required classes to load. Only samples
-            containing at least one instance of a specified classes will be
-            downloaded. See available classes with `get_classes()`
+            specified, then every sample will include the specified label
+            types.
+        classes (None): a list of strings specifying required classes to load.
+            Only samples containing at least one instance of a specified
+            classes will be downloaded. Use :meth:`get_classes` to see the
+            available classes
         attrs (None): a list of strings for relationship attributes to load
-        max_samples (None): a maximum number of samples to import per split. By default,
-            all samples are imported
-        image_ids (None): list of specific image ids to load either in the form
-            of ``<split>/<image-id>`` or just a list of ``<image-id>``.
-            ``image_ids`` takes precedence if both ``image_ids`` and
-            ``image_ids_file`` are provided.
-        image_ids_file (None): path to a newline separated text, json, or csv file containing a
-            list of image ids to load either in the form
-            of ``<split>/<image-id>`` or just a list of ``<image-id>``.
-            ``image_ids`` takes precedence if both ``image_ids`` and
-            ``image_ids_file`` are provided.
-        num_workers (None): the number of processes to use to download images. By default,
-            ``multiprocessing.cpu_count()`` is used
+        max_samples (None): a maximum number of samples to import per split. By
+            default, all samples are imported
+        image_ids (None): a list of specific image IDs to load. The IDs can be
+            specified either as ``<split>/<image-id>`` or ``<image-id>``
+        image_ids_file (None): the path to a newline separated text, JSON, or
+            CSV file containing a list of image IDs to load. The IDs can be
+            specified either as ``<split>/<image-id>`` or ``<image-id>``. If
+            ``image_ids`` is provided, this parameter is ignored
+        num_workers (None): the number of processes to use when downloading
+            individual images. By default, ``multiprocessing.cpu_count()`` is
+            used
     """
     # CLI compatibility, parse list inputs if they are in the form of a string
     label_types = _parse_string_list(label_types)
@@ -113,8 +118,8 @@ def download_open_images_v6_split(
             # Load all image IDs
             split_image_ids = _download_image_ids(scratch_dir, split)
         else:
-            # No specific image IDs were given, load all relevant images from the
-            # given labels later
+            # No specific image IDs were given, load all relevant images from
+            # the given labels later
             split_image_ids = None
     else:
         split_image_ids = _parse_image_ids(
@@ -153,8 +158,8 @@ def download_open_images_v6_split(
         classes = filtered_classes
         if missing_classes:
             logger.info(
-                "The following are not available classes: %s\n\nSee available classes with fouo.get_classes()\n"
-                % ",".join(missing_classes)
+                "The following are not available classes: %s\n\nSee available "
+                "classes with fouo.get_classes()\n" % ",".join(missing_classes)
             )
 
     attrs = []
@@ -187,7 +192,8 @@ def download_open_images_v6_split(
             attrs = filtered_attrs
             if missing_attrs:
                 logger.info(
-                    "The following are not available attributes: %s\n\nSee available attributes with fouo.get_attributes()\n"
+                    "The following are not available attributes: %s\n\nSee "
+                    "available attributes with fouo.get_attributes()\n"
                     % ",".join(missing_attrs)
                 )
 
@@ -241,17 +247,17 @@ def download_open_images_v6_split(
 
 
 def get_attributes(dataset_dir=None, scratch_dir=None):
-    """List the attributes that exist in the relationships in Open Images V6.
+    """Gets the list of relationship attributes in the Open Images V6 dataset.
 
     Args:
         dataset_dir (None): the root directory the in which the dataset is
             downloaded
-        scratch_dir (None): scratch directory used to download 
+        scratch_dir (None): scratch directory used to download
             attributes file if it is not available in ``metadata.json`` in the
             ``dataset_dir`` splits
 
     Returns:
-        a sorted list of attribute name strings
+        a sorted list of attribute names
     """
     for split in _DEFAULT_SPLITS:
         if dataset_dir:
@@ -288,15 +294,14 @@ def get_attributes(dataset_dir=None, scratch_dir=None):
 
 
 def get_classes(dataset_dir=None, scratch_dir=None):
-    """List the 601 boxable classes that exist in classifications, detections,
-    and relationships in Open Images V6.
+    """Gets the 601 boxable classes that exist in classifications, detections,
+    and relationships in the Open Images V6 dataset.
 
     Args:
         dataset_dir (None): the root directory the in which the dataset is
-            downloaded and ``info.json`` is stored 
-        scratch_dir (None): scratch directory used to download 
-            classes file if it is not available in ``info.json`` in the
-            ``dataset_dir``
+            downloaded and ``info.json`` is stored
+        scratch_dir (None): scratch directory used to download classes file if
+            it is not available in ``info.json`` in the ``dataset_dir``
 
     Returns:
         a sorted list of class name strings
@@ -338,11 +343,12 @@ def get_classes(dataset_dir=None, scratch_dir=None):
 def get_segmentation_classes(
     dataset_dir=None, scratch_dir=None, classes_map=None
 ):
-    """List the 350 classes that are labeled with segmentations in Open Images V6.
+    """Gets the list of classes (350) that are labeled with segmentations in
+    the Open Images V6 dataset.
 
     Args:
         dataset_dir (None): the root directory the in which the dataset is
-            downloaded and ``info.json`` is stored 
+            downloaded and ``info.json`` is stored
         scratch_dir (None): scratch directory used to download segmentation
             class file if it is not available in ``info.json`` in the
             ``dataset_dir``
@@ -388,9 +394,7 @@ def get_segmentation_classes(
     annot_link = _ANNOTATION_DOWNLOAD_LINKS["general"]["segmentation_classes"]
     seg_cls_txt_filename = os.path.basename(annot_link)
     seg_cls_txt = os.path.join(scratch_dir, "general", seg_cls_txt_filename)
-    _download_if_necessary(
-        seg_cls_txt, annot_link,
-    )
+    _download_if_necessary(seg_cls_txt, annot_link)
 
     with open(seg_cls_txt, "r") as f:
         seg_classes_oi = [l.rstrip("\n") for l in f]
@@ -579,8 +583,8 @@ def _parse_image_ids(image_ids, image_ids_file, split, scratch_dir):
 
         else:
             raise ValueError(
-                "Image ID file extension must be .txt, .csv, or .json, found %s"
-                % ext
+                "Image ID file extension must be .txt, .csv, or .json, "
+                "found %s" % ext
             )
 
     split_image_ids = []
@@ -592,8 +596,8 @@ def _parse_image_ids(image_ids, image_ids_file, split, scratch_dir):
             id_split, image_id = i.split("/")
             if id_split not in _DEFAULT_SPLITS:
                 raise ValueError(
-                    "Split %s does not exist. Options are (train, test, validation)"
-                    % id_split
+                    "Split %s does not exist. Options are "
+                    "(train, test, validation)" % id_split
                 )
         else:
             image_id = i.rstrip().replace(".jpg", "")
@@ -620,7 +624,8 @@ def _parse_label_types(label_types):
     for l in label_types:
         if l not in _DEFAULT_LABEL_TYPES:
             raise ValueError(
-                'Label type %s is not supported. Options are ("detections", "classifications", "relationships", "segmentations")'
+                "Label type %s is not supported. Options are "
+                "('detections', 'classifications', 'relationships', 'segmentations')"
                 % l
             )
         else:
@@ -667,7 +672,8 @@ def _verify_field(dataset, field_name, label_class):
 def _verify_image_ids(
     selected_split_ids, unspecified_ids, download_dir, split
 ):
-    # Download all image IDs, verify given IDs, sort unspecified IDs into current split
+    # Download all image IDs, verify given IDs, sort unspecified IDs into
+    # current split
     split_ids = _download_image_ids(download_dir, split)
 
     # Need to verify image IDs are in correct split
@@ -677,7 +683,7 @@ def _verify_image_ids(
     incorrect_split_ids = ssid_set - verified_split_ids
     if incorrect_split_ids:
         logger.info(
-            "The following user-specified image IDs do not exist in split %s: %s"
+            "The following image IDs do not exist in split %s: %s"
             % (split, ",".join(list(incorrect_split_ids)))
         )
 
@@ -712,8 +718,7 @@ def _get_label_data(
     label_id_data = {}
     relevant_ids = set()
     oi_classes_attrs = set(oi_classes) | set(oi_attrs)
-    # First row is always headers
-    for l in data[1:]:
+    for l in data[1:]:  # first row is headers
         image_id = l[id_ind]
         if image_id not in label_id_data:
             label_id_data[image_id] = [l]
@@ -729,9 +734,13 @@ def _get_label_data(
         if any(valid_labels):
             relevant_ids.add(image_id)
 
-    # Only keep samples with at least one label relevant to specified classes or attributes
+    #
+    # Only keep samples with at least one label relevant to specified classes
+    # or attributes
+    #
     # Images without specified classes or attributes are []
     # Images without any of this label type do not exist in this dict
+    #
     for image_id, data in label_id_data.items():
         if image_id not in relevant_ids:
             label_id_data[image_id] = []
@@ -834,7 +843,8 @@ def _load_open_images_split(
         # classes
         if non_seg_classes and len(classes) != 601:
             logger.info(
-                "No segmentations exist for classes: %s\n\nView available segmentation classes with fouo.get_segmentation_classes()\n"
+                "No segmentations exist for classes: %s\n\nView available "
+                "segmentation classes with fouo.get_segmentation_classes()\n"
                 % ",".join(list(non_seg_classes))
             )
 
@@ -894,15 +904,15 @@ def _load_open_images_split(
         output_img = os.path.join(dataset_path, fn)
         etau.move_file(scratch_img, output_img)
 
+    # Add samples to dataset
     samples = []
-    # Add Samples to Dataset
     for image_id in valid_ids:
         fp = os.path.join(dataset_dir, split, "data", "%s.jpg" % image_id)
         sample = fos.Sample(filepath=fp)
         sample.tags.append(split)
 
         if "classifications" in label_types:
-            # Add Labels
+            # Add labels
             pos_labels, neg_labels = _create_labels(
                 lab_id_data, image_id, classes_map
             )
@@ -910,19 +920,19 @@ def _load_open_images_split(
             sample["negative_labels"] = neg_labels
 
         if "detections" in label_types:
-            # Add Detections
+            # Add detections
             detections = _create_detections(det_id_data, image_id, classes_map)
             sample["detections"] = detections
 
         if "segmentations" in label_types:
-            # Add Segmentations
+            # Add segmentations
             segmentations = _create_segmentations(
                 seg_id_data, image_id, classes_map, scratch_dir, split
             )
             sample["segmentations"] = segmentations
 
         if "relationships" in label_types:
-            # Add Relationships
+            # Add relationships
             relationships = _create_relationships(
                 rel_id_data, image_id, classes_map, attrs_map
             )
@@ -943,11 +953,12 @@ def _create_labels(lab_id_data, image_id, classes_map):
 
     pos_cls = []
     neg_cls = []
+
     # Get relevant data for this image
     sample_labs = lab_id_data[image_id]
 
     for sample_lab in sample_labs:
-        # sample_lab reference: [ImageID,Source,LabelName,Confidence]
+        # [ImageID,Source,LabelName,Confidence]
         label = classes_map[sample_lab[2]]
         conf = float(sample_lab[3])
         cls = fol.Classification(label=label, confidence=conf)
@@ -971,7 +982,7 @@ def _create_detections(det_id_data, image_id, classes_map):
     sample_dets = det_id_data[image_id]
 
     for sample_det in sample_dets:
-        # sample_det reference: [ImageID,Source,LabelName,Confidence,XMin,XMax,YMin,YMax,IsOccluded,IsTruncated,IsGroupOf,IsDepiction,IsInside]
+        # [ImageID,Source,LabelName,Confidence,XMin,XMax,YMin,YMax,IsOccluded,IsTruncated,IsGroupOf,IsDepiction,IsInside]
         label = classes_map[sample_det[2]]
         xmin = float(sample_det[4])
         xmax = float(sample_det[5])
@@ -1004,7 +1015,7 @@ def _create_relationships(rel_id_data, image_id, classes_map, attrs_map):
     sample_rels = rel_id_data[image_id]
 
     for sample_rel in sample_rels:
-        # sample_rel reference: [ImageID,LabelName1,LabelName2,XMin1,XMax1,YMin1,YMax1,XMin2,XMax2,YMin2,YMax2,RelationshipLabel]
+        # [ImageID,LabelName1,LabelName2,XMin1,XMax1,YMin1,YMax1,XMin2,XMax2,YMin2,YMax2,RelationshipLabel]
         attribute = False
         if sample_rel[1] in classes_map:
             label1 = classes_map[sample_rel[1]]
@@ -1065,7 +1076,7 @@ def _create_segmentations(
     sample_segs = seg_id_data[image_id]
 
     for sample_seg in sample_segs:
-        # sample_seg reference: [MaskPath,ImageID,LabelName,BoxID,BoxXMin,BoxXMax,BoxYMin,BoxYMax,PredictedIoU,Clicks]
+        # [MaskPath,ImageID,LabelName,BoxID,BoxXMin,BoxXMax,BoxYMin,BoxYMax,PredictedIoU,Clicks]
         label = classes_map[sample_seg[2]]
         xmin = float(sample_seg[4])
         xmax = float(sample_seg[5])
