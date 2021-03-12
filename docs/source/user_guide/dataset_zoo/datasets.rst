@@ -1174,35 +1174,36 @@ Open Images V6
 --------------
 
 Open Images is a dataset of totalling ~9 million images. Roughly 2 million are
-annotated and available in this dataset zoo. This dataset contains annotations
-for classification, detection, segmentation, and visual relationship tasks
-across 601 object classes.  
+annotated and available in this zoo. The dataset contains annotations for
+classification, detection, segmentation, and visual relationship tasks across
+601 object classes.
 
-Open Images V6 was released in February 2020 providing updates to the dataset
-as well as new annotations for `Localized Narratives <https://google.github.io/localized-narratives/>`_ (not yet supported in this zoo).
+Partial downloads:
 
+-   You can specify subsets of data to download with the ``classes``,
+    ``attributes``, ``label_types``, and ``max_samples`` parameters
+-   You can specify specific images to load by their ID using ``image_ids``
+    or ``image_ids_file`` parameters
 
+Full split stats:
+
+-   Train split:  1,743,042 images (513 GB)
+-   Test split: 125,436 images (36 GB)
+-   Validation split: 41,620 images (12 GB)
 
 Notes:
 
-- Not all images contain all types of labels
-- This dataset supports partial downloads 
-- View all parameters in the class definition of :class:`OpenImagesV6Dataset <fiftyone.zoo.datasets.base.OpenImagesV6Dataset>`
-- Specify subsets of data to download with ``classes``,
-  ``attributes``, ``label_types``, and ``max_sampes``
-- Specify images to load by their ID using ``image_ids`` or ``image_ids_file``
-- Train size:  1,743,042 images (513 GB)
-- Test size: 125,436 images (36 GB)
-- Validation size: 41,620 images (12 GB)
-- This dataset defaults to ``cleanup=False`` and will not delete the temporary
-  directory storing downloaded annotation files. 
-- All images have been rescaled so that their largest side is at most 1024 pixels.
+-   Not all images contain all types of labels
+-   All images have been rescaled so that their largest side is at most
+    1024 pixels
+-   `Localized narratives <https://google.github.io/localized-narratives/>`_
+    are not included in this implementation
 
 **Details**
 
 -   Dataset name: ``open-images-v6``
--   Dataset source: https://storage.googleapis.com/openimages/web/index.html  
--   Dataset size: 561 GB  
+-   Dataset source: https://storage.googleapis.com/openimages/web/index.html
+-   Dataset size: 561 GB
 -   Tags: ``image, detection, segmentation, classification, visual-relationship``
 -   Supported splits: ``train, test, validation``
 -   ZooDataset class:
@@ -1225,10 +1226,10 @@ Notes:
         session = fo.launch_app(dataset)
 
         subset = foz.load_zoo_dataset(
-            "open-images-v6", 
-            split="validation", 
+            "open-images-v6",
+            split="validation",
             label_types=["detections", "relationships"],
-            classes=["Fedora", "Piano"], 
+            classes=["Fedora", "Piano"],
             max_samples=50,
         )
 
@@ -1242,7 +1243,7 @@ Notes:
             -k max_samples=50 label_types=[segmentations,classifications] \
             classes=[Fedora,Piano]
 
-        fiftyone app launch open-images-v6-validation 
+        fiftyone app launch open-images-v6-validation
 
 .. image:: ../../images/dataset_zoo/open-images-v6.png
    :alt: open-images-v6

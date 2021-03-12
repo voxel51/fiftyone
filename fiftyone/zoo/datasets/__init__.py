@@ -762,7 +762,7 @@ class ZooDataset(object):
         return self.supported_splits is not None
 
     @property
-    def supports_paritial_download(self):
+    def supports_partial_download(self):
         """Whether the dataset supports downloading specified subsets of data
         and/or labels.
         """
@@ -918,7 +918,7 @@ class ZooDataset(object):
                             )
                             etau.delete_dir(split_dir)
                         elif split in info.downloaded_splits:
-                            if not self.supports_paritial_download:
+                            if not self.supports_partial_download:
                                 if self.requires_manual_download:
                                     logger.info(
                                         "Split '%s' already prepared", split
