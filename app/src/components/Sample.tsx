@@ -221,18 +221,25 @@ const argMin = (array) => {
   return [].reduce.call(array, (m, c, i, arr) => (c < arr[m] ? i : m), 0);
 };
 
-const useSelect = (id: string, index: number) => {
+const useSelect = (id: string) => {
   return useRecoilCallback(
     ({ snapshot, set }) => async (e: {
       ctrlKey: boolean;
       preventDefault: () => void;
     }) => {
       e.preventDefault();
-      const [socket, selectedSamples, stateDescription] = await Promise.all([
+      const [
+        socket,
+        selectedSamples,
+        stateDescription,
+        indices,
+      ] = await Promise.all([
         snapshot.getPromise(selectors.socket),
         snapshot.getPromise(atoms.selectedSamples),
         snapshot.getPromise(atoms.stateDescription),
+        snapshot.getPromise(selectors.sampleIndices),
       ]);
+      const index = indices[id];
       const newSelected = new Set<string>(selectedSamples);
       const setOne = () => {
         if (newSelected.has(id)) {
@@ -267,24 +274,16 @@ const useSelect = (id: string, index: number) => {
         selected: [...newSelected],
       });
     },
-    [id, index]
+    [id]
   );
 };
 
-const Selector = ({
-  id,
-  spring,
-  index,
-}: {
-  id: string;
-  spring: any;
-  index: number;
-}) => {
+const Selector = ({ id, spring }: { id: string; spring: any }) => {
   const theme = useTheme();
 
   const selectedSamples = useRecoilValue(atoms.selectedSamples);
 
-  const handleClick = useSelect(id, index);
+  const handleClick = useSelect(id);
   return (
     <SelectorDiv
       style={{ ...spring }}
@@ -302,7 +301,7 @@ const Selector = ({
   );
 };
 
-const Sample = ({ id, index }) => {
+const Sample = ({ id }) => {
   const http = useRecoilValue(selectors.http);
   const setModal = useSetRecoilState(atoms.modal);
   const sample = useRecoilValue(atoms.sample(id));
@@ -317,7 +316,7 @@ const Sample = ({ id, index }) => {
     opacity: hovering || selectedSamples.has(id) ? 1 : 0,
   });
 
-  const selectSample = useSelect(id, index);
+  const selectSample = useSelect(id);
 
   return (
     <SampleDiv className="sample" style={revealSample()}>
@@ -330,7 +329,7 @@ const Sample = ({ id, index }) => {
         onMouseEnter={() => setHovering(true)}
         onMouseLeave={() => setHovering(false)}
       >
-        <Selector key={id} id={id} spring={selectorSpring} index={index} />
+        <Selector key={id} id={id} spring={selectorSpring} />
         <SampleInfo id={id} />
         <Player51
           src={src}

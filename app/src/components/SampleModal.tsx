@@ -382,7 +382,7 @@ const SampleModal = ({ onClose }: Props, ref) => {
                 position: "relative",
                 ...playerStyle,
               }}
-              sample={sample}
+              id={sample._id}
               keep={true}
               overlay={videoLabels}
               colorByLabel={colorByLabel}

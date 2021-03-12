@@ -64,18 +64,18 @@ export default function tile(
     if (currentWidth === null) {
       currentWidth = s.width;
       currentHeight = s.height;
-      currentRow.push(s.sample._id);
+      currentRow.push(s);
       continue;
     }
 
     if (currentWidth / currentHeight >= THRESHOLD) {
       newRows.push(currentRow);
-      currentRow = [s.sample._id];
+      currentRow = [s];
       currentWidth = s.width;
       currentHeight = s.height;
       continue;
     }
-    currentRow.push(s.sample._id);
+    currentRow.push(s);
     currentWidth += (currentHeight / s.height) * s.width;
   }
 
@@ -132,7 +132,7 @@ export default function tile(
     rows.push({
       style: rowStyle,
       columns: gridColumnsLength,
-      samples: row,
+      samples: row.map((s) => s.sample._id),
       aspectRatio:
         (refWidth +
           ((columns.length - 1 + extraMargins) / 5) * (refWidth / 100)) /

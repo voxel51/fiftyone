@@ -21,7 +21,7 @@ function Samples() {
   const [containerRef, bounds] = useMeasure();
 
   const [scrollState, setScrollState] = tile();
-  const rows = useRecoilValue(atoms.gridRows);
+  const { rows } = useRecoilValue(atoms.gridRows);
 
   return (
     <Container ref={containerRef}>
@@ -39,7 +39,6 @@ function Samples() {
         {rows.map((r, i) => (
           <React.Fragment key={i}>
             <div
-              columns={r.columns}
               style={{
                 ...r.style,
                 height: (bounds.width - 16) / r.aspectRatio,

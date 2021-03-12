@@ -322,7 +322,7 @@ const TooltipInfo = ({ player, moveRef }) => {
 
 export default ({
   thumbnail,
-  sample,
+  id,
   src,
   style,
   onClick,
@@ -341,7 +341,8 @@ export default ({
 }) => {
   const isVideo = useRecoilValue(selectors.isVideoDataset);
   const filter = useRecoilValue(filterSelector);
-  const fps = useRecoilValue(atoms.sampleFrameRate(sample._id));
+  const sample = useRecoilValue(atoms.sample(id));
+  const fps = useRecoilValue(atoms.sampleFrameRate(id));
   const overlayOptions = useRecoilValue(selectors.playerOverlayOptions);
   const defaultTargets = useRecoilValue(selectors.defaultTargets);
   const [savedOverlayOptions, setSavedOverlayOptions] = useRecoilState(
@@ -351,10 +352,8 @@ export default ({
   if (overlay === null) {
     overlay = convertSampleToETA(sample, fieldSchema);
   }
-  const [mediaLoading, setMediaLoading] = useState(true);
   const [initLoad, setInitLoad] = useState(false);
   const [error, setError] = useState(null);
-  const [id] = useState(() => uuid());
   const mimetype =
     (sample.metadata && sample.metadata.mime_type) ||
     mime.lookup(sample.filepath) ||
@@ -438,7 +437,6 @@ export default ({
     return () => player && !keep && player.destroy();
   }, [player]);
 
-  useEventHandler(player, "load", () => setMediaLoading(false));
   useEventHandler(player, "load", onLoad);
   useEventHandler(player, "error", () =>
     setError(
@@ -468,10 +466,10 @@ export default ({
   useEventHandler(player, "mouseenter", onMouseEnter);
   useEventHandler(player, "mouseleave", onMouseLeave);
   useEventHandler(player, "select", (e) => {
-    const id = e.data?.id;
+    const _id = e.data?.id;
     const name = e.data?.name;
-    if (id && onSelectObject) {
-      onSelectObject({ id, name });
+    if (_id && onSelectObject) {
+      onSelectObject({ id: _id, name });
     }
   });
   const ref = useRef(null);
@@ -498,18 +496,12 @@ export default ({
       {...bind()}
       ref={containerRef}
     >
-      {error || mediaLoading ? (
+      {error && (
         <InfoWrapper>
-          {error ? (
-            <>
-              <Warning classes={{ root: "error" }} />
-              {thumbnail ? null : <div>{error}</div>}{" "}
-            </>
-          ) : mediaLoading && !thumbnail ? (
-            <CircularProgress />
-          ) : null}
+          <Warning classes={{ root: "error" }} />
+          {thumbnail ? null : <div>{error}</div>}{" "}
         </InfoWrapper>
-      ) : null}
+      )}
       <TooltipInfo player={player} moveRef={ref} containerRef={containerRef} />
     </animated.div>
   );

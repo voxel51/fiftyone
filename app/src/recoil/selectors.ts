@@ -820,7 +820,7 @@ export const modalSample = selector({
   key: "modalSample",
   get: ({ get }) => {
     const id = get(atoms.modal).sample_id;
-    return get(sample(id));
+    return get(atoms.sample(id));
   },
 });
 
