@@ -1,9 +1,6 @@
 import { atom, atomFamily, SerializableParam } from "recoil";
 
-export const colorSeed = atomFamily<number, boolean>({
-  key: "colorSeed",
-  default: 1,
-});
+import { messageListener } from "./utils";
 
 export const modal = atom({
   key: "modal",
@@ -76,6 +73,9 @@ export const tagging = atomFamily<boolean, { modal: boolean; labels: boolean }>(
 export const stateDescription = atom({
   key: "stateDescription",
   default: {},
+  effects_UNSTABLE: [
+    ({ setSelf }) => messageListener("update", (state) => setSelf(state)),
+  ],
 });
 
 export const selectedSamples = atom<Set<string>>({
@@ -169,6 +169,16 @@ export const viewCounter = atom({
 export const colorByLabel = atomFamily<boolean, boolean>({
   key: "colorByLabel",
   default: false,
+});
+
+export const colorPool = atom<string[]>({
+  key: "colorPool",
+  default: [],
+});
+
+export const colorSeed = atomFamily<number, boolean>({
+  key: "colorSeed",
+  default: 1,
 });
 
 export const appFeedbackIsOpen = atom({

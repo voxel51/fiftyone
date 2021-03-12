@@ -12,20 +12,22 @@ import AuosizeInput from "react-input-autosize";
 import { Machine, assign } from "xstate";
 import { useMachine } from "@xstate/react";
 import uuid from "uuid-v4";
-import { BestMatchDiv } from "./ViewBar/ViewStage/BestMatch";
-import ErrorMessage from "./ViewBar/ViewStage/ErrorMessage";
-import { getMatch, computeBestMatchString } from "./ViewBar/ViewStage/utils";
-import { packageMessage } from "../utils/socket";
 import { animated, useSpring } from "react-spring";
 import { ThemeContext } from "styled-components";
 import { Close } from "@material-ui/icons";
+import { GitHub, MenuBook } from "@material-ui/icons";
 
+import { BestMatchDiv } from "./ViewBar/ViewStage/BestMatch";
+import ErrorMessage from "./ViewBar/ViewStage/ErrorMessage";
+import { getMatch, computeBestMatchString } from "./ViewBar/ViewStage/utils";
+import SearchResults from "./ViewBar/ViewStage/SearchResults";
 import ExternalLink from "./ExternalLink";
+import { Slack } from "../icons";
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
-import { GitHub, MenuBook } from "@material-ui/icons";
-import { Slack } from "../icons";
-import SearchResults from "./ViewBar/ViewStage/SearchResults";
+import socket, { http, appContext } from "../shared/connection";
+import { useTheme } from "../utils/hooks";
+import { packageMessage } from "../utils/socket";
 
 const DatasetContainerInput = styled.div`
   font-size: 1.2rem;
@@ -344,10 +346,8 @@ const TshirtForm = () => {
   const portalId = 4972700;
   const formId = "b56682f6-c297-4cea-95c4-9e05a00528af";
   const postUrl = `https://api.hsforms.com/submissions/v3/integration/submit/${portalId}/${formId}`;
-  const appContext = useRecoilValue(selectors.appContext);
   const closeFeedback = useRecoilValue(atoms.closeFeedback);
-  const http = useRecoilValue(selectors.http);
-  const theme = useContext(ThemeContext);
+  const theme = useTheme();
 
   const setFormValue = (name) => (e) =>
     setFormState({
@@ -473,7 +473,6 @@ const TshirtForm = () => {
 
 const DatasetSelector = () => {
   const datasetName = useRecoilValue(selectors.datasetName);
-  const socket = useRecoilValue(selectors.socket);
   const datasets = useRecoilValue(selectors.datasets);
   const [state, send] = useMachine(selectorMachine);
   const connected = useRecoilValue(atoms.connected);
@@ -584,7 +583,6 @@ const FeedbackButton = ({ addNotification }) => {
     atoms.feedbackSubmitted
   );
   const [closeFeedback, setCloseFeedback] = useRecoilState(atoms.closeFeedback);
-  const http = useRecoilValue(selectors.http);
   const tshirtText = (
     <span>
       We are super dedicated to making FiftyOne as valuable as possible for our
@@ -652,7 +650,6 @@ const FeedbackButton = ({ addNotification }) => {
 
 const Header = ({ addNotification }) => {
   const refresh = useRecoilValue(selectors.refresh);
-  const socket = useRecoilValue(selectors.socket);
   const logoProps = useSpring({
     transform: refresh ? `rotate(0turn)` : `rotate(1turn)`,
   });

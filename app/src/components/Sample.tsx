@@ -2,16 +2,17 @@ import React, { useState } from "react";
 import { useRecoilCallback, useRecoilValue, useSetRecoilState } from "recoil";
 import styled from "styled-components";
 import { animated, useSpring, useTransition } from "react-spring";
+import { Checkbox } from "@material-ui/core";
 
+import { labelFilters } from "./Filters/LabelFieldFilters.state";
+import * as labelAtoms from "./Filters/utils";
 import Player51 from "./Player51";
 import Tag from "./Tags/Tag";
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
-import { labelFilters } from "./Filters/LabelFieldFilters.state";
-import * as labelAtoms from "./Filters/utils";
+import socket, { http } from "../shared/connection";
 import { packageMessage } from "../utils/socket";
 import { useVideoData, useTheme } from "../utils/hooks";
-import { Checkbox } from "@material-ui/core";
 import {
   stringify,
   VALID_CLASS_TYPES,
@@ -65,42 +66,39 @@ const LoadingBar = animated(styled.div`
 `);
 
 const useHoverLoad = (socket, id) => {
-  const isVideo = useRecoilValue(selectors.isVideoDataset);
-  if (!isVideo) {
-    return [[], (e) => {}, (e) => {}];
-  }
   const [barItem, setBarItem] = useState([]);
   const [loaded, setLoaded] = useState(null);
   const viewCounter = useRecoilValue(atoms.viewCounter);
 
-  const [requested, requestLabels] = useVideoData(
-    socket,
-    id,
-    (data, player) => {
-      if (!data) return;
-      const { labels } = data;
-      setLoaded(viewCounter);
-      setBarItem([]);
-      player.updateOverlay(labels);
-      if (player.isHovering()) player.play();
-    }
+  const requestLabels = useVideoData(socket, id, (data, player) => {
+    if (!data) return;
+    const { labels } = data;
+    setLoaded(viewCounter);
+    setBarItem([]);
+    player.updateOverlay(labels);
+    if (player.isHovering()) player.play();
+  });
+
+  const onMouseEnter = useRecoilCallback(
+    ({ snapshot }) => async (e) => {
+      const isVideo = await snapshot.getPromise(selectors.isVideoDataset);
+      if (!isVideo) return;
+      e.preventDefault();
+      const {
+        data: { player },
+      } = e;
+      if (loaded === viewCounter) {
+        barItem.length && setBarItem([]);
+        player.play();
+        return;
+      }
+      setBarItem([0]);
+      requestLabels(player);
+    },
+    [barItem]
   );
 
-  const onMouseEnter = (event) => {
-    event.preventDefault();
-    const {
-      data: { player },
-    } = event;
-    if (loaded === viewCounter) {
-      barItem.length && setBarItem([]);
-      player.play();
-      return;
-    }
-    setBarItem([0]);
-    requestLabels(player);
-  };
-
-  const onMouseLeave = () => setBarItem([]);
+  const onMouseLeave = () => barItem.length && setBarItem([]);
 
   const bar = useTransition(barItem, (item) => item, {
     from: { right: "100%" },
@@ -228,13 +226,7 @@ const useSelect = (id: string) => {
       preventDefault: () => void;
     }) => {
       e.preventDefault();
-      const [
-        socket,
-        selectedSamples,
-        stateDescription,
-        indices,
-      ] = await Promise.all([
-        snapshot.getPromise(selectors.socket),
+      const [selectedSamples, stateDescription, indices] = await Promise.all([
         snapshot.getPromise(atoms.selectedSamples),
         snapshot.getPromise(atoms.stateDescription),
         snapshot.getPromise(selectors.sampleIndices),
@@ -307,11 +299,9 @@ const Selector = React.memo(({ id, spring }: { id: string; spring: any }) => {
 });
 
 const Sample = ({ id }) => {
-  const http = useRecoilValue(selectors.http);
   const setModal = useSetRecoilState(atoms.modal);
   const sample = useRecoilValue(atoms.sample(id));
   const src = `${http}/filepath/${encodeURI(sample.filepath)}?id=${id}`;
-  const socket = useRecoilValue(selectors.socket);
   const colorByLabel = useRecoilValue(atoms.colorByLabel(false));
   const [hovering, setHovering] = useState(false);
   const isSelected = useRecoilValue(atoms.isSelectedSample(id));

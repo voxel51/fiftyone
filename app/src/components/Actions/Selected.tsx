@@ -9,9 +9,10 @@ import {
 import { animated, useSpring } from "react-spring";
 import styled from "styled-components";
 
+import Popout from "./Popout";
 import * as atoms from "../../recoil/atoms";
 import * as selectors from "../../recoil/selectors";
-import Popout from "./Popout";
+import socket from "../../shared/connection";
 import { packageMessage } from "../../utils/socket";
 import { listSampleObjects } from "../../utils/labels";
 import * as labelAtoms from "../Filters/LabelFieldFilters.state";
@@ -96,9 +97,7 @@ const getGridActions = (close: () => void) => {
       newState.selected = [];
       set(atoms.stateDescription, newState);
       reset(atoms.selectedSamples);
-      (await snapshot.getPromise(selectors.socket)).send(
-        packageMessage("clear_selection", {})
-      );
+      socket.send(packageMessage("clear_selection", {}));
       close();
     },
     [close]
@@ -115,9 +114,7 @@ const getGridActions = (close: () => void) => {
     });
     newState.view = newView;
     newState.selected = [];
-    (await snapshot.getPromise(selectors.socket)).send(
-      packageMessage("update", { state: newState })
-    );
+    socket.send(packageMessage("update", { state: newState }));
     set(atoms.stateDescription, newState);
   });
 

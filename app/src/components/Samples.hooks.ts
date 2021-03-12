@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
 import { useRecoilCallback, useRecoilValue, useResetRecoilState } from "recoil";
+
+import * as atoms from "../recoil/atoms";
+import * as selectors from "../recoil/selectors";
+import socket from "../shared/connection";
 import { useMessageHandler } from "../utils/hooks";
 import tile from "../utils/tile";
 import { packageMessage } from "../utils/socket";
 import { filterView } from "../utils/view";
-
-import * as atoms from "../recoil/atoms";
-import * as selectors from "../recoil/selectors";
 
 const stringifyObj = (obj) => {
   if (typeof obj !== "object" || Array.isArray(obj)) return obj;
@@ -27,7 +28,6 @@ const empty = {
 };
 
 export default () => {
-  const socket = useRecoilValue(selectors.socket);
   const filters = useRecoilValue(selectors.filterStages);
   const datasetName = useRecoilValue(selectors.datasetName);
   const view = useRecoilValue(selectors.view);

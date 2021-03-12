@@ -1,11 +1,8 @@
-import { selector, selectorFamily, SerializableParam } from "recoil";
-import ReconnectingWebSocket from "reconnecting-websocket";
-import uuid from "uuid-v4";
+import { selector, selectorFamily } from "recoil";
 
 import * as atoms from "./atoms";
 import { ColorGenerator } from "player51";
 import { generateColorMap } from "../utils/colors";
-import { isElectron } from "../utils/generic";
 import {
   RESERVED_FIELDS,
   VALID_LABEL_TYPES,
@@ -18,101 +15,8 @@ import {
 } from "../utils/labels";
 import { packageMessage } from "../utils/socket";
 import { viewsAreEqual } from "../utils/view";
-import { lightTheme } from "../shared/colors";
-import { Rowing } from "@material-ui/icons";
-import { Socket } from "dgram";
-
-class HTTPSSocket {
-  location: string;
-  events: {
-    [name: string]: Set<(data: object) => void>;
-  } = {};
-  readyState: number = WebSocket.CONNECTING;
-  openTimeout: number = 2000;
-  timeout: number = 2000;
-  interval: number;
-
-  constructor(location: string) {
-    this.location = location;
-    this.connect();
-  }
-
-  connect() {
-    this.gather();
-    this.interval = setInterval(() => this.gather(), this.timeout);
-  }
-
-  execute(messages) {
-    if ([WebSocket.CLOSED, WebSocket.CONNECTING].includes(this.readyState)) {
-      this.events.open.forEach((h) => h(null));
-      this.timeout = this.openTimeout;
-      clearInterval(this.interval);
-      this.interval = setInterval(() => this.gather(), this.timeout);
-    }
-    this.readyState = WebSocket.OPEN;
-    messages.forEach((m) => {
-      fetch(this.location + "&mode=pull", {
-        method: "post",
-        body: JSON.stringify(m),
-      })
-        .then((response) => response.json())
-        .then((data) => {
-          this.events.message.forEach((h) => h({ data: JSON.stringify(data) }));
-        });
-    });
-  }
-
-  gather() {
-    fetch(this.location)
-      .then((response) => response.json())
-      .then(({ messages }) => this.execute(messages))
-      .catch(() => {
-        if (this.readyState === WebSocket.OPEN && this.events.close) {
-          this.events.close.forEach((h) => h(null));
-        }
-        this.readyState = WebSocket.CLOSED;
-        clearInterval(this.interval);
-        this.timeout = Math.min(this.timeout * 2, 5000);
-        this.interval = setInterval(() => this.gather(), this.timeout);
-      });
-  }
-
-  addEventListener(eventType, handler) {
-    if (!this.events[eventType]) {
-      this.events[eventType] = new Set();
-    }
-    this.events[eventType].add(handler);
-  }
-
-  removeEventListener(eventType, handler) {
-    this.events[eventType].delete(handler);
-  }
-
-  send(message) {
-    fetch(this.location + "&mode=push", {
-      method: "post",
-      body: message,
-    })
-      .then((response) => response.json())
-      .then((data) => {
-        const { messages, type } = data;
-        messages && this.execute(messages);
-        type &&
-          this.events.message.forEach((h) => h({ data: JSON.stringify(data) }));
-      });
-  }
-}
-
-export const sessionId = uuid();
-
-export const handleId = selector({
-  key: "handleId",
-  get: () => {
-    const search = window.location.search;
-    const params = new URLSearchParams(search);
-    return params.get("handleId");
-  },
-});
+import { darkTheme } from "../shared/colors";
+import socket, { handleId, isNotebook, http } from "../shared/connection";
 
 export const refresh = selector<boolean>({
   key: "refresh",
@@ -122,9 +26,9 @@ export const refresh = selector<boolean>({
 export const deactivated = selector({
   key: "deactivated",
   get: ({ get }) => {
-    const handle = get(handleId);
+    const handle = handleId;
     const activeHandle = get(atoms.stateDescription)?.active_handle;
-    const notebook = get(isNotebook);
+    const notebook = isNotebook;
     if (notebook) {
       return handle !== activeHandle && typeof activeHandle === "string";
     }
@@ -132,57 +36,13 @@ export const deactivated = selector({
   },
 });
 
-const host =
-  process.env.NODE_ENV === "development"
-    ? "localhost:5151"
-    : window.location.host;
-
-export const port = selector({
-  key: "port",
-  get: ({ get }) => {
-    if (isElectron()) {
-      return parseInt(process.env.FIFTYONE_SERVER_PORT) || 5151;
-    }
-    return parseInt(window.location.port);
-  },
-});
-
-export const http = selector({
-  key: "http",
-  get: ({ get }) => {
-    if (isElectron()) {
-      return `http://localhost:${get(port)}`;
-    } else {
-      const loc = window.location;
-      return loc.protocol + "//" + host;
-    }
-  },
-});
-
-export const ws = selector({
-  key: "ws",
-  get: ({ get }) => {
-    if (isElectron()) {
-      return `ws://localhost:${get(port)}/state`;
-    }
-    let url = null;
-    const loc = window.location;
-    if (loc.protocol === "https:") {
-      url = "wss:";
-    } else {
-      url = "ws:";
-    }
-    return url + "//" + host + "/state";
-  },
-});
-
 export const fiftyone = selector({
   key: "fiftyone",
-  get: async ({ get }) => {
+  get: async () => {
     let response = null;
     do {
       try {
-        response = await fetch(`${get(http)}/fiftyone`);
+        response = await fetch(`${http}/fiftyone`);
       } catch {}
       if (response) break;
       await new Promise((r) => setTimeout(r, 2000));
@@ -200,7 +60,7 @@ export const showFeedbackButton = selector({
     const storedFeedback = window.localStorage.getItem("fiftyone-feedback");
     if (storedFeedback) {
       window.localStorage.removeItem("fiftyone-feedback");
-      fetch(`${get(http)}/feedback?submitted=true`, { method: "post" });
+      fetch(`${http}/feedback?submitted=true`, { method: "post" });
     }
     if (
       feedback.submitted ||
@@ -214,55 +74,6 @@ export const showFeedbackButton = selector({
     }
     return "shown";
   },
-});
-
-export const isColab = selector({
-  key: "isColab",
-  get: () => {
-    const search = window.location.search;
-    const params = new URLSearchParams(search);
-    return params.get("fiftyoneColab");
-  },
-});
-
-export const isNotebook = selector({
-  key: "isNotebook",
-  get: () => {
-    const search = window.location.search;
-    const params = new URLSearchParams(search);
-    return params.get("notebook");
-  },
-});
-
-export const appContext = selector({
-  key: "appContext",
-  get: ({ get }) => {
-    const electron = isElectron();
-    const notebook = get(isNotebook);
-    const colab = get(isNotebook);
-    if (electron) {
-      return "desktop";
-    }
-    if (colab) {
-      return "colab";
-    }
-    if (notebook) {
-      return "notebook";
-    }
-    return "browser";
-  },
-});
-
-export const socket = selector({
-  key: "socket",
-  get: ({ get }): ReconnectingWebSocket | HTTPSSocket => {
-    if (get(isColab)) {
-      return new HTTPSSocket(`${get(http)}/polling?sessionId=${sessionId}`);
-    } else {
-      return new ReconnectingWebSocket(get(ws));
-    }
-  },
-  dangerouslyAllowMutability: true,
 });
 
 export const datasetName = selector({
@@ -316,7 +127,7 @@ export const view = selector<[]>({
       selected_labels: [],
     };
     set(atoms.stateDescription, newState);
-    get(socket).send(packageMessage("update", { state: newState }));
+    socket.send(packageMessage("update", { state: newState }));
   },
 });
 
@@ -330,8 +141,7 @@ export const filterStages = selector({
       ...get(atoms.stateDescription),
       filters,
     };
-    const sock = get(socket);
-    sock.send(packageMessage("filters_update", { filters }));
+    socket.send(packageMessage("filters_update", { filters }));
     set(atoms.stateDescription, state);
   },
 });
@@ -719,19 +529,12 @@ export const appConfig = selector({
   },
 });
 
-export const colorPool = selector({
-  key: "colorPool",
-  get: ({ get }) => {
-    return get(appConfig).color_pool || [];
-  },
-});
-
 export const colorMap = selectorFamily<{ [key: string]: string }, boolean>({
   key: "colorMap",
   get: (modal) => ({ get }) => {
     const colorByLabel = get(atoms.colorByLabel(modal));
-    let pool = get(colorPool);
-    pool = pool.length ? pool : [lightTheme.brand];
+    let pool = get(atoms.colorPool);
+    pool = pool.length ? pool : [darkTheme.brand];
     const seed = get(atoms.colorSeed(modal));
     if (colorByLabel) {
       let values = ["true", "false"];
@@ -975,8 +778,7 @@ export const selectedLabels = selector<atoms.SelectedLabelMap>({
       ...state,
       selected_labels: labels,
     };
-    const sock = get(socket);
-    sock.send(
+    socket.send(
       packageMessage("set_selected_labels", { selected_labels: labels })
     );
     set(atoms.stateDescription, newState);

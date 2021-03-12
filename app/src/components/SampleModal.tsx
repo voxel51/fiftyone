@@ -11,14 +11,14 @@ import {
 
 import Actions from "./Actions";
 import FieldsSidebar from "./FieldsSidebar";
+import * as labelAtoms from "./Filters/utils";
+import { labelFilters } from "./Filters/LabelFieldFilters.state";
 import JSONView from "./JSONView";
 import Player51 from "./Player51";
 import { ModalFooter } from "./utils";
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
-import * as labelAtoms from "./Filters/utils";
-import { labelFilters } from "./Filters/LabelFieldFilters.state";
-
+import socket, { http } from "../shared/connection";
 import {
   useEventHandler,
   useKeydownHandler,
@@ -33,7 +33,6 @@ const modalSrc = selector<string>({
   get: ({ get }) => {
     const sample = get(selectors.modalSample);
     if (sample) {
-      const http = get(selectors.http);
       return `${http}/filepath/${encodeURI(sample.filepath)}?id=${sample._id}`;
     }
   },
@@ -297,7 +296,6 @@ const SampleModal = ({ onClose }: Props, ref) => {
   const mediaType = useRecoilValue(selectors.mediaType);
   const fieldSchema = useRecoilValue(selectors.fieldSchema("sample"));
   const colorByLabel = useRecoilValue(atoms.colorByLabel(true));
-  const socket = useRecoilValue(selectors.socket);
   const viewCounter = useRecoilValue(atoms.viewCounter);
   const [requested, requestLabels] = useVideoData(socket, sample);
   const videoLabels = useRecoilValue(atoms.sampleVideoLabels(sample._id));

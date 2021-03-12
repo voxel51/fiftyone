@@ -318,7 +318,7 @@ const TooltipInfo = ({ player, moveRef }) => {
     : null;
 };
 
-export default ({
+const Player = ({
   thumbnail,
   id,
   src,
@@ -504,3 +504,5 @@ export default ({
     </animated.div>
   );
 };
+
+export default React.memo(Player);

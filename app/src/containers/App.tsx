@@ -18,6 +18,7 @@ import {
 } from "../utils/hooks";
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
+import socket, { handleId, isNotebook } from "../shared/connection";
 
 import Error from "./Error";
 import Setup from "./Setup";
@@ -38,6 +39,10 @@ const useStateUpdate = () => {
     set(atoms.selectedSamples, newSamples);
     set(atoms.stateDescription, state);
     set(selectors.anyTagging, false);
+    const colorPool = await snapshot.getPromise(atoms.colorPool);
+    if (JSON.stringify(state.config.color_pool) !== JSON.stringify(colorPool)) {
+      set(atoms.colorPool, state.config.color_pool);
+    }
   });
 };
 
@@ -46,11 +51,8 @@ function App() {
   const [reset, setReset] = useState(false);
   const setConnected = useSetRecoilState(atoms.connected);
   const [loading, setLoading] = useRecoilState(atoms.loading);
-  const socket = useRecoilValue(selectors.socket);
   const setStateDescription = useSetRecoilState(atoms.stateDescription);
   const [viewCounterValue, setViewCounter] = useRecoilState(atoms.viewCounter);
-  const handle = useRecoilValue(selectors.handleId);
-  const isNotebook = useRecoilValue(selectors.isNotebook);
 
   const handleStateUpdate = useStateUpdate();
 
@@ -75,7 +77,7 @@ function App() {
   const connected = useRecoilValue(atoms.connected);
   useSendMessage("as_app", {
     notebook: isNotebook,
-    handle,
+    handle: handleId,
   });
 
   return (

@@ -4,14 +4,15 @@ import { animated, useSpring } from "react-spring";
 import { useRecoilCallback, useRecoilState, useRecoilValue } from "recoil";
 import { CircularProgress } from "@material-ui/core";
 
+import Popout from "./Popout";
 import * as labelAtoms from "../Filters/LabelFieldFilters.state";
-import { useTheme } from "../../utils/hooks";
 import * as fieldAtoms from "../Filters/utils";
-import { packageMessage } from "../../utils/socket";
+import { TabOptionProps, TabOption } from "../utils";
 import * as atoms from "../../recoil/atoms";
 import * as selectors from "../../recoil/selectors";
-import Popout from "./Popout";
-import { TabOptionProps, TabOption } from "../utils";
+import socket from "../../shared/connection";
+import { useTheme } from "../../utils/hooks";
+import { packageMessage } from "../../utils/socket";
 
 type OptionsProps = {
   options: Array<TabOptionProps>;
@@ -247,7 +248,6 @@ const packageModal = ({ untag, labels = null, sample_id = null, tag }) =>
 const useTagCallback = (modal, targetLabels) => {
   return useRecoilCallback(
     ({ snapshot }) => async ({ tag, untag }) => {
-      const socket = await snapshot.getPromise(selectors.socket);
       const activeLabels = await snapshot.getPromise(
         fieldAtoms.activeFields(modal)
       );
