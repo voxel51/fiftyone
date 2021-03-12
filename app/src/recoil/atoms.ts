@@ -1,7 +1,5 @@
 import { atom, atomFamily, SerializableParam } from "recoil";
 
-import { SelectedObjectMap } from "../utils/selection";
-
 export const colorSeed = atomFamily<number, boolean>({
   key: "colorSeed",
   default: 1,
@@ -90,13 +88,22 @@ export const isSelectedSample = atomFamily<boolean, string>({
   default: false,
 });
 
-export const selectedObjects = atom<SelectedObjectMap>({
-  key: "selectedObjects",
-  default: {},
-});
+export interface SelectedLabelData {
+  sample_id: string;
+  field: string;
+  frame_number?: number;
+}
 
-export const hiddenObjects = atom<SelectedObjectMap>({
-  key: "hiddenObjects",
+export interface SelectedLabel extends SelectedLabelData {
+  label_id: string;
+}
+
+export type SelectedLabelMap = {
+  [label_id: string]: SelectedLabelData;
+};
+
+export const hiddenLabels = atom<SelectedLabelMap>({
+  key: "hiddenLabels",
   default: {},
 });
 

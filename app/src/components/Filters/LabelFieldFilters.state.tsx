@@ -14,7 +14,6 @@ import * as stringField from "./StringFieldFilter";
 import * as atoms from "../../recoil/atoms";
 import * as selectors from "../../recoil/selectors";
 import { RESERVED_FIELDS, VALID_LIST_TYPES } from "../../utils/labels";
-import { SelectedObject } from "../../utils/selection";
 
 const COUNT_CLS = "Count";
 
@@ -391,14 +390,14 @@ export const labelCount = selectorFamily<number | null, boolean>({
   },
 });
 
-export const modalLabels = selector<SelectedObject[]>({
+export const modalLabels = selector<atoms.SelectedLabel[]>({
   key: "modalLabels",
   get: ({ get }) => {
-    const selectedObjects = Object.entries(
-      get(atoms.selectedObjects)
+    const selectedLabels = Object.entries(
+      get(selectors.selectedLabels)
     ).map(([label_id, v]) => ({ label_id, ...v }));
-    if (selectedObjects.length) {
-      return selectedObjects;
+    if (selectedLabels.length) {
+      return selectedLabels;
     }
     return [];
   },

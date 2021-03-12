@@ -954,3 +954,32 @@ export const currentSamplesSize = selector<number>({
     return get(currentSamples).length;
   },
 });
+
+export const selectedLabels = selector<atoms.SelectedLabelMap>({
+  key: "selectedLabels",
+  get: ({ get }) => {
+    const labels = get(atoms.stateDescription).selected_labels;
+    if (labels) {
+      return Object.fromEntries(labels.map((l) => [l.label_id, l]));
+    }
+    return {};
+  },
+});
+
+export const hiddenFieldLabels = selectorFamily<string[], string>({
+  key: "hiddenFieldLabels",
+  get: (fieldName) => ({ get }) => {
+    const labels = get(atoms.hiddenLabels);
+    const { sample_id } = get(atoms.modal);
+
+    if (sample_id) {
+      return Object.entries(labels)
+        .filter(
+          ([_, { sample_id: id, field }]) =>
+            sample_id === id && field === fieldName
+        )
+        .map(([label_id]) => label_id);
+    }
+    return [];
+  },
+});

@@ -91,13 +91,13 @@ const ActionOption = ({
 
 const getGridActions = (close: () => void) => {
   const clearSelection = useRecoilCallback(
-    ({ snapshot, set, reset }) => async (close: () => void) => {
+    ({ snapshot, set, reset }) => async () => {
       const [oldSelected, state] = await Promise.all([
         snapshot.getPromise(atoms.selectedSamples),
         snapshot.getPromise(atoms.stateDescription),
       ]);
       oldSelected.forEach((s) => reset(atoms.isSelectedSample(s)));
-      const newState = JSON.parse(JSON.stringify(stateDescription));
+      const newState = JSON.parse(JSON.stringify(state));
       newState.selected = [];
       set(atoms.stateDescription, newState);
       reset(atoms.selectedSamples);
@@ -105,43 +105,42 @@ const getGridActions = (close: () => void) => {
         packageMessage("clear_selection", {})
       );
       close();
-    }
+    },
+    [close]
   );
-  const addStage = useRecoilCallback(
-    ({ snapshot, set }) => async (name, callback: () => void) => {
-      close();
-      const state = await snapshot.getPromise(atoms.stateDescription);
-      const newState = JSON.parse(JSON.stringify(state));
-      const newView = newState.view || [];
-      newView.push({
-        _cls: `fiftyone.core.stages.${name}`,
-        kwargs: [["sample_ids", state.selected_samples]],
-      });
-      newState.view = newView;
-      newState.selected = [];
-      (await snapshot.getPromise(selectors.socket)).send(
-        packageMessage("update", { state: newState })
-      );
-      set(atoms.stateDescription, newState);
-      callback();
-    }
-  );
+  const addStage = useRecoilCallback(({ snapshot, set }) => async (name) => {
+    close();
+    const state = await snapshot.getPromise(atoms.stateDescription);
+    const newState = JSON.parse(JSON.stringify(state));
+    const samples = await snapshot.getPromise(atoms.selectedSamples);
+    const newView = newState.view || [];
+    newView.push({
+      _cls: `fiftyone.core.stages.${name}`,
+      kwargs: [["sample_ids", Array.from(samples)]],
+    });
+    newState.view = newView;
+    newState.selected = [];
+    (await snapshot.getPromise(selectors.socket)).send(
+      packageMessage("update", { state: newState })
+    );
+    set(atoms.stateDescription, newState);
+  });
 
   return [
     {
       text: "Clear selected samples",
       title: "Deselect all selected samples",
-      onClick: clearSelection(close),
+      onClick: clearSelection,
     },
     {
       text: "Only show selected samples",
       title: "Hide all other samples",
-      onClick: () => addStage("Select", clearSelection(close)),
+      onClick: () => addStage("Select"),
     },
     {
       text: "Hide selected samples",
       title: "Show only unselected samples",
-      onClick: () => addStage("Exclude", clearSelection(close)),
+      onClick: () => addStage("Exclude"),
     },
   ];
 };

@@ -18,8 +18,6 @@ import {
 } from "../utils/hooks";
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
-import { convertSelectedObjectsListToMap } from "../utils/selection";
-import { refreshColorGenerator } from "player51";
 
 import Error from "./Error";
 import Setup from "./Setup";
@@ -40,10 +38,6 @@ const useStateUpdate = () => {
     set(atoms.selectedSamples, newSamples);
     set(atoms.stateDescription, state);
     set(selectors.anyTagging, false);
-    set(
-      atoms.selectedObjects,
-      convertSelectedObjectsListToMap(state.selected_labels)
-    );
   });
 };
 
