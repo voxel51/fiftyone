@@ -614,12 +614,11 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         await self.on_update(self, StateHandler.state)
 
     @staticmethod
-    async def on_get_video_data(self, _id, filepath):
+    async def on_get_video_data(self, _id):
         """Gets the frame labels for video samples.
 
         Args:
             _id: a sample _id
-            filepath: the absolute path to the sample's video on disk
         """
         state = fos.StateDescription.from_dict(StateHandler.state)
         view = state.view or state.dataset
@@ -1169,6 +1168,7 @@ async def _get_sample_data(col, view, page_length, page):
 
 
 async def _get_video_data(col, state, view, _ids):
+    print(_ids)
     view = view.select(_ids)
     pipeline = view._pipeline()
     results = []

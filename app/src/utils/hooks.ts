@@ -126,10 +126,11 @@ export const useFollow = (leaderRef, followerRef, set) => {
 export const useVideoData = (socket, id, callback = null) => {
   return useRecoilCallback(
     ({ snapshot, set }) => async (...args) => {
+      const isVideo = await snapshot.getPromise(selectors.isVideoDataset);
       const requested = await snapshot.getPromise(
         atoms.sampleVideoDataRequested(id)
       );
-      if (requested) {
+      if (requested || !isVideo) {
         return;
       }
       const counter = snapshot.getPromise(atoms.viewCounter);
@@ -143,7 +144,7 @@ export const useVideoData = (socket, id, callback = null) => {
         set(atoms.sampleVideoLabels(id), labels);
         set(atoms.sampleFrameData(id), frames);
         set(atoms.sampleFrameRate(id), fps);
-        callback && callback({ labels, frames }, ...args);
+        callback && callback({ labels, frames, counter }, ...args);
       };
       attachDisposableHandler(socket, event, handler);
       socket.send(packageMessage("get_video_data", { _id: id }));
@@ -156,8 +157,10 @@ export const useVideoData = (socket, id, callback = null) => {
 export const useSampleUpdate = () => {
   const handler = useRecoilCallback(
     ({ set }) => async ({ samples }) => {
-      samples.forEach(({ sample }) => {
+      samples.forEach(({ sample, frames, labels }) => {
         set(atoms.sample(sample._id), sample);
+        frames && set(atoms.sampleFrameData(sample._id), frames);
+        labels && set(atoms.sampleVideoLabels(sample._id), labels);
       });
       set(selectors.anyTagging, false);
     },

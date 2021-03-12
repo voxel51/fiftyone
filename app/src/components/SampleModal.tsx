@@ -293,17 +293,13 @@ const SampleModal = ({ onClose }: Props, ref) => {
   const showJSON = useRecoilValue(atoms.showModalJSON);
   const [enableJSONFilter, setEnableJSONFilter] = useState(true);
   const [fullscreen, setFullscreen] = useState(false);
-  const mediaType = useRecoilValue(selectors.mediaType);
   const fieldSchema = useRecoilValue(selectors.fieldSchema("sample"));
   const colorByLabel = useRecoilValue(atoms.colorByLabel(true));
-  const viewCounter = useRecoilValue(atoms.viewCounter);
-  const [requested, requestLabels] = useVideoData(socket, sample);
+  const requestLabels = useVideoData(socket, sample._id);
   const videoLabels = useRecoilValue(atoms.sampleVideoLabels(sample._id));
   useEffect(() => {
-    mediaType === "video" && requested !== viewCounter && requestLabels();
-  }, [requested]);
-  useEffect(() => {
     setModalFilters(null);
+    requestLabels();
   }, []);
 
   const selectedLabelIds = Array.from(

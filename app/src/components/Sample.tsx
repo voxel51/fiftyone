@@ -68,12 +68,11 @@ const LoadingBar = animated(styled.div`
 const useHoverLoad = (socket, id) => {
   const [barItem, setBarItem] = useState([]);
   const [loaded, setLoaded] = useState(null);
-  const viewCounter = useRecoilValue(atoms.viewCounter);
 
   const requestLabels = useVideoData(socket, id, (data, player) => {
     if (!data) return;
-    const { labels } = data;
-    setLoaded(viewCounter);
+    const { labels, counter } = data;
+    setLoaded(counter);
     setBarItem([]);
     player.updateOverlay(labels);
     if (player.isHovering()) player.play();
@@ -82,12 +81,13 @@ const useHoverLoad = (socket, id) => {
   const onMouseEnter = useRecoilCallback(
     ({ snapshot }) => async (e) => {
       const isVideo = await snapshot.getPromise(selectors.isVideoDataset);
+      const counter = await snapshot.getPromise(atoms.viewCounter);
       if (!isVideo) return;
       e.preventDefault();
       const {
         data: { player },
       } = e;
-      if (loaded === viewCounter) {
+      if (loaded === counter) {
         barItem.length && setBarItem([]);
         player.play();
         return;
@@ -95,7 +95,7 @@ const useHoverLoad = (socket, id) => {
       setBarItem([0]);
       requestLabels(player);
     },
-    [barItem]
+    [barItem, loaded]
   );
 
   const onMouseLeave = () => barItem.length && setBarItem([]);
@@ -306,7 +306,7 @@ const Sample = ({ id }) => {
   const [hovering, setHovering] = useState(false);
   const isSelected = useRecoilValue(atoms.isSelectedSample(id));
 
-  const [bar, onMouseEnter, onMouseLeave] = useHoverLoad(socket, sample);
+  const [bar, onMouseEnter, onMouseLeave] = useHoverLoad(socket, sample._id);
   const selectorSpring = useSpring({
     opacity: hovering || isSelected ? 1 : 0,
   });
