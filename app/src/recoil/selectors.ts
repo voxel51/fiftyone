@@ -20,6 +20,7 @@ import { packageMessage } from "../utils/socket";
 import { viewsAreEqual } from "../utils/view";
 import { lightTheme } from "../shared/colors";
 import { Rowing } from "@material-ui/icons";
+import { Socket } from "dgram";
 
 class HTTPSSocket {
   location: string;
@@ -966,13 +967,19 @@ export const selectedLabels = selector<atoms.SelectedLabelMap>({
   },
   set: ({ get, set }, value) => {
     const state = get(atoms.stateDescription);
-    set(atoms.stateDescription, {
+    const labels = Object.entries(value).map(([label_id, label]) => ({
+      ...label,
+      label_id,
+    }));
+    const newState = {
       ...state,
-      selected_labels: Object.entries(value).map(([label_id, label]) => ({
-        ...label,
-        label_id,
-      })),
-    });
+      selected_labels: labels,
+    };
+    const sock = get(socket);
+    sock.send(
+      packageMessage("set_selected_labels", { selected_labels: labels })
+    );
+    set(atoms.stateDescription, newState);
   },
 });
 

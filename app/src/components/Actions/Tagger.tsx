@@ -89,20 +89,14 @@ const TaggingInput = styled.input`
   }
 `;
 
-const Section = ({
-  modal,
-  placeholder,
-  submit,
-  taggingAtom,
-  labels = false,
-}) => {
+const Section = ({ modal, placeholder, submit, taggingAtom }) => {
   const count = useRecoilValue(selectors.currentCount);
   const labelCount = useRecoilValue(labelAtoms.labelCount(modal));
   const [tagging, setTagging] = useRecoilState(taggingAtom);
   const [untag, setUntag] = useState(false);
-  const numSelected = modal
-    ? Object.keys(useRecoilValue(atoms.selectedObjects)).length
-    : useRecoilValue(atoms.selectedSamples).size;
+  const numSelected = useRecoilValue(
+    modal ? selectors.selectedLabelIds : atoms.selectedSamples
+  ).size;
   const isInSelection = numSelected > 0;
   const [value, setValue] = useState("");
   const disabled = tagging || typeof count !== "number" || count === 0;
@@ -204,12 +198,12 @@ const labelsModalPlaceholder = (selection, numLabels, numSamples, untag) => {
   if (selection) {
     return `${untag ? "- untag" : "+ tag"} ${
       numLabels > 1 ? `${numLabels} ` : ""
-    }selected label`;
+    }selected label${numLabels === 1 ? "" : "s"}`;
   }
 
   return `${untag ? "- untag" : "+ tag"} ${
     numLabels > 1 ? `${numLabels} ` : ""
-  }shown labels`;
+  }shown label${numLabels === 1 ? "" : "s"}`;
 };
 
 const samplesPlaceholder = (selection, numLabels, numSamples, untag) => {
@@ -259,8 +253,8 @@ const useTagCallback = (modal, targetLabels) => {
       );
       if (modal) {
         const hasSelectedLabels =
-          Object.keys(await snapshot.getPromise(atoms.selectedObjects)).length >
-          0;
+          Object.keys(await snapshot.getPromise(selectors.selectedLabels))
+            .length > 0;
         if (!targetLabels) {
           const sample_id = (await snapshot.getPromise(selectors.modalSample))
             ._id;
@@ -322,7 +316,6 @@ const Tagger = ({ modal, bounds }: TaggerProps) => {
             : samplePlaceholder
         }
         submit={submit}
-        labels={labels}
         taggingAtom={atoms.tagging({ modal, labels })}
       />
     </Popout>

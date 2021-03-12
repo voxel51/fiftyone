@@ -260,8 +260,24 @@ type Props = {
   onClose: () => void;
 };
 
-const onSelectLabel = () => {
-  return useRecoilCallback(({ snapshot, set }) => async ({ id, name }) => {});
+const onSelectLabel = (frameNumberRef) => {
+  return useRecoilCallback(
+    ({ snapshot, set }) => async ({ id, name }) => {
+      const { sample_id } = await snapshot.getPromise(atoms.modal);
+      let labels = { ...(await snapshot.getPromise(selectors.selectedLabels)) };
+      if (labels[id]) {
+        delete labels[id];
+      } else {
+        labels[id] = {
+          field: name,
+          sample_id,
+          frame_number: frameNumberRef.current,
+        };
+      }
+      set(selectors.selectedLabels, labels);
+    },
+    [frameNumberRef]
+  );
 };
 
 const SampleModal = ({ onClose }: Props, ref) => {
@@ -392,7 +408,7 @@ const SampleModal = ({ onClose }: Props, ref) => {
             filterSelector={labelFilters(true)}
             playerRef={playerRef}
             selectedLabels={selectedLabelIds}
-            onSelectLabel={onSelectLabel}
+            onSelectLabel={onSelectLabel(frameNumberRef)}
           />
         )}
         {index > 0 ? (
