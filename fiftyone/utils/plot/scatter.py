@@ -19,7 +19,8 @@ import eta.core.utils as etau
 import fiftyone.core.labels as fol
 from fiftyone.core.view import DatasetView
 
-from .selector import PointSelector
+from .interactive import InteractiveSession
+from .matplotlib import MatplotlibPlot
 
 
 logger = logging.getLogger(__name__)
@@ -48,23 +49,8 @@ def scatterplot(
     This method supports 2D or 3D visualizations, but interactive point
     selection is only aviailable in 2D.
 
-    The currently selected points are given a visually distinctive style, and
-    you can modify your selection by either clicking on individual points or
-    drawing a lasso around new points.
-
-    When the shift key is pressed, new selections are added to the selected
-    set, or subtracted if the new selection is a subset of the current
-    selection.
-
-    If you provide a ``samples`` object, then you can access the IDs of the
-    samples/labels corresponding to the points via the returned
-    :class:`fiftyone.utils.plot.selector.PointSelector` object. If you specify
-    a ``label_field``, then ``points`` are assumed to correspond to the labels
-    in this field. Otherwise, ``points`` are assumed to correspond to the
-    samples themselves.
-
-    In addition, you can provide a ``session`` object to link the currently
-    selected points to a FiftyOne App instance:
+    If you provide a ``session`` object, then the state of the FiftyOne App
+    will be synced with the currently selected points in the plot.
 
     -   Sample selection: If no ``label_field`` is provided, then when points
         are selected, a view containing the corresponding samples will be
@@ -79,8 +65,8 @@ def scatterplot(
 
     Args:
         points: a ``num_points x num_dims`` array of points
-        samples: the :class:`fiftyone.core.collections.SampleCollection` whose
-            data is being visualized
+        samples (None): the :class:`fiftyone.core.collections.SampleCollection`
+            whose data is being visualized
         session (None): a :class:`fiftyone.core.session.Session` object to
             link with the interactive plot
         label_field (None): a :class:`fiftyone.core.labels.Label` field
@@ -105,7 +91,13 @@ def scatterplot(
         **kwargs: optional keyword arguments for matplotlib's ``scatter()``
 
     Returns:
-        a :class:`fiftyone.utils.plot.selector.PointSelector`
+        one of the following:
+
+        -   an :class:`fiftyone.utils.plot.interactive.InteractiveSession`, if
+            a ``session`` is provided
+        -   an :class:`fiftyone.utils.plot.interactive.InteractivePlot`, if a
+            ``session`` is not provided
+        -   ``None`` for 3D points
     """
     points = np.asarray(points)
     num_dims = points.shape[1]
@@ -148,16 +140,20 @@ def scatterplot(
             cmap=cmap,
             ax=ax,
             figsize=figsize,
+            ax_equal=ax_equal,
             **kwargs,
         )
 
-    if num_dims != 2:
-        if ax_equal:
-            collection.axes.axis("equal")
+        if num_dims != 2:
+            plt.tight_layout()
+            plt.show(block=block)
+            return None
 
-        plt.tight_layout()
-        plt.show(block=block)
-        return None
+        plot = MatplotlibPlot(collection, buttons=buttons)
+
+    if session is None:
+        plt.show()
+        return plot
 
     sample_ids = None
     label_ids = None
@@ -187,30 +183,23 @@ def scatterplot(
             if inds is not None:
                 sample_ids = sample_ids[inds]
 
-    if session is not None:
-        # Don't spawn a new App instance in notebook contexts here
-        with session.no_show():
-            if isinstance(samples, DatasetView):
-                session.view = samples
-            else:
-                session.dataset = samples
+    # Don't spawn a new App instance in notebook contexts here
+    with session.no_show():
+        if isinstance(samples, DatasetView):
+            session.view = samples
+        else:
+            session.dataset = samples
 
-    with plt.style.context(style):
-        selector = PointSelector(
-            collection,
-            session=session,
-            sample_ids=sample_ids,
-            label_ids=label_ids,
-            label_field=label_field,
-            buttons=buttons,
-        )
-
-    if ax_equal:
-        selector.ax.axis("equal")
+    isession = InteractiveSession(
+        session,
+        plot,
+        sample_ids=sample_ids,
+        label_ids=label_ids,
+        label_field=label_field,
+    )
 
     plt.show(block=block)
-
-    return selector
+    return isession
 
 
 def _plot_scatter(
@@ -221,6 +210,7 @@ def _plot_scatter(
     cmap=None,
     ax=None,
     figsize=None,
+    ax_equal=False,
     **kwargs,
 ):
     if labels is not None:
@@ -287,6 +277,9 @@ def _plot_scatter(
 
     if figsize is not None:
         fig.set_size_inches(*figsize)
+
+    if ax_equal:
+        collection.axes.axis("equal")
 
     return collection, inds
 

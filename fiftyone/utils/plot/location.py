@@ -90,7 +90,12 @@ def location_scatterplot(
         **kwargs: optional keyword arguments for matplotlib's ``scatter()``
 
     Returns:
-        a :class:`fiftyone.utils.plot.selector.PointSelector`
+        one of the following:
+
+        -   an :class:`fiftyone.utils.plot.interactive.InteractiveSession`, if
+            a ``session`` is provided
+        -   an :class:`fiftyone.utils.plot.interactive.InteractivePlot`, if a
+            ``session`` is not provided
     """
     if ax is None:
         fig = plt.figure()
