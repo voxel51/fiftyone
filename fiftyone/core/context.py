@@ -68,3 +68,7 @@ def _get_context():
     _context = _NONE
 
     return _context
+
+
+class ContextError(EnvironmentError):
+    """Exception raised when an action is taken in an unsupported context."""
