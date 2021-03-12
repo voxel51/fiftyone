@@ -100,9 +100,8 @@ def download_zoo_dataset(
             ``fiftyone.config.dataset_zoo_dir``
         overwrite (False): whether to overwrite any existing files
         cleanup (None): whether to cleanup any temporary files generated
-            during download, usually default to True unless the dataset
-            supports partial downloads (ex: Open Images V6)
-
+            during download. This defaults to False if the dataset supports
+            partial downloads and True if it does not
         **kwargs: optional arguments for the :class:`ZooDataset` constructor
 
     Returns:
@@ -184,8 +183,8 @@ def load_zoo_dataset(
         overwrite (False): whether to overwrite any existing files if the
             dataset is to be downloaded
         cleanup (None): whether to cleanup any temporary files generated
-            during download, usually default to True unless the dataset
-            supports partial downloads (ex: Open Images V6)
+            during download. This defaults to False if the dataset supports
+            partial downloads and True if it does not
         **kwargs: optional arguments to pass to the
             :class:`fiftyone.utils.data.importers.DatasetImporter` constructor.
             If ``download_if_necessary == True``, then ``kwargs`` can also
@@ -764,9 +763,8 @@ class ZooDataset(object):
 
     @property
     def supports_paritial_download(self):
-        """Whether the dataset supports download specified subsets of data and
-        labels. This determines if _download_and_prepare should be run even if split directories
-           already exist.
+        """Whether the dataset supports downloading specified subsets of data
+        and/or labels.
         """
         return False
 
@@ -995,10 +993,10 @@ class ZooDataset(object):
             info.write_json(info_path, pretty_print=True)
             logger.info("Dataset info written to '%s'", info_path)
 
-        # Cleanup scratch directory, if necessary
         if cleanup is None:
             cleanup = self.cleanup
 
+        # Cleanup scratch directory, if necessary
         if cleanup:
             etau.delete_dir(scratch_dir)
 

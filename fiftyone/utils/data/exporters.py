@@ -708,13 +708,13 @@ class FiftyOneDatasetExporter(GenericSampleDatasetExporter):
     Args:
         export_dir: the directory to write the export
         export_media (True): whether to export media files using the method
-            defined by ``move_media``, or whether to export only labels and
-            metadata and leave media files at their current locations
-        move_media (False): if ``export_media`` is True, this decides
-            whether to move (True) or copy (False) the source
-            media into its output destination
-        relative_filepaths (True): whether to use relative (True) or absolute
-            (False) filepaths to media files on disk
+            defined by ``move_media`` (True), or to export only labels and
+            metadata (False)
+        move_media (False): whether to move (True) or copy (False) the source
+            media into its output destination. Only applicable if
+            ``export_media`` is True
+        relative_filepaths (True): whether to store relative (True) or absolute
+            (False) filepaths to media files on disk in the output dataset
         pretty_print (False): whether to render the JSON in human readable
             format with newlines and indentations
     """
