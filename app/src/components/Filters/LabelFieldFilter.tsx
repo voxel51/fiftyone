@@ -1,10 +1,9 @@
-import React, { useContext } from "react";
+import React from "react";
 import { useRecoilCallback, useRecoilValue } from "recoil";
 import { animated } from "react-spring";
 import styled from "styled-components";
 
 import { hasNoneField, useExpand } from "./utils";
-import { SampleContext } from "../../utils/context";
 import { NamedRangeSlider } from "./RangeSlider";
 import { NamedStringFilter } from "./StringFilter";
 import { CONFIDENCE_LABELS } from "../../utils/labels";

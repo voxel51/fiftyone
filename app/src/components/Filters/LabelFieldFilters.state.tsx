@@ -202,6 +202,9 @@ export const fieldIsFiltered = selectorFamily<
     path = `${path}${getPathExtension(get(selectors.labelTypesMap)[path])}`;
     const cPath = `${path}.confidence`;
     const lPath = `${path}.label`;
+    const hasHiddenLabels = modal
+      ? get(selectors.hiddenFieldLabels(path)).length > 0
+      : false;
 
     return (
       get(
@@ -210,7 +213,9 @@ export const fieldIsFiltered = selectorFamily<
           path: cPath,
           defaultRange: [0, 1],
         })
-      ) || get(stringField.fieldIsFiltered({ ...isArgs, path: lPath }))
+      ) ||
+      get(stringField.fieldIsFiltered({ ...isArgs, path: lPath })) ||
+      hasHiddenLabels
     );
   },
 });

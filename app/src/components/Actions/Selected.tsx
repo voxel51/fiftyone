@@ -16,11 +16,6 @@ import { packageMessage } from "../../utils/socket";
 import { listSampleObjects } from "../../utils/labels";
 import * as labelAtoms from "../Filters/LabelFieldFilters.state";
 import { useTheme, useSendMessage } from "../../utils/hooks";
-import {
-  addObjectsToSelection,
-  removeMatchingObjectsFromSelection,
-  convertSelectedObjectsMapToList,
-} from "../../utils/selection";
 
 const useHighlightHover = (disabled) => {
   const [hovering, setHovering] = useState(false);
@@ -151,7 +146,7 @@ const _addFrameNumberToObjects = (objects, frame_number) =>
 const getModalActions = (frameNumberRef, close) => {
   const sample = useRecoilValue(selectors.modalSample);
   const [selectedObjects, setSelectedObjects] = useRecoilState(
-    atoms.selectedObjects
+    selectors.selectedLabels
   );
   const filter = useRecoilValue(labelAtoms.sampleModalFilter);
   const resetSelectedObjects = useResetRecoilState(atoms.selectedObjects);

@@ -42,7 +42,6 @@ const Body = styled.div`
 
 function Dataset() {
   const [modal, setModal] = useRecoilState(atoms.modal);
-  const http = useRecoilValue(selectors.http);
   const hasDataset = useRecoilValue(selectors.hasDataset);
   const currentSamples = useRecoilValue(selectors.currentSamples);
   const setExtendedDatasetStats = useSetRecoilState(
@@ -60,8 +59,8 @@ function Dataset() {
   // reset selected/hidden objects when the modal closes (subject to change) -
   // the socket update is needed here because SampleModal and SelectObjectsMenu
   // are destroyed before they can handle it
-  const resetSelectedObjects = useResetRecoilState(atoms.selectedObjects);
-  const resetHiddenObjects = useResetRecoilState(atoms.hiddenObjects);
+  const resetSelectedObjects = useResetRecoilState(selectors.selectedLabels);
+  const resetHiddenObjects = useResetRecoilState(atoms.hiddenLabels);
   const handleHideModal = () => {
     setModal({ visible: false, sample_id: null });
     resetSelectedObjects();

@@ -2,9 +2,7 @@ import mime from "mime-types";
 import React, { useState, useEffect, useRef } from "react";
 import ReactDOM from "react-dom";
 import styled from "styled-components";
-import uuid from "react-uuid";
 import { useRecoilState, useRecoilValue } from "recoil";
-import CircularProgress from "@material-ui/core/CircularProgress";
 import { Warning } from "@material-ui/icons";
 import { animated, useSpring } from "react-spring";
 
@@ -231,12 +229,12 @@ const PolylineInfo = ({ info }) => {
 };
 
 const Border = ({ color, id }) => {
-  const selectedObjects = useRecoilValue(selectors.selectedObjectIds);
+  const selectedLabels = useRecoilValue(selectors.selectedLabelIds);
   return (
     <BorderDiv
       style={{
         borderTop: `2px ${
-          selectedObjects.has(id) ? "dashed" : "solid"
+          selectedLabels.has(id) ? "dashed" : "solid"
         } ${color}`,
       }}
     />
@@ -336,8 +334,8 @@ export default ({
   fieldSchema = {},
   filterSelector,
   playerRef,
-  selectedObjects,
-  onSelectObject,
+  selectedLabels,
+  onSelectLabel,
 }) => {
   const isVideo = useRecoilValue(selectors.isVideoDataset);
   const filter = useRecoilValue(filterSelector);
@@ -415,7 +413,7 @@ export default ({
       });
       player.updateOverlayOptions(overlayOptions);
       if (!thumbnail) {
-        player.updateOptions({ selectedObjects });
+        player.updateOptions({ selectedObjects: selectedLabels });
         player.updateOverlay(overlay);
       }
     }
@@ -429,7 +427,7 @@ export default ({
     fps,
     overlayOptions,
     defaultTargets,
-    selectedObjects,
+    selectedLabels,
     colorGenerator,
   ]);
 
@@ -468,8 +466,8 @@ export default ({
   useEventHandler(player, "select", (e) => {
     const _id = e.data?.id;
     const name = e.data?.name;
-    if (_id && onSelectObject) {
-      onSelectObject({ id: _id, name });
+    if (_id && onSelectLabel) {
+      onSelectLabel({ id: _id, name });
     }
   });
   const ref = useRef(null);

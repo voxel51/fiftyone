@@ -836,11 +836,11 @@ export const tagSampleModalCounts = selector<{ [key: string]: number }>({
   },
 });
 
-export const selectedObjectIds = selector<Set<string>>({
-  key: "selectedObjectIds",
+export const selectedLabelIds = selector<Set<string>>({
+  key: "selectedLabelIds",
   get: ({ get }) => {
-    const objs = get(atoms.selectedObjects);
-    return new Set(Object.keys(objs));
+    const labels = get(selectedLabels);
+    return new Set(Object.keys(labels));
   },
 });
 
@@ -941,10 +941,10 @@ export const anyTagging = selector<boolean>({
   },
 });
 
-export const hiddenObjectIds = selector({
-  key: "hiddenObjectIds",
+export const hiddenLabelIds = selector({
+  key: "hiddenLabelIds",
   get: ({ get }) => {
-    return new Set(Object.keys(get(atoms.hiddenObjects)));
+    return new Set(Object.keys(get(atoms.hiddenLabels)));
   },
 });
 
@@ -963,6 +963,16 @@ export const selectedLabels = selector<atoms.SelectedLabelMap>({
       return Object.fromEntries(labels.map((l) => [l.label_id, l]));
     }
     return {};
+  },
+  set: ({ get, set }, value) => {
+    const state = get(atoms.stateDescription);
+    set(atoms.stateDescription, {
+      ...state,
+      selected_labels: Object.entries(value).map(([label_id, label]) => ({
+        ...label,
+        label_id,
+      })),
+    });
   },
 });
 

@@ -6,6 +6,7 @@ import {
   useSetRecoilState,
   useRecoilState,
   selector,
+  useRecoilCallback,
 } from "recoil";
 
 import Actions from "./Actions";
@@ -17,7 +18,6 @@ import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
 import * as labelAtoms from "./Filters/utils";
 import { labelFilters } from "./Filters/LabelFieldFilters.state";
-import { SampleContext } from "../utils/context";
 
 import {
   useEventHandler,
@@ -27,7 +27,6 @@ import {
   useTheme,
 } from "../utils/hooks";
 import { formatMetadata } from "../utils/labels";
-import { useToggleSelectionObject } from "../utils/selection";
 
 const modalSrc = selector<string>({
   key: "modalSrc",
@@ -261,6 +260,10 @@ type Props = {
   onClose: () => void;
 };
 
+const onSelectLabel = () => {
+  return useRecoilCallback(({ snapshot, set }) => async ({ id, name }) => {});
+};
+
 const SampleModal = ({ onClose }: Props, ref) => {
   const sample = useRecoilValue(selectors.modalSample);
   const sampleUrl = useRecoilValue(modalSrc);
@@ -289,9 +292,8 @@ const SampleModal = ({ onClose }: Props, ref) => {
     setModalFilters(null);
   }, []);
 
-  const toggleSelectedObject = useToggleSelectionObject(atoms.selectedObjects);
-  const selectedObjectIDs = Array.from(
-    useRecoilValue(selectors.selectedObjectIds)
+  const selectedLabelIds = Array.from(
+    useRecoilValue(selectors.selectedLabelIds)
   );
 
   // save overlay options when navigating - these are restored by passing them
@@ -360,115 +362,107 @@ const SampleModal = ({ onClose }: Props, ref) => {
   });
 
   return (
-    <SampleContext.Provider value={sample}>
-      <Container
-        style={{ zIndex: 10001 }}
-        className={fullscreen ? "fullscreen" : ""}
-        ref={ref}
-      >
-        <div className="player" ref={playerContainerRef}>
-          {showJSON ? (
-            <JSONView
-              object={sample}
-              filterJSON={enableJSONFilter}
-              enableFilter={setEnableJSONFilter}
-            />
-          ) : (
-            <Player51
-              key={sampleUrl} // force re-render when this changes
-              src={sampleUrl}
-              onLoad={handleResize}
-              style={{
-                position: "relative",
-                ...playerStyle,
-              }}
-              id={sample._id}
-              keep={true}
-              overlay={videoLabels}
-              colorByLabel={colorByLabel}
-              activeLabelsAtom={labelAtoms.activeFields(true)}
-              fieldSchema={fieldSchema}
-              filterSelector={labelFilters(true)}
-              playerRef={playerRef}
-              selectedObjects={selectedObjectIDs}
-              onSelectObject={({ id, name }) => {
-                toggleSelectedObject(id, {
-                  sample_id: sample._id,
-                  field: name,
-                  frame_number: frameNumberRef.current,
-                });
-              }}
-            />
-          )}
-          {index > 0 ? (
-            <div
-              className="nav-button left"
-              onClick={() => setIndex(index - 1)}
-              title="Previous sample (Left arrow)"
-            >
-              &lt;
-            </div>
-          ) : null}
-          {index < numSamples - 1 ? (
-            <div
-              className="nav-button right"
-              onClick={() => setIndex(index + 1)}
-              title="Next sample (Right arrow)"
-            >
-              &gt;
-            </div>
-          ) : null}
-          <TopRightNavButtons>
-            <TopRightNavButton
-              onClick={() => setFullscreen(!fullscreen)}
-              title={fullscreen ? "Unmaximize (Esc)" : "Maximize"}
-              icon={fullscreen ? <FullscreenExit /> : <Fullscreen />}
-            />
-          </TopRightNavButtons>
-        </div>
-        <div className="sidebar">
-          <div className="sidebar-content">
-            <h2>
-              Metadata
-              <span className="push-right" />
-            </h2>
-            <Row name="ID" value={sample._id} />
-            <Row name="Source" value={sample.filepath} />
-            <Row name="Media type" value={sample._media_type} />
-            {formatMetadata(sample.metadata).map(({ name, value }) => (
-              <Row key={"metadata-" + name} name={name} value={value} />
-            ))}
-            <h2>
-              Fields
-              <span className="push-right" />
-            </h2>
-            <FieldsSidebar
-              modal={true}
-              style={{
-                overflowY: "auto",
-                overflowX: "hidden",
-                height: "auto",
-              }}
-            />
-            <TopRightNavButton
-              onClick={onClose}
-              title={"Close"}
-              icon={<Close />}
-              style={{ position: "absolute", top: 0, right: 0 }}
-            />
+    <Container
+      style={{ zIndex: 10001 }}
+      className={fullscreen ? "fullscreen" : ""}
+      ref={ref}
+    >
+      <div className="player" ref={playerContainerRef}>
+        {showJSON ? (
+          <JSONView
+            object={sample}
+            filterJSON={enableJSONFilter}
+            enableFilter={setEnableJSONFilter}
+          />
+        ) : (
+          <Player51
+            key={sampleUrl} // force re-render when this changes
+            src={sampleUrl}
+            onLoad={handleResize}
+            style={{
+              position: "relative",
+              ...playerStyle,
+            }}
+            id={sample._id}
+            keep={true}
+            overlay={videoLabels}
+            colorByLabel={colorByLabel}
+            activeLabelsAtom={labelAtoms.activeFields(true)}
+            fieldSchema={fieldSchema}
+            filterSelector={labelFilters(true)}
+            playerRef={playerRef}
+            selectedLabels={selectedLabelIds}
+            onSelectLabel={onSelectLabel}
+          />
+        )}
+        {index > 0 ? (
+          <div
+            className="nav-button left"
+            onClick={() => setIndex(index - 1)}
+            title="Previous sample (Left arrow)"
+          >
+            &lt;
           </div>
+        ) : null}
+        {index < numSamples - 1 ? (
+          <div
+            className="nav-button right"
+            onClick={() => setIndex(index + 1)}
+            title="Next sample (Right arrow)"
+          >
+            &gt;
+          </div>
+        ) : null}
+        <TopRightNavButtons>
+          <TopRightNavButton
+            onClick={() => setFullscreen(!fullscreen)}
+            title={fullscreen ? "Unmaximize (Esc)" : "Maximize"}
+            icon={fullscreen ? <FullscreenExit /> : <Fullscreen />}
+          />
+        </TopRightNavButtons>
+      </div>
+      <div className="sidebar">
+        <div className="sidebar-content">
+          <h2>
+            Metadata
+            <span className="push-right" />
+          </h2>
+          <Row name="ID" value={sample._id} />
+          <Row name="Source" value={sample.filepath} />
+          <Row name="Media type" value={sample._media_type} />
+          {formatMetadata(sample.metadata).map(({ name, value }) => (
+            <Row key={"metadata-" + name} name={name} value={value} />
+          ))}
+          <h2>
+            Fields
+            <span className="push-right" />
+          </h2>
+          <FieldsSidebar
+            modal={true}
+            style={{
+              overflowY: "auto",
+              overflowX: "hidden",
+              height: "auto",
+            }}
+          />
+          <TopRightNavButton
+            onClick={onClose}
+            title={"Close"}
+            icon={<Close />}
+            style={{ position: "absolute", top: 0, right: 0 }}
+          />
         </div>
-        <ModalFooter
-          style={{
-            overlflowX: "auto",
-            width: 280,
-            borderLeft: `2px solid ${theme.border}`,
-          }}
-        >
-          <Actions modal={true} frameNumberRef={frameNumberRef} />
-        </ModalFooter>
-      </Container>
-    </SampleContext.Provider>
+      </div>
+      <ModalFooter
+        style={{
+          overlflowX: "auto",
+          width: 280,
+          borderLeft: `2px solid ${theme.border}`,
+        }}
+      >
+        <Actions modal={true} frameNumberRef={frameNumberRef} />
+      </ModalFooter>
+    </Container>
   );
 };
 

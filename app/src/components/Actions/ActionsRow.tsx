@@ -5,6 +5,7 @@ import { Check, LocalOffer, Settings, VisibilityOff } from "@material-ui/icons";
 
 import { PillButton } from "../utils";
 import * as atoms from "../../recoil/atoms";
+import * as selectors from "../../recoil/selectors";
 
 import Tagger from "./Tagger";
 import Selector from "./Selected";
@@ -40,7 +41,7 @@ const Tag = ({ modal }) => {
 const Selected = ({ modal, frameNumberRef }) => {
   const [open, setOpen] = useState(false);
   const selectedSamples = useRecoilValue(atoms.selectedSamples);
-  const selectedObjects = useRecoilValue(atoms.selectedObjects);
+  const selectedObjects = useRecoilValue(selectors.selectedLabels);
   const ref = useRef();
   useOutsideClick(ref, () => open && setOpen(false));
   const [mRef, bounds] = useMeasure();
@@ -107,7 +108,7 @@ const ShowJSON = () => {
 };
 
 const Hidden = () => {
-  const [hiddenObjects, setHiddenObjects] = useRecoilState(atoms.hiddenObjects);
+  const [hiddenObjects, setHiddenObjects] = useRecoilState(atoms.hiddenLabels);
   const count = Object.keys(hiddenObjects).length;
 
   if (count < 1) {
