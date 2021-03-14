@@ -19,7 +19,7 @@ import eta.core.utils as etau
 import fiftyone.core.labels as fol
 from fiftyone.core.view import DatasetView
 
-from .interactive import InteractiveSession
+from .interactive import SessionPlot
 from .matplotlib import MatplotlibPlot
 
 
@@ -41,7 +41,6 @@ def scatterplot(
     figsize=None,
     style="seaborn-ticks",
     buttons=None,
-    block=False,
     **kwargs,
 ):
     """Generates an interactive scatterplot of the given points.
@@ -86,15 +85,13 @@ def scatterplot(
         style ("seaborn-ticks"): a style to use for the plot
         buttons (None): a list of ``(label, icon_image, callback)`` tuples
             defining buttons to add to the plot
-        block (False): whether to block execution when the plot is
-            displayed via ``matplotlib.pyplot.show(block=block)``
         **kwargs: optional keyword arguments for matplotlib's ``scatter()``
 
     Returns:
         one of the following:
 
-        -   an :class:`fiftyone.utils.plot.interactive.InteractiveSession`, if
-            a ``session`` is provided
+        -   a :class:`fiftyone.utils.plot.interactive.SessionPlot`, if a
+            ``session`` is provided
         -   an :class:`fiftyone.utils.plot.interactive.InteractivePlot`, if a
             ``session`` is not provided
         -   ``None`` for 3D points
@@ -146,42 +143,38 @@ def scatterplot(
 
         if num_dims != 2:
             plt.tight_layout()
-            plt.show(block=block)
+            plt.show(block=False)
             return None
 
-        plot = MatplotlibPlot(collection, buttons=buttons)
+        if session is None:
+            plot = MatplotlibPlot(collection, buttons=buttons)
+            plot.show()
+            return plot
 
-    if session is None:
-        plt.show()
-        return plot
+    if label_field is not None:
+        ids = samples._get_label_ids(fields=label_field)
+        if len(ids) != len(points):
+            raise ValueError(
+                "Number of label IDs (%d) does not match number of "
+                "points (%d). You may have missing data/labels that you "
+                "need to omit from your view before visualizing"
+                % (len(ids), len(points))
+            )
 
-    sample_ids = None
-    label_ids = None
-    if samples is not None:
-        if label_field is not None:
-            label_ids = _get_label_ids(samples, label_field)
-            if len(label_ids) != len(points):
-                raise ValueError(
-                    "Number of label IDs (%d) does not match number of "
-                    "points (%d). You may have missing data/labels that you "
-                    "need to omit from your view before visualizing"
-                    % (len(label_ids), len(points))
-                )
+        if inds is not None:
+            ids = ids[inds]
+    else:
+        ids = np.array(samples.values("id"))
+        if len(ids) != len(points):
+            raise ValueError(
+                "Number of sample IDs (%d) does not match number of "
+                "points (%d). You may have missing data/labels that you "
+                "need to omit from your view before visualizing"
+                % (len(ids), len(points))
+            )
 
-            if inds is not None:
-                label_ids = label_ids[inds]
-        else:
-            sample_ids = _get_sample_ids(samples)
-            if len(sample_ids) != len(points):
-                raise ValueError(
-                    "Number of sample IDs (%d) does not match number of "
-                    "points (%d). You may have missing data/labels that you "
-                    "need to omit from your view before visualizing"
-                    % (len(sample_ids), len(points))
-                )
-
-            if inds is not None:
-                sample_ids = sample_ids[inds]
+        if inds is not None:
+            ids = ids[inds]
 
     # Don't spawn a new App instance in notebook contexts here
     with session.no_show():
@@ -190,16 +183,16 @@ def scatterplot(
         else:
             session.dataset = samples
 
-    isession = InteractiveSession(
-        session,
-        plot,
-        sample_ids=sample_ids,
-        label_ids=label_ids,
-        label_field=label_field,
-    )
+    with plt.style.context(style):
+        plot = MatplotlibPlot(collection, ids=ids, buttons=buttons)
 
-    plt.show(block=block)
-    return isession
+    link_type = "samples" if label_field is None else "labels"
+    session_plot = SessionPlot(
+        session, plot, link_type=link_type, bidirectional=False
+    )
+    plot.show()
+
+    return session_plot
 
 
 def _plot_scatter(

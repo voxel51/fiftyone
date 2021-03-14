@@ -5,21 +5,23 @@ Interactive plotting utilities.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-import itertools
-
 import numpy as np
 
-from fiftyone import ViewField as F
-from fiftyone.core.expressions import ObjectId
-import fiftyone.core.labels as fol
+import fiftyone.core.context as foc
 import fiftyone.core.utils as fou
 
 
 class InteractivePlot(object):
-    """Base class for interactive plots."""
+    """Base class for plots that support selection of their points.
+
+    Whenever the user performs a selection in an interactive plot, the plot
+    will invoke any selection callback(s) registered on it, reporting to
+    listeners the IDs of their selected points.
+    """
 
     def __init__(self):
         self._connected = False
+        self._disconnected = False
 
     @property
     def is_connected(self):
@@ -28,38 +30,40 @@ class InteractivePlot(object):
 
     @property
     def any_selected(self):
-        """Whether any points are currently selected."""
-        raise NotImplementedError("Subclass must implement any_selected")
+        """Whether any points are currently selected, or ``None`` if the plot
+        is not connected.
+        """
+        if not self.is_connected:
+            return None
+
+        return self._any_selected
 
     @property
-    def selected_inds(self):
-        """A list of indices of the currently selected points."""
-        raise NotImplementedError("Subclass must implement selected_inds")
+    def _any_selected(self):
+        raise NotImplementedError("Subclass must implement _any_selected")
 
-    def connect(self):
-        """Connects the plot."""
-        if self.is_connected:
-            return
-
-        self._connect()
-        self._connected = True
-
-    def _connect(self):
-        pass
-
-    def disconnect(self):
-        """Disconnects the plot."""
+    @property
+    def selected_ids(self):
+        """A list of IDs of the currently selected points, or ``None`` if the
+        plot is not connected.
+        """
         if not self.is_connected:
-            return
+            return None
 
-        self._disconnect()
-        self._connected = False
+        return self._selected_ids
 
-    def _disconnect(self):
-        pass
+    @property
+    def _selected_ids(self):
+        raise NotImplementedError("Subclass must implement _selected_ids")
 
     def register_selection_callback(self, callback):
-        """Registers the selection callback, which is a function that
+        """Registers a selection callback for this plot.
+
+        Selection callbacks are functions that take a single argument
+        containing the list of currently selected IDs.
+
+        If a selection callback is registred, this plot should invoke it each
+        time their selection is updated.
 
         Args:
             callback: a selection callback
@@ -73,8 +77,8 @@ class InteractivePlot(object):
         )
 
     def register_sync_callback(self, callback):
-        """Registers a callback that can sync this plot with an
-        :class:`InteractiveSession` connected to it.
+        """Registers a callback that can sync this plot with a
+        :class:`SessionPlot` connected to it.
 
         The typical use case for this function is to serve as the callback for
         a ``sync`` button on the plot.
@@ -89,8 +93,8 @@ class InteractivePlot(object):
         pass
 
     def register_disconnect_callback(self, callback):
-        """Registers a callback that can disconnect an
-        :class:`InteractiveSession` connected to this plot.
+        """Registers a callback that can disconnect this plot from a
+        :class:`SessionPlot` connected to it.
 
         The typical use case for this function is to serve as the callback for
         a ``disconnect`` button on the plot.
@@ -110,86 +114,133 @@ class InteractivePlot(object):
                 "Cannot register callback while plot is connected"
             )
 
-    def select_inds(self, inds):
-        """Selects the points with the given indices in this plot.
+    def show(self):
+        """Shows this plot."""
+        if self._disconnected:
+            raise ValueError("Plot has been disconnected")
+
+        if self.is_connected:
+            return
+
+        self._show()
+        self._connected = True
+
+    def _show(self):
+        pass
+
+    def draw(self):
+        """Redraws the plot, if necessary."""
+        if not self.is_connected:
+            raise ValueError("Plot is not connected")
+
+        self._draw()
+
+    def _draw(self):
+        pass
+
+    def select_ids(self, ids):
+        """Selects the points with the given IDs in this plot.
 
         Args:
-            inds: a list of indices
+            ids: a list of IDs
         """
         if not self.is_connected:
             raise ValueError("Plot is not connected")
 
-        self._select_inds(inds)
+        self._select_ids(ids)
 
-    def _select_inds(self, inds):
-        raise ValueError("Subclass must implement _select_inds()")
+    def _select_ids(self, ids):
+        raise ValueError("Subclass must implement _select_ids()")
 
-    def draw(self):
-        """Draws this plot."""
+    def freeze(self):
+        """Freezes the plot, replacing it with static content in its output
+        cell.
+
+        The plot will also be disconnected.
+
+        Only applicable to notebook contexts.
+        """
+        if not self.is_connected:
+            raise ValueError("Plot is not connected")
+
+        if not foc.is_notebook_context():
+            raise foc.ContextError("Plots can only be frozen in notebooks")
+
+        self._freeze()
+        self.disconnect()
+
+    def _freeze(self):
         pass
 
-    def show(self):
-        """Shows this plot."""
+    def disconnect(self):
+        """Disconnects the plot."""
+        if not self.is_connected:
+            return
+
+        self._disconnect()
+        self._connected = False
+        self._disconnected = True
+
+    def _disconnect(self):
         pass
 
 
-class InteractiveSession(object):
+class SessionPlot(object):
     """Class that manages communication between a
     :class:`fiftyone.core.session.Session` and an :class:`InteractivePlot`
     whose points correspond to the session.
 
-    Interactive sessions can be linked to either samples or labels:
+    Plots can be linked to either samples or labels of a session:
 
-    -   Sample selection: If ``sample_ids`` is provided, then when points are
+    -   Sample selection: If ``link_type == "samples"``, then when points are
         selected, a view containing the corresponding samples will be loaded in
         the App
 
-    -   Label selection: If ``label_ids`` and ``label_field`` are provided,
-        then when points are selected, a view containing the corresponding
-        labels in ``label_field`` will be loaded in the App
+    -   Label selection: If ``link_type == "labels"``, then when points are
+        selected, a view containing the corresponding labels will be loaded in
+        the App
 
     Args:
         session: a :class:`fiftyone.core.session.Session`
         plot: an :class:`InteractivePlot`
-        bidirectional (False): whether to update ``plot`` in response to
+        link_type ("samples"): whether this session is linking samples or
+            labels. Supported values are ``("samples", "labels")``
+        label_fields (None): a field or iterable of fields containing the
+            labels in ``plot``. Only applicable when ``link_type`` is "labels"
+        bidirectional (True): whether to update ``plot`` in response to
             changes in ``session``
-        sample_ids (None): a list of sample IDs corresponding to the points in
-            ``plot``
-        label_ids (None): a list of label IDs corresponding to the points in
-            ``plot``
-        label_field (None): the sample field containing the labels in ``plot``
-        connect (True): whether to immediately connect the session
+        connect (True): whether to immediately connect the session and plot
     """
+
+    _SAMPLES = "samples"
+    _LABELS = "labels"
 
     def __init__(
         self,
         session,
         plot,
-        bidirectional=False,
-        sample_ids=None,
-        label_ids=None,
-        label_field=None,
+        link_type="samples",
+        label_fields=None,
+        bidirectional=True,
         connect=True,
     ):
-        if sample_ids is not None:
-            sample_ids = np.asarray(sample_ids)
-
-        if label_ids is not None:
-            label_ids = np.asarray(label_ids)
+        _LINK_TYPES = (self._SAMPLES, self._LABELS)
+        if link_type not in _LINK_TYPES:
+            raise ValueError(
+                "Unsupported link_type '%s'; supported values are %s"
+                % (link_type, _LINK_TYPES)
+            )
 
         self.session = session
         self.plot = plot
+        self.link_type = link_type
+        self.label_fields = label_fields
         self.bidirectional = bidirectional
-        self.sample_ids = sample_ids
-        self.label_ids = label_ids
-        self.label_field = label_field
 
-        self._inds = np.array([], dtype=int)
-        self._selected_sample_ids = None
-        self._selected_label_ids = None
-        self._connected = False
-        self._init_view = None
+        self._ids = np.array([], dtype=str)
+        self._init_view = session._collection.view()
         self._lock_session = False
+        self._connected = False
 
         if connect:
             self.connect()
@@ -200,64 +251,41 @@ class InteractiveSession(object):
         return self._connected
 
     @property
-    def any_selected(self):
-        """Whether any points are currently selected."""
-        return self._inds.size > 0
-
-    @property
-    def selected_inds(self):
-        """A list of indices of the currently selected points."""
-        return list(self._inds)
-
-    @property
     def is_selecting_samples(self):
         """Whether this session is linked to samples."""
-        return self.sample_ids is not None
+        return self.link_type == self._SAMPLES
 
     @property
     def is_selecting_labels(self):
         """Whether this session is linked to labels."""
-        return self.label_ids is not None and self.label_field is not None
+        return self.link_type == self._LABELS
 
     @property
-    def selected_samples(self):
-        """A list of the currently selected samples, or None if
-        :meth:`is_selecting_samples` is False.
+    def any_selected(self):
+        """Whether any points are currently selected, or None if not connected.
         """
-        return self._selected_sample_ids
+        if not self.is_connected:
+            return None
+
+        return self._ids.size > 0
 
     @property
-    def selected_labels(self):
-        """A list of the currently selected labels, or None if
-        :meth:`is_selecting_labels` is False.
+    def selected_ids(self):
+        """A list of the IDs of the currently selected samples/labels, or None
+        if not connected.
         """
-        return self._selected_label_ids
+        if not self.is_connected:
+            return None
 
-    def select_samples(self, sample_ids):
-        """Selects the points corresponding to the given sample IDs.
+        return list(self._ids)
+
+    def select(self, ids):
+        """Selects the points corresponding to the given sample/label IDs.
 
         Args:
-            sample_ids: a list of sample IDs
+            ids: a list of IDs
         """
-        if not self.is_selecting_samples:
-            raise ValueError("Session cannot select samples")
-
-        _sample_ids = set(sample_ids)
-        inds = np.nonzero([_id in _sample_ids for _id in self.sample_ids])[0]
-        self._select_inds_from_session(inds)
-
-    def select_labels(self, label_ids):
-        """Selects the points corresponding to the labels with the given IDs.
-
-        Args:
-            label_ids: a list of label IDs
-        """
-        if not self.is_selecting_labels:
-            raise ValueError("Session cannot select labels")
-
-        _label_ids = set(label_ids)
-        inds = np.nonzero([_id in _label_ids for _id in self.label_ids])[0]
-        self._select_inds_from_session(inds)
+        self._select_ids(ids)
 
     def sync(self):
         """Syncs the plot with the session's current view.
@@ -282,18 +310,16 @@ class InteractiveSession(object):
         if self._lock_session:
             return
 
-        current_view = self.session._collection
-
         if self.is_selecting_samples:
             if self.session.selected:
                 sample_ids = self.session.selected
             else:
-                sample_ids = self._get_selected_samples(current_view)
+                sample_ids = self.session._collection.values("id")
 
             # Lock the session so that it is not updated, since we are
             # responding to the state of the current session
             with fou.SetAttributes(self, _lock_session=True):
-                self.select_samples(sample_ids)
+                self._select_ids(sample_ids)
 
         if self.is_selecting_labels:
             if self.session.selected_labels:
@@ -301,15 +327,16 @@ class InteractiveSession(object):
                     o["label_id"] for o in self.session.selected_labels
                 ]
             else:
-                selected = self.session.selected or None
-                label_ids = self._get_selected_labels(
-                    current_view, self.label_field, selected=selected
-                )
+                view = self.session._collection
+                if self.session.selected:
+                    view = view.select(self.session.selected)
+
+                label_ids = view._get_label_ids(fields=self.label_fields)
 
             # Lock the session so that it is not updated, since we are
             # responding to the state of the current session
             with fou.SetAttributes(self, _lock_session=True):
-                self.select_labels(label_ids)
+                self._select_ids(label_ids)
 
     def tag_selected(self, tag):
         """Adds the tag to the currently selected samples/labels, if
@@ -327,7 +354,7 @@ class InteractiveSession(object):
             view.tag_samples(tag)
 
         if self.is_selecting_labels:
-            view.tag_labels(tag, label_fields=[self.label_field])
+            view.tag_labels(tag, label_fields=self.label_fields)
 
         self.refresh()
 
@@ -347,7 +374,7 @@ class InteractiveSession(object):
             view.untag_samples(tag)
 
         if self.is_selecting_labels:
-            view.untag_labels(tag, label_fields=[self.label_field])
+            view.untag_labels(tag, label_fields=self.label_fields)
 
         self.refresh()
 
@@ -366,13 +393,12 @@ class InteractiveSession(object):
             return None
 
         if self.is_selecting_samples:
-            return self._init_view.select(self._selected_sample_ids)
+            return self._init_view.select(self.selected_ids)
 
         if self.is_selecting_labels:
-            _label_ids = [ObjectId(_id) for _id in self._selected_label_ids]
-            return self._init_view.select_fields(
-                self.label_field
-            ).filter_labels(self.label_field, F("_id").is_in(_label_ids))
+            return self._init_view.select_labels(
+                ids=self.selected_ids, fields=self.label_fields
+            )
 
         return None
 
@@ -381,27 +407,24 @@ class InteractiveSession(object):
         if self.is_connected:
             return
 
-        self.plot.register_selection_callback(self._select_inds_from_plot)
+        def _select_ids_from_plot(ids):
+            self._select_ids(ids, update_plot=False)
+
+        self.plot.register_selection_callback(_select_ids_from_plot)
         self.plot.register_sync_callback(self.sync)
         self.plot.register_disconnect_callback(self.disconnect)
-        self.plot.connect()
-
-        self._init_view = self.session._collection.view()
 
         if self.bidirectional:
-            self.session.add_listener(
-                "interactive_session", self._onsessionupdate
-            )
+            self.session.add_listener("plot", self._onsessionupdate)
 
         self._connected = True
 
     def refresh(self):
         """Refreshes the plot and session."""
         self.plot.draw()
-        if not self._lock_session:
-            self._update_session()
+        self._update_session()
 
-    def disconnect(self,):
+    def disconnect(self):
         """Disconnects from the plot and sesssion."""
         if not self.is_connected:
             return
@@ -409,67 +432,50 @@ class InteractiveSession(object):
         self.plot.disconnect()
 
         if self.bidirectional:
-            self.session.delete_listener("interactive_session")
+            self.session.delete_listener("plot")
 
         self._connected = False
+
+    def freeze(self):
+        """Freezes the session and plot.
+
+        This will also disconnect from the session and plot.
+        """
+        if not self.is_connected:
+            return
+
+        self.session.freeze()
+        self.plot.freeze()
+        self.disconnect()
 
     def _onsessionupdate(self, _):
         self.sync()
 
-    def _select_inds_from_plot(self, inds):
+    def _select_ids(self, ids, update_plot=True):
         if not self.is_connected:
             return
 
-        self._select_inds(inds)
+        if ids is None:
+            ids = []
 
-    def _select_inds_from_session(self, inds):
-        if not self.is_connected:
-            return
+        ids = np.asarray(ids)
 
-        self.plot.select_inds(inds)
-        self._select_inds(inds)
+        if update_plot:
+            self.plot.select_ids(ids)
 
-    def _select_inds(self, inds):
-        if inds is None:
-            inds = []
-
-        self._inds = np.asarray(inds)
-
-        if self.is_selecting_samples:
-            self._selected_sample_ids = list(self.sample_ids[inds])
-
-        if self.is_selecting_labels:
-            self._selected_label_ids = list(self.label_ids[inds])
-
+        self._ids = ids
         self.refresh()
 
     def _update_session(self):
-        if self.any_selected:
-            view = self.selected_view()
-        else:
-            view = self._init_view
+        if self._lock_session:
+            return
 
         with fou.SetAttributes(self, _lock_session=True):
+            if self.any_selected:
+                view = self.selected_view()
+            else:
+                view = self._init_view
+
             # Don't spawn a new App instance in notebook contexts here
             with self.session.no_show():
                 self.session.view = view
-
-    @staticmethod
-    def _get_selected_samples(view, selected=None):
-        if selected is not None:
-            view = view.select(selected)
-
-        return view.values("id")
-
-    @staticmethod
-    def _get_selected_labels(view, label_field, selected=None):
-        if selected is not None:
-            view = view.select(selected)
-
-        label_type, id_path = view._get_label_field_path(label_field, "_id")
-        label_ids = view.values(id_path)
-
-        if issubclass(label_type, fol._LABEL_LIST_FIELDS):
-            label_ids = itertools.chain.from_iterable(label_ids)
-
-        return [str(_id) for _id in label_ids]

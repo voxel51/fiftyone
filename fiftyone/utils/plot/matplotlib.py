@@ -32,6 +32,7 @@ class MatplotlibPlot(InteractivePlot):
     Args:
         collection: a ``matplotlib.collections.Collection`` to select points
             from
+        ids (None): a list of IDs corresponding to the points in ``collection``
         buttons (None): a list of ``(label, icon_image, callback)`` tuples
             defining buttons to add to the plot
         alpha_other (0.25): a transparency value for unselected points
@@ -44,17 +45,13 @@ class MatplotlibPlot(InteractivePlot):
     def __init__(
         self,
         collection,
+        ids=None,
         buttons=None,
         alpha_other=0.25,
         expand_selected=3.0,
         click_tolerance=0.02,
     ):
         super().__init__()
-
-        if buttons is not None:
-            button_defs = list(buttons)
-        else:
-            button_defs = []
 
         self.collection = collection
         self.ax = collection.axes
@@ -70,49 +67,56 @@ class MatplotlibPlot(InteractivePlot):
         self._ms = collection.get_sizes()
         self._init_ms = self._ms[0]
 
+        if ids is None:
+            ids = np.arange(self._num_pts)
+
+        self._ids = np.asarray(ids)
+        self._ids_to_inds = {_id: idx for idx, _id in enumerate(ids)}
         self._inds = np.array([], dtype=int)
         self._canvas.mpl_connect("close_event", lambda e: self._disconnect())
-
-        # Hides the pesky `Figure X` header visible in notebooks
-        # https://github.com/matplotlib/ipympl/issues/134
         self._canvas.header_visible = False
 
         self._lasso = None
         self._shift = False
         self._title = None
-        self._button_defs = button_defs
+        self._user_button_defs = buttons or []
+        self._sync_button_def = None
+        self._disconnect_button_def = None
         self._buttons = []
         self._figure_events = []
         self._keypress_events = []
 
-        self._init_hud()
-
     @property
-    def any_selected(self):
+    def _any_selected(self):
         return self._inds.size > 0
 
     @property
-    def selected_inds(self):
-        return list(self._inds)
+    def _selected_ids(self):
+        return list(self._ids[self._inds])
 
     def _register_selection_callback(self, callback):
         self._select_callback = callback
 
     def _register_sync_callback(self, callback):
+        def _on_sync(event):
+            callback()
+
         sync_icon = load_button_icon("sync")
-        self._button_defs.append(("sync", sync_icon, callback))
+        self._sync_button_def = ("sync", sync_icon, _on_sync)
 
     def _register_disconnect_callback(self, callback):
+        def _on_disconnect(event):
+            callback()
+
         disconnect_icon = load_button_icon("disconnect")
-        self._button_defs.append(("disconnect", disconnect_icon, callback))
+        self._disconnect_button_def = (
+            "disconnect",
+            disconnect_icon,
+            _on_disconnect,
+        )
 
-    def draw(self):
-        self._canvas.draw_idle()
-
-    def show(self):
-        plt.show(block=False)
-
-    def _connect(self):
+    def _show(self):
+        self._init_hud()
         self._lasso = LassoSelector(self.ax, onselect=self._onselect)
 
         def _make_callback(button, callback):
@@ -125,7 +129,7 @@ class MatplotlibPlot(InteractivePlot):
 
             return _callback
 
-        for button, (_, _, callback) in zip(self._buttons, self._button_defs):
+        for button, callback in self._buttons:
             _callback = _make_callback(button, callback)
             button.on_clicked(_callback)
 
@@ -140,6 +144,18 @@ class MatplotlibPlot(InteractivePlot):
         ]
 
         self._update_hud(False)
+        plt.show(block=False)
+
+    def _draw(self):
+        self._canvas.draw_idle()
+
+    def _freeze(self):
+        # Disconnect first so that HUD is not visible
+        self.disconnect()
+
+        # Turn interactive plot into a static one
+        # https://github.com/matplotlib/matplotlib/issues/6071
+        plt.close(self.ax.figure)
 
     def _disconnect(self):
         if not self.is_connected:
@@ -147,6 +163,11 @@ class MatplotlibPlot(InteractivePlot):
 
         self._lasso.disconnect_events()
         self._lasso = None
+
+        for button, _ in self._buttons:
+            button.ax.remove()
+
+        self._buttons = []
 
         for cid in self._figure_events:
             self._canvas.mpl_disconnect(cid)
@@ -168,7 +189,14 @@ class MatplotlibPlot(InteractivePlot):
 
         self._title = self.ax.set_title("")
 
-        num_buttons = len(self._button_defs)
+        button_defs = list(self._user_button_defs)
+        if self._sync_button_def is not None:
+            button_defs.append(self._sync_button_def)
+
+        if self._disconnect_button_def is not None:
+            button_defs.append(self._disconnect_button_def)
+
+        num_buttons = len(button_defs)
 
         def _button_pos(i):
             # top of right-side
@@ -179,18 +207,17 @@ class MatplotlibPlot(InteractivePlot):
             return [1 - (i + 1) * size - i * gap, 1 + gap, size, size]
 
         self._buttons = []
-        for i, (label, icon_img, _) in enumerate(self._button_defs):
+        for i, (label, icon_img, callback) in enumerate(button_defs):
             bax = self.ax.figure.add_axes([0, 0, 1, 1], label=label)
             bax.set_axes_locator(InsetPosition(self.ax, _button_pos(i)))
-            bax.set_visible(False)
             button = Button(
                 bax, "", color=color, hovercolor=hovercolor, image=icon_img
             )
-            self._buttons.append(button)
+            self._buttons.append((button, callback))
 
     def _update_hud(self, visible):
         self._title.set_visible(visible)
-        for button in self._buttons:
+        for button, _ in self._buttons:
             button.ax.set_visible(visible)
 
     def _onenter(self, event):
@@ -254,15 +281,23 @@ class MatplotlibPlot(InteractivePlot):
 
         self._select_inds(inds)
 
-        if self._select_callback is not None:
-            self._select_callback(inds)
+    def _select_ids(self, ids):
+        if ids is not None:
+            inds = [self._ids_to_inds[_id] for _id in ids]
+        else:
+            inds = None
+
+        self._select_inds(inds)
 
     def _select_inds(self, inds):
         if inds is None:
             inds = []
 
-        self._inds = np.asarray(inds)
+        self._inds = np.asarray(inds, dtype=int)
         self._update_plot()
+
+        if self._select_callback is not None:
+            self._select_callback(self.selected_ids)
 
     def _update_plot(self):
         self._prep_collection()

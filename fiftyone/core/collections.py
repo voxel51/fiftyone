@@ -698,6 +698,10 @@ class SampleCollection(object):
 
         return labels
 
+    def _get_label_ids(self, tags=None, fields=None):
+        labels = self._get_selected_labels(tags=tags, fields=fields)
+        return [l["label_id"] for l in labels]
+
     def count_label_tags(self, label_fields=None):
         """Counts the occurrences of all label tags in the specified label
         field(s) of this collection.

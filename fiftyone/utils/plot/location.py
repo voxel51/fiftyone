@@ -38,7 +38,6 @@ def location_scatterplot(
     figsize=None,
     style="seaborn-ticks",
     buttons=None,
-    block=False,
     **kwargs,
 ):
     """Generates an interactive scatterplot of the given location coordinates.
@@ -85,15 +84,13 @@ def location_scatterplot(
         style ("seaborn-ticks"): a style to use for the plot
         buttons (None): a list of ``(label, icon_image, callback)`` tuples
             defining buttons to add to the plot
-        block (False): whether to block execution when the plot is
-            displayed via ``matplotlib.pyplot.show(block=block)``
         **kwargs: optional keyword arguments for matplotlib's ``scatter()``
 
     Returns:
         one of the following:
 
-        -   an :class:`fiftyone.utils.plot.interactive.InteractiveSession`, if
-            a ``session`` is provided
+        -   a :class:`fiftyone.utils.plot.interactive.SessionPlot`, if a
+            ``session`` is provided
         -   an :class:`fiftyone.utils.plot.interactive.InteractivePlot`, if a
             ``session`` is not provided
     """
@@ -140,7 +137,6 @@ def location_scatterplot(
         figsize=figsize,
         style=style,
         buttons=buttons,
-        block=block,
         **kwargs,
     )
 

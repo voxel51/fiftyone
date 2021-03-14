@@ -6,6 +6,7 @@ Plotly utilities.
 |
 """
 from collections import defaultdict
+import itertools
 import logging
 import os
 
@@ -27,149 +28,192 @@ logger = logging.getLogger(__name__)
 class PlotlyPlot(InteractivePlot):
     """Interactive plot wrapper for a Plotly figure.
 
+    The provided ``figure`` may contain multiple traces.
+
+    All traces must contain IDs in their ``customdata`` attribute that identify
+    the points in the traces.
+
     Args:
         figure: a ``plotly.graph_objects.Figure``
-        labels (None): a ``num_points`` array of labels for each point. These
-            must correspond to the names of the traces in ``figure``
         points (None): an optional ``num_points x 2`` array of points. If
             provided, selection is manually performed across all visible traces
+            using these points
+        ids (None): an optional ``num_points`` array indicating the IDs of each
+            point in ``points``. Only necessary when ``points`` is provided
     """
 
-    def __init__(self, figure, labels=None, points=None):
+    def __init__(self, figure, points=None, ids=None):
         if not foc.is_notebook_context():
             raise foc.ContextError(
                 "Interactive Plotly plots can only be used in notebooks"
             )
 
-        widget = pgo.FigureWidget(figure)
-        traces = widget.data
-
-        if len(traces) > 1:
-            if labels is None:
-                raise ValueError(
-                    "Must provide `labels` for figures with multiple traces"
-                )
-
-            trace_maps = self._make_trace_maps(labels)
-        else:
-            trace_maps = None
-
-        self._widget = widget
-        self._traces = traces
-        self._labels = labels
-        self._trace_maps = trace_maps
+        self._widget = pgo.FigureWidget(figure)
+        self._traces = self._widget.data
+        self._trace_ids = {}
+        self._ids_to_traces = {}
+        self._ids_to_inds = {}
         self._select_callback = None
+        self._callback_flags = {}
+        self._handle = None
 
         # For manual point selection calculations
         self._points = points
-        self._inds = None
+        self._point_ids = ids
+        self._trace_inds = None
+        self._ids = None
+
+        self._init_traces()
+        self._init_callback_flags()
 
         super().__init__()
 
+    def _init_callback_flags(self):
+        self._callback_flags = {t.name: False for t in self._traces}
+
+    def _init_traces(self):
+        for idx, trace in enumerate(self._traces):
+            if trace.customdata is None or not isinstance(
+                trace.customdata, np.ndarray
+            ):
+                _name = "'%s'" % trace.name if trace.name else str(idx)
+                raise ValueError(
+                    "Trace %s does not contain IDs in its `customdata` "
+                    "attribute" % _name
+                )
+
+            trace_ids = trace.customdata
+            if trace_ids.ndim > 1:
+                trace_ids = trace_ids[:, 0]
+
+            self._trace_ids[idx] = trace_ids
+
+            self._ids_to_traces.update({_id: idx for _id in trace_ids})
+            self._ids_to_inds[idx] = {
+                _id: idx for idx, _id in enumerate(trace_ids)
+            }
+
+        if self._points is not None:
+            self._trace_inds = np.zeros(len(self._points), dtype=int)
+            for trace_idx, trace in enumerate(self._traces):
+                trace_ids = set(self._trace_ids[trace_idx])
+                for point_idx, _id in enumerate(self._point_ids):
+                    if _id in trace_ids:
+                        self._trace_inds[point_idx] = trace_idx
+
     @property
-    def has_multiple_traces(self):
-        return len(self._traces) > 1
-
-    @staticmethod
-    def _make_trace_maps(labels):
-        trace_maps = defaultdict(dict)
-        counts = defaultdict(int)
-        for idx, label in enumerate(labels):
-            _count = counts[label]
-            trace_maps[label][_count] = idx
-            counts[label] = _count + 1
-
-        return dict(trace_maps)
-
-    @property
-    def any_selected(self):
+    def _any_selected(self):
         return any(bool(t.selectedpoints) for t in self._traces)
 
     @property
-    def selected_inds(self):
-        if self._inds is not None:
-            return list(self._inds)
+    def _selected_ids(self):
+        if self._ids is not None:
+            return list(self._ids)
 
-        if not self.has_multiple_traces:
-            inds = self._traces[0].selectedpoints
-            return list(inds) if inds else []
-
-        inds = []
-        for trace in self._traces:
+        ids = []
+        for idx, trace in enumerate(self._traces):
             if trace.selectedpoints:
-                tmap = self._trace_maps[trace.name]
-                inds.extend([tmap[i] for i in trace.selectedpoints])
+                ids.append(self._trace_ids[idx][list(trace.selectedpoints)])
 
-        return sorted(inds)
-
-    def _connect(self):
-        def _on_click(trace, points, state):
-            inds = points.point_inds
-            self._select_inds(inds)
-            self._onselect()
-
-        def _on_selection(trace, points, selector):
-            self._onselect(selector=selector)
-
-        def _on_deselect(trace, points):
-            self._onselect()
-
-        for trace in self._traces:
-            trace.on_click(_on_click)
-            trace.on_selection(_on_selection)
-            trace.on_deselect(_on_deselect)
-
-    def _disconnect(self):
-        for trace in self._traces:
-            trace.on_click(None)
-            trace.on_selection(None)
-            trace.on_deselect(None)
+        return list(itertools.chain.from_iterable(ids))
 
     def _register_selection_callback(self, callback):
         self._select_callback = callback
 
-    def _select_inds(self, inds):
-        if not self.has_multiple_traces:
-            # May be None, list, or numpy
-            # pylint: disable=len-as-condition
-            if inds is not None and len(inds) == 0:
-                inds = None
+    def _show(self):
+        def _on_selection(trace, points, selector):
+            self._onselect(trace, selector=selector)
 
-            self._traces[0].update(selectedpoints=inds)
-            return
-
-        if inds is None:
-            inds = []
-
-        trace_inds = defaultdict(list)
-        for idx in inds:
-            trace_inds[self._labels[idx]].append(idx)
+        def _on_deselect(trace, points):
+            self._onselect(trace)
 
         for trace in self._traces:
-            _trace_inds = trace_inds[trace.name] or None
-            trace.update(selectedpoints=_trace_inds)
+            trace.on_selection(_on_selection)
+            trace.on_deselect(_on_deselect)
 
-    def _onselect(self, selector=None):
+        from IPython.display import display
+
+        # Create an empty display that we'll use for `freeze()` later
+        # Replacing the widget with an image in the same handle didn't work...
+        self._handle = display(display_id=True)
+        self._handle.display({"text/plain": ""}, raw=True)
+
+        display(self._widget)
+
+    def _freeze(self):
+        from IPython.display import Image
+
+        width = self._widget.layout.width
+        height = self._widget.layout.height
+        image_bytes = self._widget.to_image(
+            format="png", height=height, width=width
+        )
+
+        self._widget.close()
+        self._handle.update(Image(image_bytes))
+
+    def _disconnect(self):
+        for trace in self._traces:
+            trace.on_selection(None)
+            trace.on_deselect(None)
+
+    def _select_ids(self, ids):
+        if ids is None:
+            ids = []
+
+        # Split IDs into traces
+        per_trace_ids = defaultdict(list)
+        for _id in ids:
+            per_trace_ids[self._ids_to_traces[_id]].append(_id)
+
+        for idx, trace in enumerate(self._traces):
+            # Convert IDs to point inds
+            inds_map = self._ids_to_inds[idx]
+            trace_ids = per_trace_ids[idx]
+            trace_inds = [inds_map[_id] for _id in trace_ids]
+            if not trace_inds:
+                trace_inds = None
+
+            # Select points
+            trace.update(selectedpoints=trace_inds)
+
+    def _onselect(self, trace, selector=None):
         # Manually compute points within selector
         if self._points is not None:
             self._manualselect(selector)
 
-        # @todo do something about the fact that this will be triggered for
-        # every trace?
-        if self._select_callback is not None:
-            self._select_callback(self.selected_inds)
+        if self._select_callback is None:
+            return
+
+        self._callback_flags[trace.name] = True
+
+        if not self._ready_for_callback():
+            return
+
+        self._init_callback_flags()
+        self._select_callback(self.selected_ids)
+
+    def _ready_for_callback(self):
+        # We're ready for callback if all visible traces have fired their
+        # selection events
+        return all(
+            self._callback_flags[t.name]
+            for t in self._traces
+            if t.visible == True
+        )
 
     def _manualselect(self, selector):
         if not isinstance(selector, (pcb.LassoSelector, pcb.BoxSelector)):
             return
 
-        # visible can be `{False, True, "legendonly"}`
-        visible_classes = set(
-            t.name for t in self._traces if t.visible == True
+        visible_traces = set(
+            idx
+            for idx, trace in enumerate(self._traces)
+            if trace.visible == True  # can be `{False, True, "legendonly"}`
         )
 
-        if not visible_classes:
-            self._inds = []
+        if not visible_traces:
+            self._ids = np.array([], dtype=self._point_ids.dtype)
             return
 
         if isinstance(selector, pcb.LassoSelector):
@@ -179,21 +223,13 @@ class PlotlyPlot(InteractivePlot):
             y1, y2 = selector.yrange
             vertices = np.array([[x1, y1], [x1, y2], [x2, y2], [x2, y1]])
 
-        path = mpl.path.Path(vertices)  # @todo don't use matplotlib here
-        inds = np.nonzero(path.contains_points(self._points))[0]
+        # @todo don't use matplotlib here?
+        path = mpl.path.Path(vertices)
+        found = path.contains_points(self._points)
 
-        if self.has_multiple_traces:
-            # Only select points in visible traces
-            self._inds = [
-                i for i in inds if self._labels[i] in visible_classes
-            ]
-        else:
-            self._inds = inds
+        mask = np.array([ind in visible_traces for ind in self._trace_inds])
 
-    def show(self):
-        from IPython.display import display
-
-        display(self._widget)
+        self._ids = self._point_ids[found & mask]
 
 
 def _patch_perform_plotly_relayout():
