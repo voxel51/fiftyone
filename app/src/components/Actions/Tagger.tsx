@@ -1,10 +1,18 @@
 import React, { useState } from "react";
 import styled from "styled-components";
 import { animated, useSpring } from "react-spring";
-import { useRecoilCallback, useRecoilState, useRecoilValue } from "recoil";
+import {
+  RecoilState,
+  RecoilValue,
+  useRecoilCallback,
+  useRecoilState,
+  useRecoilValue,
+} from "recoil";
 import { CircularProgress } from "@material-ui/core";
 
+import Checker, { CheckState } from "./Checker";
 import Popout from "./Popout";
+import { tagStats } from "./utils";
 import * as labelAtoms from "../Filters/LabelFieldFilters.state";
 import * as fieldAtoms from "../Filters/utils";
 import { TabOptionProps, TabOption } from "../utils";
@@ -90,18 +98,56 @@ const TaggingInput = styled.input`
   }
 `;
 
-const Section = ({ modal, placeholder, submit, taggingAtom }) => {
-  const count = useRecoilValue(selectors.currentCount);
-  const labelCount = useRecoilValue(labelAtoms.labelCount(modal));
+interface Changes {
+  [key: string]: CheckState;
+}
+
+interface SectionProps {
+  placeholder: string;
+  count: number;
+  taggingAtom: RecoilState<boolean>;
+  itemsAtom: RecoilValue<{ [key: string]: number }>;
+  submit: ({ changes: Changes }) => Promise<void>;
+}
+
+const Section = ({
+  placeholder,
+  submit,
+  count,
+  taggingAtom,
+  itemsAtom,
+}: SectionProps) => {
+  const items = useRecoilValue(itemsAtom);
   const [tagging, setTagging] = useRecoilState(taggingAtom);
-  const numSelected = useRecoilValue(
-    modal ? selectors.selectedLabelIds : atoms.selectedSamples
-  ).size;
-  const isInSelection = numSelected > 0;
   const [value, setValue] = useState("");
   const disabled = tagging || typeof count !== "number" || count === 0;
-  const numLabels = modal && isInSelection ? numSelected : labelCount;
-  const numSamples = isInSelection && !modal ? numSelected : modal ? 1 : count;
+  const [changes, setChanges] = useState<{ [key: string]: CheckState }>({});
+  const [active, setActive] = useState(null);
+
+  return (
+    <Checker
+      items={items}
+      changes={changes}
+      count={count}
+      setChange={(
+        name: string,
+        value: CheckState | null,
+        canSubmit = false
+      ) => {
+        const newChanges = { ...changes };
+        if (value === null) {
+          delete changes[name];
+        } else {
+          changes[name] = value;
+        }
+        if (canSubmit && Object.keys(newChanges).length === 1) {
+          submit({ changes });
+        } else {
+          setChanges(newChanges);
+        }
+      }}
+    />
+  );
 
   return (
     <>
@@ -118,14 +164,15 @@ const Section = ({ modal, placeholder, submit, taggingAtom }) => {
             if (e.key === "Enter") {
               setTagging(true);
               setValue("");
-              submit({ tag: value });
+              submit({ changes: { [value]: true } });
             }
           }}
+          focused={!disabled}
           disabled={disabled}
         />
         <Loading loading={Boolean(tagging || typeof count !== "number")} />
       </TaggingContainerInput>
-      <Checker modal={modal} />
+      <Checker items={items} />
     </>
   );
 };
@@ -153,7 +200,7 @@ type TaggerProps = {
   modal: boolean;
 };
 
-const labelsPlaceholder = (selection, numLabels, numSamples, untag) => {
+const labelsPlaceholder = (selection, numLabels, numSamples) => {
   if (numSamples === 0) {
     return "no samples";
   }
@@ -204,25 +251,23 @@ const samplePlaceholder = () => {
   return "+ tag sample";
 };
 
-const packageGrid = ({ untag, targetLabels, activeLabels, tag }) =>
+const packageGrid = ({ targetLabels, activeLabels, changes }) =>
   packageMessage("tag", {
-    untag,
     target_labels: targetLabels,
     active_labels: activeLabels,
-    tag,
+    changes,
   });
 
-const packageModal = ({ untag, labels = null, sample_id = null, tag }) =>
+const packageModal = ({ labels = null, sample_id = null, changes }) =>
   packageMessage("tag_modal", {
-    untag,
-    tag,
+    changes,
     labels,
     sample_id,
   });
 
 const useTagCallback = (modal, targetLabels) => {
   return useRecoilCallback(
-    ({ snapshot }) => async ({ tag, untag }) => {
+    ({ snapshot }) => async ({ changes }) => {
       const activeLabels = await snapshot.getPromise(
         fieldAtoms.activeFields(modal)
       );
@@ -233,19 +278,41 @@ const useTagCallback = (modal, targetLabels) => {
         if (!targetLabels) {
           const sample_id = (await snapshot.getPromise(selectors.modalSample))
             ._id;
-          socket.send(packageModal({ sample_id, tag, untag }));
+          socket.send(packageModal({ sample_id, changes }));
         } else if (hasSelectedLabels) {
-          socket.send(packageModal({ tag, untag }));
+          socket.send(packageModal({ changes }));
         } else {
           const labels = await snapshot.getPromise(labelAtoms.modalLabels);
-          // socket.send(packageModal({ ${untag ? "- untag" : "tag, untag, labels }));
+          socket.send(packageModal({ changes, labels }));
         }
       } else {
-        socket.send(packageGrid({ untag, targetLabels, activeLabels, tag }));
+        socket.send(packageGrid({ changes, targetLabels, activeLabels }));
       }
     },
     [modal, targetLabels]
   );
+};
+
+const usePlaceHolder = (modal: boolean, labels: boolean): [number, string] => {
+  const hasSelection = useRecoilValue(
+    modal ? selectors.selectedLabelIds : atoms.selectedSamples
+  ).size;
+  const labelCount = useRecoilValue(labelAtoms.labelCount(modal));
+
+  if (modal && labels) {
+    return [labelCount, labelsModalPlaceholder(hasSelection, labelCount)];
+  } else if (modal) {
+    return [1, samplePlaceholder()];
+  } else {
+    const totalSamples = useRecoilValue(selectors.totalCount);
+    const filteredSamples = useRecoilValue(selectors.filteredCount);
+    const count = filteredSamples ?? totalSamples;
+    if (labels) {
+      return [labelCount, labelsPlaceholder(hasSelection, labelCount, count)];
+    } else {
+      return [count, samplesPlaceholder(hasSelection, labelCount, count)];
+    }
+  }
 };
 
 const Tagger = ({ modal, bounds }: TaggerProps) => {
@@ -262,6 +329,7 @@ const Tagger = ({ modal, bounds }: TaggerProps) => {
   });
 
   const submit = useTagCallback(modal, labels);
+  const [count, placeholder] = usePlaceHolder(modal, labels);
 
   return (
     <Popout style={{ width: "18rem" }} modal={modal} bounds={bounds}>
@@ -280,18 +348,11 @@ const Tagger = ({ modal, bounds }: TaggerProps) => {
         </SwitchDiv>
       </SwitcherDiv>
       <Section
-        modal={modal}
-        placeholder={
-          labels && !modal
-            ? labelsPlaceholder
-            : !modal
-            ? samplesPlaceholder
-            : labels
-            ? labelsModalPlaceholder
-            : samplePlaceholder
-        }
+        placeholder={placeholder}
         submit={submit}
         taggingAtom={atoms.tagging({ modal, labels })}
+        itemsAtom={tagStats({ modal, labels })}
+        count={count}
       />
     </Popout>
   );

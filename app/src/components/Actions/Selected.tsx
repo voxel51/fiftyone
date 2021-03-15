@@ -6,44 +6,16 @@ import {
   useResetRecoilState,
   useSetRecoilState,
 } from "recoil";
-import { useSpring } from "react-spring";
 
 import Popout from "./Popout";
-import { HoverItemDiv } from "./utils";
+import { HoverItemDiv, useHighlightHover } from "./utils";
 import * as atoms from "../../recoil/atoms";
 import * as selectors from "../../recoil/selectors";
 import socket from "../../shared/connection";
 import { packageMessage } from "../../utils/socket";
 import { listSampleObjects } from "../../utils/labels";
 import * as labelAtoms from "../Filters/LabelFieldFilters.state";
-import { useTheme, useSendMessage } from "../../utils/hooks";
-
-const useHighlightHover = (disabled) => {
-  const [hovering, setHovering] = useState(false);
-  const theme = useTheme();
-  const style = useSpring({
-    backgroundColor:
-      hovering && !disabled
-        ? theme.backgroundLight
-        : disabled
-        ? theme.backgroundDarker
-        : theme.backgroundDark,
-    color: hovering && !disabled ? theme.font : theme.fontDark,
-  });
-
-  const onMouseEnter = () => setHovering(true);
-
-  const onMouseLeave = () => setHovering(false);
-
-  return {
-    style: {
-      ...style,
-      cursor: disabled ? "disabled" : "pointer",
-    },
-    onMouseEnter,
-    onMouseLeave,
-  };
-};
+import { useSendMessage } from "../../utils/hooks";
 
 type ActionOptionProps = {
   onClick: () => void;

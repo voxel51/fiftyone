@@ -1,9 +1,12 @@
+import { useState } from "react";
 import { selectorFamily } from "recoil";
-import { animated } from "react-spring";
+import { animated, useSpring } from "react-spring";
 import styled from "styled-components";
 
 import { activeLabels } from "../Filters/utils";
+import { labelCount } from "../Filters/LabelFieldFilters.state";
 import * as selectors from "../../recoil/selectors";
+import { useTheme } from "../../utils/hooks";
 
 export const HoverItemDiv = animated(styled.div`
   cursor: pointer;
@@ -16,6 +19,51 @@ export const HoverItemDiv = animated(styled.div`
   flex-direction: column;
   color: ${({ theme }) => theme.fontDark};
 `);
+
+export const useHighlightHover = (disabled, forceOn) => {
+  const [hovering, setHovering] = useState(false);
+  const theme = useTheme();
+  const on = (hovering || forceOn) && !disabled;
+  const style = useSpring({
+    backgroundColor: on
+      ? theme.backgroundLight
+      : disabled
+      ? theme.backgroundDarker
+      : theme.backgroundDark,
+    color: on ? theme.font : theme.fontDark,
+  });
+
+  const onMouseEnter = () => setHovering(true);
+
+  const onMouseLeave = () => setHovering(false);
+
+  return {
+    style: {
+      ...style,
+      cursor: disabled ? "disabled" : "pointer",
+    },
+    onMouseEnter,
+    onMouseLeave,
+  };
+};
+
+export const numTaggable = selectorFamily<
+  number | null,
+  { modal: boolean; labels: boolean }
+>({
+  key: "numTaggable",
+  get: ({ modal, labels }) => ({ get }) => {
+    if (labels) {
+      return get(labelCount(modal));
+    } else if (modal) {
+      return 1;
+    } else {
+      return (
+        get(selectors.filteredTagSampleCounts) ?? get(selectors.tagSampleCounts)
+      );
+    }
+  },
+});
 
 export const tagStats = selectorFamily<
   { [key: string]: number },

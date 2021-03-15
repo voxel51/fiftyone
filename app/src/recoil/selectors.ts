@@ -269,24 +269,32 @@ export const tagNames = selector<string[]>({
 export const tagSampleCounts = selector({
   key: "tagSampleCounts",
   get: ({ get }) => {
-    return (get(datasetStats) ?? []).reduce((acc, cur) => {
-      if (cur.name === "tags") {
-        return cur.result;
-      }
-      return acc;
-    }, {});
+    const stats = get(datasetStats);
+
+    return stats
+      ? stats.reduce((acc, cur) => {
+          if (cur.name === "tags") {
+            return cur.result;
+          }
+          return acc;
+        }, {})
+      : {};
   },
 });
 
 export const filteredTagSampleCounts = selector({
   key: "filteredTagSampleCounts",
   get: ({ get }) => {
-    return (get(datasetStats) ?? []).reduce((acc, cur) => {
-      if (cur.name === "tags") {
-        return cur.result;
-      }
-      return acc;
-    }, {});
+    const stats = get(extendedDatasetStats);
+
+    return stats
+      ? stats.reduce((acc, cur) => {
+          if (cur.name === "tags") {
+            return cur.result;
+          }
+          return acc;
+        }, {})
+      : {};
   },
 });
 
