@@ -46,7 +46,7 @@ import fiftyone.core.uid as fou
 import fiftyone.core.view as fov
 
 from fiftyone.server.json_util import convert, FiftyOneJSONEncoder
-from fiftyone.server.util import get_file_dimensions
+import fiftyone.server.utils as fosu
 
 
 # connect to the existing DB service to initialize global port information
@@ -640,7 +640,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
 
     @staticmethod
     async def on_tag(
-        caller, tag, untag=False, target_labels=False, active_labels=None,
+        caller, changes, target_labels=False, active_labels=None,
     ):
         state = fos.StateDescription.from_dict(StateHandler.state)
         view = state.view or state.dataset
@@ -648,14 +648,17 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         if state.selected:
             view = view.select(state.selected)
 
-        _tag(view, tag, untag, target_labels, active_labels)
+        if target_labels:
+            fosu.change_label_tags(view, changes, label_fields=active_labels)
+        else:
+            fosu.change_sample_tags(view, changes)
 
         StateHandler.state["refresh"] = not state.refresh
         await StateHandler.on_update(caller, StateHandler.state)
 
     @staticmethod
     async def on_tag_modal(
-        caller, tag, untag=False, sample_id=None, labels=None,
+        caller, changes, sample_id=None, labels=None,
     ):
         state = fos.StateDescription.from_dict(StateHandler.state)
         view = state.view or state.dataset
@@ -663,14 +666,13 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         if sample_id:
             sample_ids = [sample_id]
             tag_view = view.select(sample_id)
-            _tag(tag_view, tag, untag, False, None)
+            fosu.change_sample_tags(tag_view, changes)
         else:
             if state.selected_labels:
                 labels = state.selected_labels
 
-            sample_ids = list({l["sample_id"] for l in labels})
             tag_view = view.select_labels(labels=labels)
-            _tag(tag_view, tag, untag, True, None)
+            fosu.change_label_tags(tag_view, changes)
 
         asyncio.gather(
             StateHandler.send_samples(caller, sample_ids),
@@ -1135,20 +1137,6 @@ def _make_filter_stages(dataset, filters):
     return stages
 
 
-def _tag(view, tag, untag, target_labels, active_labels):
-    if active_labels:
-        view = view.select_fields(active_labels)
-
-    if untag and target_labels:
-        view.untag_labels(tag, active_labels)
-    elif target_labels:
-        view.tag_labels(tag, active_labels)
-    elif untag:
-        view.untag_samples(tag)
-    else:
-        view.tag_samples(tag)
-
-
 async def _get_sample_data(col, view, page_length, page):
     pipeline = view._pipeline()
     samples = await col.aggregate(pipeline).to_list(page_length + 1)
@@ -1160,7 +1148,7 @@ async def _get_sample_data(col, view, page_length, page):
 
     results = [{"sample": s} for s in samples]
     for r in results:
-        w, h = get_file_dimensions(r["sample"]["filepath"])
+        w, h = fosu.get_file_dimensions(r["sample"]["filepath"])
         r["width"] = w
         r["height"] = h
 

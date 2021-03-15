@@ -200,10 +200,12 @@ class DatasetStatistics(object):
                     aggregations.append(foa.Count(path))
                     label_path = "%s.label" % path
                     confidence_path = "%s.confidence" % path
+                    tags_path = "%s.tags" % path
                     aggregations.extend(
                         [
                             foa.Distinct(label_path),
                             foa.Bounds(confidence_path),
+                            foa.CountValues(tags_path),
                         ]
                     )
                     exists_aggregations.append(
