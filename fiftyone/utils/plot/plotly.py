@@ -143,6 +143,8 @@ class PlotlyPlot(InteractivePlot):
     def _freeze(self):
         from IPython.display import Image
 
+        # kaleido: pip install kaleido
+        # orca: npm install -g electron@6.1.4 orca
         width = self._widget.layout.width
         height = self._widget.layout.height
         image_bytes = self._widget.to_image(
@@ -194,12 +196,15 @@ class PlotlyPlot(InteractivePlot):
         self._select_callback(self.selected_ids)
 
     def _ready_for_callback(self):
-        # We're ready for callback if all visible traces have fired their
-        # selection events
-        return all(
-            self._callback_flags[t.name]
-            for t in self._traces
-            if t.visible == True
+        # We're ready for callback if there is at least one visible trace and
+        # all visible traces have fired their selection events
+        return (
+            sum(
+                self._callback_flags[t.name]
+                for t in self._traces
+                if t.visible == True
+            )
+            > 0
         )
 
     def _manualselect(self, selector):

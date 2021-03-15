@@ -5,6 +5,7 @@ Interactive plotting utilities.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import datetime
 import numpy as np
 
 import fiftyone.core.context as foc
@@ -122,12 +123,16 @@ class InteractivePlot(object):
     def draw(self):
         """Redraws the plot, if necessary."""
         if not self.is_connected:
-            raise ValueError("Plot is not connected")
+            return
 
         self._draw()
 
     def _draw(self):
         pass
+
+    def reset(self):
+        """Resets the plot to its initial state."""
+        self.select_ids([])
 
     def select_ids(self, ids):
         """Selects the points with the given IDs in this plot.
@@ -136,7 +141,7 @@ class InteractivePlot(object):
             ids: a list of IDs
         """
         if not self.is_connected:
-            raise ValueError("Plot is not connected")
+            return
 
         self._select_ids(ids)
 
@@ -205,6 +210,7 @@ class SessionPlot(object):
 
     _SAMPLES = "samples"
     _LABELS = "labels"
+    _MIN_UPDATE_DELTA_SECONDS = 0.5
 
     def __init__(
         self,
@@ -231,6 +237,8 @@ class SessionPlot(object):
         self._ids = np.array([], dtype=str)
         self._init_view = session._collection.view()
         self._lock_session = False
+        self._lock_plot = False
+        self._last_update = None
         self._connected = False
 
         if connect:
@@ -298,35 +306,27 @@ class SessionPlot(object):
         if not self.is_connected:
             raise ValueError("Session is not connected")
 
-        if self._lock_session:
-            return
+        with fou.SetAttributes(self, _lock_session=True):
+            if self.is_selecting_samples:
+                if self.session.selected:
+                    sample_ids = self.session.selected
+                else:
+                    sample_ids = self.session._collection.values("id")
 
-        if self.is_selecting_samples:
-            if self.session.selected:
-                sample_ids = self.session.selected
-            else:
-                sample_ids = self.session._collection.values("id")
-
-            # Lock the session so that it is not updated, since we are
-            # responding to the state of the current session
-            with fou.SetAttributes(self, _lock_session=True):
                 self._select_ids(sample_ids)
 
-        if self.is_selecting_labels:
-            if self.session.selected_labels:
-                label_ids = [
-                    o["label_id"] for o in self.session.selected_labels
-                ]
-            else:
-                view = self.session._collection
-                if self.session.selected:
-                    view = view.select(self.session.selected)
+            if self.is_selecting_labels:
+                if self.session.selected_labels:
+                    label_ids = [
+                        o["label_id"] for o in self.session.selected_labels
+                    ]
+                else:
+                    view = self.session._collection
+                    if self.session.selected:
+                        view = view.select(self.session.selected)
 
-                label_ids = view._get_label_ids(fields=self.label_fields)
+                    label_ids = view._get_label_ids(fields=self.label_fields)
 
-            # Lock the session so that it is not updated, since we are
-            # responding to the state of the current session
-            with fou.SetAttributes(self, _lock_session=True):
                 self._select_ids(label_ids)
 
     def tag_selected(self, tag):
@@ -398,22 +398,24 @@ class SessionPlot(object):
         if self.is_connected:
             return
 
-        def _select_ids_from_plot(ids):
-            self._select_ids(ids, update_plot=False)
+        self._last_update = datetime.datetime.utcnow()
+        self._connected = True
 
-        self.plot.register_selection_callback(_select_ids_from_plot)
+        self.plot.register_selection_callback(self._on_plot_update)
         self.plot.register_sync_callback(self.sync)
         self.plot.register_disconnect_callback(self.disconnect)
 
         if self.bidirectional:
-            self.session.add_listener("plot", self._onsessionupdate)
-
-        self._connected = True
+            self.session.add_listener("plot", self._on_session_update)
 
     def refresh(self):
         """Refreshes the plot and session."""
         self.plot.draw()
         self._update_session()
+
+    def reset(self):
+        """Resets the plot and session to their initial view."""
+        self._select_ids(None)
 
     def disconnect(self):
         """Disconnects from the plot and sesssion."""
@@ -439,22 +441,43 @@ class SessionPlot(object):
         self.plot.freeze()
         self.disconnect()
 
-    def _onsessionupdate(self, _):
+    def _ready_for_update(self):
+        now = datetime.datetime.utcnow()
+        delta = (now - self._last_update).total_seconds()
+        ready = delta > self._MIN_UPDATE_DELTA_SECONDS
+        if ready:
+            self._last_update = now
+
+        return ready
+
+    def _on_session_update(self, _):
+        if not self.is_connected:
+            return
+
+        if not self._ready_for_update():
+            return
+
         self.sync()
 
-    def _select_ids(self, ids, update_plot=True):
+    def _on_plot_update(self, ids):
+        if not self._ready_for_update():
+            return
+
+        with fou.SetAttributes(self, _lock_plot=True):
+            self._select_ids(ids)
+
+    def _select_ids(self, ids):
         if not self.is_connected:
             return
 
         if ids is None:
             ids = []
 
-        ids = np.asarray(ids)
+        self._ids = np.asarray(ids)
 
-        if update_plot:
-            self.plot.select_ids(ids)
+        if not self._lock_plot:
+            self.plot.select_ids(self._ids)
 
-        self._ids = ids
         self.refresh()
 
     def _update_session(self):
