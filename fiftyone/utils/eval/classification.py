@@ -8,8 +8,6 @@ Classification evaluation.
 import itertools
 import warnings
 
-import matplotlib.pyplot as plt
-from mpl_toolkits.axes_grid1 import make_axes_locatable
 import numpy as np
 import sklearn.metrics as skm
 
@@ -17,7 +15,7 @@ import fiftyone.core.aggregations as foa
 import fiftyone.core.evaluation as foe
 from fiftyone.core.expressions import ViewField as F
 import fiftyone.core.fields as fof
-import fiftyone.core.utils as fou
+import fiftyone.utils.plot.matplotlib as foum
 
 
 def evaluate_classifications(
@@ -670,7 +668,6 @@ class ClassificationResults(foe.EvaluationResults):
         xticks_rotation=45.0,
         ax=None,
         figsize=None,
-        block=False,
         return_ax=False,
     ):
         """Plots a confusion matrix for the results.
@@ -696,13 +693,12 @@ class ClassificationResults(foe.EvaluationResults):
             ax (None): an optional matplotlib axis to plot in
             figsize (None): an optional ``(width, height)`` for the figure, in
                 inches
-            block (False): whether to block execution when the plot is
-                displayed via ``matplotlib.pyplot.show(block=block)``
             return_ax (False): whether to return the matplotlib axis containing
                 the plot
 
         Returns:
-            the matplotlib axis containing the plot
+            None, or the matplotlib axis containing the plot if ``return_ax``
+            is True
         """
         _labels = self._get_labels(classes, include_missing=True)
         confusion_matrix, labels = self._confusion_matrix(
@@ -730,7 +726,7 @@ class ClassificationResults(foe.EvaluationResults):
                 np.delete(confusion_matrix, rm_inds, axis=1)
                 labels = [l for i, l in enumerate(labels) if i not in rm_inds]
 
-        ax = _plot_confusion_matrix(
+        return foum.plot_confusion_matrix(
             confusion_matrix,
             labels,
             show_values=show_values,
@@ -739,10 +735,8 @@ class ClassificationResults(foe.EvaluationResults):
             xticks_rotation=xticks_rotation,
             ax=ax,
             figsize=figsize,
+            return_ax=return_ax,
         )
-
-        plt.show(block=block)
-        return ax if return_ax else None
 
     @classmethod
     def _from_dict(cls, d, samples, **kwargs):
@@ -818,7 +812,6 @@ class BinaryClassificationResults(ClassificationResults):
         average="micro",
         ax=None,
         figsize=None,
-        block=False,
         return_ax=False,
         **kwargs,
     ):
@@ -830,14 +823,13 @@ class BinaryClassificationResults(ClassificationResults):
             ax (None): an optional matplotlib axis to plot in
             figsize (None): an optional ``(width, height)`` for the figure, in
                 inches
-            block (False): whether to block execution when the plot is
-                displayed via ``matplotlib.pyplot.show(block=block)``
             return_ax (False): whether to return the matplotlib axis containing
                 the plot
             **kwargs: optional keyword arguments for matplotlib's ``plot()``
 
         Returns:
-            the matplotlib axis containing the plot
+            None, or the matplotlib axis containing the plot if ``return_ax``
+            is True
         """
         precision, recall, _ = skm.precision_recall_curve(
             self.ytrue,
@@ -846,21 +838,19 @@ class BinaryClassificationResults(ClassificationResults):
             sample_weight=self.weights,
         )
         avg_precision = self.average_precision(average=average)
-        display = skm.PrecisionRecallDisplay(
-            precision=precision, recall=recall
+        label = "AP = %.2f" % avg_precision
+
+        return foum.plot_pr_curve(
+            precision,
+            recall,
+            label=label,
+            ax=ax,
+            figsize=figsize,
+            return_ax=return_ax,
+            **kwargs,
         )
 
-        label = "AP = %.2f" % avg_precision
-        display.plot(ax=ax, label=label, **kwargs)
-        if figsize is not None:
-            display.figure_.set_size_inches(*figsize)
-
-        plt.show(block=block)
-        return display.ax_ if return_ax else None
-
-    def plot_roc_curve(
-        self, ax=None, figsize=None, block=False, return_ax=False, **kwargs
-    ):
+    def plot_roc_curve(self, ax=None, figsize=None, return_ax=False, **kwargs):
         """Plots a receiver operating characteristic (ROC) curve for the
         results.
 
@@ -868,14 +858,13 @@ class BinaryClassificationResults(ClassificationResults):
             ax (None): an optional matplotlib axis to plot in
             figsize (None): an optional ``(width, height)`` for the figure, in
                 inches
-            block (False): whether to block execution when the plot is
-                displayed via ``matplotlib.pyplot.show(block=block)``
             return_ax (False): whether to return the matplotlib axis containing
                 the plot
             **kwargs: optional keyword arguments for matplotlib's ``plot()``
 
         Returns:
-            the matplotlib axis containing the plot
+            None, or the matplotlib axis containing the plot if ``return_ax``
+            is True
         """
         fpr, tpr, _ = skm.roc_curve(
             self.ytrue,
@@ -884,13 +873,16 @@ class BinaryClassificationResults(ClassificationResults):
             sample_weight=self.weights,
         )
         roc_auc = skm.auc(fpr, tpr)
-        display = skm.RocCurveDisplay(fpr=fpr, tpr=tpr, roc_auc=roc_auc)
-        display.plot(ax=ax, **kwargs)
-        if figsize is not None:
-            display.figure_.set_size_inches(*figsize)
 
-        plt.show(block=block)
-        return display.ax_ if return_ax else None
+        return foum.plot_roc_curve(
+            fpr,
+            tpr,
+            roc_auc,
+            ax=ax,
+            figsize=figsize,
+            return_ax=return_ax,
+            **kwargs,
+        )
 
 
 def _parse_config(config, pred_field, gt_field, method, **kwargs):
@@ -954,69 +946,3 @@ def _to_binary_scores(y, confs, pos_label):
         scores.append(score)
 
     return scores
-
-
-def _plot_confusion_matrix(
-    cm,
-    labels,
-    show_values=True,
-    show_colorbar=True,
-    cmap="viridis",
-    xticks_rotation=None,
-    values_format=None,
-    ax=None,
-    figsize=None,
-):
-    if ax is None:
-        fig, ax = plt.subplots()
-    else:
-        fig = ax.figure
-
-    nrows = cm.shape[0]
-    ncols = cm.shape[1]
-    im = ax.imshow(cm, interpolation="nearest", cmap=cmap)
-
-    if show_values:
-        # Print text with appropriate color depending on background
-        cmap_min = im.cmap(0)
-        cmap_max = im.cmap(256)
-        thresh = (cm.max() + cm.min()) / 2.0
-
-        for i, j in itertools.product(range(nrows), range(ncols)):
-            color = cmap_max if cm[i, j] < thresh else cmap_min
-
-            if values_format is None:
-                text_cm = format(cm[i, j], ".2g")
-                if cm.dtype.kind != "f":
-                    text_d = format(cm[i, j], "d")
-                    if len(text_d) < len(text_cm):
-                        text_cm = text_d
-            else:
-                text_cm = format(cm[i, j], values_format)
-
-            ax.text(j, i, text_cm, ha="center", va="center", color=color)
-
-    ax.set(
-        xticks=np.arange(ncols),
-        yticks=np.arange(nrows),
-        xticklabels=labels[:ncols],
-        yticklabels=labels[:nrows],
-        xlabel="Predicted label",
-        ylabel="True label",
-    )
-    ax.set_ylim((nrows - 0.5, -0.5))  # flip axis
-
-    if xticks_rotation is not None:
-        plt.setp(ax.get_xticklabels(), rotation=xticks_rotation)
-
-    if show_colorbar:
-        divider = make_axes_locatable(ax)
-        cax = divider.append_axes("right", size="5%", pad=0.1)
-        fig.colorbar(im, cax=cax)
-
-    if figsize is not None:
-        fig.set_size_inches(*figsize)
-
-    plt.tight_layout()
-
-    return ax

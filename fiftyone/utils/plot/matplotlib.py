@@ -5,15 +5,217 @@ Matplotlib utilities.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import itertools
+
 import numpy as np
 from matplotlib.widgets import Button, LassoSelector
 from matplotlib.path import Path
 import matplotlib.pyplot as plt
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 from mpl_toolkits.axes_grid1.inset_locator import InsetPosition
 import sklearn.metrics.pairwise as skp
+import sklearn.metrics as skm
 
 from .interactive import InteractivePlot
 from .utils import load_button_icon
+
+
+def plot_confusion_matrix(
+    confusion_matrix,
+    labels,
+    show_values=True,
+    show_colorbar=True,
+    cmap="viridis",
+    xticks_rotation=None,
+    values_format=None,
+    ax=None,
+    figsize=None,
+    return_ax=False,
+):
+    """Plots a confusion matrix.
+
+    Args:
+        confusion_matrix: a ``num_true x num_preds`` confusion matrix
+        labels: a ``max(num_true, num_preds)`` array of class labels
+        show_values (True): whether to show counts in the confusion matrix
+            cells
+        show_colorbar (True): whether to show a colorbar
+        cmap ("viridis"): a colormap recognized by ``matplotlib``
+        xticks_rotation (45.0): a rotation for the x-tick labels. Can be
+            numeric degrees, "vertical", "horizontal", or None
+        values_format (None): an optional format string like ``".2g"`` or
+            ``"d"`` to use to format the cell counts
+        ax (None): an optional matplotlib axis to plot in
+        figsize (None): an optional ``(width, height)`` for the figure, in
+            inches
+        return_ax (False): whether to return the matplotlib axis containing
+            the plot
+
+    Returns:
+        None, or the matplotlib axis containing the plot if ``return_ax`` is
+        True
+    """
+    if ax is None:
+        fig, ax = plt.subplots()
+    else:
+        fig = ax.figure
+
+    confusion_matrix = np.asarray(confusion_matrix)
+    nrows = confusion_matrix.shape[0]
+    ncols = confusion_matrix.shape[1]
+
+    im = ax.imshow(confusion_matrix, interpolation="nearest", cmap=cmap)
+
+    if show_values:
+        # Print text with appropriate color depending on background
+        cmap_min = im.cmap(0)
+        cmap_max = im.cmap(256)
+        thresh = (confusion_matrix.max() + confusion_matrix.min()) / 2.0
+
+        for i, j in itertools.product(range(nrows), range(ncols)):
+            color = cmap_max if confusion_matrix[i, j] < thresh else cmap_min
+
+            if values_format is None:
+                text_cm = format(confusion_matrix[i, j], ".2g")
+                if confusion_matrix.dtype.kind != "f":
+                    text_d = format(confusion_matrix[i, j], "d")
+                    if len(text_d) < len(text_cm):
+                        text_cm = text_d
+            else:
+                text_cm = format(confusion_matrix[i, j], values_format)
+
+            ax.text(j, i, text_cm, ha="center", va="center", color=color)
+
+    ax.set(
+        xticks=np.arange(ncols),
+        yticks=np.arange(nrows),
+        xticklabels=labels[:ncols],
+        yticklabels=labels[:nrows],
+        xlabel="Predicted label",
+        ylabel="True label",
+    )
+    ax.set_ylim((nrows - 0.5, -0.5))  # flip axis
+
+    if xticks_rotation is not None:
+        plt.setp(ax.get_xticklabels(), rotation=xticks_rotation)
+
+    if show_colorbar:
+        divider = make_axes_locatable(ax)
+        cax = divider.append_axes("right", size="5%", pad=0.1)
+        fig.colorbar(im, cax=cax)
+
+    if figsize is not None:
+        fig.set_size_inches(*figsize)
+
+    plt.tight_layout()
+    plt.show(block=False)
+
+    return ax if return_ax else None
+
+
+def plot_pr_curve(
+    precision,
+    recall,
+    label=None,
+    ax=None,
+    figsize=None,
+    return_ax=False,
+    **kwargs,
+):
+    """Plots a precision-recall (PR) curve.
+
+    Args:
+        precision: an array of precision values
+        recall: an array of recall values
+        label (None): a label for the curve
+        ax (None): an optional matplotlib axis to plot in
+        figsize (None): an optional ``(width, height)`` for the figure, in
+            inches
+        return_ax (False): whether to return the matplotlib axis containing
+            the plot
+        **kwargs: optional keyword arguments for matplotlib's ``plot()``
+
+    Returns:
+        None, or the matplotlib axis containing the plot if ``return_ax`` is
+        True
+    """
+    display = skm.PrecisionRecallDisplay(precision=precision, recall=recall)
+
+    display.plot(ax=ax, label=label, **kwargs)
+    if figsize is not None:
+        display.figure_.set_size_inches(*figsize)
+
+    plt.show(block=False)
+    return display.ax_ if return_ax else None
+
+
+def plot_pr_curves(
+    precisions,
+    recall,
+    classes,
+    ax=None,
+    figsize=None,
+    return_ax=False,
+    **kwargs,
+):
+    """Plots a set of per-class precision-recall (PR) curves.
+
+    Args:
+        precisions: a ``num_classes x num_recalls`` array of per-class
+            precision values
+        recall: an array of recall values
+        classes: the list of classes
+        ax (None): an optional matplotlib axis to plot in
+        figsize (None): an optional ``(width, height)`` for the figure, in
+            inches
+        return_ax (False): whether to return the matplotlib axis containing
+            the plot
+        **kwargs: optional keyword arguments for matplotlib's ``plot()``
+
+    Returns:
+        None, or the matplotlib axis containing the plot if ``return_ax`` is
+        True
+    """
+    for precision, _class in zip(precisions, classes):
+        avg_precision = np.mean(precision)
+        label = "AP = %.2f, class = %s" % (avg_precision, _class)
+        display = skm.PrecisionRecallDisplay(
+            precision=precision, recall=recall
+        )
+        display.plot(ax=ax, label=label, **kwargs)
+        ax = display.ax_
+
+    if figsize is not None:
+        ax.figure.set_size_inches(*figsize)
+
+    plt.show(block=False)
+    return ax if return_ax else None
+
+
+def plot_roc_curve(
+    fpr, tpr, roc_auc, ax=None, figsize=None, return_ax=False, **kwargs
+):
+    """Plots a receiver operating characteristic (ROC) curve.
+
+    Args:
+        ax (None): an optional matplotlib axis to plot in
+        figsize (None): an optional ``(width, height)`` for the figure, in
+            inches
+        return_ax (False): whether to return the matplotlib axis containing
+            the plot
+        **kwargs: optional keyword arguments for matplotlib's ``plot()``
+
+    Returns:
+        None, or the matplotlib axis containing the plot if ``return_ax`` is
+        True
+    """
+    display = skm.RocCurveDisplay(fpr=fpr, tpr=tpr, roc_auc=roc_auc)
+    display.plot(ax=ax, **kwargs)
+    if figsize is not None:
+        display.figure_.set_size_inches(*figsize)
+
+    plt.show(block=False)
+    return display.ax_ if return_ax else None
 
 
 class MatplotlibPlot(InteractivePlot):
