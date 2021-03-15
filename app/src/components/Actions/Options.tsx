@@ -3,7 +3,6 @@ import { useRecoilState } from "recoil";
 import { Autorenew } from "@material-ui/icons";
 
 import Popout from "./Popout";
-import { useTheme } from "../../utils/hooks";
 import { PopoutSectionTitle, TabOption } from "../utils";
 import * as atoms from "../../recoil/atoms";
 import { Button } from "../FieldsSidebar";

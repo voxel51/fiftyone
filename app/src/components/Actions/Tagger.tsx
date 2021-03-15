@@ -94,14 +94,12 @@ const Section = ({ modal, placeholder, submit, taggingAtom }) => {
   const count = useRecoilValue(selectors.currentCount);
   const labelCount = useRecoilValue(labelAtoms.labelCount(modal));
   const [tagging, setTagging] = useRecoilState(taggingAtom);
-  const [untag, setUntag] = useState(false);
   const numSelected = useRecoilValue(
     modal ? selectors.selectedLabelIds : atoms.selectedSamples
   ).size;
   const isInSelection = numSelected > 0;
   const [value, setValue] = useState("");
   const disabled = tagging || typeof count !== "number" || count === 0;
-
   const numLabels = modal && isInSelection ? numSelected : labelCount;
   const numSamples = isInSelection && !modal ? numSelected : modal ? 1 : count;
 
@@ -112,7 +110,7 @@ const Section = ({ modal, placeholder, submit, taggingAtom }) => {
           placeholder={
             disabled
               ? "loading..."
-              : placeholder(isInSelection, numLabels, numSamples, untag)
+              : placeholder(isInSelection, numLabels, numSamples)
           }
           value={value}
           onChange={(e) => setValue(e.target.value)}
@@ -120,32 +118,14 @@ const Section = ({ modal, placeholder, submit, taggingAtom }) => {
             if (e.key === "Enter") {
               setTagging(true);
               setValue("");
-              submit({ tag: value, untag });
+              submit({ tag: value });
             }
           }}
           disabled={disabled}
         />
         <Loading loading={Boolean(tagging || typeof count !== "number")} />
       </TaggingContainerInput>
-      <Options
-        options={[
-          {
-            active: untag ? "- remove" : "+ add",
-            options: [
-              {
-                text: "+ add",
-                title: "tag items, if necessary",
-                onClick: () => setUntag(false),
-              },
-              {
-                text: "- remove",
-                title: "untag items, if necessary",
-                onClick: () => setUntag(true),
-              },
-            ],
-          },
-        ]}
-      />
+      <Checker modal={modal} />
     </>
   );
 };
@@ -181,51 +161,46 @@ const labelsPlaceholder = (selection, numLabels, numSamples, untag) => {
     return "no labels";
   }
   if (selection) {
-    return `${untag ? "- untag" : "+ tag"} ${
-      numLabels > 1 ? `${numLabels} ` : ""
-    }shown label${numLabels > 1 ? "s" : ""} in ${
-      numSamples > 1 ? numSamples : " "
-    }selected sample${numSamples === 1 ? "" : "s"}`;
+    return `+ tag ${numLabels > 1 ? `${numLabels} ` : ""}shown label${
+      numLabels > 1 ? "s" : ""
+    } in ${numSamples > 1 ? numSamples : " "}selected sample${
+      numSamples === 1 ? "" : "s"
+    }`;
   }
 
-  return `${untag ? "- untag" : "+ tag"} ${numLabels} shown label${
-    numLabels > 1 ? "s" : ""
-  } in ${numSamples > 1 ? `${numSamples} ` : ""}sample${
-    numSamples === 1 ? "" : "s"
-  }`;
-};
-
-const labelsModalPlaceholder = (selection, numLabels, numSamples, untag) => {
-  if (selection) {
-    return `${untag ? "- untag" : "+ tag"} ${
-      numLabels > 1 ? `${numLabels} ` : ""
-    }selected label${numLabels === 1 ? "" : "s"}`;
-  }
-
-  return `${untag ? "- untag" : "+ tag"} ${
-    numLabels > 1 ? `${numLabels} ` : ""
-  }shown label${numLabels === 1 ? "" : "s"}`;
-};
-
-const samplesPlaceholder = (selection, numLabels, numSamples, untag) => {
-  if (numSamples === 0) {
-    return "no samples";
-  }
-  if (selection) {
-    return `${untag ? "- untag" : "+ tag"} ${
-      numSamples > 1 ? `${numSamples} ` : ""
-    }selected sample${numSamples === 1 ? "" : "s"}`;
-  }
-
-  return `${untag ? "- untag" : "+ tag"} ${
+  return `+ tag ${numLabels} shown label${numLabels > 1 ? "s" : ""} in ${
     numSamples > 1 ? `${numSamples} ` : ""
   }sample${numSamples === 1 ? "" : "s"}`;
 };
 
-const samplePlaceholder = (_, __, ___, untag) => {
-  if (untag) {
-    return "- untag sample";
+const labelsModalPlaceholder = (selection, numLabels) => {
+  if (selection) {
+    return `+ tag ${numLabels > 1 ? `${numLabels} ` : ""}selected label${
+      numLabels === 1 ? "" : "s"
+    }`;
   }
+
+  return `+ tag ${numLabels > 1 ? `${numLabels} ` : ""}shown label${
+    numLabels === 1 ? "" : "s"
+  }`;
+};
+
+const samplesPlaceholder = (selection, numLabels, numSamples) => {
+  if (numSamples === 0) {
+    return "no samples";
+  }
+  if (selection) {
+    return `+ tag ${numSamples > 1 ? `${numSamples} ` : ""}selected sample${
+      numSamples === 1 ? "" : "s"
+    }`;
+  }
+
+  return `+ tag ${numSamples > 1 ? `${numSamples} ` : ""}sample${
+    numSamples === 1 ? "" : "s"
+  }`;
+};
+
+const samplePlaceholder = () => {
   return "+ tag sample";
 };
 
@@ -263,7 +238,7 @@ const useTagCallback = (modal, targetLabels) => {
           socket.send(packageModal({ tag, untag }));
         } else {
           const labels = await snapshot.getPromise(labelAtoms.modalLabels);
-          socket.send(packageModal({ tag, untag, labels }));
+          // socket.send(packageModal({ ${untag ? "- untag" : "tag, untag, labels }));
         }
       } else {
         socket.send(packageGrid({ untag, targetLabels, activeLabels, tag }));

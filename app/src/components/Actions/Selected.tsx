@@ -6,10 +6,10 @@ import {
   useResetRecoilState,
   useSetRecoilState,
 } from "recoil";
-import { animated, useSpring } from "react-spring";
-import styled from "styled-components";
+import { useSpring } from "react-spring";
 
 import Popout from "./Popout";
+import { HoverItemDiv } from "./utils";
 import * as atoms from "../../recoil/atoms";
 import * as selectors from "../../recoil/selectors";
 import socket from "../../shared/connection";
@@ -45,18 +45,6 @@ const useHighlightHover = (disabled) => {
   };
 };
 
-const ActionOptionDiv = animated(styled.div`
-  cursor: pointer;
-  margin: 0.25rem -0.5rem;
-  padding: 0.25rem 0.5rem;
-  font-weight: bold;
-  display: flex;
-  justify-content: center;
-  align-content: center;
-  flex-direction: column;
-  color: ${({ theme }) => theme.fontDark};
-`);
-
 type ActionOptionProps = {
   onClick: () => void;
   text: string;
@@ -75,13 +63,13 @@ const ActionOption = ({
     return null;
   }
   return (
-    <ActionOptionDiv
+    <HoverItemDiv
       title={title ? title : text}
       onClick={disabled ? null : onClick}
       {...props}
     >
       {text}
-    </ActionOptionDiv>
+    </HoverItemDiv>
   );
 };
 
