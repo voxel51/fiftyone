@@ -306,6 +306,9 @@ class MatplotlibPlot(InteractivePlot):
         sync_icon = load_button_icon("sync")
         self._sync_button_def = ("sync", sync_icon, _on_sync)
 
+        if self.is_connected:
+            self._reinit_hud()
+
     def _register_disconnect_callback(self, callback):
         def _on_disconnect(event):
             callback()
@@ -316,6 +319,9 @@ class MatplotlibPlot(InteractivePlot):
             disconnect_icon,
             _on_disconnect,
         )
+
+        if self.is_connected:
+            self._reinit_hud()
 
     def _show(self):
         self._init_hud()
@@ -366,11 +372,6 @@ class MatplotlibPlot(InteractivePlot):
         self._lasso.disconnect_events()
         self._lasso = None
 
-        for button, _ in self._buttons:
-            button.ax.remove()
-
-        self._buttons = []
-
         for cid in self._figure_events:
             self._canvas.mpl_disconnect(cid)
 
@@ -380,7 +381,8 @@ class MatplotlibPlot(InteractivePlot):
         self._shift = False
         self._figure_events = []
         self._keypress_events = []
-        self._update_hud(False)
+
+        self._close_hud()
 
     def _init_hud(self):
         # Button styling
@@ -416,6 +418,18 @@ class MatplotlibPlot(InteractivePlot):
                 bax, "", color=color, hovercolor=hovercolor, image=icon_img
             )
             self._buttons.append((button, callback))
+
+    def _reinit_hud(self):
+        self._close_hud()
+        self._init_hud()
+
+    def _close_hud(self):
+        self._title = self.ax.set_title("")
+
+        for button, _ in self._buttons:
+            button.ax.remove()
+
+        self._buttons = []
 
     def _update_hud(self, visible):
         self._title.set_visible(visible)

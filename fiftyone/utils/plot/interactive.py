@@ -68,7 +68,6 @@ class InteractivePlot(object):
         Args:
             callback: a selection callback
         """
-        self._ensure_accept_callbacks()
         self._register_selection_callback(callback)
 
     def _register_selection_callback(self, callback):
@@ -86,7 +85,6 @@ class InteractivePlot(object):
         Args:
             callback: a function with no arguments
         """
-        self._ensure_accept_callbacks()
         self._register_sync_callback(callback)
 
     def _register_sync_callback(self, callback):
@@ -102,17 +100,10 @@ class InteractivePlot(object):
         Args:
             callback: a function with no arguments
         """
-        self._ensure_accept_callbacks()
         self._register_disconnect_callback(callback)
 
     def _register_disconnect_callback(self, callback):
         pass
-
-    def _ensure_accept_callbacks(self):
-        if self.is_connected:
-            raise ValueError(
-                "Cannot register callback while plot is connected"
-            )
 
     def show(self):
         """Shows this plot."""
