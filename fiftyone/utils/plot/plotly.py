@@ -68,9 +68,6 @@ class PlotlyPlot(InteractivePlot):
 
         super().__init__()
 
-    def _init_callback_flags(self):
-        self._callback_flags = {t.name: False for t in self._traces}
-
     def _init_traces(self):
         for idx, trace in enumerate(self._traces):
             if trace.customdata is None or not isinstance(
@@ -101,6 +98,9 @@ class PlotlyPlot(InteractivePlot):
                     if _id in trace_ids:
                         self._trace_inds[point_idx] = trace_idx
 
+    def _init_callback_flags(self):
+        self._callback_flags = {t.name: False for t in self._traces}
+
     @property
     def _any_selected(self):
         return any(bool(t.selectedpoints) for t in self._traces)
@@ -122,10 +122,10 @@ class PlotlyPlot(InteractivePlot):
 
     def _show(self):
         def _on_selection(trace, points, selector):
-            self._onselect(trace, selector=selector)
+            self._on_select(trace, selector=selector)
 
         def _on_deselect(trace, points):
-            self._onselect(trace)
+            self._on_select(trace)
 
         for trace in self._traces:
             trace.on_selection(_on_selection)
@@ -179,35 +179,37 @@ class PlotlyPlot(InteractivePlot):
             # Select points
             trace.update(selectedpoints=trace_inds)
 
-    def _onselect(self, trace, selector=None):
-        # Manually compute points within selector
+    def _on_select(self, trace, selector=None):
         if self._points is not None:
-            self._manualselect(selector)
+            # Manually compute points within selector
+            self._manual_select(selector)
 
         if self._select_callback is None:
             return
 
-        self._callback_flags[trace.name] = True
-
-        if not self._ready_for_callback():
+        if not self._ready_for_callback(trace):
             return
 
-        self._init_callback_flags()
         self._select_callback(self.selected_ids)
 
-    def _ready_for_callback(self):
+    def _ready_for_callback(self, trace):
+        if trace.visible == True:
+            self._callback_flags[trace.name] = True
+
         # We're ready for callback if there is at least one visible trace and
         # all visible traces have fired their selection events
-        return (
-            sum(
-                self._callback_flags[t.name]
-                for t in self._traces
-                if t.visible == True
-            )
-            > 0
-        )
+        visible_traces = [t for t in self._traces if t.visible == True]
+        if not visible_traces:
+            ready = False
+        else:
+            ready = all(self._callback_flags[t.name] for t in visible_traces)
 
-    def _manualselect(self, selector):
+        if ready:
+            self._init_callback_flags()
+
+        return ready
+
+    def _manual_select(self, selector):
         if not isinstance(selector, (pcb.LassoSelector, pcb.BoxSelector)):
             return
 

@@ -9,7 +9,6 @@ import datetime
 import numpy as np
 
 import fiftyone.core.context as foc
-import fiftyone.core.utils as fou
 
 
 class InteractivePlot(object):
@@ -120,16 +119,6 @@ class InteractivePlot(object):
     def _show(self):
         pass
 
-    def draw(self):
-        """Redraws the plot, if necessary."""
-        if not self.is_connected:
-            return
-
-        self._draw()
-
-    def _draw(self):
-        pass
-
     def reset(self):
         """Resets the plot to its initial state."""
         self.select_ids([])
@@ -236,9 +225,8 @@ class SessionPlot(object):
 
         self._ids = np.array([], dtype=str)
         self._init_view = session._collection.view()
-        self._lock_session = False
-        self._lock_plot = False
         self._last_update = None
+        self._last_updates = {}
         self._connected = False
 
         if connect:
@@ -284,90 +272,10 @@ class SessionPlot(object):
         Args:
             ids: a list of IDs
         """
+        if not self._ready_for_update("user"):
+            return
+
         self._select_ids(ids)
-
-    def sync(self):
-        """Syncs the plot with the session's current view.
-
-        If this session is selecting samples:
-
-        -   If samples are selected in the session (``session.selected``), only
-            select those
-        -   Otherwise, select all samples in the current view
-
-        If this session is selecting labels:
-
-        -   If labels are selected in the session
-            (``session.selected_labels``), only select those
-        -   Else if samples are selected (``session.selected``), only select
-            their labels
-        -   Otherwise, select all labels in the current view
-        """
-        if not self.is_connected:
-            raise ValueError("Session is not connected")
-
-        with fou.SetAttributes(self, _lock_session=True):
-            if self.is_selecting_samples:
-                if self.session.selected:
-                    sample_ids = self.session.selected
-                else:
-                    sample_ids = self.session._collection.values("id")
-
-                self._select_ids(sample_ids)
-
-            if self.is_selecting_labels:
-                if self.session.selected_labels:
-                    label_ids = [
-                        o["label_id"] for o in self.session.selected_labels
-                    ]
-                else:
-                    view = self.session._collection
-                    if self.session.selected:
-                        view = view.select(self.session.selected)
-
-                    label_ids = view._get_label_ids(fields=self.label_fields)
-
-                self._select_ids(label_ids)
-
-    def tag_selected(self, tag):
-        """Adds the tag to the currently selected samples/labels, if
-        necessary.
-
-        Args:
-            tag: a tag
-        """
-        view = self.selected_view()
-
-        if view is None:
-            return
-
-        if self.is_selecting_samples:
-            view.tag_samples(tag)
-
-        if self.is_selecting_labels:
-            view.tag_labels(tag, label_fields=self.label_fields)
-
-        self.refresh()
-
-    def untag_selected(self, tag):
-        """Removes the tag from the currently selected samples/labels, if
-        necessary.
-
-        Args:
-            tag: a tag
-        """
-        view = self.selected_view()
-
-        if view is None:
-            return
-
-        if self.is_selecting_samples:
-            view.untag_samples(tag)
-
-        if self.is_selecting_labels:
-            view.untag_labels(tag, label_fields=self.label_fields)
-
-        self.refresh()
 
     def selected_view(self):
         """Returns a :class:`fiftyone.core.view.DatasetView` containing the
@@ -393,12 +301,90 @@ class SessionPlot(object):
 
         return None
 
+    def refresh(self):
+        """Refreshes the plot and session."""
+        if not self._ready_for_update("user"):
+            return
+
+        self._select_ids(self.selected_ids)
+
+    def reset(self):
+        """Resets the plot and session to their initial view."""
+        if not self._ready_for_update("user"):
+            return
+
+        self._select_ids(None)
+
+    def sync(self):
+        """Syncs the plot with the session's current view.
+
+        If this session is selecting samples:
+
+        -   If samples are selected in the session (``session.selected``), only
+            select those
+        -   Otherwise, select all samples in the current view
+
+        If this session is selecting labels:
+
+        -   If labels are selected in the session
+            (``session.selected_labels``), only select those
+        -   Else if samples are selected (``session.selected``), only select
+            their labels
+        -   Otherwise, select all labels in the current view
+        """
+        if not self.is_connected:
+            raise ValueError("Session is not connected")
+
+        if not self._ready_for_update("user"):
+            return
+
+        self._sync()
+
+    def tag_selected(self, tag):
+        """Adds the tag to the currently selected samples/labels, if
+        necessary.
+
+        Args:
+            tag: a tag
+        """
+        view = self.selected_view()
+
+        if view is None:
+            return
+
+        if self.is_selecting_samples:
+            view.tag_samples(tag)
+
+        if self.is_selecting_labels:
+            view.tag_labels(tag, label_fields=self.label_fields)
+
+        self.session.refresh()
+
+    def untag_selected(self, tag):
+        """Removes the tag from the currently selected samples/labels, if
+        necessary.
+
+        Args:
+            tag: a tag
+        """
+        view = self.selected_view()
+
+        if view is None:
+            return
+
+        if self.is_selecting_samples:
+            view.untag_samples(tag)
+
+        if self.is_selecting_labels:
+            view.untag_labels(tag, label_fields=self.label_fields)
+
+        self.session.refresh()
+
     def connect(self):
         """Connects to the plot and session."""
         if self.is_connected:
             return
 
-        self._last_update = datetime.datetime.utcnow()
         self._connected = True
 
         self.plot.register_selection_callback(self._on_plot_update)
@@ -407,15 +393,6 @@ class SessionPlot(object):
 
         if self.bidirectional:
             self.session.add_listener("plot", self._on_session_update)
-
-    def refresh(self):
-        """Refreshes the plot and session."""
-        self.plot.draw()
-        self._update_session()
-
-    def reset(self):
-        """Resets the plot and session to their initial view."""
-        self._select_ids(None)
 
     def disconnect(self):
         """Disconnects from the plot and sesssion."""
@@ -441,12 +418,34 @@ class SessionPlot(object):
         self.plot.freeze()
         self.disconnect()
 
-    def _ready_for_update(self):
+    def _ready_for_update(self, source):
         now = datetime.datetime.utcnow()
-        delta = (now - self._last_update).total_seconds()
-        ready = delta > self._MIN_UPDATE_DELTA_SECONDS
-        if ready:
+
+        if self._last_update is None:
+            is_new_update = True
+        else:
+            delta = (now - self._last_update).total_seconds()
+            is_new_update = delta > self._MIN_UPDATE_DELTA_SECONDS
+
+        if is_new_update:
             self._last_update = now
+            self._last_updates[source] = now
+
+        return is_new_update
+
+    def _needs_update(self, source):
+        now = datetime.datetime.utcnow()
+
+        last_update = self._last_updates.get(source, None)
+
+        if last_update is None:
+            ready = True
+        else:
+            delta = (now - last_update).total_seconds()
+            ready = delta > self._MIN_UPDATE_DELTA_SECONDS
+
+        if ready:
+            self._last_updates[source] = now
 
         return ready
 
@@ -454,17 +453,19 @@ class SessionPlot(object):
         if not self.is_connected:
             return
 
-        if not self._ready_for_update():
+        if not self._ready_for_update("session"):
             return
 
-        self.sync()
+        self._sync()
 
     def _on_plot_update(self, ids):
-        if not self._ready_for_update():
+        if not self.is_connected:
             return
 
-        with fou.SetAttributes(self, _lock_plot=True):
-            self._select_ids(ids)
+        if not self._ready_for_update("plot"):
+            return
+
+        self._select_ids(ids)
 
     def _select_ids(self, ids):
         if not self.is_connected:
@@ -475,21 +476,44 @@ class SessionPlot(object):
 
         self._ids = np.asarray(ids)
 
-        if not self._lock_plot:
-            self.plot.select_ids(self._ids)
+        if self._needs_update("plot"):
+            self._update_plot()
 
-        self.refresh()
+        if self._needs_update("session"):
+            self._update_session()
+
+    def _update_plot(self):
+        self.plot.select_ids(self._ids)
 
     def _update_session(self):
-        if self._lock_session:
-            return
+        if self.any_selected:
+            view = self.selected_view()
+        else:
+            view = self._init_view
 
-        with fou.SetAttributes(self, _lock_session=True):
-            if self.any_selected:
-                view = self.selected_view()
+        # Don't spawn a new App instance in notebook contexts
+        with self.session.no_show():
+            self.session.view = view
+
+    def _sync(self):
+        if self.is_selecting_samples:
+            if self.session.selected:
+                sample_ids = self.session.selected
             else:
-                view = self._init_view
+                sample_ids = self.session._collection.values("id")
 
-            # Don't spawn a new App instance in notebook contexts here
-            with self.session.no_show():
-                self.session.view = view
+            self._select_ids(sample_ids)
+
+        if self.is_selecting_labels:
+            if self.session.selected_labels:
+                label_ids = [
+                    o["label_id"] for o in self.session.selected_labels
+                ]
+            else:
+                view = self.session._collection
+                if self.session.selected:
+                    view = view.select(self.session.selected)
+
+                label_ids = view._get_label_ids(fields=self.label_fields)
+
+            self._select_ids(label_ids)

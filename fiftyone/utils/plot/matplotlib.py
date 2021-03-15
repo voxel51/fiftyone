@@ -325,14 +325,14 @@ class MatplotlibPlot(InteractivePlot):
 
     def _show(self):
         self._init_hud()
-        self._lasso = LassoSelector(self.ax, onselect=self._onselect)
+        self._lasso = LassoSelector(self.ax, onselect=self._on_select)
 
         def _make_callback(button, callback):
             def _callback(event):
                 # Change to non-hover color to convey that something happened
                 # https://stackoverflow.com/a/28079210
                 button.ax.set_facecolor(button.color)
-                self.draw()
+                self._draw()
                 callback(event)
 
             return _callback
@@ -343,12 +343,12 @@ class MatplotlibPlot(InteractivePlot):
 
         self._title.set_text("Click or drag to select points")
         self._figure_events = [
-            self._canvas.mpl_connect("figure_enter_event", self._onenter),
-            self._canvas.mpl_connect("figure_leave_event", self._onexit),
+            self._canvas.mpl_connect("figure_enter_event", self._on_enter),
+            self._canvas.mpl_connect("figure_leave_event", self._on_exit),
         ]
         self._keypress_events = [
-            self._canvas.mpl_connect("key_press_event", self._onkeypress),
-            self._canvas.mpl_connect("key_release_event", self._onkeyrelease),
+            self._canvas.mpl_connect("key_press_event", self._on_keypress),
+            self._canvas.mpl_connect("key_release_event", self._on_keyrelease),
         ]
 
         self._update_hud(False)
@@ -383,6 +383,7 @@ class MatplotlibPlot(InteractivePlot):
         self._keypress_events = []
 
         self._close_hud()
+        self._draw()
 
     def _init_hud(self):
         # Button styling
@@ -436,27 +437,27 @@ class MatplotlibPlot(InteractivePlot):
         for button, _ in self._buttons:
             button.ax.set_visible(visible)
 
-    def _onenter(self, event):
+    def _on_enter(self, event):
         self._update_hud(True)
-        self.draw()
+        self._draw()
 
-    def _onexit(self, event):
+    def _on_exit(self, event):
         self._update_hud(False)
-        self.draw()
+        self._draw()
 
-    def _onkeypress(self, event):
+    def _on_keypress(self, event):
         if event.key == "shift":
             self._shift = True
             self._title.set_text("Click or drag to add/remove points")
-            self.draw()
+            self._draw()
 
-    def _onkeyrelease(self, event):
+    def _on_keyrelease(self, event):
         if event.key == "shift":
             self._shift = False
             self._title.set_text("Click or drag to select points")
-            self.draw()
+            self._draw()
 
-    def _onselect(self, vertices):
+    def _on_select(self, vertices):
         x1, x2 = self.ax.get_xlim()
         y1, y2 = self.ax.get_ylim()
         click_thresh = self.click_tolerance * min(abs(x2 - x1), abs(y2 - y1))
@@ -492,7 +493,7 @@ class MatplotlibPlot(InteractivePlot):
             inds = np.unique(inds)
 
         if inds.size == self._inds.size and np.all(inds == self._inds):
-            self.draw()
+            self._draw()
             return
 
         self._select_inds(inds)
@@ -532,6 +533,7 @@ class MatplotlibPlot(InteractivePlot):
             self._ms[inds] = self.expand_selected * self._init_ms
 
         self.collection.set_sizes(self._ms)
+        self._draw()
 
     def _prep_collection(self):
         # @todo why is this necessary? We do this JIT here because it seems
