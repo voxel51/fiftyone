@@ -533,7 +533,28 @@ def location_scatterplot(
     )
 
 
-class InteractiveCollection(InteractivePlot):
+class InteractiveMatplotlibPlot(InteractivePlot):
+    """Base class for interactive matplotlib plots.
+
+    Args:
+        figure: a ``matplotlib.figure.Figure``
+    """
+
+    def __init_(self, figure):
+        self._figure = figure
+
+        super().__init__()
+
+    def _show(self):
+        plt.show(block=False)
+
+    def _freeze(self):
+        # Turn interactive plot into a static one
+        # https://github.com/matplotlib/matplotlib/issues/6071
+        plt.close(self._figure)
+
+
+class InteractiveCollection(InteractiveMatplotlibPlot):
     """Interactive wrapper for a matplotlib collection.
 
     This class enables collection points to be lasso-ed and click selected.
@@ -568,8 +589,6 @@ class InteractiveCollection(InteractivePlot):
         expand_selected=3.0,
         click_tolerance=0.02,
     ):
-        super().__init__()
-
         self.collection = collection
         self.ax = collection.axes
         self.alpha_other = alpha_other
@@ -602,6 +621,8 @@ class InteractiveCollection(InteractivePlot):
         self._buttons = []
         self._figure_events = []
         self._keypress_events = []
+
+        super().__init__(collection.axes.figure)
 
     @property
     def _any_selected(self):
@@ -667,7 +688,8 @@ class InteractiveCollection(InteractivePlot):
         ]
 
         self._update_hud(False)
-        plt.show(block=False)
+
+        super()._show()
 
     def _draw(self):
         self._canvas.draw_idle()
@@ -676,9 +698,7 @@ class InteractiveCollection(InteractivePlot):
         # Disconnect first so that HUD is not visible
         self.disconnect()
 
-        # Turn interactive plot into a static one
-        # https://github.com/matplotlib/matplotlib/issues/6071
-        plt.close(self.ax.figure)
+        super()._freeze()
 
     def _disconnect(self):
         if not self.is_connected:
