@@ -679,6 +679,33 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             StateHandler.send_statistics(view, only=caller),
         )
 
+    @staticmethod
+    async def on_selected_statistics(caller):
+        state = fos.StateDescription.from_dict(StateHandler.state)
+        view = state.view or state.dataset
+        view = _get_extended_view(view, state.filters)
+        view = view.select(state.selected)
+
+        (count_aggs, tag_aggs,) = fos.DatasetStatistics.get_label_aggregations(
+            view
+        )
+        results = await view._async_aggregate(
+            StateHandler.sample_collection(), count_aggs, tag_aggs
+        )
+
+        count = 0
+        for result in results[: len(count_aggs)]:
+            counts += result
+
+        tags = {}
+        for result in results[len(count_aggs) :]:
+            tags.update(result)
+
+        _write_message(
+            {"type": "selected_statistics", "counts": counts, "tags": tags},
+            app=True,
+        )
+
     @classmethod
     async def send_samples(cls, view, sample_ids):
         state = fos.StateDescription.from_dict(StateHandler.state)
