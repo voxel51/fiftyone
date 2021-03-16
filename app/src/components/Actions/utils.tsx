@@ -98,9 +98,7 @@ export const allTags = selector<string[]>({
 
 export const numLabelsInSelectedSamples = selector<number>({
   key: "numLabelsInSelectedSamples",
-  get: ({ get }) => {
-    const filter = get();
-  },
+  get: ({ get }) => {},
 });
 
 export const tagStats = selectorFamily<
@@ -128,11 +126,21 @@ export const tagStats = selectorFamily<
       ).reduce(reducer, {});
 
       const results = Object.fromEntries(get(allTags).map((t) => [t, 0]));
-      active.forEach((field) => {
-        for (const tag in stats[field]) {
-          results[tag] += stats[field][tag];
-        }
-      });
+      const selected = get(atoms.selectedSamples);
+
+      if (selected.size) {
+        selected.forEach((id) => {
+          get(atoms.sample(id)).tags.forEach((t) => {
+            results[t] += 1;
+          });
+        });
+      } else {
+        active.forEach((field) => {
+          for (const tag in stats[field]) {
+            results[tag] += stats[field][tag];
+          }
+        });
+      }
       return results;
     } else {
       const selected = get(atoms.selectedSamples);

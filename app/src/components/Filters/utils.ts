@@ -131,6 +131,16 @@ export const activeLabels = selectorFamily<
   },
 });
 
+export const activeLabelPaths = selectorFamily<string[], boolean>({
+  key: "activeLabelPaths",
+  get: (modal) => ({ get }) => {
+    const sample = get(activeLabels({ modal, frames: false }));
+    const frames = get(activeLabels({ modal, frames: true }));
+
+    return [...sample, ...frames.map((l) => `frames.${l}`)];
+  },
+});
+
 export const activeScalars = selectorFamily<string[], boolean>({
   key: "activeScalars",
   get: (modal) => ({ get }) => {

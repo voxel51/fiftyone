@@ -20,7 +20,7 @@ const Popout = ({ modal, children, style = {}, bounds }) => {
       ? {
           position: "fixed",
           right: width - bounds.right,
-          bottom: height - bounds.top + 8,
+          top: bounds.bottom + 8,
         }
       : {};
 

@@ -371,6 +371,8 @@ const SampleModal = ({ onClose }: Props, ref) => {
     frameNumberRef.current = e.data.frame_number;
   });
 
+  const selectLabel = onSelectLabel(frameNumberRef);
+
   return (
     <Container
       style={{ zIndex: 10001 }}
@@ -402,7 +404,7 @@ const SampleModal = ({ onClose }: Props, ref) => {
             filterSelector={labelFilters(true)}
             playerRef={playerRef}
             selectedLabels={selectedLabelIds}
-            onSelectLabel={onSelectLabel(frameNumberRef)}
+            onSelectLabel={selectLabel}
           />
         )}
         {index > 0 ? (

@@ -17,7 +17,11 @@ export const RefreshButton = ({ modal }) => {
       <Button
         text={"Refresh colors"}
         onClick={() => setColorSeed(colorSeed + 1)}
-        style={{ margin: "0.5rem 0", height: "2rem" }}
+        style={{
+          margin: "0.5rem -0.5rem",
+          height: "2rem",
+          borderRadius: 0,
+        }}
       >
         <Autorenew
           style={{ height: "1.5rem", marginTop: "0.1rem", color: "inherit" }}

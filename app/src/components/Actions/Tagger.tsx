@@ -183,7 +183,11 @@ const Section = ({
           } else {
             newChanges[name] = value;
           }
-          if (canSubmit && Object.keys(newChanges).length === 1) {
+          if (
+            canSubmit &&
+            Object.keys(newChanges).length === 1 &&
+            !hasChanges
+          ) {
             submitWrapper(newChanges);
           } else {
             setChanges(newChanges);

@@ -199,8 +199,7 @@ const TabOptionDiv = animated(styled.div`
   font-weight: bold;
   cursor: pointer;
   justify-content: space-between;
-  margin: 0.5rem 0;
-  border-radius: 3px;
+  margin: 0.5rem -0.5rem;
   height: 2rem;
 
   & > div {
@@ -213,7 +212,6 @@ const TabOptionDiv = animated(styled.div`
     flex-basis: 0;
     text-align: center;
     overflow: hidden;
-    border-radius: 3px;
   }
 `);
 

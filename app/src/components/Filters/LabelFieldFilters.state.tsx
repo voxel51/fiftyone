@@ -3,6 +3,7 @@ import { atomFamily, selector, selectorFamily } from "recoil";
 import { Range } from "./RangeSlider";
 import {
   activeFields,
+  activeLabelPaths,
   activeLabels,
   isBooleanField,
   isNumericField,
