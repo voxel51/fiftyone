@@ -187,6 +187,17 @@ const Checker = ({
     if (index !== null) {
       setActive(names[index]);
     }
+
+    if (e.key === "Enter" && active.length) {
+      createSubmit({
+        name: active,
+        changes,
+        items,
+        count,
+        value: sorted.filter(([n]) => n === active)[0][1],
+        setChange,
+      })(false)();
+    }
   });
 
   return (

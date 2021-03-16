@@ -151,9 +151,9 @@ const Section = ({
           }}
           title={hasCreate ? "Enter to create" : null}
           onKeyPress={(e) => {
-            if (e.key === "Enter") {
+            if (e.key === "Enter" && hasCreate) {
               setValue("");
-              setChanges({ ...changes, value: CheckState.ADD });
+              setChanges({ ...changes, [value]: CheckState.ADD });
             }
           }}
           focused={!disabled}
@@ -196,7 +196,7 @@ const Section = ({
               text={`Create "${value}"`}
               onClick={() => {
                 setValue("");
-                setChanges({ ...changes, value: CheckState.ADD });
+                setChanges({ ...changes, [value]: CheckState.ADD });
               }}
               style={{
                 margin: "0.25rem -0.5rem",
