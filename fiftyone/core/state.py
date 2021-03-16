@@ -218,12 +218,11 @@ class DatasetStatistics(object):
 
     @classmethod
     def get_label_aggregations(cls, collection):
-        exists_expr = (~(fo.ViewField().exists())).if_else(True, None)
         labels = cls.labels(collection)
         count_aggs = []
         for path, field in labels:
             path = _expand_labels_path(path, field)
-            count_aggs.append(foa.Count(path, expr=exists_expr))
+            count_aggs.append(foa.Count(path))
 
         tag_aggs = []
         for path, field in labels:

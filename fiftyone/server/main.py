@@ -690,19 +690,17 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             view
         )
         results = await view._async_aggregate(
-            StateHandler.sample_collection(), count_aggs, tag_aggs
+            StateHandler.sample_collection(), count_aggs + tag_aggs
         )
 
-        count = 0
-        for result in results[: len(count_aggs)]:
-            counts += result
+        count = sum(results[: len(count_aggs)])
 
         tags = {}
         for result in results[len(count_aggs) :]:
             tags.update(result)
 
         _write_message(
-            {"type": "selected_statistics", "counts": counts, "tags": tags},
+            {"type": "selected_statistics", "count": count, "tags": tags},
             app=True,
         )
 

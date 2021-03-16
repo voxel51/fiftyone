@@ -4,10 +4,15 @@ import { animated, useSpring } from "react-spring";
 import styled from "styled-components";
 
 import { activeLabels } from "../Filters/utils";
-import { labelCount } from "../Filters/LabelFieldFilters.state";
+import {
+  labelCount,
+  sampleModalFilter,
+} from "../Filters/LabelFieldFilters.state";
 import * as atoms from "../../recoil/atoms";
 import * as selectors from "../../recoil/selectors";
 import { useTheme } from "../../utils/hooks";
+import { packageMessage } from "../../utils/socket";
+import socket from "../../shared/connection";
 
 export const HoverItemDiv = animated(styled.div`
   cursor: pointer;
@@ -96,9 +101,38 @@ export const allTags = selector<string[]>({
   },
 });
 
+export const selectedSampleLabelStatistics = selector<{
+  count: number;
+  tags: { [key: string]: number };
+}>({
+  key: "selectedSampleLabelStatistics",
+  get: async ({ get }) => {
+    const state = get(atoms.stateDescription);
+
+    const wrap = (handler, type) => ({ data }) => {
+      data = JSON.parse(data);
+      data.type === type && handler(data);
+    };
+
+    const promise = new Promise((resolve) => {
+      const listener = wrap(({ count, tags }) => {
+        socket.removeEventListener("message", listener);
+        resolve({ count, tags });
+      }, "selected_statistics");
+      socket.addEventListener("message", listener);
+      socket.send(packageMessage("selected_statistics", {}));
+    });
+
+    const result = await promise;
+    return result;
+  },
+});
+
 export const numLabelsInSelectedSamples = selector<number>({
   key: "numLabelsInSelectedSamples",
-  get: ({ get }) => {},
+  get: ({ get }) => {
+    return get(selectedSampleLabelStatistics).count;
+  },
 });
 
 export const tagStats = selectorFamily<
@@ -108,7 +142,15 @@ export const tagStats = selectorFamily<
   key: "tagStats",
   get: ({ modal, labels }) => ({ get }) => {
     if (modal && labels) {
+      return {};
     } else if (modal) {
+      const sample = get(selectors.modalSample);
+      return {
+        ...Object.fromEntries(
+          Object.keys(get(selectors.tagSampleCounts)).map((t) => [t, 0])
+        ),
+        ...Object.fromEntries(sample.tags.map((t) => [t, 1])),
+      };
     } else if (labels) {
       const types = get(selectors.labelTypesMap);
       const active = [
@@ -129,11 +171,10 @@ export const tagStats = selectorFamily<
       const selected = get(atoms.selectedSamples);
 
       if (selected.size) {
-        selected.forEach((id) => {
-          get(atoms.sample(id)).tags.forEach((t) => {
-            results[t] += 1;
-          });
-        });
+        return {
+          ...results,
+          ...get(selectedSampleLabelStatistics).tags,
+        };
       } else {
         active.forEach((field) => {
           for (const tag in stats[field]) {
