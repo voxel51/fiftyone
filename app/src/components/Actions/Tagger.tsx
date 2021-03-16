@@ -14,6 +14,7 @@ import { animated, useSpring } from "react-spring";
 import Checker, { CheckState } from "./Checker";
 import Popout from "./Popout";
 import { tagStats } from "./utils";
+import { Button } from "../FieldsSidebar";
 import * as labelAtoms from "../Filters/LabelFieldFilters.state";
 import * as fieldAtoms from "../Filters/utils";
 import * as atoms from "../../recoil/atoms";
@@ -22,6 +23,7 @@ import socket from "../../shared/connection";
 import { useTheme } from "../../utils/hooks";
 import { packageMessage } from "../../utils/socket";
 import { Bounds } from "react-use-gesture/dist/types";
+import { PopoutSectionTitle } from "../utils";
 
 const IconDiv = styled.div`
   position: absolute;
@@ -124,18 +126,34 @@ const Section = ({
       ),
     });
 
+  const hasChanges = Object.keys(changes).length > 0;
+
+  const hasCreate = value.length > 0 && !(value in changes || value in items);
+
   return (
     <>
       <TaggingContainerInput>
         <TaggingInput
           placeholder={disabled ? "loading..." : placeholder}
           value={value}
-          onChange={(e) => setValue(e.target.value)}
+          onChange={(e) => {
+            setValue(e.target.value);
+            if (e.target.value.length) {
+              const results = Array.from(
+                new Set(Object.keys({ ...items, ...changes }))
+              )
+                .sort()
+                .filter((v) =>
+                  v.toLocaleLowerCase().includes(e.target.value.toLowerCase())
+                );
+              results.length && setActive(results[0]);
+            }
+          }}
+          title={hasCreate ? "Enter to create" : null}
           onKeyPress={(e) => {
             if (e.key === "Enter") {
-              setTagging(true);
               setValue("");
-              submit({ changes: { [value]: true } });
+              setChanges({ ...changes, value: CheckState.ADD });
             }
           }}
           focused={!disabled}
@@ -170,6 +188,38 @@ const Section = ({
           }
         }}
       />
+      {hasChanges || hasCreate ? (
+        <>
+          <PopoutSectionTitle />
+          {hasCreate && (
+            <Button
+              text={`Create "${value}"`}
+              onClick={() => {
+                setValue("");
+                setChanges({ ...changes, value: CheckState.ADD });
+              }}
+              style={{
+                margin: "0.25rem -0.5rem",
+                paddingLeft: "2.5rem",
+                height: "2rem",
+                borderRadius: 0,
+              }}
+            ></Button>
+          )}
+          {hasChanges && (
+            <Button
+              text={"Apply"}
+              onClick={() => submitWrapper(changes)}
+              style={{
+                margin: "0.25rem -0.5rem",
+                paddingLeft: "2.5rem",
+                height: "2rem",
+                borderRadius: 0,
+              }}
+            ></Button>
+          )}
+        </>
+      ) : null}
     </>
   );
 };

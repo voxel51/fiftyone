@@ -432,6 +432,17 @@ const SampleModal = ({ onClose }: Props, ref) => {
         </TopRightNavButtons>
       </div>
       <div className="sidebar">
+        <ModalFooter
+          style={{
+            overlflowX: "auto",
+            width: 280,
+            borderTop: "none",
+            borderBottom: `2px solid ${theme.border}`,
+            position: "relative",
+          }}
+        >
+          <Actions modal={true} frameNumberRef={frameNumberRef} />
+        </ModalFooter>
         <div className="sidebar-content">
           <h2>
             Metadata
@@ -463,15 +474,6 @@ const SampleModal = ({ onClose }: Props, ref) => {
           />
         </div>
       </div>
-      <ModalFooter
-        style={{
-          overlflowX: "auto",
-          width: 280,
-          borderLeft: `2px solid ${theme.border}`,
-        }}
-      >
-        <Actions modal={true} frameNumberRef={frameNumberRef} />
-      </ModalFooter>
     </Container>
   );
 };

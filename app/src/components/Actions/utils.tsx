@@ -21,10 +21,13 @@ export const HoverItemDiv = animated(styled.div`
   color: ${({ theme }) => theme.fontDark};
 `);
 
-export const useHighlightHover = (disabled, forceOn) => {
+export const useHighlightHover = (disabled, override) => {
   const [hovering, setHovering] = useState(false);
   const theme = useTheme();
-  const on = (hovering || forceOn) && !disabled;
+  const on =
+    typeof override === "boolean"
+      ? override && !disabled
+      : hovering && !disabled;
   const style = useSpring({
     backgroundColor: on
       ? theme.backgroundLight
@@ -76,7 +79,9 @@ export const selectedSampleTagStats = selector<{ [key: string]: number }>({
 export const allTags = selector<string[]>({
   key: "tagAggs",
   get: ({ get }) => {
-    const stats = get(selectors.datasetStats);
+    const stats = Object.fromEntries(
+      get(selectors.datasetStats).map((s) => [s.name, s.result])
+    );
     const paths = get(selectors.labelPaths);
     const types = get(selectors.labelTypesMap);
 
@@ -84,7 +89,7 @@ export const allTags = selector<string[]>({
       paths.reduce((acc, cur) => {
         return {
           ...acc,
-          ...stats[`${cur}.${types[cur.toLowerCase()]}.tags`],
+          ...stats[`${cur}.${types[cur].toLowerCase()}.tags`],
         };
       }, {})
     );
@@ -118,9 +123,9 @@ export const tagStats = selectorFamily<
         }
         return acc;
       };
-      const stats =
-        get(selectors.datasetStats) ||
-        get(selectors.extendedDatasetStats).reduce(reducer, {});
+      const stats = (
+        get(selectors.datasetStats) || get(selectors.extendedDatasetStats)
+      ).reduce(reducer, {});
 
       const results = Object.fromEntries(get(allTags).map((t) => [t, 0]));
       active.forEach((field) => {
