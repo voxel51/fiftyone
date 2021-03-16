@@ -294,7 +294,7 @@ def scatterplot(
 
         -   a :class:`fiftyone.utils.plot.interactive.SessionPlot`, if a
             ``session`` is provided
-        -   a :class:`MatplotlibPlot`, if no ``session`` is provided
+        -   a :class:`InteractiveCollection`, if no ``session`` is provided
         -   a ``matplotlib.figure.Figure``, for 3D points
     """
     points = np.asarray(points)
@@ -383,7 +383,7 @@ def scatterplot(
         if ids is not None and inds is not None:
             ids = ids[inds]
 
-        plot = MatplotlibPlot(collection, ids=ids, buttons=buttons)
+        plot = InteractiveCollection(collection, ids=ids, buttons=buttons)
         if show:
             plot.show()
 
@@ -533,8 +533,8 @@ def location_scatterplot(
     )
 
 
-class MatplotlibPlot(InteractivePlot):
-    """Interactive plot wrapper for a matplotlib collection.
+class InteractiveCollection(InteractivePlot):
+    """Interactive wrapper for a matplotlib collection.
 
     This class enables collection points to be lasso-ed and click selected.
 
