@@ -119,12 +119,14 @@ const Section = ({
       )
     );
 
-  const submitWrapper = (changes) =>
+  const submitWrapper = (changes) => {
     submit({
       changes: Object.fromEntries(
         Object.entries(changes).map(([k, v]) => [k, v === CheckState.ADD])
       ),
     });
+    setTagging(true);
+  };
 
   const hasChanges = Object.keys(changes).length > 0;
 
@@ -134,7 +136,7 @@ const Section = ({
     <>
       <TaggingContainerInput>
         <TaggingInput
-          placeholder={disabled ? "loading..." : placeholder}
+          placeholder={disabled ? "saving..." : placeholder}
           value={value}
           onChange={(e) => {
             setValue(e.target.value);
@@ -311,10 +313,9 @@ const packageModal = ({ labels = null, sample_id = null, changes }) =>
     sample_id,
   });
 
-const useTagCallback = (modal, targetLabels, close) => {
+const useTagCallback = (modal, targetLabels) => {
   return useRecoilCallback(
     ({ snapshot }) => async ({ changes }) => {
-      close();
       const activeLabels = await snapshot.getPromise(
         fieldAtoms.activeFields(modal)
       );
@@ -336,7 +337,7 @@ const useTagCallback = (modal, targetLabels, close) => {
         socket.send(packageGrid({ changes, targetLabels, activeLabels }));
       }
     },
-    [modal, targetLabels, close]
+    [modal, targetLabels]
   );
 };
 
@@ -368,10 +369,9 @@ const usePlaceHolder = (modal: boolean, labels: boolean): [number, string] => {
 type TaggerProps = {
   modal: boolean;
   bounds: Bounds;
-  close: () => void;
 };
 
-const Tagger = ({ modal, bounds, close }: TaggerProps) => {
+const Tagger = ({ modal, bounds }: TaggerProps) => {
   const [labels, setLabels] = useState(modal);
   const theme = useTheme();
   const sampleProps = useSpring({
@@ -384,7 +384,7 @@ const Tagger = ({ modal, bounds, close }: TaggerProps) => {
     cursor: labels ? "default" : "pointer",
   });
 
-  const submit = useTagCallback(modal, labels, close);
+  const submit = useTagCallback(modal, labels);
   const [count, placeholder] = usePlaceHolder(modal, labels);
 
   return (

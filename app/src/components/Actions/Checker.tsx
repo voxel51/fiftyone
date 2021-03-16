@@ -149,7 +149,11 @@ const createSubmit = ({ name, items, changes, count, setChange, value }) => (
     } else {
       setChange(
         name,
-        value === CheckState.ADD ? CheckState.REMOVE : CheckState.ADD,
+        value === CheckState.ADD
+          ? value in items
+            ? CheckState.REMOVE
+            : null
+          : CheckState.ADD,
         canSubmit
       );
     }

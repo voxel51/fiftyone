@@ -374,6 +374,11 @@ const OptionTextDiv = animated(styled.div`
   flex-direction: column;
   color: inherit;
   line-height: 1.7;
+  & > span {
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    overflow: hidden;
+  }
 `);
 
 export const OptionText = ({ style, children }) => {
@@ -400,8 +405,11 @@ export const Button = ({ onClick, text, children, style }) => {
       onClick={onClick}
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
+      title={text}
     >
-      <OptionText style={{ fontWeight: "bold" }}>{text}</OptionText>
+      <OptionText style={{ fontWeight: "bold", width: "100%" }}>
+        {text}
+      </OptionText>
       {children}
     </ButtonDiv>
   );
