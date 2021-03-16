@@ -671,6 +671,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             if state.selected_labels:
                 labels = state.selected_labels
 
+            sample_ids = list({label["sample_id"] for label in labels})
             tag_view = view.select_labels(labels=labels)
             fosu.change_label_tags(tag_view, changes)
 

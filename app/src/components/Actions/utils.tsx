@@ -4,10 +4,7 @@ import { animated, useSpring } from "react-spring";
 import styled from "styled-components";
 
 import { activeLabels } from "../Filters/utils";
-import {
-  labelCount,
-  sampleModalFilter,
-} from "../Filters/LabelFieldFilters.state";
+import { labelCount } from "../Filters/LabelFieldFilters.state";
 import * as atoms from "../../recoil/atoms";
 import * as selectors from "../../recoil/selectors";
 import { useTheme } from "../../utils/hooks";
@@ -135,6 +132,18 @@ export const numLabelsInSelectedSamples = selector<number>({
   },
 });
 
+const labelModalTagCounts = selector<{ [key: string]: number }>({
+  key: "labelModalTagCounts",
+  get: ({ get }) => {
+    if (get(selectors.selectedLabelIds).size > 0) {
+      const selected = get(selectors.selectedLabels);
+      for (const label_id in selected) {
+        const { sample_id, frame_number, field } = selected;
+      }
+    }
+  },
+});
+
 export const tagStats = selectorFamily<
   { [key: string]: number },
   { modal: boolean; labels: boolean }
@@ -142,7 +151,9 @@ export const tagStats = selectorFamily<
   key: "tagStats",
   get: ({ modal, labels }) => ({ get }) => {
     if (modal && labels) {
-      return {};
+      return {
+        ...Object.fromEntries(get(allTags).map((t) => [t, 0])),
+      };
     } else if (modal) {
       const sample = get(selectors.modalSample);
       return {

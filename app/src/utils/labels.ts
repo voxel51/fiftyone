@@ -390,8 +390,14 @@ const convertImageSampleToETA = (
   return imgLabels;
 };
 
-export const listSampleObjects = (sample) => {
-  const objects = [];
+interface Label {
+  _id: string;
+  _cls: string;
+  frame_number?: number;
+}
+
+export const listSampleLabels = (sample: { [key: string]: Label }) => {
+  const labels = [];
   for (const [fieldName, field] of Object.entries(sample)) {
     if (
       field === null ||
@@ -400,17 +406,17 @@ export const listSampleObjects = (sample) => {
     )
       continue;
     if (FIFTYONE_TO_ETA_CONVERTERS[field._cls]) {
-      objects.push(
+      labels.push(
         FIFTYONE_TO_ETA_CONVERTERS[field._cls].convert(fieldName, field)
       );
     } else if (VALID_LIST_TYPES.includes(field._cls)) {
-      for (const object of field[field._cls.toLowerCase()]) {
-        objects.push(
-          FIFTYONE_TO_ETA_CONVERTERS[object._cls].convert(fieldName, object)
+      for (const label of field[field._cls.toLowerCase()]) {
+        labels.push(
+          FIFTYONE_TO_ETA_CONVERTERS[label._cls].convert(fieldName, label)
         );
       }
     } else {
-      objects.push({
+      labels.push({
         name: fieldName,
         _id: field._id,
         frame_number: field.frame_number,
@@ -418,5 +424,5 @@ export const listSampleObjects = (sample) => {
       });
     }
   }
-  return objects;
+  return labels;
 };

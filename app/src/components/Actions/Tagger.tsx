@@ -1,4 +1,4 @@
-import React, { Suspense, useLayoutEffect, useState } from "react";
+import React, { Suspense, useEffect, useLayoutEffect, useState } from "react";
 import numeral from "numeral";
 import { CircularProgress } from "@material-ui/core";
 import {
@@ -107,6 +107,7 @@ const Section = ({
   const disabled = tagging || typeof count !== "number" || count === 0;
   const [changes, setChanges] = useState<{ [key: string]: CheckState }>({});
   const [active, setActive] = useState(null);
+
   useLayoutEffect(() => {
     setChanges({});
   }, [taggingAtom]);
@@ -355,6 +356,7 @@ const usePlaceHolder = (
     let labelCount = useRecoilValue(labelAtoms.labelCount(modal));
 
     if (modal && labels) {
+      labelCount = selection > 0 ? selection : labelCount;
       return [labelCount, labelsModalPlaceholder(selection, labelCount)];
     } else if (modal) {
       return [1, samplePlaceholder()];
@@ -379,9 +381,10 @@ const usePlaceHolder = (
 type TaggerProps = {
   modal: boolean;
   bounds: Bounds;
+  close: () => void;
 };
 
-const Tagger = ({ modal, bounds }: TaggerProps) => {
+const Tagger = ({ modal, bounds, close }: TaggerProps) => {
   const [labels, setLabels] = useState(modal);
   const theme = useTheme();
   const sampleProps = useSpring({

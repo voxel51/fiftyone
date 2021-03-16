@@ -1,9 +1,8 @@
-import React, { useState } from "react";
+import React from "react";
 import {
   useRecoilCallback,
   useRecoilState,
   useRecoilValue,
-  useResetRecoilState,
   useSetRecoilState,
 } from "recoil";
 
@@ -13,9 +12,10 @@ import * as atoms from "../../recoil/atoms";
 import * as selectors from "../../recoil/selectors";
 import socket from "../../shared/connection";
 import { packageMessage } from "../../utils/socket";
-import { listSampleObjects } from "../../utils/labels";
+import { listSampleLabels } from "../../utils/labels";
 import * as labelAtoms from "../Filters/LabelFieldFilters.state";
 import { useSendMessage } from "../../utils/hooks";
+import { update } from "xstate/lib/actionTypes";
 
 type ActionOptionProps = {
   onClick: () => void;
@@ -43,6 +43,39 @@ const ActionOption = ({
       {text}
     </HoverItemDiv>
   );
+};
+
+const addLabelsToSelection = (
+  selection: atoms.SelectedLabelMap,
+  addition: atoms.SelectedLabel[]
+) => {
+  return {
+    ...selection,
+    ...Object.fromEntries(
+      addition.map(({ label_id, ...rest }) => [label_id, rest])
+    ),
+  };
+};
+
+const removeMatchingLabelsFromSelection = (
+  selection: atoms.SelectedLabelMap,
+  filter: atoms.SelectedLabelData
+) => {
+  const newSelection = { ...selection };
+  if (Object.keys(filter).length) {
+    for (const [label_id, data] of Object.entries(selection)) {
+      if (
+        (filter.sample_id === undefined ||
+          filter.sample_id === data.sample_id) &&
+        (filter.field === undefined || filter.field === data.field) &&
+        (filter.frame_number === undefined ||
+          filter.frame_number === data.frame_number)
+      ) {
+        delete newSelection[label_id];
+      }
+    }
+  }
+  return newSelection;
 };
 
 const getGridActions = (close: () => void) => {
@@ -97,18 +130,17 @@ const getGridActions = (close: () => void) => {
   ];
 };
 
-const _addFrameNumberToObjects = (objects, frame_number) =>
-  objects.map((obj) => ({ ...obj, frame_number }));
+const _addFrameNumberToLabels = (labels, frame_number) =>
+  labels.map((label) => ({ ...label, frame_number }));
 
 const getModalActions = (frameNumberRef, close) => {
   const sample = useRecoilValue(selectors.modalSample);
-  const [selectedObjects, setSelectedObjects] = useRecoilState(
+  const [selectedLabels, setSelectedLabels] = useRecoilState(
     selectors.selectedLabels
   );
   const filter = useRecoilValue(labelAtoms.sampleModalFilter);
-  const resetSelectedObjects = useResetRecoilState(atoms.selectedObjects);
-  const setHiddenObjects = useSetRecoilState(atoms.hiddenObjects);
-  const hiddenObjectIds = useRecoilValue(selectors.hiddenObjectIds);
+  const setHiddenLabels = useSetRecoilState(atoms.hiddenLabels);
+  const hiddenLabelIds = useRecoilValue(selectors.hiddenLabelIds);
 
   const sampleFrameData =
     useRecoilValue(atoms.sampleFrameData(sample._id)) || [];
@@ -117,65 +149,70 @@ const getModalActions = (frameNumberRef, close) => {
 
   useSendMessage(
     "set_selected_labels",
-    { selected_labels: convertSelectedObjectsMapToList(selectedObjects) },
+    {
+      selected_labels: Object.entries(
+        selectedLabels
+      ).map(([label_id, label]) => ({ label_id, ...label })),
+    },
     null,
-    [selectedObjects]
+    [selectedLabels]
   );
 
-  const sampleObjects = isVideo
+  const sampleLabels = isVideo
     ? sampleFrameData
-        .map(listSampleObjects)
-        .filter((o) => hiddenObjectIds.has(o._id))
-        .map((arr, i) => _addFrameNumberToObjects(arr, i + 1))
+        .map(listSampleLabels)
+        .filter((o) => hiddenLabelIds.has(o._id))
+        .map((arr, i) => _addFrameNumberToLabels(arr, i + 1))
         .flat()
-    : listSampleObjects(filter(sample));
-  const frameObjects =
+    : listSampleLabels(filter(sample));
+  const frameLabels =
     isVideo && frameNumber && sampleFrameData[frameNumber - 1]
-      ? _addFrameNumberToObjects(
-          listSampleObjects(
+      ? _addFrameNumberToLabels(
+          listSampleLabels(
             filter(sampleFrameData[frameNumber - 1], "frames.")
-          ).filter((o) => !hiddenObjectIds.has(o._id)),
+          ).filter((l) => !hiddenLabelIds.has(l._id)),
           frameNumber
         )
       : [];
 
-  const numTotalSelectedObjects = Object.keys(selectedObjects).length;
-  const numSampleSelectedObjects = sampleObjects.filter(
-    (obj) => selectedObjects[obj._id]
+  const numTotalSelectedObjects = Object.keys(selectedLabels).length;
+  const numSampleSelectedObjects = sampleLabels.filter(
+    (label) => selectedLabels[label._id]
   ).length;
-  const numFrameSelectedObjects = frameObjects.filter(
-    (obj) => selectedObjects[obj._id]
+  const numFrameSelectedObjects = frameLabels.filter(
+    (label) => selectedLabels[label._id]
   ).length;
 
-  const _getObjectSelectionData = (object) => ({
+  const _getLabelSelectionData = (object) => ({
     label_id: object._id,
     sample_id: sample._id,
     field: object.name,
     frame_number: object.frame_number,
   });
 
-  const _selectAll = (objects) => {
+  const _selectAll = (labels) => {
     close();
-    setSelectedObjects((selection) =>
-      addObjectsToSelection(selection, objects.map(_getObjectSelectionData))
-    );
+    setSelectedLabels((selection) => ({
+      ...selection,
+      ...Object.fromEntries(labels.map(_getLabelSelectionData)),
+    }));
   };
 
-  const selectAllInSample = () => _selectAll(sampleObjects);
+  const selectAllInSample = () => _selectAll(sampleLabels);
 
   const unselectAllInSample = () => {
     close();
-    setSelectedObjects((selection) =>
-      removeMatchingObjectsFromSelection(selection, { sample_id: sample._id })
+    setSelectedLabels((selection) =>
+      removeMatchingLabelsFromSelection(selection, { sample_id: sample._id })
     );
   };
 
-  const selectAllInFrame = () => _selectAll(frameObjects);
+  const selectAllInFrame = () => _selectAll(frameLabels);
 
   const unselectAllInFrame = () => {
     close();
-    setSelectedObjects((selection) =>
-      removeMatchingObjectsFromSelection(selection, {
+    setSelectedLabels((selection) =>
+      removeMatchingLabelsFromSelection(selection, {
         sample_id: sample._id,
         frame_number: frameNumberRef.current,
       })
@@ -184,45 +221,45 @@ const getModalActions = (frameNumberRef, close) => {
 
   const hideSelected = () => {
     close();
-    const ids = Object.keys(selectedObjects);
-    resetSelectedObjects();
+    const ids = Object.keys(selectedLabels);
+    setSelectedLabels({});
     // can copy data directly from selectedObjects since it's in the same format
-    setHiddenObjects((hiddenObjects) =>
-      addObjectsToSelection(
+    setHiddenLabels((hiddenObjects) =>
+      addLabelsToSelection(
         hiddenObjects,
-        ids.map((label_id) => ({ label_id, ...selectedObjects[label_id] }))
+        ids.map((label_id) => ({ label_id, ...selectedLabels[label_id] }))
       )
     );
   };
 
-  const hideOthers = (objects) => {
+  const hideOthers = (labels) => {
     close();
-    setHiddenObjects((hiddenObjects) =>
-      addObjectsToSelection(
-        hiddenObjects,
-        objects
-          .filter((obj) => !selectedObjects[obj._id])
-          .map(_getObjectSelectionData)
+    setHiddenLabels((hiddenLabels) =>
+      addLabelsToSelection(
+        hiddenLabels,
+        labels
+          .filter((label) => !selectedLabels[label._id])
+          .map(_getLabelSelectionData)
       )
     );
   };
   return [
-    sampleObjects.length && {
+    sampleLabels.length && {
       text: "Select all (current sample)",
-      disabled: numSampleSelectedObjects >= sampleObjects.length,
+      disabled: numSampleSelectedObjects >= sampleLabels.length,
       onClick: () => selectAllInSample(),
     },
-    sampleObjects.length && {
+    sampleLabels.length && {
       text: "Unselect all (current sample)",
       disabled: !numSampleSelectedObjects,
       onClick: () => unselectAllInSample(),
     },
-    frameObjects.length && {
+    frameLabels.length && {
       text: "Select all (current frame)",
-      disabled: numFrameSelectedObjects >= frameObjects.length,
+      disabled: numFrameSelectedObjects >= frameLabels.length,
       onClick: () => selectAllInFrame(),
     },
-    frameObjects.length && {
+    frameLabels.length && {
       text: "Unselect all (current frame)",
       disabled: !numFrameSelectedObjects,
       onClick: () => unselectAllInFrame(),
@@ -232,7 +269,7 @@ const getModalActions = (frameNumberRef, close) => {
       disabled: !numTotalSelectedObjects,
       onClick: () => {
         close();
-        resetSelectedObjects();
+        setSelectedLabels({});
       },
     },
     {
@@ -240,15 +277,15 @@ const getModalActions = (frameNumberRef, close) => {
       disabled: numTotalSelectedObjects == 0,
       onClick: () => hideSelected(),
     },
-    sampleObjects.length && {
+    sampleLabels.length && {
       text: "Hide others (current sample)",
       disabled: numSampleSelectedObjects == 0,
-      onClick: () => hideOthers(sampleObjects),
+      onClick: () => hideOthers(sampleLabels),
     },
-    frameObjects.length && {
+    frameLabels.length && {
       text: "Hide others (current frame)",
       disabled: numFrameSelectedObjects == 0,
-      onClick: () => hideOthers(frameObjects),
+      onClick: () => hideOthers(frameLabels),
     },
   ].filter(Boolean);
 };
