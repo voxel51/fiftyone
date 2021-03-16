@@ -6,5 +6,4 @@ Plotting utilities.
 |
 """
 
-from .location import location_scatterplot
-from .scatter import scatterplot
+from .base import location_scatterplot, scatterplot
