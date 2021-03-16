@@ -276,7 +276,13 @@ class COCODetectionResults(DetectionResults):
         self._classwise_AP = np.mean(precision, axis=(0, 2))
 
     def plot_pr_curves(
-        self, classes=None, ax=None, figsize=None, return_ax=False, **kwargs
+        self,
+        classes=None,
+        ax=None,
+        figsize=None,
+        show=True,
+        return_ax=False,
+        **kwargs,
     ):
         """Plots precision-recall (PR) curves for the results.
 
@@ -286,6 +292,7 @@ class COCODetectionResults(DetectionResults):
             ax (None): an optional matplotlib axis to plot in
             figsize (None): an optional ``(width, height)`` for the figure, in
                 inches
+            show (True): whether to show the plot
             return_ax (False): whether to return the matplotlib axis containing
                 the plots
             **kwargs: optional keyword arguments for matplotlib's ``plot()``
@@ -309,6 +316,7 @@ class COCODetectionResults(DetectionResults):
             classes,
             ax=ax,
             figsize=figsize,
+            show=show,
             return_ax=return_ax,
             **kwargs,
         )

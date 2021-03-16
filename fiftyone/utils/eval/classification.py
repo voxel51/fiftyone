@@ -668,6 +668,7 @@ class ClassificationResults(foe.EvaluationResults):
         xticks_rotation=45.0,
         ax=None,
         figsize=None,
+        show=True,
         return_ax=False,
     ):
         """Plots a confusion matrix for the results.
@@ -693,6 +694,7 @@ class ClassificationResults(foe.EvaluationResults):
             ax (None): an optional matplotlib axis to plot in
             figsize (None): an optional ``(width, height)`` for the figure, in
                 inches
+            show (True): whether to show the plot
             return_ax (False): whether to return the matplotlib axis containing
                 the plot
 
@@ -735,6 +737,7 @@ class ClassificationResults(foe.EvaluationResults):
             xticks_rotation=xticks_rotation,
             ax=ax,
             figsize=figsize,
+            show=show,
             return_ax=return_ax,
         )
 
@@ -812,6 +815,7 @@ class BinaryClassificationResults(ClassificationResults):
         average="micro",
         ax=None,
         figsize=None,
+        show=True,
         return_ax=False,
         **kwargs,
     ):
@@ -823,6 +827,7 @@ class BinaryClassificationResults(ClassificationResults):
             ax (None): an optional matplotlib axis to plot in
             figsize (None): an optional ``(width, height)`` for the figure, in
                 inches
+            show (True): whether to show the plot
             return_ax (False): whether to return the matplotlib axis containing
                 the plot
             **kwargs: optional keyword arguments for matplotlib's ``plot()``
@@ -846,11 +851,14 @@ class BinaryClassificationResults(ClassificationResults):
             label=label,
             ax=ax,
             figsize=figsize,
+            show=show,
             return_ax=return_ax,
             **kwargs,
         )
 
-    def plot_roc_curve(self, ax=None, figsize=None, return_ax=False, **kwargs):
+    def plot_roc_curve(
+        self, ax=None, figsize=None, show=True, return_ax=False, **kwargs
+    ):
         """Plots a receiver operating characteristic (ROC) curve for the
         results.
 
@@ -858,6 +866,7 @@ class BinaryClassificationResults(ClassificationResults):
             ax (None): an optional matplotlib axis to plot in
             figsize (None): an optional ``(width, height)`` for the figure, in
                 inches
+            show (True): whether to show the plot
             return_ax (False): whether to return the matplotlib axis containing
                 the plot
             **kwargs: optional keyword arguments for matplotlib's ``plot()``
@@ -880,6 +889,7 @@ class BinaryClassificationResults(ClassificationResults):
             roc_auc,
             ax=ax,
             figsize=figsize,
+            show=show,
             return_ax=return_ax,
             **kwargs,
         )

@@ -52,6 +52,7 @@ def location_scatterplot(
     figsize=None,
     style="seaborn-ticks",
     buttons=None,
+    show=True,
     **kwargs,
 ):
     """Generates an interactive scatterplot of the given location coordinates
@@ -106,6 +107,7 @@ def location_scatterplot(
         style ("seaborn-ticks"): a style to use for the plot
         buttons (None): a list of ``(label, icon_image, callback)`` tuples
             defining buttons to add to the plot
+        show (True): whether to show the plot
         **kwargs: optional keyword arguments for matplotlib's ``scatter()``
 
     Returns:
@@ -165,6 +167,7 @@ def location_scatterplot(
         figsize=figsize,
         style=style,
         buttons=buttons,
+        show=show,
         **kwargs,
     )
 
@@ -264,6 +267,7 @@ def scatterplot(
     figsize=None,
     style="seaborn-ticks",
     buttons=None,
+    show=True,
     **kwargs,
 ):
     """Generates an interactive scatterplot of the given points.
@@ -309,6 +313,7 @@ def scatterplot(
         style ("seaborn-ticks"): a style to use for the plot
         buttons (None): a list of ``(label, icon_image, callback)`` tuples
             defining buttons to add to the plot
+        show (True): whether to show the plot
         **kwargs: optional keyword arguments for matplotlib's ``scatter()``
 
     Returns:
@@ -394,27 +399,26 @@ def scatterplot(
         )
 
         if num_dims != 2:
+            figure = collection.axes.figure
             plt.tight_layout()
-            plt.show(block=False)
-            return collection.axes.figure
 
-        if session is None:
-            plot = MatplotlibPlot(collection, buttons=buttons)
-            plot.show()
-            return plot
+            if show:
+                plt.show(block=False)
 
-        if inds is not None:
+            return figure
+
+        if ids is not None and inds is not None:
             ids = ids[inds]
 
         plot = MatplotlibPlot(collection, ids=ids, buttons=buttons)
+        if show:
+            plot.show()
+
+    if session is None:
+        return plot
 
     link_type = "samples" if label_field is None else "labels"
-    session_plot = SessionPlot(
-        session, plot, link_type=link_type, bidirectional=False
-    )
-    plot.show()
-
-    return session_plot
+    return SessionPlot(session, plot, link_type=link_type, bidirectional=False)
 
 
 def _plot_scatter(
@@ -532,6 +536,7 @@ def plot_confusion_matrix(
     values_format=None,
     ax=None,
     figsize=None,
+    show=True,
     return_ax=False,
 ):
     """Plots a confusion matrix.
@@ -550,6 +555,7 @@ def plot_confusion_matrix(
         ax (None): an optional matplotlib axis to plot in
         figsize (None): an optional ``(width, height)`` for the figure, in
             inches
+        show (True): whether to show the plot
         return_ax (False): whether to return the matplotlib axis containing
             the plot
 
@@ -610,7 +616,9 @@ def plot_confusion_matrix(
         fig.set_size_inches(*figsize)
 
     plt.tight_layout()
-    plt.show(block=False)
+
+    if show:
+        plt.show(block=False)
 
     return ax if return_ax else None
 
@@ -621,6 +629,7 @@ def plot_pr_curve(
     label=None,
     ax=None,
     figsize=None,
+    show=True,
     return_ax=False,
     **kwargs,
 ):
@@ -633,6 +642,7 @@ def plot_pr_curve(
         ax (None): an optional matplotlib axis to plot in
         figsize (None): an optional ``(width, height)`` for the figure, in
             inches
+        show (True): whether to show the plot
         return_ax (False): whether to return the matplotlib axis containing
             the plot
         **kwargs: optional keyword arguments for matplotlib's ``plot()``
@@ -647,7 +657,9 @@ def plot_pr_curve(
     if figsize is not None:
         display.figure_.set_size_inches(*figsize)
 
-    plt.show(block=False)
+    if show:
+        plt.show(block=False)
+
     return display.ax_ if return_ax else None
 
 
@@ -657,6 +669,7 @@ def plot_pr_curves(
     classes,
     ax=None,
     figsize=None,
+    show=True,
     return_ax=False,
     **kwargs,
 ):
@@ -670,6 +683,7 @@ def plot_pr_curves(
         ax (None): an optional matplotlib axis to plot in
         figsize (None): an optional ``(width, height)`` for the figure, in
             inches
+        show (True): whether to show the plot
         return_ax (False): whether to return the matplotlib axis containing
             the plot
         **kwargs: optional keyword arguments for matplotlib's ``plot()``
@@ -690,12 +704,21 @@ def plot_pr_curves(
     if figsize is not None:
         ax.figure.set_size_inches(*figsize)
 
-    plt.show(block=False)
+    if show:
+        plt.show(block=False)
+
     return ax if return_ax else None
 
 
 def plot_roc_curve(
-    fpr, tpr, roc_auc, ax=None, figsize=None, return_ax=False, **kwargs
+    fpr,
+    tpr,
+    roc_auc,
+    ax=None,
+    figsize=None,
+    show=True,
+    return_ax=False,
+    **kwargs,
 ):
     """Plots a receiver operating characteristic (ROC) curve.
 
@@ -703,6 +726,7 @@ def plot_roc_curve(
         ax (None): an optional matplotlib axis to plot in
         figsize (None): an optional ``(width, height)`` for the figure, in
             inches
+        show (True): whether to show the plot
         return_ax (False): whether to return the matplotlib axis containing
             the plot
         **kwargs: optional keyword arguments for matplotlib's ``plot()``
@@ -716,7 +740,9 @@ def plot_roc_curve(
     if figsize is not None:
         display.figure_.set_size_inches(*figsize)
 
-    plt.show(block=False)
+    if show:
+        plt.show(block=False)
+
     return display.ax_ if return_ax else None
 
 

@@ -45,6 +45,7 @@ def location_scatterplot(
     classes=None,
     height=None,
     template="ggplot2",
+    show=True,
 ):
     """Generates an interactive scatterplot of the given location coordinates
     with a map rendered in the background of the plot.
@@ -88,6 +89,7 @@ def location_scatterplot(
         height (None): a height for the plot, in pixels
         template ("ggplot2"): a plotly template to use. See
             `https://plotly.com/python/templates` for more information
+        show (True): whether to show the plot
 
     Returns:
         one of the following:
@@ -147,18 +149,20 @@ def location_scatterplot(
                 "notebooks"
             )
 
-        figure.show()
+        if show:
+            figure.show()
+
         return figure
 
     plot = PlotlyPlot(figure)
+    if show:
+        plot.show()
 
     if session is None:
-        plot.show()
         return plot
 
     link_type = "samples" if label_field is None else "labels"
     session_plot = SessionPlot(session, plot, link_type=link_type)
-    plot.show()
 
     return session_plot
 
@@ -191,6 +195,7 @@ def scatterplot(
     classes=None,
     height=None,
     template="ggplot2",
+    show=True,
 ):
     """Generates an interactive scatterplot of the given points.
 
@@ -229,6 +234,7 @@ def scatterplot(
         height (None): a height for the plot, in pixels
         template ("ggplot2"): a plotly template to use. See
             `https://plotly.com/python/templates` for more information
+        show (True): whether to show the plot
 
     Returns:
         one of the following:
@@ -290,18 +296,20 @@ def scatterplot(
                 "notebooks"
             )
 
-        figure.show()
+        if show:
+            figure.show()
+
         return figure
 
     plot = PlotlyPlot(figure)
+    if show:
+        plot.show()
 
     if session is None:
-        plot.show()
         return plot
 
     link_type = "samples" if label_field is None else "labels"
     session_plot = SessionPlot(session, plot, link_type=link_type)
-    plot.show()
 
     return session_plot
 
