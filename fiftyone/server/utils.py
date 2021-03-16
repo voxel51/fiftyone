@@ -57,7 +57,7 @@ def change_label_tags(collection, changes, label_fields=None):
     """
     modifier = _get_tag_modifier(changes)
 
-    collection._edit_labels_tags(modifier, label_field=label_fields)
+    collection._edit_label_tags(modifier, label_fields=label_fields)
 
 
 def get_file_dimensions(file_path):

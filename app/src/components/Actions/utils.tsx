@@ -1,16 +1,17 @@
 import { useState } from "react";
-import { selectorFamily } from "recoil";
+import { selector, selectorFamily } from "recoil";
 import { animated, useSpring } from "react-spring";
 import styled from "styled-components";
 
 import { activeLabels } from "../Filters/utils";
 import { labelCount } from "../Filters/LabelFieldFilters.state";
+import * as atoms from "../../recoil/atoms";
 import * as selectors from "../../recoil/selectors";
 import { useTheme } from "../../utils/hooks";
 
 export const HoverItemDiv = animated(styled.div`
   cursor: pointer;
-  margin: 0.25rem -0.5rem;
+  margin: 0 -0.5rem;
   padding: 0.25rem 0.5rem;
   font-weight: bold;
   display: flex;
@@ -65,31 +66,89 @@ export const numTaggable = selectorFamily<
   },
 });
 
+export const selectedSampleTagStats = selector<{ [key: string]: number }>({
+  key: "selectedSampleTagStats",
+  get: ({ get }) => {
+    const samplesIds = get(atoms.selectedSamples);
+  },
+});
+
+export const allTags = selector<string[]>({
+  key: "tagAggs",
+  get: ({ get }) => {
+    const stats = get(selectors.datasetStats);
+    const paths = get(selectors.labelPaths);
+    const types = get(selectors.labelTypesMap);
+
+    return Object.keys(
+      paths.reduce((acc, cur) => {
+        return {
+          ...acc,
+          ...stats[`${cur}.${types[cur.toLowerCase()]}.tags`],
+        };
+      }, {})
+    );
+  },
+});
+
+export const numLabelsInSelectedSamples = selector<number>({
+  key: "numLabelsInSelectedSamples",
+  get: ({ get }) => {
+    const filter = get();
+  },
+});
+
 export const tagStats = selectorFamily<
   { [key: string]: number },
   { modal: boolean; labels: boolean }
 >({
-  key: "tagStates",
+  key: "tagStats",
   get: ({ modal, labels }) => ({ get }) => {
     if (modal && labels) {
     } else if (modal) {
     } else if (labels) {
+      const types = get(selectors.labelTypesMap);
       const active = [
-        ...get(activeLabels({ modal, frames: true })),
+        ...get(activeLabels({ modal, frames: false })),
         ...get(activeLabels({ modal, frames: true })).map((l) => `frames.${l}`),
-      ];
-      const stats =
-        get(selectors.datasetStats) || get(selectors.extendedDatasetStats);
-      if (!stats) return {};
-
-      const counts = active.map((l) => [`${l}.tags`, stats[`${l}.tags`]]);
-      return counts.reduce((acc, [k, v]) => {
-        acc[k] = acc[k] ? acc[k] : 0;
-        acc[k] += v;
+      ].map((l) => `${l}.${types[l].toLowerCase()}.tags`);
+      const reducer = (acc, { name, result }) => {
+        if (active.includes(name)) {
+          acc[name] = result;
+        }
         return acc;
-      }, {});
+      };
+      const stats =
+        get(selectors.datasetStats) ||
+        get(selectors.extendedDatasetStats).reduce(reducer, {});
+
+      const results = Object.fromEntries(get(allTags).map((t) => [t, 0]));
+      active.forEach((field) => {
+        for (const tag in stats[field]) {
+          results[tag] += stats[field][tag];
+        }
+      });
+      return results;
     } else {
-      return get(selectors.tagSampleCounts);
+      const selected = get(atoms.selectedSamples);
+      const results = Object.fromEntries(
+        Object.keys(get(selectors.tagSampleCounts)).map((t) => [t, 0])
+      );
+      if (selected.size) {
+        selected.forEach((id) => {
+          get(atoms.sample(id)).tags.forEach((t) => {
+            results[t] += 1;
+          });
+        });
+      } else {
+        const counts = Object.keys(get(selectors.filterStages)).length
+          ? get(selectors.filteredTagSampleCounts)
+          : get(selectors.tagSampleCounts);
+        Object.keys(counts).forEach((t) => {
+          results[t] += counts[t];
+        });
+      }
+      return results;
     }
   },
 });

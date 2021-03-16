@@ -33,7 +33,9 @@ const Tag = ({ modal }) => {
         highlight={Boolean(selectedSamples.size) || open}
         ref={mRef}
       />
-      {open && <Tagger modal={modal} bounds={bounds} />}
+      {open && (
+        <Tagger modal={modal} bounds={bounds} close={() => setOpen(false)} />
+      )}
     </ActionDiv>
   );
 };

@@ -30,7 +30,7 @@ const ActionOption = ({
   title,
   disabled,
 }: ActionOptionProps) => {
-  const props = useHighlightHover(disabled);
+  const props = useHighlightHover(disabled, false);
   if (disabled) {
     return null;
   }
@@ -260,8 +260,8 @@ const SelectionActions = ({ modal, close, frameNumberRef, bounds }) => {
 
   return (
     <Popout modal={modal} bounds={bounds}>
-      {actions.map((props) => (
-        <ActionOption {...props} />
+      {actions.map((props, i) => (
+        <ActionOption {...props} key={i} />
       ))}
     </Popout>
   );

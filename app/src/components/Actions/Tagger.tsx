@@ -1,6 +1,6 @@
-import React, { useState } from "react";
-import styled from "styled-components";
-import { animated, useSpring } from "react-spring";
+import React, { useLayoutEffect, useState } from "react";
+import numeral from "numeral";
+import { CircularProgress } from "@material-ui/core";
 import {
   RecoilState,
   RecoilValue,
@@ -8,33 +8,20 @@ import {
   useRecoilState,
   useRecoilValue,
 } from "recoil";
-import { CircularProgress } from "@material-ui/core";
+import styled from "styled-components";
+import { animated, useSpring } from "react-spring";
 
 import Checker, { CheckState } from "./Checker";
 import Popout from "./Popout";
 import { tagStats } from "./utils";
 import * as labelAtoms from "../Filters/LabelFieldFilters.state";
 import * as fieldAtoms from "../Filters/utils";
-import { TabOptionProps, TabOption } from "../utils";
 import * as atoms from "../../recoil/atoms";
 import * as selectors from "../../recoil/selectors";
 import socket from "../../shared/connection";
 import { useTheme } from "../../utils/hooks";
 import { packageMessage } from "../../utils/socket";
-
-type OptionsProps = {
-  options: Array<TabOptionProps>;
-};
-
-const Options = React.memo(({ options }: OptionsProps) => {
-  return (
-    <>
-      {options.map((props, key) => (
-        <TabOption {...props} key={key} />
-      ))}
-    </>
-  );
-});
+import { Bounds } from "react-use-gesture/dist/types";
 
 const IconDiv = styled.div`
   position: absolute;
@@ -98,10 +85,6 @@ const TaggingInput = styled.input`
   }
 `;
 
-interface Changes {
-  [key: string]: CheckState;
-}
-
 interface SectionProps {
   placeholder: string;
   count: number;
@@ -123,41 +106,29 @@ const Section = ({
   const disabled = tagging || typeof count !== "number" || count === 0;
   const [changes, setChanges] = useState<{ [key: string]: CheckState }>({});
   const [active, setActive] = useState(null);
+  useLayoutEffect(() => {
+    setChanges({});
+  }, [taggingAtom]);
 
-  return (
-    <Checker
-      items={items}
-      changes={changes}
-      count={count}
-      setChange={(
-        name: string,
-        value: CheckState | null,
-        canSubmit = false
-      ) => {
-        const newChanges = { ...changes };
-        if (value === null) {
-          delete changes[name];
-        } else {
-          changes[name] = value;
-        }
-        if (canSubmit && Object.keys(newChanges).length === 1) {
-          submit({ changes });
-        } else {
-          setChanges(newChanges);
-        }
-      }}
-    />
-  );
+  const filter = (obj: object) =>
+    Object.fromEntries(
+      Object.entries(obj).filter(([k]) =>
+        k.toLowerCase().includes(value.toLowerCase())
+      )
+    );
+
+  const submitWrapper = (changes) =>
+    submit({
+      changes: Object.fromEntries(
+        Object.entries(changes).map(([k, v]) => [k, v === CheckState.ADD])
+      ),
+    });
 
   return (
     <>
       <TaggingContainerInput>
         <TaggingInput
-          placeholder={
-            disabled
-              ? "loading..."
-              : placeholder(isInSelection, numLabels, numSamples)
-          }
+          placeholder={disabled ? "loading..." : placeholder}
           value={value}
           onChange={(e) => setValue(e.target.value)}
           onKeyPress={(e) => {
@@ -169,10 +140,36 @@ const Section = ({
           }}
           focused={!disabled}
           disabled={disabled}
+          autoFocus
+          onBlur={({ target }) => target.focus()}
+          type={"text"}
         />
         <Loading loading={Boolean(tagging || typeof count !== "number")} />
       </TaggingContainerInput>
-      <Checker items={items} />
+      <Checker
+        active={active}
+        items={filter(items)}
+        changes={filter(changes)}
+        count={count}
+        setActive={setActive}
+        setChange={(
+          name: string,
+          value: CheckState | null,
+          canSubmit = false
+        ) => {
+          const newChanges = { ...changes };
+          if (value === null) {
+            delete newChanges[name];
+          } else {
+            newChanges[name] = value;
+          }
+          if (canSubmit && Object.keys(newChanges).length === 1) {
+            submitWrapper(newChanges);
+          } else {
+            setChanges(newChanges);
+          }
+        }}
+      />
     </>
   );
 };
@@ -196,53 +193,52 @@ const SwitchDiv = animated(styled.div`
   border-bottom-width: 2px;
 `);
 
-type TaggerProps = {
-  modal: boolean;
-};
-
 const labelsPlaceholder = (selection, numLabels, numSamples) => {
   if (numSamples === 0) {
     return "no samples";
   }
+  const formatted = numeral(numLabels).format("0,0");
   if (numLabels === 0) {
     return "no labels";
   }
   if (selection) {
-    return `+ tag ${numLabels > 1 ? `${numLabels} ` : ""}shown label${
+    return `+ tag ${numLabels > 1 ? `${formatted} ` : ""}shown label${
       numLabels > 1 ? "s" : ""
-    } in ${numSamples > 1 ? numSamples : " "}selected sample${
-      numSamples === 1 ? "" : "s"
     }`;
   }
 
-  return `+ tag ${numLabels} shown label${numLabels > 1 ? "s" : ""} in ${
-    numSamples > 1 ? `${numSamples} ` : ""
-  }sample${numSamples === 1 ? "" : "s"}`;
+  return `+ tag ${formatted} shown label${numLabels > 1 ? "s" : ""}`;
 };
 
 const labelsModalPlaceholder = (selection, numLabels) => {
   if (selection) {
-    return `+ tag ${numLabels > 1 ? `${numLabels} ` : ""}selected label${
+    numLabels = selection;
+    const formatted = numeral(numLabels).format("0,0");
+    return `+ tag ${numLabels > 1 ? `${formatted} ` : ""}selected label${
       numLabels === 1 ? "" : "s"
     }`;
   }
 
-  return `+ tag ${numLabels > 1 ? `${numLabels} ` : ""}shown label${
+  const formatted = numeral(numLabels).format("0,0");
+  return `+ tag ${numLabels > 1 ? `${formatted} ` : ""}shown label${
     numLabels === 1 ? "" : "s"
   }`;
 };
 
-const samplesPlaceholder = (selection, numLabels, numSamples) => {
+const samplesPlaceholder = (selection, _, numSamples) => {
   if (numSamples === 0) {
     return "no samples";
   }
   if (selection) {
-    return `+ tag ${numSamples > 1 ? `${numSamples} ` : ""}selected sample${
+    numSamples = selection;
+    const formatted = numeral(numSamples).format("0,0");
+    return `+ tag ${numSamples > 1 ? `${formatted} ` : ""}selected sample${
       numSamples === 1 ? "" : "s"
     }`;
   }
 
-  return `+ tag ${numSamples > 1 ? `${numSamples} ` : ""}sample${
+  const formatted = numeral(numSamples).format("0,0");
+  return `+ tag ${numSamples > 1 ? `${formatted} ` : ""}sample${
     numSamples === 1 ? "" : "s"
   }`;
 };
@@ -265,9 +261,10 @@ const packageModal = ({ labels = null, sample_id = null, changes }) =>
     sample_id,
   });
 
-const useTagCallback = (modal, targetLabels) => {
+const useTagCallback = (modal, targetLabels, close) => {
   return useRecoilCallback(
     ({ snapshot }) => async ({ changes }) => {
+      close();
       const activeLabels = await snapshot.getPromise(
         fieldAtoms.activeFields(modal)
       );
@@ -289,18 +286,18 @@ const useTagCallback = (modal, targetLabels) => {
         socket.send(packageGrid({ changes, targetLabels, activeLabels }));
       }
     },
-    [modal, targetLabels]
+    [modal, targetLabels, close]
   );
 };
 
 const usePlaceHolder = (modal: boolean, labels: boolean): [number, string] => {
-  const hasSelection = useRecoilValue(
+  const selection = useRecoilValue(
     modal ? selectors.selectedLabelIds : atoms.selectedSamples
   ).size;
   const labelCount = useRecoilValue(labelAtoms.labelCount(modal));
 
   if (modal && labels) {
-    return [labelCount, labelsModalPlaceholder(hasSelection, labelCount)];
+    return [labelCount, labelsModalPlaceholder(selection, labelCount)];
   } else if (modal) {
     return [1, samplePlaceholder()];
   } else {
@@ -308,14 +305,23 @@ const usePlaceHolder = (modal: boolean, labels: boolean): [number, string] => {
     const filteredSamples = useRecoilValue(selectors.filteredCount);
     const count = filteredSamples ?? totalSamples;
     if (labels) {
-      return [labelCount, labelsPlaceholder(hasSelection, labelCount, count)];
+      return [labelCount, labelsPlaceholder(selection, labelCount, count)];
     } else {
-      return [count, samplesPlaceholder(hasSelection, labelCount, count)];
+      return [
+        selection > 0 ? selection : count,
+        samplesPlaceholder(selection, labelCount, count),
+      ];
     }
   }
 };
 
-const Tagger = ({ modal, bounds }: TaggerProps) => {
+type TaggerProps = {
+  modal: boolean;
+  bounds: Bounds;
+  close: () => void;
+};
+
+const Tagger = ({ modal, bounds, close }: TaggerProps) => {
   const [labels, setLabels] = useState(modal);
   const theme = useTheme();
   const sampleProps = useSpring({
@@ -328,11 +334,11 @@ const Tagger = ({ modal, bounds }: TaggerProps) => {
     cursor: labels ? "default" : "pointer",
   });
 
-  const submit = useTagCallback(modal, labels);
+  const submit = useTagCallback(modal, labels, close);
   const [count, placeholder] = usePlaceHolder(modal, labels);
 
   return (
-    <Popout style={{ width: "18rem" }} modal={modal} bounds={bounds}>
+    <Popout style={{ width: "12rem" }} modal={modal} bounds={bounds}>
       <SwitcherDiv>
         <SwitchDiv
           style={sampleProps}
