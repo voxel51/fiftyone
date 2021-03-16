@@ -34,155 +34,251 @@ logger = logging.getLogger(__name__)
 _MAX_TRACES = 25
 
 
-def location_scatterplot(
-    locations=None,
-    location_field=None,
-    samples=None,
-    session=None,
-    label_field=None,
-    field=None,
-    labels=None,
-    classes=None,
-    height=None,
-    template="ggplot2",
-    show=True,
+def plot_confusion_matrix(
+    confusion_matrix, labels, colorscale=None, height=None, show=True
 ):
-    """Generates an interactive scatterplot of the given location coordinates
-    with a map rendered in the background of the plot.
-
-    Location data can be specified either via the ``locations`` or
-    ``location_field`` parameters. If you specify neither, the first
-    :class:`fiftyone.core.labels.GeoLocation` field on the dataset is used.
-
-    If you provide a ``session`` object, then the state of the FiftyOne App
-    will be synced with the currently selected points in the plot.
-
-    -   Sample selection: If no ``label_field`` is provided, then when points
-        are selected, a view containing the corresponding samples will be
-        loaded in the App
-
-    -   Label selection: If ``label_field`` is provided, then when points are
-        selected, a view containing the corresponding labels in
-        ``label_field`` will be loaded in the App
-
-    You can use the ``field`` or ``labels`` parameters to define a coloring for
-    the points.
+    """Plots a confusion matrix.
 
     Args:
-        locations (None): a ``num_samples x 2`` array of
-            ``(longitude, latitude)`` coordinates
-        location_field (None): the name of a
-            :class:`fiftyone.core.labels.GeoLocation` field with
-            ``(longitude, latitude)`` coordinates in its ``point`` attribute
-        samples (None): the :class:`fiftyone.core.collections.SampleCollection`
-            whose data is being visualized
-        session (None): a :class:`fiftyone.core.session.Session` object to
-            link with the interactive plot
-        label_field (None): a :class:`fiftyone.core.labels.Label` field
-            containing labels for each location
-        field (None): a sample field or ``embedded.field.name`` to use to
-            color the points. Can be numeric or strings
-        labels (None): a list of numeric or string values to use to color
-            the points
-        classes (None): an optional list of classes whose points to plot.
-            Only applicable when ``labels`` contains strings
+        confusion_matrix: a ``num_true x num_preds`` confusion matrix
+        labels: a ``max(num_true, num_preds)`` array of class labels
+        colorscale (None): a plotly colorscale to use
         height (None): a height for the plot, in pixels
-        template ("ggplot2"): a plotly template to use. See
-            `https://plotly.com/python/templates` for more information
         show (True): whether to show the plot
 
     Returns:
-        one of the following:
-
-        -   a :class:`fiftyone.utils.plot.interactive.SessionPlot`, if a
-            ``session`` is provided
-        -   an :class:`fiftyone.utils.plot.interactive.InteractivePlot`, if a
-            ``session`` is not provided
-        -   a ``plotly.graph_objects.Figure``, in non-notebook contexts
+        a ``plotly.graph_objects.Figure``
     """
-    if session is not None and samples is None:
-        samples = session._collection
+    confusion_matrix = np.asarray(confusion_matrix)
+    num_rows = confusion_matrix.shape[0]
+    num_cols = confusion_matrix.shape[1]
+    zlim = [0, confusion_matrix.max()]
 
-    if samples is None:
-        raise ValueError(
-            "You must provide `samples` when `locations` are not manually "
-            "specified"
-        )
+    hover_lines = [
+        "<b>count: %{z:d}</b>",
+        "truth: %{y}",
+        "predicted: %{x}",
+    ]
+    hovertemplate = "<br>".join(hover_lines) + "<extra></extra>"
 
-    locations = _parse_locations(locations, location_field, samples)
-
-    locations, ids, values, classes, categorical = _parse_scatter_inputs(
-        locations, samples, session, label_field, field, labels, classes
+    heatmap = pgo.Heatmap(
+        x=labels[:num_cols],
+        y=labels[:num_rows],
+        z=confusion_matrix,
+        zmin=zlim[0],
+        zmax=zlim[1],
+        colorbar=dict(lenmode="fraction", len=1),
+        colorscale=colorscale,
+        hovertemplate=hovertemplate,
     )
 
-    if field is not None:
-        value_label = field
-    else:
-        value_label = "label"
-
-    if categorical:
-        if len(classes) > _MAX_TRACES:
-            figure = _plot_scatter_mapbox_categorical_single_trace(
-                locations, values, classes, ids=ids, value_label=value_label
-            )
-        else:
-            figure = _plot_scatter_mapbox_categorical(
-                locations, values, classes, ids=ids, value_label=value_label
-            )
-    else:
-        figure = _plot_scatter_mapbox_numeric(
-            locations, values=values, ids=ids, value_label=value_label
-        )
+    figure = pgo.Figure(heatmap)
 
     if height is not None:
         figure.update_layout(height=height)
 
     figure.update_layout(
-        margin={"r": 0, "t": 30, "l": 0, "b": 0},
-        template=template,  # https://plotly.com/python/templates
+        xaxis=dict(range=[-0.5, num_cols - 0.5], constrain="domain"),
+        yaxis=dict(scaleanchor="x", scaleratio=1),
+        xaxis_title="Predicted label",
+        yaxis_title="True label",
     )
 
-    if not foc.is_notebook_context():
-        if session is not None:
+    if show:
+        figure.show()
+
+    return figure
+
+
+def plot_pr_curve(
+    precision,
+    recall,
+    label=None,
+    style="area",
+    template=None,
+    height=None,
+    show=True,
+):
+    """Plots a precision-recall (PR) curve.
+
+    Args:
+        precision: an array of precision values
+        recall: an array of recall values
+        label (None): a label for the curve
+        style ("area"): a plot style to use. Supported values are
+            ``("area", "line")``
+        template (None): a plotly template to use. See
+            `https://plotly.com/python/templates` for more information
+        height (None): a height for the plot, in pixels
+        show (True): whether to show the plot
+
+    Returns:
+        a ``plotly.graph_objects.Figure``
+    """
+    if style == "line":
+        plot = px.line
+    else:
+        if style != "area":
             logger.warning(
-                "Interactive Plotly plots are currently only supported in "
-                "notebooks"
+                "Unsupported style '%s'; using 'area' instead", style
             )
 
-        if show:
-            figure.show()
+        plot = px.area
 
-        return figure
+    figure = plot(x=recall, y=precision)
 
-    plot = PlotlyPlot(figure)
+    # Add 50/50 line
+    figure.add_shape(
+        type="line", line=dict(dash="dash"), x0=0, x1=1, y0=1, y1=0
+    )
+
+    if height is not None:
+        figure.update_layout(height=height)
+
+    if label is not None:
+        figure.update_layout(title=dict(text=label, x=0.5, xanchor="center"))
+
+    figure.update_layout(
+        xaxis=dict(constrain="domain"),
+        yaxis=dict(scaleanchor="x", scaleratio=1),
+        xaxis_title="Recall",
+        yaxis_title="Precision",
+        template=template,
+    )
+
     if show:
-        plot.show()
+        figure.show()
 
-    if session is None:
-        return plot
-
-    link_type = "samples" if label_field is None else "labels"
-    session_plot = SessionPlot(session, plot, link_type=link_type)
-
-    return session_plot
+    return figure
 
 
-def _parse_locations(locations, location_field, samples):
-    if locations is not None:
-        return np.asarray(locations)
+def plot_pr_curves(
+    precisions, recall, classes, template=None, height=None, show=True
+):
+    """Plots a set of per-class precision-recall (PR) curves.
 
-    if location_field is not None:
-        samples.validate_field_type(
-            location_field,
-            fof.EmbeddedDocumentField,
-            embedded_doc_type=fol.GeoLocation,
+    Args:
+        precisions: a ``num_classes x num_recalls`` array of per-class
+            precision values
+        recall: an array of recall values
+        classes: the list of classes
+        template (None): a plotly template to use. See
+            `https://plotly.com/python/templates` for more information
+        height (None): a height for the plot, in pixels
+        show (True): whether to show the plot
+
+    Returns:
+        a ``plotly.graph_objects.Figure``
+    """
+    figure = pgo.Figure()
+
+    # Add 50/50 line
+    figure.add_shape(
+        type="line", line=dict(dash="dash"), x0=0, x1=1, y0=1, y1=0
+    )
+
+    hover_lines = [
+        "<b>class: %{text}</b>",
+        "recall: %{x}",
+        "precision: %{y}",
+    ]
+
+    hovertemplate = "<br>".join(hover_lines) + "<extra></extra>"
+
+    for precision, _class in zip(precisions, classes):
+        avg_precision = np.mean(precision)
+        label = "%s (AP = %.3f)" % (_class, avg_precision)
+
+        line = pgo.Scatter(
+            x=recall,
+            y=precision,
+            name=label,
+            mode="lines",
+            text=np.full(recall.shape, _class),
+            hovertemplate=hovertemplate,
         )
+
+        figure.add_trace(line)
+
+    if height is not None:
+        figure.update_layout(height=height)
+
+    figure.update_layout(
+        xaxis=dict(constrain="domain"),
+        yaxis=dict(scaleanchor="x", scaleratio=1),
+        xaxis_title="Recall",
+        yaxis_title="Precision",
+        template=template,
+    )
+
+    if show:
+        figure.show()
+
+    return figure
+
+
+def plot_roc_curve(
+    fpr,
+    tpr,
+    roc_auc=None,
+    style="area",
+    template=None,
+    height=None,
+    show=True,
+):
+    """Plots a receiver operating characteristic (ROC) curve.
+
+    Args:
+        fpr: an array of false postive rates
+        tpr: an array of true postive rates
+        roc_auc (None): the area under the ROC curve
+        style ("area"): a plot style to use. Supported values are
+            ``("area", "line")``
+        template (None): a plotly template to use. See
+            `https://plotly.com/python/templates` for more information
+        height (None): a height for the plot, in pixels
+        show (True): whether to show the plot
+
+    Returns:
+        a ``plotly.graph_objects.Figure``
+    """
+    if style == "line":
+        plot = px.line
     else:
-        location_field = samples._get_geo_location_field()
+        if style != "area":
+            logger.warning(
+                "Unsupported style '%s'; using 'area' instead", style
+            )
 
-    coords = samples.values(location_field + ".point.coordinates")
+        plot = px.area
 
-    return np.asarray(coords)
+    figure = plot(x=fpr, y=tpr)
+
+    # Add 50/50 line
+    figure.add_shape(
+        type="line", line=dict(dash="dash"), x0=0, x1=1, y0=0, y1=1
+    )
+
+    if height is not None:
+        figure.update_layout(height=height)
+
+    if roc_auc is not None:
+        figure.update_layout(
+            title=dict(text="AUC: %.5f" % roc_auc, x=0.5, xanchor="center")
+        )
+
+    figure.update_layout(
+        xaxis=dict(constrain="domain"),
+        yaxis=dict(scaleanchor="x", scaleratio=1),
+        xaxis_title="False positive rate",
+        yaxis_title="True positive rate",
+        template=template,
+    )
+
+    if show:
+        figure.show()
+
+    return figure
 
 
 def scatterplot(
@@ -193,8 +289,8 @@ def scatterplot(
     field=None,
     labels=None,
     classes=None,
-    height=None,
     template="ggplot2",
+    height=None,
     show=True,
 ):
     """Generates an interactive scatterplot of the given points.
@@ -231,9 +327,9 @@ def scatterplot(
             the points
         classes (None): an optional list of classes whose points to plot.
             Only applicable when ``labels`` contains strings
-        height (None): a height for the plot, in pixels
         template ("ggplot2"): a plotly template to use. See
             `https://plotly.com/python/templates` for more information
+        height (None): a height for the plot, in pixels
         show (True): whether to show the plot
 
     Returns:
@@ -309,593 +405,138 @@ def scatterplot(
         return plot
 
     link_type = "samples" if label_field is None else "labels"
-    session_plot = SessionPlot(session, plot, link_type=link_type)
-
-    return session_plot
+    return SessionPlot(session, plot, link_type=link_type)
 
 
-def _parse_scatter_inputs(
-    points, samples, session, label_field, field, labels, classes
+def location_scatterplot(
+    locations=None,
+    location_field=None,
+    samples=None,
+    session=None,
+    label_field=None,
+    field=None,
+    labels=None,
+    classes=None,
+    template="ggplot2",
+    height=None,
+    show=True,
 ):
+    """Generates an interactive scatterplot of the given location coordinates
+    with a map rendered in the background of the plot.
+
+    Location data can be specified either via the ``locations`` or
+    ``location_field`` parameters. If you specify neither, the first
+    :class:`fiftyone.core.labels.GeoLocation` field on the dataset is used.
+
+    If you provide a ``session`` object, then the state of the FiftyOne App
+    will be synced with the currently selected points in the plot.
+
+    -   Sample selection: If no ``label_field`` is provided, then when points
+        are selected, a view containing the corresponding samples will be
+        loaded in the App
+
+    -   Label selection: If ``label_field`` is provided, then when points are
+        selected, a view containing the corresponding labels in
+        ``label_field`` will be loaded in the App
+
+    You can use the ``field`` or ``labels`` parameters to define a coloring for
+    the points.
+
+    Args:
+        locations (None): a ``num_samples x 2`` array of
+            ``(longitude, latitude)`` coordinates
+        location_field (None): the name of a
+            :class:`fiftyone.core.labels.GeoLocation` field with
+            ``(longitude, latitude)`` coordinates in its ``point`` attribute
+        samples (None): the :class:`fiftyone.core.collections.SampleCollection`
+            whose data is being visualized
+        session (None): a :class:`fiftyone.core.session.Session` object to
+            link with the interactive plot
+        label_field (None): a :class:`fiftyone.core.labels.Label` field
+            containing labels for each location
+        field (None): a sample field or ``embedded.field.name`` to use to
+            color the points. Can be numeric or strings
+        labels (None): a list of numeric or string values to use to color
+            the points
+        classes (None): an optional list of classes whose points to plot.
+            Only applicable when ``labels`` contains strings
+        template ("ggplot2"): a plotly template to use. See
+            `https://plotly.com/python/templates` for more information
+        height (None): a height for the plot, in pixels
+        show (True): whether to show the plot
+
+    Returns:
+        one of the following:
+
+        -   a :class:`fiftyone.utils.plot.interactive.SessionPlot`, if a
+            ``session`` is provided
+        -   an :class:`fiftyone.utils.plot.interactive.InteractivePlot`, if a
+            ``session`` is not provided
+        -   a ``plotly.graph_objects.Figure``, in non-notebook contexts
+    """
+    if session is not None and samples is None:
+        samples = session._collection
+
+    if samples is None:
+        raise ValueError(
+            "You must provide `samples` when `locations` are not manually "
+            "specified"
+        )
+
+    locations = _parse_locations(locations, location_field, samples)
+
+    locations, ids, values, classes, categorical = _parse_scatter_inputs(
+        locations, samples, session, label_field, field, labels, classes
+    )
+
     if field is not None:
-        if samples is None:
-            raise ValueError(
-                "You must provide `samples` in order to extract field values"
-            )
-
-        labels = samples.values(field)
-
-    if labels and isinstance(labels[0], (list, tuple)):
-        labels = list(itertools.chain.from_iterable(labels))
-
-    if labels is not None:
-        if len(labels) != len(points):
-            raise ValueError(
-                "Number of labels (%d) does not match number of points (%d). "
-                "You may have missing data/labels that you need to omit from "
-                "your view before visualizing" % (len(labels), len(points))
-            )
-
-    ids = None
-    if session is not None:
-        if label_field is not None:
-            ids = samples._get_label_ids(fields=label_field)
-            if len(ids) != len(points):
-                raise ValueError(
-                    "Number of label IDs (%d) does not match number of "
-                    "points (%d). You may have missing data/labels that you "
-                    "need to omit from your view before visualizing"
-                    % (len(ids), len(points))
-                )
-        else:
-            ids = np.array(samples.values("id"))
-            if len(ids) != len(points):
-                raise ValueError(
-                    "Number of sample IDs (%d) does not match number of "
-                    "points (%d). You may have missing data/labels that you "
-                    "need to omit from your view before visualizing"
-                    % (len(ids), len(points))
-                )
-
-    if samples is not None and session is not None:
-        # Don't spawn a new App instance in notebook contexts
-        with session.no_show():
-            if isinstance(samples, DatasetView):
-                session.view = samples
-            else:
-                session.dataset = samples
-
-    if session is not None:
-        if samples is None:
-            samples = session._collection
-
-    points, values, classes, inds, categorical = _parse_data(
-        points, labels, classes
-    )
-
-    if ids is not None and inds is not None:
-        ids = ids[inds]
-
-    return points, ids, values, classes, categorical
-
-
-def _parse_data(points, labels, classes):
-    if not labels:
-        return points, None, None, None, False
-
-    if not etau.is_str(labels[0]):
-        return points, labels, None, None, False
-
-    if classes is None:
-        classes = sorted(set(labels))
-        return points, labels, classes, None, True
-
-    found = np.array([l in classes for l in labels])
-    if not np.all(found):
-        points = points[found, :]
-        values = values[found]
+        value_label = field
     else:
-        found = None
+        value_label = "label"
 
-    return points, values, classes, found, True
-
-
-def _plot_scatter_categorical(
-    points,
-    labels,
-    classes,
-    sizes=None,
-    ids=None,
-    value_label="label",
-    size_label="size",
-    max_marker_size=15,
-):
-    num_dims = points.shape[1]
-
-    # https://plotly.com/python/hover-text-and-formatting
-    hovertemplate = "<b>%s: %%{text}</b>" % value_label
-
-    if sizes is not None:
-        sizeref = 0.5 * max(sizes) / max_marker_size
-        hovertemplate += "<br>%s: %%{marker.size}" % size_label
-
-    if num_dims == 3:
-        hovertemplate += "<br>x, y, z = %{x:.3f}, %{y:.3f}, %{z:.3f}"
-    else:
-        hovertemplate += "<br>x, y = %{x:.3f}, %{y:.3f}"
-
-    if ids is not None:
-        hovertemplate += "<br>ID: %{customdata}"
-
-    hovertemplate += "<extra></extra>"
-
-    traces = []
-    for label in classes:
-        label_inds = labels == label
-
-        if ids is not None:
-            customdata = ids[label_inds]
-        else:
-            customdata = None
-
-        if sizes is not None:
-            marker = dict(
-                size=sizes[label_inds],
-                sizemode="diameter",
-                sizeref=sizeref,
-                sizemin=4,
+    if categorical:
+        if len(classes) > _MAX_TRACES:
+            figure = _plot_scatter_mapbox_categorical_single_trace(
+                locations, values, classes, ids=ids, value_label=value_label
             )
         else:
-            marker = None
-
-        kwargs = dict(
-            customdata=customdata,
-            mode="markers",
-            showlegend=True,
-            name=label,
-            marker=marker,
-            text=np.full(np.count_nonzero(label_inds), label),
-            hovertemplate=hovertemplate,
-        )
-
-        if num_dims == 3:
-            scatter = pgo.Scatter3d(
-                x=points[label_inds][:, 0],
-                y=points[label_inds][:, 1],
-                z=points[label_inds][:, 2],
-                **kwargs,
+            figure = _plot_scatter_mapbox_categorical(
+                locations, values, classes, ids=ids, value_label=value_label
             )
-        else:
-            scatter = pgo.Scattergl(
-                x=points[label_inds][:, 0],
-                y=points[label_inds][:, 1],
-                **kwargs,
-            )
-
-        traces.append(scatter)
-
-    return pgo.Figure(traces)
-
-
-def _plot_scatter_categorical_single_trace(
-    points,
-    labels,
-    classes,
-    sizes=None,
-    ids=None,
-    colors=None,
-    value_label="label",
-    size_label="size",
-    max_marker_size=15,
-):
-    num_dims = points.shape[1]
-
-    if colors is None:
-        colors = px.colors.qualitative.Plotly
-
-    num_classes = len(classes)
-    targets = [classes.index(l) for l in labels]
-    clim = [-0.5, num_classes - 0.5]
-
-    # @todo how to blend for >10 classes?
-    colorscale = []
-    for i in range(num_classes):
-        color = colors[i % len(colors)]
-        colorscale.append([i / num_classes, color])
-        colorscale.append([(i + 1) / num_classes, color])
-
-    marker = dict(
-        color=targets,
-        cmin=clim[0],
-        cmax=clim[1],
-        autocolorscale=False,
-        colorscale=colorscale,
-        colorbar=dict(
-            title=value_label,
-            tickvals=list(range(num_classes)),
-            ticktext=classes,
-            lenmode="fraction",
-            len=1,
-        ),
-        showscale=True,
-    )
-
-    if sizes is not None:
-        marker.update(
-            dict(
-                size=sizes,
-                sizemode="diameter",
-                sizeref=0.5 * max(sizes) / max_marker_size,
-                sizemin=4,
-            )
-        )
-
-    # https://plotly.com/python/hover-text-and-formatting
-    hovertemplate = "<b>%s: %%{text}</b>" % value_label
-
-    if sizes is not None:
-        hovertemplate += "<br>%s: %%{marker.size}" % size_label
-
-    if num_dims == 3:
-        hovertemplate += "<br>x, y, z = %{x:.3f}, %{y:.3f}, %{z:.3f}"
     else:
-        hovertemplate += "<br>x, y = %{x:.3f}, %{y:.3f}"
-
-    if ids is not None:
-        hovertemplate += "<br>ID: %{customdata}"
-
-    hovertemplate += "<extra></extra>"
-
-    kwargs = dict(
-        customdata=ids,
-        mode="markers",
-        marker=marker,
-        text=labels,
-        hovertemplate=hovertemplate,
-    )
-
-    if num_dims == 3:
-        scatter = pgo.Scatter3d(
-            x=points[:, 0], y=points[:, 1], z=points[:, 2], **kwargs
-        )
-    else:
-        scatter = pgo.Scattergl(x=points[:, 0], y=points[:, 1], **kwargs)
-
-    return pgo.Figure(scatter)
-
-
-def _plot_scatter_numeric(
-    points,
-    values=None,
-    sizes=None,
-    ids=None,
-    colorscale="Viridis",
-    value_label="label",
-    size_label="size",
-    max_marker_size=15,
-):
-    num_dims = points.shape[1]
-
-    marker = dict()
-
-    if values is not None:
-        marker.update(
-            dict(
-                color=values,
-                colorbar=dict(title=value_label, lenmode="fraction", len=1),
-                colorscale=colorscale,
-            )
+        figure = _plot_scatter_mapbox_numeric(
+            locations, values=values, ids=ids, value_label=value_label
         )
 
-    if sizes is not None:
-        marker.update(
-            dict(
-                size=sizes,
-                sizemode="diameter",
-                sizeref=0.5 * max(sizes) / max_marker_size,
-                sizemin=4,
-            )
-        )
+    if height is not None:
+        figure.update_layout(height=height)
 
-    # https://plotly.com/python/hover-text-and-formatting
-
-    if values is not None:
-        hovertemplate = "<b>%s: %%{marker.color}</b>" % value_label
-    else:
-        hovertemplate = ""
-
-    if sizes is not None:
-        hovertemplate += "<br>%s: %%{marker.size}" % size_label
-
-    if num_dims == 3:
-        hovertemplate += "<br>x, y, z = %{x:.3f}, %{y:.3f}, %{z:.3f}"
-    else:
-        hovertemplate += "<br>x, y = %{x:.3f}, %{y:.3f}"
-
-    if ids is not None:
-        hovertemplate += "<br>ID: %{customdata}"
-
-    if hovertemplate.startswith("<br>"):
-        hovertemplate = hovertemplate[len("<br>") :]
-
-    hovertemplate += "<extra></extra>"
-
-    kwargs = dict(
-        customdata=ids,
-        mode="markers",
-        marker=marker,
-        hovertemplate=hovertemplate,
-    )
-
-    if num_dims == 3:
-        scatter = pgo.Scatter3d(
-            x=points[:, 0], y=points[:, 1], z=points[:, 2], **kwargs
-        )
-    else:
-        scatter = pgo.Scattergl(x=points[:, 0], y=points[:, 1], **kwargs)
-
-    return pgo.Figure(scatter)
-
-
-def _plot_scatter_mapbox_categorical(
-    coords,
-    labels,
-    classes,
-    sizes=None,
-    ids=None,
-    value_label="label",
-    size_label="size",
-    max_marker_size=15,
-):
-    # https://plotly.com/python/hover-text-and-formatting
-    hovertemplate = "<b>%s: %%{text}</b>" % value_label
-
-    if sizes is not None:
-        sizeref = 0.5 * max(sizes) / max_marker_size
-        hovertemplate += "<br>%s: %%{marker.size}" % size_label
-
-    hovertemplate += "<br>lat: %{lat:.5f}<br>lon: %{lon:.5f}"
-
-    if ids is not None:
-        hovertemplate += "<br>ID: %{customdata}"
-
-    hovertemplate += "<extra></extra>"
-
-    traces = []
-    for label in classes:
-        label_inds = labels == label
-
-        if ids is not None:
-            customdata = ids[label_inds]
-        else:
-            customdata = None
-
-        if sizes is not None:
-            marker = dict(
-                size=sizes[label_inds],
-                sizemode="diameter",
-                sizeref=sizeref,
-                sizemin=4,
-            )
-        else:
-            marker = None
-
-        scatter = pgo.Scattermapbox(
-            lat=coords[label_inds][:, 1],
-            lon=coords[label_inds][:, 0],
-            customdata=customdata,
-            mode="markers",
-            showlegend=True,
-            name=label,
-            marker=marker,
-            text=np.full(np.count_nonzero(label_inds), label),
-            hovertemplate=hovertemplate,
-        )
-        traces.append(scatter)
-
-    figure = pgo.Figure(traces)
-
-    zoom, (center_lon, center_lat) = _compute_zoom_center(coords)
     figure.update_layout(
-        mapbox_style="carto-positron",
-        mapbox=dict(center=dict(lat=center_lat, lon=center_lon), zoom=zoom),
+        margin={"r": 0, "t": 30, "l": 0, "b": 0},
+        template=template,  # https://plotly.com/python/templates
     )
 
-    return figure
-
-
-def _plot_scatter_mapbox_categorical_single_trace(
-    coords,
-    labels,
-    classes,
-    sizes=None,
-    ids=None,
-    colors=None,
-    value_label="label",
-    size_label="size",
-    max_marker_size=15,
-):
-    if colors is None:
-        colors = px.colors.qualitative.Plotly
-
-    num_classes = len(classes)
-    targets = [classes.index(l) for l in labels]
-    clim = [-0.5, num_classes - 0.5]
-
-    # @todo how to blend for >10 classes?
-    colorscale = []
-    for i in range(num_classes):
-        color = colors[i % len(colors)]
-        colorscale.append([i / num_classes, color])
-        colorscale.append([(i + 1) / num_classes, color])
-
-    marker = dict(
-        color=targets,
-        cmin=clim[0],
-        cmax=clim[1],
-        autocolorscale=False,
-        colorscale=colorscale,
-        colorbar=dict(
-            title=value_label,
-            tickvals=list(range(num_classes)),
-            ticktext=classes,
-            lenmode="fraction",
-            len=1,
-        ),
-        showscale=True,
-    )
-
-    if sizes is not None:
-        marker.update(
-            dict(
-                size=sizes,
-                sizemode="diameter",
-                sizeref=0.5 * max(sizes) / max_marker_size,
-                sizemin=4,
+    if not foc.is_notebook_context():
+        if session is not None:
+            logger.warning(
+                "Interactive Plotly plots are currently only supported in "
+                "notebooks"
             )
-        )
 
-    # https://plotly.com/python/hover-text-and-formatting
-    hovertemplate = "<b>%s: %%{text}</b>" % value_label
+        if show:
+            figure.show()
 
-    if sizes is not None:
-        hovertemplate += "<br>%s: %%{marker.size}" % size_label
+        return figure
 
-    hovertemplate += "<br>lat: %{lat:.5f}<br>lon: %{lon:.5f}"
+    plot = PlotlyPlot(figure)
+    if show:
+        plot.show()
 
-    if ids is not None:
-        hovertemplate += "<br>ID: %{customdata}"
+    if session is None:
+        return plot
 
-    hovertemplate += "<extra></extra>"
-
-    scatter = pgo.Scattermapbox(
-        lat=coords[:, 1],
-        lon=coords[:, 0],
-        customdata=ids,
-        mode="markers",
-        marker=marker,
-        text=labels,
-        hovertemplate=hovertemplate,
-    )
-
-    figure = pgo.Figure(scatter)
-
-    zoom, (center_lon, center_lat) = _compute_zoom_center(coords)
-    figure.update_layout(
-        mapbox_style="carto-positron",
-        mapbox=dict(center=dict(lat=center_lat, lon=center_lon), zoom=zoom),
-    )
-
-    return figure
-
-
-def _plot_scatter_mapbox_numeric(
-    coords,
-    values=None,
-    sizes=None,
-    ids=None,
-    colorscale="Viridis",
-    value_label="value",
-    size_label="size",
-    max_marker_size=15,
-):
-    marker = dict()
-
-    if values is not None:
-        marker.update(dict(color=values, colorscale=colorscale,))
-
-    if sizes is not None:
-        marker.update(
-            dict(
-                size=sizes,
-                sizemode="diameter",
-                sizeref=0.5 * max(sizes) / max_marker_size,
-                sizemin=4,
-            )
-        )
-
-    # https://plotly.com/python/hover-text-and-formatting
-    if values is not None:
-        hovertemplate = "<b>%s: %%{marker.color}</b>" % value_label
-    else:
-        hovertemplate = ""
-
-    if sizes is not None:
-        hovertemplate += "<br>%s: %%{marker.size}" % size_label
-
-    hovertemplate += "<br>lat: %{lat:.5f}<br>lon: %{lon:.5f}"
-
-    if ids is not None:
-        hovertemplate += "<br>ID: %{customdata}"
-
-    if hovertemplate.startswith("<br>"):
-        hovertemplate = hovertemplate[len("<br>") :]
-
-    hovertemplate += "<extra></extra>"
-
-    scatter = pgo.Scattermapbox(
-        lat=coords[:, 1],
-        lon=coords[:, 0],
-        customdata=ids,
-        mode="markers",
-        marker=marker,
-        hovertemplate=hovertemplate,
-    )
-
-    figure = pgo.Figure(scatter)
-
-    zoom, (center_lon, center_lat) = _compute_zoom_center(coords)
-    figure.update_layout(
-        mapbox_style="carto-positron",
-        mapbox=dict(center=dict(lat=center_lat, lon=center_lon), zoom=zoom),
-    )
-
-    return figure
-
-
-# source: https://stackoverflow.com/a/64148305
-def _compute_zoom_center(coords, pad=0.2, aspect_ratio=2.0):
-    min_lon, min_lat = coords.min(axis=0)
-    max_lon, max_lat = coords.max(axis=0)
-
-    center_lon = round(0.5 * (min_lon + max_lon), 5)
-    center_lat = round(0.5 * (min_lat + max_lat), 5)
-    center = (center_lon, center_lat)
-
-    # Longitudinal range by zoom level (20 to 1), in degrees, at equator
-    lon_zoom_range = np.array(
-        [
-            0.0007,
-            0.0014,
-            0.003,
-            0.006,
-            0.012,
-            0.024,
-            0.048,
-            0.096,
-            0.192,
-            0.3712,
-            0.768,
-            1.536,
-            3.072,
-            6.144,
-            11.8784,
-            23.7568,
-            47.5136,
-            98.304,
-            190.0544,
-            360.0,
-        ]
-    )
-
-    alpha = 1.0 + pad
-    height = (max_lat - min_lat) * alpha * aspect_ratio
-    width = (max_lon - min_lon) * alpha
-    lon_zoom = np.interp(width, lon_zoom_range, range(20, 0, -1))
-    lat_zoom = np.interp(height, lon_zoom_range, range(20, 0, -1))
-    zoom = int(round(min(lon_zoom, lat_zoom)))
-
-    return zoom, center
+    link_type = "samples" if label_field is None else "labels"
+    return SessionPlot(session, plot, link_type=link_type)
 
 
 class PlotlyPlot(InteractivePlot):
@@ -1108,6 +749,595 @@ class PlotlyPlot(InteractivePlot):
         mask = np.array([ind in visible_traces for ind in self._trace_inds])
 
         self._ids = self._point_ids[found & mask]
+
+
+def _parse_scatter_inputs(
+    points, samples, session, label_field, field, labels, classes
+):
+    if field is not None:
+        if samples is None:
+            raise ValueError(
+                "You must provide `samples` in order to extract field values"
+            )
+
+        labels = samples.values(field)
+
+    if labels and isinstance(labels[0], (list, tuple)):
+        labels = list(itertools.chain.from_iterable(labels))
+
+    if labels is not None:
+        if len(labels) != len(points):
+            raise ValueError(
+                "Number of labels (%d) does not match number of points (%d). "
+                "You may have missing data/labels that you need to omit from "
+                "your view before visualizing" % (len(labels), len(points))
+            )
+
+    ids = None
+    if session is not None:
+        if label_field is not None:
+            ids = samples._get_label_ids(fields=label_field)
+            if len(ids) != len(points):
+                raise ValueError(
+                    "Number of label IDs (%d) does not match number of "
+                    "points (%d). You may have missing data/labels that you "
+                    "need to omit from your view before visualizing"
+                    % (len(ids), len(points))
+                )
+        else:
+            ids = np.array(samples.values("id"))
+            if len(ids) != len(points):
+                raise ValueError(
+                    "Number of sample IDs (%d) does not match number of "
+                    "points (%d). You may have missing data/labels that you "
+                    "need to omit from your view before visualizing"
+                    % (len(ids), len(points))
+                )
+
+    if samples is not None and session is not None:
+        # Don't spawn a new App instance in notebook contexts
+        with session.no_show():
+            if isinstance(samples, DatasetView):
+                session.view = samples
+            else:
+                session.dataset = samples
+
+    if session is not None:
+        if samples is None:
+            samples = session._collection
+
+    points, values, classes, inds, categorical = _parse_data(
+        points, labels, classes
+    )
+
+    if ids is not None and inds is not None:
+        ids = ids[inds]
+
+    return points, ids, values, classes, categorical
+
+
+def _parse_data(points, labels, classes):
+    if not labels:
+        return points, None, None, None, False
+
+    if not etau.is_str(labels[0]):
+        return points, labels, None, None, False
+
+    if classes is None:
+        classes = sorted(set(labels))
+        return points, labels, classes, None, True
+
+    found = np.array([l in classes for l in labels])
+    if not np.all(found):
+        points = points[found, :]
+        values = values[found]
+    else:
+        found = None
+
+    return points, values, classes, found, True
+
+
+def _parse_locations(locations, location_field, samples):
+    if locations is not None:
+        return np.asarray(locations)
+
+    if location_field is not None:
+        samples.validate_field_type(
+            location_field,
+            fof.EmbeddedDocumentField,
+            embedded_doc_type=fol.GeoLocation,
+        )
+    else:
+        location_field = samples._get_geo_location_field()
+
+    coords = samples.values(location_field + ".point.coordinates")
+
+    return np.asarray(coords)
+
+
+def _plot_scatter_categorical(
+    points,
+    labels,
+    classes,
+    sizes=None,
+    ids=None,
+    value_label="label",
+    size_label="size",
+    max_marker_size=15,
+):
+    num_dims = points.shape[1]
+
+    hover_lines = ["<b>%s: %%{text}</b>" % value_label]
+
+    if sizes is not None:
+        sizeref = 0.5 * max(sizes) / max_marker_size
+        hover_lines.append("%s: %%{marker.size}" % size_label)
+
+    if num_dims == 3:
+        hover_lines.append("x, y, z = %{x:.3f}, %{y:.3f}, %{z:.3f}")
+    else:
+        hover_lines.append("x, y = %{x:.3f}, %{y:.3f}")
+
+    if ids is not None:
+        hover_lines.append("ID: %{customdata}")
+
+    hovertemplate = "<br>".join(hover_lines) + "<extra></extra>"
+
+    traces = []
+    for label in classes:
+        label_inds = labels == label
+
+        if ids is not None:
+            customdata = ids[label_inds]
+        else:
+            customdata = None
+
+        if sizes is not None:
+            marker = dict(
+                size=sizes[label_inds],
+                sizemode="diameter",
+                sizeref=sizeref,
+                sizemin=4,
+            )
+        else:
+            marker = None
+
+        kwargs = dict(
+            customdata=customdata,
+            mode="markers",
+            showlegend=True,
+            name=label,
+            marker=marker,
+            text=np.full(np.count_nonzero(label_inds), label),
+            hovertemplate=hovertemplate,
+        )
+
+        if num_dims == 3:
+            scatter = pgo.Scatter3d(
+                x=points[label_inds][:, 0],
+                y=points[label_inds][:, 1],
+                z=points[label_inds][:, 2],
+                **kwargs,
+            )
+        else:
+            scatter = pgo.Scattergl(
+                x=points[label_inds][:, 0],
+                y=points[label_inds][:, 1],
+                **kwargs,
+            )
+
+        traces.append(scatter)
+
+    return pgo.Figure(traces)
+
+
+def _plot_scatter_categorical_single_trace(
+    points,
+    labels,
+    classes,
+    sizes=None,
+    ids=None,
+    colors=None,
+    value_label="label",
+    size_label="size",
+    max_marker_size=15,
+):
+    num_dims = points.shape[1]
+
+    if colors is None:
+        colors = px.colors.qualitative.Plotly
+
+    num_classes = len(classes)
+    targets = [classes.index(l) for l in labels]
+    clim = [-0.5, num_classes - 0.5]
+
+    # @todo how to blend for >10 classes?
+    colorscale = []
+    for i in range(num_classes):
+        color = colors[i % len(colors)]
+        colorscale.append([i / num_classes, color])
+        colorscale.append([(i + 1) / num_classes, color])
+
+    marker = dict(
+        color=targets,
+        cmin=clim[0],
+        cmax=clim[1],
+        autocolorscale=False,
+        colorscale=colorscale,
+        colorbar=dict(
+            title=value_label,
+            tickvals=list(range(num_classes)),
+            ticktext=classes,
+            lenmode="fraction",
+            len=1,
+        ),
+        showscale=True,
+    )
+
+    if sizes is not None:
+        marker.update(
+            dict(
+                size=sizes,
+                sizemode="diameter",
+                sizeref=0.5 * max(sizes) / max_marker_size,
+                sizemin=4,
+            )
+        )
+
+    hover_lines = ["<b>%s: %%{text}</b>" % value_label]
+
+    if sizes is not None:
+        hover_lines.append("%s: %%{marker.size}" % size_label)
+
+    if num_dims == 3:
+        hover_lines.append("x, y, z = %{x:.3f}, %{y:.3f}, %{z:.3f}")
+    else:
+        hover_lines.append("x, y = %{x:.3f}, %{y:.3f}")
+
+    if ids is not None:
+        hover_lines.append("ID: %{customdata}")
+
+    hovertemplate = "<br>".join(hover_lines) + "<extra></extra>"
+
+    kwargs = dict(
+        customdata=ids,
+        mode="markers",
+        marker=marker,
+        text=labels,
+        hovertemplate=hovertemplate,
+    )
+
+    if num_dims == 3:
+        scatter = pgo.Scatter3d(
+            x=points[:, 0], y=points[:, 1], z=points[:, 2], **kwargs
+        )
+    else:
+        scatter = pgo.Scattergl(x=points[:, 0], y=points[:, 1], **kwargs)
+
+    return pgo.Figure(scatter)
+
+
+def _plot_scatter_numeric(
+    points,
+    values=None,
+    sizes=None,
+    ids=None,
+    colorscale="Viridis",
+    value_label="label",
+    size_label="size",
+    max_marker_size=15,
+):
+    num_dims = points.shape[1]
+
+    marker = dict()
+
+    if values is not None:
+        marker.update(
+            dict(
+                color=values,
+                colorbar=dict(title=value_label, lenmode="fraction", len=1),
+                colorscale=colorscale,
+            )
+        )
+
+    if sizes is not None:
+        marker.update(
+            dict(
+                size=sizes,
+                sizemode="diameter",
+                sizeref=0.5 * max(sizes) / max_marker_size,
+                sizemin=4,
+            )
+        )
+
+    hover_lines = []
+
+    if values is not None:
+        hover_lines = ["<b>%s: %%{marker.color}</b>" % value_label]
+
+    if sizes is not None:
+        hover_lines.append("%s: %%{marker.size}" % size_label)
+
+    if num_dims == 3:
+        hover_lines.append("x, y, z = %{x:.3f}, %{y:.3f}, %{z:.3f}")
+    else:
+        hover_lines.append("x, y = %{x:.3f}, %{y:.3f}")
+
+    if ids is not None:
+        hover_lines.append("ID: %{customdata}")
+
+    hovertemplate = "<br>".join(hover_lines) + "<extra></extra>"
+
+    kwargs = dict(
+        customdata=ids,
+        mode="markers",
+        marker=marker,
+        hovertemplate=hovertemplate,
+    )
+
+    if num_dims == 3:
+        scatter = pgo.Scatter3d(
+            x=points[:, 0], y=points[:, 1], z=points[:, 2], **kwargs
+        )
+    else:
+        scatter = pgo.Scattergl(x=points[:, 0], y=points[:, 1], **kwargs)
+
+    return pgo.Figure(scatter)
+
+
+def _plot_scatter_mapbox_categorical(
+    coords,
+    labels,
+    classes,
+    sizes=None,
+    ids=None,
+    value_label="label",
+    size_label="size",
+    max_marker_size=15,
+):
+    hover_lines = ["<b>%s: %%{text}</b>" % value_label]
+
+    if sizes is not None:
+        sizeref = 0.5 * max(sizes) / max_marker_size
+        hover_lines.append("%s: %%{marker.size}" % size_label)
+
+    hover_lines.append("lat: %{lat:.5f}<br>lon: %{lon:.5f}")
+
+    if ids is not None:
+        hover_lines.append("ID: %{customdata}")
+
+    hovertemplate = "<br>".join(hover_lines) + "<extra></extra>"
+
+    traces = []
+    for label in classes:
+        label_inds = labels == label
+
+        if ids is not None:
+            customdata = ids[label_inds]
+        else:
+            customdata = None
+
+        if sizes is not None:
+            marker = dict(
+                size=sizes[label_inds],
+                sizemode="diameter",
+                sizeref=sizeref,
+                sizemin=4,
+            )
+        else:
+            marker = None
+
+        scatter = pgo.Scattermapbox(
+            lat=coords[label_inds][:, 1],
+            lon=coords[label_inds][:, 0],
+            customdata=customdata,
+            mode="markers",
+            showlegend=True,
+            name=label,
+            marker=marker,
+            text=np.full(np.count_nonzero(label_inds), label),
+            hovertemplate=hovertemplate,
+        )
+        traces.append(scatter)
+
+    figure = pgo.Figure(traces)
+
+    zoom, (center_lon, center_lat) = _compute_zoom_center(coords)
+    figure.update_layout(
+        mapbox_style="carto-positron",
+        mapbox=dict(center=dict(lat=center_lat, lon=center_lon), zoom=zoom),
+    )
+
+    return figure
+
+
+def _plot_scatter_mapbox_categorical_single_trace(
+    coords,
+    labels,
+    classes,
+    sizes=None,
+    ids=None,
+    colors=None,
+    value_label="label",
+    size_label="size",
+    max_marker_size=15,
+):
+    if colors is None:
+        colors = px.colors.qualitative.Plotly
+
+    num_classes = len(classes)
+    targets = [classes.index(l) for l in labels]
+    clim = [-0.5, num_classes - 0.5]
+
+    # @todo how to blend for >10 classes?
+    colorscale = []
+    for i in range(num_classes):
+        color = colors[i % len(colors)]
+        colorscale.append([i / num_classes, color])
+        colorscale.append([(i + 1) / num_classes, color])
+
+    marker = dict(
+        color=targets,
+        cmin=clim[0],
+        cmax=clim[1],
+        autocolorscale=False,
+        colorscale=colorscale,
+        colorbar=dict(
+            title=value_label,
+            tickvals=list(range(num_classes)),
+            ticktext=classes,
+            lenmode="fraction",
+            len=1,
+        ),
+        showscale=True,
+    )
+
+    if sizes is not None:
+        marker.update(
+            dict(
+                size=sizes,
+                sizemode="diameter",
+                sizeref=0.5 * max(sizes) / max_marker_size,
+                sizemin=4,
+            )
+        )
+
+    hover_lines = ["<b>%s: %%{text}</b>" % value_label]
+
+    if sizes is not None:
+        hover_lines.append("%s: %%{marker.size}" % size_label)
+
+    hover_lines.append("lat: %{lat:.5f}<br>lon: %{lon:.5f}")
+
+    if ids is not None:
+        hover_lines.append("ID: %{customdata}")
+
+    hovertemplate = "<br>".join(hover_lines) + "<extra></extra>"
+
+    scatter = pgo.Scattermapbox(
+        lat=coords[:, 1],
+        lon=coords[:, 0],
+        customdata=ids,
+        mode="markers",
+        marker=marker,
+        text=labels,
+        hovertemplate=hovertemplate,
+    )
+
+    figure = pgo.Figure(scatter)
+
+    zoom, (center_lon, center_lat) = _compute_zoom_center(coords)
+    figure.update_layout(
+        mapbox_style="carto-positron",
+        mapbox=dict(center=dict(lat=center_lat, lon=center_lon), zoom=zoom),
+    )
+
+    return figure
+
+
+def _plot_scatter_mapbox_numeric(
+    coords,
+    values=None,
+    sizes=None,
+    ids=None,
+    colorscale="Viridis",
+    value_label="value",
+    size_label="size",
+    max_marker_size=15,
+):
+    marker = dict()
+
+    if values is not None:
+        marker.update(dict(color=values, colorscale=colorscale))
+
+    if sizes is not None:
+        marker.update(
+            dict(
+                size=sizes,
+                sizemode="diameter",
+                sizeref=0.5 * max(sizes) / max_marker_size,
+                sizemin=4,
+            )
+        )
+
+    hover_lines = []
+
+    if values is not None:
+        hover_lines = ["<b>%s: %%{marker.color}</b>" % value_label]
+
+    if sizes is not None:
+        hover_lines.append("%s: %%{marker.size}" % size_label)
+
+    hover_lines.append("lat: %{lat:.5f}<br>lon: %{lon:.5f}")
+
+    if ids is not None:
+        hover_lines.append("ID: %{customdata}")
+
+    hovertemplate = "<br>".join(hover_lines) + "<extra></extra>"
+
+    scatter = pgo.Scattermapbox(
+        lat=coords[:, 1],
+        lon=coords[:, 0],
+        customdata=ids,
+        mode="markers",
+        marker=marker,
+        hovertemplate=hovertemplate,
+    )
+
+    figure = pgo.Figure(scatter)
+
+    zoom, (center_lon, center_lat) = _compute_zoom_center(coords)
+    figure.update_layout(
+        mapbox_style="carto-positron",
+        mapbox=dict(center=dict(lat=center_lat, lon=center_lon), zoom=zoom),
+    )
+
+    return figure
+
+
+# source: https://stackoverflow.com/a/64148305
+def _compute_zoom_center(coords, pad=0.2, aspect_ratio=2.0):
+    min_lon, min_lat = coords.min(axis=0)
+    max_lon, max_lat = coords.max(axis=0)
+
+    center_lon = round(0.5 * (min_lon + max_lon), 5)
+    center_lat = round(0.5 * (min_lat + max_lat), 5)
+    center = (center_lon, center_lat)
+
+    # Longitudinal range by zoom level (20 to 1), in degrees, at equator
+    lon_zoom_range = np.array(
+        [
+            0.0007,
+            0.0014,
+            0.003,
+            0.006,
+            0.012,
+            0.024,
+            0.048,
+            0.096,
+            0.192,
+            0.3712,
+            0.768,
+            1.536,
+            3.072,
+            6.144,
+            11.8784,
+            23.7568,
+            47.5136,
+            98.304,
+            190.0544,
+            360.0,
+        ]
+    )
+
+    alpha = 1.0 + pad
+    height = (max_lat - min_lat) * alpha * aspect_ratio
+    width = (max_lon - min_lon) * alpha
+    lon_zoom = np.interp(width, lon_zoom_range, range(20, 0, -1))
+    lat_zoom = np.interp(height, lon_zoom_range, range(20, 0, -1))
+    zoom = int(round(min(lon_zoom, lat_zoom)))
+
+    return zoom, center
 
 
 def _patch_perform_plotly_relayout():

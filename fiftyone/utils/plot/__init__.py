@@ -6,4 +6,12 @@ Plotting utilities.
 |
 """
 
-from .base import location_scatterplot, scatterplot
+from .base import (
+    get_default_backend,
+    plot_confusion_matrix,
+    plot_pr_curve,
+    plot_pr_curves,
+    plot_roc_curve,
+    location_scatterplot,
+    scatterplot,
+)

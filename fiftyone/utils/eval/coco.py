@@ -11,7 +11,7 @@ from collections import defaultdict
 import numpy as np
 
 import fiftyone.core.utils as fou
-import fiftyone.utils.plot.matplotlib as foum
+import fiftyone.utils.plot as foup
 
 from .detection import (
     DetectionEvaluation,
@@ -278,10 +278,9 @@ class COCODetectionResults(DetectionResults):
     def plot_pr_curves(
         self,
         classes=None,
-        ax=None,
-        figsize=None,
+        backend=None,
         show=True,
-        return_ax=False,
+        return_figure=False,
         **kwargs,
     ):
         """Plots precision-recall (PR) curves for the results.
@@ -289,17 +288,19 @@ class COCODetectionResults(DetectionResults):
         Args:
             classes (None): a list of classes to generate curves for. By
                 default, top 3 AP classes will be plotted
-            ax (None): an optional matplotlib axis to plot in
-            figsize (None): an optional ``(width, height)`` for the figure, in
-                inches
+            backend (None): the plotting backend to use. Supported values are
+                ``("plotly", "matplotlib")``. If no backend is specified, the
+                best applicable backend is chosen
             show (True): whether to show the plot
-            return_ax (False): whether to return the matplotlib axis containing
-                the plots
-            **kwargs: optional keyword arguments for matplotlib's ``plot()``
+            return_figure (False): whether to return the figure
+            **kwargs: keyword arguments for the backend plotting method:
+
+                -   "plotly" backend: :meth:`fiftyone.utils.plot.plotly.plot_pr_curves`
+                -   "matplotlib" backend: :meth:`fiftyone.utils.plot.matplotlib.plot_pr_curves`
 
         Returns:
-            None, or the matplotlib axis containing the plot if ``return_ax``
-            is True
+            None, or the figure containing the plot if ``return_figure`` is
+            True
         """
         if not classes:
             inds = np.argsort(self._classwise_AP)[::-1][:3]
@@ -310,16 +311,16 @@ class COCODetectionResults(DetectionResults):
             class_ind = self._get_class_index(c)
             precisions.append(np.mean(self.precision[:, class_ind], axis=0))
 
-        return foum.plot_pr_curves(
+        figure = foup.plot_pr_curves(
             precisions,
             self.recall,
             classes,
-            ax=ax,
-            figsize=figsize,
+            backend=backend,
             show=show,
-            return_ax=return_ax,
             **kwargs,
         )
+
+        return figure if return_figure else None
 
     def mAP(self, classes=None):
         """Computes COCO-style mean average precision (mAP) for the specified

@@ -33,223 +33,196 @@ from .utils import load_button_icon
 logger = logging.getLogger(__name__)
 
 
-def location_scatterplot(
-    locations=None,
-    location_field=None,
-    samples=None,
-    session=None,
-    label_field=None,
-    field=None,
-    labels=None,
-    classes=None,
-    map_type="satellite",
-    show_scale_bar=False,
-    api_key=None,
-    marker_size=None,
-    cmap=None,
+def plot_confusion_matrix(
+    confusion_matrix,
+    labels,
+    show_values=True,
+    show_colorbar=True,
+    cmap="viridis",
+    xticks_rotation=None,
+    values_format=None,
     ax=None,
-    ax_equal=False,
     figsize=None,
-    style="seaborn-ticks",
-    buttons=None,
     show=True,
-    **kwargs,
 ):
-    """Generates an interactive scatterplot of the given location coordinates
-    with a map rendered in the background of the plot.
-
-    Location data can be specified either via the ``locations`` or
-    ``location_field`` parameters. If you specify neither, the first
-    :class:`fiftyone.core.labels.GeoLocation` field on the dataset is used.
-
-    If you provide a ``session`` object, then the state of the FiftyOne App
-    will be synced with the currently selected points in the plot.
-
-    -   Sample selection: If no ``label_field`` is provided, then when points
-        are selected, a view containing the corresponding samples will be
-        loaded in the App
-
-    -   Label selection: If ``label_field`` is provided, then when points are
-        selected, a view containing the corresponding labels in
-        ``label_field`` will be loaded in the App
-
-    You can use the ``field`` or ``labels`` parameters to define a coloring for
-    the points.
+    """Plots a confusion matrix.
 
     Args:
-        locations (None): a ``num_samples x 2`` array of
-            ``(longitude, latitude)`` coordinates
-        location_field (None): the name of a
-            :class:`fiftyone.core.labels.GeoLocation` field with
-            ``(longitude, latitude)`` coordinates in its ``point`` attribute
-        samples (None): the :class:`fiftyone.core.collections.SampleCollection`
-            whose data is being visualized
-        session (None): a :class:`fiftyone.core.session.Session` object to
-            link with the interactive plot
-        label_field (None): a :class:`fiftyone.core.labels.Label` field
-            containing labels for each location
-        field (None): a sample field or ``embedded.field.name`` to use to
-            color the points. Can be numeric or strings
-        labels (None): a list of numeric or string values to use to color
-            the points
-        classes (None): an optional list of classes whose points to plot.
-            Only applicable when ``labels`` contains strings
-        map_type ("satellite"): the map type to render. Supported values are
-            ``("roadmap", "satellite", "hybrid", "terrain")``
-        show_scale_bar (False): whether to render a scale bar on the plot
-        api_key (None): a Google Maps API key to use
-        marker_size (None): the marker size to use
-        cmap (None): a colormap recognized by ``matplotlib``
+        confusion_matrix: a ``num_true x num_preds`` confusion matrix
+        labels: a ``max(num_true, num_preds)`` array of class labels
+        show_values (True): whether to show counts in the confusion matrix
+            cells
+        show_colorbar (True): whether to show a colorbar
+        cmap ("viridis"): a colormap recognized by ``matplotlib``
+        xticks_rotation (45.0): a rotation for the x-tick labels. Can be
+            numeric degrees, "vertical", "horizontal", or None
+        values_format (None): an optional format string like ``".2g"`` or
+            ``"d"`` to use to format the cell counts
         ax (None): an optional matplotlib axis to plot in
-        ax_equal (False): whether to set ``axis("equal")``
         figsize (None): an optional ``(width, height)`` for the figure, in
             inches
-        style ("seaborn-ticks"): a style to use for the plot
-        buttons (None): a list of ``(label, icon_image, callback)`` tuples
-            defining buttons to add to the plot
         show (True): whether to show the plot
-        **kwargs: optional keyword arguments for matplotlib's ``scatter()``
 
     Returns:
-        one of the following:
-
-        -   a :class:`fiftyone.utils.plot.interactive.SessionPlot`, if a
-            ``session`` is provided
-        -   an :class:`fiftyone.utils.plot.interactive.InteractivePlot`, if a
-            ``session`` is not provided
+        the ``matplotlib.figure.Figure``
     """
-    if session is not None and samples is None:
-        samples = session._collection
-
-    if samples is None:
-        raise ValueError(
-            "You must provide `samples` when `locations` are not manually "
-            "specified"
-        )
-
-    locations = _parse_locations(locations, location_field, samples)
-
     if ax is None:
-        fig = plt.figure()
-        ax = fig.add_subplot(111)
+        fig, ax = plt.subplots()
     else:
         fig = ax.figure
 
-    locations = _plot_map_background(
-        ax, locations, api_key, map_type, show_scale_bar
+    confusion_matrix = np.asarray(confusion_matrix)
+    nrows = confusion_matrix.shape[0]
+    ncols = confusion_matrix.shape[1]
+
+    im = ax.imshow(confusion_matrix, interpolation="nearest", cmap=cmap)
+
+    if show_values:
+        # Print text with appropriate color depending on background
+        cmap_min = im.cmap(0)
+        cmap_max = im.cmap(256)
+        thresh = (confusion_matrix.max() + confusion_matrix.min()) / 2.0
+
+        for i, j in itertools.product(range(nrows), range(ncols)):
+            color = cmap_max if confusion_matrix[i, j] < thresh else cmap_min
+
+            if values_format is None:
+                text_cm = format(confusion_matrix[i, j], ".2g")
+                if confusion_matrix.dtype.kind != "f":
+                    text_d = format(confusion_matrix[i, j], "d")
+                    if len(text_d) < len(text_cm):
+                        text_cm = text_d
+            else:
+                text_cm = format(confusion_matrix[i, j], values_format)
+
+            ax.text(j, i, text_cm, ha="center", va="center", color=color)
+
+    ax.set(
+        xticks=np.arange(ncols),
+        yticks=np.arange(nrows),
+        xticklabels=labels[:ncols],
+        yticklabels=labels[:nrows],
+        xlabel="Predicted label",
+        ylabel="True label",
     )
+    ax.set_ylim((nrows - 0.5, -0.5))  # flip axis
 
-    def _onclick(event):
-        for child in ax.get_children():
-            if isinstance(child, mpl.image.AxesImage):
-                child.set_visible(not child.get_visible())
+    if xticks_rotation is not None:
+        plt.setp(ax.get_xticklabels(), rotation=xticks_rotation)
 
-        ax.figure.canvas.draw_idle()
+    if show_colorbar:
+        divider = make_axes_locatable(ax)
+        cax = divider.append_axes("right", size="5%", pad=0.1)
+        fig.colorbar(im, cax=cax)
 
-    if buttons is None:
-        buttons = []
+    if figsize is not None:
+        fig.set_size_inches(*figsize)
 
-    map_icon = load_button_icon("map")
-    buttons.append(("map", map_icon, _onclick))
+    plt.tight_layout()
 
-    return scatterplot(
-        locations,
-        samples=samples,
-        session=session,
-        label_field=label_field,
-        field=field,
-        labels=labels,
-        classes=classes,
-        marker_size=marker_size,
-        cmap=cmap,
-        ax=ax,
-        ax_equal=ax_equal,
-        figsize=figsize,
-        style=style,
-        buttons=buttons,
-        show=show,
-        **kwargs,
-    )
+    if show:
+        plt.show(block=False)
+
+    return fig
 
 
-def _parse_locations(locations, location_field, samples):
-    if locations is not None:
-        return np.asarray(locations)
+def plot_pr_curve(
+    precision, recall, label=None, ax=None, figsize=None, show=True, **kwargs
+):
+    """Plots a precision-recall (PR) curve.
 
-    if location_field is not None:
-        samples.validate_field_type(
-            location_field,
-            fof.EmbeddedDocumentField,
-            embedded_doc_type=fol.GeoLocation,
+    Args:
+        precision: an array of precision values
+        recall: an array of recall values
+        label (None): a label for the curve
+        ax (None): an optional matplotlib axis to plot in
+        figsize (None): an optional ``(width, height)`` for the figure, in
+            inches
+        show (True): whether to show the plot
+        **kwargs: optional keyword arguments for matplotlib's ``plot()``
+
+    Returns:
+        the ``matplotlib.figure.Figure``
+    """
+    display = skm.PrecisionRecallDisplay(precision=precision, recall=recall)
+
+    display.plot(ax=ax, label=label, **kwargs)
+    if figsize is not None:
+        display.figure_.set_size_inches(*figsize)
+
+    if show:
+        plt.show(block=False)
+
+    return display.figure_
+
+
+def plot_pr_curves(
+    precisions, recall, classes, ax=None, figsize=None, show=True, **kwargs
+):
+    """Plots a set of per-class precision-recall (PR) curves.
+
+    Args:
+        precisions: a ``num_classes x num_recalls`` array of per-class
+            precision values
+        recall: an array of recall values
+        classes: the list of classes
+        ax (None): an optional matplotlib axis to plot in
+        figsize (None): an optional ``(width, height)`` for the figure, in
+            inches
+        show (True): whether to show the plot
+        **kwargs: optional keyword arguments for matplotlib's ``plot()``
+
+    Returns:
+        the ``matplotlib.figure.Figure``
+    """
+    for precision, _class in zip(precisions, classes):
+        avg_precision = np.mean(precision)
+        label = "AP = %.2f, class = %s" % (avg_precision, _class)
+        display = skm.PrecisionRecallDisplay(
+            precision=precision, recall=recall
         )
-    else:
-        location_field = samples._get_geo_location_field()
+        display.plot(ax=ax, label=label, **kwargs)
+        ax = display.ax_
 
-    locations = samples.values(location_field + ".point.coordinates")
+    if ax is None:
+        ax = plt.gca()
 
-    return np.asarray(locations)
+    if figsize is not None:
+        ax.figure.set_size_inches(*figsize)
 
+    if show:
+        plt.show(block=False)
 
-def _plot_map_background(ax, locations, api_key, map_type, show_scale_bar):
-    min_lon, min_lat = locations.min(axis=0)
-    max_lon, max_lat = locations.max(axis=0)
-
-    kwargs = {}
-    if api_key is not None:
-        kwargs["key"] = api_key
-
-    google_map = salem.GoogleVisibleMap(
-        x=[min_lon, max_lon],
-        y=[min_lat, max_lat],
-        scale=2,  # 1 or 2, resolution factor
-        maptype=map_type,
-        **kwargs,
-    )
-    img = google_map.get_vardata()
-
-    salem_map = salem.Map(google_map.grid, factor=1, countries=False)
-    salem_map.set_rgb(img)
-    if show_scale_bar:
-        salem_map.set_scale_bar(location=(0.88, 0.94))
-
-    salem_map.visualize(ax=ax)
-
-    # Transform into axis coordinates
-    x, y = locations[:, 0], locations[:, 1]
-    x, y = salem_map.grid.transform(x, y)
-    locations = np.stack((x, y), axis=1)
-
-    return locations
+    return ax.figure
 
 
-def _ensure_salem():
-    # pip installing `salem` does not automatically install these...
-    required_packages = [
-        "salem",
-        "pyproj",
-        "netCDF4",
-        "xarray",
-        "shapely",
-        "descartes",
-        "pandas",
-        "motionless",
-    ]
+def plot_roc_curve(
+    fpr, tpr, roc_auc=None, ax=None, figsize=None, show=True, **kwargs
+):
+    """Plots a receiver operating characteristic (ROC) curve.
 
-    missing_packages = []
-    for pkg in required_packages:
-        try:
-            etau.ensure_package(pkg)
-        except:
-            missing_packages.append(pkg)
+    Args:
+        fpr: an array of false postive rates
+        tpr: an array of true postive rates
+        roc_auc (None): the area under the ROC curve
+        ax (None): an optional matplotlib axis to plot in
+        figsize (None): an optional ``(width, height)`` for the figure, in
+            inches
+        show (True): whether to show the plot
+        **kwargs: optional keyword arguments for matplotlib's ``plot()``
 
-    if missing_packages:
-        raise ImportError(
-            "The requested operation requires that the following packages are "
-            "installed on your machine: %s" % (tuple(missing_packages),)
-        )
+    Returns:
+        the ``matplotlib.figure.Figure``
+    """
+    display = skm.RocCurveDisplay(fpr=fpr, tpr=tpr, roc_auc=roc_auc)
+    display.plot(ax=ax, **kwargs)
+    if figsize is not None:
+        display.figure_.set_size_inches(*figsize)
 
+    if show:
+        plt.show(block=False)
 
-salem = fou.lazy_import("salem", callback=_ensure_salem)
+    return display.figure_
 
 
 def scatterplot(
@@ -421,329 +394,143 @@ def scatterplot(
     return SessionPlot(session, plot, link_type=link_type, bidirectional=False)
 
 
-def _plot_scatter(
-    points,
+def location_scatterplot(
+    locations=None,
+    location_field=None,
+    samples=None,
+    session=None,
+    label_field=None,
+    field=None,
     labels=None,
     classes=None,
+    map_type="satellite",
+    show_scale_bar=False,
+    api_key=None,
     marker_size=None,
     cmap=None,
     ax=None,
     ax_equal=False,
     figsize=None,
+    style="seaborn-ticks",
+    buttons=None,
+    show=True,
     **kwargs,
 ):
-    if labels is not None:
-        points, values, classes, inds, categorical = _parse_scatter_inputs(
-            points, labels, classes
-        )
-    else:
-        values, classes, inds, categorical = None, None, None, None
+    """Generates an interactive scatterplot of the given location coordinates
+    with a map rendered in the background of the plot.
 
-    scatter_3d = points.shape[1] == 3
+    Location data can be specified either via the ``locations`` or
+    ``location_field`` parameters. If you specify neither, the first
+    :class:`fiftyone.core.labels.GeoLocation` field on the dataset is used.
+
+    If you provide a ``session`` object, then the state of the FiftyOne App
+    will be synced with the currently selected points in the plot.
+
+    -   Sample selection: If no ``label_field`` is provided, then when points
+        are selected, a view containing the corresponding samples will be
+        loaded in the App
+
+    -   Label selection: If ``label_field`` is provided, then when points are
+        selected, a view containing the corresponding labels in
+        ``label_field`` will be loaded in the App
+
+    You can use the ``field`` or ``labels`` parameters to define a coloring for
+    the points.
+
+    Args:
+        locations (None): a ``num_samples x 2`` array of
+            ``(longitude, latitude)`` coordinates
+        location_field (None): the name of a
+            :class:`fiftyone.core.labels.GeoLocation` field with
+            ``(longitude, latitude)`` coordinates in its ``point`` attribute
+        samples (None): the :class:`fiftyone.core.collections.SampleCollection`
+            whose data is being visualized
+        session (None): a :class:`fiftyone.core.session.Session` object to
+            link with the interactive plot
+        label_field (None): a :class:`fiftyone.core.labels.Label` field
+            containing labels for each location
+        field (None): a sample field or ``embedded.field.name`` to use to
+            color the points. Can be numeric or strings
+        labels (None): a list of numeric or string values to use to color
+            the points
+        classes (None): an optional list of classes whose points to plot.
+            Only applicable when ``labels`` contains strings
+        map_type ("satellite"): the map type to render. Supported values are
+            ``("roadmap", "satellite", "hybrid", "terrain")``
+        show_scale_bar (False): whether to render a scale bar on the plot
+        api_key (None): a Google Maps API key to use
+        marker_size (None): the marker size to use
+        cmap (None): a colormap recognized by ``matplotlib``
+        ax (None): an optional matplotlib axis to plot in
+        ax_equal (False): whether to set ``axis("equal")``
+        figsize (None): an optional ``(width, height)`` for the figure, in
+            inches
+        style ("seaborn-ticks"): a style to use for the plot
+        buttons (None): a list of ``(label, icon_image, callback)`` tuples
+            defining buttons to add to the plot
+        show (True): whether to show the plot
+        **kwargs: optional keyword arguments for matplotlib's ``scatter()``
+
+    Returns:
+        one of the following:
+
+        -   a :class:`fiftyone.utils.plot.interactive.SessionPlot`, if a
+            ``session`` is provided
+        -   an :class:`fiftyone.utils.plot.interactive.InteractivePlot`, if a
+            ``session`` is not provided
+    """
+    if session is not None and samples is None:
+        samples = session._collection
+
+    if samples is None:
+        raise ValueError(
+            "You must provide `samples` when `locations` are not manually "
+            "specified"
+        )
+
+    locations = _parse_locations(locations, location_field, samples)
 
     if ax is None:
-        projection = "3d" if scatter_3d else None
         fig = plt.figure()
-        ax = fig.add_subplot(111, projection=projection)
+        ax = fig.add_subplot(111)
     else:
         fig = ax.figure
 
-    if cmap is None:
-        cmap = "Spectral" if categorical else "viridis"
-
-    cmap = plt.get_cmap(cmap)
-
-    if categorical:
-        boundaries = np.arange(0, len(classes) + 1)
-        norm = mpl.colors.BoundaryNorm(boundaries, cmap.N)
-    else:
-        norm = None
-
-    if marker_size is None:
-        marker_size = 10 ** (4 - np.log10(points.shape[0]))
-        marker_size = max(0.1, min(marker_size, 25))
-        marker_size = round(marker_size, 0 if marker_size >= 1 else 1)
-
-    args = [points[:, 0], points[:, 1]]
-    if scatter_3d:
-        args.append(points[:, 2])
-
-    collection = ax.scatter(
-        *args, c=values, s=marker_size, cmap=cmap, norm=norm, **kwargs,
+    locations = _plot_map_background(
+        ax, locations, api_key, map_type, show_scale_bar
     )
 
-    if values is not None:
-        divider = make_axes_locatable(ax)
-        cax = divider.append_axes(
-            "right", size="5%", pad=0.1, axes_class=mpl.axes.Axes
-        )
+    def _onclick(event):
+        for child in ax.get_children():
+            if isinstance(child, mpl.image.AxesImage):
+                child.set_visible(not child.get_visible())
 
-        if categorical:
-            ticks = 0.5 + np.arange(0, len(classes))
-            cbar = mpl.colorbar.ColorbarBase(
-                cax,
-                cmap=cmap,
-                norm=norm,
-                spacing="proportional",
-                boundaries=boundaries,
-                ticks=ticks,
-            )
-            cbar.set_ticklabels(classes)
-        else:
-            mappable = mpl.cm.ScalarMappable(cmap=cmap, norm=norm)
-            mappable.set_array(values)
-            fig.colorbar(mappable, cax=cax)
+        ax.figure.canvas.draw_idle()
 
-    if figsize is not None:
-        fig.set_size_inches(*figsize)
+    if buttons is None:
+        buttons = []
 
-    if ax_equal:
-        collection.axes.axis("equal")
+    map_icon = load_button_icon("map")
+    buttons.append(("map", map_icon, _onclick))
 
-    return collection, inds
-
-
-def _parse_scatter_inputs(points, labels, classes):
-    if not labels:
-        return points, None, None, None, False
-
-    if not etau.is_str(labels[0]):
-        return points, labels, None, None, False
-
-    if classes is None:
-        classes = sorted(set(labels))
-
-    values_map = {c: i for i, c in enumerate(classes)}
-    values = np.array([values_map.get(l, -1) for l in labels])
-
-    found = values >= 0
-    if not np.all(found):
-        points = points[found, :]
-        values = values[found]
-    else:
-        found = None
-
-    return points, values, classes, found, True
-
-
-def plot_confusion_matrix(
-    confusion_matrix,
-    labels,
-    show_values=True,
-    show_colorbar=True,
-    cmap="viridis",
-    xticks_rotation=None,
-    values_format=None,
-    ax=None,
-    figsize=None,
-    show=True,
-    return_ax=False,
-):
-    """Plots a confusion matrix.
-
-    Args:
-        confusion_matrix: a ``num_true x num_preds`` confusion matrix
-        labels: a ``max(num_true, num_preds)`` array of class labels
-        show_values (True): whether to show counts in the confusion matrix
-            cells
-        show_colorbar (True): whether to show a colorbar
-        cmap ("viridis"): a colormap recognized by ``matplotlib``
-        xticks_rotation (45.0): a rotation for the x-tick labels. Can be
-            numeric degrees, "vertical", "horizontal", or None
-        values_format (None): an optional format string like ``".2g"`` or
-            ``"d"`` to use to format the cell counts
-        ax (None): an optional matplotlib axis to plot in
-        figsize (None): an optional ``(width, height)`` for the figure, in
-            inches
-        show (True): whether to show the plot
-        return_ax (False): whether to return the matplotlib axis containing
-            the plot
-
-    Returns:
-        None, or the matplotlib axis containing the plot if ``return_ax`` is
-        True
-    """
-    if ax is None:
-        fig, ax = plt.subplots()
-    else:
-        fig = ax.figure
-
-    confusion_matrix = np.asarray(confusion_matrix)
-    nrows = confusion_matrix.shape[0]
-    ncols = confusion_matrix.shape[1]
-
-    im = ax.imshow(confusion_matrix, interpolation="nearest", cmap=cmap)
-
-    if show_values:
-        # Print text with appropriate color depending on background
-        cmap_min = im.cmap(0)
-        cmap_max = im.cmap(256)
-        thresh = (confusion_matrix.max() + confusion_matrix.min()) / 2.0
-
-        for i, j in itertools.product(range(nrows), range(ncols)):
-            color = cmap_max if confusion_matrix[i, j] < thresh else cmap_min
-
-            if values_format is None:
-                text_cm = format(confusion_matrix[i, j], ".2g")
-                if confusion_matrix.dtype.kind != "f":
-                    text_d = format(confusion_matrix[i, j], "d")
-                    if len(text_d) < len(text_cm):
-                        text_cm = text_d
-            else:
-                text_cm = format(confusion_matrix[i, j], values_format)
-
-            ax.text(j, i, text_cm, ha="center", va="center", color=color)
-
-    ax.set(
-        xticks=np.arange(ncols),
-        yticks=np.arange(nrows),
-        xticklabels=labels[:ncols],
-        yticklabels=labels[:nrows],
-        xlabel="Predicted label",
-        ylabel="True label",
+    return scatterplot(
+        locations,
+        samples=samples,
+        session=session,
+        label_field=label_field,
+        field=field,
+        labels=labels,
+        classes=classes,
+        marker_size=marker_size,
+        cmap=cmap,
+        ax=ax,
+        ax_equal=ax_equal,
+        figsize=figsize,
+        style=style,
+        buttons=buttons,
+        show=show,
+        **kwargs,
     )
-    ax.set_ylim((nrows - 0.5, -0.5))  # flip axis
-
-    if xticks_rotation is not None:
-        plt.setp(ax.get_xticklabels(), rotation=xticks_rotation)
-
-    if show_colorbar:
-        divider = make_axes_locatable(ax)
-        cax = divider.append_axes("right", size="5%", pad=0.1)
-        fig.colorbar(im, cax=cax)
-
-    if figsize is not None:
-        fig.set_size_inches(*figsize)
-
-    plt.tight_layout()
-
-    if show:
-        plt.show(block=False)
-
-    return ax if return_ax else None
-
-
-def plot_pr_curve(
-    precision,
-    recall,
-    label=None,
-    ax=None,
-    figsize=None,
-    show=True,
-    return_ax=False,
-    **kwargs,
-):
-    """Plots a precision-recall (PR) curve.
-
-    Args:
-        precision: an array of precision values
-        recall: an array of recall values
-        label (None): a label for the curve
-        ax (None): an optional matplotlib axis to plot in
-        figsize (None): an optional ``(width, height)`` for the figure, in
-            inches
-        show (True): whether to show the plot
-        return_ax (False): whether to return the matplotlib axis containing
-            the plot
-        **kwargs: optional keyword arguments for matplotlib's ``plot()``
-
-    Returns:
-        None, or the matplotlib axis containing the plot if ``return_ax`` is
-        True
-    """
-    display = skm.PrecisionRecallDisplay(precision=precision, recall=recall)
-
-    display.plot(ax=ax, label=label, **kwargs)
-    if figsize is not None:
-        display.figure_.set_size_inches(*figsize)
-
-    if show:
-        plt.show(block=False)
-
-    return display.ax_ if return_ax else None
-
-
-def plot_pr_curves(
-    precisions,
-    recall,
-    classes,
-    ax=None,
-    figsize=None,
-    show=True,
-    return_ax=False,
-    **kwargs,
-):
-    """Plots a set of per-class precision-recall (PR) curves.
-
-    Args:
-        precisions: a ``num_classes x num_recalls`` array of per-class
-            precision values
-        recall: an array of recall values
-        classes: the list of classes
-        ax (None): an optional matplotlib axis to plot in
-        figsize (None): an optional ``(width, height)`` for the figure, in
-            inches
-        show (True): whether to show the plot
-        return_ax (False): whether to return the matplotlib axis containing
-            the plot
-        **kwargs: optional keyword arguments for matplotlib's ``plot()``
-
-    Returns:
-        None, or the matplotlib axis containing the plot if ``return_ax`` is
-        True
-    """
-    for precision, _class in zip(precisions, classes):
-        avg_precision = np.mean(precision)
-        label = "AP = %.2f, class = %s" % (avg_precision, _class)
-        display = skm.PrecisionRecallDisplay(
-            precision=precision, recall=recall
-        )
-        display.plot(ax=ax, label=label, **kwargs)
-        ax = display.ax_
-
-    if figsize is not None:
-        ax.figure.set_size_inches(*figsize)
-
-    if show:
-        plt.show(block=False)
-
-    return ax if return_ax else None
-
-
-def plot_roc_curve(
-    fpr,
-    tpr,
-    roc_auc,
-    ax=None,
-    figsize=None,
-    show=True,
-    return_ax=False,
-    **kwargs,
-):
-    """Plots a receiver operating characteristic (ROC) curve.
-
-    Args:
-        ax (None): an optional matplotlib axis to plot in
-        figsize (None): an optional ``(width, height)`` for the figure, in
-            inches
-        show (True): whether to show the plot
-        return_ax (False): whether to return the matplotlib axis containing
-            the plot
-        **kwargs: optional keyword arguments for matplotlib's ``plot()``
-
-    Returns:
-        None, or the matplotlib axis containing the plot if ``return_ax`` is
-        True
-    """
-    display = skm.RocCurveDisplay(fpr=fpr, tpr=tpr, roc_auc=roc_auc)
-    display.plot(ax=ax, **kwargs)
-    if figsize is not None:
-        display.figure_.set_size_inches(*figsize)
-
-    if show:
-        plt.show(block=False)
-
-    return display.ax_ if return_ax else None
 
 
 class MatplotlibPlot(InteractivePlot):
@@ -1076,3 +863,188 @@ class MatplotlibPlot(InteractivePlot):
         if self.expand_selected is not None:
             if len(self._ms) < self._num_pts:
                 self._ms = np.tile(self._ms[0], self._num_pts)
+
+
+def _plot_scatter(
+    points,
+    labels=None,
+    classes=None,
+    marker_size=None,
+    cmap=None,
+    ax=None,
+    ax_equal=False,
+    figsize=None,
+    **kwargs,
+):
+    if labels is not None:
+        points, values, classes, inds, categorical = _parse_scatter_inputs(
+            points, labels, classes
+        )
+    else:
+        values, classes, inds, categorical = None, None, None, None
+
+    scatter_3d = points.shape[1] == 3
+
+    if ax is None:
+        projection = "3d" if scatter_3d else None
+        fig = plt.figure()
+        ax = fig.add_subplot(111, projection=projection)
+    else:
+        fig = ax.figure
+
+    if cmap is None:
+        cmap = "Spectral" if categorical else "viridis"
+
+    cmap = plt.get_cmap(cmap)
+
+    if categorical:
+        boundaries = np.arange(0, len(classes) + 1)
+        norm = mpl.colors.BoundaryNorm(boundaries, cmap.N)
+    else:
+        norm = None
+
+    if marker_size is None:
+        marker_size = 10 ** (4 - np.log10(points.shape[0]))
+        marker_size = max(0.1, min(marker_size, 25))
+        marker_size = round(marker_size, 0 if marker_size >= 1 else 1)
+
+    args = [points[:, 0], points[:, 1]]
+    if scatter_3d:
+        args.append(points[:, 2])
+
+    collection = ax.scatter(
+        *args, c=values, s=marker_size, cmap=cmap, norm=norm, **kwargs,
+    )
+
+    if values is not None:
+        divider = make_axes_locatable(ax)
+        cax = divider.append_axes(
+            "right", size="5%", pad=0.1, axes_class=mpl.axes.Axes
+        )
+
+        if categorical:
+            ticks = 0.5 + np.arange(0, len(classes))
+            cbar = mpl.colorbar.ColorbarBase(
+                cax,
+                cmap=cmap,
+                norm=norm,
+                spacing="proportional",
+                boundaries=boundaries,
+                ticks=ticks,
+            )
+            cbar.set_ticklabels(classes)
+        else:
+            mappable = mpl.cm.ScalarMappable(cmap=cmap, norm=norm)
+            mappable.set_array(values)
+            fig.colorbar(mappable, cax=cax)
+
+    if figsize is not None:
+        fig.set_size_inches(*figsize)
+
+    if ax_equal:
+        collection.axes.axis("equal")
+
+    return collection, inds
+
+
+def _parse_scatter_inputs(points, labels, classes):
+    if not labels:
+        return points, None, None, None, False
+
+    if not etau.is_str(labels[0]):
+        return points, labels, None, None, False
+
+    if classes is None:
+        classes = sorted(set(labels))
+
+    values_map = {c: i for i, c in enumerate(classes)}
+    values = np.array([values_map.get(l, -1) for l in labels])
+
+    found = values >= 0
+    if not np.all(found):
+        points = points[found, :]
+        values = values[found]
+    else:
+        found = None
+
+    return points, values, classes, found, True
+
+
+def _parse_locations(locations, location_field, samples):
+    if locations is not None:
+        return np.asarray(locations)
+
+    if location_field is not None:
+        samples.validate_field_type(
+            location_field,
+            fof.EmbeddedDocumentField,
+            embedded_doc_type=fol.GeoLocation,
+        )
+    else:
+        location_field = samples._get_geo_location_field()
+
+    locations = samples.values(location_field + ".point.coordinates")
+
+    return np.asarray(locations)
+
+
+def _plot_map_background(ax, locations, api_key, map_type, show_scale_bar):
+    min_lon, min_lat = locations.min(axis=0)
+    max_lon, max_lat = locations.max(axis=0)
+
+    kwargs = {}
+    if api_key is not None:
+        kwargs["key"] = api_key
+
+    google_map = salem.GoogleVisibleMap(
+        x=[min_lon, max_lon],
+        y=[min_lat, max_lat],
+        scale=2,  # 1 or 2, resolution factor
+        maptype=map_type,
+        **kwargs,
+    )
+    img = google_map.get_vardata()
+
+    salem_map = salem.Map(google_map.grid, factor=1, countries=False)
+    salem_map.set_rgb(img)
+    if show_scale_bar:
+        salem_map.set_scale_bar(location=(0.88, 0.94))
+
+    salem_map.visualize(ax=ax)
+
+    # Transform into axis coordinates
+    x, y = locations[:, 0], locations[:, 1]
+    x, y = salem_map.grid.transform(x, y)
+    locations = np.stack((x, y), axis=1)
+
+    return locations
+
+
+def _ensure_salem():
+    # pip installing `salem` does not automatically install these...
+    required_packages = [
+        "salem",
+        "pyproj",
+        "netCDF4",
+        "xarray",
+        "shapely",
+        "descartes",
+        "pandas",
+        "motionless",
+    ]
+
+    missing_packages = []
+    for pkg in required_packages:
+        try:
+            etau.ensure_package(pkg)
+        except:
+            missing_packages.append(pkg)
+
+    if missing_packages:
+        raise ImportError(
+            "The requested operation requires that the following packages are "
+            "installed on your machine: %s" % (tuple(missing_packages),)
+        )
+
+
+salem = fou.lazy_import("salem", callback=_ensure_salem)

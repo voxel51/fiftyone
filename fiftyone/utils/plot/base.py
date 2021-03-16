@@ -5,7 +5,153 @@ Base plotting utilities.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import logging
+
 import fiftyone.core.context as foc
+
+
+logger = logging.getLogger(__name__)
+
+
+def get_default_backend(interactive=False):
+    """Gets the default plotting backend for the current environment.
+
+    Args:
+        interactive (False): whether interactive plots are required
+
+    Returns:
+        "plotly" or "matplotlib"
+    """
+    if interactive and not foc.is_notebook_context():
+        # plotly backend does not yet support interactive plots in non-notebook
+        # contexts
+        return "matplotlib"
+
+    return "plotly"
+
+
+def plot_confusion_matrix(
+    confusion_matrix, labels, backend=None, show=True, **kwargs
+):
+    """Plots a confusion matrix.
+
+    Args:
+        confusion_matrix: a ``num_true x num_preds`` confusion matrix
+        labels: a ``max(num_true, num_preds)`` array of class labels
+        backend (None): the plotting backend to use. Supported values are
+            ``("plotly", "matplotlib")``. If no backend is specified, the best
+            applicable backend is chosen
+        show (True): whether to show the plot
+        **kwargs: keyword arguments for the backend plotting method:
+
+            -   "plotly" backend: :meth:`fiftyone.utils.plot.plotly.plot_confusion_matrix`
+            -   "matplotlib" backend: :meth:`fiftyone.utils.plot.matplotlib.plot_confusion_matrix`
+
+    Returns:
+        a plotly or matplotlib figure
+    """
+    backend = _parse_backend(backend, interactive=False)
+
+    if backend == "matplotlib":
+        from .matplotlib import plot_confusion_matrix as _plot_confusion_matrix
+    else:
+        from .plotly import plot_confusion_matrix as _plot_confusion_matrix
+
+    return _plot_confusion_matrix(
+        confusion_matrix, labels, show=show, **kwargs
+    )
+
+
+def plot_pr_curve(
+    precision, recall, label=None, backend=None, show=True, **kwargs
+):
+    """Plots a precision-recall (PR) curve.
+
+    Args:
+        precision: an array of precision values
+        recall: an array of recall values
+        label (None): a label for the curve
+        backend (None): the plotting backend to use. Supported values are
+            ``("plotly", "matplotlib")``. If no backend is specified, the best
+            applicable backend is chosen
+        show (True): whether to show the plot
+        **kwargs: keyword arguments for the backend plotting method:
+
+            -   "plotly" backend: :meth:`fiftyone.utils.plot.plotly.plot_pr_curve`
+            -   "matplotlib" backend: :meth:`fiftyone.utils.plot.matplotlib.plot_pr_curve`
+
+    Returns:
+        a plotly or matplotlib figure
+    """
+    backend = _parse_backend(backend, interactive=False)
+
+    if backend == "matplotlib":
+        from .matplotlib import plot_pr_curve as _plot_pr_curve
+    else:
+        from .plotly import plot_pr_curve as _plot_pr_curve
+
+    return _plot_pr_curve(precision, recall, label=label, show=show, **kwargs)
+
+
+def plot_pr_curves(
+    precisions, recall, classes, backend=None, show=True, **kwargs
+):
+    """Plots a set of per-class precision-recall (PR) curves.
+
+    Args:
+        precisions: a ``num_classes x num_recalls`` array of per-class
+            precision values
+        recall: an array of recall values
+        classes: the list of classes
+        backend (None): the plotting backend to use. Supported values are
+            ``("plotly", "matplotlib")``. If no backend is specified, the best
+            applicable backend is chosen
+        show (True): whether to show the plot
+        **kwargs: keyword arguments for the backend plotting method:
+
+            -   "plotly" backend: :meth:`fiftyone.utils.plot.plotly.plot_pr_curves`
+            -   "matplotlib" backend: :meth:`fiftyone.utils.plot.matplotlib.plot_pr_curves`
+
+    Returns:
+        a plotly or matplotlib figure
+    """
+    backend = _parse_backend(backend, interactive=False)
+
+    if backend == "matplotlib":
+        from .matplotlib import plot_pr_curves as _plot_pr_curves
+    else:
+        from .plotly import plot_pr_curves as _plot_pr_curves
+
+    return _plot_pr_curves(precisions, recall, classes, show=show, **kwargs)
+
+
+def plot_roc_curve(fpr, tpr, roc_auc=None, backend=None, show=True, **kwargs):
+    """Plots a receiver operating characteristic (ROC) curve.
+
+    Args:
+        fpr: an array of false postive rates
+        tpr: an array of true postive rates
+        roc_auc (None): the area under the ROC curve
+        backend (None): the plotting backend to use. Supported values are
+            ``("plotly", "matplotlib")``. If no backend is specified, the best
+            applicable backend is chosen
+        show (True): whether to show the plot
+        **kwargs: keyword arguments for the backend plotting method:
+
+            -   "plotly" backend: :meth:`fiftyone.utils.plot.plotly.plot_roc_curve`
+            -   "matplotlib" backend: :meth:`fiftyone.utils.plot.matplotlib.plot_roc_curve`
+
+    Returns:
+        a plotly or matplotlib figure
+    """
+    backend = _parse_backend(backend, interactive=False)
+
+    if backend == "matplotlib":
+        from .matplotlib import plot_roc_curve as _plot_roc_curve
+    else:
+        from .plotly import plot_roc_curve as _plot_roc_curve
+
+    return _plot_roc_curve(fpr, tpr, roc_auc=roc_auc, show=show, **kwargs)
 
 
 def location_scatterplot(
@@ -18,6 +164,7 @@ def location_scatterplot(
     labels=None,
     classes=None,
     backend=None,
+    show=True,
     **kwargs,
 ):
     """Generates an interactive scatterplot of the given location coordinates
@@ -62,6 +209,7 @@ def location_scatterplot(
         backend (None): the plotting backend to use. Supported values are
             ``("plotly", "matplotlib")``. If no backend is specified, the best
             applicable backend is chosen
+        show (True): whether to show the plot
         **kwargs: keyword arguments for the backend plotting method:
 
             -   "plotly" backend: :meth:`fiftyone.utils.plot.plotly.location_scatterplot`
@@ -74,8 +222,11 @@ def location_scatterplot(
             ``session`` is provided
         -   an :class:`fiftyone.utils.plot.interactive.InteractivePlot`, if a
             ``session`` is not provided
+        -   a plotly or matplotlib figure, when interactive plots are not
+            supported
     """
-    backend = _parse_backend(session, backend)
+    interactive = session is not None
+    backend = _parse_backend(backend, interactive=interactive)
 
     if backend == "matplotlib":
         from .matplotlib import location_scatterplot as _location_scatterplot
@@ -91,6 +242,7 @@ def location_scatterplot(
         field=field,
         labels=labels,
         classes=classes,
+        show=show,
         **kwargs,
     )
 
@@ -104,6 +256,7 @@ def scatterplot(
     labels=None,
     classes=None,
     backend=None,
+    show=True,
     **kwargs,
 ):
     """Generates an interactive scatterplot of the given points.
@@ -140,6 +293,7 @@ def scatterplot(
         backend (None): the plotting backend to use. Supported values are
             ``("plotly", "matplotlib")``. If no backend is specified, the best
             applicable backend is chosen
+        show (True): whether to show the plot
         **kwargs: keyword arguments for the backend plotting method:
 
             -   "plotly" backend: :meth:`fiftyone.utils.plot.plotly.scatterplot`
@@ -152,9 +306,11 @@ def scatterplot(
             ``session`` is provided
         -   an :class:`fiftyone.utils.plot.interactive.InteractivePlot`, if a
             ``session`` is not provided
-        -   ``None`` for 3D points
+        -   a plotly or matplotlib figure, for 3D points or when interactive
+            plots are not supported
     """
-    backend = _parse_backend(session, backend)
+    interactive = session is not None
+    backend = _parse_backend(backend, interactive=interactive)
 
     if backend == "matplotlib":
         from .matplotlib import scatterplot as _scatterplot
@@ -169,13 +325,14 @@ def scatterplot(
         field=field,
         labels=labels,
         classes=classes,
+        show=show,
         **kwargs,
     )
 
 
-def _parse_backend(session, backend):
+def _parse_backend(backend, interactive=False):
     if backend is None:
-        backend = _default_backend(session)
+        return get_default_backend(interactive=interactive)
 
     available_backends = ("matplotlib", "plotly")
     if backend not in available_backends:
@@ -186,12 +343,3 @@ def _parse_backend(session, backend):
         )
 
     return backend
-
-
-def _default_backend(session):
-    if session is not None and not foc.is_notebook_context():
-        # plotly backend does not yet support interactive plots in non-notebook
-        # contexts
-        return "matplotlib"
-
-    return "plotly"
