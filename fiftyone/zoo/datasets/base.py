@@ -960,14 +960,8 @@ class OpenImagesV6Dataset(FiftyOneDataset):
         return ("train", "test", "validation")
 
     @property
-    def supports_paritial_download(self):
+    def supports_partial_download(self):
         return True
-
-    # By default, Open Images does not cleanup temporary files since this
-    # dataset supports partial downloading
-    @property
-    def cleanup(self):
-        return False
 
     def _download_and_prepare(self, dataset_dir, scratch_dir, split):
         dataset_base_dir = os.path.dirname(dataset_dir)  # remove split dir

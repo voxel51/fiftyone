@@ -763,7 +763,7 @@ class ZooDataset(object):
         return self.supported_splits is not None
 
     @property
-    def supports_paritial_download(self):
+    def supports_partial_download(self):
         """Whether the dataset supports download specified subsets of data and
         labels. This determines if _download_and_prepare should be run even if split directories
            already exist.
@@ -775,14 +775,6 @@ class ZooDataset(object):
         """Whether this dataset requires some files to be manually downloaded.
         """
         return False
-
-    @property
-    def cleanup(self):
-        """Whether to delete temporary download folders. This usually defaults
-        to True unless a dataset supports partial downloads and needs to retain
-        raw annotation data, for example ``OpenImagesV6Dataset``
-        """
-        return True
 
     def has_tag(self, tag):
         """Whether the dataset has the given tag.
@@ -920,7 +912,7 @@ class ZooDataset(object):
                             )
                             etau.delete_dir(split_dir)
                         elif split in info.downloaded_splits:
-                            if not self.supports_paritial_download:
+                            if not self.supports_partial_download:
                                 if self.requires_manual_download:
                                     logger.info(
                                         "Split '%s' already prepared", split
@@ -997,7 +989,9 @@ class ZooDataset(object):
 
         # Cleanup scratch directory, if necessary
         if cleanup is None:
-            cleanup = self.cleanup
+            # Cleanup only defaults to True if the dataset does not support
+            # partial downloads
+            cleanup = not self.supports_partial_download
 
         if cleanup:
             etau.delete_dir(scratch_dir)
