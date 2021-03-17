@@ -191,6 +191,9 @@ class HasClient(object):
     def has_listeners(self):
         return bool(self._listeners)
 
+    def has_listener(self, key):
+        return key in self._listeners
+
     def get_listeners(self):
         return self._listeners
 

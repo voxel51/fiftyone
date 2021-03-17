@@ -754,7 +754,7 @@ class Session(foc.HasClient):
         self._update_state()
 
     def freeze(self):
-        """Screenshots the active App cell.
+        """Screenshots the active App cell, replacing it with a static image.
 
         Only applicable to notebook contexts.
         """

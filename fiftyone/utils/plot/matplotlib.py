@@ -24,9 +24,8 @@ import eta.core.utils as etau
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.utils as fou
-from fiftyone.core.view import DatasetView
 
-from .interactive import InteractivePlot, SessionPlot
+from .interactive import InteractivePlot
 from .utils import load_button_icon
 
 
@@ -228,7 +227,6 @@ def plot_roc_curve(
 def scatterplot(
     points,
     samples=None,
-    session=None,
     label_field=None,
     field=None,
     labels=None,
@@ -248,26 +246,18 @@ def scatterplot(
     This method supports 2D or 3D visualizations, but interactive point
     selection is only aviailable in 2D.
 
-    If you provide a ``session`` object, then the state of the FiftyOne App
-    will be synced with the currently selected points in the plot.
-
-    -   Sample selection: If no ``label_field`` is provided, then when points
-        are selected, a view containing the corresponding samples will be
-        loaded in the App
-
-    -   Label selection: If ``label_field`` is provided, then when points are
-        selected, a view containing the corresponding labels in
-        ``label_field`` will be loaded in the App
-
     You can use the ``field`` or ``labels`` parameters to define a coloring for
     the points.
+
+    You can connect this method to a :class:`fiftyone.core.session.Session`
+    in order to automatically sync the session's view with the currently
+    selected points in the plot. To enable this functionality, pass ``samples``
+    to this method.
 
     Args:
         points: a ``num_points x num_dims`` array of points
         samples (None): the :class:`fiftyone.core.collections.SampleCollection`
             whose data is being visualized
-        session (None): a :class:`fiftyone.core.session.Session` object to
-            link with the interactive plot
         label_field (None): a :class:`fiftyone.core.labels.Label` field
             containing the labels corresponding to ``points``. If not provided,
             the points are assumed to correspond to samples
@@ -292,10 +282,9 @@ def scatterplot(
     Returns:
         one of the following:
 
-        -   a :class:`fiftyone.utils.plot.interactive.SessionPlot`, if a
-            ``session`` is provided
-        -   a :class:`InteractiveCollection`, if no ``session`` is provided
-        -   a ``matplotlib.figure.Figure``, for 3D points
+        -   an :class:`InteractiveCollection`, for 2D points and when the
+            ``samples`` are provided
+        -   a ``matplotlib.figure.Figure``, otherwise
     """
     points = np.asarray(points)
     num_dims = points.shape[1]
@@ -303,60 +292,16 @@ def scatterplot(
     if num_dims not in {2, 3}:
         raise ValueError("This method only supports 2D or 3D points")
 
-    if field is not None:
-        if samples is None:
-            raise ValueError(
-                "You must provide `samples` in order to extract field values"
-            )
-
-        labels = samples.values(field)
-
-    if labels and isinstance(labels[0], (list, tuple)):
-        labels = list(itertools.chain.from_iterable(labels))
-
-    if labels is not None:
-        if len(labels) != len(points):
-            raise ValueError(
-                "Number of labels (%d) does not match number of points (%d). "
-                "You may have missing data/labels that you need to omit from "
-                "your view before visualizing" % (len(labels), len(points))
-            )
+    labels = _get_labels_for_points(
+        points, samples=samples, labels=labels, field=field
+    )
 
     ids = None
-    if session is not None:
-        if label_field is not None:
-            ids = samples._get_label_ids(fields=label_field)
-            if len(ids) != len(points):
-                raise ValueError(
-                    "Number of label IDs (%d) does not match number of "
-                    "points (%d). You may have missing data/labels that you "
-                    "need to omit from your view before visualizing"
-                    % (len(ids), len(points))
-                )
-        else:
-            ids = np.array(samples.values("id"))
-            if len(ids) != len(points):
-                raise ValueError(
-                    "Number of sample IDs (%d) does not match number of "
-                    "points (%d). You may have missing data/labels that you "
-                    "need to omit from your view before visualizing"
-                    % (len(ids), len(points))
-                )
-
-    if samples is not None and session is not None:
-        # Don't spawn a new App instance in notebook contexts
-        with session.no_show():
-            if isinstance(samples, DatasetView):
-                session.view = samples
-            else:
-                session.dataset = samples
-
-    if session is not None:
-        if samples is None:
-            samples = session._collection
-
+    if samples is not None:
         if num_dims != 2:
             logger.warning("Interactive selection is only supported in 2D")
+        else:
+            ids = _get_ids_for_points(points, samples, label_field=label_field)
 
     with plt.style.context(style):
         collection, inds = _plot_scatter(
@@ -383,22 +328,65 @@ def scatterplot(
         if ids is not None and inds is not None:
             ids = ids[inds]
 
-        plot = InteractiveCollection(collection, ids=ids, buttons=buttons)
-        if show:
-            plot.show()
+        link_type = "labels" if label_field is not None else "samples"
+        plot = InteractiveCollection(
+            collection,
+            ids=ids,
+            link_type=link_type,
+            label_fields=label_field,
+            buttons=buttons,
+        )
 
-    if session is None:
-        return plot
+    if show:
+        plot.show()
 
-    link_type = "samples" if label_field is None else "labels"
-    return SessionPlot(session, plot, link_type=link_type, bidirectional=False)
+    return plot
+
+
+def _get_labels_for_points(points, samples=None, labels=None, field=None):
+    if field is not None:
+        if samples is None:
+            raise ValueError(
+                "You must provide `samples` in order to extract field values"
+            )
+
+        labels = samples.values(field)
+
+    if labels and isinstance(labels[0], (list, tuple)):
+        labels = list(itertools.chain.from_iterable(labels))
+
+    if labels is not None and len(labels) != len(points):
+        raise ValueError(
+            "Number of labels (%d) does not match number of points (%d). You "
+            "may have missing data/labels that you need to omit from your "
+            "view before visualizing" % (len(labels), len(points))
+        )
+
+    return labels
+
+
+def _get_ids_for_points(points, samples, label_field=None):
+    if label_field is not None:
+        ids = samples._get_label_ids(fields=label_field)
+    else:
+        ids = samples.values("id")
+
+    if len(ids) != len(points):
+        ptype = "label" if label_field is not None else "sample"
+        raise ValueError(
+            "Number of %s IDs (%d) does not match number of points "
+            "(%d). You may have missing data/labels that you need to omit "
+            "from your view before visualizing"
+            % (ptype, len(ids), len(points))
+        )
+
+    return np.array(ids)
 
 
 def location_scatterplot(
     locations=None,
     location_field=None,
     samples=None,
-    session=None,
     label_field=None,
     field=None,
     labels=None,
@@ -423,32 +411,25 @@ def location_scatterplot(
     ``location_field`` parameters. If you specify neither, the first
     :class:`fiftyone.core.labels.GeoLocation` field on the dataset is used.
 
-    If you provide a ``session`` object, then the state of the FiftyOne App
-    will be synced with the currently selected points in the plot.
-
-    -   Sample selection: If no ``label_field`` is provided, then when points
-        are selected, a view containing the corresponding samples will be
-        loaded in the App
-
-    -   Label selection: If ``label_field`` is provided, then when points are
-        selected, a view containing the corresponding labels in
-        ``label_field`` will be loaded in the App
-
     You can use the ``field`` or ``labels`` parameters to define a coloring for
     the points.
 
+    You can connect this method to a :class:`fiftyone.core.session.Session`
+    in order to automatically sync the session's view with the currently
+    selected points in the plot. To enable this functionality, pass ``samples``
+    to this method.
+
     Args:
-        locations (None): a ``num_samples x 2`` array of
+        locations (None): a ``num_locations x 2`` array of
             ``(longitude, latitude)`` coordinates
         location_field (None): the name of a
             :class:`fiftyone.core.labels.GeoLocation` field with
             ``(longitude, latitude)`` coordinates in its ``point`` attribute
         samples (None): the :class:`fiftyone.core.collections.SampleCollection`
             whose data is being visualized
-        session (None): a :class:`fiftyone.core.session.Session` object to
-            link with the interactive plot
         label_field (None): a :class:`fiftyone.core.labels.Label` field
-            containing labels for each location
+            containing the labels corresponding to ``locations``. If not
+            provided, the locations are assumed to correspond to samples
         field (None): a sample field or ``embedded.field.name`` to use to
             color the points. Can be numeric or strings
         labels (None): a list of numeric or string values to use to color
@@ -474,20 +455,9 @@ def location_scatterplot(
     Returns:
         one of the following:
 
-        -   a :class:`fiftyone.utils.plot.interactive.SessionPlot`, if a
-            ``session`` is provided
-        -   an :class:`fiftyone.utils.plot.interactive.InteractivePlot`, if a
-            ``session`` is not provided
+        -   an :class:`InteractiveCollection`, if ``samples`` are provided
+        -   a ``matplotlib.figure.Figure``, otherwise
     """
-    if session is not None and samples is None:
-        samples = session._collection
-
-    if samples is None:
-        raise ValueError(
-            "You must provide `samples` when `locations` are not manually "
-            "specified"
-        )
-
     locations = _parse_locations(locations, location_field, samples)
 
     if ax is None:
@@ -516,7 +486,6 @@ def location_scatterplot(
     return scatterplot(
         locations,
         samples=samples,
-        session=session,
         label_field=label_field,
         field=field,
         labels=labels,
@@ -533,17 +502,49 @@ def location_scatterplot(
     )
 
 
+def _parse_locations(locations, location_field, samples):
+    if locations is not None:
+        return np.asarray(locations)
+
+    if samples is None:
+        raise ValueError(
+            "You must provide `samples` when `locations` are not manually "
+            "specified"
+        )
+
+    if location_field is not None:
+        samples.validate_field_type(
+            location_field,
+            fof.EmbeddedDocumentField,
+            embedded_doc_type=fol.GeoLocation,
+        )
+    else:
+        location_field = samples._get_geo_location_field()
+
+    locations = samples.values(location_field + ".point.coordinates")
+
+    return np.asarray(locations)
+
+
 class InteractiveMatplotlibPlot(InteractivePlot):
     """Base class for interactive matplotlib plots.
 
     Args:
         figure: a ``matplotlib.figure.Figure``
+        link_type ("samples"): whether this plot is linked to "samples" or
+            "labels"
+        label_fields (None): an optional list of label fields to which points
+            in this plot correspond. Only applicable when linked to labels
     """
 
-    def __init_(self, figure):
+    def __init__(self, figure, link_type="samples", label_fields=None):
         self._figure = figure
+        super().__init__(link_type=link_type, label_fields=label_fields)
 
-        super().__init__()
+    def supports_bidirectional_updates(self):
+        # matplotlib does not support redrawing outside of the main thread
+        # https://stackoverflow.com/q/34764535
+        return False
 
     def _show(self):
         plt.show(block=False)
@@ -571,6 +572,10 @@ class InteractiveCollection(InteractiveMatplotlibPlot):
         collection: a ``matplotlib.collections.Collection`` to select points
             from
         ids (None): a list of IDs corresponding to the points in ``collection``
+        link_type ("samples"): whether this plot is linked to "samples" or
+            "labels"
+        label_fields (None): an optional list of label fields to which points
+            in this plot correspond. Only applicable when linked to labels
         buttons (None): a list of ``(label, icon_image, callback)`` tuples
             defining buttons to add to the plot
         alpha_other (0.25): a transparency value for unselected points
@@ -584,6 +589,8 @@ class InteractiveCollection(InteractiveMatplotlibPlot):
         self,
         collection,
         ids=None,
+        link_type="samples",
+        label_fields=None,
         buttons=None,
         alpha_other=0.25,
         expand_selected=3.0,
@@ -622,7 +629,11 @@ class InteractiveCollection(InteractiveMatplotlibPlot):
         self._figure_events = []
         self._keypress_events = []
 
-        super().__init__(collection.axes.figure)
+        super().__init__(
+            collection.axes.figure,
+            link_type=link_type,
+            label_fields=label_fields,
+        )
 
     @property
     def _any_selected(self):
@@ -988,24 +999,6 @@ def _parse_scatter_inputs(points, labels, classes):
         found = None
 
     return points, values, classes, found, True
-
-
-def _parse_locations(locations, location_field, samples):
-    if locations is not None:
-        return np.asarray(locations)
-
-    if location_field is not None:
-        samples.validate_field_type(
-            location_field,
-            fof.EmbeddedDocumentField,
-            embedded_doc_type=fol.GeoLocation,
-        )
-    else:
-        location_field = samples._get_geo_location_field()
-
-    locations = samples.values(location_field + ".point.coordinates")
-
-    return np.asarray(locations)
 
 
 def _plot_map_background(ax, locations, api_key, map_type, show_scale_bar):

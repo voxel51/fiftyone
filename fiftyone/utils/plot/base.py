@@ -159,103 +159,9 @@ def plot_roc_curve(fpr, tpr, roc_auc=None, backend=None, show=True, **kwargs):
     return _plot_roc_curve(fpr, tpr, roc_auc=roc_auc, show=show, **kwargs)
 
 
-def location_scatterplot(
-    locations=None,
-    location_field=None,
-    samples=None,
-    session=None,
-    label_field=None,
-    field=None,
-    labels=None,
-    classes=None,
-    backend=None,
-    show=True,
-    **kwargs,
-):
-    """Generates an interactive scatterplot of the given location coordinates
-    with a map rendered in the background of the plot.
-
-    Location data can be specified either via the ``locations`` or
-    ``location_field`` parameters. If you specify neither, the first
-    :class:`fiftyone.core.labels.GeoLocation` field on the dataset is used.
-
-    If you provide a ``session`` object, then the state of the FiftyOne App
-    will be synced with the currently selected points in the plot.
-
-    -   Sample selection: If no ``label_field`` is provided, then when points
-        are selected, a view containing the corresponding samples will be
-        loaded in the App
-
-    -   Label selection: If ``label_field`` is provided, then when points are
-        selected, a view containing the corresponding labels in
-        ``label_field`` will be loaded in the App
-
-    You can use the ``field`` or ``labels`` parameters to define a coloring for
-    the points.
-
-    Args:
-        locations (None): a ``num_samples x 2`` array of
-            ``(longitude, latitude)`` coordinates
-        samples (None): the :class:`fiftyone.core.collections.SampleCollection`
-            whose data is being visualized
-        session (None): a :class:`fiftyone.core.session.Session` object to
-            link with the interactive plot
-        location_field (None): the name of a
-            :class:`fiftyone.core.labels.GeoLocation` field with
-            ``(longitude, latitude)`` coordinates in its ``point`` attribute
-        label_field (None): a :class:`fiftyone.core.labels.Label` field
-            containing labels for each location
-        field (None): a sample field or ``embedded.field.name`` to use to
-            color the points. Can be numeric or strings
-        labels (None): a list of numeric or string values to use to color
-            the points
-        classes (None): an optional list of classes whose points to plot.
-            Only applicable when ``labels`` contains strings
-        backend (None): the plotting backend to use. Supported values are
-            ``("plotly", "matplotlib")``. If no backend is specified, the best
-            applicable backend is chosen
-        show (True): whether to show the plot
-        **kwargs: keyword arguments for the backend plotting method:
-
-            -   "plotly" backend: :meth:`fiftyone.utils.plot.plotly.location_scatterplot`
-            -   "matplotlib" backend: :meth:`fiftyone.utils.plot.matplotlib.location_scatterplot`
-
-    Returns:
-        one of the following:
-
-        -   a :class:`fiftyone.utils.plot.interactive.SessionPlot`, if a
-            ``session`` is provided
-        -   an :class:`fiftyone.utils.plot.interactive.InteractivePlot`, if a
-            ``session`` is not provided
-        -   a plotly or matplotlib figure, when interactive plots are not
-            supported
-    """
-    interactive = session is not None
-    backend = _parse_backend(backend, interactive=interactive)
-
-    if backend == "matplotlib":
-        from .matplotlib import location_scatterplot as _location_scatterplot
-    else:
-        from .plotly import location_scatterplot as _location_scatterplot
-
-    return _location_scatterplot(
-        locations=locations,
-        location_field=location_field,
-        samples=samples,
-        session=session,
-        label_field=label_field,
-        field=field,
-        labels=labels,
-        classes=classes,
-        show=show,
-        **kwargs,
-    )
-
-
 def scatterplot(
     points,
     samples=None,
-    session=None,
     label_field=None,
     field=None,
     labels=None,
@@ -266,26 +172,18 @@ def scatterplot(
 ):
     """Generates an interactive scatterplot of the given points.
 
-    If you provide a ``session`` object, then the state of the FiftyOne App
-    will be synced with the currently selected points in the plot.
-
-    -   Sample selection: If no ``label_field`` is provided, then when points
-        are selected, a view containing the corresponding samples will be
-        loaded in the App
-
-    -   Label selection: If ``label_field`` is provided, then when points are
-        selected, a view containing the corresponding labels in
-        ``label_field`` will be loaded in the App
-
     You can use the ``field`` or ``labels`` parameters to define a coloring for
     the points.
+
+    You can connect this method to a :class:`fiftyone.core.session.Session`
+    in order to automatically sync the session's view with the currently
+    selected points in the plot. To enable this functionality, pass ``samples``
+    to this method.
 
     Args:
         points: a ``num_points x num_dims`` array of points
         samples (None): the :class:`fiftyone.core.collections.SampleCollection`
             whose data is being visualized
-        session (None): a :class:`fiftyone.core.session.Session` object to
-            link with the interactive plot
         label_field (None): a :class:`fiftyone.core.labels.Label` field
             containing the labels corresponding to ``points``. If not provided,
             the points are assumed to correspond to samples
@@ -307,14 +205,11 @@ def scatterplot(
     Returns:
         one of the following:
 
-        -   a :class:`fiftyone.utils.plot.interactive.SessionPlot`, if a
-            ``session`` is provided
-        -   an :class:`fiftyone.utils.plot.interactive.InteractivePlot`, if a
-            ``session`` is not provided
-        -   a plotly or matplotlib figure, for 3D points or when interactive
-            plots are not supported
+        -   an :class:`fiftyone.utils.plot.interactive.InteractivePlot`, if
+            ``samples`` are provided and the backend supports interactivity
+        -   a plotly or matplotlib figure, otherwise
     """
-    interactive = session is not None
+    interactive = samples is not None
     backend = _parse_backend(backend, interactive=interactive)
 
     if backend == "matplotlib":
@@ -325,7 +220,87 @@ def scatterplot(
     return _scatterplot(
         points,
         samples=samples,
-        session=session,
+        label_field=label_field,
+        field=field,
+        labels=labels,
+        classes=classes,
+        show=show,
+        **kwargs,
+    )
+
+
+def location_scatterplot(
+    locations=None,
+    location_field=None,
+    samples=None,
+    label_field=None,
+    field=None,
+    labels=None,
+    classes=None,
+    backend=None,
+    show=True,
+    **kwargs,
+):
+    """Generates an interactive scatterplot of the given location coordinates
+    with a map rendered in the background of the plot.
+
+    Location data can be specified either via the ``locations`` or
+    ``location_field`` parameters. If you specify neither, the first
+    :class:`fiftyone.core.labels.GeoLocation` field on the dataset is used.
+
+    You can use the ``field`` or ``labels`` parameters to define a coloring for
+    the points.
+
+    You can connect this method to a :class:`fiftyone.core.session.Session`
+    in order to automatically sync the session's view with the currently
+    selected points in the plot. To enable this functionality, pass ``samples``
+    to this method.
+
+    Args:
+        locations (None): a ``num_locations x 2`` array of
+            ``(longitude, latitude)`` coordinates
+        samples (None): the :class:`fiftyone.core.collections.SampleCollection`
+            whose data is being visualized
+        location_field (None): the name of a
+            :class:`fiftyone.core.labels.GeoLocation` field with
+            ``(longitude, latitude)`` coordinates in its ``point`` attribute
+        label_field (None): a :class:`fiftyone.core.labels.Label` field
+            containing the labels corresponding to ``locations``. If not
+            provided, the locations are assumed to correspond to samples
+        field (None): a sample field or ``embedded.field.name`` to use to
+            color the points. Can be numeric or strings
+        labels (None): a list of numeric or string values to use to color
+            the points
+        classes (None): an optional list of classes whose points to plot.
+            Only applicable when ``labels`` contains strings
+        backend (None): the plotting backend to use. Supported values are
+            ``("plotly", "matplotlib")``. If no backend is specified, the best
+            applicable backend is chosen
+        show (True): whether to show the plot
+        **kwargs: keyword arguments for the backend plotting method:
+
+            -   "plotly" backend: :meth:`fiftyone.utils.plot.plotly.location_scatterplot`
+            -   "matplotlib" backend: :meth:`fiftyone.utils.plot.matplotlib.location_scatterplot`
+
+    Returns:
+        one of the following:
+
+        -   an :class:`fiftyone.utils.plot.interactive.InteractivePlot`, if
+            ``samples`` are provided and the backend supports interactivity
+        -   a plotly or matplotlib figure, otherwise
+    """
+    interactive = samples is not None
+    backend = _parse_backend(backend, interactive=interactive)
+
+    if backend == "matplotlib":
+        from .matplotlib import location_scatterplot as _location_scatterplot
+    else:
+        from .plotly import location_scatterplot as _location_scatterplot
+
+    return _location_scatterplot(
+        locations=locations,
+        location_field=location_field,
+        samples=samples,
         label_field=label_field,
         field=field,
         labels=labels,
