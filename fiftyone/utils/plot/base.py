@@ -31,13 +31,16 @@ def get_default_backend(interactive=False):
 
 
 def plot_confusion_matrix(
-    confusion_matrix, labels, backend=None, show=True, **kwargs
+    confusion_matrix, labels, ids=None, backend=None, show=True, **kwargs
 ):
     """Plots a confusion matrix.
 
     Args:
         confusion_matrix: a ``num_true x num_preds`` confusion matrix
         labels: a ``max(num_true, num_preds)`` array of class labels
+        ids (None): an optional array of same shape as ``confusion_matrix``
+            containing lists of IDs corresponding to each cell. Only used by
+            the "plotly" backend
         backend (None): the plotting backend to use. Supported values are
             ``("plotly", "matplotlib")``. If no backend is specified, the best
             applicable backend is chosen
@@ -56,6 +59,8 @@ def plot_confusion_matrix(
         from .matplotlib import plot_confusion_matrix as _plot_confusion_matrix
     else:
         from .plotly import plot_confusion_matrix as _plot_confusion_matrix
+
+        kwargs["ids"] = ids
 
     return _plot_confusion_matrix(
         confusion_matrix, labels, show=show, **kwargs

@@ -39,6 +39,7 @@ def plot_confusion_matrix(
     labels,
     ids=None,
     colorscale=None,
+    template="simple_white",
     height=None,
     show=True,
 ):
@@ -53,6 +54,8 @@ def plot_confusion_matrix(
         ids (None): an optional array of same shape as ``confusion_matrix``
             containing lists of IDs corresponding to each cell
         colorscale (None): a plotly colorscale to use
+        template ("simple_white"): a plotly template to use. See
+            `https://plotly.com/python/templates` for more information
         height (None): a height for the plot, in pixels
         show (True): whether to show the plot
 
@@ -60,13 +63,21 @@ def plot_confusion_matrix(
         one of the following:
 
         -   a :class:`PlotlyHeatmap`, if ``ids`` are provided
-        -   a ``plotly.graph_objects.Figure``, otherwise
+        -   a ``plotly.graph_objects.Figure``, if no ``ids`` are provided
     """
+    if ids is not None and not foc.is_notebook_context():
+        logger.warning(
+            "Interactive Plotly plots are currently only supported in "
+            "notebooks"
+        )
+        ids = None
+
     if ids is None:
         return _plot_confusion_matrix_static(
             confusion_matrix,
             labels,
             colorscale=colorscale,
+            template=template,
             height=height,
             show=show,
         )
@@ -76,13 +87,19 @@ def plot_confusion_matrix(
         labels,
         ids,
         colorscale=colorscale,
+        template=template,
         height=height,
         show=show,
     )
 
 
 def _plot_confusion_matrix_static(
-    confusion_matrix, labels, colorscale=None, height=None, show=True
+    confusion_matrix,
+    labels,
+    colorscale=None,
+    template=None,
+    height=None,
+    show=True,
 ):
     confusion_matrix = np.asarray(confusion_matrix)
     num_rows, num_cols = confusion_matrix.shape
@@ -113,9 +130,16 @@ def _plot_confusion_matrix_static(
 
     figure.update_layout(
         xaxis=dict(range=[-0.5, num_cols - 0.5], constrain="domain"),
-        yaxis=dict(scaleanchor="x", scaleratio=1),
+        yaxis=dict(
+            range=[-0.5, num_rows - 0.5],
+            constrain="domain",
+            autorange="reversed",
+            scaleanchor="x",
+            scaleratio=1,
+        ),
         xaxis_title="Predicted label",
         yaxis_title="True label",
+        template=template,
     )
 
     if show:
@@ -125,7 +149,13 @@ def _plot_confusion_matrix_static(
 
 
 def _plot_confusion_matrix_interactive(
-    confusion_matrix, labels, ids, colorscale=None, height=None, show=True
+    confusion_matrix,
+    labels,
+    ids,
+    colorscale=None,
+    template=None,
+    height=None,
+    show=True,
 ):
     confusion_matrix = np.asarray(confusion_matrix)
     ids = np.asarray(ids)
@@ -140,6 +170,7 @@ def _plot_confusion_matrix_interactive(
         ylabels=labels[:num_rows],
         zlim=zlim,
         colorscale=colorscale,
+        template=template,
     )
 
     if height is not None:
@@ -200,8 +231,10 @@ def plot_pr_curve(
         figure.update_layout(title=dict(text=label, x=0.5, xanchor="center"))
 
     figure.update_layout(
-        xaxis=dict(constrain="domain"),
-        yaxis=dict(scaleanchor="x", scaleratio=1),
+        xaxis=dict(range=[0, 1], constrain="domain"),
+        yaxis=dict(
+            range=[0, 1], constrain="domain", scaleanchor="x", scaleratio=1
+        ),
         xaxis_title="Recall",
         yaxis_title="Precision",
         template=template,
@@ -265,8 +298,10 @@ def plot_pr_curves(
         figure.update_layout(height=height)
 
     figure.update_layout(
-        xaxis=dict(constrain="domain"),
-        yaxis=dict(scaleanchor="x", scaleratio=1),
+        xaxis=dict(range=[0, 1], constrain="domain"),
+        yaxis=dict(
+            range=[0, 1], constrain="domain", scaleanchor="x", scaleratio=1
+        ),
         xaxis_title="Recall",
         yaxis_title="Precision",
         template=template,
@@ -329,8 +364,10 @@ def plot_roc_curve(
         )
 
     figure.update_layout(
-        xaxis=dict(constrain="domain"),
-        yaxis=dict(scaleanchor="x", scaleratio=1),
+        xaxis=dict(range=[0, 1], constrain="domain"),
+        yaxis=dict(
+            range=[0, 1], constrain="domain", scaleanchor="x", scaleratio=1
+        ),
         xaxis_title="False positive rate",
         yaxis_title="True positive rate",
         template=template,
@@ -865,6 +902,8 @@ class PlotlyHeatmap(InteractivePlotlyPlot):
         xlabels (None): a ``num_rows`` array of x labels
         ylabels (None): a ``num_cols`` array of y labels
         colorscale (None): a plotly colorscale to use
+        template (None): a plotly template to use. See
+            `https://plotly.com/python/templates` for more information
         grid_opacity (0.1): an opacity value for the grid points
         bg_opacity (0.25): an opacity value for background (unselected) cells
     """
@@ -877,6 +916,7 @@ class PlotlyHeatmap(InteractivePlotlyPlot):
         ylabels=None,
         zlim=None,
         colorscale=None,
+        template=None,
         grid_opacity=0.1,
         bg_opacity=0.25,
     ):
@@ -891,6 +931,7 @@ class PlotlyHeatmap(InteractivePlotlyPlot):
         self.ylabels = ylabels
         self.zlim = zlim
         self.colorscale = colorscale
+        self.template = template
         self.grid_opacity = grid_opacity
         self.bg_opacity = bg_opacity
 
@@ -1047,10 +1088,14 @@ class PlotlyHeatmap(InteractivePlotlyPlot):
                 tickmode="array",
                 tickvals=yticks,
                 ticktext=self.ylabels,
+                range=[-0.5, num_cols - 0.5],
+                constrain="domain",
+                autorange="reversed",
                 scaleanchor="x",
                 scaleratio=1,
             ),
             clickmode="event",
+            template=self.template,
         )
 
         self._figure = figure
