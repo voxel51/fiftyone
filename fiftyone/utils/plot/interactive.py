@@ -272,9 +272,6 @@ class SessionPlot(object):
         Args:
             ids: a list of IDs
         """
-        if not self._ready_for_update("user"):
-            return
-
         self._select_ids(ids)
 
     def selected_view(self):
@@ -303,16 +300,11 @@ class SessionPlot(object):
 
     def refresh(self):
         """Refreshes the plot and session."""
-        if not self._ready_for_update("user"):
-            return
 
         self._select_ids(self.selected_ids)
 
     def reset(self):
         """Resets the plot and session to their initial view."""
-        if not self._ready_for_update("user"):
-            return
-
         self._select_ids(None)
 
     def sync(self):
@@ -334,9 +326,6 @@ class SessionPlot(object):
         """
         if not self.is_connected:
             raise ValueError("Session is not connected")
-
-        if not self._ready_for_update("user"):
-            return
 
         self._sync()
 
