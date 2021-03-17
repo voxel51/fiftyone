@@ -185,20 +185,36 @@ class SimpleEvaluation(ClassificationEvaluation):
         is_frame_field = samples._is_frame_field(gt_field)
 
         gt = gt_field + ".label"
+        gt_id = gt_field + ".id"
         pred = pred_field + ".label"
+        pred_id = pred_field + ".id"
         pred_conf = pred_field + ".confidence"
 
-        ytrue, ypred, confs = samples.aggregate(
-            [foa.Values(gt), foa.Values(pred), foa.Values(pred_conf)]
+        ytrue, ytrue_ids, ypred, ypred_ids, confs = samples.aggregate(
+            [
+                foa.Values(gt),
+                foa.Values(gt_id),
+                foa.Values(pred),
+                foa.Values(pred_id),
+                foa.Values(pred_conf),
+            ]
         )
 
         if is_frame_field:
             ytrue = list(itertools.chain.from_iterable(ytrue))
+            ytrue_ids = list(itertools.chain.from_iterable(ytrue_ids))
             ypred = list(itertools.chain.from_iterable(ypred))
+            ypred_ids = list(itertools.chain.from_iterable(ypred_ids))
             confs = list(itertools.chain.from_iterable(confs))
 
         results = ClassificationResults(
-            ytrue, ypred, confs, classes=classes, missing=missing
+            ytrue,
+            ypred,
+            confs=confs,
+            ytrue_ids=ytrue_ids,
+            ypred_ids=ypred_ids,
+            classes=classes,
+            missing=missing,
         )
 
         if eval_key is None:
@@ -274,10 +290,12 @@ class TopKEvaluation(ClassificationEvaluation):
 
         # This extracts a potentially huge number of logits
         # @todo consider sample iteration for very large datasets
-        ytrue, ypred, logits = samples.aggregate(
+        ytrue, ytrue_ids, ypred, ypred_ids, logits = samples.aggregate(
             [
                 foa.Values(gt_field + ".label"),
+                foa.Values(gt_field + ".id"),
                 foa.Values(pred_field + ".label"),
+                foa.Values(pred_field + ".id"),
                 foa.Values(pred_field + ".logits"),
             ]
         )
@@ -295,7 +313,9 @@ class TopKEvaluation(ClassificationEvaluation):
                 correct.append(_correct)
 
             ytrue = list(itertools.chain.from_iterable(ytrue))
+            ytrue_ids = list(itertools.chain.from_iterable(ytrue_ids))
             ypred = list(itertools.chain.from_iterable(ypred))
+            ypred_ids = list(itertools.chain.from_iterable(ypred_ids))
             confs = list(itertools.chain.from_iterable(confs))
         else:
             confs, correct = _evaluate_top_k(
@@ -303,7 +323,13 @@ class TopKEvaluation(ClassificationEvaluation):
             )
 
         results = ClassificationResults(
-            ytrue, ypred, confs, classes=classes, missing=missing
+            ytrue,
+            ypred,
+            confs=confs,
+            ytrue_ids=ytrue_ids,
+            ypred_ids=ypred_ids,
+            classes=classes,
+            missing=missing,
         )
 
         if eval_key is None:
@@ -415,19 +441,36 @@ class BinaryEvaluation(ClassificationEvaluation):
         pos_label = classes[-1]
 
         gt = gt_field + ".label"
+        gt_id = gt_field + ".id"
         pred = pred_field + ".label"
+        pred_id = pred_field + ".id"
         pred_conf = pred_field + ".confidence"
 
-        ytrue, ypred, confs = samples.aggregate(
-            [foa.Values(gt), foa.Values(pred), foa.Values(pred_conf)]
+        ytrue, ytrue_ids, ypred, ypred_ids, confs = samples.aggregate(
+            [
+                foa.Values(gt),
+                foa.Values(gt_id),
+                foa.Values(pred),
+                foa.Values(pred_id),
+                foa.Values(pred_conf),
+            ]
         )
 
         if is_frame_field:
             ytrue = list(itertools.chain.from_iterable(ytrue))
+            ytrue_ids = list(itertools.chain.from_iterable(ytrue_ids))
             ypred = list(itertools.chain.from_iterable(ypred))
+            ypred_ids = list(itertools.chain.from_iterable(ypred_ids))
             confs = list(itertools.chain.from_iterable(confs))
 
-        results = BinaryClassificationResults(ytrue, ypred, confs, classes)
+        results = BinaryClassificationResults(
+            ytrue,
+            ypred,
+            confs,
+            classes,
+            ytrue_ids=ytrue_ids,
+            ypred_ids=ypred_ids,
+        )
 
         if eval_key is None:
             return results
@@ -483,6 +526,8 @@ class ClassificationResults(foe.EvaluationResults):
         ypred: a list of predicted labels
         confs (None): an optional list of confidences for the predictions
         weights (None): an optional list of sample weights
+        ytrue_ids (None): a list of IDs for the ground truth labels
+        ypred_ids (None): a list of IDs for the predicted labels
         classes (None): the list of possible classes. If not provided, the
             observed ground truth/predicted labels are used
         missing (None): a missing label string. Any None-valued labels are
@@ -495,6 +540,8 @@ class ClassificationResults(foe.EvaluationResults):
         ypred,
         confs=None,
         weights=None,
+        ytrue_ids=None,
+        ypred_ids=None,
         classes=None,
         missing=None,
     ):
@@ -506,6 +553,12 @@ class ClassificationResults(foe.EvaluationResults):
         self.ypred = np.asarray(ypred)
         self.confs = np.asarray(confs) if confs is not None else None
         self.weights = np.asarray(weights) if weights is not None else None
+        self.ytrue_ids = (
+            np.asarray(ytrue_ids) if ytrue_ids is not None else None
+        )
+        self.ypred_ids = (
+            np.asarray(ypred_ids) if ypred_ids is not None else None
+        )
         self.classes = np.asarray(classes)
         self.missing = missing
 
@@ -623,7 +676,7 @@ class ClassificationResults(foe.EvaluationResults):
             a ``num_classes x num_classes`` confusion matrix
         """
         labels = self._get_labels(classes, include_missing=True)
-        confusion_matrix, _ = self._confusion_matrix(
+        confusion_matrix, _, _ = self._confusion_matrix(
             labels, include_other=include_other
         )
         return confusion_matrix
@@ -634,6 +687,7 @@ class ClassificationResults(foe.EvaluationResults):
         include_other=False,
         other_label=None,
         include_missing=False,
+        tabulate_ids=False,
     ):
         labels = list(labels)
 
@@ -652,10 +706,17 @@ class ClassificationResults(foe.EvaluationResults):
             ypred = self.ypred
             ytrue = self.ytrue
 
-        confusion_matrix = skm.confusion_matrix(
-            ytrue, ypred, labels=labels, sample_weight=self.weights
+        confusion_matrix, ids = _compute_confusion_matrix(
+            ytrue,
+            ypred,
+            labels,
+            weights=self.weights,
+            ytrue_ids=self.ytrue_ids,
+            ypred_ids=self.ypred_ids,
+            tabulate_ids=tabulate_ids,
         )
-        return confusion_matrix, labels
+
+        return confusion_matrix, labels, ids
 
     def plot_confusion_matrix(
         self,
@@ -696,11 +757,12 @@ class ClassificationResults(foe.EvaluationResults):
             True
         """
         _labels = self._get_labels(classes, include_missing=True)
-        confusion_matrix, labels = self._confusion_matrix(
+        confusion_matrix, labels, ids = self._confusion_matrix(
             _labels,
             include_other=include_other,
             other_label=other_label,
             include_missing=include_other,
+            tabulate_ids=True,
         )
 
         if include_other:
@@ -722,7 +784,12 @@ class ClassificationResults(foe.EvaluationResults):
                 labels = [l for i, l in enumerate(labels) if i not in rm_inds]
 
         figure = foup.plot_confusion_matrix(
-            confusion_matrix, labels, backend=backend, show=show, **kwargs,
+            confusion_matrix,
+            labels,
+            ids=ids,
+            backend=backend,
+            show=show,
+            **kwargs,
         )
 
         return figure if return_figure else None
@@ -733,6 +800,8 @@ class ClassificationResults(foe.EvaluationResults):
         ypred = d["ypred"]
         confs = d.get("confs", None)
         weights = d.get("weights", None)
+        ytrue_ids = d.get("ytrue_ids", None)
+        ypred_ids = d.get("ypred_ids", None)
         classes = d.get("classes", None)
         missing = d.get("missing", None)
         return cls(
@@ -740,6 +809,8 @@ class ClassificationResults(foe.EvaluationResults):
             ypred,
             confs=confs,
             weights=weights,
+            ytrue_ids=ytrue_ids,
+            ypred_ids=ypred_ids,
             classes=classes,
             missing=missing,
             **kwargs,
@@ -758,14 +829,27 @@ class BinaryClassificationResults(ClassificationResults):
         confs: a list of confidences for the predictions
         classes: the ``(neg_label, pos_label)`` label strings for the task
         weights (None): an optional list of sample weights
+        ytrue_ids (None): a list of IDs for the ground truth labels
+        ypred_ids (None): a list of IDs for the predicted labels
     """
 
-    def __init__(self, ytrue, ypred, confs, classes, weights=None):
+    def __init__(
+        self,
+        ytrue,
+        ypred,
+        confs,
+        classes,
+        weights=None,
+        ytrue_ids=None,
+        ypred_ids=None,
+    ):
         super().__init__(
             ytrue,
             ypred,
             confs=confs,
             weights=weights,
+            ytrue_ids=ytrue_ids,
+            ypred_ids=ypred_ids,
             classes=classes,
             missing=classes[0],
         )
@@ -906,8 +990,8 @@ def _parse_labels(ytrue, ypred, classes, missing):
     else:
         classes = list(classes)
 
-    ytrue, found_missing_true = _clean_labels(ytrue, missing)
-    ypred, found_missing_pred = _clean_labels(ypred, missing)
+    ytrue, found_missing_true = _cleanum_labels(ytrue, missing)
+    ypred, found_missing_pred = _cleanum_labels(ypred, missing)
 
     found_missing = found_missing_true or found_missing_pred
     if found_missing and missing not in classes:
@@ -916,7 +1000,7 @@ def _parse_labels(ytrue, ypred, classes, missing):
     return ytrue, ypred, classes
 
 
-def _clean_labels(y, missing):
+def _cleanum_labels(y, missing):
     found_missing = False
 
     yclean = []
@@ -940,3 +1024,74 @@ def _to_binary_scores(y, confs, pos_label):
         scores.append(score)
 
     return scores
+
+
+def _compute_confusion_matrix(
+    ytrue,
+    ypred,
+    labels,
+    weights=None,
+    ytrue_ids=None,
+    ypred_ids=None,
+    tabulate_ids=False,
+):
+    ytrue = np.asarray(ytrue).flatten()
+    ypred = np.asarray(ypred).flatten()
+    labels = np.asarray(labels)
+
+    if weights is None:
+        weights = np.ones(ytrue.size, dtype=int)
+    else:
+        weights = np.asarray(weights).flatten()
+
+    if weights.dtype.kind in {"i", "u", "b"}:
+        dtype = np.int64
+    else:
+        dtype = np.float64
+
+    num_labels = labels.size
+
+    confusion_matrix = np.zeros((num_labels, num_labels), dtype=dtype)
+
+    if tabulate_ids:
+        ids = np.empty((num_labels, num_labels), dtype=object)
+        for i in range(num_labels):
+            for j in range(num_labels):
+                ids[i, j] = []
+    else:
+        ytrue_ids = None
+        ypred_ids = None
+        ids = None
+
+    if num_labels == 0 or ytrue.size == 0:
+        return confusion_matrix, ids
+
+    labels_to_inds = {label: idx for idx, label in enumerate(labels)}
+    ypred = np.array([labels_to_inds.get(y, -1) for y in ypred])
+    ytrue = np.array([labels_to_inds.get(y, -1) for y in ytrue])
+
+    found = np.logical_and(ypred >= 0, ytrue >= 0)
+    ypred = ypred[found]
+    ytrue = ytrue[found]
+    weights = weights[found]
+
+    if ytrue_ids is not None:
+        ytrue_ids = ytrue_ids[found]
+    else:
+        ytrue_ids = itertools.repeat(None)
+
+    if ypred_ids is not None:
+        ypred_ids = ypred_ids[found]
+    else:
+        ypred_ids = itertools.repeat(None)
+
+    for yt, yp, w, it, ip in zip(ytrue, ypred, weights, ytrue_ids, ypred_ids):
+        confusion_matrix[yt, yp] += w
+
+        if it is not None:
+            ids[yt, yp].append(it)
+
+        if ip is not None:
+            ids[yt, yp].append(ip)
+
+    return confusion_matrix, ids

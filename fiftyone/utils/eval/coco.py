@@ -147,7 +147,8 @@ class COCOEvaluation(DetectionEvaluation):
 
         Args:
             samples: a :class:`fiftyone.core.SampleCollection`
-            matches: a list of ``(gt_label, pred_label, iou, pred_confidence)``
+            matches: a list of
+                ``(gt_label, pred_label, iou, pred_confidence, gt_id, pred_id)``
                 matches. Either label can be ``None`` to indicate an unmatched
                 object
             eval_key (None): the evaluation key for this evaluation
@@ -179,17 +180,20 @@ class COCOEvaluation(DetectionEvaluation):
                 gts = sample[gt_field].copy()
                 preds = sample[pred_field].copy()
 
-                sample_matches = _coco_evaluation_iou_sweep(
+                matches_dict = _coco_evaluation_iou_sweep(
                     gts, preds, self.config
                 )
 
-                for t, ms in sample_matches.items():
-                    for m in ms:
-                        # m = (gt_label, pred_label, iou, confidence, iscrowd)
-                        if m[4]:
+                for t, t_matches in matches_dict.items():
+                    for match in t_matches:
+                        gt_label = match[0]
+                        pred_label = match[1]
+                        iscrowd = match[-1]
+
+                        if iscrowd:
                             continue
 
-                        c = m[0] if m[0] != None else m[1]
+                        c = gt_label if gt_label != None else pred_label
                         if c not in classes:
                             classes.append(c)
 
@@ -200,16 +204,15 @@ class COCOEvaluation(DetectionEvaluation):
                                 "num_gt": 0,
                             }
 
-                        if m[0] == m[1]:
-                            thresh_matches[t][c]["tp"].append(m)
-                        elif m[1]:
-                            thresh_matches[t][c]["fp"].append(m)
+                        if gt_label == pred_label:
+                            thresh_matches[t][c]["tp"].append(match)
+                        elif pred_label:
+                            thresh_matches[t][c]["fp"].append(match)
 
-                        if m[0]:
+                        if gt_label:
                             thresh_matches[t][c]["num_gt"] += 1
 
         # Compute precision-recall array
-        # Reference:
         # https://github.com/cocodataset/cocoapi/blob/master/PythonAPI/pycocotools/cocoeval.py
         precision = -np.ones((len(iou_threshs), len(classes), 101))
         recall = np.linspace(0, 1, 101)
@@ -222,7 +225,7 @@ class COCOEvaluation(DetectionEvaluation):
                     continue
 
                 tp_fp = [1] * len(tp) + [0] * len(fp)
-                confs = [p[3] for p in tp] + [p[3] for p in fp]
+                confs = [m[3] for m in tp] + [m[3] for m in fp]
                 inds = np.argsort(-np.array(confs), kind="mergesort")
                 tp_fp = np.array(tp_fp)[inds]
                 tp_sum = np.cumsum(tp_fp).astype(dtype=np.float)
@@ -231,7 +234,7 @@ class COCOEvaluation(DetectionEvaluation):
                 pre = tp_sum / total
                 rec = tp_sum / num_gt
 
-                q = np.zeros((101,))
+                q = np.zeros(101)
                 for i in range(len(pre) - 1, 0, -1):
                     if pre[i] > pre[i - 1]:
                         pre[i - 1] = pre[i]
@@ -254,7 +257,8 @@ class COCODetectionResults(DetectionResults):
     """Class that stores the results of a COCO detection evaluation.
 
     Args:
-        matches: a list of ``(gt_label, pred_label, iou, pred_confidence)``
+        matches: a list of
+            ``(gt_label, pred_label, iou, pred_confidence, gt_id, pred_id)``
             matches. Either label can be ``None`` to indicate an unmatched
             object
         precision: an array of precision values of shape
@@ -390,7 +394,7 @@ def _coco_evaluation_single_iou(gts, preds, eval_key, config):
     )
 
     # omit iscrowd
-    return [m[:4] for m in matches]
+    return [m[:-1] for m in matches]
 
 
 def _coco_evaluation_iou_sweep(gts, preds, config):
@@ -402,7 +406,7 @@ def _coco_evaluation_iou_sweep(gts, preds, config):
         gts, preds, id_keys, iou_key, config, max_preds=config.max_preds
     )
 
-    matches = {
+    matches_dict = {
         i: _compute_matches(
             cats,
             pred_ious,
@@ -415,7 +419,7 @@ def _coco_evaluation_iou_sweep(gts, preds, config):
         for i, k in zip(iou_threshs, id_keys)
     }
 
-    return matches
+    return matches_dict
 
 
 def _coco_evaluation_setup(
@@ -527,24 +531,46 @@ def _compute_matches(
                             pred.label,
                             best_match_iou,
                             pred.confidence,
+                            gt.id,
+                            pred.id,
                             iscrowd(gt),
                         )
                     )
                 else:
                     pred[eval_key] = "fp"
                     matches.append(
-                        (None, pred.label, None, pred.confidence, None)
+                        (
+                            None,
+                            pred.label,
+                            None,
+                            pred.confidence,
+                            None,
+                            pred.id,
+                            None,
+                        )
                     )
 
             elif pred.label == cat:
                 pred[eval_key] = "fp"
-                matches.append((None, pred.label, None, pred.confidence, None))
+                matches.append(
+                    (
+                        None,
+                        pred.label,
+                        None,
+                        pred.confidence,
+                        None,
+                        pred.id,
+                        None,
+                    )
+                )
 
         # Leftover GTs are false negatives
         for gt in objects["gts"]:
             if gt[id_key] == _NO_MATCH_ID:
                 gt[eval_key] = "fn"
-                matches.append((gt.label, None, None, None, iscrowd(gt)))
+                matches.append(
+                    (gt.label, None, None, None, gt.id, None, iscrowd(gt))
+                )
 
     return matches
 
