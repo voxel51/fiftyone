@@ -92,6 +92,7 @@ interface SectionProps {
   taggingAtom: RecoilState<boolean>;
   itemsAtom: RecoilValue<{ [key: string]: number }>;
   submit: ({ changes: Changes }) => Promise<void>;
+  close: () => void;
 }
 
 const Section = ({
@@ -99,6 +100,7 @@ const Section = ({
   submit,
   taggingAtom,
   itemsAtom,
+  close,
 }: SectionProps) => {
   const items = useRecoilValue(itemsAtom);
   const [tagging, setTagging] = useRecoilState(taggingAtom);
@@ -107,10 +109,16 @@ const Section = ({
   const disabled = tagging || typeof count !== "number" || count === 0;
   const [changes, setChanges] = useState<{ [key: string]: CheckState }>({});
   const [active, setActive] = useState(null);
+  const [localTagging, setLocalTagging] = useState(false);
 
   useLayoutEffect(() => {
     setChanges({});
   }, [taggingAtom]);
+
+  useLayoutEffect(() => {
+    tagging && setLocalTagging(true);
+    !tagging && localTagging && close();
+  }, [tagging, localTagging]);
 
   const filter = (obj: object) =>
     Object.fromEntries(
@@ -422,6 +430,7 @@ const Tagger = ({ modal, bounds, close }: TaggerProps) => {
             submit={submit}
             taggingAtom={atoms.tagging({ modal, labels })}
             itemsAtom={tagStats({ modal, labels })}
+            close={close}
           />
         </Suspense>
       )}
@@ -432,6 +441,7 @@ const Tagger = ({ modal, bounds, close }: TaggerProps) => {
             submit={submit}
             taggingAtom={atoms.tagging({ modal, labels })}
             itemsAtom={tagStats({ modal, labels })}
+            close={close}
           />
         </Suspense>
       )}
