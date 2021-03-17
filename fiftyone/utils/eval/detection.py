@@ -78,7 +78,7 @@ def evaluate_detections(
         missing (None): a missing label string. Any unmatched objects are given
             this label for results purposes
         method ("coco"): a string specifying the evaluation method to use.
-            Supported values are ``("coco")``
+            Supported values are ``("coco", "openimages")``
         iou (0.50): the IoU threshold to use to determine matches
         classwise (True): whether to only match objects with the same class
             label (True) or allow matches between classes (False)
@@ -325,6 +325,11 @@ def _parse_config(config, pred_field, gt_field, method, **kwargs):
         from .coco import COCOEvaluationConfig
 
         return COCOEvaluationConfig(pred_field, gt_field, **kwargs)
+
+    elif method == "openimages":
+        from .openimages import OpenImagesEvaluationConfig
+
+        return OpenImagesEvaluationConfig(pred_field, gt_field, **kwargs)
 
     raise ValueError("Unsupported evaluation method '%s'" % method)
 
