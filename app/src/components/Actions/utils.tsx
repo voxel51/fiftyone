@@ -3,7 +3,7 @@ import { selector, selectorFamily } from "recoil";
 import { animated, useSpring } from "react-spring";
 import styled from "styled-components";
 
-import { activeLabels } from "../Filters/utils";
+import { activeLabelPaths, activeLabels } from "../Filters/utils";
 import {
   labelCount,
   sampleModalFilter,
@@ -75,13 +75,6 @@ export const numTaggable = selectorFamily<
   },
 });
 
-export const selectedSampleTagStats = selector<{ [key: string]: number }>({
-  key: "selectedSampleTagStats",
-  get: ({ get }) => {
-    const samplesIds = get(atoms.selectedSamples);
-  },
-});
-
 export const allTags = selector<string[]>({
   key: "tagAggs",
   get: ({ get }) => {
@@ -109,6 +102,7 @@ export const selectedSampleLabelStatistics = selector<{
   key: "selectedSampleLabelStatistics",
   get: async ({ get }) => {
     const state = get(atoms.stateDescription);
+    const activeLabels = get(activeLabelPaths(false));
 
     const wrap = (handler, type) => ({ data }) => {
       data = JSON.parse(data);
@@ -121,7 +115,9 @@ export const selectedSampleLabelStatistics = selector<{
         resolve({ count, tags });
       }, "selected_statistics");
       socket.addEventListener("message", listener);
-      socket.send(packageMessage("selected_statistics", {}));
+      socket.send(
+        packageMessage("selected_statistics", { active_labels: activeLabels })
+      );
     });
 
     const result = await promise;
@@ -218,7 +214,7 @@ export const tagStats = selectorFamily<
         return acc;
       };
       const stats = (
-        get(selectors.datasetStats) || get(selectors.extendedDatasetStats)
+        get(selectors.extendedDatasetStats) || get(selectors.datasetStats)
       ).reduce(reducer, {});
 
       const results = Object.fromEntries(get(allTags).map((t) => [t, 0]));

@@ -30,7 +30,6 @@ interface CheckProps {
   name: string;
   count: number;
   onCheck: () => void;
-  onSubmit: () => void;
   active: string;
   checkmark: CheckState | null;
   edited: boolean;
@@ -42,7 +41,6 @@ const Check = ({
   count,
   checkmark,
   onCheck,
-  onSubmit,
   active,
   setActive,
   edited,
@@ -64,7 +62,7 @@ const Check = ({
       style={style}
       onClick={(e) =>
         !(e.target === ref.current || ref.current.contains(e.target)) &&
-        onSubmit()
+        onCheck()
       }
     >
       <Checkbox
@@ -128,23 +126,19 @@ interface CheckerProps {
   active: string;
 }
 
-const createSubmit = ({ name, items, changes, count, setChange, value }) => (
-  canSubmit
-) => {
+const createSubmit = ({ name, items, changes, count, setChange, value }) => {
   return () => {
     if (name in items && name in changes) {
       setChange(
         name,
         value === CheckState.REMOVE || items[name] === 0
           ? null
-          : CheckState.REMOVE,
-        canSubmit
+          : CheckState.REMOVE
       );
     } else if (name in items) {
       setChange(
         name,
-        count === items[name] ? CheckState.REMOVE : CheckState.ADD,
-        canSubmit
+        count === items[name] ? CheckState.REMOVE : CheckState.ADD
       );
     } else {
       setChange(
@@ -153,8 +147,7 @@ const createSubmit = ({ name, items, changes, count, setChange, value }) => (
           ? value in items
             ? CheckState.REMOVE
             : null
-          : CheckState.ADD,
-        canSubmit
+          : CheckState.ADD
       );
     }
   };
@@ -200,7 +193,7 @@ const Checker = ({
         count,
         value: sorted.filter(([n]) => n === active)[0][1],
         setChange,
-      })(false)();
+      })();
     }
   });
 
@@ -224,8 +217,7 @@ const Checker = ({
         return (
           <Check
             {...{ name, count: c, active }}
-            onCheck={submit(false)}
-            onSubmit={submit(true)}
+            onCheck={submit}
             checkmark={
               name in changes
                 ? changes[name]

@@ -681,11 +681,11 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         )
 
     @staticmethod
-    async def on_selected_statistics(caller):
+    async def on_selected_statistics(caller, active_labels=[]):
         state = fos.StateDescription.from_dict(StateHandler.state)
         view = state.view or state.dataset
         view = _get_extended_view(view, state.filters)
-        view = view.select(state.selected)
+        view = view.select(state.selected).select_fields(active_labels)
 
         (count_aggs, tag_aggs,) = fos.DatasetStatistics.get_label_aggregations(
             view

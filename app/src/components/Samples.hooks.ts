@@ -61,6 +61,7 @@ export default () => {
 
   useLayoutEffect(() => {
     if (!state.loadMore || state.isLoading || !state.hasMore) return;
+    console.log(state);
     setState({
       ...state,
       isLoading: true,

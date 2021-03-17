@@ -131,7 +131,6 @@ const SampleInfo = React.memo(({ id }) => {
   const scalars = useRecoilValue(selectors.scalarNames("sample"));
   const colorByLabel = useRecoilValue(atoms.colorByLabel(false));
   const labelTypes = useRecoilValue(selectors.labelTypesMap);
-  const theme = useTheme();
   const sample = useRecoilValue(atoms.sample(id));
   const bubbles = activeFields.reduce((acc, cur) => {
     if (
@@ -189,15 +188,8 @@ const SampleInfo = React.memo(({ id }) => {
     }
     return acc;
   }, []);
-  const props = useSpring({
-    background: `linear-gradient(
-      0deg,
-      ${bubbles.length ? theme.backgroundDark : "rgba(0, 0, 0, 0)"} 0%,
-      rgba(0, 0, 0, 0) 100%
-    )`,
-  });
 
-  return <SampleInfoDiv style={props}>{bubbles}</SampleInfoDiv>;
+  return <SampleInfoDiv>{bubbles}</SampleInfoDiv>;
 });
 
 const SelectorDiv = animated(styled.div`

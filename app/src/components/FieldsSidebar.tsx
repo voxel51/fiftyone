@@ -107,7 +107,7 @@ const Cell = ({
       {entries.length ? (
         <CheckboxGrid entries={entries} onCheck={onSelect} modal={modal} />
       ) : (
-        <span>No options available</span>
+        <span>No {title.toLocaleLowerCase()}</span>
       )}
       {children}
     </DropdownCell>
@@ -152,28 +152,30 @@ const TagsCell = ({ modal }: TagsCellProps) => {
     <Cell
       label="Tags"
       icon={<LocalOffer />}
-      entries={tags.map((name) => ({
-        name,
-        disabled: false,
-        hideCheckbox: modal,
-        hasDropdown: false,
-        selected: activeTags.includes(name),
-        color: colorByLabel ? theme.brand : colorMap[name],
-        title: name,
-        path: name,
-        data: modal ? (
-          count[name] > 0 ? (
-            <Check style={{ color: colorMap[name] }} />
+      entries={tags
+        .filter((t) => count[t])
+        .map((name) => ({
+          name,
+          disabled: false,
+          hideCheckbox: modal,
+          hasDropdown: false,
+          selected: activeTags.includes(name),
+          color: colorByLabel ? theme.brand : colorMap[name],
+          title: name,
+          path: name,
+          data: modal ? (
+            count[name] > 0 ? (
+              <Check style={{ color: colorMap[name] }} />
+            ) : (
+              <Close style={{ color: colorMap[name] }} />
+            )
           ) : (
-            <Close style={{ color: colorMap[name] }} />
-          )
-        ) : (
-          makeData(subCount[name], count[name])
-        ),
-        totalCount: count[name],
-        filteredCount: modal ? null : subCount[name],
-        modal,
-      }))}
+            makeData(subCount[name], count[name])
+          ),
+          totalCount: count[name],
+          filteredCount: modal ? null : subCount[name],
+          modal,
+        }))}
       onSelect={({ name, selected }) =>
         setActiveTags(
           selected

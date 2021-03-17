@@ -92,6 +92,7 @@ interface SectionProps {
   itemsAtom: RecoilValue<{ [key: string]: number }>;
   submit: ({ changes: Changes }) => Promise<void>;
   close: () => void;
+  labels: boolean;
 }
 
 const Section = ({
@@ -100,6 +101,7 @@ const Section = ({
   taggingAtom,
   itemsAtom,
   close,
+  labels,
 }: SectionProps) => {
   const items = useRecoilValue(itemsAtom);
   const [tagging, setTagging] = useRecoilState(taggingAtom);
@@ -158,7 +160,13 @@ const Section = ({
               results.length && setActive(results[0]);
             }
           }}
-          title={hasCreate ? "Enter to create" : null}
+          title={
+            hasCreate
+              ? `Enter to add "${value}" tag to ${count} ${
+                  labels ? "label" : "sample"
+                }${count > 1 ? "s" : ""}`
+              : null
+          }
           onKeyPress={(e) => {
             if (e.key === "Enter" && hasCreate) {
               setValue("");
@@ -166,46 +174,39 @@ const Section = ({
             }
           }}
           focused={!disabled}
-          disabled={disabled}
+          disabled={disabled || count === 0}
           autoFocus
           onBlur={({ target }) => target.focus()}
           type={"text"}
         />
         <Loading loading={Boolean(tagging || typeof count !== "number")} />
       </TaggingContainerInput>
-      <Checker
-        active={active}
-        items={filter(items)}
-        changes={filter(changes)}
-        count={count}
-        setActive={setActive}
-        setChange={(
-          name: string,
-          value: CheckState | null,
-          canSubmit = false
-        ) => {
-          const newChanges = { ...changes };
-          if (value === null) {
-            delete newChanges[name];
-          } else {
-            newChanges[name] = value;
-          }
-          if (
-            canSubmit &&
-            Object.keys(newChanges).length === 1 &&
-            !hasChanges
-          ) {
-            submitWrapper(newChanges);
-          }
-          setChanges(newChanges);
-        }}
-      />
+      {count > 0 && (
+        <Checker
+          active={active}
+          items={filter(items)}
+          changes={filter(changes)}
+          count={count}
+          setActive={setActive}
+          setChange={(name: string, value: CheckState | null) => {
+            const newChanges = { ...changes };
+            if (value === null) {
+              delete newChanges[name];
+            } else {
+              newChanges[name] = value;
+            }
+            setChanges(newChanges);
+          }}
+        />
+      )}
       {hasChanges || hasCreate ? (
         <>
           <PopoutSectionTitle />
           {hasCreate && (
             <Button
-              text={`Create "${value}"`}
+              text={`Add "${value}" tag to ${
+                count > 1 ? numeral(count).format("0,0") + " " : ""
+              }${labels ? "label" : "sample"}${count > 1 ? "s" : ""}`}
               onClick={() => {
                 setValue("");
                 setChanges({ ...changes, [value]: CheckState.ADD });
@@ -264,12 +265,12 @@ const labelsPlaceholder = (selection, numLabels, numSamples) => {
     return "no labels";
   }
   if (selection) {
-    return `+ tag ${numLabels > 1 ? `${formatted} ` : ""}shown label${
+    return `+ tag ${numLabels > 1 ? `${formatted} ` : ""}selected label${
       numLabels > 1 ? "s" : ""
     }`;
   }
 
-  return `+ tag ${formatted} shown label${numLabels > 1 ? "s" : ""}`;
+  return `+ tag ${formatted} label${numLabels > 1 ? "s" : ""}`;
 };
 
 const labelsModalPlaceholder = (selection, numLabels) => {
@@ -282,7 +283,7 @@ const labelsModalPlaceholder = (selection, numLabels) => {
   }
 
   const formatted = numeral(numLabels).format("0,0");
-  return `+ tag ${numLabels > 1 ? `${formatted} ` : ""}shown label${
+  return `+ tag ${numLabels > 1 ? `${formatted} ` : ""} label${
     numLabels === 1 ? "" : "s"
   }`;
 };
@@ -430,6 +431,7 @@ const Tagger = ({ modal, bounds, close }: TaggerProps) => {
             taggingAtom={atoms.tagging({ modal, labels })}
             itemsAtom={tagStats({ modal, labels })}
             close={close}
+            labels={true}
           />
         </Suspense>
       )}
@@ -441,6 +443,7 @@ const Tagger = ({ modal, bounds, close }: TaggerProps) => {
             taggingAtom={atoms.tagging({ modal, labels })}
             itemsAtom={tagStats({ modal, labels })}
             close={close}
+            labels={false}
           />
         </Suspense>
       )}
