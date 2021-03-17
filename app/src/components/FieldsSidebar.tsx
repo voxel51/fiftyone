@@ -252,13 +252,16 @@ const LabelsCell = ({ modal, frames }: LabelsCellProps) => {
           canFilter: true,
         };
       })}
-      onSelect={({ name, selected }) =>
+      onSelect={({ name, selected }) => {
+        if (frames) {
+          name = "frames." + name;
+        }
         setActiveLabels(
           selected
             ? [name, ...activeLabels]
             : activeLabels.filter((t) => t !== name)
-        )
-      }
+        );
+      }}
       handleClear={(e) => {
         e.stopPropagation();
         setActiveLabels([]);

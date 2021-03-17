@@ -1182,7 +1182,6 @@ async def _get_sample_data(col, view, page_length, page):
 
 
 async def _get_video_data(col, state, view, _ids):
-    print(_ids)
     view = view.select(_ids)
     pipeline = view._pipeline()
     results = []

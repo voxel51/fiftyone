@@ -143,12 +143,21 @@ type PillButton = {
   text?: string;
   icon?: any;
   arrow?: boolean;
+  style?: object;
 };
 
 export const PillButton = React.memo(
   React.forwardRef(
     (
-      { onClick, open, text, icon, highlight, arrow = false }: PillButton,
+      {
+        onClick,
+        open,
+        text,
+        icon,
+        highlight,
+        arrow = false,
+        style,
+      }: PillButton,
       ref
     ) => {
       const theme = useTheme();
@@ -160,7 +169,7 @@ export const PillButton = React.memo(
         },
       });
       return (
-        <PillButtonDiv onClick={onClick} style={props} ref={ref}>
+        <PillButtonDiv onClick={onClick} style={props} ref={ref} style={style}>
           {icon}
           {text && <span>{text}</span>}
           {arrow && (open ? <KeyboardArrowUp /> : <KeyboardArrowDown />)}

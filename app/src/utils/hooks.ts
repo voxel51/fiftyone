@@ -37,10 +37,13 @@ export const useEventHandler = (target, eventType, handler) => {
 };
 
 export const useMessageHandler = (type, handler) => {
-  const wrapper = ({ data }) => {
-    data = JSON.parse(data);
-    data.type === type && handler(data);
-  };
+  const wrapper = useCallback(
+    ({ data }) => {
+      data = JSON.parse(data);
+      data.type === type && handler(data);
+    },
+    [type, handler]
+  );
   useEventHandler(socket, "message", wrapper);
 };
 

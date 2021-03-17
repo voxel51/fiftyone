@@ -184,6 +184,7 @@ const Section = ({
       {count > 0 && (
         <Checker
           active={active}
+          disabled={disabled}
           items={filter(items)}
           changes={filter(changes)}
           count={count}
@@ -199,7 +200,7 @@ const Section = ({
           }}
         />
       )}
-      {hasChanges || hasCreate ? (
+      {!disabled && (hasChanges || hasCreate) ? (
         <>
           <PopoutSectionTitle />
           {hasCreate && (

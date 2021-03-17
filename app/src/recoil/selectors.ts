@@ -125,6 +125,7 @@ export const view = selector<[]>({
       view: stages,
       selected: [],
       selected_labels: [],
+      filters: {},
     };
     set(atoms.stateDescription, newState);
     socket.send(packageMessage("update", { state: newState }));

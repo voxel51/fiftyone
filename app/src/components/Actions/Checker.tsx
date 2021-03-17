@@ -34,6 +34,7 @@ interface CheckProps {
   checkmark: CheckState | null;
   edited: boolean;
   setActive: (name: string) => void;
+  disabled: boolean;
 }
 
 const Check = ({
@@ -44,6 +45,7 @@ const Check = ({
   active,
   setActive,
   edited,
+  disabled,
 }: CheckProps) => {
   const theme = useTheme();
   const { style, onMouseEnter, onMouseLeave } = useHighlightHover(
@@ -61,14 +63,16 @@ const Check = ({
       onMouseLeave={onMouseLeave}
       style={style}
       onClick={(e) =>
+        !disabled &&
         !(e.target === ref.current || ref.current.contains(e.target)) &&
         onCheck()
       }
     >
       <Checkbox
         ref={ref}
+        disabled={disabled}
         indeterminate={checkmark === null}
-        onChange={onCheck}
+        onChange={() => !disabled && onCheck}
         checked={checkmark === CheckState.ADD || checkmark === null}
         style={{
           color: edited ? theme.brand : theme.fontDark,
@@ -117,15 +121,6 @@ const CheckerDiv = styled.div`
   }
 `;
 
-interface CheckerProps {
-  items: { [key: string]: number };
-  setChange: (name: string, state: CheckState, canSubmit: boolean) => void;
-  changes: { [key: string]: CheckState };
-  setActive: (name: string) => void;
-  count: number;
-  active: string;
-}
-
 const createSubmit = ({ name, items, changes, count, setChange, value }) => {
   return () => {
     if (name in items && name in changes) {
@@ -153,6 +148,16 @@ const createSubmit = ({ name, items, changes, count, setChange, value }) => {
   };
 };
 
+interface CheckerProps {
+  items: { [key: string]: number };
+  setChange: (name: string, state: CheckState, canSubmit: boolean) => void;
+  changes: { [key: string]: CheckState };
+  setActive: (name: string) => void;
+  count: number;
+  active: string;
+  disabled: boolean;
+}
+
 const Checker = ({
   items,
   changes,
@@ -160,6 +165,7 @@ const Checker = ({
   count,
   active,
   setActive,
+  disabled,
 }: CheckerProps) => {
   const sorted = Object.entries({ ...items, ...changes }).sort(([a], [b]) =>
     a < b ? -1 : 1
@@ -216,7 +222,7 @@ const Checker = ({
             : items[name];
         return (
           <Check
-            {...{ name, count: c, active }}
+            {...{ name, count: c, active, disabled }}
             onCheck={submit}
             checkmark={
               name in changes

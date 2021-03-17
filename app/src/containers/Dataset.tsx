@@ -44,17 +44,8 @@ function Dataset() {
   const [modal, setModal] = useRecoilState(atoms.modal);
   const hasDataset = useRecoilValue(selectors.hasDataset);
   const currentSamples = useRecoilValue(selectors.currentSamples);
-  const setExtendedDatasetStats = useSetRecoilState(
-    atoms.extendedDatasetStatsRaw
-  );
   useGA();
   useSampleUpdate();
-  const setDatasetStats = useSetRecoilState(atoms.datasetStatsRaw);
-
-  useMessageHandler("statistics", ({ stats, view, filters }) => {
-    filters && setExtendedDatasetStats({ stats, view, filters });
-    !filters && setDatasetStats({ stats, view });
-  });
 
   // reset selected/hidden objects when the modal closes (subject to change) -
   // the socket update is needed here because SampleModal and SelectObjectsMenu

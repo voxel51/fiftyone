@@ -1,17 +1,18 @@
-import React, { useLayoutEffect, useRef, useState } from "react";
+import React, { useRef, useState } from "react";
+import { CircularProgress } from "@material-ui/core";
+import { Check, LocalOffer, Settings, VisibilityOff } from "@material-ui/icons";
+import useMeasure from "react-use-measure";
 import { useRecoilState, useRecoilValue } from "recoil";
 import styled from "styled-components";
-import { Check, LocalOffer, Settings, VisibilityOff } from "@material-ui/icons";
 
-import { PillButton } from "../utils";
-import * as atoms from "../../recoil/atoms";
-import * as selectors from "../../recoil/selectors";
-
+import { canTag } from "./utils";
 import Tagger from "./Tagger";
 import Selector from "./Selected";
 import Coloring from "./Options";
-import { useOutsideClick } from "../../utils/hooks";
-import useMeasure from "react-use-measure";
+import { PillButton } from "../utils";
+import * as atoms from "../../recoil/atoms";
+import * as selectors from "../../recoil/selectors";
+import { useOutsideClick, useTheme } from "../../utils/hooks";
 
 const ActionDiv = styled.div`
   position: relative;
@@ -22,16 +23,30 @@ const Tag = ({ modal }) => {
   const selected = useRecoilValue(
     modal ? selectors.selectedLabelIds : atoms.selectedSamples
   );
+  const loading = !useRecoilValue(canTag);
+  const tagging = useRecoilValue(selectors.anyTagging);
+  const theme = useTheme();
   const ref = useRef();
   useOutsideClick(ref, () => open && setOpen(false));
   const [mRef, bounds] = useMeasure();
 
+  const disabled = loading || tagging;
+
   return (
     <ActionDiv ref={ref}>
       <PillButton
-        icon={<LocalOffer />}
+        style={{ cursor: disabled ? "default" : "pointer" }}
+        icon={
+          disabled ? (
+            <CircularProgress
+              style={{ padding: 2, height: 22, width: 22, color: theme.font }}
+            />
+          ) : (
+            <LocalOffer />
+          )
+        }
         open={open}
-        onClick={() => setOpen(!open)}
+        onClick={() => !disabled && setOpen(!open)}
         highlight={Boolean(selected.size) || open}
         ref={mRef}
       />

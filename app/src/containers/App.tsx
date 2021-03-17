@@ -53,8 +53,17 @@ function App() {
   const [loading, setLoading] = useRecoilState(atoms.loading);
   const setStateDescription = useSetRecoilState(atoms.stateDescription);
   const [viewCounterValue, setViewCounter] = useRecoilState(atoms.viewCounter);
+  const setExtendedDatasetStats = useSetRecoilState(
+    atoms.extendedDatasetStatsRaw
+  );
+  const setDatasetStats = useSetRecoilState(atoms.datasetStatsRaw);
 
   const handleStateUpdate = useStateUpdate();
+
+  useMessageHandler("statistics", ({ stats, view, filters }) => {
+    filters && setExtendedDatasetStats({ stats, view, filters });
+    !filters && setDatasetStats({ stats, view });
+  });
 
   useEventHandler(socket, "open", () => {
     setConnected(true);

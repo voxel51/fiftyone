@@ -57,6 +57,17 @@ export const useHighlightHover = (disabled, override) => {
   };
 };
 
+export const canTag = selector<boolean>({
+  key: "canTag",
+  get: ({ get }) => {
+    const hasFilters = Object.keys(get(selectors.filterStages)).length > 0;
+    const stats = hasFilters
+      ? get(selectors.extendedDatasetStats)
+      : get(selectors.datasetStats);
+    return stats !== null;
+  },
+});
+
 export const numTaggable = selectorFamily<
   number | null,
   { modal: boolean; labels: boolean }
@@ -205,7 +216,7 @@ export const tagStats = selectorFamily<
       const types = get(selectors.labelTypesMap);
       const active = [
         ...get(activeLabels({ modal, frames: false })),
-        ...get(activeLabels({ modal, frames: true })).map((l) => `frames.${l}`),
+        ...get(activeLabels({ modal, frames: true })),
       ].map((l) => `${l}.${types[l].toLowerCase()}.tags`);
       const reducer = (acc, { name, result }) => {
         if (active.includes(name)) {
@@ -213,8 +224,11 @@ export const tagStats = selectorFamily<
         }
         return acc;
       };
-      const stats = (
-        get(selectors.extendedDatasetStats) || get(selectors.datasetStats)
+
+      const filters = get(selectors.filterStages);
+      const stats = (Object.keys(filters).length
+        ? get(selectors.extendedDatasetStats)
+        : get(selectors.datasetStats)
       ).reduce(reducer, {});
 
       const results = Object.fromEntries(get(allTags).map((t) => [t, 0]));
