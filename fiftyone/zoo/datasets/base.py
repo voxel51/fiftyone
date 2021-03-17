@@ -849,77 +849,82 @@ class LabeledFacesInTheWildDataset(FiftyOneDataset):
 
 
 class OpenImagesV6Dataset(FiftyOneDataset):
-    """`Open Images <https://storage.googleapis.com/openimages/web/index.html>`_ is a dataset of totalling ~9 million images. Roughly 2 million are
-    annotated and available in this dataset zoo. This dataset contains annotations
-    for classification, detection, segmentation, and visual relationship tasks
-    across 601 object classes.  
-    
-    Open Images V6 was released in February 2020 providing updates to the dataset
-    as well as new annotations for `Localized Narratives <https://google.github.io/localized-narratives/>`_ (not yet supported in this zoo).
-    
+    """Open Images is a dataset of totalling ~9 million images. Roughly 2
+    million are annotated and available in this zoo. The dataset contains
+    annotations for classification, detection, segmentation, and visual
+    relationship tasks across 601 object classes.
+
+    Partial downloads:
+
+    -   You can specify subsets of data to download with the ``classes``,
+        ``attributes``, ``label_types``, and ``max_samples`` parameters
+    -   You can specify specific images to load by their ID using ``image_ids``
+        or ``image_ids_file`` parameters
+
+    Full split stats:
+
+    -   Train split:  1,743,042 images (513 GB)
+    -   Test split: 125,436 images (36 GB)
+    -   Validation split: 41,620 images (12 GB)
+
     Notes:
-    
-    - Not all images contain all types of labels
-    - This dataset supports partial downloads 
-    - View all parameters in the class definition of :class:`OpenImagesV6Dataset <fiftyone.zoo.datasets.base.OpenImagesV6Dataset>`
-    - Specify subsets of data to download with ``classes``,
-      ``attributes``, ``label_types``, and ``max_sampes``
-    - Specify images to load by their ID using ``image_ids`` or ``image_ids_file``
-    - Train size:  1,743,042 images (513 GB)
-    - Test size: 125,436 images (36 GB)
-    - Validation size: 41,620 images (12 GB)
-    - This dataset defaults to ``cleanup=False`` and will not delete the temporary
-      directory storing downloaded annotation files. 
-    - All images have been rescaled so that their largest side is at most 1024 pixels.
-       
+
+    -   Not all images contain all types of labels
+    -   All images have been rescaled so that their largest side is at most
+        1024 pixels
+    -   `Localized narratives <https://google.github.io/localized-narratives/>`_
+        are not included in this implementation
+
     Example usage
-    
+
         import fiftyone as fo
         import fiftyone.zoo as foz
-    
-        dataset = foz.load_zoo_dataset("open-images-v6", split="validation", max_samples=50)
-    
+
+        dataset = foz.load_zoo_dataset(
+            "open-images-v6", split="validation", max_samples=50
+        )
+
         session = fo.launch_app(dataset)
-    
+
         subset = foz.load_zoo_dataset(
-            "open-images-v6", 
-            split="validation", 
+            "open-images-v6",
+            split="validation",
             label_types=["detections", "relationships"],
-            classes=["Fedora", "Piano"], 
+            classes=["Fedora", "Piano"],
             max_samples=50,
         )
-    
+
         session.dataset = subset
 
     Dataset size
-        561 GB 
+        561 GB
 
     Source
         https://storage.googleapis.com/openimages/web/index.html
 
     Args:
-        label_types (None): a list of types of labels to load. Values are
-            ``("detections", "classifications", "relationships", "segmentations")``. 
-            By default, all labels are loaded but not every sample will include
-            each label type. If ``max_samples`` and ``label_types`` are both
-            specified, then every sample will include the specified label types.
-        classes (None): a list of strings specifying required classes to load. Only samples
-            containing at least one instance of a specified classes will be
-            downloaded. See available classes with `get_classes()`
+        label_types (None): a list of label types to load. Supported values are
+            ``("detections", "classifications", "relationships", "segmentations")``.
+            By default, all label types are loaded. Note that not every sample
+            will include each label type. If ``max_samples`` and
+            ``label_types`` are both specified, then every sample will include
+            the specified label types
+        classes (None): a list of strings specifying required classes to load.
+            Only samples containing at least one instance of a specified
+            classes will be downloaded. See available classes with
+            :meth:`fiftyone.utils.openimages.get_classes()`
         attrs (None): a list of strings for relationship attributes to load
-        max_samples (None): a maximum number of samples to import per split. By default,
-            all samples are imported
-        image_ids (None): list of specific image ids to load either in the form
-            of ``<split>/<image-id>`` or just a list of ``<image-id>``.
-            ``image_ids`` takes precedence if both ``image_ids`` and
-            ``image_ids_file`` are provided.
-        image_ids_file (None): path to a newline separated text, json, or csv file containing a
-            list of image ids to load either in the form
-            of ``<split>/<image-id>`` or just a list of ``<image-id>``.
-            ``image_ids`` takes precedence if both ``image_ids`` and
-            ``image_ids_file`` are provided.
-        num_workers (None): the number of processes to use to download images. By default,
-            ``multiprocessing.cpu_count()`` is used
+        max_samples (None): a maximum number of samples to import per split. By
+            default, all samples are imported
+        image_ids (None): a list of specific image IDs to load. The IDs can be
+            specified either as ``<split>/<image-id>`` or ``<image-id>``
+        image_ids_file (None): the path to a newline separated text, JSON, or
+            CSV file containing a list of image IDs to load. The IDs can be
+            specified either as ``<split>/<image-id>`` or ``<image-id>``. If
+            ``image_ids`` is provided, this parameter is ignored
+        num_workers (None): the number of processes to use when downloading
+            individual images. By default, ``multiprocessing.cpu_count()`` is
+            used
     """
 
     def __init__(
@@ -964,9 +969,9 @@ class OpenImagesV6Dataset(FiftyOneDataset):
         return True
 
     def _download_and_prepare(self, dataset_dir, scratch_dir, split):
-        dataset_base_dir = os.path.dirname(dataset_dir)  # remove split dir
+        dataset_dir = os.path.dirname(dataset_dir)  # remove split dir
         num_samples, classes = fouo.download_open_images_v6_split(
-            dataset_base_dir,
+            dataset_dir,
             scratch_dir,
             split,
             self.label_types,

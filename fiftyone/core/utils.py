@@ -165,8 +165,10 @@ def fill_patterns(string):
 
 def ensure_boto3(error_msg=None):
     """Verifies that boto3 is installed and importable.
+
     Args:
         error_msg (None): an optional custom error message to print
+
     Raises:
         ImportError: if ``boto3`` could not be imported
     """
