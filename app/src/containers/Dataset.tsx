@@ -96,18 +96,18 @@ function Dataset() {
   return (
     <>
       {modal.visible ? (
-        <ModalWrapper>
+        <ModalWrapper key={0}>
           <SampleModal onClose={handleHideModal} ref={ref} />
         </ModalWrapper>
       ) : null}
-      <Container>
-        {hasDataset && <HorizontalNav entries={PLOTS} />}
+      <Container key={1}>
+        {hasDataset && <HorizontalNav entries={PLOTS} key={"nav"} />}
         {hasDataset ? (
-          <Body>
-            <SamplesContainer />
+          <Body key={"body"}>
+            <SamplesContainer key={"samples"} />
           </Body>
         ) : (
-          <Loading text={"No dataset selected"} />
+          <Loading text={"No dataset selected"} key={"loading"} />
         )}
       </Container>
     </>

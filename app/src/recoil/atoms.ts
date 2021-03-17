@@ -1,7 +1,5 @@
 import { atom, atomFamily, SerializableParam } from "recoil";
 
-import { messageListener } from "./utils";
-
 export const modal = atom({
   key: "modal",
   default: {
@@ -73,9 +71,6 @@ export const tagging = atomFamily<boolean, { modal: boolean; labels: boolean }>(
 export const stateDescription = atom({
   key: "stateDescription",
   default: {},
-  effects_UNSTABLE: [
-    ({ setSelf }) => messageListener("update", (state) => setSelf(state)),
-  ],
 });
 
 export const selectedSamples = atom<Set<string>>({
