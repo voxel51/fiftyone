@@ -848,7 +848,7 @@ class LabeledFacesInTheWildDataset(FiftyOneDataset):
         return dataset_type, num_samples, classes
 
 
-class OpenImagesV6Dataset(FiftyOneDataset):
+class OpenImagesDataset(FiftyOneDataset):
     """Open Images is a dataset of totalling ~9 million images. Roughly 2
     million are annotated and available in this zoo. The dataset contains
     annotations for classification, detection, segmentation, and visual
@@ -881,13 +881,13 @@ class OpenImagesV6Dataset(FiftyOneDataset):
         import fiftyone.zoo as foz
 
         dataset = foz.load_zoo_dataset(
-            "open-images-v6", split="validation", max_samples=50
+            "open-images", split="validation", max_samples=50
         )
 
         session = fo.launch_app(dataset)
 
         subset = foz.load_zoo_dataset(
-            "open-images-v6",
+            "open-images",
             split="validation",
             label_types=["detections", "relationships"],
             classes=["Fedora", "Piano"],
@@ -925,6 +925,8 @@ class OpenImagesV6Dataset(FiftyOneDataset):
         num_workers (None): the number of processes to use when downloading
             individual images. By default, ``multiprocessing.cpu_count()`` is
             used
+        version ("v6"): string indicating the version of Open Images to
+            download. Currently only Open Images V6 is supported.
     """
 
     def __init__(
@@ -936,6 +938,7 @@ class OpenImagesV6Dataset(FiftyOneDataset):
         image_ids=None,
         image_ids_file=None,
         num_workers=None,
+        version="v6",
     ):
 
         self.label_types = label_types
@@ -945,10 +948,11 @@ class OpenImagesV6Dataset(FiftyOneDataset):
         self.image_ids = image_ids
         self.image_ids_file = image_ids_file
         self.num_workers = num_workers
+        self.version = version
 
     @property
     def name(self):
-        return "open-images-v6"
+        return "open-images"
 
     @property
     def tags(self):
@@ -970,7 +974,7 @@ class OpenImagesV6Dataset(FiftyOneDataset):
 
     def _download_and_prepare(self, dataset_dir, scratch_dir, split):
         dataset_dir = os.path.dirname(dataset_dir)  # remove split dir
-        num_samples, classes = fouo.download_open_images_v6_split(
+        num_samples, classes = fouo.download_open_images_split(
             dataset_dir,
             scratch_dir,
             split,
@@ -981,6 +985,7 @@ class OpenImagesV6Dataset(FiftyOneDataset):
             self.image_ids,
             self.image_ids_file,
             self.num_workers,
+            self.version,
         )
         dataset_type = fot.FiftyOneDataset()
         logger.info("Found %d samples", num_samples)
@@ -1194,7 +1199,7 @@ AVAILABLE_DATASETS = {
     "imagenet-sample": ImageNetSampleDataset,
     "kitti": KITTIDataset,
     "lfw": LabeledFacesInTheWildDataset,
-    "open-images-v6": OpenImagesV6Dataset,
+    "open-images": OpenImagesDataset,
     "quickstart": QuickstartDataset,
     "quickstart-video": QuickstartVideoDataset,
     "ucf101": UCF101Dataset,

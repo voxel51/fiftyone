@@ -52,7 +52,7 @@ This page lists all of the datasets available in the Dataset Zoo.
     +--------------------------------------------------------------------+---------------------------------------------------------------------------+
     | :ref:`MNIST <dataset-zoo-mnist>`                                   | image, classification                                                     |
     +--------------------------------------------------------------------+---------------------------------------------------------------------------+
-    | :ref:`Open Images V6 <dataset-zoo-open-images-v6>`                 | image, classification, detection, segmentation, visual-relationship       |
+    | :ref:`Open Images <dataset-zoo-open-images>`                       | image, classification, detection, segmentation, visual-relationship       |
     +--------------------------------------------------------------------+---------------------------------------------------------------------------+
     | :ref:`Quickstart <dataset-zoo-quickstart>`                         | image, quickstart                                                         |
     +--------------------------------------------------------------------+---------------------------------------------------------------------------+
@@ -1168,10 +1168,10 @@ There are 60,000 training images and 10,000 test images.
    :alt: mnist-test
    :align: center
 
-.. _dataset-zoo-open-images-v6:
+.. _dataset-zoo-open-images:
 
-Open Images V6
---------------
+Open Images
+-----------
 
 Open Images is a dataset of totalling ~9 million images. Roughly 2 million are
 annotated and available in this zoo. The dataset contains annotations for
@@ -1193,6 +1193,7 @@ Full split stats:
 
 Notes:
 
+-   Currently, only Open Images V6 is supported
 -   Not all images contain all types of labels
 -   All images have been rescaled so that their largest side is at most
     1024 pixels
@@ -1201,13 +1202,13 @@ Notes:
 
 **Details**
 
--   Dataset name: ``open-images-v6``
+-   Dataset name: ``open-images``
 -   Dataset source: https://storage.googleapis.com/openimages/web/index.html
 -   Dataset size: 561 GB
 -   Tags: ``image, detection, segmentation, classification, visual-relationship``
 -   Supported splits: ``train, test, validation``
 -   ZooDataset class:
-    :class:`OpenImagesV6Dataset <fiftyone.zoo.datasets.base.OpenImagesV6Dataset>`
+    :class:`OpenImagesDataset <fiftyone.zoo.datasets.base.OpenImagesDataset>`
 
 **Example usage**
 
@@ -1221,12 +1222,12 @@ Notes:
         import fiftyone as fo
         import fiftyone.zoo as foz
 
-        dataset = foz.load_zoo_dataset("open-images-v6", split="validation", max_samples=50)
+        dataset = foz.load_zoo_dataset("open-images", split="validation", max_samples=50)
 
         session = fo.launch_app(dataset)
 
         subset = foz.load_zoo_dataset(
-            "open-images-v6",
+            "open-images",
             split="validation",
             label_types=["detections", "relationships"],
             classes=["Fedora", "Piano"],
@@ -1239,14 +1240,14 @@ Notes:
 
     .. code-block:: shell
 
-        fiftyone zoo datasets load open-images-v6 -s validation \
+        fiftyone zoo datasets load open-images -s validation \
             -k max_samples=50 label_types=[segmentations,classifications] \
             classes=[Fedora,Piano]
 
-        fiftyone app launch open-images-v6-validation
+        fiftyone app launch open-images-validation
 
 .. image:: ../../images/dataset_zoo/open-images-v6.png
-   :alt: open-images-v6
+   :alt: open-images
    :align: center
 
 .. _dataset-zoo-quickstart:

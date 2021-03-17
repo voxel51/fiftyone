@@ -36,7 +36,7 @@ botocore = fou.lazy_import("botocore", callback=fou.ensure_boto3)
 logger = logging.getLogger(__name__)
 
 
-def download_open_images_v6_split(
+def download_open_images_split(
     dataset_dir=None,
     scratch_dir=None,
     split=None,
@@ -47,9 +47,11 @@ def download_open_images_v6_split(
     image_ids=None,
     image_ids_file=None,
     num_workers=None,
+    version="v6",
 ):
     """Utility to download the
-    `Open Images V6 dataset <https://storage.googleapis.com/openimages/web/index.html>`_
+    `Open Images dataset <https://storage.googleapis.com/openimages/web/index.html>`_
+    and store it in the :class:`FiftyOneDataset` format on disk. 
 
     This specifically downloads the subsets of annotations corresponding to the
     600 boxable classes of Open Images.
@@ -87,7 +89,15 @@ def download_open_images_v6_split(
         num_workers (None): the number of processes to use when downloading
             individual images. By default, ``multiprocessing.cpu_count()`` is
             used
+        version ("v6"): string indicating the version of Open Images to
+            download. Currently only Open Images V6 is supported.
     """
+    if version not in _SUPPORTED_VERSIONS:
+        raise ValueError(
+            "Version %s is not supported. Supported versions are: %s"
+            % (version, ", ".join(_SUPPORTED_VERSIONS))
+        )
+
     # CLI compatibility, parse list inputs if they are in the form of a string
     label_types = _parse_string_list(label_types)
     classes = _parse_string_list(classes)
@@ -247,7 +257,7 @@ def download_open_images_v6_split(
     return num_samples, all_classes
 
 
-def get_attributes(dataset_dir=None):
+def get_attributes(dataset_dir=None, version="v6"):
     """Gets the list of relationship attributes in the Open Images V6 dataset.
     This method can be called in isolation without having the dataset
     downloaded.
@@ -255,10 +265,18 @@ def get_attributes(dataset_dir=None):
     Args:
         dataset_dir (None): the root directory the in which the dataset is
             downloaded
+        version ("v6"): string indicating the version of Open Images to
+            download. Currently only Open Images V6 is supported.
 
     Returns:
         a sorted list of attribute names
     """
+    if version not in _SUPPORTED_VERSIONS:
+        raise ValueError(
+            "Version %s is not supported. Supported versions are: %s"
+            % (version, ", ".join(_SUPPORTED_VERSIONS))
+        )
+
     attrs = _load_metadata_if_possible(dataset_dir, "attributes")
 
     if attrs is not None:
@@ -271,7 +289,7 @@ def get_attributes(dataset_dir=None):
         return sorted(list(attrs_map.values()))
 
 
-def get_classes(dataset_dir=None):
+def get_classes(dataset_dir=None, version="v6"):
     """Gets the 601 boxable classes that exist in classifications, detections,
     and relationships in the Open Images V6 dataset.
     This method can be called in isolation without having the dataset
@@ -280,10 +298,18 @@ def get_classes(dataset_dir=None):
     Args:
         dataset_dir (None): the root directory the in which the dataset is
             downloaded and ``info.json`` is stored
+        version ("v6"): string indicating the version of Open Images to
+            download. Currently only Open Images V6 is supported.
 
     Returns:
         a sorted list of class name strings
     """
+    if version not in _SUPPORTED_VERSIONS:
+        raise ValueError(
+            "Version %s is not supported. Supported versions are: %s"
+            % (version, ", ".join(_SUPPORTED_VERSIONS))
+        )
+
     classes = _load_metadata_if_possible(dataset_dir, "classes")
 
     if classes is not None:
@@ -296,7 +322,7 @@ def get_classes(dataset_dir=None):
         return sorted(list(classes_map.values()))
 
 
-def get_segmentation_classes(dataset_dir=None):
+def get_segmentation_classes(dataset_dir=None, version="v6"):
     """Gets the list of classes (350) that are labeled with segmentations in
     the Open Images V6 dataset.
     This method can be called in isolation without having the dataset
@@ -305,10 +331,18 @@ def get_segmentation_classes(dataset_dir=None):
     Args:
         dataset_dir (None): the root directory the in which the dataset is
             downloaded and ``info.json`` is stored
+        version ("v6"): string indicating the version of Open Images to
+            download. Currently only Open Images V6 is supported.
 
     Returns:
         a sorted list of segmentation class name strings
     """
+    if version not in _SUPPORTED_VERSIONS:
+        raise ValueError(
+            "Version %s is not supported. Supported versions are: %s"
+            % (version, ", ".join(_SUPPORTED_VERSIONS))
+        )
+
     seg_classes = _load_metadata_if_possible(
         dataset_dir, "segmentation_classes"
     )
@@ -1303,4 +1337,7 @@ _DEFAULT_SPLITS = [
     "validation",
 ]
 
+_SUPPORTED_VERSIONS = [
+    "v6",
+]
 _UNSPECIFIED_SPLIT = "unspecified"

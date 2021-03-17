@@ -860,7 +860,7 @@ class ZooDataset(object):
             overwrite (False): whether to overwrite any existing files
             cleanup (None): whether to cleanup any temporary files generated
                 during download, usually default to True unless the dataset
-                supports partial downloads (ex: Open Images V6)
+                supports partial downloads (ex: Open Images)
 
         Returns:
             tuple of
