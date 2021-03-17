@@ -4,12 +4,16 @@ import { animated, useSpring } from "react-spring";
 import styled from "styled-components";
 
 import { activeLabels } from "../Filters/utils";
-import { labelCount } from "../Filters/LabelFieldFilters.state";
+import {
+  labelCount,
+  sampleModalFilter,
+} from "../Filters/LabelFieldFilters.state";
 import * as atoms from "../../recoil/atoms";
 import * as selectors from "../../recoil/selectors";
 import { useTheme } from "../../utils/hooks";
 import { packageMessage } from "../../utils/socket";
 import socket from "../../shared/connection";
+import { VALID_LABEL_TYPES, VALID_LIST_TYPES } from "../../utils/labels";
 
 export const HoverItemDiv = animated(styled.div`
   cursor: pointer;
@@ -132,15 +136,53 @@ export const numLabelsInSelectedSamples = selector<number>({
   },
 });
 
+const addLabelToTagsResult = (result, label, label_id = null) => {
+  const add = (l) => {
+    if (label_id && l._id !== label_id) return;
+    l.tags.forEach((t) => {
+      result[t] = t in result ? result[t] + 1 : 1;
+    });
+  };
+  if (VALID_LIST_TYPES.includes(label._cls)) {
+    label[label._cls.toLowerCase()] &&
+      label[label._cls.toLowerCase()].forEach(add);
+  } else {
+    add(label);
+  }
+};
+
 const labelModalTagCounts = selector<{ [key: string]: number }>({
   key: "labelModalTagCounts",
   get: ({ get }) => {
+    const result = {};
+
     if (get(selectors.selectedLabelIds).size > 0) {
       const selected = get(selectors.selectedLabels);
+
       for (const label_id in selected) {
-        const { sample_id, frame_number, field } = selected;
+        const { sample_id, frame_number, field } = selected[label_id];
+
+        if (get(selectors.isVideoDataset) && frame_number) {
+          const frame = get(atoms.sampleFrameData(sample_id))[frame_number];
+          addLabelToTagsResult(frame, frame[field], label_id);
+        } else {
+          const sample = get(atoms.sample(sample_id));
+          addLabelToTagsResult(result, sample[field], label_id);
+        }
+      }
+    } else {
+      const sample = get(sampleModalFilter)(get(selectors.modalSample));
+
+      for (const field in sample) {
+        if (!sample[field] || !VALID_LABEL_TYPES.includes(sample[field]._cls))
+          continue;
+
+        const label = sample[field];
+        addLabelToTagsResult(result, label);
       }
     }
+
+    return result;
   },
 });
 
@@ -153,6 +195,7 @@ export const tagStats = selectorFamily<
     if (modal && labels) {
       return {
         ...Object.fromEntries(get(allTags).map((t) => [t, 0])),
+        ...get(labelModalTagCounts),
       };
     } else if (modal) {
       const sample = get(selectors.modalSample);

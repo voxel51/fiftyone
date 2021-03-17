@@ -676,7 +676,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             fosu.change_label_tags(tag_view, changes)
 
         asyncio.gather(
-            StateHandler.send_samples(caller, sample_ids),
+            StateHandler.send_samples(sample_ids),
             StateHandler.send_statistics(view, only=caller),
         )
 
@@ -706,7 +706,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         )
 
     @classmethod
-    async def send_samples(cls, view, sample_ids):
+    async def send_samples(cls, sample_ids):
         state = fos.StateDescription.from_dict(StateHandler.state)
         view = state.view or state.dataset
         col = cls.sample_collection()

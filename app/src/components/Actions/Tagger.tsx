@@ -189,9 +189,8 @@ const Section = ({
             !hasChanges
           ) {
             submitWrapper(newChanges);
-          } else {
-            setChanges(newChanges);
           }
+          setChanges(newChanges);
         }}
       />
       {hasChanges || hasCreate ? (
