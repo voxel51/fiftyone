@@ -27,23 +27,23 @@ import fiftyone.core.utils as fou
 import fiftyone.utils.data as foud
 
 boto3 = fou.lazy_import("boto3", callback=fou.ensure_boto3)
-import botocore
+botocore = fou.lazy_import("botocore", callback=fou.ensure_boto3)
 
 
 logger = logging.getLogger(__name__)
 
 
 def download_open_images_v6_split(
-    dataset_dir,
-    scratch_dir,
-    split,
-    label_types,
-    classes,
-    attrs,
-    max_samples,
-    image_ids,
-    image_ids_file,
-    num_workers,
+    dataset_dir=None,
+    scratch_dir=None,
+    split=None,
+    label_types=None,
+    classes=None,
+    attrs=None,
+    max_samples=None,
+    image_ids=None,
+    image_ids_file=None,
+    num_workers=None,
 ):
     """Utility to download the `Open Images v6 dataset <https://storage.googleapis.com/openimages/web/index.html>`_ with annotations.
     This specifically downloads the subsets of annotations corresponding to the
