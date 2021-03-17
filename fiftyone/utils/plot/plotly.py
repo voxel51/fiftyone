@@ -644,7 +644,7 @@ class InteractivePlotlyPlot(InteractivePlot):
         widget: a ``plotly.graph_objects.FigureWidget``
     """
 
-    def __init_(self, widget):
+    def __init__(self, widget):
         if not foc.is_notebook_context():
             raise foc.ContextError(
                 "Interactive Plotly plots can only be used in notebooks"

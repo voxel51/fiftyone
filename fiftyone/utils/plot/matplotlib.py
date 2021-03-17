@@ -39,7 +39,7 @@ def plot_confusion_matrix(
     show_values=True,
     show_colorbar=True,
     cmap="viridis",
-    xticks_rotation=None,
+    xticks_rotation=45.0,
     values_format=None,
     ax=None,
     figsize=None,
