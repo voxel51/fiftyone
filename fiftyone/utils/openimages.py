@@ -128,7 +128,7 @@ def download_open_images_v6_split(
 
     label_types = _parse_label_types(label_types)
 
-    dataset = fod.Dataset("open-images-v6-temp-%s" % split)
+    dataset = fod.Dataset()
     dataset.persistent = False
 
     # Map of class IDs to class names
@@ -200,7 +200,7 @@ def download_open_images_v6_split(
 
     seg_classes = []
     if "segmentations" in label_types:
-        seg_classes = get_segmentation_classes(
+        seg_classes = _get_seg_classes(
             dataset_dir=dataset_dir,
             scratch_dir=scratch_dir,
             classes_map=classes_map,
@@ -247,15 +247,14 @@ def download_open_images_v6_split(
     return num_samples, all_classes
 
 
-def get_attributes(dataset_dir=None, scratch_dir=None):
+def get_attributes(dataset_dir=None):
     """Gets the list of relationship attributes in the Open Images V6 dataset.
+    This method can be called in isolation without having the dataset
+    downloaded.
 
     Args:
         dataset_dir (None): the root directory the in which the dataset is
             downloaded
-        scratch_dir (None): scratch directory used to download
-            attributes file if it is not available in ``metadata.json`` in the
-            ``dataset_dir`` splits
 
     Returns:
         a sorted list of attribute names
@@ -279,24 +278,18 @@ def get_attributes(dataset_dir=None, scratch_dir=None):
             ):
                 return metadata["info"]["attributes"]
 
-    if not scratch_dir:
-        if not dataset_dir:
-            scratch_dir = os.path.join(
-                fo.config.dataset_zoo_dir, "open-images-v6", "tmp-download"
-            )
-
-        else:
-            scratch_dir = os.path.join(dataset_dir, "tmp-download")
-
-    attrs_map = _get_attrs_map(
-        dataset_dir=dataset_dir, scratch_dir=scratch_dir
-    )
-    return sorted(list(attrs_map.values()))
+    with etau.TempDir() as scratch_dir:
+        attrs_map = _get_attrs_map(
+            dataset_dir=dataset_dir, scratch_dir=scratch_dir
+        )
+        return sorted(list(attrs_map.values()))
 
 
-def get_classes(dataset_dir=None, scratch_dir=None):
+def get_classes(dataset_dir=None):
     """Gets the 601 boxable classes that exist in classifications, detections,
     and relationships in the Open Images V6 dataset.
+    This method can be called in isolation without having the dataset
+    downloaded.
 
     Args:
         dataset_dir (None): the root directory the in which the dataset is
@@ -326,26 +319,18 @@ def get_classes(dataset_dir=None, scratch_dir=None):
             ):
                 return metadata["info"]["classes"]
 
-    if not scratch_dir:
-        if not dataset_dir:
-            scratch_dir = os.path.join(
-                fo.config.dataset_zoo_dir, "open-images-v6", "tmp-download"
-            )
-
-        else:
-            scratch_dir = os.path.join(dataset_dir, "tmp-download")
-
-    classes_map = _get_classes_map(
-        dataset_dir=dataset_dir, scratch_dir=scratch_dir
-    )
-    return sorted(list(classes_map.values()))
+    with etau.TempDir() as scratch_dir:
+        classes_map = _get_classes_map(
+            dataset_dir=dataset_dir, scratch_dir=scratch_dir
+        )
+        return sorted(list(classes_map.values()))
 
 
-def get_segmentation_classes(
-    dataset_dir=None, scratch_dir=None, classes_map=None
-):
+def get_segmentation_classes(dataset_dir=None):
     """Gets the list of classes (350) that are labeled with segmentations in
     the Open Images V6 dataset.
+    This method can be called in isolation without having the dataset
+    downloaded.
 
     Args:
         dataset_dir (None): the root directory the in which the dataset is
@@ -378,14 +363,32 @@ def get_segmentation_classes(
             ):
                 return metadata["info"]["segmentation_classes"]
 
-    if not scratch_dir:
-        if not dataset_dir:
-            scratch_dir = os.path.join(
-                fo.config.dataset_zoo_dir, "open-images-v6", "tmp-download"
+    with etau.TempDir() as scratch_dir:
+        seg_classes = _get_seg_classes(
+            dataset_dir=dataset_dir, scratch_dir=scratch_dir
+        )
+        return seg_classes
+
+
+def _get_seg_classes(dataset_dir=None, scratch_dir=None, classes_map=None):
+    for split in _DEFAULT_SPLITS:
+        if dataset_dir:
+            metadata_path = os.path.join(dataset_dir, split, "metadata.json")
+        else:
+            metadata_path = os.path.join(
+                fo.config.dataset_zoo_dir,
+                "open-images-v6",
+                split,
+                "metadata.json",
             )
 
-        else:
-            scratch_dir = os.path.join(dataset_dir, "tmp-download")
+        if os.path.exists(metadata_path):
+            metadata = etas.load_json(metadata_path)
+            if (
+                "info" in metadata.keys()
+                and "segmentation_classes" in metadata["info"].keys()
+            ):
+                return metadata["info"]["segmentation_classes"]
 
     if not classes_map:
         classes_map = _get_classes_map(
