@@ -98,12 +98,6 @@ def download_open_images_split(
             % (version, ", ".join(_SUPPORTED_VERSIONS))
         )
 
-    # CLI compatibility, parse list inputs if they are in the form of a string
-    label_types = _parse_string_list(label_types)
-    classes = _parse_string_list(classes)
-    attrs = _parse_string_list(attrs)
-    image_ids = _parse_string_list(image_ids)
-
     if max_samples and (label_types or classes or attrs):
         # Only samples with every specified label type will be loaded
         guarantee_all_types = True
@@ -646,16 +640,6 @@ def _parse_label_types(label_types):
             _label_types.append(l)
 
     return _label_types
-
-
-def _parse_string_list(l):
-    if isinstance(l, str):
-        if l[0] == "[":
-            l = l[1:-1]
-            l = [i.strip() for i in l.split(",")]
-        else:
-            l = [l]
-    return l
 
 
 def _parse_splits(split, splits):

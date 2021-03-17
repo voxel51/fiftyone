@@ -1241,8 +1241,8 @@ Notes:
     .. code-block:: shell
 
         fiftyone zoo datasets load open-images -s validation \
-            -k max_samples=50 label_types=[segmentations,classifications] \
-            classes=[Fedora,Piano]
+            -k max_samples=50 label_types=segmentations,classifications \
+            classes=Fedora,Piano
 
         fiftyone app launch open-images-validation
 
