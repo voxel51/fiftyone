@@ -1128,9 +1128,14 @@ class Values(Aggregation):
     """
 
     def __init__(self, field_name, expr=None, missing_value=None):
+        field_name, found_id_field = _handle_id_fields(field_name)
+
         super().__init__(field_name, expr=expr)
+
         self._missing_value = missing_value
-        self._found_array_field = False
+        self._found_id_field = found_id_field
+        self._found_array_field = None
+        self._num_list_fields = None
 
     def default_result(self):
         """Returns the default result for this aggregation.
@@ -1149,13 +1154,18 @@ class Values(Aggregation):
         Returns:
             the list of field values
         """
+        values = d["values"]
+
+        if self._found_id_field:
+            level = 1 + self._num_list_fields
+            return _transform_values(values, str, level=level)
+
         if self._found_array_field:
-            return _deserialize_arrays(d["values"])
+            fcn = fou.deserialize_numpy_array
+            level = 1 + self._num_list_fields
+            return _transform_values(values, fcn, level=level)
 
-        if self._field_name == "id":
-            return [str(_id) for _id in d["values"]]
-
-        return d["values"]
+        return values
 
     def to_mongo(self, sample_collection):
         path, pipeline, other_list_fields = self._parse_field_and_expr(
@@ -1163,12 +1173,36 @@ class Values(Aggregation):
         )
 
         self._found_array_field = sample_collection._is_array_field(path)
+        self._num_list_fields = len(other_list_fields)
 
         pipeline += _make_extract_values_pipeline(
             path, other_list_fields, self._missing_value
         )
 
         return pipeline
+
+
+def _handle_id_fields(field_name):
+    if field_name == "id":
+        field_name = "_id"
+        found_id_field = True
+    elif field_name.endswith(".id"):
+        field_name = field_name[: -len(".id")] + "._id"
+        found_id_field = True
+    else:
+        found_id_field = False
+
+    return field_name, found_id_field
+
+
+def _transform_values(values, fcn, level=1):
+    if values is None:
+        return None
+
+    if level < 1:
+        return fcn(values)
+
+    return [_transform_values(v, fcn, level=level - 1) for v in values]
 
 
 def _make_extract_values_pipeline(path, list_fields, missing_value):
@@ -1244,13 +1278,3 @@ def _parse_field_and_expr(sample_collection, field_name, auto_unwind, expr):
     pipeline.append({"$project": {root: True}})
 
     return path, pipeline, other_list_fields
-
-
-def _deserialize_arrays(value):
-    if value is None:
-        return None
-
-    if isinstance(value, list):
-        return [_deserialize_arrays(v) for v in value]
-
-    return fou.deserialize_numpy_array(value)

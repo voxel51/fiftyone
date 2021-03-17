@@ -587,7 +587,7 @@ class SampleCollection(object):
 
     def _edit_sample_tags(self, edit_fcn):
         tags = self.values("tags")
-        tags = _transform_values(tags, edit_fcn)
+        tags = _transform_values(tags, edit_fcn, level=1)
         self.set_values("tags", tags)
 
     def count_sample_tags(self):
@@ -663,9 +663,9 @@ class SampleCollection(object):
 
         labels = []
         for label_field in view._get_label_fields():
-            sample_ids = view._get_sample_ids()
+            sample_ids = view.values("id")
 
-            _, id_path = view._get_label_field_path(label_field, "_id")
+            _, id_path = view._get_label_field_path(label_field, "id")
             label_ids = view.values(id_path)
 
             if self._is_frame_field(label_field):
@@ -679,10 +679,10 @@ class SampleCollection(object):
                         for label_id in frame_label_ids:
                             labels.append(
                                 {
-                                    "sample_id": str(sample_id),
+                                    "sample_id": sample_id,
                                     "frame_number": frame_number,
                                     "field": label_field,
-                                    "label_id": str(label_id),
+                                    "label_id": label_id,
                                 }
                             )
             else:
@@ -690,9 +690,9 @@ class SampleCollection(object):
                     for label_id in _label_ids:
                         labels.append(
                             {
-                                "sample_id": str(sample_id),
+                                "sample_id": sample_id,
                                 "field": label_field,
-                                "label_id": str(label_id),
+                                "label_id": label_id,
                             }
                         )
 
@@ -806,7 +806,7 @@ class SampleCollection(object):
                 "At most one array field can be unwound when setting values"
             )
 
-        sample_ids = self._get_sample_ids()
+        sample_ids = self.values("_id")
 
         if list_fields:
             list_field = list_fields[0]
@@ -831,7 +831,7 @@ class SampleCollection(object):
                 "At most one array field can be unwound when setting values"
             )
 
-        frame_ids = self._get_frame_ids()
+        frame_ids = self.values("frames._id")
         frame_ids = list(itertools.chain.from_iterable(frame_ids))
 
         values = list(itertools.chain.from_iterable(values))
@@ -4477,44 +4477,6 @@ class SampleCollection(object):
         """
         raise NotImplementedError("Subclass must implement _aggregate()")
 
-    def _get_sample_ids(self):
-        result = self._aggregate(
-            [{"$group": {"_id": None, "result": {"$push": "$_id"}}}],
-            attach_frames=False,
-        )
-
-        try:
-            return next(result)["result"]
-        except StopIteration:
-            return []
-
-    def _get_frame_ids(self):
-        if self.media_type != fom.VIDEO:
-            return []
-
-        result = self._aggregate(
-            [
-                {
-                    "$project": {
-                        "frames": {
-                            "$map": {
-                                "input": "$frames",
-                                "as": "this",
-                                "in": "$$this._id",
-                            }
-                        }
-                    }
-                },
-                {"$group": {"_id": None, "result": {"$push": "$frames"}}},
-            ],
-            attach_frames=True,
-        )
-
-        try:
-            return next(result)["result"]
-        except StopIteration:
-            return []
-
     async def _async_aggregate(self, sample_collection, aggregations):
         scalar_result, aggregations, facets = self._build_aggregation(
             aggregations
@@ -4598,7 +4560,7 @@ class SampleCollection(object):
     def _handle_frame_field(self, field_name):
         is_frame_field = self._is_frame_field(field_name)
         if is_frame_field:
-            field_name = field_name = field_name[len(self._FRAMES_PREFIX) :]
+            field_name = field_name[len(self._FRAMES_PREFIX) :]
 
         return field_name, is_frame_field
 
@@ -4971,9 +4933,6 @@ def _get_field_with_type(label_fields, label_cls):
 
 
 def _parse_field_name(sample_collection, field_name, auto_unwind):
-    if field_name == "id":
-        return "_id", False, [], []
-
     field_name, is_frame_field = sample_collection._handle_frame_field(
         field_name
     )
@@ -5005,14 +4964,17 @@ def _parse_field_name(sample_collection, field_name, auto_unwind):
     # Ensure root field exists
     root_field_name = field_name.split(".", 1)[0]
 
-    try:
-        root_field = schema[root_field_name]
-    except KeyError:
-        ftype = "Frame field" if is_frame_field else "Field"
-        raise ValueError(
-            "%s '%s' does not exist on collection '%s'"
-            % (ftype, root_field_name, sample_collection.name)
-        )
+    if root_field_name in ("id", "_id"):
+        root_field = None
+    else:
+        try:
+            root_field = schema[root_field_name]
+        except KeyError:
+            ftype = "Frame field" if is_frame_field else "Field"
+            raise ValueError(
+                "%s '%s' does not exist on collection '%s'"
+                % (ftype, root_field_name, sample_collection.name)
+            )
 
     #
     # Detect certain list fields automatically
@@ -5101,13 +5063,13 @@ def _is_field_type(field, field_path, types):
 
 
 def _transform_values(values, fcn, level=1):
-    if level < 1 or not values:
-        return values
+    if values is None:
+        return None
 
-    if level == 1:
-        return [fcn(v) for v in values]
+    if level < 1:
+        return fcn(values)
 
-    return [_transform_values(v, fcn, level - 1) for v in values]
+    return [_transform_values(v, fcn, level=level - 1) for v in values]
 
 
 def _make_set_field_pipeline(sample_collection, field, expr, embedded_root):

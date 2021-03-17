@@ -3645,7 +3645,7 @@ def _get_sample_ids(samples_or_ids):
         return [samples_or_ids.id]
 
     if isinstance(samples_or_ids, foc.SampleCollection):
-        return [s.id for s in samples_or_ids.select_fields()]
+        return samples_or_ids.values("id")
 
     if not samples_or_ids:
         return []
