@@ -19,7 +19,9 @@ const ActionDiv = styled.div`
 
 const Tag = ({ modal }) => {
   const [open, setOpen] = useState(false);
-  const selectedSamples = useRecoilValue(atoms.selectedSamples);
+  const selected = useRecoilValue(
+    modal ? selectors.selectedLabelIds : atoms.selectedSamples
+  );
   const ref = useRef();
   useOutsideClick(ref, () => open && setOpen(false));
   const [mRef, bounds] = useMeasure();
@@ -30,7 +32,7 @@ const Tag = ({ modal }) => {
         icon={<LocalOffer />}
         open={open}
         onClick={() => setOpen(!open)}
-        highlight={Boolean(selectedSamples.size) || open}
+        highlight={Boolean(selected.size) || open}
         ref={mRef}
       />
       {open && (

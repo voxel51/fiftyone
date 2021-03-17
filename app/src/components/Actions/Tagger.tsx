@@ -22,7 +22,6 @@ import * as selectors from "../../recoil/selectors";
 import socket from "../../shared/connection";
 import { useTheme } from "../../utils/hooks";
 import { packageMessage } from "../../utils/socket";
-import { Bounds } from "react-use-gesture/dist/types";
 import { PopoutSectionTitle } from "../utils";
 
 const IconDiv = styled.div`
@@ -387,7 +386,7 @@ const usePlaceHolder = (
 
 type TaggerProps = {
   modal: boolean;
-  bounds: Bounds;
+  bounds: any;
   close: () => void;
 };
 

@@ -194,7 +194,11 @@ const getModalActions = (frameNumberRef, close) => {
     close();
     setSelectedLabels((selection) => ({
       ...selection,
-      ...Object.fromEntries(labels.map(_getLabelSelectionData)),
+      ...Object.fromEntries(
+        labels
+          .map(_getLabelSelectionData)
+          .map(({ label_id, ...rest }) => [label_id, rest])
+      ),
     }));
   };
 
@@ -234,6 +238,11 @@ const getModalActions = (frameNumberRef, close) => {
 
   const hideOthers = (labels) => {
     close();
+    console.log(
+      labels
+        .filter((label) => !selectedLabels[label._id])
+        .map(_getLabelSelectionData)
+    );
     setHiddenLabels((hiddenLabels) =>
       addLabelsToSelection(
         hiddenLabels,

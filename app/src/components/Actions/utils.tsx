@@ -158,6 +158,7 @@ const labelModalTagCounts = selector<{ [key: string]: number }>({
 
     if (get(selectors.selectedLabelIds).size > 0) {
       const selected = get(selectors.selectedLabels);
+      console.log(selected);
 
       for (const label_id in selected) {
         const { sample_id, frame_number, field } = selected[label_id];
@@ -167,6 +168,7 @@ const labelModalTagCounts = selector<{ [key: string]: number }>({
           addLabelToTagsResult(frame, frame[field], label_id);
         } else {
           const sample = get(atoms.sample(sample_id));
+          console.log(sample, field);
           addLabelToTagsResult(result, sample[field], label_id);
         }
       }

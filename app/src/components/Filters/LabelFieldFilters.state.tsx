@@ -213,7 +213,7 @@ export const fieldIsFiltered = selectorFamily<
     const cPath = `${path}.confidence`;
     const lPath = `${path}.label`;
     const hasHiddenLabels = modal
-      ? get(selectors.hiddenFieldLabels(path)).length > 0
+      ? get(selectors.hiddenFieldLabels(path.split(".")[0])).length > 0
       : false;
 
     return (
