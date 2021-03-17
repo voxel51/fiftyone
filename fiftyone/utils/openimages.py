@@ -259,24 +259,10 @@ def get_attributes(dataset_dir=None):
     Returns:
         a sorted list of attribute names
     """
-    for split in _DEFAULT_SPLITS:
-        if dataset_dir:
-            metadata_path = os.path.join(dataset_dir, split, "metadata.json")
-        else:
-            metadata_path = os.path.join(
-                fo.config.dataset_zoo_dir,
-                "open-images-v6",
-                split,
-                "metadata.json",
-            )
+    attrs = _load_metadata_if_possible(dataset_dir, "attributes")
 
-        if os.path.exists(metadata_path):
-            metadata = etas.load_json(metadata_path)
-            if (
-                "info" in metadata.keys()
-                and "attributes" in metadata["info"].keys()
-            ):
-                return metadata["info"]["attributes"]
+    if attrs is not None:
+        return attrs
 
     with etau.TempDir() as scratch_dir:
         attrs_map = _get_attrs_map(
@@ -294,30 +280,14 @@ def get_classes(dataset_dir=None):
     Args:
         dataset_dir (None): the root directory the in which the dataset is
             downloaded and ``info.json`` is stored
-        scratch_dir (None): scratch directory used to download classes file if
-            it is not available in ``info.json`` in the ``dataset_dir``
 
     Returns:
         a sorted list of class name strings
     """
-    for split in _DEFAULT_SPLITS:
-        if dataset_dir:
-            metadata_path = os.path.join(dataset_dir, split, "metadata.json")
-        else:
-            metadata_path = os.path.join(
-                fo.config.dataset_zoo_dir,
-                "open-images-v6",
-                split,
-                "metadata.json",
-            )
+    classes = _load_metadata_if_possible(dataset_dir, "classes")
 
-        if os.path.exists(metadata_path):
-            metadata = etas.load_json(metadata_path)
-            if (
-                "info" in metadata.keys()
-                and "classes" in metadata["info"].keys()
-            ):
-                return metadata["info"]["classes"]
+    if classes is not None:
+        return classes
 
     with etau.TempDir() as scratch_dir:
         classes_map = _get_classes_map(
@@ -335,33 +305,16 @@ def get_segmentation_classes(dataset_dir=None):
     Args:
         dataset_dir (None): the root directory the in which the dataset is
             downloaded and ``info.json`` is stored
-        scratch_dir (None): scratch directory used to download segmentation
-            class file if it is not available in ``info.json`` in the
-            ``dataset_dir``
-        classes_map (None): a dict mapping the Open Images IDs of classes to
-            the string class names
 
     Returns:
         a sorted list of segmentation class name strings
     """
-    for split in _DEFAULT_SPLITS:
-        if dataset_dir:
-            metadata_path = os.path.join(dataset_dir, split, "metadata.json")
-        else:
-            metadata_path = os.path.join(
-                fo.config.dataset_zoo_dir,
-                "open-images-v6",
-                split,
-                "metadata.json",
-            )
+    seg_classes = _load_metadata_if_possible(
+        dataset_dir, "segmentation_classes"
+    )
 
-        if os.path.exists(metadata_path):
-            metadata = etas.load_json(metadata_path)
-            if (
-                "info" in metadata.keys()
-                and "segmentation_classes" in metadata["info"].keys()
-            ):
-                return metadata["info"]["segmentation_classes"]
+    if seg_classes is not None:
+        return seg_classes
 
     with etau.TempDir() as scratch_dir:
         seg_classes = _get_seg_classes(
@@ -370,7 +323,7 @@ def get_segmentation_classes(dataset_dir=None):
         return seg_classes
 
 
-def _get_seg_classes(dataset_dir=None, scratch_dir=None, classes_map=None):
+def _load_metadata_if_possible(dataset_dir, metadata_type):
     for split in _DEFAULT_SPLITS:
         if dataset_dir:
             metadata_path = os.path.join(dataset_dir, split, "metadata.json")
@@ -386,26 +339,11 @@ def _get_seg_classes(dataset_dir=None, scratch_dir=None, classes_map=None):
             metadata = etas.load_json(metadata_path)
             if (
                 "info" in metadata.keys()
-                and "segmentation_classes" in metadata["info"].keys()
+                and metadata_type in metadata["info"].keys()
             ):
-                return metadata["info"]["segmentation_classes"]
+                return metadata["info"][metadata_type]
 
-    if not classes_map:
-        classes_map = _get_classes_map(
-            dataset_dir=dataset_dir, scratch_dir=scratch_dir
-        )
-
-    annot_link = _ANNOTATION_DOWNLOAD_LINKS["general"]["segmentation_classes"]
-    seg_cls_txt_filename = os.path.basename(annot_link)
-    seg_cls_txt = os.path.join(scratch_dir, "general", seg_cls_txt_filename)
-    _download_if_necessary(seg_cls_txt, annot_link)
-
-    with open(seg_cls_txt, "r") as f:
-        seg_classes_oi = [l.rstrip("\n") for l in f]
-
-    seg_classes = [classes_map[c] for c in seg_classes_oi]
-
-    return sorted(seg_classes)
+    return None
 
 
 def _get_attrs_map(dataset_dir=None, scratch_dir=None):
@@ -482,6 +420,44 @@ def _get_classes_map(dataset_dir=None, scratch_dir=None):
     cls_data = _parse_csv(cls_csv)
     classes_map = {k: v for k, v in cls_data}
     return classes_map
+
+
+def _get_seg_classes(dataset_dir=None, scratch_dir=None, classes_map=None):
+    for split in _DEFAULT_SPLITS:
+        if dataset_dir:
+            metadata_path = os.path.join(dataset_dir, split, "metadata.json")
+        else:
+            metadata_path = os.path.join(
+                fo.config.dataset_zoo_dir,
+                "open-images-v6",
+                split,
+                "metadata.json",
+            )
+
+        if os.path.exists(metadata_path):
+            metadata = etas.load_json(metadata_path)
+            if (
+                "info" in metadata.keys()
+                and "segmentation_classes" in metadata["info"].keys()
+            ):
+                return metadata["info"]["segmentation_classes"]
+
+    if not classes_map:
+        classes_map = _get_classes_map(
+            dataset_dir=dataset_dir, scratch_dir=scratch_dir
+        )
+
+    annot_link = _ANNOTATION_DOWNLOAD_LINKS["general"]["segmentation_classes"]
+    seg_cls_txt_filename = os.path.basename(annot_link)
+    seg_cls_txt = os.path.join(scratch_dir, "general", seg_cls_txt_filename)
+    _download_if_necessary(seg_cls_txt, annot_link)
+
+    with open(seg_cls_txt, "r") as f:
+        seg_classes_oi = [l.rstrip("\n") for l in f]
+
+    seg_classes = [classes_map[c] for c in seg_classes_oi]
+
+    return sorted(seg_classes)
 
 
 def _get_hierarchy(dataset_dir=None, scratch_dir=None, classes_map=None):
