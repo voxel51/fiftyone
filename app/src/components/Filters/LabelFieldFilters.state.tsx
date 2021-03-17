@@ -410,9 +410,10 @@ export const modalLabels = selector<atoms.SelectedLabel[]>({
   get: ({ get }) => {
     const sample = get(selectors.modalSample);
     const filter = get(sampleModalFilter);
+    const activeFields = get(activeLabels({ modal: true, frames: false }));
     const labels = [];
     Object.entries(filter(sample))
-      .filter(([k]) => !RESERVED_FIELDS.includes(k))
+      .filter(([k]) => !RESERVED_FIELDS.includes(k) && activeFields.includes(k))
       .forEach(([name, field]) => {
         if (VALID_LIST_TYPES.includes(field._cls)) {
           field[field._cls.toLowerCase()].forEach(({ _id }) => {

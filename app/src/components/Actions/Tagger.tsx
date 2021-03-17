@@ -105,7 +105,7 @@ const Section = ({
   const [tagging, setTagging] = useRecoilState(taggingAtom);
   const [value, setValue] = useState("");
   const [count, placeholder] = countAndPlaceholder();
-  const disabled = tagging || typeof count !== "number" || count === 0;
+  const disabled = tagging || typeof count !== "number";
   const [changes, setChanges] = useState<{ [key: string]: CheckState }>({});
   const [active, setActive] = useState(null);
   const [localTagging, setLocalTagging] = useState(false);

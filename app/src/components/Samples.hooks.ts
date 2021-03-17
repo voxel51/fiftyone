@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useState } from "react";
 import { useRecoilCallback, useRecoilValue, useResetRecoilState } from "recoil";
 
 import * as atoms from "../recoil/atoms";
@@ -20,19 +20,17 @@ const stringifyObj = (obj) => {
   );
 };
 
-const empty = {
-  loadMore: false,
-  isLoading: false,
-  hasMore: true,
-  pageToLoad: null,
-};
-
 export default () => {
   const filters = useRecoilValue(selectors.filterStages);
   const datasetName = useRecoilValue(selectors.datasetName);
   const view = useRecoilValue(selectors.view);
   const refresh = useRecoilValue(selectors.refresh);
-  const [state, setState] = useState(empty);
+  const [state, setState] = useState({
+    loadMore: false,
+    isLoading: false,
+    hasMore: true,
+    pageToLoad: 1,
+  });
   const resetRows = useResetRecoilState(atoms.gridRows);
 
   const handlePage = useRecoilCallback(
@@ -43,7 +41,7 @@ export default () => {
         set(atoms.sample(sample._id), sample);
         set(atoms.sampleDimensions(sample._id), { width, height });
       });
-      setState(newState);
+      setState({ ...newState, pageToLoad: state.pageToLoad + 1 });
       set(atoms.gridRows, newRows);
     },
     [state]
@@ -51,22 +49,25 @@ export default () => {
 
   useMessageHandler("page", handlePage);
 
-  useEffect(() => {
-    setState(empty);
+  useLayoutEffect(() => {
+    setState({
+      loadMore: false,
+      isLoading: false,
+      hasMore: true,
+      pageToLoad: 1,
+    });
     resetRows();
   }, [filterView(view), datasetName, refresh, stringifyObj(filters)]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!state.loadMore || state.isLoading || !state.hasMore) return;
-    const page = state.pageToLoad ? state.pageToLoad + 1 : 1;
     setState({
       ...state,
       isLoading: true,
       loadMore: false,
-      pageToLoad: page,
     });
-    socket.send(packageMessage("page", { page }));
-  }, [state]);
+    socket.send(packageMessage("page", { page: state.pageToLoad }));
+  }, [state.isLoading, state.hasMore, state.loadMore]);
 
   return [state, setState];
 };
