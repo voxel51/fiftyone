@@ -60,8 +60,11 @@ class DatasetView(foc.SampleCollection):
         if not isinstance(other_view, DatasetView):
             return False
 
-        # Two views are equal if their stage definitions are equal, excluding
-        # their UUIDs
+        if self._dataset != other_view._dataset:
+            return False
+
+        # Two views into the same dataset are equal if their stage definitions
+        # are equal, excluding their UUIDs
         d = self._serialize(include_uuids=False)
         other_d = other_view._serialize(include_uuids=False)
         return d == other_d
