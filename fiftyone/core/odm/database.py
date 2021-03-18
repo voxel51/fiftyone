@@ -52,7 +52,7 @@ def aggregate(collection, pipeline):
         
     Returns:
         a `pymongo.command_cursor.CommandCursor` or
-            `motor.motor_tornado.MotorCommandCursor`
+        `motor.motor_tornado.MotorCommandCursor`
     """
     return collection.aggregate(pipeline, allowDiskUse=True)
 
