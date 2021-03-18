@@ -16,6 +16,7 @@ import eta.core.utils as etau
 import fiftyone.core.aggregations as foa
 import fiftyone.core.collections as foc
 import fiftyone.core.media as fom
+import fiftyone.core.odm as foo
 import fiftyone.core.sample as fos
 import fiftyone.core.stages as fost
 
@@ -686,7 +687,7 @@ class DatasetView(foc.SampleCollection):
             attach_frames=attach_frames,
             detach_frames=detach_frames,
         )
-        return self._dataset._sample_collection.aggregate(_pipeline)
+        return foo.aggregate(self._dataset._sample_collection, _pipeline)
 
     @property
     def _doc(self):

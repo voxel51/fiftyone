@@ -2675,7 +2675,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             detach_frames=detach_frames,
         )
 
-        return self._sample_collection.aggregate(_pipeline)
+        return foo.aggregate(self._sample_collection, _pipeline)
 
     @property
     def _sample_collection_name(self):
@@ -2907,7 +2907,7 @@ def _clone_dataset_or_view(dataset_or_view, name):
 
     pipeline = dataset_or_view._pipeline(attach_frames=False)
     pipeline += [{"$out": sample_collection_name}]
-    dataset._sample_collection.aggregate(pipeline)
+    foo.aggregate(dataset._sample_collection, pipeline)
 
     #
     # Clone frames
@@ -2919,11 +2919,11 @@ def _clone_dataset_or_view(dataset_or_view, name):
             # the sample collection
             pipeline = view._pipeline(frames_only=True)
             pipeline += [{"$out": frames_collection_name}]
-            dataset._sample_collection.aggregate(pipeline)
+            foo.aggregate(dataset._sample_collection, pipeline)
         else:
             # Here we can directly aggregate on the frame collection
             pipeline = [{"$out": frames_collection_name}]
-            dataset._frame_collection.aggregate(pipeline)
+            foo.aggregate(dataset._frame_collection, pipeline)
 
     #
     # Clone dataset document
@@ -2989,10 +2989,10 @@ def _save_view(view, fields):
         if sample_fields:
             pipeline.append({"$project": {f: True for f in sample_fields}})
             pipeline.append({"$merge": dataset._sample_collection_name})
-            dataset._sample_collection.aggregate(pipeline)
+            foo.aggregate(dataset._sample_collection, pipeline)
     else:
         pipeline.append({"$out": dataset._sample_collection_name})
-        dataset._sample_collection.aggregate(pipeline)
+        foo.aggregate(dataset._sample_collection, pipeline)
 
         for field_name in view._get_missing_fields():
             dataset._sample_doc_cls._delete_field_schema(field_name, False)
@@ -3010,10 +3010,10 @@ def _save_view(view, fields):
             if frame_fields:
                 pipeline.append({"$project": {f: True for f in frame_fields}})
                 pipeline.append({"$merge": dataset._frame_collection_name})
-                dataset._sample_collection.aggregate(pipeline)
+                foo.aggregate(dataset._sample_collection, pipeline)
         else:
             pipeline.append({"$out": dataset._frame_collection_name})
-            dataset._sample_collection.aggregate(pipeline)
+            foo.aggregate(dataset._sample_collection, pipeline)
 
             for field_name in view._get_missing_fields(frames=True):
                 dataset._frame_doc_cls._delete_field_schema(field_name, False)
