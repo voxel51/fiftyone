@@ -7,7 +7,7 @@ import React, {
 } from "react";
 import styled from "styled-components";
 import { Checkbox } from "@material-ui/core";
-import { useRecoilState, useRecoilValue } from "recoil";
+import { useRecoilState, useRecoilValue, useResetRecoilState } from "recoil";
 import AuosizeInput from "react-input-autosize";
 import { Machine, assign } from "xstate";
 import { useMachine } from "@xstate/react";
@@ -476,6 +476,8 @@ const DatasetSelector = () => {
   const datasets = useRecoilValue(selectors.datasets);
   const [state, send] = useMachine(selectorMachine);
   const connected = useRecoilValue(atoms.connected);
+  const resetStats = useResetRecoilState(atoms.datasetStatsRaw);
+  const resetExtStats = useResetRecoilState(atoms.extendedDatasetStatsRaw);
 
   const inputRef = useRef();
   const { results, currentResult, value, bestMatch, values } = state.context;
@@ -485,6 +487,8 @@ const DatasetSelector = () => {
       value: datasetName ?? "",
       values: datasets,
       onCommit: (v) => {
+        resetStats();
+        resetExtStats();
         socket.send(packageMessage("set_dataset", { dataset_name: v }));
       },
     });
