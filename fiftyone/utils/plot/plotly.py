@@ -37,6 +37,8 @@ def plot_confusion_matrix(
     confusion_matrix,
     labels,
     ids=None,
+    gt_field=None,
+    pred_field=None,
     colorscale=None,
     template="simple_white",
     height=None,
@@ -52,6 +54,8 @@ def plot_confusion_matrix(
         labels: a ``max(num_true, num_preds)`` array of class labels
         ids (None): an optional array of same shape as ``confusion_matrix``
             containing lists of IDs corresponding to each cell
+        gt_field (None): the name of the ground truth field
+        pred_field (None): the name of the predictions field
         colorscale (None): a plotly colorscale to use
         template ("simple_white"): a plotly template to use. See
             `https://plotly.com/python/templates` for more information
@@ -85,6 +89,8 @@ def plot_confusion_matrix(
         confusion_matrix,
         labels,
         ids,
+        gt_field=gt_field,
+        pred_field=pred_field,
         colorscale=colorscale,
         template=template,
         height=height,
@@ -151,6 +157,8 @@ def _plot_confusion_matrix_interactive(
     confusion_matrix,
     labels,
     ids,
+    gt_field=None,
+    pred_field=None,
     colorscale=None,
     template=None,
     height=None,
@@ -162,11 +170,16 @@ def _plot_confusion_matrix_interactive(
     num_rows, num_cols = confusion_matrix.shape
     zlim = [0, confusion_matrix.max()]
 
+    if gt_field and pred_field:
+        label_fields = [gt_field, pred_field]
+    else:
+        label_fields = None
+
     plot = PlotlyHeatmap(
         confusion_matrix,
         ids,
         link_type="labels",
-        label_fields=None,  # @todo add support for passing this through
+        label_fields=label_fields,
         xlabels=labels[:num_cols],
         ylabels=labels[:num_rows],
         zlim=zlim,

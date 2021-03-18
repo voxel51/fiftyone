@@ -161,12 +161,18 @@ class COCOEvaluation(DetectionEvaluation):
         Returns:
             a :class:`DetectionResults`
         """
-        if not self.config.compute_mAP:
-            return DetectionResults(matches, classes=classes, missing=missing)
-
-        pred_field = self.config.pred_field
         gt_field = self.config.gt_field
+        pred_field = self.config.pred_field
         iou_threshs = self.config.iou_threshs
+
+        if not self.config.compute_mAP:
+            return DetectionResults(
+                matches,
+                gt_field=gt_field,
+                pred_field=pred_field,
+                classes=classes,
+                missing=missing,
+            )
 
         thresh_matches = {t: {} for t in iou_threshs}
         if classes is None:
@@ -249,7 +255,14 @@ class COCOEvaluation(DetectionEvaluation):
                 precision[iou_threshs.index(t)][classes.index(c)] = q
 
         return COCODetectionResults(
-            matches, precision, recall, iou_threshs, classes, missing=missing
+            matches,
+            precision,
+            recall,
+            iou_threshs,
+            classes,
+            gt_field=gt_field,
+            pred_field=pred_field,
+            missing=missing,
         )
 
 
@@ -266,14 +279,30 @@ class COCODetectionResults(DetectionResults):
         recall: an array of recall values
         iou_threshs: the list of IoU thresholds
         classes: the list of possible classes
+        gt_field (None): the name of the ground truth field
+        pred_field (None): the name of the predictions field
         missing (None): a missing label string. Any unmatched objects are
             given this label for evaluation purposes
     """
 
     def __init__(
-        self, matches, precision, recall, iou_threshs, classes, missing=None
+        self,
+        matches,
+        precision,
+        recall,
+        iou_threshs,
+        classes,
+        gt_field=None,
+        pred_field=None,
+        missing=None,
     ):
-        super().__init__(matches, classes=classes, missing=missing)
+        super().__init__(
+            matches,
+            gt_field=gt_field,
+            pred_field=pred_field,
+            classes=classes,
+            missing=missing,
+        )
         self.precision = np.asarray(precision)
         self.recall = np.asarray(recall)
         self.iou_threshs = np.asarray(iou_threshs)

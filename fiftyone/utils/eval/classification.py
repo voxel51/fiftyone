@@ -211,6 +211,8 @@ class SimpleEvaluation(ClassificationEvaluation):
             ytrue,
             ypred,
             confs=confs,
+            gt_field=gt_field,
+            pred_field=pred_field,
             ytrue_ids=ytrue_ids,
             ypred_ids=ypred_ids,
             classes=classes,
@@ -326,6 +328,8 @@ class TopKEvaluation(ClassificationEvaluation):
             ytrue,
             ypred,
             confs=confs,
+            gt_field=gt_field,
+            pred_field=pred_field,
             ytrue_ids=ytrue_ids,
             ypred_ids=ypred_ids,
             classes=classes,
@@ -468,6 +472,8 @@ class BinaryEvaluation(ClassificationEvaluation):
             ypred,
             confs,
             classes,
+            gt_field=gt_field,
+            pred_field=pred_field,
             ytrue_ids=ytrue_ids,
             ypred_ids=ypred_ids,
         )
@@ -526,6 +532,8 @@ class ClassificationResults(foe.EvaluationResults):
         ypred: a list of predicted labels
         confs (None): an optional list of confidences for the predictions
         weights (None): an optional list of sample weights
+        gt_field (None): the name of the ground truth field
+        pred_field (None): the name of the predictions field
         ytrue_ids (None): a list of IDs for the ground truth labels
         ypred_ids (None): a list of IDs for the predicted labels
         classes (None): the list of possible classes. If not provided, the
@@ -540,6 +548,8 @@ class ClassificationResults(foe.EvaluationResults):
         ypred,
         confs=None,
         weights=None,
+        gt_field=None,
+        pred_field=None,
         ytrue_ids=None,
         ypred_ids=None,
         classes=None,
@@ -553,6 +563,8 @@ class ClassificationResults(foe.EvaluationResults):
         self.ypred = np.asarray(ypred)
         self.confs = np.asarray(confs) if confs is not None else None
         self.weights = np.asarray(weights) if weights is not None else None
+        self.gt_field = gt_field
+        self.pred_field = pred_field
         self.ytrue_ids = (
             np.asarray(ytrue_ids) if ytrue_ids is not None else None
         )
@@ -787,6 +799,8 @@ class ClassificationResults(foe.EvaluationResults):
             confusion_matrix,
             labels,
             ids=ids,
+            gt_field=self.gt_field,
+            pred_field=self.pred_field,
             backend=backend,
             show=show,
             **kwargs,
@@ -800,6 +814,8 @@ class ClassificationResults(foe.EvaluationResults):
         ypred = d["ypred"]
         confs = d.get("confs", None)
         weights = d.get("weights", None)
+        gt_field = d.get("gt_field", None)
+        pred_field = d.get("pred_field", None)
         ytrue_ids = d.get("ytrue_ids", None)
         ypred_ids = d.get("ypred_ids", None)
         classes = d.get("classes", None)
@@ -809,6 +825,8 @@ class ClassificationResults(foe.EvaluationResults):
             ypred,
             confs=confs,
             weights=weights,
+            gt_field=gt_field,
+            pred_field=pred_field,
             ytrue_ids=ytrue_ids,
             ypred_ids=ypred_ids,
             classes=classes,
@@ -829,6 +847,8 @@ class BinaryClassificationResults(ClassificationResults):
         confs: a list of confidences for the predictions
         classes: the ``(neg_label, pos_label)`` label strings for the task
         weights (None): an optional list of sample weights
+        gt_field (None): the name of the ground truth field
+        pred_field (None): the name of the predictions field
         ytrue_ids (None): a list of IDs for the ground truth labels
         ypred_ids (None): a list of IDs for the predicted labels
     """
@@ -840,6 +860,8 @@ class BinaryClassificationResults(ClassificationResults):
         confs,
         classes,
         weights=None,
+        gt_field=None,
+        pred_field=None,
         ytrue_ids=None,
         ypred_ids=None,
     ):
@@ -848,6 +870,8 @@ class BinaryClassificationResults(ClassificationResults):
             ypred,
             confs=confs,
             weights=weights,
+            gt_field=gt_field,
+            pred_field=pred_field,
             ytrue_ids=ytrue_ids,
             ypred_ids=ypred_ids,
             classes=classes,

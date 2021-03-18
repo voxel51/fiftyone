@@ -31,7 +31,14 @@ def get_default_backend(interactive=False):
 
 
 def plot_confusion_matrix(
-    confusion_matrix, labels, ids=None, backend=None, show=True, **kwargs
+    confusion_matrix,
+    labels,
+    ids=None,
+    gt_field=None,
+    pred_field=None,
+    backend=None,
+    show=True,
+    **kwargs,
 ):
     """Plots a confusion matrix.
 
@@ -41,6 +48,8 @@ def plot_confusion_matrix(
         ids (None): an optional array of same shape as ``confusion_matrix``
             containing lists of IDs corresponding to each cell. Only used by
             the "plotly" backend
+        gt_field (None): the name of the ground truth field
+        pred_field (None): the name of the predictions field
         backend (None): the plotting backend to use. Supported values are
             ``("plotly", "matplotlib")``. If no backend is specified, the best
             applicable backend is chosen
@@ -60,7 +69,7 @@ def plot_confusion_matrix(
     else:
         from .plotly import plot_confusion_matrix as _plot_confusion_matrix
 
-        kwargs["ids"] = ids
+        kwargs = dict(ids=ids, gt_field=gt_field, pred_field=pred_field)
 
     return _plot_confusion_matrix(
         confusion_matrix, labels, show=show, **kwargs

@@ -177,8 +177,8 @@ class SimpleEvaluationConfig(SegmentationEvaluationConfig):
     Args:
         pred_field: the name of the field containing the predicted
             :class:`fiftyone.core.labels.Segmentation` instances
-        gt_field ("ground_truth"): the name of the field containing the ground
-            truth :class:`fiftyone.core.labels.Segmentation` instances
+        gt_field: the name of the field containing the ground truth
+            :class:`fiftyone.core.labels.Segmentation` instances
         bandwidth (None): an optional bandwidth along the contours of the
             ground truth masks to which to restrict attention when computing
             accuracies. A typical value for this parameter is 5 pixels. By
@@ -286,7 +286,13 @@ class SimpleEvaluation(SegmentationEvaluation):
                     sample.save()
 
         missing = classes[0] if values[0] == 0 else None
-        return SegmentationResults(confusion_matrix, classes, missing=missing)
+        return SegmentationResults(
+            confusion_matrix,
+            classes,
+            gt_field=gt_field,
+            pred_field=pred_field,
+            missing=missing,
+        )
 
 
 class SegmentationResults(ClassificationResults):
@@ -295,26 +301,50 @@ class SegmentationResults(ClassificationResults):
     Args:
         pixel_confusion_matrix: a pixel value confusion matrix
         classes: a list of class labels corresponding to the confusion matrix
+        gt_field (None): the name of the ground truth field
+        pred_field (None): the name of the predictions field
         missing (None): a missing (background) class
     """
 
-    def __init__(self, pixel_confusion_matrix, classes, missing=None):
+    def __init__(
+        self,
+        pixel_confusion_matrix,
+        classes,
+        gt_field=None,
+        pred_field=None,
+        missing=None,
+    ):
         ytrue, ypred, weights = self._parse_confusion_matrix(
             pixel_confusion_matrix, classes
         )
         super().__init__(
-            ytrue, ypred, weights=weights, classes=classes, missing=missing
+            ytrue,
+            ypred,
+            weights=weights,
+            gt_field=gt_field,
+            pred_field=pred_field,
+            classes=classes,
+            missing=missing,
         )
         self.pixel_confusion_matrix = pixel_confusion_matrix
 
     def attributes(self):
-        return ["cls", "pixel_confusion_matrix", "classes", "missing"]
+        return [
+            "cls",
+            "pixel_confusion_matrix",
+            "gt_field",
+            "pred_field",
+            "classes",
+            "missing",
+        ]
 
     @classmethod
     def _from_dict(cls, d, samples, **kwargs):
         return cls(
             d["pixel_confusion_matrix"],
             d["classes"],
+            gt_field=d.get("gt_field", None),
+            pred_field=d.get("pred_field", None),
             missing=d.get("missing", None),
             **kwargs,
         )
