@@ -169,7 +169,11 @@ export const PillButton = React.memo(
         },
       });
       return (
-        <PillButtonDiv onClick={onClick} style={props} ref={ref} style={style}>
+        <PillButtonDiv
+          onClick={onClick}
+          ref={ref}
+          style={{ ...props, ...style }}
+        >
           {icon}
           {text && <span>{text}</span>}
           {arrow && (open ? <KeyboardArrowUp /> : <KeyboardArrowDown />)}

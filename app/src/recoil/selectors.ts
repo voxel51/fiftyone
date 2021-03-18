@@ -688,6 +688,18 @@ export const sampleFramesMap = selectorFamily<any, string>({
   },
 });
 
+export const selectedLoading = selector({
+  key: "selectedLoading",
+  get: ({ get }) => {
+    const ids = get(atoms.selectedSamples);
+    let loading = false;
+    ids.forEach((id) => {
+      loading = get(atoms.sample(id)) === null;
+    });
+    return loading;
+  },
+});
+
 export const modalLabelAttrs = selectorFamily<
   [string, string | null | number],
   { field: string; id: string; frameNumber?: number }

@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import React, { useLayoutEffect, useRef, useState } from "react";
 import { CircularProgress } from "@material-ui/core";
 import { Check, LocalOffer, Settings, VisibilityOff } from "@material-ui/icons";
 import useMeasure from "react-use-measure";
@@ -28,8 +28,13 @@ const Tag = ({ modal }) => {
   const ref = useRef();
   useOutsideClick(ref, () => open && setOpen(false));
   const [mRef, bounds] = useMeasure();
+  const close = useRecoilValue(selectors.selectedLoading);
 
   const disabled = tagging;
+
+  useLayoutEffect(() => {
+    close && setOpen(false);
+  }, [close]);
 
   return (
     <ActionDiv ref={ref}>
@@ -49,7 +54,7 @@ const Tag = ({ modal }) => {
         highlight={Boolean(selected.size) || open}
         ref={mRef}
       />
-      {open && (
+      {open && !close && (
         <Tagger modal={modal} bounds={bounds} close={() => setOpen(false)} />
       )}
     </ActionDiv>
