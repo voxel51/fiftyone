@@ -782,6 +782,7 @@ class ClassificationResults(foe.EvaluationResults):
             # Don't include extra ground truth rows
             if num_extra > 0:
                 confusion_matrix = confusion_matrix[:-num_extra, :]
+                ids = ids[:-num_extra, :]
 
             # Only include non-trivial extra prediction rows
             rm_inds = []
@@ -791,6 +792,7 @@ class ClassificationResults(foe.EvaluationResults):
 
             if rm_inds:
                 confusion_matrix = np.delete(confusion_matrix, rm_inds, axis=1)
+                ids = np.delete(ids, rm_inds, axis=1)
                 labels = [l for i, l in enumerate(labels) if i not in rm_inds]
 
         figure = foup.plot_confusion_matrix(
