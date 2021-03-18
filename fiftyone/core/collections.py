@@ -1639,7 +1639,8 @@ class SampleCollection(object):
     @view_stage
     def exists(self, field, bool=True):
         """Returns a view containing the samples in the collection that have
-        (or do not have) a non-``None`` value for the given field.
+        (or do not have) a non-``None`` value for the given field or embedded
+        field.
 
         Examples::
 
@@ -1660,10 +1661,15 @@ class SampleCollection(object):
                     ),
                     fo.Sample(
                         filepath="/path/to/image3.png",
+                        ground_truth=fo.Classification(label="dog"),
+                        predictions=fo.Classification(label="dog"),
+                    ),
+                    fo.Sample(
+                        filepath="/path/to/image4.png",
                         ground_truth=None,
                         predictions=None,
                     ),
-                    fo.Sample(filepath="/path/to/image4.png"),
+                    fo.Sample(filepath="/path/to/image5.png"),
                 ]
             )
 
@@ -1681,8 +1687,14 @@ class SampleCollection(object):
 
             view = dataset.exists("predictions", False)
 
+            #
+            # Only include samples that have prediction confidences
+            #
+
+            view = dataset.exists("predictions.confidence")
+
         Args:
-            field: the field name
+            field: the field name or ``embedded.field.name``
             bool (True): whether to check if the field exists (True) or does
                 not exist (False)
 
@@ -2144,6 +2156,167 @@ class SampleCollection(object):
         """
         return self._add_view_stage(
             fos.FilterKeypoints(field, filter, only_matches=only_matches)
+        )
+
+    @view_stage
+    def geo_near(
+        self,
+        point,
+        location_field=None,
+        min_distance=None,
+        max_distance=None,
+        query=None,
+    ):
+        """Sorts the samples in the collection by their proximity to a
+        specified geolocation.
+
+        .. note::
+
+            This stage must be the **first stage** in any
+            :class:`fiftyone.core.view.DatasetView` in which it appears.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+
+            TIMES_SQUARE = [-73.9855, 40.7580]
+
+            dataset = foz.load_zoo_dataset("quickstart-geo")
+
+            #
+            # Sort the samples by their proximity to Times Square
+            #
+
+            view = dataset.geo_near(TIMES_SQUARE)
+
+            #
+            # Sort the samples by their proximity to Times Square, and only
+            # include samples within 5km
+            #
+
+            view = dataset.geo_near(TIMES_SQUARE, max_distance=5000)
+
+            #
+            # Sort the samples by their proximity to Times Square, and only
+            # include samples that are in Manhattan
+            #
+
+            import fiftyone.utils.geojson as foug
+
+            in_manhattan = foug.geo_within(
+                "location.point",
+                [
+                    [
+                        [-73.949701, 40.834487],
+                        [-73.896611, 40.815076],
+                        [-73.998083, 40.696534],
+                        [-74.031751, 40.715273],
+                        [-73.949701, 40.834487],
+                    ]
+                ]
+            )
+
+            view = dataset.geo_near(
+                TIMES_SQUARE, location_field="location", query=in_manhattan
+            )
+
+        Args:
+            point: the reference point to compute distances to. Can be any of
+                the following:
+
+                -   A ``[longitude, latitude]`` list
+                -   A GeoJSON dict with ``Point`` type
+                -   A :class:`fiftyone.core.labels.GeoLocation` instance whose
+                    ``point`` attribute contains the point
+
+            location_field (None): the location data of each sample to use. Can
+                be any of the following:
+
+                -   The name of a :class:`fiftyone.core.fields.GeoLocation`
+                    field whose ``point`` attribute to use as location data
+                -   An ``embedded.field.name`` containing GeoJSON data to use
+                    as location data
+                -   ``None``, in which case there must be a single
+                    :class:`fiftyone.core.fields.GeoLocation` field on the
+                    samples, which is used by default
+
+            min_distance (None): filter samples that are less than this
+                distance (in meters) from ``point``
+            max_distance (None): filter samples that are greater than this
+                distance (in meters) from ``point``
+            query (None): an optional dict defining a
+                `MongoDB read query <https://docs.mongodb.com/manual/tutorial/query-documents/#read-operations-query-argument>`_
+                that samples must match in order to be included in this view
+
+        Returns:
+            a :class:`fiftyone.core.view.DatasetView`
+        """
+        return self._add_view_stage(
+            fos.GeoNear(
+                point,
+                location_field=location_field,
+                min_distance=min_distance,
+                max_distance=max_distance,
+                query=query,
+            )
+        )
+
+    @view_stage
+    def geo_within(self, boundary, location_field=None, strict=True):
+        """Filters the samples in this collection to only include samples whose
+        geolocation is within a specified boundary.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+
+            MANHATTAN = [
+                [
+                    [-73.949701, 40.834487],
+                    [-73.896611, 40.815076],
+                    [-73.998083, 40.696534],
+                    [-74.031751, 40.715273],
+                    [-73.949701, 40.834487],
+                ]
+            ]
+
+            dataset = foz.load_zoo_dataset("quickstart-geo")
+
+            #
+            # Create a view that only contains samples in Manhattan
+            #
+
+            view = dataset.geo_within(MANHATTAN)
+
+        Args:
+            boundary: a :class:`fiftyone.core.labels.GeoLocation`,
+                :class:`fiftyone.core.labels.GeoLocations`, GeoJSON dict, or
+                list of coordinates that define a ``Polygon`` or
+                ``MultiPolygon`` to search within
+            location_field (None): the location data of each sample to use. Can
+                be any of the following:
+
+                -   The name of a :class:`fiftyone.core.fields.GeoLocation`
+                    field whose ``point`` attribute to use as location data
+                -   An ``embedded.field.name`` that directly contains the
+                    GeoJSON location data to use
+                -   ``None``, in which case there must be a single
+                    :class:`fiftyone.core.fields.GeoLocation` field on the
+                    samples, which is used by default
+
+            strict (True): whether a sample's location data must strictly fall
+                within boundary (True) in order to match, or whether any
+                intersection suffices (False)
+
+        Returns:
+            a :class:`fiftyone.core.view.DatasetView`
+        """
+        return self._add_view_stage(
+            fos.GeoWithin(
+                boundary, location_field=location_field, strict=strict
+            )
         )
 
     @view_stage
@@ -3942,8 +4115,9 @@ class SampleCollection(object):
                 exporter can handle dictionaries of frame-level labels
             overwrite (False): when an ``export_dir`` is provided, whether to
                 delete the existing directory before performing the export
-            **kwargs: optional keyword arguments to pass to
-                ``dataset_type.get_dataset_exporter_cls(export_dir, **kwargs)``
+            **kwargs: optional keyword arguments to pass to the dataset
+                exporter's constructor via
+                ``DatasetExporter(export_dir, **kwargs)``
         """
         if dataset_type is None and dataset_exporter is None:
             raise ValueError(
@@ -4043,7 +4217,7 @@ class SampleCollection(object):
         """
         raise NotImplementedError("Subclass must implement list_indexes()")
 
-    def create_index(self, field_name, unique=False):
+    def create_index(self, field_name, unique=False, sphere2d=False):
         """Creates an index on the given field.
 
         If the given field already has a unique index, it will be retained
@@ -4057,6 +4231,8 @@ class SampleCollection(object):
         Args:
             field_name: the field name or ``embedded.field.name``
             unique (False): whether to add a uniqueness constraint to the index
+            sphere2d (False): whether the field is a GeoJSON field that
+                requires a sphere2d index
         """
         raise NotImplementedError("Subclass must implement create_index()")
 
@@ -4112,11 +4288,17 @@ class SampleCollection(object):
 
         d["info"] = self.info
 
-        d["classes"] = self.classes
-        d["default_classes"] = self.default_classes
+        if self.classes:
+            d["classes"] = self.classes
 
-        d["mask_targets"] = self._serialize_mask_targets()
-        d["default_mask_targets"] = self._serialize_default_mask_targets()
+        if self.default_classes:
+            d["default_classes"] = self.default_classes
+
+        if self.mask_targets:
+            d["mask_targets"] = self._serialize_mask_targets()
+
+        if self.default_mask_targets:
+            d["default_mask_targets"] = self._serialize_default_mask_targets()
 
         # Serialize samples
         samples = []
@@ -4423,7 +4605,10 @@ class SampleCollection(object):
         )
 
     def _is_label_field(self, field_name, label_type_or_types):
-        label_type = self._get_label_field_type(field_name)
+        try:
+            label_type = self._get_label_field_type(field_name)
+        except:
+            return False
 
         try:
             iter(label_type_or_types)
@@ -4486,6 +4671,21 @@ class SampleCollection(object):
 
         field_path = field_name + "." + subfield
         return label_type, field_path
+
+    def _get_geo_location_field(self):
+        geo_schema = self.get_field_schema(
+            ftype=fof.EmbeddedDocumentField, embedded_doc_type=fol.GeoLocation
+        )
+        if not geo_schema:
+            raise ValueError("No %s field found to use" % fol.GeoLocation)
+
+        if len(geo_schema) > 1:
+            raise ValueError(
+                "Multiple %s fields found; you must specify which to use"
+                % fol.GeoLocation
+            )
+
+        return next(iter(geo_schema.keys()))
 
     def _is_array_field(self, field_name):
         return _is_array_field(self, field_name)

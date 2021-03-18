@@ -1228,6 +1228,82 @@ class BDDDataset(ImageLabelsDataset):
         return foub.BDDDatasetExporter
 
 
+class GeoJSONImageDataset(ImageLabelsDataset):
+    """An image dataset whose geolocation data and optional properties are
+    stored in `GeoJSON format <https://en.wikipedia.org/wiki/GeoJSON>`_.
+
+    Datasets of this type are read/written in the following format::
+
+        <dataset_dir>/
+            data/
+                <filename1>.<ext>
+                <filename2>.<ext>
+                ...
+            labels.json
+
+    where ``labels.json`` is a GeoJSON file containing a ``FeatureCollection``
+    in the following format::
+
+        {
+            "type": "FeatureCollection",
+            "features": [
+                {
+                    "type": "Feature",
+                    "geometry": {
+                        "type": "Point",
+                        "coordinates": [
+                            -73.99496451958454,
+                            40.66338032487842
+                        ]
+                    },
+                    "properties": {
+                        "filename": <filename1>.<ext>,
+                        ...
+                    }
+                },
+                {
+                    "type": "Feature",
+                    "geometry": {
+                        "type": "Point",
+                        "coordinates": [
+                            -73.80992143421788,
+                            40.65611832778962
+                        ]
+                    },
+                    "properties": {
+                        "filename": <filename2>.<ext>,
+                        ...
+                    }
+                },
+                ...
+            ]
+        }
+
+    where the ``geometry`` field may contain any valid GeoJSON geometry object,
+    and the ``filename`` property encodes the name of the corresponding image
+    in the ``data/`` folder.
+
+    You can also specify a ``filepath`` property rather than ``filename``, in
+    which case the path is interpreted as an absolute path to the corresponding
+    image, which may or may not be in ``data/`` folder.
+
+    Images with no location data will have a null ``geometry`` field.
+
+    The ``properties`` field of each feature can contain additional labels that
+    can be imported/exported when working with datasets of this type.
+    """
+
+    def get_dataset_importer_cls(self):
+        import fiftyone.utils.geojson as foug
+
+        return foug.GeoJSONImageDatasetImporter
+
+    def get_dataset_exporter_cls(self):
+        import fiftyone.utils.geojson as foug
+
+        return foug.GeoJSONImageDatasetExporter
+
+
 class FiftyOneVideoLabelsDataset(VideoLabelsDataset):
     """A labeled dataset consisting of videos and their associated labels
     stored in

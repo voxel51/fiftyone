@@ -903,6 +903,61 @@ class QuickstartDataset(FiftyOneDataset):
         return dataset_type, num_samples, classes
 
 
+class QuickstartGeoDataset(FiftyOneDataset):
+    """A small dataset with geolocation data.
+
+    The dataset consists of 500 images from the validation split of the BDD100K
+    dataset in the New York City area with object detections and GPS
+    timestamps.
+
+    Example usage::
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("quickstart-geo")
+
+        session = fo.launch_app(dataset)
+
+    Dataset size
+        33.50 MB
+    """
+
+    _GDRIVE_ID = "1B2msoc3ej2RD0zVHoXNQmuJIjsPxLTfz"
+    _ARCHIVE_NAME = "quickstart-geo.zip"
+    _DIR_IN_ARCHIVE = "quickstart-geo"
+
+    @property
+    def name(self):
+        return "quickstart-geo"
+
+    @property
+    def tags(self):
+        return ("image", "location", "quickstart")
+
+    @property
+    def supported_splits(self):
+        return None
+
+    def _download_and_prepare(self, dataset_dir, scratch_dir, _):
+        _download_and_extract_archive(
+            self._GDRIVE_ID,
+            self._ARCHIVE_NAME,
+            self._DIR_IN_ARCHIVE,
+            dataset_dir,
+            scratch_dir,
+        )
+
+        logger.info("Parsing dataset metadata")
+        dataset_type = fot.FiftyOneDataset()
+        importer = foud.FiftyOneDatasetImporter
+        classes = importer.get_classes(dataset_dir)
+        num_samples = importer.get_num_samples(dataset_dir)
+        logger.info("Found %d samples", num_samples)
+
+        return dataset_type, num_samples, classes
+
+
 class QuickstartVideoDataset(FiftyOneDataset):
     """A small video dataset with dense annotations.
 
@@ -1054,6 +1109,7 @@ AVAILABLE_DATASETS = {
     "kitti": KITTIDataset,
     "lfw": LabeledFacesInTheWildDataset,
     "quickstart": QuickstartDataset,
+    "quickstart-geo": QuickstartGeoDataset,
     "quickstart-video": QuickstartVideoDataset,
     "ucf101": UCF101Dataset,
 }

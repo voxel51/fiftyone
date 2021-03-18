@@ -406,6 +406,13 @@ class Session(foc.HasClient):
         self.state.config = config
 
     @property
+    def _collection(self):
+        if self.view is not None:
+            return self.view
+
+        return self.dataset
+
+    @property
     def dataset(self):
         """The :class:`fiftyone.core.dataset.Dataset` connected to the session.
         """
@@ -439,13 +446,6 @@ class Session(foc.HasClient):
         session, or ``None`` if no view is connected.
         """
         return self.state.view
-
-    @property
-    def _collection(self):
-        if self.view is not None:
-            return self.view
-
-        return self.dataset
 
     @view.setter
     @_update_state(auto_show=True)

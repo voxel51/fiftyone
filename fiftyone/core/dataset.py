@@ -2449,7 +2449,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         index_fields = [v["key"][0][0] for v in index_info.values()]
         return [f for f in index_fields if not f.startswith("_")]
 
-    def create_index(self, field_name, unique=False):
+    def create_index(self, field_name, unique=False, sphere2d=False):
         """Creates an index on the given field.
 
         If the given field already has a unique index, it will be retained
@@ -2463,11 +2463,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Args:
             field_name: the field name or ``embedded.field.name``
             unique (False): whether to add a uniqueness constraint to the index
+            sphere2d (False): whether the field is a GeoJSON field that
+                requires a sphere2d index
         """
-        if ("." not in field_name) and (
-            field_name not in self.get_field_schema()
-        ):
-            raise ValueError("Dataset has no field '%s'" % field_name)
+        root = field_name.split(".", 1)[0]
+
+        if root not in self.get_field_schema():
+            raise ValueError("Dataset has no field '%s'" % root)
 
         index_info = self._sample_collection.index_information()
         index_map = {
@@ -2482,7 +2484,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             # Must drop existing index
             self.drop_index(field_name)
 
-        self._sample_collection.create_index(field_name, unique=unique)
+        if sphere2d:
+            index_spec = [(field_name, "2dsphere")]
+        else:
+            index_spec = field_name
+
+        self._sample_collection.create_index(index_spec, unique=unique)
 
     def drop_index(self, field_name):
         """Drops the index on the given field.
