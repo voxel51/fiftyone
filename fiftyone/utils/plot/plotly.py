@@ -1882,6 +1882,10 @@ def _patch_perform_plotly_relayout():
         "basedatatypes.py",
     )
 
+    if not os.path.isfile(filepath):
+        logger.debug("Unable to patch '%s'", filepath)
+        return
+
     with open(filepath, "r") as f:
         code = f.read()
 
