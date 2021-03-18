@@ -895,7 +895,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         self.write_message({"type": "distributions", "results": results})
 
 
-def _write_message(message, app=False, ignore=None, only=None):
+def _write_message(message, app=False, session=False, ignore=None, only=None):
     if only:
         only.write_message(message)
         return
@@ -905,6 +905,9 @@ def _write_message(message, app=False, ignore=None, only=None):
     active_handle = StateHandler.state["active_handle"]
     clients = StateHandler.app_clients if app else StateHandler.clients
     for client in clients:
+        if session and client in StateHandler.app_clients:
+            continue
+
         if client in _notebook_clients:
             uuid = _notebook_clients[client]
             if uuid != active_handle and uuid not in _deactivated_clients:

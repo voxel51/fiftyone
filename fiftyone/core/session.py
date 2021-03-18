@@ -19,6 +19,9 @@ import fiftyone.constants as focn
 import fiftyone.core.dataset as fod
 import fiftyone.core.client as foc
 import fiftyone.core.context as focx
+import fiftyone.core.frame as fof
+import fiftyone.core.media as fom
+import fiftyone.core.sample as fosa
 import fiftyone.core.service as fos
 import fiftyone.core.utils as fou
 import fiftyone.utils.templates as fout
@@ -812,6 +815,15 @@ class Session(foc.HasClient):
             )
             self.state.active_handle = handle
             self._update_state()
+
+    def _reload(self):
+        if self.dataset is None:
+            return
+
+        if self.dataset.media_type == fom.VIDEO:
+            fof.Frame._reload_docs(self.dataset._frame_collection_name)
+
+        fosa.Sample._reload_docs(self.dataset._sample_collection_name)
 
     def _show(self, height=None):
         if (self._context == focx._NONE) or self._desktop:
