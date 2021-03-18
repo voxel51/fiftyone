@@ -677,6 +677,17 @@ export const sampleIds = selector<{ [key: number]: string }>({
     Object.fromEntries(get(currentSamples).map((id, i) => [i, id])),
 });
 
+export const sampleFramesMap = selectorFamily<any, string>({
+  key: "sampleFramesMap",
+  get: (id) => ({ get }) => {
+    const frameData = get(atoms.sampleFrameData(id));
+
+    return frameData
+      ? Object.fromEntries(frameData.map((f) => [f.frame_number, f]))
+      : {};
+  },
+});
+
 export const modalLabelAttrs = selectorFamily<
   [string, string | null | number],
   { field: string; id: string; frameNumber?: number }
@@ -685,10 +696,12 @@ export const modalLabelAttrs = selectorFamily<
   get: ({ field, id, frameNumber }) => ({ get }) => {
     let sample = get(modalSample);
     const type = get(labelTypesMap)[field];
-    let label = sample[field];
     if (get(isVideoDataset)) {
-      frames = get(atoms.sampleFrameData(sample._id))[frameNumber];
+      field = field.slice("frames.".length);
+      sample = get(sampleFramesMap(sample._id))[frameNumber];
     }
+
+    let label = sample[field];
     if (VALID_LIST_TYPES.includes(type)) {
       label = label[type.toLocaleLowerCase()].filter((l) => l._id === id)[0];
     }

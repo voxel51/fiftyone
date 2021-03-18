@@ -657,6 +657,32 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         await StateHandler.on_update(caller, StateHandler.state)
 
     @staticmethod
+    async def on_all_tags(caller):
+        state = fos.StateDescription.from_dict(StateHandler.state)
+        dataset = state.dataset
+
+        if dataset is None:
+            label = []
+            sample = []
+        else:
+            (_, tag_aggs,) = fos.DatasetStatistics.get_label_aggregations(
+                dataset
+            )
+            results = await dataset._async_aggregate(
+                StateHandler.sample_collection(),
+                [foa.Distinct("tags")] + tag_aggs,
+            )
+            sample = results[0]
+
+            label = set()
+            for result in results[1:]:
+                label |= set(result.keys())
+
+        _write_message(
+            {"type": "all_tags", "sample": sample, "label": label}, only=caller
+        )
+
+    @staticmethod
     async def on_tag_modal(
         caller, changes, sample_id=None, labels=None,
     ):

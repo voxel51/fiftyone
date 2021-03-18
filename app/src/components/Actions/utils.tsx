@@ -86,23 +86,27 @@ export const numTaggable = selectorFamily<
   },
 });
 
-export const allTags = selector<string[]>({
+export const allTags = selector<{ sample: string[]; label: string[] }>({
   key: "tagAggs",
-  get: ({ get }) => {
-    const stats = Object.fromEntries(
-      get(selectors.datasetStats).map((s) => [s.name, s.result])
-    );
-    const paths = get(selectors.labelPaths);
-    const types = get(selectors.labelTypesMap);
+  get: async ({ get }) => {
+    const state = get(atoms.stateDescription);
 
-    return Object.keys(
-      paths.reduce((acc, cur) => {
-        return {
-          ...acc,
-          ...stats[`${cur}.${types[cur].toLowerCase()}.tags`],
-        };
-      }, {})
-    );
+    const wrap = (handler, type) => ({ data }) => {
+      data = JSON.parse(data);
+      data.type === type && handler(data);
+    };
+
+    const promise = new Promise((resolve) => {
+      const listener = wrap(({ sample, label }) => {
+        socket.removeEventListener("message", listener);
+        resolve({ sample: sample.sort(), label: label.sort() });
+      }, "all_tags");
+      socket.addEventListener("message", listener);
+      socket.send(packageMessage("all_tags", {}));
+    });
+
+    const result = await promise;
+    return result;
   },
 });
 
@@ -170,8 +174,12 @@ const labelModalTagCounts = selector<{ [key: string]: number }>({
         const { sample_id, frame_number, field } = selected[label_id];
 
         if (get(selectors.isVideoDataset) && frame_number) {
-          const frame = get(atoms.sampleFrameData(sample_id))[frame_number];
-          addLabelToTagsResult(frame, frame[field], label_id);
+          const frame = get(selectors.sampleFramesMap(sample_id))[frame_number];
+          addLabelToTagsResult(
+            result,
+            frame[field.slice("frames.".length)],
+            label_id
+          );
         } else {
           const sample = get(atoms.sample(sample_id));
           addLabelToTagsResult(result, sample[field], label_id);
@@ -201,15 +209,13 @@ export const tagStats = selectorFamily<
   get: ({ modal, labels }) => ({ get }) => {
     if (modal && labels) {
       return {
-        ...Object.fromEntries(get(allTags).map((t) => [t, 0])),
+        ...Object.fromEntries(get(allTags).label.map((t) => [t, 0])),
         ...get(labelModalTagCounts),
       };
     } else if (modal) {
       const sample = get(selectors.modalSample);
       return {
-        ...Object.fromEntries(
-          Object.keys(get(selectors.tagSampleCounts)).map((t) => [t, 0])
-        ),
+        ...get(allTags).sample.map((t) => [t, 0]),
         ...Object.fromEntries(sample.tags.map((t) => [t, 1])),
       };
     } else if (labels) {
@@ -231,7 +237,7 @@ export const tagStats = selectorFamily<
         : get(selectors.datasetStats)
       ).reduce(reducer, {});
 
-      const results = Object.fromEntries(get(allTags).map((t) => [t, 0]));
+      const results = Object.fromEntries(get(allTags).label.map((t) => [t, 0]));
       const selected = get(atoms.selectedSamples);
 
       if (selected.size) {
@@ -250,7 +256,7 @@ export const tagStats = selectorFamily<
     } else {
       const selected = get(atoms.selectedSamples);
       const results = Object.fromEntries(
-        Object.keys(get(selectors.tagSampleCounts)).map((t) => [t, 0])
+        get(allTags).sample.map((t) => [t, 0])
       );
       if (selected.size) {
         selected.forEach((id) => {

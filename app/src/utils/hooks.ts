@@ -136,7 +136,7 @@ export const useVideoData = (socket, id, callback = null) => {
       if (requested || !isVideo) {
         return;
       }
-      const counter = snapshot.getPromise(atoms.viewCounter);
+      const counter = await snapshot.getPromise(atoms.viewCounter);
 
       if (requested === counter) {
         callback && callback(null, ...args);

@@ -157,7 +157,6 @@ const AttrInfo = ({ field, id, frameNumber, children = null }) => {
   if (!entries || !entries.length) {
     return null;
   }
-  let etc = null;
 
   const defaults = entries.filter(([name]) =>
     ["label", "confidence"].includes(name)
@@ -290,6 +289,7 @@ const TooltipInfo = ({ player, moveRef }) => {
   const position = display
     ? coords
     : { top: -1000, left: -1000, bottom: "unset" };
+
   const coordsProps = useSpring({
     ...position,
     config: {
@@ -329,11 +329,8 @@ const TooltipInfo = ({ player, moveRef }) => {
             key={"tags"}
             field={overlay.field}
             id={overlay.id}
-            frameNumber={info.frameNumber}
+            frameNumber={overlay.frameNumber}
           />
-          {overlay.frameNumber && (
-            <ContentItem name={"frame_number"} value={overlay.frameNumber} />
-          )}
           <Component key={"attrs"} info={overlay} />
         </TooltipDiv>,
         document.body
