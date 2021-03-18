@@ -314,7 +314,7 @@ const samplePlaceholder = () => {
 const packageGrid = ({ targetLabels, activeLabels, changes }) =>
   packageMessage("tag", {
     target_labels: targetLabels,
-    active_labels: activeLabels,
+    active_labels: activeLabels.filter((l) => !l.startsWith("tags.")),
     changes,
   });
 
