@@ -62,12 +62,6 @@ class FiftyOneConfig(EnvConfig):
         if d is None:
             d = {}
 
-        self.allow_query_disk_use = self.parse_bool(
-            d,
-            "allow_query_disk_use",
-            env_var="FIFTYONE_ALLOW_QUERY_DISK_USE",
-            default=False,
-        )
         self.database_dir = self.parse_string(
             d,
             "database_dir",

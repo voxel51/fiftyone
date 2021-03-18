@@ -12,7 +12,6 @@ from mongoengine import connect
 import motor
 import pymongo
 
-import fiftyone as fo
 import fiftyone.constants as foc
 
 
@@ -55,9 +54,7 @@ def aggregate(collection, pipeline):
         a `pymongo.command_cursor.CommandCursor` or
             `motor.motor_tornado.MotorCommandCursor`
     """
-    return collection.aggregate(
-        pipeline, allowDiskUse=fo.config.allow_query_disk_use
-    )
+    return collection.aggregate(pipeline, allowDiskUse=True)
 
 
 def set_default_port(port):
