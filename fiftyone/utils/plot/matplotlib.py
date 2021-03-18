@@ -29,6 +29,9 @@ from .interactive import InteractivePlot
 from .utils import load_button_icon
 
 
+# This module is designed to support showing plots via `show` flags
+plt.ioff()
+
 logger = logging.getLogger(__name__)
 
 
@@ -332,9 +335,10 @@ def scatterplot(
         plot = InteractiveCollection(
             collection,
             ids=ids,
+            buttons=buttons,
             link_type=link_type,
             label_fields=label_field,
-            buttons=buttons,
+            init_view=samples,
         )
 
     if show:
@@ -531,28 +535,42 @@ class InteractiveMatplotlibPlot(InteractivePlot):
 
     Args:
         figure: a ``matplotlib.figure.Figure``
-        link_type ("samples"): whether this plot is linked to "samples" or
-            "labels"
-        label_fields (None): an optional list of label fields to which points
-            in this plot correspond. Only applicable when linked to labels
+        **kwargs: keyword arguments for the
+            :class:`fiftyone.utils.plot.interactive.InteractivePlot`
+            constructor
     """
 
-    def __init__(self, figure, link_type="samples", label_fields=None):
+    def __init__(self, figure, **kwargs):
         self._figure = figure
-        super().__init__(link_type=link_type, label_fields=label_fields)
+        super().__init__(**kwargs)
 
-    def supports_bidirectional_updates(self):
+    def supports_session_updates(self):
         # matplotlib does not support redrawing outside of the main thread
         # https://stackoverflow.com/q/34764535
         return False
 
-    def _show(self):
+    def show(self):
+        """Shows this plot."""
+        super().show()
+
+    def _connect(self):
+        if self.is_disconnected:
+            self._reopen()
+
+    def _show(self, **_):
         plt.show(block=False)
 
     def _freeze(self):
         # Turn interactive plot into a static one
         # https://github.com/matplotlib/matplotlib/issues/6071
         plt.close(self._figure)
+
+    def _reopen(self):
+        # https://stackoverflow.com/a/31731945
+        dummy = plt.figure()
+        new_manager = dummy.canvas.manager
+        new_manager.canvas.figure = self._figure
+        self._figure.set_canvas(new_manager.canvas)
 
 
 class InteractiveCollection(InteractiveMatplotlibPlot):
@@ -572,10 +590,6 @@ class InteractiveCollection(InteractiveMatplotlibPlot):
         collection: a ``matplotlib.collections.Collection`` to select points
             from
         ids (None): a list of IDs corresponding to the points in ``collection``
-        link_type ("samples"): whether this plot is linked to "samples" or
-            "labels"
-        label_fields (None): an optional list of label fields to which points
-            in this plot correspond. Only applicable when linked to labels
         buttons (None): a list of ``(label, icon_image, callback)`` tuples
             defining buttons to add to the plot
         alpha_other (0.25): a transparency value for unselected points
@@ -583,18 +597,20 @@ class InteractiveCollection(InteractiveMatplotlibPlot):
             multiple
         click_tolerance (0.02): a click distance tolerance in ``[0, 1]`` when
             clicking individual points
+        **kwargs: keyword arguments for the
+            :class:`fiftyone.utils.plot.interactive.InteractivePlot`
+            constructor
     """
 
     def __init__(
         self,
         collection,
         ids=None,
-        link_type="samples",
-        label_fields=None,
         buttons=None,
         alpha_other=0.25,
         expand_selected=3.0,
         click_tolerance=0.02,
+        **kwargs,
     ):
         self.collection = collection
         self.ax = collection.axes
@@ -603,7 +619,6 @@ class InteractiveCollection(InteractiveMatplotlibPlot):
         self.click_tolerance = click_tolerance
 
         self._select_callback = None
-        self._canvas = self.ax.figure.canvas
         self._xy = collection.get_offsets()
         self._num_pts = len(self._xy)
         self._fc = collection.get_facecolors()
@@ -616,9 +631,8 @@ class InteractiveCollection(InteractiveMatplotlibPlot):
         self._ids = np.asarray(ids)
         self._ids_to_inds = {_id: idx for idx, _id in enumerate(ids)}
         self._inds = np.array([], dtype=int)
-        self._canvas.mpl_connect("close_event", lambda e: self._disconnect())
-        self._canvas.header_visible = False
 
+        self._canvas = None
         self._lasso = None
         self._shift = False
         self._title = None
@@ -629,11 +643,10 @@ class InteractiveCollection(InteractiveMatplotlibPlot):
         self._figure_events = []
         self._keypress_events = []
 
-        super().__init__(
-            collection.axes.figure,
-            link_type=link_type,
-            label_fields=label_fields,
-        )
+        figure = collection.axes.figure
+        self._canvas = self._init_canvas(figure)
+
+        super().__init__(figure, **kwargs)
 
     @property
     def _any_selected(self):
@@ -670,7 +683,19 @@ class InteractiveCollection(InteractiveMatplotlibPlot):
         if self.is_connected:
             self._reinit_hud()
 
-    def _show(self):
+    def _init_canvas(self, figure):
+        canvas = figure.canvas
+        canvas.mpl_connect("close_event", lambda e: self._disconnect())
+        canvas.header_visible = False
+        return canvas
+
+    def _reopen(self):
+        super()._reopen()
+        self._canvas = self._init_canvas(self._figure)
+
+    def _connect(self):
+        super()._connect()
+
         self._init_hud()
         self._lasso = LassoSelector(self.ax, onselect=self._on_select)
 
@@ -700,17 +725,6 @@ class InteractiveCollection(InteractiveMatplotlibPlot):
 
         self._update_hud(False)
 
-        super()._show()
-
-    def _draw(self):
-        self._canvas.draw_idle()
-
-    def _freeze(self):
-        # Disconnect first so that HUD is not visible
-        self.disconnect()
-
-        super()._freeze()
-
     def _disconnect(self):
         if not self.is_connected:
             return
@@ -730,6 +744,15 @@ class InteractiveCollection(InteractiveMatplotlibPlot):
 
         self._close_hud()
         self._draw()
+
+    def _draw(self):
+        self._canvas.draw_idle()
+
+    def _freeze(self):
+        # Disconnect first so that HUD is not visible
+        self.disconnect()
+
+        super()._freeze()
 
     def _init_hud(self):
         # Button styling

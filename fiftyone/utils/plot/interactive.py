@@ -26,51 +26,47 @@ class InteractivePlot(object):
     Args:
         link_type ("samples"): whether this plot is linked to "samples" or
             "labels"
-        label_fields (None): an optional list of label fields to which points
-            in this plot correspond. Only applicable when linked to labels
+        label_fields (None): an optional label field or list of label fields to
+            which points in this plot correspond. Only applicable when linked
+            to labels
+        init_view (None): a :class:`fiftyone.core.collections.SampleCollection`
+            to load when no points are selected in the plot
     """
 
     _LINK_TYPES = ("samples", "labels")
 
-    def __init__(self, link_type="samples", label_fields=None):
+    def __init__(self, link_type="samples", label_fields=None, init_view=None):
         if link_type not in self._LINK_TYPES:
             raise ValueError(
                 "Unsupported link_type '%s'; supported values are %s"
                 % (link_type, self._LINK_TYPES)
             )
 
+        self.link_type = link_type
+        self.label_fields = label_fields
+        self.init_view = init_view
+
         self._connected = False
         self._disconnected = False
-        self._link_type = link_type
-        self._label_fields = label_fields
 
     @property
-    def link_type(self):
-        """Whether this plot is linked to samples or labels."""
-        return self._link_type
-
-    @property
-    def label_fields(self):
-        """An optional list of label fields to which points in this plot
-        correspond.
-
-        Always ``None`` when this plot is linked to samples.
-        """
-        return self._label_fields
-
-    @property
-    def supports_bidirectional_updates(self):
+    def supports_session_updates(self):
         """Whether this plot supports automatic updates in response to session
         changes.
         """
         raise NotImplementedError(
-            "Subclass must implement supports_bidirectional_updates"
+            "Subclass must implement supports_session_updates"
         )
 
     @property
     def is_connected(self):
         """Whether this plot is currently connected."""
         return self._connected
+
+    @property
+    def is_disconnected(self):
+        """Whether this plot is currently disconnected."""
+        return self._disconnected
 
     @property
     def any_selected(self):
@@ -149,18 +145,30 @@ class InteractivePlot(object):
     def _register_disconnect_callback(self, callback):
         pass
 
-    def show(self):
-        """Shows this plot."""
-        if self._disconnected:
-            raise ValueError("Plot has been disconnected")
-
+    def connect(self):
+        """Connects this plot, if necessary."""
         if self.is_connected:
             return
 
-        self._show()
+        self._connect()
         self._connected = True
+        self._disconnected = False
 
-    def _show(self):
+    def _connect(self):
+        pass
+
+    def show(self, **kwargs):
+        """Shows this plot.
+
+        The plot will be connected if necessary.
+
+        Args:
+            **kwargs: subclass-specific keyword arguments
+        """
+        self.connect()
+        self._show(**kwargs)
+
+    def _show(self, **kwargs):
         pass
 
     def reset(self):
@@ -201,7 +209,7 @@ class InteractivePlot(object):
         pass
 
     def disconnect(self):
-        """Disconnects the plot."""
+        """Disconnects the plot, if necessary."""
         if not self.is_connected:
             return
 
@@ -248,6 +256,7 @@ class InteractivePlotManager(object):
         self._last_update = None
         self._last_updates = {}
         self._connected = False
+        self._disconnected = False
 
         if connect:
             self.connect()
@@ -256,6 +265,11 @@ class InteractivePlotManager(object):
     def is_connected(self):
         """Whether this manager is currently connected to its plots."""
         return self._connected
+
+    @property
+    def is_disconnected(self):
+        """Whether this manager is currently disconnected from its plots."""
+        return self._disconnected
 
     @property
     def has_sample_links(self):
@@ -291,9 +305,7 @@ class InteractivePlotManager(object):
                 "it before adding a new plot under this name" % name
             )
 
-        self.plots[name] = _ManagedPlot(
-            plot, name, bidirectional=plot.supports_bidirectional_updates
-        )
+        self.plots[name] = _ManagedPlot(plot, name)
 
         if self.is_connected:
             self._connect_plot(name)
@@ -326,7 +338,10 @@ class InteractivePlotManager(object):
 
         plot = self.plots.pop(name)
 
-        if plot.bidirectional and plot.listener_name is not None:
+        if (
+            plot.plot.supports_session_updates
+            and plot.listener_name is not None
+        ):
             self.session.delete_listener(plot.listener_name)
 
         return plot.plot
@@ -339,10 +354,15 @@ class InteractivePlotManager(object):
         for name in self.plots:
             self._connect_plot(name)
 
+        self.sync()
+
         self._connected = True
+        self._disconnected = False
 
     def _connect_plot(self, name):
         plot = self.plots[name]
+
+        plot.plot.connect()
 
         def _on_plot_selection(ids):
             self._on_plot_selection(name, ids)
@@ -351,7 +371,7 @@ class InteractivePlotManager(object):
         plot.plot.register_sync_callback(self.sync)
         plot.plot.register_disconnect_callback(self.disconnect)
 
-        if plot.bidirectional:
+        if plot.plot.supports_session_updates:
             if self.session.has_listener(name):
                 logger.warning(
                     "Overwriting existing listener with key '%s'", name
@@ -369,11 +389,12 @@ class InteractivePlotManager(object):
             self._disconnect_plot(name)
 
         self._connected = False
+        self._disconnected = True
 
     def _disconnect_plot(self, name):
         plot = self.plots[name]
 
-        if plot.bidirectional:
+        if plot.plot.supports_session_updates:
             self.session.delete_listener(plot.listener_name)
 
         plot.plot.disconnect()
@@ -393,7 +414,7 @@ class InteractivePlotManager(object):
             return
 
         self._update_ids_from_session()
-        self._update_all_plots()
+        self._update_plots()
 
     def freeze(self):
         """Freezes the active App cell and all connected plots, replacing them
@@ -422,10 +443,7 @@ class InteractivePlotManager(object):
             return
 
         self._update_ids_from_session()
-
-        # Can't update unidirectional plots in this callback, which isn't
-        # running in the main process
-        self._update_bidirectional_plots()
+        self._update_plots_from_session()
 
     def _on_plot_selection(self, name, ids):
         plot = self.plots[name].plot
@@ -436,8 +454,16 @@ class InteractivePlotManager(object):
         if not self._ready_for_update(name):
             return
 
-        if plot.link_type == "labels":
-            plot_view = self._init_view.select_labels(
+        if plot.init_view is not None:
+            plot_view = plot.init_view.view()
+        else:
+            plot_view = self._init_view
+
+        if not ids:
+            self._current_sample_ids = None
+            self._current_labels = None
+        elif plot.link_type == "labels":
+            plot_view = plot_view.select_labels(
                 ids=ids, fields=plot.label_fields
             )
 
@@ -449,14 +475,11 @@ class InteractivePlotManager(object):
                 {"field": field, "label_id": _id} for _id in ids
             ]
         else:
-            plot_view = self._init_view.select(ids)
+            plot_view = plot_view.select(ids)
             self._current_sample_ids = ids
 
         self._update_session(plot_view)
-
-        # Can't update unidirectional plots in this callback, which isn't
-        # running in the main process
-        self._update_bidirectional_plots()
+        self._update_plots_from_session()
 
     def _update_ids_from_session(self):
         if self.has_label_links:
@@ -478,14 +501,14 @@ class InteractivePlotManager(object):
         with self.session.no_show():
             self.session.view = view
 
-    def _update_all_plots(self):
+    def _update_plots_from_session(self):
+        for name, plot in self.plots.items():
+            if plot.plot.supports_session_updates:
+                self._update_plot(name)
+
+    def _update_plots(self):
         for name in self.plots:
             self._update_plot(name)
-
-    def _update_bidirectional_plots(self):
-        for name, plot in self.plots.items():
-            if plot.bidirectional:
-                self._update_plot(name)
 
     def _update_plot(self, name):
         if not self._needs_update(name):
@@ -549,8 +572,7 @@ class _ManagedPlot(object):
     connected to a :class:`InteractivePlotManager`.
     """
 
-    def __init__(self, plot, name, bidirectional, listener_name=None):
+    def __init__(self, plot, name, listener_name=None):
         self.plot = plot
         self.name = name
-        self.bidirectional = bidirectional
         self.listener_name = listener_name

@@ -40,8 +40,7 @@ def plot_confusion_matrix(
     gt_field=None,
     pred_field=None,
     colorscale=None,
-    template="simple_white",
-    height=None,
+    layout=None,
     show=True,
 ):
     """Plots a confusion matrix.
@@ -59,7 +58,8 @@ def plot_confusion_matrix(
         colorscale (None): a plotly colorscale to use
         template ("simple_white"): a plotly template to use. See
             `https://plotly.com/python/templates` for more information
-        height (None): a height for the plot, in pixels
+        layout (None): an optional dict of parameters for
+            ``plotly.graph_objects.Figure.update_layout(**layout)``
         show (True): whether to show the plot
 
     Returns:
@@ -75,13 +75,21 @@ def plot_confusion_matrix(
         )
         ids = None
 
+    if layout is None:
+        layout = {}
+
+    # This template does a good job of hiding the fact that the axis limits
+    # occasionally stretch beyond the domain of the heatmap (despite best
+    # efforts to avoid the stretching...)
+    if "template" not in layout:
+        layout["template"] = "simple_white"
+
     if ids is None:
         return _plot_confusion_matrix_static(
             confusion_matrix,
             labels,
             colorscale=colorscale,
-            template=template,
-            height=height,
+            layout=layout,
             show=show,
         )
 
@@ -92,19 +100,13 @@ def plot_confusion_matrix(
         gt_field=gt_field,
         pred_field=pred_field,
         colorscale=colorscale,
-        template=template,
-        height=height,
+        layout=layout,
         show=show,
     )
 
 
 def _plot_confusion_matrix_static(
-    confusion_matrix,
-    labels,
-    colorscale=None,
-    template=None,
-    height=None,
-    show=True,
+    confusion_matrix, labels, colorscale=None, layout=None, show=True
 ):
     confusion_matrix = np.asarray(confusion_matrix)
     num_rows, num_cols = confusion_matrix.shape
@@ -130,9 +132,6 @@ def _plot_confusion_matrix_static(
 
     figure = pgo.Figure(heatmap)
 
-    if height is not None:
-        figure.update_layout(height=height)
-
     figure.update_layout(
         xaxis=dict(range=[-0.5, num_cols - 0.5], constrain="domain"),
         yaxis=dict(
@@ -144,8 +143,10 @@ def _plot_confusion_matrix_static(
         ),
         xaxis_title="Predicted label",
         yaxis_title="True label",
-        template=template,
     )
+
+    if layout:
+        figure.update_layout(**layout)
 
     if show:
         figure.show()
@@ -160,8 +161,7 @@ def _plot_confusion_matrix_interactive(
     gt_field=None,
     pred_field=None,
     colorscale=None,
-    template=None,
-    height=None,
+    layout=None,
     show=True,
 ):
     confusion_matrix = np.asarray(confusion_matrix)
@@ -184,11 +184,10 @@ def _plot_confusion_matrix_interactive(
         ylabels=labels[:num_rows],
         zlim=zlim,
         colorscale=colorscale,
-        template=template,
     )
 
-    if height is not None:
-        plot._figure.update_layout(height=height)
+    if layout:
+        plot._figure.update_layout(**layout)
 
     if show:
         plot.show()
@@ -197,13 +196,7 @@ def _plot_confusion_matrix_interactive(
 
 
 def plot_pr_curve(
-    precision,
-    recall,
-    label=None,
-    style="area",
-    template=None,
-    height=None,
-    show=True,
+    precision, recall, label=None, style="area", layout=None, show=True
 ):
     """Plots a precision-recall (PR) curve.
 
@@ -213,9 +206,8 @@ def plot_pr_curve(
         label (None): a label for the curve
         style ("area"): a plot style to use. Supported values are
             ``("area", "line")``
-        template (None): a plotly template to use. See
-            `https://plotly.com/python/templates` for more information
-        height (None): a height for the plot, in pixels
+        layout (None): an optional dict of parameters for
+            ``plotly.graph_objects.Figure.update_layout(**layout)``
         show (True): whether to show the plot
 
     Returns:
@@ -238,9 +230,6 @@ def plot_pr_curve(
         type="line", line=dict(dash="dash"), x0=0, x1=1, y0=1, y1=0
     )
 
-    if height is not None:
-        figure.update_layout(height=height)
-
     if label is not None:
         figure.update_layout(title=dict(text=label, x=0.5, xanchor="center"))
 
@@ -251,8 +240,10 @@ def plot_pr_curve(
         ),
         xaxis_title="Recall",
         yaxis_title="Precision",
-        template=template,
     )
+
+    if layout:
+        figure.update_layout(**layout)
 
     if show:
         figure.show()
@@ -260,9 +251,7 @@ def plot_pr_curve(
     return figure
 
 
-def plot_pr_curves(
-    precisions, recall, classes, template=None, height=None, show=True
-):
+def plot_pr_curves(precisions, recall, classes, layout=None, show=True):
     """Plots a set of per-class precision-recall (PR) curves.
 
     Args:
@@ -270,9 +259,8 @@ def plot_pr_curves(
             precision values
         recall: an array of recall values
         classes: the list of classes
-        template (None): a plotly template to use. See
-            `https://plotly.com/python/templates` for more information
-        height (None): a height for the plot, in pixels
+        layout (None): an optional dict of parameters for
+            ``plotly.graph_objects.Figure.update_layout(**layout)``
         show (True): whether to show the plot
 
     Returns:
@@ -308,9 +296,6 @@ def plot_pr_curves(
 
         figure.add_trace(line)
 
-    if height is not None:
-        figure.update_layout(height=height)
-
     figure.update_layout(
         xaxis=dict(range=[0, 1], constrain="domain"),
         yaxis=dict(
@@ -318,8 +303,10 @@ def plot_pr_curves(
         ),
         xaxis_title="Recall",
         yaxis_title="Precision",
-        template=template,
     )
+
+    if layout:
+        figure.update_layout(**layout)
 
     if show:
         figure.show()
@@ -328,13 +315,7 @@ def plot_pr_curves(
 
 
 def plot_roc_curve(
-    fpr,
-    tpr,
-    roc_auc=None,
-    style="area",
-    template=None,
-    height=None,
-    show=True,
+    fpr, tpr, roc_auc=None, style="area", layout=None, show=True
 ):
     """Plots a receiver operating characteristic (ROC) curve.
 
@@ -344,9 +325,8 @@ def plot_roc_curve(
         roc_auc (None): the area under the ROC curve
         style ("area"): a plot style to use. Supported values are
             ``("area", "line")``
-        template (None): a plotly template to use. See
-            `https://plotly.com/python/templates` for more information
-        height (None): a height for the plot, in pixels
+        layout (None): an optional dict of parameters for
+            ``plotly.graph_objects.Figure.update_layout(**layout)``
         show (True): whether to show the plot
 
     Returns:
@@ -369,9 +349,6 @@ def plot_roc_curve(
         type="line", line=dict(dash="dash"), x0=0, x1=1, y0=0, y1=1
     )
 
-    if height is not None:
-        figure.update_layout(height=height)
-
     if roc_auc is not None:
         figure.update_layout(
             title=dict(text="AUC: %.5f" % roc_auc, x=0.5, xanchor="center")
@@ -384,8 +361,10 @@ def plot_roc_curve(
         ),
         xaxis_title="False positive rate",
         yaxis_title="True positive rate",
-        template=template,
     )
+
+    if layout:
+        figure.update_layout(**layout)
 
     if show:
         figure.show()
@@ -400,8 +379,8 @@ def scatterplot(
     field=None,
     labels=None,
     classes=None,
-    template="ggplot2",
-    height=None,
+    marker_size=None,
+    layout=None,
     show=True,
 ):
     """Generates an interactive scatterplot of the given points.
@@ -430,9 +409,9 @@ def scatterplot(
             the points
         classes (None): an optional list of classes whose points to plot.
             Only applicable when ``labels`` contains strings
-        template ("ggplot2"): a plotly template to use. See
-            `https://plotly.com/python/templates` for more information
-        height (None): a height for the plot, in pixels
+        marker_size (None): an optional marker size
+        layout (None): an optional dict of parameters for
+            ``plotly.graph_objects.Figure.update_layout(**layout)``
         show (True): whether to show the plot
 
     Returns:
@@ -460,24 +439,37 @@ def scatterplot(
     if categorical:
         if len(classes) > _MAX_TRACES:
             figure = _plot_scatter_categorical_single_trace(
-                points, values, classes, ids=ids, value_label=value_label
+                points,
+                values,
+                classes,
+                ids=ids,
+                value_label=value_label,
+                marker_size=marker_size,
             )
         else:
             figure = _plot_scatter_categorical(
-                points, values, classes, ids=ids, value_label=value_label
+                points,
+                values,
+                classes,
+                ids=ids,
+                value_label=value_label,
+                marker_size=marker_size,
             )
     else:
         figure = _plot_scatter_numeric(
-            points, values=values, ids=ids, value_label=value_label
+            points,
+            values=values,
+            ids=ids,
+            value_label=value_label,
+            marker_size=marker_size,
         )
 
-    if height is not None:
-        figure.update_layout(height=height)
+    # Since there are no axis labels, take up all available space, except for
+    # 30 pixels at the top for the toolbar
+    figure.update_layout(margin={"r": 0, "t": 30, "l": 0, "b": 0})
 
-    figure.update_layout(
-        margin={"r": 0, "t": 30, "l": 0, "b": 0},
-        template=template,  # https://plotly.com/python/templates
-    )
+    if layout:
+        figure.update_layout(**layout)
 
     if num_dims == 3:
         if samples is not None:
@@ -500,7 +492,10 @@ def scatterplot(
 
     link_type = "labels" if label_field is not None else "samples"
     plot = InteractiveScatter(
-        figure, link_type=link_type, label_fields=label_field
+        figure,
+        link_type=link_type,
+        label_fields=label_field,
+        init_view=samples,
     )
 
     if show:
@@ -604,8 +599,10 @@ def location_scatterplot(
     field=None,
     labels=None,
     classes=None,
-    template="ggplot2",
-    height=None,
+    marker_size=None,
+    style=None,
+    radius=None,
+    layout=None,
     show=True,
 ):
     """Generates an interactive scatterplot of the given location coordinates
@@ -640,9 +637,14 @@ def location_scatterplot(
             the points
         classes (None): an optional list of classes whose points to plot.
             Only applicable when ``labels`` contains strings
-        template ("ggplot2"): a plotly template to use. See
-            `https://plotly.com/python/templates` for more information
-        height (None): a height for the plot, in pixels
+        marker_size (None): an optional marker size
+        style (None): the plot style to use. Only applicable when the color
+            data is numeric. Supported values are ``("scatter", "density")``
+        radius (None): the radius of influence of each lat/lon point. Only
+            applicable when ``style`` is "density". Larger values will make
+            density plots smoother and less detailed
+        layout (None): an optional dict of parameters for
+            ``plotly.graph_objects.Figure.update_layout(**layout)``
         show (True): whether to show the plot
 
     Returns:
@@ -658,6 +660,9 @@ def location_scatterplot(
         locations, samples, label_field, field, labels, classes
     )
 
+    if style not in (None, "scatter", "density"):
+        logger.warning("Ignoring unsupported style '%s'", style)
+
     if field is not None:
         value_label = field
     else:
@@ -666,24 +671,53 @@ def location_scatterplot(
     if categorical:
         if len(classes) > _MAX_TRACES:
             figure = _plot_scatter_mapbox_categorical_single_trace(
-                locations, values, classes, ids=ids, value_label=value_label
+                locations,
+                values,
+                classes,
+                ids=ids,
+                value_label=value_label,
+                marker_size=marker_size,
             )
         else:
             figure = _plot_scatter_mapbox_categorical(
-                locations, values, classes, ids=ids, value_label=value_label
+                locations,
+                values,
+                classes,
+                ids=ids,
+                value_label=value_label,
+                marker_size=marker_size,
             )
+    elif style == "density":
+        figure = _plot_scatter_mapbox_density(
+            locations,
+            values=values,
+            ids=ids,
+            radius=radius,
+            value_label=value_label,
+        )
     else:
         figure = _plot_scatter_mapbox_numeric(
-            locations, values=values, ids=ids, value_label=value_label
+            locations,
+            values=values,
+            ids=ids,
+            value_label=value_label,
+            marker_size=marker_size,
         )
 
-    if height is not None:
-        figure.update_layout(height=height)
+    # Since there are no axis labels, take up all available space, except for
+    # 30 pixels at the top for the toolbar
+    figure.update_layout(margin={"r": 0, "t": 30, "l": 0, "b": 0})
 
-    figure.update_layout(
-        margin={"r": 0, "t": 30, "l": 0, "b": 0},
-        template=template,  # https://plotly.com/python/templates
-    )
+    if layout:
+        figure.update_layout(**layout)
+
+    if style == "density" and not categorical:
+        logger.warning("Density plots do not yet support interactivity")
+
+        if show:
+            figure.show()
+
+        return figure
 
     if not foc.is_notebook_context():
         if samples is not None:
@@ -699,7 +733,10 @@ def location_scatterplot(
 
     link_type = "labels" if label_field is not None else "samples"
     plot = InteractiveScatter(
-        figure, link_type=link_type, label_fields=label_field
+        figure,
+        link_type=link_type,
+        label_fields=label_field,
+        init_view=samples,
     )
 
     if show:
@@ -737,13 +774,12 @@ class InteractivePlotlyPlot(InteractivePlot):
 
     Args:
         widget: a ``plotly.graph_objects.FigureWidget``
-        link_type ("samples"): whether this plot is linked to "samples" or
-            "labels"
-        label_fields (None): an optional list of label fields to which points
-            in this plot correspond. Only applicable when linked to labels
+        **kwargs: keyword arguments for the
+            :class:`fiftyone.utils.plot.interactive.InteractivePlot`
+            constructor
     """
 
-    def __init__(self, widget, link_type="samples", label_fields=None):
+    def __init__(self, widget, **kwargs):
         if not foc.is_notebook_context():
             raise foc.ContextError(
                 "Interactive Plotly plots can only be used in notebooks"
@@ -752,12 +788,33 @@ class InteractivePlotlyPlot(InteractivePlot):
         self._widget = widget
         self._handle = None
 
-        super().__init__(link_type=link_type, label_fields=label_fields)
+        super().__init__(**kwargs)
 
-    def supports_bidirectional_updates(self):
+    def supports_session_updates(self):
         return True
 
-    def _show(self):
+    def show(self, **kwargs):
+        """Shows this plot.
+
+        Args:
+            **kwargs: optional parameters for
+                ``plotly.graph_objects.Figure.update_layout(**kwargs)``
+        """
+        super().show(**kwargs)
+
+    def _show(self, **kwargs):
+        if kwargs:
+            self._widget.update_layout(**kwargs)
+
+        #
+        # @todo if this plot has already been shown in a different cell,
+        # freeze that cell first (like `Session`)
+        #
+        # The freezing part is easy; the trouble is knowing whether we're in
+        # a new cell (technically we could always just freeze, but it can take
+        # some time and I don't want to make the user wait on this...)
+        #
+
         from IPython.display import display
 
         # Create an empty display that we'll use for `freeze()` later
@@ -768,6 +825,10 @@ class InteractivePlotlyPlot(InteractivePlot):
         display(self._widget)
 
     def _freeze(self):
+        self._screenshot()
+        self._widget.close()
+
+    def _screenshot(self):
         from IPython.display import Image
 
         width = self._widget.layout.width
@@ -776,7 +837,6 @@ class InteractivePlotlyPlot(InteractivePlot):
             format="png", height=height, width=width
         )
 
-        self._widget.close()
         self._handle.update(Image(image_bytes))
 
 
@@ -784,37 +844,31 @@ class InteractiveScatter(InteractivePlotlyPlot):
     """Interactive plot wrapper for a Plotly figure containing one or more
     scatter-type traces.
 
-    This plot responds to selection and deselection events triggered on the
-    figure's traces via plotly's lasso and box selector tools.
+    This wrapper responds to selection and deselection events (if available)
+    triggered on the figure's traces via plotly's lasso and box selector tools.
 
     All traces must contain IDs in their ``customdata`` attribute that identify
     the points in the traces.
 
     Args:
         figure: a ``plotly.graph_objects.Figure``
-        link_type ("samples"): whether this plot is linked to "samples" or
-            "labels"
-        label_fields (None): an optional list of label fields to which points
-            in this plot correspond. Only applicable when linked to labels
+        **kwargs: keyword arguments for the
+            :class:`fiftyone.utils.plot.interactive.InteractivePlot`
+            constructor
     """
 
-    def __init__(self, figure, link_type="samples", label_fields=None):
-        widget = pgo.FigureWidget(figure)
-        traces = widget.data
-
-        self._traces = traces
+    def __init__(self, figure, **kwargs):
+        self._figure = figure
+        self._traces = None
         self._trace_ids = {}
         self._ids_to_traces = {}
         self._ids_to_inds = {}
         self._callback_flags = {}
         self._select_callback = None
 
-        self._init_traces()
-        self._init_callback_flags()
+        widget = self._make_widget()
 
-        super().__init__(
-            widget, link_type=link_type, label_fields=label_fields
-        )
+        super().__init__(widget, **kwargs)
 
     def _init_traces(self):
         for idx, trace in enumerate(self._traces):
@@ -860,7 +914,18 @@ class InteractiveScatter(InteractivePlotlyPlot):
     def _register_selection_callback(self, callback):
         self._select_callback = callback
 
-    def _show(self):
+    def _make_widget(self):
+        widget = pgo.FigureWidget(self._figure)
+        self._traces = widget.data
+        self._init_traces()
+        return widget
+
+    def _connect(self):
+        if self.is_disconnected:
+            self._reopen()
+
+        self._init_callback_flags()
+
         def _on_selection(trace, points, selector):
             self._on_select(trace, selector=selector)
 
@@ -871,12 +936,13 @@ class InteractiveScatter(InteractivePlotlyPlot):
             trace.on_selection(_on_selection)
             trace.on_deselect(_on_deselect)
 
-        super()._show()
-
     def _disconnect(self):
         for trace in self._traces:
             trace.on_selection(None)
             trace.on_deselect(None)
+
+    def _reopen(self):
+        self._widget = self._make_widget()
 
     def _select_ids(self, ids):
         if ids is None:
@@ -942,23 +1008,18 @@ class ManualInteractiveScatter(InteractiveScatter):
         figure: a ``plotly.graph_objects.Figure``
         points: a ``num_points x 2`` array of points
         ids: a ``num_points`` array containing the IDs for ``points``
-        link_type ("samples"): whether this plot is linked to "samples" or
-            "labels"
-        label_fields (None): an optional list of label fields to which points
-            in this plot correspond. Only applicable when linked to labels
+        **kwargs: keyword arguments for the
+            :class:`fiftyone.utils.plot.interactive.InteractivePlot`
+            constructor
     """
 
-    def __init__(
-        self, figure, points, ids, link_type="samples", label_fields=None
-    ):
+    def __init__(self, figure, points, ids, **kwargs):
         self._points = points
         self._point_ids = ids
         self._trace_inds = None
         self._ids = None
 
-        super().__init__(
-            figure, link_type=link_type, label_fields=label_fields
-        )
+        super().__init__(figure, **kwargs)
 
     @property
     def _selected_ids(self):
@@ -1015,35 +1076,29 @@ class PlotlyHeatmap(InteractivePlotlyPlot):
         Z: a ``num_cols x num_rows`` array of heatmap values
         ids: an array of same shape as ``Z`` whose elements contain lists
             of IDs for the heatmap cells
-        link_type ("samples"): whether this plot is linked to "samples" or
-            "labels"
-        label_fields (None): an optional list of label fields to which points
-            in this plot correspond. Only applicable when linked to labels
         xlabels (None): a ``num_rows`` array of x labels
         ylabels (None): a ``num_cols`` array of y labels
         colorscale (None): a plotly colorscale to use
-        template (None): a plotly template to use. See
-            `https://plotly.com/python/templates` for more information
         grid_opacity (0.1): an opacity value for the grid points
         bg_opacity (0.25): an opacity value for background (unselected) cells
+        **kwargs: keyword arguments for the
+            :class:`fiftyone.utils.plot.interactive.InteractivePlot`
+            constructor
     """
 
     def __init__(
         self,
         Z,
         ids,
-        link_type="samples",
-        label_fields=None,
         xlabels=None,
         ylabels=None,
         zlim=None,
         colorscale=None,
-        template=None,
         grid_opacity=0.1,
         bg_opacity=0.25,
+        **kwargs,
     ):
         Z = np.asarray(Z)
-
         if zlim is None:
             zlim = [Z.min(), Z.max()]
 
@@ -1053,26 +1108,22 @@ class PlotlyHeatmap(InteractivePlotlyPlot):
         self.ylabels = ylabels
         self.zlim = zlim
         self.colorscale = colorscale
-        self.template = template
         self.grid_opacity = grid_opacity
         self.bg_opacity = bg_opacity
 
-        self._selected_cells = []
-        self._cells_map = {}
-
-        self._figure = None
-        self._widget = None
+        self._figure = self._make_heatmap()
         self._gridw = None
         self._selectedw = None
         self._bgw = None
+
+        self._selected_cells = []
+        self._cells_map = {}
         self._select_callback = None
 
+        widget = self._make_widget()
         self._init_cells_map()
-        self._init_heatmap()
 
-        super().__init__(
-            self._widget, link_type=link_type, label_fields=label_fields
-        )
+        super().__init__(widget, **kwargs)
 
     @property
     def _any_selected(self):
@@ -1089,7 +1140,19 @@ class PlotlyHeatmap(InteractivePlotlyPlot):
     def _register_selection_callback(self, callback):
         self._select_callback = callback
 
-    def _show(self):
+    def _make_widget(self):
+        widget = pgo.FigureWidget(self._figure)
+        gridw, selectedw, bgw = widget.data
+
+        self._gridw = gridw
+        self._selectedw = selectedw
+        self._bgw = bgw
+        return widget
+
+    def _connect(self):
+        if self.is_disconnected:
+            self._reopen()
+
         def _on_click(trace, points, state):
             self._on_click(points.point_inds[0])
 
@@ -1099,11 +1162,12 @@ class PlotlyHeatmap(InteractivePlotlyPlot):
         self._bgw.on_click(_on_click)
         self._gridw.on_selection(_on_selection)
 
-        super()._show()
-
     def _disconnect(self):
         self._bgw.on_click(None)
         self._gridw.on_selection(None)
+
+    def _reopen(self):
+        self._widget = self._make_widget()
 
     def _select_ids(self, ids):
         if ids is None:
@@ -1158,7 +1222,7 @@ class PlotlyHeatmap(InteractivePlotlyPlot):
                 for _id in self.ids[y, x]:
                     self._cells_map[_id] = (x, y)
 
-    def _init_heatmap(self):
+    def _make_heatmap(self):
         Z = self.Z.copy()
 
         num_cols, num_rows = Z.shape
@@ -1219,12 +1283,9 @@ class PlotlyHeatmap(InteractivePlotlyPlot):
                 scaleratio=1,
             ),
             clickmode="event",
-            template=self.template,
         )
 
-        self._figure = figure
-        self._widget = pgo.FigureWidget(figure)
-        self._gridw, self._selectedw, self._bgw = self._widget.data
+        return figure
 
 
 def _plot_scatter_categorical(
@@ -1235,14 +1296,17 @@ def _plot_scatter_categorical(
     ids=None,
     value_label="label",
     size_label="size",
-    max_marker_size=15,
+    marker_size=None,
 ):
     num_dims = points.shape[1]
 
     hover_lines = ["<b>%s: %%{text}</b>" % value_label]
 
     if sizes is not None:
-        sizeref = 0.5 * max(sizes) / max_marker_size
+        if marker_size is None:
+            marker_size = 15  # max marker size
+
+        sizeref = 0.5 * max(sizes) / marker_size
         hover_lines.append("%s: %%{marker.size}" % size_label)
 
     if num_dims == 3:
@@ -1271,6 +1335,8 @@ def _plot_scatter_categorical(
                 sizeref=sizeref,
                 sizemin=4,
             )
+        elif marker_size is not None:
+            marker = dict(size=marker_size)
         else:
             marker = None
 
@@ -1312,7 +1378,7 @@ def _plot_scatter_categorical_single_trace(
     colors=None,
     value_label="label",
     size_label="size",
-    max_marker_size=15,
+    marker_size=None,
 ):
     num_dims = points.shape[1]
 
@@ -1347,14 +1413,19 @@ def _plot_scatter_categorical_single_trace(
     )
 
     if sizes is not None:
+        if marker_size is None:
+            marker_size = 15  # max marker size
+
         marker.update(
             dict(
                 size=sizes,
                 sizemode="diameter",
-                sizeref=0.5 * max(sizes) / max_marker_size,
+                sizeref=0.5 * max(sizes) / marker_size,
                 sizemin=4,
             )
         )
+    elif marker_size is not None:
+        marker.update(dict(size=marker_size))
 
     hover_lines = ["<b>%s: %%{text}</b>" % value_label]
 
@@ -1397,7 +1468,7 @@ def _plot_scatter_numeric(
     colorscale="Viridis",
     value_label="label",
     size_label="size",
-    max_marker_size=15,
+    marker_size=None,
 ):
     num_dims = points.shape[1]
 
@@ -1409,18 +1480,24 @@ def _plot_scatter_numeric(
                 color=values,
                 colorbar=dict(title=value_label, lenmode="fraction", len=1),
                 colorscale=colorscale,
+                showscale=True,
             )
         )
 
     if sizes is not None:
+        if marker_size is None:
+            marker_size = 15  # max marker size
+
         marker.update(
             dict(
                 size=sizes,
                 sizemode="diameter",
-                sizeref=0.5 * max(sizes) / max_marker_size,
+                sizeref=0.5 * max(sizes) / marker_size,
                 sizemin=4,
             )
         )
+    elif marker_size is not None:
+        marker.update(dict(size=marker_size))
 
     hover_lines = []
 
@@ -1465,12 +1542,15 @@ def _plot_scatter_mapbox_categorical(
     ids=None,
     value_label="label",
     size_label="size",
-    max_marker_size=15,
+    marker_size=None,
 ):
     hover_lines = ["<b>%s: %%{text}</b>" % value_label]
 
     if sizes is not None:
-        sizeref = 0.5 * max(sizes) / max_marker_size
+        if marker_size is None:
+            marker_size = 15  # max marker size
+
+        sizeref = 0.5 * max(sizes) / marker_size
         hover_lines.append("%s: %%{marker.size}" % size_label)
 
     hover_lines.append("lat: %{lat:.5f}<br>lon: %{lon:.5f}")
@@ -1496,6 +1576,8 @@ def _plot_scatter_mapbox_categorical(
                 sizeref=sizeref,
                 sizemin=4,
             )
+        elif marker_size is not None:
+            marker = dict(size=marker_size)
         else:
             marker = None
 
@@ -1532,7 +1614,7 @@ def _plot_scatter_mapbox_categorical_single_trace(
     colors=None,
     value_label="label",
     size_label="size",
-    max_marker_size=15,
+    marker_size=None,
 ):
     if colors is None:
         colors = px.colors.qualitative.Plotly
@@ -1565,14 +1647,19 @@ def _plot_scatter_mapbox_categorical_single_trace(
     )
 
     if sizes is not None:
+        if marker_size is None:
+            marker_size = 15  # max marker size
+
         marker.update(
             dict(
                 size=sizes,
                 sizemode="diameter",
-                sizeref=0.5 * max(sizes) / max_marker_size,
+                sizeref=0.5 * max(sizes) / marker_size,
                 sizemin=4,
             )
         )
+    elif marker_size is not None:
+        marker.update(dict(size=marker_size))
 
     hover_lines = ["<b>%s: %%{text}</b>" % value_label]
 
@@ -1615,22 +1702,29 @@ def _plot_scatter_mapbox_numeric(
     colorscale="Viridis",
     value_label="value",
     size_label="size",
-    max_marker_size=15,
+    marker_size=None,
 ):
     marker = dict()
 
     if values is not None:
-        marker.update(dict(color=values, colorscale=colorscale))
+        marker.update(
+            dict(color=values, colorscale=colorscale, showscale=True)
+        )
 
     if sizes is not None:
+        if marker_size is None:
+            marker_size = 15  # max marker size
+
         marker.update(
             dict(
                 size=sizes,
                 sizemode="diameter",
-                sizeref=0.5 * max(sizes) / max_marker_size,
+                sizeref=0.5 * max(sizes) / marker_size,
                 sizemin=4,
             )
         )
+    elif marker_size is not None:
+        marker.update(dict(size=marker_size))
 
     hover_lines = []
 
@@ -1657,6 +1751,47 @@ def _plot_scatter_mapbox_numeric(
     )
 
     figure = pgo.Figure(scatter)
+
+    zoom, (center_lon, center_lat) = _compute_zoom_center(coords)
+    figure.update_layout(
+        mapbox_style="carto-positron",
+        mapbox=dict(center=dict(lat=center_lat, lon=center_lon), zoom=zoom),
+    )
+
+    return figure
+
+
+def _plot_scatter_mapbox_density(
+    coords,
+    values=None,
+    ids=None,
+    radius=None,
+    colorscale="Viridis",
+    value_label="value",
+):
+    hover_lines = []
+
+    if values is not None:
+        hover_lines = ["<b>%s: %%{}</b>" % value_label]
+
+    hover_lines.append("lat: %{lat:.5f}<br>lon: %{lon:.5f}")
+
+    if ids is not None:
+        hover_lines.append("ID: %{customdata}")
+
+    hovertemplate = "<br>".join(hover_lines) + "<extra></extra>"
+
+    density = pgo.Densitymapbox(
+        lat=coords[:, 1],
+        lon=coords[:, 0],
+        z=values,
+        radius=radius,
+        customdata=ids,
+        colorscale=colorscale,
+        hovertemplate=hovertemplate,
+    )
+
+    figure = pgo.Figure(density)
 
     zoom, (center_lon, center_lat) = _compute_zoom_center(coords)
     figure.update_layout(
