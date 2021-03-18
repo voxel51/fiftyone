@@ -70,9 +70,9 @@ const Check = ({
     >
       <Checkbox
         ref={ref}
-        disabled={disabled}
         indeterminate={checkmark === null}
-        onChange={() => !disabled && onCheck}
+        disabled={disabled}
+        onChange={() => !disabled && onCheck()}
         checked={checkmark === CheckState.ADD || checkmark === null}
         style={{
           color: edited ? theme.brand : theme.fontDark,

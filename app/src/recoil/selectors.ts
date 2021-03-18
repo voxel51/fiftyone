@@ -679,13 +679,16 @@ export const sampleIds = selector<{ [key: number]: string }>({
 
 export const modalLabelAttrs = selectorFamily<
   [string, string | null | number],
-  { field: string; id: string }
+  { field: string; id: string; frameNumber?: number }
 >({
   key: "modalLabelAttrs",
-  get: ({ field, id }) => ({ get }) => {
-    const sample = get(modalSample);
+  get: ({ field, id, frameNumber }) => ({ get }) => {
+    let sample = get(modalSample);
     const type = get(labelTypesMap)[field];
     let label = sample[field];
+    if (get(isVideoDataset)) {
+      frames = get(atoms.sampleFrameData(sample._id))[frameNumber];
+    }
     if (VALID_LIST_TYPES.includes(type)) {
       label = label[type.toLocaleLowerCase()].filter((l) => l._id === id)[0];
     }
@@ -716,7 +719,7 @@ export const modalLabelAttrs = selectorFamily<
 
 export const modalLabelTags = selectorFamily<
   string[],
-  { field: string; id: string }
+  { field: string; id: string; frameNumber?: number }
 >({
   key: "modalLabelTags",
   get: (params) => ({ get }) => {

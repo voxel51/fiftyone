@@ -149,8 +149,10 @@ const useTarget = (field, target) => {
   return getTarget(field, target);
 };
 
-const AttrInfo = ({ field, id, children }) => {
-  const attrs = useRecoilValue(selectors.modalLabelAttrs({ field, id }));
+const AttrInfo = ({ field, id, frameNumber, children = null }) => {
+  const attrs = useRecoilValue(
+    selectors.modalLabelAttrs({ field, id, frameNumber })
+  );
   let entries = attrs.filter(([k, v]) => k !== "tags");
   if (!entries || !entries.length) {
     return null;
@@ -180,7 +182,11 @@ const AttrInfo = ({ field, id, children }) => {
 const ClassificationInfo = ({ info }) => {
   return (
     <AttrBlock style={{ borderColor: info.color }}>
-      <AttrInfo field={info.field} id={info.id} />
+      <AttrInfo
+        field={info.field}
+        id={info.id}
+        frameNumber={info.frameNumber}
+      />
     </AttrBlock>
   );
 };
@@ -188,7 +194,11 @@ const ClassificationInfo = ({ info }) => {
 const DetectionInfo = ({ info }) => {
   return (
     <AttrBlock style={{ borderColor: info.color }}>
-      <AttrInfo field={info.field} id={info.id} />
+      <AttrInfo
+        field={info.field}
+        id={info.id}
+        frameNumber={info.frameNumber}
+      />
     </AttrBlock>
   );
 };
@@ -196,7 +206,7 @@ const DetectionInfo = ({ info }) => {
 const KeypointInfo = ({ info }) => {
   return (
     <AttrBlock style={{ borderColor: info.color }}>
-      <AttrInfo field={info.field} id={info.id}>
+      <AttrInfo field={info.field} id={info.id} frameNumber={info.frameNumber}>
         <ContentItem
           key={"# keypoints"}
           name={"# keypoints"}
@@ -213,7 +223,11 @@ const MaskInfo = ({ info }) => {
   return (
     <AttrBlock style={{ borderColor: info.color }}>
       <ContentItem key={"target-value"} name={"label"} value={targetValue} />
-      <AttrInfo field={info.field} id={info.id} />
+      <AttrInfo
+        field={info.field}
+        id={info.id}
+        frameNumber={info.frameNumber}
+      />
     </AttrBlock>
   );
 };
@@ -221,7 +235,7 @@ const MaskInfo = ({ info }) => {
 const PolylineInfo = ({ info }) => {
   return (
     <AttrBlock style={{ borderColor: info.color }}>
-      <AttrInfo field={info.field} id={info.id}>
+      <AttrInfo field={info.field} id={info.id} frameNumber={info.frameNumber}>
         <ContentItem key={"# points"} name={"# points"} value={info.points} />
       </AttrInfo>
     </AttrBlock>
@@ -249,8 +263,10 @@ const OVERLAY_INFO = {
   polyline: PolylineInfo,
 };
 
-const TagInfo = ({ field, id }) => {
-  const tags = useRecoilValue(selectors.modalLabelTags({ field, id }));
+const TagInfo = ({ field, id, frameNumber }) => {
+  const tags = useRecoilValue(
+    selectors.modalLabelTags({ field, id, frameNumber })
+  );
   if (!tags.length) return null;
   return (
     <TagBlock>
@@ -309,8 +325,15 @@ const TooltipInfo = ({ player, moveRef }) => {
         >
           <ContentHeader key="header">{overlay.field}</ContentHeader>
           <Border color={overlay.color} id={overlay.id} />
-          <TagInfo key={"tags"} field={overlay.field} id={overlay.id} />
-
+          <TagInfo
+            key={"tags"}
+            field={overlay.field}
+            id={overlay.id}
+            frameNumber={info.frameNumber}
+          />
+          {overlay.frameNumber && (
+            <ContentItem name={"frame_number"} value={overlay.frameNumber} />
+          )}
           <Component key={"attrs"} info={overlay} />
         </TooltipDiv>,
         document.body
