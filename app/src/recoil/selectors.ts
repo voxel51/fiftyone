@@ -696,9 +696,14 @@ export const modalLabelAttrs = selectorFamily<
   get: ({ field, id, frameNumber }) => ({ get }) => {
     let sample = get(modalSample);
     const type = get(labelTypesMap)[field];
-    if (get(isVideoDataset)) {
+    if (get(isVideoDataset) && field.startsWith("frames.")) {
       field = field.slice("frames.".length);
       sample = get(sampleFramesMap(sample._id))[frameNumber];
+      if (!sample && frameNumber === 1) {
+        sample = get(modalSample).frames;
+      } else if (!sample) {
+        return [];
+      }
     }
 
     let label = sample[field];
@@ -736,10 +741,14 @@ export const modalLabelTags = selectorFamily<
 >({
   key: "modalLabelTags",
   get: (params) => ({ get }) => {
-    const tags = get(modalLabelAttrs(params)).filter(
-      ([k, v]) => k === "tags"
-    )[0][1];
-    return tags ? Array.from(tags) : [];
+    const all = get(modalLabelAttrs(params));
+    if (all.length) {
+      const tags = get(modalLabelAttrs(params)).filter(
+        ([k, v]) => k === "tags"
+      )[0][1];
+      return tags ? Array.from(tags) : [];
+    }
+    return [];
   },
 });
 

@@ -23,14 +23,13 @@ const Tag = ({ modal }) => {
   const selected = useRecoilValue(
     modal ? selectors.selectedLabelIds : atoms.selectedSamples
   );
-  const loading = !useRecoilValue(canTag);
   const tagging = useRecoilValue(selectors.anyTagging);
   const theme = useTheme();
   const ref = useRef();
   useOutsideClick(ref, () => open && setOpen(false));
   const [mRef, bounds] = useMeasure();
 
-  const disabled = loading || tagging;
+  const disabled = tagging;
 
   return (
     <ActionDiv ref={ref}>

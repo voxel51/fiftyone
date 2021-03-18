@@ -737,7 +737,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         view = state.view or state.dataset
         col = cls.sample_collection()
         if view.media_type == fom.VIDEO:
-            samples = _get_video_data(col, state, view, sample_ids)
+            samples = await _get_video_data(col, state, view, sample_ids)
             result = [
                 {"sample": s, "frames": f, "labels": l}
                 for (s, f, l) in samples

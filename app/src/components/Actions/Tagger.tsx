@@ -353,6 +353,15 @@ const useTagCallback = (modal, targetLabels) => {
   );
 };
 
+const Loader = () => {
+  const theme = useTheme();
+  return (
+    <div style={{ display: "flex", justifyContent: "center" }}>
+      <CircularProgress style={{ color: theme.fontDark, margin: "1rem 0" }} />
+    </div>
+  );
+};
+
 const usePlaceHolder = (
   modal: boolean,
   labels: boolean
@@ -425,7 +434,7 @@ const Tagger = ({ modal, bounds, close }: TaggerProps) => {
         </SwitchDiv>
       </SwitcherDiv>
       {labels && (
-        <Suspense fallback={<CircularProgress />} key={"labels"}>
+        <Suspense fallback={<Loader />} key={"labels"}>
           <Section
             countAndPlaceholder={placeholder}
             submit={submit}
@@ -437,7 +446,7 @@ const Tagger = ({ modal, bounds, close }: TaggerProps) => {
         </Suspense>
       )}
       {!labels && (
-        <Suspense fallback={<CircularProgress />} key={"samples"}>
+        <Suspense fallback={<Loader />} key={"samples"}>
           <Section
             countAndPlaceholder={placeholder}
             submit={submit}

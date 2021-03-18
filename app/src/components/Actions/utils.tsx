@@ -186,7 +186,21 @@ const labelModalTagCounts = selector<{ [key: string]: number }>({
         }
       }
     } else {
-      const sample = get(sampleModalFilter)(get(selectors.modalSample));
+      const filter = get(sampleModalFilter);
+      const sample = filter(get(selectors.modalSample));
+      if (get(selectors.isVideoDataset)) {
+        const frames = get(atoms.sampleFrameData(sample._id));
+        frames.forEach((frame) => {
+          frame = filter(frame, "frames.");
+          for (const field in frame) {
+            if (!frame[field] || !VALID_LABEL_TYPES.includes(frame[field]._cls))
+              continue;
+
+            const label = frame[field];
+            addLabelToTagsResult(result, label);
+          }
+        });
+      }
 
       for (const field in sample) {
         if (!sample[field] || !VALID_LABEL_TYPES.includes(sample[field]._cls))
@@ -196,7 +210,6 @@ const labelModalTagCounts = selector<{ [key: string]: number }>({
         addLabelToTagsResult(result, label);
       }
     }
-
     return result;
   },
 });
