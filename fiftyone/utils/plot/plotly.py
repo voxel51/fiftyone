@@ -921,9 +921,6 @@ class InteractiveScatter(InteractivePlotlyPlot):
         return widget
 
     def _connect(self):
-        if self.is_disconnected:
-            self._reopen()
-
         self._init_callback_flags()
 
         def _on_selection(trace, points, selector):
@@ -1150,9 +1147,6 @@ class PlotlyHeatmap(InteractivePlotlyPlot):
         return widget
 
     def _connect(self):
-        if self.is_disconnected:
-            self._reopen()
-
         def _on_click(trace, points, state):
             self._on_click(points.point_inds[0])
 

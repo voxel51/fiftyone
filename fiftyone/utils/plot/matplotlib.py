@@ -553,10 +553,6 @@ class InteractiveMatplotlibPlot(InteractivePlot):
         """Shows this plot."""
         super().show()
 
-    def _connect(self):
-        if self.is_disconnected:
-            self._reopen()
-
     def _show(self, **_):
         plt.show(block=False)
 
@@ -694,8 +690,6 @@ class InteractiveCollection(InteractiveMatplotlibPlot):
         self._canvas = self._init_canvas(self._figure)
 
     def _connect(self):
-        super()._connect()
-
         self._init_hud()
         self._lasso = LassoSelector(self.ax, onselect=self._on_select)
 

@@ -48,6 +48,7 @@ class InteractivePlot(object):
 
         self._connected = False
         self._disconnected = False
+        self._frozen = False
 
     @property
     def supports_session_updates(self):
@@ -67,6 +68,11 @@ class InteractivePlot(object):
     def is_disconnected(self):
         """Whether this plot is currently disconnected."""
         return self._disconnected
+
+    @property
+    def is_frozen(self):
+        """Whether this plot is currently frozen."""
+        return self._frozen
 
     @property
     def any_selected(self):
@@ -150,6 +156,10 @@ class InteractivePlot(object):
         if self.is_connected:
             return
 
+        if self.is_frozen:
+            self._reopen()
+            self._frozen = False
+
         self._connect()
         self._connected = True
         self._disconnected = False
@@ -169,6 +179,9 @@ class InteractivePlot(object):
         self._show(**kwargs)
 
     def _show(self, **kwargs):
+        pass
+
+    def _reopen(self):
         pass
 
     def reset(self):
@@ -203,6 +216,8 @@ class InteractivePlot(object):
             raise foc.ContextError("Plots can only be frozen in notebooks")
 
         self._freeze()
+        self._frozen = True
+
         self.disconnect()
 
     def _freeze(self):
@@ -337,14 +352,12 @@ class InteractivePlotManager(object):
             raise ValueError("No plot found with name '%s'" % name)
 
         plot = self.plots.pop(name)
+        _plot = plot.plot
 
-        if (
-            plot.plot.supports_session_updates
-            and plot.listener_name is not None
-        ):
+        if _plot.supports_session_updates and plot.listener_name is not None:
             self.session.delete_listener(plot.listener_name)
 
-        return plot.plot
+        return _plot
 
     def connect(self):
         """Connects this manager to its session and all plots."""
@@ -354,31 +367,36 @@ class InteractivePlotManager(object):
         for name in self.plots:
             self._connect_plot(name)
 
-        self.sync()
-
         self._connected = True
         self._disconnected = False
 
+        self.sync()
+
     def _connect_plot(self, name):
         plot = self.plots[name]
-
-        plot.plot.connect()
+        _plot = plot.plot
 
         def _on_plot_selection(ids):
             self._on_plot_selection(name, ids)
 
-        plot.plot.register_selection_callback(_on_plot_selection)
-        plot.plot.register_sync_callback(self.sync)
-        plot.plot.register_disconnect_callback(self.disconnect)
+        _plot.register_selection_callback(_on_plot_selection)
+        _plot.register_sync_callback(self.sync)
+        _plot.register_disconnect_callback(self.disconnect)
 
-        if plot.plot.supports_session_updates:
-            if self.session.has_listener(name):
+        if _plot.supports_session_updates:
+            if (
+                self.session.has_listener(name)
+                and not _plot.is_connected
+                and not _plot.is_disconnected
+            ):
                 logger.warning(
                     "Overwriting existing listener with key '%s'", name
                 )
 
             plot.listener_name = name
             self.session.add_listener(name, self._on_session_update)
+
+        _plot.connect()
 
     def disconnect(self):
         """Connects this manager from its session and all plots."""
@@ -393,11 +411,12 @@ class InteractivePlotManager(object):
 
     def _disconnect_plot(self, name):
         plot = self.plots[name]
+        _plot = plot.plot
 
-        if plot.plot.supports_session_updates:
+        if _plot.supports_session_updates:
             self.session.delete_listener(plot.listener_name)
 
-        plot.plot.disconnect()
+        _plot.disconnect()
 
     def reset(self):
         """Resets the session and all plots to their initial view."""
@@ -430,8 +449,9 @@ class InteractivePlotManager(object):
         self.session.freeze()
 
         for plot in self.plots.values():
-            if plot.plot.is_connected:
-                plot.plot.freeze()
+            _plot = plot.plot
+            if _plot.is_connected:
+                _plot.freeze()
 
         self.disconnect()
 
