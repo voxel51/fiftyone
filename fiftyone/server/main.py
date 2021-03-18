@@ -621,7 +621,10 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             _id: a sample _id
         """
         state = fos.StateDescription.from_dict(StateHandler.state)
-        view = state.view or state.dataset
+        if state.view is not None:
+            view = state.view
+        else:
+            view = state.dataset
 
         result = await _get_video_data(
             self.sample_collection(), state, view, [_id]
@@ -643,7 +646,11 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         caller, changes, target_labels=False, active_labels=None,
     ):
         state = fos.StateDescription.from_dict(StateHandler.state)
-        view = state.view or state.dataset
+        if state.view is not None:
+            view = state.view
+        else:
+            view = state.dataset
+
         view = _get_extended_view(view, state.filters)
         if state.selected:
             view = view.select(state.selected)
@@ -687,7 +694,10 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         caller, changes, sample_id=None, labels=None,
     ):
         state = fos.StateDescription.from_dict(StateHandler.state)
-        view = state.view or state.dataset
+        if state.view is not None:
+            view = state.view
+        else:
+            view = state.dataset
 
         if sample_id:
             sample_ids = [sample_id]
@@ -711,7 +721,11 @@ class StateHandler(tornado.websocket.WebSocketHandler):
     @staticmethod
     async def on_selected_statistics(caller, active_labels=[]):
         state = fos.StateDescription.from_dict(StateHandler.state)
-        view = state.view or state.dataset
+        if state.view is not None:
+            view = state.view
+        else:
+            view = state.dataset
+
         view = _get_extended_view(view, state.filters)
         view = view.select(state.selected).select_fields(active_labels)
 
@@ -736,14 +750,17 @@ class StateHandler(tornado.websocket.WebSocketHandler):
     @classmethod
     async def send_samples(cls, sample_ids):
         state = fos.StateDescription.from_dict(StateHandler.state)
-        view = state.view or state.dataset
+        if state.view is not None:
+            view = state.view
+        else:
+            view = state.dataset
+
         col = cls.sample_collection()
         if view.media_type == fom.VIDEO:
-            samples = await _get_video_data(col, state, view, sample_ids)
-            result = [
-                {"sample": s, "frames": f, "labels": l}
-                for (s, f, l) in samples
-            ]
+            samples = await _get_video_data(
+                col, state, view, sample_ids, labels=False
+            )
+            result = [{"sample": s, "frames": f} for (s, f) in samples]
         else:
             view = view.select(sample_ids)
             result, _ = await _get_sample_data(col, view, len(sample_ids), 1)
@@ -1212,7 +1229,7 @@ async def _get_sample_data(col, view, page_length, page):
     return results, more
 
 
-async def _get_video_data(col, state, view, _ids):
+async def _get_video_data(col, state, view, _ids, labels=True):
     view = view.select(_ids)
     pipeline = view._pipeline()
     results = []
@@ -1222,9 +1239,15 @@ async def _get_video_data(col, state, view, _ids):
             sample["frames"] = frames[0]
         else:
             sample["frames"] = None
+
+        convert([sample])
         convert(frames)
-        labels = _make_video_labels(state, view, sample, frames)
-        results.append((sample, frames, labels))
+
+        if labels:
+            labels = _make_video_labels(state, view, sample, frames)
+            results.append((sample, frames, labels))
+        else:
+            results.append((sample, frames))
 
     return results
 

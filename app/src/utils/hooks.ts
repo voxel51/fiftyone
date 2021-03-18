@@ -160,10 +160,9 @@ export const useVideoData = (socket, id, callback = null) => {
 export const useSampleUpdate = () => {
   const handler = useRecoilCallback(
     ({ set }) => async ({ samples }) => {
-      samples.forEach(({ sample, frames, labels }) => {
+      samples.forEach(({ sample, frames }) => {
         set(atoms.sample(sample._id), sample);
         frames && set(atoms.sampleFrameData(sample._id), frames);
-        labels && set(atoms.sampleVideoLabels(sample._id), labels);
       });
       set(selectors.anyTagging, false);
     },
