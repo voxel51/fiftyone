@@ -181,6 +181,9 @@ def scatterplot(
 ):
     """Generates an interactive scatterplot of the given points.
 
+    This method supports 2D or 3D visualizations, but interactive point
+    selection is only aviailable in 2D.
+
     You can use the ``field`` or ``labels`` parameters to define a coloring for
     the points.
 

@@ -49,9 +49,12 @@ class DatasetView(foc.SampleCollection):
         dataset: a :class:`fiftyone.core.dataset.Dataset`
     """
 
-    def __init__(self, dataset):
+    def __init__(self, dataset, _stages=None):
+        if _stages is None:
+            _stages = []
+
         self.__dataset__ = dataset
-        self._stages = []
+        self._stages = _stages
 
     def __eq__(self, other_view):
         if not isinstance(other_view, DatasetView):
@@ -94,9 +97,8 @@ class DatasetView(foc.SampleCollection):
             )
 
     def __copy__(self):
-        view = self.__class__(self._dataset)
-        view._stages = deepcopy(self._stages)
-        return view
+        _stages = deepcopy(self._stages)
+        return self.__class__(self._dataset, _stages=_stages)
 
     @property
     def _dataset(self):
@@ -224,7 +226,10 @@ class DatasetView(foc.SampleCollection):
             return "    ---"
 
         return "    " + "\n    ".join(
-            ["%d. %s" % (idx, str(d)) for idx, d in enumerate(self._stages, 1)]
+            [
+                "%d. %s" % (idx, str(stage))
+                for idx, stage in enumerate(self._stages, 1)
+            ]
         )
 
     def view(self):
@@ -648,8 +653,8 @@ class DatasetView(foc.SampleCollection):
         return d
 
     def _needs_frames(self):
-        for s in self._stages:
-            if s._needs_frames(self):
+        for stage in self._stages:
+            if stage._needs_frames(self):
                 return True
 
         return False
@@ -661,9 +666,11 @@ class DatasetView(foc.SampleCollection):
         detach_frames=False,
         frames_only=False,
     ):
+        _view = self._dataset.view()
         _pipeline = []
-        for s in self._stages:
-            _pipeline.extend(s.to_mongo(self))
+        for stage in self._stages:
+            _view = _view.add_stage(stage)
+            _pipeline.extend(stage.to_mongo(_view))
 
         if pipeline is not None:
             _pipeline.extend(pipeline)

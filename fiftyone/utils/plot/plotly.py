@@ -1145,7 +1145,7 @@ class PlotlyHeatmap(InteractivePlotlyPlot):
 
         return list(
             itertools.chain.from_iterable(
-                self.ids[x, y] for x, y in self._selected_cells
+                self.ids[y, x] for x, y in self._selected_cells
             )
         )
 
@@ -1163,7 +1163,8 @@ class PlotlyHeatmap(InteractivePlotlyPlot):
 
     def _connect(self):
         def _on_click(trace, points, state):
-            self._on_click(points.point_inds[0])
+            y, x = points.point_inds[0]
+            self._on_click((x, y))
 
         def _on_selection(trace, points, state):
             self._on_selection(points.point_inds)
@@ -1192,7 +1193,6 @@ class PlotlyHeatmap(InteractivePlotlyPlot):
         self._select(list(cells))
 
     def _on_click(self, cell):
-        cell = tuple(cell)
         num_selected = len(self._selected_cells)
 
         self._gridw.selectedpoints = None
@@ -1205,8 +1205,10 @@ class PlotlyHeatmap(InteractivePlotlyPlot):
             self._select([cell])
 
     def _on_selection(self, point_inds):
+        # point_inds are linear indices into the flattened meshgrid of points
+        # from `_make_heatmap()`
         if point_inds:
-            x, y = np.unravel_index(point_inds, self.Z.shape)
+            y, x = np.unravel_index(point_inds, self.Z.shape)
             cells = list(zip(x, y))
             self._select(cells)
         else:
@@ -1221,7 +1223,7 @@ class PlotlyHeatmap(InteractivePlotlyPlot):
 
         if cells:
             x, y = zip(*cells)
-            Zactive[x, y] = self.Z[x, y]
+            Zactive[y, x] = self.Z[y, x]
 
         self._selected_cells = cells
         self._selectedw.z = Zactive
@@ -1239,9 +1241,9 @@ class PlotlyHeatmap(InteractivePlotlyPlot):
     def _init_cells_map(self):
         num_rows, num_cols = self.Z.shape
         self._cells_map = {}
-        for y in range(num_cols):
-            for x in range(num_rows):
-                for _id in self.ids[x, y]:
+        for y in range(num_rows):
+            for x in range(num_cols):
+                for _id in self.ids[y, x]:
                     self._cells_map[_id] = (x, y)
 
     def _make_heatmap(self):
