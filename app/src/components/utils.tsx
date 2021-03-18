@@ -121,11 +121,8 @@ const PillButtonDiv = animated(styled.div`
   font-weight: bold;
   display: flex;
   justify-content: space-between;
-  box-shadow: 0 1px 0 ${({ theme }) => theme.backgroundDarker};
+  opacity: 1;
 
-  &.hidden {
-    background-color: ${({ theme }) => theme.brand};
-  }
   & > span {
     margin: 0 0.25rem;
   }

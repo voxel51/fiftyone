@@ -46,10 +46,10 @@ const IconsContainer = styled.div`
   position: absolute;
   z-index: 904;
   top: 1rem;
-  padding: 0.5rem;
+  padding: 14px 0.5rem;
+  height: 52px;
   border-radius: 3px;
   right: 0;
-  display: flex;
   background-image: linear-gradient(
     to right,
     rgba(255, 0, 0, 0),
@@ -58,7 +58,14 @@ const IconsContainer = styled.div`
   );
 
   & > * {
-    margin-top: 5px;
+    height: 100%;
+  }
+
+  & > * > {
+    display: flex;
+    justify-content: center;
+    align-content: center;
+    flex-direction: column;
   }
 `;
 
