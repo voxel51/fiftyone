@@ -699,7 +699,9 @@ class StateHandler(tornado.websocket.WebSocketHandler):
 
             sample_ids = list({label["sample_id"] for label in labels})
             tag_view = view.select_labels(labels=labels)
-            fosu.change_label_tags(tag_view, changes)
+
+            fields = {label["field"] for label in labels}
+            fosu.change_label_tags(tag_view, changes, label_fields=fields)
 
         asyncio.gather(
             StateHandler.send_samples(sample_ids),
