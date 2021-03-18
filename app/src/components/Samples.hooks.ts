@@ -1,5 +1,5 @@
-import { useEffect, useLayoutEffect, useState } from "react";
-import { useRecoilCallback, useRecoilValue, useResetRecoilState } from "recoil";
+import { useLayoutEffect, useState } from "react";
+import { useRecoilCallback, useRecoilValue } from "recoil";
 
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
@@ -31,7 +31,6 @@ export default () => {
     hasMore: true,
     pageToLoad: 1,
   });
-  const resetRows = useResetRecoilState(atoms.gridRows);
 
   const handlePage = useRecoilCallback(
     ({ snapshot, set }) => async ({ results, more }) => {
@@ -49,14 +48,31 @@ export default () => {
 
   useMessageHandler("page", handlePage);
 
+  const clearPage = useRecoilCallback(
+    ({ snapshot, reset }) => async () => {
+      setState({
+        loadMore: false,
+        isLoading: false,
+        hasMore: true,
+        pageToLoad: 1,
+      });
+      const clearSample = (id) => {
+        reset(atoms.sample(id));
+        reset(atoms.sampleDimensions(id));
+        reset(atoms.sampleFrameData(id));
+        reset(atoms.sampleFrameRate(id));
+        reset(atoms.sampleVideoLabels(id));
+      };
+      reset(atoms.gridRows);
+      const rows = await snapshot.getPromise(atoms.gridRows);
+      rows.rows.forEach(({ samples }) => samples.forEach(clearSample));
+      rows.remainder.forEach(({ sample }) => clearSample(sample._id));
+    },
+    []
+  );
+
   useLayoutEffect(() => {
-    setState({
-      loadMore: false,
-      isLoading: false,
-      hasMore: true,
-      pageToLoad: 1,
-    });
-    resetRows();
+    clearPage();
   }, [filterView(view), datasetName, refresh, stringifyObj(filters)]);
 
   useLayoutEffect(() => {
