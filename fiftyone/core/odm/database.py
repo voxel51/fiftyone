@@ -47,26 +47,13 @@ def aggregate(collection, pipeline):
     """Executes an aggregation on a collection
 
     Args:
-        collection: a `pymongo.collection.Collection`
+        collection: a `pymongo.collection.Collection` or
+            `motor.motor_tornado.MotorCollection`
         pipeline: a valid MongoDB aggregation pipeline
         
     Returns:
-        a `pymongo.command_cursor.CommandCursor`
-    """
-    return collection.aggregate(
-        pipeline, allowDiskUse=fo.config.allow_query_disk_use
-    )
-
-
-def async_aggregate(collection, pipeline):
-    """Executes an async aggregation on a collection
-
-    Args:
-        collection: a `motor.motor_tornado.MotorCollection`
-        pipeline: a valid MongoDB aggregation pipeline
-        
-    Returns:
-        a `motor.motor_tornado.MotorCursor`
+        a `pymongo.command_cursor.CommandCursor` or
+            `motor.motor_tornado.MotorCommandCursor`
     """
     return collection.aggregate(
         pipeline, allowDiskUse=fo.config.allow_query_disk_use

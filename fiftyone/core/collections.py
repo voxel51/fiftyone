@@ -4340,9 +4340,7 @@ class SampleCollection(object):
         # pylint: disable=no-member
         pipeline = self._pipeline(pipeline=facets)
 
-        result = await foo.async_aggregate(
-            sample_collection, pipeline
-        ).to_list(1)
+        result = await foo.aggregate(sample_collection, pipeline).to_list(1)
         result = result[0]
 
         return self._process_aggregations(aggregations, result, scalar_result)
