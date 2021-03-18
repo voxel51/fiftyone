@@ -308,14 +308,7 @@ class COCODetectionResults(DetectionResults):
         self.iou_threshs = np.asarray(iou_threshs)
         self._classwise_AP = np.mean(precision, axis=(0, 2))
 
-    def plot_pr_curves(
-        self,
-        classes=None,
-        backend=None,
-        show=True,
-        return_figure=False,
-        **kwargs,
-    ):
+    def plot_pr_curves(self, classes=None, backend=None, show=True, **kwargs):
         """Plots precision-recall (PR) curves for the results.
 
         Args:
@@ -324,16 +317,15 @@ class COCODetectionResults(DetectionResults):
             backend (None): the plotting backend to use. Supported values are
                 ``("plotly", "matplotlib")``. If no backend is specified, the
                 best applicable backend is chosen
-            show (True): whether to show the plot
-            return_figure (False): whether to return the figure
+            show (True): whether to show the plot (True) or return the figure
+                without showing it
             **kwargs: keyword arguments for the backend plotting method:
 
                 -   "plotly" backend: :meth:`fiftyone.utils.plot.plotly.plot_pr_curves`
                 -   "matplotlib" backend: :meth:`fiftyone.utils.plot.matplotlib.plot_pr_curves`
 
         Returns:
-            None, or the figure containing the plot if ``return_figure`` is
-            True
+            None, or the figure containing the plot if ``show`` is True
         """
         if not classes:
             inds = np.argsort(self._classwise_AP)[::-1][:3]
@@ -353,7 +345,7 @@ class COCODetectionResults(DetectionResults):
             **kwargs,
         )
 
-        return figure if return_figure else None
+        return figure if not show else None
 
     def mAP(self, classes=None):
         """Computes COCO-style mean average precision (mAP) for the specified

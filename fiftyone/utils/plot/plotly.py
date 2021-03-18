@@ -30,9 +30,6 @@ mpl = fou.lazy_import("matplotlib")
 logger = logging.getLogger(__name__)
 
 
-_MAX_TRACES = 25
-
-
 def plot_confusion_matrix(
     confusion_matrix,
     labels,
@@ -379,6 +376,7 @@ def scatterplot(
     field=None,
     labels=None,
     classes=None,
+    multi_trace=None,
     marker_size=None,
     layout=None,
     show=True,
@@ -409,6 +407,9 @@ def scatterplot(
             the points
         classes (None): an optional list of classes whose points to plot.
             Only applicable when ``labels`` contains strings
+        multi_trace (None): whether to render each class as a separate trace.
+            Only applicable when ``labels`` contains strings. By default, this
+            will be true if there are up to 25 classes
         marker_size (None): an optional marker size
         layout (None): an optional dict of parameters for
             ``plotly.graph_objects.Figure.update_layout(**layout)``
@@ -437,8 +438,11 @@ def scatterplot(
         value_label = "label"
 
     if categorical:
-        if len(classes) > _MAX_TRACES:
-            figure = _plot_scatter_categorical_single_trace(
+        if multi_trace is None:
+            multi_trace = len(classes) <= 25
+
+        if multi_trace:
+            figure = _plot_scatter_categorical(
                 points,
                 values,
                 classes,
@@ -447,7 +451,7 @@ def scatterplot(
                 marker_size=marker_size,
             )
         else:
-            figure = _plot_scatter_categorical(
+            figure = _plot_scatter_categorical_single_trace(
                 points,
                 values,
                 classes,
@@ -571,8 +575,10 @@ def _get_ids_for_points(points, samples, label_field=None):
 
 
 def _parse_data(points, labels, classes):
-    if not labels:
+    if labels is None:
         return points, None, None, None, False
+
+    labels = np.asarray(labels)
 
     if not etau.is_str(labels[0]):
         return points, labels, None, None, False
@@ -599,6 +605,7 @@ def location_scatterplot(
     field=None,
     labels=None,
     classes=None,
+    multi_trace=None,
     marker_size=None,
     style=None,
     radius=None,
@@ -637,6 +644,9 @@ def location_scatterplot(
             the points
         classes (None): an optional list of classes whose points to plot.
             Only applicable when ``labels`` contains strings
+        multi_trace (None): whether to render each class as a separate trace.
+            Only applicable when ``labels`` contains strings. By default, this
+            will be true if there are up to 25 classes
         marker_size (None): an optional marker size
         style (None): the plot style to use. Only applicable when the color
             data is numeric. Supported values are ``("scatter", "density")``
@@ -669,8 +679,11 @@ def location_scatterplot(
         value_label = "label"
 
     if categorical:
-        if len(classes) > _MAX_TRACES:
-            figure = _plot_scatter_mapbox_categorical_single_trace(
+        if multi_trace is None:
+            multi_trace = len(classes) <= 25
+
+        if multi_trace:
+            figure = _plot_scatter_mapbox_categorical(
                 locations,
                 values,
                 classes,
@@ -679,7 +692,7 @@ def location_scatterplot(
                 marker_size=marker_size,
             )
         else:
-            figure = _plot_scatter_mapbox_categorical(
+            figure = _plot_scatter_mapbox_categorical_single_trace(
                 locations,
                 values,
                 classes,
@@ -899,15 +912,17 @@ class InteractiveScatter(InteractivePlotlyPlot):
         self._select_callback = callback
 
     @property
-    def _any_selected(self):
-        return any(bool(t.selectedpoints) for t in self._traces)
-
-    @property
     def _selected_ids(self):
+        found = False
+
         ids = []
         for idx, trace in enumerate(self._traces):
+            found |= trace.selectedpoints is not None
             if trace.selectedpoints:
                 ids.append(self._trace_ids[idx][list(trace.selectedpoints)])
+
+        if not found:
+            return None
 
         return list(itertools.chain.from_iterable(ids))
 
@@ -942,7 +957,8 @@ class InteractiveScatter(InteractivePlotlyPlot):
         self._widget = self._make_widget()
 
     def _select_ids(self, ids):
-        if ids is None:
+        deselect = ids is None
+        if deselect:
             ids = []
 
         # Split IDs into traces
@@ -955,7 +971,7 @@ class InteractiveScatter(InteractivePlotlyPlot):
             inds_map = self._ids_to_inds[idx]
             trace_ids = per_trace_ids[idx]
             trace_inds = [inds_map[_id] for _id in trace_ids]
-            if not trace_inds:
+            if not trace_inds and deselect:
                 trace_inds = None
 
             # Select points
@@ -1123,16 +1139,15 @@ class PlotlyHeatmap(InteractivePlotlyPlot):
         super().__init__(widget, **kwargs)
 
     @property
-    def _any_selected(self):
-        return bool(self._selected_cells)
-
-    @property
     def _selected_ids(self):
-        ids = []
-        for x, y in self._selected_cells:
-            ids.extend(self.ids[x, y])
+        if not self._selected_cells:
+            return None
 
-        return ids
+        return list(
+            itertools.chain.from_iterable(
+                self.ids[x, y] for x, y in self._selected_cells
+            )
+        )
 
     def _register_selection_callback(self, callback):
         self._select_callback = callback
@@ -1165,10 +1180,16 @@ class PlotlyHeatmap(InteractivePlotlyPlot):
 
     def _select_ids(self, ids):
         if ids is None:
-            ids = []
+            self._select(None)
+            return
 
-        cells = list(set(self._cells_map(_id) for _id in ids))
-        self._select(cells)
+        cells = set()
+        for _id in ids:
+            cell = self._cells_map.get(_id, None)
+            if cell is not None:
+                cells.add(cell)
+
+        self._select(list(cells))
 
     def _on_click(self, cell):
         cell = tuple(cell)
@@ -1192,11 +1213,18 @@ class PlotlyHeatmap(InteractivePlotlyPlot):
             self._deselect()
 
     def _select(self, cells):
-        x, y = zip(*cells)
-        Zclick = np.full(self.Z.shape, None)
-        Zclick[x, y] = self.Z[x, y]
+        if cells is None:
+            self._deselect()
+            return
+
+        Zactive = np.full(self.Z.shape, None)
+
+        if cells:
+            x, y = zip(*cells)
+            Zactive[x, y] = self.Z[x, y]
+
         self._selected_cells = cells
-        self._selectedw.z = Zclick
+        self._selectedw.z = Zactive
 
         if self._select_callback is not None:
             self._select_callback(self.selected_ids)
@@ -1209,19 +1237,19 @@ class PlotlyHeatmap(InteractivePlotlyPlot):
             self._select_callback(self.selected_ids)
 
     def _init_cells_map(self):
-        num_cols, num_rows = self.Z.shape
+        num_rows, num_cols = self.Z.shape
         self._cells_map = {}
         for y in range(num_cols):
             for x in range(num_rows):
-                for _id in self.ids[y, x]:
+                for _id in self.ids[x, y]:
                     self._cells_map[_id] = (x, y)
 
     def _make_heatmap(self):
         Z = self.Z.copy()
 
-        num_cols, num_rows = Z.shape
-        xticks = np.arange(num_rows)
-        yticks = np.arange(num_cols)
+        num_rows, num_cols = Z.shape
+        xticks = np.arange(num_cols)
+        yticks = np.arange(num_rows)
         X, Y = np.meshgrid(xticks, yticks)
 
         hover_lines = [
@@ -1263,14 +1291,14 @@ class PlotlyHeatmap(InteractivePlotlyPlot):
                 tickmode="array",
                 tickvals=xticks,
                 ticktext=self.xlabels,
-                range=[-0.5, num_rows - 0.5],
+                range=[-0.5, num_cols - 0.5],
                 constrain="domain",
             ),
             yaxis=dict(
                 tickmode="array",
                 tickvals=yticks,
                 ticktext=self.ylabels,
-                range=[-0.5, num_cols - 0.5],
+                range=[-0.5, num_rows - 0.5],
                 constrain="domain",
                 autorange="reversed",
                 scaleanchor="x",

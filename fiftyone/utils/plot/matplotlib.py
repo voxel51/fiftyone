@@ -626,7 +626,7 @@ class InteractiveCollection(InteractiveMatplotlibPlot):
 
         self._ids = np.asarray(ids)
         self._ids_to_inds = {_id: idx for idx, _id in enumerate(ids)}
-        self._inds = np.array([], dtype=int)
+        self._inds = None
 
         self._canvas = None
         self._lasso = None
@@ -645,11 +645,10 @@ class InteractiveCollection(InteractiveMatplotlibPlot):
         super().__init__(figure, **kwargs)
 
     @property
-    def _any_selected(self):
-        return self._inds.size > 0
-
-    @property
     def _selected_ids(self):
+        if self._inds is None:
+            return None
+
         return list(self._ids[self._inds])
 
     def _register_selection_callback(self, callback):
@@ -840,9 +839,13 @@ class InteractiveCollection(InteractiveMatplotlibPlot):
             path = Path(vertices)
             inds = np.nonzero(path.contains_points(self._xy))[0]
 
+        curr_inds = self._inds
+        if curr_inds is None:
+            curr_inds = np.array([], dtype=int)
+
         if self._shift:
             new_inds = set(inds)
-            inds = set(self._inds)
+            inds = set(curr_inds)
             if new_inds.issubset(inds):
                 # The new selection is a subset of the current selection, so
                 # remove the selection
@@ -855,9 +858,13 @@ class InteractiveCollection(InteractiveMatplotlibPlot):
         else:
             inds = np.unique(inds)
 
-        if inds.size == self._inds.size and np.all(inds == self._inds):
+        if inds.size == curr_inds.size and np.all(inds == curr_inds):
+            # Selection hasn't changed
             self._draw()
             return
+
+        if not inds.size:
+            inds = None
 
         self._select_inds(inds)
 
@@ -870,10 +877,10 @@ class InteractiveCollection(InteractiveMatplotlibPlot):
         self._select_inds(inds)
 
     def _select_inds(self, inds):
-        if inds is None:
-            inds = []
+        if inds is not None:
+            inds = np.asarray(inds, dtype=int)
 
-        self._inds = np.asarray(inds, dtype=int)
+        self._inds = inds
         self._update_plot()
 
         if self._select_callback is not None:
@@ -883,7 +890,7 @@ class InteractiveCollection(InteractiveMatplotlibPlot):
         self._prep_collection()
 
         inds = self._inds
-        if inds.size == 0:
+        if inds is None:
             self._fc[:, -1] = 1
         else:
             self._fc[:, -1] = self.alpha_other
@@ -893,7 +900,8 @@ class InteractiveCollection(InteractiveMatplotlibPlot):
 
         if self.expand_selected is not None:
             self._ms[:] = self._init_ms
-            self._ms[inds] = self.expand_selected * self._init_ms
+            if inds:
+                self._ms[inds] = self.expand_selected * self._init_ms
 
         self.collection.set_sizes(self._ms)
         self._draw()
@@ -996,8 +1004,10 @@ def _plot_scatter(
 
 
 def _parse_scatter_inputs(points, labels, classes):
-    if not labels:
+    if labels is None:
         return points, None, None, None, False
+
+    labels = np.asarray(labels)
 
     if not etau.is_str(labels[0]):
         return points, labels, None, None, False

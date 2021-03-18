@@ -147,20 +147,28 @@ class ViewStage(object):
         """
         return False
 
-    def _serialize(self):
+    def _serialize(self, include_uuid=True):
         """Returns a JSON dict representation of the :class:`ViewStage`.
+
+        Args:
+            include_uuid (True): whether to include the stage's UUID in the JSON
+                representation
 
         Returns:
             a JSON dict
         """
-        if self._uuid is None:
-            self._uuid = str(uuid.uuid4())
-
-        return {
+        d = {
             "_cls": etau.get_class_name(self),
-            "_uuid": self._uuid,
             "kwargs": self._kwargs(),
         }
+
+        if include_uuid:
+            if self._uuid is None:
+                self._uuid = str(uuid.uuid4())
+
+            d["_uuid"] = self._uuid
+
+        return d
 
     def _kwargs(self):
         """Returns a list of ``[name, value]`` lists describing the parameters
@@ -3222,6 +3230,11 @@ class SelectLabels(ViewStage):
         else:
             fields = sample_collection._get_label_fields()
 
+        num_fields = len(fields)
+        if num_fields == 0:
+            # Nothing will match
+            return [{"$match": {"_id": None}}]
+
         pipeline = []
 
         #
@@ -3236,10 +3249,9 @@ class SelectLabels(ViewStage):
         pipeline.extend(stage.to_mongo(sample_collection))
 
         # Handle early exit
-        num_fields = len(fields)
-        if num_fields == 0 or (self._ids is None and self._tags is None):
-            # Nothing will match
-            return pipeline + [{"$match": {"_id": None}}]
+        if self._ids is None and self._tags is None:
+            # If no filters are specified, match everything
+            return pipeline
 
         #
         # Filter labels that don't match `tags` and `ids

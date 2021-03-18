@@ -665,7 +665,8 @@ class SampleCollection(object):
         for label_field in view._get_label_fields():
             sample_ids = view.values("id")
 
-            _, id_path = view._get_label_field_path(label_field, "id")
+            label_type, id_path = view._get_label_field_path(label_field, "id")
+            list_field = issubclass(label_type, fol._LABEL_LIST_FIELDS)
             label_ids = view.values(id_path)
 
             if self._is_frame_field(label_field):
@@ -676,6 +677,9 @@ class SampleCollection(object):
                     for frame_number, frame_label_ids in zip(
                         sample_frame_numbers, sample_label_ids
                     ):
+                        if not list_field:
+                            frame_label_ids = [frame_label_ids]
+
                         for label_id in frame_label_ids:
                             labels.append(
                                 {
@@ -686,8 +690,11 @@ class SampleCollection(object):
                                 }
                             )
             else:
-                for sample_id, _label_ids in zip(sample_ids, label_ids):
-                    for label_id in _label_ids:
+                for sample_id, sample_label_ids in zip(sample_ids, label_ids):
+                    if not list_field:
+                        sample_label_ids = [sample_label_ids]
+
+                    for label_id in sample_label_ids:
                         labels.append(
                             {
                                 "sample_id": sample_id,

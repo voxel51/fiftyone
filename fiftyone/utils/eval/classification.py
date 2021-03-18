@@ -737,7 +737,6 @@ class ClassificationResults(foe.EvaluationResults):
         other_label="(other)",
         backend=None,
         show=True,
-        return_figure=False,
         **kwargs,
     ):
         """Plots a confusion matrix for the results.
@@ -757,16 +756,15 @@ class ClassificationResults(foe.EvaluationResults):
             backend (None): the plotting backend to use. Supported values are
                 ``("plotly", "matplotlib")``. If no backend is specified, the
                 best applicable backend is chosen
-            show (True): whether to show the plot
-            return_figure (False): whether to return the figure
+            show (True): whether to show the plot (True) or return the figure
+                without showing it
             **kwargs: keyword arguments for the backend plotting method:
 
                 -   "plotly" backend: :meth:`fiftyone.utils.plot.plotly.plot_confusion_matrix`
                 -   "matplotlib" backend: :meth:`fiftyone.utils.plot.matplotlib.plot_confusion_matrix`
 
         Returns:
-            None, or the figure containing the plot if ``return_figure`` is
-            True
+            None, or the figure containing the plot if ``show`` is True
         """
         _labels = self._get_labels(classes, include_missing=True)
         confusion_matrix, labels, ids = self._confusion_matrix(
@@ -792,7 +790,7 @@ class ClassificationResults(foe.EvaluationResults):
                     rm_inds.append(idx)
 
             if rm_inds:
-                np.delete(confusion_matrix, rm_inds, axis=1)
+                confusion_matrix = np.delete(confusion_matrix, rm_inds, axis=1)
                 labels = [l for i, l in enumerate(labels) if i not in rm_inds]
 
         figure = foup.plot_confusion_matrix(
@@ -806,7 +804,7 @@ class ClassificationResults(foe.EvaluationResults):
             **kwargs,
         )
 
-        return figure if return_figure else None
+        return figure if not show else None
 
     @classmethod
     def _from_dict(cls, d, samples, **kwargs):
@@ -905,12 +903,7 @@ class BinaryClassificationResults(ClassificationResults):
         )
 
     def plot_pr_curve(
-        self,
-        average="micro",
-        backend=None,
-        show=True,
-        return_figure=False,
-        **kwargs,
+        self, average="micro", backend=None, show=True, **kwargs
     ):
         """Plots a precision-recall (PR) curve for the results.
 
@@ -920,16 +913,15 @@ class BinaryClassificationResults(ClassificationResults):
             backend (None): the plotting backend to use. Supported values are
                 ``("plotly", "matplotlib")``. If no backend is specified, the
                 best applicable backend is chosen
-            show (True): whether to show the plot
-            return_figure (False): whether to return the figure
+            show (True): whether to show the plot (True) or return the figure
+                without showing it
             **kwargs: keyword arguments for the backend plotting method:
 
                 -   "plotly" backend: :meth:`fiftyone.utils.plot.plotly.plot_pr_curve`
                 -   "matplotlib" backend: :meth:`fiftyone.utils.plot.matplotlib.plot_pr_curve`
 
         Returns:
-            None, or the figure containing the plot if ``return_figure`` is
-            True
+            None, or the figure containing the plot if ``show`` is True
         """
         precision, recall, _ = skm.precision_recall_curve(
             self.ytrue,
@@ -949,11 +941,9 @@ class BinaryClassificationResults(ClassificationResults):
             **kwargs,
         )
 
-        return figure if return_figure else None
+        return figure if not show else None
 
-    def plot_roc_curve(
-        self, backend=None, show=True, return_figure=False, **kwargs
-    ):
+    def plot_roc_curve(self, backend=None, show=True, **kwargs):
         """Plots a receiver operating characteristic (ROC) curve for the
         results.
 
@@ -961,16 +951,15 @@ class BinaryClassificationResults(ClassificationResults):
             backend (None): the plotting backend to use. Supported values are
                 ``("plotly", "matplotlib")``. If no backend is specified, the
                 best applicable backend is chosen
-            show (True): whether to show the plot
-            return_figure (False): whether to return the figure
+            show (True): whether to show the plot (True) or return the figure
+                without showing it
             **kwargs: keyword arguments for the backend plotting method:
 
                 -   "plotly" backend: :meth:`fiftyone.utils.plot.plotly.plot_roc_curve`
                 -   "matplotlib" backend: :meth:`fiftyone.utils.plot.matplotlib.plot_roc_curve`
 
         Returns:
-            None, or the figure containing the plot if ``return_figure`` is
-            True
+            None, or the figure containing the plot if ``show`` is True
         """
         fpr, tpr, _ = skm.roc_curve(
             self.ytrue,
@@ -984,7 +973,7 @@ class BinaryClassificationResults(ClassificationResults):
             fpr, tpr, roc_auc=roc_auc, backend=backend, show=show, **kwargs,
         )
 
-        return figure if return_figure else None
+        return figure if not show else None
 
 
 def _parse_config(config, pred_field, gt_field, method, **kwargs):

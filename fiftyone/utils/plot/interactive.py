@@ -75,23 +75,13 @@ class InteractivePlot(object):
         return self._frozen
 
     @property
-    def any_selected(self):
-        """Whether any points are currently selected, or ``None`` if the plot
-        is not connected.
-        """
-        if not self.is_connected:
-            return None
-
-        return self._any_selected
-
-    @property
-    def _any_selected(self):
-        raise NotImplementedError("Subclass must implement _any_selected")
-
-    @property
     def selected_ids(self):
-        """A list of IDs of the currently selected points, or ``None`` if the
-        plot is not connected.
+        """A list of IDs of the currently selected points.
+
+        An empty list means all points are deselected, and None means default
+        state (nothing selected or unselected).
+
+        If the plot is not connected, returns None.
         """
         if not self.is_connected:
             return None
@@ -184,10 +174,6 @@ class InteractivePlot(object):
     def _reopen(self):
         pass
 
-    def reset(self):
-        """Resets the plot to its initial state."""
-        self.select_ids([])
-
     def select_ids(self, ids):
         """Selects the points with the given IDs in this plot.
 
@@ -201,6 +187,10 @@ class InteractivePlot(object):
 
     def _select_ids(self, ids):
         raise ValueError("Subclass must implement _select_ids()")
+
+    def reset(self):
+        """Resets the plot to its default state."""
+        self.select_ids(None)
 
     def freeze(self):
         """Freezes the plot, replacing it with a static image.
@@ -260,6 +250,7 @@ class InteractivePlotManager(object):
     """
 
     _MIN_UPDATE_DELTA_SECONDS = 0.5
+    _LISTENER_NAME = "InteractivePlotManager"
 
     def __init__(self, session, connect=True):
         self.session = session
@@ -290,18 +281,18 @@ class InteractivePlotManager(object):
     def has_sample_links(self):
         """Whether this manager has plots linked to samples."""
         return any(
-            plot.plot.link_type == "samples"
+            plot.link_type == "samples"
             for plot in self.plots.values()
-            if plot.plot.is_connected
+            if plot.is_connected
         )
 
     @property
     def has_label_links(self):
         """Whether this manager has plots linked to labels."""
         return any(
-            plot.plot.link_type == "labels"
+            plot.link_type == "labels"
             for plot in self.plots.values()
-            if plot.plot.is_connected
+            if plot.is_connected
         )
 
     def add_plot(self, plot, name):
@@ -320,7 +311,7 @@ class InteractivePlotManager(object):
                 "it before adding a new plot under this name" % name
             )
 
-        self.plots[name] = _ManagedPlot(plot, name)
+        self.plots[name] = plot
 
         if self.is_connected:
             self._connect_plot(name)
@@ -351,13 +342,7 @@ class InteractivePlotManager(object):
         if name not in self.plots:
             raise ValueError("No plot found with name '%s'" % name)
 
-        plot = self.plots.pop(name)
-        _plot = plot.plot
-
-        if _plot.supports_session_updates and plot.listener_name is not None:
-            self.session.delete_listener(plot.listener_name)
-
-        return _plot
+        return self.plots.pop(name)
 
     def connect(self):
         """Connects this manager to its session and all plots."""
@@ -367,6 +352,12 @@ class InteractivePlotManager(object):
         for name in self.plots:
             self._connect_plot(name)
 
+        key = self._LISTENER_NAME
+        if self.session.has_listener(key) and not self.is_disconnected:
+            logger.warning("Overwriting existing listener with key '%s'", key)
+
+        self.session.add_listener(key, self._on_session_update)
+
         self._connected = True
         self._disconnected = False
 
@@ -374,34 +365,24 @@ class InteractivePlotManager(object):
 
     def _connect_plot(self, name):
         plot = self.plots[name]
-        _plot = plot.plot
 
         def _on_plot_selection(ids):
             self._on_plot_selection(name, ids)
 
-        _plot.register_selection_callback(_on_plot_selection)
-        _plot.register_sync_callback(self.sync)
-        _plot.register_disconnect_callback(self.disconnect)
+        plot.register_selection_callback(_on_plot_selection)
+        plot.register_sync_callback(self.sync)
+        plot.register_disconnect_callback(self.disconnect)
 
-        if _plot.supports_session_updates:
-            if (
-                self.session.has_listener(name)
-                and not _plot.is_connected
-                and not _plot.is_disconnected
-            ):
-                logger.warning(
-                    "Overwriting existing listener with key '%s'", name
-                )
-
-            plot.listener_name = name
-            self.session.add_listener(name, self._on_session_update)
-
-        _plot.connect()
+        plot.connect()
 
     def disconnect(self):
         """Connects this manager from its session and all plots."""
         if not self.is_connected:
             return
+
+        key = self._LISTENER_NAME
+        if self.session.has_listener(key):
+            self.session.delete_listener(key)
 
         for name in self.plots:
             self._disconnect_plot(name)
@@ -411,15 +392,10 @@ class InteractivePlotManager(object):
 
     def _disconnect_plot(self, name):
         plot = self.plots[name]
-        _plot = plot.plot
-
-        if _plot.supports_session_updates:
-            self.session.delete_listener(plot.listener_name)
-
-        _plot.disconnect()
+        plot.disconnect()
 
     def reset(self):
-        """Resets the session and all plots to their initial view."""
+        """Resets the session and all plots to their default views."""
         if not self.is_connected:
             return
 
@@ -449,9 +425,8 @@ class InteractivePlotManager(object):
         self.session.freeze()
 
         for plot in self.plots.values():
-            _plot = plot.plot
-            if _plot.is_connected:
-                _plot.freeze()
+            if plot.is_connected:
+                plot.freeze()
 
         self.disconnect()
 
@@ -466,7 +441,7 @@ class InteractivePlotManager(object):
         self._update_plots_from_session()
 
     def _on_plot_selection(self, name, ids):
-        plot = self.plots[name].plot
+        plot = self.plots[name]
 
         if not plot.is_connected:
             return
@@ -479,7 +454,7 @@ class InteractivePlotManager(object):
         else:
             plot_view = self._init_view
 
-        if not ids:
+        if ids is None:
             self._current_sample_ids = None
             self._current_labels = None
         elif plot.link_type == "labels":
@@ -502,12 +477,18 @@ class InteractivePlotManager(object):
         self._update_plots_from_session()
 
     def _update_ids_from_session(self):
+        session_view = self.session._collection.view()
+
+        if session_view == self._init_view:
+            self._current_sample_ids = None
+            self._current_labels = None
+            return
+
         if self.has_label_links:
             if self.session.selected_labels:
                 self._current_labels = self.session.selected_labels
             else:
-                view = self.session._collection
-                self._current_labels = view._get_selected_labels()
+                self._current_labels = session_view._get_selected_labels()
 
         if self.session.selected:
             self._current_sample_ids = self.session.selected
@@ -523,7 +504,7 @@ class InteractivePlotManager(object):
 
     def _update_plots_from_session(self):
         for name, plot in self.plots.items():
-            if plot.plot.supports_session_updates:
+            if plot.supports_session_updates:
                 self._update_plot(name)
 
     def _update_plots(self):
@@ -531,10 +512,13 @@ class InteractivePlotManager(object):
             self._update_plot(name)
 
     def _update_plot(self, name):
-        if not self._needs_update(name):
+        plot = self.plots[name]
+
+        if not plot.is_connected:
             return
 
-        plot = self.plots[name].plot
+        if not self._needs_update(name):
+            return
 
         if plot.link_type == "labels":
             label_ids = self._get_current_label_ids(plot.label_fields)
@@ -552,7 +536,7 @@ class InteractivePlotManager(object):
         return [
             l["label_id"]
             for l in self._current_labels
-            if label_fields is None or l["field"] in label_fields
+            if l["field"] in label_fields
         ]
 
     def _ready_for_update(self, name):
@@ -585,14 +569,3 @@ class InteractivePlotManager(object):
             self._last_updates[name] = now
 
         return ready
-
-
-class _ManagedPlot(object):
-    """Internal class for tracking the state of an :class:`InteractivePlot`
-    connected to a :class:`InteractivePlotManager`.
-    """
-
-    def __init__(self, plot, name, listener_name=None):
-        self.plot = plot
-        self.name = name
-        self.listener_name = listener_name
