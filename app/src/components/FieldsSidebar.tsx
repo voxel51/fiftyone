@@ -9,6 +9,8 @@ import {
   Label,
   LocalOffer,
   PhotoLibrary,
+  Visibility,
+  VisibilityOff,
 } from "@material-ui/icons";
 import { animated, useSpring } from "react-spring";
 
@@ -131,11 +133,26 @@ const makeData = (filteredCount: number, totalCount: number): string => {
   return totalCount;
 };
 
+const makeTagData = (
+  filteredCount: number,
+  totalCount: number,
+  filtered: boolean,
+  toggleFilter: () => void
+): any => {
+  const Icon = filtered ? VisibilityOff : Visibility;
+  return (
+    <span>
+      {makeData(filteredCount, totalCount)}
+      <Icon onClick={toggleFilter} />
+    </span>
+  );
+};
+
 type TagsCellProps = {
   modal: boolean;
 };
 
-const TagsCell = ({ modal }: TagsCellProps) => {
+const SampleTagsCell = ({ modal }: TagsCellProps) => {
   const tags = useRecoilValue(selectors.tagNames);
   const [activeTags, setActiveTags] = useRecoilState(
     fieldAtoms.activeTags(modal)
@@ -152,7 +169,7 @@ const TagsCell = ({ modal }: TagsCellProps) => {
 
   return (
     <Cell
-      label="Tags"
+      label="Sample tags"
       icon={<LocalOffer />}
       entries={tags
         .filter((t) => count[t])
@@ -190,7 +207,67 @@ const TagsCell = ({ modal }: TagsCellProps) => {
         setActiveTags([]);
       }}
       modal={modal}
-      title={"Tags"}
+      title={"Sample tags"}
+    />
+  );
+};
+
+const LabelTagsCell = ({ modal }: TagsCellProps) => {
+  const tags = useRecoilValue(selectors.labelTagNames);
+  const [activeLabelTags, setActiveTags] = useRecoilState(
+    fieldAtoms.activeTags(modal)
+  );
+  const colorMap = useRecoilValue(selectors.colorMap(modal));
+  const [subCountAtom, countAtom] = modal
+    ? [null, selectors.tagSampleModalCounts]
+    : [selectors.filteredTagSampleCounts, selectors.tagSampleCounts];
+
+  const subCount = subCountAtom ? useRecoilValue(subCountAtom) : null;
+  const count = useRecoilValue(countAtom);
+  const colorByLabel = useRecoilValue(atoms.colorByLabel(modal));
+  const theme = useTheme();
+
+  return (
+    <Cell
+      label="Sample tags"
+      icon={<LocalOffer />}
+      entries={tags
+        .filter((t) => count[t])
+        .map((name) => ({
+          name,
+          disabled: false,
+          hideCheckbox: modal,
+          hasDropdown: false,
+          selected: activeTags.includes(name),
+          color: colorByLabel ? theme.brand : colorMap[name],
+          title: name,
+          path: name,
+          data: modal ? (
+            count[name] > 0 ? (
+              <Check style={{ color: colorMap[name] }} />
+            ) : (
+              <Close style={{ color: colorMap[name] }} />
+            )
+          ) : (
+            makeData(subCount[name], count[name])
+          ),
+          totalCount: count[name],
+          filteredCount: modal ? null : subCount[name],
+          modal,
+        }))}
+      onSelect={({ name, selected }) =>
+        setActiveTags(
+          selected
+            ? [name, ...activeTags]
+            : activeTags.filter((t) => t !== name)
+        )
+      }
+      handleClear={(e) => {
+        e.stopPropagation();
+        setActiveTags([]);
+      }}
+      modal={modal}
+      title={"Sample tags"}
     />
   );
 };
@@ -226,7 +303,7 @@ const LabelsCell = ({ modal, frames }: LabelsCellProps) => {
 
   return (
     <Cell
-      label={frames ? "Frame Labels" : "Labels"}
+      label={frames ? "Frame label fields" : "Label fields"}
       icon={
         frames ? (
           <PhotoLibrary />
@@ -269,7 +346,7 @@ const LabelsCell = ({ modal, frames }: LabelsCellProps) => {
         setActiveLabels([]);
       }}
       modal={modal}
-      title={frames ? "Frame Labels" : "Labels"}
+      title={frames ? "Frame label fields" : "Label fields"}
     />
   );
 };
@@ -299,7 +376,7 @@ const ScalarsCell = ({ modal }: ScalarsCellProps) => {
 
   return (
     <Cell
-      label="Scalars"
+      label="Scalar fields"
       icon={<BarChart />}
       entries={scalars.map((name) => ({
         name,
@@ -333,7 +410,7 @@ const ScalarsCell = ({ modal }: ScalarsCellProps) => {
         setActiveScalars([]);
       }}
       modal={modal}
-      title={"Scalars"}
+      title={"Scalar fields"}
     />
   );
 };
@@ -346,7 +423,7 @@ const UnsupportedCell = ({ modal }: UnsupportedCellProps) => {
   const unsupported = useRecoilValue(fieldAtoms.unsupportedFields);
   return unsupported.length ? (
     <Cell
-      label={"Unsupported"}
+      label={"Unsupported fields"}
       icon={<Help />}
       entries={unsupported.map((e) => ({
         name: e,
@@ -435,7 +512,7 @@ const FieldsSidebar = React.forwardRef(
 
     return (
       <Container ref={ref} style={{ ...style, ...moreStyles }}>
-        <TagsCell modal={modal} />
+        <SampleTagsCell modal={modal} />
         <LabelsCell modal={modal} frames={false} />
         {isVideo && <LabelsCell modal={modal} frames={true} />}
         <ScalarsCell modal={modal} />

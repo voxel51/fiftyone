@@ -147,6 +147,11 @@ export const filterStages = selector({
   },
 });
 
+export const hasFilters = selector<boolean>({
+  key: "hasFilters",
+  get: ({ get }) => Object.keys(get(filterStages)).length > 0,
+});
+
 export const filterStage = selectorFamily<any, string>({
   key: "filterStage",
   get: (path) => ({ get }) => {

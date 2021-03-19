@@ -141,6 +141,7 @@ type PillButton = {
   icon?: any;
   arrow?: boolean;
   style?: object;
+  tooltip?: string;
 };
 
 export const PillButton = React.memo(
@@ -154,6 +155,7 @@ export const PillButton = React.memo(
         highlight,
         arrow = false,
         style,
+        tooltip,
       }: PillButton,
       ref
     ) => {
@@ -170,6 +172,7 @@ export const PillButton = React.memo(
           onClick={onClick}
           ref={ref}
           style={{ ...props, ...style }}
+          title={tooltip}
         >
           {icon}
           {text && <span>{text}</span>}

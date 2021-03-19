@@ -690,6 +690,19 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         )
 
     @staticmethod
+    async def on_save_filters(caller):
+        state = fos.StateDescription.from_dict(StateHandler.state)
+        if state.view is not None:
+            view = state.view
+        else:
+            view = state.dataset
+
+        state.view = _get_extended_view(view, state.filters)
+        state.filters = {}
+
+        await StateHandler.on_update(caller, state.serialize())
+
+    @staticmethod
     async def on_tag_modal(
         caller, changes, sample_id=None, labels=None,
     ):
