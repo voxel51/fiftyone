@@ -487,11 +487,6 @@ objects that you can leverage via the :ref:`FiftyOne App <fiftyone-app>` to
 interactively explore the strengths and weaknesses of your model on individual
 samples.
 
-.. note::
-
-    Currently, COCO-style evaluation is the only option, but additional methods
-    are coming soon!
-
 COCO-style evaluation (default)
 -------------------------------
 
@@ -639,6 +634,172 @@ curves for your detections by passing the ``compute_mAP=True`` flag to
 
 .. image:: ../images/evaluation/coco_pr_curve.png
    :alt: coco-pr-curve
+   :align: center
+
+Open Images-style evaluation
+----------------------------
+
+You can specify to use 
+`Open Images-style evaluation <https://storage.googleapis.com/openimages/web/evaluation.html>`_ to
+analyze predictions by setting the ``method`` parameter to ``"open-images"`` 
+when calling
+:meth:`evaluate_detections() <fiftyone.core.collections.SampleCollection.evaluate_detections>`
+. This means that:
+
+-   Predicted and ground truth objects are matched using a specified IoU
+    threshold (default = 0.50). This threshold can be customized via the
+    ``iou`` parameter.
+-   Predictions are matched in descending order of confidence.
+-   By default, only objects with the same ``label`` will be matched. Classwise
+    matching can be disabled via the ``classwise`` parameter.
+-   Ground truth objects can have an `IsGroupOf` attribute that indicates whether
+    the annotation contains a crowd of objects. Multiple predictions can be
+    matched to crowd ground truth objects. The name of this attribute can be
+    customized via the ``iscrowd`` attribute for consistency with COCO-style
+    evaluation.
+
+`Open Images-style evaluation <https://storage.googleapis.com/openimages/web/evaluation.html>`_
+provides a few features setting it apart from COCO-style evaluation:
+
+-   Open Images has positive and negative image-level labels indicating which 
+    classes of detections to evaluate. Other classes are ignored. These labels 
+    can be specified with the parameters ``pos_lab_field`` and ``neg_lab_field``.
+
+-   Open Images evaluation incorporates a label hierarchy that can be provided 
+    with the ``hierarchy`` parameter. By default, if you provide a hierarchy then 
+    image-level label fields and ground truth detections will be expanded to
+    incorporate parent classes (child classes for negative image-level labels). 
+    The expansion only copies labels and detections temporarily to compute mAP,
+    they are not saved in your dataset. You
+    can turn this feature off by setting the ``expand_hierarchy`` parameter to
+    ``False``. Alternatively, you can expand predictions with the ``expand_pred_hierarchy`` 
+    parameter.
+
+-   Following Pascal VOC 2010 evaluation protocol, only one IoU (default 0.5) is
+    used to calculate mAP.
+
+-   When dealing with crowd objects, Open Images evaluation dictates that if a
+    crowd is matched with multiple predictions, they all could as one since true
+    positive when calculating mAP.
+
+When you specify an ``eval_key`` parameter, a number of helpful fields will be
+populated on each sample and its predicted/ground truth objects:
+
+-   True positive (TP), false positive (FP), and false negative (FN) counts
+    for the each sample are saved in top-level fields of each sample::
+
+        TP: sample.<eval_key>_tp
+        FP: sample.<eval_key>_fp
+        FN: sample.<eval_key>_fn
+
+-   The fields listed below are populated on each individual |Detection|
+    instance; these fields tabulate the TP/FP/FN status of the object, the ID
+    of the matching object (if any), and the matching IoU::
+
+        TP/FP/FN: detection.<eval_key>
+              ID: detection.<eval_key>_id
+             IoU: detection.<eval_key>_iou
+
+The example below demonstrates Open Images-style detection evaluation on the
+:ref:`quickstart dataset <dataset-zoo-quickstart>` from the Dataset Zoo:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+    from fiftyone import ViewField as F
+
+    dataset = foz.load_zoo_dataset("quickstart")
+    print(dataset)
+
+    # Evaluate the detections in the `predictions` field with respect to the
+    # objects in the `ground_truth` field
+    results = dataset.evaluate_detections(
+        "predictions",
+        gt_field="ground_truth",
+        method="open-images",
+        eval_key="eval_oi",
+    )
+
+    # Get the 10 most common classes in the dataset
+    counts = dataset.count_values("ground_truth.detections.label")
+    classes = sorted(counts, key=counts.get, reverse=True)[:10]
+
+    # Print a classification report for the top-10 classes
+    results.print_report(classes=classes)
+
+    # Print some statistics about the total TP/FP/FN counts
+    print(dataset.sum("eval_oi_tp"))
+    print(dataset.sum("eval_oi_fp"))
+    print(dataset.sum("eval_oi_fn"))
+
+    # Create a view that has samples with the most false positives first, and
+    # only includes false positive boxes in the `predictions` field
+    view = (
+        dataset
+        .sort_by("eval_oi_fp", reverse=True)
+        .filter_labels("predictions", F("eval_oi") == "fp")
+    )
+
+    # Visualize results in the App
+    session = fo.launch_app(view=view)
+
+.. code-block:: text
+
+                   precision    recall  f1-score   support
+    
+           person       0.25      0.86      0.39       378
+             kite       0.27      0.75      0.40        75
+              car       0.18      0.80      0.29        61
+             bird       0.20      0.51      0.28        51
+           carrot       0.09      0.74      0.16        47
+             boat       0.09      0.46      0.16        37
+        surfboard       0.17      0.73      0.28        30
+         airplane       0.36      0.83      0.50        24
+    traffic light       0.32      0.79      0.45        24
+            bench       0.17      0.52      0.26        23
+    
+        micro avg       0.21      0.78      0.33       750
+        macro avg       0.21      0.70      0.32       750
+     weighted avg       0.23      0.78      0.35       750
+
+.. image:: ../images/evaluation/quickstart_evaluate_detections_oi.png
+   :alt: quickstart-evaluate-detections-oi
+   :align: center
+
+Computing mAP and PR curves
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Unlike COCO-style evaluation, mean average precision (mAP) and precision-recall (PR)
+curves can be computed by default for your detections when performing
+Open Images-style evaluation since it is lighter weight 
+due to not performing an IoU sweep.
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart")
+    print(dataset)
+
+    # Performs an IoU sweep so that mAP and PR curves can be computed
+    results = dataset.evaluate_detections(
+        "predictions",
+        gt_field="ground_truth",
+        method="open-images",
+        eval_key="eval_oi",
+    )
+
+    print(results.mAP())
+    # 0.601
+
+    results.plot_pr_curves(classes=["person"])
+
+.. image:: ../images/evaluation/oi_pr_curve.png
+   :alt: oi-pr-curve
    :align: center
 
 .. _evaluating-segmentations:
