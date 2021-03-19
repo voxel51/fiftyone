@@ -164,67 +164,125 @@ class DatasetStatistics(object):
         """
         return self._exists_aggregations
 
+    @classmethod
+    def fields(cls, collection):
+        """The list of custom fields on the provided
+        :class:`fiftyone.core.collections.SampleCollection`.
+
+        Args:
+            collection: a :class:`fiftyone.core.collections.SampleCollection`
+        
+        Returns:
+            a `list` of (path, field) `tuple`s
+        """
+        schemas = [("", collection.get_field_schema())]
+        if collection.media_type == fom.VIDEO:
+            schemas.append(
+                (
+                    collection._FRAMES_PREFIX,
+                    collection.get_frame_field_schema(),
+                )
+            )
+
+        default_fields = fosa.get_default_sample_fields()
+
+        result = []
+        for prefix, schema in schemas:
+            for field_name, field in schema.items():
+                if field_name in default_fields or (
+                    prefix == collection._FRAMES_PREFIX
+                    and field_name == "frame_number"
+                ):
+                    continue
+
+                result.append((prefix + field_name, field))
+
+        return result
+
+    @classmethod
+    def labels(cls, collection):
+        """The list of label fields on the provided
+        :class:`fiftyone.core.collections.SampleCollection`.
+
+        Args:
+            collection: a :class:`fiftyone.core.collections.SampleCollection`
+
+        Returns:
+            a `list` of (path, field) `tuple`s
+        """
+        return [
+            (path, field)
+            for (path, field) in cls.fields(collection)
+            if _is_label(field)
+        ]
+
+    @classmethod
+    def get_label_aggregations(cls, collection):
+        labels = cls.labels(collection)
+        count_aggs = []
+        for path, field in labels:
+            path = _expand_labels_path(path, field)
+            count_aggs.append(foa.Count(path))
+
+        tag_aggs = []
+        for path, field in labels:
+            path = _expand_labels_path(path, field)
+            tag_aggs.append(foa.CountValues("%s.tags" % path))
+
+        return count_aggs, tag_aggs
+
     def _build(self, view):
         aggregations = [foa.Count()]
         exists_aggregations = []
 
-        default_fields = fosa.get_default_sample_fields()
-
-        schemas = [("", view.get_field_schema())]
         if view.media_type == fom.VIDEO:
-            schemas.append(
-                (view._FRAMES_PREFIX, view.get_frame_field_schema())
-            )
             aggregations.extend([foa.Count("frames")])
 
         aggregations.append(foa.CountValues("tags"))
 
         exists_expr = (~(fo.ViewField().exists())).if_else(True, None)
-        for prefix, schema in schemas:
-            for field_name, field in schema.items():
-                if field_name in default_fields or (
-                    prefix == view._FRAMES_PREFIX
-                    and field_name == "frame_number"
-                ):
-                    continue
 
-                field_name = prefix + field_name
-                if _is_label(field):
-                    path = field_name
-                    if issubclass(field.document_type, fol._HasLabelList):
-                        path = "%s.%s" % (
-                            path,
-                            field.document_type._LABEL_LIST_FIELD,
-                        )
+        for field_name, field in self.fields(view):
+            if _is_label(field):
+                path = _expand_labels_path(field_name, field)
 
-                    aggregations.append(foa.Count(path))
-                    label_path = "%s.label" % path
-                    confidence_path = "%s.confidence" % path
-                    aggregations.extend(
-                        [
-                            foa.Distinct(label_path),
-                            foa.Bounds(confidence_path),
-                        ]
-                    )
-                    exists_aggregations.append(
-                        foa.Count(label_path, expr=exists_expr)
-                    )
-                    exists_aggregations.append(
-                        foa.Count(confidence_path, expr=exists_expr)
-                    )
-                else:
-                    aggregations.append(foa.Count(field_name))
-                    aggregations.append(foa.Count(field_name))
-                    exists_aggregations.append(
-                        foa.Count(field_name, expr=exists_expr)
-                    )
+                aggregations.append(foa.Count(path))
+                label_path = "%s.label" % path
+                confidence_path = "%s.confidence" % path
+                tags_path = "%s.tags" % path
+                aggregations.extend(
+                    [
+                        foa.Distinct(label_path),
+                        foa.Bounds(confidence_path),
+                        foa.CountValues(tags_path),
+                    ]
+                )
+                exists_aggregations.append(
+                    foa.Count(label_path, expr=exists_expr)
+                )
+                exists_aggregations.append(
+                    foa.Count(confidence_path, expr=exists_expr)
+                )
+            else:
+                aggregations.append(foa.Count(field_name))
+                aggregations.append(foa.Count(field_name))
+                exists_aggregations.append(
+                    foa.Count(field_name, expr=exists_expr)
+                )
 
-                    if _meets_type(field, (fof.IntField, fof.FloatField)):
-                        aggregations.append(foa.Bounds(field_name))
-                    elif _meets_type(field, fof.StringField):
-                        aggregations.append(foa.Distinct(field_name))
+                if _meets_type(field, (fof.IntField, fof.FloatField)):
+                    aggregations.append(foa.Bounds(field_name))
+                elif _meets_type(field, fof.StringField):
+                    aggregations.append(foa.Distinct(field_name))
 
         return aggregations, exists_aggregations
+
+
+def _expand_labels_path(root, label_field):
+    if issubclass(label_field.document_type, fol._HasLabelList):
+        return "%s.%s" % (root, label_field.document_type._LABEL_LIST_FIELD,)
+
+    return root
 
 
 def _meets_type(field, t):

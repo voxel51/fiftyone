@@ -1,15 +1,10 @@
-import React, { useState } from "react";
+import React from "react";
 import styled from "styled-components";
-import { useRecoilState, useRecoilValue } from "recoil";
-import { Checkbox } from "@material-ui/core";
-import { Autorenew } from "@material-ui/icons";
-import { animated, useSpring } from "react-spring";
+import { useRecoilValue } from "recoil";
 
 import DropdownHandle from "./DropdownHandle";
-import SelectionMenu from "./SelectionMenu";
-import * as atoms from "../recoil/atoms";
+import Actions from "./Actions";
 import * as selectors from "../recoil/selectors";
-import { useTheme } from "../utils/hooks";
 
 type Props = {
   showSidebar: boolean;
@@ -30,31 +25,21 @@ const Wrapper = styled.div`
 const SamplesHeader = styled.div`
   display: flex;
   justify-content: space-between;
-  overflow-x: hidden;
+  overflow: visible;
   margin-left: 1rem;
   margin-right: -1rem;
+  margin-bottom: -0.5rem;
   flex-grow: 1;
+  height: 37px;
 `;
 
-const OptionsContainer = styled.div`
-  display: flex;
-`;
-
-const OptionTextDiv = styled.div`
-  padding-right: 0.25rem;
+const CountDiv = styled.div`
+  padding-right: 1rem;
   display: flex;
   justify-content: center;
   align-content: center;
   flex-direction: column;
 `;
-
-export const OptionText = ({ style, children }) => {
-  return (
-    <OptionTextDiv style={style}>
-      <span>{children}</span>
-    </OptionTextDiv>
-  );
-};
 
 const ImageContainerHeader = ({ showSidebar, onShowSidebar }: Props) => {
   const totalCount = useRecoilValue(selectors.totalCount);
@@ -76,20 +61,16 @@ const ImageContainerHeader = ({ showSidebar, onShowSidebar }: Props) => {
         label="Fields"
         expanded={showSidebar}
         onClick={onShowSidebar && (() => onShowSidebar(!showSidebar))}
-        style={{ width: 240 }}
+        style={{ width: 240, padding: "0.25rem 0.5rem" }}
       />
       <SamplesHeader>
-        <OptionsContainer>
-          <OptionText>
-            <SelectionMenu />
-          </OptionText>
-        </OptionsContainer>
+        <Actions modal={false} />
         {countStr !== null ? (
-          <OptionTextDiv>
-            <div className="total" style={{ paddingRight: "1rem" }}>
+          <CountDiv>
+            <div>
               Viewing <strong>{countStr} samples</strong>
             </div>
-          </OptionTextDiv>
+          </CountDiv>
         ) : null}
       </SamplesHeader>
     </Wrapper>

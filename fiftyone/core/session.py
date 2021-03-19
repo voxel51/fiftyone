@@ -19,6 +19,9 @@ import fiftyone.constants as focn
 import fiftyone.core.dataset as fod
 import fiftyone.core.client as foc
 import fiftyone.core.context as focx
+import fiftyone.core.frame as fof
+import fiftyone.core.media as fom
+import fiftyone.core.sample as fosa
 import fiftyone.core.service as fos
 import fiftyone.core.utils as fou
 import fiftyone.utils.templates as fout
@@ -406,6 +409,13 @@ class Session(foc.HasClient):
         self.state.config = config
 
     @property
+    def _collection(self):
+        if self.view is not None:
+            return self.view
+
+        return self.dataset
+
+    @property
     def dataset(self):
         """The :class:`fiftyone.core.dataset.Dataset` connected to the session.
         """
@@ -439,13 +449,6 @@ class Session(foc.HasClient):
         session, or ``None`` if no view is connected.
         """
         return self.state.view
-
-    @property
-    def _collection(self):
-        if self.view is not None:
-            return self.view
-
-        return self.dataset
 
     @view.setter
     @_update_state(auto_show=True)
@@ -812,6 +815,15 @@ class Session(foc.HasClient):
             )
             self.state.active_handle = handle
             self._update_state()
+
+    def _reload(self):
+        if self.dataset is None:
+            return
+
+        if self.dataset.media_type == fom.VIDEO:
+            fof.Frame._reload_docs(self.dataset._frame_collection_name)
+
+        fosa.Sample._reload_docs(self.dataset._sample_collection_name)
 
     def _show(self, height=None):
         if (self._context == focx._NONE) or self._desktop:

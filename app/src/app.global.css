@@ -19,6 +19,7 @@ input {
 body {
   position: relative;
   height: 100vh;
+  will-change: transform;
 }
 
 body.noscroll {

@@ -1,16 +1,15 @@
-import React, { useContext } from "react";
-import { useRecoilState } from "recoil";
+import React from "react";
+import { useRecoilCallback, useRecoilValue } from "recoil";
 import { animated } from "react-spring";
 import styled from "styled-components";
 
 import { hasNoneField, useExpand } from "./utils";
-import { SampleContext } from "../../utils/context";
 import { NamedRangeSlider } from "./RangeSlider";
 import { NamedStringFilter } from "./StringFilter";
 import { CONFIDENCE_LABELS } from "../../utils/labels";
-import { removeObjectIDsFromSelection } from "../../utils/selection";
 import { getPathExtension } from "./LabelFieldFilters.state";
 import * as atoms from "../../recoil/atoms";
+import * as selectors from "../../recoil/selectors";
 import * as numericField from "./NumericFieldFilter";
 import * as stringField from "./StringFieldFilter";
 
@@ -24,30 +23,34 @@ const FilterHeader = styled.div`
   }
 `;
 
-const HiddenObjectFilter = ({ entry }) => {
-  const fieldName = entry.name;
-  const sample = useContext(SampleContext);
-  const [hiddenObjects, setHiddenObjects] = useRecoilState(atoms.hiddenObjects);
-  if (!sample) {
+const HiddenLabelFilter = ({ entry }) => {
+  const numHiddenLabels = useRecoilValue(
+    selectors.hiddenFieldLabels(entry.name)
+  ).length;
+  const clear = useRecoilCallback(
+    ({ snapshot, set }) => async () => {
+      const hiddenInField = await snapshot.getPromise(
+        selectors.hiddenFieldLabels(entry.name)
+      );
+      const hidden = await snapshot.getPromise(atoms.hiddenLabels);
+      set(
+        atoms.hiddenLabels,
+        Object.fromEntries(
+          Object.entries(hidden).filter(
+            ([label_id]) => !hiddenInField.includes(label_id)
+          )
+        )
+      );
+    },
+    [entry.name]
+  );
+
+  if (numHiddenLabels < 1) {
     return null;
   }
-
-  const sampleHiddenObjectIDs = Object.entries(hiddenObjects)
-    .filter(
-      ([_, data]) => data.sample_id === sample._id && data.field === fieldName
-    )
-    .map(([object_id]) => object_id);
-  if (!sampleHiddenObjectIDs.length) {
-    return null;
-  }
-  const clear = () =>
-    setHiddenObjects((hiddenObjects) =>
-      removeObjectIDsFromSelection(hiddenObjects, sampleHiddenObjectIDs)
-    );
-
   return (
     <FilterHeader>
-      Manually hidden: {sampleHiddenObjectIDs.length}
+      Hidden: {numHiddenLabels}
       <a onClick={clear}>reset</a>
     </FilterHeader>
   );
@@ -92,7 +95,7 @@ const LabelFilter = ({ expanded, entry, modal }: Props) => {
             selectedValuesAtom={selectedLabels(lPath)}
             excludeAtom={exclude(lPath)}
           />
-          <HiddenObjectFilter entry={entry} />
+          {modal && <HiddenLabelFilter entry={entry} />}
           {CONFIDENCE_LABELS.includes(entry.labelType) && (
             <NamedRangeSlider
               color={entry.color}

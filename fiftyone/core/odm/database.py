@@ -42,6 +42,21 @@ def _async_connect():
         )
 
 
+def aggregate(collection, pipeline):
+    """Executes an aggregation on a collection.
+
+    Args:
+        collection: a `pymongo.collection.Collection` or
+            `motor.motor_tornado.MotorCollection`
+        pipeline: a MongoDB aggregation pipeline
+
+    Returns:
+        a `pymongo.command_cursor.CommandCursor` or
+        `motor.motor_tornado.MotorCommandCursor`
+    """
+    return collection.aggregate(pipeline, allowDiskUse=True)
+
+
 def set_default_port(port):
     """Changes the default port used to connect to the database.
 

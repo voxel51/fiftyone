@@ -283,7 +283,7 @@ Labels
 Labels store semantic information about the sample, such as ground annotations
 or model predictions.
 
-FiftyOne provides a |Label| subclass for common tasks:
+FiftyOne provides a |Label| subclass for many common tasks:
 
 - :ref:`Classification <classification>`: a classification label
 - :ref:`Classifications <multilabel-classification>`: a list of classifications
@@ -293,6 +293,10 @@ FiftyOne provides a |Label| subclass for common tasks:
 - :ref:`Keypoints <keypoints>`: a list of keypoints in an image
 - :ref:`Segmentation <semantic-segmentation>`: a semantic segmentation mask for
   an image
+- :ref:`GeoLocation <geolocation>`: a single geolocation point, line, or
+  polygon
+- :ref:`GeoLocations <geolocation>`: a container of multiple geolocation
+  points, lines, and polygons
 
 Using FiftyOne's |Label| types enables you to visualize your labels in the
 :ref:`the App <fiftyone-app>`.

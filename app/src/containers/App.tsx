@@ -1,5 +1,10 @@
 import React, { useState, useRef, Suspense } from "react";
-import { useRecoilState, useSetRecoilState, useRecoilValue } from "recoil";
+import {
+  useRecoilState,
+  useSetRecoilState,
+  useRecoilValue,
+  useRecoilCallback,
+} from "recoil";
 import { ErrorBoundary } from "react-error-boundary";
 import NotificationHub from "../components/NotificationHub";
 
@@ -13,31 +18,52 @@ import {
 } from "../utils/hooks";
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
-import { convertSelectedObjectsListToMap } from "../utils/selection";
-import { refreshColorGenerator } from "player51";
+import socket, { handleId, isNotebook } from "../shared/connection";
 
 import Error from "./Error";
 import Setup from "./Setup";
 import "player51/src/css/player51.css";
 import "../app.global.css";
 
+const useStateUpdate = () => {
+  return useRecoilCallback(({ snapshot, set, reset }) => async (state) => {
+    const newSamples = new Set<string>(state.selected);
+    const oldSamples = await snapshot.getPromise(atoms.selectedSamples);
+    oldSamples.forEach(
+      (s) => !newSamples.has(s) && reset(atoms.isSelectedSample(s))
+    );
+    newSamples.forEach(
+      (s) => !oldSamples.has(s) && set(atoms.isSelectedSample(s), true)
+    );
+
+    set(atoms.selectedSamples, newSamples);
+    set(atoms.stateDescription, state);
+    set(selectors.anyTagging, false);
+    const colorPool = await snapshot.getPromise(atoms.colorPool);
+    if (JSON.stringify(state.config.color_pool) !== JSON.stringify(colorPool)) {
+      set(atoms.colorPool, state.config.color_pool);
+    }
+  });
+};
+
 function App() {
   const addNotification = useRef(null);
   const [reset, setReset] = useState(false);
   const setConnected = useSetRecoilState(atoms.connected);
   const [loading, setLoading] = useRecoilState(atoms.loading);
-  const socket = useRecoilValue(selectors.socket);
   const setStateDescription = useSetRecoilState(atoms.stateDescription);
-  const setSelectedSamples = useSetRecoilState(atoms.selectedSamples);
   const [viewCounterValue, setViewCounter] = useRecoilState(atoms.viewCounter);
-  const setSelectedObjects = useSetRecoilState(atoms.selectedObjects);
-  const handle = useRecoilValue(selectors.handleId);
-  const isNotebook = useRecoilValue(selectors.isNotebook);
-  const handleStateUpdate = (state) => {
-    setStateDescription(state);
-    setSelectedSamples(new Set(state.selected));
-    setSelectedObjects(convertSelectedObjectsListToMap(state.selected_labels));
-  };
+  const setExtendedDatasetStats = useSetRecoilState(
+    atoms.extendedDatasetStatsRaw
+  );
+  const setDatasetStats = useSetRecoilState(atoms.datasetStatsRaw);
+
+  const handleStateUpdate = useStateUpdate();
+
+  useMessageHandler("statistics", ({ stats, view, filters }) => {
+    filters && setExtendedDatasetStats({ stats, view, filters });
+    !filters && setDatasetStats({ stats, view });
+  });
 
   useEventHandler(socket, "open", () => {
     setConnected(true);
@@ -60,7 +86,7 @@ function App() {
   const connected = useRecoilValue(atoms.connected);
   useSendMessage("as_app", {
     notebook: isNotebook,
-    handle,
+    handle: handleId,
   });
 
   return (

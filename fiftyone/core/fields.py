@@ -5,6 +5,7 @@ Dataset sample fields.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+from bson import SON
 from bson.binary import Binary
 import mongoengine.fields
 import numpy as np
@@ -270,6 +271,150 @@ class PolylinePointsField(ListField):
                 "Polyline points fields must contain a list of lists of "
                 "(x, y) pairs"
             )
+
+
+class _GeoField(Field):
+    """Base class for GeoJSON fields."""
+
+    # The GeoJSON type of the field. Subclasses must implement this
+    _TYPE = None
+
+    def to_mongo(self, value):
+        if isinstance(value, dict):
+            return value
+
+        return SON([("type", self._TYPE), ("coordinates", value)])
+
+    def to_python(self, value):
+        if isinstance(value, dict):
+            return value["coordinates"]
+
+        return value
+
+
+class GeoPointField(_GeoField, mongoengine.fields.PointField):
+    """A GeoJSON field storing a longitude and latitude coordinate point.
+
+    The data is stored as ``[longitude, latitude]``.
+    """
+
+    _TYPE = "Point"
+
+    def validate(self, value):
+        if isinstance(value, dict):
+            self.error("Geo fields expect coordinate lists, but found dict")
+
+        super().validate(value)
+
+
+class GeoLineStringField(_GeoField, mongoengine.fields.LineStringField):
+    """A GeoJSON field storing a line of longitude and latitude coordinates.
+
+    The data is stored as follow::
+
+        [[lon1, lat1], [lon2, lat2], ...]
+    """
+
+    _TYPE = "LineString"
+
+    def validate(self, value):
+        if isinstance(value, dict):
+            self.error("Geo fields expect coordinate lists, but found dict")
+
+        super().validate(value)
+
+
+class GeoPolygonField(_GeoField, mongoengine.fields.PolygonField):
+    """A GeoJSON field storing a polygon of longitude and latitude coordinates.
+
+    The data is stored as follows::
+
+        [
+            [[lon1, lat1], [lon2, lat2], ...],
+            [[lon1, lat1], [lon2, lat2], ...],
+            ...
+        ]
+
+    where the first element describes the boundary of the polygon and any
+    remaining entries describe holes.
+    """
+
+    _TYPE = "Polygon"
+
+    def validate(self, value):
+        if isinstance(value, dict):
+            self.error("Geo fields expect coordinate lists, but found dict")
+
+        super().validate(value)
+
+
+class GeoMultiPointField(_GeoField, mongoengine.fields.MultiPointField):
+    """A GeoJSON field storing a list of points.
+
+    The data is stored as follows::
+
+        [[lon1, lat1], [lon2, lat2], ...]
+    """
+
+    _TYPE = "MultiPoint"
+
+    def validate(self, value):
+        if isinstance(value, dict):
+            self.error("Geo fields expect coordinate lists, but found dict")
+
+        super().validate(value)
+
+
+class GeoMultiLineStringField(
+    _GeoField, mongoengine.fields.MultiLineStringField
+):
+    """A GeoJSON field storing a list of lines.
+
+    The data is stored as follows::
+
+        [
+            [[lon1, lat1], [lon2, lat2], ...],
+            [[lon1, lat1], [lon2, lat2], ...],
+            ...
+        ]
+    """
+
+    _TYPE = "MultiLineString"
+
+    def validate(self, value):
+        if isinstance(value, dict):
+            self.error("Geo fields expect coordinate lists, but found dict")
+
+        super().validate(value)
+
+
+class GeoMultiPolygonField(_GeoField, mongoengine.fields.MultiPolygonField):
+    """A GeoJSON field storing a list of polygons.
+
+    The data is stored as follows::
+
+        [
+            [
+                [[lon1, lat1], [lon2, lat2], ...],
+                [[lon1, lat1], [lon2, lat2], ...],
+                ...
+            ],
+            [
+                [[lon1, lat1], [lon2, lat2], ...],
+                [[lon1, lat1], [lon2, lat2], ...],
+                ...
+            ],
+            ...
+        ]
+    """
+
+    _TYPE = "MultiPolygon"
+
+    def validate(self, value):
+        if isinstance(value, dict):
+            self.error("Geo fields expect coordinate lists, but found dict")
+
+        super().validate(value)
 
 
 class VectorField(mongoengine.fields.BinaryField, Field):

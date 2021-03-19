@@ -1,19 +1,16 @@
-import { atom, atomFamily } from "recoil";
-
-import { SelectedObjectMap } from "../utils/selection";
-
-export const colorSeed = atomFamily<number, boolean>({
-  key: "colorSeed",
-  default: 1,
-});
+import { atom, atomFamily, SerializableParam } from "recoil";
 
 export const modal = atom({
   key: "modal",
   default: {
     visible: false,
-    sample: null,
-    metadata: null,
+    sample_id: null,
   },
+});
+
+export const showModalJSON = atom({
+  key: "showModalJSON",
+  default: false,
 });
 
 export const connected = atom({
@@ -64,6 +61,13 @@ export const loading = atom({
   default: false,
 });
 
+export const tagging = atomFamily<boolean, { modal: boolean; labels: boolean }>(
+  {
+    key: "tagging",
+    default: false,
+  }
+);
+
 export const stateDescription = atom({
   key: "stateDescription",
   default: {},
@@ -74,13 +78,27 @@ export const selectedSamples = atom<Set<string>>({
   default: new Set(),
 });
 
-export const selectedObjects = atom<SelectedObjectMap>({
-  key: "selectedObjects",
-  default: {},
+export const isSelectedSample = atomFamily<boolean, string>({
+  key: "isSelectedSample",
+  default: false,
 });
 
-export const hiddenObjects = atom<SelectedObjectMap>({
-  key: "hiddenObjects",
+export interface SelectedLabelData {
+  sample_id: string;
+  field: string;
+  frame_number?: number;
+}
+
+export interface SelectedLabel extends SelectedLabelData {
+  label_id: string;
+}
+
+export type SelectedLabelMap = {
+  [label_id: string]: SelectedLabelData;
+};
+
+export const hiddenLabels = atom<SelectedLabelMap>({
+  key: "hiddenLabels",
   default: {},
 });
 
@@ -94,9 +112,28 @@ export const sidebarVisible = atom({
   default: true,
 });
 
-export const currentSamples = atom({
-  key: "currentSamples",
-  default: [],
+export const gridRows = atom({
+  key: "gridRows",
+  default: {
+    rows: [],
+    remainder: [],
+  },
+});
+
+export const sample = atomFamily<SerializableParam, string>({
+  key: "sample",
+  default: null,
+});
+
+export const sampleDimensions = atomFamily<
+  { width: number | null; height: number | null },
+  string
+>({
+  key: "sampleDimensions",
+  default: {
+    width: null,
+    height: null,
+  },
 });
 
 export const sampleVideoLabels = atomFamily({
@@ -127,6 +164,16 @@ export const viewCounter = atom({
 export const colorByLabel = atomFamily<boolean, boolean>({
   key: "colorByLabel",
   default: false,
+});
+
+export const colorPool = atom<string[]>({
+  key: "colorPool",
+  default: [],
+});
+
+export const colorSeed = atomFamily<number, boolean>({
+  key: "colorSeed",
+  default: 1,
 });
 
 export const appFeedbackIsOpen = atom({

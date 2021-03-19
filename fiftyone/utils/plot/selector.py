@@ -212,8 +212,9 @@ class PointSelector(object):
         inds = np.nonzero([_id in _label_ids for _id in self.label_ids])[0]
         self._select_inds(inds)
 
-    def select_session(self):
-        """Selects the contents of the currently linked session.
+    def sync(self):
+        """Syncs the selector with the linked session by selecting the contents
+        of the session's current view.
 
         The rules listed below are used to determine what to select.
 
@@ -496,10 +497,10 @@ class PointSelector(object):
         self._select_inds(inds)
 
     def _onsessionupdate(self):
-        self.select_session()
+        self.sync()
 
     def _onsync(self, event):
-        self.select_session()
+        self.sync()
 
     def _ondisconnect(self, event):
         self.disconnect()
