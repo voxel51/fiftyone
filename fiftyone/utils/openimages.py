@@ -135,6 +135,7 @@ def download_open_images_split(
             split_image_ids = None
         downloaded_ids = _get_downloaded_ids(dataset_dir, scratch_dir, split)
     else:
+        downloaded_ids = []
         split_image_ids = _parse_image_ids(
             image_ids, image_ids_file, split, scratch_dir
         )
