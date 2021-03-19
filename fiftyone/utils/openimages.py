@@ -914,7 +914,18 @@ def _load_open_images_split(
                 if shuffle:
                     random.shuffle(ids_all_labels)
                     random.shuffle(ids_not_all)
-                valid_ids = list(ids_all_labels) + list(ids_not_all)
+
+                # Prioritize loading existing images first
+                non_existing_ids = set(ids_not_all) - set(downloaded_ids)
+                existing_ids = set(ids_not_all) - non_existing_ids
+
+                valid_ids = (
+                    list(ids_all_labels)
+                    + list(existing_ids)
+                    + list(non_existing_ids)
+                )
+                valid_ids = valid_ids[:max_samples]
+
             else:
                 valid_ids = ids_all_labels
         else:
@@ -925,7 +936,7 @@ def _load_open_images_split(
     if shuffle:
         random.shuffle(valid_ids)
 
-    if max_samples:
+    if max_samples and len(valid_ids) > max_samples:
         # Prioritize loading existing images first
         non_existing_ids = set(valid_ids) - set(downloaded_ids)
         existing_ids = set(valid_ids) - non_existing_ids
