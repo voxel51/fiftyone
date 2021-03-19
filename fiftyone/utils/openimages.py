@@ -905,7 +905,18 @@ def _load_open_images_split(
         if guarantee_all_types:
             # When providing specific labels to load and max_samples, only load
             # samples that include all labels
-            valid_ids = ids_all_labels
+            if max_samples and len(ids_all_labels) < max_samples:
+                # prioritize samples with all labels but also add samples with
+                # any to reach max_samples
+                ids_not_all = ids_any_labels - ids_all_labels
+                ids_all_labels = list(ids_all_labels)
+                ids_not_all = list(ids_not_all)
+                if shuffle:
+                    random.shuffle(ids_all_labels)
+                    random.shuffle(ids_not_all)
+                valid_ids = list(ids_all_labels) + list(ids_not_all)
+            else:
+                valid_ids = ids_all_labels
         else:
             valid_ids = ids_any_labels
 
