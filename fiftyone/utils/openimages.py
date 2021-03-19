@@ -1,6 +1,6 @@
 """
 Utilities for working with the
-`Open Images V6 <https://storage.googleapis.com/openimages/web/index.html>`
+`Open Images <https://storage.googleapis.com/openimages/web/index.html>`
 dataset.
 
 | Copyright 2017-2021, Voxel51, Inc.
@@ -957,6 +957,7 @@ def _load_open_images_split(
     # Move images from tmp scratch folder to dataset folder
     scratch_path = os.path.join(scratch_dir, split, "images")
     dataset_path = os.path.join(dataset_dir, split, "data")
+    logger.info("Moving downloaded images to final location")
     for fn in os.listdir(scratch_path):
         scratch_img = os.path.join(scratch_path, fn)
         output_img = os.path.join(dataset_path, fn)
@@ -964,40 +965,44 @@ def _load_open_images_split(
 
     # Add samples to dataset
     samples = []
-    for image_id in valid_ids:
-        fp = os.path.join(dataset_dir, split, "data", "%s.jpg" % image_id)
-        sample = fos.Sample(filepath=fp)
-        sample.tags.append(split)
+    logger.info("Parsing data into FiftyOne samples")
+    with fou.ProgressBar() as pb:
+        for image_id in pb(valid_ids):
+            fp = os.path.join(dataset_dir, split, "data", "%s.jpg" % image_id)
+            sample = fos.Sample(filepath=fp)
+            sample.tags.append(split)
 
-        if "classifications" in label_types:
-            # Add labels
-            pos_labels, neg_labels = _create_labels(
-                lab_id_data, image_id, classes_map
-            )
-            sample["positive_labels"] = pos_labels
-            sample["negative_labels"] = neg_labels
+            if "classifications" in label_types:
+                # Add labels
+                pos_labels, neg_labels = _create_labels(
+                    lab_id_data, image_id, classes_map
+                )
+                sample["positive_labels"] = pos_labels
+                sample["negative_labels"] = neg_labels
 
-        if "detections" in label_types:
-            # Add detections
-            detections = _create_detections(det_id_data, image_id, classes_map)
-            sample["detections"] = detections
+            if "detections" in label_types:
+                # Add detections
+                detections = _create_detections(
+                    det_id_data, image_id, classes_map
+                )
+                sample["detections"] = detections
 
-        if "segmentations" in label_types:
-            # Add segmentations
-            segmentations = _create_segmentations(
-                seg_id_data, image_id, classes_map, scratch_dir, split
-            )
-            sample["segmentations"] = segmentations
+            if "segmentations" in label_types:
+                # Add segmentations
+                segmentations = _create_segmentations(
+                    seg_id_data, image_id, classes_map, scratch_dir, split
+                )
+                sample["segmentations"] = segmentations
 
-        if "relationships" in label_types:
-            # Add relationships
-            relationships = _create_relationships(
-                rel_id_data, image_id, classes_map, attrs_map
-            )
-            sample["relationships"] = relationships
+            if "relationships" in label_types:
+                # Add relationships
+                relationships = _create_relationships(
+                    rel_id_data, image_id, classes_map, attrs_map
+                )
+                sample["relationships"] = relationships
 
-        sample["open_images_id"] = image_id
-        samples.append(sample)
+            sample["open_images_id"] = image_id
+            samples.append(sample)
 
     logger.info("Adding samples to dataset")
     dataset.add_samples(samples)
