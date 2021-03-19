@@ -533,7 +533,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         Args:
             state: a serialized :class:`fiftyone.core.state.StateDescription`
         """
-        StateHandler.state = state
+        StateHandler.state = fos.StateDescription.from_dict(state).serialize()
         active_handle = state["active_handle"]
         global _notebook_clients
         global _deactivated_clients

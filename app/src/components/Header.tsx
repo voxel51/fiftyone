@@ -80,6 +80,7 @@ const LogoImg = animated(styled.img`
   width: auto;
   cursor: pointer;
   margin-right: 1rem;
+  will-change: transform;
 `);
 
 const LeftDiv = styled.div`

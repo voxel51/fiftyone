@@ -214,13 +214,13 @@ const Section = ({
               }}
               style={{
                 margin: "0.25rem -0.5rem",
-                paddingLeft: "2.5rem",
+                paddingLeft: "0.5rem",
                 height: "2rem",
                 borderRadius: 0,
               }}
             ></Button>
           )}
-          {hasChanges && (
+          {hasChanges && !value.length && (
             <Button
               text={"Apply"}
               onClick={() => submitWrapper(changes)}

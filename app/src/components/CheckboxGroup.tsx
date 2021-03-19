@@ -139,7 +139,7 @@ type EntryProps = {
   onCheck: (entry: Entry) => void;
 };
 
-const Entry = ({ entry, onCheck, modal }: EntryProps) => {
+const Entry = React.memo(({ entry, onCheck, modal }: EntryProps) => {
   const {
     data,
     disabled,
@@ -245,7 +245,7 @@ const Entry = ({ entry, onCheck, modal }: EntryProps) => {
       ) : null}
     </CheckboxContainer>
   );
-};
+});
 
 type CheckboxGroupProps = {
   entries: Entry[];
@@ -253,14 +253,21 @@ type CheckboxGroupProps = {
   modal: boolean;
 };
 
-const CheckboxGroup = ({ entries, onCheck, modal }: CheckboxGroupProps) => {
-  return (
-    <Body>
-      {entries.map((entry) => (
-        <Entry key={entry.name} entry={entry} onCheck={onCheck} modal={modal} />
-      ))}
-    </Body>
-  );
-};
+const CheckboxGroup = React.memo(
+  ({ entries, onCheck, modal }: CheckboxGroupProps) => {
+    return (
+      <Body>
+        {entries.map((entry) => (
+          <Entry
+            key={entry.name}
+            entry={entry}
+            onCheck={onCheck}
+            modal={modal}
+          />
+        ))}
+      </Body>
+    );
+  }
+);
 
 export default CheckboxGroup;

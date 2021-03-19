@@ -70,49 +70,51 @@ type CellProps = {
   children?: any;
 };
 
-const Cell = ({
-  label,
-  icon,
-  entries,
-  handleClear,
-  onSelect,
-  title,
-  modal,
-  children,
-}: CellProps) => {
-  const [expanded, setExpanded] = useState(true);
-  const numSelected = entries.filter((e) => e.selected).length;
+const Cell = React.memo(
+  ({
+    label,
+    icon,
+    entries,
+    handleClear,
+    onSelect,
+    title,
+    modal,
+    children,
+  }: CellProps) => {
+    const [expanded, setExpanded] = useState(true);
+    const numSelected = entries.filter((e) => e.selected).length;
 
-  return (
-    <DropdownCell
-      label={
-        <>
-          {icon ? <span className="left-icon">{icon}</span> : null}
-          <span className="label">{label}</span>
-          <span className="push" />
-          {numSelected ? (
-            <SelectionTag
-              count={numSelected}
-              title="Clear selection"
-              onClear={handleClear}
-              onClick={handleClear}
-            />
-          ) : null}
-        </>
-      }
-      title={title}
-      expanded={expanded}
-      onExpand={setExpanded}
-    >
-      {entries.length ? (
-        <CheckboxGrid entries={entries} onCheck={onSelect} modal={modal} />
-      ) : (
-        <span>No {title.toLocaleLowerCase()}</span>
-      )}
-      {children}
-    </DropdownCell>
-  );
-};
+    return (
+      <DropdownCell
+        label={
+          <>
+            {icon ? <span className="left-icon">{icon}</span> : null}
+            <span className="label">{label}</span>
+            <span className="push" />
+            {numSelected ? (
+              <SelectionTag
+                count={numSelected}
+                title="Clear selection"
+                onClear={handleClear}
+                onClick={handleClear}
+              />
+            ) : null}
+          </>
+        }
+        title={title}
+        expanded={expanded}
+        onExpand={setExpanded}
+      >
+        {entries.length ? (
+          <CheckboxGrid entries={entries} onCheck={onSelect} modal={modal} />
+        ) : (
+          <span>No {title.toLocaleLowerCase()}</span>
+        )}
+        {children}
+      </DropdownCell>
+    );
+  }
+);
 
 const makeData = (filteredCount: number, totalCount: number): string => {
   if (

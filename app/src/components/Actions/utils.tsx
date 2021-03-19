@@ -228,7 +228,7 @@ export const tagStats = selectorFamily<
     } else if (modal) {
       const sample = get(selectors.modalSample);
       return {
-        ...get(allTags).sample.map((t) => [t, 0]),
+        ...Object.fromEntries(get(allTags).sample.map((t) => [t, 0])),
         ...Object.fromEntries(sample.tags.map((t) => [t, 1])),
       };
     } else if (labels) {
