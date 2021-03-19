@@ -117,17 +117,26 @@ export const activeLabels = selectorFamily<
   },
   set: ({ modal, frames }) => ({ get, set }, value) => {
     if (Array.isArray(value)) {
-      const labels = frames ? value.map((v) => "frames." + v) : value;
       const prevActiveLabels = get(activeLabels({ modal, frames }));
 
       let active = get(activeFields(modal)).filter((v) =>
-        get(isLabelField(v)) ? labels.includes(v) : true
+        get(isLabelField(v)) ? value.includes(v) : true
       );
-      if (labels.length && prevActiveLabels.length < labels.length) {
-        active = [labels[0], ...active.filter((v) => v !== labels[0])];
+      if (value.length && prevActiveLabels.length < value.length) {
+        active = [value[0], ...active.filter((v) => v !== value[0])];
       }
       set(activeFields(modal), active);
     }
+  },
+});
+
+export const activeLabelPaths = selectorFamily<string[], boolean>({
+  key: "activeLabelPaths",
+  get: (modal) => ({ get }) => {
+    const sample = get(activeLabels({ modal, frames: false }));
+    const frames = get(activeLabels({ modal, frames: true }));
+
+    return [...sample, ...frames];
   },
 });
 

@@ -23,8 +23,8 @@ from fiftyone.constants import SERVER_NAME
 logging.getLogger("tornado").setLevel(logging.ERROR)
 
 
-# We only want one session to print notifications per namespace and per process
-_printer = defaultdict(lambda: None)
+# We want one session to lead per namespace and per process
+_leader = defaultdict(lambda: None)
 
 
 @retry(wait_fixed=500, stop_max_delay=5000)
@@ -56,11 +56,11 @@ class HasClient(object):
             while True:
                 message = await self._client.read_message()
 
-                global _printer
-                if _printer[self._url] is None:
-                    _printer[self._url] = self
+                global _leader
+                if _leader[self._url] is None:
+                    _leader[self._url] = self
 
-                if message is None and _printer[self._url] == self:
+                if message is None and _leader[self._url] == self:
                     print("\r\nSession disconnected, trying to reconnect\r\n")
                     fiftyone_url = "http://%s:%d/fiftyone" % (
                         SERVER_NAME,
@@ -81,7 +81,7 @@ class HasClient(object):
                             )
                             time.sleep(10)
 
-                    if message is None and _printer[self._url] == self:
+                    if message is None and _leader[self._url] == self:
                         print("\r\nSession reconnected\r\n")
 
                     continue
@@ -110,6 +110,9 @@ class HasClient(object):
 
                 if event == "reactivate":
                     self.on_reactivate(message)
+
+                if event == "reload":
+                    self.on_reload()
 
         def run_client():
             io_loop = IOLoop(make_current=True)
@@ -158,7 +161,7 @@ class HasClient(object):
             super().__setattr__(name, value)
 
     def __del__(self):
-        _printer[self._url] = None
+        _leader[self._url] = None
 
     def on_capture(self, data):
         self._capture(data)
@@ -172,12 +175,17 @@ class HasClient(object):
     def _reactivate(self, data):
         raise NotImplementedError("subclasses must implement _reactivate()")
 
-    def on_notification(self, data):
-        global _printer
-        if _printer[self._url] is None:
-            _printer[self._url] = self
+    def on_reload(self):
+        if not _is_leader(self):
+            return
 
-        if _printer[self._url] != self:
+        self._reload()
+
+    def _reload(self):
+        raise NotImplementedError("subclasses must implement _reload()")
+
+    def on_notification(self, data):
+        if not _is_leader(self):
             return
 
         print(data["kind"])
@@ -209,3 +217,11 @@ class HasClient(object):
     def _update_listeners(self):
         for callback in self._listeners.values():
             callback(self)
+
+
+def _is_leader(client):
+    global _leader
+    if _leader[client._url] is None:
+        _leader[client._url] = client
+
+    return _leader[client._url] == client

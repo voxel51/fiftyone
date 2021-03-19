@@ -30,6 +30,7 @@ import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 import fiftyone.core.metadata as fomt
 import fiftyone.core.models as fomo
+import fiftyone.core.odm as foo
 import fiftyone.core.sample as fosa
 import fiftyone.core.stages as fos
 import fiftyone.core.utils as fou
@@ -4448,7 +4449,7 @@ class SampleCollection(object):
             pipeline=facets, attach_frames=_attach_frames
         )
 
-        result = self._dataset._sample_collection.aggregate(pipeline)
+        result = foo.aggregate(self._dataset._sample_collection, pipeline)
         result = next(result)
 
         return self._process_aggregations(aggregations, result, scalar_result)
@@ -4494,7 +4495,7 @@ class SampleCollection(object):
         # pylint: disable=no-member
         pipeline = self._pipeline(pipeline=facets)
 
-        result = await sample_collection.aggregate(pipeline).to_list(1)
+        result = await foo.aggregate(sample_collection, pipeline).to_list(1)
         result = result[0]
 
         return self._process_aggregations(aggregations, result, scalar_result)

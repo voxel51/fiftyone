@@ -1,13 +1,19 @@
 import { useCallback, useContext, useEffect, useRef, useState } from "react";
-import { useRecoilState, useSetRecoilState, useRecoilValue } from "recoil";
+import {
+  useRecoilCallback,
+  useRecoilState,
+  useSetRecoilState,
+  useRecoilValue,
+} from "recoil";
 import ResizeObserver from "resize-observer-polyfill";
 import ReactGA from "react-ga";
 import { ThemeContext } from "styled-components";
 import html2canvas from "html2canvas";
 
-import { ColorTheme } from "../shared/colors";
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
+import { ColorTheme } from "../shared/colors";
+import socket, { appContext, handleId, isColab } from "../shared/connection";
 import { attachDisposableHandler, packageMessage } from "./socket";
 import gaConfig from "../constants/ga.json";
 
@@ -31,16 +37,17 @@ export const useEventHandler = (target, eventType, handler) => {
 };
 
 export const useMessageHandler = (type, handler) => {
-  const socket = useRecoilValue(selectors.socket);
-  const wrapper = ({ data }) => {
-    data = JSON.parse(data);
-    data.type === type && handler(data);
-  };
+  const wrapper = useCallback(
+    ({ data }) => {
+      data = JSON.parse(data);
+      data.type === type && handler(data);
+    },
+    [type, handler]
+  );
   useEventHandler(socket, "message", wrapper);
 };
 
 export const useSendMessage = (type, data, guard = null, deps = []) => {
-  const socket = useRecoilValue(selectors.socket);
   useEffect(() => {
     !guard &&
       socket.send(
@@ -119,42 +126,55 @@ export const useFollow = (leaderRef, followerRef, set) => {
   useObserve(followerRef ? followerRef.current : null, follow);
 };
 
-export const useVideoData = (socket, sample, callback = null) => {
-  const { _id: sampleId, filepath } = sample;
-  const [requested, setRequested] = useRecoilState(
-    atoms.sampleVideoDataRequested(sampleId)
-  );
-  const setVideoLabels = useSetRecoilState(atoms.sampleVideoLabels(sampleId));
-  const setFrameData = useSetRecoilState(atoms.sampleFrameData(sampleId));
-  const setFrameRate = useSetRecoilState(atoms.sampleFrameRate(sampleId));
-  const viewCounter = useRecoilValue(atoms.viewCounter);
-  return [
-    requested,
-    (...args) => {
-      if (requested !== viewCounter) {
-        setRequested(viewCounter);
-        const event = `video_data-${sampleId}`;
-        const handler = ({ labels, frames, fps }) => {
-          setVideoLabels(labels);
-          setFrameData(frames);
-          setFrameRate(fps);
-          callback && callback({ labels, frames }, ...args);
-        };
-        attachDisposableHandler(socket, event, handler);
-        socket.send(
-          packageMessage("get_video_data", { _id: sampleId, filepath })
-        );
-      } else {
-        callback && callback(null, ...args);
+export const useVideoData = (socket, id, callback = null) => {
+  return useRecoilCallback(
+    ({ snapshot, set }) => async (...args) => {
+      const isVideo = await snapshot.getPromise(selectors.isVideoDataset);
+      const requested = await snapshot.getPromise(
+        atoms.sampleVideoDataRequested(id)
+      );
+      if (requested || !isVideo) {
+        return;
       }
+      const counter = await snapshot.getPromise(atoms.viewCounter);
+
+      if (requested === counter) {
+        callback && callback(null, ...args);
+        return;
+      }
+      const event = `video_data-${id}`;
+      const handler = ({ labels, frames, fps }) => {
+        set(atoms.sampleVideoLabels(id), labels);
+        set(atoms.sampleFrameData(id), frames);
+        set(atoms.sampleFrameRate(id), fps);
+        callback && callback({ labels, frames, counter }, ...args);
+      };
+      attachDisposableHandler(socket, event, handler);
+      socket.send(packageMessage("get_video_data", { _id: id }));
+      set(atoms.sampleVideoDataRequested(id), counter);
     },
-  ];
+    [socket, id, callback]
+  );
+};
+
+export const useSampleUpdate = () => {
+  const handler = useRecoilCallback(
+    ({ set }) => async ({ samples }) => {
+      samples.forEach(({ sample, frames }) => {
+        set(atoms.sample(sample._id), sample);
+        frames && set(atoms.sampleFrameData(sample._id), frames);
+      });
+      set(selectors.anyTagging, false);
+    },
+    []
+  );
+  useMessageHandler("samples_update", handler);
 };
 
 export const useWindowSize = () => {
   const [windowSize, setWindowSize] = useState({
-    width: undefined,
-    height: undefined,
+    width: 0,
+    height: 0,
   });
 
   const handleResize = () => {
@@ -177,7 +197,6 @@ export const useWindowSize = () => {
 export const useGA = () => {
   const [gaInitialized, setGAInitialized] = useState(false);
   const info = useRecoilValue(selectors.fiftyone);
-  const appContext = useRecoilValue(selectors.appContext);
 
   useEffect(() => {
     if (info.do_not_track) {
@@ -216,9 +235,6 @@ export const useGA = () => {
 
 export const useScreenshot = () => {
   const isVideoDataset = useRecoilValue(selectors.isVideoDataset);
-  const socket = useRecoilValue(selectors.socket);
-  const isColab = useRecoilValue(selectors.isColab);
-  const handleId = useRecoilValue(selectors.handleId);
 
   const fitSVGs = useCallback(() => {
     const svgElements = document.body.querySelectorAll("svg");

@@ -22,8 +22,8 @@ const Body = styled.div`
   pre {
     margin: 0;
     padding: 2em;
-    flex-grow: 1;
     overflow-y: auto;
+    height: calc(100% - 64px);
     ${scrollbarStyles};
   }
 

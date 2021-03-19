@@ -3,6 +3,7 @@ import { atomFamily, selector, selectorFamily } from "recoil";
 import { Range } from "./RangeSlider";
 import {
   activeFields,
+  activeLabels,
   isBooleanField,
   isNumericField,
   isStringField,
@@ -53,7 +54,7 @@ export const labelFilters = selectorFamily<LabelFilters, boolean>({
     const labels = get(activeFields(true));
     const filters = {};
     const typeMap = get(selectors.labelTypesMap);
-    const hiddenObjects = modal ? get(atoms.hiddenObjects) : null;
+    const hiddenLabels = modal ? get(atoms.hiddenLabels) : null;
     for (const label of labels) {
       const path = `${label}${getPathExtension(typeMap[label])}`;
 
@@ -82,7 +83,7 @@ export const labelFilters = selectorFamily<LabelFilters, boolean>({
       ];
 
       filters[label] = (s) => {
-        if (hiddenObjects && hiddenObjects[s.id ?? s._id]) {
+        if (hiddenLabels && hiddenLabels[s.id ?? s._id]) {
           return false;
         }
         const inRange =
@@ -116,7 +117,7 @@ export const labelFilters = selectorFamily<LabelFilters, boolean>({
 
       set(
         numericField.noneModalAtom({ path: cPath, defaultRange: [0, 1] }),
-        get(numericField.noneModalAtom({ path: cPath, defaultRange: [0, 1] }))
+        get(numericField.noneAtom({ path: cPath, defaultRange: [0, 1] }))
       );
 
       set(
@@ -141,11 +142,11 @@ export const sampleModalFilter = selector({
     const filters = get(labelFilters(true));
 
     const labels = get(activeFields(true));
-    const hiddenObjects = get(atoms.hiddenObjects);
+    const hiddenLabels = get(atoms.hiddenLabels);
     const fields = get(activeFields(false));
     return (sample, prefix = null) => {
       return Object.entries(sample).reduce((acc, [key, value]) => {
-        if (value && hiddenObjects[value.id ?? value._id]) {
+        if (value && hiddenLabels[value.id ?? value._id]) {
           return acc;
         }
         if (prefix) {
@@ -153,7 +154,11 @@ export const sampleModalFilter = selector({
         }
         if (key === "tags") {
           acc[key] = value;
-        } else if (value && VALID_LIST_TYPES.includes(value._cls)) {
+        } else if (
+          value &&
+          VALID_LIST_TYPES.includes(value._cls) &&
+          labels.includes(key)
+        ) {
           if (fields.includes(key)) {
             acc[key] =
               filters[key] && value !== null
@@ -162,12 +167,17 @@ export const sampleModalFilter = selector({
                     [value._cls.toLowerCase()]: value[
                       value._cls.toLowerCase()
                     ].filter(
-                      (l) => filters[key](l) && !hiddenObjects[l.id ?? l._id]
+                      (l) => filters[key](l) && !hiddenLabels[l.id ?? l._id]
                     ),
                   }
                 : value;
           }
-        } else if (value !== null && filters[key] && filters[key](value)) {
+        } else if (
+          value !== null &&
+          filters[key] &&
+          filters[key](value) &&
+          labels.includes(key)
+        ) {
           acc[key] = value;
         } else if (RESERVED_FIELDS.includes(key)) {
           acc[key] = value;
@@ -201,6 +211,9 @@ export const fieldIsFiltered = selectorFamily<
     path = `${path}${getPathExtension(get(selectors.labelTypesMap)[path])}`;
     const cPath = `${path}.confidence`;
     const lPath = `${path}.label`;
+    const hasHiddenLabels = modal
+      ? get(selectors.hiddenFieldLabels(path.split(".")[0])).length > 0
+      : false;
 
     return (
       get(
@@ -209,7 +222,9 @@ export const fieldIsFiltered = selectorFamily<
           path: cPath,
           defaultRange: [0, 1],
         })
-      ) || get(stringField.fieldIsFiltered({ ...isArgs, path: lPath }))
+      ) ||
+      get(stringField.fieldIsFiltered({ ...isArgs, path: lPath })) ||
+      hasHiddenLabels
     );
   },
 });
@@ -274,7 +289,7 @@ export const labelSampleModalCounts = selectorFamily<Counts | null, string>({
   get: (dimension) => ({ get }) => {
     const labels = get(selectors.labelNames(dimension));
     const types = get(selectors.labelTypesMap);
-    const sample = get(atoms.modal).sample || {};
+    const sample = get(selectors.modalSample) || {};
     const frameData = get(atoms.sampleFrameData(sample._id));
 
     if (dimension === "frame") {
@@ -318,7 +333,7 @@ export const filteredLabelSampleModalCounts = selectorFamily<
     const labels = get(selectors.labelNames(dimension));
     const types = get(selectors.labelTypesMap);
     const filter = get(sampleModalFilter);
-    const sample = filter(get(atoms.modal).sample || {});
+    const sample = filter(get(selectors.modalSample) || {});
     const frameData = get(atoms.sampleFrameData(sample._id));
     if (dimension === "frame") {
       return labels.reduce((acc, path) => {
@@ -343,5 +358,80 @@ export const filteredLabelSampleModalCounts = selectorFamily<
       }
       return acc;
     }, {});
+  },
+});
+
+export const labelCount = selectorFamily<number | null, boolean>({
+  key: "labelCount",
+  get: (modal) => ({ get }) => {
+    const labels = get(activeLabels({ modal, frames: false }));
+    const frameLabels = get(activeLabels({ modal, frames: true }));
+    const hasFilters = Object.keys(get(selectors.filterStages)).length > 0;
+
+    const [counts, frameCounts] = modal
+      ? [
+          get(filteredLabelSampleModalCounts("sample")),
+          get(filteredLabelSampleModalCounts("frame")),
+        ]
+      : [
+          get(
+            hasFilters
+              ? filteredLabelSampleCounts("sample")
+              : labelSampleCounts("sample")
+          ),
+          get(
+            hasFilters
+              ? filteredLabelSampleCounts("frame")
+              : labelSampleCounts("frame")
+          ),
+        ];
+
+    let sum = 0;
+
+    labels.forEach((l) => {
+      if (!counts[l]) return;
+      sum += counts[l];
+    });
+
+    frameLabels
+      .map((l) => l.slice("frames.".length))
+      .forEach((l) => {
+        if (!frameCounts[l]) return;
+        sum += frameCounts[l];
+      });
+
+    return sum;
+  },
+});
+
+export const modalLabels = selector<atoms.SelectedLabel[]>({
+  key: "modalLabels",
+  get: ({ get }) => {
+    const sample = get(selectors.modalSample);
+    const filter = get(sampleModalFilter);
+    const activeFields = get(activeLabels({ modal: true, frames: false }));
+    const labels = [];
+    Object.entries(filter(sample))
+      .filter(([k]) => !RESERVED_FIELDS.includes(k) && activeFields.includes(k))
+      .forEach(([name, field]) => {
+        if (VALID_LIST_TYPES.includes(field._cls)) {
+          field[field._cls.toLowerCase()].forEach(({ _id }) => {
+            labels.push({
+              label_id: _id,
+              sample_id: sample._id,
+              field: name,
+              frame_number: null,
+            });
+          });
+        } else {
+          labels.push({
+            label_id: field._id,
+            sample_id: sample._id,
+            field: name,
+            frame_number: null,
+          });
+        }
+      });
+    return labels;
   },
 });

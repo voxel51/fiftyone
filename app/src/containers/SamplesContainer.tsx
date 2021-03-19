@@ -42,10 +42,11 @@ const SamplesContainer = React.memo(() => {
 
   return (
     <>
-      <ViewBar />
+      <ViewBar key={"bar"} />
       <ContainerHeader
         showSidebar={showSidebar}
         onShowSidebar={setShowSidebar}
+        key={"header"}
       />
       <Container>
         {showSidebar ? (
