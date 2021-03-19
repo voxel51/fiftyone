@@ -663,7 +663,7 @@ provides a few features setting it apart from COCO-style evaluation:
 
 -   Open Images has positive and negative image-level labels indicating which 
     classes of detections to evaluate. Other classes are ignored. These labels 
-    can be specified with the parameters ``pos_lab_field`` and ``neg_lab_field``.
+    can be specified with the parameters ``pos_label_field`` and ``neg_label_field``.
 
 -   Open Images evaluation incorporates a label hierarchy that can be provided 
     with the ``hierarchy`` parameter. By default, if you provide a hierarchy then 
@@ -671,7 +671,7 @@ provides a few features setting it apart from COCO-style evaluation:
     incorporate parent classes (child classes for negative image-level labels). 
     The expansion only copies labels and detections temporarily to compute mAP,
     they are not saved in your dataset. You
-    can turn this feature off by setting the ``expand_hierarchy`` parameter to
+    can turn this feature off by setting the ``expand_gt_hierarchy`` parameter to
     ``False``. Alternatively, you can expand predictions with the ``expand_pred_hierarchy`` 
     parameter.
 

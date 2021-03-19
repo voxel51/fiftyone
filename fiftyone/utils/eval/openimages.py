@@ -42,13 +42,13 @@ class OpenImagesEvaluationConfig(DetectionEvaluationConfig):
         hierarchy (None): a dict containing a hierachy of classes for
             evaluation following the structure 
             ``{"LabelName": label, "Subcategory": [{...}, ...]}``
-        pos_lab_field (None): the name of the field containing 
-            image-level classifications that specify which classes should be 
-            evaluated in the image
-        neg_lab_field (None): the name of the field containing 
-            image-level classifications that specify which classes should not 
-            be evaluated in the image
-        expand_hierarchy (True): bool indicating whether to expand ground truth
+        pos_label_field (None): the name of the field containing image-level 
+            :class:`fiftyone.core.labels.Classifications` that specify which 
+            classes should be evaluated in the image
+        neg_label_field (None): the name of the field containing image-level 
+            :class:`fiftyone.core.labels.Classifications` that specify which 
+            classes should not be evaluated in the image
+        expand_gt_hierarchy (True): bool indicating whether to expand ground truth
             detections and labels according to the provided hierarchy
         expand_pred_hierarchy (False): bool indicating whether to expand
             predicted detections and labels according to the provided 
@@ -64,9 +64,9 @@ class OpenImagesEvaluationConfig(DetectionEvaluationConfig):
         iscrowd="IsGroupOf",
         max_preds=None,
         hierarchy=None,
-        pos_lab_field=None,
-        neg_lab_field=None,
-        expand_hierarchy=True,
+        pos_label_field=None,
+        neg_label_field=None,
+        expand_gt_hierarchy=True,
         expand_pred_hierarchy=False,
         **kwargs
     ):
@@ -80,96 +80,41 @@ class OpenImagesEvaluationConfig(DetectionEvaluationConfig):
         self.iscrowd = iscrowd
         self.max_preds = max_preds
         self.hierarchy = hierarchy
-        self.pos_lab_field = pos_lab_field
-        self.neg_lab_field = neg_lab_field
-        self.expand_hierarchy = expand_hierarchy
+        self.pos_label_field = pos_label_field
+        self.neg_label_field = neg_label_field
+        self.expand_gt_hierarchy = expand_gt_hierarchy
         self.expand_pred_hierarchy = expand_pred_hierarchy
 
         if expand_pred_hierarchy:
             if not hierarchy:
-                logger.info(
+                logger.warning(
                     "No hierarchy provided, setting expand_pred_hierarchy to False"
                 )
                 self.expand_pred_hierarchy = False
 
             # If expand pred hierarchy is true, so is expand hierarchy
-            self.expand_hierarchy = self.expand_pred_hierarchy
+            self.expand_gt_hierarchy = self.expand_pred_hierarchy
 
-        if expand_hierarchy and not hierarchy:
-            logger.info(
-                "No hierarchy provided, setting expand_hierarchy to False"
+        if expand_gt_hierarchy and not hierarchy:
+            logger.warning(
+                "No hierarchy provided, setting expand_gt_hierarchy to False"
             )
-            self.expand_hierarchy = False
+            self.expand_gt_hierarchy = False
 
         if self.hierarchy:
             (
                 self.hierarchy_keyed_parent,
                 self.hierarchy_keyed_child,
                 _,
-            ) = self._build_plain_hierarchy(self.hierarchy, skip_root=True)
+            ) = _build_plain_hierarchy(self.hierarchy, skip_root=True)
 
     @property
     def method(self):
-        return "openimages"
+        return "open-images"
 
     @property
-    def additional_fields_required(self):
+    def requires_additional_fields(self):
         return True
-
-    # Parse hierarchy, code from:
-    # https://github.com/tensorflow/models/blob/ec48284d0db7a67ab48a9bc13dc29c643ce0f197/research/object_detection/dataset_tools/oid_hierarchical_labels_expansion.py#L77
-    def _update_dict(self, initial_dict, update):
-        """Updates dictionary with update content.
-
-        Args:
-            initial_dict: initial dictionary.
-            update: updated dictionary.
-        """
-
-        for key, value_list in update.items():
-            if key in initial_dict:
-                initial_dict[key].update(value_list)
-            else:
-                initial_dict[key] = set(value_list)
-
-    def _build_plain_hierarchy(self, hierarchy, skip_root=False):
-        """Expands tree hierarchy representation to parent-child dictionary.
-
-        Args:
-            hierarchy: labels hierarchy .
-            skip_root: if true skips root from the processing (done for the case when all
-                classes under hierarchy are collected under virtual node).
-        Returns:
-            keyed_parent: dictionary of parent - all its children nodes.
-            keyed_child: dictionary of children - all its parent nodes
-            children: all children of the current node.
-        """
-        all_children = set([])
-        all_keyed_parent = {}
-        all_keyed_child = {}
-        if "Subcategory" in hierarchy:
-            for node in hierarchy["Subcategory"]:
-                (
-                    keyed_parent,
-                    keyed_child,
-                    children,
-                ) = self._build_plain_hierarchy(node)
-                # Update is not done through dict.update() since some children have multi-
-                # ple parents in the hiearchy.
-                self._update_dict(all_keyed_parent, keyed_parent)
-                self._update_dict(all_keyed_child, keyed_child)
-                all_children.update(children)
-
-        if not skip_root:
-            all_keyed_parent[hierarchy["LabelName"]] = copy.deepcopy(
-                all_children
-            )
-            all_children.add(hierarchy["LabelName"])
-            for child, _ in all_keyed_child.items():
-                all_keyed_child[child].add(hierarchy["LabelName"])
-            all_keyed_child[hierarchy["LabelName"]] = set([])
-
-        return all_keyed_parent, all_keyed_child, all_children
 
 
 class OpenImagesEvaluation(DetectionEvaluation):
@@ -224,22 +169,22 @@ class OpenImagesEvaluation(DetectionEvaluation):
         pos_labs = None
         neg_labs = None
 
-        if self.config.pos_lab_field:
-            pos_labs = sample_or_frame[self.config.pos_lab_field]
+        if self.config.pos_label_field:
+            pos_labs = sample_or_frame[self.config.pos_label_field]
             if pos_labs is None:
                 pos_labs = []
             else:
                 pos_labs = [c.label for c in pos_labs.classifications]
-                if self.config.expand_hierarchy:
+                if self.config.expand_gt_hierarchy:
                     pos_labs = _expand_label_hierarchy(pos_labs, self.config)
 
-        if self.config.neg_lab_field:
-            neg_labs = sample_or_frame[self.config.neg_lab_field]
+        if self.config.neg_label_field:
+            neg_labs = sample_or_frame[self.config.neg_label_field]
             if neg_labs is None:
                 neg_labs = []
             else:
                 neg_labs = [c.label for c in neg_labs.classifications]
-                if self.config.expand_hierarchy:
+                if self.config.expand_gt_hierarchy:
                     neg_labs = _expand_label_hierarchy(neg_labs, self.config)
 
         if eval_key is None:
@@ -264,7 +209,7 @@ class OpenImagesEvaluation(DetectionEvaluation):
         provide the mAP and PR curves.
 
         Args:
-            samples: a :class:`fiftyone.core.SampleCollection`
+            samples: a :class:`fiftyone.core.SamplesCollection`
             matches: a list of ``(gt_label, pred_label, iou, pred_confidence)``
                 matches. Either label can be ``None`` to indicate an unmatched
                 object
@@ -542,7 +487,7 @@ def _open_images_evaluation_setup(
             label = det.label if classwise else "all"
             cats[label]["gts"].append(det)
 
-            if config.expand_hierarchy and label != "all":
+            if config.expand_gt_hierarchy and label != "all":
                 cats = _expand_det_hierarchy(cats, det, config, "gts")
 
     # Compute IoUs within each category
@@ -697,3 +642,57 @@ def _make_iscrowd_fcn(iscrowd_attr):
             return False
 
     return _iscrowd
+
+
+# Parse hierarchy, code from:
+# https://github.com/tensorflow/models/blob/ec48284d0db7a67ab48a9bc13dc29c643ce0f197/research/object_detection/dataset_tools/oid_hierarchical_labels_expansion.py#L77
+def _update_dict(initial_dict, update):
+    """Updates dictionary with update content
+
+    Args:
+        initial_dict: initial dictionary
+        update: updated dictionary
+    """
+
+    for key, value_list in update.items():
+        if key in initial_dict:
+            initial_dict[key].update(value_list)
+        else:
+            initial_dict[key] = set(value_list)
+
+
+def _build_plain_hierarchy(hierarchy, skip_root=False):
+    """Expands tree hierarchy representation to parent-child dictionary.
+
+    Args:
+        hierarchy: labels hierarchy 
+        skip_root (False): if true skips root from the processing (done for the case when all
+            classes under hierarchy are collected under virtual node)
+
+    Returns:
+        keyed_parent: dictionary of parent - all its children nodes
+        keyed_child: dictionary of children - all its parent node
+        children: all children of the current node
+    """
+    all_children = set([])
+    all_keyed_parent = {}
+    all_keyed_child = {}
+    if "Subcategory" in hierarchy:
+        for node in hierarchy["Subcategory"]:
+            (keyed_parent, keyed_child, children,) = _build_plain_hierarchy(
+                node
+            )
+            # Update is not done through dict.update() since some children have multi-
+            # ple parents in the hiearchy.
+            _update_dict(all_keyed_parent, keyed_parent)
+            _update_dict(all_keyed_child, keyed_child)
+            all_children.update(children)
+
+    if not skip_root:
+        all_keyed_parent[hierarchy["LabelName"]] = copy.deepcopy(all_children)
+        all_children.add(hierarchy["LabelName"])
+        for child, _ in all_keyed_child.items():
+            all_keyed_child[child].add(hierarchy["LabelName"])
+        all_keyed_child[hierarchy["LabelName"]] = set([])
+
+    return all_keyed_parent, all_keyed_child, all_children
