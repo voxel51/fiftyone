@@ -1,29 +1,59 @@
 import React, { useState, useEffect, useRef } from "react";
 import styled from "styled-components";
-
 import { Close, Fullscreen, FullscreenExit } from "@material-ui/icons";
-import { useRecoilValue, useSetRecoilState } from "recoil";
+import {
+  useRecoilValue,
+  useSetRecoilState,
+  useRecoilState,
+  selector,
+  useRecoilCallback,
+} from "recoil";
 
+import Actions from "./Actions";
 import FieldsSidebar from "./FieldsSidebar";
+import * as labelAtoms from "./Filters/utils";
+import { labelFilters } from "./Filters/LabelFieldFilters.state";
 import JSONView from "./JSONView";
 import Player51 from "./Player51";
 import { ModalFooter } from "./utils";
-import SelectLabelsMenu from "./SelectLabelsMenu";
-import * as selectors from "../recoil/selectors";
 import * as atoms from "../recoil/atoms";
-import * as labelAtoms from "./Filters/utils";
-import { labelFilters } from "./Filters/LabelFieldFilters.state";
-import { SampleContext } from "../utils/context";
-
+import * as selectors from "../recoil/selectors";
+import socket, { http } from "../shared/connection";
 import {
   useEventHandler,
   useKeydownHandler,
   useResizeHandler,
   useVideoData,
+  useTheme,
 } from "../utils/hooks";
 import { formatMetadata } from "../utils/labels";
-import { useToggleSelectionObject } from "../utils/selection";
-import { Button } from "./FieldsSidebar";
+
+const modalSrc = selector<string>({
+  key: "modalSrc",
+  get: ({ get }) => {
+    const sample = get(selectors.modalSample);
+    if (sample) {
+      return `${http}/filepath/${encodeURI(sample.filepath)}?id=${sample._id}`;
+    }
+  },
+});
+
+const modalIndex = selector<number>({
+  key: "modalIndex",
+  get: ({ get }) => {
+    const { sample_id } = get(atoms.modal);
+    return get(selectors.sampleIndices)[sample_id];
+  },
+  set: ({ get, set }, value) => {
+    if (typeof value !== "number") {
+      value = 0;
+    }
+    set(atoms.modal, {
+      visible: true,
+      sample_id: get(selectors.sampleIds)[value],
+    });
+  },
+});
 
 const Container = styled.div`
   position: relative;
@@ -43,6 +73,9 @@ const Container = styled.div`
   }
 
   h2 {
+    margin: 0.5rem -1rem;
+    padding: 0 1rem;
+    border-bottom: 2px solid ${({ theme }) => theme.backgroundLight};
     clear: both;
   }
 
@@ -109,18 +142,19 @@ const Container = styled.div`
 
   .sidebar {
     position: relative;
-    display: flex;
-    flex-direction: column;
-    border-left: 2px solid ${({ theme }) => theme.border};
+    height: 100%;
     max-height: 100%;
-    overflow-y: auto;
+    overflow: hidden;
+    border-left: 2px solid ${({ theme }) => theme.border};
 
     .sidebar-content {
-      padding-left: 1em;
-      padding-right: 1em;
-      padding-bottom: 1em;
+      padding-left: 1rem;
+      padding-right: 1rem;
+      overflow-y: scroll;
       flex-grow: 1;
       overflow-y: auto;
+      height: calc(100% - 64.5px);
+      max-height: calc(100% - 64.5px);
       scrollbar-width: none;
       @-moz-document url-prefix() {
         padding-right: 16px;
@@ -222,46 +256,54 @@ const Row = ({ name, value, children, ...rest }: RowProps) => (
 );
 
 type Props = {
-  sample: object;
-  sampleUrl: string;
-  colorMap: { [key: string]: string };
   onClose: () => void;
-  onNext: () => void;
-  onPrevious: () => void;
 };
 
-const SampleModal = (
-  { sampleUrl, onClose, onNext, onPrevious }: Props,
-  ref
-) => {
-  const { sample } = useRecoilValue(atoms.modal);
+const onSelectLabel = (frameNumberRef) => {
+  return useRecoilCallback(
+    ({ snapshot, set }) => async ({ id, name }) => {
+      const { sample_id } = await snapshot.getPromise(atoms.modal);
+      let labels = { ...(await snapshot.getPromise(selectors.selectedLabels)) };
+      if (labels[id]) {
+        delete labels[id];
+      } else {
+        labels[id] = {
+          field: name,
+          sample_id,
+          frame_number: frameNumberRef.current,
+        };
+      }
+      set(selectors.selectedLabels, labels);
+    },
+    [frameNumberRef]
+  );
+};
+
+const SampleModal = ({ onClose }: Props, ref) => {
+  const sample = useRecoilValue(selectors.modalSample);
+  const sampleUrl = useRecoilValue(modalSrc);
+  const [index, setIndex] = useRecoilState(modalIndex);
+  const numSamples = useRecoilValue(selectors.currentSamplesSize);
   const playerContainerRef = useRef();
   const [playerStyle, setPlayerStyle] = useState({
     height: "100%",
     width: "100%",
   });
-  const colorMap = useRecoilValue(selectors.colorMap(true));
   const setModalFilters = useSetRecoilState(labelFilters(true));
-  const [showJSON, setShowJSON] = useState(false);
+  const showJSON = useRecoilValue(atoms.showModalJSON);
   const [enableJSONFilter, setEnableJSONFilter] = useState(true);
   const [fullscreen, setFullscreen] = useState(false);
-  const mediaType = useRecoilValue(selectors.mediaType);
   const fieldSchema = useRecoilValue(selectors.fieldSchema("sample"));
   const colorByLabel = useRecoilValue(atoms.colorByLabel(true));
-  const socket = useRecoilValue(selectors.socket);
-  const viewCounter = useRecoilValue(atoms.viewCounter);
-  const [requested, requestLabels] = useVideoData(socket, sample);
+  const requestLabels = useVideoData(socket, sample._id);
   const videoLabels = useRecoilValue(atoms.sampleVideoLabels(sample._id));
   useEffect(() => {
-    mediaType === "video" && requested !== viewCounter && requestLabels();
-  }, [requested]);
-  useEffect(() => {
     setModalFilters(null);
+    requestLabels();
   }, []);
 
-  const toggleSelectedObject = useToggleSelectionObject(atoms.selectedObjects);
-  const selectedObjectIDs = Array.from(
-    useRecoilValue(selectors.selectedObjectIds)
+  const selectedLabelIds = Array.from(
+    useRecoilValue(selectors.selectedLabelIds)
   );
 
   // save overlay options when navigating - these are restored by passing them
@@ -314,12 +356,13 @@ const SampleModal = (
       } else if (onClose) {
         onClose();
       }
-    } else if (e.key == "ArrowLeft" && onPrevious) {
-      onPrevious();
-    } else if (e.key == "ArrowRight" && onNext) {
-      onNext();
+    } else if (e.key == "ArrowLeft" && index > 0) {
+      setIndex(index - 1);
+    } else if (e.key == "ArrowRight" && index < numSamples - 1) {
+      setIndex(index + 1);
     }
   });
+  const theme = useTheme();
 
   // store in a ref to avoid re-rendering this component when the frame number
   // changes
@@ -328,128 +371,112 @@ const SampleModal = (
     frameNumberRef.current = e.data.frame_number;
   });
 
+  const selectLabel = onSelectLabel(frameNumberRef);
+
   return (
-    <SampleContext.Provider value={sample}>
-      <Container
-        style={{ zIndex: 10001 }}
-        className={fullscreen ? "fullscreen" : ""}
-        ref={ref}
-      >
-        <div className="player" ref={playerContainerRef}>
-          {showJSON ? (
-            <JSONView
-              object={sample}
-              filterJSON={enableJSONFilter}
-              enableFilter={setEnableJSONFilter}
-            />
-          ) : (
-            <Player51
-              key={sampleUrl} // force re-render when this changes
-              src={sampleUrl}
-              onLoad={handleResize}
-              style={{
-                position: "relative",
-                ...playerStyle,
-              }}
-              sample={sample}
-              keep={true}
-              overlay={videoLabels}
-              colorByLabel={colorByLabel}
-              activeLabelsAtom={labelAtoms.activeFields(true)}
-              fieldSchema={fieldSchema}
-              filterSelector={labelFilters(true)}
-              playerRef={playerRef}
-              selectedObjects={selectedObjectIDs}
-              onSelectObject={({ id, name }) => {
-                toggleSelectedObject(id, {
-                  sample_id: sample._id,
-                  field: name,
-                  frame_number: frameNumberRef.current,
-                });
-              }}
-            />
-          )}
-          {onPrevious ? (
-            <div
-              className="nav-button left"
-              onClick={onPrevious}
-              title="Previous sample (Left arrow)"
-            >
-              &lt;
-            </div>
-          ) : null}
-          {onNext ? (
-            <div
-              className="nav-button right"
-              onClick={onNext}
-              title="Next sample (Right arrow)"
-            >
-              &gt;
-            </div>
-          ) : null}
-          <TopRightNavButtons>
-            <TopRightNavButton
-              onClick={() => setFullscreen(!fullscreen)}
-              title={fullscreen ? "Unmaximize (Esc)" : "Maximize"}
-              icon={fullscreen ? <FullscreenExit /> : <Fullscreen />}
-            />
-          </TopRightNavButtons>
-        </div>
-        <div className="sidebar">
-          <div className="sidebar-content">
-            <h2>
-              Metadata
-              <span className="push-right" />
-            </h2>
-            <Row name="ID" value={sample._id} />
-            <Row name="Source" value={sample.filepath} />
-            <Row name="Media type" value={sample._media_type} />
-            {formatMetadata(sample.metadata).map(({ name, value }) => (
-              <Row key={"metadata-" + name} name={name} value={value} />
-            ))}
-            <h2>
-              Fields
-              <span className="push-right" />
-            </h2>
-            <div className="select-objects-wrapper">
-              <SelectLabelsMenu
-                sample={sample}
-                frameNumberRef={frameNumberRef}
-              />
-            </div>
-            <FieldsSidebar
-              modal={true}
-              style={{
-                overflowY: "auto",
-                overflowX: "hidden",
-                height: "auto",
-              }}
-            />
-            <TopRightNavButton
-              onClick={onClose}
-              title={"Close"}
-              icon={<Close />}
-              style={{ position: "absolute", top: 0, right: 0 }}
-            />
+    <Container
+      style={{ zIndex: 10001 }}
+      className={fullscreen ? "fullscreen" : ""}
+      ref={ref}
+    >
+      <div className="player" ref={playerContainerRef}>
+        {showJSON ? (
+          <JSONView
+            object={sample}
+            filterJSON={enableJSONFilter}
+            enableFilter={setEnableJSONFilter}
+          />
+        ) : (
+          <Player51
+            key={sampleUrl} // force re-render when this changes
+            src={sampleUrl}
+            onLoad={handleResize}
+            style={{
+              position: "relative",
+              ...playerStyle,
+            }}
+            id={sample._id}
+            keep={true}
+            overlay={videoLabels}
+            colorByLabel={colorByLabel}
+            activeLabelsAtom={labelAtoms.activeFields(true)}
+            fieldSchema={fieldSchema}
+            filterSelector={labelFilters(true)}
+            playerRef={playerRef}
+            selectedLabels={selectedLabelIds}
+            onSelectLabel={selectLabel}
+          />
+        )}
+        {index > 0 ? (
+          <div
+            className="nav-button left"
+            onClick={() => setIndex(index - 1)}
+            title="Previous sample (Left arrow)"
+          >
+            &lt;
           </div>
-          <ModalFooter style={{ display: "block" }}>
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                width: "100%",
-                marginTop: -3,
-              }}
-            >
-              <Button
-                onClick={() => setShowJSON(!showJSON)}
-                text={`${showJSON ? "Hide" : "Show"} JSON`}
-              />
-            </div>
-          </ModalFooter>
+        ) : null}
+        {index < numSamples - 1 ? (
+          <div
+            className="nav-button right"
+            onClick={() => setIndex(index + 1)}
+            title="Next sample (Right arrow)"
+          >
+            &gt;
+          </div>
+        ) : null}
+        <TopRightNavButtons>
+          <TopRightNavButton
+            onClick={() => setFullscreen(!fullscreen)}
+            title={fullscreen ? "Unmaximize (Esc)" : "Maximize"}
+            icon={fullscreen ? <FullscreenExit /> : <Fullscreen />}
+          />
+        </TopRightNavButtons>
+      </div>
+      <div className="sidebar">
+        <ModalFooter
+          style={{
+            overlflowX: "auto",
+            width: 280,
+            borderTop: "none",
+            borderBottom: `2px solid ${theme.border}`,
+            position: "relative",
+          }}
+        >
+          <Actions modal={true} frameNumberRef={frameNumberRef} />
+        </ModalFooter>
+        <div className="sidebar-content">
+          <h2>
+            Metadata
+            <span className="push-right" />
+          </h2>
+          <Row name="ID" value={sample._id} />
+          <Row name="Source" value={sample.filepath} />
+          <Row name="Media type" value={sample._media_type} />
+          {formatMetadata(sample.metadata).map(({ name, value }) => (
+            <Row key={"metadata-" + name} name={name} value={value} />
+          ))}
+          <h2>
+            Fields
+            <span className="push-right" />
+          </h2>
+          <FieldsSidebar
+            modal={true}
+            style={{
+              overflowY: "auto",
+              overflowX: "hidden",
+              height: "auto",
+            }}
+          />
+          <TopRightNavButton
+            onClick={onClose}
+            title={"Close"}
+            icon={<Close />}
+            style={{ position: "absolute", top: 0, right: 0 }}
+          />
         </div>
-      </Container>
-    </SampleContext.Provider>
+      </div>
+    </Container>
   );
 };
 

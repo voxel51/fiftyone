@@ -1,5 +1,32 @@
 const THRESHOLD = 5;
 
+interface State {
+  hasMore: boolean;
+  isLoading: boolean;
+  loadMore: boolean;
+  pageToLoad: number | null;
+}
+
+interface RowStyle {
+  display: string;
+  gridTemplateColums: string;
+  width: string;
+  margin: number;
+}
+
+interface Row {
+  style: RowStyle;
+  columns: number;
+  samples: string[];
+  aspectRation: number;
+  extraMargin: number;
+}
+
+interface Rows {
+  rows: Row[];
+  remainder: Row[];
+}
+
 const lastRowRefWidth = (row) => {
   const baseAspectRatio = row[0].width / row[0].height;
   const sameAspectRatios = row
@@ -20,9 +47,14 @@ const lastRowRefWidth = (row) => {
   }
 };
 
-export default function tile(data, newHasMore, state) {
-  const samplesToFit = [...state.remainder, ...data];
-  const rows = [...state.rows];
+export default function tile(
+  data: object[],
+  newHasMore: boolean,
+  state: State,
+  { rows, remainder: oldRemainder }
+): [State, Rows] {
+  const samplesToFit = [...oldRemainder, ...data];
+  rows = [...rows];
   const newRows = [];
   let currentRow = [];
   let currentWidth = null;
@@ -100,7 +132,7 @@ export default function tile(data, newHasMore, state) {
     rows.push({
       style: rowStyle,
       columns: gridColumnsLength,
-      samples: row.map(({ sample, ...rest }) => ({ sample, metadata: rest })),
+      samples: row.map((s) => s.sample._id),
       aspectRatio:
         (refWidth +
           ((columns.length - 1 + extraMargins) / 5) * (refWidth / 100)) /
@@ -109,13 +141,13 @@ export default function tile(data, newHasMore, state) {
     });
   }
 
-  return {
-    hasMore: Boolean(newHasMore),
-    rows: rows,
-    isLoading: false,
-    loadMore: false,
-    remainder: remainder,
-    pageToLoad: Boolean(newHasMore) ? newHasMore : state.pageToLoad,
-    initialized: true,
-  };
+  return [
+    {
+      hasMore: Boolean(newHasMore),
+      isLoading: false,
+      loadMore: false,
+      pageToLoad: state.pageToLoad,
+    },
+    { rows, remainder },
+  ];
 }

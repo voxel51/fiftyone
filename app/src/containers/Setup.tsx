@@ -1,9 +1,9 @@
-import React, { useContext, useState } from "react";
-import styled, { ThemeContext } from "styled-components";
+import React, { useState } from "react";
+import styled from "styled-components";
 import { animated, useSpring } from "react-spring";
-import { useRecoilValue } from "recoil";
 
-import * as selectors from "../recoil/selectors";
+import { port, isNotebook } from "../shared/connection";
+import { useTheme } from "../utils/hooks";
 
 const SectionTitle = styled.div`
   font-size: 2rem;
@@ -43,7 +43,6 @@ session = fo.launch_app(dataset, remote=True, port=XXXX)
 `;
 
 const LocalInstructions = () => {
-  const port = useRecoilValue(selectors.port);
   const localSnippet = `
 import fiftyone as fo
 
@@ -63,7 +62,6 @@ session = fo.launch_app(dataset, port=${port})
 };
 
 const RemoteInstructions = () => {
-  const port = useRecoilValue(selectors.port);
   const bashSnippet = `
 # Option 1
 # Use the CLI to connect to the remote session
@@ -98,16 +96,6 @@ ssh -N -L ${port}:127.0.0.1:XXXX <username>@<remote-ip-address>
 };
 
 const NotebookInstructions = () => {
-  const port = useRecoilValue(selectors.port);
-  const notebookSnippet = `
-import fiftyone as fo
-
-# Load your FiftyOne dataset
-dataset = fo.load_dataset(...)
-
-# Launch the app
-session = fo.launch_app(dataset, port=${port})
-`;
   return (
     <>
       <SectionTitle>Notebook sessions</SectionTitle>
@@ -156,8 +144,7 @@ const Tab = animated(styled.div`
 `);
 
 function Setup() {
-  const isNotebook = useRecoilValue(selectors.isNotebook);
-  const theme = useContext(ThemeContext);
+  const theme = useTheme();
   const [activeTab, setActiveTab] = useState<string>("local");
   const localProps = useSpring({
     borderBottomColor: activeTab === "local" ? theme.brand : theme.background,

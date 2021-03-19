@@ -11,6 +11,8 @@ import matplotlib.pyplot as plt
 
 import eta.core.utils as etau
 
+import fiftyone.core.fields as fof
+import fiftyone.core.labels as fol
 import fiftyone.core.utils as fou
 
 from .scatter import scatterplot
@@ -18,8 +20,10 @@ from .utils import load_button_icon
 
 
 def location_scatterplot(
-    locations,
+    locations=None,
+    location_field=None,
     samples=None,
+    session=None,
     map_type="satellite",
     show_scale_bar=False,
     api_key=None,
@@ -27,7 +31,6 @@ def location_scatterplot(
     field=None,
     labels=None,
     classes=None,
-    session=None,
     marker_size=None,
     cmap=None,
     ax=None,
@@ -40,18 +43,27 @@ def location_scatterplot(
 ):
     """Generates an interactive scatterplot of the given location coordinates.
 
+    Location data can be specified either via the ``locations`` or
+    ``location_field`` parameters. If you specify neither, the first
+    :class:`fiftyone.core.labels.GeoLocation` field on the dataset is used.
+
     This method is a thin layer on top of
     :meth:`fiftyone.utils.plot.scatter.scatterplot` that renders a background
     image using Google Maps and performs the necessary coordinate
-    transformations to correctly render a geo-location scatterplot.
+    transformations to correctly render a geolocation scatterplot.
 
     See :meth:`fiftyone.utils.plot.scatter.scatterplot` for more usage details.
 
     Args:
-        locations: a ``num_samples x 2`` array of ``(longitude, latitude)``
-            coordinates
+        locations (None): a ``num_samples x 2`` array of
+            ``(longitude, latitude)`` coordinates
         samples (None): the :class:`fiftyone.core.collections.SampleCollection`
             whose data is being visualized
+        session (None): a :class:`fiftyone.core.session.Session` object to
+            link with the interactive plot
+        location_field (None): the name of a
+            :class:`fiftyone.core.labels.GeoLocation` field with
+            ``(longitude, latitude)`` coordinates in its ``point`` attribute
         map_type ("satellite"): the map type to render. Supported values are
             ``("roadmap", "satellite", "hybrid", "terrain")``
         show_scale_bar (False): whether to render a scale bar on the plot
@@ -64,8 +76,6 @@ def location_scatterplot(
             the points
         classes (None): an optional list of classes whose points to plot.
             Only applicable when ``labels`` contains strings
-        session (None): a :class:`fiftyone.core.session.Session` object to
-            link with the interactive plot
         marker_size (None): the marker size to use
         cmap (None): a colormap recognized by ``matplotlib``
         ax (None): an optional matplotlib axis to plot in
@@ -88,7 +98,10 @@ def location_scatterplot(
     else:
         fig = ax.figure
 
-    locations = np.asarray(locations)
+    if session is not None and samples is None:
+        samples = session._collection
+
+    locations = _parse_locations(locations, location_field, samples)
 
     locations = _plot_map_background(
         ax, locations, api_key, map_type, show_scale_bar
@@ -110,11 +123,11 @@ def location_scatterplot(
     return scatterplot(
         locations,
         samples=samples,
+        session=session,
         label_field=label_field,
         field=field,
         labels=labels,
         classes=classes,
-        session=session,
         marker_size=marker_size,
         cmap=cmap,
         ax=ax,
@@ -125,6 +138,30 @@ def location_scatterplot(
         block=block,
         **kwargs,
     )
+
+
+def _parse_locations(locations, location_field, samples):
+    if locations is not None:
+        return np.asarray(locations)
+
+    if samples is None:
+        raise ValueError(
+            "You must provide `samples` when `locations` are not manually "
+            "specified"
+        )
+
+    if location_field is not None:
+        samples.validate_field_type(
+            location_field,
+            fof.EmbeddedDocumentField,
+            embedded_doc_type=fol.GeoLocation,
+        )
+    else:
+        location_field = samples._get_geo_location_field()
+
+    locations = samples.values(location_field + ".point.coordinates")
+
+    return np.asarray(locations)
 
 
 def _plot_map_background(ax, locations, api_key, map_type, show_scale_bar):

@@ -2449,7 +2449,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         index_fields = [v["key"][0][0] for v in index_info.values()]
         return [f for f in index_fields if not f.startswith("_")]
 
-    def create_index(self, field_name, unique=False):
+    def create_index(self, field_name, unique=False, sphere2d=False):
         """Creates an index on the given field.
 
         If the given field already has a unique index, it will be retained
@@ -2463,11 +2463,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Args:
             field_name: the field name or ``embedded.field.name``
             unique (False): whether to add a uniqueness constraint to the index
+            sphere2d (False): whether the field is a GeoJSON field that
+                requires a sphere2d index
         """
-        if ("." not in field_name) and (
-            field_name not in self.get_field_schema()
-        ):
-            raise ValueError("Dataset has no field '%s'" % field_name)
+        root = field_name.split(".", 1)[0]
+
+        if root not in self.get_field_schema():
+            raise ValueError("Dataset has no field '%s'" % root)
 
         index_info = self._sample_collection.index_information()
         index_map = {
@@ -2482,7 +2484,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             # Must drop existing index
             self.drop_index(field_name)
 
-        self._sample_collection.create_index(field_name, unique=unique)
+        if sphere2d:
+            index_spec = [(field_name, "2dsphere")]
+        else:
+            index_spec = field_name
+
+        self._sample_collection.create_index(index_spec, unique=unique)
 
     def drop_index(self, field_name):
         """Drops the index on the given field.
@@ -2668,7 +2675,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             detach_frames=detach_frames,
         )
 
-        return self._sample_collection.aggregate(_pipeline)
+        return foo.aggregate(self._sample_collection, _pipeline)
 
     @property
     def _sample_collection_name(self):
@@ -2900,7 +2907,7 @@ def _clone_dataset_or_view(dataset_or_view, name):
 
     pipeline = dataset_or_view._pipeline(attach_frames=False)
     pipeline += [{"$out": sample_collection_name}]
-    dataset._sample_collection.aggregate(pipeline)
+    foo.aggregate(dataset._sample_collection, pipeline)
 
     #
     # Clone frames
@@ -2912,11 +2919,11 @@ def _clone_dataset_or_view(dataset_or_view, name):
             # the sample collection
             pipeline = view._pipeline(frames_only=True)
             pipeline += [{"$out": frames_collection_name}]
-            dataset._sample_collection.aggregate(pipeline)
+            foo.aggregate(dataset._sample_collection, pipeline)
         else:
             # Here we can directly aggregate on the frame collection
             pipeline = [{"$out": frames_collection_name}]
-            dataset._frame_collection.aggregate(pipeline)
+            foo.aggregate(dataset._frame_collection, pipeline)
 
     #
     # Clone dataset document
@@ -2982,10 +2989,10 @@ def _save_view(view, fields):
         if sample_fields:
             pipeline.append({"$project": {f: True for f in sample_fields}})
             pipeline.append({"$merge": dataset._sample_collection_name})
-            dataset._sample_collection.aggregate(pipeline)
+            foo.aggregate(dataset._sample_collection, pipeline)
     else:
         pipeline.append({"$out": dataset._sample_collection_name})
-        dataset._sample_collection.aggregate(pipeline)
+        foo.aggregate(dataset._sample_collection, pipeline)
 
         for field_name in view._get_missing_fields():
             dataset._sample_doc_cls._delete_field_schema(field_name, False)
@@ -3003,10 +3010,10 @@ def _save_view(view, fields):
             if frame_fields:
                 pipeline.append({"$project": {f: True for f in frame_fields}})
                 pipeline.append({"$merge": dataset._frame_collection_name})
-                dataset._sample_collection.aggregate(pipeline)
+                foo.aggregate(dataset._sample_collection, pipeline)
         else:
             pipeline.append({"$out": dataset._frame_collection_name})
-            dataset._sample_collection.aggregate(pipeline)
+            foo.aggregate(dataset._sample_collection, pipeline)
 
             for field_name in view._get_missing_fields(frames=True):
                 dataset._frame_doc_cls._delete_field_schema(field_name, False)

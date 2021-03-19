@@ -69,9 +69,9 @@ def export_samples(
             ``dataset_exporter`` is a :class:`LabeledVideoDatasetExporter`
         num_samples (None): the number of samples in ``samples``. If omitted,
             this is computed (if possible) via ``len(samples)``
-        **kwargs: optional keyword arguments to pass to
-            ``dataset_type.get_dataset_exporter_cls(export_dir, **kwargs)``
-    """
+        **kwargs: optional keyword arguments to pass to the dataset exporter's
+            constructor via ``DatasetExporter(export_dir, **kwargs)``
+        """
     dataset_exporter = _get_dataset_exporter(
         export_dir, dataset_type, dataset_exporter, **kwargs
     )
@@ -358,7 +358,7 @@ class DatasetExporter(object):
     """
 
     def __init__(self, export_dir):
-        self.export_dir = export_dir
+        self.export_dir = os.path.abspath(os.path.expanduser(export_dir))
 
     def __enter__(self):
         self.setup()
@@ -727,7 +727,6 @@ class FiftyOneDatasetExporter(GenericSampleDatasetExporter):
         relative_filepaths=True,
         pretty_print=False,
     ):
-        export_dir = os.path.abspath(os.path.expanduser(export_dir))
         super().__init__(export_dir)
         self.export_media = export_media
         self.move_media = move_media
@@ -770,12 +769,20 @@ class FiftyOneDatasetExporter(GenericSampleDatasetExporter):
 
         # Package classes and mask targets into `info`, since the import API
         # only supports checking for `info`
-        info["classes"] = sample_collection.classes
-        info["default_classes"] = sample_collection.default_classes
-        info["mask_targets"] = sample_collection._serialize_mask_targets()
-        info[
-            "default_mask_targets"
-        ] = sample_collection._serialize_default_mask_targets()
+
+        if sample_collection.classes:
+            info["classes"] = sample_collection.classes
+
+        if sample_collection.default_classes:
+            info["default_classes"] = sample_collection.default_classes
+
+        if sample_collection.mask_targets:
+            info["mask_targets"] = sample_collection._serialize_mask_targets()
+
+        if sample_collection.default_mask_targets:
+            info[
+                "default_mask_targets"
+            ] = sample_collection._serialize_default_mask_targets()
 
         self._metadata["info"] = info
 

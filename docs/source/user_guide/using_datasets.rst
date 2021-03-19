@@ -1751,6 +1751,118 @@ is rendered as a distinct color.
     dataset in the App, label strings will appear in the App's tooltip when you
     hover over pixels.
 
+.. _geolocation:
+
+Geolocation
+-----------
+
+The |GeoLocation| class can store single pieces of location data in its
+properties:
+
+-   :attr:`point <fiftyone.core.labels.GeoLocation.point>`: a
+    ``[longitude, latitude]`` point
+-   :attr:`line <fiftyone.core.labels.GeoLocation.line>`: a line of longitude
+    and latitude coordinates stored in the following format::
+
+        [[lon1, lat1], [lon2, lat2], ...]
+
+-   :attr:`polygon <fiftyone.core.labels.GeoLocation.polygon>`: a polygon of
+    longitude and latitude coordinates stored in the format below, where the
+    first element describes the boundary of the polygon and any remaining
+    entries describe holes::
+
+        [
+            [[lon1, lat1], [lon2, lat2], ...],
+            [[lon1, lat1], [lon2, lat2], ...],
+            ...
+        ]
+
+.. note::
+
+    All geolocation coordinates are stored in ``[longitude, latitude]``
+    format.
+
+If you have multiple geometries of each type that you wish to store on a single
+sample, then you can use the |GeoLocations| class and its appropriate
+properites to do so.
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    sample = fo.Sample(filepath="/path/to/image.png")
+
+    sample["location"] = fo.GeoLocation(
+        point=[-73.9855, 40.7580],
+        polygon=[
+            [
+                [-73.949701, 40.834487],
+                [-73.896611, 40.815076],
+                [-73.998083, 40.696534],
+                [-74.031751, 40.715273],
+                [-73.949701, 40.834487],
+            ]
+        ],
+    )
+
+    print(sample)
+
+.. code-block:: text
+
+    <Sample: {
+        'id': None,
+        'media_type': 'image',
+        'filepath': '/path/to/image.png',
+        'tags': [],
+        'metadata': None,
+        'location': <GeoLocation: {
+            'id': '60481f3936dc48428091e926',
+            'tags': BaseList([]),
+            'point': [-73.9855, 40.758],
+            'line': None,
+            'polygon': [
+                [
+                    [-73.949701, 40.834487],
+                    [-73.896611, 40.815076],
+                    [-73.998083, 40.696534],
+                    [-74.031751, 40.715273],
+                    [-73.949701, 40.834487],
+                ],
+            ],
+        }>,
+    }>
+
+.. note::
+
+    Did you know? You can create
+    :ref:`location-based views <geolocation-views>` that filter your data by
+    their location!
+
+All location data is stored in
+`GeoJSON format <https://en.wikipedia.org/wiki/GeoJSON>`_ in the database. You
+can easily retrieve the raw GeoJSON data for a slice of your dataset using the
+:ref:`values() <aggregations-values>` aggregation:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart-geo")
+
+    values = dataset.take(5).values("location.point")
+    print(values)
+
+.. code-block:: text
+
+    [{'type': 'Point', 'coordinates': [-73.9592175465766, 40.71052995514191]},
+     {'type': 'Point', 'coordinates': [-73.97748118760413, 40.74660360881843]},
+     {'type': 'Point', 'coordinates': [-73.9508690871987, 40.766631164626]},
+     {'type': 'Point', 'coordinates': [-73.96569416502996, 40.75449283200206]},
+     {'type': 'Point', 'coordinates': [-73.97397106211423, 40.67925541341504]}]
+
 .. _video-frame-labels:
 
 Video frame labels
