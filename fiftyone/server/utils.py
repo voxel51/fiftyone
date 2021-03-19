@@ -1,9 +1,5 @@
 """
-FiftyOne fast image metadata loading.
-
-Taken from https://github.com/scardine/image_size/blob/master/get_image_size.py
-
-TODO (BEN): clean up, document, and fit into fiftyone.core
+FiftyOne server utils.
 
 | Copyright 2017-2021, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -29,6 +25,39 @@ class UnknownFileFormat(Exception):
 
 class UnknownImageFormat(UnknownFileFormat):
     pass
+
+
+def change_sample_tags(collection, changes):
+    """Applies the changes to tags to all samples of the collection, if
+    necessary.
+
+    Args:
+        collection: the :class:`fiftyone.core.collections.SampleCollection`
+        changes: a `dict` of tags as keys and `bool`s as values. A `True`
+            value adds the tag to all samples, if necessary. A `False`
+            value removes the tag from all samples, if necessary.
+    """
+    modifier = _get_tag_modifier(changes)
+
+    collection._edit_sample_tags(modifier)
+
+
+def change_label_tags(collection, changes, label_fields=None):
+    """Applies the changes to tags to all labels in the specified label
+    field(s) of the collection, if necessary.
+
+    Args:
+        collection: the :class:`fiftyone.core.collections.SampleCollection`
+        changes: a `dict` of tags as keys and `bool`s as values. A `True`
+            value adds the tag to all samples, if necessary. A `False`
+            value removes the tag from all samples, if necessary.
+        label_fields (None): an optional name or iterable of names of
+            :class:`fiftyone.core.labels.Label` fields. By default, all
+            label fields are used
+    """
+    modifier = _get_tag_modifier(changes)
+
+    collection._edit_label_tags(modifier, label_fields=label_fields)
 
 
 def get_file_dimensions(file_path):
@@ -315,3 +344,19 @@ def get_image_metadata_from_bytesio(input, size, file_path=None):
         width=width,
         height=height,
     )
+
+
+def _get_tag_modifier(changes):
+    def modify_tags(tags):
+        if not tags:
+            return [tag for (tag, add) in changes.items() if add]
+
+        for tag, add in changes.items():
+            if add and tag not in tags:
+                tags = tags + [tag]
+            elif not add and tag in tags:
+                tags = [t for t in tags if t != tag]
+
+        return tags
+
+    return modify_tags

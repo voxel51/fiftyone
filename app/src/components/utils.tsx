@@ -1,4 +1,9 @@
+import React, { useState } from "react";
 import styled from "styled-components";
+import { animated, useSpring, useSprings } from "react-spring";
+import { KeyboardArrowUp, KeyboardArrowDown } from "@material-ui/icons";
+
+import { useTheme } from "../utils/hooks";
 
 export const Box = styled.div`
   padding: 1em;
@@ -47,9 +52,16 @@ export const ModalWrapper = styled.div`
 `;
 
 export const ModalFooter = styled.div`
+  display: block;
   border-top: 2px solid ${({ theme }) => theme.border};
   padding: 1em;
   background-color: ${({ theme }) => theme.backgroundLight};
+  z-index: 9000;
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  height: 64.5px;
 `;
 
 export const scrollbarStyles = ({ theme }) => `
@@ -97,3 +109,180 @@ export const ContentHeader = styled.div`
   display: flex;
   padding-bottom: 0.5rem;
 `;
+
+const PillButtonDiv = animated(styled.div`
+  line-height: 1.5rem;
+  padding: 0.25rem 0.75rem;
+  cursor: pointer;
+  background-color: ${({ theme }) => theme.button};
+  height: 2rem;
+  border-radius: 1rem;
+  border: none;
+  font-weight: bold;
+  display: flex;
+  justify-content: space-between;
+  opacity: 1;
+
+  & > span {
+    margin: 0 0.25rem;
+  }
+  & > svg {
+    display: inline-block;
+    height: 1.5rem;
+    width: 1.5rem;
+  }
+`);
+
+type PillButton = {
+  onClick: () => void;
+  open: boolean;
+  highlight: boolean;
+  text?: string;
+  icon?: any;
+  arrow?: boolean;
+  style?: object;
+};
+
+export const PillButton = React.memo(
+  React.forwardRef(
+    (
+      {
+        onClick,
+        open,
+        text,
+        icon,
+        highlight,
+        arrow = false,
+        style,
+      }: PillButton,
+      ref
+    ) => {
+      const theme = useTheme();
+      const props = useSpring({
+        opacity: 1,
+        backgroundColor: !highlight ? theme.button : theme.brand,
+        from: {
+          opacity: 0,
+        },
+      });
+      return (
+        <PillButtonDiv
+          onClick={onClick}
+          ref={ref}
+          style={{ ...props, ...style }}
+        >
+          {icon}
+          {text && <span>{text}</span>}
+          {arrow && (open ? <KeyboardArrowUp /> : <KeyboardArrowDown />)}
+        </PillButtonDiv>
+      );
+    }
+  )
+);
+
+export const PopoutDiv = animated(styled.div`
+  background-color: ${({ theme }) => theme.backgroundDark};
+  border: 1px solid ${({ theme }) => theme.backgroundDarkBorder};
+  border-radius: 2px;
+  box-shadow: 0 2px 20px ${({ theme }) => theme.backgroundDark};
+  box-sizing: border-box;
+  margin-top: 0.6rem;
+  position: absolute;
+  width: auto;
+  z-index: 801;
+  font-size: 14px;
+  padding: 0 0.5rem 0 0.5rem;
+  min-width: 14rem;
+`);
+
+export const PopoutSectionTitle = styled.div`
+  margin: 0 -0.5rem;
+  padding: 0 0.5rem;
+  border-bottom: 1px solid ${({ theme }) => theme.backgroundLight};
+  font-size: 1rem;
+  line-height: 2;
+  font-weight: bold;
+`;
+
+const TabOptionDiv = animated(styled.div`
+  display: flex;
+  font-weight: bold;
+  cursor: pointer;
+  justify-content: space-between;
+  margin: 0.5rem -0.5rem;
+  height: 2rem;
+
+  & > div {
+    display: flex;
+    justify-content: center;
+    align-content: center;
+    flex-direction: column;
+    cursor: inherit;
+    flex-grow: 1;
+    flex-basis: 0;
+    text-align: center;
+    overflow: hidden;
+  }
+`);
+
+const Tab = animated(styled.div``);
+
+type TabOption = {
+  text: string;
+  onClick: () => void;
+  title: string;
+};
+
+export type TabOptionProps = {
+  active: string;
+  options: TabOption[];
+};
+
+export const TabOption = ({ active, options }: TabOptionProps) => {
+  const theme = useTheme();
+  const [hovering, setHovering] = useState(options.map((o) => false));
+  const styles = useSprings(
+    options.length,
+    options.map((o, i) => ({
+      backgroundColor:
+        o.text === active
+          ? theme.brand
+          : hovering[i]
+          ? theme.background
+          : theme.backgroundLight,
+      color: hovering ? theme.font : theme.fontDark,
+    }))
+  );
+
+  const [style, set] = useSpring(() => ({
+    background: theme.backgroundLight,
+  }));
+
+  return (
+    <TabOptionDiv
+      style={style}
+      onMouseEnter={() => set({ background: theme.background })}
+      onMouseLeave={() => set({ background: theme.backgroundLight })}
+    >
+      {options.map(({ text, title, onClick }, i) => (
+        <Tab
+          onClick={onClick}
+          title={title}
+          style={{
+            ...styles[i],
+            cursor: text === active ? "default" : "pointer",
+          }}
+          onMouseEnter={() =>
+            setHovering(hovering.map((_, j) => (j === i ? true : _)))
+          }
+          onMouseLeave={() =>
+            setHovering(hovering.map((_, j) => (j === i ? false : _)))
+          }
+          key={i}
+        >
+          {text}
+        </Tab>
+      ))}
+    </TabOptionDiv>
+  );
+};

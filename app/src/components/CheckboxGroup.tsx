@@ -1,4 +1,4 @@
-import React, { useContext, useState } from "react";
+import React, { useState } from "react";
 import styled from "styled-components";
 import {
   Checkbox,
@@ -9,10 +9,8 @@ import { ArrowDropDown, ArrowDropUp } from "@material-ui/icons";
 import { useRecoilValue } from "recoil";
 import { animated, useSpring } from "react-spring";
 
-import * as atoms from "../recoil/atoms";
 import { fieldIsFiltered } from "./Filters/LabelFieldFilters.state";
 import { isBooleanField, isNumericField, isStringField } from "./Filters/utils";
-import { SampleContext } from "../utils/context";
 import { labelTypeIsFilterable } from "../utils/labels";
 
 import LabelFieldFilter from "./Filters/LabelFieldFilter";
@@ -141,7 +139,7 @@ type EntryProps = {
   onCheck: (entry: Entry) => void;
 };
 
-const Entry = ({ entry, onCheck, modal }: EntryProps) => {
+const Entry = React.memo(({ entry, onCheck, modal }: EntryProps) => {
   const {
     data,
     disabled,
@@ -163,22 +161,13 @@ const Entry = ({ entry, onCheck, modal }: EntryProps) => {
   const isString = useRecoilValue(isStringField(path));
   const isBoolean = useRecoilValue(isBooleanField(path));
 
-  const sample = useContext(SampleContext);
-  const hiddenObjects = useRecoilValue(atoms.hiddenObjects);
-  const hasHiddenObjects = sample
-    ? Object.entries(hiddenObjects).some(
-        ([_, data]) => data.sample_id === sample._id && data.field === name
-      )
-    : false;
-
   const checkboxClass = hideCheckbox ? "no-checkbox" : "with-checkbox";
   const containerProps = useSpring({
-    backgroundColor:
-      fieldFiltered || hasHiddenObjects
-        ? "#6C757D"
-        : hideCheckbox || selected
-        ? theme.backgroundLight
-        : theme.background,
+    backgroundColor: fieldFiltered
+      ? "#6C757D"
+      : hideCheckbox || selected
+      ? theme.backgroundLight
+      : theme.background,
   });
   const ArrowType = expanded ? ArrowDropUp : ArrowDropDown;
   return (
@@ -256,7 +245,7 @@ const Entry = ({ entry, onCheck, modal }: EntryProps) => {
       ) : null}
     </CheckboxContainer>
   );
-};
+});
 
 type CheckboxGroupProps = {
   entries: Entry[];
@@ -264,14 +253,21 @@ type CheckboxGroupProps = {
   modal: boolean;
 };
 
-const CheckboxGroup = ({ entries, onCheck, modal }: CheckboxGroupProps) => {
-  return (
-    <Body>
-      {entries.map((entry) => (
-        <Entry key={entry.name} entry={entry} onCheck={onCheck} modal={modal} />
-      ))}
-    </Body>
-  );
-};
+const CheckboxGroup = React.memo(
+  ({ entries, onCheck, modal }: CheckboxGroupProps) => {
+    return (
+      <Body>
+        {entries.map((entry) => (
+          <Entry
+            key={entry.name}
+            entry={entry}
+            onCheck={onCheck}
+            modal={modal}
+          />
+        ))}
+      </Body>
+    );
+  }
+);
 
 export default CheckboxGroup;

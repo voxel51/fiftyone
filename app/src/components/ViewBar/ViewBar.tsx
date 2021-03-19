@@ -5,11 +5,12 @@ import { useRecoilState, useRecoilValue } from "recoil";
 import HotKeys from "react-hotkeys";
 import { Close, Help } from "@material-ui/icons";
 
-import { useOutsideClick } from "../../utils/hooks";
-import * as selectors from "../../recoil/selectors";
 import ExternalLink from "../ExternalLink";
 import ViewStage, { AddViewStage } from "./ViewStage/ViewStage";
 import viewBarMachine from "./viewBarMachine";
+import * as selectors from "../../recoil/selectors";
+import { http } from "../../shared/connection";
+import { useOutsideClick } from "../../utils/hooks";
 
 const ViewBarContainer = styled.div`
   position: relative;
@@ -45,10 +46,10 @@ const IconsContainer = styled.div`
   position: absolute;
   z-index: 904;
   top: 1rem;
-  padding: 0.5rem;
+  padding: 14px 0.5rem;
+  height: 52px;
   border-radius: 3px;
   right: 0;
-  display: flex;
   background-image: linear-gradient(
     to right,
     rgba(255, 0, 0, 0),
@@ -57,7 +58,14 @@ const IconsContainer = styled.div`
   );
 
   & > * {
-    margin-top: 5px;
+    height: 100%;
+  }
+
+  & > * > {
+    display: flex;
+    justify-content: center;
+    align-content: center;
+    flex-direction: column;
   }
 `;
 
@@ -75,7 +83,6 @@ const ViewBar = React.memo(() => {
   const [state, send] = useMachine(viewBarMachine);
   const [view, setView] = useRecoilState(selectors.view);
   const fieldPaths = useRecoilValue(selectors.fieldPaths);
-  const http = useRecoilValue(selectors.http);
 
   useEffect(() => {
     send({

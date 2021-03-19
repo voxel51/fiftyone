@@ -1,14 +1,13 @@
-import React, { useEffect } from "react";
+import React from "react";
 import InfiniteScroll from "react-infinite-scroller";
 import useMeasure from "react-use-measure";
-import { useSetRecoilState, useRecoilValue } from "recoil";
+import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 
 import Loading from "./Loading";
 import Sample from "./Sample";
 import tile from "./Samples.hooks";
 import * as atoms from "../recoil/atoms";
-import * as selectors from "../recoil/selectors";
 import { scrollbarStyles } from "./utils";
 
 const Container = styled.div`
@@ -19,15 +18,10 @@ const Container = styled.div`
 `;
 
 function Samples() {
-  const setCurrentSamples = useSetRecoilState(atoms.currentSamples);
   const [containerRef, bounds] = useMeasure();
 
   const [scrollState, setScrollState] = tile();
-  useEffect(() => {
-    scrollState.initialized &&
-      setCurrentSamples(scrollState.rows.map((row) => row.samples).flat());
-  }, [scrollState.rows]);
-  const indices = useRecoilValue(selectors.selectedSampleIndices);
+  const { rows } = useRecoilValue(atoms.gridRows);
 
   return (
     <Container ref={containerRef}>
@@ -42,24 +36,19 @@ function Samples() {
         hasMore={scrollState.hasMore}
         useWindow={false}
       >
-        {scrollState.rows.map((r, i) => (
+        {rows.map((r, i) => (
           <React.Fragment key={i}>
             <div
-              columns={r.columns}
               style={{
                 ...r.style,
                 height: (bounds.width - 16) / r.aspectRatio,
               }}
               key={i}
             >
-              {r.samples.map((s, j) => (
+              {r.samples.map((id, j) => (
                 <React.Fragment key={j}>
                   <div key={"column"} style={{ padding: 0, width: "100%" }}>
-                    <Sample
-                      sample={s.sample}
-                      metadata={s.metadata}
-                      index={indices[s.sample._id]}
-                    />
+                    <Sample id={id} />
                   </div>
                   {j < r.samples.length - 1 && (
                     <div
@@ -82,9 +71,7 @@ function Samples() {
           </React.Fragment>
         ))}
       </InfiniteScroll>
-      {scrollState.isLoading && scrollState.rows.length === 0 ? (
-        <Loading />
-      ) : null}
+      {scrollState.isLoading && rows.length === 0 ? <Loading /> : null}
     </Container>
   );
 }
