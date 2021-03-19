@@ -5,8 +5,9 @@ Open Images-style detection evaluation.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-import logging
 from collections import defaultdict
+import copy
+import logging
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -35,14 +36,23 @@ class OpenImagesEvaluationConfig(DetectionEvaluationConfig):
         iou (None): the IoU threshold to use to determine matches
         classwise (None): whether to only match objects with the same class
             label (True) or allow matches between classes (False)
-        iscrowd ("iscrowd"): the name of the crowd attribute
-        compute_mAP (False): whether to perform the necessary computations so
-            that mAP and PR curves can be generated
-        iou_threshs (None): a list of IoU thresholds to use when computing mAP
-            and PR curves. Only applicable when ``compute_mAP`` is True
+        iscrowd ("IsGroupOf"): the name of the crowd attribute
         max_preds (None): the maximum number of predicted objects to evaluate
-            when computing mAP and PR curves. Only applicable when
-            ``compute_mAP`` is True
+            when computing mAP and PR curves. 
+        hierarchy (None): a dict containing a hierachy of classes for
+            evaluation following the structure 
+            ``{"LabelName": label, "Subcategory": [{...}, ...]}``
+        pos_label_field (None): the name of the field containing 
+            image-level classifications that specify which classes should be 
+            evaluated in the image
+        neg_label_field (None): the name of the field containing 
+            image-level classifications that specify which classes should not 
+            be evaluated in the image
+        expand_hierarchy (True): bool indicating whether to expand ground truth
+            detections and labels according to the provided hierarchy
+        expand_pred_hierarchy (False): bool indicating whether to expand
+            predicted detections and labels according to the provided 
+            hierarchy
     """
 
     def __init__(
@@ -51,30 +61,111 @@ class OpenImagesEvaluationConfig(DetectionEvaluationConfig):
         gt_field,
         iou=None,
         classwise=None,
-        iscrowd="iscrowd",
-        compute_mAP=False,
-        iou_threshs=None,
+        iscrowd="IsGroupOf",
         max_preds=None,
+        hierarchy=None,
+        pos_lab_field=None,
+        neg_lab_field=None,
+        expand_hierarchy=True,
+        expand_pred_hierarchy=False,
         **kwargs
     ):
         super().__init__(
             pred_field, gt_field, iou=iou, classwise=classwise, **kwargs
         )
 
-        if compute_mAP and iou_threshs is None:
-            iou_threshs = [x / 100 for x in range(50, 100, 5)]
-
-        if compute_mAP and max_preds is None:
+        if max_preds is None:
             max_preds = 100
 
         self.iscrowd = iscrowd
-        self.compute_mAP = compute_mAP
-        self.iou_threshs = iou_threshs
         self.max_preds = max_preds
+        self.hierarchy = hierarchy
+        self.pos_lab_field = pos_lab_field
+        self.neg_lab_field = neg_lab_field
+        self.expand_hierarchy = expand_hierarchy
+        self.expand_pred_hierarchy = expand_pred_hierarchy
+
+        if expand_pred_hierarchy:
+            if not hierarchy:
+                logger.info(
+                    "No hierarchy provided, setting expand_pred_hierarchy to False"
+                )
+                self.expand_pred_hierarchy = False
+
+            # If expand pred hierarchy is true, so is expand hierarchy
+            self.expand_hierarchy = self.expand_pred_hierarchy
+
+        if expand_hierarchy and not hierarchy:
+            logger.info(
+                "No hierarchy provided, setting expand_hierarchy to False"
+            )
+            self.expand_hierarchy = False
+
+        if self.hierarchy:
+            (
+                self.hierarchy_keyed_parent,
+                self.hierarchy_keyed_child,
+                _,
+            ) = self._build_plain_hierarchy(self.hierarchy, skip_root=True)
 
     @property
     def method(self):
         return "openimages"
+
+    # Parse hierarchy, code from:
+    # https://github.com/tensorflow/models/blob/ec48284d0db7a67ab48a9bc13dc29c643ce0f197/research/object_detection/dataset_tools/oid_hierarchical_labels_expansion.py#L77
+    def _update_dict(self, initial_dict, update):
+        """Updates dictionary with update content.
+
+        Args:
+            initial_dict: initial dictionary.
+            update: updated dictionary.
+        """
+
+        for key, value_list in update.items():
+            if key in initial_dict:
+                initial_dict[key].update(value_list)
+            else:
+                initial_dict[key] = set(value_list)
+
+    def _build_plain_hierarchy(self, hierarchy, skip_root=False):
+        """Expands tree hierarchy representation to parent-child dictionary.
+
+        Args:
+            hierarchy: labels hierarchy .
+            skip_root: if true skips root from the processing (done for the case when all
+                classes under hierarchy are collected under virtual node).
+        Returns:
+            keyed_parent: dictionary of parent - all its children nodes.
+            keyed_child: dictionary of children - all its parent nodes
+            children: all children of the current node.
+        """
+        all_children = set([])
+        all_keyed_parent = {}
+        all_keyed_child = {}
+        if "Subcategory" in hierarchy:
+            for node in hierarchy["Subcategory"]:
+                (
+                    keyed_parent,
+                    keyed_child,
+                    children,
+                ) = self._build_plain_hierarchy(node)
+                # Update is not done through dict.update() since some children have multi-
+                # ple parents in the hiearchy.
+                self._update_dict(all_keyed_parent, keyed_parent)
+                self._update_dict(all_keyed_child, keyed_child)
+                all_children.update(children)
+
+        if not skip_root:
+            all_keyed_parent[hierarchy["LabelName"]] = copy.deepcopy(
+                all_children
+            )
+            all_children.add(hierarchy["LabelName"])
+            for child, _ in all_keyed_child.items():
+                all_keyed_child[child].add(hierarchy["LabelName"])
+            all_keyed_child[hierarchy["LabelName"]] = set([])
+
+        return all_keyed_parent, all_keyed_child, all_children
 
 
 class OpenImagesEvaluation(DetectionEvaluation):
@@ -126,6 +217,21 @@ class OpenImagesEvaluation(DetectionEvaluation):
         gts = sample_or_frame[self.config.gt_field]
         preds = sample_or_frame[self.config.pred_field]
 
+        pos_labs = None
+        neg_labs = None
+
+        if self.config.pos_lab_field:
+            pos_labs = sample_or_frame[self.config.pos_lab_field]
+            pos_labs = [c.label for c in pos_labs.classifications]
+            if self.config.expand_hierarchy:
+                pos_labs = _expand_label_hierarchy(pos_labs, self.config)
+
+        if self.config.neg_lab_field:
+            neg_labs = sample_or_frame[self.config.neg_lab_field]
+            neg_labs = [c.label for c in neg_labs.classifications]
+            if self.config.expand_hierarchy:
+                neg_labs = _expand_label_hierarchy(neg_labs, self.config)
+
         if eval_key is None:
             # Don't save results on user's data
             eval_key = "eval"
@@ -133,7 +239,7 @@ class OpenImagesEvaluation(DetectionEvaluation):
             preds = preds.copy()
 
         return _open_images_evaluation_single_iou(
-            gts, preds, eval_key, self.config
+            gts, preds, eval_key, self.config, pos_labs, neg_labs,
         )
 
     def generate_results(
@@ -141,12 +247,11 @@ class OpenImagesEvaluation(DetectionEvaluation):
     ):
         """Generates aggregate evaluation results for the samples.
 
-        If ``self.config.compute_mAP`` is True, this method performs Open
-        Images-style evaluation as in :meth:`evaluate_image` to generate 
-        precision and recall sweeps over the range of IoU thresholds in
-        ``self.config.iou_threshs``. In this case, a
-        :class:`OpenImagesDetectionResults` instance is returned that can compute
-        mAP and PR curves.
+        This method performs Open Images-style evaluation as in 
+        :meth:`evaluate_image` to generate precision and recall curves for the
+        given IoU in ``self.config.iou``. In this case, a
+        :class:`OpenImagesDetectionResults` instance is returned that can
+        provide the mAP and PR curves.
 
         Args:
             samples: a :class:`fiftyone.core.SampleCollection`
@@ -154,102 +259,85 @@ class OpenImagesEvaluation(DetectionEvaluation):
                 matches. Either label can be ``None`` to indicate an unmatched
                 object
             eval_key (None): the evaluation key for this evaluation
-            classes (None): the list of possible classes. If not provided, the
-                observed ground truth/predicted labels are used for results
-                purposes
+            classes (None): the list of classes to evaluate. If not provided, 
+                the observed ground truth/predicted labels are used for 
+                results purposes
             missing (None): a missing label string. Any unmatched objects are
                 given this label for results purposes
 
         Returns:
             a :class:`DetectionResults`
         """
-        if not self.config.compute_mAP:
-            return DetectionResults(matches, classes=classes, missing=missing)
-
         pred_field = self.config.pred_field
         gt_field = self.config.gt_field
-        iou_threshs = self.config.iou_threshs
 
-        thresh_matches = {t: {} for t in iou_threshs}
+        class_matches = {}
         if classes is None:
-            classes = []
+            _classes = []
+        else:
+            _classes = classes
 
-        # IoU sweep
-        logger.info("Performing IoU sweep...")
-        with fou.ProgressBar() as pb:
-            for sample in pb(samples):
-                # Don't mess with the user's data
-                gts = sample[gt_field].copy()
-                preds = sample[pred_field].copy()
-
-                sample_matches = _open_images_evaluation_iou_sweep(
-                    gts, preds, self.config
-                )
-
-                for t, ms in sample_matches.items():
-                    for m in ms:
-                        # m = (gt_label, pred_label, iou, confidence, iscrowd)
-                        if m[4]:
-                            continue
-
-                        c = m[0] if m[0] != None else m[1]
-                        if c not in classes:
-                            classes.append(c)
-
-                        if c not in thresh_matches[t]:
-                            thresh_matches[t][c] = {
-                                "tp": [],
-                                "fp": [],
-                                "num_gt": 0,
-                            }
-
-                        if m[0] == m[1]:
-                            thresh_matches[t][c]["tp"].append(m)
-                        elif m[1]:
-                            thresh_matches[t][c]["fp"].append(m)
-
-                        if m[0]:
-                            thresh_matches[t][c]["num_gt"] += 1
-
-        # Compute precision-recall array
-        # Reference:
-        # https://storage.googleapis.com/openimages/web/evaluation.html
-        precision = -np.ones((len(iou_threshs), len(classes), 101))
-        recall = np.linspace(0, 1, 101)
-        for t in thresh_matches.keys():
-            for c in thresh_matches[t].keys():
-                tp = thresh_matches[t][c]["tp"]
-                fp = thresh_matches[t][c]["fp"]
-                num_gt = thresh_matches[t][c]["num_gt"]
-                if num_gt == 0:
+        # Sort matches
+        for m in matches:
+            # m = (gt_label, pred_label, iou, confidence)
+            c = m[0] if m[0] != None else m[1]
+            if c not in _classes:
+                if classes is None:
+                    _classes.append(c)
+                else:
                     continue
 
-                tp_fp = [1] * len(tp) + [0] * len(fp)
-                confs = [p[3] for p in tp] + [p[3] for p in fp]
-                inds = np.argsort(-np.array(confs), kind="mergesort")
-                tp_fp = np.array(tp_fp)[inds]
-                tp_sum = np.cumsum(tp_fp).astype(dtype=np.float)
-                total = np.arange(1, len(tp_fp) + 1).astype(dtype=np.float)
+            if c not in class_matches:
+                class_matches[c] = {
+                    "tp": [],
+                    "fp": [],
+                    "num_gt": 0,
+                }
 
-                pre = tp_sum / total
-                rec = tp_sum / num_gt
+            if m[0] == m[1]:
+                class_matches[c]["tp"].append(m)
+            elif m[1]:
+                class_matches[c]["fp"].append(m)
 
-                q = np.zeros((101,))
-                for i in range(len(pre) - 1, 0, -1):
-                    if pre[i] > pre[i - 1]:
-                        pre[i - 1] = pre[i]
+            if m[0]:
+                class_matches[c]["num_gt"] += 1
 
-                inds = np.searchsorted(rec, recall, side="left")
-                try:
-                    for ri, pi in enumerate(inds):
-                        q[ri] = pre[pi]
-                except:
-                    pass
+        # Compute precision-recall array
+        precision = -np.ones((len(_classes), 101))
+        recall = np.linspace(0, 1, 101)
+        for c in class_matches.keys():
+            tp = class_matches[c]["tp"]
+            fp = class_matches[c]["fp"]
+            num_gt = class_matches[c]["num_gt"]
+            if num_gt == 0:
+                continue
 
-                precision[iou_threshs.index(t)][classes.index(c)] = q
+            tp_fp = [1] * len(tp) + [0] * len(fp)
+            confs = [p[3] for p in tp] + [p[3] for p in fp]
+            inds = np.argsort(-np.array(confs), kind="mergesort")
+            tp_fp = np.array(tp_fp)[inds]
+            tp_sum = np.cumsum(tp_fp).astype(dtype=np.float)
+            total = np.arange(1, len(tp_fp) + 1).astype(dtype=np.float)
+
+            pre = tp_sum / total
+            rec = tp_sum / num_gt
+
+            q = np.zeros((101,))
+            for i in range(len(pre) - 1, 0, -1):
+                if pre[i] > pre[i - 1]:
+                    pre[i - 1] = pre[i]
+
+            inds = np.searchsorted(rec, recall, side="left")
+            try:
+                for ri, pi in enumerate(inds):
+                    q[ri] = pre[pi]
+            except:
+                pass
+
+            precision[_classes.index(c)] = q
 
         return OpenImagesDetectionResults(
-            matches, precision, recall, iou_threshs, classes, missing=missing
+            matches, precision, recall, _classes, missing=missing
         )
 
 
@@ -261,22 +349,18 @@ class OpenImagesDetectionResults(DetectionResults):
             matches. Either label can be ``None`` to indicate an unmatched
             object
         precision: an array of precision values of shape
-            ``num_iou_threshs x num_classes x num_recall``
+            ``num_classes x num_recall``
         recall: an array of recall values
-        iou_threshs: the list of IoU thresholds
         classes: the list of possible classes
         missing (None): a missing label string. Any unmatched objects are
             given this label for evaluation purposes
     """
 
-    def __init__(
-        self, matches, precision, recall, iou_threshs, classes, missing=None
-    ):
+    def __init__(self, matches, precision, recall, classes, missing=None):
         super().__init__(matches, classes=classes, missing=missing)
         self.precision = np.asarray(precision)
         self.recall = np.asarray(recall)
-        self.iou_threshs = np.asarray(iou_threshs)
-        self._classwise_AP = np.mean(precision, axis=(0, 2))
+        self._classwise_AP = np.mean(precision, axis=1)
 
     def plot_pr_curves(
         self,
@@ -312,7 +396,7 @@ class OpenImagesDetectionResults(DetectionResults):
 
         for c in classes:
             class_ind = self._get_class_index(c)
-            precision = np.mean(self.precision[:, class_ind], axis=0)
+            precision = self.precision[class_ind]
             avg_precision = np.mean(precision)
             display = skm.PrecisionRecallDisplay(
                 precision=precision, recall=self.recall
@@ -355,12 +439,7 @@ class OpenImagesDetectionResults(DetectionResults):
     @classmethod
     def _from_dict(cls, d, samples, **kwargs):
         return super()._from_dict(
-            d,
-            samples,
-            precision=d["precision"],
-            recall=d["recall"],
-            iou_threshs=d["iou_threshs"],
-            **kwargs,
+            d, samples, precision=d["precision"], recall=d["recall"], **kwargs,
         )
 
     def _get_class_index(self, label):
@@ -375,13 +454,34 @@ _NO_MATCH_ID = ""
 _NO_MATCH_IOU = -1
 
 
-def _open_images_evaluation_single_iou(gts, preds, eval_key, config):
+def _expand_label_hierarchy(labels, config):
+    keyed_parents = config.hierarchy_keyed_parent
+    keyed_children = config.hierarchy_keyed_child
+    additional_labs = []
+    for lab in labels:
+        if lab in keyed_children:
+            additional_labs += list(keyed_children[lab])
+    return list(set(labels + additional_labs))
+
+
+def _expand_det_hierarchy(cats, det, config, label_type):
+    keyed_children = config.hierarchy_keyed_child
+    for parent in keyed_children[det.label]:
+        new_det = det.copy()
+        new_det.label = parent
+        cats[parent][label_type].append(new_det)
+    return cats
+
+
+def _open_images_evaluation_single_iou(
+    gts, preds, eval_key, config, pos_labs, neg_labs
+):
     iou_thresh = min(config.iou, 1 - 1e-10)
     id_key = "%s_id" % eval_key
     iou_key = "%s_iou" % eval_key
 
     cats, pred_ious, iscrowd = _open_images_evaluation_setup(
-        gts, preds, [id_key], iou_key, config
+        gts, preds, id_key, iou_key, config, pos_labs, neg_labs
     )
 
     matches = _compute_matches(
@@ -394,58 +494,46 @@ def _open_images_evaluation_single_iou(gts, preds, eval_key, config):
         iou_key=iou_key,
     )
 
-    # omit iscrowd
-    return [m[:4] for m in matches]
-
-
-def _open_images_evaluation_iou_sweep(gts, preds, config):
-    iou_threshs = config.iou_threshs
-    id_keys = ["eval_id_%s" % str(i).replace(".", "_") for i in iou_threshs]
-    iou_key = "eval_iou"
-
-    cats, pred_ious, iscrowd = _open_images_evaluation_setup(
-        gts, preds, id_keys, iou_key, config, max_preds=config.max_preds
-    )
-
-    matches = {
-        i: _compute_matches(
-            cats,
-            pred_ious,
-            i,
-            iscrowd,
-            eval_key="eval",
-            id_key=k,
-            iou_key=iou_key,
-        )
-        for i, k in zip(iou_threshs, id_keys)
-    }
-
     return matches
 
 
 def _open_images_evaluation_setup(
-    gts, preds, id_keys, iou_key, config, max_preds=None
+    gts, preds, id_key, iou_key, config, pos_labs, neg_labs, max_preds=None
 ):
+
+    if pos_labs is None:
+        relevant_labs = neg_labs
+    elif neg_labs is None:
+        relevant_labs = pos_labs
+    else:
+        relevant_labs = list(set(pos_labs + neg_labs))
+
     iscrowd = _make_iscrowd_fcn(config.iscrowd)
     classwise = config.classwise
 
     # Organize preds and GT by category
     cats = defaultdict(lambda: defaultdict(list))
     for det in preds.detections:
-        det[iou_key] = _NO_MATCH_IOU
-        for id_key in id_keys:
+        if relevant_labs is None or det.label in relevant_labs:
+            det[iou_key] = _NO_MATCH_IOU
             det[id_key] = _NO_MATCH_ID
 
-        label = det.label if classwise else "all"
-        cats[label]["preds"].append(det)
+            label = det.label if classwise else "all"
+            cats[label]["preds"].append(det)
+
+            if config.expand_pred_hierarchy and label != "all":
+                cats = _expand_det_hierarchy(cats, det, config, "preds")
 
     for det in gts.detections:
-        det[iou_key] = _NO_MATCH_IOU
-        for id_key in id_keys:
+        if relevant_labs is None or det.label in relevant_labs:
+            det[iou_key] = _NO_MATCH_IOU
             det[id_key] = _NO_MATCH_ID
 
-        label = det.label if classwise else "all"
-        cats[label]["gts"].append(det)
+            label = det.label if classwise else "all"
+            cats[label]["gts"].append(det)
+
+            if config.expand_hierarchy and label != "all":
+                cats = _expand_det_hierarchy(cats, det, config, "gts")
 
     # Compute IoUs within each category
     pred_ious = {}
@@ -521,35 +609,42 @@ def _compute_matches(
                     gt = gt_map[best_match]
                     tag = "tp" if gt.label == pred.label else "fp"
                     gt[eval_key] = tag
+                    skip_match = False
+
+                    # This only occurs when matching more than 1 prediction to
+                    # a crowd. Only the first match counts as a TP, the rest
+                    # are ignored in mAP calculation.
+                    if gt[id_key] != _NO_MATCH_ID:
+                        skip_match = True
+
                     gt[id_key] = pred.id
                     gt[iou_key] = best_match_iou
                     pred[eval_key] = tag
                     pred[id_key] = best_match
                     pred[iou_key] = best_match_iou
-                    matches.append(
-                        (
-                            gt.label,
-                            pred.label,
-                            best_match_iou,
-                            pred.confidence,
-                            iscrowd(gt),
+
+                    if not skip_match:
+                        matches.append(
+                            (
+                                gt.label,
+                                pred.label,
+                                best_match_iou,
+                                pred.confidence,
+                            )
                         )
-                    )
                 else:
                     pred[eval_key] = "fp"
-                    matches.append(
-                        (None, pred.label, None, pred.confidence, None)
-                    )
+                    matches.append((None, pred.label, None, pred.confidence))
 
             elif pred.label == cat:
                 pred[eval_key] = "fp"
-                matches.append((None, pred.label, None, pred.confidence, None))
+                matches.append((None, pred.label, None, pred.confidence))
 
         # Leftover GTs are false negatives
         for gt in objects["gts"]:
             if gt[id_key] == _NO_MATCH_ID:
                 gt[eval_key] = "fn"
-                matches.append((gt.label, None, None, None, iscrowd(gt)))
+                matches.append((gt.label, None, None, None))
 
     return matches
 
