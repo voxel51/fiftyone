@@ -44,6 +44,8 @@ def download_open_images_split(
     classes=None,
     attrs=None,
     max_samples=None,
+    seed=None,
+    shuffle=None,
     image_ids=None,
     image_ids_file=None,
     num_workers=None,
@@ -80,6 +82,9 @@ def download_open_images_split(
         attrs (None): a list of strings for relationship attributes to load
         max_samples (None): a maximum number of samples to import per split. By
             default, all samples are imported
+        seed (None): a random seed to use when shuffling
+        shuffle (False): whether to randomly shuffle the order in which the
+            samples are imported
         image_ids (None): a list of specific image IDs to load. The IDs can be
             specified either as ``<split>/<image-id>`` or ``<image-id>``
         image_ids_file (None): the path to a newline separated text, JSON, or
@@ -97,6 +102,9 @@ def download_open_images_split(
             "Version %s is not supported. Supported versions are: %s"
             % (version, ", ".join(_SUPPORTED_VERSIONS))
         )
+
+    if seed is not None:
+        random.seed(seed)
 
     if max_samples and (label_types or classes or attrs):
         # Only samples with every specified label type will be loaded
@@ -236,6 +244,7 @@ def download_open_images_split(
         classes,
         attrs,
         max_samples,
+        shuffle,
         num_workers,
     )
 
@@ -762,6 +771,7 @@ def _load_open_images_split(
     classes,
     attrs,
     max_samples,
+    shuffle,
     num_workers,
 ):
 
@@ -881,8 +891,11 @@ def _load_open_images_split(
             valid_ids = ids_any_labels
 
     valid_ids = list(valid_ids)
-    if max_samples:
+
+    if shuffle:
         random.shuffle(valid_ids)
+
+    if max_samples:
         valid_ids = valid_ids[:max_samples]
 
     if not valid_ids:
