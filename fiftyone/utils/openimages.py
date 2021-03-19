@@ -133,6 +133,7 @@ def download_open_images_split(
             # No specific image IDs were given, load all relevant images from
             # the given labels later
             split_image_ids = None
+        downloaded_ids = _get_downloaded_ids(dataset_dir, scratch_dir, split)
     else:
         split_image_ids = _parse_image_ids(
             image_ids, image_ids_file, split, scratch_dir
@@ -233,6 +234,7 @@ def download_open_images_split(
         label_types,
         guarantee_all_types,
         split_image_ids,
+        downloaded_ids,
         classes_map,
         attrs_map,
         oi_classes,
@@ -703,6 +705,21 @@ def _verify_image_ids(
     return split_image_ids
 
 
+def _get_downloaded_ids(dataset_dir, scratch_dir, split):
+    data_path = os.path.join(dataset_dir, split, "data")
+    data_ids = []
+    if os.path.exists(data_path):
+        data_ids = os.listdir(data_path)
+
+    scratch_path = os.path.join(scratch_dir, split, "images")
+    scratch_ids = []
+    if os.path.exists(scratch_path):
+        scratch_ids = os.listdir(scratch_path)
+
+    downloaded_files = list(set(scratch_ids + data_ids))
+    return [os.path.splitext(i)[0] for i in downloaded_files]
+
+
 def _get_label_data(
     dataset,
     split,
@@ -760,6 +777,7 @@ def _load_open_images_split(
     label_types,
     guarantee_all_types,
     split_image_ids,
+    downloaded_ids,
     classes_map,
     attrs_map,
     oi_classes,
@@ -896,6 +914,11 @@ def _load_open_images_split(
         random.shuffle(valid_ids)
 
     if max_samples:
+        # Prioritize loading existing images first
+        non_existing_ids = set(valid_ids) - set(downloaded_ids)
+        existing_ids = set(valid_ids) - non_existing_ids
+        valid_ids = list(existing_ids) + list(non_existing_ids)
+
         valid_ids = valid_ids[:max_samples]
 
     if not valid_ids:
