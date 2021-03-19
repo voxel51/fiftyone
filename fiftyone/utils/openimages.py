@@ -44,6 +44,8 @@ def download_open_images_split(
     classes=None,
     attrs=None,
     max_samples=None,
+    seed=None,
+    shuffle=None,
     image_ids=None,
     image_ids_file=None,
     num_workers=None,
@@ -80,6 +82,9 @@ def download_open_images_split(
         attrs (None): a list of strings for relationship attributes to load
         max_samples (None): a maximum number of samples to import per split. By
             default, all samples are imported
+        seed (None): a random seed to use when shuffling
+        shuffle (False): whether to randomly shuffle the order in which the
+            samples are imported
         image_ids (None): a list of specific image IDs to load. The IDs can be
             specified either as ``<split>/<image-id>`` or ``<image-id>``
         image_ids_file (None): the path to a newline separated text, JSON, or
@@ -97,6 +102,9 @@ def download_open_images_split(
             "Version %s is not supported. Supported versions are: %s"
             % (version, ", ".join(_SUPPORTED_VERSIONS))
         )
+
+    if seed is not None:
+        random.seed(seed)
 
     if max_samples and (label_types or classes or attrs):
         # Only samples with every specified label type will be loaded
@@ -125,6 +133,7 @@ def download_open_images_split(
             # No specific image IDs were given, load all relevant images from
             # the given labels later
             split_image_ids = None
+        downloaded_ids = _get_downloaded_ids(dataset_dir, scratch_dir, split)
     else:
         split_image_ids = _parse_image_ids(
             image_ids, image_ids_file, split, scratch_dir
@@ -225,6 +234,7 @@ def download_open_images_split(
         label_types,
         guarantee_all_types,
         split_image_ids,
+        downloaded_ids,
         classes_map,
         attrs_map,
         oi_classes,
@@ -236,6 +246,7 @@ def download_open_images_split(
         classes,
         attrs,
         max_samples,
+        shuffle,
         num_workers,
     )
 
@@ -694,6 +705,21 @@ def _verify_image_ids(
     return split_image_ids
 
 
+def _get_downloaded_ids(dataset_dir, scratch_dir, split):
+    data_path = os.path.join(dataset_dir, split, "data")
+    data_ids = []
+    if os.path.exists(data_path):
+        data_ids = os.listdir(data_path)
+
+    scratch_path = os.path.join(scratch_dir, split, "images")
+    scratch_ids = []
+    if os.path.exists(scratch_path):
+        scratch_ids = os.listdir(scratch_path)
+
+    downloaded_files = list(set(scratch_ids + data_ids))
+    return [os.path.splitext(i)[0] for i in downloaded_files]
+
+
 def _get_label_data(
     dataset,
     split,
@@ -751,6 +777,7 @@ def _load_open_images_split(
     label_types,
     guarantee_all_types,
     split_image_ids,
+    downloaded_ids,
     classes_map,
     attrs_map,
     oi_classes,
@@ -762,6 +789,7 @@ def _load_open_images_split(
     classes,
     attrs,
     max_samples,
+    shuffle,
     num_workers,
 ):
 
@@ -881,8 +909,16 @@ def _load_open_images_split(
             valid_ids = ids_any_labels
 
     valid_ids = list(valid_ids)
-    if max_samples:
+
+    if shuffle:
         random.shuffle(valid_ids)
+
+    if max_samples:
+        # Prioritize loading existing images first
+        non_existing_ids = set(valid_ids) - set(downloaded_ids)
+        existing_ids = set(valid_ids) - non_existing_ids
+        valid_ids = list(existing_ids) + list(non_existing_ids)
+
         valid_ids = valid_ids[:max_samples]
 
     if not valid_ids:

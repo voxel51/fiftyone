@@ -916,6 +916,9 @@ class OpenImagesDataset(FiftyOneDataset):
         attrs (None): a list of strings for relationship attributes to load
         max_samples (None): a maximum number of samples to import per split. By
             default, all samples are imported
+        seed (None): a random seed to use when shuffling
+        shuffle (False): whether to randomly shuffle the order in which the
+            samples are imported
         image_ids (None): a list of specific image IDs to load. The IDs can be
             specified either as ``<split>/<image-id>`` or ``<image-id>``
         image_ids_file (None): the path to a newline separated text, JSON, or
@@ -935,6 +938,8 @@ class OpenImagesDataset(FiftyOneDataset):
         classes=None,
         attrs=None,
         max_samples=None,
+        seed=None,
+        shuffle=None,
         image_ids=None,
         image_ids_file=None,
         num_workers=None,
@@ -945,6 +950,8 @@ class OpenImagesDataset(FiftyOneDataset):
         self.classes = classes
         self.attrs = attrs
         self.max_samples = max_samples
+        self.seed = seed
+        self.shuffle = shuffle
         self.image_ids = image_ids
         self.image_ids_file = image_ids_file
         self.num_workers = num_workers
@@ -982,6 +989,8 @@ class OpenImagesDataset(FiftyOneDataset):
             self.classes,
             self.attrs,
             self.max_samples,
+            self.seed,
+            self.shuffle,
             self.image_ids,
             self.image_ids_file,
             self.num_workers,
