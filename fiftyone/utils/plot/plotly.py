@@ -373,11 +373,14 @@ def scatterplot(
     points,
     samples=None,
     label_field=None,
-    field=None,
     labels=None,
+    sizes=None,
     classes=None,
     multi_trace=None,
     marker_size=None,
+    labels_title=None,
+    sizes_title=None,
+    show_colorbar_title=None,
     layout=None,
     show=True,
 ):
@@ -386,8 +389,9 @@ def scatterplot(
     This method supports 2D or 3D visualizations, but interactive point
     selection is only aviailable in 2D.
 
-    You can use the ``field`` or ``labels`` parameters to define a coloring for
-    the points.
+    You can use the ``labels`` parameters to define a coloring for the points,
+    and you can use the ``sizes`` parameter to define per-point sizes for the
+    points.
 
     You can connect this method to a :class:`fiftyone.core.session.Session`
     in order to automatically sync the session's view with the currently
@@ -401,16 +405,34 @@ def scatterplot(
         label_field (None): a :class:`fiftyone.core.labels.Label` field
             containing the labels corresponding to ``points``. If not provided,
             the points are assumed to correspond to samples
-        field (None): a sample field or ``embedded.field.name`` to use to
-            color the points. Can be numeric or strings
-        labels (None): a list of numeric or string values to use to color
-            the points
+        labels (None): data to use to color points. Can be a list (or nested
+            list, if ``label_field`` refers to a label list field like
+            :class:`fiftyone.core.labels.Detections`) or array-like of numeric
+            or string values, or the name of a sample field or
+            ``embedded.field.name`` of ``samples`` from which to extract values
+        sizes (None): data to use to scale the sizes of the points. Can be a
+            list (or nested list, if ``label_field`` refers to a label list
+            field like :class:`fiftyone.core.labels.Detections`) or array-like
+            of numeric values, or the name of a sample field or
+            ``embedded.field.name`` of ``samples`` from which to extract values
         classes (None): an optional list of classes whose points to plot.
             Only applicable when ``labels`` contains strings
         multi_trace (None): whether to render each class as a separate trace.
             Only applicable when ``labels`` contains strings. By default, this
             will be true if there are up to 25 classes
-        marker_size (None): an optional marker size
+        marker_size (None): the marker size to use. If ``sizes`` are provided,
+            this value is used as a reference to scale the sizes of all points
+        labels_title (None): a title string to use for ``labels`` in the
+            tooltip and the colorbar title. By default, if ``labels`` is a
+            field name, this name will be used, otherwise the colorbar will not
+            have a title and the tooltip will use "label"
+        sizes_title (None): a title string to use for ``sizes`` in the tooltip.
+            By default, is ``sizes`` is a field name, this name will be used,
+            otherwise the tooltip will use "size"
+        show_colorbar_title (None): whether to show the colorbar title. By
+            default, a title will be shown only if a value was pasesd to
+            ``labels_title`` or an appropriate default can be inferred from
+            the ``labels`` parameter
         layout (None): an optional dict of parameters for
             ``plotly.graph_objects.Figure.update_layout(**layout)``
         show (True): whether to show the plot
@@ -428,14 +450,13 @@ def scatterplot(
     if num_dims not in {2, 3}:
         raise ValueError("This method only supports 2D or 3D points")
 
-    points, ids, values, classes, categorical = _parse_scatter_inputs(
-        points, samples, label_field, field, labels, classes
+    labels_title, sizes_title, colorbar_title = _parse_titles(
+        labels, labels_title, sizes, sizes_title, show_colorbar_title
     )
 
-    if field is not None:
-        value_label = field
-    else:
-        value_label = "label"
+    points, ids, labels, sizes, classes, categorical = _parse_scatter_inputs(
+        points, samples, label_field, labels, sizes, classes
+    )
 
     if categorical:
         if multi_trace is None:
@@ -444,28 +465,37 @@ def scatterplot(
         if multi_trace:
             figure = _plot_scatter_categorical(
                 points,
-                values,
+                labels,
                 classes,
-                ids=ids,
-                value_label=value_label,
-                marker_size=marker_size,
+                sizes,
+                ids,
+                marker_size,
+                labels_title,
+                sizes_title,
+                colorbar_title,
             )
         else:
             figure = _plot_scatter_categorical_single_trace(
                 points,
-                values,
+                labels,
                 classes,
-                ids=ids,
-                value_label=value_label,
-                marker_size=marker_size,
+                sizes,
+                ids,
+                marker_size,
+                labels_title,
+                sizes_title,
+                colorbar_title,
             )
     else:
         figure = _plot_scatter_numeric(
             points,
-            values=values,
-            ids=ids,
-            value_label=value_label,
-            marker_size=marker_size,
+            labels,  # numeric values
+            sizes,
+            ids,
+            marker_size,
+            labels_title,
+            sizes_title,
+            colorbar_title,
         )
 
     # Since there are no axis labels, take up all available space, except for
@@ -508,14 +538,35 @@ def scatterplot(
     return plot
 
 
+def _parse_titles(
+    labels, labels_title, sizes, sizes_title, show_colorbar_title
+):
+    if labels_title is None and etau.is_str(labels):
+        labels_title = labels.rsplit(".", 1)[-1]
+
+    if sizes_title is None and etau.is_str(sizes):
+        sizes_title = sizes.rsplit(".", 1)[-1]
+    else:
+        sizes_title = "size"
+
+    if show_colorbar_title is None:
+        show_colorbar_title = labels_title is not None
+
+    if labels_title is None:
+        labels_title = "label"
+
+    colorbar_title = labels_title if show_colorbar_title else None
+
+    return labels_title, sizes_title, colorbar_title
+
+
 def _parse_scatter_inputs(
-    points, samples, label_field, field, labels, classes
+    points, samples, label_field, labels, sizes, classes
 ):
     num_dims = points.shape[1]
 
-    labels = _get_labels_for_points(
-        points, samples=samples, labels=labels, field=field
-    )
+    labels = _get_data_for_points(points, samples, labels, "labels")
+    sizes = _get_data_for_points(points, samples, sizes, "sizes")
 
     ids = None
     if samples is not None:
@@ -524,36 +575,45 @@ def _parse_scatter_inputs(
         else:
             ids = _get_ids_for_points(points, samples, label_field=label_field)
 
-    points, values, classes, inds, categorical = _parse_data(
-        points, labels, classes
+    points, labels, sizes, classes, inds, categorical = _parse_data(
+        points, labels, sizes, classes
     )
 
     if ids is not None and inds is not None:
         ids = ids[inds]
 
-    return points, ids, values, classes, categorical
+    return points, ids, labels, sizes, classes, categorical
 
 
-def _get_labels_for_points(points, samples=None, labels=None, field=None):
-    if field is not None:
+def _get_data_for_points(points, samples, values, parameter):
+    if values is None:
+        return None
+
+    if etau.is_str(values):
         if samples is None:
             raise ValueError(
-                "You must provide `samples` in order to extract field values"
+                "You must provide `samples` in order to extract field values "
+                "for the `%s` parameter" % parameter
             )
 
-        labels = samples.values(field)
+        values = samples.values(values)
 
-    if labels and isinstance(labels[0], (list, tuple)):
-        labels = list(itertools.chain.from_iterable(labels))
+    # Unroll one level of nested list if necessary (e.g., detection labels)
+    if (
+        isinstance(values, (list, tuple))
+        and values
+        and isinstance(values[0], (list, tuple))
+    ):
+        values = list(itertools.chain.from_iterable(values))
 
-    if labels is not None and len(labels) != len(points):
+    if len(values) != len(points):
         raise ValueError(
-            "Number of labels (%d) does not match number of points (%d). You "
+            "Number of %s (%d) does not match number of points (%d). You "
             "may have missing data/labels that you need to omit from your "
-            "view before visualizing" % (len(labels), len(points))
+            "view" % (parameter, len(values), len(points))
         )
 
-    return labels
+    return values
 
 
 def _get_ids_for_points(points, samples, label_field=None):
@@ -574,53 +634,58 @@ def _get_ids_for_points(points, samples, label_field=None):
     return np.array(ids)
 
 
-def _parse_data(points, labels, classes):
+def _parse_data(points, labels, sizes, classes):
+    if sizes is not None:
+        sizes = np.asarray(sizes)
+
     if labels is None:
-        return points, None, None, None, False
+        return points, None, sizes, None, None, False
 
     labels = np.asarray(labels)
 
     if not etau.is_str(labels[0]):
-        return points, labels, None, None, False
+        return points, labels, sizes, None, None, False
 
     if classes is None:
         classes = sorted(set(labels))
-        return points, labels, classes, None, True
+        return points, labels, sizes, classes, None, True
 
     found = np.array([l in classes for l in labels])
     if not np.all(found):
         points = points[found, :]
-        values = values[found]
+        labels = labels[found]
+        if sizes is not None:
+            sizes = sizes[found]
     else:
         found = None
 
-    return points, values, classes, found, True
+    return points, labels, sizes, classes, found, True
 
 
 def location_scatterplot(
     locations=None,
-    location_field=None,
     samples=None,
-    label_field=None,
-    field=None,
     labels=None,
+    sizes=None,
     classes=None,
-    multi_trace=None,
-    marker_size=None,
     style=None,
     radius=None,
+    multi_trace=None,
+    marker_size=None,
+    labels_title=None,
+    sizes_title=None,
+    show_colorbar_title=None,
     layout=None,
     show=True,
 ):
     """Generates an interactive scatterplot of the given location coordinates
     with a map rendered in the background of the plot.
 
-    Location data can be specified either via the ``locations`` or
-    ``location_field`` parameters. If you specify neither, the first
-    :class:`fiftyone.core.labels.GeoLocation` field on the dataset is used.
+    Location data is specified via the ``locations`` parameter.
 
-    You can use the ``field`` or ``labels`` parameters to define a coloring for
-    the points.
+    You can use the ``labels`` parameters to define a coloring for the points,
+    and you can use the ``sizes`` parameter to define per-point sizes for the
+    points.
 
     You can connect this method to a :class:`fiftyone.core.session.Session`
     in order to automatically sync the session's view with the currently
@@ -628,31 +693,46 @@ def location_scatterplot(
     to this method.
 
     Args:
-        locations (None): a ``num_locations x 2`` array of
-            ``(longitude, latitude)`` coordinates
-        location_field (None): the name of a
-            :class:`fiftyone.core.labels.GeoLocation` field with
-            ``(longitude, latitude)`` coordinates in its ``point`` attribute
+        locations (None): the location data to plot. Can be a
+            ``num_locations x 2`` array of ``(longitude, latitude)``
+            coordinates, or the name of a
+            :class:`fiftyone.core.labels.GeoLocation` field on ``samples`` with
+            ``(longitude, latitude)`` coordinates in its ``point`` attribute,
+            or None, in which case ``samples`` must have a single
+            :class:`fiftyone.core.labels.GeoLocation` field
         samples (None): the :class:`fiftyone.core.collections.SampleCollection`
             whose data is being visualized
-        label_field (None): a :class:`fiftyone.core.labels.Label` field
-            containing the labels corresponding to ``locations``. If not
-            provided, the locations are assumed to correspond to samples
-        field (None): a sample field or ``embedded.field.name`` to use to
-            color the points. Can be numeric or strings
-        labels (None): a list of numeric or string values to use to color
-            the points
+        labels (None): data to use to color points. Can be an array-like of
+            numeric or string values, or the name of a sample field or
+            ``embedded.field.name`` of ``samples`` from which to extract values
+        sizes (None): data to use to scale the sizes of the points. Can be a
+            list (or nested list, if ``label_field`` refers to a label list
+            field like :class:`fiftyone.core.labels.Detections`) or array-like
+            of numeric values, or the name of a sample field or
+            ``embedded.field.name`` of ``samples`` from which to extract values
         classes (None): an optional list of classes whose points to plot.
             Only applicable when ``labels`` contains strings
-        multi_trace (None): whether to render each class as a separate trace.
-            Only applicable when ``labels`` contains strings. By default, this
-            will be true if there are up to 25 classes
-        marker_size (None): an optional marker size
         style (None): the plot style to use. Only applicable when the color
             data is numeric. Supported values are ``("scatter", "density")``
         radius (None): the radius of influence of each lat/lon point. Only
             applicable when ``style`` is "density". Larger values will make
             density plots smoother and less detailed
+        multi_trace (None): whether to render each class as a separate trace.
+            Only applicable when ``labels`` contains strings. By default, this
+            will be true if there are up to 25 classes
+        marker_size (None): the marker size to use. If ``sizes`` are provided,
+            this value is used as a reference to scale the sizes of all points
+        labels_title (None): a title string to use for ``labels`` in the
+            tooltip and the colorbar title. By default, if ``labels`` is a
+            field name, this name will be used, otherwise the colorbar will not
+            have a title and the tooltip will use "label"
+        sizes_title (None): a title string to use for ``sizes`` in the tooltip.
+            By default, is ``sizes`` is a field name, this name will be used,
+            otherwise the tooltip will use "size"
+        show_colorbar_title (None): whether to show the colorbar title. By
+            default, a title will be shown only if a value was pasesd to
+            ``labels_title`` or an appropriate default can be inferred from
+            the ``labels`` parameter
         layout (None): an optional dict of parameters for
             ``plotly.graph_objects.Figure.update_layout(**layout)``
         show (True): whether to show the plot
@@ -664,19 +744,23 @@ def location_scatterplot(
             you're working in a notebook context
         -   a ``plotly.graph_objects.Figure``, otherwise
     """
-    locations = _parse_locations(locations, location_field, samples)
+    locations = _parse_locations(locations, samples)
 
-    locations, ids, values, classes, categorical = _parse_scatter_inputs(
-        locations, samples, label_field, field, labels, classes
+    labels_title, sizes_title, colorbar_title = _parse_titles(
+        labels, labels_title, sizes, sizes_title, show_colorbar_title
     )
+
+    (
+        locations,
+        ids,
+        labels,
+        sizes,
+        classes,
+        categorical,
+    ) = _parse_scatter_inputs(locations, samples, None, labels, sizes, classes)
 
     if style not in (None, "scatter", "density"):
         logger.warning("Ignoring unsupported style '%s'", style)
-
-    if field is not None:
-        value_label = field
-    else:
-        value_label = "label"
 
     if categorical:
         if multi_trace is None:
@@ -685,36 +769,48 @@ def location_scatterplot(
         if multi_trace:
             figure = _plot_scatter_mapbox_categorical(
                 locations,
-                values,
+                labels,
                 classes,
-                ids=ids,
-                value_label=value_label,
-                marker_size=marker_size,
+                sizes,
+                ids,
+                marker_size,
+                labels_title,
+                sizes_title,
+                colorbar_title,
             )
         else:
             figure = _plot_scatter_mapbox_categorical_single_trace(
                 locations,
-                values,
+                labels,
                 classes,
-                ids=ids,
-                value_label=value_label,
-                marker_size=marker_size,
+                sizes,
+                ids,
+                marker_size,
+                labels_title,
+                sizes_title,
+                colorbar_title,
             )
     elif style == "density":
         figure = _plot_scatter_mapbox_density(
             locations,
-            values=values,
-            ids=ids,
-            radius=radius,
-            value_label=value_label,
+            labels,
+            sizes,
+            ids,
+            radius,
+            labels_title,
+            sizes_title,
+            colorbar_title,
         )
     else:
         figure = _plot_scatter_mapbox_numeric(
             locations,
-            values=values,
-            ids=ids,
-            value_label=value_label,
-            marker_size=marker_size,
+            labels,
+            sizes,
+            ids,
+            marker_size,
+            labels_title,
+            sizes_title,
+            colorbar_title,
         )
 
     # Since there are no axis labels, take up all available space, except for
@@ -744,13 +840,7 @@ def location_scatterplot(
 
         return figure
 
-    link_type = "labels" if label_field is not None else "samples"
-    plot = InteractiveScatter(
-        figure,
-        link_type=link_type,
-        label_fields=label_field,
-        init_view=samples,
-    )
+    plot = InteractiveScatter(figure, init_view=samples)
 
     if show:
         plot.show()
@@ -758,27 +848,27 @@ def location_scatterplot(
     return plot
 
 
-def _parse_locations(locations, location_field, samples):
-    if locations is not None:
+def _parse_locations(locations, samples):
+    if locations is not None and not etau.is_str(locations):
         return np.asarray(locations)
 
     if samples is None:
         raise ValueError(
-            "You must provide `samples` when `locations` are not manually "
-            "specified"
+            "You must provide `samples` in order to extract `locations` from "
+            "your dataset"
         )
 
-    if location_field is not None:
+    if locations is None:
+        location_field = samples._get_geo_location_field()
+    else:
+        location_field = locations
         samples.validate_field_type(
             location_field,
             fof.EmbeddedDocumentField,
             embedded_doc_type=fol.GeoLocation,
         )
-    else:
-        location_field = samples._get_geo_location_field()
 
     locations = samples.values(location_field + ".point.coordinates")
-
     return np.asarray(locations)
 
 
@@ -803,6 +893,7 @@ class InteractivePlotlyPlot(InteractivePlot):
 
         super().__init__(**kwargs)
 
+    @property
     def supports_session_updates(self):
         return True
 
@@ -1316,22 +1407,23 @@ def _plot_scatter_categorical(
     points,
     labels,
     classes,
-    sizes=None,
-    ids=None,
-    value_label="label",
-    size_label="size",
-    marker_size=None,
+    sizes,
+    ids,
+    marker_size,
+    labels_title,
+    sizes_title,
+    colorbar_title,
 ):
     num_dims = points.shape[1]
 
-    hover_lines = ["<b>%s: %%{text}</b>" % value_label]
+    hover_lines = ["<b>%s: %%{text}</b>" % labels_title]
 
     if sizes is not None:
         if marker_size is None:
             marker_size = 15  # max marker size
 
         sizeref = 0.5 * max(sizes) / marker_size
-        hover_lines.append("%s: %%{marker.size}" % size_label)
+        hover_lines.append("%s: %%{marker.size}" % sizes_title)
 
     if num_dims == 3:
         hover_lines.append("x, y, z = %{x:.3f}, %{y:.3f}, %{z:.3f}")
@@ -1390,19 +1482,24 @@ def _plot_scatter_categorical(
 
         traces.append(scatter)
 
-    return pgo.Figure(traces)
+    figure = pgo.Figure(traces)
+
+    figure.update_layout(legend_title_text=colorbar_title)
+
+    return figure
 
 
 def _plot_scatter_categorical_single_trace(
     points,
     labels,
     classes,
-    sizes=None,
-    ids=None,
+    sizes,
+    ids,
+    marker_size,
+    labels_title,
+    sizes_title,
+    colorbar_title,
     colors=None,
-    value_label="label",
-    size_label="size",
-    marker_size=None,
 ):
     num_dims = points.shape[1]
 
@@ -1427,7 +1524,7 @@ def _plot_scatter_categorical_single_trace(
         autocolorscale=False,
         colorscale=colorscale,
         colorbar=dict(
-            title=value_label,
+            title=colorbar_title,
             tickvals=list(range(num_classes)),
             ticktext=classes,
             lenmode="fraction",
@@ -1451,10 +1548,10 @@ def _plot_scatter_categorical_single_trace(
     elif marker_size is not None:
         marker.update(dict(size=marker_size))
 
-    hover_lines = ["<b>%s: %%{text}</b>" % value_label]
+    hover_lines = ["<b>%s: %%{text}</b>" % labels_title]
 
     if sizes is not None:
-        hover_lines.append("%s: %%{marker.size}" % size_label)
+        hover_lines.append("%s: %%{marker.size}" % sizes_title)
 
     if num_dims == 3:
         hover_lines.append("x, y, z = %{x:.3f}, %{y:.3f}, %{z:.3f}")
@@ -1486,13 +1583,14 @@ def _plot_scatter_categorical_single_trace(
 
 def _plot_scatter_numeric(
     points,
-    values=None,
-    sizes=None,
-    ids=None,
+    values,
+    sizes,
+    ids,
+    marker_size,
+    labels_title,
+    sizes_title,
+    colorbar_title,
     colorscale="Viridis",
-    value_label="label",
-    size_label="size",
-    marker_size=None,
 ):
     num_dims = points.shape[1]
 
@@ -1502,7 +1600,7 @@ def _plot_scatter_numeric(
         marker.update(
             dict(
                 color=values,
-                colorbar=dict(title=value_label, lenmode="fraction", len=1),
+                colorbar=dict(title=colorbar_title, lenmode="fraction", len=1),
                 colorscale=colorscale,
                 showscale=True,
             )
@@ -1526,10 +1624,10 @@ def _plot_scatter_numeric(
     hover_lines = []
 
     if values is not None:
-        hover_lines = ["<b>%s: %%{marker.color}</b>" % value_label]
+        hover_lines = ["<b>%s: %%{marker.color}</b>" % labels_title]
 
     if sizes is not None:
-        hover_lines.append("%s: %%{marker.size}" % size_label)
+        hover_lines.append("%s: %%{marker.size}" % sizes_title)
 
     if num_dims == 3:
         hover_lines.append("x, y, z = %{x:.3f}, %{y:.3f}, %{z:.3f}")
@@ -1562,20 +1660,21 @@ def _plot_scatter_mapbox_categorical(
     coords,
     labels,
     classes,
-    sizes=None,
-    ids=None,
-    value_label="label",
-    size_label="size",
-    marker_size=None,
+    sizes,
+    ids,
+    marker_size,
+    labels_title,
+    sizes_title,
+    colorbar_title,
 ):
-    hover_lines = ["<b>%s: %%{text}</b>" % value_label]
+    hover_lines = ["<b>%s: %%{text}</b>" % labels_title]
 
     if sizes is not None:
         if marker_size is None:
             marker_size = 15  # max marker size
 
         sizeref = 0.5 * max(sizes) / marker_size
-        hover_lines.append("%s: %%{marker.size}" % size_label)
+        hover_lines.append("%s: %%{marker.size}" % sizes_title)
 
     hover_lines.append("lat: %{lat:.5f}<br>lon: %{lon:.5f}")
 
@@ -1624,6 +1723,7 @@ def _plot_scatter_mapbox_categorical(
     figure.update_layout(
         mapbox_style="carto-positron",
         mapbox=dict(center=dict(lat=center_lat, lon=center_lon), zoom=zoom),
+        legend_title_text=colorbar_title,
     )
 
     return figure
@@ -1633,12 +1733,13 @@ def _plot_scatter_mapbox_categorical_single_trace(
     coords,
     labels,
     classes,
-    sizes=None,
-    ids=None,
+    sizes,
+    ids,
+    marker_size,
+    labels_title,
+    sizes_title,
+    colorbar_title,
     colors=None,
-    value_label="label",
-    size_label="size",
-    marker_size=None,
 ):
     if colors is None:
         colors = px.colors.qualitative.Plotly
@@ -1661,7 +1762,7 @@ def _plot_scatter_mapbox_categorical_single_trace(
         autocolorscale=False,
         colorscale=colorscale,
         colorbar=dict(
-            title=value_label,
+            title=colorbar_title,
             tickvals=list(range(num_classes)),
             ticktext=classes,
             lenmode="fraction",
@@ -1685,10 +1786,10 @@ def _plot_scatter_mapbox_categorical_single_trace(
     elif marker_size is not None:
         marker.update(dict(size=marker_size))
 
-    hover_lines = ["<b>%s: %%{text}</b>" % value_label]
+    hover_lines = ["<b>%s: %%{text}</b>" % labels_title]
 
     if sizes is not None:
-        hover_lines.append("%s: %%{marker.size}" % size_label)
+        hover_lines.append("%s: %%{marker.size}" % sizes_title)
 
     hover_lines.append("lat: %{lat:.5f}<br>lon: %{lon:.5f}")
 
@@ -1720,19 +1821,25 @@ def _plot_scatter_mapbox_categorical_single_trace(
 
 def _plot_scatter_mapbox_numeric(
     coords,
-    values=None,
-    sizes=None,
-    ids=None,
+    values,
+    sizes,
+    ids,
+    marker_size,
+    labels_title,
+    sizes_title,
+    colorbar_title,
     colorscale="Viridis",
-    value_label="value",
-    size_label="size",
-    marker_size=None,
 ):
     marker = dict()
 
     if values is not None:
         marker.update(
-            dict(color=values, colorscale=colorscale, showscale=True)
+            dict(
+                color=values,
+                colorbar=dict(title=colorbar_title, lenmode="fraction", len=1),
+                colorscale=colorscale,
+                showscale=True,
+            )
         )
 
     if sizes is not None:
@@ -1753,10 +1860,10 @@ def _plot_scatter_mapbox_numeric(
     hover_lines = []
 
     if values is not None:
-        hover_lines = ["<b>%s: %%{marker.color}</b>" % value_label]
+        hover_lines = ["<b>%s: %%{marker.color}</b>" % labels_title]
 
     if sizes is not None:
-        hover_lines.append("%s: %%{marker.size}" % size_label)
+        hover_lines.append("%s: %%{marker.size}" % sizes_title)
 
     hover_lines.append("lat: %{lat:.5f}<br>lon: %{lon:.5f}")
 
@@ -1787,16 +1894,39 @@ def _plot_scatter_mapbox_numeric(
 
 def _plot_scatter_mapbox_density(
     coords,
-    values=None,
-    ids=None,
-    radius=None,
+    values,
+    sizes,
+    ids,
+    radius,
+    labels_title,
+    sizes_title,
+    colorbar_title,
     colorscale="Viridis",
-    value_label="value",
 ):
+    if values is not None and sizes is not None:
+        hover_title = labels_title + " x " + sizes_title
+    elif values is not None:
+        hover_title = labels_title
+    elif sizes is not None:
+        hover_title = sizes_title
+    else:
+        hover_title = "value"
+
     hover_lines = []
 
     if values is not None:
-        hover_lines = ["<b>%s: %%{}</b>" % value_label]
+        hover_lines = ["<b>%s: %%{z}</b>" % hover_title]
+
+    if sizes is not None:
+        if values is None:
+            values = sizes
+        else:
+            values *= sizes
+
+    if values is not None:
+        values = np.maximum(values, 0.0)
+        valuesref = values.max() / 2.0
+        values /= valuesref
 
     hover_lines.append("lat: %{lat:.5f}<br>lon: %{lon:.5f}")
 
@@ -1822,6 +1952,9 @@ def _plot_scatter_mapbox_density(
         mapbox_style="carto-positron",
         mapbox=dict(center=dict(lat=center_lat, lon=center_lon), zoom=zoom),
     )
+
+    # @todo why does this not show?
+    figure.update_layout(legend_title_text=colorbar_title)
 
     return figure
 

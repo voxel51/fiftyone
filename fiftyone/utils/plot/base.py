@@ -172,8 +172,8 @@ def scatterplot(
     points,
     samples=None,
     label_field=None,
-    field=None,
     labels=None,
+    sizes=None,
     classes=None,
     backend=None,
     show=True,
@@ -184,8 +184,9 @@ def scatterplot(
     This method supports 2D or 3D visualizations, but interactive point
     selection is only aviailable in 2D.
 
-    You can use the ``field`` or ``labels`` parameters to define a coloring for
-    the points.
+    You can use the ``labels`` parameters to define a coloring for the points,
+    and you can use the ``sizes`` parameter to define per-point sizes for the
+    points.
 
     You can connect this method to a :class:`fiftyone.core.session.Session`
     in order to automatically sync the session's view with the currently
@@ -199,10 +200,16 @@ def scatterplot(
         label_field (None): a :class:`fiftyone.core.labels.Label` field
             containing the labels corresponding to ``points``. If not provided,
             the points are assumed to correspond to samples
-        field (None): a sample field or ``embedded.field.name`` to use to
-            color the points. Can be numeric or strings
-        labels (None): a list of numeric or string values to use to color
-            the points
+        labels (None): data to use to color points. Can be a list (or nested
+            list, if ``label_field`` refers to a label list field like
+            :class:`fiftyone.core.labels.Detections`) or array-like of numeric
+            or string values, or the name of a sample field or
+            ``embedded.field.name`` of ``samples`` from which to extract values
+        sizes (None): data to use to scale the sizes of the points. Can be a
+            list (or nested list, if ``label_field`` refers to a label list
+            field like :class:`fiftyone.core.labels.Detections`) or array-like
+            of numeric values, or the name of a sample field or
+            ``embedded.field.name`` of ``samples`` from which to extract values
         classes (None): an optional list of classes whose points to plot.
             Only applicable when ``labels`` contains strings
         backend (None): the plotting backend to use. Supported values are
@@ -233,8 +240,8 @@ def scatterplot(
         points,
         samples=samples,
         label_field=label_field,
-        field=field,
         labels=labels,
+        sizes=sizes,
         classes=classes,
         show=show,
         **kwargs,
@@ -243,11 +250,9 @@ def scatterplot(
 
 def location_scatterplot(
     locations=None,
-    location_field=None,
     samples=None,
-    label_field=None,
-    field=None,
     labels=None,
+    sizes=None,
     classes=None,
     backend=None,
     show=True,
@@ -256,12 +261,11 @@ def location_scatterplot(
     """Generates an interactive scatterplot of the given location coordinates
     with a map rendered in the background of the plot.
 
-    Location data can be specified either via the ``locations`` or
-    ``location_field`` parameters. If you specify neither, the first
-    :class:`fiftyone.core.labels.GeoLocation` field on the dataset is used.
+    Location data is specified via the ``locations`` parameter.
 
-    You can use the ``field`` or ``labels`` parameters to define a coloring for
-    the points.
+    You can use the ``labels`` parameters to define a coloring for the points,
+    and you can use the ``sizes`` parameter to define per-point sizes for the
+    points.
 
     You can connect this method to a :class:`fiftyone.core.session.Session`
     in order to automatically sync the session's view with the currently
@@ -269,20 +273,23 @@ def location_scatterplot(
     to this method.
 
     Args:
-        locations (None): a ``num_locations x 2`` array of
-            ``(longitude, latitude)`` coordinates
+        locations (None): the location data to plot. Can be a
+            ``num_locations x 2`` array of ``(longitude, latitude)``
+            coordinates, or the name of a
+            :class:`fiftyone.core.labels.GeoLocation` field on ``samples`` with
+            ``(longitude, latitude)`` coordinates in its ``point`` attribute,
+            or None, in which case ``samples`` must have a single
+            :class:`fiftyone.core.labels.GeoLocation` field
         samples (None): the :class:`fiftyone.core.collections.SampleCollection`
             whose data is being visualized
-        location_field (None): the name of a
-            :class:`fiftyone.core.labels.GeoLocation` field with
-            ``(longitude, latitude)`` coordinates in its ``point`` attribute
-        label_field (None): a :class:`fiftyone.core.labels.Label` field
-            containing the labels corresponding to ``locations``. If not
-            provided, the locations are assumed to correspond to samples
-        field (None): a sample field or ``embedded.field.name`` to use to
-            color the points. Can be numeric or strings
-        labels (None): a list of numeric or string values to use to color
-            the points
+        labels (None): data to use to color points. Can be an array-like of
+            numeric or string values, or the name of a sample field or
+            ``embedded.field.name`` of ``samples`` from which to extract values
+        sizes (None): data to use to scale the sizes of the points. Can be a
+            list (or nested list, if ``label_field`` refers to a label list
+            field like :class:`fiftyone.core.labels.Detections`) or array-like
+            of numeric values, or the name of a sample field or
+            ``embedded.field.name`` of ``samples`` from which to extract values
         classes (None): an optional list of classes whose points to plot.
             Only applicable when ``labels`` contains strings
         backend (None): the plotting backend to use. Supported values are
@@ -311,11 +318,9 @@ def location_scatterplot(
 
     return _location_scatterplot(
         locations=locations,
-        location_field=location_field,
         samples=samples,
-        label_field=label_field,
-        field=field,
         labels=labels,
+        sizes=sizes,
         classes=classes,
         show=show,
         **kwargs,

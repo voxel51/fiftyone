@@ -21,6 +21,7 @@ import sklearn.metrics as skm
 
 import eta.core.utils as etau
 
+import fiftyone.core.context as foc
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.utils as fou
@@ -231,8 +232,8 @@ def scatterplot(
     points,
     samples=None,
     label_field=None,
-    field=None,
     labels=None,
+    sizes=None,
     classes=None,
     marker_size=None,
     cmap=None,
@@ -249,8 +250,9 @@ def scatterplot(
     This method supports 2D or 3D visualizations, but interactive point
     selection is only aviailable in 2D.
 
-    You can use the ``field`` or ``labels`` parameters to define a coloring for
-    the points.
+    You can use the ``labels`` parameters to define a coloring for the points,
+    and you can use the ``sizes`` parameter to define per-point sizes for the
+    points.
 
     You can connect this method to a :class:`fiftyone.core.session.Session`
     in order to automatically sync the session's view with the currently
@@ -264,13 +266,20 @@ def scatterplot(
         label_field (None): a :class:`fiftyone.core.labels.Label` field
             containing the labels corresponding to ``points``. If not provided,
             the points are assumed to correspond to samples
-        field (None): a sample field or ``embedded.field.name`` to use to
-            color the points. Can be numeric or strings
-        labels (None): a list of numeric or string values to use to color
-            the points
+        labels (None): data to use to color points. Can be a list (or nested
+            list, if ``label_field`` refers to a label list field like
+            :class:`fiftyone.core.labels.Detections`) or array-like of numeric
+            or string values, or the name of a sample field or
+            ``embedded.field.name`` of ``samples`` from which to extract values
+        sizes (None): data to use to scale the sizes of the points. Can be a
+            list (or nested list, if ``label_field`` refers to a label list
+            field like :class:`fiftyone.core.labels.Detections`) or array-like
+            of numeric values, or the name of a sample field or
+            ``embedded.field.name`` of ``samples`` from which to extract values
         classes (None): an optional list of classes whose points to plot.
             Only applicable when ``labels`` contains strings
-        marker_size (None): the marker size to use
+        marker_size (None): the marker size to use. If ``sizes`` are provided,
+            this value is used as a reference to scale the sizes of all points
         cmap (None): a colormap recognized by ``matplotlib``
         ax (None): an optional matplotlib axis to plot in
         ax_equal (False): whether to set ``axis("equal")``
@@ -295,9 +304,8 @@ def scatterplot(
     if num_dims not in {2, 3}:
         raise ValueError("This method only supports 2D or 3D points")
 
-    labels = _get_labels_for_points(
-        points, samples=samples, labels=labels, field=field
-    )
+    labels = _get_data_for_points(points, samples, labels, "labels")
+    sizes = _get_data_for_points(points, samples, sizes, "sizes")
 
     ids = None
     if samples is not None:
@@ -310,6 +318,7 @@ def scatterplot(
         collection, inds = _plot_scatter(
             points,
             labels=labels,
+            sizes=sizes,
             classes=classes,
             marker_size=marker_size,
             cmap=cmap,
@@ -347,26 +356,35 @@ def scatterplot(
     return plot
 
 
-def _get_labels_for_points(points, samples=None, labels=None, field=None):
-    if field is not None:
+def _get_data_for_points(points, samples, values, parameter):
+    if values is None:
+        return None
+
+    if etau.is_str(values):
         if samples is None:
             raise ValueError(
-                "You must provide `samples` in order to extract field values"
+                "You must provide `samples` in order to extract field values "
+                "for the `%s` parameter" % parameter
             )
 
-        labels = samples.values(field)
+        values = samples.values(values)
 
-    if labels and isinstance(labels[0], (list, tuple)):
-        labels = list(itertools.chain.from_iterable(labels))
+    # Unroll one level of nested list if necessary (e.g., detection labels)
+    if (
+        isinstance(values, (list, tuple))
+        and values
+        and isinstance(values[0], (list, tuple))
+    ):
+        values = list(itertools.chain.from_iterable(values))
 
-    if labels is not None and len(labels) != len(points):
+    if len(values) != len(points):
         raise ValueError(
-            "Number of labels (%d) does not match number of points (%d). You "
+            "Number of %s (%d) does not match number of points (%d). You "
             "may have missing data/labels that you need to omit from your "
-            "view before visualizing" % (len(labels), len(points))
+            "view" % (parameter, len(values), len(points))
         )
 
-    return labels
+    return values
 
 
 def _get_ids_for_points(points, samples, label_field=None):
@@ -389,11 +407,9 @@ def _get_ids_for_points(points, samples, label_field=None):
 
 def location_scatterplot(
     locations=None,
-    location_field=None,
     samples=None,
-    label_field=None,
-    field=None,
     labels=None,
+    sizes=None,
     classes=None,
     map_type="satellite",
     show_scale_bar=False,
@@ -411,12 +427,11 @@ def location_scatterplot(
     """Generates an interactive scatterplot of the given location coordinates
     with a map rendered in the background of the plot.
 
-    Location data can be specified either via the ``locations`` or
-    ``location_field`` parameters. If you specify neither, the first
-    :class:`fiftyone.core.labels.GeoLocation` field on the dataset is used.
+    Location data is specified via the ``locations`` parameter.
 
-    You can use the ``field`` or ``labels`` parameters to define a coloring for
-    the points.
+    You can use the ``labels`` parameters to define a coloring for the points,
+    and you can use the ``sizes`` parameter to define per-point sizes for the
+    points.
 
     You can connect this method to a :class:`fiftyone.core.session.Session`
     in order to automatically sync the session's view with the currently
@@ -424,27 +439,31 @@ def location_scatterplot(
     to this method.
 
     Args:
-        locations (None): a ``num_locations x 2`` array of
-            ``(longitude, latitude)`` coordinates
-        location_field (None): the name of a
-            :class:`fiftyone.core.labels.GeoLocation` field with
-            ``(longitude, latitude)`` coordinates in its ``point`` attribute
+        locations (None): the location data to plot. Can be a
+            ``num_locations x 2`` array of ``(longitude, latitude)``
+            coordinates, or the name of a
+            :class:`fiftyone.core.labels.GeoLocation` field on ``samples`` with
+            ``(longitude, latitude)`` coordinates in its ``point`` attribute,
+            or None, in which case ``samples`` must have a single
+            :class:`fiftyone.core.labels.GeoLocation` field
         samples (None): the :class:`fiftyone.core.collections.SampleCollection`
             whose data is being visualized
-        label_field (None): a :class:`fiftyone.core.labels.Label` field
-            containing the labels corresponding to ``locations``. If not
-            provided, the locations are assumed to correspond to samples
-        field (None): a sample field or ``embedded.field.name`` to use to
-            color the points. Can be numeric or strings
-        labels (None): a list of numeric or string values to use to color
-            the points
+        labels (None): data to use to color points. Can be an array-like of
+            numeric or string values, or the name of a sample field or
+            ``embedded.field.name`` of ``samples`` from which to extract values
+        sizes (None): data to use to scale the sizes of the points. Can be a
+            list (or nested list, if ``label_field`` refers to a label list
+            field like :class:`fiftyone.core.labels.Detections`) or array-like
+            of numeric values, or the name of a sample field or
+            ``embedded.field.name`` of ``samples`` from which to extract values
         classes (None): an optional list of classes whose points to plot.
             Only applicable when ``labels`` contains strings
         map_type ("satellite"): the map type to render. Supported values are
             ``("roadmap", "satellite", "hybrid", "terrain")``
         show_scale_bar (False): whether to render a scale bar on the plot
         api_key (None): a Google Maps API key to use
-        marker_size (None): the marker size to use
+        marker_size (None): the marker size to use. If ``sizes`` are provided,
+            this value is used as a reference to scale the sizes of all points
         cmap (None): a colormap recognized by ``matplotlib``
         ax (None): an optional matplotlib axis to plot in
         ax_equal (False): whether to set ``axis("equal")``
@@ -462,7 +481,7 @@ def location_scatterplot(
         -   an :class:`InteractiveCollection`, if ``samples`` are provided
         -   a ``matplotlib.figure.Figure``, otherwise
     """
-    locations = _parse_locations(locations, location_field, samples)
+    locations = _parse_locations(locations, samples)
 
     if ax is None:
         fig = plt.figure()
@@ -490,9 +509,8 @@ def location_scatterplot(
     return scatterplot(
         locations,
         samples=samples,
-        label_field=label_field,
-        field=field,
         labels=labels,
+        sizes=sizes,
         classes=classes,
         marker_size=marker_size,
         cmap=cmap,
@@ -506,27 +524,27 @@ def location_scatterplot(
     )
 
 
-def _parse_locations(locations, location_field, samples):
-    if locations is not None:
+def _parse_locations(locations, samples):
+    if locations is not None and not etau.is_str(locations):
         return np.asarray(locations)
 
     if samples is None:
         raise ValueError(
-            "You must provide `samples` when `locations` are not manually "
-            "specified"
+            "You must provide `samples` in order to extract `locations` from "
+            "your dataset"
         )
 
-    if location_field is not None:
+    if locations is None:
+        location_field = samples._get_geo_location_field()
+    else:
+        location_field = locations
         samples.validate_field_type(
             location_field,
             fof.EmbeddedDocumentField,
             embedded_doc_type=fol.GeoLocation,
         )
-    else:
-        location_field = samples._get_geo_location_field()
 
     locations = samples.values(location_field + ".point.coordinates")
-
     return np.asarray(locations)
 
 
@@ -542,12 +560,14 @@ class InteractiveMatplotlibPlot(InteractivePlot):
 
     def __init__(self, figure, **kwargs):
         self._figure = figure
+        self._in_notebook_context = foc.is_notebook_context()
         super().__init__(**kwargs)
 
+    @property
     def supports_session_updates(self):
         # matplotlib does not support redrawing outside of the main thread
         # https://stackoverflow.com/q/34764535
-        return False
+        return self._in_notebook_context
 
     def show(self):
         """Shows this plot."""
@@ -617,9 +637,8 @@ class InteractiveCollection(InteractiveMatplotlibPlot):
         self._select_callback = None
         self._xy = collection.get_offsets()
         self._num_pts = len(self._xy)
-        self._fc = collection.get_facecolors()
-        self._ms = collection.get_sizes()
-        self._init_ms = self._ms[0]
+        self._fc = None
+        self._ms = None
 
         if ids is None:
             ids = np.arange(self._num_pts)
@@ -655,6 +674,9 @@ class InteractiveCollection(InteractiveMatplotlibPlot):
         self._select_callback = callback
 
     def _register_sync_callback(self, callback):
+        if self.supports_session_updates:
+            return
+
         def _on_sync(event):
             callback()
 
@@ -723,7 +745,6 @@ class InteractiveCollection(InteractiveMatplotlibPlot):
             return
 
         self._lasso.disconnect_events()
-        self._lasso = None
 
         for cid in self._figure_events:
             self._canvas.mpl_disconnect(cid)
@@ -890,40 +911,47 @@ class InteractiveCollection(InteractiveMatplotlibPlot):
         self._prep_collection()
 
         inds = self._inds
+
+        alpha = self._fc[:, -1]
         if inds is None:
-            self._fc[:, -1] = 1
+            alpha[:] = 1
         else:
-            self._fc[:, -1] = self.alpha_other
-            self._fc[inds, -1] = 1
+            alpha[:] = self.alpha_other
+            alpha[inds] = 1
 
         self.collection.set_facecolors(self._fc)
 
         if self.expand_selected is not None:
-            self._ms[:] = self._init_ms
-            if inds:
-                self._ms[inds] = self.expand_selected * self._init_ms
+            ms = self._ms.copy()
+            if inds is not None and inds.size > 0:
+                ms[inds] *= self.expand_selected
 
-        self.collection.set_sizes(self._ms)
+            self.collection.set_sizes(ms)
+
         self._draw()
 
     def _prep_collection(self):
         # @todo why is this necessary? We do this JIT here because it seems
         # that when __init__() runs, `get_facecolors()` doesn't have all the
         # data yet...
-        if len(self._fc) < self._num_pts:
+
+        if self._fc is None:
             self._fc = self.collection.get_facecolors()
+
+        if self._ms is None:
+            self._ms = self.collection.get_sizes()
 
         if len(self._fc) < self._num_pts:
             self._fc = np.tile(self._fc[0], (self._num_pts, 1))
 
-        if self.expand_selected is not None:
-            if len(self._ms) < self._num_pts:
-                self._ms = np.tile(self._ms[0], self._num_pts)
+        if len(self._ms) < self._num_pts:
+            self._ms = np.tile(self._ms[0], self._num_pts)
 
 
 def _plot_scatter(
     points,
     labels=None,
+    sizes=None,
     classes=None,
     marker_size=None,
     cmap=None,
@@ -932,12 +960,9 @@ def _plot_scatter(
     figsize=None,
     **kwargs,
 ):
-    if labels is not None:
-        points, values, classes, inds, categorical = _parse_scatter_inputs(
-            points, labels, classes
-        )
-    else:
-        values, classes, inds, categorical = None, None, None, None
+    points, values, sizes, classes, inds, categorical = _parse_scatter_inputs(
+        points, labels, sizes, classes
+    )
 
     scatter_3d = points.shape[1] == 3
 
@@ -960,16 +985,27 @@ def _plot_scatter(
         norm = None
 
     if marker_size is None:
-        marker_size = 10 ** (4 - np.log10(points.shape[0]))
-        marker_size = max(0.1, min(marker_size, 25))
-        marker_size = round(marker_size, 0 if marker_size >= 1 else 1)
+        # Choose a reasonable marker size based on number of points
+        marker_size = 2.0 * (10 ** (4 - np.log10(points.shape[0])))
+        marker_size = max(1, min(marker_size, 50))
+
+    if sizes is None:
+        if values is not None:
+            sizes = np.full(values.shape, marker_size)
+        else:
+            sizes = marker_size
+    else:
+        # Scale sizes so that 0.5 * max(sizes) corresponds to `marker_size`
+        min_marker_size = min(0.1, marker_size)
+        sizeref = 0.5 * max(sizes) / marker_size
+        sizes = np.maximum(sizes / sizeref, min_marker_size)
 
     args = [points[:, 0], points[:, 1]]
     if scatter_3d:
         args.append(points[:, 2])
 
     collection = ax.scatter(
-        *args, c=values, s=marker_size, cmap=cmap, norm=norm, **kwargs,
+        *args, c=values, s=sizes, cmap=cmap, norm=norm, **kwargs,
     )
 
     if values is not None:
@@ -1003,14 +1039,17 @@ def _plot_scatter(
     return collection, inds
 
 
-def _parse_scatter_inputs(points, labels, classes):
+def _parse_scatter_inputs(points, labels, sizes, classes):
+    if sizes is not None:
+        sizes = np.asarray(sizes)
+
     if labels is None:
-        return points, None, None, None, False
+        return points, None, sizes, None, None, False
 
     labels = np.asarray(labels)
 
     if not etau.is_str(labels[0]):
-        return points, labels, None, None, False
+        return points, labels, sizes, None, None, False
 
     if classes is None:
         classes = sorted(set(labels))
@@ -1022,10 +1061,12 @@ def _parse_scatter_inputs(points, labels, classes):
     if not np.all(found):
         points = points[found, :]
         values = values[found]
+        if sizes is not None:
+            sizes = sizes[found]
     else:
         found = None
 
-    return points, values, classes, found, True
+    return points, values, sizes, classes, found, True
 
 
 def _plot_map_background(ax, locations, api_key, map_type, show_scale_bar):
