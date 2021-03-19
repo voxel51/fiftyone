@@ -42,10 +42,10 @@ class OpenImagesEvaluationConfig(DetectionEvaluationConfig):
         hierarchy (None): a dict containing a hierachy of classes for
             evaluation following the structure 
             ``{"LabelName": label, "Subcategory": [{...}, ...]}``
-        pos_label_field (None): the name of the field containing 
+        pos_lab_field (None): the name of the field containing 
             image-level classifications that specify which classes should be 
             evaluated in the image
-        neg_label_field (None): the name of the field containing 
+        neg_lab_field (None): the name of the field containing 
             image-level classifications that specify which classes should not 
             be evaluated in the image
         expand_hierarchy (True): bool indicating whether to expand ground truth
@@ -111,6 +111,10 @@ class OpenImagesEvaluationConfig(DetectionEvaluationConfig):
     @property
     def method(self):
         return "openimages"
+
+    @property
+    def additional_fields_required(self):
+        return True
 
     # Parse hierarchy, code from:
     # https://github.com/tensorflow/models/blob/ec48284d0db7a67ab48a9bc13dc29c643ce0f197/research/object_detection/dataset_tools/oid_hierarchical_labels_expansion.py#L77
@@ -222,15 +226,21 @@ class OpenImagesEvaluation(DetectionEvaluation):
 
         if self.config.pos_lab_field:
             pos_labs = sample_or_frame[self.config.pos_lab_field]
-            pos_labs = [c.label for c in pos_labs.classifications]
-            if self.config.expand_hierarchy:
-                pos_labs = _expand_label_hierarchy(pos_labs, self.config)
+            if pos_labs is None:
+                pos_labs = []
+            else:
+                pos_labs = [c.label for c in pos_labs.classifications]
+                if self.config.expand_hierarchy:
+                    pos_labs = _expand_label_hierarchy(pos_labs, self.config)
 
         if self.config.neg_lab_field:
             neg_labs = sample_or_frame[self.config.neg_lab_field]
-            neg_labs = [c.label for c in neg_labs.classifications]
-            if self.config.expand_hierarchy:
-                neg_labs = _expand_label_hierarchy(neg_labs, self.config)
+            if neg_labs is None:
+                neg_labs = []
+            else:
+                neg_labs = [c.label for c in neg_labs.classifications]
+                if self.config.expand_hierarchy:
+                    neg_labs = _expand_label_hierarchy(neg_labs, self.config)
 
         if eval_key is None:
             # Don't save results on user's data

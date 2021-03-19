@@ -115,7 +115,7 @@ def evaluate_detections(
     pred_field, processing_frames = samples._handle_frame_field(pred_field)
     gt_field, _ = samples._handle_frame_field(gt_field)
 
-    if not processing_frames:
+    if not processing_frames and not config.additional_fields_required:
         iter_samples = samples.select_fields([gt_field, pred_field])
     else:
         iter_samples = samples
@@ -182,6 +182,14 @@ class DetectionEvaluationConfig(foe.EvaluationMethodConfig):
         self.gt_field = gt_field
         self.iou = iou
         self.classwise = classwise
+
+    @property
+    def additional_fields_required(self):
+        """Whether more fields than pred and gt are required. If these are the
+        only required fields then they can be selected prior to evaluation for
+        efficiency.
+        """
+        return False
 
 
 class DetectionEvaluation(foe.EvaluationMethod):
