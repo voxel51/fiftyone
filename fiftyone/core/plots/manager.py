@@ -44,15 +44,23 @@ class PlotManager(object):
     _LISTENER_NAME = "PlotManager"
 
     def __init__(self, session):
-        self._session = session
+        self._session = None
+        self._init_view = None
         self._plots = {}
-        self._init_view = session._collection.view()
         self._current_sample_ids = None
         self._current_labels = None
         self._last_update = None
         self._last_updates = {}
         self._connected = False
         self._disconnected = False
+
+        self._set_session(session)
+
+    def __str__(self):
+        return repr(self)
+
+    def __repr__(self):
+        return self.summary()
 
     def __iter__(self):
         return iter(self._plots)
@@ -61,7 +69,7 @@ class PlotManager(object):
         return name in self._plots
 
     def __setitem__(self, name, plot):
-        self.add(plot, name=name)
+        self.attach(plot, name=name)
 
     def __getitem__(self, name):
         return self._plots[name]
@@ -74,6 +82,55 @@ class PlotManager(object):
 
     def __len__(self):
         return len(self._plots)
+
+    def _set_session(self, session):
+        if self.is_connected:
+            self.disconnect()
+
+        if session._collection is not None:
+            init_view = session._collection.view()
+        else:
+            init_view = None
+
+        self._session = session
+        self._init_view = init_view
+
+        if self._plots:
+            self.connect()
+
+    def summary(self):
+        """Returns a string summary of this manager.
+
+        Returns:
+            a string summary
+        """
+        if not self._plots:
+            return ""
+
+        maxlen = max(len(name) for name in self._plots) + 1
+        fmt = "%%-%ds %%s" % maxlen
+
+        connected_plots = [
+            (n, p) for n, p in self._plots.items() if p.is_connected
+        ]
+        disconnected_plots = [
+            (n, p) for n, p in self._plots.items() if not p.is_connected
+        ]
+
+        elements = []
+
+        for name, plot in connected_plots:
+            elements.append(fmt % (name + ":", etau.get_class_name(plot)))
+
+        if disconnected_plots:
+            if elements:
+                elements.append("")
+
+            elements.append("Disconnected:")
+            for name, plot in disconnected_plots:
+                elements.append(fmt % (name + ":", etau.get_class_name(plot)))
+
+        return "\n".join(elements)
 
     def keys(self):
         """Returns an iterator over the names of plots in this manager.
@@ -136,8 +193,8 @@ class PlotManager(object):
             if plot.is_connected
         )
 
-    def add(self, plot, name=None, connect=True, overwrite=True):
-        """Adds a plot to this manager.
+    def attach(self, plot, name=None, connect=True, overwrite=True):
+        """Attaches a plot to this manager.
 
         Args:
             plot: a :class:`fiftyone.core.plots.base.Plot`
@@ -256,21 +313,14 @@ class PlotManager(object):
         for name in self._plots:
             self._disconnect_plot(name)
 
+        self._last_update = None
+        self._last_updates = {}
         self._connected = False
         self._disconnected = True
 
     def _disconnect_plot(self, name):
         plot = self._plots[name]
         plot.disconnect()
-
-    def reset(self):
-        """Resets the session and all plots to their default views."""
-        if not self.is_connected:
-            return
-
-        self._current_sample_ids = None
-        self._current_labels = None
-        self._update_session(self._init_view)
 
     def sync(self):
         """Syncs all plots with the session's current view."""
@@ -281,15 +331,12 @@ class PlotManager(object):
         self._update_plots()
 
     def freeze(self):
-        """Freezes the active App cell and all connected plots, replacing them
-        with static images.
+        """Freezes all connected plots, replacing them with static images.
 
         Only applicable to notebook contexts.
         """
         if not self.is_connected:
             return
-
-        self._session.freeze()
 
         for plot in self._plots.values():
             if plot.is_connected:

@@ -18,3 +18,9 @@ from .base import (
     InteractivePlot,
     ViewPlot,
 )
+from .manager import PlotManager
+from .views import (
+    ViewGrid,
+    CategoricalHistogram,
+    NumericalHistogram,
+)

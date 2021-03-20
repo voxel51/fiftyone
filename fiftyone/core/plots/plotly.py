@@ -925,8 +925,13 @@ class PlotlyWidgetMixin(object):
 
 
 class PlotlyInteractivePlot(PlotlyWidgetMixin, InteractivePlot):
-    """Base class for :class:`InteractivePlot` instances with Plotly backends.
+    """Base class for :class:`fiftyone.core.plots.base.InteractivePlot`
+    instances with Plotly backends.
     """
+
+    def __init__(self, widget, **kwargs):
+        PlotlyWidgetMixin.__init__(self, widget)
+        InteractivePlot.__init__(self, **kwargs)
 
     def show(self, **kwargs):
         """Shows this plot.
@@ -939,22 +944,30 @@ class PlotlyInteractivePlot(PlotlyWidgetMixin, InteractivePlot):
 
 
 class InteractiveScatter(PlotlyInteractivePlot):
-    """Interactive plot wrapper for a Plotly figure containing one or more
-    scatter-type traces.
+    """Wrapper class that turns a Plotly figure containing one or more
+    scatter-type traces into an
+    :class:`fiftyone.core.plots.base.InteractivePlot`.
 
     This wrapper responds to selection and deselection events (if available)
-    triggered on the figure's traces via plotly's lasso and box selector tools.
+    triggered on the figure's traces via Plotly's lasso and box selector tools.
 
     All traces must contain IDs in their ``customdata`` attribute that identify
     the points in the traces.
 
     Args:
         figure: a ``plotly.graph_objects.Figure``
-        **kwargs: keyword arguments for the
-            :class:`fiftyone.core.plots.base.InteractivePlot` constructor
+        link_type ("samples"): whether this plot is linked to "samples" or
+            "labels"
+        label_fields (None): an optional label field or list of label fields to
+            which points in this plot correspond. Only applicable when linked
+            to labels
+        init_view (None): a :class:`fiftyone.core.collections.SampleCollection`
+            to load when no points are selected in the plot
     """
 
-    def __init__(self, figure, **kwargs):
+    def __init__(
+        self, figure, link_type="samples", label_fields=None, init_view=None
+    ):
         self._figure = figure
         self._traces = None
         self._trace_ids = {}
@@ -965,8 +978,12 @@ class InteractiveScatter(PlotlyInteractivePlot):
 
         widget = self._make_widget()
 
-        PlotlyWidgetMixin.__init__(self, widget)
-        InteractivePlot.__init__(self, **kwargs)
+        super().__init__(
+            widget,
+            link_type=link_type,
+            label_fields=label_fields,
+            init_view=init_view,
+        )
 
     def _init_traces(self):
         for idx, trace in enumerate(self._traces):
@@ -1050,13 +1067,13 @@ class InteractiveScatter(PlotlyInteractivePlot):
         if deselect:
             ids = []
 
-        # Split IDs into traces
+        # Split IDs into their traces
         per_trace_ids = defaultdict(list)
         for _id in ids:
             per_trace_ids[self._ids_to_traces[_id]].append(_id)
 
         for idx, trace in enumerate(self._traces):
-            # Convert IDs to point inds
+            # Convert IDs to point indices
             inds_map = self._ids_to_inds[idx]
             trace_ids = per_trace_ids[idx]
             trace_inds = [inds_map[_id] for _id in trace_ids]
@@ -1113,8 +1130,7 @@ class ManualInteractiveScatter(InteractiveScatter):
         figure: a ``plotly.graph_objects.Figure``
         points: a ``num_points x 2`` array of points
         ids: a ``num_points`` array containing the IDs for ``points``
-        **kwargs: keyword arguments for the
-            :class:`fiftyone.core.plots.base.InteractivePlot` constructor
+        **kwargs: keyword arguments for :class:`InteractiveScatter`
     """
 
     def __init__(self, figure, points, ids, **kwargs):
@@ -1176,30 +1192,53 @@ class ManualInteractiveScatter(InteractiveScatter):
 class PlotlyHeatmap(PlotlyInteractivePlot):
     """An interactive Plotly heatmap.
 
+    Unfortunately, the Plotly core team has not gotten around to adding native
+    selection utilities to plot types such as heatmaps
+    (cf. https://github.com/plotly/plotly.js/issues/170).
+
+    Therefore, this class provides a homebrewed Plotly heatmap that supports
+    two types of interactivity:
+
+    -   Individual cells can be selected by clicking on them
+    -   Groups of cells can be Lasso or box-selected by including their center
+        in the selection
+
+    The following events will cause the selection to be cleared:
+
+    -   Clicking any cell, if there are currently multiple cells selected
+    -   Clicking the selected cell, if there is only one cell selected
+
     Args:
         Z: a ``num_cols x num_rows`` array of heatmap values
         ids: an array of same shape as ``Z`` whose elements contain lists
             of IDs for the heatmap cells
+        link_type ("samples"): whether this plot is linked to "samples" or
+            "labels"
+        label_fields (None): an optional label field or list of label fields to
+            which points in this plot correspond. Only applicable when linked
+            to labels
+        init_view (None): a :class:`fiftyone.core.collections.SampleCollection`
+            to load when no points are selected in the plot
         xlabels (None): a ``num_rows`` array of x labels
         ylabels (None): a ``num_cols`` array of y labels
         colorscale (None): a plotly colorscale to use
         grid_opacity (0.1): an opacity value for the grid points
         bg_opacity (0.25): an opacity value for background (unselected) cells
-        **kwargs: keyword arguments for the
-            :class:`fiftyone.core.plots.base.InteractivePlot` constructor
     """
 
     def __init__(
         self,
         Z,
         ids,
+        link_type="samples",
+        label_fields=None,
+        init_view=None,
         xlabels=None,
         ylabels=None,
         zlim=None,
         colorscale=None,
         grid_opacity=0.1,
         bg_opacity=0.25,
-        **kwargs,
     ):
         Z = np.asarray(Z)
         if zlim is None:
@@ -1226,8 +1265,12 @@ class PlotlyHeatmap(PlotlyInteractivePlot):
         widget = self._make_widget()
         self._init_cells_map()
 
-        PlotlyWidgetMixin.__init__(self, widget)
-        InteractivePlot.__init__(self, **kwargs)
+        super().__init__(
+            widget,
+            link_type=link_type,
+            label_fields=label_fields,
+            init_view=init_view,
+        )
 
     @property
     def supports_session_updates(self):
