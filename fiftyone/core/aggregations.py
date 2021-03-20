@@ -730,6 +730,9 @@ class HistogramValues(Aggregation):
 
     def _compute_bin_edges(self, sample_collection):
         bounds = sample_collection.bounds(self._field_name, expr=self._expr)
+        if any(b is None for b in bounds):
+            bounds = (-1, -1)
+
         return list(
             np.linspace(bounds[0], bounds[1] + 1e-6, self._num_bins + 1)
         )
