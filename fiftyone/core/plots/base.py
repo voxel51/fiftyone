@@ -1,5 +1,5 @@
 """
-Base plotting utilities.
+Base plotting definitions.
 
 | Copyright 2017-2021, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -30,6 +30,21 @@ def get_default_backend(interactive=False):
     return "plotly"
 
 
+def _parse_backend(backend, interactive=False):
+    if backend is None:
+        return get_default_backend(interactive=interactive)
+
+    available_backends = ("matplotlib", "plotly")
+    if backend not in available_backends:
+        raise ValueError(
+            "Unsupported plotting backend '%s'; supported values are %s"
+            % backend,
+            available_backends,
+        )
+
+    return backend
+
+
 def plot_confusion_matrix(
     confusion_matrix,
     labels,
@@ -56,8 +71,8 @@ def plot_confusion_matrix(
         show (True): whether to show the plot
         **kwargs: keyword arguments for the backend plotting method:
 
-            -   "plotly" backend: :meth:`fiftyone.utils.plot.plotly.plot_confusion_matrix`
-            -   "matplotlib" backend: :meth:`fiftyone.utils.plot.matplotlib.plot_confusion_matrix`
+            -   "plotly" backend: :meth:`fiftyone.core.plots.plotly.plot_confusion_matrix`
+            -   "matplotlib" backend: :meth:`fiftyone.core.plots.matplotlib.plot_confusion_matrix`
 
     Returns:
         a plotly or matplotlib figure
@@ -91,8 +106,8 @@ def plot_pr_curve(
         show (True): whether to show the plot
         **kwargs: keyword arguments for the backend plotting method:
 
-            -   "plotly" backend: :meth:`fiftyone.utils.plot.plotly.plot_pr_curve`
-            -   "matplotlib" backend: :meth:`fiftyone.utils.plot.matplotlib.plot_pr_curve`
+            -   "plotly" backend: :meth:`fiftyone.core.plots.plotly.plot_pr_curve`
+            -   "matplotlib" backend: :meth:`fiftyone.core.plots.matplotlib.plot_pr_curve`
 
     Returns:
         a plotly or matplotlib figure
@@ -123,8 +138,8 @@ def plot_pr_curves(
         show (True): whether to show the plot
         **kwargs: keyword arguments for the backend plotting method:
 
-            -   "plotly" backend: :meth:`fiftyone.utils.plot.plotly.plot_pr_curves`
-            -   "matplotlib" backend: :meth:`fiftyone.utils.plot.matplotlib.plot_pr_curves`
+            -   "plotly" backend: :meth:`fiftyone.core.plots.plotly.plot_pr_curves`
+            -   "matplotlib" backend: :meth:`fiftyone.core.plots.matplotlib.plot_pr_curves`
 
     Returns:
         a plotly or matplotlib figure
@@ -152,8 +167,8 @@ def plot_roc_curve(fpr, tpr, roc_auc=None, backend=None, show=True, **kwargs):
         show (True): whether to show the plot
         **kwargs: keyword arguments for the backend plotting method:
 
-            -   "plotly" backend: :meth:`fiftyone.utils.plot.plotly.plot_roc_curve`
-            -   "matplotlib" backend: :meth:`fiftyone.utils.plot.matplotlib.plot_roc_curve`
+            -   "plotly" backend: :meth:`fiftyone.core.plots.plotly.plot_roc_curve`
+            -   "matplotlib" backend: :meth:`fiftyone.core.plots.matplotlib.plot_roc_curve`
 
     Returns:
         a plotly or matplotlib figure
@@ -218,13 +233,13 @@ def scatterplot(
         show (True): whether to show the plot
         **kwargs: keyword arguments for the backend plotting method:
 
-            -   "plotly" backend: :meth:`fiftyone.utils.plot.plotly.scatterplot`
-            -   "matplotlib" backend: :meth:`fiftyone.utils.plot.matplotlib.scatterplot`
+            -   "plotly" backend: :meth:`fiftyone.core.plots.plotly.scatterplot`
+            -   "matplotlib" backend: :meth:`fiftyone.core.plots.matplotlib.scatterplot`
 
     Returns:
         one of the following:
 
-        -   an :class:`fiftyone.utils.plot.interactive.InteractivePlot`, if
+        -   an :class:`fiftyone.core.plots.base.InteractivePlot`, if
             ``samples`` are provided and the backend supports interactivity
         -   a plotly or matplotlib figure, otherwise
     """
@@ -298,13 +313,13 @@ def location_scatterplot(
         show (True): whether to show the plot
         **kwargs: keyword arguments for the backend plotting method:
 
-            -   "plotly" backend: :meth:`fiftyone.utils.plot.plotly.location_scatterplot`
-            -   "matplotlib" backend: :meth:`fiftyone.utils.plot.matplotlib.location_scatterplot`
+            -   "plotly" backend: :meth:`fiftyone.core.plots.plotly.location_scatterplot`
+            -   "matplotlib" backend: :meth:`fiftyone.core.plots.matplotlib.location_scatterplot`
 
     Returns:
         one of the following:
 
-        -   an :class:`fiftyone.utils.plot.interactive.InteractivePlot`, if
+        -   an :class:`fiftyone.core.plots.base.InteractivePlot`, if
             ``samples`` are provided and the backend supports interactivity
         -   a plotly or matplotlib figure, otherwise
     """
@@ -327,16 +342,267 @@ def location_scatterplot(
     )
 
 
-def _parse_backend(backend, interactive=False):
-    if backend is None:
-        return get_default_backend(interactive=interactive)
+class Plot(object):
+    """Base class for all plots.
 
-    available_backends = ("matplotlib", "plotly")
-    if backend not in available_backends:
-        raise ValueError(
-            "Unsupported plotting backend '%s'; supported values are %s"
-            % backend,
-            available_backends,
+    Args:
+        link_type: the link type of the plot
+    """
+
+    def __init__(self, link_type):
+        self._link_type = link_type
+        self._connected = False
+        self._disconnected = False
+        self._frozen = False
+
+    @property
+    def link_type(self):
+        """The link type between this plot and a connected session."""
+        return self._link_type
+
+    @property
+    def supports_session_updates(self):
+        """Whether this plot supports automatic updates in response to session
+        changes.
+        """
+        raise NotImplementedError(
+            "Subclass must implement supports_session_updates"
         )
 
-    return backend
+    @property
+    def is_connected(self):
+        """Whether this plot is currently connected."""
+        return self._connected
+
+    @property
+    def is_disconnected(self):
+        """Whether this plot is currently disconnected."""
+        return self._disconnected
+
+    @property
+    def is_frozen(self):
+        """Whether this plot is currently frozen."""
+        return self._frozen
+
+    def connect(self):
+        """Connects this plot, if necessary."""
+        if self.is_connected:
+            return
+
+        if self.is_frozen:
+            self._reopen()
+            self._frozen = False
+
+        self._connect()
+        self._connected = True
+        self._disconnected = False
+
+    def _connect(self):
+        pass
+
+    def show(self, **kwargs):
+        """Shows this plot.
+
+        The plot will be connected if necessary.
+
+        Args:
+            **kwargs: subclass-specific keyword arguments
+        """
+        self.connect()
+        self._show(**kwargs)
+
+    def _show(self, **kwargs):
+        pass
+
+    def _reopen(self):
+        pass
+
+    def reset(self):
+        """Resets the plot to its default state."""
+        raise NotImplementedError("Subclass must implement reset()")
+
+    def freeze(self):
+        """Freezes the plot, replacing it with a static image.
+
+        The plot will also be disconnected.
+
+        Only applicable to notebook contexts.
+        """
+        if not self.is_connected:
+            raise ValueError("Plot is not connected")
+
+        if not foc.is_notebook_context():
+            raise foc.ContextError("Plots can only be frozen in notebooks")
+
+        self._freeze()
+        self._frozen = True
+
+        self.disconnect()
+
+    def _freeze(self):
+        pass
+
+    def disconnect(self):
+        """Disconnects the plot, if necessary."""
+        if not self.is_connected:
+            return
+
+        self._disconnect()
+        self._connected = False
+        self._disconnected = True
+
+    def _disconnect(self):
+        pass
+
+
+class ViewPlot(Plot):
+    """Base class for plots that can be automatically populated given a
+    :class:`fiftyone.core.collections.SampleCollection` instance.
+
+    Conversely, the state of an :class:`InteractivePlot` can be updated by
+    external parties by calling its :meth:`update_view` method.
+    """
+
+    def __init__(self):
+        super().__init__("view")
+
+    @property
+    def supports_session_updates(self):
+        return True
+
+    def update_view(self, view):
+        """Updates the plot based on the provided view.
+
+        Args:
+            view: a :class:`fiftyone.core.collections.SampleCollection`
+        """
+        if not self.is_connected:
+            return
+
+        self._update_view(view)
+
+    def _update_view(self, view):
+        raise ValueError("Subclass must implement _update_view()")
+
+    def reset(self):
+        """Resets the plot to its default state."""
+        self.update_view(None)
+
+
+class InteractivePlot(Plot):
+    """Base class for plots that support selection of their points.
+
+    Whenever a selection is made in an :class:`InteractivePlot`, the plot will
+    invoke any selection callback(s) registered on it, reporting to its
+    listeners the IDs of its selected points.
+
+    Conversely, the state of an :class:`InteractivePlot` can be updated by
+    external parties by calling its :meth:`select_ids` method.
+
+    Args:
+        link_type ("samples"): whether this plot is linked to "samples" or
+            "labels"
+        label_fields (None): an optional label field or list of label fields to
+            which points in this plot correspond. Only applicable when linked
+            to labels
+        init_view (None): a :class:`fiftyone.core.collections.SampleCollection`
+            to load when no points are selected in the plot
+    """
+
+    def __init__(self, link_type="samples", label_fields=None, init_view=None):
+        supported_link_types = ("samples", "labels")
+        if link_type not in supported_link_types:
+            raise ValueError(
+                "Unsupported link_type '%s'; supported values are %s"
+                % (link_type, supported_link_types)
+            )
+
+        self.label_fields = label_fields
+        self.init_view = init_view
+
+        super().__init__(link_type)
+
+    @property
+    def selected_ids(self):
+        """A list of IDs of the currently selected points.
+
+        An empty list means all points are deselected, and None means default
+        state (nothing selected or unselected).
+
+        If the plot is not connected, returns None.
+        """
+        if not self.is_connected:
+            return None
+
+        return self._selected_ids
+
+    @property
+    def _selected_ids(self):
+        raise NotImplementedError("Subclass must implement _selected_ids")
+
+    def register_selection_callback(self, callback):
+        """Registers a selection callback for this plot.
+
+        Selection callbacks are functions that take a single argument
+        containing the list of currently selected IDs.
+
+        If a selection callback is registred, this plot should invoke it each
+        time their selection is updated.
+
+        Args:
+            callback: a selection callback
+        """
+        self._register_selection_callback(callback)
+
+    def _register_selection_callback(self, callback):
+        raise ValueError(
+            "Subclass must implement _register_selection_callback()"
+        )
+
+    def register_sync_callback(self, callback):
+        """Registers a callback that can sync this plot with a
+        :class:`SessionPlot` connected to it.
+
+        The typical use case for this function is to serve as the callback for
+        a ``sync`` button on the plot.
+
+        Args:
+            callback: a function with no arguments
+        """
+        self._register_sync_callback(callback)
+
+    def _register_sync_callback(self, callback):
+        pass
+
+    def register_disconnect_callback(self, callback):
+        """Registers a callback that can disconnect this plot from a
+        :class:`SessionPlot` connected to it.
+
+        The typical use case for this function is to serve as the callback for
+        a ``disconnect`` button on the plot.
+
+        Args:
+            callback: a function with no arguments
+        """
+        self._register_disconnect_callback(callback)
+
+    def _register_disconnect_callback(self, callback):
+        pass
+
+    def select_ids(self, ids):
+        """Selects the points with the given IDs in this plot.
+
+        Args:
+            ids: a list of IDs
+        """
+        if not self.is_connected:
+            return
+
+        self._select_ids(ids)
+
+    def _select_ids(self, ids):
+        raise ValueError("Subclass must implement _select_ids()")
+
+    def reset(self):
+        """Resets the plot to its default state."""
+        self.select_ids(None)

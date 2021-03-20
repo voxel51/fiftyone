@@ -15,7 +15,7 @@ import fiftyone.core.aggregations as foa
 import fiftyone.core.evaluation as foe
 from fiftyone.core.expressions import ViewField as F
 import fiftyone.core.fields as fof
-import fiftyone.utils.plot as foup
+import fiftyone.core.plots as fop
 
 
 def evaluate_classifications(
@@ -760,8 +760,8 @@ class ClassificationResults(foe.EvaluationResults):
                 without showing it
             **kwargs: keyword arguments for the backend plotting method:
 
-                -   "plotly" backend: :meth:`fiftyone.utils.plot.plotly.plot_confusion_matrix`
-                -   "matplotlib" backend: :meth:`fiftyone.utils.plot.matplotlib.plot_confusion_matrix`
+                -   "plotly" backend: :meth:`fiftyone.core.plots.plotly.plot_confusion_matrix`
+                -   "matplotlib" backend: :meth:`fiftyone.core.plots.matplotlib.plot_confusion_matrix`
 
         Returns:
             None, or the figure containing the plot if ``show`` is True
@@ -795,7 +795,7 @@ class ClassificationResults(foe.EvaluationResults):
                 ids = np.delete(ids, rm_inds, axis=1)
                 labels = [l for i, l in enumerate(labels) if i not in rm_inds]
 
-        figure = foup.plot_confusion_matrix(
+        figure = fop.plot_confusion_matrix(
             confusion_matrix,
             labels,
             ids=ids,
@@ -919,8 +919,8 @@ class BinaryClassificationResults(ClassificationResults):
                 without showing it
             **kwargs: keyword arguments for the backend plotting method:
 
-                -   "plotly" backend: :meth:`fiftyone.utils.plot.plotly.plot_pr_curve`
-                -   "matplotlib" backend: :meth:`fiftyone.utils.plot.matplotlib.plot_pr_curve`
+                -   "plotly" backend: :meth:`fiftyone.core.plots.plotly.plot_pr_curve`
+                -   "matplotlib" backend: :meth:`fiftyone.core.plots.matplotlib.plot_pr_curve`
 
         Returns:
             None, or the figure containing the plot if ``show`` is True
@@ -934,7 +934,7 @@ class BinaryClassificationResults(ClassificationResults):
         avg_precision = self.average_precision(average=average)
         label = "AP = %.2f" % avg_precision
 
-        figure = foup.plot_pr_curve(
+        figure = fop.plot_pr_curve(
             precision,
             recall,
             label=label,
@@ -957,8 +957,8 @@ class BinaryClassificationResults(ClassificationResults):
                 without showing it
             **kwargs: keyword arguments for the backend plotting method:
 
-                -   "plotly" backend: :meth:`fiftyone.utils.plot.plotly.plot_roc_curve`
-                -   "matplotlib" backend: :meth:`fiftyone.utils.plot.matplotlib.plot_roc_curve`
+                -   "plotly" backend: :meth:`fiftyone.core.plots.plotly.plot_roc_curve`
+                -   "matplotlib" backend: :meth:`fiftyone.core.plots.matplotlib.plot_roc_curve`
 
         Returns:
             None, or the figure containing the plot if ``show`` is True
@@ -971,7 +971,7 @@ class BinaryClassificationResults(ClassificationResults):
         )
         roc_auc = skm.auc(fpr, tpr)
 
-        figure = foup.plot_roc_curve(
+        figure = fop.plot_roc_curve(
             fpr, tpr, roc_auc=roc_auc, backend=backend, show=show, **kwargs,
         )
 

@@ -1,5 +1,5 @@
 """
-Plotly utilities.
+Plotly plots.
 
 | Copyright 2017-2021, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -22,9 +22,7 @@ import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.utils as fou
 
-from .interactive import InteractivePlot
-
-mpl = fou.lazy_import("matplotlib")
+from .base import InteractivePlot
 
 
 logger = logging.getLogger(__name__)
@@ -953,8 +951,7 @@ class InteractiveScatter(PlotlyInteractivePlot):
     Args:
         figure: a ``plotly.graph_objects.Figure``
         **kwargs: keyword arguments for the
-            :class:`fiftyone.utils.plot.interactive.InteractivePlot`
-            constructor
+            :class:`fiftyone.core.plots.base.InteractivePlot` constructor
     """
 
     def __init__(self, figure, **kwargs):
@@ -1096,6 +1093,9 @@ class InteractiveScatter(PlotlyInteractivePlot):
         return ready
 
 
+mpl = fou.lazy_import("matplotlib")
+
+
 class ManualInteractiveScatter(InteractiveScatter):
     """Interactive plot wrapper for a Plotly figure containing one or more
     scatter-type traces.
@@ -1114,8 +1114,7 @@ class ManualInteractiveScatter(InteractiveScatter):
         points: a ``num_points x 2`` array of points
         ids: a ``num_points`` array containing the IDs for ``points``
         **kwargs: keyword arguments for the
-            :class:`fiftyone.utils.plot.interactive.InteractivePlot`
-            constructor
+            :class:`fiftyone.core.plots.base.InteractivePlot` constructor
     """
 
     def __init__(self, figure, points, ids, **kwargs):
@@ -1187,8 +1186,7 @@ class PlotlyHeatmap(PlotlyInteractivePlot):
         grid_opacity (0.1): an opacity value for the grid points
         bg_opacity (0.25): an opacity value for background (unselected) cells
         **kwargs: keyword arguments for the
-            :class:`fiftyone.utils.plot.interactive.InteractivePlot`
-            constructor
+            :class:`fiftyone.core.plots.base.InteractivePlot` constructor
     """
 
     def __init__(

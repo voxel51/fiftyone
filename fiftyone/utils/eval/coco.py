@@ -10,8 +10,8 @@ from collections import defaultdict
 
 import numpy as np
 
+import fiftyone.core.plots as fop
 import fiftyone.core.utils as fou
-import fiftyone.utils.plot as foup
 
 from .detection import (
     DetectionEvaluation,
@@ -321,8 +321,8 @@ class COCODetectionResults(DetectionResults):
                 without showing it
             **kwargs: keyword arguments for the backend plotting method:
 
-                -   "plotly" backend: :meth:`fiftyone.utils.plot.plotly.plot_pr_curves`
-                -   "matplotlib" backend: :meth:`fiftyone.utils.plot.matplotlib.plot_pr_curves`
+                -   "plotly" backend: :meth:`fiftyone.core.plots.plotly.plot_pr_curves`
+                -   "matplotlib" backend: :meth:`fiftyone.core.plots.matplotlib.plot_pr_curves`
 
         Returns:
             None, or the figure containing the plot if ``show`` is True
@@ -336,7 +336,7 @@ class COCODetectionResults(DetectionResults):
             class_ind = self._get_class_index(c)
             precisions.append(np.mean(self.precision[:, class_ind], axis=0))
 
-        figure = foup.plot_pr_curves(
+        figure = fop.plot_pr_curves(
             precisions,
             self.recall,
             classes,

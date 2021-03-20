@@ -1,5 +1,5 @@
 """
-Matplotlib utilities.
+Matplotlib plots.
 
 | Copyright 2017-2021, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -26,7 +26,7 @@ import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.utils as fou
 
-from .interactive import InteractivePlot
+from .base import InteractivePlot
 from .utils import load_button_icon
 
 
@@ -554,8 +554,7 @@ class InteractiveMatplotlibPlot(InteractivePlot):
     Args:
         figure: a ``matplotlib.figure.Figure``
         **kwargs: keyword arguments for the
-            :class:`fiftyone.utils.plot.interactive.InteractivePlot`
-            constructor
+            :class:`fiftyone.core.plots.base.InteractivePlot` constructor
     """
 
     def __init__(self, figure, **kwargs):
@@ -614,8 +613,7 @@ class InteractiveCollection(InteractiveMatplotlibPlot):
         click_tolerance (0.02): a click distance tolerance in ``[0, 1]`` when
             clicking individual points
         **kwargs: keyword arguments for the
-            :class:`fiftyone.utils.plot.interactive.InteractivePlot`
-            constructor
+            :class:`fiftyone.core.plots.base.InteractivePlot` constructor
     """
 
     def __init__(

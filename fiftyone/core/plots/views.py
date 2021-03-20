@@ -1,5 +1,5 @@
 """
-Reusable :class:`fiftyone.utils.plot.interactive.ViewPlot` definitions.
+Plotly-powered view plots.
 
 | Copyright 2017-2021, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -14,7 +14,7 @@ import eta.core.utils as etau
 import plotly.subplots as ps
 import plotly.graph_objects as go
 
-from .interactive import ViewPlot
+from .base import ViewPlot
 from .plotly import PlotlyWidgetMixin
 
 
@@ -104,8 +104,7 @@ class ViewGrid(PlotlyViewPlot):
 
 
 class CategoricalHistogram(PlotlyViewPlot):
-    """A :class:`fiftyone.utils.plot.interactive.ViewPlot` that plots a
-    histogram of a categorial field of a view.
+    """A histogram of a categorial field.
 
     Args:
         field: the name of the field or ``embedded.field.name`` to plot
@@ -228,8 +227,7 @@ class CategoricalHistogram(PlotlyViewPlot):
 
 
 class NumericalHistogram(PlotlyViewPlot):
-    """A :class:`fiftyone.utils.plot.interactive.ViewPlot` that plots a
-    histogram of a numerical field of a view.
+    """A histogram of a numerical field.
 
     Args:
         field: the name of the field or ``embedded.field.name`` to plot
