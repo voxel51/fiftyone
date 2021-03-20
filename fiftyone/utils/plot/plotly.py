@@ -11,9 +11,9 @@ import logging
 import os
 
 import numpy as np
-import plotly.callbacks as pcb
+import plotly.callbacks as pc
 import plotly.express as px
-import plotly.graph_objects as pgo
+import plotly.graph_objects as go
 
 import eta.core.utils as etau
 
@@ -116,7 +116,7 @@ def _plot_confusion_matrix_static(
     ]
     hovertemplate = "<br>".join(hover_lines) + "<extra></extra>"
 
-    heatmap = pgo.Heatmap(
+    heatmap = go.Heatmap(
         x=labels[:num_cols],
         y=labels[:num_rows],
         z=confusion_matrix,
@@ -127,7 +127,7 @@ def _plot_confusion_matrix_static(
         hovertemplate=hovertemplate,
     )
 
-    figure = pgo.Figure(heatmap)
+    figure = go.Figure(heatmap)
 
     figure.update_layout(
         xaxis=dict(range=[-0.5, num_cols - 0.5], constrain="domain"),
@@ -263,7 +263,7 @@ def plot_pr_curves(precisions, recall, classes, layout=None, show=True):
     Returns:
         a ``plotly.graph_objects.Figure``
     """
-    figure = pgo.Figure()
+    figure = go.Figure()
 
     # Add 50/50 line
     figure.add_shape(
@@ -282,7 +282,7 @@ def plot_pr_curves(precisions, recall, classes, layout=None, show=True):
         avg_precision = np.mean(precision)
         label = "%s (AP = %.3f)" % (_class, avg_precision)
 
-        line = pgo.Scatter(
+        line = go.Scatter(
             x=recall,
             y=precision,
             name=label,
@@ -872,39 +872,21 @@ def _parse_locations(locations, samples):
     return np.asarray(locations)
 
 
-class InteractivePlotlyPlot(InteractivePlot):
-    """Base class for interactive plotly plots.
+class PlotlyWidgetMixin(object):
+    """Mixin for Plotly plots that use widgets to display in notebooks.
 
     Args:
         widget: a ``plotly.graph_objects.FigureWidget``
-        **kwargs: keyword arguments for the
-            :class:`fiftyone.utils.plot.interactive.InteractivePlot`
-            constructor
     """
 
-    def __init__(self, widget, **kwargs):
+    def __init__(self, widget):
         if not foc.is_notebook_context():
             raise foc.ContextError(
-                "Interactive Plotly plots can only be used in notebooks"
+                "%s plots can only be used in notebooks" % self.__class__
             )
 
         self._widget = widget
         self._handle = None
-
-        super().__init__(**kwargs)
-
-    @property
-    def supports_session_updates(self):
-        return True
-
-    def show(self, **kwargs):
-        """Shows this plot.
-
-        Args:
-            **kwargs: optional parameters for
-                ``plotly.graph_objects.Figure.update_layout(**kwargs)``
-        """
-        super().show(**kwargs)
 
     def _show(self, **kwargs):
         if kwargs:
@@ -944,7 +926,21 @@ class InteractivePlotlyPlot(InteractivePlot):
         self._handle.update(Image(image_bytes))
 
 
-class InteractiveScatter(InteractivePlotlyPlot):
+class PlotlyInteractivePlot(PlotlyWidgetMixin, InteractivePlot):
+    """Base class for :class:`InteractivePlot` instances with Plotly backends.
+    """
+
+    def show(self, **kwargs):
+        """Shows this plot.
+
+        Args:
+            **kwargs: optional parameters for
+                ``plotly.graph_objects.Figure.update_layout(**kwargs)``
+        """
+        super().show(**kwargs)
+
+
+class InteractiveScatter(PlotlyInteractivePlot):
     """Interactive plot wrapper for a Plotly figure containing one or more
     scatter-type traces.
 
@@ -972,7 +968,8 @@ class InteractiveScatter(InteractivePlotlyPlot):
 
         widget = self._make_widget()
 
-        super().__init__(widget, **kwargs)
+        PlotlyWidgetMixin.__init__(self, widget)
+        InteractivePlot.__init__(self, **kwargs)
 
     def _init_traces(self):
         for idx, trace in enumerate(self._traces):
@@ -1003,6 +1000,10 @@ class InteractiveScatter(InteractivePlotlyPlot):
         self._select_callback = callback
 
     @property
+    def supports_session_updates(self):
+        return True
+
+    @property
     def _selected_ids(self):
         found = False
 
@@ -1021,7 +1022,7 @@ class InteractiveScatter(InteractivePlotlyPlot):
         self._select_callback = callback
 
     def _make_widget(self):
-        widget = pgo.FigureWidget(self._figure)
+        widget = go.FigureWidget(self._figure)
         self._traces = widget.data
         self._init_traces()
         return widget
@@ -1144,7 +1145,7 @@ class ManualInteractiveScatter(InteractiveScatter):
         super()._on_select(trace, selector=selector)
 
     def _manual_select(self, selector):
-        if not isinstance(selector, (pcb.LassoSelector, pcb.BoxSelector)):
+        if not isinstance(selector, (pc.LassoSelector, pc.BoxSelector)):
             return
 
         visible_traces = set(
@@ -1157,7 +1158,7 @@ class ManualInteractiveScatter(InteractiveScatter):
             self._ids = np.array([], dtype=self._point_ids.dtype)
             return
 
-        if isinstance(selector, pcb.LassoSelector):
+        if isinstance(selector, pc.LassoSelector):
             vertices = np.stack((selector.xs, selector.ys), axis=1)
         else:
             x1, x2 = selector.xrange
@@ -1173,7 +1174,7 @@ class ManualInteractiveScatter(InteractiveScatter):
         self._ids = self._point_ids[found & mask]
 
 
-class PlotlyHeatmap(InteractivePlotlyPlot):
+class PlotlyHeatmap(PlotlyInteractivePlot):
     """An interactive Plotly heatmap.
 
     Args:
@@ -1227,7 +1228,12 @@ class PlotlyHeatmap(InteractivePlotlyPlot):
         widget = self._make_widget()
         self._init_cells_map()
 
-        super().__init__(widget, **kwargs)
+        PlotlyWidgetMixin.__init__(self, widget)
+        InteractivePlot.__init__(self, **kwargs)
+
+    @property
+    def supports_session_updates(self):
+        return True
 
     @property
     def _selected_ids(self):
@@ -1244,7 +1250,7 @@ class PlotlyHeatmap(InteractivePlotlyPlot):
         self._select_callback = callback
 
     def _make_widget(self):
-        widget = pgo.FigureWidget(self._figure)
+        widget = go.FigureWidget(self._figure)
         gridw, selectedw, bgw = widget.data
 
         self._gridw = gridw
@@ -1352,7 +1358,7 @@ class PlotlyHeatmap(InteractivePlotlyPlot):
         ]
         hovertemplate = "<br>".join(hover_lines) + "<extra></extra>"
 
-        grid = pgo.Scatter(
+        grid = go.Scatter(
             x=X.flatten(),
             y=Y.flatten(),
             opacity=self.grid_opacity,
@@ -1360,7 +1366,7 @@ class PlotlyHeatmap(InteractivePlotlyPlot):
             hovertemplate=None,  # no hover
         )
 
-        selected = pgo.Heatmap(
+        selected = go.Heatmap(
             z=Z,
             zmin=self.zlim[0],
             zmax=self.zlim[1],
@@ -1369,7 +1375,7 @@ class PlotlyHeatmap(InteractivePlotlyPlot):
             hoverinfo="skip",  # no hover, no callbacks
         )
 
-        bg = pgo.Heatmap(
+        bg = go.Heatmap(
             z=Z,
             colorscale=self.colorscale,
             opacity=self.bg_opacity,
@@ -1377,7 +1383,7 @@ class PlotlyHeatmap(InteractivePlotlyPlot):
             hovertemplate=hovertemplate,
         )
 
-        figure = pgo.Figure([grid, selected, bg])
+        figure = go.Figure([grid, selected, bg])
 
         figure.update_layout(
             xaxis=dict(
@@ -1467,14 +1473,14 @@ def _plot_scatter_categorical(
         )
 
         if num_dims == 3:
-            scatter = pgo.Scatter3d(
+            scatter = go.Scatter3d(
                 x=points[label_inds][:, 0],
                 y=points[label_inds][:, 1],
                 z=points[label_inds][:, 2],
                 **kwargs,
             )
         else:
-            scatter = pgo.Scattergl(
+            scatter = go.Scattergl(
                 x=points[label_inds][:, 0],
                 y=points[label_inds][:, 1],
                 **kwargs,
@@ -1482,7 +1488,7 @@ def _plot_scatter_categorical(
 
         traces.append(scatter)
 
-    figure = pgo.Figure(traces)
+    figure = go.Figure(traces)
 
     figure.update_layout(legend_title_text=colorbar_title)
 
@@ -1572,13 +1578,13 @@ def _plot_scatter_categorical_single_trace(
     )
 
     if num_dims == 3:
-        scatter = pgo.Scatter3d(
+        scatter = go.Scatter3d(
             x=points[:, 0], y=points[:, 1], z=points[:, 2], **kwargs
         )
     else:
-        scatter = pgo.Scattergl(x=points[:, 0], y=points[:, 1], **kwargs)
+        scatter = go.Scattergl(x=points[:, 0], y=points[:, 1], **kwargs)
 
-    return pgo.Figure(scatter)
+    return go.Figure(scatter)
 
 
 def _plot_scatter_numeric(
@@ -1647,13 +1653,13 @@ def _plot_scatter_numeric(
     )
 
     if num_dims == 3:
-        scatter = pgo.Scatter3d(
+        scatter = go.Scatter3d(
             x=points[:, 0], y=points[:, 1], z=points[:, 2], **kwargs
         )
     else:
-        scatter = pgo.Scattergl(x=points[:, 0], y=points[:, 1], **kwargs)
+        scatter = go.Scattergl(x=points[:, 0], y=points[:, 1], **kwargs)
 
-    return pgo.Figure(scatter)
+    return go.Figure(scatter)
 
 
 def _plot_scatter_mapbox_categorical(
@@ -1704,7 +1710,7 @@ def _plot_scatter_mapbox_categorical(
         else:
             marker = None
 
-        scatter = pgo.Scattermapbox(
+        scatter = go.Scattermapbox(
             lat=coords[label_inds][:, 1],
             lon=coords[label_inds][:, 0],
             customdata=customdata,
@@ -1717,7 +1723,7 @@ def _plot_scatter_mapbox_categorical(
         )
         traces.append(scatter)
 
-    figure = pgo.Figure(traces)
+    figure = go.Figure(traces)
 
     zoom, (center_lon, center_lat) = _compute_zoom_center(coords)
     figure.update_layout(
@@ -1798,7 +1804,7 @@ def _plot_scatter_mapbox_categorical_single_trace(
 
     hovertemplate = "<br>".join(hover_lines) + "<extra></extra>"
 
-    scatter = pgo.Scattermapbox(
+    scatter = go.Scattermapbox(
         lat=coords[:, 1],
         lon=coords[:, 0],
         customdata=ids,
@@ -1808,7 +1814,7 @@ def _plot_scatter_mapbox_categorical_single_trace(
         hovertemplate=hovertemplate,
     )
 
-    figure = pgo.Figure(scatter)
+    figure = go.Figure(scatter)
 
     zoom, (center_lon, center_lat) = _compute_zoom_center(coords)
     figure.update_layout(
@@ -1872,7 +1878,7 @@ def _plot_scatter_mapbox_numeric(
 
     hovertemplate = "<br>".join(hover_lines) + "<extra></extra>"
 
-    scatter = pgo.Scattermapbox(
+    scatter = go.Scattermapbox(
         lat=coords[:, 1],
         lon=coords[:, 0],
         customdata=ids,
@@ -1881,7 +1887,7 @@ def _plot_scatter_mapbox_numeric(
         hovertemplate=hovertemplate,
     )
 
-    figure = pgo.Figure(scatter)
+    figure = go.Figure(scatter)
 
     zoom, (center_lon, center_lat) = _compute_zoom_center(coords)
     figure.update_layout(
@@ -1935,7 +1941,7 @@ def _plot_scatter_mapbox_density(
 
     hovertemplate = "<br>".join(hover_lines) + "<extra></extra>"
 
-    density = pgo.Densitymapbox(
+    density = go.Densitymapbox(
         lat=coords[:, 1],
         lon=coords[:, 0],
         z=values,
@@ -1945,7 +1951,7 @@ def _plot_scatter_mapbox_density(
         hovertemplate=hovertemplate,
     )
 
-    figure = pgo.Figure(density)
+    figure = go.Figure(density)
 
     zoom, (center_lon, center_lat) = _compute_zoom_center(coords)
     figure.update_layout(

@@ -7,6 +7,7 @@ Interactive plotting utilities.
 """
 import datetime
 import logging
+import warnings
 
 import eta.core.utils as etau
 
@@ -16,39 +17,23 @@ import fiftyone.core.context as foc
 logger = logging.getLogger(__name__)
 
 
-class InteractivePlot(object):
-    """Base class for plots that support selection of their points.
-
-    Whenever the user performs a selection in an interactive plot, the plot
-    will invoke any selection callback(s) registered on it, reporting to
-    listeners the IDs of their selected points.
+class Plot(object):
+    """Base class for all plots.
 
     Args:
-        link_type ("samples"): whether this plot is linked to "samples" or
-            "labels"
-        label_fields (None): an optional label field or list of label fields to
-            which points in this plot correspond. Only applicable when linked
-            to labels
-        init_view (None): a :class:`fiftyone.core.collections.SampleCollection`
-            to load when no points are selected in the plot
+        link_type: the link type of the plot
     """
 
-    _LINK_TYPES = ("samples", "labels")
-
-    def __init__(self, link_type="samples", label_fields=None, init_view=None):
-        if link_type not in self._LINK_TYPES:
-            raise ValueError(
-                "Unsupported link_type '%s'; supported values are %s"
-                % (link_type, self._LINK_TYPES)
-            )
-
-        self.link_type = link_type
-        self.label_fields = label_fields
-        self.init_view = init_view
-
+    def __init__(self, link_type):
+        self._link_type = link_type
         self._connected = False
         self._disconnected = False
         self._frozen = False
+
+    @property
+    def link_type(self):
+        """The link type between this plot and a connected session."""
+        return self._link_type
 
     @property
     def supports_session_updates(self):
@@ -73,6 +58,144 @@ class InteractivePlot(object):
     def is_frozen(self):
         """Whether this plot is currently frozen."""
         return self._frozen
+
+    def connect(self):
+        """Connects this plot, if necessary."""
+        if self.is_connected:
+            return
+
+        if self.is_frozen:
+            self._reopen()
+            self._frozen = False
+
+        self._connect()
+        self._connected = True
+        self._disconnected = False
+
+    def _connect(self):
+        pass
+
+    def show(self, **kwargs):
+        """Shows this plot.
+
+        The plot will be connected if necessary.
+
+        Args:
+            **kwargs: subclass-specific keyword arguments
+        """
+        self.connect()
+        self._show(**kwargs)
+
+    def _show(self, **kwargs):
+        pass
+
+    def _reopen(self):
+        pass
+
+    def reset(self):
+        """Resets the plot to its default state."""
+        raise NotImplementedError("Subclass must implement reset()")
+
+    def freeze(self):
+        """Freezes the plot, replacing it with a static image.
+
+        The plot will also be disconnected.
+
+        Only applicable to notebook contexts.
+        """
+        if not self.is_connected:
+            raise ValueError("Plot is not connected")
+
+        if not foc.is_notebook_context():
+            raise foc.ContextError("Plots can only be frozen in notebooks")
+
+        self._freeze()
+        self._frozen = True
+
+        self.disconnect()
+
+    def _freeze(self):
+        pass
+
+    def disconnect(self):
+        """Disconnects the plot, if necessary."""
+        if not self.is_connected:
+            return
+
+        self._disconnect()
+        self._connected = False
+        self._disconnected = True
+
+    def _disconnect(self):
+        pass
+
+
+class ViewPlot(Plot):
+    """Base class for plots that can be automatically populated given a
+    :class:`fiftyone.core.collections.SampleCollection` instance.
+
+    Conversely, the state of an :class:`InteractivePlot` can be updated by
+    external parties by calling its :meth:`update_view` method.
+    """
+
+    def __init__(self):
+        super().__init__("view")
+
+    @property
+    def supports_session_updates(self):
+        return True
+
+    def update_view(self, view):
+        """Updates the plot based on the provided view.
+
+        Args:
+            view: a :class:`fiftyone.core.collections.SampleCollection`
+        """
+        if not self.is_connected:
+            return
+
+        self._update_view(view)
+
+    def _update_view(self, view):
+        raise ValueError("Subclass must implement _update_view()")
+
+    def reset(self):
+        """Resets the plot to its default state."""
+        self.update_view(None)
+
+
+class InteractivePlot(Plot):
+    """Base class for plots that support selection of their points.
+
+    Whenever a selection is made in an :class:`InteractivePlot`, the plot will
+    invoke any selection callback(s) registered on it, reporting to its
+    listeners the IDs of its selected points.
+
+    Conversely, the state of an :class:`InteractivePlot` can be updated by
+    external parties by calling its :meth:`select_ids` method.
+
+    Args:
+        link_type ("samples"): whether this plot is linked to "samples" or
+            "labels"
+        label_fields (None): an optional label field or list of label fields to
+            which points in this plot correspond. Only applicable when linked
+            to labels
+        init_view (None): a :class:`fiftyone.core.collections.SampleCollection`
+            to load when no points are selected in the plot
+    """
+
+    def __init__(self, link_type="samples", label_fields=None, init_view=None):
+        supported_link_types = ("samples", "labels")
+        if link_type not in supported_link_types:
+            raise ValueError(
+                "Unsupported link_type '%s'; supported values are %s"
+                % (link_type, supported_link_types)
+            )
+
+        self.label_fields = label_fields
+        self.init_view = init_view
+
+        super().__init__(link_type)
 
     @property
     def selected_ids(self):
@@ -141,39 +264,6 @@ class InteractivePlot(object):
     def _register_disconnect_callback(self, callback):
         pass
 
-    def connect(self):
-        """Connects this plot, if necessary."""
-        if self.is_connected:
-            return
-
-        if self.is_frozen:
-            self._reopen()
-            self._frozen = False
-
-        self._connect()
-        self._connected = True
-        self._disconnected = False
-
-    def _connect(self):
-        pass
-
-    def show(self, **kwargs):
-        """Shows this plot.
-
-        The plot will be connected if necessary.
-
-        Args:
-            **kwargs: subclass-specific keyword arguments
-        """
-        self.connect()
-        self._show(**kwargs)
-
-    def _show(self, **kwargs):
-        pass
-
-    def _reopen(self):
-        pass
-
     def select_ids(self, ids):
         """Selects the points with the given IDs in this plot.
 
@@ -192,53 +282,25 @@ class InteractivePlot(object):
         """Resets the plot to its default state."""
         self.select_ids(None)
 
-    def freeze(self):
-        """Freezes the plot, replacing it with a static image.
 
-        The plot will also be disconnected.
-
-        Only applicable to notebook contexts.
-        """
-        if not self.is_connected:
-            raise ValueError("Plot is not connected")
-
-        if not foc.is_notebook_context():
-            raise foc.ContextError("Plots can only be frozen in notebooks")
-
-        self._freeze()
-        self._frozen = True
-
-        self.disconnect()
-
-    def _freeze(self):
-        pass
-
-    def disconnect(self):
-        """Disconnects the plot, if necessary."""
-        if not self.is_connected:
-            return
-
-        self._disconnect()
-        self._connected = False
-        self._disconnected = True
-
-    def _disconnect(self):
-        pass
-
-
-class InteractivePlotManager(object):
+class PlotManager(object):
     """Class that manages communication between a
-    :class:`fiftyone.core.session.Session` and one or more
-    :class:`InteractivePlot` instances.
+    :class:`fiftyone.core.session.Session` and one or more :class:`Plot`
+    instances.
 
-    Each plot can be linked to either the samples or labels of a session:
+    Each plot can be linked to either the view, samples, or labels of a
+    session:
 
-    -   Sample selection: When points are selected in a plot with
+    -   **View links:** When a plot has ``link_type == "view"``, then, when the
+        session's view changes, the plot is updated based on the content of the
+        view
+
+    -   **Sample links:** When points are selected in a plot with
         ``link_type == "samples"``, a view containing the corresponding samples
         is loaded in the App. Conversely, when the session's view changes, the
         corresponding points are selected in the plot
 
-    -   Label selection: When points are selected in a plot with
+    -   **Label links:** When points are selected in a plot with
         ``link_type == "labels"``, a view containing the corresponding labels
         is loaded in the App. Conversely, when the session's view changes, the
         points in the plot corresponding to all labels in the view are selected
@@ -246,16 +308,14 @@ class InteractivePlotManager(object):
 
     Args:
         session: a :class:`fiftyone.core.session.Session`
-        connect (True): whether to immediately connect the manager
     """
 
     _MIN_UPDATE_DELTA_SECONDS = 0.5
-    _LISTENER_NAME = "InteractivePlotManager"
+    _LISTENER_NAME = "PlotManager"
 
-    def __init__(self, session, connect=True):
-        self.session = session
-        self.plots = {}
-
+    def __init__(self, session):
+        self._session = session
+        self._plots = {}
         self._init_view = session._collection.view()
         self._current_sample_ids = None
         self._current_labels = None
@@ -264,8 +324,50 @@ class InteractivePlotManager(object):
         self._connected = False
         self._disconnected = False
 
-        if connect:
-            self.connect()
+    def __iter__(self):
+        return iter(self._plots)
+
+    def __contains__(self, name):
+        return name in self._plots
+
+    def __setitem__(self, name, plot):
+        self.add(plot, name=name)
+
+    def __getitem__(self, name):
+        return self._plots[name]
+
+    def __delitem__(self, name):
+        self.remove(name)
+
+    def __bool__(self):
+        return bool(self._plots)
+
+    def __len__(self):
+        return len(self._plots)
+
+    def keys(self):
+        """Returns an iterator over the names of plots in this manager.
+
+        Returns:
+            an interator over plot names
+        """
+        return self._plots.keys()
+
+    def items(self):
+        """Returns an iterator over the ``(name, plot)`` pairs in this manager.
+
+        Returns:
+            an iterator that emits ``(name, Plot)`` tuples
+        """
+        return self._plots.items()
+
+    def values(self):
+        """Returns an iterator over the plots in this manager.
+
+        Returns:
+            an iterator that emits :class:`Plot` instances
+        """
+        return self._plots.values()
 
     @property
     def is_connected(self):
@@ -278,11 +380,20 @@ class InteractivePlotManager(object):
         return self._disconnected
 
     @property
+    def has_view_links(self):
+        """Whether this manager has plots linked to views."""
+        return any(
+            plot.link_type == "view"
+            for plot in self._plots.values()
+            if plot.is_connected
+        )
+
+    @property
     def has_sample_links(self):
         """Whether this manager has plots linked to samples."""
         return any(
             plot.link_type == "samples"
-            for plot in self.plots.values()
+            for plot in self._plots.values()
             if plot.is_connected
         )
 
@@ -291,72 +402,84 @@ class InteractivePlotManager(object):
         """Whether this manager has plots linked to labels."""
         return any(
             plot.link_type == "labels"
-            for plot in self.plots.values()
+            for plot in self._plots.values()
             if plot.is_connected
         )
 
-    def add_plot(self, plot, name):
+    def add(self, plot, name=None, connect=True, overwrite=True):
         """Adds a plot to this manager.
 
         Args:
             plot: an :class:`fiftyone.utils.plot.interactive.InteractivePlot`
-            name: a name for the plot
+            name (None): a name for the plot
+            connect (True): whether to immediately connect the plot
+            overwrite (True): whether to overwrite an existing plot of the same
+                name
         """
+        if name is None:
+            name = "plot %d" % (len(self._plots) + 1)
+
         if name == "session":
             raise ValueError("Cannot use reserved name 'session' for a plot")
 
-        if name in self.plots:
-            raise ValueError(
-                "A plot with name '%s' already exists; you must disconnect "
-                "it before adding a new plot under this name" % name
-            )
+        if name in self._plots:
+            if not overwrite:
+                raise ValueError("A plot with name '%s' already exists" % name)
 
-        self.plots[name] = plot
+            _plot = self.pop(name)
+            if _plot.is_connected:
+                _plot.disconnect()
 
-        if self.is_connected:
-            self._connect_plot(name)
+        self._plots[name] = plot
 
-    def remove_plot(self, name):
-        """Removes a plot from this manager.
+        if connect:
+            if not self.is_connected:
+                self.connect()
+            else:
+                self._connect_plot(name)
+                self._update_plot(name)
+
+    def remove(self, name):
+        """Removes the plot from this manager.
 
         Args:
             name: the name of a plot
         """
-        self.pop_plot(name)
+        self.pop(name)
 
-    def remove_plots(self):
-        """Remove all plots from this manager."""
-        plot_names = list(self.plots.keys())
+    def clear(self):
+        """Removes all plots from this manager."""
+        plot_names = list(self._plots.keys())
         for name in plot_names:
-            self.remove_plot(name)
+            self.remove(name)
 
-    def pop_plot(self, name):
+    def pop(self, name):
         """Removes the plot from this manager and returns it.
 
         Args:
             name: the name of a plot
 
         Returns:
-            the :class:`fiftyone.utils.plot.interactive.InteractivePlot`
+            the :class:`Plot`
         """
-        if name not in self.plots:
-            raise ValueError("No plot found with name '%s'" % name)
+        if name not in self._plots:
+            raise ValueError("No plot with name '%s'" % name)
 
-        return self.plots.pop(name)
+        plot = self._plots.pop(name)
+        plot.disconnect()
+        return plot
 
     def connect(self):
         """Connects this manager to its session and all plots."""
         if self.is_connected:
             return
 
-        for name in self.plots:
+        for name in self._plots:
             self._connect_plot(name)
 
-        key = self._LISTENER_NAME
-        if self.session.has_listener(key) and not self.is_disconnected:
-            logger.warning("Overwriting existing listener with key '%s'", key)
-
-        self.session.add_listener(key, self._on_session_update)
+        self._session.add_listener(
+            self._LISTENER_NAME, self._on_session_update
+        )
 
         self._connected = True
         self._disconnected = False
@@ -364,34 +487,41 @@ class InteractivePlotManager(object):
         self.sync()
 
     def _connect_plot(self, name):
-        plot = self.plots[name]
+        plot = self._plots[name]
 
-        def _on_plot_selection(ids):
-            self._on_plot_selection(name, ids)
+        if isinstance(plot, ViewPlot):
+            # Load current view
+            plot.update_view(self._session._collection.view())
 
-        plot.register_selection_callback(_on_plot_selection)
-        plot.register_sync_callback(self.sync)
-        plot.register_disconnect_callback(self.disconnect)
+        if isinstance(plot, InteractivePlot):
+            # Register plot's callbacks
+
+            def _on_plot_selection(ids):
+                self._on_plot_selection(name, ids)
+
+            plot.register_selection_callback(_on_plot_selection)
+            plot.register_sync_callback(self.sync)
+            plot.register_disconnect_callback(self.disconnect)
 
         plot.connect()
 
     def disconnect(self):
-        """Connects this manager from its session and all plots."""
+        """Disconnects this manager from its session and all plots."""
         if not self.is_connected:
             return
 
         key = self._LISTENER_NAME
-        if self.session.has_listener(key):
-            self.session.delete_listener(key)
+        if self._session.has_listener(key):
+            self._session.delete_listener(key)
 
-        for name in self.plots:
+        for name in self._plots:
             self._disconnect_plot(name)
 
         self._connected = False
         self._disconnected = True
 
     def _disconnect_plot(self, name):
-        plot = self.plots[name]
+        plot = self._plots[name]
         plot.disconnect()
 
     def reset(self):
@@ -415,16 +545,14 @@ class InteractivePlotManager(object):
         """Freezes the active App cell and all connected plots, replacing them
         with static images.
 
-        This will also disconnect the manager and all plots.
-
         Only applicable to notebook contexts.
         """
         if not self.is_connected:
             return
 
-        self.session.freeze()
+        self._session.freeze()
 
-        for plot in self.plots.values():
+        for plot in self._plots.values():
             if plot.is_connected:
                 plot.freeze()
 
@@ -441,7 +569,7 @@ class InteractivePlotManager(object):
         self._update_plots_from_session()
 
     def _on_plot_selection(self, name, ids):
-        plot = self.plots[name]
+        plot = self._plots[name]
 
         if not plot.is_connected:
             return
@@ -455,9 +583,11 @@ class InteractivePlotManager(object):
             plot_view = self._init_view
 
         if ids is None:
+            # Plot is in default state, so reset things here
             self._current_sample_ids = None
             self._current_labels = None
         elif plot.link_type == "labels":
+            # Create a view that contains only the selected labels in the plot
             plot_view = plot_view.select_labels(
                 ids=ids, fields=plot.label_fields
             )
@@ -466,53 +596,77 @@ class InteractivePlotManager(object):
             if field is not None and not etau.is_str(field):
                 field = None  # multiple fields; unclear which one to use
 
+            self._current_sample_ids = plot_view.values("id")
             self._current_labels = [
                 {"field": field, "label_id": _id} for _id in ids
             ]
-        else:
+        elif plot.link_type == "samples":
+            # Create a view that contains only the selected samples in the plot
             plot_view = plot_view.select(ids)
+
+            if self.has_label_links:
+                # Other plots need labels, so we need to record all labels in
+                # `plot_view` as well
+                labels = plot_view._get_selected_labels()
+            else:
+                labels = None
+
             self._current_sample_ids = ids
+            self._current_labels = labels
+        else:
+            msg = (
+                "Ignoring update from plot '%s' with unsupported link type "
+                "'%s'"
+            ) % (name, plot.link_type)
+            warnings.warn(msg)
 
         self._update_session(plot_view)
         self._update_plots_from_session()
 
     def _update_ids_from_session(self):
-        session_view = self.session._collection.view()
+        session_view = self._session._collection.view()
 
+        # The session is in its default state, so reset all plots
         if session_view == self._init_view:
             self._current_sample_ids = None
             self._current_labels = None
             return
 
+        # If labels are selected in the App, only record those. Otherwise, get
+        # all labels in the current view
         if self.has_label_links:
-            if self.session.selected_labels:
-                self._current_labels = self.session.selected_labels
+            if self._session.selected_labels:
+                self._current_labels = self._session.selected_labels
             else:
                 self._current_labels = session_view._get_selected_labels()
 
-        if self.session.selected:
-            self._current_sample_ids = self.session.selected
-        else:
-            self._current_sample_ids = self.session._collection.values("id")
+        # If samples are selected in the App, only record those. Otherwise, get
+        # IDs of all samples in the view
+        if self.has_sample_links:
+            if self._session.selected:
+                self._current_sample_ids = self._session.selected
+            else:
+                ids = self._session._collection.values("id")
+                self._current_sample_ids = ids
 
     def _update_session(self, view):
         if not self._needs_update("session"):
             return
 
-        with self.session.no_show():
-            self.session.view = view
+        with self._session.no_show():
+            self._session.view = view
 
     def _update_plots_from_session(self):
-        for name, plot in self.plots.items():
+        for name, plot in self._plots.items():
             if plot.supports_session_updates:
                 self._update_plot(name)
 
     def _update_plots(self):
-        for name in self.plots:
+        for name in self._plots:
             self._update_plot(name)
 
     def _update_plot(self, name):
-        plot = self.plots[name]
+        plot = self._plots[name]
 
         if not plot.is_connected:
             return
@@ -520,15 +674,24 @@ class InteractivePlotManager(object):
         if not self._needs_update(name):
             return
 
-        if plot.link_type == "labels":
-            label_ids = self._get_current_label_ids(plot.label_fields)
+        if plot.link_type == "view":
+            plot.update_view(self._session._collection.view())
+        elif plot.link_type == "samples":
+            plot.select_ids(self._current_sample_ids)
+        elif plot.link_type == "labels":
+            label_ids = self._get_current_label_ids_for_plot(plot)
             plot.select_ids(label_ids)
         else:
-            plot.select_ids(self._current_sample_ids)
+            raise ValueError(
+                "Plot '%s' has unsupported link type '%s'"
+                % (name, plot.link_type)
+            )
 
-    def _get_current_label_ids(self, label_fields):
+    def _get_current_label_ids_for_plot(self, plot):
         if self._current_labels is None:
             return None
+
+        label_fields = plot.label_fields
 
         if not isinstance(label_fields, (list, set, tuple)):
             label_fields = [label_fields]
