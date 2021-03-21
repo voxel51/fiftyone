@@ -54,8 +54,6 @@ def plot_confusion_matrix(
         gt_field (None): the name of the ground truth field
         pred_field (None): the name of the predictions field
         colorscale (None): a plotly colorscale to use
-        template ("simple_white"): a plotly template to use. See
-            `https://plotly.com/python/templates` for more information
         layout (None): an optional dict of parameters for
             ``plotly.graph_objects.Figure.update_layout(**layout)``
         show (True): whether to show the plot immediately
@@ -72,15 +70,6 @@ def plot_confusion_matrix(
             "notebooks"
         )
         ids = None
-
-    if layout is None:
-        layout = {}
-
-    # This template does a good job of hiding the fact that the axis limits
-    # occasionally stretch beyond the domain of the heatmap (despite best
-    # efforts to avoid the stretching...)
-    if "template" not in layout:
-        layout["template"] = "simple_white"
 
     if ids is None:
         return _plot_confusion_matrix_static(
@@ -1226,6 +1215,10 @@ class PlotlyHeatmap(PlotlyInteractivePlot):
     -   Clicking any cell, if there are currently multiple cells selected
     -   Clicking the selected cell, if there is only one cell selected
 
+    When heatmap contents are selected via :meth:`PlotlyHeatmap.select_ids`,
+    the heatmap is updated to reflect the proportions of each cell included in
+    the selection.
+
     Args:
         Z: a ``num_cols x num_rows`` array of heatmap values
         ids: an array of same shape as ``Z`` whose elements contain lists
@@ -1239,6 +1232,9 @@ class PlotlyHeatmap(PlotlyInteractivePlot):
             to load when no points are selected in the plot
         xlabels (None): a ``num_rows`` array of x labels
         ylabels (None): a ``num_cols`` array of y labels
+        zlim (None): a ``[zmin, zmax]`` limit to use for the colorbar
+        values_title ("count"): the semantic meaning of the heatmap values.
+            Used for tooltips
         colorscale (None): a plotly colorscale to use
         grid_opacity (0.1): an opacity value for the grid points
         bg_opacity (0.25): an opacity value for background (unselected) cells
@@ -1254,11 +1250,14 @@ class PlotlyHeatmap(PlotlyInteractivePlot):
         xlabels=None,
         ylabels=None,
         zlim=None,
+        values_title="count",
         colorscale=None,
         grid_opacity=0.1,
         bg_opacity=0.25,
     ):
         Z = np.asarray(Z)
+        ids = np.asarray(ids)
+
         if zlim is None:
             zlim = [Z.min(), Z.max()]
 
@@ -1267,6 +1266,7 @@ class PlotlyHeatmap(PlotlyInteractivePlot):
         self.xlabels = xlabels
         self.ylabels = ylabels
         self.zlim = zlim
+        self.values_title = values_title
         self.colorscale = colorscale
         self.grid_opacity = grid_opacity
         self.bg_opacity = bg_opacity
@@ -1275,10 +1275,12 @@ class PlotlyHeatmap(PlotlyInteractivePlot):
         self._gridw = None
         self._selectedw = None
         self._bgw = None
-
         self._selected_cells = []
-        self._cells_map = {}
         self._select_callback = None
+
+        # Lower bound at 1 to avoid zero division errors
+        self._ids_counts = np.vectorize(lambda a: max(1, len(a)))(ids)
+        self._cells_map = {}
 
         widget = self._make_widget()
         self._init_cells_map()
@@ -1338,7 +1340,7 @@ class PlotlyHeatmap(PlotlyInteractivePlot):
 
     def _select_ids(self, ids):
         if ids is None:
-            self._select(None)
+            self._deselect()
             return
 
         counter = defaultdict(int)
@@ -1352,7 +1354,7 @@ class PlotlyHeatmap(PlotlyInteractivePlot):
         else:
             cells, counts = [], []
 
-        self._select(list(cells), counts=list(counts))
+        self._select_fractional_cells(cells, counts)
 
     def _on_click(self, point_inds):
         # `point_inds` is a list of `(y, x)` coordinates of selected cells
@@ -1373,7 +1375,7 @@ class PlotlyHeatmap(PlotlyInteractivePlot):
         ):
             self._deselect()
         else:
-            self._select([cell])
+            self._select_cells([cell])
 
     def _on_selection(self, point_inds):
         # `point_inds` are linear indices into the flattened meshgrid of points
@@ -1382,47 +1384,67 @@ class PlotlyHeatmap(PlotlyInteractivePlot):
         if point_inds:
             y, x = np.unravel_index(point_inds, self.Z.shape)
             cells = list(zip(x, y))
-            self._select(cells)
+            self._select_cells(cells)
         else:
             self._deselect()
 
-    def _select(self, cells, counts=None):
+    def _deselect(self):
+        self._update_heatmap([], self.Z, self.Z)
+
+    def _select_cells(self, cells):
         if cells is None:
             self._deselect()
             return
 
-        Zactive = np.full(self.Z.shape, None)
-
-        if counts:
-            Zbg = np.full(self.Z.shape, None)
-        else:
-            Zbg = self.Z.copy()
+        Z_active = np.full(self.Z.shape, None)
+        Z_bg = self.Z.copy()
 
         if cells:
             x, y = zip(*cells)
-            if counts:
-                Zactive[y, x] = counts
-                Zbg[y, x] = counts
-            else:
-                Zactive[y, x] = self.Z[y, x]
+            Z_active[y, x] = self.Z[y, x]
+
+        self._update_heatmap(cells, Z_active, Z_bg)
+
+    def _select_fractional_cells(self, cells, counts):
+        #
+        # Compute "effective" heatmap values by comparing the number of
+        # observed IDs to the total possible IDs. This is important because
+        # some heatmap cells may have two IDs (confusion matrix cells with GT
+        # and predicted labels) while other cells have have only one associated
+        # will have both GT and predicted IDs, while cells corresponding to
+        # false positive/negative predictions will only have one ID
+        #
+
+        Z_active = np.zeros_like(self.Z)
+        Z_bg = np.zeros_like(self.Z)
+
+        if cells:
+            x, y = zip(*cells)
+            observed_frac = np.array(counts) / self._ids_counts[y, x]
+            z_observed = observed_frac * self.Z[y, x]
+            Z_active[y, x] = z_observed
+            Z_bg[y, x] = z_observed
+
+        zlim = [0, Z_active.max()]
+
+        self._update_heatmap(cells, Z_active, Z_bg, zlim=zlim)
+
+    def _update_heatmap(self, cells, Z_active, Z_bg, zlim=None):
+        if zlim is None:
+            zlim = self.zlim
 
         self._selected_cells = cells
 
         with self._widget.batch_update():
             self._gridw.selectedpoints = []
-            self._selectedw.z = Zactive
-            self._bgw.z = Zbg
 
-        if self._select_callback is not None:
-            self._select_callback(self.selected_ids)
+            self._selectedw.z = Z_active
+            self._selectedw.zmin = zlim[0]
+            self._selectedw.zmax = zlim[1]
 
-    def _deselect(self):
-        self._selected_cells = []
-
-        with self._widget.batch_update():
-            self._gridw.selectedpoints = []
-            self._selectedw.z = self.Z
-            self._bgw.z = self.Z
+            self._bgw.z = Z_bg
+            self._bgw.zmin = zlim[0]
+            self._bgw.zmax = zlim[1]
 
         if self._select_callback is not None:
             self._select_callback(self.selected_ids)
@@ -1444,7 +1466,7 @@ class PlotlyHeatmap(PlotlyInteractivePlot):
         X, Y = np.meshgrid(xticks, yticks)
 
         hover_lines = [
-            "<b>count: %{z:d}</b>",
+            "<b>%s: %%{z}</b>" % self.values_title,
             "truth: %{y}",
             "predicted: %{x}",
         ]
