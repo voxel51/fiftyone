@@ -495,8 +495,8 @@ class Session(foc.HasClient):
 
     @property
     def plots(self):
-        """The :class:`fiftyone.core.plots.manager.PlotManager` that manages
-        plots connected to this session.
+        """The :class:`fiftyone.core.plots.manager.PlotManager` instance that
+        manages plots attached to this session.
         """
         return self._plots
 

@@ -204,8 +204,11 @@ class PlotManager(object):
                 name
         """
         if not isinstance(plot, Plot):
+            # @todo add docs link to error message
             raise ValueError(
-                "Plots must be subclasses of %s; found %s" % (Plot, type(plot))
+                "Plots must be subclasses of %s; but found %s. You may be "
+                "working in an environment that does not support interactivity"
+                % (Plot, type(plot))
             )
 
         if name is None:

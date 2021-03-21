@@ -317,15 +317,18 @@ class COCODetectionResults(DetectionResults):
             backend (None): the plotting backend to use. Supported values are
                 ``("plotly", "matplotlib")``. If no backend is specified, the
                 best applicable backend is chosen
-            show (True): whether to show the plot (True) or return the figure
-                without showing it
+            show (True): whether to show the plot immediately (True) or return
+                it (False)
             **kwargs: keyword arguments for the backend plotting method:
 
                 -   "plotly" backend: :meth:`fiftyone.core.plots.plotly.plot_pr_curves`
                 -   "matplotlib" backend: :meth:`fiftyone.core.plots.matplotlib.plot_pr_curves`
 
         Returns:
-            None, or the figure containing the plot if ``show`` is True
+            one of the following:
+
+            -   None, if ``show`` is True
+            -   the plot/figure, if ``show`` is False
         """
         if not classes:
             inds = np.argsort(self._classwise_AP)[::-1][:3]
@@ -336,7 +339,7 @@ class COCODetectionResults(DetectionResults):
             class_ind = self._get_class_index(c)
             precisions.append(np.mean(self.precision[:, class_ind], axis=0))
 
-        figure = fop.plot_pr_curves(
+        plot = fop.plot_pr_curves(
             precisions,
             self.recall,
             classes,
@@ -345,7 +348,7 @@ class COCODetectionResults(DetectionResults):
             **kwargs,
         )
 
-        return figure if not show else None
+        return None if show else plot
 
     def mAP(self, classes=None):
         """Computes COCO-style mean average precision (mAP) for the specified
