@@ -20,6 +20,7 @@ import DropdownCell from "./DropdownCell";
 import SelectionTag from "./Tags/SelectionTag";
 import { Entry } from "./CheckboxGroup";
 import * as atoms from "../recoil/atoms";
+import { labelModalTagCounts } from "./Actions/utils";
 import * as fieldAtoms from "./Filters/utils";
 import * as labelAtoms from "./Filters/LabelFieldFilters.state";
 import * as selectors from "../recoil/selectors";
@@ -214,13 +215,13 @@ const SampleTagsCell = ({ modal }: TagsCellProps) => {
 
 const LabelTagsCell = ({ modal }: TagsCellProps) => {
   const tags = useRecoilValue(selectors.labelTagNames);
-  const [activeLabelTags, setActiveTags] = useRecoilState(
-    fieldAtoms.activeTags(modal)
+  const [activeTags, setActiveTags] = useRecoilState(
+    fieldAtoms.activeLabelTags(modal)
   );
   const colorMap = useRecoilValue(selectors.colorMap(modal));
   const [subCountAtom, countAtom] = modal
-    ? [null, selectors.tagSampleModalCounts]
-    : [selectors.filteredTagSampleCounts, selectors.tagSampleCounts];
+    ? [labelModalTagCounts(true), labelModalTagCounts(false)]
+    : [selectors.filteredLabelTagSampleCounts, selectors.labelTagSampleCounts];
 
   const subCount = subCountAtom ? useRecoilValue(subCountAtom) : null;
   const count = useRecoilValue(countAtom);
@@ -229,7 +230,7 @@ const LabelTagsCell = ({ modal }: TagsCellProps) => {
 
   return (
     <Cell
-      label="Sample tags"
+      label="Label tags"
       icon={<LocalOffer />}
       entries={tags
         .filter((t) => count[t])
@@ -267,7 +268,7 @@ const LabelTagsCell = ({ modal }: TagsCellProps) => {
         setActiveTags([]);
       }}
       modal={modal}
-      title={"Sample tags"}
+      title={"Label tags"}
     />
   );
 };

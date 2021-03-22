@@ -272,6 +272,61 @@ export const tagNames = selector<string[]>({
   },
 });
 
+export const labelTagNames = selector<string[]>({
+  key: "labelTagNames",
+  get: ({ get }) => {
+    const paths = get(labelPaths).map((p) => p + ".tags");
+    const result = new Set<string>();
+    (get(datasetStats) ?? []).forEach((s) => {
+      if (paths.includes(s.name)) {
+        Object.keys(s.result).forEach((t) => result.add(t));
+      }
+    });
+
+    return Array.from(result).sort();
+  },
+});
+
+export const labelTagCounts = selector<{ [key: string]: number }>({
+  key: "labelTagCounts",
+  get: ({ get }) => {
+    const paths = get(labelPaths).map((p) => p + ".tags");
+    const result = {};
+    (get(datasetStats) ?? []).forEach((s) => {
+      if (paths.includes(s.name)) {
+        Object.entries(s.result).forEach(([tag, count]) => {
+          if (!(tag in result)) {
+            result[tag] = 0;
+          }
+          result[tag] += count;
+        });
+      }
+    });
+
+    return result;
+  },
+});
+
+export const filteredLabelTagCounts = selector<{ [key: string]: number }>({
+  key: "filteredLabelTagCounts",
+  get: ({ get }) => {
+    const paths = get(labelPaths).map((p) => p + ".tags");
+    const result = {};
+    (get(extendedDatasetStats) ?? []).forEach((s) => {
+      if (paths.includes(s.name)) {
+        Object.entries(s.result).forEach(([tag, count]) => {
+          if (!(tag in result)) {
+            result[tag] = 0;
+          }
+          result[tag] += count;
+        });
+      }
+    });
+
+    return result;
+  },
+});
+
 export const tagSampleCounts = selector({
   key: "tagSampleCounts",
   get: ({ get }) => {
@@ -301,6 +356,52 @@ export const filteredTagSampleCounts = selector({
           return acc;
         }, {})
       : {};
+  },
+});
+
+export const labelTagSampleCounts = selector({
+  key: "labelTagSampleCounts",
+  get: ({ get }) => {
+    const stats = get(datasetStats);
+    const paths = get(labelPaths).map((path) => `${path}.tags`);
+
+    const result = {};
+
+    stats.forEach((s) => {
+      if (paths.includes(s.name)) {
+        Object.entries(s.result).forEach(([k, v]) => {
+          if (!(k in result)) {
+            result[k] = v;
+          } else {
+            result[k] += v;
+          }
+        });
+      }
+    });
+    return result;
+  },
+});
+
+export const filteredLabelTagSampleCounts = selector({
+  key: "filteredLabelTagSampleCounts",
+  get: ({ get }) => {
+    const stats = get(datasetStats);
+    const paths = get(labelPaths).map((path) => `${path}.tags`);
+
+    const result = {};
+
+    stats.forEach((s) => {
+      if (paths.includes(s.name)) {
+        Object.entries(s.result).forEach(([k, v]) => {
+          if (!(k in result)) {
+            result[k] = v;
+          } else {
+            result[k] += v;
+          }
+        });
+      }
+    });
+    return result;
   },
 });
 

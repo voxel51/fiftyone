@@ -477,6 +477,8 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         """
         state = fos.StateDescription.from_dict(StateHandler.state)
         state.filters = filters
+        state.selected_labels = []
+        state.selected = []
         if state.view is not None:
             view = state.view
         else:
@@ -980,11 +982,22 @@ def _write_message(message, app=False, session=False, ignore=None, only=None):
 
 
 def _get_extended_view(view, filters, hide_result=False):
-    if filters is not None and len(filters):
-        for stage in _make_filter_stages(view._dataset, filters):
-            if hide_result and type(stage) == fosg.FilterLabels:
-                stage._hide_result = True
-            view = view.add_stage(stage)
+    if filters is None or len(filters) == 0:
+        return view
+
+    filters = filters.copy()
+
+    if "tags" in filters:
+        tags = filters["tags"]
+        if "labels" in tags:
+            view = view.select_labels(tags=tags["labels"])
+        else:
+            view = view.match_tags(tags=tags["samples"])
+
+    for stage in _make_filter_stages(view._dataset, filters):
+        if hide_result and type(stage) == fosg.FilterLabels:
+            stage._hide_result = True
+        view = view.add_stage(stage)
 
     return view
 
