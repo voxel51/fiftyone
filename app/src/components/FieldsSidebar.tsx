@@ -252,7 +252,6 @@ const LabelTagsCell = ({ modal }: TagsCellProps) => {
   const count = useRecoilValue(countAtom);
   const colorByLabel = useRecoilValue(atoms.colorByLabel(modal));
   const theme = useTheme();
-  console.log(activeTags);
 
   return (
     <Cell
