@@ -32,11 +32,11 @@ _DEFAULT_LAYOUT = dict(
     template="ggplot2", margin={"r": 0, "t": 30, "l": 0, "b": 0}
 )
 
-_INTERACTIVITY_WARNING = (
-    "Interactive Plotly plots are currently only supported in notebooks; "
-    "however, this will soon change in an upcoming release. In the meantime, "
-    "you can achieve interactivity outside of a notebook using the "
-    "'matplotlib' backend"
+_INTERACTIVE_PLOT_WARNING = (
+    "Interactive Plotly plots are currently only supported in notebooks, but "
+    "this will change in an upcoming release. In the meantime, if you want to "
+    "connect plots of this type to an App session outside of a notebook, use "
+    "the 'matplotlib' backend"
 )
 
 
@@ -78,7 +78,7 @@ def plot_confusion_matrix(
             in a notebook context
     """
     if ids is not None and not foc.is_notebook_context():
-        logger.warning(_INTERACTIVITY_WARNING)
+        logger.warning(_INTERACTIVE_PLOT_WARNING)
         ids = None
 
     if ids is None:
@@ -544,7 +544,7 @@ def scatterplot(
 
     if not foc.is_notebook_context():
         if samples is not None:
-            logger.warning(_INTERACTIVITY_WARNING)
+            logger.warning(_INTERACTIVE_PLOT_WARNING)
 
         return figure
 
@@ -851,7 +851,7 @@ def location_scatterplot(
 
     if not foc.is_notebook_context():
         if samples is not None:
-            logger.warning(_INTERACTIVITY_WARNING)
+            logger.warning(_INTERACTIVE_PLOT_WARNING)
 
         return figure
 

@@ -7,7 +7,6 @@ Plotting framework.
 """
 
 from .base import (
-    get_default_backend,
     plot_confusion_matrix,
     plot_pr_curve,
     plot_pr_curves,
