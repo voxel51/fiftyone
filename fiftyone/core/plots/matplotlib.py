@@ -46,7 +46,6 @@ def plot_confusion_matrix(
     values_format=None,
     ax=None,
     figsize=None,
-    show=True,
 ):
     """Plots a confusion matrix.
 
@@ -64,7 +63,6 @@ def plot_confusion_matrix(
         ax (None): an optional matplotlib axis to plot in
         figsize (None): an optional ``(width, height)`` for the figure, in
             inches
-        show (True): whether to show the plot immediately
 
     Returns:
         a matplotlib figure
@@ -123,14 +121,11 @@ def plot_confusion_matrix(
 
     plt.tight_layout()
 
-    if show:
-        plt.show(block=False)
-
     return fig
 
 
 def plot_pr_curve(
-    precision, recall, label=None, ax=None, figsize=None, show=True, **kwargs
+    precision, recall, label=None, ax=None, figsize=None, **kwargs
 ):
     """Plots a precision-recall (PR) curve.
 
@@ -141,26 +136,22 @@ def plot_pr_curve(
         ax (None): an optional matplotlib axis to plot in
         figsize (None): an optional ``(width, height)`` for the figure, in
             inches
-        show (True): whether to show the plot immediately
         **kwargs: optional keyword arguments for matplotlib's ``plot()``
 
     Returns:
         a matplotlib figure
     """
     display = skm.PrecisionRecallDisplay(precision=precision, recall=recall)
-
     display.plot(ax=ax, label=label, **kwargs)
+
     if figsize is not None:
         display.figure_.set_size_inches(*figsize)
-
-    if show:
-        plt.show(block=False)
 
     return display.figure_
 
 
 def plot_pr_curves(
-    precisions, recall, classes, ax=None, figsize=None, show=True, **kwargs
+    precisions, recall, classes, ax=None, figsize=None, **kwargs
 ):
     """Plots a set of per-class precision-recall (PR) curves.
 
@@ -172,14 +163,19 @@ def plot_pr_curves(
         ax (None): an optional matplotlib axis to plot in
         figsize (None): an optional ``(width, height)`` for the figure, in
             inches
-        show (True): whether to show the plot immediately
         **kwargs: optional keyword arguments for matplotlib's ``plot()``
 
     Returns:
         a matplotlib figure
     """
-    for precision, _class in zip(precisions, classes):
-        avg_precision = np.mean(precision)
+    # Plot in descending order of AP
+    avg_precisions = np.mean(precisions, axis=1)
+    inds = np.argsort(-avg_precisions)  # negative for descending order
+
+    for idx in inds:
+        precision = precisions[idx]
+        _class = classes[idx]
+        avg_precision = avg_precisions[idx]
         label = "AP = %.2f, class = %s" % (avg_precision, _class)
         display = skm.PrecisionRecallDisplay(
             precision=precision, recall=recall
@@ -193,15 +189,10 @@ def plot_pr_curves(
     if figsize is not None:
         ax.figure.set_size_inches(*figsize)
 
-    if show:
-        plt.show(block=False)
-
     return ax.figure
 
 
-def plot_roc_curve(
-    fpr, tpr, roc_auc=None, ax=None, figsize=None, show=True, **kwargs
-):
+def plot_roc_curve(fpr, tpr, roc_auc=None, ax=None, figsize=None, **kwargs):
     """Plots a receiver operating characteristic (ROC) curve.
 
     Args:
@@ -211,7 +202,6 @@ def plot_roc_curve(
         ax (None): an optional matplotlib axis to plot in
         figsize (None): an optional ``(width, height)`` for the figure, in
             inches
-        show (True): whether to show the plot immediately
         **kwargs: optional keyword arguments for matplotlib's ``plot()``
 
     Returns:
@@ -222,9 +212,6 @@ def plot_roc_curve(
 
     if figsize is not None:
         display.figure_.set_size_inches(*figsize)
-
-    if show:
-        plt.show(block=False)
 
     return display.figure_
 
@@ -243,7 +230,6 @@ def scatterplot(
     figsize=None,
     style="seaborn-ticks",
     buttons=None,
-    show=True,
     **kwargs,
 ):
     """Generates an interactive scatterplot of the given points.
@@ -290,7 +276,6 @@ def scatterplot(
         style ("seaborn-ticks"): a style to use for the plot
         buttons (None): a list of ``(label, icon_image, callback)`` tuples
             defining buttons to add to the plot
-        show (True): whether to show the plot immediately
         **kwargs: optional keyword arguments for matplotlib's ``scatter()``
 
     Returns:
@@ -331,19 +316,15 @@ def scatterplot(
         )
 
         if num_dims != 2:
-            figure = collection.axes.figure
+            fig = collection.axes.figure
             plt.tight_layout()
-
-            if show:
-                plt.show(block=False)
-
-            return figure
+            return fig
 
         if ids is not None and inds is not None:
             ids = ids[inds]
 
         link_type = "labels" if label_field is not None else "samples"
-        plot = InteractiveCollection(
+        return InteractiveCollection(
             collection,
             ids=ids,
             buttons=buttons,
@@ -351,11 +332,6 @@ def scatterplot(
             label_fields=label_field,
             init_view=samples,
         )
-
-    if show:
-        plot.show()
-
-    return plot
 
 
 def _get_data_for_points(points, samples, values, parameter):
@@ -423,7 +399,6 @@ def location_scatterplot(
     figsize=None,
     style="seaborn-ticks",
     buttons=None,
-    show=True,
     **kwargs,
 ):
     """Generates an interactive scatterplot of the given location coordinates
@@ -475,7 +450,6 @@ def location_scatterplot(
         style ("seaborn-ticks"): a style to use for the plot
         buttons (None): a list of ``(label, icon_image, callback)`` tuples
             defining buttons to add to the plot
-        show (True): whether to show the plot immediately
         **kwargs: optional keyword arguments for matplotlib's ``scatter()``
 
     Returns:
@@ -522,7 +496,6 @@ def location_scatterplot(
         figsize=figsize,
         style=style,
         buttons=buttons,
-        show=show,
         **kwargs,
     )
 

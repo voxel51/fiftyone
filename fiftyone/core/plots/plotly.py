@@ -28,7 +28,9 @@ from .base import Plot, InteractivePlot
 logger = logging.getLogger(__name__)
 
 
-_DEFAULT_LAYOUT = dict(margin={"r": 0, "t": 30, "l": 0, "b": 0})
+_DEFAULT_LAYOUT = dict(
+    template="ggplot2", margin={"r": 0, "t": 30, "l": 0, "b": 0}
+)
 
 
 def plot_confusion_matrix(
@@ -37,9 +39,8 @@ def plot_confusion_matrix(
     ids=None,
     gt_field=None,
     pred_field=None,
-    colorscale=None,
+    colorscale="Blues",
     layout=None,
-    show=True,
 ):
     """Plots a confusion matrix.
 
@@ -56,10 +57,9 @@ def plot_confusion_matrix(
             containing lists of IDs corresponding to each cell
         gt_field (None): the name of the ground truth field
         pred_field (None): the name of the predictions field
-        colorscale (None): a plotly colorscale to use
+        colorscale ("Blues"): a plotly colorscale to use
         layout (None): an optional dict of parameters for
             ``plotly.graph_objects.Figure.update_layout(**layout)``
-        show (True): whether to show the plot immediately
 
     Returns:
         one of the following:
@@ -79,11 +79,7 @@ def plot_confusion_matrix(
 
     if ids is None:
         return _plot_confusion_matrix_static(
-            confusion_matrix,
-            labels,
-            colorscale=colorscale,
-            layout=layout,
-            show=show,
+            confusion_matrix, labels, colorscale=colorscale, layout=layout
         )
 
     return _plot_confusion_matrix_interactive(
@@ -94,12 +90,11 @@ def plot_confusion_matrix(
         pred_field=pred_field,
         colorscale=colorscale,
         layout=layout,
-        show=show,
     )
 
 
 def _plot_confusion_matrix_static(
-    confusion_matrix, labels, colorscale=None, layout=None, show=True
+    confusion_matrix, labels, colorscale=None, layout=None
 ):
     confusion_matrix = np.asarray(confusion_matrix)
     num_rows, num_cols = confusion_matrix.shape
@@ -112,9 +107,18 @@ def _plot_confusion_matrix_static(
     ]
     hovertemplate = "<br>".join(hover_lines) + "<extra></extra>"
 
+    xlabels = labels[:num_cols]
+    ylabels = labels[:num_rows]
+
+    # Flip data so plot will have the standard descending diagnoal
+    # Flipping the yaxis via `autorange="reversed"` isn't an option because
+    # screenshots don't seem to respect that setting...
+    confusion_matrix = np.flip(confusion_matrix, axis=0)
+    ylabels = np.flip(ylabels)
+
     heatmap = go.Heatmap(
-        x=labels[:num_cols],
-        y=labels[:num_rows],
+        x=xlabels,
+        y=ylabels,
         z=confusion_matrix,
         zmin=zlim[0],
         zmax=zlim[1],
@@ -130,7 +134,6 @@ def _plot_confusion_matrix_static(
         yaxis=dict(
             range=[-0.5, num_rows - 0.5],
             constrain="domain",
-            autorange="reversed",
             scaleanchor="x",
             scaleratio=1,
         ),
@@ -146,9 +149,6 @@ def _plot_confusion_matrix_static(
     if foc.is_notebook_context():
         figure = PlotlyNotebookPlot(figure)
 
-    if show:
-        figure.show()
-
     return figure
 
 
@@ -160,11 +160,9 @@ def _plot_confusion_matrix_interactive(
     pred_field=None,
     colorscale=None,
     layout=None,
-    show=True,
 ):
     confusion_matrix = np.asarray(confusion_matrix)
     ids = np.asarray(ids)
-
     num_rows, num_cols = confusion_matrix.shape
     zlim = [0, confusion_matrix.max()]
 
@@ -173,13 +171,23 @@ def _plot_confusion_matrix_interactive(
     else:
         label_fields = None
 
+    xlabels = labels[:num_cols]
+    ylabels = labels[:num_rows]
+
+    # Flip data so plot will have the standard descending diagnoal
+    # Flipping the yaxis via `autorange="reversed"` isn't an option because
+    # screenshots don't seem to respect that setting...
+    confusion_matrix = np.flip(confusion_matrix, axis=0)
+    ids = np.flip(ids, axis=0)
+    ylabels = np.flip(ylabels)
+
     plot = PlotlyHeatmap(
         confusion_matrix,
         ids,
         link_type="labels",
         label_fields=label_fields,
-        xlabels=labels[:num_cols],
-        ylabels=labels[:num_rows],
+        xlabels=xlabels,
+        ylabels=ylabels,
         zlim=zlim,
         colorscale=colorscale,
     )
@@ -189,26 +197,20 @@ def _plot_confusion_matrix_interactive(
     if layout:
         plot.update_layout(**layout)
 
-    if show:
-        plot.show()
-
     return plot
 
 
-def plot_pr_curve(
-    precision, recall, label=None, style="area", layout=None, show=True
-):
+def plot_pr_curve(precision, recall, label=None, style="line", layout=None):
     """Plots a precision-recall (PR) curve.
 
     Args:
         precision: an array of precision values
         recall: an array of recall values
         label (None): a label for the curve
-        style ("area"): a plot style to use. Supported values are
-            ``("area", "line")``
+        style ("line"): a plot style to use. Supported values are
+            ``("line", "area")``
         layout (None): an optional dict of parameters for
             ``plotly.graph_objects.Figure.update_layout(**layout)``
-        show (True): whether to show the plot immediately
 
     Returns:
         one of the following:
@@ -254,13 +256,10 @@ def plot_pr_curve(
     if foc.is_notebook_context():
         figure = PlotlyNotebookPlot(figure)
 
-    if show:
-        figure.show()
-
     return figure
 
 
-def plot_pr_curves(precisions, recall, classes, layout=None, show=True):
+def plot_pr_curves(precisions, recall, classes, layout=None):
     """Plots a set of per-class precision-recall (PR) curves.
 
     Args:
@@ -270,7 +269,6 @@ def plot_pr_curves(precisions, recall, classes, layout=None, show=True):
         classes: the list of classes
         layout (None): an optional dict of parameters for
             ``plotly.graph_objects.Figure.update_layout(**layout)``
-        show (True): whether to show the plot immediately
 
     Returns:
         one of the following:
@@ -294,8 +292,14 @@ def plot_pr_curves(precisions, recall, classes, layout=None, show=True):
 
     hovertemplate = "<br>".join(hover_lines) + "<extra></extra>"
 
-    for precision, _class in zip(precisions, classes):
-        avg_precision = np.mean(precision)
+    # Plot in descending order of AP
+    avg_precisions = np.mean(precisions, axis=1)
+    inds = np.argsort(-avg_precisions)  # negative for descending order
+
+    for idx in inds:
+        precision = precisions[idx]
+        _class = classes[idx]
+        avg_precision = avg_precisions[idx]
         label = "%s (AP = %.3f)" % (_class, avg_precision)
 
         line = go.Scatter(
@@ -326,26 +330,20 @@ def plot_pr_curves(precisions, recall, classes, layout=None, show=True):
     if foc.is_notebook_context():
         figure = PlotlyNotebookPlot(figure)
 
-    if show:
-        figure.show()
-
     return figure
 
 
-def plot_roc_curve(
-    fpr, tpr, roc_auc=None, style="area", layout=None, show=True
-):
+def plot_roc_curve(fpr, tpr, roc_auc=None, style="line", layout=None):
     """Plots a receiver operating characteristic (ROC) curve.
 
     Args:
         fpr: an array of false postive rates
         tpr: an array of true postive rates
         roc_auc (None): the area under the ROC curve
-        style ("area"): a plot style to use. Supported values are
-            ``("area", "line")``
+        style ("line"): a plot style to use. Supported values are
+            ``("line", "area")``
         layout (None): an optional dict of parameters for
             ``plotly.graph_objects.Figure.update_layout(**layout)``
-        show (True): whether to show the plot immediately
 
     Returns:
         one of the following:
@@ -393,9 +391,6 @@ def plot_roc_curve(
     if foc.is_notebook_context():
         figure = PlotlyNotebookPlot(figure)
 
-    if show:
-        figure.show()
-
     return figure
 
 
@@ -412,7 +407,6 @@ def scatterplot(
     sizes_title=None,
     show_colorbar_title=None,
     layout=None,
-    show=True,
 ):
     """Generates an interactive scatterplot of the given points.
 
@@ -466,7 +460,6 @@ def scatterplot(
             the ``labels`` parameter
         layout (None): an optional dict of parameters for
             ``plotly.graph_objects.Figure.update_layout(**layout)``
-        show (True): whether to show the plot immediately
 
     Returns:
         one of the following:
@@ -543,9 +536,6 @@ def scatterplot(
         if foc.is_notebook_context():
             figure = PlotlyNotebookPlot(figure)
 
-        if show:
-            figure.show()
-
         return figure
 
     if not foc.is_notebook_context():
@@ -555,31 +545,18 @@ def scatterplot(
                 "notebooks"
             )
 
-        if show:
-            figure.show()
-
         return figure
 
     if ids is None:
-        figure = PlotlyNotebookPlot(figure)
-
-        if show:
-            figure.show()
-
-        return figure
+        return PlotlyNotebookPlot(figure)
 
     link_type = "labels" if label_field is not None else "samples"
-    plot = InteractiveScatter(
+    return InteractiveScatter(
         figure,
         link_type=link_type,
         label_fields=label_field,
         init_view=samples,
     )
-
-    if show:
-        plot.show()
-
-    return plot
 
 
 def _parse_titles(
@@ -720,7 +697,6 @@ def location_scatterplot(
     sizes_title=None,
     show_colorbar_title=None,
     layout=None,
-    show=True,
 ):
     """Generates an interactive scatterplot of the given location coordinates
     with a map rendered in the background of the plot.
@@ -780,7 +756,6 @@ def location_scatterplot(
             the ``labels`` parameter
         layout (None): an optional dict of parameters for
             ``plotly.graph_objects.Figure.update_layout(**layout)``
-        show (True): whether to show the plot immediately
 
     Returns:
         one of the following:
@@ -868,8 +843,8 @@ def location_scatterplot(
     if style == "density" and not categorical:
         logger.warning("Density plots do not yet support interactivity")
 
-        if show:
-            figure.show()
+        if foc.is_notebook_context():
+            figure = PlotlyNotebookPlot(figure)
 
         return figure
 
@@ -880,25 +855,12 @@ def location_scatterplot(
                 "notebooks"
             )
 
-        if show:
-            figure.show()
-
         return figure
 
     if ids is None:
-        figure = PlotlyNotebookPlot(figure)
+        return PlotlyNotebookPlot(figure)
 
-        if show:
-            figure.show()
-
-        return figure
-
-    plot = InteractiveScatter(figure, init_view=samples)
-
-    if show:
-        plot.show()
-
-    return plot
+    return InteractiveScatter(figure, init_view=samples)
 
 
 def _parse_locations(locations, samples):
@@ -1636,7 +1598,6 @@ class PlotlyHeatmap(PlotlyInteractivePlot):
                 ticktext=self.ylabels,
                 range=[-0.5, num_rows - 0.5],
                 constrain="domain",
-                autorange="reversed",
                 scaleanchor="x",
                 scaleratio=1,
             ),

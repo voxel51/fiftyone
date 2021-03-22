@@ -736,10 +736,16 @@ class ClassificationResults(foe.EvaluationResults):
         include_other=True,
         other_label="(other)",
         backend=None,
-        show=True,
         **kwargs,
     ):
         """Plots a confusion matrix for the results.
+
+        If you are working in a notebook environment with the default plotly
+        backend, this method returns an interactive
+        :class:`fiftyone.core.plots.plotly.PlotlyHeatmap` that you can attach
+        to an App session via its :attr:`fiftyone.core.session.Session.plots`
+        attribute, which will automatically sync the session's view with the
+        currently selected cells in the confusion matrix.
 
         Args:
             classes (None): an optional list of classes to include in the
@@ -756,8 +762,6 @@ class ClassificationResults(foe.EvaluationResults):
             backend (None): the plotting backend to use. Supported values are
                 ``("plotly", "matplotlib")``. If no backend is specified, the
                 best applicable backend is chosen
-            show (True): whether to show the plot immediately (True) or return
-                it (False)
             **kwargs: keyword arguments for the backend plotting method:
 
                 -   "plotly" backend: :meth:`fiftyone.core.plots.plotly.plot_confusion_matrix`
@@ -766,8 +770,10 @@ class ClassificationResults(foe.EvaluationResults):
         Returns:
             one of the following:
 
-            -   None, if ``show`` is True
-            -   the plot/figure, if ``show`` is False
+            -   a :class:`fiftyone.core.plots.plotly.PlotlyHeatmap`, if the
+                plotly backend is used and you are working in a notebook
+                context
+            -   a plotly or matplotlib figure, otherwise
         """
         _labels = self._get_labels(classes, include_missing=True)
         confusion_matrix, labels, ids = self._confusion_matrix(
@@ -798,18 +804,15 @@ class ClassificationResults(foe.EvaluationResults):
                 ids = np.delete(ids, rm_inds, axis=1)
                 labels = [l for i, l in enumerate(labels) if i not in rm_inds]
 
-        plot = fop.plot_confusion_matrix(
+        return fop.plot_confusion_matrix(
             confusion_matrix,
             labels,
             ids=ids,
             gt_field=self.gt_field,
             pred_field=self.pred_field,
             backend=backend,
-            show=show,
             **kwargs,
         )
-
-        return None if show else plot
 
     @classmethod
     def _from_dict(cls, d, samples, **kwargs):
@@ -907,9 +910,7 @@ class BinaryClassificationResults(ClassificationResults):
             sample_weight=self.weights,
         )
 
-    def plot_pr_curve(
-        self, average="micro", backend=None, show=True, **kwargs
-    ):
+    def plot_pr_curve(self, average="micro", backend=None, **kwargs):
         """Plots a precision-recall (PR) curve for the results.
 
         Args:
@@ -918,8 +919,6 @@ class BinaryClassificationResults(ClassificationResults):
             backend (None): the plotting backend to use. Supported values are
                 ``("plotly", "matplotlib")``. If no backend is specified, the
                 best applicable backend is chosen
-            show (True): whether to show the plot immediately (True) or return
-                it (False)
             **kwargs: keyword arguments for the backend plotting method:
 
                 -   "plotly" backend: :meth:`fiftyone.core.plots.plotly.plot_pr_curve`
@@ -928,8 +927,10 @@ class BinaryClassificationResults(ClassificationResults):
         Returns:
             one of the following:
 
-            -   None, if ``show`` is True
-            -   the plot/figure, if ``show`` is False
+            -   a :class:`fiftyone.core.plots.plotly.PlotlyNotebookPlot`, if
+                you are working in a notebook context and the plotly backend is
+                used
+            -   a plotly or matplotlib figure, otherwise
         """
         precision, recall, _ = skm.precision_recall_curve(
             self.ytrue,
@@ -940,18 +941,11 @@ class BinaryClassificationResults(ClassificationResults):
         avg_precision = self.average_precision(average=average)
         label = "AP = %.2f" % avg_precision
 
-        plot = fop.plot_pr_curve(
-            precision,
-            recall,
-            label=label,
-            backend=backend,
-            show=show,
-            **kwargs,
+        return fop.plot_pr_curve(
+            precision, recall, label=label, backend=backend, **kwargs
         )
 
-        return None if show else plot
-
-    def plot_roc_curve(self, backend=None, show=True, **kwargs):
+    def plot_roc_curve(self, backend=None, **kwargs):
         """Plots a receiver operating characteristic (ROC) curve for the
         results.
 
@@ -959,8 +953,6 @@ class BinaryClassificationResults(ClassificationResults):
             backend (None): the plotting backend to use. Supported values are
                 ``("plotly", "matplotlib")``. If no backend is specified, the
                 best applicable backend is chosen
-            show (True): whether to show the plot immediately (True) or return
-                it (False)
             **kwargs: keyword arguments for the backend plotting method:
 
                 -   "plotly" backend: :meth:`fiftyone.core.plots.plotly.plot_roc_curve`
@@ -969,8 +961,10 @@ class BinaryClassificationResults(ClassificationResults):
         Returns:
             one of the following:
 
-            -   None, if ``show`` is True
-            -   the plot/figure, if ``show`` is False
+            -   a :class:`fiftyone.core.plots.plotly.PlotlyNotebookPlot`, if
+                you are working in a notebook context and the plotly backend is
+                used
+            -   a plotly or matplotlib figure, otherwise
         """
         fpr, tpr, _ = skm.roc_curve(
             self.ytrue,
@@ -980,11 +974,9 @@ class BinaryClassificationResults(ClassificationResults):
         )
         roc_auc = skm.auc(fpr, tpr)
 
-        plot = fop.plot_roc_curve(
-            fpr, tpr, roc_auc=roc_auc, backend=backend, show=show, **kwargs,
+        return fop.plot_roc_curve(
+            fpr, tpr, roc_auc=roc_auc, backend=backend, **kwargs
         )
-
-        return None if show else plot
 
 
 def _parse_config(config, pred_field, gt_field, method, **kwargs):

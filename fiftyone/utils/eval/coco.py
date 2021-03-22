@@ -308,7 +308,7 @@ class COCODetectionResults(DetectionResults):
         self.iou_threshs = np.asarray(iou_threshs)
         self._classwise_AP = np.mean(precision, axis=(0, 2))
 
-    def plot_pr_curves(self, classes=None, backend=None, show=True, **kwargs):
+    def plot_pr_curves(self, classes=None, backend=None, **kwargs):
         """Plots precision-recall (PR) curves for the results.
 
         Args:
@@ -317,8 +317,6 @@ class COCODetectionResults(DetectionResults):
             backend (None): the plotting backend to use. Supported values are
                 ``("plotly", "matplotlib")``. If no backend is specified, the
                 best applicable backend is chosen
-            show (True): whether to show the plot immediately (True) or return
-                it (False)
             **kwargs: keyword arguments for the backend plotting method:
 
                 -   "plotly" backend: :meth:`fiftyone.core.plots.plotly.plot_pr_curves`
@@ -327,8 +325,10 @@ class COCODetectionResults(DetectionResults):
         Returns:
             one of the following:
 
-            -   None, if ``show`` is True
-            -   the plot/figure, if ``show`` is False
+            -   a :class:`fiftyone.core.plots.plotly.PlotlyNotebookPlot`, if
+                you are working in a notebook context and the plotly backend is
+                used
+            -   a plotly or matplotlib figure, otherwise
         """
         if not classes:
             inds = np.argsort(self._classwise_AP)[::-1][:3]
@@ -339,16 +339,9 @@ class COCODetectionResults(DetectionResults):
             class_ind = self._get_class_index(c)
             precisions.append(np.mean(self.precision[:, class_ind], axis=0))
 
-        plot = fop.plot_pr_curves(
-            precisions,
-            self.recall,
-            classes,
-            backend=backend,
-            show=show,
-            **kwargs,
+        return fop.plot_pr_curves(
+            precisions, self.recall, classes, backend=backend, **kwargs
         )
-
-        return None if show else plot
 
     def mAP(self, classes=None):
         """Computes COCO-style mean average precision (mAP) for the specified
