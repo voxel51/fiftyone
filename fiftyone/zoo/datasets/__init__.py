@@ -197,9 +197,7 @@ def load_zoo_dataset(
 
     if download_if_necessary:
         zoo_dataset_cls = _get_zoo_dataset_cls(name)
-        download_kwargs, kwargs = _extract_kwargs_for_class(
-            zoo_dataset_cls, kwargs
-        )
+        download_kwargs, _ = _extract_kwargs_for_class(zoo_dataset_cls, kwargs)
 
         info, dataset_dir = download_zoo_dataset(
             name,
@@ -213,6 +211,10 @@ def load_zoo_dataset(
     else:
         zoo_dataset, dataset_dir = _parse_dataset_details(name, dataset_dir)
         info = zoo_dataset.load_info(dataset_dir)
+
+    dataset_type = info.get_dataset_type()
+    dataset_importer = dataset_type.get_dataset_importer_cls()
+    importer_kwargs, _ = _extract_kwargs_for_class(dataset_importer, kwargs)
 
     if dataset_name is None:
         dataset_name = zoo_dataset.name
@@ -239,7 +241,6 @@ def load_zoo_dataset(
         splits = zoo_dataset.supported_splits
 
     dataset = fo.Dataset(dataset_name)
-    dataset_type = info.get_dataset_type()
 
     if splits:
         for split in splits:
@@ -247,10 +248,12 @@ def load_zoo_dataset(
             tags = [split]
 
             logger.info("Loading '%s' split '%s'", zoo_dataset.name, split)
-            dataset.add_dir(split_dir, dataset_type, tags=tags, **kwargs)
+            dataset.add_dir(
+                split_dir, dataset_type, tags=tags, **importer_kwargs
+            )
     else:
         logger.info("Loading '%s'", zoo_dataset.name)
-        dataset.add_dir(dataset_dir, dataset_type, **kwargs)
+        dataset.add_dir(dataset_dir, dataset_type, **importer_kwargs)
 
     if info.classes is not None:
         dataset.default_classes = info.classes

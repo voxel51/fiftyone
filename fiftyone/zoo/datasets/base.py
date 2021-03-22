@@ -980,10 +980,8 @@ class OpenImagesDataset(FiftyOneDataset):
         return True
 
     def _download_and_prepare(self, dataset_dir, scratch_dir, split):
-        dataset_dir = os.path.dirname(dataset_dir)  # remove split dir
         num_samples, classes = fouo.download_open_images_split(
             dataset_dir,
-            scratch_dir,
             split,
             self.label_types,
             self.classes,
@@ -996,7 +994,7 @@ class OpenImagesDataset(FiftyOneDataset):
             self.num_workers,
             self.version,
         )
-        dataset_type = fot.FiftyOneDataset()
+        dataset_type = fot.OpenImagesDataset()
         logger.info("Found %d samples", num_samples)
 
         return dataset_type, num_samples, classes
