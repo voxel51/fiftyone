@@ -988,11 +988,11 @@ def _get_extended_view(view, filters, hide_result=False):
     filters = filters.copy()
 
     if "tags" in filters:
-        tags = filters["tags"]
-        if "labels" in tags:
-            view = view.select_labels(tags=tags["labels"])
+        tags = filters.pop("tags")
+        if "label" in tags:
+            view = view.select_labels(tags=tags["label"])
         else:
-            view = view.match_tags(tags=tags["samples"])
+            view = view.match_tags(tags=tags["sample"])
 
     for stage in _make_filter_stages(view._dataset, filters):
         if hide_result and type(stage) == fosg.FilterLabels:

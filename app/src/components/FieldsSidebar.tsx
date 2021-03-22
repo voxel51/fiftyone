@@ -10,7 +10,6 @@ import {
   LocalOffer,
   PhotoLibrary,
   Visibility,
-  VisibilityOff,
 } from "@material-ui/icons";
 import { animated, useSpring } from "react-spring";
 
@@ -137,15 +136,17 @@ const makeData = (filteredCount: number, totalCount: number): string => {
 const makeTagData = (
   filteredCount: number,
   totalCount: number,
-  filtered: boolean,
+  color: string,
   toggleFilter: () => void
 ): any => {
-  const Icon = filtered ? VisibilityOff : Visibility;
   return (
-    <span>
-      {makeData(filteredCount, totalCount)}
-      <Icon onClick={toggleFilter} />
-    </span>
+    <>
+      <span>{makeData(filteredCount, totalCount)}</span>
+      <Visibility
+        style={{ color, height: 20, width: 20, marginLeft: 8 }}
+        onClick={toggleFilter}
+      />
+    </>
   );
 };
 
@@ -157,6 +158,9 @@ const SampleTagsCell = ({ modal }: TagsCellProps) => {
   const tags = useRecoilValue(selectors.tagNames);
   const [activeTags, setActiveTags] = useRecoilState(
     fieldAtoms.activeTags(modal)
+  );
+  const [matchedTags, setMatchedTags] = useRecoilState(
+    selectors.matchedTags("sample")
   );
   const colorMap = useRecoilValue(selectors.colorMap(modal));
   const [subCountAtom, countAtom] = modal
@@ -174,28 +178,46 @@ const SampleTagsCell = ({ modal }: TagsCellProps) => {
       icon={<LocalOffer />}
       entries={tags
         .filter((t) => count[t])
-        .map((name) => ({
-          name,
-          disabled: false,
-          hideCheckbox: modal,
-          hasDropdown: false,
-          selected: activeTags.includes(name),
-          color: colorByLabel ? theme.brand : colorMap[name],
-          title: name,
-          path: name,
-          data: modal ? (
-            count[name] > 0 ? (
-              <Check style={{ color: colorMap[name] }} />
+        .map((name) => {
+          const color = colorByLabel ? theme.brand : colorMap["tags." + name];
+          return {
+            name,
+            disabled: false,
+            hideCheckbox: modal,
+            hasDropdown: false,
+            selected: activeTags.includes(name),
+            color,
+            title: name,
+            path: name,
+            data: modal ? (
+              count[name] > 0 ? (
+                <Check style={{ color: colorMap[name] }} />
+              ) : (
+                <Close style={{ color: colorMap[name] }} />
+              )
             ) : (
-              <Close style={{ color: colorMap[name] }} />
-            )
-          ) : (
-            makeData(subCount[name], count[name])
-          ),
-          totalCount: count[name],
-          filteredCount: modal ? null : subCount[name],
-          modal,
-        }))}
+              makeTagData(
+                subCount[name],
+                count[name],
+                matchedTags.has(name) ? color : theme.fontDark,
+                (e) => {
+                  e.stopPropagation();
+                  e.preventDefault();
+                  const newMatch = new Set(matchedTags);
+                  if (matchedTags.has(name)) {
+                    newMatch.delete(name);
+                  } else {
+                    newMatch.add(name);
+                  }
+                  setMatchedTags(newMatch);
+                }
+              )
+            ),
+            totalCount: count[name],
+            filteredCount: modal ? null : subCount[name],
+            modal,
+          };
+        })}
       onSelect={({ name, selected }) =>
         setActiveTags(
           selected
@@ -218,6 +240,9 @@ const LabelTagsCell = ({ modal }: TagsCellProps) => {
   const [activeTags, setActiveTags] = useRecoilState(
     fieldAtoms.activeLabelTags(modal)
   );
+  const [matchedTags, setMatchedTags] = useRecoilState(
+    selectors.matchedTags("label")
+  );
   const colorMap = useRecoilValue(selectors.colorMap(modal));
   const [subCountAtom, countAtom] = modal
     ? [labelModalTagCounts(true), labelModalTagCounts(false)]
@@ -227,6 +252,7 @@ const LabelTagsCell = ({ modal }: TagsCellProps) => {
   const count = useRecoilValue(countAtom);
   const colorByLabel = useRecoilValue(atoms.colorByLabel(modal));
   const theme = useTheme();
+  console.log(activeTags);
 
   return (
     <Cell
@@ -234,35 +260,47 @@ const LabelTagsCell = ({ modal }: TagsCellProps) => {
       icon={<LocalOffer />}
       entries={tags
         .filter((t) => count[t])
-        .map((name) => ({
-          name,
-          disabled: false,
-          hideCheckbox: modal,
-          hasDropdown: false,
-          selected: activeTags.includes(name),
-          color: colorByLabel ? theme.brand : colorMap[name],
-          title: name,
-          path: name,
-          data: modal ? (
-            count[name] > 0 ? (
-              <Check style={{ color: colorMap[name] }} />
-            ) : (
-              <Close style={{ color: colorMap[name] }} />
-            )
-          ) : (
-            makeData(subCount[name], count[name])
-          ),
-          totalCount: count[name],
-          filteredCount: modal ? null : subCount[name],
-          modal,
-        }))}
-      onSelect={({ name, selected }) =>
+        .map((name) => {
+          const color = colorByLabel
+            ? theme.brand
+            : colorMap["_labels_tags." + name];
+          return {
+            name,
+            disabled: false,
+            hideCheckbox: modal,
+            hasDropdown: false,
+            selected: activeTags.includes(name),
+            color,
+            title: name,
+            path: name,
+            data: makeTagData(
+              subCount[name],
+              count[name],
+              matchedTags.has(name) ? color : theme.fontDark,
+              (e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                const newMatch = new Set(matchedTags);
+                if (matchedTags.has(name)) {
+                  newMatch.delete(name);
+                } else {
+                  newMatch.add(name);
+                }
+                setMatchedTags(newMatch);
+              }
+            ),
+            totalCount: count[name],
+            filteredCount: modal ? null : subCount[name],
+            modal,
+          };
+        })}
+      onSelect={({ name, selected }) => {
         setActiveTags(
           selected
             ? [name, ...activeTags]
             : activeTags.filter((t) => t !== name)
-        )
-      }
+        );
+      }}
       handleClear={(e) => {
         e.stopPropagation();
         setActiveTags([]);
@@ -514,6 +552,7 @@ const FieldsSidebar = React.forwardRef(
     return (
       <Container ref={ref} style={{ ...style, ...moreStyles }}>
         <SampleTagsCell modal={modal} />
+        <LabelTagsCell modal={modal} />
         <LabelsCell modal={modal} frames={false} />
         {isVideo && <LabelsCell modal={modal} frames={true} />}
         <ScalarsCell modal={modal} />

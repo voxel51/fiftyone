@@ -142,6 +142,11 @@ export const filterStages = selector({
       ...get(atoms.stateDescription),
       filters,
     };
+    state.selected.forEach((id) => {
+      set(atoms.isSelectedSample(id), false);
+    });
+    state.selected = [];
+    set(atoms.selectedSamples, new Set());
     socket.send(packageMessage("filters_update", { filters }));
     set(atoms.stateDescription, state);
   },
@@ -275,7 +280,7 @@ export const tagNames = selector<string[]>({
 export const labelTagNames = selector<string[]>({
   key: "labelTagNames",
   get: ({ get }) => {
-    const paths = get(labelPaths).map((p) => p + ".tags");
+    const paths = get(labelTagsPaths);
     const result = new Set<string>();
     (get(datasetStats) ?? []).forEach((s) => {
       if (paths.includes(s.name)) {
@@ -359,25 +364,40 @@ export const filteredTagSampleCounts = selector({
   },
 });
 
+export const labelTagsPaths = selector({
+  key: "labelTagsPaths",
+  get: ({ get }) => {
+    const types = get(labelTypesMap);
+    return get(labelPaths).map((path) => {
+      path = VALID_LIST_TYPES.includes(types[path])
+        ? `${path}.${types[path].toLocaleLowerCase()}`
+        : path;
+      return `${path}.tags`;
+    });
+  },
+});
+
 export const labelTagSampleCounts = selector({
   key: "labelTagSampleCounts",
   get: ({ get }) => {
     const stats = get(datasetStats);
-    const paths = get(labelPaths).map((path) => `${path}.tags`);
+    const paths = get(labelTagsPaths);
 
     const result = {};
 
-    stats.forEach((s) => {
-      if (paths.includes(s.name)) {
-        Object.entries(s.result).forEach(([k, v]) => {
-          if (!(k in result)) {
-            result[k] = v;
-          } else {
-            result[k] += v;
-          }
-        });
-      }
-    });
+    stats &&
+      stats.forEach((s) => {
+        if (paths.includes(s.name)) {
+          Object.entries(s.result).forEach(([k, v]) => {
+            if (!(k in result)) {
+              result[k] = v;
+            } else {
+              result[k] += v;
+            }
+          });
+        }
+      });
+
     return result;
   },
 });
@@ -385,22 +405,23 @@ export const labelTagSampleCounts = selector({
 export const filteredLabelTagSampleCounts = selector({
   key: "filteredLabelTagSampleCounts",
   get: ({ get }) => {
-    const stats = get(datasetStats);
-    const paths = get(labelPaths).map((path) => `${path}.tags`);
+    const stats = get(extendedDatasetStats);
+    const paths = get(labelTagsPaths);
 
     const result = {};
 
-    stats.forEach((s) => {
-      if (paths.includes(s.name)) {
-        Object.entries(s.result).forEach(([k, v]) => {
-          if (!(k in result)) {
-            result[k] = v;
-          } else {
-            result[k] += v;
-          }
-        });
-      }
-    });
+    stats &&
+      stats.forEach((s) => {
+        if (paths.includes(s.name)) {
+          Object.entries(s.result).forEach(([k, v]) => {
+            if (!(k in result)) {
+              result[k] = v;
+            } else {
+              result[k] += v;
+            }
+          });
+        }
+      });
     return result;
   },
 });
@@ -651,6 +672,11 @@ export const colorMap = selectorFamily<{ [key: string]: string }, boolean>({
     let pool = get(atoms.colorPool);
     pool = pool.length ? pool : [darkTheme.brand];
     const seed = get(atoms.colorSeed(modal));
+
+    const tags = [
+      ...get(tagNames).map((t) => "tags." + t),
+      ...get(labelTagNames).map((t) => "_label_tags." + t),
+    ];
     if (colorByLabel) {
       let values = ["true", "false"];
       const stats = get(datasetStats);
@@ -659,7 +685,7 @@ export const colorMap = selectorFamily<{ [key: string]: string }, boolean>({
           values = [...values, ...result];
         }
       });
-      values = [...get(tagNames), ...values];
+      values = [...tags, ...values];
       return generateColorMap(pool, Array.from(new Set(values)), seed, false);
     } else {
       const colorLabelNames = get(labelTuples("sample"))
@@ -675,12 +701,7 @@ export const colorMap = selectorFamily<{ [key: string]: string }, boolean>({
 
       return generateColorMap(
         pool,
-        [
-          ...get(tagNames),
-          ...scalarsList,
-          ...colorLabelNames,
-          ...colorFrameLabelNames,
-        ],
+        [...tags, ...scalarsList, ...colorLabelNames, ...colorFrameLabelNames],
         seed
       );
     }
@@ -952,5 +973,30 @@ export const hiddenFieldLabels = selectorFamily<string[], string>({
         .map(([label_id]) => label_id);
     }
     return [];
+  },
+});
+
+export const matchedTags = selectorFamily<Set<string>, string>({
+  key: "matchedTags",
+  get: (key) => ({ get }) => {
+    const tags = get(filterStages).tags;
+    if (tags && tags[key]) {
+      return new Set(tags[key]);
+    }
+    return new Set();
+  },
+  set: (key) => ({ get, set }, value) => {
+    const stages = { ...get(filterStages) };
+    const tags = { ...(stages.tags || {}) };
+    if (value instanceof Set && value.size) {
+      tags[key] = Array.from(value);
+    } else if (stages.tags && key in stages.tags) {
+      delete tags[key];
+    }
+    stages.tags = tags;
+    if (Object.keys(stages.tags).length === 0) {
+      delete stages["tags"];
+    }
+    set(filterStages, stages);
   },
 });

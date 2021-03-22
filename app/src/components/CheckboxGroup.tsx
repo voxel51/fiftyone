@@ -179,7 +179,7 @@ const Entry = React.memo(({ entry, onCheck, modal }: EntryProps) => {
             <span className="name" title={name}>
               {name}
             </span>
-            {data !== null ? (
+            {typeof data === "string" ? (
               <>
                 <span className="count" title={title}>
                   {data}
@@ -194,6 +194,8 @@ const Entry = React.memo(({ entry, onCheck, modal }: EntryProps) => {
                   />
                 )}
               </>
+            ) : data ? (
+              data
             ) : icon ? (
               icon
             ) : (

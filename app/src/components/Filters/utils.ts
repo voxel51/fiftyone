@@ -196,7 +196,7 @@ export const activeLabelTags = selectorFamily<string[], boolean>({
           t.startsWith("_label_tags.") &&
           tags.includes(t.slice("_label_tags".length))
       )
-      .map((t) => t.slice(5));
+      .map((t) => t.slice("_label_tags".length));
   },
   set: (modal) => ({ get, set }, value) => {
     if (Array.isArray(value)) {
@@ -208,7 +208,7 @@ export const activeLabelTags = selectorFamily<string[], boolean>({
       if (tags.length && prevActiveTags.length < tags.length) {
         active = [tags[0], ...active.filter((v) => v !== tags[0])];
       }
-      set(activeLabelTags(modal), active);
+      set(activeFields(modal), active);
     }
   },
 });

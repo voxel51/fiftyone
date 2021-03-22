@@ -144,7 +144,7 @@ const SampleInfo = React.memo(({ id }) => {
         <Tag
           key={cur}
           name={tag}
-          color={colorMap[tag]}
+          color={colorMap["tags." + tag]}
           title={tag}
           maxWidth={"calc(100% - 32px)"}
         />,
