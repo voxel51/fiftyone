@@ -17,6 +17,7 @@ import plotly.graph_objects as go
 
 import eta.core.utils as etau
 
+import fiftyone as fo
 import fiftyone.core.context as foc
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
@@ -901,6 +902,8 @@ class PlotlyWidgetMixin(object):
                 "%s plots can only be used in notebooks" % self.__class__
             )
 
+        _check_plotly_notebook_environment()
+
         self._widget = widget
         self._handle = None
 
@@ -943,6 +946,19 @@ class PlotlyWidgetMixin(object):
         )
 
         self._handle.update(Image(image_bytes))
+
+
+def _check_plotly_notebook_environment():
+    #
+    # Requirements source: https://plotly.com/python/getting-started
+    #
+    # There is also a `notebook>=5.3` requirement in Jupyter notebooks, but
+    # we do not explicitly check that here because the requirement for
+    # JupyterLab is different and I don't know how to distinguish Jupyter
+    # notebooks from JupyterLab right now...
+    #
+    error_level = fo.config.requirement_error_level
+    etau.ensure_package("ipywidgets>=7.5", error_level=error_level)
 
 
 class PlotlyNotebookPlot(PlotlyWidgetMixin, Plot):
