@@ -9,7 +9,6 @@ import {
   Label,
   LocalOffer,
   PhotoLibrary,
-  Visibility,
 } from "@material-ui/icons";
 import { animated, useSpring } from "react-spring";
 
@@ -25,6 +24,7 @@ import * as labelAtoms from "./Filters/LabelFieldFilters.state";
 import * as selectors from "../recoil/selectors";
 import { stringify, FILTERABLE_TYPES } from "../utils/labels";
 import { useTheme } from "../utils/hooks";
+import { Target } from "../icons";
 
 const Container = styled.div`
   .MuiCheckbox-root {
@@ -142,7 +142,8 @@ const makeTagData = (
   return (
     <>
       <span>{makeData(filteredCount, totalCount)}</span>
-      <Visibility
+      <Target
+        title={"Only matches"}
         style={{ color, height: 20, width: 20, marginLeft: 8 }}
         onClick={toggleFilter}
       />
@@ -199,7 +200,7 @@ const SampleTagsCell = ({ modal }: TagsCellProps) => {
               makeTagData(
                 subCount[name],
                 count[name],
-                matchedTags.has(name) ? color : theme.fontDark,
+                matchedTags.has(name) ? theme.font : theme.fontDark,
                 (e) => {
                   e.stopPropagation();
                   e.preventDefault();
@@ -275,7 +276,7 @@ const LabelTagsCell = ({ modal }: TagsCellProps) => {
             data: makeTagData(
               subCount[name],
               count[name],
-              matchedTags.has(name) ? color : theme.fontDark,
+              matchedTags.has(name) ? theme.font : theme.fontDark,
               (e) => {
                 e.stopPropagation();
                 e.preventDefault();

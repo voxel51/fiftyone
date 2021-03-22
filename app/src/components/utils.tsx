@@ -161,11 +161,7 @@ export const PillButton = React.memo(
     ) => {
       const theme = useTheme();
       const props = useSpring({
-        opacity: 1,
         backgroundColor: !highlight ? theme.button : theme.brand,
-        from: {
-          opacity: 0,
-        },
       });
       return (
         <PillButtonDiv

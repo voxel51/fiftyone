@@ -990,8 +990,9 @@ def _get_extended_view(view, filters, hide_result=False):
     if "tags" in filters:
         tags = filters.pop("tags")
         if "label" in tags:
-            view = view.select_labels(tags=tags["label"])
-        else:
+            view = view.select_labels(tags=tags["label"], _select_fields=False)
+
+        if "sample" in tags:
             view = view.match_tags(tags=tags["sample"])
 
     for stage in _make_filter_stages(view._dataset, filters):
