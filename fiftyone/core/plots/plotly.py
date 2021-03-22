@@ -489,7 +489,6 @@ def scatterplot(
             colorbar_title,
         )
 
-    # figure.update_layout(margin={"r": 0, "t": 30, "l": 0, "b": 0})
     figure.update_layout(margin_autoexpand=True)
 
     if layout:
@@ -804,7 +803,6 @@ def location_scatterplot(
             colorbar_title,
         )
 
-    # figure.update_layout(margin={"r": 0, "t": 30, "l": 0, "b": 0})
     figure.update_layout(margin_autoexpand=True)
 
     if layout:

@@ -5,6 +5,7 @@ Plotly-powered view plots.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import itertools
 from operator import itemgetter
 
 import numpy as np
@@ -14,8 +15,13 @@ import eta.core.utils as etau
 import plotly.subplots as ps
 import plotly.graph_objects as go
 
+import fiftyone.core.aggregations as foa
+
 from .base import ViewPlot
 from .plotly import PlotlyWidgetMixin
+
+
+_DEFAULT_LAYOUT = dict(template="ggplot2", margin_autoexpand=True)
 
 
 class PlotlyViewPlot(PlotlyWidgetMixin, ViewPlot):
@@ -30,15 +36,17 @@ class PlotlyViewPlot(PlotlyWidgetMixin, ViewPlot):
         PlotlyWidgetMixin.__init__(self, widget)
         ViewPlot.__init__(self)
 
-    def _get_trace_updates(self, view):
+    def _get_trace_updates(self, view, agg_results=None):
         raise NotImplementedError(
             "Subclass must implement _get_trace_updates()"
         )
 
-    def _update_view(self, view):
-        updates = self._get_trace_updates(view)
-        for trace, update in zip(self._traces, updates):
-            trace.update(update)
+    def _update_view(self, view, agg_results=None):
+        updates = self._get_trace_updates(view, agg_results=agg_results)
+
+        with self._widget.batch_update():
+            for trace, update in zip(self._traces, updates):
+                trace.update(update)
 
     def show(self, **kwargs):
         """Shows this plot.
@@ -58,11 +66,13 @@ class ViewGrid(PlotlyViewPlot):
             instances
             :class:`fiftyone.core.collections.SampleCollection` to load
         shape (None): the ``(rows, cols)`` shape to use for the grid
+        hgap (None): a horizontal spacing between the subplots, in ``[0, 1]``
+        vgap (None): a vertical spacing between the subplots, in ``[0, 1]``
         **kwargs: optional parameters for
             ``plotly.graph_objects.Figure.update_layout(**kwargs)``
     """
 
-    def __init__(self, plots, shape=None, **kwargs):
+    def __init__(self, plots, shape=None, hgap=None, vgap=None, **kwargs):
         if not etau.is_container(plots):
             plots = [plots]
 
@@ -75,26 +85,70 @@ class ViewGrid(PlotlyViewPlot):
 
         self.plots = plots
         self.shape = shape
+        self.hgap = hgap
+        self.vgap = vgap
         self.layout = kwargs
+
+        self._aggregations = None
+        self._agg_lengths = None
+
+        self._init_aggregations()
 
         widget = self._make_widget()
 
         super().__init__(widget)
 
-    def _make_widget(self):
-        widget = _make_composite_widget(self.plots, shape=self.shape)
+    def _init_aggregations(self):
+        aggregations = []
+        agg_lengths = []
+        for plot in self.plots:
+            aggs = plot._get_aggregations()
+            if aggs is not None:
+                aggregations.extend(aggs)
+                agg_lengths.append(len(aggs))
+            else:
+                agg_lengths.append(None)
 
-        layout = dict(template="ggplot2")
+        if not aggregations:
+            aggregations = None
+            agg_lengths = None
+
+        self._aggregations = aggregations
+        self._agg_lengths = agg_lengths
+
+    def _get_aggregations(self):
+        return self._aggregations
+
+    def _make_widget(self):
+        widget = _make_composite_widget(
+            self.plots, shape=self.shape, hgap=self.hgap, vgap=self.vgap
+        )
+
+        layout = _DEFAULT_LAYOUT.copy()
         layout.update(self.layout)
 
         widget.update_layout(**layout)
 
         return widget
 
-    def _get_trace_updates(self, view):
+    def _get_trace_updates(self, view, agg_results=None):
+        if agg_results is None:
+            agg_results = itertools.repeat(None)
+        else:
+            agg_iter = iter(agg_results)
+            agg_results = []
+            for agg_len in self._agg_lengths:
+                if agg_len is None:
+                    _agg_results = None
+                else:
+                    _agg_results = [next(agg_iter) for _ in range(agg_len)]
+
+                agg_results.append(_agg_results)
+
         updates = []
-        for plot in self.plots:
-            updates.extend(plot._get_trace_updates(view))
+        for plot, _agg_results in zip(self.plots, agg_results):
+            update = plot._get_trace_updates(view, agg_results=_agg_results)
+            updates.extend(update)
 
         return updates
 
@@ -118,7 +172,7 @@ class CategoricalHistogram(PlotlyViewPlot):
             ``sorted(items, key=order)``, where ``items`` is a list of
             ``(value, count)`` tuples
         xlabel (None): an optional x-label for the plot
-        logy (None): whether to set the y-axis to log scale
+        log_y (None): whether to set the y-axis to log scale
         bargap (None): relative spacing between bars in ``[0, 1]``
         color (None): a color for the bars. Can be any color supported by
             ``plotly.graph_objects.bar.Marker.color``
@@ -133,7 +187,7 @@ class CategoricalHistogram(PlotlyViewPlot):
         expr=None,
         order="alphabetical",
         xlabel=None,
-        logy=None,
+        log_y=None,
         bargap=None,
         color=None,
         opacity=None,
@@ -143,7 +197,7 @@ class CategoricalHistogram(PlotlyViewPlot):
         self.expr = expr
         self.order = order
         self.xlabel = xlabel
-        self.logy = logy
+        self.log_y = log_y
         self.bargap = bargap
         self.color = color
         self.opacity = opacity
@@ -160,6 +214,8 @@ class CategoricalHistogram(PlotlyViewPlot):
             self._reverse = False
 
         self._figure = self._make_histogram()
+
+        self._aggregations = [foa.CountValues(field, expr=expr)]
 
         widget = self._make_widget()
 
@@ -193,15 +249,18 @@ class CategoricalHistogram(PlotlyViewPlot):
         else:
             xaxis_title = self.field
 
-        layout = dict(
-            xaxis_title=xaxis_title,
-            yaxis_title="count",
-            bargap=self.bargap,
-            template="ggplot2",
+        layout = _DEFAULT_LAYOUT.copy()
+
+        layout.update(
+            dict(
+                xaxis_title=xaxis_title,
+                yaxis_title="count",
+                bargap=self.bargap,
+            )
         )
 
-        if self.logy:
-            layout["yaxis_type"] = "log"
+        if self.log_y:
+            layout.update(dict(yaxis_type="log"))
 
         layout.update(self.layout)
 
@@ -210,9 +269,16 @@ class CategoricalHistogram(PlotlyViewPlot):
 
         return figure
 
-    def _get_trace_updates(self, view):
+    def _get_aggregations(self):
+        return self._aggregations
+
+    def _get_trace_updates(self, view, agg_results=None):
         if view is not None:
-            counts = view.count_values(self.field, expr=self.expr)
+            if agg_results is not None:
+                counts = agg_results[0]
+            else:
+                counts = view.aggregate(self._aggregations[0])
+
             keys, values = zip(
                 *sorted(counts.items(), key=self._order, reverse=self._reverse)
             )
@@ -244,7 +310,7 @@ class NumericalHistogram(PlotlyViewPlot):
             generate equal-width bins. Only applicable when ``bins`` is an
             integer or ``None``
         xlabel (None): an optional x-label for the plot
-        logy (None): whether to set the y-axis to log scale
+        log_y (None): whether to set the y-axis to log scale
         color (None): a color for the bars. Can be any color supported by
             ``plotly.graph_objects.bar.Marker.color``
         opacity (None): an optional opacity for the bars in ``[0, 1]``
@@ -259,7 +325,7 @@ class NumericalHistogram(PlotlyViewPlot):
         bins=None,
         range=None,
         xlabel=None,
-        logy=None,
+        log_y=None,
         color=None,
         opacity=None,
         **kwargs,
@@ -269,12 +335,16 @@ class NumericalHistogram(PlotlyViewPlot):
         self.bins = bins
         self.range = range
         self.xlabel = xlabel
-        self.logy = logy
+        self.log_y = log_y
         self.color = color
         self.opacity = opacity
         self.layout = kwargs
 
         self._figure = self._make_histogram()
+
+        self._aggregations = [
+            foa.HistogramValues(field, expr=expr, bins=bins, range=range)
+        ]
 
         widget = self._make_widget()
 
@@ -309,12 +379,12 @@ class NumericalHistogram(PlotlyViewPlot):
         else:
             xaxis_title = self.field
 
-        layout = dict(
-            xaxis_title=xaxis_title, yaxis_title="count", template="ggplot2"
-        )
+        layout = _DEFAULT_LAYOUT.copy()
 
-        if self.logy:
-            layout["yaxis_type"] = "log"
+        layout.update(dict(xaxis_title=xaxis_title, yaxis_title="count"))
+
+        if self.log_y:
+            layout.update(dict(yaxis_type="log"))
 
         layout.update(self.layout)
 
@@ -323,11 +393,16 @@ class NumericalHistogram(PlotlyViewPlot):
 
         return figure
 
-    def _get_trace_updates(self, view):
+    def _get_aggregations(self):
+        return self._aggregations
+
+    def _get_trace_updates(self, view, agg_results=None):
         if view is not None:
-            counts, edges, _ = view.histogram_values(
-                self.field, expr=self.expr, bins=self.bins, range=self.range
-            )
+            if agg_results is not None:
+                counts, edges, _ = agg_results[0]
+            else:
+                counts, edges, _ = view.aggregate(self._aggregations[0])
+
             counts = np.asarray(counts)
             edges = np.asarray(edges)
 
@@ -345,7 +420,7 @@ class NumericalHistogram(PlotlyViewPlot):
         self._traces = self._widget.data
 
 
-def _make_composite_widget(plots, shape=None):
+def _make_composite_widget(plots, shape=None, hgap=None, vgap=None):
     if shape is None:
         num_plots = len(plots)
         rows = int(np.floor(np.sqrt(num_plots)))
@@ -353,7 +428,9 @@ def _make_composite_widget(plots, shape=None):
     else:
         rows, cols = shape
 
-    figure = ps.make_subplots(rows=rows, cols=cols)
+    figure = ps.make_subplots(
+        rows=rows, cols=cols, horizontal_spacing=hgap, vertical_spacing=vgap
+    )
 
     num_traces = []
     for idx, plot in enumerate(plots):

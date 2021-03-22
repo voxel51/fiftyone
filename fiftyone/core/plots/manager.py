@@ -6,6 +6,7 @@ Session plot manager.
 |
 """
 import datetime
+import itertools
 import warnings
 
 import eta.core.utils as etau
@@ -41,12 +42,12 @@ class PlotManager(object):
     """
 
     _MIN_UPDATE_DELTA_SECONDS = 0.5
-    _LISTENER_NAME = "PlotManager"
+    _LISTENER_NAME = "plots"
 
     def __init__(self, session):
         self._session = None
-        self._init_view = None
         self._plots = {}
+        self._aggs = {}
         self._current_sample_ids = None
         self._current_labels = None
         self._last_update = None
@@ -87,13 +88,7 @@ class PlotManager(object):
         if self.is_connected:
             self.disconnect()
 
-        if session._collection is not None:
-            init_view = session._collection.view()
-        else:
-            init_view = None
-
         self._session = session
-        self._init_view = init_view
 
         if self._plots:
             self.connect()
@@ -107,30 +102,34 @@ class PlotManager(object):
         if not self._plots:
             return ""
 
-        maxlen = max(len(name) for name in self._plots) + 1
-        fmt = "%%-%ds %%s" % maxlen
-
-        connected_plots = [
-            (n, p) for n, p in self._plots.items() if p.is_connected
-        ]
-        disconnected_plots = [
-            (n, p) for n, p in self._plots.items() if not p.is_connected
-        ]
-
         elements = []
 
-        for name, plot in connected_plots:
-            elements.append(fmt % (name + ":", etau.get_class_name(plot)))
+        connected_plots = [
+            name for name, p in self._plots.items() if p.is_connected
+        ]
+        if connected_plots:
+            elements.append("Connected plots:")
+            elements.extend(self._summarize_plots(connected_plots))
 
+        disconnected_plots = [
+            name for name, p in self._plots.items() if not p.is_connected
+        ]
         if disconnected_plots:
-            if elements:
-                elements.append("")
-
-            elements.append("Disconnected:")
-            for name, plot in disconnected_plots:
-                elements.append(fmt % (name + ":", etau.get_class_name(plot)))
+            elements.append("Disconnected plots:")
+            elements.extend(self._summarize_plots(disconnected_plots))
 
         return "\n".join(elements)
+
+    def _summarize_plots(self, names):
+        maxlen = max(len(name) for name in names) + 1
+        fmt = "    %%-%ds %%s" % maxlen
+
+        elements = []
+        for name in names:
+            plot = self._plots[name]
+            elements.append(fmt % (name + ":", etau.get_class_name(plot)))
+
+        return elements
 
     def keys(self):
         """Returns an iterator over the names of plots in this manager.
@@ -232,7 +231,7 @@ class PlotManager(object):
                 self.connect()
             else:
                 self._connect_plot(name)
-                self._update_plot(name)
+                self._update_plots([name])
 
     def remove(self, name):
         """Removes the plot from this manager.
@@ -261,6 +260,8 @@ class PlotManager(object):
             raise ValueError("No plot with name '%s'" % name)
 
         plot = self._plots.pop(name)
+        self._aggs.pop(name, None)
+
         plot.disconnect()
 
         if not self._plots:
@@ -289,6 +290,9 @@ class PlotManager(object):
         plot = self._plots[name]
 
         if isinstance(plot, ViewPlot):
+            # Record aggregations for efficient batch-updates
+            self._aggs[name] = plot._get_aggregations()
+
             # Load current view
             plot.update_view(self._session._collection.view())
 
@@ -331,7 +335,7 @@ class PlotManager(object):
             return
 
         self._update_ids_from_session()
-        self._update_plots()
+        self._update_all_plots()
 
     def freeze(self):
         """Freezes all connected plots, replacing them with static images.
@@ -369,7 +373,7 @@ class PlotManager(object):
         if plot.init_view is not None:
             plot_view = plot.init_view.view()
         else:
-            plot_view = self._init_view
+            plot_view = self._session.dataset.view()
 
         if ids is None:
             # Plot is in default state, so reset things here
@@ -413,10 +417,10 @@ class PlotManager(object):
         self._update_plots_from_session()
 
     def _update_ids_from_session(self):
-        session_view = self._session._collection.view()
+        current_view = self._session.view
 
-        # The session is in its default state, so reset all plots
-        if session_view == self._init_view:
+        # If no view is loaded in the session, we'll reset all plots
+        if current_view is None:
             self._current_sample_ids = None
             self._current_labels = None
             return
@@ -427,7 +431,7 @@ class PlotManager(object):
             if self._session.selected_labels:
                 self._current_labels = self._session.selected_labels
             else:
-                self._current_labels = session_view._get_selected_labels()
+                self._current_labels = current_view._get_selected_labels()
 
         # If samples are selected in the App, only record those. Otherwise, get
         # IDs of all samples in the view
@@ -435,8 +439,7 @@ class PlotManager(object):
             if self._session.selected:
                 self._current_sample_ids = self._session.selected
             else:
-                ids = self._session._collection.values("id")
-                self._current_sample_ids = ids
+                self._current_sample_ids = current_view.values("id")
 
     def _update_session(self, view):
         if not self._needs_update("session"):
@@ -446,33 +449,94 @@ class PlotManager(object):
             self._session.view = view
 
     def _update_plots_from_session(self):
-        for name, plot in self._plots.items():
-            if plot.supports_session_updates:
-                self._update_plot(name)
+        names = [
+            name
+            for name, plot in self._plots.items()
+            if plot.supports_session_updates
+        ]
+        self._update_plots(names)
 
-    def _update_plots(self):
-        for name in self._plots:
-            self._update_plot(name)
+    def _update_all_plots(self):
+        names = list(self._plots.keys())
+        self._update_plots(names)
 
-    def _update_plot(self, name):
+    def _update_plots(self, names):
+        view_plot_names = []
+        interactive_plot_names = []
+        for name in names:
+            plot = self._plots[name]
+
+            if not plot.is_connected:
+                continue
+
+            if not self._needs_update(name):
+                continue
+
+            if plot.link_type == "view":
+                view_plot_names.append(name)
+            elif plot.link_type in ("samples", "labels"):
+                interactive_plot_names.append(name)
+            else:
+                raise ValueError(
+                    "Plot '%s' has unsupported link type '%s'"
+                    % (name, plot.link_type)
+                )
+
+        self._update_view_plots(view_plot_names)
+
+        for name in interactive_plot_names:
+            self._update_interactive_plot(name)
+
+    def _update_view_plots(self, names):
+        # For efficiency, aggregations for all supported `ViewPlot`s are
+        # computed in a single batch
+
+        view = self._session._collection.view()
+
+        # Build flat list of all aggregations
+        aggregations = []
+        agg_lengths = []
+        for name in names:
+            aggs = self._aggs.get(name, None)
+            if aggs is not None:
+                aggregations.extend(aggs)
+                agg_lengths.append(len(aggs))
+            else:
+                agg_lengths.append(None)
+
+        if aggregations:
+            # Compute aggregations
+            agg_results = view.aggregate(aggregations)
+
+            # Partition into per-plot batches
+            agg_iter = iter(agg_results)
+            agg_results = []
+            for agg_len in agg_lengths:
+                if agg_len is None:
+                    _agg_results = None
+                else:
+                    _agg_results = [next(agg_iter) for _ in range(agg_len)]
+
+                agg_results.append(_agg_results)
+        else:
+            agg_results = itertools.repeat(None)
+
+        # Finally, update the plots
+        for name, _agg_results in zip(names, agg_results):
+            plot = self._plots[name]
+            plot.update_view(view, agg_results=_agg_results)
+
+    def _update_interactive_plot(self, name):
         plot = self._plots[name]
 
-        if not plot.is_connected:
-            return
-
-        if not self._needs_update(name):
-            return
-
-        if plot.link_type == "view":
-            plot.update_view(self._session._collection.view())
-        elif plot.link_type == "samples":
+        if plot.link_type == "samples":
             plot.select_ids(self._current_sample_ids)
         elif plot.link_type == "labels":
             label_ids = self._get_current_label_ids_for_plot(plot)
             plot.select_ids(label_ids)
         else:
             raise ValueError(
-                "Plot '%s' has unsupported link type '%s'"
+                "InteractivePlot '%s' has unsupported link type '%s'"
                 % (name, plot.link_type)
             )
 

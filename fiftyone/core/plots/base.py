@@ -472,8 +472,8 @@ class ViewPlot(Plot):
     """Base class for plots that can be automatically populated given a
     :class:`fiftyone.core.collections.SampleCollection` instance.
 
-    Conversely, the state of an :class:`InteractivePlot` can be updated by
-    external parties by calling its :meth:`update_view` method.
+    The state of :class:`ViewPlot` instances can also be updated by external
+    parties by calling its :meth:`update_view` method.
     """
 
     def __init__(self):
@@ -483,18 +483,33 @@ class ViewPlot(Plot):
     def supports_session_updates(self):
         return True
 
-    def update_view(self, view):
+    def _get_aggregations(self):
+        """Gets the :class:`fiftyone.core.aggregations.Aggregation` instances
+        that can compute the necessary data to serve this plot.
+
+        Subclasses are not required to implement this method if they do not
+        leverage aggregations.
+
+        Returns:
+            a list :class:`fiftyone.core.aggregations.Aggregation` instances,
+            or None
+        """
+        return None
+
+    def update_view(self, view, agg_results=None):
         """Updates the plot based on the provided view.
 
         Args:
             view: a :class:`fiftyone.core.collections.SampleCollection`
+            agg_results (None): an optional list of pre-computed aggregation
+                results
         """
         if not self.is_connected:
             return
 
-        self._update_view(view)
+        self._update_view(view, agg_results=agg_results)
 
-    def _update_view(self, view):
+    def _update_view(self, view, agg_results=None):
         raise ValueError("Subclass must implement _update_view()")
 
     def reset(self):

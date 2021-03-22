@@ -673,9 +673,12 @@ class Session(foc.HasClient):
         elif self._desktop:
             type_ = "desktop"
         else:
-            type_ = self.url
+            type_ = None
 
-        elements.append("Session type:     %s" % type_)
+        if type_ is None:
+            elements.append("Session URL:      %s" % self.url)
+        else:
+            elements.append("Session type:     %s" % type_)
 
         if self.view:
             elements.extend(
@@ -683,12 +686,7 @@ class Session(foc.HasClient):
             )
 
         if self.plots:
-            elements.extend(
-                [
-                    "Attached plots:",
-                    fou.indent_lines(self.plots.summary(), indent=4),
-                ]
-            )
+            elements.append(self.plots.summary())
 
         return "\n".join(elements)
 
