@@ -410,6 +410,7 @@ def scatterplot(
     labels_title=None,
     sizes_title=None,
     show_colorbar_title=None,
+    axis_equal=False,
     layout=None,
 ):
     """Generates an interactive scatterplot of the given points.
@@ -424,8 +425,7 @@ def scatterplot(
     selection is only aviailable in 2D.
 
     You can use the ``labels`` parameters to define a coloring for the points,
-    and you can use the ``sizes`` parameter to define per-point sizes for the
-    points.
+    and you can use the ``sizes`` parameter to scale the sizes of the points.
 
     Args:
         points: a ``num_points x num_dims`` array of points
@@ -462,6 +462,7 @@ def scatterplot(
             default, a title will be shown only if a value was pasesd to
             ``labels_title`` or an appropriate default can be inferred from
             the ``labels`` parameter
+        axis_equal (False): whether to set the axes to equal scale
         layout (None): an optional dict of parameters for
             ``plotly.graph_objects.Figure.update_layout(**layout)``
 
@@ -503,6 +504,7 @@ def scatterplot(
                 labels_title,
                 sizes_title,
                 colorbar_title,
+                axis_equal,
             )
         else:
             figure = _plot_scatter_categorical_single_trace(
@@ -515,6 +517,7 @@ def scatterplot(
                 labels_title,
                 sizes_title,
                 colorbar_title,
+                axis_equal,
             )
     else:
         figure = _plot_scatter_numeric(
@@ -526,6 +529,7 @@ def scatterplot(
             labels_title,
             sizes_title,
             colorbar_title,
+            axis_equal,
         )
 
     figure.update_layout(**_DEFAULT_LAYOUT)
@@ -711,8 +715,7 @@ def location_scatterplot(
     method.
 
     You can use the ``labels`` parameters to define a coloring for the points,
-    and you can use the ``sizes`` parameter to define per-point sizes for the
-    points.
+    and you can use the ``sizes`` parameter to scale the sizes of the points.
 
     Args:
         locations (None): the location data to plot. Can be a
@@ -1615,6 +1618,7 @@ def _plot_scatter_categorical(
     labels_title,
     sizes_title,
     colorbar_title,
+    axis_equal,
 ):
     num_dims = points.shape[1]
 
@@ -1688,6 +1692,9 @@ def _plot_scatter_categorical(
 
     figure.update_layout(legend_title_text=colorbar_title)
 
+    if axis_equal:
+        figure.update_layout(yaxis_scaleanchor="x")
+
     return figure
 
 
@@ -1701,6 +1708,7 @@ def _plot_scatter_categorical_single_trace(
     labels_title,
     sizes_title,
     colorbar_title,
+    axis_equal,
     colors=None,
 ):
     num_dims = points.shape[1]
@@ -1780,7 +1788,14 @@ def _plot_scatter_categorical_single_trace(
     else:
         scatter = go.Scattergl(x=points[:, 0], y=points[:, 1], **kwargs)
 
-    return go.Figure(scatter)
+    figure = go.Figure(scatter)
+
+    if axis_equal:
+        figure.update_layout(yaxis_scaleanchor="x")
+        if num_dims == 3:
+            figure.update_layout(zaxis_scaleanchor="x")
+
+    return figure
 
 
 def _plot_scatter_numeric(
@@ -1792,6 +1807,7 @@ def _plot_scatter_numeric(
     labels_title,
     sizes_title,
     colorbar_title,
+    axis_equal,
     colorscale="Viridis",
 ):
     num_dims = points.shape[1]
@@ -1855,7 +1871,14 @@ def _plot_scatter_numeric(
     else:
         scatter = go.Scattergl(x=points[:, 0], y=points[:, 1], **kwargs)
 
-    return go.Figure(scatter)
+    figure = go.Figure(scatter)
+
+    if axis_equal:
+        figure.update_layout(yaxis_scaleanchor="x")
+        if num_dims == 3:
+            figure.update_layout(zaxis_scaleanchor="x")
+
+    return figure
 
 
 def _plot_scatter_mapbox_categorical(

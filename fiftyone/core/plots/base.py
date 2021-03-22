@@ -184,8 +184,7 @@ def scatterplot(
     selection is only aviailable in 2D.
 
     You can use the ``labels`` parameters to define a coloring for the points,
-    and you can use the ``sizes`` parameter to define per-point sizes for the
-    points.
+    and you can use the ``sizes`` parameter to scale the sizes of the points.
 
     Args:
         points: a ``num_points x num_dims`` array of points
@@ -194,16 +193,26 @@ def scatterplot(
         label_field (None): a :class:`fiftyone.core.labels.Label` field
             containing the labels corresponding to ``points``. If not provided,
             the points are assumed to correspond to samples
-        labels (None): data to use to color points. Can be a list (or nested
-            list, if ``label_field`` refers to a label list field like
-            :class:`fiftyone.core.labels.Detections`) or array-like of numeric
-            or string values, or the name of a sample field or
-            ``embedded.field.name`` of ``samples`` from which to extract values
-        sizes (None): data to use to scale the sizes of the points. Can be a
-            list (or nested list, if ``label_field`` refers to a label list
-            field like :class:`fiftyone.core.labels.Detections`) or array-like
-            of numeric values, or the name of a sample field or
-            ``embedded.field.name`` of ``samples`` from which to extract values
+        labels (None): data to use to color the points. Can be any of the
+            following:
+
+            -   the name of a sample field or ``embedded.field.name`` of
+                ``samples`` from which to extract numeric or string values
+            -   a list or array-like of numeric or string values
+            -   a list of lists of numeric or string values, if ``label_field``
+                refers to a label list field like
+                :class:`fiftyone.core.labels.Detections`
+
+        sizes (None): data to use to scale the sizes of the points. Can be any
+            of the following:
+
+            -   the name of a sample field or ``embedded.field.name`` of
+                ``samples`` from which to extract numeric values
+            -   a list or array-like of numeric values
+            -   a list of lists of numeric or string values, if ``label_field``
+                refers to a label list field like
+                :class:`fiftyone.core.labels.Detections`
+
         classes (None): an optional list of classes whose points to plot.
             Only applicable when ``labels`` contains strings
         backend ("plotly"): the plotting backend to use. Supported values are
@@ -262,8 +271,7 @@ def location_scatterplot(
     method.
 
     You can use the ``labels`` parameters to define a coloring for the points,
-    and you can use the ``sizes`` parameter to define per-point sizes for the
-    points.
+    and you can use the ``sizes`` parameter to scale the sizes of the points.
 
     Args:
         locations (None): the location data to plot. Can be a
@@ -275,14 +283,20 @@ def location_scatterplot(
             :class:`fiftyone.core.labels.GeoLocation` field
         samples (None): the :class:`fiftyone.core.collections.SampleCollection`
             whose data is being visualized
-        labels (None): data to use to color points. Can be an array-like of
-            numeric or string values, or the name of a sample field or
-            ``embedded.field.name`` of ``samples`` from which to extract values
-        sizes (None): data to use to scale the sizes of the points. Can be a
-            list (or nested list, if ``label_field`` refers to a label list
-            field like :class:`fiftyone.core.labels.Detections`) or array-like
-            of numeric values, or the name of a sample field or
-            ``embedded.field.name`` of ``samples`` from which to extract values
+        labels (None): data to use to color the points. Can be any of the
+            following:
+
+            -   the name of a sample field or ``embedded.field.name`` of
+                ``samples`` from which to extract numeric or string values
+            -   a list or array-like of numeric or string values
+
+        sizes (None): data to use to scale the sizes of the points. Can be any
+            of the following:
+
+            -   the name of a sample field or ``embedded.field.name`` of
+                ``samples`` from which to extract numeric values
+            -   a list or array-like of numeric values
+
         classes (None): an optional list of classes whose points to plot.
             Only applicable when ``labels`` contains strings
         backend ("plotly"): the plotting backend to use. Supported values are

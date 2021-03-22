@@ -244,8 +244,7 @@ def scatterplot(
     selection is only aviailable in 2D.
 
     You can use the ``labels`` parameters to define a coloring for the points,
-    and you can use the ``sizes`` parameter to define per-point sizes for the
-    points.
+    and you can use the ``sizes`` parameter to scale the sizes of the points.
 
     Args:
         points: a ``num_points x num_dims`` array of points
@@ -413,8 +412,7 @@ def location_scatterplot(
     method.
 
     You can use the ``labels`` parameters to define a coloring for the points,
-    and you can use the ``sizes`` parameter to define per-point sizes for the
-    points.
+    and you can use the ``sizes`` parameter to scale the sizes of the points.
 
     Args:
         locations (None): the location data to plot. Can be a
