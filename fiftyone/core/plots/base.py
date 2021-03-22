@@ -414,7 +414,7 @@ class Plot(object):
         pass
 
     def show(self, **kwargs):
-        """Shows this plot.
+        """Shows the plot.
 
         The plot will be connected if necessary.
 

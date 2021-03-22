@@ -28,6 +28,9 @@ from .base import InteractivePlot
 logger = logging.getLogger(__name__)
 
 
+_DEFAULT_LAYOUT = dict(margin={"r": 0, "t": 30, "l": 0, "b": 0})
+
+
 def plot_confusion_matrix(
     confusion_matrix,
     labels,
@@ -62,7 +65,10 @@ def plot_confusion_matrix(
         one of the following:
 
         -   a :class:`PlotlyHeatmap`, if ``ids`` are provided
-        -   a plotly figure, if no ``ids`` are provided
+        -   a :class:`PlotlyNotebookPlot`, if no ``ids`` are provided and you
+            are working in a notebook context
+        -   a plotly figure, if no ``ids`` are provided and you are not working
+            in a notebook context
     """
     if ids is not None and not foc.is_notebook_context():
         logger.warning(
@@ -132,8 +138,13 @@ def _plot_confusion_matrix_static(
         yaxis_title="True label",
     )
 
+    figure.update_layout(**_DEFAULT_LAYOUT)
+
     if layout:
         figure.update_layout(**layout)
+
+    if foc.is_notebook_context():
+        figure = PlotlyNotebookPlot(figure)
 
     if show:
         figure.show()
@@ -173,6 +184,8 @@ def _plot_confusion_matrix_interactive(
         colorscale=colorscale,
     )
 
+    plot.update_layout(**_DEFAULT_LAYOUT)
+
     if layout:
         plot.update_layout(**layout)
 
@@ -198,7 +211,11 @@ def plot_pr_curve(
         show (True): whether to show the plot immediately
 
     Returns:
-        a plotly figure
+        one of the following:
+
+        -   a :class:`PlotlyNotebookPlot`, if you are working in a notebook
+            context
+        -   a plotly figure, otherwise
     """
     if style == "line":
         plot = px.line
@@ -229,8 +246,13 @@ def plot_pr_curve(
         yaxis_title="Precision",
     )
 
+    figure.update_layout(**_DEFAULT_LAYOUT)
+
     if layout:
         figure.update_layout(**layout)
+
+    if foc.is_notebook_context():
+        figure = PlotlyNotebookPlot(figure)
 
     if show:
         figure.show()
@@ -251,7 +273,11 @@ def plot_pr_curves(precisions, recall, classes, layout=None, show=True):
         show (True): whether to show the plot immediately
 
     Returns:
-        a plotly figure
+        one of the following:
+
+        -   a :class:`PlotlyNotebookPlot`, if you are working in a notebook
+            context
+        -   a plotly figure, otherwise
     """
     figure = go.Figure()
 
@@ -292,8 +318,13 @@ def plot_pr_curves(precisions, recall, classes, layout=None, show=True):
         yaxis_title="Precision",
     )
 
+    figure.update_layout(**_DEFAULT_LAYOUT)
+
     if layout:
         figure.update_layout(**layout)
+
+    if foc.is_notebook_context():
+        figure = PlotlyNotebookPlot(figure)
 
     if show:
         figure.show()
@@ -317,7 +348,11 @@ def plot_roc_curve(
         show (True): whether to show the plot immediately
 
     Returns:
-        a plotly figure
+        one of the following:
+
+        -   a :class:`PlotlyNotebookPlot`, if you are working in a notebook
+            context
+        -   a plotly figure, otherwise
     """
     if style == "line":
         plot = px.line
@@ -350,8 +385,13 @@ def plot_roc_curve(
         yaxis_title="True positive rate",
     )
 
+    figure.update_layout(**_DEFAULT_LAYOUT)
+
     if layout:
         figure.update_layout(**layout)
+
+    if foc.is_notebook_context():
+        figure = PlotlyNotebookPlot(figure)
 
     if show:
         figure.show()
@@ -433,6 +473,8 @@ def scatterplot(
 
         -   an :class:`InteractiveScatter`, for 2D points and when ``samples``
             are provided and you're working in a notebook context
+        -   a :class:`PlotlyNotebookPlot`, if you're working in a notebook
+            context but the above conditions aren't met
         -   a plotly figure, otherwise
     """
     points = np.asarray(points)
@@ -489,7 +531,7 @@ def scatterplot(
             colorbar_title,
         )
 
-    figure.update_layout(margin_autoexpand=True)
+    figure.update_layout(**_DEFAULT_LAYOUT)
 
     if layout:
         figure.update_layout(**layout)
@@ -498,7 +540,12 @@ def scatterplot(
         if samples is not None:
             logger.warning("Interactive selection is only supported in 2D")
 
-        figure.show()
+        if foc.is_notebook_context():
+            figure = PlotlyNotebookPlot(figure)
+
+        if show:
+            figure.show()
+
         return figure
 
     if not foc.is_notebook_context():
@@ -507,6 +554,14 @@ def scatterplot(
                 "Interactive Plotly plots are currently only supported in "
                 "notebooks"
             )
+
+        if show:
+            figure.show()
+
+        return figure
+
+    if ids is None:
+        figure = PlotlyNotebookPlot(figure)
 
         if show:
             figure.show()
@@ -732,6 +787,8 @@ def location_scatterplot(
 
         -   an :class:`InteractiveScatter`, when ``samples`` are provided and
             you're working in a notebook context
+        -   a :class:`PlotlyNotebookPlot`, if you're working in a notebook
+            context but ``samples`` are not provided
         -   a plotly figure, otherwise
     """
     locations = _parse_locations(locations, samples)
@@ -803,7 +860,7 @@ def location_scatterplot(
             colorbar_title,
         )
 
-    figure.update_layout(margin_autoexpand=True)
+    figure.update_layout(**_DEFAULT_LAYOUT)
 
     if layout:
         figure.update_layout(**layout)
@@ -822,6 +879,14 @@ def location_scatterplot(
                 "Interactive Plotly plots are currently only supported in "
                 "notebooks"
             )
+
+        if show:
+            figure.show()
+
+        return figure
+
+    if ids is None:
+        figure = PlotlyNotebookPlot(figure)
 
         if show:
             figure.show()
@@ -917,6 +982,56 @@ class PlotlyWidgetMixin(object):
         self._handle.update(Image(image_bytes))
 
 
+class PlotlyNotebookPlot(PlotlyWidgetMixin):
+    """A wrapper around a Plotly plot exclusively for notebook contexts that
+    allows it to be replaced with a screenshot by calling :meth:`freeze`.
+
+    Args:
+        figure: a ``plotly.graph_objects.Figure``
+    """
+
+    def __init__(self, figure):
+        self._figure = figure
+        self._frozen = False
+
+        widget = self._make_widget()
+
+        super().__init__(widget)
+
+    def update_layout(self, **kwargs):
+        """Updates the layout of the plot.
+
+        Args:
+            **kwargs: valid arguments for
+                ``plotly.graph_objects.Figure.update_layout(**kwargs)``
+        """
+        self._update_layout(**kwargs)
+
+    def show(self, **kwargs):
+        """Shows the plot.
+
+        Args:
+            **kwargs: optional parameters for
+                ``plotly.graph_objects.Figure.update_layout(**kwargs)``
+        """
+        if self._frozen:
+            self._reopen()
+
+        self._show(**kwargs)
+
+    def freeze(self):
+        """Freezes the plot, replacing it with a static image."""
+        self._freeze()
+        self._frozen = True
+
+    def _make_widget(self):
+        return go.FigureWidget(self._figure)
+
+    def _reopen(self):
+        self._widget = self._make_widget()
+        self._frozen = False
+
+
 class PlotlyInteractivePlot(PlotlyWidgetMixin, InteractivePlot):
     """Base class for :class:`fiftyone.core.plots.base.InteractivePlot`
     instances with Plotly backends.
@@ -936,7 +1051,7 @@ class PlotlyInteractivePlot(PlotlyWidgetMixin, InteractivePlot):
         self._update_layout(**kwargs)
 
     def show(self, **kwargs):
-        """Shows this plot.
+        """Shows the plot.
 
         Args:
             **kwargs: optional parameters for
