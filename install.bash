@@ -119,7 +119,7 @@ else
     echo "WARNING: unable to locate a bash profile to 'source'; you may need to start a new shell"
 fi
 cd app
-yarn
+yarn install > /dev/null 2>&1
 yarn build-web
 cd ..
 
