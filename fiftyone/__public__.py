@@ -112,6 +112,7 @@ from .core.plots import (
     location_scatterplot,
     scatterplot,
     Plot,
+    ResponsivePlot,
     InteractivePlot,
     ViewPlot,
     ViewGrid,

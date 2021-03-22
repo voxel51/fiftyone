@@ -15,6 +15,7 @@ from .base import (
     location_scatterplot,
     scatterplot,
     Plot,
+    ResponsivePlot,
     InteractivePlot,
     ViewPlot,
 )

@@ -22,7 +22,7 @@ import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.utils as fou
 
-from .base import InteractivePlot
+from .base import Plot, InteractivePlot
 
 
 logger = logging.getLogger(__name__)
@@ -982,9 +982,9 @@ class PlotlyWidgetMixin(object):
         self._handle.update(Image(image_bytes))
 
 
-class PlotlyNotebookPlot(PlotlyWidgetMixin):
-    """A wrapper around a Plotly plot exclusively for notebook contexts that
-    allows it to be replaced with a screenshot by calling :meth:`freeze`.
+class PlotlyNotebookPlot(PlotlyWidgetMixin, Plot):
+    """A wrapper around a Plotly plot for notebook contexts that allows it to
+    be replaced with a screenshot by calling :meth:`freeze`.
 
     Args:
         figure: a ``plotly.graph_objects.Figure``
@@ -997,6 +997,11 @@ class PlotlyNotebookPlot(PlotlyWidgetMixin):
         widget = self._make_widget()
 
         super().__init__(widget)
+
+    @property
+    def is_frozen(self):
+        """Whether this plot is currently frozen."""
+        return self._frozen
 
     def update_layout(self, **kwargs):
         """Updates the layout of the plot.

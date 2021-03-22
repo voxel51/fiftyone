@@ -11,13 +11,13 @@ import warnings
 
 import eta.core.utils as etau
 
-from .base import Plot, ViewPlot, InteractivePlot
+from .base import ResponsivePlot, ViewPlot, InteractivePlot
 
 
 class PlotManager(object):
     """Class that manages communication between a
-    :class:`fiftyone.core.session.Session` and one or more :class:`Plot`
-    instances.
+    :class:`fiftyone.core.session.Session` and one or more
+    :class:`ResponsivePlot` instances.
 
     Each plot can be linked to either the view, samples, or labels of a
     session:
@@ -143,7 +143,7 @@ class PlotManager(object):
         """Returns an iterator over the ``(name, plot)`` pairs in this manager.
 
         Returns:
-            an iterator that emits ``(name, Plot)`` tuples
+            an iterator that emits ``(name, ResponsivePlot)`` tuples
         """
         return self._plots.items()
 
@@ -151,7 +151,7 @@ class PlotManager(object):
         """Returns an iterator over the plots in this manager.
 
         Returns:
-            an iterator that emits :class:`Plot` instances
+            an iterator that emits :class:`ResponsivePlot` instances
         """
         return self._plots.values()
 
@@ -196,18 +196,18 @@ class PlotManager(object):
         """Attaches a plot to this manager.
 
         Args:
-            plot: a :class:`fiftyone.core.plots.base.Plot`
+            plot: a :class:`fiftyone.core.plots.base.ResponsivePlot`
             name (None): a name for the plot
             connect (True): whether to immediately connect the plot
             overwrite (True): whether to overwrite an existing plot of the same
                 name
         """
-        if not isinstance(plot, Plot):
+        if not isinstance(plot, ResponsivePlot):
             # @todo add docs link to error message
             raise ValueError(
                 "Plots must be subclasses of %s; but found %s. You may be "
                 "working in an environment that does not support interactivity"
-                % (Plot, type(plot))
+                % (ResponsivePlot, type(plot))
             )
 
         if name is None:
@@ -254,7 +254,7 @@ class PlotManager(object):
             name: the name of a plot
 
         Returns:
-            the :class:`Plot`
+            the :class:`ResponsivePlot`
         """
         if name not in self._plots:
             raise ValueError("No plot with name '%s'" % name)

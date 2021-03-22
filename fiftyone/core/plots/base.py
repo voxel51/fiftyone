@@ -356,7 +356,36 @@ def location_scatterplot(
 
 
 class Plot(object):
-    """Base class for all plots.
+    """Base class for all plots."""
+
+    def _repr_pretty_(self, *args, **kwargs):
+        # Shows the figure when Jupyter's `display()` is invoked on it
+        self.show()
+
+    @property
+    def is_frozen(self):
+        """Whether this plot is currently frozen."""
+        raise NotImplementedError("Subclass must implement is_frozen")
+
+    def show(self, **kwargs):
+        """Shows the plot.
+
+        Args:
+            **kwargs: subclass-specific keyword arguments
+        """
+        raise NotImplementedError("Subclass must implement show()")
+
+    def freeze(self):
+        """Freezes the plot, replacing it with a static image.
+
+        Only applicable to notebook contexts.
+        """
+        raise NotImplementedError("Subclass must implement freeze()")
+
+
+class ResponsivePlot(Plot):
+    """Base class for all responsive plots that can push/pull updates to a
+    linked object.
 
     Args:
         link_type: the link type of the plot
@@ -468,7 +497,7 @@ class Plot(object):
         pass
 
 
-class ViewPlot(Plot):
+class ViewPlot(ResponsivePlot):
     """Base class for plots that can be automatically populated given a
     :class:`fiftyone.core.collections.SampleCollection` instance.
 
@@ -517,7 +546,7 @@ class ViewPlot(Plot):
         self.update_view(None)
 
 
-class InteractivePlot(Plot):
+class InteractivePlot(ResponsivePlot):
     """Base class for plots that support selection of their points.
 
     Whenever a selection is made in an :class:`InteractivePlot`, the plot will
