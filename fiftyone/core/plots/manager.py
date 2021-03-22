@@ -197,7 +197,7 @@ class PlotManager(object):
 
         Args:
             plot: a :class:`fiftyone.core.plots.base.ResponsivePlot`
-            name (None): a name for the plot
+            name (None): an optional name for the plot
             connect (True): whether to immediately connect the plot
             overwrite (True): whether to overwrite an existing plot of the same
                 name
@@ -211,7 +211,7 @@ class PlotManager(object):
             )
 
         if name is None:
-            name = "plot %d" % (len(self._plots) + 1)
+            name = "plot%d" % (len(self._plots) + 1)
 
         if name == "session":
             raise ValueError("Cannot use reserved name 'session' for a plot")
@@ -330,7 +330,7 @@ class PlotManager(object):
         plot.disconnect()
 
     def sync(self):
-        """Syncs all plots with the session's current view."""
+        """Syncs all connected plots with the session's current view."""
         if not self.is_connected:
             return
 
@@ -340,7 +340,7 @@ class PlotManager(object):
     def freeze(self):
         """Freezes all connected plots, replacing them with static images.
 
-        Only applicable to notebook contexts.
+        Only applicable in notebook contexts.
         """
         if not self.is_connected:
             return

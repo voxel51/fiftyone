@@ -32,6 +32,13 @@ _DEFAULT_LAYOUT = dict(
     template="ggplot2", margin={"r": 0, "t": 30, "l": 0, "b": 0}
 )
 
+_INTERACTIVITY_WARNING = (
+    "Interactive Plotly plots are currently only supported in notebooks; "
+    "however, this will soon change in an upcoming release. In the meantime, "
+    "you can achieve interactivity outside of a notebook using the "
+    "'matplotlib' backend"
+)
+
 
 def plot_confusion_matrix(
     confusion_matrix,
@@ -71,10 +78,7 @@ def plot_confusion_matrix(
             in a notebook context
     """
     if ids is not None and not foc.is_notebook_context():
-        logger.warning(
-            "Interactive Plotly plots are currently only supported in "
-            "notebooks"
-        )
+        logger.warning(_INTERACTIVITY_WARNING)
         ids = None
 
     if ids is None:
@@ -219,15 +223,15 @@ def plot_pr_curve(precision, recall, label=None, style="line", layout=None):
             context
         -   a plotly figure, otherwise
     """
-    if style == "line":
-        plot = px.line
+    if style == "area":
+        plot = px.area
     else:
-        if style != "area":
+        if style != "line":
             logger.warning(
-                "Unsupported style '%s'; using 'area' instead", style
+                "Unsupported style '%s'; using 'line' instead", style
             )
 
-        plot = px.area
+        plot = px.line
 
     figure = plot(x=recall, y=precision)
 
@@ -352,15 +356,15 @@ def plot_roc_curve(fpr, tpr, roc_auc=None, style="line", layout=None):
             context
         -   a plotly figure, otherwise
     """
-    if style == "line":
-        plot = px.line
+    if style == "area":
+        plot = px.area
     else:
-        if style != "area":
+        if style != "line":
             logger.warning(
-                "Unsupported style '%s'; using 'area' instead", style
+                "Unsupported style '%s'; using 'line' instead", style
             )
 
-        plot = px.area
+        plot = px.line
 
     figure = plot(x=fpr, y=tpr)
 
@@ -540,10 +544,7 @@ def scatterplot(
 
     if not foc.is_notebook_context():
         if samples is not None:
-            logger.warning(
-                "Interactive Plotly plots are currently only supported in "
-                "notebooks"
-            )
+            logger.warning(_INTERACTIVITY_WARNING)
 
         return figure
 
@@ -850,10 +851,7 @@ def location_scatterplot(
 
     if not foc.is_notebook_context():
         if samples is not None:
-            logger.warning(
-                "Interactive Plotly plots are currently only supported in "
-                "notebooks"
-            )
+            logger.warning(_INTERACTIVITY_WARNING)
 
         return figure
 

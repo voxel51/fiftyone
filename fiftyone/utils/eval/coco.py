@@ -308,15 +308,14 @@ class COCODetectionResults(DetectionResults):
         self.iou_threshs = np.asarray(iou_threshs)
         self._classwise_AP = np.mean(precision, axis=(0, 2))
 
-    def plot_pr_curves(self, classes=None, backend=None, **kwargs):
+    def plot_pr_curves(self, classes=None, backend="plotly", **kwargs):
         """Plots precision-recall (PR) curves for the results.
 
         Args:
             classes (None): a list of classes to generate curves for. By
                 default, top 3 AP classes will be plotted
-            backend (None): the plotting backend to use. Supported values are
-                ``("plotly", "matplotlib")``. If no backend is specified, the
-                best applicable backend is chosen
+            backend ("plotly"): the plotting backend to use. Supported values
+                are ``("plotly", "matplotlib")``
             **kwargs: keyword arguments for the backend plotting method:
 
                 -   "plotly" backend: :meth:`fiftyone.core.plots.plotly.plot_pr_curves`

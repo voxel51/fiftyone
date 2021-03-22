@@ -735,7 +735,7 @@ class ClassificationResults(foe.EvaluationResults):
         classes=None,
         include_other=True,
         other_label="(other)",
-        backend=None,
+        backend="plotly",
         **kwargs,
     ):
         """Plots a confusion matrix for the results.
@@ -759,9 +759,8 @@ class ClassificationResults(foe.EvaluationResults):
                 are no predictions that fall in this case
             other_label ("(other)"): the label to use for "other" predictions.
                 Only applicable when ``include_other`` is True
-            backend (None): the plotting backend to use. Supported values are
-                ``("plotly", "matplotlib")``. If no backend is specified, the
-                best applicable backend is chosen
+            backend ("plotly"): the plotting backend to use. Supported values
+                are ``("plotly", "matplotlib")``
             **kwargs: keyword arguments for the backend plotting method:
 
                 -   "plotly" backend: :meth:`fiftyone.core.plots.plotly.plot_confusion_matrix`
@@ -910,15 +909,14 @@ class BinaryClassificationResults(ClassificationResults):
             sample_weight=self.weights,
         )
 
-    def plot_pr_curve(self, average="micro", backend=None, **kwargs):
+    def plot_pr_curve(self, average="micro", backend="plotly", **kwargs):
         """Plots a precision-recall (PR) curve for the results.
 
         Args:
             average ("micro"): the averaging strategy to use when computing
                 average precision
-            backend (None): the plotting backend to use. Supported values are
-                ``("plotly", "matplotlib")``. If no backend is specified, the
-                best applicable backend is chosen
+            backend ("plotly"): the plotting backend to use. Supported values
+                are ``("plotly", "matplotlib")``
             **kwargs: keyword arguments for the backend plotting method:
 
                 -   "plotly" backend: :meth:`fiftyone.core.plots.plotly.plot_pr_curve`
@@ -945,14 +943,13 @@ class BinaryClassificationResults(ClassificationResults):
             precision, recall, label=label, backend=backend, **kwargs
         )
 
-    def plot_roc_curve(self, backend=None, **kwargs):
+    def plot_roc_curve(self, backend="plotly", **kwargs):
         """Plots a receiver operating characteristic (ROC) curve for the
         results.
 
         Args:
-            backend (None): the plotting backend to use. Supported values are
-                ``("plotly", "matplotlib")``. If no backend is specified, the
-                best applicable backend is chosen
+            backend ("plotly"): the plotting backend to use. Supported values
+                are ``("plotly", "matplotlib")``
             **kwargs: keyword arguments for the backend plotting method:
 
                 -   "plotly" backend: :meth:`fiftyone.core.plots.plotly.plot_roc_curve`

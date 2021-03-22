@@ -913,7 +913,7 @@ class InteractiveCollection(InteractiveMatplotlibPlot):
             self._fc = self.collection.get_facecolors()
 
         if self._ms is None:
-            self._ms = self.collection.get_sizes()
+            self._ms = self.collection.get_sizes().astype(float)
 
         if len(self._fc) < self._num_pts:
             self._fc = np.tile(self._fc[0], (self._num_pts, 1))

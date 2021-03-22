@@ -13,45 +13,13 @@ import fiftyone.core.context as foc
 logger = logging.getLogger(__name__)
 
 
-def get_default_backend(interactive=False):
-    """Gets the default plotting backend for the current environment.
-
-    Args:
-        interactive (False): whether interactive plots are required
-
-    Returns:
-        "plotly" or "matplotlib"
-    """
-    if interactive and not foc.is_notebook_context():
-        # plotly backend does not yet support interactive plots in non-notebook
-        # contexts
-        return "matplotlib"
-
-    return "plotly"
-
-
-def _parse_backend(backend, interactive=False):
-    if backend is None:
-        return get_default_backend(interactive=interactive)
-
-    available_backends = ("matplotlib", "plotly")
-    if backend not in available_backends:
-        raise ValueError(
-            "Unsupported plotting backend '%s'; supported values are %s"
-            % backend,
-            available_backends,
-        )
-
-    return backend
-
-
 def plot_confusion_matrix(
     confusion_matrix,
     labels,
     ids=None,
     gt_field=None,
     pred_field=None,
-    backend=None,
+    backend="plotly",
     **kwargs,
 ):
     """Plots a confusion matrix.
@@ -71,9 +39,8 @@ def plot_confusion_matrix(
             the "plotly" backend
         gt_field (None): the name of the ground truth field
         pred_field (None): the name of the predictions field
-        backend (None): the plotting backend to use. Supported values are
-            ``("plotly", "matplotlib")``. If no backend is specified, the best
-            applicable backend is chosen
+        backend ("plotly"): the plotting backend to use. Supported values are
+            ``("plotly", "matplotlib")``
         **kwargs: keyword arguments for the backend plotting method:
 
             -   "plotly" backend: :meth:`fiftyone.core.plots.plotly.plot_confusion_matrix`
@@ -89,7 +56,7 @@ def plot_confusion_matrix(
             working in a notebook context
         -   a plotly or matplotlib figure, if no ``ids`` are provided
     """
-    backend = _parse_backend(backend, interactive=False)
+    backend = _parse_backend(backend)
 
     if backend == "matplotlib":
         from .matplotlib import plot_confusion_matrix as _plot_confusion_matrix
@@ -101,16 +68,15 @@ def plot_confusion_matrix(
     return _plot_confusion_matrix(confusion_matrix, labels, **kwargs)
 
 
-def plot_pr_curve(precision, recall, label=None, backend=None, **kwargs):
+def plot_pr_curve(precision, recall, label=None, backend="plotly", **kwargs):
     """Plots a precision-recall (PR) curve.
 
     Args:
         precision: an array of precision values
         recall: an array of recall values
         label (None): a label for the curve
-        backend (None): the plotting backend to use. Supported values are
-            ``("plotly", "matplotlib")``. If no backend is specified, the best
-            applicable backend is chosen
+        backend ("plotly"): the plotting backend to use. Supported values are
+            ``("plotly", "matplotlib")``
         **kwargs: keyword arguments for the backend plotting method:
 
             -   "plotly" backend: :meth:`fiftyone.core.plots.plotly.plot_pr_curve`
@@ -123,7 +89,7 @@ def plot_pr_curve(precision, recall, label=None, backend=None, **kwargs):
             are working in a notebook context and the plotly backend is used
         -   a plotly or matplotlib figure, otherwise
     """
-    backend = _parse_backend(backend, interactive=False)
+    backend = _parse_backend(backend)
 
     if backend == "matplotlib":
         from .matplotlib import plot_pr_curve as _plot_pr_curve
@@ -133,7 +99,7 @@ def plot_pr_curve(precision, recall, label=None, backend=None, **kwargs):
     return _plot_pr_curve(precision, recall, label=label, **kwargs)
 
 
-def plot_pr_curves(precisions, recall, classes, backend=None, **kwargs):
+def plot_pr_curves(precisions, recall, classes, backend="plotly", **kwargs):
     """Plots a set of per-class precision-recall (PR) curves.
 
     Args:
@@ -141,9 +107,8 @@ def plot_pr_curves(precisions, recall, classes, backend=None, **kwargs):
             precision values
         recall: an array of recall values
         classes: the list of classes
-        backend (None): the plotting backend to use. Supported values are
-            ``("plotly", "matplotlib")``. If no backend is specified, the best
-            applicable backend is chosen
+        backend ("plotly"): the plotting backend to use. Supported values are
+            ``("plotly", "matplotlib")``
         **kwargs: keyword arguments for the backend plotting method:
 
             -   "plotly" backend: :meth:`fiftyone.core.plots.plotly.plot_pr_curves`
@@ -156,7 +121,7 @@ def plot_pr_curves(precisions, recall, classes, backend=None, **kwargs):
             are working in a notebook context and the plotly backend is used
         -   a plotly or matplotlib figure, otherwise
     """
-    backend = _parse_backend(backend, interactive=False)
+    backend = _parse_backend(backend)
 
     if backend == "matplotlib":
         from .matplotlib import plot_pr_curves as _plot_pr_curves
@@ -166,16 +131,15 @@ def plot_pr_curves(precisions, recall, classes, backend=None, **kwargs):
     return _plot_pr_curves(precisions, recall, classes, **kwargs)
 
 
-def plot_roc_curve(fpr, tpr, roc_auc=None, backend=None, **kwargs):
+def plot_roc_curve(fpr, tpr, roc_auc=None, backend="plotly", **kwargs):
     """Plots a receiver operating characteristic (ROC) curve.
 
     Args:
         fpr: an array of false postive rates
         tpr: an array of true postive rates
         roc_auc (None): the area under the ROC curve
-        backend (None): the plotting backend to use. Supported values are
-            ``("plotly", "matplotlib")``. If no backend is specified, the best
-            applicable backend is chosen
+        backend ("plotly"): the plotting backend to use. Supported values are
+            ``("plotly", "matplotlib")``
         **kwargs: keyword arguments for the backend plotting method:
 
             -   "plotly" backend: :meth:`fiftyone.core.plots.plotly.plot_roc_curve`
@@ -188,7 +152,7 @@ def plot_roc_curve(fpr, tpr, roc_auc=None, backend=None, **kwargs):
             are working in a notebook context and the plotly backend is used
         -   a plotly or matplotlib figure, otherwise
     """
-    backend = _parse_backend(backend, interactive=False)
+    backend = _parse_backend(backend)
 
     if backend == "matplotlib":
         from .matplotlib import plot_roc_curve as _plot_roc_curve
@@ -205,7 +169,7 @@ def scatterplot(
     labels=None,
     sizes=None,
     classes=None,
-    backend=None,
+    backend="plotly",
     **kwargs,
 ):
     """Generates an interactive scatterplot of the given points.
@@ -242,9 +206,8 @@ def scatterplot(
             ``embedded.field.name`` of ``samples`` from which to extract values
         classes (None): an optional list of classes whose points to plot.
             Only applicable when ``labels`` contains strings
-        backend (None): the plotting backend to use. Supported values are
-            ``("plotly", "matplotlib")``. If no backend is specified, the best
-            applicable backend is chosen
+        backend ("plotly"): the plotting backend to use. Supported values are
+            ``("plotly", "matplotlib")``
         **kwargs: keyword arguments for the backend plotting method:
 
             -   "plotly" backend: :meth:`fiftyone.core.plots.plotly.scatterplot`
@@ -260,8 +223,7 @@ def scatterplot(
             a notebook context
         -   a plotly or matplotlib figure, otherwise
     """
-    interactive = samples is not None
-    backend = _parse_backend(backend, interactive=interactive)
+    backend = _parse_backend(backend)
 
     if backend == "matplotlib":
         from .matplotlib import scatterplot as _scatterplot
@@ -285,7 +247,7 @@ def location_scatterplot(
     labels=None,
     sizes=None,
     classes=None,
-    backend=None,
+    backend="plotly",
     **kwargs,
 ):
     """Generates an interactive scatterplot of the given location coordinates
@@ -323,9 +285,8 @@ def location_scatterplot(
             ``embedded.field.name`` of ``samples`` from which to extract values
         classes (None): an optional list of classes whose points to plot.
             Only applicable when ``labels`` contains strings
-        backend (None): the plotting backend to use. Supported values are
-            ``("plotly", "matplotlib")``. If no backend is specified, the best
-            applicable backend is chosen
+        backend ("plotly"): the plotting backend to use. Supported values are
+            ``("plotly", "matplotlib")``
         **kwargs: keyword arguments for the backend plotting method:
 
             -   "plotly" backend: :meth:`fiftyone.core.plots.plotly.location_scatterplot`
@@ -341,8 +302,7 @@ def location_scatterplot(
             a notebook context
         -   a plotly or matplotlib figure, otherwise
     """
-    interactive = samples is not None
-    backend = _parse_backend(backend, interactive=interactive)
+    backend = _parse_backend(backend)
 
     if backend == "matplotlib":
         from .matplotlib import location_scatterplot as _location_scatterplot
@@ -357,6 +317,21 @@ def location_scatterplot(
         classes=classes,
         **kwargs,
     )
+
+
+def _parse_backend(backend):
+    if backend is None:
+        return "plotly"
+
+    available_backends = ("matplotlib", "plotly")
+    if backend not in available_backends:
+        raise ValueError(
+            "Unsupported plotting backend '%s'; supported values are %s"
+            % backend,
+            available_backends,
+        )
+
+    return backend
 
 
 class Plot(object):
@@ -382,7 +357,7 @@ class Plot(object):
     def freeze(self):
         """Freezes the plot, replacing it with a static image.
 
-        Only applicable to notebook contexts.
+        Only applicable in notebook contexts.
         """
         raise NotImplementedError("Subclass must implement freeze()")
 
@@ -472,7 +447,7 @@ class ResponsivePlot(Plot):
 
         The plot will also be disconnected.
 
-        Only applicable to notebook contexts.
+        Only applicable in notebook contexts.
         """
         if not self.is_connected:
             raise ValueError("Plot is not connected")
