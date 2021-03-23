@@ -131,32 +131,35 @@ class OpenImagesDatasetImporter(foud.LabeledImageDatasetImporter):
 
         labels = {}
 
-        if "classifications" in self.label_types:
+        if "classifications" in self._label_types:
             # Add labels
             pos_labels, neg_labels = _create_labels(
-                self.lab_id_data, image_id, self.classes_map
+                self._lab_id_data, image_id, self._classes_map
             )
             labels["positive_labels"] = pos_labels
             labels["negative_labels"] = neg_labels
 
-        if "detections" in self.label_types:
+        if "detections" in self._label_types:
             # Add detections
             detections = _create_detections(
-                self.det_id_data, image_id, self.classes_map
+                self._det_id_data, image_id, self._classes_map
             )
             labels["detections"] = detections
 
-        if "segmentations" in self.label_types:
+        if "segmentations" in self._label_types:
             # Add segmentations
             segmentations = _create_segmentations(
-                self.seg_id_data, image_id, self.classes_map, self.dataset_dir
+                self._seg_id_data,
+                image_id,
+                self._classes_map,
+                self.dataset_dir,
             )
             labels["segmentations"] = segmentations
 
-        if "relationships" in self.label_types:
+        if "relationships" in self._label_types:
             # Add relationships
             relationships = _create_relationships(
-                self.rel_id_data, image_id, self.classes_map, self.attrs_map
+                self._rel_id_data, image_id, self._classes_map, self._attrs_map
             )
             labels["relationships"] = relationships
 
@@ -183,6 +186,30 @@ class OpenImagesDatasetImporter(foud.LabeledImageDatasetImporter):
         return _label_cls
 
     def setup(self):
+        """Find downloaded data and load all relevant labels into memory as
+            specified by the given parameters.
+
+            This method will create:
+            self._data_dir: directory containing downloaded images
+            self._filenames: specific subset of filenames to be downloaded
+
+            self._lab_id_data: dict containing classification annotations for
+                relevant files (if classifications are specified in
+                ``label_types``)
+            self._det_id_data: dict containing detection annotations for
+                relevant files (if detections are specified in
+                ``label_types``)
+
+            self._rel_id_data: dict containing relationship annotations for
+                relevant files (if relationships are specified in
+                ``label_types``)
+            self._rel_id_data: dict containing segmentation annotations for
+                relevant files (if segmentations are specified in
+                ``label_types``)
+
+            self._info: dict containing metadata like ``classes`` that will be
+                added to ``dataset.info``
+        """
         self._data_dir = os.path.join(self.dataset_dir, "data")
         dataset_dir = self.dataset_dir
         seed = self.seed
@@ -196,27 +223,16 @@ class OpenImagesDatasetImporter(foud.LabeledImageDatasetImporter):
         image_ids = self.image_ids
         image_ids_file = self.image_ids_file
 
-        metadata_path = os.path.join(self.dataset_dir, "metadata.json")
-        if os.path.isfile(metadata_path):
-            self._info = etas.load_json(metadata_path)
-        else:
-            self._info = {}
-
         _verify_version(version)
 
-        if seed is not None:
-            random.seed(seed)
+        downloaded_ids = etau.list_files(self._data_dir)
 
-        if max_samples and (label_types or classes or attrs):
-            # Only samples with every specified label type will be loaded
-            guarantee_all_types = True
+        if downloaded_ids:
+            ext = os.path.splitext(downloaded_ids[0])[1]
         else:
-            # Samples may not contain multiple label types, but will contain at
-            # least one
-            guarantee_all_types = False
-
-        if num_workers is None:
-            num_workers = multiprocessing.cpu_count()
+            logger.warning("No images found in %s" % self._data_dir)
+            self._filenames = []
+            return
 
         # No matter what classes or attributes you specify, they will not be loaded
         # if you do not want to load labels
@@ -226,7 +242,6 @@ class OpenImagesDatasetImporter(foud.LabeledImageDatasetImporter):
 
         # Determine the image IDs to load
         if not image_ids and not image_ids_file:
-            downloaded_ids = etau.list_files(self._data_dir)
             if not label_types and not classes and not attrs:
                 # No IDs were provided and no labels are being loaded
                 # Load all image IDs
@@ -236,8 +251,6 @@ class OpenImagesDatasetImporter(foud.LabeledImageDatasetImporter):
                 # the given labels later
                 specified_image_ids = None
         else:
-            downloaded_ids = etau.list_files(self._data_dir)
-
             specified_image_ids = _parse_image_ids(
                 image_ids, image_ids_file, dataset_dir,
             )
@@ -245,173 +258,61 @@ class OpenImagesDatasetImporter(foud.LabeledImageDatasetImporter):
                 set(specified_image_ids + downloaded_ids)
             )
 
-        if downloaded_ids:
-            ext = os.path.splitext(downloaded_ids[0])[1]
-        else:
-            logger.warning("No images found in %s)" % self._data_dir)
-            self._filenames = []
-            return
+        download = False
 
-        label_types = _parse_label_types(label_types)
-
-        # Map of class IDs to class names
-        classes_map = _get_classes_map(
-            dataset_dir=dataset_dir, download=False,
+        (
+            guarantee_all_types,
+            num_workers,
+            label_types,
+            classes_map,
+            all_classes,
+            oi_classes,
+            classes,
+            attrs,
+            attrs_map,
+            oi_attrs,
+            all_attrs,
+            seg_classes,
+        ) = _setup(
+            download,
+            seed,
+            max_samples,
+            label_types,
+            classes,
+            attrs,
+            num_workers,
+            dataset_dir,
         )
-        self.classes_map = classes_map
 
-        all_classes = sorted(list(classes_map.values()))
-        self._info["classes_map"] = classes_map
-        self._info["classes"] = all_classes
-
-        if classes == None:
-            oi_classes = list(classes_map.keys())
-            classes = all_classes
-
-        else:
-            oi_classes = []
-            classes_map_rev = {v: k for k, v in classes_map.items()}
-            missing_classes = []
-            filtered_classes = []
-            for c in classes:
-                try:
-                    oi_classes.append(classes_map_rev[c])
-                    filtered_classes.append(c)
-                except:
-                    missing_classes.append(c)
-            classes = filtered_classes
-            if missing_classes:
-                logger.warning(
-                    "The following are not available classes: %s\n\nYou can view "
-                    "the available classes via `get_classes()`\n"
-                    % ",".join(missing_classes)
-                )
-
-        attrs = []
-        attrs_map = {}
-        oi_attrs = []
-        if "relationships" in label_types:
-            # Map of attribute IDs to attribute names
-            attrs_map = _get_attrs_map(dataset_dir=dataset_dir, download=False)
-
-            all_attrs = sorted(list(attrs_map.values()))
-            self._info["attributes_map"] = attrs_map
-            self._info["attributes"] = all_attrs
-
-            if attrs == None:
-                oi_attrs = list(attrs_map.keys())
-                attrs = all_attrs
-
-            else:
-                attrs_map_rev = {v: k for k, v in attrs_map.items()}
-                missing_attrs = []
-                filtered_attrs = []
-                for a in attrs:
-                    try:
-                        oi_attrs.append(attrs_map_rev[a])
-                        filtered_attrs.append(a)
-                    except:
-                        missing_attrs.append(a)
-                attrs = filtered_attrs
-                if missing_attrs:
-                    logger.warning(
-                        "The following are not available attributes: %s\n\nYou "
-                        "can view the available attributes via "
-                        "`get_attributes()`\n" % ",".join(missing_attrs)
-                    )
-        self.attrs_map = attrs_map
-
-        seg_classes = []
-        if "segmentations" in label_types:
-            seg_classes = _get_seg_classes(
-                dataset_dir=dataset_dir, classes_map=classes_map,
-            )
-
-            self._info["segmentation_classes"] = seg_classes
-
-        if self.load_hierarchy:
-            # Add class hierarchy to dataset.info, used in evaluation
-            hierarchy = _get_hierarchy(
-                dataset_dir=dataset_dir, download=False,
-            )
-            self._info["hierarchy"] = hierarchy
-
-        ids_all_labels = None
-        ids_any_labels = set()
-
-        if "detections" in label_types:
-            self.det_id_data, det_ids = _get_label_data(
-                "detections", dataset_dir, [2], oi_classes,
-            )
-
-            if ids_all_labels is None:
-                ids_all_labels = det_ids
-            else:
-                ids_all_labels = ids_all_labels & det_ids
-
-            ids_any_labels = ids_any_labels | det_ids
-
-        if "classifications" in label_types:
-            self.lab_id_data, lab_ids = _get_label_data(
-                "classifications", dataset_dir, [2], oi_classes,
-            )
-
-            if ids_all_labels is None:
-                ids_all_labels = lab_ids
-            else:
-                ids_all_labels = ids_all_labels & lab_ids
-
-            ids_any_labels = ids_any_labels | lab_ids
-
-        if "relationships" in label_types:
-            self.rel_id_data, rel_ids = _get_label_data(
-                "relationships",
-                dataset_dir,
-                [1, 2],
-                oi_classes,
-                oi_attrs=oi_attrs,
-            )
-
-            if ids_all_labels is None:
-                ids_all_labels = rel_ids
-            else:
-                ids_all_labels = ids_all_labels & rel_ids
-
-            ids_any_labels = ids_any_labels | rel_ids
-
-        if "segmentations" in label_types:
-            non_seg_classes = set(classes) - set(seg_classes)
-
-            # Notify which classes do not exist only when the user specified
-            # classes
-            if non_seg_classes and len(classes) != 601:
-                logger.warning(
-                    "No segmentations exist for classes: %s\n\nYou can view the "
-                    "available segmentation classes via "
-                    "`get_segmentation_classes()`\n"
-                    % ",".join(list(non_seg_classes))
-                )
-
-            self.seg_id_data, seg_ids = _get_label_data(
-                "segmentations", dataset_dir, [2], oi_classes, id_ind=1,
-            )
-
-            if ids_all_labels is None:
-                ids_all_labels = seg_ids
-            else:
-                ids_all_labels = ids_all_labels & seg_ids
-
-            ids_any_labels = ids_any_labels | seg_ids
+        (
+            lab_id_data,
+            det_id_data,
+            rel_id_data,
+            seg_id_data,
+            seg_ids,
+            ids_any_labels,
+            ids_all_labels,
+        ) = _get_all_label_data(
+            dataset_dir,
+            label_types,
+            classes,
+            oi_classes,
+            oi_attrs=oi_attrs,
+            download=download,
+            seg_classes=seg_classes,
+        )
 
         valid_ids = specified_image_ids
-        if ext not in list(ids_any_labels)[0]:
-            ids_any_labels = set([i + ext for i in ids_any_labels])
-        if ext not in list(ids_all_labels)[0]:
-            ids_all_labels = set([i + ext for i in ids_all_labels])
 
-        ids_any_labels = ids_any_labels & set(downloaded_ids)
-        ids_all_labels = ids_all_labels & set(downloaded_ids)
         if valid_ids is None:
+            if ids_any_labels and ext not in list(ids_any_labels)[0]:
+                ids_any_labels = set([i + ext for i in ids_any_labels])
+            if ids_all_labels and ext not in list(ids_all_labels)[0]:
+                ids_all_labels = set([i + ext for i in ids_all_labels])
+
+            ids_any_labels = ids_any_labels & set(downloaded_ids)
+            ids_all_labels = ids_all_labels & set(downloaded_ids)
+
             # No IDs specified, load all IDs relevant to given classes
             if guarantee_all_types:
                 # When providing specific labels to load and max_samples, only load
@@ -441,6 +342,34 @@ class OpenImagesDatasetImporter(foud.LabeledImageDatasetImporter):
 
         if max_samples:
             valid_ids = valid_ids[:max_samples]
+
+        self._info = {}
+        if self.load_hierarchy:
+            # Add class hierarchy to dataset.info, used in evaluation
+            hierarchy = _get_hierarchy(
+                dataset_dir=dataset_dir, download=False,
+            )
+            self._info["hierarchy"] = hierarchy
+
+        if attrs_map:
+            self._info["attributes_map"] = attrs_map
+        if all_attrs:
+            self._info["attributes"] = all_attrs
+        if seg_classes:
+            self._info["segmentation_classes"] = seg_classes
+
+        self._info["classes_map"] = classes_map
+        self._info["classes"] = all_classes
+
+        self._lab_id_data = lab_id_data
+        self._det_id_data = det_id_data
+        self._rel_id_data = rel_id_data
+        self._seg_id_data = seg_id_data
+
+        self._classes_map = classes_map
+        self._attrs_map = attrs_map
+
+        self._label_types = label_types
 
         self._filenames = valid_ids
 
@@ -508,6 +437,95 @@ def download_open_images_split(
     """
     _verify_version(version)
 
+    # No matter what classes or attributes you specify, they will not be loaded
+    # if you do not want to load labels
+    if label_types == []:
+        classes = []
+        attrs = []
+
+    # Determine the image IDs to load
+    if not image_ids and not image_ids_file:
+        downloaded_ids = _get_downloaded_ids(dataset_dir)
+        if not label_types and not classes and not attrs:
+            # No IDs were provided and no labels are being loaded
+            # Load all image IDs
+            split_image_ids = _load_all_image_ids(
+                dataset_dir, split, download=True
+            )
+        else:
+            # No specific image IDs were given, load all relevant images from
+            # the given labels later
+            split_image_ids = None
+    else:
+        downloaded_ids = []
+        split_image_ids = _parse_image_ids(
+            image_ids, image_ids_file, split, dataset_dir
+        )
+
+    download = True
+
+    (
+        guarantee_all_types,
+        num_workers,
+        label_types,
+        classes_map,
+        all_classes,
+        oi_classes,
+        classes,
+        attrs,
+        attrs_map,
+        oi_attrs,
+        all_attrs,
+        seg_classes,
+    ) = _setup(
+        download,
+        seed,
+        max_samples,
+        label_types,
+        classes,
+        attrs,
+        num_workers,
+        dataset_dir,
+    )
+
+    # Download class hierarchy, used in evaluation
+    hierarchy = _get_hierarchy(
+        dataset_dir=dataset_dir, classes_map=classes_map,
+    )
+
+    num_samples = _load_open_images_split(
+        label_types,
+        guarantee_all_types,
+        split_image_ids,
+        downloaded_ids,
+        classes_map,
+        attrs_map,
+        oi_classes,
+        oi_attrs,
+        seg_classes,
+        dataset_dir,
+        split,
+        classes,
+        attrs,
+        max_samples,
+        shuffle,
+        num_workers,
+    )
+
+    return num_samples, all_classes
+
+
+def _setup(
+    download,
+    seed,
+    max_samples,
+    label_types,
+    classes,
+    attrs,
+    num_workers,
+    dataset_dir,
+):
+
     if seed is not None:
         random.seed(seed)
 
@@ -522,35 +540,10 @@ def download_open_images_split(
     if num_workers is None:
         num_workers = multiprocessing.cpu_count()
 
-    # No matter what classes or attributes you specify, they will not be loaded
-    # if you do not want to load labels
-    if label_types == []:
-        classes = []
-        attrs = []
-
-    # Determine the image IDs to load
-    if not image_ids and not image_ids_file:
-        if not label_types and not classes and not attrs:
-            # No IDs were provided and no labels are being loaded
-            # Load all image IDs
-            split_image_ids = _load_all_image_ids(
-                dataset_dir, split, download=True
-            )
-        else:
-            # No specific image IDs were given, load all relevant images from
-            # the given labels later
-            split_image_ids = None
-        downloaded_ids = _get_downloaded_ids(dataset_dir)
-    else:
-        downloaded_ids = []
-        split_image_ids = _parse_image_ids(
-            image_ids, image_ids_file, split, dataset_dir
-        )
-
     label_types = _parse_label_types(label_types)
 
     # Map of class IDs to class names
-    classes_map = _get_classes_map(dataset_dir=dataset_dir,)
+    classes_map = _get_classes_map(dataset_dir=dataset_dir, download=download)
 
     all_classes = sorted(list(classes_map.values()))
 
@@ -580,9 +573,10 @@ def download_open_images_split(
     attrs = []
     attrs_map = {}
     oi_attrs = []
+    all_attrs = []
     if "relationships" in label_types:
         # Map of attribute IDs to attribute names
-        attrs_map = _get_attrs_map(dataset_dir=dataset_dir,)
+        attrs_map = _get_attrs_map(dataset_dir=dataset_dir, download=download)
 
         all_attrs = sorted(list(attrs_map.values()))
 
@@ -611,34 +605,25 @@ def download_open_images_split(
     seg_classes = []
     if "segmentations" in label_types:
         seg_classes = _get_seg_classes(
-            dataset_dir=dataset_dir, classes_map=classes_map,
+            dataset_dir=dataset_dir,
+            classes_map=classes_map,
+            download=download,
         )
 
-    # Download class hierarchy, used in evaluation
-    hierarchy = _get_hierarchy(
-        dataset_dir=dataset_dir, classes_map=classes_map,
-    )
-
-    num_samples = _load_open_images_split(
-        label_types,
+    return (
         guarantee_all_types,
-        split_image_ids,
-        downloaded_ids,
+        num_workers,
+        label_types,
         classes_map,
-        attrs_map,
+        all_classes,
         oi_classes,
-        oi_attrs,
-        seg_classes,
-        dataset_dir,
-        split,
         classes,
         attrs,
-        max_samples,
-        shuffle,
-        num_workers,
+        attrs_map,
+        oi_attrs,
+        all_attrs,
+        seg_classes,
     )
-
-    return num_samples, all_classes
 
 
 def get_attributes(dataset_dir=None, version="v6"):
@@ -1030,37 +1015,38 @@ def _get_label_data(
     return label_id_data, relevant_ids
 
 
-def _load_open_images_split(
-    label_types,
-    guarantee_all_types,
-    split_image_ids,
-    downloaded_ids,
-    classes_map,
-    attrs_map,
-    oi_classes,
-    oi_attrs,
-    seg_classes,
+def _get_all_label_data(
     dataset_dir,
-    split,
+    label_types,
     classes,
-    attrs,
-    max_samples,
-    shuffle,
-    num_workers,
+    oi_classes,
+    oi_attrs=None,
+    split=None,
+    download=False,
+    seg_classes=None,
 ):
+
+    lab_id_data = {}
+    det_id_data = {}
+    rel_id_data = {}
+    seg_id_data = {}
+    seg_ids = set()
 
     ids_all_labels = None
     ids_any_labels = set()
 
     if "detections" in label_types:
-        annot_link = _ANNOTATION_DOWNLOAD_LINKS[split]["boxes"]
+        annot_link = None
+        if download:
+            annot_link = _ANNOTATION_DOWNLOAD_LINKS[split]["boxes"]
+
         det_id_data, det_ids = _get_label_data(
             "detections",
             dataset_dir,
             [2],
             oi_classes,
             annot_link=annot_link,
-            download=True,
+            download=download,
         )
 
         if ids_all_labels is None:
@@ -1071,14 +1057,17 @@ def _load_open_images_split(
         ids_any_labels = ids_any_labels | det_ids
 
     if "classifications" in label_types:
-        annot_link = _ANNOTATION_DOWNLOAD_LINKS[split]["labels"]
+        annot_link = None
+        if download:
+            annot_link = _ANNOTATION_DOWNLOAD_LINKS[split]["labels"]
+
         lab_id_data, lab_ids = _get_label_data(
             "classifications",
             dataset_dir,
             [2],
             oi_classes,
             annot_link=annot_link,
-            download=True,
+            download=download,
         )
 
         if ids_all_labels is None:
@@ -1089,7 +1078,10 @@ def _load_open_images_split(
         ids_any_labels = ids_any_labels | lab_ids
 
     if "relationships" in label_types:
-        annot_link = _ANNOTATION_DOWNLOAD_LINKS[split]["relationships"]
+        annot_link = None
+        if download:
+            annot_link = _ANNOTATION_DOWNLOAD_LINKS[split]["relationships"]
+
         rel_id_data, rel_ids = _get_label_data(
             "relationships",
             dataset_dir,
@@ -1097,7 +1089,7 @@ def _load_open_images_split(
             oi_classes,
             oi_attrs=oi_attrs,
             annot_link=annot_link,
-            download=True,
+            download=download,
         )
 
         if ids_all_labels is None:
@@ -1120,9 +1112,12 @@ def _load_open_images_split(
                 % ",".join(list(non_seg_classes))
             )
 
-        annot_link = _ANNOTATION_DOWNLOAD_LINKS[split]["segmentations"][
-            "mask_csv"
-        ]
+        annot_link = None
+        if download:
+            annot_link = _ANNOTATION_DOWNLOAD_LINKS[split]["segmentations"][
+                "mask_csv"
+            ]
+
         seg_id_data, seg_ids = _get_label_data(
             "segmentations",
             dataset_dir,
@@ -1130,7 +1125,7 @@ def _load_open_images_split(
             oi_classes,
             id_ind=1,
             annot_link=annot_link,
-            download=True,
+            download=download,
         )
 
         if ids_all_labels is None:
@@ -1139,6 +1134,55 @@ def _load_open_images_split(
             ids_all_labels = ids_all_labels & seg_ids
 
         ids_any_labels = ids_any_labels | seg_ids
+
+    return (
+        lab_id_data,
+        det_id_data,
+        rel_id_data,
+        seg_id_data,
+        seg_ids,
+        ids_any_labels,
+        ids_all_labels,
+    )
+
+
+def _load_open_images_split(
+    label_types,
+    guarantee_all_types,
+    split_image_ids,
+    downloaded_ids,
+    classes_map,
+    attrs_map,
+    oi_classes,
+    oi_attrs,
+    seg_classes,
+    dataset_dir,
+    split,
+    classes,
+    attrs,
+    max_samples,
+    shuffle,
+    num_workers,
+):
+
+    (
+        lab_id_data,
+        det_id_data,
+        rel_id_data,
+        seg_id_data,
+        seg_ids,
+        ids_any_labels,
+        ids_all_labels,
+    ) = _get_all_label_data(
+        dataset_dir,
+        label_types,
+        classes,
+        oi_classes,
+        oi_attrs=oi_attrs,
+        split=split,
+        download=True,
+        seg_classes=seg_classes,
+    )
 
     valid_ids = split_image_ids
 
@@ -1383,7 +1427,7 @@ def _download_if_necessary(filename, source, is_zip=False):
 
 
 def _load_all_image_ids(download_dir, split=None, download=False):
-    csv_filepath = os.path.join(download_dir, "image_ids.csv")
+    csv_filepath = os.path.join(download_dir, "metadata", "image_ids.csv")
     if download:
         annot_link = _ANNOTATION_DOWNLOAD_LINKS[split]["image_ids"]
         _download_if_necessary(csv_filepath, annot_link)
@@ -1434,22 +1478,27 @@ def _download_specific_images(
             % (existing, len(inputs))
         )
 
+    global s3_client
     s3_client = None
 
-    def initialize():
-        global s3_client
-        s3_client = boto3.client(
-            "s3",
-            config=botocore.config.Config(signature_version=botocore.UNSIGNED),
-        )
-
     with fou.ProgressBar(total=len(inputs)) as pb:
-        with multiprocessing.Pool(num_workers, initialize) as pool:
+        with multiprocessing.Pool(num_workers) as pool:
             for _ in pool.imap_unordered(_do_s3_download, inputs):
                 pb.update()
 
 
+def _initialize_pool():
+    global s3_client
+    if s3_client:
+        return
+    s3_client = boto3.client(
+        "s3",
+        config=botocore.config.Config(signature_version=botocore.UNSIGNED),
+    )
+
+
 def _do_s3_download(args):
+    _initialize_pool()
     filepath, filepath_download = args
     s3_client.download_file(_BUCKET_NAME, filepath_download, filepath)
 
