@@ -152,7 +152,13 @@ const makeTagData = (
       <span>{makeData(filteredCount, totalCount)}</span>
       <Target
         title={"Only matches"}
-        style={{ color, height: 20, width: 20, marginLeft: 8 }}
+        style={{
+          color,
+          height: 20,
+          width: 20,
+          marginLeft: 8,
+          cursor: "pointer",
+        }}
         onClick={toggleFilter}
       />
     </>
@@ -311,7 +317,7 @@ const LabelTagsCell = ({ modal }: TagsCellProps) => {
           path: "_label_tags." + name,
           data: makeTagData(
             hasFilters && !modal && !subCount[name] ? 0 : subCount[name],
-            count[name],
+            count[name] ?? 0,
             matchedTags.has(name) ? theme.font : theme.fontDark,
             (e) => {
               e.stopPropagation();

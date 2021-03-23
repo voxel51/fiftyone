@@ -994,18 +994,19 @@ export const matchedTags = selectorFamily<
   set: ({ key, modal }) => ({ get, set }, value) => {
     if (modal) {
       set(atoms.matchedTagsModal(key), value);
+    } else {
+      const stages = { ...get(filterStages) };
+      const tags = { ...(stages.tags || {}) };
+      if (value instanceof Set && value.size) {
+        tags[key] = Array.from(value);
+      } else if (stages.tags && key in stages.tags) {
+        delete tags[key];
+      }
+      stages.tags = tags;
+      if (Object.keys(stages.tags).length === 0) {
+        delete stages["tags"];
+      }
+      set(filterStages, stages);
     }
-    const stages = { ...get(filterStages) };
-    const tags = { ...(stages.tags || {}) };
-    if (value instanceof Set && value.size) {
-      tags[key] = Array.from(value);
-    } else if (stages.tags && key in stages.tags) {
-      delete tags[key];
-    }
-    stages.tags = tags;
-    if (Object.keys(stages.tags).length === 0) {
-      delete stages["tags"];
-    }
-    set(filterStages, stages);
   },
 });

@@ -117,7 +117,12 @@ export const labelFilters = selectorFamily<LabelFilters, boolean>({
   },
   set: () => ({ get, set }, _) => {
     const paths = get(selectors.labelTypesMap);
-    set(activeFields(true), get(activeFields(false)));
+    set(
+      activeFields(true),
+      get(activeFields(false)).filter(
+        (f) => !f.startsWith("tags.") && !f.startsWith("_label_tags.")
+      )
+    );
     for (const [label, type] of Object.entries(paths)) {
       const path = `${label}${getPathExtension(type)}`;
       const cPath = `${path}.confidence`;
