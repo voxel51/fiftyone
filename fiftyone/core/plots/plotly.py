@@ -1141,6 +1141,9 @@ class InteractiveScatter(PlotlyInteractivePlot):
 
         ids = []
         for idx, trace in enumerate(self._traces):
+            if trace.visible != True:
+                continue
+
             found |= trace.selectedpoints is not None
             if trace.selectedpoints:
                 ids.append(self._trace_ids[idx][list(trace.selectedpoints)])
