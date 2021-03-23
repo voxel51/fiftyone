@@ -1002,8 +1002,8 @@ def _parse_labels(ytrue, ypred, classes, missing):
     else:
         classes = list(classes)
 
-    ytrue, found_missing_true = _cleanum_labels(ytrue, missing)
-    ypred, found_missing_pred = _cleanum_labels(ypred, missing)
+    ytrue, found_missing_true = _clean_labels(ytrue, missing)
+    ypred, found_missing_pred = _clean_labels(ypred, missing)
 
     found_missing = found_missing_true or found_missing_pred
     if found_missing and missing not in classes:
@@ -1012,7 +1012,7 @@ def _parse_labels(ytrue, ypred, classes, missing):
     return ytrue, ypred, classes
 
 
-def _cleanum_labels(y, missing):
+def _clean_labels(y, missing):
     found_missing = False
 
     yclean = []
