@@ -224,6 +224,11 @@ class COCOEvaluation(DetectionEvaluation):
 
                 tp_fp = [1] * len(tp) + [0] * len(fp)
                 confs = [p[3] for p in tp] + [p[3] for p in fp]
+                if None in confs:
+                    raise ValueError(
+                        "Average precision is a ranking based metric, detections in pred_field"
+                        " sample should have a confidence attribute "
+                    )
                 inds = np.argsort(-np.array(confs), kind="mergesort")
                 tp_fp = np.array(tp_fp)[inds]
                 tp_sum = np.cumsum(tp_fp).astype(dtype=np.float)
