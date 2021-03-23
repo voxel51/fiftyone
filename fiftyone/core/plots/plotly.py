@@ -34,6 +34,8 @@ _DEFAULT_LAYOUT = dict(
     template="ggplot2", margin={"r": 0, "t": 30, "l": 0, "b": 0}
 )
 
+_DEFAULT_LINE_COLOR = "#FF6D04"
+
 _INTERACTIVE_PLOT_WARNING = (
     "Interactive Plotly plots are currently only supported in notebooks, but "
     "this will change in an upcoming release. In the meantime, if you want to "
@@ -207,15 +209,15 @@ def _plot_confusion_matrix_interactive(
     return plot
 
 
-def plot_pr_curve(precision, recall, label=None, style="line", layout=None):
+def plot_pr_curve(precision, recall, label=None, style="area", layout=None):
     """Plots a precision-recall (PR) curve.
 
     Args:
         precision: an array of precision values
         recall: an array of recall values
         label (None): a label for the curve
-        style ("line"): a plot style to use. Supported values are
-            ``("line", "area")``
+        style ("area"): a plot style to use. Supported values are
+            ``("area", "line")``
         layout (None): an optional dict of parameters for
             ``plotly.graph_objects.Figure.update_layout(**layout)``
 
@@ -226,16 +228,17 @@ def plot_pr_curve(precision, recall, label=None, style="line", layout=None):
             context
         -   a plotly figure, otherwise
     """
-    if style == "area":
-        plot = px.area
+    if style == "line":
+        plot = px.line
     else:
-        if style != "line":
-            msg = "Unsupported style '%s'; using 'line' instead" % style
+        if style != "area":
+            msg = "Unsupported style '%s'; using 'area' instead" % style
             warnings.warn(msg)
 
-        plot = px.line
+        plot = px.area
 
     figure = plot(x=recall, y=precision)
+    figure.update_traces(line_color=_DEFAULT_LINE_COLOR)
 
     # Add 50/50 line
     figure.add_shape(
@@ -342,15 +345,15 @@ def plot_pr_curves(precisions, recall, classes, layout=None):
     return figure
 
 
-def plot_roc_curve(fpr, tpr, roc_auc=None, style="line", layout=None):
+def plot_roc_curve(fpr, tpr, roc_auc=None, style="area", layout=None):
     """Plots a receiver operating characteristic (ROC) curve.
 
     Args:
         fpr: an array of false postive rates
         tpr: an array of true postive rates
         roc_auc (None): the area under the ROC curve
-        style ("line"): a plot style to use. Supported values are
-            ``("line", "area")``
+        style ("area"): a plot style to use. Supported values are
+            ``("area", "line")``
         layout (None): an optional dict of parameters for
             ``plotly.graph_objects.Figure.update_layout(**layout)``
 
@@ -361,16 +364,17 @@ def plot_roc_curve(fpr, tpr, roc_auc=None, style="line", layout=None):
             context
         -   a plotly figure, otherwise
     """
-    if style == "area":
-        plot = px.area
+    if style == "line":
+        plot = px.line
     else:
-        if style != "line":
-            msg = "Unsupported style '%s'; using 'line' instead" % style
+        if style != "area":
+            msg = "Unsupported style '%s'; using 'area' instead" % style
             warnings.warn(msg)
 
-        plot = px.line
+        plot = px.area
 
     figure = plot(x=fpr, y=tpr)
+    figure.update_traces(line_color=_DEFAULT_LINE_COLOR)
 
     # Add 50/50 line
     figure.add_shape(
