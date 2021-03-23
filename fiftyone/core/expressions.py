@@ -2220,6 +2220,42 @@ class ViewExpression(object):
         """
         return ViewExpression({"$concatArrays": [self] + list(args)})
 
+    def union(self, *args):
+        """Takes the union of the given array(s) or array expression(s) to this
+        expression, which must resolve to an array.
+
+        The arrays are treated as sets, and all duplicates are removed.
+
+        Examples::
+
+            import fiftyone as fo
+            from fiftyone import ViewField as F
+
+            dataset = fo.Dataset()
+            dataset.add_samples(
+                [
+                    fo.Sample(
+                        filepath="image1.jpg",
+                        tags=["a", "b"],
+                        other_tags=["a", "c"]
+                    )
+                ]
+            )
+
+            # Sets `tags` as the union of `tags` and `other_tags`
+            view = dataset.set_field("tags", F("tags").union(F("other_tags")))
+
+            print(view.first().tags)
+
+        Args:
+            *args: one or more arrays or :class:`ViewExpression` instances that
+                resolve to array expressions
+
+        Returns:
+            a :class:`ViewExpression`
+        """
+        return ViewExpression({"$setUnion": [self] + list(args)})
+
     def sum(self):
         """Returns the sum of the values in this expression, which must resolve
         to a numeric array.
