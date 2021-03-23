@@ -304,15 +304,15 @@ class OpenImagesDatasetImporter(foud.LabeledImageDatasetImporter):
 
         valid_ids = specified_image_ids
 
-        if ext not in list(ids_any_labels)[0]:
-            ids_any_labels = set([i + ext for i in ids_any_labels])
-        if ext not in list(ids_all_labels)[0]:
-            ids_all_labels = set([i + ext for i in ids_all_labels])
-
-        ids_any_labels = ids_any_labels & set(downloaded_ids)
-        ids_all_labels = ids_all_labels & set(downloaded_ids)
-
         if valid_ids is None:
+            if ids_any_labels and ext not in list(ids_any_labels)[0]:
+                ids_any_labels = set([i + ext for i in ids_any_labels])
+            if ids_all_labels and ext not in list(ids_all_labels)[0]:
+                ids_all_labels = set([i + ext for i in ids_all_labels])
+
+            ids_any_labels = ids_any_labels & set(downloaded_ids)
+            ids_all_labels = ids_all_labels & set(downloaded_ids)
+
             # No IDs specified, load all IDs relevant to given classes
             if guarantee_all_types:
                 # When providing specific labels to load and max_samples, only load
@@ -1427,7 +1427,7 @@ def _download_if_necessary(filename, source, is_zip=False):
 
 
 def _load_all_image_ids(download_dir, split=None, download=False):
-    csv_filepath = os.path.join(download_dir, "image_ids.csv")
+    csv_filepath = os.path.join(download_dir, "metadata", "image_ids.csv")
     if download:
         annot_link = _ANNOTATION_DOWNLOAD_LINKS[split]["image_ids"]
         _download_if_necessary(csv_filepath, annot_link)
