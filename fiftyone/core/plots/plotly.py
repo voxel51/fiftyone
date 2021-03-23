@@ -302,7 +302,9 @@ def plot_pr_curves(precisions, recall, classes, layout=None):
     avg_precisions = np.mean(precisions, axis=1)
     inds = np.argsort(-avg_precisions)  # negative for descending order
 
-    for idx in inds:
+    colors = _get_qualitative_colors(len(inds))
+
+    for idx, color in zip(inds, colors):
         precision = precisions[idx]
         _class = classes[idx]
         avg_precision = avg_precisions[idx]
@@ -313,6 +315,7 @@ def plot_pr_curves(precisions, recall, classes, layout=None):
             y=precision,
             name=label,
             mode="lines",
+            line_color=color,
             text=np.full(recall.shape, _class),
             hovertemplate=hovertemplate,
         )
@@ -1640,8 +1643,12 @@ def _plot_scatter_categorical(
     sizes_title,
     colorbar_title,
     axis_equal,
+    colors=None,
 ):
     num_dims = points.shape[1]
+    num_classes = len(classes)
+
+    colors = _get_qualitative_colors(num_classes, colors=colors)
 
     hover_lines = ["<b>%s: %%{text}</b>" % labels_title]
 
@@ -1663,7 +1670,7 @@ def _plot_scatter_categorical(
     hovertemplate = "<br>".join(hover_lines) + "<extra></extra>"
 
     traces = []
-    for label in classes:
+    for label, color in zip(classes, colors):
         label_inds = labels == label
 
         if ids is not None:
@@ -1688,6 +1695,7 @@ def _plot_scatter_categorical(
             mode="markers",
             showlegend=True,
             name=label,
+            line_color=color,
             marker=marker,
             text=np.full(np.count_nonzero(label_inds), label),
             hovertemplate=hovertemplate,
@@ -1733,20 +1741,11 @@ def _plot_scatter_categorical_single_trace(
     colors=None,
 ):
     num_dims = points.shape[1]
-
-    if colors is None:
-        colors = px.colors.qualitative.Plotly
-
     num_classes = len(classes)
     targets = [classes.index(l) for l in labels]
     clim = [-0.5, num_classes - 0.5]
 
-    # @todo how to blend for >10 classes?
-    colorscale = []
-    for i in range(num_classes):
-        color = colors[i % len(colors)]
-        colorscale.append([i / num_classes, color])
-        colorscale.append([(i + 1) / num_classes, color])
+    colorscale = _get_qualitative_colorscale(num_classes, colors=colors)
 
     marker = dict(
         color=targets,
@@ -1912,7 +1911,11 @@ def _plot_scatter_mapbox_categorical(
     labels_title,
     sizes_title,
     colorbar_title,
+    colors=None,
 ):
+    num_classes = len(classes)
+    colors = _get_qualitative_colors(num_classes, colors=colors)
+
     hover_lines = ["<b>%s: %%{text}</b>" % labels_title]
 
     if sizes is not None:
@@ -1930,7 +1933,7 @@ def _plot_scatter_mapbox_categorical(
     hovertemplate = "<br>".join(hover_lines) + "<extra></extra>"
 
     traces = []
-    for label in classes:
+    for label, color in zip(classes, colors):
         label_inds = labels == label
 
         if ids is not None:
@@ -1957,6 +1960,7 @@ def _plot_scatter_mapbox_categorical(
             mode="markers",
             showlegend=True,
             name=label,
+            line_color=color,
             marker=marker,
             text=np.full(np.count_nonzero(label_inds), label),
             hovertemplate=hovertemplate,
@@ -1987,19 +1991,11 @@ def _plot_scatter_mapbox_categorical_single_trace(
     colorbar_title,
     colors=None,
 ):
-    if colors is None:
-        colors = px.colors.qualitative.Plotly
-
     num_classes = len(classes)
     targets = [classes.index(l) for l in labels]
     clim = [-0.5, num_classes - 0.5]
 
-    # @todo how to blend for >10 classes?
-    colorscale = []
-    for i in range(num_classes):
-        color = colors[i % len(colors)]
-        colorscale.append([i / num_classes, color])
-        colorscale.append([(i + 1) / num_classes, color])
+    colorscale = _get_qualitative_colorscale(num_classes, colors=colors)
 
     marker = dict(
         color=targets,
@@ -2203,6 +2199,30 @@ def _plot_scatter_mapbox_density(
     figure.update_layout(legend_title_text=colorbar_title)
 
     return figure
+
+
+def _get_qualitative_colors(num_classes, colors=None):
+    # Some color choices:
+    # https://plotly.com/python/discrete-color/#color-sequences-in-plotly-express
+    if colors is None:
+        if num_classes <= 10:
+            colors = px.colors.qualitative.G10
+        else:
+            colors = px.colors.qualitative.Alphabet
+
+    # @todo can we blend when there are more classes than colors?
+    return [colors[i % len(colors)] for i in range(num_classes)]
+
+
+def _get_qualitative_colorscale(num_classes, colors=None):
+    colors = _get_qualitative_colors(num_classes, colors=colors)
+
+    colorscale = []
+    for i, color in enumerate(colors):
+        colorscale.append([i / num_classes, color])
+        colorscale.append([(i + 1) / num_classes, color])
+
+    return colorscale
 
 
 # source: https://stackoverflow.com/a/64148305
