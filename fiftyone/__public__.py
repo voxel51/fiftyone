@@ -40,6 +40,7 @@ from .core.dataset import (
 from .core.expressions import (
     ViewField,
     ViewExpression,
+    VALUE,
 )
 from .core.fields import (
     ArrayField,
