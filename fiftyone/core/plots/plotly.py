@@ -36,13 +36,6 @@ _DEFAULT_LAYOUT = dict(
 
 _DEFAULT_LINE_COLOR = "#FF6D04"
 
-_INTERACTIVE_PLOT_WARNING = (
-    "Interactive Plotly plots are currently only supported in notebooks, but "
-    "this will change in an upcoming release. In the meantime, if you want to "
-    "connect plots of this type to an App session outside of a notebook, use "
-    "the 'matplotlib' backend"
-)
-
 
 def plot_confusion_matrix(
     confusion_matrix,
@@ -82,10 +75,6 @@ def plot_confusion_matrix(
         -   a plotly figure, if no ``ids`` are provided and you are not working
             in a notebook context
     """
-    if ids is not None and not foc.is_notebook_context():
-        warnings.warn(_INTERACTIVE_PLOT_WARNING)
-        ids = None
-
     if ids is None:
         return _plot_confusion_matrix_static(
             confusion_matrix, labels, colorscale=colorscale, layout=layout
@@ -478,7 +467,7 @@ def scatterplot(
         one of the following:
 
         -   an :class:`InteractiveScatter`, for 2D points and when ``samples``
-            are provided and you're working in a notebook context
+            are provided
         -   a :class:`PlotlyNotebookPlot`, if you're working in a notebook
             context but the above conditions aren't met
         -   a plotly figure, otherwise
@@ -555,14 +544,11 @@ def scatterplot(
 
         return figure
 
-    if not foc.is_notebook_context():
-        if samples is not None:
-            warnings.warn(_INTERACTIVE_PLOT_WARNING)
+    if ids is None:
+        if foc.is_notebook_context():
+            return PlotlyNotebookPlot(figure)
 
         return figure
-
-    if ids is None:
-        return PlotlyNotebookPlot(figure)
 
     link_type = "labels" if label_field is not None else "samples"
     return InteractiveScatter(
@@ -775,10 +761,10 @@ def location_scatterplot(
     Returns:
         one of the following:
 
-        -   an :class:`InteractiveScatter`, when ``samples`` are provided and
+        -   an :class:`InteractiveScatter`, if ``samples`` are provided and
             you're working in a notebook context
-        -   a :class:`PlotlyNotebookPlot`, if you're working in a notebook
-            context but ``samples`` are not provided
+        -   a :class:`PlotlyNotebookPlot`, if ``samples`` are not provided but
+            you're working in a notebook
         -   a plotly figure, otherwise
     """
     locations = _parse_locations(locations, samples)
@@ -865,14 +851,11 @@ def location_scatterplot(
 
         return figure
 
-    if not foc.is_notebook_context():
-        if samples is not None:
-            warnings.warn(_INTERACTIVE_PLOT_WARNING)
+    if ids is None:
+        if foc.is_notebook_context():
+            return PlotlyNotebookPlot(figure)
 
         return figure
-
-    if ids is None:
-        return PlotlyNotebookPlot(figure)
 
     return InteractiveScatter(figure, init_view=samples)
 
@@ -909,19 +892,28 @@ class PlotlyWidgetMixin(object):
     """
 
     def __init__(self, widget):
+        self._widget = widget
+        self._handle = None
+
         if foc.is_notebook_context():
             _check_plotly_notebook_environment()
         else:
-            warnings.warn(_INTERACTIVE_PLOT_WARNING)
+            msg = (
+                "Interactive Plotly plots are currently only supported in "
+                "notebooks, but this will change in an upcoming release. In "
+                "the meantime, you can still use this plot in a non-notebook "
+                "context, but (i) selecting data will not trigger callbacks, "
+                "and (ii) you must manually call `plot.show()` to launch a "
+                "new plot that reflects the current state of an attached "
+                "session"
+            )
+            warnings.warn(msg)
 
             # If the user is using a widget-based plot outside of a notebook
             # context, go ahead and connect it so they can start manually
             # updating it and `show()`ing it, if desired
             if isinstance(self, ResponsivePlot):
                 self.connect()
-
-        self._widget = widget
-        self._handle = None
 
     def _update_layout(self, **kwargs):
         if kwargs:

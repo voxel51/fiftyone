@@ -52,9 +52,9 @@ def plot_confusion_matrix(
         -   a :class:`fiftyone.core.plots.plotly.PlotlyHeatmap`, if ``ids`` are
             provided and the plotly backend is used
         -   a :class:`fiftyone.core.plots.plotly.PlotlyNotebookPlot`, if no
-            ``ids`` are provided but the plotly backend is used and you are
-            working in a notebook context
-        -   a plotly or matplotlib figure, if no ``ids`` are provided
+            ``ids`` are provided but you are working in a notebook context with
+            the plotly backend
+        -   a plotly or matplotlib figure, otherwise
     """
     backend = _parse_backend(backend)
 
@@ -226,10 +226,10 @@ def scatterplot(
         one of the following:
 
         -   an :class:`fiftyone.core.plots.base.InteractivePlot`, if
-            ``samples`` are provided and the backend supports interactivity
-        -   a :class:`fiftyone.core.plots.plotly.PlotlyNotebookPlot`, if no
-            samples are provided but you are working with the plotly backend in
-            a notebook context
+            ``samples`` are provided
+        -   a :class:`fiftyone.core.plots.plotly.PlotlyNotebookPlot`, if
+            ``samples`` are not provided but you are working with the plotly
+            backend in a notebook context
         -   a plotly or matplotlib figure, otherwise
     """
     backend = _parse_backend(backend)
@@ -310,10 +310,10 @@ def location_scatterplot(
         one of the following:
 
         -   an :class:`fiftyone.core.plots.base.InteractivePlot`, if
-            ``samples`` are provided and the backend supports interactivity
-        -   a :class:`fiftyone.core.plots.plotly.PlotlyNotebookPlot`, if no
-            samples are provided but you are working with the plotly backend in
-            a notebook context
+            ``samples`` are provided
+        -   a :class:`fiftyone.core.plots.plotly.PlotlyNotebookPlot`, if
+            ``samples`` are not provided but you are working with the plotly
+            backend in a notebook context
         -   a plotly or matplotlib figure, otherwise
     """
     backend = _parse_backend(backend)

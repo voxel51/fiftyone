@@ -770,9 +770,8 @@ class ClassificationResults(foe.EvaluationResults):
             one of the following:
 
             -   a :class:`fiftyone.core.plots.plotly.PlotlyHeatmap`, if the
-                plotly backend is used and you are working in a notebook
-                context
-            -   a plotly or matplotlib figure, otherwise
+                plotly backend is used
+            -   a matplotlib figure, otherwise
         """
         _labels = self._get_labels(classes, include_missing=True)
         confusion_matrix, labels, ids = self._confusion_matrix(
