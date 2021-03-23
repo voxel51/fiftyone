@@ -678,6 +678,9 @@ class SampleCollection(object):
                     for frame_number, frame_label_ids in zip(
                         sample_frame_numbers, sample_label_ids
                     ):
+                        if not frame_label_ids:
+                            continue
+
                         if not list_field:
                             frame_label_ids = [frame_label_ids]
 
@@ -692,6 +695,9 @@ class SampleCollection(object):
                             )
             else:
                 for sample_id, sample_label_ids in zip(sample_ids, label_ids):
+                    if not sample_label_ids:
+                        continue
+
                     if not list_field:
                         sample_label_ids = [sample_label_ids]
 

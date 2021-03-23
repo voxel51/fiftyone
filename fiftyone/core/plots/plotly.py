@@ -1,5 +1,5 @@
 """
-Plotly utilities.
+Plotly plots.
 
 | Copyright 2017-2021, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -9,25 +9,32 @@ from collections import defaultdict
 import itertools
 import logging
 import os
+import warnings
 
 import numpy as np
-import plotly.callbacks as pcb
+import plotly.callbacks as pc
 import plotly.express as px
-import plotly.graph_objects as pgo
+import plotly.graph_objects as go
 
 import eta.core.utils as etau
 
+import fiftyone as fo
 import fiftyone.core.context as foc
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.utils as fou
 
-from .interactive import InteractivePlot
-
-mpl = fou.lazy_import("matplotlib")
+from .base import Plot, InteractivePlot, ResponsivePlot
 
 
 logger = logging.getLogger(__name__)
+
+
+_DEFAULT_LAYOUT = dict(
+    template="ggplot2", margin={"r": 0, "t": 30, "l": 0, "b": 0}
+)
+
+_DEFAULT_LINE_COLOR = "#FF6D04"
 
 
 def plot_confusion_matrix(
@@ -36,14 +43,16 @@ def plot_confusion_matrix(
     ids=None,
     gt_field=None,
     pred_field=None,
-    colorscale=None,
+    colorscale="oranges",
     layout=None,
-    show=True,
 ):
     """Plots a confusion matrix.
 
-    If ``ids`` are provided, a :class:`PlotlyHeatmap` is returned that can be
-    used to interactively select cells and retrive their corresponding IDs.
+    If ``ids`` are provided, this method returns a :class:`PlotlyHeatmap` that
+    you can attach to an App session via its
+    :attr:`fiftyone.core.session.Session.plots` attribute, which will
+    automatically sync the session's view with the currently selected cells in
+    the confusion matrix.
 
     Args:
         confusion_matrix: a ``num_true x num_preds`` confusion matrix
@@ -52,42 +61,23 @@ def plot_confusion_matrix(
             containing lists of IDs corresponding to each cell
         gt_field (None): the name of the ground truth field
         pred_field (None): the name of the predictions field
-        colorscale (None): a plotly colorscale to use
-        template ("simple_white"): a plotly template to use. See
-            `https://plotly.com/python/templates` for more information
+        colorscale ("oranges"): a plotly colorscale to use. See
+            https://plotly.com/python/builtin-colorscales for options
         layout (None): an optional dict of parameters for
             ``plotly.graph_objects.Figure.update_layout(**layout)``
-        show (True): whether to show the plot
 
     Returns:
         one of the following:
 
         -   a :class:`PlotlyHeatmap`, if ``ids`` are provided
-        -   a ``plotly.graph_objects.Figure``, if no ``ids`` are provided
+        -   a :class:`PlotlyNotebookPlot`, if no ``ids`` are provided and you
+            are working in a notebook context
+        -   a plotly figure, if no ``ids`` are provided and you are not working
+            in a notebook context
     """
-    if ids is not None and not foc.is_notebook_context():
-        logger.warning(
-            "Interactive Plotly plots are currently only supported in "
-            "notebooks"
-        )
-        ids = None
-
-    if layout is None:
-        layout = {}
-
-    # This template does a good job of hiding the fact that the axis limits
-    # occasionally stretch beyond the domain of the heatmap (despite best
-    # efforts to avoid the stretching...)
-    if "template" not in layout:
-        layout["template"] = "simple_white"
-
     if ids is None:
         return _plot_confusion_matrix_static(
-            confusion_matrix,
-            labels,
-            colorscale=colorscale,
-            layout=layout,
-            show=show,
+            confusion_matrix, labels, colorscale=colorscale, layout=layout
         )
 
     return _plot_confusion_matrix_interactive(
@@ -98,12 +88,11 @@ def plot_confusion_matrix(
         pred_field=pred_field,
         colorscale=colorscale,
         layout=layout,
-        show=show,
     )
 
 
 def _plot_confusion_matrix_static(
-    confusion_matrix, labels, colorscale=None, layout=None, show=True
+    confusion_matrix, labels, colorscale=None, layout=None
 ):
     confusion_matrix = np.asarray(confusion_matrix)
     num_rows, num_cols = confusion_matrix.shape
@@ -116,9 +105,18 @@ def _plot_confusion_matrix_static(
     ]
     hovertemplate = "<br>".join(hover_lines) + "<extra></extra>"
 
-    heatmap = pgo.Heatmap(
-        x=labels[:num_cols],
-        y=labels[:num_rows],
+    xlabels = labels[:num_cols]
+    ylabels = labels[:num_rows]
+
+    # Flip data so plot will have the standard descending diagnoal
+    # Flipping the yaxis via `autorange="reversed"` isn't an option because
+    # screenshots don't seem to respect that setting...
+    confusion_matrix = np.flip(confusion_matrix, axis=0)
+    ylabels = np.flip(ylabels)
+
+    heatmap = go.Heatmap(
+        x=xlabels,
+        y=ylabels,
         z=confusion_matrix,
         zmin=zlim[0],
         zmax=zlim[1],
@@ -127,14 +125,13 @@ def _plot_confusion_matrix_static(
         hovertemplate=hovertemplate,
     )
 
-    figure = pgo.Figure(heatmap)
+    figure = go.Figure(heatmap)
 
     figure.update_layout(
         xaxis=dict(range=[-0.5, num_cols - 0.5], constrain="domain"),
         yaxis=dict(
             range=[-0.5, num_rows - 0.5],
             constrain="domain",
-            autorange="reversed",
             scaleanchor="x",
             scaleratio=1,
         ),
@@ -142,11 +139,13 @@ def _plot_confusion_matrix_static(
         yaxis_title="True label",
     )
 
+    figure.update_layout(**_DEFAULT_LAYOUT)
+
     if layout:
         figure.update_layout(**layout)
 
-    if show:
-        figure.show()
+    if foc.is_notebook_context():
+        figure = PlotlyNotebookPlot(figure)
 
     return figure
 
@@ -159,11 +158,9 @@ def _plot_confusion_matrix_interactive(
     pred_field=None,
     colorscale=None,
     layout=None,
-    show=True,
 ):
     confusion_matrix = np.asarray(confusion_matrix)
     ids = np.asarray(ids)
-
     num_rows, num_cols = confusion_matrix.shape
     zlim = [0, confusion_matrix.max()]
 
@@ -172,29 +169,36 @@ def _plot_confusion_matrix_interactive(
     else:
         label_fields = None
 
+    xlabels = labels[:num_cols]
+    ylabels = labels[:num_rows]
+
+    # Flip data so plot will have the standard descending diagnoal
+    # Flipping the yaxis via `autorange="reversed"` isn't an option because
+    # screenshots don't seem to respect that setting...
+    confusion_matrix = np.flip(confusion_matrix, axis=0)
+    ids = np.flip(ids, axis=0)
+    ylabels = np.flip(ylabels)
+
     plot = PlotlyHeatmap(
         confusion_matrix,
         ids,
         link_type="labels",
         label_fields=label_fields,
-        xlabels=labels[:num_cols],
-        ylabels=labels[:num_rows],
+        xlabels=xlabels,
+        ylabels=ylabels,
         zlim=zlim,
         colorscale=colorscale,
     )
 
-    if layout:
-        plot._figure.update_layout(**layout)
+    plot.update_layout(**_DEFAULT_LAYOUT)
 
-    if show:
-        plot.show()
+    if layout:
+        plot.update_layout(**layout)
 
     return plot
 
 
-def plot_pr_curve(
-    precision, recall, label=None, style="area", layout=None, show=True
-):
+def plot_pr_curve(precision, recall, label=None, style="area", layout=None):
     """Plots a precision-recall (PR) curve.
 
     Args:
@@ -205,22 +209,25 @@ def plot_pr_curve(
             ``("area", "line")``
         layout (None): an optional dict of parameters for
             ``plotly.graph_objects.Figure.update_layout(**layout)``
-        show (True): whether to show the plot
 
     Returns:
-        a ``plotly.graph_objects.Figure``
+        one of the following:
+
+        -   a :class:`PlotlyNotebookPlot`, if you are working in a notebook
+            context
+        -   a plotly figure, otherwise
     """
     if style == "line":
         plot = px.line
     else:
         if style != "area":
-            logger.warning(
-                "Unsupported style '%s'; using 'area' instead", style
-            )
+            msg = "Unsupported style '%s'; using 'area' instead" % style
+            warnings.warn(msg)
 
         plot = px.area
 
     figure = plot(x=recall, y=precision)
+    figure.update_traces(line_color=_DEFAULT_LINE_COLOR)
 
     # Add 50/50 line
     figure.add_shape(
@@ -239,16 +246,18 @@ def plot_pr_curve(
         yaxis_title="Precision",
     )
 
+    figure.update_layout(**_DEFAULT_LAYOUT)
+
     if layout:
         figure.update_layout(**layout)
 
-    if show:
-        figure.show()
+    if foc.is_notebook_context():
+        figure = PlotlyNotebookPlot(figure)
 
     return figure
 
 
-def plot_pr_curves(precisions, recall, classes, layout=None, show=True):
+def plot_pr_curves(precisions, recall, classes, layout=None):
     """Plots a set of per-class precision-recall (PR) curves.
 
     Args:
@@ -258,12 +267,15 @@ def plot_pr_curves(precisions, recall, classes, layout=None, show=True):
         classes: the list of classes
         layout (None): an optional dict of parameters for
             ``plotly.graph_objects.Figure.update_layout(**layout)``
-        show (True): whether to show the plot
 
     Returns:
-        a ``plotly.graph_objects.Figure``
+        one of the following:
+
+        -   a :class:`PlotlyNotebookPlot`, if you are working in a notebook
+            context
+        -   a plotly figure, otherwise
     """
-    figure = pgo.Figure()
+    figure = go.Figure()
 
     # Add 50/50 line
     figure.add_shape(
@@ -278,15 +290,24 @@ def plot_pr_curves(precisions, recall, classes, layout=None, show=True):
 
     hovertemplate = "<br>".join(hover_lines) + "<extra></extra>"
 
-    for precision, _class in zip(precisions, classes):
-        avg_precision = np.mean(precision)
+    # Plot in descending order of AP
+    avg_precisions = np.mean(precisions, axis=1)
+    inds = np.argsort(-avg_precisions)  # negative for descending order
+
+    colors = _get_qualitative_colors(len(inds))
+
+    for idx, color in zip(inds, colors):
+        precision = precisions[idx]
+        _class = classes[idx]
+        avg_precision = avg_precisions[idx]
         label = "%s (AP = %.3f)" % (_class, avg_precision)
 
-        line = pgo.Scatter(
+        line = go.Scatter(
             x=recall,
             y=precision,
             name=label,
             mode="lines",
+            line_color=color,
             text=np.full(recall.shape, _class),
             hovertemplate=hovertemplate,
         )
@@ -302,18 +323,18 @@ def plot_pr_curves(precisions, recall, classes, layout=None, show=True):
         yaxis_title="Precision",
     )
 
+    figure.update_layout(**_DEFAULT_LAYOUT)
+
     if layout:
         figure.update_layout(**layout)
 
-    if show:
-        figure.show()
+    if foc.is_notebook_context():
+        figure = PlotlyNotebookPlot(figure)
 
     return figure
 
 
-def plot_roc_curve(
-    fpr, tpr, roc_auc=None, style="area", layout=None, show=True
-):
+def plot_roc_curve(fpr, tpr, roc_auc=None, style="area", layout=None):
     """Plots a receiver operating characteristic (ROC) curve.
 
     Args:
@@ -324,22 +345,25 @@ def plot_roc_curve(
             ``("area", "line")``
         layout (None): an optional dict of parameters for
             ``plotly.graph_objects.Figure.update_layout(**layout)``
-        show (True): whether to show the plot
 
     Returns:
-        a ``plotly.graph_objects.Figure``
+        one of the following:
+
+        -   a :class:`PlotlyNotebookPlot`, if you are working in a notebook
+            context
+        -   a plotly figure, otherwise
     """
     if style == "line":
         plot = px.line
     else:
         if style != "area":
-            logger.warning(
-                "Unsupported style '%s'; using 'area' instead", style
-            )
+            msg = "Unsupported style '%s'; using 'area' instead" % style
+            warnings.warn(msg)
 
         plot = px.area
 
     figure = plot(x=fpr, y=tpr)
+    figure.update_traces(line_color=_DEFAULT_LINE_COLOR)
 
     # Add 50/50 line
     figure.add_shape(
@@ -360,11 +384,13 @@ def plot_roc_curve(
         yaxis_title="True positive rate",
     )
 
+    figure.update_layout(**_DEFAULT_LAYOUT)
+
     if layout:
         figure.update_layout(**layout)
 
-    if show:
-        figure.show()
+    if foc.is_notebook_context():
+        figure = PlotlyNotebookPlot(figure)
 
     return figure
 
@@ -373,26 +399,30 @@ def scatterplot(
     points,
     samples=None,
     label_field=None,
-    field=None,
     labels=None,
+    sizes=None,
     classes=None,
     multi_trace=None,
     marker_size=None,
+    labels_title=None,
+    sizes_title=None,
+    show_colorbar_title=None,
+    axis_equal=False,
     layout=None,
-    show=True,
 ):
     """Generates an interactive scatterplot of the given points.
+
+    You can attach plots generated by this method to an App session via its
+    :attr:`fiftyone.core.session.Session.plots` attribute, which will
+    automatically sync the session's view with the currently selected points in
+    the plot. To enable this functionality, you must pass ``samples`` to this
+    method.
 
     This method supports 2D or 3D visualizations, but interactive point
     selection is only aviailable in 2D.
 
-    You can use the ``field`` or ``labels`` parameters to define a coloring for
-    the points.
-
-    You can connect this method to a :class:`fiftyone.core.session.Session`
-    in order to automatically sync the session's view with the currently
-    selected points in the plot. To enable this functionality, pass ``samples``
-    to this method.
+    You can use the ``labels`` parameters to define a coloring for the points,
+    and you can use the ``sizes`` parameter to scale the sizes of the points.
 
     Args:
         points: a ``num_points x num_dims`` array of points
@@ -401,26 +431,46 @@ def scatterplot(
         label_field (None): a :class:`fiftyone.core.labels.Label` field
             containing the labels corresponding to ``points``. If not provided,
             the points are assumed to correspond to samples
-        field (None): a sample field or ``embedded.field.name`` to use to
-            color the points. Can be numeric or strings
-        labels (None): a list of numeric or string values to use to color
-            the points
+        labels (None): data to use to color points. Can be a list (or nested
+            list, if ``label_field`` refers to a label list field like
+            :class:`fiftyone.core.labels.Detections`) or array-like of numeric
+            or string values, or the name of a sample field or
+            ``embedded.field.name`` of ``samples`` from which to extract values
+        sizes (None): data to use to scale the sizes of the points. Can be a
+            list (or nested list, if ``label_field`` refers to a label list
+            field like :class:`fiftyone.core.labels.Detections`) or array-like
+            of numeric values, or the name of a sample field or
+            ``embedded.field.name`` of ``samples`` from which to extract values
         classes (None): an optional list of classes whose points to plot.
             Only applicable when ``labels`` contains strings
         multi_trace (None): whether to render each class as a separate trace.
             Only applicable when ``labels`` contains strings. By default, this
             will be true if there are up to 25 classes
-        marker_size (None): an optional marker size
+        marker_size (None): the marker size to use. If ``sizes`` are provided,
+            this value is used as a reference to scale the sizes of all points
+        labels_title (None): a title string to use for ``labels`` in the
+            tooltip and the colorbar title. By default, if ``labels`` is a
+            field name, this name will be used, otherwise the colorbar will not
+            have a title and the tooltip will use "label"
+        sizes_title (None): a title string to use for ``sizes`` in the tooltip.
+            By default, if ``sizes`` is a field name, this name will be used,
+            otherwise the tooltip will use "size"
+        show_colorbar_title (None): whether to show the colorbar title. By
+            default, a title will be shown only if a value was pasesd to
+            ``labels_title`` or an appropriate default can be inferred from
+            the ``labels`` parameter
+        axis_equal (False): whether to set the axes to equal scale
         layout (None): an optional dict of parameters for
             ``plotly.graph_objects.Figure.update_layout(**layout)``
-        show (True): whether to show the plot
 
     Returns:
         one of the following:
 
         -   an :class:`InteractiveScatter`, for 2D points and when ``samples``
-            are provided and you're working in a notebook context
-        -   a ``plotly.graph_objects.Figure``, otherwise
+            are provided
+        -   a :class:`PlotlyNotebookPlot`, if you're working in a notebook
+            context but the above conditions aren't met
+        -   a plotly figure, otherwise
     """
     points = np.asarray(points)
     num_dims = points.shape[1]
@@ -428,14 +478,13 @@ def scatterplot(
     if num_dims not in {2, 3}:
         raise ValueError("This method only supports 2D or 3D points")
 
-    points, ids, values, classes, categorical = _parse_scatter_inputs(
-        points, samples, label_field, field, labels, classes
+    labels_title, sizes_title, colorbar_title = _parse_titles(
+        labels, labels_title, sizes, sizes_title, show_colorbar_title
     )
 
-    if field is not None:
-        value_label = field
-    else:
-        value_label = "label"
+    points, ids, labels, sizes, classes, categorical = _parse_scatter_inputs(
+        points, samples, label_field, labels, sizes, classes
+    )
 
     if categorical:
         if multi_trace is None:
@@ -444,116 +493,150 @@ def scatterplot(
         if multi_trace:
             figure = _plot_scatter_categorical(
                 points,
-                values,
+                labels,
                 classes,
-                ids=ids,
-                value_label=value_label,
-                marker_size=marker_size,
+                sizes,
+                ids,
+                marker_size,
+                labels_title,
+                sizes_title,
+                colorbar_title,
+                axis_equal,
             )
         else:
             figure = _plot_scatter_categorical_single_trace(
                 points,
-                values,
+                labels,
                 classes,
-                ids=ids,
-                value_label=value_label,
-                marker_size=marker_size,
+                sizes,
+                ids,
+                marker_size,
+                labels_title,
+                sizes_title,
+                colorbar_title,
+                axis_equal,
             )
     else:
         figure = _plot_scatter_numeric(
             points,
-            values=values,
-            ids=ids,
-            value_label=value_label,
-            marker_size=marker_size,
+            labels,  # numeric values
+            sizes,
+            ids,
+            marker_size,
+            labels_title,
+            sizes_title,
+            colorbar_title,
+            axis_equal,
         )
 
-    # Since there are no axis labels, take up all available space, except for
-    # 30 pixels at the top for the toolbar
-    figure.update_layout(margin={"r": 0, "t": 30, "l": 0, "b": 0})
+    figure.update_layout(**_DEFAULT_LAYOUT)
 
     if layout:
         figure.update_layout(**layout)
 
     if num_dims == 3:
         if samples is not None:
-            logger.warning("Interactive selection is only supported in 2D")
+            msg = "Interactive selection is only supported in 2D"
+            warnings.warn(msg)
 
-        figure.show()
+        if foc.is_notebook_context():
+            figure = PlotlyNotebookPlot(figure)
+
         return figure
 
-    if not foc.is_notebook_context():
-        if samples is not None:
-            logger.warning(
-                "Interactive Plotly plots are currently only supported in "
-                "notebooks"
-            )
-
-        if show:
-            figure.show()
+    if ids is None:
+        if foc.is_notebook_context():
+            return PlotlyNotebookPlot(figure)
 
         return figure
 
     link_type = "labels" if label_field is not None else "samples"
-    plot = InteractiveScatter(
+    return InteractiveScatter(
         figure,
         link_type=link_type,
         label_fields=label_field,
         init_view=samples,
     )
 
-    if show:
-        plot.show()
 
-    return plot
+def _parse_titles(
+    labels, labels_title, sizes, sizes_title, show_colorbar_title
+):
+    if labels_title is None and etau.is_str(labels):
+        labels_title = labels.rsplit(".", 1)[-1]
+
+    if sizes_title is None:
+        if etau.is_str(sizes):
+            sizes_title = sizes.rsplit(".", 1)[-1]
+        else:
+            sizes_title = "size"
+
+    if show_colorbar_title is None:
+        show_colorbar_title = labels_title is not None
+
+    if labels_title is None:
+        labels_title = "label"
+
+    colorbar_title = labels_title if show_colorbar_title else None
+
+    return labels_title, sizes_title, colorbar_title
 
 
 def _parse_scatter_inputs(
-    points, samples, label_field, field, labels, classes
+    points, samples, label_field, labels, sizes, classes
 ):
     num_dims = points.shape[1]
 
-    labels = _get_labels_for_points(
-        points, samples=samples, labels=labels, field=field
-    )
+    labels = _get_data_for_points(points, samples, labels, "labels")
+    sizes = _get_data_for_points(points, samples, sizes, "sizes")
 
     ids = None
     if samples is not None:
         if num_dims != 2:
-            logger.warning("Interactive selection is only supported in 2D")
+            msg = "Interactive selection is only supported in 2D"
+            warnings.warn(msg)
         else:
             ids = _get_ids_for_points(points, samples, label_field=label_field)
 
-    points, values, classes, inds, categorical = _parse_data(
-        points, labels, classes
+    points, labels, sizes, classes, inds, categorical = _parse_data(
+        points, labels, sizes, classes
     )
 
     if ids is not None and inds is not None:
         ids = ids[inds]
 
-    return points, ids, values, classes, categorical
+    return points, ids, labels, sizes, classes, categorical
 
 
-def _get_labels_for_points(points, samples=None, labels=None, field=None):
-    if field is not None:
+def _get_data_for_points(points, samples, values, parameter):
+    if values is None:
+        return None
+
+    if etau.is_str(values):
         if samples is None:
             raise ValueError(
-                "You must provide `samples` in order to extract field values"
+                "You must provide `samples` in order to extract field values "
+                "for the `%s` parameter" % parameter
             )
 
-        labels = samples.values(field)
+        values = samples.values(values)
 
-    if labels and isinstance(labels[0], (list, tuple)):
-        labels = list(itertools.chain.from_iterable(labels))
+    # Unroll one level of nested list if necessary (e.g., detection labels)
+    if (
+        isinstance(values, (list, tuple))
+        and values
+        and isinstance(values[0], (list, tuple))
+    ):
+        values = list(itertools.chain.from_iterable(values))
 
-    if labels is not None and len(labels) != len(points):
+    if len(values) != len(points):
         raise ValueError(
-            "Number of labels (%d) does not match number of points (%d). You "
+            "Number of %s (%d) does not match number of points (%d). You "
             "may have missing data/labels that you need to omit from your "
-            "view before visualizing" % (len(labels), len(points))
+            "view" % (parameter, len(values), len(points))
         )
 
-    return labels
+    return values
 
 
 def _get_ids_for_points(points, samples, label_field=None):
@@ -574,109 +657,134 @@ def _get_ids_for_points(points, samples, label_field=None):
     return np.array(ids)
 
 
-def _parse_data(points, labels, classes):
+def _parse_data(points, labels, sizes, classes):
+    if sizes is not None:
+        sizes = np.asarray(sizes)
+
     if labels is None:
-        return points, None, None, None, False
+        return points, None, sizes, None, None, False
 
     labels = np.asarray(labels)
 
     if not etau.is_str(labels[0]):
-        return points, labels, None, None, False
+        return points, labels, sizes, None, None, False
 
     if classes is None:
         classes = sorted(set(labels))
-        return points, labels, classes, None, True
+        return points, labels, sizes, classes, None, True
 
     found = np.array([l in classes for l in labels])
     if not np.all(found):
         points = points[found, :]
-        values = values[found]
+        labels = labels[found]
+        if sizes is not None:
+            sizes = sizes[found]
     else:
         found = None
 
-    return points, values, classes, found, True
+    return points, labels, sizes, classes, found, True
 
 
 def location_scatterplot(
     locations=None,
-    location_field=None,
     samples=None,
-    label_field=None,
-    field=None,
     labels=None,
+    sizes=None,
     classes=None,
-    multi_trace=None,
-    marker_size=None,
     style=None,
     radius=None,
+    multi_trace=None,
+    marker_size=None,
+    labels_title=None,
+    sizes_title=None,
+    show_colorbar_title=None,
     layout=None,
-    show=True,
 ):
     """Generates an interactive scatterplot of the given location coordinates
     with a map rendered in the background of the plot.
 
-    Location data can be specified either via the ``locations`` or
-    ``location_field`` parameters. If you specify neither, the first
-    :class:`fiftyone.core.labels.GeoLocation` field on the dataset is used.
+    Location data is specified via the ``locations`` parameter.
 
-    You can use the ``field`` or ``labels`` parameters to define a coloring for
-    the points.
+    You can attach plots generated by this method to an App session via its
+    :attr:`fiftyone.core.session.Session.plots` attribute, which will
+    automatically sync the session's view with the currently selected points in
+    the plot. To enable this functionality, you must pass ``samples`` to this
+    method.
 
-    You can connect this method to a :class:`fiftyone.core.session.Session`
-    in order to automatically sync the session's view with the currently
-    selected points in the plot. To enable this functionality, pass ``samples``
-    to this method.
+    You can use the ``labels`` parameters to define a coloring for the points,
+    and you can use the ``sizes`` parameter to scale the sizes of the points.
 
     Args:
-        locations (None): a ``num_locations x 2`` array of
-            ``(longitude, latitude)`` coordinates
-        location_field (None): the name of a
-            :class:`fiftyone.core.labels.GeoLocation` field with
-            ``(longitude, latitude)`` coordinates in its ``point`` attribute
+        locations (None): the location data to plot. Can be a
+            ``num_locations x 2`` array of ``(longitude, latitude)``
+            coordinates, or the name of a
+            :class:`fiftyone.core.labels.GeoLocation` field on ``samples`` with
+            ``(longitude, latitude)`` coordinates in its ``point`` attribute,
+            or None, in which case ``samples`` must have a single
+            :class:`fiftyone.core.labels.GeoLocation` field
         samples (None): the :class:`fiftyone.core.collections.SampleCollection`
             whose data is being visualized
-        label_field (None): a :class:`fiftyone.core.labels.Label` field
-            containing the labels corresponding to ``locations``. If not
-            provided, the locations are assumed to correspond to samples
-        field (None): a sample field or ``embedded.field.name`` to use to
-            color the points. Can be numeric or strings
-        labels (None): a list of numeric or string values to use to color
-            the points
+        labels (None): data to use to color points. Can be an array-like of
+            numeric or string values, or the name of a sample field or
+            ``embedded.field.name`` of ``samples`` from which to extract values
+        sizes (None): data to use to scale the sizes of the points. Can be a
+            list (or nested list, if ``label_field`` refers to a label list
+            field like :class:`fiftyone.core.labels.Detections`) or array-like
+            of numeric values, or the name of a sample field or
+            ``embedded.field.name`` of ``samples`` from which to extract values
         classes (None): an optional list of classes whose points to plot.
             Only applicable when ``labels`` contains strings
-        multi_trace (None): whether to render each class as a separate trace.
-            Only applicable when ``labels`` contains strings. By default, this
-            will be true if there are up to 25 classes
-        marker_size (None): an optional marker size
         style (None): the plot style to use. Only applicable when the color
             data is numeric. Supported values are ``("scatter", "density")``
         radius (None): the radius of influence of each lat/lon point. Only
             applicable when ``style`` is "density". Larger values will make
             density plots smoother and less detailed
+        multi_trace (None): whether to render each class as a separate trace.
+            Only applicable when ``labels`` contains strings. By default, this
+            will be true if there are up to 25 classes
+        marker_size (None): the marker size to use. If ``sizes`` are provided,
+            this value is used as a reference to scale the sizes of all points
+        labels_title (None): a title string to use for ``labels`` in the
+            tooltip and the colorbar title. By default, if ``labels`` is a
+            field name, this name will be used, otherwise the colorbar will not
+            have a title and the tooltip will use "label"
+        sizes_title (None): a title string to use for ``sizes`` in the tooltip.
+            By default, if ``sizes`` is a field name, this name will be used,
+            otherwise the tooltip will use "size"
+        show_colorbar_title (None): whether to show the colorbar title. By
+            default, a title will be shown only if a value was pasesd to
+            ``labels_title`` or an appropriate default can be inferred from
+            the ``labels`` parameter
         layout (None): an optional dict of parameters for
             ``plotly.graph_objects.Figure.update_layout(**layout)``
-        show (True): whether to show the plot
 
     Returns:
         one of the following:
 
-        -   an :class:`InteractiveScatter`, when ``samples`` are provided and
+        -   an :class:`InteractiveScatter`, if ``samples`` are provided and
             you're working in a notebook context
-        -   a ``plotly.graph_objects.Figure``, otherwise
+        -   a :class:`PlotlyNotebookPlot`, if ``samples`` are not provided but
+            you're working in a notebook
+        -   a plotly figure, otherwise
     """
-    locations = _parse_locations(locations, location_field, samples)
+    locations = _parse_locations(locations, samples)
 
-    locations, ids, values, classes, categorical = _parse_scatter_inputs(
-        locations, samples, label_field, field, labels, classes
+    labels_title, sizes_title, colorbar_title = _parse_titles(
+        labels, labels_title, sizes, sizes_title, show_colorbar_title
     )
 
-    if style not in (None, "scatter", "density"):
-        logger.warning("Ignoring unsupported style '%s'", style)
+    (
+        locations,
+        ids,
+        labels,
+        sizes,
+        classes,
+        categorical,
+    ) = _parse_scatter_inputs(locations, samples, None, labels, sizes, classes)
 
-    if field is not None:
-        value_label = field
-    else:
-        value_label = "label"
+    if style not in (None, "scatter", "density"):
+        msg = "Ignoring unsupported style '%s'" % style
+        warnings.warn(msg)
 
     if categorical:
         if multi_trace is None:
@@ -685,139 +793,140 @@ def location_scatterplot(
         if multi_trace:
             figure = _plot_scatter_mapbox_categorical(
                 locations,
-                values,
+                labels,
                 classes,
-                ids=ids,
-                value_label=value_label,
-                marker_size=marker_size,
+                sizes,
+                ids,
+                marker_size,
+                labels_title,
+                sizes_title,
+                colorbar_title,
             )
         else:
             figure = _plot_scatter_mapbox_categorical_single_trace(
                 locations,
-                values,
+                labels,
                 classes,
-                ids=ids,
-                value_label=value_label,
-                marker_size=marker_size,
+                sizes,
+                ids,
+                marker_size,
+                labels_title,
+                sizes_title,
+                colorbar_title,
             )
     elif style == "density":
         figure = _plot_scatter_mapbox_density(
             locations,
-            values=values,
-            ids=ids,
-            radius=radius,
-            value_label=value_label,
+            labels,
+            sizes,
+            ids,
+            radius,
+            labels_title,
+            sizes_title,
+            colorbar_title,
         )
     else:
         figure = _plot_scatter_mapbox_numeric(
             locations,
-            values=values,
-            ids=ids,
-            value_label=value_label,
-            marker_size=marker_size,
+            labels,
+            sizes,
+            ids,
+            marker_size,
+            labels_title,
+            sizes_title,
+            colorbar_title,
         )
 
-    # Since there are no axis labels, take up all available space, except for
-    # 30 pixels at the top for the toolbar
-    figure.update_layout(margin={"r": 0, "t": 30, "l": 0, "b": 0})
+    figure.update_layout(**_DEFAULT_LAYOUT)
 
     if layout:
         figure.update_layout(**layout)
 
     if style == "density" and not categorical:
-        logger.warning("Density plots do not yet support interactivity")
+        msg = "Density plots do not yet support interactivity"
+        warnings.warn(msg)
 
-        if show:
-            figure.show()
-
-        return figure
-
-    if not foc.is_notebook_context():
-        if samples is not None:
-            logger.warning(
-                "Interactive Plotly plots are currently only supported in "
-                "notebooks"
-            )
-
-        if show:
-            figure.show()
+        if foc.is_notebook_context():
+            figure = PlotlyNotebookPlot(figure)
 
         return figure
 
-    link_type = "labels" if label_field is not None else "samples"
-    plot = InteractiveScatter(
-        figure,
-        link_type=link_type,
-        label_fields=label_field,
-        init_view=samples,
-    )
+    if ids is None:
+        if foc.is_notebook_context():
+            return PlotlyNotebookPlot(figure)
 
-    if show:
-        plot.show()
+        return figure
 
-    return plot
+    return InteractiveScatter(figure, init_view=samples)
 
 
-def _parse_locations(locations, location_field, samples):
-    if locations is not None:
+def _parse_locations(locations, samples):
+    if locations is not None and not etau.is_str(locations):
         return np.asarray(locations)
 
     if samples is None:
         raise ValueError(
-            "You must provide `samples` when `locations` are not manually "
-            "specified"
+            "You must provide `samples` in order to extract `locations` from "
+            "your dataset"
         )
 
-    if location_field is not None:
+    if locations is None:
+        location_field = samples._get_geo_location_field()
+    else:
+        location_field = locations
         samples.validate_field_type(
             location_field,
             fof.EmbeddedDocumentField,
             embedded_doc_type=fol.GeoLocation,
         )
-    else:
-        location_field = samples._get_geo_location_field()
 
     locations = samples.values(location_field + ".point.coordinates")
-
     return np.asarray(locations)
 
 
-class InteractivePlotlyPlot(InteractivePlot):
-    """Base class for interactive plotly plots.
+class PlotlyWidgetMixin(object):
+    """Mixin for Plotly plots that use widgets to display in notebooks.
 
     Args:
         widget: a ``plotly.graph_objects.FigureWidget``
-        **kwargs: keyword arguments for the
-            :class:`fiftyone.utils.plot.interactive.InteractivePlot`
-            constructor
     """
 
-    def __init__(self, widget, **kwargs):
-        if not foc.is_notebook_context():
-            raise foc.ContextError(
-                "Interactive Plotly plots can only be used in notebooks"
-            )
-
+    def __init__(self, widget):
         self._widget = widget
         self._handle = None
 
-        super().__init__(**kwargs)
+        if foc.is_notebook_context():
+            _check_plotly_notebook_environment()
+        else:
+            msg = (
+                "Interactive Plotly plots are currently only supported in "
+                "notebooks, but this will change in an upcoming release. In "
+                "the meantime, you can still use this plot in a non-notebook "
+                "context, but (i) selecting data will not trigger callbacks, "
+                "and (ii) you must manually call `plot.show()` to launch a "
+                "new plot that reflects the current state of an attached "
+                "session"
+            )
+            warnings.warn(msg)
 
-    def supports_session_updates(self):
-        return True
+            # If the user is using a widget-based plot outside of a notebook
+            # context, go ahead and connect it so they can start manually
+            # updating it and `show()`ing it, if desired
+            if isinstance(self, ResponsivePlot):
+                self.connect()
 
-    def show(self, **kwargs):
-        """Shows this plot.
-
-        Args:
-            **kwargs: optional parameters for
-                ``plotly.graph_objects.Figure.update_layout(**kwargs)``
-        """
-        super().show(**kwargs)
-
-    def _show(self, **kwargs):
+    def _update_layout(self, **kwargs):
         if kwargs:
             self._widget.update_layout(**kwargs)
+
+    def _show(self, **kwargs):
+        self._update_layout(**kwargs)
+
+        # We're supposed to be in a notebook context, but, if we're not, go
+        # ahead and show the plot normally
+        if not foc.is_notebook_context():
+            self._widget.show()
+            return
 
         #
         # @todo if this plot has already been shown in a different cell,
@@ -853,24 +962,130 @@ class InteractivePlotlyPlot(InteractivePlot):
         self._handle.update(Image(image_bytes))
 
 
-class InteractiveScatter(InteractivePlotlyPlot):
-    """Interactive plot wrapper for a Plotly figure containing one or more
-    scatter-type traces.
+def _check_plotly_notebook_environment():
+    #
+    # Requirements source: https://plotly.com/python/getting-started
+    #
+    # There is also a `notebook>=5.3` requirement in Jupyter notebooks, but
+    # we do not explicitly check that here because the requirement for
+    # JupyterLab is different and I don't know how to distinguish Jupyter
+    # notebooks from JupyterLab right now...
+    #
+    error_level = fo.config.requirement_error_level
+    etau.ensure_package("ipywidgets>=7.5", error_level=error_level)
+
+
+class PlotlyNotebookPlot(PlotlyWidgetMixin, Plot):
+    """A wrapper around a Plotly plot for notebook contexts that allows it to
+    be replaced with a screenshot by calling :meth:`freeze`.
+
+    Args:
+        figure: a ``plotly.graph_objects.Figure``
+    """
+
+    def __init__(self, figure):
+        self._figure = figure
+        self._frozen = False
+
+        widget = self._make_widget()
+
+        super().__init__(widget)
+
+    @property
+    def is_frozen(self):
+        """Whether this plot is currently frozen."""
+        return self._frozen
+
+    def update_layout(self, **kwargs):
+        """Updates the layout of the plot.
+
+        Args:
+            **kwargs: valid arguments for
+                ``plotly.graph_objects.Figure.update_layout(**kwargs)``
+        """
+        self._update_layout(**kwargs)
+
+    def show(self, **kwargs):
+        """Shows the plot.
+
+        Args:
+            **kwargs: optional parameters for
+                ``plotly.graph_objects.Figure.update_layout(**kwargs)``
+        """
+        if self._frozen:
+            self._reopen()
+
+        self._show(**kwargs)
+
+    def freeze(self):
+        """Freezes the plot, replacing it with a static image."""
+        if not foc.is_notebook_context():
+            raise foc.ContextError("Plots can only be frozen in notebooks")
+
+        self._freeze()
+        self._frozen = True
+
+    def _make_widget(self):
+        return go.FigureWidget(self._figure)
+
+    def _reopen(self):
+        self._widget = self._make_widget()
+        self._frozen = False
+
+
+class PlotlyInteractivePlot(PlotlyWidgetMixin, InteractivePlot):
+    """Base class for :class:`fiftyone.core.plots.base.InteractivePlot`
+    instances with Plotly backends.
+    """
+
+    def __init__(self, widget, **kwargs):
+        InteractivePlot.__init__(self, **kwargs)
+        PlotlyWidgetMixin.__init__(self, widget)  # must be last
+
+    def update_layout(self, **kwargs):
+        """Updates the layout of the plot.
+
+        Args:
+            **kwargs: valid arguments for
+                ``plotly.graph_objects.Figure.update_layout(**kwargs)``
+        """
+        self._update_layout(**kwargs)
+
+    def show(self, **kwargs):
+        """Shows the plot.
+
+        Args:
+            **kwargs: optional parameters for
+                ``plotly.graph_objects.Figure.update_layout(**kwargs)``
+        """
+        super().show(**kwargs)
+
+
+class InteractiveScatter(PlotlyInteractivePlot):
+    """Wrapper class that turns a Plotly figure containing one or more
+    scatter-type traces into an
+    :class:`fiftyone.core.plots.base.InteractivePlot`.
 
     This wrapper responds to selection and deselection events (if available)
-    triggered on the figure's traces via plotly's lasso and box selector tools.
+    triggered on the figure's traces via Plotly's lasso and box selector tools.
 
     All traces must contain IDs in their ``customdata`` attribute that identify
     the points in the traces.
 
     Args:
         figure: a ``plotly.graph_objects.Figure``
-        **kwargs: keyword arguments for the
-            :class:`fiftyone.utils.plot.interactive.InteractivePlot`
-            constructor
+        link_type ("samples"): whether this plot is linked to "samples" or
+            "labels"
+        label_fields (None): an optional label field or list of label fields to
+            which points in this plot correspond. Only applicable when linked
+            to labels
+        init_view (None): a :class:`fiftyone.core.collections.SampleCollection`
+            to load when no points are selected in the plot
     """
 
-    def __init__(self, figure, **kwargs):
+    def __init__(
+        self, figure, link_type="samples", label_fields=None, init_view=None
+    ):
         self._figure = figure
         self._traces = None
         self._trace_ids = {}
@@ -881,7 +1096,12 @@ class InteractiveScatter(InteractivePlotlyPlot):
 
         widget = self._make_widget()
 
-        super().__init__(widget, **kwargs)
+        super().__init__(
+            widget,
+            link_type=link_type,
+            label_fields=label_fields,
+            init_view=init_view,
+        )
 
     def _init_traces(self):
         for idx, trace in enumerate(self._traces):
@@ -912,11 +1132,18 @@ class InteractiveScatter(InteractivePlotlyPlot):
         self._select_callback = callback
 
     @property
+    def supports_session_updates(self):
+        return True
+
+    @property
     def _selected_ids(self):
         found = False
 
         ids = []
         for idx, trace in enumerate(self._traces):
+            if trace.visible != True:
+                continue
+
             found |= trace.selectedpoints is not None
             if trace.selectedpoints:
                 ids.append(self._trace_ids[idx][list(trace.selectedpoints)])
@@ -930,7 +1157,7 @@ class InteractiveScatter(InteractivePlotlyPlot):
         self._select_callback = callback
 
     def _make_widget(self):
-        widget = pgo.FigureWidget(self._figure)
+        widget = go.FigureWidget(self._figure)
         self._traces = widget.data
         self._init_traces()
         return widget
@@ -944,14 +1171,16 @@ class InteractiveScatter(InteractivePlotlyPlot):
         def _on_deselect(trace, points):
             self._on_select(trace)
 
-        for trace in self._traces:
-            trace.on_selection(_on_selection)
-            trace.on_deselect(_on_deselect)
+        with self._widget.batch_update():
+            for trace in self._traces:
+                trace.on_selection(_on_selection)
+                trace.on_deselect(_on_deselect)
 
     def _disconnect(self):
-        for trace in self._traces:
-            trace.on_selection(None)
-            trace.on_deselect(None)
+        with self._widget.batch_update():
+            for trace in self._traces:
+                trace.on_selection(None)
+                trace.on_deselect(None)
 
     def _reopen(self):
         self._widget = self._make_widget()
@@ -961,21 +1190,22 @@ class InteractiveScatter(InteractivePlotlyPlot):
         if deselect:
             ids = []
 
-        # Split IDs into traces
+        # Split IDs into their traces
         per_trace_ids = defaultdict(list)
         for _id in ids:
             per_trace_ids[self._ids_to_traces[_id]].append(_id)
 
-        for idx, trace in enumerate(self._traces):
-            # Convert IDs to point inds
-            inds_map = self._ids_to_inds[idx]
-            trace_ids = per_trace_ids[idx]
-            trace_inds = [inds_map[_id] for _id in trace_ids]
-            if not trace_inds and deselect:
-                trace_inds = None
+        with self._widget.batch_update():
+            for idx, trace in enumerate(self._traces):
+                # Convert IDs to point indices
+                inds_map = self._ids_to_inds[idx]
+                trace_ids = per_trace_ids[idx]
+                trace_inds = [inds_map[_id] for _id in trace_ids]
+                if not trace_inds and deselect:
+                    trace_inds = None
 
-            # Select points
-            trace.update(selectedpoints=trace_inds)
+                # Select points in trace
+                trace.update(selectedpoints=trace_inds)
 
     def _on_select(self, trace, selector=None):
         if self._select_callback is None:
@@ -1004,6 +1234,9 @@ class InteractiveScatter(InteractivePlotlyPlot):
         return ready
 
 
+mpl = fou.lazy_import("matplotlib")
+
+
 class ManualInteractiveScatter(InteractiveScatter):
     """Interactive plot wrapper for a Plotly figure containing one or more
     scatter-type traces.
@@ -1021,9 +1254,7 @@ class ManualInteractiveScatter(InteractiveScatter):
         figure: a ``plotly.graph_objects.Figure``
         points: a ``num_points x 2`` array of points
         ids: a ``num_points`` array containing the IDs for ``points``
-        **kwargs: keyword arguments for the
-            :class:`fiftyone.utils.plot.interactive.InteractivePlot`
-            constructor
+        **kwargs: keyword arguments for :class:`InteractiveScatter`
     """
 
     def __init__(self, figure, points, ids, **kwargs):
@@ -1053,7 +1284,7 @@ class ManualInteractiveScatter(InteractiveScatter):
         super()._on_select(trace, selector=selector)
 
     def _manual_select(self, selector):
-        if not isinstance(selector, (pcb.LassoSelector, pcb.BoxSelector)):
+        if not isinstance(selector, (pc.LassoSelector, pc.BoxSelector)):
             return
 
         visible_traces = set(
@@ -1066,7 +1297,7 @@ class ManualInteractiveScatter(InteractiveScatter):
             self._ids = np.array([], dtype=self._point_ids.dtype)
             return
 
-        if isinstance(selector, pcb.LassoSelector):
+        if isinstance(selector, pc.LassoSelector):
             vertices = np.stack((selector.xs, selector.ys), axis=1)
         else:
             x1, x2 = selector.xrange
@@ -1082,36 +1313,68 @@ class ManualInteractiveScatter(InteractiveScatter):
         self._ids = self._point_ids[found & mask]
 
 
-class PlotlyHeatmap(InteractivePlotlyPlot):
+class PlotlyHeatmap(PlotlyInteractivePlot):
     """An interactive Plotly heatmap.
+
+    Unfortunately, the Plotly team has not gotten around to adding native
+    selection utilities to plot types such as heatmaps:
+    https://github.com/plotly/plotly.js/issues/170.
+
+    In lieu of this feature, we provide a homebrewed heatmap that supports two
+    types of interactivity:
+
+    -   Individual cells can be selected by clicking on them
+    -   Groups of cells can be lasso- or box-selected by including their cell
+        centers in a selection
+
+    The following events will cause the selection to be cleared:
+
+    -   Clicking any cell, if there are currently multiple cells selected
+    -   Clicking the selected cell, if there is only one cell selected
+
+    When heatmap contents are selected via :meth:`PlotlyHeatmap.select_ids`,
+    the heatmap is updated to reflect the proportions of each cell included in
+    the selection.
 
     Args:
         Z: a ``num_cols x num_rows`` array of heatmap values
         ids: an array of same shape as ``Z`` whose elements contain lists
             of IDs for the heatmap cells
+        link_type ("samples"): whether this plot is linked to "samples" or
+            "labels"
+        label_fields (None): an optional label field or list of label fields to
+            which points in this plot correspond. Only applicable when linked
+            to labels
+        init_view (None): a :class:`fiftyone.core.collections.SampleCollection`
+            to load when no points are selected in the plot
         xlabels (None): a ``num_rows`` array of x labels
         ylabels (None): a ``num_cols`` array of y labels
+        zlim (None): a ``[zmin, zmax]`` limit to use for the colorbar
+        values_title ("count"): the semantic meaning of the heatmap values.
+            Used for tooltips
         colorscale (None): a plotly colorscale to use
         grid_opacity (0.1): an opacity value for the grid points
         bg_opacity (0.25): an opacity value for background (unselected) cells
-        **kwargs: keyword arguments for the
-            :class:`fiftyone.utils.plot.interactive.InteractivePlot`
-            constructor
     """
 
     def __init__(
         self,
         Z,
         ids,
+        link_type="samples",
+        label_fields=None,
+        init_view=None,
         xlabels=None,
         ylabels=None,
         zlim=None,
+        values_title="count",
         colorscale=None,
         grid_opacity=0.1,
         bg_opacity=0.25,
-        **kwargs,
     ):
         Z = np.asarray(Z)
+        ids = np.asarray(ids)
+
         if zlim is None:
             zlim = [Z.min(), Z.max()]
 
@@ -1120,6 +1383,7 @@ class PlotlyHeatmap(InteractivePlotlyPlot):
         self.xlabels = xlabels
         self.ylabels = ylabels
         self.zlim = zlim
+        self.values_title = values_title
         self.colorscale = colorscale
         self.grid_opacity = grid_opacity
         self.bg_opacity = bg_opacity
@@ -1128,15 +1392,26 @@ class PlotlyHeatmap(InteractivePlotlyPlot):
         self._gridw = None
         self._selectedw = None
         self._bgw = None
-
         self._selected_cells = []
-        self._cells_map = {}
         self._select_callback = None
+
+        # Lower bound at 1 to avoid zero division errors
+        self._ids_counts = np.vectorize(lambda a: max(1, len(a)))(ids)
+        self._cells_map = {}
 
         widget = self._make_widget()
         self._init_cells_map()
 
-        super().__init__(widget, **kwargs)
+        super().__init__(
+            widget,
+            link_type=link_type,
+            label_fields=label_fields,
+            init_view=init_view,
+        )
+
+    @property
+    def supports_session_updates(self):
+        return True
 
     @property
     def _selected_ids(self):
@@ -1153,7 +1428,7 @@ class PlotlyHeatmap(InteractivePlotlyPlot):
         self._select_callback = callback
 
     def _make_widget(self):
-        widget = pgo.FigureWidget(self._figure)
+        widget = go.FigureWidget(self._figure)
         gridw, selectedw, bgw = widget.data
 
         self._gridw = gridw
@@ -1163,77 +1438,130 @@ class PlotlyHeatmap(InteractivePlotlyPlot):
 
     def _connect(self):
         def _on_click(trace, points, state):
-            y, x = points.point_inds[0]
-            self._on_click((x, y))
+            self._on_click(points.point_inds)
 
         def _on_selection(trace, points, state):
             self._on_selection(points.point_inds)
 
-        self._bgw.on_click(_on_click)
-        self._gridw.on_selection(_on_selection)
+        with self._widget.batch_update():
+            self._bgw.on_click(_on_click)
+            self._gridw.on_selection(_on_selection)
 
     def _disconnect(self):
-        self._bgw.on_click(None)
-        self._gridw.on_selection(None)
+        with self._widget.batch_update():
+            self._bgw.on_click(None)
+            self._gridw.on_selection(None)
 
     def _reopen(self):
         self._widget = self._make_widget()
 
     def _select_ids(self, ids):
         if ids is None:
-            self._select(None)
+            self._deselect()
             return
 
-        cells = set()
+        counter = defaultdict(int)
         for _id in ids:
             cell = self._cells_map.get(_id, None)
             if cell is not None:
-                cells.add(cell)
+                counter[cell] += 1
 
-        self._select(list(cells))
+        if counter:
+            cells, counts = zip(*counter.items())
+        else:
+            cells, counts = [], []
 
-    def _on_click(self, cell):
+        self._select_fractional_cells(cells, counts)
+
+    def _on_click(self, point_inds):
+        # `point_inds` is a list of `(y, x)` coordinates of selected cells
+
+        if not point_inds:
+            self._deselect()
+            return
+
+        # @todo can we get shift-clicking working in plotly to select multiple
+        # cells? I've never seen `len(point_inds) > 1` here...
+        y, x = point_inds[0]
+        cell = (x, y)
+
         num_selected = len(self._selected_cells)
-
-        self._gridw.selectedpoints = None
 
         if (num_selected > 1) or (
             num_selected == 1 and cell == self._selected_cells[0]
         ):
             self._deselect()
         else:
-            self._select([cell])
+            self._select_cells([cell])
 
     def _on_selection(self, point_inds):
-        # point_inds are linear indices into the flattened meshgrid of points
+        # `point_inds` are linear indices into the flattened meshgrid of points
         # from `_make_heatmap()`
+
         if point_inds:
             y, x = np.unravel_index(point_inds, self.Z.shape)
             cells = list(zip(x, y))
-            self._select(cells)
+            self._select_cells(cells)
         else:
             self._deselect()
 
-    def _select(self, cells):
+    def _deselect(self):
+        self._update_heatmap([], self.Z, self.Z)
+
+    def _select_cells(self, cells):
         if cells is None:
             self._deselect()
             return
 
-        Zactive = np.full(self.Z.shape, None)
+        Z_active = np.full(self.Z.shape, None)
+        Z_bg = self.Z.copy()
 
         if cells:
             x, y = zip(*cells)
-            Zactive[y, x] = self.Z[y, x]
+            Z_active[y, x] = self.Z[y, x]
+
+        self._update_heatmap(cells, Z_active, Z_bg)
+
+    def _select_fractional_cells(self, cells, counts):
+        #
+        # Compute "effective" heatmap values by comparing the number of
+        # observed IDs to the total possible IDs. This is important because
+        # some heatmap cells may have two IDs (confusion matrix cells with GT
+        # and predicted labels) while other cells have have only one associated
+        # will have both GT and predicted IDs, while cells corresponding to
+        # false positive/negative predictions will only have one ID
+        #
+
+        Z_active = np.zeros_like(self.Z)
+        Z_bg = np.zeros_like(self.Z)
+
+        if cells:
+            x, y = zip(*cells)
+            observed_frac = np.array(counts) / self._ids_counts[y, x]
+            z_observed = observed_frac * self.Z[y, x]
+            Z_active[y, x] = z_observed
+            Z_bg[y, x] = z_observed
+
+        zlim = [0, Z_active.max()]
+
+        self._update_heatmap(cells, Z_active, Z_bg, zlim=zlim)
+
+    def _update_heatmap(self, cells, Z_active, Z_bg, zlim=None):
+        if zlim is None:
+            zlim = self.zlim
 
         self._selected_cells = cells
-        self._selectedw.z = Zactive
 
-        if self._select_callback is not None:
-            self._select_callback(self.selected_ids)
+        with self._widget.batch_update():
+            self._gridw.selectedpoints = []
 
-    def _deselect(self):
-        self._selected_cells = []
-        self._selectedw.z = self.Z
+            self._selectedw.z = Z_active
+            self._selectedw.zmin = zlim[0]
+            self._selectedw.zmax = zlim[1]
+
+            self._bgw.z = Z_bg
+            self._bgw.zmin = zlim[0]
+            self._bgw.zmax = zlim[1]
 
         if self._select_callback is not None:
             self._select_callback(self.selected_ids)
@@ -1255,38 +1583,43 @@ class PlotlyHeatmap(InteractivePlotlyPlot):
         X, Y = np.meshgrid(xticks, yticks)
 
         hover_lines = [
-            "<b>count: %{z:d}</b>",
+            "<b>%s: %%{z}</b>" % self.values_title,
             "truth: %{y}",
             "predicted: %{x}",
         ]
         hovertemplate = "<br>".join(hover_lines) + "<extra></extra>"
 
-        grid = pgo.Scatter(
+        # Has selection callbacks, no hover
+        grid = go.Scatter(
             x=X.flatten(),
             y=Y.flatten(),
             opacity=self.grid_opacity,
             mode="markers",
-            hovertemplate=None,  # no hover
+            hovertemplate=None,
         )
 
-        selected = pgo.Heatmap(
+        # No hover, no callbacks
+        selected = go.Heatmap(
+            z=Z,
+            zmin=self.zlim[0],
+            zmax=self.zlim[1],
+            colorscale=self.colorscale,
+            showscale=False,
+            hoverinfo="skip",
+        )
+
+        # Has callbacks and hover tooltip
+        bg = go.Heatmap(
             z=Z,
             zmin=self.zlim[0],
             zmax=self.zlim[1],
             colorbar=dict(lenmode="fraction", len=1),
             colorscale=self.colorscale,
-            hoverinfo="skip",  # no hover, no callbacks
-        )
-
-        bg = pgo.Heatmap(
-            z=Z,
-            colorscale=self.colorscale,
             opacity=self.bg_opacity,
-            showscale=False,
             hovertemplate=hovertemplate,
         )
 
-        figure = pgo.Figure([grid, selected, bg])
+        figure = go.Figure([grid, selected, bg])
 
         figure.update_layout(
             xaxis=dict(
@@ -1302,7 +1635,6 @@ class PlotlyHeatmap(InteractivePlotlyPlot):
                 ticktext=self.ylabels,
                 range=[-0.5, num_rows - 0.5],
                 constrain="domain",
-                autorange="reversed",
                 scaleanchor="x",
                 scaleratio=1,
             ),
@@ -1316,22 +1648,28 @@ def _plot_scatter_categorical(
     points,
     labels,
     classes,
-    sizes=None,
-    ids=None,
-    value_label="label",
-    size_label="size",
-    marker_size=None,
+    sizes,
+    ids,
+    marker_size,
+    labels_title,
+    sizes_title,
+    colorbar_title,
+    axis_equal,
+    colors=None,
 ):
     num_dims = points.shape[1]
+    num_classes = len(classes)
 
-    hover_lines = ["<b>%s: %%{text}</b>" % value_label]
+    colors = _get_qualitative_colors(num_classes, colors=colors)
+
+    hover_lines = ["<b>%s: %%{text}</b>" % labels_title]
 
     if sizes is not None:
         if marker_size is None:
             marker_size = 15  # max marker size
 
         sizeref = 0.5 * max(sizes) / marker_size
-        hover_lines.append("%s: %%{marker.size}" % size_label)
+        hover_lines.append("%s: %%{marker.size}" % sizes_title)
 
     if num_dims == 3:
         hover_lines.append("x, y, z = %{x:.3f}, %{y:.3f}, %{z:.3f}")
@@ -1344,7 +1682,7 @@ def _plot_scatter_categorical(
     hovertemplate = "<br>".join(hover_lines) + "<extra></extra>"
 
     traces = []
-    for label in classes:
+    for label, color in zip(classes, colors):
         label_inds = labels == label
 
         if ids is not None:
@@ -1369,20 +1707,21 @@ def _plot_scatter_categorical(
             mode="markers",
             showlegend=True,
             name=label,
+            line_color=color,
             marker=marker,
             text=np.full(np.count_nonzero(label_inds), label),
             hovertemplate=hovertemplate,
         )
 
         if num_dims == 3:
-            scatter = pgo.Scatter3d(
+            scatter = go.Scatter3d(
                 x=points[label_inds][:, 0],
                 y=points[label_inds][:, 1],
                 z=points[label_inds][:, 2],
                 **kwargs,
             )
         else:
-            scatter = pgo.Scattergl(
+            scatter = go.Scattergl(
                 x=points[label_inds][:, 0],
                 y=points[label_inds][:, 1],
                 **kwargs,
@@ -1390,35 +1729,37 @@ def _plot_scatter_categorical(
 
         traces.append(scatter)
 
-    return pgo.Figure(traces)
+    figure = go.Figure(traces)
+
+    figure.update_layout(
+        legend_title_text=colorbar_title, legend_itemsizing="constant"
+    )
+
+    if axis_equal:
+        figure.update_layout(yaxis_scaleanchor="x")
+
+    return figure
 
 
 def _plot_scatter_categorical_single_trace(
     points,
     labels,
     classes,
-    sizes=None,
-    ids=None,
+    sizes,
+    ids,
+    marker_size,
+    labels_title,
+    sizes_title,
+    colorbar_title,
+    axis_equal,
     colors=None,
-    value_label="label",
-    size_label="size",
-    marker_size=None,
 ):
     num_dims = points.shape[1]
-
-    if colors is None:
-        colors = px.colors.qualitative.Plotly
-
     num_classes = len(classes)
     targets = [classes.index(l) for l in labels]
     clim = [-0.5, num_classes - 0.5]
 
-    # @todo how to blend for >10 classes?
-    colorscale = []
-    for i in range(num_classes):
-        color = colors[i % len(colors)]
-        colorscale.append([i / num_classes, color])
-        colorscale.append([(i + 1) / num_classes, color])
+    colorscale = _get_qualitative_colorscale(num_classes, colors=colors)
 
     marker = dict(
         color=targets,
@@ -1427,7 +1768,7 @@ def _plot_scatter_categorical_single_trace(
         autocolorscale=False,
         colorscale=colorscale,
         colorbar=dict(
-            title=value_label,
+            title=colorbar_title,
             tickvals=list(range(num_classes)),
             ticktext=classes,
             lenmode="fraction",
@@ -1451,10 +1792,10 @@ def _plot_scatter_categorical_single_trace(
     elif marker_size is not None:
         marker.update(dict(size=marker_size))
 
-    hover_lines = ["<b>%s: %%{text}</b>" % value_label]
+    hover_lines = ["<b>%s: %%{text}</b>" % labels_title]
 
     if sizes is not None:
-        hover_lines.append("%s: %%{marker.size}" % size_label)
+        hover_lines.append("%s: %%{marker.size}" % sizes_title)
 
     if num_dims == 3:
         hover_lines.append("x, y, z = %{x:.3f}, %{y:.3f}, %{z:.3f}")
@@ -1475,24 +1816,33 @@ def _plot_scatter_categorical_single_trace(
     )
 
     if num_dims == 3:
-        scatter = pgo.Scatter3d(
+        scatter = go.Scatter3d(
             x=points[:, 0], y=points[:, 1], z=points[:, 2], **kwargs
         )
     else:
-        scatter = pgo.Scattergl(x=points[:, 0], y=points[:, 1], **kwargs)
+        scatter = go.Scattergl(x=points[:, 0], y=points[:, 1], **kwargs)
 
-    return pgo.Figure(scatter)
+    figure = go.Figure(scatter)
+
+    if axis_equal:
+        figure.update_layout(yaxis_scaleanchor="x")
+        if num_dims == 3:
+            figure.update_layout(zaxis_scaleanchor="x")
+
+    return figure
 
 
 def _plot_scatter_numeric(
     points,
-    values=None,
-    sizes=None,
-    ids=None,
+    values,
+    sizes,
+    ids,
+    marker_size,
+    labels_title,
+    sizes_title,
+    colorbar_title,
+    axis_equal,
     colorscale="Viridis",
-    value_label="label",
-    size_label="size",
-    marker_size=None,
 ):
     num_dims = points.shape[1]
 
@@ -1502,7 +1852,7 @@ def _plot_scatter_numeric(
         marker.update(
             dict(
                 color=values,
-                colorbar=dict(title=value_label, lenmode="fraction", len=1),
+                colorbar=dict(title=colorbar_title, lenmode="fraction", len=1),
                 colorscale=colorscale,
                 showscale=True,
             )
@@ -1526,10 +1876,10 @@ def _plot_scatter_numeric(
     hover_lines = []
 
     if values is not None:
-        hover_lines = ["<b>%s: %%{marker.color}</b>" % value_label]
+        hover_lines = ["<b>%s: %%{marker.color}</b>" % labels_title]
 
     if sizes is not None:
-        hover_lines.append("%s: %%{marker.size}" % size_label)
+        hover_lines.append("%s: %%{marker.size}" % sizes_title)
 
     if num_dims == 3:
         hover_lines.append("x, y, z = %{x:.3f}, %{y:.3f}, %{z:.3f}")
@@ -1549,33 +1899,45 @@ def _plot_scatter_numeric(
     )
 
     if num_dims == 3:
-        scatter = pgo.Scatter3d(
+        scatter = go.Scatter3d(
             x=points[:, 0], y=points[:, 1], z=points[:, 2], **kwargs
         )
     else:
-        scatter = pgo.Scattergl(x=points[:, 0], y=points[:, 1], **kwargs)
+        scatter = go.Scattergl(x=points[:, 0], y=points[:, 1], **kwargs)
 
-    return pgo.Figure(scatter)
+    figure = go.Figure(scatter)
+
+    if axis_equal:
+        figure.update_layout(yaxis_scaleanchor="x")
+        if num_dims == 3:
+            figure.update_layout(zaxis_scaleanchor="x")
+
+    return figure
 
 
 def _plot_scatter_mapbox_categorical(
     coords,
     labels,
     classes,
-    sizes=None,
-    ids=None,
-    value_label="label",
-    size_label="size",
-    marker_size=None,
+    sizes,
+    ids,
+    marker_size,
+    labels_title,
+    sizes_title,
+    colorbar_title,
+    colors=None,
 ):
-    hover_lines = ["<b>%s: %%{text}</b>" % value_label]
+    num_classes = len(classes)
+    colors = _get_qualitative_colors(num_classes, colors=colors)
+
+    hover_lines = ["<b>%s: %%{text}</b>" % labels_title]
 
     if sizes is not None:
         if marker_size is None:
             marker_size = 15  # max marker size
 
         sizeref = 0.5 * max(sizes) / marker_size
-        hover_lines.append("%s: %%{marker.size}" % size_label)
+        hover_lines.append("%s: %%{marker.size}" % sizes_title)
 
     hover_lines.append("lat: %{lat:.5f}<br>lon: %{lon:.5f}")
 
@@ -1585,7 +1947,7 @@ def _plot_scatter_mapbox_categorical(
     hovertemplate = "<br>".join(hover_lines) + "<extra></extra>"
 
     traces = []
-    for label in classes:
+    for label, color in zip(classes, colors):
         label_inds = labels == label
 
         if ids is not None:
@@ -1605,25 +1967,28 @@ def _plot_scatter_mapbox_categorical(
         else:
             marker = None
 
-        scatter = pgo.Scattermapbox(
+        scatter = go.Scattermapbox(
             lat=coords[label_inds][:, 1],
             lon=coords[label_inds][:, 0],
             customdata=customdata,
             mode="markers",
             showlegend=True,
             name=label,
+            line_color=color,
             marker=marker,
             text=np.full(np.count_nonzero(label_inds), label),
             hovertemplate=hovertemplate,
         )
         traces.append(scatter)
 
-    figure = pgo.Figure(traces)
+    figure = go.Figure(traces)
 
     zoom, (center_lon, center_lat) = _compute_zoom_center(coords)
     figure.update_layout(
         mapbox_style="carto-positron",
         mapbox=dict(center=dict(lat=center_lat, lon=center_lon), zoom=zoom),
+        legend_title_text=colorbar_title,
+        legend_itemsizing="constant",
     )
 
     return figure
@@ -1633,26 +1998,19 @@ def _plot_scatter_mapbox_categorical_single_trace(
     coords,
     labels,
     classes,
-    sizes=None,
-    ids=None,
+    sizes,
+    ids,
+    marker_size,
+    labels_title,
+    sizes_title,
+    colorbar_title,
     colors=None,
-    value_label="label",
-    size_label="size",
-    marker_size=None,
 ):
-    if colors is None:
-        colors = px.colors.qualitative.Plotly
-
     num_classes = len(classes)
     targets = [classes.index(l) for l in labels]
     clim = [-0.5, num_classes - 0.5]
 
-    # @todo how to blend for >10 classes?
-    colorscale = []
-    for i in range(num_classes):
-        color = colors[i % len(colors)]
-        colorscale.append([i / num_classes, color])
-        colorscale.append([(i + 1) / num_classes, color])
+    colorscale = _get_qualitative_colorscale(num_classes, colors=colors)
 
     marker = dict(
         color=targets,
@@ -1661,7 +2019,7 @@ def _plot_scatter_mapbox_categorical_single_trace(
         autocolorscale=False,
         colorscale=colorscale,
         colorbar=dict(
-            title=value_label,
+            title=colorbar_title,
             tickvals=list(range(num_classes)),
             ticktext=classes,
             lenmode="fraction",
@@ -1685,10 +2043,10 @@ def _plot_scatter_mapbox_categorical_single_trace(
     elif marker_size is not None:
         marker.update(dict(size=marker_size))
 
-    hover_lines = ["<b>%s: %%{text}</b>" % value_label]
+    hover_lines = ["<b>%s: %%{text}</b>" % labels_title]
 
     if sizes is not None:
-        hover_lines.append("%s: %%{marker.size}" % size_label)
+        hover_lines.append("%s: %%{marker.size}" % sizes_title)
 
     hover_lines.append("lat: %{lat:.5f}<br>lon: %{lon:.5f}")
 
@@ -1697,7 +2055,7 @@ def _plot_scatter_mapbox_categorical_single_trace(
 
     hovertemplate = "<br>".join(hover_lines) + "<extra></extra>"
 
-    scatter = pgo.Scattermapbox(
+    scatter = go.Scattermapbox(
         lat=coords[:, 1],
         lon=coords[:, 0],
         customdata=ids,
@@ -1707,7 +2065,7 @@ def _plot_scatter_mapbox_categorical_single_trace(
         hovertemplate=hovertemplate,
     )
 
-    figure = pgo.Figure(scatter)
+    figure = go.Figure(scatter)
 
     zoom, (center_lon, center_lat) = _compute_zoom_center(coords)
     figure.update_layout(
@@ -1720,19 +2078,25 @@ def _plot_scatter_mapbox_categorical_single_trace(
 
 def _plot_scatter_mapbox_numeric(
     coords,
-    values=None,
-    sizes=None,
-    ids=None,
+    values,
+    sizes,
+    ids,
+    marker_size,
+    labels_title,
+    sizes_title,
+    colorbar_title,
     colorscale="Viridis",
-    value_label="value",
-    size_label="size",
-    marker_size=None,
 ):
     marker = dict()
 
     if values is not None:
         marker.update(
-            dict(color=values, colorscale=colorscale, showscale=True)
+            dict(
+                color=values,
+                colorbar=dict(title=colorbar_title, lenmode="fraction", len=1),
+                colorscale=colorscale,
+                showscale=True,
+            )
         )
 
     if sizes is not None:
@@ -1753,10 +2117,10 @@ def _plot_scatter_mapbox_numeric(
     hover_lines = []
 
     if values is not None:
-        hover_lines = ["<b>%s: %%{marker.color}</b>" % value_label]
+        hover_lines = ["<b>%s: %%{marker.color}</b>" % labels_title]
 
     if sizes is not None:
-        hover_lines.append("%s: %%{marker.size}" % size_label)
+        hover_lines.append("%s: %%{marker.size}" % sizes_title)
 
     hover_lines.append("lat: %{lat:.5f}<br>lon: %{lon:.5f}")
 
@@ -1765,7 +2129,7 @@ def _plot_scatter_mapbox_numeric(
 
     hovertemplate = "<br>".join(hover_lines) + "<extra></extra>"
 
-    scatter = pgo.Scattermapbox(
+    scatter = go.Scattermapbox(
         lat=coords[:, 1],
         lon=coords[:, 0],
         customdata=ids,
@@ -1774,7 +2138,7 @@ def _plot_scatter_mapbox_numeric(
         hovertemplate=hovertemplate,
     )
 
-    figure = pgo.Figure(scatter)
+    figure = go.Figure(scatter)
 
     zoom, (center_lon, center_lat) = _compute_zoom_center(coords)
     figure.update_layout(
@@ -1787,16 +2151,39 @@ def _plot_scatter_mapbox_numeric(
 
 def _plot_scatter_mapbox_density(
     coords,
-    values=None,
-    ids=None,
-    radius=None,
+    values,
+    sizes,
+    ids,
+    radius,
+    labels_title,
+    sizes_title,
+    colorbar_title,
     colorscale="Viridis",
-    value_label="value",
 ):
+    if values is not None and sizes is not None:
+        hover_title = labels_title + " x " + sizes_title
+    elif values is not None:
+        hover_title = labels_title
+    elif sizes is not None:
+        hover_title = sizes_title
+    else:
+        hover_title = "value"
+
     hover_lines = []
 
     if values is not None:
-        hover_lines = ["<b>%s: %%{}</b>" % value_label]
+        hover_lines = ["<b>%s: %%{z}</b>" % hover_title]
+
+    if sizes is not None:
+        if values is None:
+            values = sizes
+        else:
+            values *= sizes
+
+    if values is not None:
+        values = np.maximum(values, 0.0)
+        valuesref = values.max() / 2.0
+        values /= valuesref
 
     hover_lines.append("lat: %{lat:.5f}<br>lon: %{lon:.5f}")
 
@@ -1805,7 +2192,7 @@ def _plot_scatter_mapbox_density(
 
     hovertemplate = "<br>".join(hover_lines) + "<extra></extra>"
 
-    density = pgo.Densitymapbox(
+    density = go.Densitymapbox(
         lat=coords[:, 1],
         lon=coords[:, 0],
         z=values,
@@ -1815,7 +2202,7 @@ def _plot_scatter_mapbox_density(
         hovertemplate=hovertemplate,
     )
 
-    figure = pgo.Figure(density)
+    figure = go.Figure(density)
 
     zoom, (center_lon, center_lat) = _compute_zoom_center(coords)
     figure.update_layout(
@@ -1823,7 +2210,34 @@ def _plot_scatter_mapbox_density(
         mapbox=dict(center=dict(lat=center_lat, lon=center_lon), zoom=zoom),
     )
 
+    # @todo why does this not show?
+    figure.update_layout(legend_title_text=colorbar_title)
+
     return figure
+
+
+def _get_qualitative_colors(num_classes, colors=None):
+    # Some color choices:
+    # https://plotly.com/python/discrete-color/#color-sequences-in-plotly-express
+    if colors is None:
+        if num_classes <= 10:
+            colors = px.colors.qualitative.G10
+        else:
+            colors = px.colors.qualitative.Alphabet
+
+    # @todo can we blend when there are more classes than colors?
+    return [colors[i % len(colors)] for i in range(num_classes)]
+
+
+def _get_qualitative_colorscale(num_classes, colors=None):
+    colors = _get_qualitative_colors(num_classes, colors=colors)
+
+    colorscale = []
+    for i, color in enumerate(colors):
+        colorscale.append([i / num_classes, color])
+        colorscale.append([(i + 1) / num_classes, color])
+
+    return colorscale
 
 
 # source: https://stackoverflow.com/a/64148305

@@ -10,8 +10,8 @@ from collections import defaultdict
 
 import numpy as np
 
+import fiftyone.core.plots as fop
 import fiftyone.core.utils as fou
-import fiftyone.utils.plot as foup
 
 from .detection import (
     DetectionEvaluation,
@@ -232,6 +232,13 @@ class COCOEvaluation(DetectionEvaluation):
 
                 tp_fp = [1] * len(tp) + [0] * len(fp)
                 confs = [m[3] for m in tp] + [m[3] for m in fp]
+                if None in confs:
+                    raise ValueError(
+                        "All predicted objects must have their `confidence` "
+                        "attribute populated in order to compute "
+                        "precision-recall curves"
+                    )
+
                 inds = np.argsort(-np.array(confs), kind="mergesort")
                 tp_fp = np.array(tp_fp)[inds]
                 tp_sum = np.cumsum(tp_fp).astype(dtype=np.float)
@@ -308,24 +315,26 @@ class COCODetectionResults(DetectionResults):
         self.iou_threshs = np.asarray(iou_threshs)
         self._classwise_AP = np.mean(precision, axis=(0, 2))
 
-    def plot_pr_curves(self, classes=None, backend=None, show=True, **kwargs):
+    def plot_pr_curves(self, classes=None, backend="plotly", **kwargs):
         """Plots precision-recall (PR) curves for the results.
 
         Args:
             classes (None): a list of classes to generate curves for. By
                 default, top 3 AP classes will be plotted
-            backend (None): the plotting backend to use. Supported values are
-                ``("plotly", "matplotlib")``. If no backend is specified, the
-                best applicable backend is chosen
-            show (True): whether to show the plot (True) or return the figure
-                without showing it
+            backend ("plotly"): the plotting backend to use. Supported values
+                are ``("plotly", "matplotlib")``
             **kwargs: keyword arguments for the backend plotting method:
 
-                -   "plotly" backend: :meth:`fiftyone.utils.plot.plotly.plot_pr_curves`
-                -   "matplotlib" backend: :meth:`fiftyone.utils.plot.matplotlib.plot_pr_curves`
+                -   "plotly" backend: :meth:`fiftyone.core.plots.plotly.plot_pr_curves`
+                -   "matplotlib" backend: :meth:`fiftyone.core.plots.matplotlib.plot_pr_curves`
 
         Returns:
-            None, or the figure containing the plot if ``show`` is True
+            one of the following:
+
+            -   a :class:`fiftyone.core.plots.plotly.PlotlyNotebookPlot`, if
+                you are working in a notebook context and the plotly backend is
+                used
+            -   a plotly or matplotlib figure, otherwise
         """
         if not classes:
             inds = np.argsort(self._classwise_AP)[::-1][:3]
@@ -336,16 +345,9 @@ class COCODetectionResults(DetectionResults):
             class_ind = self._get_class_index(c)
             precisions.append(np.mean(self.precision[:, class_ind], axis=0))
 
-        figure = foup.plot_pr_curves(
-            precisions,
-            self.recall,
-            classes,
-            backend=backend,
-            show=show,
-            **kwargs,
+        return fop.plot_pr_curves(
+            precisions, self.recall, classes, backend=backend, **kwargs
         )
-
-        return figure if not show else None
 
     def mAP(self, classes=None):
         """Computes COCO-style mean average precision (mAP) for the specified
