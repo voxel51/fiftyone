@@ -10,13 +10,15 @@
 
 # Show usage information
 usage() {
-    echo "Usage:  bash $0 [-h] [-d]
+    echo "Usage:  bash $0 [-h] [-d] [-s]
 
 Getting help:
 -h      Display this help message.
 
 Custom installations:
 -d      Install developer dependencies. The default is false.
+-s      Skip the installation of fiftyone-db and fiftyone-brain.
+        The default is false.
 "
 }
 
@@ -28,6 +30,7 @@ while getopts "hd" FLAG; do
     case "${FLAG}" in
         h) SHOW_HELP=true ;;
         d) DEV_INSTALL=true ;;
+	s) SKIP_SUPPORTING=true ;;
         *) usage ;;
     esac
 done
@@ -35,6 +38,11 @@ done
 
 set -e
 OS=$(uname -s)
+
+echo "***** INSTALLING SUPPORT PACKAGES *****"
+if [ ${SKIP_SUPPORTING} = false ]; then
+    pip install fiftyone-brain fiftyone-db
+fi
 
 echo "***** INSTALLING ETA *****"
 if [[ ! -d "eta" ]]; then
