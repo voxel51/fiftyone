@@ -24,7 +24,7 @@ import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.utils as fou
 
-from .base import Plot, InteractivePlot
+from .base import Plot, InteractivePlot, ResponsivePlot
 
 
 logger = logging.getLogger(__name__)
@@ -909,12 +909,16 @@ class PlotlyWidgetMixin(object):
     """
 
     def __init__(self, widget):
-        if not foc.is_notebook_context():
-            raise foc.ContextError(
-                "%s plots can only be used in notebooks" % self.__class__
-            )
+        if foc.is_notebook_context():
+            _check_plotly_notebook_environment()
+        else:
+            warnings.warn(_INTERACTIVE_PLOT_WARNING)
 
-        _check_plotly_notebook_environment()
+            # If the user is using a widget-based plot outside of a notebook
+            # context, go ahead and connect it so they can start manually
+            # updating it and `show()`ing it, if desired
+            if isinstance(self, ResponsivePlot):
+                self.connect()
 
         self._widget = widget
         self._handle = None
@@ -925,6 +929,12 @@ class PlotlyWidgetMixin(object):
 
     def _show(self, **kwargs):
         self._update_layout(**kwargs)
+
+        # We're supposed to be in a notebook context, but, if we're not, go
+        # ahead and show the plot normally
+        if not foc.is_notebook_context():
+            self._widget.show()
+            return
 
         #
         # @todo if this plot has already been shown in a different cell,
@@ -1017,6 +1027,9 @@ class PlotlyNotebookPlot(PlotlyWidgetMixin, Plot):
 
     def freeze(self):
         """Freezes the plot, replacing it with a static image."""
+        if not foc.is_notebook_context():
+            raise foc.ContextError("Plots can only be frozen in notebooks")
+
         self._freeze()
         self._frozen = True
 
@@ -1034,8 +1047,8 @@ class PlotlyInteractivePlot(PlotlyWidgetMixin, InteractivePlot):
     """
 
     def __init__(self, widget, **kwargs):
-        PlotlyWidgetMixin.__init__(self, widget)
         InteractivePlot.__init__(self, **kwargs)
+        PlotlyWidgetMixin.__init__(self, widget)  # must be last
 
     def update_layout(self, **kwargs):
         """Updates the layout of the plot.

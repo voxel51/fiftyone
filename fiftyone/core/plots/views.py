@@ -36,8 +36,8 @@ class PlotlyViewPlot(PlotlyWidgetMixin, ViewPlot):
 
     def __init__(self, widget):
         self._traces = widget.data
-        PlotlyWidgetMixin.__init__(self, widget)
         ViewPlot.__init__(self)
+        PlotlyWidgetMixin.__init__(self, widget)  # must be last
 
     def _get_trace_updates(self, view, agg_results=None):
         raise NotImplementedError(
