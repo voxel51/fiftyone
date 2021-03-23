@@ -459,7 +459,7 @@ def download_open_images_split(
     else:
         downloaded_ids = []
         split_image_ids = _parse_image_ids(
-            image_ids, image_ids_file, split, dataset_dir
+            image_ids, image_ids_file, dataset_dir, split=split, download=True,
         )
 
     download = True
