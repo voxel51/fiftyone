@@ -16,6 +16,7 @@ import { useVideoData, useTheme } from "../utils/hooks";
 import {
   stringify,
   VALID_CLASS_TYPES,
+  VALID_LABEL_TYPES,
   VALID_LIST_TYPES,
 } from "../utils/labels";
 
@@ -144,11 +145,37 @@ const SampleInfo = React.memo(({ id }) => {
         <Tag
           key={cur}
           name={tag}
-          color={colorMap["tags." + tag]}
+          color={colorMap[cur]}
           title={tag}
           maxWidth={"calc(100% - 32px)"}
         />,
       ];
+    } else if (cur.startsWith("_label_tags.")) {
+      let count = 0;
+      const tag = cur.slice("_label_tags.".length);
+      activeFields.forEach((f) => {
+        if (VALID_LIST_TYPES.includes(labelTypes[f])) {
+          count += sample[f]._tags.filter((t) => tag === t).length;
+          console.log(colorMap, cur);
+        } else if (VALID_LABEL_TYPES.includes(labelTypes[f])) {
+          if (sample[f].tags.includes(tag)) {
+            count += 1;
+          }
+        }
+      });
+
+      if (count > 0) {
+        acc = [
+          ...acc,
+          <Tag
+            key={cur}
+            name={`${tag}: ${count}`}
+            color={colorMap[cur]}
+            title={`${tag}: ${count}`}
+            maxWidth={"calc(100% - 32px)"}
+          />,
+        ];
+      }
     } else if (
       scalars.includes(cur) &&
       ![null, undefined].includes(sample[cur])

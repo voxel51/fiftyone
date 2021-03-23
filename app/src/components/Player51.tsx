@@ -11,7 +11,7 @@ import ExternalLink from "./ExternalLink";
 import Player51 from "player51";
 import { useEventHandler } from "../utils/hooks";
 import { convertSampleToETA } from "../utils/labels";
-import { useMove } from "react-use-gesture";
+import { useMove, useWheel } from "react-use-gesture";
 
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
@@ -492,7 +492,7 @@ const Player = ({
   });
   const ref = useRef(null);
   const containerRef = useRef(null);
-  const bind = useMove((s) => ref.current && ref.current(s));
+  const bindMove = useMove((s) => ref.current && ref.current(s));
 
   useEventHandler(
     player,
@@ -511,7 +511,7 @@ const Player = ({
       id={id}
       style={style}
       {...props}
-      {...bind()}
+      {...bindMove()}
       ref={containerRef}
     >
       {error && (

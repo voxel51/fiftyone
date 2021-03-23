@@ -976,16 +976,25 @@ export const hiddenFieldLabels = selectorFamily<string[], string>({
   },
 });
 
-export const matchedTags = selectorFamily<Set<string>, string>({
+export const matchedTags = selectorFamily<
+  Set<string>,
+  { key: string; modal: boolean }
+>({
   key: "matchedTags",
-  get: (key) => ({ get }) => {
+  get: ({ key, modal }) => ({ get }) => {
+    if (modal) {
+      return get(atoms.matchedTagsModal(key));
+    }
     const tags = get(filterStages).tags;
     if (tags && tags[key]) {
       return new Set(tags[key]);
     }
     return new Set();
   },
-  set: (key) => ({ get, set }, value) => {
+  set: ({ key, modal }) => ({ get, set }, value) => {
+    if (modal) {
+      set(atoms.matchedTagsModal(key), value);
+    }
     const stages = { ...get(filterStages) };
     const tags = { ...(stages.tags || {}) };
     if (value instanceof Set && value.size) {

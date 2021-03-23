@@ -14,6 +14,7 @@ import * as stringField from "./StringFieldFilter";
 import * as atoms from "../../recoil/atoms";
 import * as selectors from "../../recoil/selectors";
 import { RESERVED_FIELDS, VALID_LIST_TYPES } from "../../utils/labels";
+import { pathsToStateValue } from "xstate/lib/utils";
 
 const COUNT_CLS = "Count";
 
@@ -111,6 +112,16 @@ export const labelFilters = selectorFamily<LabelFilters, boolean>({
       const cPath = `${path}.confidence`;
       const lPath = `${path}.label`;
       set(
+        selectors.matchedTags({ modal: true, key: "sample" }),
+        get(selectors.matchedTags({ modal: false, key: "sample" }))
+      );
+
+      set(
+        selectors.matchedTags({ modal: true, key: "label" }),
+        get(selectors.matchedTags({ modal: false, key: "label" }))
+      );
+
+      set(
         numericField.rangeModalAtom({ path: cPath, defaultRange: [0, 1] }),
         get(numericField.rangeAtom({ path: cPath, defaultRange: [0, 1] }))
       );
@@ -206,6 +217,11 @@ export const fieldIsFiltered = selectorFamily<
       return get(numericField.fieldIsFiltered(isArgs));
     } else if (get(isStringField(path))) {
       return get(stringField.fieldIsFiltered(isArgs));
+    }
+    if (path.startsWith("_label_tags.")) {
+      return get(selectors.matchedTags({ modal, key: "label" })).has(
+        path.slice("_label_tags.".length)
+      );
     }
 
     path = `${path}${getPathExtension(get(selectors.labelTypesMap)[path])}`;

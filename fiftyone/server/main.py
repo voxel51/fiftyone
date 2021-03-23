@@ -509,18 +509,17 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             )
             return
 
-        view = _get_tag_concat_view(view)
         view = _get_extended_view(
             view, state.filters, hide_result=True, reduce_label_tags=True
         )
         view = view.skip((page - 1) * page_length)
+
         if view.media_type == fom.VIDEO:
             view = view.set_field("frames", F("frames")[0])
 
         results, more = await _get_sample_data(
             cls.sample_collection(), view, page_length, page
         )
-        print(results[0]["sample"]["ground_truth"].keys())
 
         message = {
             "type": "page",
@@ -775,7 +774,6 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             view = state.dataset
 
         col = cls.sample_collection()
-        view = _get_tag_concat_view(view)
 
         if view.media_type == fom.VIDEO:
             samples = await _get_video_data(
@@ -990,23 +988,26 @@ def _write_message(message, app=False, session=False, ignore=None, only=None):
 def _get_extended_view(
     view, filters, hide_result=False, reduce_label_tags=False
 ):
-    if filters is None or len(filters) == 0:
-        return view
+    if filters is not None and len(filters):
+        filters = filters.copy()
 
-    filters = filters.copy()
+        if "tags" in filters:
+            tags = filters.pop("tags")
+            if "label" in tags:
+                view = view.select_labels(
+                    tags=tags["label"], _select_fields=False
+                )
 
-    if "tags" in filters:
-        tags = filters.pop("tags")
-        if "label" in tags:
-            view = view.select_labels(tags=tags["label"], _select_fields=False)
+            if "sample" in tags:
+                view = view.match_tags(tags=tags["sample"])
 
-        if "sample" in tags:
-            view = view.match_tags(tags=tags["sample"])
+        for stage in _make_filter_stages(view._dataset, filters):
+            if hide_result and type(stage) == fosg.FilterLabels:
+                stage._hide_result = True
+            view = view.add_stage(stage)
 
-    for stage in _make_filter_stages(view._dataset, filters):
-        if hide_result and type(stage) == fosg.FilterLabels:
-            stage._hide_result = True
-        view = view.add_stage(stage)
+    if reduce_label_tags:
+        view = _get_tag_concat_view(view)
 
     return view
 
@@ -1248,7 +1249,8 @@ def _make_filter_stages(dataset, filters):
 
 async def _get_sample_data(col, view, page_length, page):
     pipeline = view._pipeline()
-    samples = await col.aggregate(pipeline).to_list(page_length + 1)
+
+    samples = await foo.aggregate(col, pipeline).to_list(page_length + 1)
     convert(samples)
     more = False
     if len(samples) > page_length:
@@ -1289,25 +1291,15 @@ async def _get_video_data(col, state, view, _ids, labels=True):
 
 def _get_tag_concat_view(view):
     for path, field in fos.DatasetStatistics.labels(view):
-        if not issubclass(fol._HasLabelList, field.document_type):
+        if not issubclass(field.document_type, fol._HasLabelList):
             continue
 
         items = "%s.%s" % (path, field.document_type._LABEL_LIST_FIELD)
         tags = "%s._tags" % path
 
-        expr = F("$%s" % items).reduce(VALUE.concat(F("tags")), [])
-        view = view.set_field(tags, expr)
-
-        if view.media_type != fom.VIDEO:
-            continue
-
-        if not path.startswith(view._FRAMES_PREFIX):
-            continue
-
-        frame_field_tags = "_%s_tags" % path
-        expr = F("$%s" % path).reduce(VALUE.concat(F(tags)), [])
-        view = view.set_field(frame_field_tags, expr)
-        view = view.set_field(tags, None)
+        view = view.set_field(
+            tags, F("$%s" % items).reduce(VALUE.extend(F("tags")), [])
+        )
 
     return view
 

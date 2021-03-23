@@ -172,6 +172,7 @@ const makeClearMatchTags = (color, matchedTags, setMatchedTags) => {
           }}
           open={false}
           style={{
+            marginLeft: "0.25rem",
             height: "1.5rem",
             fontSize: "0.8rem",
             lineHeight: "1rem",
@@ -192,7 +193,7 @@ const SampleTagsCell = ({ modal }: TagsCellProps) => {
     fieldAtoms.activeTags(modal)
   );
   const [matchedTags, setMatchedTags] = useRecoilState(
-    selectors.matchedTags("sample")
+    selectors.matchedTags({ modal, key: "label" })
   );
   const colorMap = useRecoilValue(selectors.colorMap(modal));
   const [subCountAtom, countAtom] = modal
@@ -221,7 +222,7 @@ const SampleTagsCell = ({ modal }: TagsCellProps) => {
             selected: activeTags.includes(name),
             color,
             title: name,
-            path: name,
+            path: "tags." + name,
             data: modal ? (
               count[name] > 0 ? (
                 <Check style={{ color: colorMap[name] }} />
@@ -274,7 +275,7 @@ const LabelTagsCell = ({ modal }: TagsCellProps) => {
     fieldAtoms.activeLabelTags(modal)
   );
   const [matchedTags, setMatchedTags] = useRecoilState(
-    selectors.matchedTags("label")
+    selectors.matchedTags({ modal, key: "label" })
   );
   const colorMap = useRecoilValue(selectors.colorMap(modal));
   const [subCountAtom, countAtom] = modal
@@ -296,8 +297,9 @@ const LabelTagsCell = ({ modal }: TagsCellProps) => {
         .map((name) => {
           const color = colorByLabel
             ? theme.brand
-            : colorMap["_labels_tags." + name];
+            : colorMap["_label_tags." + name];
           return {
+            canFilter: true,
             name,
             disabled: false,
             hideCheckbox: modal,
@@ -305,7 +307,7 @@ const LabelTagsCell = ({ modal }: TagsCellProps) => {
             selected: activeTags.includes(name),
             color,
             title: name,
-            path: name,
+            path: "_label_tags." + name,
             data: makeTagData(
               subCount[name],
               count[name],
