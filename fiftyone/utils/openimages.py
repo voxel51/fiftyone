@@ -255,8 +255,8 @@ class OpenImagesDatasetImporter(foud.LabeledImageDatasetImporter):
             specified_image_ids = _parse_image_ids(
                 image_ids, image_ids_file, dataset_dir,
             )
-            specified_image_ids = list(
-                set(specified_image_ids + downloaded_ids)
+            specified_image_ids = sorted(
+                list(set(specified_image_ids + downloaded_ids))
             )
 
         download = False
