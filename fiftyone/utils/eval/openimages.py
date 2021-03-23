@@ -68,6 +68,8 @@ class OpenImagesEvaluationConfig(DetectionEvaluationConfig):
         neg_label_field=None,
         expand_gt_hierarchy=True,
         expand_pred_hierarchy=False,
+        hierarchy_keyed_parent=None,
+        hierarchy_keyed_child=None,
         **kwargs
     ):
         super().__init__(
@@ -101,7 +103,7 @@ class OpenImagesEvaluationConfig(DetectionEvaluationConfig):
             )
             self.expand_gt_hierarchy = False
 
-        if self.hierarchy:
+        if self.expand_gt_hierarchy or self.expand_pred_hierarchy:
             (
                 self.hierarchy_keyed_parent,
                 self.hierarchy_keyed_child,
