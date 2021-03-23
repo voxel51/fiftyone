@@ -128,8 +128,7 @@ const PillButtonDiv = animated(styled.div`
   }
   & > svg {
     display: inline-block;
-    height: 1.5rem;
-    width: 1.5rem;
+    height: 100%;
   }
 `);
 
@@ -170,8 +169,8 @@ export const PillButton = React.memo(
           style={{ ...props, ...style }}
           title={tooltip}
         >
-          {icon}
           {text && <span>{text}</span>}
+          {icon}
           {arrow && (open ? <KeyboardArrowUp /> : <KeyboardArrowDown />)}
         </PillButtonDiv>
       );

@@ -11,11 +11,11 @@ import {
   PhotoLibrary,
 } from "@material-ui/icons";
 import { animated, useSpring } from "react-spring";
+import numeral from "numeral";
 
 import CellHeader from "./CellHeader";
 import CheckboxGrid from "./CheckboxGroup";
 import DropdownCell from "./DropdownCell";
-import SelectionTag from "./Tags/SelectionTag";
 import { Entry } from "./CheckboxGroup";
 import * as atoms from "../recoil/atoms";
 import { labelModalTagCounts } from "./Actions/utils";
@@ -25,6 +25,7 @@ import * as selectors from "../recoil/selectors";
 import { stringify, FILTERABLE_TYPES } from "../utils/labels";
 import { useTheme } from "../utils/hooks";
 import { Target } from "../icons";
+import { PillButton } from "./utils";
 
 const Container = styled.div`
   .MuiCheckbox-root {
@@ -42,10 +43,6 @@ const Container = styled.div`
 
     .label {
       text-transform: uppercase;
-    }
-
-    ${SelectionTag.Body} {
-      float: right;
     }
 
     .push {
@@ -66,10 +63,11 @@ type CellProps = {
   title: string;
   modal: boolean;
   onSelect: (entry: Entry) => void;
-  handleClear: (event: Event) => void;
+  handleClear: () => void;
   entries: Entry[];
   icon: any;
   children?: any;
+  pills?: Array<typeof PillButton>;
 };
 
 const Cell = React.memo(
@@ -82,9 +80,11 @@ const Cell = React.memo(
     title,
     modal,
     children,
+    pills = [],
   }: CellProps) => {
     const [expanded, setExpanded] = useState(true);
     const numSelected = entries.filter((e) => e.selected).length;
+    const theme = useTheme();
 
     return (
       <DropdownCell
@@ -94,13 +94,21 @@ const Cell = React.memo(
             <span className="label">{label}</span>
             <span className="push" />
             {numSelected ? (
-              <SelectionTag
-                count={numSelected}
-                title="Clear selection"
-                onClear={handleClear}
+              <PillButton
                 onClick={handleClear}
+                highlight={false}
+                open={false}
+                icon={<Check />}
+                text={numeral(numSelected).format("0,0")}
+                style={{
+                  height: "1.5rem",
+                  fontSize: "0.8rem",
+                  lineHeight: "1rem",
+                  color: theme.font,
+                }}
               />
             ) : null}
+            {pills}
           </>
         }
         title={title}
@@ -150,6 +158,29 @@ const makeTagData = (
     </>
   );
 };
+const makeClearMatchTags = (color, matchedTags, setMatchedTags) => {
+  return matchedTags.size
+    ? [
+        <PillButton
+          highlight={false}
+          icon={<Target />}
+          text={numeral(matchedTags.size).format("0,0")}
+          onClick={(e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            setMatchedTags(new Set());
+          }}
+          open={false}
+          style={{
+            height: "1.5rem",
+            fontSize: "0.8rem",
+            lineHeight: "1rem",
+            color,
+          }}
+        />,
+      ]
+    : [];
+};
 
 type TagsCellProps = {
   modal: boolean;
@@ -177,6 +208,7 @@ const SampleTagsCell = ({ modal }: TagsCellProps) => {
     <Cell
       label="Sample tags"
       icon={<LocalOffer />}
+      pills={makeClearMatchTags(theme.font, matchedTags, setMatchedTags)}
       entries={tags
         .filter((t) => count[t])
         .map((name) => {
@@ -258,6 +290,7 @@ const LabelTagsCell = ({ modal }: TagsCellProps) => {
     <Cell
       label="Label tags"
       icon={<LocalOffer />}
+      pills={makeClearMatchTags(theme.font, matchedTags, setMatchedTags)}
       entries={tags
         .filter((t) => count[t])
         .map((name) => {

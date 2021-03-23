@@ -32,7 +32,7 @@ os.environ["FIFTYONE_SERVER"] = "1"
 import fiftyone as fo
 import fiftyone.core.aggregations as foa
 import fiftyone.constants as foc
-from fiftyone.core.expressions import ViewField as F
+from fiftyone.core.expressions import ViewField as F, VALUE
 import fiftyone.core.dataset as fod
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
@@ -509,7 +509,10 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             )
             return
 
-        view = _get_extended_view(view, state.filters, hide_result=True)
+        view = _get_tag_concat_view(view)
+        view = _get_extended_view(
+            view, state.filters, hide_result=True, reduce_label_tags=True
+        )
         view = view.skip((page - 1) * page_length)
         if view.media_type == fom.VIDEO:
             view = view.set_field("frames", F("frames")[0])
@@ -517,6 +520,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         results, more = await _get_sample_data(
             cls.sample_collection(), view, page_length, page
         )
+        print(results[0]["sample"]["ground_truth"].keys())
 
         message = {
             "type": "page",
@@ -771,6 +775,8 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             view = state.dataset
 
         col = cls.sample_collection()
+        view = _get_tag_concat_view(view)
+
         if view.media_type == fom.VIDEO:
             samples = await _get_video_data(
                 col, state, view, sample_ids, labels=False
@@ -981,7 +987,9 @@ def _write_message(message, app=False, session=False, ignore=None, only=None):
         client.write_message(message)
 
 
-def _get_extended_view(view, filters, hide_result=False):
+def _get_extended_view(
+    view, filters, hide_result=False, reduce_label_tags=False
+):
     if filters is None or len(filters) == 0:
         return view
 
@@ -1277,6 +1285,31 @@ async def _get_video_data(col, state, view, _ids, labels=True):
             results.append((sample, frames))
 
     return results
+
+
+def _get_tag_concat_view(view):
+    for path, field in fos.DatasetStatistics.labels(view):
+        if not issubclass(fol._HasLabelList, field.document_type):
+            continue
+
+        items = "%s.%s" % (path, field.document_type._LABEL_LIST_FIELD)
+        tags = "%s._tags" % path
+
+        expr = F("$%s" % items).reduce(VALUE.concat(F("tags")), [])
+        view = view.set_field(tags, expr)
+
+        if view.media_type != fom.VIDEO:
+            continue
+
+        if not path.startswith(view._FRAMES_PREFIX):
+            continue
+
+        frame_field_tags = "_%s_tags" % path
+        expr = F("$%s" % path).reduce(VALUE.concat(F(tags)), [])
+        view = view.set_field(frame_field_tags, expr)
+        view = view.set_field(tags, None)
+
+    return view
 
 
 def _make_frame_labels(name, label, frame_number, prefix=""):

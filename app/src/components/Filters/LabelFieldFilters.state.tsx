@@ -277,7 +277,6 @@ export const filteredLabelSampleCounts = selectorFamily<Counts | null, string>({
     if (stats === null) {
       return null;
     }
-    console.log(stats);
     return stats.reduce((acc, cur) => {
       catchLabelCount(names, prefix, cur, acc);
       return acc;
