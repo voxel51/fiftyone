@@ -47,7 +47,7 @@ def plot_confusion_matrix(
     ids=None,
     gt_field=None,
     pred_field=None,
-    colorscale="Blues",
+    colorscale="oranges",
     layout=None,
 ):
     """Plots a confusion matrix.
@@ -65,7 +65,8 @@ def plot_confusion_matrix(
             containing lists of IDs corresponding to each cell
         gt_field (None): the name of the ground truth field
         pred_field (None): the name of the predictions field
-        colorscale ("Blues"): a plotly colorscale to use
+        colorscale ("oranges"): a plotly colorscale to use. See
+            https://plotly.com/python/builtin-colorscales for options
         layout (None): an optional dict of parameters for
             ``plotly.graph_objects.Figure.update_layout(**layout)``
 
@@ -457,7 +458,7 @@ def scatterplot(
             field name, this name will be used, otherwise the colorbar will not
             have a title and the tooltip will use "label"
         sizes_title (None): a title string to use for ``sizes`` in the tooltip.
-            By default, is ``sizes`` is a field name, this name will be used,
+            By default, if ``sizes`` is a field name, this name will be used,
             otherwise the tooltip will use "size"
         show_colorbar_title (None): whether to show the colorbar title. By
             default, a title will be shown only if a value was pasesd to
@@ -571,10 +572,11 @@ def _parse_titles(
     if labels_title is None and etau.is_str(labels):
         labels_title = labels.rsplit(".", 1)[-1]
 
-    if sizes_title is None and etau.is_str(sizes):
-        sizes_title = sizes.rsplit(".", 1)[-1]
-    else:
-        sizes_title = "size"
+    if sizes_title is None:
+        if etau.is_str(sizes):
+            sizes_title = sizes.rsplit(".", 1)[-1]
+        else:
+            sizes_title = "size"
 
     if show_colorbar_title is None:
         show_colorbar_title = labels_title is not None
@@ -753,7 +755,7 @@ def location_scatterplot(
             field name, this name will be used, otherwise the colorbar will not
             have a title and the tooltip will use "label"
         sizes_title (None): a title string to use for ``sizes`` in the tooltip.
-            By default, is ``sizes`` is a field name, this name will be used,
+            By default, if ``sizes`` is a field name, this name will be used,
             otherwise the tooltip will use "size"
         show_colorbar_title (None): whether to show the colorbar title. By
             default, a title will be shown only if a value was pasesd to
