@@ -99,10 +99,11 @@ if [ ${DEV_INSTALL} = true ]; then
     echo "Performing dev install"
     pip install -r requirements/dev.txt
     pre-commit install
+    pip install -e .
 else
     pip install -r requirements.txt
+    pip install .
 fi
-pip install -e .
 
 echo "***** INSTALLING APP *****"
 curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.37.2/install.sh | bash
