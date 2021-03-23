@@ -979,6 +979,10 @@ class OpenImagesDataset(FiftyOneDataset):
     def supports_partial_download(self):
         return True
 
+    @property
+    def default_label_field(self):
+        return ""
+
     def _download_and_prepare(self, dataset_dir, scratch_dir, split):
         num_samples, classes = fouo.download_open_images_split(
             dataset_dir,

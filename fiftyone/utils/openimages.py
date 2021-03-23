@@ -182,6 +182,7 @@ class OpenImagesDatasetImporter(foud.LabeledImageDatasetImporter):
             "detections": fol.Detections,
             "segmentations": fol.Detections,
             "relationships": fol.Detections,
+            "open_images_id": str,
         }
         return _label_cls
 

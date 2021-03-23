@@ -74,7 +74,7 @@ def download_zoo_dataset(
     splits=None,
     dataset_dir=None,
     overwrite=False,
-    cleanup=None,
+    cleanup=True,
     **kwargs
 ):
     """Downloads the dataset of the given name from the FiftyOne Dataset Zoo.
@@ -99,9 +99,8 @@ def download_zoo_dataset(
             By default, it is downloaded to a subdirectory of
             ``fiftyone.config.dataset_zoo_dir``
         overwrite (False): whether to overwrite any existing files
-        cleanup (None): whether to cleanup any temporary files generated
-            during download. This defaults to False if the dataset supports
-            partial downloads and True if it does not
+        cleanup (True): whether to cleanup any temporary files generated
+            during download 
         **kwargs: optional arguments for the :class:`ZooDataset` constructor
 
     Returns:
@@ -183,8 +182,7 @@ def load_zoo_dataset(
         overwrite (False): whether to overwrite any existing files if the
             dataset is to be downloaded
         cleanup (None): whether to cleanup any temporary files generated
-            during download. This defaults to False if the dataset supports
-            partial downloads and True if it does not
+            during download 
         **kwargs: optional arguments to pass to the
             :class:`fiftyone.utils.data.importers.DatasetImporter` constructor.
             If ``download_if_necessary == True``, then ``kwargs`` can also
@@ -241,6 +239,7 @@ def load_zoo_dataset(
         splits = zoo_dataset.supported_splits
 
     dataset = fo.Dataset(dataset_name)
+    label_field = zoo_dataset.default_label_field
 
     if splits:
         for split in splits:
@@ -249,11 +248,20 @@ def load_zoo_dataset(
 
             logger.info("Loading '%s' split '%s'", zoo_dataset.name, split)
             dataset.add_dir(
-                split_dir, dataset_type, tags=tags, **importer_kwargs
+                split_dir,
+                dataset_type,
+                tags=tags,
+                label_field=label_field,
+                **importer_kwargs
             )
     else:
         logger.info("Loading '%s'", zoo_dataset.name)
-        dataset.add_dir(dataset_dir, dataset_type, **importer_kwargs)
+        dataset.add_dir(
+            dataset_dir,
+            dataset_type,
+            label_field=label_field,
+            **importer_kwargs
+        )
 
     if info.classes is not None:
         dataset.default_classes = info.classes
@@ -777,6 +785,13 @@ class ZooDataset(object):
         """
         return False
 
+    @property
+    def default_label_field(self):
+        """The default name or root name for label fields generated when 
+        loading this Zoo Dataset
+        """
+        return None
+
     def has_tag(self, tag):
         """Whether the dataset has the given tag.
 
@@ -843,7 +858,7 @@ class ZooDataset(object):
         split=None,
         splits=None,
         overwrite=False,
-        cleanup=None,
+        cleanup=True,
     ):
         """Downloads the dataset and prepares it for use.
 
@@ -861,9 +876,8 @@ class ZooDataset(object):
                 neither ``split`` nor ``splits`` are provided, the full dataset
                 is  downloaded
             overwrite (False): whether to overwrite any existing files
-            cleanup (None): whether to cleanup any temporary files generated
-                during download, usually default to True unless the dataset
-                supports partial downloads (ex: Open Images)
+            cleanup (True): whether to cleanup any temporary files generated
+                during download
 
         Returns:
             tuple of
@@ -987,11 +1001,6 @@ class ZooDataset(object):
         if write_info:
             info.write_json(info_path, pretty_print=True)
             logger.info("Dataset info written to '%s'", info_path)
-
-        if cleanup is None:
-            # Cleanup only defaults to True if the dataset does not support
-            # partial downloads
-            cleanup = not self.supports_partial_download
 
         # Cleanup scratch directory, if necessary
         if cleanup:
