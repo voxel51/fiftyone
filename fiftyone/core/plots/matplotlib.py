@@ -6,7 +6,7 @@ Matplotlib plots.
 |
 """
 import itertools
-import logging
+import warnings
 
 import numpy as np
 import matplotlib as mpl
@@ -32,8 +32,6 @@ from .utils import load_button_icon
 
 # This module is designed to support showing plots via `show` flags
 plt.ioff()
-
-logger = logging.getLogger(__name__)
 
 
 def plot_confusion_matrix(
@@ -296,7 +294,8 @@ def scatterplot(
     ids = None
     if samples is not None:
         if num_dims != 2:
-            logger.warning("Interactive selection is only supported in 2D")
+            msg = "Interactive selection is only supported in 2D"
+            warnings.warn(msg)
         else:
             ids = _get_ids_for_points(points, samples, label_field=label_field)
 

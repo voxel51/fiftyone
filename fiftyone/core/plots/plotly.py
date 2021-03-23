@@ -9,6 +9,7 @@ from collections import defaultdict
 import itertools
 import logging
 import os
+import warnings
 
 import numpy as np
 import plotly.callbacks as pc
@@ -80,7 +81,7 @@ def plot_confusion_matrix(
             in a notebook context
     """
     if ids is not None and not foc.is_notebook_context():
-        logger.warning(_INTERACTIVE_PLOT_WARNING)
+        warnings.warn(_INTERACTIVE_PLOT_WARNING)
         ids = None
 
     if ids is None:
@@ -229,9 +230,8 @@ def plot_pr_curve(precision, recall, label=None, style="line", layout=None):
         plot = px.area
     else:
         if style != "line":
-            logger.warning(
-                "Unsupported style '%s'; using 'line' instead", style
-            )
+            msg = "Unsupported style '%s'; using 'line' instead" % style
+            warnings.warn(msg)
 
         plot = px.line
 
@@ -362,9 +362,8 @@ def plot_roc_curve(fpr, tpr, roc_auc=None, style="line", layout=None):
         plot = px.area
     else:
         if style != "line":
-            logger.warning(
-                "Unsupported style '%s'; using 'line' instead", style
-            )
+            msg = "Unsupported style '%s'; using 'line' instead" % style
+            warnings.warn(msg)
 
         plot = px.line
 
@@ -541,7 +540,8 @@ def scatterplot(
 
     if num_dims == 3:
         if samples is not None:
-            logger.warning("Interactive selection is only supported in 2D")
+            msg = "Interactive selection is only supported in 2D"
+            warnings.warn(msg)
 
         if foc.is_notebook_context():
             figure = PlotlyNotebookPlot(figure)
@@ -550,7 +550,7 @@ def scatterplot(
 
     if not foc.is_notebook_context():
         if samples is not None:
-            logger.warning(_INTERACTIVE_PLOT_WARNING)
+            warnings.warn(_INTERACTIVE_PLOT_WARNING)
 
         return figure
 
@@ -600,7 +600,8 @@ def _parse_scatter_inputs(
     ids = None
     if samples is not None:
         if num_dims != 2:
-            logger.warning("Interactive selection is only supported in 2D")
+            msg = "Interactive selection is only supported in 2D"
+            warnings.warn(msg)
         else:
             ids = _get_ids_for_points(points, samples, label_field=label_field)
 
@@ -789,7 +790,8 @@ def location_scatterplot(
     ) = _parse_scatter_inputs(locations, samples, None, labels, sizes, classes)
 
     if style not in (None, "scatter", "density"):
-        logger.warning("Ignoring unsupported style '%s'", style)
+        msg = "Ignoring unsupported style '%s'" % style
+        warnings.warn(msg)
 
     if categorical:
         if multi_trace is None:
@@ -848,7 +850,8 @@ def location_scatterplot(
         figure.update_layout(**layout)
 
     if style == "density" and not categorical:
-        logger.warning("Density plots do not yet support interactivity")
+        msg = "Density plots do not yet support interactivity"
+        warnings.warn(msg)
 
         if foc.is_notebook_context():
             figure = PlotlyNotebookPlot(figure)
@@ -857,7 +860,7 @@ def location_scatterplot(
 
     if not foc.is_notebook_context():
         if samples is not None:
-            logger.warning(_INTERACTIVE_PLOT_WARNING)
+            warnings.warn(_INTERACTIVE_PLOT_WARNING)
 
         return figure
 
