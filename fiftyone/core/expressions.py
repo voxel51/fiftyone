@@ -149,7 +149,7 @@ class ViewExpression(object):
 
     def __deepcopy__(self, memo):
         obj = self.__class__(deepcopy(self._expr, memo))
-        obj._prefix = deepcopy(self._prefix)
+        obj._prefix = deepcopy(self._prefix, memo)
         return obj
 
     def _freeze_prefix(self, prefix):
@@ -3441,6 +3441,12 @@ class ViewField(ViewExpression):
 
         if should_freeze:
             self._freeze_prefix("")
+
+    def __deepcopy__(self, memo):
+        obj = self.__class__()
+        obj._expr = deepcopy(self._expr, memo)
+        obj._prefix = deepcopy(self._prefix, memo)
+        return obj
 
     def to_mongo(self, prefix=None):
         """Returns a MongoDB representation of the field.
