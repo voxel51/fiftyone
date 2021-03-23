@@ -1728,7 +1728,9 @@ def _plot_scatter_categorical(
 
     figure = go.Figure(traces)
 
-    figure.update_layout(legend_title_text=colorbar_title)
+    figure.update_layout(
+        legend_title_text=colorbar_title, legend_itemsizing="constant"
+    )
 
     if axis_equal:
         figure.update_layout(yaxis_scaleanchor="x")
@@ -1983,6 +1985,7 @@ def _plot_scatter_mapbox_categorical(
         mapbox_style="carto-positron",
         mapbox=dict(center=dict(lat=center_lat, lon=center_lon), zoom=zoom),
         legend_title_text=colorbar_title,
+        legend_itemsizing="constant",
     )
 
     return figure
