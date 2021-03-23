@@ -83,6 +83,8 @@ export const labelFilters = selectorFamily<LabelFilters, boolean>({
         get(lExcludeAtom(lPath)),
       ];
 
+      const matchedTags = get(selectors.matchedTags({ key: "label", modal }));
+
       filters[label] = (s) => {
         if (hiddenLabels && hiddenLabels[s.id ?? s._id]) {
           return false;
@@ -99,7 +101,16 @@ export const labelFilters = selectorFamily<LabelFilters, boolean>({
         if (lExclude) {
           included = !included;
         }
-        return (inRange || noConfidence) && (included || lValues.length === 0);
+
+        const meetsTags =
+          matchedTags.size == 0 ||
+          (s.tags && s.tags.some((t) => matchedTags.has(t)));
+
+        return (
+          (inRange || noConfidence) &&
+          (included || lValues.length === 0) &&
+          meetsTags
+        );
       };
     }
     return filters;

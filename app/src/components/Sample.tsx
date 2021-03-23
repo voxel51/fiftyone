@@ -133,6 +133,7 @@ const SampleInfo = React.memo(({ id }) => {
   const colorByLabel = useRecoilValue(atoms.colorByLabel(false));
   const labelTypes = useRecoilValue(selectors.labelTypesMap);
   const sample = useRecoilValue(atoms.sample(id));
+
   const bubbles = activeFields.reduce((acc, cur) => {
     if (
       cur.startsWith("tags.") &&
@@ -154,11 +155,10 @@ const SampleInfo = React.memo(({ id }) => {
       let count = 0;
       const tag = cur.slice("_label_tags.".length);
       activeFields.forEach((f) => {
-        if (VALID_LIST_TYPES.includes(labelTypes[f])) {
+        if (VALID_LIST_TYPES.includes(labelTypes[f]) && sample[f]) {
           count += sample[f]._tags.filter((t) => tag === t).length;
-          console.log(colorMap, cur);
         } else if (VALID_LABEL_TYPES.includes(labelTypes[f])) {
-          if (sample[f].tags.includes(tag)) {
+          if (sample[f] && sample[f].tags.includes(tag)) {
             count += 1;
           }
         }

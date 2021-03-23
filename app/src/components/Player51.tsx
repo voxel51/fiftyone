@@ -11,7 +11,7 @@ import ExternalLink from "./ExternalLink";
 import Player51 from "player51";
 import { useEventHandler } from "../utils/hooks";
 import { convertSampleToETA } from "../utils/labels";
-import { useMove, useWheel } from "react-use-gesture";
+import { useMove } from "react-use-gesture";
 
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";

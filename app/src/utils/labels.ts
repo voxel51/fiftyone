@@ -247,6 +247,7 @@ const FIFTYONE_TO_ETA_CONVERTERS = {
         _id: obj._id,
         confidence: obj.confidence,
         value: obj.label,
+        tags: obj.tags,
         target: obj.target,
       };
     },
@@ -268,6 +269,7 @@ const FIFTYONE_TO_ETA_CONVERTERS = {
         confidence: obj.confidence,
         mask: obj.mask,
         target: obj.target,
+        tags: obj.tags,
         bounding_box: bb
           ? {
               top_left: { x: bb[0], y: bb[1] },
@@ -289,6 +291,7 @@ const FIFTYONE_TO_ETA_CONVERTERS = {
         _id: obj._id,
         label: obj.label,
         points: obj.points,
+        tags: obj.tags,
         target: obj.target,
       };
     },
@@ -301,6 +304,7 @@ const FIFTYONE_TO_ETA_CONVERTERS = {
         _id: obj._id,
         label: obj.label,
         points: obj.points,
+        tags: obj.tags,
         closed: Boolean(obj.closed),
         filled: Boolean(obj.filled),
         target: obj.target,
@@ -378,6 +382,7 @@ const convertImageSampleToETA = (
       imgLabels.masks.push({
         name: prefix + sampleField,
         mask: field.mask,
+        tags: field.tags,
         _id: field._id,
       });
     } else if (VALID_SCALAR_TYPES.includes(fieldSchema[sampleField])) {

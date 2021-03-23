@@ -193,7 +193,7 @@ const SampleTagsCell = ({ modal }: TagsCellProps) => {
     fieldAtoms.activeTags(modal)
   );
   const [matchedTags, setMatchedTags] = useRecoilState(
-    selectors.matchedTags({ modal, key: "label" })
+    selectors.matchedTags({ modal, key: "sample" })
   );
   const colorMap = useRecoilValue(selectors.colorMap(modal));
   const [subCountAtom, countAtom] = modal
@@ -225,9 +225,9 @@ const SampleTagsCell = ({ modal }: TagsCellProps) => {
             path: "tags." + name,
             data: modal ? (
               count[name] > 0 ? (
-                <Check style={{ color: colorMap[name] }} />
+                <Check style={{ color }} />
               ) : (
-                <Close style={{ color: colorMap[name] }} />
+                <Close style={{ color }} />
               )
             ) : (
               makeTagData(
@@ -270,7 +270,7 @@ const SampleTagsCell = ({ modal }: TagsCellProps) => {
 };
 
 const LabelTagsCell = ({ modal }: TagsCellProps) => {
-  const tags = useRecoilValue(selectors.labelTagNames);
+  let tags = useRecoilValue(selectors.labelTagNames);
   const [activeTags, setActiveTags] = useRecoilState(
     fieldAtoms.activeLabelTags(modal)
   );
@@ -286,49 +286,50 @@ const LabelTagsCell = ({ modal }: TagsCellProps) => {
   const count = useRecoilValue(countAtom);
   const colorByLabel = useRecoilValue(atoms.colorByLabel(modal));
   const theme = useTheme();
+  const hasFilters = useRecoilValue(selectors.hasFilters);
+
+  !modal && (tags = tags.filter((t) => count[t]));
 
   return (
     <Cell
       label="Label tags"
       icon={<LocalOffer />}
       pills={makeClearMatchTags(theme.font, matchedTags, setMatchedTags)}
-      entries={tags
-        .filter((t) => count[t])
-        .map((name) => {
-          const color = colorByLabel
-            ? theme.brand
-            : colorMap["_label_tags." + name];
-          return {
-            canFilter: true,
-            name,
-            disabled: false,
-            hideCheckbox: modal,
-            hasDropdown: false,
-            selected: activeTags.includes(name),
-            color,
-            title: name,
-            path: "_label_tags." + name,
-            data: makeTagData(
-              subCount[name],
-              count[name],
-              matchedTags.has(name) ? theme.font : theme.fontDark,
-              (e) => {
-                e.stopPropagation();
-                e.preventDefault();
-                const newMatch = new Set(matchedTags);
-                if (matchedTags.has(name)) {
-                  newMatch.delete(name);
-                } else {
-                  newMatch.add(name);
-                }
-                setMatchedTags(newMatch);
+      entries={tags.map((name) => {
+        const color = colorByLabel
+          ? theme.brand
+          : colorMap["_label_tags." + name];
+        return {
+          canFilter: true,
+          name,
+          disabled: false,
+          hideCheckbox: modal,
+          hasDropdown: false,
+          selected: activeTags.includes(name),
+          color,
+          title: name,
+          path: "_label_tags." + name,
+          data: makeTagData(
+            hasFilters && !modal && !subCount[name] ? 0 : subCount[name],
+            count[name],
+            matchedTags.has(name) ? theme.font : theme.fontDark,
+            (e) => {
+              e.stopPropagation();
+              e.preventDefault();
+              const newMatch = new Set(matchedTags);
+              if (matchedTags.has(name)) {
+                newMatch.delete(name);
+              } else {
+                newMatch.add(name);
               }
-            ),
-            totalCount: count[name],
-            filteredCount: modal ? null : subCount[name],
-            modal,
-          };
-        })}
+              setMatchedTags(newMatch);
+            }
+          ),
+          totalCount: count[name],
+          filteredCount: modal ? null : subCount[name],
+          modal,
+        };
+      })}
       onSelect={({ name, selected }) => {
         setActiveTags(
           selected
