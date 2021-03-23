@@ -232,6 +232,13 @@ class COCOEvaluation(DetectionEvaluation):
 
                 tp_fp = [1] * len(tp) + [0] * len(fp)
                 confs = [m[3] for m in tp] + [m[3] for m in fp]
+                if None in confs:
+                    raise ValueError(
+                        "All predicted objects must have their `confidence` "
+                        "attribute populated in order to compute "
+                        "precision-recall curves"
+                    )
+
                 inds = np.argsort(-np.array(confs), kind="mergesort")
                 tp_fp = np.array(tp_fp)[inds]
                 tp_sum = np.cumsum(tp_fp).astype(dtype=np.float)
