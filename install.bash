@@ -44,7 +44,11 @@ fi
 cd eta
 git checkout develop
 git pull
-pip install -e .
+if [ ${DEV_INSTALL} = true ]; then
+    pip install -e .
+else
+    pip install .
+fi
 if [[ ! -f eta/config.json ]]; then
     echo "Installing default ETA config"
     cp config-example.json eta/config.json
