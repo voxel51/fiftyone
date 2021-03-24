@@ -114,8 +114,21 @@ to learn how to get involved.
 
 ## Installing from source
 
-This section explains how to install the latest development version of FiftyOne
-from source.
+### Google's Colaboratory
+
+If you are interested in installing from source in Google's Colab, you can run
+the following in a cell, and then **restart the runtime**:
+
+```
+%%shell
+git clone --depth 1 https://github.com/voxel51/fiftyone.git
+cd fiftyone
+bash install.bash
+# restart the runtime when the cell finishes execution
+```
+
+This rest of this section explains how to install the latest development
+version of FiftyOne from source, in general.
 
 The instructions below are for macOS and Linux systems. Windows users may need
 to make adjustments.
