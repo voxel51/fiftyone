@@ -82,7 +82,8 @@ machine and launch a remote session:
     session = fo.launch_app(dataset, remote=True)  # optional: port=XXXX
 
 Leave the Python REPL running and follow the instructions for connecting to
-this session remotely were printed to your terminal (also described below).
+this session remotely that were printed to your terminal (also described
+below).
 
 .. note::
 
