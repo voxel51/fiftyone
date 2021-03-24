@@ -2294,10 +2294,7 @@ def _patch_perform_plotly_relayout():
     https://github.com/plotly/plotly.py/issues/2570
     """
     filepath = os.path.join(
-        os.path.dirname(os.__file__),
-        "site-packages",
-        "plotly",
-        "basedatatypes.py",
+        os.path.dirname(np.__file__), "..", "plotly", "basedatatypes.py",
     )
 
     if not os.path.isfile(filepath):
