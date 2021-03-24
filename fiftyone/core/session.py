@@ -703,7 +703,8 @@ class Session(foc.HasClient):
         if self._remote:
             raise ValueError("Remote sessions cannot launch the App")
 
-        self.plots.connect()
+        if self.plots:
+            self.plots.connect()
 
         if self._context != focx._NONE:
             self.show()
