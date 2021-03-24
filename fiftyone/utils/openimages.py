@@ -274,7 +274,6 @@ class OpenImagesDatasetImporter(foud.LabeledImageDatasetImporter):
             all_classes,
             oi_classes,
             classes,
-            attrs,
             attrs_map,
             oi_attrs,
             all_attrs,
@@ -478,7 +477,6 @@ def download_open_images_split(
         all_classes,
         oi_classes,
         classes,
-        attrs,
         attrs_map,
         oi_attrs,
         all_attrs,
@@ -512,7 +510,6 @@ def download_open_images_split(
         dataset_dir,
         split,
         classes,
-        attrs,
         max_samples,
         shuffle,
         num_workers,
@@ -554,8 +551,12 @@ def _setup(
     all_classes = sorted(list(classes_map.values()))
 
     if classes == None:
-        oi_classes = list(classes_map.keys())
-        classes = all_classes
+        if attrs is not None and "relationships" in label_types:
+            oi_classes = []
+            classes = []
+        else:
+            oi_classes = all_classes
+            classes = all_classes
 
     else:
         oi_classes = []
@@ -576,7 +577,6 @@ def _setup(
                 % ",".join(missing_classes)
             )
 
-    attrs = []
     attrs_map = {}
     oi_attrs = []
     all_attrs = []
@@ -587,8 +587,12 @@ def _setup(
         all_attrs = sorted(list(attrs_map.values()))
 
         if attrs == None:
-            oi_attrs = list(attrs_map.keys())
-            attrs = all_attrs
+            if classes is not None:
+                oi_attrs = []
+                attrs = []
+            else:
+                oi_attrs = list(attrs_map.keys())
+                attrs = all_attrs
 
         else:
             attrs_map_rev = {v: k for k, v in attrs_map.items()}
@@ -607,6 +611,8 @@ def _setup(
                     "can view the available attributes via "
                     "`get_attributes()`\n" % ",".join(missing_attrs)
                 )
+    else:
+        attrs = []
 
     seg_classes = []
     if "segmentations" in label_types:
@@ -624,7 +630,6 @@ def _setup(
         all_classes,
         oi_classes,
         classes,
-        attrs,
         attrs_map,
         oi_attrs,
         all_attrs,
@@ -1165,7 +1170,6 @@ def _load_open_images_split(
     dataset_dir,
     split,
     classes,
-    attrs,
     max_samples,
     shuffle,
     num_workers,
