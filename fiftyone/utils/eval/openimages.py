@@ -13,6 +13,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import sklearn.metrics as skm
 
+import fiftyone.core.plots as fop
 import fiftyone.core.utils as fou
 
 from .detection import (
@@ -162,7 +163,8 @@ class OpenImagesEvaluation(DetectionEvaluation):
             eval_key (None): the evaluation key for this evaluation
 
         Returns:
-            a list of matched ``(gt_label, pred_label, iou, pred_confidence)``
+            a list of matched 
+            ``(gt_label, pred_label, iou, pred_confidence, gt_id, pred_id)``
             tuples
         """
         gts = sample_or_frame[self.config.gt_field]
@@ -212,7 +214,8 @@ class OpenImagesEvaluation(DetectionEvaluation):
 
         Args:
             samples: a :class:`fiftyone.core.SamplesCollection`
-            matches: a list of ``(gt_label, pred_label, iou, pred_confidence)``
+            matches: a list of 
+                ``(gt_label, pred_label, iou, pred_confidence, gt_id, pred_id)``
                 matches. Either label can be ``None`` to indicate an unmatched
                 object
             eval_key (None): the evaluation key for this evaluation
@@ -299,7 +302,8 @@ class OpenImagesDetectionResults(DetectionResults):
     """Class that stores the results of a Open Images detection evaluation.
 
     Args:
-        matches: a list of ``(gt_label, pred_label, iou, pred_confidence)``
+        matches: a list of 
+            ``(gt_label, pred_label, iou, pred_confidence, gt_id, pred_id)``
             matches. Either label can be ``None`` to indicate an unmatched
             object
         precision: a dict of precision values per class
@@ -330,55 +334,66 @@ class OpenImagesDetectionResults(DetectionResults):
         )
         return average_precision
 
-    def plot_pr_curves(
-        self,
-        classes=None,
-        ax=None,
-        figsize=None,
-        block=False,
-        return_ax=False,
-        **kwargs
-    ):
+    def plot_pr_curves(self, classes=None, backend="plotly", **kwargs):
         """Plots precision-recall (PR) curves for the detection results.
 
         Args:
             classes (None): a list of classes to generate curves for. By
                 default, top 3 AP classes will be plotted
-            ax (None): an optional matplotlib axis to plot in
-            figsize (None): an optional ``(width, height)`` for the figure, in
-                inches
-            block (False): whether to block execution when the plot is
-                displayed via ``matplotlib.pyplot.show(block=block)``
-            return_ax (False): whether to return the matplotlib axis containing
-                the plots
-            **kwargs: optional keyword arguments for
-                ``sklearn.metrics.PrecisionRecallDisplay.plot(**kwargs)``
+            backend ("plotly"): the plotting backend to use. Supported values
+                are ``("plotly", "matplotlib")``
+            **kwargs: keyword arguments for the backend plotting method:
+
+                -   "plotly" backend: :meth:`fiftyone.core.plots.plotly.plot_pr_curves`
+                -   "matplotlib" backend: :meth:`fiftyone.core.plots.matplotlib.plot_pr_curves`
 
         Returns:
-            None, or, if ``return_ax`` is True, the matplotlib axis containing
-            the plots
+            one of the following:
+
+            -   a :class:`fiftyone.core.plots.plotly.PlotlyNotebookPlot`, if
+                you are working in a notebook context and the plotly backend is
+                used
+            -   a plotly or matplotlib figure, otherwise
+
         """
         if not classes:
             c_ap = [(ap, c) for c, ap in self._classwise_AP.items()]
             classes = [c for ap, c in sorted(c_ap)[-3:]]
 
+        precisions = []
+        recall = None
+        _classes = []
         for c in classes:
             if c in self.recall and c in self.precision:
-                recall = self.recall[c]
-                precision = self.precision[c]
-                avg_precision = self._classwise_AP[c]
-                display = skm.PrecisionRecallDisplay(
-                    precision=precision, recall=recall
-                )
-                label = "AP = %.2f, class = %s" % (avg_precision, c)
-                display.plot(ax=ax, label=label, **kwargs)
-                ax = display.ax_
+                r = self.recall[c]
+                p = self.precision[c]
+                pre, rec = self._interpolate_pr(p, r)
+                precisions.append(pre)
+                if recall is None:
+                    recall = rec
 
-        if figsize is not None:
-            display.figure_.set_size_inches(*figsize)
+                _classes.append(c)
 
-        plt.show(block=block)
-        return ax if return_ax else None
+        return fop.plot_pr_curves(
+            precisions, recall, _classes, backend=backend, **kwargs
+        )
+
+    def _interpolate_pr(self, precision, recall, npts=101):
+        interp_pre = copy.deepcopy(precision)
+        rec = np.linspace(0, 1, npts)
+        q = np.zeros(101)
+        for i in range(len(interp_pre) - 1, 0, -1):
+            if interp_pre[i] > interp_pre[i - 1]:
+                interp_pre[i - 1] = interp_pre[i]
+
+        inds = np.searchsorted(recall, rec, side="left")
+        try:
+            for ri, pi in enumerate(inds):
+                q[ri] = interp_pre[pi]
+        except:
+            pass
+
+        return q, rec
 
     def mAP(self, classes=None):
         """Computes Open Images-style mean average precision (mAP) for the specified
@@ -595,21 +610,34 @@ def _compute_matches(
                                 pred.label,
                                 best_match_iou,
                                 pred.confidence,
+                                gt.id,
+                                pred.id,
                             )
                         )
                 else:
                     pred[eval_key] = "fp"
-                    matches.append((None, pred.label, None, pred.confidence))
+                    matches.append(
+                        (
+                            None,
+                            pred.label,
+                            None,
+                            pred.confidence,
+                            None,
+                            pred.id,
+                        )
+                    )
 
             elif pred.label == cat:
                 pred[eval_key] = "fp"
-                matches.append((None, pred.label, None, pred.confidence))
+                matches.append(
+                    (None, pred.label, None, pred.confidence, None, pred.id)
+                )
 
         # Leftover GTs are false negatives
         for gt in objects["gts"]:
             if gt[id_key] == _NO_MATCH_ID:
                 gt[eval_key] = "fn"
-                matches.append((gt.label, None, None, None))
+                matches.append((gt.label, None, None, None, gt.id, None))
 
     return matches
 
