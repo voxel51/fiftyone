@@ -1193,7 +1193,9 @@ class InteractiveScatter(PlotlyInteractivePlot):
         # Split IDs into their traces
         per_trace_ids = defaultdict(list)
         for _id in ids:
-            per_trace_ids[self._ids_to_traces[_id]].append(_id)
+            trace_id = self._ids_to_traces.get(_id, None)
+            if trace_id is not None:
+                per_trace_ids[trace_id].append(_id)
 
         with self._widget.batch_update():
             for idx, trace in enumerate(self._traces):
