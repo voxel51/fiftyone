@@ -53,7 +53,11 @@ if [ ${SOURCE_ETA_INSTALL} = true ]; then
     cd eta
     git checkout develop
     git pull
-    pip install -e .
+    if [ ${DEV_INSTALL} = true ] || [ ${VOXEL51_INSTALL} = true ]; then
+        pip install -e .
+    else
+        pip install .
+    fi
     if [[ ! -f eta/config.json ]]; then
         echo "Installing default ETA config"
         cp config-example.json eta/config.json
@@ -109,16 +113,6 @@ else
     pip install fiftyone-db
 fi
 
-echo "***** INSTALLING FIFTYONE *****"
-if [ ${DEV_INSTALL} = true ] || [ ${VOXEL51_INSTALL} = true ]; then
-    echo "Performing dev install"
-    pip install -r requirements/dev.txt
-    pre-commit install
-else
-    pip install -r requirements.txt
-fi
-pip install -e .
-
 echo "***** INSTALLING FIFTYONE-APP *****"
 curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.37.2/install.sh | bash
 export NVM_DIR="$([ -z "${XDG_CONFIG_HOME-}" ] && printf %s "${HOME}/.nvm" || printf %s "${XDG_CONFIG_HOME}/nvm")"
@@ -137,6 +131,17 @@ cd app
 yarn install > /dev/null 2>&1
 yarn build-web
 cd ..
+
+echo "***** INSTALLING FIFTYONE *****"
+if [ ${DEV_INSTALL} = true ] || [ ${VOXEL51_INSTALL} = true ]; then
+    echo "Performing dev install"
+    pip install -r requirements/dev.txt
+    pre-commit install
+    pip install -e .
+else
+    pip install -r requirements.txt
+    pip install .
+fi
 
 if [ ${VOXEL51_INSTALL} = false ]; then
     echo "***** INSTALLING FIFTYONE-BRAIN *****"
