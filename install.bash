@@ -26,7 +26,7 @@ Custom installations:
 # Parse flags
 SHOW_HELP=false
 DEV_INSTALL=false
-while getopts "hd" FLAG; do
+while getopts "hds" FLAG; do
     case "${FLAG}" in
         h) SHOW_HELP=true ;;
         d) DEV_INSTALL=true ;;
@@ -39,8 +39,8 @@ done
 set -e
 OS=$(uname -s)
 
-echo "***** INSTALLING SUPPORT PACKAGES *****"
-if [ ${SKIP_SUPPORTING} = false ]; then
+if [[ ! ${SKIP_SUPPORTING}  ]]; then
+    echo "***** INSTALLING SUPPORT PACKAGES *****"
     pip install fiftyone-brain fiftyone-db
 fi
 
