@@ -922,9 +922,9 @@ class PlotlyWidgetMixin(object):
     def _show(self, **kwargs):
         self._update_layout(**kwargs)
 
-        # We're supposed to be in a notebook context, but, if we're not, go
-        # ahead and show the plot normally
-        if not foc.is_notebook_context():
+        # Only strict IPython notebooks support interactivity (i.e. not Colab)
+        # Simply show the figure if not in an IPython notebook
+        if not foc.is_notebook_context(allow_colab=False):
             self._widget.show()
             return
 
@@ -947,6 +947,9 @@ class PlotlyWidgetMixin(object):
         display(self._widget)
 
     def _freeze(self):
+        if not foc.is_notebook_context(allow_colab=False):
+            return
+
         self._screenshot()
         self._widget.close()
 
@@ -1152,9 +1155,6 @@ class InteractiveScatter(PlotlyInteractivePlot):
             return None
 
         return list(itertools.chain.from_iterable(ids))
-
-    def _register_selection_callback(self, callback):
-        self._select_callback = callback
 
     def _make_widget(self):
         widget = go.FigureWidget(self._figure)

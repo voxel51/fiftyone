@@ -13,14 +13,22 @@ _NONE = "NONE"
 _context = None
 
 
-def is_notebook_context():
+def is_notebook_context(allow_colab=True):
     """Determines whether this process is running in a notebook context, either
     Colab or Jupyter.
+
+    Args:
+        allow_colab (True): whether to consider Colab a notebook context
 
     Returns:
         True/False
     """
-    return _get_context() != _NONE
+    context = _get_context()
+
+    if allow_colab:
+        return context != _NONE
+
+    return context == _IPYTHON
 
 
 def _get_context():
