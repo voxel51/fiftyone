@@ -200,7 +200,7 @@ bash install.bash -d
 
 You can install from source in
 [Google Colab](https://colab.research.google.com) by running the following in a
-cell, and then **restarting the runtime**:
+cell and then **RESTARTING THE RUNTIME**:
 
 ```shell
 %%shell
