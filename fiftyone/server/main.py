@@ -261,7 +261,13 @@ class PollingHandler(tornado.web.RequestHandler):
                     force_update = True
                     message = {"state": StateHandler.state}
 
-            if event in {"distributions", "page", "get_video_data"}:
+            if event in {
+                "distributions",
+                "page",
+                "get_video_data",
+                "all_tags",
+                "selected_statistics",
+            }:
                 caller = self
             elif event in {"capture", "update"}:
                 caller = client
@@ -744,7 +750,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
 
         _write_message(
             {"type": "selected_statistics", "count": count, "tags": tags},
-            app=True,
+            only=caller,
         )
 
     @classmethod
