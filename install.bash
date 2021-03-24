@@ -112,6 +112,11 @@ yarn install > /dev/null 2>&1
 yarn build-web
 cd ..
 
+if [ ${VOXEL51_INSTALL} = false ]; then
+    echo "***** INSTALLING FIFTYONE-BRAIN *****"
+    pip install fiftyone-brain
+fi
+
 echo "***** INSTALLING FIFTYONE *****"
 if [ ${DEV_INSTALL} = true ] || [ ${VOXEL51_INSTALL} = true ]; then
     echo "Performing dev install"
@@ -142,11 +147,6 @@ if [ ${SOURCE_ETA_INSTALL} = true ]; then
         cp config-example.json eta/config.json
     fi
     cd ..
-fi
-
-if [ ${VOXEL51_INSTALL} = false ]; then
-    echo "***** INSTALLING FIFTYONE-BRAIN *****"
-    pip install fiftyone-brain
 fi
 
 echo "***** INSTALLATION COMPLETE *****"
