@@ -496,10 +496,19 @@ class ViewPlot(ResponsivePlot):
 
     The state of :class:`ViewPlot` instances can also be updated by external
     parties by calling its :meth:`update_view` method.
+
+    Args:
+        init_view (None): an optional initial
+            :class:`fiftyone.core.collections.SampleCollection` to load
     """
 
-    def __init__(self):
+    def __init__(self, init_view=None):
+        self.init_view = init_view
         super().__init__("view")
+
+        if init_view is not None:
+            self.connect()
+            self.update_view(init_view)
 
     @property
     def supports_session_updates(self):
@@ -536,7 +545,7 @@ class ViewPlot(ResponsivePlot):
 
     def reset(self):
         """Resets the plot to its default state."""
-        self.update_view(None)
+        self.update_view(self.init_view)
 
 
 class InteractivePlot(ResponsivePlot):
