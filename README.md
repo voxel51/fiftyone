@@ -114,11 +114,9 @@ to learn how to get involved.
 
 ## Installing from source
 
-This section explains how to install the latest development version of FiftyOne
-from source.
-
 The instructions below are for macOS and Linux systems. Windows users may need
-to make adjustments.
+to make adjustments. If you are working in Google Colab,
+[skip to here](#source-installs-in-google-colab).
 
 ### Prerequisites
 
@@ -176,13 +174,16 @@ which you can do either by rerunning the install script or just running
 pip install fiftyone-brain
 ```
 
-### Customizing your ETA installation
+### Upgrading your source installation
 
-Installing FiftyOne from source includes an
-[ETA lite installation](https://github.com/voxel51/eta#lite-installation),
-which should be sufficient for most users. If you want a full ETA installation,
-or wish to otherwise customize your ETA installation,
-[see here](https://github.com/voxel51/eta).
+To upgrade an existing source installation to the bleeding edge, simply pull
+the latest `develop` branch and rerun the install script:
+
+```shell
+git checkout develop
+git pull
+bash install.bash
+```
 
 ### Developer installation
 
@@ -195,15 +196,18 @@ script:
 bash install.bash -d
 ```
 
-### Upgrading your source installation
+### Source installs in Google Colab
 
-To upgrade an existing source installation to the bleeding edge, simply pull
-the latest `develop` branch and rerun the install script:
+You can install from source in
+[Google Colab](https://colab.research.google.com) by running the following in a
+cell and then **RESTARTING THE RUNTIME**:
 
 ```shell
-git checkout develop
-git pull
-bash install.bash [-d]
+%%shell
+
+git clone --depth 1 https://github.com/voxel51/fiftyone.git
+cd fiftyone
+bash install.bash
 ```
 
 ### Generating documentation
