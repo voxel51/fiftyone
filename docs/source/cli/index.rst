@@ -1096,11 +1096,11 @@ View datasets in the FiftyOne App without persisting them to the database.
 Connect to remote App
 ~~~~~~~~~~~~~~~~~~~~~
 
-Connect to a remote FiftyOne App.
+Connect to a remote FiftyOne App in your web browser.
 
 .. code-block:: text
 
-    fiftyone app connect [-h] [-d DESTINATION] [-p PORT]
+    fiftyone app connect [-h] [-d DESTINATION] [-p PORT] [-l PORT] [-i KEY]
 
 **Arguments**
 
@@ -1113,8 +1113,8 @@ Connect to a remote FiftyOne App.
       -p PORT, --port PORT  the remote port to connect to
       -l PORT, --local-port PORT
                             the local port to use to serve the App
-      -i KEY, --ssh-key KEY an optional ssh key used to login
-      -a, --desktop         whether to launch a desktop App instance
+      -i KEY, --ssh-key KEY
+                            optional ssh key to use to login
 
 **Examples**
 
@@ -1130,18 +1130,13 @@ Connect to a remote FiftyOne App.
 
 .. code-block:: shell
 
-   # Connect to a remote App session using an ssh key
-   fiftyone app connect ... --ssh-key <path/to/key>
+    # Connect to a remote App session using an ssh key
+    fiftyone app connect ... --ssh-key <path/to/key>
 
 .. code-block:: shell
 
     # Connect to a remote App using a custom local port
     fiftyone app connect ... --local-port <port>
-
-.. code-block:: shell
-
-    # Connect to a remote session using the desktop App
-    fiftyone app connect ... --desktop
 
 .. _cli-fiftyone-zoo:
 
