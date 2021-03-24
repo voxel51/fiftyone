@@ -271,7 +271,7 @@ class OpenImagesEvaluation(DetectionEvaluation):
 
             tp_fp = [1] * len(tp) + [0] * len(fp)
             confs = [p[3] for p in tp] + [p[3] for p in fp]
-            inds = np.argsort(-np.array(confs), kind="mergesort")
+            inds = np.argsort(confs)[::-1]
             tp_fp = np.array(tp_fp)[inds]
             tp_sum = np.cumsum(tp_fp).astype(dtype=np.float)
             total = np.arange(1, len(tp_fp) + 1).astype(dtype=np.float)
