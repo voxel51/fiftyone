@@ -15,6 +15,6 @@ scikit-learn==0.23.2
 scikit-image==0.16.2
 setuptools==45.2.0
 tabulate==0.8.5
-tornado==6.0.4
+tornado>=5.1.0
 universal-analytics-python3==1.0.1
 xmltodict==0.12.0
