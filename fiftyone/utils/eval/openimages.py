@@ -260,8 +260,8 @@ class OpenImagesEvaluation(DetectionEvaluation):
                 class_matches[c]["num_gt"] += 1
 
         # Compute precision-recall array
-        precision = -np.ones((len(_classes), 101))
-        recall = np.linspace(0, 1, 101)
+        precision = {}
+        recall = {}
         for c in class_matches.keys():
             tp = class_matches[c]["tp"]
             fp = class_matches[c]["fp"]
@@ -279,19 +279,16 @@ class OpenImagesEvaluation(DetectionEvaluation):
             pre = tp_sum / total
             rec = tp_sum / num_gt
 
-            q = np.zeros((101,))
+            rec = np.concatenate([[0], rec, [1]])
+            pre = np.concatenate([[0], pre, [0]])
+
+            # Ensure precision is non decreasing
             for i in range(len(pre) - 1, 0, -1):
                 if pre[i] > pre[i - 1]:
                     pre[i - 1] = pre[i]
 
-            inds = np.searchsorted(rec, recall, side="left")
-            try:
-                for ri, pi in enumerate(inds):
-                    q[ri] = pre[pi]
-            except:
-                pass
-
-            precision[_classes.index(c)] = q
+            precision[c] = pre
+            recall[c] = rec
 
         return OpenImagesDetectionResults(
             matches, precision, recall, _classes, missing=missing
@@ -305,9 +302,8 @@ class OpenImagesDetectionResults(DetectionResults):
         matches: a list of ``(gt_label, pred_label, iou, pred_confidence)``
             matches. Either label can be ``None`` to indicate an unmatched
             object
-        precision: an array of precision values of shape
-            ``num_classes x num_recall``
-        recall: an array of recall values
+        precision: a dict of precision values per class
+        recall: a dict of recall values per class 
         classes: the list of possible classes
         missing (None): a missing label string. Any unmatched objects are
             given this label for evaluation purposes
@@ -315,9 +311,24 @@ class OpenImagesDetectionResults(DetectionResults):
 
     def __init__(self, matches, precision, recall, classes, missing=None):
         super().__init__(matches, classes=classes, missing=missing)
-        self.precision = np.asarray(precision)
-        self.recall = np.asarray(recall)
-        self._classwise_AP = np.mean(precision, axis=1)
+        self.precision = precision
+        self.recall = recall
+        self._classwise_AP = {}
+        for c in classes:
+            if c in precision and c in recall:
+                r = recall[c]
+                p = precision[c]
+                ap = self._compute_class_AP(p, r)
+            else:
+                ap = -1
+            self._classwise_AP[c] = ap
+
+    def _compute_class_AP(self, precision, recall):
+        indices = np.where(recall[1:] != recall[:-1])[0] + 1
+        average_precision = np.sum(
+            (recall[indices] - recall[indices - 1]) * precision[indices]
+        )
+        return average_precision
 
     def plot_pr_curves(
         self,
@@ -348,19 +359,20 @@ class OpenImagesDetectionResults(DetectionResults):
             the plots
         """
         if not classes:
-            inds = np.argsort(self._classwise_AP)[::-1][:3]
-            classes = self.classes[inds]
+            c_ap = [(ap, c) for c, ap in self._classwise_AP.items()]
+            classes = [c for ap, c in sorted(c_ap)[-3:]]
 
         for c in classes:
-            class_ind = self._get_class_index(c)
-            precision = self.precision[class_ind]
-            avg_precision = np.mean(precision)
-            display = skm.PrecisionRecallDisplay(
-                precision=precision, recall=self.recall
-            )
-            label = "AP = %.2f, class = %s" % (avg_precision, c)
-            display.plot(ax=ax, label=label, **kwargs)
-            ax = display.ax_
+            if c in self.recall and c in self.precision:
+                recall = self.recall[c]
+                precision = self.precision[c]
+                avg_precision = self._classwise_AP[c]
+                display = skm.PrecisionRecallDisplay(
+                    precision=precision, recall=recall
+                )
+                label = "AP = %.2f, class = %s" % (avg_precision, c)
+                display.plot(ax=ax, label=label, **kwargs)
+                ax = display.ax_
 
         if figsize is not None:
             display.figure_.set_size_inches(*figsize)
@@ -382,11 +394,14 @@ class OpenImagesDetectionResults(DetectionResults):
             the mAP in ``[0, 1]``
         """
         if classes is not None:
-            class_inds = np.array([self._get_class_index(c) for c in classes])
-            classwise_AP = self._classwise_AP[class_inds]
+            classwise_AP = []
+            for c in classes:
+                if c in self._classwise_AP:
+                    classwise_AP.append(self._classwise_AP[c])
         else:
-            classwise_AP = self._classwise_AP
+            classwise_AP = list(self._classwise_AP.values())
 
+        classwise_AP = np.array(classwise_AP)
         classwise_AP = classwise_AP[classwise_AP > -1]
         if classwise_AP.size == 0:
             return -1
@@ -398,13 +413,6 @@ class OpenImagesDetectionResults(DetectionResults):
         return super()._from_dict(
             d, samples, precision=d["precision"], recall=d["recall"], **kwargs,
         )
-
-    def _get_class_index(self, label):
-        inds = np.where(self.classes == label)[0]
-        if inds.size == 0:
-            raise ValueError("Class '%s' not found" % label)
-
-        return inds[0]
 
 
 _NO_MATCH_ID = ""
