@@ -30,7 +30,7 @@ while getopts "hd" FLAG; do
     case "${FLAG}" in
         h) SHOW_HELP=true ;;
         d) DEV_INSTALL=true ;;
-	s) SKIP_SUPPORTING=true ;;
+        s) SKIP_SUPPORTING=true ;;
         *) usage ;;
     esac
 done
