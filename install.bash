@@ -44,27 +44,6 @@ done
 set -e
 OS=$(uname -s)
 
-if [ ${SOURCE_ETA_INSTALL} = true ]; then
-    echo "***** INSTALLING ETA *****"
-    if [[ ! -d "eta" ]]; then
-        echo "Cloning ETA repository"
-        git clone https://github.com/voxel51/eta
-    fi
-    cd eta
-    git checkout develop
-    git pull
-    if [ ${DEV_INSTALL} = true ] || [ ${VOXEL51_INSTALL} = true ]; then
-        pip install -e .
-    else
-        pip install .
-    fi
-    if [[ ! -f eta/config.json ]]; then
-        echo "Installing default ETA config"
-        cp config-example.json eta/config.json
-    fi
-    cd ..
-fi
-
 echo "***** INSTALLING PLAYER51 *****"
 git submodule update --init
 
@@ -128,6 +107,7 @@ else
     echo "WARNING: unable to locate a bash profile to 'source'; you may need to start a new shell"
 fi
 cd app
+echo "Building the App. This will take a minute or two..."
 yarn install > /dev/null 2>&1
 yarn build-web
 cd ..
@@ -141,6 +121,27 @@ if [ ${DEV_INSTALL} = true ] || [ ${VOXEL51_INSTALL} = true ]; then
 else
     pip install -r requirements.txt
     pip install .
+fi
+
+if [ ${SOURCE_ETA_INSTALL} = true ]; then
+    echo "***** INSTALLING ETA *****"
+    if [[ ! -d "eta" ]]; then
+        echo "Cloning ETA repository"
+        git clone https://github.com/voxel51/eta
+    fi
+    cd eta
+    git checkout develop
+    git pull
+    if [ ${DEV_INSTALL} = true ] || [ ${VOXEL51_INSTALL} = true ]; then
+        pip install -e .
+    else
+        pip install .
+    fi
+    if [[ ! -f eta/config.json ]]; then
+        echo "Installing default ETA config"
+        cp config-example.json eta/config.json
+    fi
+    cd ..
 fi
 
 if [ ${VOXEL51_INSTALL} = false ]; then
