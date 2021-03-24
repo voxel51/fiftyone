@@ -5,11 +5,12 @@ FiftyOne view-related unit tests.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+from copy import deepcopy
 import math
 import unittest
 
 import fiftyone as fo
-from fiftyone import ViewField as F
+from fiftyone import ViewField as F, VALUE
 import fiftyone.core.sample as fos
 import fiftyone.core.stages as fosg
 
@@ -1011,6 +1012,12 @@ class ViewStageTests(unittest.TestCase):
         self.assertEqual(
             stage_dict["_uuid"], fosg.ViewStage._from_dict(stage_dict)._uuid
         )
+
+    def test_view_field_copy(self):
+        self.assertEqual(str(VALUE), str(deepcopy(VALUE)))
+
+        field = F("$ground_truth")
+        self.assertEqual(str(field), str(deepcopy(field)))
 
 
 if __name__ == "__main__":
