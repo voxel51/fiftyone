@@ -547,6 +547,7 @@ def _setup(
 
     # Map of class IDs to class names
     classes_map = _get_classes_map(dataset_dir=dataset_dir, download=download)
+    classes_map_rev = {v: k for k, v in classes_map.items()}
 
     all_classes = sorted(list(classes_map.values()))
 
@@ -555,12 +556,11 @@ def _setup(
             oi_classes = []
             classes = []
         else:
-            oi_classes = all_classes
+            oi_classes = [classes_map_rev[c] for c in all_classes]
             classes = all_classes
 
     else:
         oi_classes = []
-        classes_map_rev = {v: k for k, v in classes_map.items()}
         missing_classes = []
         filtered_classes = []
         for c in classes:
@@ -583,19 +583,19 @@ def _setup(
     if "relationships" in label_types:
         # Map of attribute IDs to attribute names
         attrs_map = _get_attrs_map(dataset_dir=dataset_dir, download=download)
+        attrs_map_rev = {v: k for k, v in attrs_map.items()}
 
         all_attrs = sorted(list(attrs_map.values()))
 
         if attrs == None:
-            if classes is not None:
+            if classes != all_classes:
                 oi_attrs = []
                 attrs = []
             else:
-                oi_attrs = list(attrs_map.keys())
+                oi_attrs = [attrs_map_rev[a] for a in all_attrs]
                 attrs = all_attrs
 
         else:
-            attrs_map_rev = {v: k for k, v in attrs_map.items()}
             missing_attrs = []
             filtered_attrs = []
             for a in attrs:
