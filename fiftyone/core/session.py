@@ -62,16 +62,16 @@ Session launched. Run `session.show()` to open the App in a cell output.
 
 _REMOTE_INSTRUCTIONS = """
 You have launched a remote App on port {0}. To connect to this App from another
-machine, issue the following command:
-
-fiftyone app connect --destination [<username>@]<hostname> --port {0}
-
-where `[<username>@]<hostname>` refers to your current machine. Alternatively,
-you can manually configure port forwarding on another machine as follows:
+machine, issue the following command to configure port forwarding:
 
 ssh -N -L 5151:127.0.0.1:{0} [<username>@]<hostname>
 
-The App can then be viewed in your browser at http://localhost:5151.
+where `[<username>@]<hostname>` refers to your current machine. The App can
+then be viewed in your browser at http://localhost:5151.
+
+Alternatively, if you have FiftyOne installed on your local machine, just run:
+
+fiftyone app connect --destination [<username>@]<hostname> --port {0}
 
 See https://voxel51.com/docs/fiftyone/user_guide/app.html#remote-sessions
 for more information about remote sessions.
