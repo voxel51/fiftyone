@@ -21,6 +21,7 @@ import fiftyone.core.client as foc
 import fiftyone.core.context as focx
 import fiftyone.core.frame as fof
 import fiftyone.core.media as fom
+import fiftyone.core.plots as fop
 import fiftyone.core.sample as fosa
 import fiftyone.core.service as fos
 import fiftyone.core.utils as fou
@@ -62,16 +63,16 @@ Session launched. Run `session.show()` to open the App in a cell output.
 
 _REMOTE_INSTRUCTIONS = """
 You have launched a remote App on port {0}. To connect to this App from another
-machine, issue the following command:
-
-fiftyone app connect --destination [<username>@]<hostname> --port {0}
-
-where `[<username>@]<hostname>` refers to your current machine. Alternatively,
-you can manually configure port forwarding on another machine as follows:
+machine, issue the following command to configure port forwarding:
 
 ssh -N -L 5151:127.0.0.1:{0} [<username>@]<hostname>
 
-The App can then be viewed in your browser at http://localhost:5151.
+where `[<username>@]<hostname>` refers to your current machine. The App can
+then be viewed in your browser at http://localhost:5151.
+
+Alternatively, if you have FiftyOne installed on your local machine, just run:
+
+fiftyone app connect --destination [<username>@]<hostname> --port {0}
 
 See https://voxel51.com/docs/fiftyone/user_guide/app.html#remote-sessions
 for more information about remote sessions.
@@ -198,11 +199,20 @@ class Session(foc.HasClient):
         :attr:`Session.view` property of the session to your
         :class:`fiftyone.core.view.DatasetView`.
 
+    -   To attach/remove interactive plots, use the methods exposed on the
+        :attr:`Session.plots` property of the session.
+
     -   Use :meth:`Session.refresh` to refresh the App if you update a dataset
         outside of the App
 
     -   Use :attr:`Session.selected` to retrieve the IDs of the currently
         selected samples in the App.
+
+    -   Use :attr:`Session.selected_labels` to retrieve the IDs of the
+        currently selected labels in the App.
+
+    -   In notebook contexts, use :func:`Session.freeze` to replace the App and
+        any attached plots with static images.
 
     -   Use :func:`Session.close` and :func:`Session.open` to temporarily close
         and reopen the App without creating a new :class:`Session`
@@ -216,6 +226,9 @@ class Session(foc.HasClient):
             load
         view (None): an optional :class:`fiftyone.core.view.DatasetView` to
             load
+        plots (None): an optional
+            :class:`fiftyone.core.plots.manager.PlotManager` to connect to this
+            session
         port (None): the port number to serve the App. If None,
             ``fiftyone.config.default_app_port`` is used
         remote (False): whether this is a remote session, and opening the App
@@ -238,6 +251,7 @@ class Session(foc.HasClient):
         self,
         dataset=None,
         view=None,
+        plots=None,
         port=None,
         remote=False,
         desktop=None,
@@ -254,10 +268,13 @@ class Session(foc.HasClient):
         state.config = config
 
         self._context = focx._get_context()
+        self._plots = None
         self._port = port
         self._remote = remote
-        # maintain a reference to prevent garbage collection
+
+        # Maintain a reference to prevent garbage collection
         self._get_time = time.perf_counter
+
         self._WAIT_INSTRUCTIONS = _WAIT_INSTRUCTIONS
         self._disable_wait_warning = False
         self._auto = auto
@@ -295,6 +312,8 @@ class Session(foc.HasClient):
         state.datasets = fod.list_datasets()
         state.active_handle = self._auto_show()
         self.state = state
+
+        self.plots = plots
 
         if self._remote:
             if self._context != focx._NONE:
@@ -469,6 +488,27 @@ class Session(foc.HasClient):
         """
         self.state.view = None
 
+    @property
+    def has_plots(self):
+        """Whether this session has any attached plots."""
+        return bool(self._plots)
+
+    @property
+    def plots(self):
+        """The :class:`fiftyone.core.plots.manager.PlotManager` instance that
+        manages plots attached to this session.
+        """
+        return self._plots
+
+    @plots.setter
+    def plots(self, plots):
+        if plots is None:
+            plots = fop.PlotManager(self)
+        else:
+            plots._set_session(self)
+
+        self._plots = plots
+
     @_update_state()
     def refresh(self):
         """Refreshes the current App window."""
@@ -633,14 +673,20 @@ class Session(foc.HasClient):
         elif self._desktop:
             type_ = "desktop"
         else:
-            type_ = self.url
+            type_ = None
 
-        elements.append("Session type:     %s" % type_)
+        if type_ is None:
+            elements.append("Session URL:      %s" % self.url)
+        else:
+            elements.append("Session type:     %s" % type_)
 
         if self.view:
             elements.extend(
                 ["View stages:", self.view._make_view_stages_str()]
             )
+
+        if self.plots:
+            elements.append(self.plots.summary())
 
         return "\n".join(elements)
 
@@ -656,6 +702,8 @@ class Session(foc.HasClient):
         """
         if self._remote:
             raise ValueError("Remote sessions cannot launch the App")
+
+        self.plots.connect()
 
         if self._context != focx._NONE:
             self.show()
@@ -753,11 +801,13 @@ class Session(foc.HasClient):
         if self._remote:
             return
 
+        self.plots.disconnect()
+
         self.state.close = True
         self._update_state()
 
     def freeze(self):
-        """Screenshots the active App cell.
+        """Screenshots the active App cell, replacing it with a static image.
 
         Only applicable to notebook contexts.
         """
@@ -766,6 +816,8 @@ class Session(foc.HasClient):
 
         self.state.active_handle = None
         self._update_state()
+
+        self.plots.freeze()
 
     def _auto_show(self):
         if self._auto and (self._context != focx._NONE):

@@ -10,24 +10,32 @@
 
 # Show usage information
 usage() {
-    echo "Usage:  bash $0 [-h] [-d]
+    echo "Usage:  bash $0 [-h] [-d] [-e] [-m] [-v]
 
 Getting help:
 -h      Display this help message.
 
 Custom installations:
--d      Install developer dependencies. The default is false.
+-d      Install developer dependencies.
+-e      Source install of voxel51-eta.
+-m      Install MongoDB from scratch, rather than installing fiftyone-db.
+-v      Voxel51 developer install (don't install fiftyone-brain).
 "
 }
-
 
 # Parse flags
 SHOW_HELP=false
 DEV_INSTALL=false
-while getopts "hd" FLAG; do
+SOURCE_ETA_INSTALL=false
+SCRATCH_MONGODB_INSTALL=false
+VOXEL51_INSTALL=false
+while getopts "hdemv" FLAG; do
     case "${FLAG}" in
         h) SHOW_HELP=true ;;
         d) DEV_INSTALL=true ;;
+        e) SOURCE_ETA_INSTALL=true ;;
+        m) SCRATCH_MONGODB_INSTALL=true ;;
+        v) VOXEL51_INSTALL=true ;;
         *) usage ;;
     esac
 done
@@ -36,75 +44,55 @@ done
 set -e
 OS=$(uname -s)
 
-echo "***** INSTALLING ETA *****"
-if [[ ! -d "eta" ]]; then
-    echo "Cloning ETA repository"
-    git clone https://github.com/voxel51/eta
-fi
-cd eta
-git checkout develop
-git pull
-pip install -e .
-if [[ ! -f eta/config.json ]]; then
-    echo "Installing default ETA config"
-    cp config-example.json eta/config.json
-fi
-cd ..
-
 echo "***** INSTALLING PLAYER51 *****"
 git submodule update --init
 
-echo "***** INSTALLING MONGODB *****"
-mkdir -p ~/.fiftyone/bin
-cd ~/.fiftyone
-mkdir -p var/lib/mongo
-INSTALL_MONGODB=true
-if [ -x bin/mongod ]; then
-    VERSION_FULL=$(bin/mongod --version | grep 'db version')
-    VERSION="${VERSION_FULL:12}"
-    if [ ${VERSION} != "4.4.2" ]; then
-        echo "Upgrading MongoDB v${VERSION} to v4.4.2"
+if [ ${SCRATCH_MONGODB_INSTALL} = true ]; then
+    echo "***** INSTALLING MONGODB *****"
+    mkdir -p ~/.fiftyone/bin
+    cd ~/.fiftyone
+    mkdir -p var/lib/mongo
+    INSTALL_MONGODB=true
+    if [ -x bin/mongod ]; then
+        VERSION_FULL=$(bin/mongod --version | grep 'db version')
+        VERSION="${VERSION_FULL:12}"
+        if [ ${VERSION} != "4.4.2" ]; then
+            echo "Upgrading MongoDB v${VERSION} to v4.4.2"
+        else
+            echo "MongoDB v4.4.2 already installed"
+            INSTALL_MONGODB=false
+        fi
     else
-        echo "MongoDB v4.4.2 already installed"
-        INSTALL_MONGODB=false
+        echo "Installing MongoDB v4.4.2"
     fi
-else
-    echo "Installing MongoDB v4.4.2"
-fi
-if [ ${INSTALL_MONGODB} = true ]; then
-    if [ "${OS}" == "Darwin" ]; then
-        MONGODB_BUILD=mongodb-macos-x86_64-4.4.2
+    if [ ${INSTALL_MONGODB} = true ]; then
+        if [ "${OS}" == "Darwin" ]; then
+            MONGODB_BUILD=mongodb-macos-x86_64-4.4.2
 
-        curl https://fastdl.mongodb.org/osx/${MONGODB_BUILD}.tgz --output mongodb.tgz
-        tar -zxvf mongodb.tgz
-        mv ${MONGODB_BUILD}/bin/* ./bin/
-        rm mongodb.tgz
-        rm -rf ${MONGODB_BUILD}
-    elif [ "${OS}" == "Linux" ]; then
-        MONGODB_BUILD=mongodb-linux-x86_64-ubuntu1804-4.4.2
+            curl https://fastdl.mongodb.org/osx/${MONGODB_BUILD}.tgz --output mongodb.tgz
+            tar -zxvf mongodb.tgz
+            mv ${MONGODB_BUILD}/bin/* ./bin/
+            rm mongodb.tgz
+            rm -rf ${MONGODB_BUILD}
+        elif [ "${OS}" == "Linux" ]; then
+            MONGODB_BUILD=mongodb-linux-x86_64-ubuntu1804-4.4.2
 
-        curl https://fastdl.mongodb.org/linux/${MONGODB_BUILD}.tgz --output mongodb.tgz
-        tar -zxvf mongodb.tgz
-        mv ${MONGODB_BUILD}/bin/* ./bin/
-        rm mongodb.tgz
-        rm -rf ${MONGODB_BUILD}
-    else
-        echo "WARNING: unsupported OS, skipping MongoDB installation"
+            curl https://fastdl.mongodb.org/linux/${MONGODB_BUILD}.tgz --output mongodb.tgz
+            tar -zxvf mongodb.tgz
+            mv ${MONGODB_BUILD}/bin/* ./bin/
+            rm mongodb.tgz
+            rm -rf ${MONGODB_BUILD}
+        else
+            echo "WARNING: unsupported OS, skipping MongoDB installation"
+        fi
     fi
-fi
-cd -
-
-echo "***** INSTALLING FIFTYONE *****"
-if [ ${DEV_INSTALL} = true ]; then
-    echo "Performing dev install"
-    pip install -r requirements/dev.txt
-    pre-commit install
+    cd -
 else
-    pip install -r requirements.txt
+    echo "***** INSTALLING FIFTYONE-DB *****"
+    pip install fiftyone-db
 fi
-pip install -e .
 
-echo "***** INSTALLING APP *****"
+echo "***** INSTALLING FIFTYONE-APP *****"
 curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.37.2/install.sh | bash
 export NVM_DIR="$([ -z "${XDG_CONFIG_HOME-}" ] && printf %s "${HOME}/.nvm" || printf %s "${XDG_CONFIG_HOME}/nvm")"
 [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh" # This loads nvm
@@ -119,8 +107,46 @@ else
     echo "WARNING: unable to locate a bash profile to 'source'; you may need to start a new shell"
 fi
 cd app
+echo "Building the App. This will take a minute or two..."
 yarn install > /dev/null 2>&1
 yarn build-web
 cd ..
+
+if [ ${VOXEL51_INSTALL} = false ]; then
+    echo "***** INSTALLING FIFTYONE-BRAIN *****"
+    pip install fiftyone-brain
+fi
+
+echo "***** INSTALLING FIFTYONE *****"
+if [ ${DEV_INSTALL} = true ] || [ ${VOXEL51_INSTALL} = true ]; then
+    echo "Performing dev install"
+    pip install -r requirements/dev.txt
+    pre-commit install
+    pip install -e .
+else
+    pip install -r requirements.txt
+    pip install .
+fi
+
+if [ ${SOURCE_ETA_INSTALL} = true ]; then
+    echo "***** INSTALLING ETA *****"
+    if [[ ! -d "eta" ]]; then
+        echo "Cloning ETA repository"
+        git clone https://github.com/voxel51/eta
+    fi
+    cd eta
+    git checkout develop
+    git pull
+    if [ ${DEV_INSTALL} = true ] || [ ${VOXEL51_INSTALL} = true ]; then
+        pip install -e .
+    else
+        pip install .
+    fi
+    if [[ ! -f eta/config.json ]]; then
+        echo "Installing default ETA config"
+        cp config-example.json eta/config.json
+    fi
+    cd ..
+fi
 
 echo "***** INSTALLATION COMPLETE *****"

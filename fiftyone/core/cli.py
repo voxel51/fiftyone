@@ -11,10 +11,12 @@ import json
 import os
 import subprocess
 import sys
+import time
 import textwrap
 
 import argcomplete
 from tabulate import tabulate
+import webbrowser
 
 import eta.core.serial as etas
 import eta.core.utils as etau
@@ -944,6 +946,16 @@ def _watch_session(session):
         pass
 
 
+def _wait():
+    print("\nTo exit, press ctrl + c\n")
+
+    try:
+        while True:
+            time.sleep(0.5)
+    except KeyboardInterrupt:
+        pass
+
+
 class AppViewCommand(Command):
     """View datasets in the App without persisting them to the database.
 
@@ -1147,7 +1159,7 @@ class AppViewCommand(Command):
 
 
 class AppConnectCommand(Command):
-    """Connect to a remote FiftyOne App.
+    """Connect to a remote FiftyOne App in your web browser.
 
     Examples::
 
@@ -1162,9 +1174,6 @@ class AppConnectCommand(Command):
 
         # Connect to a remote App using a custom local port
         fiftyone app connect ... --local-port <port>
-
-        # Connect to a remote session using the desktop App
-        fiftyone app connect ... --desktop
     """
 
     @staticmethod
@@ -1200,12 +1209,6 @@ class AppConnectCommand(Command):
             type=str,
             help="optional ssh key to use to login",
         )
-        parser.add_argument(
-            "-a",
-            "--desktop",
-            action="store_true",
-            help="whether to launch a desktop App instance",
-        )
 
     @staticmethod
     def execute(parser, args):
@@ -1215,7 +1218,7 @@ class AppConnectCommand(Command):
         if args.destination:
             if sys.platform.startswith("win"):
                 raise RuntimeError(
-                    "This command is currently not supported on Windows."
+                    "This command is currently not supported on Windows"
                 )
 
             control_path = os.path.join(
@@ -1261,12 +1264,10 @@ class AppConnectCommand(Command):
 
             fou.call_on_exit(stop_port_forward)
 
-        # If desktop wasn't explicitly requested, fallback to default
-        desktop = args.desktop or None
+        url = "http://localhost:%d/" % local_port
+        webbrowser.open(url, new=2)
 
-        session = fos.launch_app(port=local_port, desktop=desktop)
-
-        _watch_session(session)
+        _wait()
 
 
 class ZooCommand(Command):

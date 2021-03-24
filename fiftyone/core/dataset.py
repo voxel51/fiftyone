@@ -3023,7 +3023,7 @@ def _save_view(view, fields):
     #
 
     # The samples now in the collection
-    doc_ids = [str(_id) for _id in dataset._get_sample_ids()]
+    doc_ids = dataset.values("id")
 
     if dataset.media_type == fom.VIDEO:
         fofr.Frame._reload_docs(
@@ -3161,7 +3161,7 @@ def _get_sample_ids(samples_or_ids):
         return [samples_or_ids.id]
 
     if isinstance(samples_or_ids, foc.SampleCollection):
-        return [str(_id) for _id in samples_or_ids._get_sample_ids()]
+        return samples_or_ids.values("id")
 
     if not samples_or_ids:
         return []

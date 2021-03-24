@@ -5,6 +5,7 @@ Detection evaluation.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import itertools
 import logging
 
 import numpy as np
@@ -107,7 +108,7 @@ def evaluate_detections(
         method,
         iou=iou,
         classwise=classwise,
-        **kwargs
+        **kwargs,
     )
     eval_method = config.build()
     eval_method.register_run(samples, eval_key)
@@ -223,7 +224,8 @@ class DetectionEvaluation(foe.EvaluationMethod):
 
         Args:
             samples: a :class:`fiftyone.core.collections.SampleCollection`
-            matches: a list of ``(gt_label, pred_label, iou, pred_confidence)``
+            matches: a list of
+                ``(gt_label, pred_label, iou, pred_confidence, gt_id, pred_id)``
                 matches. Either label can be ``None`` to indicate an unmatched
                 object
             eval_key (None): the evaluation key for this evaluation
@@ -236,7 +238,13 @@ class DetectionEvaluation(foe.EvaluationMethod):
         Returns:
             a :class:`DetectionResults`
         """
-        return DetectionResults(matches, classes=classes, missing=missing)
+        return DetectionResults(
+            matches,
+            gt_field=self.config.gt_field,
+            pred_field=self.config.pred_field,
+            classes=classes,
+            missing=missing,
+        )
 
     def get_fields(self, samples, eval_key):
         fields = [
@@ -298,28 +306,72 @@ class DetectionResults(ClassificationResults):
     """Class that stores the results of a detection evaluation.
 
     Args:
-        matches: a list of ``(gt_label, pred_label, iou, pred_confidence)``
+        matches: a list of
+            ``(gt_label, pred_label, iou, pred_confidence, gt_id, pred_id)``
             matches. Either label can be ``None`` to indicate an unmatched
             object
+        gt_field (None): the name of the ground truth field
+        pred_field (None): the name of the predictions field
         classes (None): the list of possible classes. If not provided, the
             observed ground truth/predicted labels are used
         missing (None): a missing label string. Any unmatched objects are given
             this label for evaluation purposes
     """
 
-    def __init__(self, matches, classes=None, missing=None):
-        ytrue, ypred, ious, confs = zip(*matches)
+    def __init__(
+        self,
+        matches,
+        gt_field=None,
+        pred_field=None,
+        classes=None,
+        missing=None,
+    ):
+        ytrue, ypred, ious, confs, ytrue_ids, ypred_ids = zip(*matches)
         super().__init__(
-            ytrue, ypred, confs=confs, classes=classes, missing=missing
+            ytrue,
+            ypred,
+            confs=confs,
+            gt_field=gt_field,
+            pred_field=pred_field,
+            ytrue_ids=ytrue_ids,
+            ypred_ids=ypred_ids,
+            classes=classes,
+            missing=missing,
         )
         self.ious = np.array(ious)
 
     @classmethod
     def _from_dict(cls, d, samples, **kwargs):
-        matches = list(zip(d["ytrue"], d["ypred"], d["ious"], d["confs"]))
+        ytrue = d["ytrue"]
+        ypred = d["ypred"]
+        ious = d["ious"]
+
+        confs = d.get("confs", None)
+        if confs is None:
+            confs = itertools.repeat(None)
+
+        ytrue_ids = d.get("ytrue_ids", None)
+        if ytrue_ids is None:
+            ytrue_ids = itertools.repeat(None)
+
+        ypred_ids = d.get("ypred_ids", None)
+        if ypred_ids is None:
+            ypred_ids = itertools.repeat(None)
+
+        gt_field = d.get("gt_field", None)
+        pred_field = d.get("pred_field", None)
         classes = d.get("classes", None)
         missing = d.get("missing", None)
-        return cls(matches, classes=classes, missing=missing, **kwargs)
+
+        matches = list(zip(ytrue, ypred, ious, confs, ytrue_ids, ypred_ids))
+        return cls(
+            matches,
+            gt_field=gt_field,
+            pred_field=pred_field,
+            classes=classes,
+            missing=missing,
+            **kwargs,
+        )
 
 
 def _parse_config(config, pred_field, gt_field, method, **kwargs):
@@ -346,7 +398,9 @@ def _tally_matches(matches):
     tp = 0
     fp = 0
     fn = 0
-    for gt_label, pred_label, _, _ in matches:
+    for match in matches:
+        gt_label = match[0]
+        pred_label = match[1]
         if gt_label is None:
             fp += 1
         elif pred_label is None:

@@ -105,6 +105,21 @@ from .core.models import (
     ModelManagerConfig,
     ModelManager,
 )
+from .core.plots import (
+    plot_confusion_matrix,
+    plot_pr_curve,
+    plot_pr_curves,
+    plot_roc_curve,
+    location_scatterplot,
+    scatterplot,
+    Plot,
+    ResponsivePlot,
+    InteractivePlot,
+    ViewPlot,
+    ViewGrid,
+    CategoricalHistogram,
+    NumericalHistogram,
+)
 from .core.sample import Sample
 from .core.stages import (
     Exclude,
