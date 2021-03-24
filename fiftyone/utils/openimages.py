@@ -136,15 +136,18 @@ class OpenImagesDatasetImporter(foud.LabeledImageDatasetImporter):
             pos_labels, neg_labels = _create_labels(
                 self._lab_id_data, image_id, self._classes_map
             )
-            labels["positive_labels"] = pos_labels
-            labels["negative_labels"] = neg_labels
+            if pos_labels is not None:
+                labels["positive_labels"] = pos_labels
+            if neg_labels is not None:
+                labels["negative_labels"] = neg_labels
 
         if "detections" in self._label_types:
             # Add detections
             detections = _create_detections(
                 self._det_id_data, image_id, self._classes_map
             )
-            labels["detections"] = detections
+            if detections is not None:
+                labels["detections"] = detections
 
         if "segmentations" in self._label_types:
             # Add segmentations
@@ -154,14 +157,16 @@ class OpenImagesDatasetImporter(foud.LabeledImageDatasetImporter):
                 self._classes_map,
                 self.dataset_dir,
             )
-            labels["segmentations"] = segmentations
+            if segmentations is not None:
+                labels["segmentations"] = segmentations
 
         if "relationships" in self._label_types:
             # Add relationships
             relationships = _create_relationships(
                 self._rel_id_data, image_id, self._classes_map, self._attrs_map
             )
-            labels["relationships"] = relationships
+            if relationships is not None:
+                labels["relationships"] = relationships
 
         labels["open_images_id"] = image_id
 
