@@ -210,14 +210,6 @@ cd fiftyone
 bash install.bash
 ```
 
-### Customizing your ETA installation
-
-Installing FiftyOne from source includes an
-[ETA lite installation](https://github.com/voxel51/eta#lite-installation),
-which should be sufficient for most users. If you want a full ETA installation,
-or wish to otherwise customize your ETA installation,
-[see here](https://github.com/voxel51/eta).
-
 ### Generating documentation
 
 See the
