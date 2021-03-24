@@ -29,8 +29,7 @@ DEV_INSTALL=false
 SOURCE_ETA_INSTALL=false
 SCRATCH_MONGODB_INSTALL=false
 VOXEL51_INSTALL=false
-INSTALL_SUPPORTING=true
-while getopts "hemdv" FLAG; do
+while getopts "hdemv" FLAG; do
     case "${FLAG}" in
         h) SHOW_HELP=true ;;
         d) DEV_INSTALL=true ;;
