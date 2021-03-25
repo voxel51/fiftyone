@@ -291,7 +291,6 @@ class Run(Configurable):
     def save_run_info(cls, samples, run_info, overwrite=True):
         """Saves the run information on the collection.
 
-        If an existing run exists
         Args:
             samples: a :class:`fiftyone.core.collections.SampleCollection`
             run_info: a :class:`RunInfo`
