@@ -1722,6 +1722,69 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             add_info=add_info,
         )
 
+    def add_archive(
+        self,
+        archive_path,
+        dataset_type,
+        cleanup=True,
+        label_field="ground_truth",
+        tags=None,
+        expand_schema=True,
+        add_info=True,
+        **kwargs
+    ):
+        """Adds the contents of the given archive to the dataset.
+
+        See :doc:`this guide </user_guide/dataset_creation/datasets>` for
+        descriptions of available dataset types.
+
+        .. note::
+
+            The following archive formats are explicitly supported::
+
+                .zip, .tar, .tar.gz, .tgz, .tar.bz, .tbz
+
+            If an archive *not* in the above list is found, extraction will be
+            attempted via the ``patool`` package, which supports many formats
+            but may require that additional system packages be installed.
+
+        Args:
+            archive_path: the path to an archive of a dataset directory
+            dataset_type (None): the
+                :class:`fiftyone.types.dataset_types.Dataset` type of the
+                dataset in ``archive_path``
+            cleanup (True): whether to delete the archive after extracting it
+            label_field ("ground_truth"): the name (or root name) of the
+                field(s) to use for the labels (if applicable)
+            tags (None): an optional list of tags to attach to each sample
+            expand_schema (True): whether to dynamically add new sample fields
+                encountered to the dataset schema. If False, an error is raised
+                if a sample's schema is not a subset of the dataset schema
+            add_info (True): whether to add dataset info from the importer (if
+                any) to the dataset's ``info``
+            **kwargs: optional keyword arguments to pass to the constructor of
+                the :class:`fiftyone.utils.data.importers.DatasetImporter` for
+                the specified ``dataset_type`` via the syntax
+                ``DatasetImporter(dataset_dir, **kwargs)``
+
+        Returns:
+            a list of IDs of the samples that were added to the dataset
+        """
+        dataset_dir = etau.split_archive(archive_path)[0]
+        etau.extract_archive(
+            archive_path, outdir=dataset_dir, delete_archive=cleanup
+        )
+
+        return self.add_dir(
+            dataset_dir,
+            dataset_type,
+            label_field=label_field,
+            tags=tags,
+            expand_schema=expand_schema,
+            add_info=add_info,
+            **kwargs,
+        )
+
     def add_importer(
         self,
         dataset_importer,
@@ -2225,6 +2288,64 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             **kwargs,
         )
         return dataset
+
+    @classmethod
+    def from_archive(
+        cls,
+        archive_path,
+        dataset_type,
+        cleanup=True,
+        name=None,
+        label_field="ground_truth",
+        tags=None,
+        **kwargs
+    ):
+        """Creates a :class:`Dataset` from the contents of the given archive.
+
+        See :doc:`this guide </user_guide/dataset_creation/datasets>` for
+        descriptions of available dataset types.
+
+        .. note::
+
+            The following archive formats are explicitly supported::
+
+                .zip, .tar, .tar.gz, .tgz, .tar.bz, .tbz
+
+            If an archive *not* in the above list is found, extraction will be
+            attempted via the ``patool`` package, which supports many formats
+            but may require that additional system packages be installed.
+
+        Args:
+            archive_path: the path to an archive of a dataset directory
+            dataset_type: the :class:`fiftyone.types.dataset_types.Dataset`
+                type of the dataset in ``archive_path``
+            cleanup (True): whether to delete the archive after extracting it
+            name (None): a name for the dataset. By default,
+                :func:`get_default_dataset_name` is used
+            label_field ("ground_truth"): the name (or root name) of the
+                field(s) to use for the labels (if applicable)
+            tags (None): an optional list of tags to attach to each sample
+            **kwargs: optional keyword arguments to pass to the constructor of
+                the :class:`fiftyone.utils.data.importers.DatasetImporter` for
+                the specified ``dataset_type`` via the syntax
+                ``DatasetImporter(dataset_dir, **kwargs)``
+
+        Returns:
+            a :class:`Dataset`
+        """
+        dataset_dir = etau.split_archive(archive_path)[0]
+        etau.extract_archive(
+            archive_path, outdir=dataset_dir, delete_archive=cleanup
+        )
+
+        return cls.from_dir(
+            dataset_dir,
+            dataset_type,
+            name=name,
+            label_field=label_field,
+            tags=tags,
+            **kwargs,
+        )
 
     @classmethod
     def from_importer(

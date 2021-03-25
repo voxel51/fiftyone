@@ -4121,7 +4121,14 @@ class SampleCollection(object):
 
         Args:
             export_dir (None): the directory to which to export the samples in
-                format ``dataset_type``
+                format ``dataset_type``. This can also be an archive path with
+                one of the following extensions::
+
+                    .zip, .tar, .tar.gz, .tgz, .tar.bz, .tbz
+
+                If an archive path is specified, the export is performed in a
+                directory of same name (minus extension) and then automatically
+                archived (and the directory then deleted)
             dataset_type (None): the
                 :class:`fiftyone.types.dataset_types.Dataset` type to write. If
                 not specified, the default type for ``label_field`` is used
@@ -4178,6 +4185,12 @@ class SampleCollection(object):
 
         if dataset_type is not None and inspect.isclass(dataset_type):
             dataset_type = dataset_type()
+
+        if export_dir is not None and etau.is_archive(export_dir):
+            archive_path = export_dir
+            export_dir = etau.split_archive(archive_path)[0]
+        else:
+            archive_path = None
 
         # If no dataset exporter was provided, construct one based on the
         # dataset type
@@ -4260,6 +4273,10 @@ class SampleCollection(object):
             label_field_or_dict=label_field_or_dict,
             frame_labels_field_or_dict=frame_labels_field_or_dict,
         )
+
+        # Archive, if requested
+        if archive_path is not None:
+            etau.make_archive(export_dir, archive_path, cleanup=True)
 
     def list_indexes(self):
         """Returns the fields of the dataset that are indexed.
