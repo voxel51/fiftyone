@@ -790,7 +790,7 @@ class ZooDataset(object):
         """The default name or root name for label fields generated when 
         loading this Zoo Dataset
         """
-        return None
+        return "ground_truth"
 
     def has_tag(self, tag):
         """Whether the dataset has the given tag.
