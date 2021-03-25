@@ -32,7 +32,11 @@ os.environ["FIFTYONE_SERVER"] = "1"
 import fiftyone as fo
 import fiftyone.core.aggregations as foa
 import fiftyone.constants as foc
-from fiftyone.core.expressions import ViewField as F, VALUE
+from fiftyone.core.expressions import (
+    ViewExpression as E,
+    ViewField as F,
+    VALUE,
+)
 import fiftyone.core.dataset as fod
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
@@ -1289,19 +1293,84 @@ async def _get_video_data(col, state, view, _ids, labels=True):
     return results
 
 
+def _frame_labels(path, field, view):
+    frames, path = path.split(".")
+    items = "%s.%s" % (path, field.document_type._LABEL_LIST_FIELD)
+    view = view.set_field(
+        "_label_tags",
+        F("_label_tags").extend(
+            F(frames).reduce(
+                VALUE.extend(F(items).reduce(VALUE.extend(F("tags")), [])), []
+            )
+        ),
+    )
+    return view
+
+
+def _frame_label(path, field, view):
+    frames, path = path.split(".")
+    tags = "%s.tags" % path
+    view = view.set_field(
+        "_label_tags",
+        F("_label_tags").extend(F(frames).reduce(VALUE.extend(F(tags)), [])),
+    )
+    return view
+
+
+def _labels(path, field, view):
+    items = "%s.%s" % (path, field.document_type._LABEL_LIST_FIELD)
+    view = view.set_field(
+        "_label_tags",
+        F("_label_tags").extend(F(items).reduce(VALUE.extend(F("tags")), [])),
+    )
+    return view
+
+
+def _label(path, field, view):
+    return view.set_field(
+        "_label_tags", F("_label_tags").extend(F("%s.tags" % path))
+    )
+
+
 def _get_tag_concat_view(view):
-    for path, field in fos.DatasetStatistics.labels(view):
-        if not issubclass(field.document_type, fol._HasLabelList):
+    fields = fos.DatasetStatistics.labels(view)
+    view = view.set_field("_label_tags", [])
+    for path, field in fields:
+        if not issubclass(
+            field.document_type, (fol._HasID, fol._HasLabelList)
+        ):
             continue
 
-        items = "%s.%s" % (path, field.document_type._LABEL_LIST_FIELD)
-        tags = "%s._tags" % path
+        if issubclass(field.document_type, fol._HasLabelList):
+            if path.startswith(view._FRAMES_PREFIX):
+                add_tags = _frame_labels
+            else:
+                add_tags = _labels
+        else:
+            if path.startswith(view._FRAMES_PREFIX):
+                add_tags = _frame_label
+            else:
+                add_tags = _label
 
-        view = view.set_field(
-            tags, F("$%s" % items).reduce(VALUE.extend(F("tags")), [])
-        )
+        view = add_tags(path, field, view)
+
+    view = _count_list_items("_label_tags", view)
 
     return view
+
+
+def _count_list_items(path, view):
+    _function = (
+        "function(items) {"
+        "let counts = {};"
+        "items.forEach((i) => {"
+        "counts[i] = 1 + (counts[i] || 0);"
+        "});"
+        "return counts;"
+        "}"
+    )
+
+    return view.set_field(path, F(path)._function(_function))
 
 
 def _make_frame_labels(name, label, frame_number, prefix=""):

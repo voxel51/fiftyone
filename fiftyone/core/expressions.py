@@ -3359,6 +3359,14 @@ class ViewExpression(object):
 
         return ViewExpression({"$zip": zip_expr})
 
+    # Experimental expressions ###############################################
+
+    def _function(self, function):
+        function = " ".join(function.split())
+        return ViewExpression(
+            {"$function": {"body": function, "args": [self], "lang": "js"}}
+        )
+
 
 class ViewField(ViewExpression):
     """A :class:`ViewExpression` that refers to a field or embedded field of a

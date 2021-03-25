@@ -466,6 +466,7 @@ class SampleCollection(object):
                     and (
                         field_name == "frames" and self.media_type != fom.VIDEO
                     )
+                    and not field_name.startswith("_")
                 ):
                     raise ValueError("Field '%s' does not exist" % field_name)
 
@@ -483,6 +484,7 @@ class SampleCollection(object):
                 if (
                     field_name not in frame_schema
                     and field_name not in default_frame_fields
+                    and not field_name.startswith("_")
                 ):
                     raise ValueError(
                         "Frame field '%s' does not exist" % field_name
@@ -5016,8 +5018,12 @@ def _parse_field_name(sample_collection, field_name, auto_unwind):
     root_field_name = field_name.split(".", 1)[0]
 
     try:
-        root_field = schema[root_field_name]
+        if not root_field_name.startswith("_"):
+            root_field = schema[root_field_name]
+        else:
+            root_field = None
     except KeyError:
+
         ftype = "Frame field" if is_frame_field else "Field"
         raise ValueError(
             "%s '%s' does not exist on collection '%s'"
