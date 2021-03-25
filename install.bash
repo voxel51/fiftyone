@@ -10,7 +10,7 @@
 
 # Show usage information
 usage() {
-    echo "Usage:  bash $0 [-h] [-d] [-e] [-m] [-v] [-c]
+    echo "Usage:  bash $0 [-h] [-d] [-e] [-m] [-p] [-v]
 
 Getting help:
 -h      Display this help message.
@@ -19,7 +19,7 @@ Custom installations:
 -d      Install developer dependencies.
 -e      Source install of voxel51-eta.
 -m      Install MongoDB from scratch, rather than installing fiftyone-db.
--p      Install only the core python package, and do not build the App.
+-p      Install only the core python package, not the App.
 -v      Voxel51 developer install (don't install fiftyone-brain).
 "
 }
@@ -29,8 +29,8 @@ SHOW_HELP=false
 DEV_INSTALL=false
 SOURCE_ETA_INSTALL=false
 SCRATCH_MONGODB_INSTALL=false
-VOXEL51_INSTALL=false
 BUILD_APP=true
+VOXEL51_INSTALL=false
 while getopts "hdempv" FLAG; do
     case "${FLAG}" in
         h) SHOW_HELP=true ;;
@@ -38,7 +38,7 @@ while getopts "hdempv" FLAG; do
         e) SOURCE_ETA_INSTALL=true ;;
         m) SCRATCH_MONGODB_INSTALL=true ;;
         v) VOXEL51_INSTALL=true ;;
-	p) BUILD_APP=false ;;
+	    p) BUILD_APP=false ;;
         *) usage ;;
     esac
 done
