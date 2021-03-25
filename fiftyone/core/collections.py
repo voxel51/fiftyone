@@ -4494,7 +4494,13 @@ class SampleCollection(object):
 
         return self._process_aggregations(aggregations, result, scalar_result)
 
-    def _pipeline(self, pipeline=None, attach_frames=True, frames_only=False):
+    def _pipeline(
+        self,
+        pipeline=None,
+        attach_frames=True,
+        detach_frames=False,
+        frames_only=False,
+    ):
         """Returns the MongoDB aggregation pipeline for the collection.
 
         Args:
@@ -4502,7 +4508,10 @@ class SampleCollection(object):
                 append to the current pipeline
             attach_frames (True): whether to attach the frame documents to the
                 result. Only applicable to video datasets
-            frames_only (True): whether to generate a pipeline that contains
+            detach_frames (False): whether to detach the frame documents from
+                the result at the end of the pipeline. Only applicable to video
+                datasets
+            frames_only (False): whether to generate a pipeline that contains
                 *only* the frames in the collection
 
         Returns:
@@ -4510,7 +4519,13 @@ class SampleCollection(object):
         """
         raise NotImplementedError("Subclass must implement _pipeline()")
 
-    def _aggregate(self, pipeline=None, attach_frames=True):
+    def _aggregate(
+        self,
+        pipeline=None,
+        attach_frames=True,
+        detach_frames=False,
+        frames_only=False,
+    ):
         """Runs the MongoDB aggregation pipeline on the collection and returns
         the result.
 
@@ -4519,6 +4534,11 @@ class SampleCollection(object):
                 append to the current pipeline
             attach_frames (True): whether to attach the frame documents to the
                 result. Only applicable to video datasets
+            detach_frames (False): whether to detach the frame documents from
+                the result at the end of the pipeline. Only applicable to video
+                datasets
+            frames_only (False): whether to generate a pipeline that contains
+                *only* the frames in the collection
 
         Returns:
             the aggregation result dict

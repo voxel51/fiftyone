@@ -12,7 +12,6 @@ import logging
 import numbers
 import os
 import random
-import reprlib
 import string
 
 from bson import ObjectId
@@ -28,17 +27,16 @@ import fiftyone.constants as focn
 import fiftyone.core.collections as foc
 import fiftyone.core.fields as fof
 import fiftyone.core.frame as fofr
-import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 import fiftyone.migrations as fomi
 import fiftyone.core.odm as foo
-import fiftyone.core.odm.sample as foos
 import fiftyone.core.sample as fos
 from fiftyone.core.singleton import DatasetSingleton
 import fiftyone.core.view as fov
 import fiftyone.core.utils as fou
 import fiftyone.types as fot
-import fiftyone.utils.data as foud
+
+foud = fou.lazy_import("fiftyone.utils.data")
 
 
 logger = logging.getLogger(__name__)
@@ -2667,12 +2665,17 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return _pipeline
 
     def _aggregate(
-        self, pipeline=None, attach_frames=True, detach_frames=False
+        self,
+        pipeline=None,
+        attach_frames=True,
+        detach_frames=False,
+        frames_only=False,
     ):
         _pipeline = self._pipeline(
             pipeline=pipeline,
             attach_frames=attach_frames,
             detach_frames=detach_frames,
+            frames_only=frames_only,
         )
 
         return foo.aggregate(self._sample_collection, _pipeline)
