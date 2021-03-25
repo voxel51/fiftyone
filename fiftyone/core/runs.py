@@ -160,24 +160,26 @@ class Run(Configurable):
         """
         raise NotImplementedError("subclass must implement cleanup()")
 
-    def register_run(self, samples, key):
+    def register_run(self, samples, key, overwrite=True):
         """Registers a run of this method under the given key on the given
         collection.
 
         Args:
             samples: a :class:`fiftyone.core.collections.SampleCollection`
             key: a run key
+            overwrite (True): whether to allow overwriting an existing run of
+                the same type
         """
         if key is None:
             return
 
-        self.validate_run(samples, key)
+        self.validate_run(samples, key, overwrite=overwrite)
         timestamp = datetime.datetime.utcnow()
         run_info_cls = self.run_info_cls()
         run_info = run_info_cls(key, timestamp=timestamp, config=self.config)
         self.save_run_info(samples, run_info)
 
-    def validate_run(self, samples, key):
+    def validate_run(self, samples, key, overwrite=True):
         """Validates that the collection can accept this run.
 
         The run may be invalid if, for example, a run of a different type has
@@ -187,6 +189,11 @@ class Run(Configurable):
         Args:
             samples: a :class:`fiftyone.core.collections.SampleCollection`
             key: a run key
+            overwrite (True): whether to allow overwriting an existing run of
+                the same type
+
+        Raises:
+            ValueError: if the run is invalid
         """
         if not etau.is_str(key) or not key.isidentifier():
             raise ValueError(
@@ -196,6 +203,12 @@ class Run(Configurable):
 
         if key not in self.list_runs(samples):
             return
+
+        if not overwrite:
+            raise ValueError(
+                "%s with key '%s' already exists"
+                % (self._run_str().capitalize(), key)
+            )
 
         existing_info = self.get_run_info(samples, key)
 
@@ -222,6 +235,9 @@ class Run(Configurable):
             samples: a :class:`fiftyone.core.collections.SampleCollection`
             key: a run key
             existing_info: a :class:`RunInfo`
+
+        Raises:
+            ValueError: if the run is invalid
         """
         pass
 
@@ -272,16 +288,29 @@ class Run(Configurable):
         return run_info_cls._from_doc(run_doc)
 
     @classmethod
-    def save_run_info(cls, samples, run_info):
+    def save_run_info(cls, samples, run_info, overwrite=True):
         """Saves the run information on the collection.
 
+        If an existing run exists
         Args:
             samples: a :class:`fiftyone.core.collections.SampleCollection`
             run_info: a :class:`RunInfo`
+            overwrite (True): whether to overwrite an existing run with the
+                same key
         """
         key = run_info.key
         view_stages = [json.dumps(s) for s in samples.view()._serialize()]
         run_docs = getattr(samples._dataset._doc, cls._runs_field())
+
+        if key in run_docs:
+            if overwrite:
+                cls.delete_run(samples, key)
+            else:
+                raise ValueError(
+                    "%s with key '%s' already exists"
+                    % (cls._run_str().capitalize(), key)
+                )
+
         run_docs[key] = RunDocument(
             key=key,
             timestamp=run_info.timestamp,
@@ -292,13 +321,15 @@ class Run(Configurable):
         samples._dataset.save()
 
     @classmethod
-    def save_run_results(cls, samples, key, run_results):
+    def save_run_results(cls, samples, key, run_results, overwrite=True):
         """Saves the run results on the collection.
 
         Args:
             samples: a :class:`fiftyone.core.collections.SampleCollection`
             key: a run key
             run_results: a :class:`RunResults`, or None
+            overwrite (True): whether to overwrite an existing result with the
+                same key
         """
         if key is None:
             return
@@ -306,9 +337,15 @@ class Run(Configurable):
         run_docs = getattr(samples._dataset._doc, cls._runs_field())
         run_doc = run_docs[key]
 
-        # Delete existing
         if run_doc.results:
-            run_doc.results.delete()
+            if overwrite:
+                # Must manually delete existing result from GridFS
+                run_doc.results.delete()
+            else:
+                raise ValueError(
+                    "%s with key '%s' already has results"
+                    % (cls._run_str().capitalize(), key)
+                )
 
         if run_results is None:
             run_doc.results = None
