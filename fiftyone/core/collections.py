@@ -1314,6 +1314,22 @@ class SampleCollection(object):
             **kwargs,
         )
 
+    @property
+    def has_evaluations(self):
+        """Whether this colection has any evaluation results."""
+        return bool(self.list_evaluations())
+
+    def has_evaluation(self, eval_key):
+        """Whether this collection has an evaluation with the given key.
+
+        Args:
+            eval_key: an evaluation key
+
+        Returns:
+            True/False
+        """
+        return eval_key in self.list_evaluations()
+
     def list_evaluations(self):
         """Returns a list of all evaluation keys on this collection.
 
@@ -1374,6 +1390,22 @@ class SampleCollection(object):
     def delete_evaluations(self):
         """Deletes all evaluation results from this collection."""
         foev.EvaluationMethod.delete_runs(self)
+
+    @property
+    def has_brain_runs(self):
+        """Whether this colection has any brain runs."""
+        return bool(self.list_brain_runs())
+
+    def has_brain_run(self, brain_key):
+        """Whether this collection has a brain method run with the given key.
+
+        Args:
+            brain_key: a brain key
+
+        Returns:
+            True/False
+        """
+        return brain_key in self.list_brain_runs()
 
     def list_brain_runs(self):
         """Returns a list of all brain keys on this collection.
