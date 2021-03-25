@@ -2334,9 +2334,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             a :class:`Dataset`
         """
         dataset_dir = etau.split_archive(archive_path)[0]
-        etau.extract_archive(
-            archive_path, outdir=dataset_dir, delete_archive=cleanup
-        )
+        etau.extract_archive(archive_path, delete_archive=cleanup)
 
         return cls.from_dir(
             dataset_dir,
