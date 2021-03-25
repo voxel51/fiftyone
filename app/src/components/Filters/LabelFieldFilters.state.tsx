@@ -240,6 +240,12 @@ export const fieldIsFiltered = selectorFamily<
       );
     }
 
+    if (path.startsWith("tags.")) {
+      return get(selectors.matchedTags({ modal, key: "sample" })).has(
+        path.slice("tags.".length)
+      );
+    }
+
     path = `${path}${getPathExtension(get(selectors.labelTypesMap)[path])}`;
     const cPath = `${path}.confidence`;
     const lPath = `${path}.label`;

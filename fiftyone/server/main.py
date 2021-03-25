@@ -513,9 +513,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             )
             return
 
-        view = _get_extended_view(
-            view, state.filters, hide_result=True, reduce_label_tags=True
-        )
+        view = _get_extended_view(view, state.filters, pagination=True)
         view = view.skip((page - 1) * page_length)
 
         if view.media_type == fom.VIDEO:
@@ -777,6 +775,8 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         else:
             view = state.dataset
 
+        view = _get_extended_view(view, state.filters, pagination=True)
+
         col = cls.sample_collection()
 
         if view.media_type == fom.VIDEO:
@@ -989,9 +989,7 @@ def _write_message(message, app=False, session=False, ignore=None, only=None):
         client.write_message(message)
 
 
-def _get_extended_view(
-    view, filters, hide_result=False, reduce_label_tags=False
-):
+def _get_extended_view(view, filters, pagination=False):
     if filters is not None and len(filters):
         filters = filters.copy()
 
@@ -1005,13 +1003,16 @@ def _get_extended_view(
             if "sample" in tags:
                 view = view.match_tags(tags=tags["sample"])
 
-        for stage in _make_filter_stages(view._dataset, filters):
-            if hide_result and type(stage) == fosg.FilterLabels:
-                stage._hide_result = True
+        stages, cleanup_pipeline = _make_filter_stages(
+            view._dataset, filters, hide_result=pagination
+        )
+
+        for stage in stages:
             view = view.add_stage(stage)
 
-    if reduce_label_tags:
-        view = _get_tag_concat_view(view)
+        if pagination:
+            view = _get_tag_concat_view(view)
+            view = view.mongo(cleanup_pipeline)
 
     return view
 
@@ -1220,7 +1221,7 @@ def _make_scalar_expression(f, args):
     return expr
 
 
-def _make_filter_stages(dataset, filters):
+def _make_filter_stages(dataset, filters, hide_result=False):
     field_schema = dataset.get_field_schema()
     if dataset.media_type == fom.VIDEO:
         frame_field_schema = dataset.get_frame_field_schema()
@@ -1228,9 +1229,11 @@ def _make_filter_stages(dataset, filters):
         frame_field_schema = None
 
     stages = []
+    cleanup = []
     for path, args in filters.items():
         keys = path.split(".")
-        if path.startswith(dataset._FRAMES_PREFIX):
+        frames = path.startswith(dataset._FRAMES_PREFIX)
+        if frames:
             schema = frame_field_schema
             field = schema[keys[1]]
             path = ".".join(keys[:2])
@@ -1242,13 +1245,25 @@ def _make_filter_stages(dataset, filters):
         if isinstance(field, fof.EmbeddedDocumentField):
             expr = _make_scalar_expression(F(keys[-1]), args)
             if expr is not None:
-                stages.append(fosg.FilterLabels(path, expr))
+                if hide_result:
+                    new_field = "__%s" % field
+                    if frames:
+                        new_field = "%s%s" % (
+                            dataset._FRAMES_PREFIX,
+                            new_field,
+                        )
+                else:
+                    new_field = None
+                stages.append(
+                    fosg.FilterLabels(path, expr, _new_field=new_field)
+                )
+                cleanup.append({"$unset": path})
         else:
             expr = _make_scalar_expression(F(path), args)
             if expr is not None:
                 stages.append(fosg.Match(expr))
 
-    return stages
+    return stages, cleanup
 
 
 async def _get_sample_data(col, view, page_length, page):
@@ -1293,12 +1308,15 @@ async def _get_video_data(col, state, view, _ids, labels=True):
     return results
 
 
-def _frame_labels(path, field, view):
+_LABEL_TAGS = "_label_tags"
+
+
+def _add_frame_labels_tags(path, field, view):
     frames, path = path.split(".")
     items = "%s.%s" % (path, field.document_type._LABEL_LIST_FIELD)
     view = view.set_field(
-        "_label_tags",
-        F("_label_tags").extend(
+        _LABEL_TAGS,
+        F(_LABEL_TAGS).extend(
             F(frames).reduce(
                 VALUE.extend(F(items).reduce(VALUE.extend(F("tags")), [])), []
             )
@@ -1307,34 +1325,34 @@ def _frame_labels(path, field, view):
     return view
 
 
-def _frame_label(path, field, view):
+def _add_frame_label_tags(path, field, view):
     frames, path = path.split(".")
     tags = "%s.tags" % path
     view = view.set_field(
-        "_label_tags",
-        F("_label_tags").extend(F(frames).reduce(VALUE.extend(F(tags)), [])),
+        _LABEL_TAGS,
+        F(_LABEL_TAGS).extend(F(frames).reduce(VALUE.extend(F(tags)), [])),
     )
     return view
 
 
-def _labels(path, field, view):
+def _add_labels_tags(path, field, view):
     items = "%s.%s" % (path, field.document_type._LABEL_LIST_FIELD)
     view = view.set_field(
-        "_label_tags",
-        F("_label_tags").extend(F(items).reduce(VALUE.extend(F("tags")), [])),
+        _LABEL_TAGS,
+        F(_LABEL_TAGS).extend(F(items).reduce(VALUE.extend(F("tags")), [])),
     )
     return view
 
 
-def _label(path, field, view):
+def _add_label_tags(path, field, view):
     return view.set_field(
-        "_label_tags", F("_label_tags").extend(F("%s.tags" % path))
+        _LABEL_TAGS, F(_LABEL_TAGS).extend(F("%s.tags" % path))
     )
 
 
 def _get_tag_concat_view(view):
     fields = fos.DatasetStatistics.labels(view)
-    view = view.set_field("_label_tags", [])
+    view = view.set_field(_LABEL_TAGS, [])
     for path, field in fields:
         if not issubclass(
             field.document_type, (fol._HasID, fol._HasLabelList)
@@ -1343,24 +1361,26 @@ def _get_tag_concat_view(view):
 
         if issubclass(field.document_type, fol._HasLabelList):
             if path.startswith(view._FRAMES_PREFIX):
-                add_tags = _frame_labels
+                path = "%s__%s" % (view._FRAMES_PREFIX, path.split(".")[1])
+                add_tags = _add_frame_labels_tags
             else:
-                add_tags = _labels
+                add_tags = _add_labels_tags
         else:
             if path.startswith(view._FRAMES_PREFIX):
-                add_tags = _frame_label
+                path = "%s__%s" % (view._FRAMES_PREFIX, path.split(".")[1])
+                add_tags = _add_frame_label_tags
             else:
-                add_tags = _label
+                add_tags = _add_label_tags
 
         view = add_tags(path, field, view)
 
-    view = _count_list_items("_label_tags", view)
+    view = _count_list_items(_LABEL_TAGS, view)
 
     return view
 
 
 def _count_list_items(path, view):
-    _function = (
+    function = (
         "function(items) {"
         "let counts = {};"
         "items.forEach((i) => {"
@@ -1370,7 +1390,7 @@ def _count_list_items(path, view):
         "}"
     )
 
-    return view.set_field(path, F(path)._function(_function))
+    return view.set_field(path, F(path)._function(function))
 
 
 def _make_frame_labels(name, label, frame_number, prefix=""):
@@ -1384,6 +1404,7 @@ def _make_frame_labels(name, label, frame_number, prefix=""):
 
     for attr in labels.attributes():
         container = getattr(labels, attr)
+
         if isinstance(container, etal.LabelsContainer):
             object_ids = _get_label_object_ids(label)
             assert len(container) == len(object_ids)

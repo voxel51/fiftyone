@@ -2018,11 +2018,7 @@ class ViewExpression(object):
             comp=comp, rev=rev
         )
 
-        sort_fcn = " ".join(sort_fcn.split())  # minimize
-
-        return ViewExpression(
-            {"$function": {"body": sort_fcn, "args": [self], "lang": "js"}}
-        )
+        return self._function(sort_fcn)
 
     def filter(self, expr):
         """Applies the given filter to the elements of this expression, which

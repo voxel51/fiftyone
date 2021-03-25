@@ -228,6 +228,7 @@ const SampleTagsCell = ({ modal }: TagsCellProps) => {
             selected: activeTags.includes(name),
             color,
             title: name,
+            canFilter: !modal,
             path: "tags." + name,
             data: modal ? (
               count[name] > 0 ? (

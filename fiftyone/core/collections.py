@@ -4610,7 +4610,7 @@ class SampleCollection(object):
     def _handle_frame_field(self, field_name):
         is_frame_field = self._is_frame_field(field_name)
         if is_frame_field:
-            field_name = field_name = field_name[len(self._FRAMES_PREFIX) :]
+            field_name = field_name[len(self._FRAMES_PREFIX) :]
 
         return field_name, is_frame_field
 
