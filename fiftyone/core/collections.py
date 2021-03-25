@@ -553,38 +553,48 @@ class SampleCollection(object):
                     % (field_name, ftype, field)
                 )
 
-    def tag_samples(self, tag):
-        """Adds the tag to all samples in this collection, if necessary.
+    def tag_samples(self, tags):
+        """Adds the tag(s) to all samples in this collection, if necessary.
 
         Args:
-            tag: a tag
+            tags: a tag or iterable of tags
         """
+        if etau.is_str(tags):
+            tags = [tags]
+        else:
+            tags = list(tags)
 
-        def _add_tag(tags):
-            if not tags:
-                return [tag]
-
-            if tag in tags:
+        def _add_tags(_tags):
+            if not _tags:
                 return tags
 
-            return tags + [tag]
+            for tag in tags:
+                if tag not in _tags:
+                    _tags.append(tag)
 
-        self._edit_sample_tags(_add_tag)
+            return _tags
 
-    def untag_samples(self, tag):
-        """Removes the tag from all samples in this collection, if necessary.
+        self._edit_sample_tags(_add_tags)
+
+    def untag_samples(self, tags):
+        """Removes the tag(s) from all samples in this collection, if
+        necessary.
 
         Args:
-            tag: a tag
+            tags: a tag or iterable of tags
         """
+        if etau.is_str(tags):
+            tags = [tags]
+        else:
+            tags = list(tags)
 
-        def _remove_tag(tags):
-            if not tags:
-                return tags
+        def _remove_tags(_tags):
+            if not _tags:  # handles None
+                return _tags
 
-            return [t for t in tags if t != tag]
+            return [t for t in _tags if t not in tags]
 
-        self._edit_sample_tags(_remove_tag)
+        self._edit_sample_tags(_remove_tags)
 
     def _edit_sample_tags(self, edit_fcn):
         tags = self.values("tags")
@@ -600,45 +610,54 @@ class SampleCollection(object):
         return self.count_values("tags")
 
     def tag_labels(self, tag, label_fields=None):
-        """Adds the tag to all labels in the specified label field(s) of this
-        collection, if necessary.
+        """Adds the tag(s) to all labels in the specified label field(s) of
+        this collection, if necessary.
 
         Args:
-            tag: a tag
+            tags: a tag or iterable of tags
             label_fields (None): an optional name or iterable of names of
                 :class:`fiftyone.core.labels.Label` fields. By default, all
                 label fields are used
         """
+        if etau.is_str(tags):
+            tags = [tags]
+        else:
+            tags = list(tags)
 
-        def _add_tag(tags):
-            if not tags:
-                return [tag]
-
-            if tag in tags:
+        def _add_tags(_tags):
+            if not _tags:
                 return tags
 
-            return tags + [tag]
+            for tag in tags:
+                if tag not in _tags:
+                    _tags.append(tag)
 
-        self._edit_label_tags(_add_tag, label_fields=label_fields)
+            return _tags
 
-    def untag_labels(self, tag, label_fields=None):
+        self._edit_label_tags(_add_tags, label_fields=label_fields)
+
+    def untag_labels(self, tags, label_fields=None):
         """Removes the tag from all labels in the specified label field(s) of
         this collection, if necessary.
 
         Args:
-            tag: a tag
+            tags: a tag or iterable of tags
             label_fields (None): an optional name or iterable of names of
                 :class:`fiftyone.core.labels.Label` fields. By default, all
                 label fields are used
         """
+        if etau.is_str(tags):
+            tags = [tags]
+        else:
+            tags = list(tags)
 
-        def _remove_tag(tags):
-            if not tags:
-                return tags
+        def _remove_tags(_tags):
+            if not _tags:  # handles None
+                return _tags
 
-            return [t for t in tags if t != tag]
+            return [t for t in _tags if t not in tags]
 
-        self._edit_label_tags(_remove_tag, label_fields=label_fields)
+        self._edit_label_tags(_remove_tags, label_fields=label_fields)
 
     def _edit_label_tags(self, edit_fcn, label_fields=None):
         if label_fields is None:
