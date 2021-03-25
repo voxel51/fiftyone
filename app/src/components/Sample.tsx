@@ -152,18 +152,8 @@ const SampleInfo = React.memo(({ id }) => {
         />,
       ];
     } else if (cur.startsWith("_label_tags.")) {
-      let count = 0;
       const tag = cur.slice("_label_tags.".length);
-      activeFields.forEach((f) => {
-        if (VALID_LIST_TYPES.includes(labelTypes[f]) && sample[f]) {
-          count += sample[f]._tags.filter((t) => tag === t).length;
-        } else if (VALID_LABEL_TYPES.includes(labelTypes[f])) {
-          if (sample[f] && sample[f].tags.includes(tag)) {
-            count += 1;
-          }
-        }
-      });
-
+      const count = sample._label_tags[tag] || 0;
       if (count > 0) {
         acc = [
           ...acc,
