@@ -260,8 +260,9 @@ class OpenImagesDatasetImporter(foud.LabeledImageDatasetImporter):
             specified_image_ids = _parse_image_ids(
                 image_ids, image_ids_file, dataset_dir,
             )
+            specified_image_ids = [s + ext for s in specified_image_ids]
             specified_image_ids = sorted(
-                list(set(specified_image_ids + downloaded_ids))
+                list(set(specified_image_ids) & set(downloaded_ids))
             )
 
         download = False
@@ -871,7 +872,9 @@ def _parse_image_ids(
             )
 
     if split is None:
-        return [os.path.basename(i) for i in _image_ids]
+        return [
+            os.path.basename(i).rstrip().replace(ext, "") for i in _image_ids
+        ]
 
     split_image_ids = []
     unspecified_split_ids = []
