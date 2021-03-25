@@ -849,15 +849,15 @@ def _parse_image_ids(
         _image_ids = image_ids
 
     else:
-        ext = os.path.splitext(image_ids_file)[-1]
-        if ext == ".txt":
+        id_file_ext = os.path.splitext(image_ids_file)[-1]
+        if id_file_ext == ".txt":
             with open(image_ids_file, "r") as f:
                 _image_ids = [i for i in f.readlines()]
 
-        elif ext == ".json":
+        elif id_file_ext == ".json":
             _image_ids = etas.load_json(image_ids_file)
 
-        elif ext == ".csv":
+        elif id_file_ext == ".csv":
             _image_ids = _parse_csv(image_ids_file)
 
             if isinstance(_image_ids[0], list):
@@ -867,7 +867,7 @@ def _parse_image_ids(
         else:
             raise ValueError(
                 "Image ID file extension must be .txt, .csv, or .json, "
-                "found %s" % ext
+                "found %s" % id_file_ext
             )
 
     if split is None:
@@ -885,15 +885,15 @@ def _parse_image_ids(
                     "Split %s does not exist. Options are "
                     "(train, test, validation)" % id_split
                 )
+            if id_split != split:
+                continue
+
+            image_id = image_id.rstrip().replace(ext, "")
+            split_image_ids.append(image_id)
+
         else:
             image_id = i.rstrip().replace(ext, "")
             unspecified_split_ids.append(image_id)
-
-        if id_split != split:
-            continue
-
-        image_id = image_id.rstrip().replace(ext, "")
-        split_image_ids.append(image_id)
 
     split_image_ids = _verify_image_ids(
         split_image_ids,
