@@ -71,9 +71,8 @@ def plot_confusion_matrix(
 
         -   a :class:`PlotlyHeatmap`, if ``ids`` are provided
         -   a :class:`PlotlyNotebookPlot`, if no ``ids`` are provided and you
-            are working in a notebook context
-        -   a plotly figure, if no ``ids`` are provided and you are not working
-            in a notebook context
+            are working in a Jupyter notebook
+        -   a plotly figure, otherwise
     """
     if ids is None:
         return _plot_confusion_matrix_static(
@@ -144,7 +143,7 @@ def _plot_confusion_matrix_static(
     if layout:
         figure.update_layout(**layout)
 
-    if foc.is_notebook_context():
+    if foc.is_jupyter_context():
         figure = PlotlyNotebookPlot(figure)
 
     return figure
@@ -213,8 +212,8 @@ def plot_pr_curve(precision, recall, label=None, style="area", layout=None):
     Returns:
         one of the following:
 
-        -   a :class:`PlotlyNotebookPlot`, if you are working in a notebook
-            context
+        -   a :class:`PlotlyNotebookPlot`, if you are working in a Jupyter
+            notebook
         -   a plotly figure, otherwise
     """
     if style == "line":
@@ -251,7 +250,7 @@ def plot_pr_curve(precision, recall, label=None, style="area", layout=None):
     if layout:
         figure.update_layout(**layout)
 
-    if foc.is_notebook_context():
+    if foc.is_jupyter_context():
         figure = PlotlyNotebookPlot(figure)
 
     return figure
@@ -271,8 +270,8 @@ def plot_pr_curves(precisions, recall, classes, layout=None):
     Returns:
         one of the following:
 
-        -   a :class:`PlotlyNotebookPlot`, if you are working in a notebook
-            context
+        -   a :class:`PlotlyNotebookPlot`, if you are working in a Jupyter
+            notebook
         -   a plotly figure, otherwise
     """
     figure = go.Figure()
@@ -328,7 +327,7 @@ def plot_pr_curves(precisions, recall, classes, layout=None):
     if layout:
         figure.update_layout(**layout)
 
-    if foc.is_notebook_context():
+    if foc.is_jupyter_context():
         figure = PlotlyNotebookPlot(figure)
 
     return figure
@@ -349,8 +348,8 @@ def plot_roc_curve(fpr, tpr, roc_auc=None, style="area", layout=None):
     Returns:
         one of the following:
 
-        -   a :class:`PlotlyNotebookPlot`, if you are working in a notebook
-            context
+        -   a :class:`PlotlyNotebookPlot`, if you are working in a Jupyter
+            notebook
         -   a plotly figure, otherwise
     """
     if style == "line":
@@ -389,7 +388,7 @@ def plot_roc_curve(fpr, tpr, roc_auc=None, style="area", layout=None):
     if layout:
         figure.update_layout(**layout)
 
-    if foc.is_notebook_context():
+    if foc.is_jupyter_context():
         figure = PlotlyNotebookPlot(figure)
 
     return figure
@@ -468,8 +467,8 @@ def scatterplot(
 
         -   an :class:`InteractiveScatter`, for 2D points and when ``samples``
             are provided
-        -   a :class:`PlotlyNotebookPlot`, if you're working in a notebook
-            context but the above conditions aren't met
+        -   a :class:`PlotlyNotebookPlot`, if you're working in a Jupyter
+            notebook but the above conditions aren't met
         -   a plotly figure, otherwise
     """
     points = np.asarray(points)
@@ -539,13 +538,13 @@ def scatterplot(
             msg = "Interactive selection is only supported in 2D"
             warnings.warn(msg)
 
-        if foc.is_notebook_context():
+        if foc.is_jupyter_context():
             figure = PlotlyNotebookPlot(figure)
 
         return figure
 
     if ids is None:
-        if foc.is_notebook_context():
+        if foc.is_jupyter_context():
             return PlotlyNotebookPlot(figure)
 
         return figure
@@ -761,10 +760,9 @@ def location_scatterplot(
     Returns:
         one of the following:
 
-        -   an :class:`InteractiveScatter`, if ``samples`` are provided and
-            you're working in a notebook context
+        -   an :class:`InteractiveScatter`, if ``samples`` are provided
         -   a :class:`PlotlyNotebookPlot`, if ``samples`` are not provided but
-            you're working in a notebook
+            you're working in a Jupyter notebook
         -   a plotly figure, otherwise
     """
     locations = _parse_locations(locations, samples)
@@ -846,13 +844,13 @@ def location_scatterplot(
         msg = "Density plots do not yet support interactivity"
         warnings.warn(msg)
 
-        if foc.is_notebook_context():
+        if foc.is_jupyter_context():
             figure = PlotlyNotebookPlot(figure)
 
         return figure
 
     if ids is None:
-        if foc.is_notebook_context():
+        if foc.is_jupyter_context():
             return PlotlyNotebookPlot(figure)
 
         return figure
@@ -885,7 +883,11 @@ def _parse_locations(locations, samples):
 
 
 class PlotlyWidgetMixin(object):
-    """Mixin for Plotly plots that use widgets to display in notebooks.
+    """Mixin for Plotly plots that use widgets to display in Jupyter
+    notebooks.
+
+    This class can still be used in non-Jupyter notebook environments, but the
+    resulting figures will not be interactive.
 
     Args:
         widget: a ``plotly.graph_objects.FigureWidget``
@@ -895,17 +897,17 @@ class PlotlyWidgetMixin(object):
         self._widget = widget
         self._handle = None
 
-        if foc.is_notebook_context():
-            _check_plotly_notebook_environment()
+        if foc.is_jupyter_context():
+            _check_plotly_jupyter_environment()
         else:
             msg = (
-                "Interactive Plotly plots are currently only supported in "
-                "notebooks, but this will change in an upcoming release. In "
-                "the meantime, you can still use this plot in a non-notebook "
-                "context, but (i) selecting data will not trigger callbacks, "
-                "and (ii) you must manually call `plot.show()` to launch a "
-                "new plot that reflects the current state of an attached "
-                "session"
+                "Interactive plots are currently only supported in Jupyter "
+                "notebooks. Support outside of notebooks and in Google Colab "
+                "will be included in an upcoming release. In the meantime, "
+                "you can still use this plot, but note that (i) selecting "
+                "data will not trigger callbacks, and (ii) you must manually "
+                "call `plot.show()` to launch a new plot that reflects the "
+                "current state of an attached session"
             )
             warnings.warn(msg)
 
@@ -922,9 +924,9 @@ class PlotlyWidgetMixin(object):
     def _show(self, **kwargs):
         self._update_layout(**kwargs)
 
-        # We're supposed to be in a notebook context, but, if we're not, go
-        # ahead and show the plot normally
-        if not foc.is_notebook_context():
+        # Only Jupyter notebooks support interactivity. If we're in another
+        # environment, just show the figure
+        if not foc.is_jupyter_context():
             self._widget.show()
             return
 
@@ -947,6 +949,9 @@ class PlotlyWidgetMixin(object):
         display(self._widget)
 
     def _freeze(self):
+        if not foc.is_jupyter_context():
+            return
+
         self._screenshot()
         self._widget.close()
 
@@ -962,7 +967,7 @@ class PlotlyWidgetMixin(object):
         self._handle.update(Image(image_bytes))
 
 
-def _check_plotly_notebook_environment():
+def _check_plotly_jupyter_environment():
     #
     # Requirements source: https://plotly.com/python/getting-started
     #
@@ -976,8 +981,8 @@ def _check_plotly_notebook_environment():
 
 
 class PlotlyNotebookPlot(PlotlyWidgetMixin, Plot):
-    """A wrapper around a Plotly plot for notebook contexts that allows it to
-    be replaced with a screenshot by calling :meth:`freeze`.
+    """A wrapper around a Plotly plot for Jupyter notebook contexts that allows
+    it to be replaced with a screenshot by calling :meth:`freeze`.
 
     Args:
         figure: a ``plotly.graph_objects.Figure``
@@ -1019,8 +1024,10 @@ class PlotlyNotebookPlot(PlotlyWidgetMixin, Plot):
 
     def freeze(self):
         """Freezes the plot, replacing it with a static image."""
-        if not foc.is_notebook_context():
-            raise foc.ContextError("Plots can only be frozen in notebooks")
+        if not foc.is_jupyter_context():
+            raise foc.ContextError(
+                "Plots can only be frozen in Jupyter notebooks"
+            )
 
         self._freeze()
         self._frozen = True
@@ -1152,9 +1159,6 @@ class InteractiveScatter(PlotlyInteractivePlot):
             return None
 
         return list(itertools.chain.from_iterable(ids))
-
-    def _register_selection_callback(self, callback):
-        self._select_callback = callback
 
     def _make_widget(self):
         widget = go.FigureWidget(self._figure)
@@ -2294,10 +2298,7 @@ def _patch_perform_plotly_relayout():
     https://github.com/plotly/plotly.py/issues/2570
     """
     filepath = os.path.join(
-        os.path.dirname(os.__file__),
-        "site-packages",
-        "plotly",
-        "basedatatypes.py",
+        os.path.dirname(np.__file__), "..", "plotly", "basedatatypes.py",
     )
 
     if not os.path.isfile(filepath):

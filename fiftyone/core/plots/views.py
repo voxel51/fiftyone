@@ -33,12 +33,20 @@ class PlotlyViewPlot(PlotlyWidgetMixin, ViewPlot):
 
     Args:
         widget: a ``plotly.graph_objects.FigureWidget``
+        init_view (None): an optional initial
+            :class:`fiftyone.core.collections.SampleCollection` to load
     """
 
-    def __init__(self, widget):
+    def __init__(self, widget, init_view=None):
         self._traces = widget.data
+
         ViewPlot.__init__(self)
         PlotlyWidgetMixin.__init__(self, widget)  # must be last
+
+        self.init_view = init_view
+        if init_view is not None:
+            self.connect()
+            self.update_view(init_view)
 
     def _get_trace_updates(self, view, agg_results=None):
         raise NotImplementedError(
@@ -72,11 +80,15 @@ class ViewGrid(PlotlyViewPlot):
         shape (None): the ``(rows, cols)`` shape to use for the grid
         hgap (None): a horizontal spacing between the subplots, in ``[0, 1]``
         vgap (None): a vertical spacing between the subplots, in ``[0, 1]``
+        init_view (None): an optional initial
+            :class:`fiftyone.core.collections.SampleCollection` to load
         **kwargs: optional parameters for
             ``plotly.graph_objects.Figure.update_layout(**kwargs)``
     """
 
-    def __init__(self, plots, shape=None, hgap=None, vgap=None, **kwargs):
+    def __init__(
+        self, plots, shape=None, hgap=None, vgap=None, init_view=None, **kwargs
+    ):
         if not etau.is_container(plots):
             plots = [plots]
 
@@ -100,7 +112,7 @@ class ViewGrid(PlotlyViewPlot):
 
         widget = self._make_widget()
 
-        super().__init__(widget)
+        super().__init__(widget, init_view=init_view)
 
     def _init_aggregations(self):
         aggregations = []
@@ -181,6 +193,8 @@ class CategoricalHistogram(PlotlyViewPlot):
         color (None): a color for the bars. Can be any color supported by
             ``plotly.graph_objects.bar.Marker.color``
         opacity (None): an optional opacity for the bars in ``[0, 1]``
+        init_view (None): an optional initial
+            :class:`fiftyone.core.collections.SampleCollection` to load
         **kwargs: optional parameters for
             ``plotly.graph_objects.Figure.update_layout(**kwargs)``
     """
@@ -195,6 +209,7 @@ class CategoricalHistogram(PlotlyViewPlot):
         bargap=None,
         color=None,
         opacity=None,
+        init_view=None,
         **kwargs,
     ):
         self.field = field
@@ -223,7 +238,7 @@ class CategoricalHistogram(PlotlyViewPlot):
 
         widget = self._make_widget()
 
-        super().__init__(widget)
+        super().__init__(widget, init_view=init_view)
 
     def _make_widget(self):
         return go.FigureWidget(self._figure)
@@ -318,6 +333,8 @@ class NumericalHistogram(PlotlyViewPlot):
         color (None): a color for the bars. Can be any color supported by
             ``plotly.graph_objects.bar.Marker.color``
         opacity (None): an optional opacity for the bars in ``[0, 1]``
+        init_view (None): an optional initial
+            :class:`fiftyone.core.collections.SampleCollection` to load
         **kwargs: optional parameters for
                 ``plotly.graph_objects.Figure.update_layout(**kwargs)``
     """
@@ -332,6 +349,7 @@ class NumericalHistogram(PlotlyViewPlot):
         log_y=None,
         color=None,
         opacity=None,
+        init_view=None,
         **kwargs,
     ):
         self.field = field
@@ -352,7 +370,7 @@ class NumericalHistogram(PlotlyViewPlot):
 
         widget = self._make_widget()
 
-        super().__init__(widget)
+        super().__init__(widget, init_view=init_view)
 
     def _make_widget(self):
         return go.FigureWidget(self._figure)

@@ -100,7 +100,7 @@ class PlotManager(object):
             a string summary
         """
         if not self._plots:
-            return ""
+            return "No plots"
 
         elements = []
 
@@ -482,7 +482,8 @@ class PlotManager(object):
                     % (name, plot.link_type)
                 )
 
-        self._update_view_plots(view_plot_names)
+        if view_plot_names:
+            self._update_view_plots(view_plot_names)
 
         for name in interactive_plot_names:
             self._update_interactive_plot(name)

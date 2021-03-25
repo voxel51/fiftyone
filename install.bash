@@ -10,7 +10,7 @@
 
 # Show usage information
 usage() {
-    echo "Usage:  bash $0 [-h] [-d] [-e] [-m] [-v]
+    echo "Usage:  bash $0 [-h] [-d] [-e] [-m] [-v] [-c]
 
 Getting help:
 -h      Display this help message.
@@ -19,6 +19,7 @@ Custom installations:
 -d      Install developer dependencies.
 -e      Source install of voxel51-eta.
 -m      Install MongoDB from scratch, rather than installing fiftyone-db.
+-p      Install only the core python package, and do not build the App.
 -v      Voxel51 developer install (don't install fiftyone-brain).
 "
 }
@@ -29,13 +30,15 @@ DEV_INSTALL=false
 SOURCE_ETA_INSTALL=false
 SCRATCH_MONGODB_INSTALL=false
 VOXEL51_INSTALL=false
-while getopts "hdemv" FLAG; do
+BUILD_APP=true
+while getopts "hdempv" FLAG; do
     case "${FLAG}" in
         h) SHOW_HELP=true ;;
         d) DEV_INSTALL=true ;;
         e) SOURCE_ETA_INSTALL=true ;;
         m) SCRATCH_MONGODB_INSTALL=true ;;
         v) VOXEL51_INSTALL=true ;;
+	p) BUILD_APP=false ;;
         *) usage ;;
     esac
 done
@@ -92,25 +95,27 @@ else
     pip install fiftyone-db
 fi
 
-echo "***** INSTALLING FIFTYONE-APP *****"
-curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.37.2/install.sh | bash
-export NVM_DIR="$([ -z "${XDG_CONFIG_HOME-}" ] && printf %s "${HOME}/.nvm" || printf %s "${XDG_CONFIG_HOME}/nvm")"
-[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh" # This loads nvm
-nvm install v12.16.2
-nvm use v12.16.2
-npm -g install yarn
-if [ -f ~/.bashrc ]; then
-    source ~/.bashrc
-elif [ -f ~/.bash_profile ]; then
-    source ~/.bash_profile
-else
-    echo "WARNING: unable to locate a bash profile to 'source'; you may need to start a new shell"
+if [ ${BUILD_APP} = true ]; then
+    echo "***** INSTALLING FIFTYONE-APP *****"
+    curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.37.2/install.sh | bash
+    export NVM_DIR="$([ -z "${XDG_CONFIG_HOME-}" ] && printf %s "${HOME}/.nvm" || printf %s "${XDG_CONFIG_HOME}/nvm")"
+    [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh" # This loads nvm
+    nvm install v12.16.2
+    nvm use v12.16.2
+    npm -g install yarn
+    if [ -f ~/.bashrc ]; then
+        source ~/.bashrc
+    elif [ -f ~/.bash_profile ]; then
+        source ~/.bash_profile
+    else
+        echo "WARNING: unable to locate a bash profile to 'source'; you may need to start a new shell"
+    fi
+    cd app
+    echo "Building the App. This will take a minute or two..."
+    yarn install > /dev/null 2>&1
+    yarn build-web
+    cd ..
 fi
-cd app
-echo "Building the App. This will take a minute or two..."
-yarn install > /dev/null 2>&1
-yarn build-web
-cd ..
 
 if [ ${VOXEL51_INSTALL} = false ]; then
     echo "***** INSTALLING FIFTYONE-BRAIN *****"

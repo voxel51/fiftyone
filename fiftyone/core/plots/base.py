@@ -52,7 +52,7 @@ def plot_confusion_matrix(
         -   a :class:`fiftyone.core.plots.plotly.PlotlyHeatmap`, if ``ids`` are
             provided and the plotly backend is used
         -   a :class:`fiftyone.core.plots.plotly.PlotlyNotebookPlot`, if no
-            ``ids`` are provided but you are working in a notebook context with
+            ``ids`` are provided but you are working in a Jupyter notebook with
             the plotly backend
         -   a plotly or matplotlib figure, otherwise
     """
@@ -86,7 +86,7 @@ def plot_pr_curve(precision, recall, label=None, backend="plotly", **kwargs):
         one of the following:
 
         -   a :class:`fiftyone.core.plots.plotly.PlotlyNotebookPlot`, if you
-            are working in a notebook context and the plotly backend is used
+            are working in a Jupyter notebook and the plotly backend is used
         -   a plotly or matplotlib figure, otherwise
     """
     backend = _parse_backend(backend)
@@ -118,7 +118,7 @@ def plot_pr_curves(precisions, recall, classes, backend="plotly", **kwargs):
         one of the following:
 
         -   a :class:`fiftyone.core.plots.plotly.PlotlyNotebookPlot`, if you
-            are working in a notebook context and the plotly backend is used
+            are working in a Jupyter notebook and the plotly backend is used
         -   a plotly or matplotlib figure, otherwise
     """
     backend = _parse_backend(backend)
@@ -149,7 +149,7 @@ def plot_roc_curve(fpr, tpr, roc_auc=None, backend="plotly", **kwargs):
         one of the following:
 
         -   a :class:`fiftyone.core.plots.plotly.PlotlyNotebookPlot`, if you
-            are working in a notebook context and the plotly backend is used
+            are working in a Jupyter notebook and the plotly backend is used
         -   a plotly or matplotlib figure, otherwise
     """
     backend = _parse_backend(backend)
@@ -229,7 +229,7 @@ def scatterplot(
             ``samples`` are provided
         -   a :class:`fiftyone.core.plots.plotly.PlotlyNotebookPlot`, if
             ``samples`` are not provided but you are working with the plotly
-            backend in a notebook context
+            backend in a Jupyter notebook
         -   a plotly or matplotlib figure, otherwise
     """
     backend = _parse_backend(backend)
@@ -313,7 +313,7 @@ def location_scatterplot(
             ``samples`` are provided
         -   a :class:`fiftyone.core.plots.plotly.PlotlyNotebookPlot`, if
             ``samples`` are not provided but you are working with the plotly
-            backend in a notebook context
+            backend in a Jupyter notebook
         -   a plotly or matplotlib figure, otherwise
     """
     backend = _parse_backend(backend)
@@ -496,10 +496,19 @@ class ViewPlot(ResponsivePlot):
 
     The state of :class:`ViewPlot` instances can also be updated by external
     parties by calling its :meth:`update_view` method.
+
+    Args:
+        init_view (None): an optional initial
+            :class:`fiftyone.core.collections.SampleCollection` to load
     """
 
-    def __init__(self):
+    def __init__(self, init_view=None):
+        self.init_view = init_view
         super().__init__("view")
+
+        if init_view is not None:
+            self.connect()
+            self.update_view(init_view)
 
     @property
     def supports_session_updates(self):
@@ -536,7 +545,7 @@ class ViewPlot(ResponsivePlot):
 
     def reset(self):
         """Resets the plot to its default state."""
-        self.update_view(None)
+        self.update_view(self.init_view)
 
 
 class InteractivePlot(ResponsivePlot):
