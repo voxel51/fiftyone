@@ -917,9 +917,10 @@ class FiftyOneBatchDatasetExporter(BatchDatasetExporter):
         self._metadata_path = os.path.join(self.export_dir, "metadata.json")
         self._samples_path = os.path.join(self.export_dir, "samples.json")
         self._frames_path = os.path.join(self.export_dir, "frames.json")
-        self._filename_maker = fou.UniqueFilenameMaker(
-            output_dir=self._data_dir
-        )
+        if self.include_media:
+            self._filename_maker = fou.UniqueFilenameMaker(
+                output_dir=self._data_dir
+            )
 
     def export_samples(self, sample_collection):
         etau.ensure_dir(self.export_dir)
