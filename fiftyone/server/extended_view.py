@@ -32,11 +32,9 @@ def get_extended_view(view, filters, count_labels_tags=False):
     cleanup_pipeline = None
 
     if filters is not None and len(filters):
-        filters = filters.copy()
-
         label_tags = None
         if "tags" in filters:
-            tags = filters.pop("tags")
+            tags = filters.get("tags")
             if "label" in tags:
                 label_tags = tags["label"]
 
@@ -54,6 +52,11 @@ def get_extended_view(view, filters, count_labels_tags=False):
         view = _add_labels_tags_counts(view, filters)
         if cleanup_pipeline:
             view = view.mongo(cleanup_pipeline)
+
+        print("START")
+        for p in view._pipeline():
+            print(p)
+        print("END")
 
     return view
 
@@ -84,6 +87,91 @@ def _add_labels_tags_counts(view, filters):
     view = _count_list_items(_LABEL_TAGS, view)
 
     return view
+
+
+def _make_filter_stages(view, filters, label_tags=None, hide_result=False):
+    field_schema = view.get_field_schema()
+    if view.media_type == fom.VIDEO:
+        frame_field_schema = view.get_frame_field_schema()
+    else:
+        frame_field_schema = None
+
+    tag_expr = (F("tags") != None).if_else(
+        F("tags").contains(label_tags), False
+    )
+
+    stages = []
+    cleanup = []
+    for path, args in filters.items():
+        if path == "tags":
+            continue
+
+        keys = path.split(".")
+        frames = path.startswith(view._FRAMES_PREFIX)
+        if frames:
+            schema = frame_field_schema
+            field = schema[keys[1]]
+            path = ".".join(keys[:2])
+        else:
+            schema = field_schema
+            path = keys[0]
+            field = schema[path]
+
+        if isinstance(field, fof.EmbeddedDocumentField):
+            expr = _make_scalar_expression(F(keys[-1]), args)
+            if label_tags:
+                if expr is not None:
+                    expr &= tag_expr
+                else:
+                    expr = tag_expr
+
+            if expr is not None:
+                if hide_result:
+                    new_field = "__%s" % field
+                    if frames:
+                        new_field = "%s%s" % (view._FRAMES_PREFIX, new_field,)
+                else:
+                    new_field = None
+                stages.append(
+                    fosg.FilterLabels(
+                        path, expr, _new_field=new_field, only_matches=False
+                    )
+                )
+                cleanup.append({"$unset": path})
+        else:
+            expr = _make_scalar_expression(F(path), args)
+            if expr is not None:
+                stages.append(fosg.Match(expr))
+
+    if label_tags is not None:
+        for path, _ in fos.DatasetStatistics.labels(view):
+            if path not in filters:
+                if hide_result:
+                    new_field = _get_filtered_path(view, path, filters)
+                else:
+                    new_field = None
+
+                stages.append(
+                    fosg.FilterLabels(
+                        path,
+                        tag_expr,
+                        _new_field=new_field,
+                        only_matches=False,
+                    )
+                )
+
+        match_exprs = []
+        for path, _ in fos.DatasetStatistics.labels(view):
+            prefix = "__" if hide_result else ""
+            match_exprs.append(
+                fosg._get_label_field_only_matches_expr(
+                    view, path, prefix=prefix
+                )
+            )
+
+        stages.append(fosg.Match(F.any(match_exprs)))
+
+    return stages, cleanup
 
 
 def _make_scalar_expression(f, args):
@@ -140,65 +228,10 @@ def _make_scalar_expression(f, args):
     return expr
 
 
-def _make_filter_stages(view, filters, label_tags=None, hide_result=False):
-    field_schema = view.get_field_schema()
-    if view.media_type == fom.VIDEO:
-        frame_field_schema = view.get_frame_field_schema()
-    else:
-        frame_field_schema = None
-
-    tag_expr = (F("tags") != None).if_else(
-        F("tags").contains(label_tags), False
-    )
-
-    stages = []
-    cleanup = []
-    for path, args in filters.items():
-        keys = path.split(".")
-        frames = path.startswith(view._FRAMES_PREFIX)
-        if frames:
-            schema = frame_field_schema
-            field = schema[keys[1]]
-            path = ".".join(keys[:2])
-        else:
-            schema = field_schema
-            path = keys[0]
-            field = schema[path]
-
-        if isinstance(field, fof.EmbeddedDocumentField):
-            expr = _make_scalar_expression(F(keys[-1]), args)
-            if label_tags:
-                if expr is not None:
-                    expr &= tag_expr
-                else:
-                    expr = tag_expr
-
-            if expr is not None:
-                if hide_result:
-                    new_field = "__%s" % field
-                    if frames:
-                        new_field = "%s%s" % (view._FRAMES_PREFIX, new_field,)
-                else:
-                    new_field = None
-                stages.append(
-                    fosg.FilterLabels(path, expr, _new_field=new_field)
-                )
-                cleanup.append({"$unset": path})
-        else:
-            expr = _make_scalar_expression(F(path), args)
-            if expr is not None:
-                stages.append(fosg.Match(expr))
-
-    if label_tags is not None:
-        for path, _ in fos.DatasetStatistics.labels(view):
-            if path not in filters:
-                stages.append(fosg.FilterLabels(path, tag_expr))
-
-    return stages, cleanup
-
-
 def _get_filtered_path(view, path, filters):
-    if path not in filters:
+    label_tags = filters.get("tags", {}).get("label", None)
+    print("TAG", filters)
+    if path not in filters and not label_tags:
         return path
 
     if path.startswith(view._FRAMES_PREFIX):

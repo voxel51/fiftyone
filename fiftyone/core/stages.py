@@ -1384,12 +1384,7 @@ class FilterLabels(FilterField):
     def _get_new_field(self, sample_collection):
         field, _ = sample_collection._handle_frame_field(self._labels_field)
 
-        return ".".join(
-            [
-                self._new_field[len(sample_collection._FRAMES_PREFIX) :],
-                field.split(".")[-1],
-            ]
-        )
+        return ".".join([self._new_field, field.split(".")[-1],])
 
     def validate(self, sample_collection):
         self._get_labels_field(sample_collection)
@@ -1403,7 +1398,7 @@ def _get_filter_list_field_pipeline(
     pipeline = [
         {
             "$set": {
-                filter_field: {
+                new_field: {
                     "$filter": {"input": "$" + filter_field, "cond": cond}
                 }
             }
@@ -1411,7 +1406,7 @@ def _get_filter_list_field_pipeline(
     ]
 
     if only_matches:
-        match_expr = _get_list_field_only_matches_expr(filter_field)
+        match_expr = _get_list_field_only_matches_expr(new_field)
         pipeline.append({"$match": {"$expr": match_expr.to_mongo()}})
 
     return pipeline
@@ -3746,7 +3741,7 @@ def _is_frames_expr(val):
     return False
 
 
-def _get_label_field_only_matches_expr(sample_collection, field):
+def _get_label_field_only_matches_expr(sample_collection, field, prefix=""):
     label_type = sample_collection._get_label_field_type(field)
     field, is_frame_field = sample_collection._handle_frame_field(field)
     is_label_list_field = issubclass(label_type, fol._LABEL_LIST_FIELDS)
@@ -3765,7 +3760,7 @@ def _get_label_field_only_matches_expr(sample_collection, field):
         else:
             match_fcn = _get_field_only_matches_expr
 
-    return match_fcn(field)
+    return match_fcn("%s%s" % (prefix, field))
 
 
 class _ViewStageRepr(reprlib.Repr):
