@@ -565,7 +565,7 @@ class SampleCollection(object):
             tags = list(tags)
 
         def _add_tags(_tags):
-            if not _tags:
+            if not _tags:  # handles None
                 return tags
 
             for tag in tags:
@@ -609,7 +609,7 @@ class SampleCollection(object):
         """
         return self.count_values("tags")
 
-    def tag_labels(self, tag, label_fields=None):
+    def tag_labels(self, tags, label_fields=None):
         """Adds the tag(s) to all labels in the specified label field(s) of
         this collection, if necessary.
 
@@ -625,7 +625,7 @@ class SampleCollection(object):
             tags = list(tags)
 
         def _add_tags(_tags):
-            if not _tags:
+            if not _tags:  # handles None
                 return tags
 
             for tag in tags:
