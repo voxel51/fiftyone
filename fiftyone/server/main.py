@@ -10,11 +10,8 @@ import argparse
 from collections import defaultdict
 import math
 import os
-import posixpath
 import traceback
-import urllib
 
-from bson import ObjectId
 import tornado.escape
 import tornado.ioloop
 import tornado.iostream
@@ -32,11 +29,7 @@ os.environ["FIFTYONE_SERVER"] = "1"
 import fiftyone as fo
 import fiftyone.core.aggregations as foa
 import fiftyone.constants as foc
-from fiftyone.core.expressions import (
-    ViewExpression as E,
-    ViewField as F,
-    VALUE,
-)
+from fiftyone.core.expressions import ViewField as F
 import fiftyone.core.dataset as fod
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
@@ -49,6 +42,7 @@ import fiftyone.core.state as fos
 import fiftyone.core.uid as fou
 import fiftyone.core.view as fov
 
+from fiftyone.server.extended_view import get_extended_view
 from fiftyone.server.json_util import convert, FiftyOneJSONEncoder
 import fiftyone.server.utils as fosu
 
@@ -513,7 +507,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             )
             return
 
-        view = _get_extended_view(view, state.filters, pagination=True)
+        view = get_extended_view(view, state.filters, count_labels_tags=True)
         view = view.skip((page - 1) * page_length)
 
         if view.media_type == fom.VIDEO:
@@ -658,7 +652,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         else:
             view = state.dataset
 
-        view = _get_extended_view(view, state.filters)
+        view = get_extended_view(view, state.filters)
         if state.selected:
             view = view.select(state.selected)
 
@@ -704,7 +698,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         else:
             view = state.dataset
 
-        state.view = _get_extended_view(view, state.filters)
+        state.view = get_extended_view(view, state.filters)
         state.filters = {}
 
         await StateHandler.on_update(caller, state.serialize())
@@ -746,7 +740,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         else:
             view = state.dataset
 
-        view = _get_extended_view(view, state.filters)
+        view = get_extended_view(view, state.filters)
         view = view.select(state.selected).select_fields(active_labels)
 
         (count_aggs, tag_aggs,) = fos.DatasetStatistics.get_label_aggregations(
@@ -775,7 +769,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         else:
             view = state.dataset
 
-        view = _get_extended_view(view, state.filters, pagination=True)
+        view = get_extended_view(view, state.filters, count_labels_tags=True)
 
         col = cls.sample_collection()
 
@@ -846,7 +840,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         base_view = view
         data = {"main": [], "none": []}
         if view is not None and (filters is None or len(filters)):
-            view = _get_extended_view(view, filters)
+            view = get_extended_view(view, filters)
 
             stats = fos.DatasetStatistics(view)
             aggs = stats.aggregations
@@ -906,7 +900,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         else:
             results = []
 
-        view = _get_extended_view(view, state.filters)
+        view = get_extended_view(view, state.filters)
 
         if group == "labels" and results is None:
 
@@ -989,32 +983,7 @@ def _write_message(message, app=False, session=False, ignore=None, only=None):
         client.write_message(message)
 
 
-def _get_extended_view(view, filters, pagination=False):
-    if filters is not None and len(filters):
-        filters = filters.copy()
-
-        if "tags" in filters:
-            tags = filters.pop("tags")
-            if "label" in tags:
-                view = view.select_labels(
-                    tags=tags["label"], _select_fields=False
-                )
-
-            if "sample" in tags:
-                view = view.match_tags(tags=tags["sample"])
-
-        stages, cleanup_pipeline = _make_filter_stages(
-            view._dataset, filters, hide_result=pagination
-        )
-
-        for stage in stages:
-            view = view.add_stage(stage)
-
-        if pagination:
-            view = _get_tag_concat_view(view)
-            view = view.mongo(cleanup_pipeline)
-
-    return view
+_DEFAULT_NUM_HISTOGRAM_BINS = 25
 
 
 def _parse_histogram_values(result, field):
@@ -1162,110 +1131,6 @@ async def _numeric_histograms(coll, view, schema, prefix=""):
     return aggregations, fields, ticks
 
 
-_BOOL_FILTER = "bool"
-_NUMERIC_FILTER = "numeric"
-_STR_FILTER = "str"
-
-
-def _make_scalar_expression(f, args):
-    expr = None
-    cls = args["_CLS"]
-    if cls == _BOOL_FILTER:
-        true, false = args["true"], args["false"]
-        if true and false:
-            expr = f.is_in([True, False])
-
-        if not true and false:
-            expr = f == False
-
-        if true and not false:
-            expr = f == True
-
-        if not true and not false:
-            expr = (f != True) & (f != False)
-
-    elif cls == _NUMERIC_FILTER:
-        mn, mx = args["range"]
-        expr = (f >= mn) & (f <= mx)
-    elif cls == _STR_FILTER:
-        values = args["values"]
-        if not values:
-            return None
-
-        none = any(map(lambda v: v is None, values))
-        values = filter(lambda v: v is not None, values)
-        expr = f.is_in(values)
-        exclude = args["exclude"]
-
-        if exclude:
-            # pylint: disable=invalid-unary-operand-type
-            expr = ~expr
-
-        if none:
-            if exclude:
-                expr &= f.exists()
-            else:
-                expr |= ~(f.exists())
-
-        return expr
-
-    none = args["none"]
-    if not none:
-        if expr is not None:
-            expr &= f.exists()
-        else:
-            expr = f.exists()
-    elif expr is not None:
-        expr |= ~(f.exists())
-
-    return expr
-
-
-def _make_filter_stages(dataset, filters, hide_result=False):
-    field_schema = dataset.get_field_schema()
-    if dataset.media_type == fom.VIDEO:
-        frame_field_schema = dataset.get_frame_field_schema()
-    else:
-        frame_field_schema = None
-
-    stages = []
-    cleanup = []
-    for path, args in filters.items():
-        keys = path.split(".")
-        frames = path.startswith(dataset._FRAMES_PREFIX)
-        if frames:
-            schema = frame_field_schema
-            field = schema[keys[1]]
-            path = ".".join(keys[:2])
-        else:
-            schema = field_schema
-            path = keys[0]
-            field = schema[path]
-
-        if isinstance(field, fof.EmbeddedDocumentField):
-            expr = _make_scalar_expression(F(keys[-1]), args)
-            if expr is not None:
-                if hide_result:
-                    new_field = "__%s" % field
-                    if frames:
-                        new_field = "%s%s" % (
-                            dataset._FRAMES_PREFIX,
-                            new_field,
-                        )
-                else:
-                    new_field = None
-                stages.append(
-                    fosg.FilterLabels(path, expr, _new_field=new_field)
-                )
-                cleanup.append({"$unset": path})
-        else:
-            expr = _make_scalar_expression(F(path), args)
-            if expr is not None:
-                stages.append(fosg.Match(expr))
-
-    return stages, cleanup
-
-
 async def _get_sample_data(col, view, page_length, page):
     pipeline = view._pipeline()
 
@@ -1306,91 +1171,6 @@ async def _get_video_data(col, state, view, _ids, labels=True):
             results.append((sample, frames))
 
     return results
-
-
-_LABEL_TAGS = "_label_tags"
-
-
-def _add_frame_labels_tags(path, field, view):
-    frames, path = path.split(".")
-    items = "%s.%s" % (path, field.document_type._LABEL_LIST_FIELD)
-    view = view.set_field(
-        _LABEL_TAGS,
-        F(_LABEL_TAGS).extend(
-            F(frames).reduce(
-                VALUE.extend(F(items).reduce(VALUE.extend(F("tags")), [])), []
-            )
-        ),
-    )
-    return view
-
-
-def _add_frame_label_tags(path, field, view):
-    frames, path = path.split(".")
-    tags = "%s.tags" % path
-    view = view.set_field(
-        _LABEL_TAGS,
-        F(_LABEL_TAGS).extend(F(frames).reduce(VALUE.extend(F(tags)), [])),
-    )
-    return view
-
-
-def _add_labels_tags(path, field, view):
-    items = "%s.%s" % (path, field.document_type._LABEL_LIST_FIELD)
-    view = view.set_field(
-        _LABEL_TAGS,
-        F(_LABEL_TAGS).extend(F(items).reduce(VALUE.extend(F("tags")), [])),
-    )
-    return view
-
-
-def _add_label_tags(path, field, view):
-    return view.set_field(
-        _LABEL_TAGS, F(_LABEL_TAGS).extend(F("%s.tags" % path))
-    )
-
-
-def _get_tag_concat_view(view):
-    fields = fos.DatasetStatistics.labels(view)
-    view = view.set_field(_LABEL_TAGS, [])
-    for path, field in fields:
-        if not issubclass(
-            field.document_type, (fol._HasID, fol._HasLabelList)
-        ):
-            continue
-
-        if issubclass(field.document_type, fol._HasLabelList):
-            if path.startswith(view._FRAMES_PREFIX):
-                path = "%s__%s" % (view._FRAMES_PREFIX, path.split(".")[1])
-                add_tags = _add_frame_labels_tags
-            else:
-                add_tags = _add_labels_tags
-        else:
-            if path.startswith(view._FRAMES_PREFIX):
-                path = "%s__%s" % (view._FRAMES_PREFIX, path.split(".")[1])
-                add_tags = _add_frame_label_tags
-            else:
-                add_tags = _add_label_tags
-
-        view = add_tags(path, field, view)
-
-    view = _count_list_items(_LABEL_TAGS, view)
-
-    return view
-
-
-def _count_list_items(path, view):
-    function = (
-        "function(items) {"
-        "let counts = {};"
-        "items.forEach((i) => {"
-        "counts[i] = 1 + (counts[i] || 0);"
-        "});"
-        "return counts;"
-        "}"
-    )
-
-    return view.set_field(path, F(path)._function(function))
 
 
 def _make_frame_labels(name, label, frame_number, prefix=""):
@@ -1454,9 +1234,6 @@ def _make_video_labels(state, view, sample, frames):
         labels.add_frame(frame_labels, overwrite=False)
 
     return labels
-
-
-_DEFAULT_NUM_HISTOGRAM_BINS = 25
 
 
 class FileHandler(tornado.web.StaticFileHandler):
