@@ -237,9 +237,12 @@ class OpenImagesEvaluation(DetectionEvaluation):
         else:
             _classes = classes
 
+        # For crowds, gts are only counted once
+        counted_gts = []
+
         # Sort matches
         for m in matches:
-            # m = (gt_label, pred_label, iou, confidence)
+            # m = (gt_label, pred_label, iou, confidence, gt.id, pred.id)
             c = m[0] if m[0] != None else m[1]
             if c not in _classes:
                 if classes is None:
@@ -259,8 +262,9 @@ class OpenImagesEvaluation(DetectionEvaluation):
             elif m[1]:
                 class_matches[c]["fp"].append(m)
 
-            if m[0]:
+            if m[0] and m[4] not in counted_gts:
                 class_matches[c]["num_gt"] += 1
+                counted_gts.append(m[4])
 
         # Compute precision-recall array
         precision = {}
@@ -579,6 +583,12 @@ def _compute_matches(
                     ):
                         break
 
+                    # if you already perfectly matched a gt
+                    # then there is no reason to continue looking
+                    # if you match multiple crowds with iou=1, choose the first
+                    if best_match_iou == 1:
+                        break
+
                     if iou < best_match_iou:
                         continue
 
@@ -597,8 +607,9 @@ def _compute_matches(
                     if gt[id_key] != _NO_MATCH_ID:
                         skip_match = True
 
-                    gt[id_key] = pred.id
-                    gt[iou_key] = best_match_iou
+                    else:
+                        gt[id_key] = pred.id
+                        gt[iou_key] = best_match_iou
                     pred[eval_key] = tag
                     pred[id_key] = best_match
                     pred[iou_key] = best_match_iou
