@@ -749,8 +749,8 @@ class LabeledVideoDatasetExporter(DatasetExporter, ExportsVideos):
 
 
 class FiftyOneDatasetExporter(GenericSampleDatasetExporter):
-    """Exporter that writes a FiftyOne dataset to disk along with its source
-    data in a serialized JSON format.
+    """Exporter that writes an entire FiftyOne dataset to disk in a serialized
+    JSON format along with its source media.
 
     See :class:`fiftyone.types.dataset_types.FiftyOneDataset` for format
     details.
@@ -875,8 +875,8 @@ class FiftyOneDatasetExporter(GenericSampleDatasetExporter):
 
 
 class FiftyOneBatchDatasetExporter(BatchDatasetExporter):
-    """Batch exporter that writes a FiftyOne dataset to disk along with its
-    source data in a serialized JSON format.
+    """Batch exporter that writes an entire FiftyOne dataset to disk in a
+    serialized JSON format along with its source media.
 
     See :class:`fiftyone.types.dataset_types.FiftyOneBatchDataset` for format
     details.

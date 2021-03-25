@@ -808,7 +808,7 @@ class LabeledVideoDatasetImporter(DatasetImporter):
 
 
 class FiftyOneDatasetImporter(GenericSampleDatasetImporter):
-    """Importer for FiftyOne datasets stored on disk in serialized format.
+    """Importer for FiftyOne datasets stored on disk in serialized JSON format.
 
     See :class:`fiftyone.types.dataset_types.FiftyOneDataset` for format
     details.
@@ -976,7 +976,8 @@ class FiftyOneDatasetImporter(GenericSampleDatasetImporter):
 
 
 class FiftyOneBatchDatasetImporter(BatchDatasetImporter):
-    """Importer for FiftyOne datasets stored on disk in serialized format.
+    """Batch importer for FiftyOne datasets stored on disk in serialized JSON
+    format.
 
     See :class:`fiftyone.types.dataset_types.FiftyOneBatchDataset` for format
     details.

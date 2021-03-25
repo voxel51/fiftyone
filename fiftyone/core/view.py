@@ -680,12 +680,17 @@ class DatasetView(foc.SampleCollection):
         )
 
     def _aggregate(
-        self, pipeline=None, attach_frames=True, detach_frames=False
+        self,
+        pipeline=None,
+        attach_frames=True,
+        detach_frames=False,
+        frames_only=False,
     ):
         _pipeline = self._pipeline(
             pipeline=pipeline,
             attach_frames=attach_frames,
             detach_frames=detach_frames,
+            frames_only=frames_only,
         )
         return foo.aggregate(self._dataset._sample_collection, _pipeline)
 
