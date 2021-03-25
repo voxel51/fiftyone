@@ -990,7 +990,7 @@ class FiftyOneBatchDatasetImporter(BatchDatasetImporter):
         max_samples (None): a maximum number of samples to import. By default,
             all samples are imported
         rel_dir (None): a relative directory to prepend to the ``filepath``
-            of each sample, if the filepath is not absolute (begins with a
+            of each sample if the filepath is not absolute (begins with a
             path separator). The path is converted to an absolute path (if
             necessary) via ``os.path.abspath(os.path.expanduser(rel_dir))``
     """
@@ -1043,18 +1043,35 @@ class FiftyOneBatchDatasetImporter(BatchDatasetImporter):
         logger.info("Importing samples...")
         samples = foo.import_collection(self._samples_path)
 
+        samples = self._preprocess_list(samples)
+
+        if self.max_samples is not None:
+            sample_ids = set(s["_id"] for s in samples)
+
         if self.rel_dir is not None:
+            # If a `rel_dir` was provided, prepend it to all relative paths
             rel_dir = os.path.abspath(os.path.expanduser(self.rel_dir))
             for sample in samples:
                 filepath = sample["filepath"]
-                if filepath.startswith(os.path.sep):
+                if not filepath.startswith(os.path.sep):
                     sample["filepath"] = os.path.join(rel_dir, filepath)
+        else:
+            # Prepend `dataset_dir` to all filepaths, which were stored as
+            # relative to `dataset_dir` during export
+            for sample in samples:
+                sample["filepath"] = os.path.join(
+                    self.dataset_dir, sample["filepath"]
+                )
 
         foo.insert_collection(dataset._sample_collection, samples)
 
         if os.path.exists(self._frames_path):
             logger.info("Importing frames...")
             frames = foo.import_collection(self._frames_path)
+
+            if self.max_samples is not None:
+                frames = [f for f in frames if f["_sample_id"] in sample_ids]
+
             foo.insert_collection(dataset._frame_collection, frames)
 
         if dataset.has_evaluations:

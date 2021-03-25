@@ -924,36 +924,42 @@ class FiftyOneBatchDatasetExporter(BatchDatasetExporter):
     def export_samples(self, sample_collection):
         etau.ensure_dir(self.export_dir)
 
-        if not self.include_media:
+        inpaths = sample_collection.values("filepath")
+
+        if self.include_media:
             if self.rel_dir is not None:
-                rel_dir = (
-                    os.path.abspath(os.path.expanduser(self.rel_dir))
-                    + os.path.sep
+                logger.warning(
+                    "Ignoring `rel_dir` since `include_media` is True"
                 )
 
-                # Removes `rel_dir` prefix from filepaths
-                F = fo.ViewField
-                expr = (
-                    F("filepath")
-                    .starts_with(rel_dir)
-                    .if_else(
-                        F("filepath").substr(start=len(rel_dir)), F("filepath")
-                    )
-                )
-                samples_view = sample_collection.set_field("filepath", expr)
-            else:
-                samples_view = sample_collection
+            outpaths = [
+                self._filename_maker.get_output_path(p) for p in inpaths
+            ]
+
+            # Replace filepath prefixes with `data/` for samples export
+            _outpaths = ["data/" + os.path.basename(p) for p in outpaths]
+        elif self.rel_dir is not None:
+            # Remove `rel_dir` prefix from filepaths
+            rel_dir = (
+                os.path.abspath(os.path.expanduser(self.rel_dir)) + os.path.sep
+            )
+            len_rel_dir = len(rel_dir)
+
+            _outpaths = [
+                p[len_rel_dir:] if p.startswith(rel_dir) else p
+                for p in inpaths
+            ]
         else:
-            # Replace filepath prefixes with `data/`
-            E = fo.ViewExpression
-            F = fo.ViewField
-            filename = F("filepath").rsplit(os.path.sep, 1)[-1]
-            expr = E.literal("data/").concat(filename)
-            samples_view = sample_collection.set_field("filepath", expr)
+            # Export raw filepaths
+            _outpaths = inpaths
 
         logger.info("Exporting samples...")
         num_samples = sample_collection.count()
-        samples = samples_view._aggregate(attach_frames=False)
+        samples = list(sample_collection._aggregate(attach_frames=False))
+
+        for sample, filepath in zip(samples, _outpaths):
+            sample["filepath"] = filepath
+
         foo.export_collection(samples, num_samples, self._samples_path)
 
         if sample_collection.media_type == fomm.VIDEO:
@@ -975,9 +981,7 @@ class FiftyOneBatchDatasetExporter(BatchDatasetExporter):
 
         if self.include_media:
             logger.info("Exporting media...")
-            paths = sample_collection.values("filepath")
-            outpaths = [self._filename_maker.get_output_path(f) for f in paths]
-            fomm.export_media(paths, outpaths, move_media=self.move_media)
+            fomm.export_media(inpaths, outpaths, move_media=self.move_media)
 
 
 def _export_evaluation_results(sample_collection, eval_dir):

@@ -2547,7 +2547,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             name (None): a name for the new dataset. By default, ``d["name"]``
                 is used
             rel_dir (None): a relative directory to prepend to the ``filepath``
-                of each sample, if the filepath is not absolute (begins with a
+                of each sample if the filepath is not absolute (begins with a
                 path separator). The path is converted to an absolute path
                 (if necessary) via
                 ``os.path.abspath(os.path.expanduser(rel_dir))``

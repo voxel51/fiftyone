@@ -225,12 +225,11 @@ def export_document(doc, json_path):
     etau.write_file(json_util.dumps(doc), json_path)
 
 
-def export_collection(cursor, num_docs, json_path):
+def export_collection(docs, num_docs, json_path):
     """Exports the collection to disk in JSON format.
 
     Args:
-        cursor: a pymongo cursor that is iterating over the documents to
-            export
+        docs: an iteraable containing the documents to export
         num_docs: the total number of documents
         json_path: the path to write the JSON file
     """
@@ -238,7 +237,7 @@ def export_collection(cursor, num_docs, json_path):
     with open(json_path, "w") as f:
         f.write("[")
         with fou.ProgressBar(total=num_docs, iters_str="docs") as pb:
-            for idx, doc in pb(enumerate(cursor, 1)):
+            for idx, doc in pb(enumerate(docs, 1)):
                 f.write(json_util.dumps(doc))
                 if idx < num_docs:
                     f.write(",")
