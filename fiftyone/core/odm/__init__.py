@@ -19,6 +19,11 @@ from .database import (
     list_collections,
     get_collection_stats,
     stream_collection,
+    export_document,
+    export_collection,
+    import_document,
+    import_collection,
+    insert_collection,
     ASC,
     DESC,
 )

@@ -2194,6 +2194,28 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             a :class:`Dataset`
         """
+        if inspect.isclass(dataset_type):
+            dataset_type = dataset_type()
+
+        dataset_importer_cls = dataset_type.get_dataset_importer_cls()
+        if issubclass(dataset_importer_cls, foud.BatchDatasetImporter):
+            try:
+                dataset_importer = dataset_importer_cls(dataset_dir, **kwargs)
+            except Exception as e:
+                importer_name = dataset_importer_cls.__name__
+                raise ValueError(
+                    "Failed to construct importer using syntax "
+                    "%s(dataset_dir, **kwargs); you may need to supply "
+                    "mandatory arguments to the constructor via `kwargs`. "
+                    "Please consult the documentation of `%s` to learn more"
+                    % (
+                        importer_name,
+                        etau.get_class_name(dataset_importer_cls),
+                    )
+                ) from e
+
+            return cls.from_importer(dataset_importer, name=name, tags=tags)
+
         dataset = cls(name)
         dataset.add_dir(
             dataset_dir,
@@ -2228,6 +2250,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             a :class:`Dataset`
         """
+        if isinstance(dataset_importer, foud.BatchDatasetImporter):
+            return foud.import_dataset(dataset_importer, name=name, tags=tags)
+
         dataset = cls(name)
         dataset.add_importer(
             dataset_importer, label_field=label_field, tags=tags

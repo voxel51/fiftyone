@@ -1,5 +1,5 @@
 """
-Database connection.
+Database utilities.
 
 | Copyright 2017-2021, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -8,11 +8,16 @@ Database connection.
 from copy import copy
 import logging
 
+from bson import json_util
 from mongoengine import connect
 import motor
 import pymongo
+from pymongo.errors import BulkWriteError
+
+import eta.core.utils as etau
 
 import fiftyone.constants as foc
+import fiftyone.core.utils as fou
 
 
 _client = None
@@ -208,6 +213,78 @@ def get_collection_stats(collection_name):
     stats["wiredTiger"] = None
     stats["indexDetails"] = None
     return stats
+
+
+def export_document(doc, json_path):
+    """Exports the document to disk in JSON format.
+
+    Args:
+        doc: a BSON document dict
+        json_path: the path to write the JSON file
+    """
+    etau.write_file(json_util.dumps(doc), json_path)
+
+
+def export_collection(cursor, num_docs, json_path):
+    """Exports the collection to disk in JSON format.
+
+    Args:
+        cursor: a pymongo cursor that is iterating over the documents to
+            export
+        num_docs: the total number of documents
+        json_path: the path to write the JSON file
+    """
+    etau.ensure_basedir(json_path)
+    with open(json_path, "w") as f:
+        f.write("[")
+        with fou.ProgressBar(total=num_docs, iters_str="docs") as pb:
+            for idx, doc in pb(enumerate(cursor, 1)):
+                f.write(json_util.dumps(doc))
+                if idx < num_docs:
+                    f.write(",")
+
+        f.write("]")
+
+
+def import_document(json_path):
+    """Imports a document from JSON on disk.
+
+    Args:
+        json_path: the path to the document
+
+    Returns:
+        a BSON document dict
+    """
+    with open(json_path, "r") as f:
+        return json_util.loads(f.read())
+
+
+def import_collection(json_path):
+    """Imports the collection from JSON on disk.
+
+    Args:
+        json_path: the path to the collection on disk
+
+    Returns:
+        a list of BSON document dicts
+    """
+    with open(json_path, "r") as f:
+        return json_util.loads(f.read())
+
+
+def insert_collection(coll, docs):
+    """Inserts a list of documents into a collection.
+
+    Args:
+        coll: a pymongo collection instance
+        docs: the list of BSON document dicts to insert
+    """
+    try:
+        for batch in fou.iter_batches(docs, 100000):  # mongodb limit
+            coll.insert_many(list(batch), ordered=True)
+    except BulkWriteError as bwe:
+        msg = bwe.details["writeErrors"][0]["errmsg"]
+        raise ValueError(msg) from bwe
 
 
 def list_datasets():
