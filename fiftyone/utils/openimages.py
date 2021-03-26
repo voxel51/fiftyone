@@ -1613,4 +1613,3 @@ _DEFAULT_SPLITS = [
 _SUPPORTED_VERSIONS = [
     "v6",
 ]
-_UNSPECIFIED_SPLIT = "unspecified"
