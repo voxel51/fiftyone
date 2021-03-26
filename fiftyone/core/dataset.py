@@ -3153,6 +3153,28 @@ def _merge_samples(
     schema = src_collection.get_field_schema()
     dst_dataset._sample_doc_cls.merge_field_schema(schema)
 
+    #
+    # The implementation of merging video frames is currently a bit complex.
+    # It may be possible to simplify this...
+    #
+    # The trouble is that the `_sample_id` of the frame documents need to match
+    # the `_id` of the sample documents after merging. There may be a more
+    # clever way to make this happen via `$lookup` what is implemented here,
+    # but here's how we currently achieve it:
+    #
+    # - Store the `key_field` value on each frame document in both the source
+    #   and destination collection corresopnding to its parent sample in a
+    #   temporary `frame_key_field` field
+    # - Merge the sample documents
+    # - Merge the frame documents on key `[frame_key_field, frame_number]` with
+    #   their old `_sample_id`s unset
+    # - Generate a mapping from `key_field` -> `_id` for the post-merge
+    #   sample documents, then make a pass over the frame documents and set
+    #   their `_sample_id` to the corresponding value from this mapping
+    # - The merge is complete, so delete `frame_key_field` from both frame
+    #   collections
+    #
+
     if is_video:
         frame_key_field = "_merge_key"
         _index_frames(dst_dataset, key_field, frame_key_field)
