@@ -340,7 +340,9 @@ const LabelTagsCell = ({ modal }: TagsCellProps) => {
           data: makeTagData(
             hasFilters && extStats && !modal && !subCount[name]
               ? 0
-              : subCount[name],
+              : subCount
+              ? subCount[name]
+              : null,
             count[name] ?? 0,
             matchedTags,
             name,
