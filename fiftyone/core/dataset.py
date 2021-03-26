@@ -3148,10 +3148,10 @@ def _merge_samples(
 
         # Must create unique indexes in order to use `$merge`
         frame_index_spec = [(frame_key_field, 1), ("frame_number", 1)]
-        dst_dataset._frame_collection.create_index(
+        dst_frame_index = dst_dataset._frame_collection.create_index(
             frame_index_spec, unique=True
         )
-        src_dataset._frame_collection.create_index(
+        src_frame_index = src_dataset._frame_collection.create_index(
             frame_index_spec, unique=True
         )
 
@@ -3267,21 +3267,13 @@ def _merge_samples(
         src_collection.drop_index(key_field)
 
     if is_video:
-        _drop_index(dst_dataset._frame_collection, frame_index_spec)
-        _drop_index(src_dataset._frame_collection, frame_index_spec)
+        dst_dataset._frame_collection.drop_index(dst_frame_index)
+        src_dataset._frame_collection.drop_index(src_frame_index)
 
     # Reload docs
     fos.Sample._reload_docs(dst_dataset._sample_collection_name)
     if is_video:
         fofr.Frame._reload_docs(dst_dataset._frame_collection_name)
-
-
-def _drop_index(coll, index_spec):
-    index_info = coll.index_information()
-    index_map = {
-        v["key"][0][0]: k for k, v in index_info.items()
-    }  # @todo fix?
-    coll.drop_index(index_map[index_spec])
 
 
 def _index_frames(sample_collection, key_field, frame_key_field):
