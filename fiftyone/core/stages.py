@@ -1384,7 +1384,14 @@ class FilterLabels(FilterField):
     def _get_new_field(self, sample_collection):
         field, _ = sample_collection._handle_frame_field(self._labels_field)
 
-        return ".".join([self._new_field, field.split(".")[-1],])
+        new_field = self._new_field
+        if self._new_field.startswith(sample_collection._FRAMES_PREFIX):
+            new_field = new_field[len(sample_collection._FRAMES_PREFIX) :]
+
+        if "." in field:
+            return ".".join([new_field, field.split(".")[-1]])
+
+        return new_field
 
     def validate(self, sample_collection):
         self._get_labels_field(sample_collection)
@@ -1421,6 +1428,7 @@ def _get_filter_frames_list_field_pipeline(
 ):
     cond = _get_list_field_mongo_filter(filter_arg)
     label_field, labels_list = new_field.split(".")
+    old_field = filter_field.split(".")[0]
 
     pipeline = [
         {
@@ -1435,7 +1443,7 @@ def _get_filter_frames_list_field_pipeline(
                                 {
                                     label_field: {
                                         "$mergeObjects": [
-                                            "$$frame." + label_field,
+                                            "$$frame." + old_field,
                                             {
                                                 labels_list: {
                                                     "$filter": {
@@ -3760,7 +3768,7 @@ def _get_label_field_only_matches_expr(sample_collection, field, prefix=""):
         else:
             match_fcn = _get_field_only_matches_expr
 
-    return match_fcn("%s%s" % (prefix, field))
+    return match_fcn(prefix + field)
 
 
 class _ViewStageRepr(reprlib.Repr):

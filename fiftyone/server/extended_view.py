@@ -53,11 +53,6 @@ def get_extended_view(view, filters, count_labels_tags=False):
         if cleanup_pipeline:
             view = view.mongo(cleanup_pipeline)
 
-        print("START")
-        for p in view._pipeline():
-            print(p)
-        print("END")
-
     return view
 
 
@@ -230,7 +225,6 @@ def _make_scalar_expression(f, args):
 
 def _get_filtered_path(view, path, filters):
     label_tags = filters.get("tags", {}).get("label", None)
-    print("TAG", filters)
     if path not in filters and not label_tags:
         return path
 
@@ -283,7 +277,7 @@ def _count_list_items(path, view):
     function = (
         "function(items) {"
         "let counts = {};"
-        "items.forEach((i) => {"
+        "items && items.forEach((i) => {"
         "counts[i] = 1 + (counts[i] || 0);"
         "});"
         "return counts;"
