@@ -114,25 +114,17 @@ def _make_filter_stages(view, filters, label_tags=None, hide_result=False):
 
         if isinstance(field, fof.EmbeddedDocumentField):
             expr = _make_scalar_expression(F(keys[-1]), args)
-            if label_tags:
-                if expr is not None:
-                    expr &= tag_expr
-                else:
-                    expr = tag_expr
-
             if expr is not None:
                 if hide_result:
-                    new_field = "__%s" % field
+                    new_field = "__%s" % path
                     if frames:
                         new_field = "%s%s" % (view._FRAMES_PREFIX, new_field,)
                 else:
                     new_field = None
                 stages.append(
-                    fosg.FilterLabels(
-                        path, expr, _new_field=new_field, only_matches=False
-                    )
+                    fosg.FilterLabels(path, expr, _new_field=new_field)
                 )
-                cleanup.append({"$unset": path})
+                cleanup.append({"$unset": new_field})
         else:
             expr = _make_scalar_expression(F(path), args)
             if expr is not None:
@@ -140,20 +132,25 @@ def _make_filter_stages(view, filters, label_tags=None, hide_result=False):
 
     if label_tags is not None:
         for path, _ in fos.DatasetStatistics.labels(view):
-            if path not in filters:
-                if hide_result:
-                    new_field = _get_filtered_path(view, path, filters)
-                else:
-                    new_field = None
+            if path not in filters and hide_result:
+                new_field = _get_filtered_path(view, path, filters)
+            else:
+                new_field = None
 
-                stages.append(
-                    fosg.FilterLabels(
-                        path,
-                        tag_expr,
-                        _new_field=new_field,
-                        only_matches=False,
-                    )
+            if path in filters:
+                prefix = "__"
+            else:
+                prefix = ""
+
+            stages.append(
+                fosg.FilterLabels(
+                    path,
+                    tag_expr,
+                    only_matches=False,
+                    _new_field=new_field,
+                    _prefix=prefix,
                 )
+            )
 
         match_exprs = []
         for path, _ in fos.DatasetStatistics.labels(view):

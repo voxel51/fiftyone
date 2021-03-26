@@ -960,17 +960,18 @@ class FilterField(ViewStage):
 
 
 def _get_filter_field_pipeline(
-    filter_field, new_field, filter_arg, only_matches=True
+    filter_field, new_field, filter_arg, only_matches=True, prefix=""
 ):
-    cond = _get_field_mongo_filter(filter_arg, prefix=filter_field)
+    cond = _get_field_mongo_filter(filter_arg, prefix=prefix + filter_field)
 
     pipeline = [
         {
             "$set": {
-                new_field: {
+                prefix
+                + new_field: {
                     "$cond": {
                         "if": cond,
-                        "then": "$" + filter_field,
+                        "then": "$" + prefix + filter_field,
                         "else": None,
                     }
                 }
@@ -979,7 +980,7 @@ def _get_filter_field_pipeline(
     ]
 
     if only_matches:
-        match_expr = _get_field_only_matches_expr(new_field)
+        match_expr = _get_field_only_matches_expr(prefix + new_field)
         pipeline.append({"$match": {"$expr": match_expr.to_mongo()}})
 
     return pipeline
@@ -990,9 +991,11 @@ def _get_field_only_matches_expr(field):
 
 
 def _get_filter_frames_field_pipeline(
-    filter_field, new_field, filter_arg, only_matches=True
+    filter_field, new_field, filter_arg, only_matches=True, prefix=""
 ):
-    cond = _get_field_mongo_filter(filter_arg, prefix="$frame." + filter_field)
+    cond = _get_field_mongo_filter(
+        filter_arg, prefix="$frame." + prefix + filter_field
+    )
 
     pipeline = [
         {
@@ -1005,10 +1008,13 @@ def _get_filter_frames_field_pipeline(
                             "$mergeObjects": [
                                 "$$frame",
                                 {
-                                    new_field: {
+                                    prefix
+                                    + new_field: {
                                         "$cond": {
                                             "if": cond,
-                                            "then": "$$frame." + filter_field,
+                                            "then": "$$frame."
+                                            + prefix
+                                            + filter_field,
                                             "else": None,
                                         }
                                     }
@@ -1022,7 +1028,7 @@ def _get_filter_frames_field_pipeline(
     ]
 
     if only_matches:
-        match_expr = _get_frames_field_only_matches_expr(new_field)
+        match_expr = _get_frames_field_only_matches_expr(prefix + new_field)
         pipeline.append({"$match": {"$expr": match_expr.to_mongo()}})
 
     return pipeline
@@ -1315,11 +1321,14 @@ class FilterLabels(FilterField):
             one label after filtering (True) or include all samples (False)
     """
 
-    def __init__(self, field, filter, only_matches=True, _new_field=None):
+    def __init__(
+        self, field, filter, only_matches=True, _new_field=None, _prefix=""
+    ):
         self._field = field
         self._filter = filter
         self._new_field = _new_field or field
         self._only_matches = only_matches
+        self._prefix = ""
         self._labels_field = None
         self._is_frame_field = None
         self._is_labels_list_field = None
@@ -1355,6 +1364,7 @@ class FilterLabels(FilterField):
             new_field,
             self._filter,
             only_matches=self._only_matches,
+            prefix=self._prefix,
         )
 
     def _needs_frames(self, sample_collection):
@@ -1398,22 +1408,26 @@ class FilterLabels(FilterField):
 
 
 def _get_filter_list_field_pipeline(
-    filter_field, new_field, filter_arg, only_matches=True
+    filter_field, new_field, filter_arg, only_matches=True, prefix=""
 ):
     cond = _get_list_field_mongo_filter(filter_arg)
 
     pipeline = [
         {
             "$set": {
-                new_field: {
-                    "$filter": {"input": "$" + filter_field, "cond": cond}
+                prefix
+                + new_field: {
+                    "$filter": {
+                        "input": "$" + prefix + filter_field,
+                        "cond": cond,
+                    }
                 }
             }
         }
     ]
 
     if only_matches:
-        match_expr = _get_list_field_only_matches_expr(new_field)
+        match_expr = _get_list_field_only_matches_expr(prefix + new_field)
         pipeline.append({"$match": {"$expr": match_expr.to_mongo()}})
 
     return pipeline
@@ -1424,7 +1438,7 @@ def _get_list_field_only_matches_expr(field):
 
 
 def _get_filter_frames_list_field_pipeline(
-    filter_field, new_field, filter_arg, only_matches=True
+    filter_field, new_field, filter_arg, only_matches=True, prefix=""
 ):
     cond = _get_list_field_mongo_filter(filter_arg)
     label_field, labels_list = new_field.split(".")
@@ -1441,13 +1455,15 @@ def _get_filter_frames_list_field_pipeline(
                             "$mergeObjects": [
                                 "$$frame",
                                 {
-                                    label_field: {
+                                    prefix
+                                    + label_field: {
                                         "$mergeObjects": [
-                                            "$$frame." + old_field,
+                                            "$$frame." + prefix + old_field,
                                             {
                                                 labels_list: {
                                                     "$filter": {
                                                         "input": "$$frame."
+                                                        + prefix
                                                         + filter_field,
                                                         "cond": cond,
                                                     }
@@ -1465,7 +1481,9 @@ def _get_filter_frames_list_field_pipeline(
     ]
 
     if only_matches:
-        match_expr = _get_frames_list_field_only_matches_expr(new_field)
+        match_expr = _get_frames_list_field_only_matches_expr(
+            prefix + new_field
+        )
         pipeline.append({"$match": {"$expr": match_expr.to_mongo()}})
 
     return pipeline
