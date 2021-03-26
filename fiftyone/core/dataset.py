@@ -17,6 +17,7 @@ import string
 
 from bson import ObjectId
 import mongoengine.errors as moe
+from pymongo import UpdateMany
 from pymongo.errors import BulkWriteError
 
 import eta.core.serial as etas
@@ -1316,12 +1317,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         else:
             coll = self._sample_collection
 
-        try:
-            for ops_batch in fou.iter_batches(ops, 100000):  # mongodb limit
-                coll.bulk_write(list(ops_batch), ordered=ordered)
-        except BulkWriteError as bwe:
-            msg = bwe.details["writeErrors"][0]["errmsg"]
-            raise ValueError(msg) from bwe
+        _bulk_write(coll, ops, ordered=ordered)
 
         if frames:
             fofr.Frame._reload_docs(self._frame_collection_name)
@@ -2534,10 +2530,18 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         detach_frames=False,
         frames_only=False,
     ):
+        if self.media_type != fom.VIDEO:
+            attach_frames = False
+            detach_frames = False
+            frames_only = False
+
+        if not attach_frames:
+            detach_frames = False
+
         if frames_only:
             attach_frames = True
 
-        if attach_frames and (self.media_type == fom.VIDEO):
+        if attach_frames:
             _pipeline = [
                 {
                     "$lookup": {
@@ -3023,6 +3027,15 @@ def _load_dataset(name, migrate=True):
     return dataset_doc, sample_doc_cls, frame_doc_cls
 
 
+def _bulk_write(coll, ops, ordered=False):
+    try:
+        for ops_batch in fou.iter_batches(ops, 100000):  # mongodb limit
+            coll.bulk_write(list(ops_batch), ordered=ordered)
+    except BulkWriteError as bwe:
+        msg = bwe.details["writeErrors"][0]["errmsg"]
+        raise ValueError(msg) from bwe
+
+
 def _drop_samples(dataset_doc):
     conn = foo.get_db_conn()
 
@@ -3147,7 +3160,10 @@ def _merge_samples(
         _index_frames(src_collection, key_field, frame_key_field)
 
         # Must create unique indexes in order to use `$merge`
-        frame_index_spec = [(frame_key_field, 1), ("frame_number", 1)]
+        frame_index_spec = [
+            (frame_key_field, foo.ASC),
+            ("frame_number", foo.ASC),
+        ]
         dst_frame_index = dst_dataset._frame_collection.create_index(
             frame_index_spec, unique=True
         )
@@ -3175,13 +3191,13 @@ def _merge_samples(
     except ValueError:
         pass
 
-    pipeline = []
+    sample_pipeline = src_collection._pipeline(detach_frames=True)
 
     if omit_fields:
-        pipeline.append({"$unset": omit_fields})
+        sample_pipeline.append({"$unset": omit_fields})
 
     if omit_none_fields:
-        pipeline.append(
+        sample_pipeline.append(
             {
                 "$replaceWith": {
                     "$arrayToObject": {
@@ -3195,7 +3211,7 @@ def _merge_samples(
             }
         )
 
-    pipeline.append(
+    sample_pipeline.append(
         {
             "$merge": {
                 "into": dst_dataset._sample_collection_name,
@@ -3207,7 +3223,15 @@ def _merge_samples(
     )
 
     # Merge samples
-    src_collection._aggregate(pipeline=pipeline, attach_frames=False)
+    src_dataset._aggregate(pipeline=sample_pipeline, attach_frames=False)
+
+    # Cleanup indexes
+
+    if new_dst_index:
+        dst_dataset.drop_index(key_field)
+
+    if new_src_index:
+        src_collection.drop_index(key_field)
 
     #
     # Merge frames
@@ -3245,30 +3269,19 @@ def _merge_samples(
         )
 
         # Merge frames
-        # Don't attach frames here becayse `frame_pipeline` already handles it
-        src_collection._aggregate(pipeline=frame_pipeline, attach_frames=False)
+        src_dataset._aggregate(pipeline=frame_pipeline, attach_frames=False)
+
+        # Drop indexes
+        dst_dataset._frame_collection.drop_index(dst_frame_index)
+        src_dataset._frame_collection.drop_index(src_frame_index)
 
         # Finalize IDs
         _finalize_frames(dst_dataset, key_field, frame_key_field)
 
-        # Unset `frame_key_field`
+        # Cleanup merge key
         cleanup_op = {"$unset": {frame_key_field: ""}}
-        src_dataset._frame_collection.update({}, cleanup_op)
-        dst_dataset._frame_collection.update({}, cleanup_op)
-
-    #
-    # Drop any temporary indexes
-    #
-
-    if new_dst_index:
-        dst_dataset.drop_index(key_field)
-
-    if new_src_index:
-        src_collection.drop_index(key_field)
-
-    if is_video:
-        dst_dataset._frame_collection.drop_index(dst_frame_index)
-        src_dataset._frame_collection.drop_index(src_frame_index)
+        src_dataset._frame_collection.update_many({}, cleanup_op)
+        dst_dataset._frame_collection.update_many({}, cleanup_op)
 
     # Reload docs
     fos.Sample._reload_docs(dst_dataset._sample_collection_name)
@@ -3300,17 +3313,13 @@ def _finalize_frames(sample_collection, key_field, frame_key_field):
     aggs = [foa.Values(key_field), foa.Values("_id")]
     ids_map = {k: v for k, v in zip(*sample_collection.aggregate(aggs))}
 
-    all_frame_keys = sample_collection.values(
-        "frames." + frame_key_field, _allow_missing=True
-    )
+    frame_coll = sample_collection._frame_collection
 
-    frame_ids = []
-    for frame_keys in all_frame_keys:
-        if frame_keys:
-            sample_ids = [ids_map[key] for key in frame_keys]
-        else:
-            sample_ids = frame_keys
+    ops = [
+        UpdateMany(
+            {frame_key_field: key}, {"$set": {"_sample_id": ids_map[key]}}
+        )
+        for key in frame_coll.distinct(frame_key_field)
+    ]
 
-        frame_ids.append(sample_ids)
-
-    sample_collection.set_values("frames._sample_id", frame_ids)
+    _bulk_write(frame_coll, ops)
