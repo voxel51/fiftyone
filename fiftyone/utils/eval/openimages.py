@@ -560,12 +560,15 @@ def _compute_matches(
             if pred.id in pred_ious:
                 best_match = None
                 best_match_iou = iou_thresh
+                highest_already_matched_iou = iou_thresh
                 for gt_id, iou in pred_ious[pred.id]:
                     gt = gt_map[gt_id]
                     gt_iscrowd = iscrowd(gt)
 
                     # Only iscrowd GTs can have multiple matches
                     if gt[id_key] != _NO_MATCH_ID and not gt_iscrowd:
+                        if iou > highest_already_matched_iou:
+                            highest_already_matched_iou = iou
                         continue
 
                     # If matching classwise=False
@@ -595,10 +598,20 @@ def _compute_matches(
                     best_match_iou = iou
                     best_match = gt_id
 
+                if highest_already_matched_iou > best_match_iou:
+                    if best_match is not None and not iscrowd(
+                        gt_map[best_match]
+                    ):
+                        # Note: This differs from COCO in that Open Images detections are only
+                        # matched with the highest IoU gt or a crowd. A detection will not be
+                        # matched with a secondary highest IoU gt if the highest IoU gt was
+                        # already matched with a different detection.
+
+                        best_match = None
+
                 if best_match:
                     gt = gt_map[best_match]
                     tag = "tp" if gt.label == pred.label else "fp"
-                    gt[eval_key] = tag
                     skip_match = False
 
                     # This only occurs when matching more than 1 prediction to
@@ -606,8 +619,10 @@ def _compute_matches(
                     # are ignored in mAP calculation.
                     if gt[id_key] != _NO_MATCH_ID:
                         skip_match = True
+                        tag = "crowd"
 
                     else:
+                        gt[eval_key] = tag
                         gt[id_key] = pred.id
                         gt[iou_key] = best_match_iou
                     pred[eval_key] = tag
