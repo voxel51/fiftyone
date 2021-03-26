@@ -9,6 +9,8 @@ import {
   Label,
   LocalOffer,
   PhotoLibrary,
+  Visibility,
+  VisibilityOff,
 } from "@material-ui/icons";
 import { animated, useSpring } from "react-spring";
 import numeral from "numeral";
@@ -24,7 +26,6 @@ import * as labelAtoms from "./Filters/LabelFieldFilters.state";
 import * as selectors from "../recoil/selectors";
 import { stringify, FILTERABLE_TYPES } from "../utils/labels";
 import { useTheme } from "../utils/hooks";
-import { Target } from "../icons";
 import { PillButton } from "./utils";
 
 const Container = styled.div`
@@ -145,14 +146,21 @@ const makeData = (filteredCount: number, totalCount: number): string => {
 const makeTagData = (
   filteredCount: number,
   totalCount: number,
-  color: string,
+  matchedTags: Set<string>,
+  name: string,
   toggleFilter: () => void,
   labels: boolean
 ): any => {
+  const theme = useTheme();
+  const color = matchedTags.has(name) ? theme.font : theme.fontDark;
+  const Component =
+    matchedTags.has(name) || matchedTags.size === 0
+      ? Visibility
+      : VisibilityOff;
   return (
     <>
       <span>{makeData(filteredCount, totalCount)}</span>
-      <Target
+      <Component
         title={`Only show ${labels ? "labels" : "samples"} with this tag`}
         style={{
           color,
@@ -171,7 +179,7 @@ const makeClearMatchTags = (color, matchedTags, setMatchedTags) => {
     ? [
         <PillButton
           highlight={false}
-          icon={<Target />}
+          icon={<Visibility />}
           text={numeral(matchedTags.size).format("0,0")}
           onClick={(e) => {
             e.stopPropagation();
@@ -243,7 +251,8 @@ const SampleTagsCell = ({ modal }: TagsCellProps) => {
               makeTagData(
                 subCount[name],
                 count[name],
-                matchedTags.has(name) ? theme.font : theme.fontDark,
+                matchedTags,
+                name,
                 (e) => {
                   e.stopPropagation();
                   e.preventDefault();
@@ -263,12 +272,15 @@ const SampleTagsCell = ({ modal }: TagsCellProps) => {
             modal,
           };
         })}
-      onSelect={({ name, selected }) =>
-        setActiveTags(
-          selected
-            ? [name, ...activeTags]
-            : activeTags.filter((t) => t !== name)
-        )
+      onSelect={
+        !modal
+          ? ({ name, selected }) =>
+              setActiveTags(
+                selected
+                  ? [name, ...activeTags]
+                  : activeTags.filter((t) => t !== name)
+              )
+          : null
       }
       handleClear={(e) => {
         e.stopPropagation();
@@ -326,7 +338,8 @@ const LabelTagsCell = ({ modal }: TagsCellProps) => {
               ? 0
               : subCount[name],
             count[name] ?? 0,
-            matchedTags.has(name) ? theme.font : theme.fontDark,
+            matchedTags,
+            name,
             (e) => {
               e.stopPropagation();
               e.preventDefault();
@@ -345,13 +358,17 @@ const LabelTagsCell = ({ modal }: TagsCellProps) => {
           modal,
         };
       })}
-      onSelect={({ name, selected }) => {
-        setActiveTags(
-          selected
-            ? [name, ...activeTags]
-            : activeTags.filter((t) => t !== name)
-        );
-      }}
+      onSelect={
+        !modal
+          ? ({ name, selected }) => {
+              setActiveTags(
+                selected
+                  ? [name, ...activeTags]
+                  : activeTags.filter((t) => t !== name)
+              );
+            }
+          : null
+      }
       handleClear={(e) => {
         e.stopPropagation();
         setActiveTags([]);
