@@ -67,9 +67,6 @@ class OpenImagesDatasetImporter(foud.LabeledImageDatasetImporter):
             CSV file containing a list of image IDs to load. The IDs can be
             specified either as ``<split>/<image-id>`` or ``<image-id>``. If
             ``image_ids`` is provided, this parameter is ignored
-        num_workers (None): the number of processes to use when downloading
-            individual images. By default, ``multiprocessing.cpu_count()`` is
-            used
         load_hierarchy (True): optionally load the classes hiearchy and add it
             to the info of the dataset
         version ("v6"): string indicating the version of Open Images to
@@ -88,7 +85,6 @@ class OpenImagesDatasetImporter(foud.LabeledImageDatasetImporter):
         attrs=None,
         image_ids=None,
         image_ids_file=None,
-        num_workers=None,
         load_hierarchy=True,
         version="v6",
     ):
@@ -104,7 +100,6 @@ class OpenImagesDatasetImporter(foud.LabeledImageDatasetImporter):
         self.attrs = attrs
         self.image_ids = image_ids
         self.image_ids_file = image_ids_file
-        self.num_workers = num_workers
         self.load_hierarchy = load_hierarchy
         self.version = version
         self._data_dir = None
@@ -221,7 +216,6 @@ class OpenImagesDatasetImporter(foud.LabeledImageDatasetImporter):
         seed = self.seed
         shuffle = self.shuffle
         max_samples = self.max_samples
-        num_workers = self.num_workers
         label_types = self.label_types
         classes = self.classes
         attrs = self.attrs
@@ -269,7 +263,6 @@ class OpenImagesDatasetImporter(foud.LabeledImageDatasetImporter):
 
         (
             guarantee_all_types,
-            num_workers,
             label_types,
             classes_map,
             all_classes,
@@ -286,7 +279,6 @@ class OpenImagesDatasetImporter(foud.LabeledImageDatasetImporter):
             label_types,
             classes,
             attrs,
-            num_workers,
             dataset_dir,
         )
 
@@ -443,6 +435,9 @@ def download_open_images_split(
     """
     _verify_version(version)
 
+    if num_workers is None or num_workers < 1:
+        num_workers = multiprocessing.cpu_count()
+
     # No matter what classes or attributes you specify, they will not be loaded
     # if you do not want to load labels
     if label_types == []:
@@ -472,7 +467,6 @@ def download_open_images_split(
 
     (
         guarantee_all_types,
-        num_workers,
         label_types,
         classes_map,
         all_classes,
@@ -483,14 +477,7 @@ def download_open_images_split(
         all_attrs,
         seg_classes,
     ) = _setup(
-        download,
-        seed,
-        max_samples,
-        label_types,
-        classes,
-        attrs,
-        num_workers,
-        dataset_dir,
+        download, seed, max_samples, label_types, classes, attrs, dataset_dir,
     )
 
     # Download class hierarchy, used in evaluation
@@ -520,14 +507,7 @@ def download_open_images_split(
 
 
 def _setup(
-    download,
-    seed,
-    max_samples,
-    label_types,
-    classes,
-    attrs,
-    num_workers,
-    dataset_dir,
+    download, seed, max_samples, label_types, classes, attrs, dataset_dir,
 ):
 
     if seed is not None:
@@ -540,9 +520,6 @@ def _setup(
         # Samples may not contain multiple label types, but will contain at
         # least one
         guarantee_all_types = False
-
-    if num_workers is None:
-        num_workers = multiprocessing.cpu_count()
 
     label_types = _parse_label_types(label_types)
 
@@ -625,7 +602,6 @@ def _setup(
 
     return (
         guarantee_all_types,
-        num_workers,
         label_types,
         classes_map,
         all_classes,
