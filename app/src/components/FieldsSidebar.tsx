@@ -3,12 +3,14 @@ import styled from "styled-components";
 import { useRecoilValue, useRecoilState } from "recoil";
 import {
   BarChart,
+  BurstMode,
   Check,
   Close,
   Help,
-  Label,
   LocalOffer,
+  Note,
   PhotoLibrary,
+  VideoLibrary,
   Visibility,
   VisibilityOff,
 } from "@material-ui/icons";
@@ -226,7 +228,7 @@ const SampleTagsCell = ({ modal }: TagsCellProps) => {
   return (
     <Cell
       label="Sample tags"
-      icon={<LocalOffer />}
+      icon={<Note />}
       pills={makeClearMatchTags(theme.font, matchedTags, setMatchedTags)}
       entries={tags
         .filter((t) => count[t])
@@ -393,6 +395,7 @@ const LabelsCell = ({ modal, frames }: LabelsCellProps) => {
   const [activeLabels, setActiveLabels] = useRecoilState(
     fieldAtoms.activeLabels({ modal, frames })
   );
+  const video = useRecoilValue(selectors.isVideoDataset);
   const types = useRecoilValue(selectors.labelTypesMap);
 
   const colorMap = useRecoilValue(selectors.colorMap(modal));
@@ -415,11 +418,7 @@ const LabelsCell = ({ modal, frames }: LabelsCellProps) => {
     <Cell
       label={frames ? "Frame label fields" : "Label fields"}
       icon={
-        frames ? (
-          <PhotoLibrary />
-        ) : (
-          <Label style={{ transform: "rotate(180deg)" }} />
-        )
+        frames ? <BurstMode /> : video ? <VideoLibrary /> : <PhotoLibrary />
       }
       entries={labels.map((name) => {
         const path = frames ? "frames." + name : name;
