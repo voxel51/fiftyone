@@ -13,8 +13,11 @@ import * as numericField from "./NumericFieldFilter";
 import * as stringField from "./StringFieldFilter";
 import * as atoms from "../../recoil/atoms";
 import * as selectors from "../../recoil/selectors";
-import { RESERVED_FIELDS, VALID_LIST_TYPES } from "../../utils/labels";
-import { pathsToStateValue } from "xstate/lib/utils";
+import {
+  LABEL_LIST,
+  RESERVED_FIELDS,
+  VALID_LIST_TYPES,
+} from "../../utils/labels";
 
 const COUNT_CLS = "Count";
 
@@ -44,7 +47,7 @@ type LabelFilters = {
 
 export const getPathExtension = (type: string): string => {
   if (VALID_LIST_TYPES.includes(type)) {
-    return `.${type.toLocaleLowerCase()}`;
+    return `.${LABEL_LIST[type]}`;
   }
   return "";
 };
@@ -353,13 +356,23 @@ export const labelSampleModalCounts = selectorFamily<Counts | null, string>({
 
 const sampleCountResolver = (value, type) => {
   if (!value) return 0;
-  return ["Detections", "Classifications", "Polylines"].includes(type)
-    ? value[type.toLowerCase()].length
-    : type === "Keypoints"
-    ? value.keypoints.reduce((acc, cur) => acc + cur.points.length, 0)
-    : type === "Keypoint"
-    ? value.points.length
-    : 1;
+
+  if (!value[LABEL_LIST[type]]) return 0;
+  if (VALID_LIST_TYPES.includes(type)) {
+    const values = value[LABEL_LIST[type]];
+    if (!values?.length) {
+      return 0;
+    }
+
+    if (type === "Keypoints") {
+      return values.reduce((acc, cur) => acc + cur?.points?.length || 0, 0);
+    }
+
+    return values.length;
+  } else if (type === "Keypoint") {
+    return value?.points?.length || 0;
+  }
+  return 1;
 };
 
 export const filteredLabelSampleModalCounts = selectorFamily<
@@ -453,7 +466,7 @@ export const modalLabels = selector<atoms.SelectedLabel[]>({
       .filter(([k]) => !RESERVED_FIELDS.includes(k) && activeFields.includes(k))
       .forEach(([name, field]) => {
         if (VALID_LIST_TYPES.includes(field._cls)) {
-          field[field._cls.toLowerCase()].forEach(({ _id }) => {
+          field[LABEL_LIST[field._cls]].forEach(({ _id }) => {
             labels.push({
               label_id: _id,
               sample_id: sample._id,

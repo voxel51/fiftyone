@@ -12,6 +12,7 @@ import {
   AGGS,
   VALID_LIST_TYPES,
   HIDDEN_LABEL_ATTRS,
+  LABEL_LIST,
 } from "../utils/labels";
 import { packageMessage } from "../utils/socket";
 import { viewsAreEqual } from "../utils/view";
@@ -847,7 +848,7 @@ export const modalLabelAttrs = selectorFamily<
 
     let label = sample[field];
     if (VALID_LIST_TYPES.includes(type)) {
-      label = label[type.toLocaleLowerCase()].filter((l) => l._id === id)[0];
+      label = label[LABEL_LIST[type]].filter((l) => l._id === id)[0];
     }
 
     const hidden = HIDDEN_LABEL_ATTRS[label._cls];

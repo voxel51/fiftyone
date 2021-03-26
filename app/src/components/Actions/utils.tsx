@@ -13,7 +13,11 @@ import * as selectors from "../../recoil/selectors";
 import { useTheme } from "../../utils/hooks";
 import { packageMessage } from "../../utils/socket";
 import socket from "../../shared/connection";
-import { VALID_LABEL_TYPES, VALID_LIST_TYPES } from "../../utils/labels";
+import {
+  VALID_LABEL_TYPES,
+  VALID_LIST_TYPES,
+  LABEL_LIST,
+} from "../../utils/labels";
 
 export const HoverItemDiv = animated(styled.div`
   cursor: pointer;
@@ -144,8 +148,7 @@ const addLabelToTagsResult = (result, label, label_id = null) => {
     });
   };
   if (VALID_LIST_TYPES.includes(label._cls)) {
-    label[label._cls.toLowerCase()] &&
-      label[label._cls.toLowerCase()].forEach(add);
+    label[LABEL_LIST[label._cls]] && label[LABEL_LIST[label._cls]].forEach(add);
   } else {
     add(label);
   }
@@ -236,7 +239,7 @@ export const tagStats = selectorFamily<
       const active = [
         ...get(activeLabels({ modal, frames: false })),
         ...get(activeLabels({ modal, frames: true })),
-      ].map((l) => `${l}.${types[l].toLowerCase()}.tags`);
+      ].map((l) => `${l}.${LABEL_LIST[types[l]]}.tags`);
       const reducer = (acc, { name, result }) => {
         if (active.includes(name)) {
           acc[name] = result;
