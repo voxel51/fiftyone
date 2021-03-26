@@ -170,6 +170,9 @@ export const labelModalTagCounts = selectorFamily<
 
         if (get(selectors.isVideoDataset) && frame_number) {
           const frame = get(selectors.sampleFramesMap(sample_id))[frame_number];
+          if (!frame) {
+            return null;
+          }
           addLabelToTagsResult(
             result,
             frame[field.slice("frames.".length)],

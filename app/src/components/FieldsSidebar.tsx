@@ -276,15 +276,13 @@ const SampleTagsCell = ({ modal }: TagsCellProps) => {
             modal,
           };
         })}
-      onSelect={
-        !modal
-          ? ({ name, selected }) =>
-              setActiveTags(
-                selected
-                  ? [name, ...activeTags]
-                  : activeTags.filter((t) => t !== name)
-              )
-          : null
+      onSelect={({ name, selected }) =>
+        !modal &&
+        setActiveTags(
+          selected
+            ? [name, ...activeTags]
+            : activeTags.filter((t) => t !== name)
+        )
       }
       handleClear={(e) => {
         e.stopPropagation();
@@ -327,6 +325,7 @@ const LabelTagsCell = ({ modal }: TagsCellProps) => {
         const color = colorByLabel
           ? theme.brand
           : colorMap["_label_tags." + name];
+        const total = count && count[name] ? count[name] : 0;
         return {
           canFilter: true,
           name,
@@ -343,7 +342,7 @@ const LabelTagsCell = ({ modal }: TagsCellProps) => {
               : subCount
               ? subCount[name]
               : null,
-            count[name] ?? 0,
+            total,
             matchedTags,
             name,
             theme,
@@ -360,22 +359,19 @@ const LabelTagsCell = ({ modal }: TagsCellProps) => {
             },
             true
           ),
-          totalCount: count[name],
+          totalCount: total,
           filteredCount: modal ? null : subCount[name],
           modal,
         };
       })}
-      onSelect={
-        !modal
-          ? ({ name, selected }) => {
-              setActiveTags(
-                selected
-                  ? [name, ...activeTags]
-                  : activeTags.filter((t) => t !== name)
-              );
-            }
-          : null
-      }
+      onSelect={({ name, selected }) => {
+        !modal &&
+          setActiveTags(
+            selected
+              ? [name, ...activeTags]
+              : activeTags.filter((t) => t !== name)
+          );
+      }}
       handleClear={(e) => {
         e.stopPropagation();
         setActiveTags([]);
