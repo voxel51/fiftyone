@@ -99,6 +99,7 @@ const Cell = React.memo(
                 highlight={false}
                 open={false}
                 icon={<Check />}
+                title={"Clear visibility"}
                 text={numeral(numSelected).format("0,0")}
                 style={{
                   height: "1.5rem",
@@ -145,13 +146,14 @@ const makeTagData = (
   filteredCount: number,
   totalCount: number,
   color: string,
-  toggleFilter: () => void
+  toggleFilter: () => void,
+  labels: boolean
 ): any => {
   return (
     <>
       <span>{makeData(filteredCount, totalCount)}</span>
       <Target
-        title={"Only matches"}
+        title={`Only show ${labels ? "labels" : "samples"} with this tag`}
         style={{
           color,
           height: 20,
@@ -176,6 +178,7 @@ const makeClearMatchTags = (color, matchedTags, setMatchedTags) => {
             e.preventDefault();
             setMatchedTags(new Set());
           }}
+          title={"Clear matching"}
           open={false}
           style={{
             marginLeft: "0.25rem",
@@ -251,7 +254,8 @@ const SampleTagsCell = ({ modal }: TagsCellProps) => {
                     newMatch.add(name);
                   }
                   setMatchedTags(newMatch);
-                }
+                },
+                false
               )
             ),
             totalCount: count[name],
@@ -294,6 +298,7 @@ const LabelTagsCell = ({ modal }: TagsCellProps) => {
   const colorByLabel = useRecoilValue(atoms.colorByLabel(modal));
   const theme = useTheme();
   const hasFilters = useRecoilValue(selectors.hasFilters);
+  const extStats = useRecoilValue(selectors.extendedDatasetStats);
 
   !modal && (tags = tags.filter((t) => count[t]));
 
@@ -317,7 +322,9 @@ const LabelTagsCell = ({ modal }: TagsCellProps) => {
           title: name,
           path: "_label_tags." + name,
           data: makeTagData(
-            hasFilters && !modal && !subCount[name] ? 0 : subCount[name],
+            hasFilters && extStats && !modal && !subCount[name]
+              ? 0
+              : subCount[name],
             count[name] ?? 0,
             matchedTags.has(name) ? theme.font : theme.fontDark,
             (e) => {
@@ -330,7 +337,8 @@ const LabelTagsCell = ({ modal }: TagsCellProps) => {
                 newMatch.add(name);
               }
               setMatchedTags(newMatch);
-            }
+            },
+            true
           ),
           totalCount: count[name],
           filteredCount: modal ? null : subCount[name],

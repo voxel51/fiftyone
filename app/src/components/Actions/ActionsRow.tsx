@@ -60,7 +60,7 @@ const Tag = ({ modal }) => {
         onClick={() => !disabled && setOpen(!open)}
         highlight={Boolean(selected.size) || open}
         ref={mRef}
-        tooltip={`Tag samples or labels`}
+        title={`Tag sample${modal ? "" : "s"} or labels`}
       />
       {open && !close && (
         <Tagger modal={modal} bounds={bounds} close={() => setOpen(false)} />
@@ -93,7 +93,7 @@ const Selected = ({ modal, frameNumberRef }) => {
         highlight={numItems > 0 || open}
         text={`${numItems}`}
         ref={mRef}
-        tooltip={`Manage selected ${modal ? "label" : "sample"}${
+        title={`Manage selected ${modal ? "label" : "sample"}${
           numItems > 1 ? "s" : ""
         }`}
       />
@@ -123,7 +123,7 @@ const Options = ({ modal }) => {
         onClick={() => setOpen(!open)}
         highlight={open}
         ref={mRef}
-        tooltip={"Options"}
+        title={"Display options"}
       />
       {open && <Coloring modal={modal} bounds={bounds} />}
     </ActionDiv>
@@ -138,7 +138,7 @@ const ShowJSON = () => {
       onClick={() => setShowJSON(!showJSON)}
       highlight={showJSON}
       text={"JSON"}
-      tooltip={"Show JSON"}
+      title={showJSON ? "Show JSON" : "Hide JSON"}
     />
   );
 };
@@ -158,7 +158,7 @@ const Hidden = () => {
       onClick={() => setHiddenObjects({})}
       highlight={true}
       text={`${count}`}
-      tooltip={"Manage hidden labels"}
+      title={"Clear hidden labels"}
     />
   );
 };
@@ -181,7 +181,7 @@ const SaveFilters = () => {
         setLoading(false);
         socket.send(packageMessage("save_filters", {}));
       }}
-      tooltip={"Save filters to view"}
+      title={"Save current field filters as view stages"}
     />
   ) : null;
 };
