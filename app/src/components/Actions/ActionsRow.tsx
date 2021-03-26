@@ -5,7 +5,6 @@ import useMeasure from "react-use-measure";
 import { useRecoilState, useRecoilValue } from "recoil";
 import styled from "styled-components";
 
-import { canTag } from "./utils";
 import Tagger from "./Tagger";
 import Selector from "./Selected";
 import Coloring from "./Options";
