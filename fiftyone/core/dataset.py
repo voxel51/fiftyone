@@ -1345,8 +1345,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         Args:
             samples: an iterable of :class:`fiftyone.core.sample.Sample`
-                instances. For example, ``samples`` may be a :class:`Dataset`
-                or a :class:`fiftyone.core.views.DatasetView`
+                instances. For example, this may be a :class:`Dataset` or a
+                :class:`fiftyone.core.views.DatasetView`
             key_field ("filepath"): the sample field to use to decide whether
                 to join with an existing sample
             key_fcn (None): a function that accepts a
@@ -1382,7 +1382,15 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             return
 
         if key_fcn is None:
+            aggs = [foa.Values(key_field), foa.Values("id")]
+            id_map = {key: _id for key, _id in zip(*self.aggregate(aggs))}
             key_fcn = lambda sample: sample[key_field]
+        else:
+            id_map = {}
+            logger.info("Indexing dataset...")
+            with fou.ProgressBar() as pb:
+                for sample in pb(self):
+                    id_map[key_fcn(sample)] = sample.id
 
         if omit_default_fields:
             if insert_new:
@@ -1393,12 +1401,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             omit_fields = fos.get_default_sample_fields()
         else:
             omit_fields = None
-
-        id_map = {}
-        logger.info("Indexing dataset...")
-        with fou.ProgressBar() as pb:
-            for sample in pb(self):
-                id_map[key_fcn(sample)] = sample.id
 
         logger.info("Merging samples...")
         with fou.ProgressBar() as pb:
