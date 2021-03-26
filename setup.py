@@ -17,12 +17,12 @@ class BdistWheelCustom(bdist_wheel):
         # make just the wheel require these packages, since they aren't needed
         # for a development installation
         self.distribution.install_requires += [
-            "fiftyone-brain>=0.4,<0.5",
+            "fiftyone-brain>=0.4,<0.5.1",
             "fiftyone-db>=0.2.1,<0.3",
         ]
 
 
-VERSION = "0.7.4"
+VERSION = "0.8.0.1"
 
 
 def get_version():

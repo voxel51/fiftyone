@@ -166,8 +166,11 @@ const SampleInfo = React.memo(({ id }) => {
       ];
     } else if (VALID_CLASS_TYPES.includes(labelTypes[cur])) {
       const labelType = labelTypes[cur];
+
       const values = VALID_LIST_TYPES.includes(labelType)
-        ? sample[cur].classifications
+        ? sample[cur] && sample[cur].classifications
+          ? sample[cur].classifications
+          : []
         : sample[cur]
         ? [sample[cur]]
         : [];
