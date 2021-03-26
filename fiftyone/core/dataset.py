@@ -3285,7 +3285,7 @@ def _drop_index(coll, index_spec):
 
 
 def _index_frames(sample_collection, key_field, frame_key_field):
-    aggs = [foa.Values("_id", _allow_missing=True), foa.Values(key_field)]
+    aggs = [foa.Values("_id"), foa.Values(key_field)]
     keys_map = {k: v for k, v in zip(*sample_collection.aggregate(aggs))}
 
     all_sample_ids = sample_collection.values("frames._sample_id")
@@ -3305,7 +3305,7 @@ def _index_frames(sample_collection, key_field, frame_key_field):
 
 
 def _finalize_frames(sample_collection, key_field, frame_key_field):
-    aggs = [foa.Values(key_field), foa.Values("_id", _allow_missing=True)]
+    aggs = [foa.Values(key_field), foa.Values("_id")]
     ids_map = {k: v for k, v in zip(*sample_collection.aggregate(aggs))}
 
     all_frame_keys = sample_collection.values(
