@@ -148,10 +148,10 @@ const makeTagData = (
   totalCount: number,
   matchedTags: Set<string>,
   name: string,
+  theme,
   toggleFilter: () => void,
   labels: boolean
 ): any => {
-  const theme = useTheme();
   const color = matchedTags.has(name) ? theme.font : theme.fontDark;
   const Component =
     matchedTags.has(name) || matchedTags.size === 0
@@ -178,6 +178,7 @@ const makeClearMatchTags = (color, matchedTags, setMatchedTags) => {
   return matchedTags.size
     ? [
         <PillButton
+          key="clear-match"
           highlight={false}
           icon={<Visibility />}
           text={numeral(matchedTags.size).format("0,0")}
@@ -253,6 +254,7 @@ const SampleTagsCell = ({ modal }: TagsCellProps) => {
                 count[name],
                 matchedTags,
                 name,
+                theme,
                 (e) => {
                   e.stopPropagation();
                   e.preventDefault();
@@ -340,6 +342,7 @@ const LabelTagsCell = ({ modal }: TagsCellProps) => {
             count[name] ?? 0,
             matchedTags,
             name,
+            theme,
             (e) => {
               e.stopPropagation();
               e.preventDefault();
