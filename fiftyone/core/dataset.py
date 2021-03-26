@@ -3163,9 +3163,9 @@ def _merge_samples(
     # here, but here's the current workflow:
     #
     # - Store the `key_field` value on each frame document in both the source
-    #   and destination collection corresopnding to its parent sample in a
+    #   and destination collections corresopnding to its parent sample in a
     #   temporary `frame_key_field` field
-    # - Merge the sample documents
+    # - Merge the sample documents without frames attached
     # - Merge the frame documents on key `[frame_key_field, frame_number]` with
     #   their old `_sample_id`s unset
     # - Generate a mapping from `key_field` -> `_id` for the post-merge
