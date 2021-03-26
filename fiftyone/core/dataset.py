@@ -3166,10 +3166,10 @@ def _merge_samples(
     #   and destination collections corresopnding to its parent sample in a
     #   temporary `frame_key_field` field
     # - Merge the sample documents without frames attached
-    # - Merge the frame documents on key `[frame_key_field, frame_number]` with
+    # - Merge the frame documents on `[frame_key_field, frame_number]` with
     #   their old `_sample_id`s unset
-    # - Generate a mapping from `key_field` -> `_id` for the post-merge
-    #   sample documents, then make a pass over the frame documents and set
+    # - Generate a `key_field` -> `_id` mapping for the post-merge sample docs,
+    #   then make a pass over the frame documents and set
     #   their `_sample_id` to the corresponding value from this mapping
     # - The merge is complete, so delete `frame_key_field` from both frame
     #   collections
