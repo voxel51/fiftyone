@@ -3159,8 +3159,8 @@ def _merge_samples(
     #
     # The trouble is that the `_sample_id` of the frame documents need to match
     # the `_id` of the sample documents after merging. There may be a more
-    # clever way to make this happen via `$lookup` what is implemented here,
-    # but here's how we currently achieve it:
+    # clever way to make this happen via `$lookup` than what is implemented
+    # here, but here's the current workflow:
     #
     # - Store the `key_field` value on each frame document in both the source
     #   and destination collection corresopnding to its parent sample in a
