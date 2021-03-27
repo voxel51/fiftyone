@@ -708,7 +708,7 @@ def _get_general_metadata_file(
                 return split_filepath
 
     if download:
-        _download_if_necessary(filepath, annot_link)
+        _download_if_necessary(filepath, annot_link, quiet=0)
 
     return filepath
 
@@ -967,7 +967,7 @@ def _get_label_data(
     csv_path = os.path.join(dataset_dir, "labels", label_type + ".csv")
     if download:
         _download_if_necessary(
-            csv_path, annot_link,
+            csv_path, annot_link, quiet=0,
         )
     data = _parse_csv(csv_path)
 
@@ -1395,7 +1395,7 @@ def _create_segmentations(seg_id_data, image_id, classes_map, dataset_dir):
     return segmentations
 
 
-def _download_if_necessary(filename, source, is_zip=False):
+def _download_if_necessary(filename, source, is_zip=False, quiet=-1):
     if is_zip:
         # Check if unzipped directory exists
         unzipped_dir = os.path.splitext(filename)[0]
@@ -1405,13 +1405,14 @@ def _download_if_necessary(filename, source, is_zip=False):
             return
 
     if not os.path.isfile(filename):
-        logger.info("Downloading %s to %s" % (source, filename))
+        if quiet < 1:
+            logger.info("Downloading %s to %s" % (source, filename))
         etau.ensure_basedir(filename)
-        etaw.download_file(source, path=filename)
+        q = False if quiet == -1 else True
+        etaw.download_file(source, path=filename, quiet=q)
 
     if is_zip:
         # Unpack zipped directory
-        logger.info("Unpacking zip...")
         etau.extract_zip(filename, outdir=unzipped_dir, delete_zip=True)
 
 
@@ -1419,7 +1420,8 @@ def _load_all_image_ids(download_dir, split=None, download=False):
     csv_filepath = os.path.join(download_dir, "metadata", "image_ids.csv")
     if download:
         annot_link = _ANNOTATION_DOWNLOAD_LINKS[split]["image_ids"]
-        _download_if_necessary(csv_filepath, annot_link)
+        quiet = -1 if split == "train" else 0
+        _download_if_necessary(csv_filepath, annot_link, quiet=quiet)
     csv_data = _parse_csv(csv_filepath)
     split_ids = [i[0].rstrip() for i in csv_data[1:]]
     return split_ids
@@ -1428,6 +1430,7 @@ def _load_all_image_ids(download_dir, split=None, download=False):
 def _download_segmentation_masks(valid_ids, seg_ids, dataset_dir, split):
     logger.info("Downloading relevant segmentation masks")
     seg_zip_names = list({i[0].upper() for i in (set(valid_ids) & seg_ids)})
+    quiet = 1 if split == "validation" else 0
     for zip_name in seg_zip_names:
         zip_path = os.path.join(
             dataset_dir, "labels", "masks", "%s.zip" % zip_name,
@@ -1438,6 +1441,7 @@ def _download_segmentation_masks(valid_ids, seg_ids, dataset_dir, split):
                 zip_name
             ],
             is_zip=True,
+            quiet=quiet,
         )
 
 
