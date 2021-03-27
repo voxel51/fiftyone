@@ -232,7 +232,7 @@ class Classification(ImageLabel, _HasID):
         image_labels = etai.ImageLabels()
         image_labels.add_attribute(
             etad.CategoricalAttribute(
-                name, self.label, confidence=self.confidence,
+                name, self.label, confidence=self.confidence, tags=self.tags
             )
         )
         return image_labels
@@ -293,6 +293,7 @@ class Classifications(ImageLabel, _HasLabelList):
                     name,
                     classification.label,
                     confidence=classification.confidence,
+                    tags=classification.tags,
                 )
             )
 
@@ -404,6 +405,7 @@ class Detection(ImageLabel, _HasID, _HasAttributes):
             confidence=confidence,
             name=name,
             attrs=attrs,
+            tags=self.tags,
         )
 
     def to_image_labels(self, name=None):
@@ -443,6 +445,7 @@ class Detection(ImageLabel, _HasID, _HasAttributes):
             index=dobj.index,
             mask=dobj.mask,
             attributes=attributes,
+            tags=dobj.tags,
         )
 
 
@@ -576,6 +579,7 @@ class Polyline(ImageLabel, _HasID, _HasAttributes):
             mask=mask,
             index=self.index,
             attributes=self.attributes,
+            tags=self.tags,
         )
 
     def to_eta_polyline(self, name=None):
@@ -600,6 +604,7 @@ class Polyline(ImageLabel, _HasID, _HasAttributes):
             closed=self.closed,
             filled=self.filled,
             attrs=attrs,
+            tags=self.tags,
         )
 
     def to_image_labels(self, name=None):
@@ -637,6 +642,7 @@ class Polyline(ImageLabel, _HasID, _HasAttributes):
             closed=polyline.closed,
             filled=polyline.filled,
             attributes=attributes,
+            tags=polyline.tags,
         )
 
 
@@ -747,6 +753,7 @@ class Keypoint(ImageLabel, _HasID, _HasAttributes):
             index=self.index,
             points=self.points,
             attrs=attrs,
+            tags=self.tags,
         )
 
     def to_image_labels(self, name=None):
@@ -782,6 +789,7 @@ class Keypoint(ImageLabel, _HasID, _HasAttributes):
             confidence=keypoints.confidence,
             index=keypoints.index,
             attributes=attributes,
+            tags=keypoints.tags,
         )
 
 
@@ -854,7 +862,7 @@ class Segmentation(ImageLabel, _HasID):
         Returns:
             an ``eta.core.image.ImageLabels``
         """
-        return etai.ImageLabels(mask=self.mask)
+        return etai.ImageLabels(mask=self.mask, tags=self.tags)
 
     @classmethod
     def from_mask(cls, mask):
