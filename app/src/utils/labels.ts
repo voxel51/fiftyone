@@ -70,7 +70,7 @@ export const LABEL_LIST = {
   Classifications: "classifications",
   Detections: "detections",
   Keypoints: "keypoints",
-  Polylines: "poylines",
+  Polylines: "polylines",
 };
 
 export const AGGS = {
