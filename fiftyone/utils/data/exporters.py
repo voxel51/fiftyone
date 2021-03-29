@@ -961,13 +961,17 @@ class FiftyOneBatchDatasetExporter(BatchDatasetExporter):
         for sample, filepath in zip(samples, _outpaths):
             sample["filepath"] = filepath
 
-        foo.export_collection(samples, num_samples, self._samples_path)
+        foo.export_collection(
+            samples, self._samples_path, key="samples", num_docs=num_samples
+        )
 
         if sample_collection.media_type == fomm.VIDEO:
             logger.info("Exporting frames...")
             num_frames = sample_collection.count("frames")
             frames = sample_collection._aggregate(frames_only=True)
-            foo.export_collection(frames, num_frames, self._frames_path)
+            foo.export_collection(
+                frames, self._frames_path, key="frames", num_docs=num_frames
+            )
 
         conn = foo.get_db_conn()
         name = sample_collection._dataset.name

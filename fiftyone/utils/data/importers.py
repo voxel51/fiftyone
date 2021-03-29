@@ -1041,7 +1041,7 @@ class FiftyOneBatchDatasetImporter(BatchDatasetImporter):
         conn.datasets.replace_one({"name": name}, dataset_dict)
 
         logger.info("Importing samples...")
-        samples = foo.import_collection(self._samples_path)
+        samples = foo.import_collection(self._samples_path).get("samples", [])
 
         samples = self._preprocess_list(samples)
 
@@ -1067,7 +1067,7 @@ class FiftyOneBatchDatasetImporter(BatchDatasetImporter):
 
         if os.path.exists(self._frames_path):
             logger.info("Importing frames...")
-            frames = foo.import_collection(self._frames_path)
+            frames = foo.import_collection(self._frames_path).get("frames", [])
 
             if self.max_samples is not None:
                 frames = [f for f in frames if f["_sample_id"] in sample_ids]
