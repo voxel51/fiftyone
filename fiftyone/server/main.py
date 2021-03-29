@@ -752,9 +752,10 @@ class StateHandler(tornado.websocket.WebSocketHandler):
 
         count = sum(results[: len(count_aggs)])
 
-        tags = {}
+        tags = defaultdict(int)
         for result in results[len(count_aggs) :]:
-            tags.update(result)
+            for tag, num in result.items():
+                tags[tag] += num
 
         _write_message(
             {"type": "selected_statistics", "count": count, "tags": tags},
