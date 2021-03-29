@@ -774,10 +774,11 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         col = cls.sample_collection()
 
         if view.media_type == fom.VIDEO:
-            samples = await _get_video_data(
-                col, state, view, sample_ids, labels=False
-            )
-            result = [{"sample": s, "frames": f} for (s, f) in samples]
+            samples = await _get_video_data(col, state, view, sample_ids)
+            result = [
+                {"sample": s, "frames": f, "labels": l.serialize()}
+                for (s, f, l) in samples
+            ]
         else:
             view = view.select(sample_ids)
             result, _ = await _get_sample_data(col, view, len(sample_ids), 1)
@@ -1150,7 +1151,7 @@ async def _get_sample_data(col, view, page_length, page):
     return results, more
 
 
-async def _get_video_data(col, state, view, _ids, labels=True):
+async def _get_video_data(col, state, view, _ids):
     view = view.select(_ids)
     pipeline = view._pipeline()
     results = []
@@ -1164,11 +1165,8 @@ async def _get_video_data(col, state, view, _ids, labels=True):
         convert([sample])
         convert(frames)
 
-        if labels:
-            labels = _make_video_labels(state, view, sample, frames)
-            results.append((sample, frames, labels))
-        else:
-            results.append((sample, frames))
+        labels = _make_video_labels(state, view, sample, frames)
+        results.append((sample, frames, labels))
 
     return results
 
