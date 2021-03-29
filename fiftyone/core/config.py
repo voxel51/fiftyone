@@ -221,7 +221,7 @@ class AppConfig(EnvConfig):
             d,
             "show_attributes",
             env_var="FIFTYONE_APP_SHOW_ATTRIBUTES",
-            default=True,
+            default=False,
         )
         self.show_confidence = self.parse_bool(
             d,

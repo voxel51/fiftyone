@@ -3,7 +3,7 @@ Deprecated==1.2.11
 eventlet==0.25.2
 Flask==1.1.2
 httpx==0.7.7
-Jinja2==2.10.1
+Jinja2==2.11.3
 kaleido==0.2.1
 matplotlib==3.2.1
 mongoengine==0.20.0
