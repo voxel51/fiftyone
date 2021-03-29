@@ -565,8 +565,8 @@ class SampleCollection(object):
             tags = list(tags)
 
         def _add_tags(_tags):
-            if not _tags:  # handles None
-                return tags
+            if _tags is None:  # mising `Label`
+                return None
 
             for tag in tags:
                 if tag not in _tags:
@@ -589,8 +589,8 @@ class SampleCollection(object):
             tags = list(tags)
 
         def _remove_tags(_tags):
-            if not _tags:  # handles None
-                return _tags
+            if _tags is None:  # mising `Label`
+                return None
 
             return [t for t in _tags if t not in tags]
 
@@ -625,8 +625,8 @@ class SampleCollection(object):
             tags = list(tags)
 
         def _add_tags(_tags):
-            if not _tags:  # handles None
-                return tags
+            if _tags is None:  # mising `Label`
+                return None
 
             for tag in tags:
                 if tag not in _tags:
@@ -652,8 +652,8 @@ class SampleCollection(object):
             tags = list(tags)
 
         def _remove_tags(_tags):
-            if not _tags:  # handles None
-                return _tags
+            if _tags is None:  # mising `Label`
+                return None
 
             return [t for t in _tags if t not in tags]
 
@@ -674,9 +674,12 @@ class SampleCollection(object):
             level += issubclass(label_type, fol._LABEL_LIST_FIELDS)
             level += self._is_frame_field(tags_path)
 
-            tags = self.values(tags_path)
+            # Omit samples/frames with no labels
+            view = self.exists(label_field)
+
+            tags = view.values(tags_path)
             tags = _transform_values(tags, edit_fcn, level=level)
-            self.set_values(tags_path, tags)
+            view.set_values(tags_path, tags)
 
     def _get_selected_labels(self, ids=None, tags=None, fields=None):
         view = self.select_labels(ids=ids, tags=tags, fields=fields)
@@ -747,7 +750,7 @@ class SampleCollection(object):
 
         return dict(counts)
 
-    def set_values(self, field_name, values):
+    def set_values(self, field_name, values, skip_none=False):
         """Sets the field or embedded field on each sample or frame in the
         collection to the given values.
 
@@ -795,6 +798,8 @@ class SampleCollection(object):
                 an iterable of values, one for each frame of the sample. If
                 ``field_name`` contains array fields, the corresponding entries
                 of ``values`` must be arrays of the same lengths
+            skip_none (False): whether to treat None data in ``values`` as
+                missing data that should not be set
         """
         field_name, is_frame_field, list_fields, _ = self._parse_field_name(
             field_name
@@ -805,11 +810,11 @@ class SampleCollection(object):
             list_fields = [lf for lf in list_fields if lf != field_name]
 
         if is_frame_field:
-            self._set_frame_values(field_name, values, list_fields)
+            self._set_frame_values(field_name, values, list_fields, skip_none)
         else:
-            self._set_sample_values(field_name, values, list_fields)
+            self._set_sample_values(field_name, values, list_fields, skip_none)
 
-    def _set_sample_values(self, field_name, values, list_fields):
+    def _set_sample_values(self, field_name, values, list_fields, skip_none):
         root = field_name.split(".", 1)[0]
         if root not in self.get_field_schema():
             raise ValueError(
@@ -829,12 +834,17 @@ class SampleCollection(object):
             elem_ids = self.values(list_field + "._id")
 
             self._set_list_values_by_id(
-                field_name, sample_ids, elem_ids, values, list_field
+                field_name,
+                sample_ids,
+                elem_ids,
+                values,
+                list_field,
+                skip_none,
             )
         else:
-            self._set_values(field_name, sample_ids, values)
+            self._set_values(field_name, sample_ids, values, skip_none)
 
-    def _set_frame_values(self, field_name, values, list_fields):
+    def _set_frame_values(self, field_name, values, list_fields, skip_none):
         root = field_name.split(".", 1)[0]
         if root not in self.get_frame_field_schema():
             raise ValueError(
@@ -863,20 +873,33 @@ class SampleCollection(object):
                 elem_ids,
                 values,
                 list_field,
+                skip_none,
                 frames=True,
             )
         else:
-            self._set_values(field_name, frame_ids, values, frames=True)
+            self._set_values(
+                field_name, frame_ids, values, skip_none, frames=True
+            )
 
-    def _set_values(self, field_name, ids, values, frames=False):
-        ops = [
-            UpdateOne({"_id": _id}, {"$set": {field_name: value}})
-            for _id, value in zip(ids, values)
-        ]
+    def _set_values(self, field_name, ids, values, skip_none, frames=False):
+        ops = []
+        for _id, value in zip(ids, values):
+            if value is None and skip_none:
+                continue
+
+            ops.append(UpdateOne({"_id": _id}, {"$set": {field_name: value}}))
+
         self._dataset._bulk_write(ops, frames=frames)
 
     def _set_list_values_by_id(
-        self, field_name, ids, elem_ids, values, list_field, frames=False
+        self,
+        field_name,
+        ids,
+        elem_ids,
+        values,
+        list_field,
+        skip_none,
+        frames=False,
     ):
         root = list_field
         leaf = field_name[len(root) + 1 :]
@@ -887,6 +910,9 @@ class SampleCollection(object):
                 continue
 
             for _elem_id, value in zip(_elem_ids, _values):
+                if value is None and skip_none:
+                    continue
+
                 if _elem_id is None:
                     raise ValueError(
                         "Can only set values of array documents with IDs"
@@ -895,29 +921,6 @@ class SampleCollection(object):
                 update = {"$set": {root + ".$." + leaf: value}}
                 op = UpdateOne({"_id": _id, root + "._id": _elem_id}, update)
                 ops.append(op)
-
-        self._dataset._bulk_write(ops, frames=frames)
-
-    def _set_all_list_values(
-        self, field_name, ids, values, list_field, frames=False
-    ):
-        # If `self` is a view, this method will only work if the array's
-        # elements have not been filtered or reordered, since it updates the
-        # entire field on the dataset with one `$set`. Therefore, we do not use
-        # this approach currently. However, it does have the advantage that it
-        # works if the array contains items that do not have `_id`s, and it
-        # might (untested) be faster than `_set_list_values_by_id()`
-
-        root = list_field
-        leaf = field_name[len(root) + 1 :]
-
-        ops = []
-        for _id, _values in zip(ids, values):
-            expr = F.zip(F(root), _values).map(
-                F()[0].set_field(leaf, F()[1], relative=False)
-            )
-            update = [{"$set": {root: expr.to_mongo()}}]
-            ops.append(UpdateOne({"_id": _id}, update))
 
         self._dataset._bulk_write(ops, frames=frames)
 
