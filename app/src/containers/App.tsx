@@ -49,23 +49,10 @@ const useStateUpdate = () => {
 };
 
 const useStatisticsUpdate = () => {
-  return useRecoilCallback(
-    ({ snapshot, set, reset }) => async ({ stats, view, filters }) => {
-      filters && set(atoms.extendedDatasetStatsRaw, { stats, view, filters });
-      !filters && set(atoms.datasetStatsRaw, { stats, view });
-
-      if (filters) return;
-
-      const state = await snapshot.getPromise(atoms.stateDescription);
-      const modalSampleTags = await snapshot.getPromise(
-        atoms.matchedTagsModal("sample")
-      );
-      const modalLabelTags = await snapshot.getPromise(
-        atoms.matchedTagsModal("label")
-      );
-      console.log(stats);
-    }
-  );
+  return useRecoilCallback(({ set }) => async ({ stats, view, filters }) => {
+    filters && set(atoms.extendedDatasetStatsRaw, { stats, view, filters });
+    !filters && set(atoms.datasetStatsRaw, { stats, view });
+  });
 };
 
 const useOpen = () => {

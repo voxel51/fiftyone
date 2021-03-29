@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import styled from "styled-components";
 import { useRecoilValue, useRecoilState } from "recoil";
 import {
@@ -228,6 +228,15 @@ const SampleTagsCell = ({ modal }: TagsCellProps) => {
   const count = useRecoilValue(countAtom);
   const colorByLabel = useRecoilValue(atoms.colorByLabel(modal));
   const theme = useTheme();
+
+  useEffect(() => {
+    const newMatches = new Set<string>();
+    matchedTags.forEach((tag) => {
+      tags.includes(tag) && newMatches.add(tag);
+    });
+
+    newMatches.size != matchedTags.size && setMatchedTags(newMatches);
+  }, [matchedTags, tags]);
 
   return (
     <Cell
