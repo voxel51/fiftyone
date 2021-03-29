@@ -157,17 +157,26 @@ const makeTagData = (
   return (
     <>
       <span>{makeData(filteredCount, totalCount)}</span>
-      <Visibility
-        title={`Only show ${labels ? "labels" : "samples"} with this tag`}
+      <span
+        title={`Only show ${labels ? "labels" : "samples"} with this tag ${
+          matchedTags.size ? "or other selected tags" : ""
+        }`}
+        onClick={toggleFilter}
         style={{
-          color,
+          cursor: "pointer",
           height: 20,
           width: 20,
           marginLeft: 8,
-          cursor: "pointer",
         }}
-        onClick={toggleFilter}
-      />
+      >
+        <Visibility
+          style={{
+            color,
+            height: 20,
+            width: 20,
+          }}
+        />
+      </span>
     </>
   );
 };
@@ -299,7 +308,10 @@ const LabelTagsCell = ({ modal }: TagsCellProps) => {
   );
   const colorMap = useRecoilValue(selectors.colorMap(modal));
   const [subCountAtom, countAtom] = modal
-    ? [labelModalTagCounts(true), labelModalTagCounts(false)]
+    ? [
+        labelModalTagCounts({ filtered: true, selected: false }),
+        labelModalTagCounts({ filtered: false, selected: false }),
+      ]
     : [selectors.filteredLabelTagSampleCounts, selectors.labelTagSampleCounts];
 
   const subCount = subCountAtom ? useRecoilValue(subCountAtom) : null;

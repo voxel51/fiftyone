@@ -156,13 +156,13 @@ const addLabelToTagsResult = (result, label, label_id = null) => {
 
 export const labelModalTagCounts = selectorFamily<
   { [key: string]: number },
-  boolean
+  { filtered: boolean; selected: boolean }
 >({
   key: "labelModalTagCounts",
-  get: (filtered) => ({ get }) => {
+  get: ({ filtered, selected }) => ({ get }) => {
     const result = {};
 
-    if (get(selectors.selectedLabelIds).size > 0) {
+    if (selected && get(selectors.selectedLabelIds).size > 0) {
       const selected = get(selectors.selectedLabels);
 
       for (const label_id in selected) {
@@ -229,7 +229,7 @@ export const tagStats = selectorFamily<
     if (modal && labels) {
       return {
         ...Object.fromEntries(get(allTags).label.map((t) => [t, 0])),
-        ...get(labelModalTagCounts(true)),
+        ...get(labelModalTagCounts({ filtered: true, selected: true })),
       };
     } else if (modal) {
       const sample = get(selectors.modalSample);

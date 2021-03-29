@@ -26,7 +26,7 @@ import "player51/src/css/player51.css";
 import "../app.global.css";
 
 const useStateUpdate = () => {
-  return useRecoilCallback(({ snapshot, set, reset }) => async (state) => {
+  return useRecoilCallback(({ snapshot, set, reset }) => async ({ state }) => {
     const newSamples = new Set<string>(state.selected);
     const oldSamples = await snapshot.getPromise(atoms.selectedSamples);
     oldSamples.forEach(
@@ -35,7 +35,9 @@ const useStateUpdate = () => {
     newSamples.forEach(
       (s) => !oldSamples.has(s) && set(atoms.isSelectedSample(s), true)
     );
-
+    const counter = await snapshot.getPromise(atoms.viewCounter);
+    set(atoms.viewCounter, counter + 1);
+    set(atoms.loading, false);
     set(atoms.selectedSamples, newSamples);
     set(atoms.stateDescription, state);
     set(selectors.anyTagging, false);
@@ -46,41 +48,50 @@ const useStateUpdate = () => {
   });
 };
 
+const useStatisticsUpdate = () => {
+  return useRecoilCallback(
+    ({ snapshot, set, reset }) => async ({ stats, view, filters }) => {
+      filters && set(atoms.extendedDatasetStatsRaw, { stats, view, filters });
+      !filters && set(atoms.datasetStatsRaw, { stats, view });
+
+      if (filters) return;
+
+      const state = await snapshot.getPromise(atoms.stateDescription);
+      const modalSampleTags = await snapshot.getPromise(
+        atoms.matchedTagsModal("sample")
+      );
+      const modalLabelTags = await snapshot.getPromise(
+        atoms.matchedTagsModal("label")
+      );
+      console.log(stats);
+    }
+  );
+};
+
+const useOpen = () => {
+  return useRecoilCallback(({ set, snapshot }) => async () => {
+    set(atoms.loading, true);
+    const loading = await snapshot.getPromise(atoms.loading);
+    !loading && set(atoms.connected, true);
+  });
+};
+
+const useClose = () => {
+  return useRecoilCallback(({ reset, set }) => async () => {
+    set(atoms.connected, false);
+    reset(atoms.stateDescription);
+  });
+};
+
 function App() {
   const addNotification = useRef(null);
   const [reset, setReset] = useState(false);
-  const setConnected = useSetRecoilState(atoms.connected);
-  const [loading, setLoading] = useRecoilState(atoms.loading);
-  const setStateDescription = useSetRecoilState(atoms.stateDescription);
-  const [viewCounterValue, setViewCounter] = useRecoilState(atoms.viewCounter);
-  const setExtendedDatasetStats = useSetRecoilState(
-    atoms.extendedDatasetStatsRaw
-  );
-  const setDatasetStats = useSetRecoilState(atoms.datasetStatsRaw);
 
-  const handleStateUpdate = useStateUpdate();
+  useMessageHandler("statistics", useStatisticsUpdate());
+  useEventHandler(socket, "open", useOpen());
 
-  useMessageHandler("statistics", ({ stats, view, filters }) => {
-    filters && setExtendedDatasetStats({ stats, view, filters });
-    !filters && setDatasetStats({ stats, view });
-  });
-
-  useEventHandler(socket, "open", () => {
-    setConnected(true);
-    if (!loading) {
-      setLoading(true);
-    }
-  });
-
-  useEventHandler(socket, "close", () => {
-    setConnected(false);
-    setStateDescription({});
-  });
-  useMessageHandler("update", ({ state }) => {
-    setViewCounter(viewCounterValue + 1);
-    setLoading(false);
-    handleStateUpdate(state);
-  });
+  useEventHandler(socket, "close", useClose());
+  useMessageHandler("update", useStateUpdate());
 
   useMessageHandler("notification", (data) => addNotification.current(data));
   const connected = useRecoilValue(atoms.connected);
