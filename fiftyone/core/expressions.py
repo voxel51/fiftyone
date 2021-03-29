@@ -11,6 +11,8 @@ import warnings
 
 import bson
 
+import numpy as np
+
 import eta.core.utils as etau
 
 from fiftyone.core.odm.document import MongoEngineBaseDocument
@@ -939,7 +941,7 @@ class ViewExpression(object):
         return ViewExpression({"$ln": self})
 
     def log(self, base):
-        """Computes logarithm base ``base`` of this expression, which must
+        """Computes the logarithm base ``base`` of this expression, which must
         resolve to a numeric value.
 
         Examples::
@@ -965,8 +967,8 @@ class ViewExpression(object):
         return ViewExpression({"$log": [self, base]})
 
     def log10(self):
-        """Computes logarithm base 10 of this expression, which must resolve to
-        a numeric value.
+        """Computes the logarithm base 10 of this expression, which must
+        resolve to a numeric value.
 
         Examples::
 
@@ -1051,6 +1053,284 @@ class ViewExpression(object):
             a :class:`ViewExpression`
         """
         return ViewExpression({"$sqrt": self})
+
+    # Trigonometric operators #################################################
+
+    def cos(self):
+        """Computes the cosine of this expression, which must resolve to a
+        numeric value, in radians.
+
+        Examples::
+
+            import numpy as np
+
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            # Get samples whose `uniqueness` value is >= 0.5 using `cos()`
+            view = dataset.match(F("uniqueness").cos() <= np.cos(0.5))
+
+            print(view.bounds("uniqueness"))
+
+        Returns:
+            a :class:`ViewExpression`
+        """
+        return ViewExpression({"$cos": self})
+
+    def cosh(self):
+        """Computes the hyperbolic cosine of this expression, which must
+        resolve to a numeric value, in radians.
+
+        Examples::
+
+            import numpy as np
+
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            # Get samples whose `uniqueness` value is >= 0.5 using `cosh()`
+            view = dataset.match(F("uniqueness").cosh() >= np.cosh(0.5))
+
+            print(view.bounds("uniqueness"))
+
+        Returns:
+            a :class:`ViewExpression`
+        """
+        return ViewExpression({"$cosh": self})
+
+    def sin(self):
+        """Computes the sine of this expression, which must resolve to a
+        numeric value, in radians.
+
+        Examples::
+
+            import numpy as np
+
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            # Get samples whose `uniqueness` value is >= 0.5 using `sin()`
+            view = dataset.match(F("uniqueness").sin() >= np.sin(0.5))
+
+            print(view.bounds("uniqueness"))
+
+        Returns:
+            a :class:`ViewExpression`
+        """
+        return ViewExpression({"$sin": self})
+
+    def sinh(self):
+        """Computes the hyperbolic sine of this expression, which must resolve
+        to a numeric value, in radians.
+
+        Examples::
+
+            import numpy as np
+
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            # Get samples whose `uniqueness` value is >= 0.5 using `sinh()`
+            view = dataset.match(F("uniqueness").sinh() >= np.sinh(0.5))
+
+            print(view.bounds("uniqueness"))
+
+        Returns:
+            a :class:`ViewExpression`
+        """
+        return ViewExpression({"$sinh": self})
+
+    def tan(self):
+        """Computes the tangent of this expression, which must resolve to a
+        numeric value, in radians.
+
+        Examples::
+
+            import numpy as np
+
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            # Get samples whose `uniqueness` value is >= 0.5 using `tan()`
+            view = dataset.match(F("uniqueness").tan() >= np.tan(0.5))
+
+            print(view.bounds("uniqueness"))
+
+        Returns:
+            a :class:`ViewExpression`
+        """
+        return ViewExpression({"$tan": self})
+
+    def tanh(self):
+        """Computes the hyperbolic tangent of this expression, which must
+        resolve to a numeric value, in radians.
+
+        Examples::
+
+            import numpy as np
+
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            # Get samples whose `uniqueness` value is >= 0.5 using `tanh()`
+            view = dataset.match(F("uniqueness").tanh() >= np.tanh(0.5))
+
+            print(view.bounds("uniqueness"))
+
+        Returns:
+            a :class:`ViewExpression`
+        """
+        return ViewExpression({"$tanh": self})
+
+    def arccos(self):
+        """Computes the inverse cosine of this expression, which must resolve
+        to a numeric value, in radians.
+
+        Examples::
+
+            import numpy as np
+
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            # Get samples whose `uniqueness` value is >= 0.5 using `arccos()`
+            view = dataset.match(F("uniqueness").arccos() <= np.arccos(0.5))
+
+            print(view.bounds("uniqueness"))
+
+        Returns:
+            a :class:`ViewExpression`
+        """
+        return ViewExpression({"$acos": self})
+
+    def arccosh(self):
+        """Computes the inverse hyperbolic cosine of this expression, which
+        must resolve to a numeric value, in radians.
+
+        Examples::
+
+            import numpy as np
+
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            # Get samples whose `uniqueness` value is >= 0.5 using `arccosh()`
+            view = dataset.match((1 + F("uniqueness")).arccosh() >= np.arccosh(1.5))
+
+            print(view.bounds("uniqueness"))
+
+        Returns:
+            a :class:`ViewExpression`
+        """
+        return ViewExpression({"$acosh": self})
+
+    def arcsin(self):
+        """Computes the inverse sine of this expression, which must resolve to
+        a numeric value, in radians.
+
+        Examples::
+
+            import numpy as np
+
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            # Get samples whose `uniqueness` value is >= 0.5 using `arcsin()`
+            view = dataset.match(F("uniqueness").arcsin() >= np.arcsin(0.5))
+
+            print(view.bounds("uniqueness"))
+
+        Returns:
+            a :class:`ViewExpression`
+        """
+        return ViewExpression({"$asin": self})
+
+    def arcsinh(self):
+        """Computes the inverse hyperbolic sine of this expression, which must
+        resolve to a numeric value, in radians.
+
+        Examples::
+
+            import numpy as np
+
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            # Get samples whose `uniqueness` value is >= 0.5 using `arcsinh()`
+            view = dataset.match(F("uniqueness").arcsinh() >= np.arcsinh(0.5))
+
+            print(view.bounds("uniqueness"))
+
+        Returns:
+            a :class:`ViewExpression`
+        """
+        return ViewExpression({"$asinh": self})
+
+    def arctan(self):
+        """Computes the inverse tangent of this expression, which must resolve
+        to a numeric value, in radians.
+
+        Examples::
+
+            import numpy as np
+
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            # Get samples whose `uniqueness` value is >= 0.5 using `arctan()`
+            view = dataset.match(F("uniqueness").arctan() >= np.arctan(0.5))
+
+            print(view.bounds("uniqueness"))
+
+        Returns:
+            a :class:`ViewExpression`
+        """
+        return ViewExpression({"$atan": self})
+
+    def arctanh(self):
+        """Computes the inverse hyperbolic tangent of this expression, which
+        must resolve to a numeric value, in radians.
+
+        Examples::
+
+            import numpy as np
+
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            # Get samples whose `uniqueness` value is >= 0.5 using `arctanh()`
+            view = dataset.match(F("uniqueness").arctanh() >= np.arctanh(0.5))
+
+            print(view.bounds("uniqueness"))
+
+        Returns:
+            a :class:`ViewExpression`
+        """
+        return ViewExpression({"$atanh": self})
 
     # Generic field operators #################################################
 
@@ -3059,8 +3339,8 @@ class ViewExpression(object):
 
     @staticmethod
     def rand():
-        """Returns an expression that generates a random float in ``[0, 1]``
-        each time it is called.
+        """Returns an expression that generates a uniform random float in
+        ``[0, 1]`` each time it is called.
 
         Examples::
 
@@ -3081,6 +3361,35 @@ class ViewExpression(object):
             a :class:`ViewExpression`
         """
         return ViewExpression({"$rand": {}})
+
+    @staticmethod
+    def randn():
+        """Returns an expression that generates a sample from the standard
+        Gaussian distribution each time it is called.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            # Create a view that contains a different 50%% of the dataset each
+            # time it is used
+            view = dataset.match(F.randn() < 0)
+
+            print(view.first().id)
+            print(view.first().id)  # probably different!
+
+        Returns:
+            a :class:`ViewExpression`
+        """
+        # Box-Muller transform
+        # https://en.wikipedia.org/wiki/Box%E2%80%93Muller_transform
+        alpha = (-2.0 * (ViewExpression.rand().ln())).sqrt()
+        beta = (2.0 * np.pi * ViewExpression.rand()).cos()
+        return alpha * beta
 
     @staticmethod
     def any(exprs):
