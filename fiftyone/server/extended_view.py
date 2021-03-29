@@ -38,6 +38,9 @@ def get_extended_view(view, filters, count_labels_tags=False):
             if "label" in tags:
                 label_tags = tags["label"]
 
+            if not count_labels_tags:
+                view = view.select_labels(tags=label_tags)
+
             if "sample" in tags:
                 view = view.match_tags(tags=tags["sample"])
 
@@ -116,7 +119,7 @@ def _make_filter_stages(view, filters, label_tags=None, hide_result=False):
             expr = _make_scalar_expression(F(keys[-1]), args)
             if expr is not None:
                 if hide_result:
-                    new_field = "__%s" % path
+                    new_field = "__%s" % path.split(".")[-1]
                     if frames:
                         new_field = "%s%s" % (view._FRAMES_PREFIX, new_field,)
                 else:
@@ -130,7 +133,7 @@ def _make_filter_stages(view, filters, label_tags=None, hide_result=False):
             if expr is not None:
                 stages.append(fosg.Match(expr))
 
-    if label_tags is not None:
+    if label_tags is not None and hide_result:
         for path, _ in fos.DatasetStatistics.labels(view):
             if path not in filters and hide_result:
                 new_field = _get_filtered_path(view, path, filters)

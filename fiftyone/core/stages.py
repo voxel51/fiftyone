@@ -1441,7 +1441,8 @@ def _get_filter_frames_list_field_pipeline(
     filter_field, new_field, filter_arg, only_matches=True, prefix=""
 ):
     cond = _get_list_field_mongo_filter(filter_arg)
-    label_field, labels_list = new_field.split(".")
+    label_field, labels_list = new_field.split(".")[-2:]
+
     old_field = filter_field.split(".")[0]
 
     pipeline = [
