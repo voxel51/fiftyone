@@ -455,34 +455,55 @@ export const labelCount = selectorFamily<number | null, boolean>({
   },
 });
 
+const addLabels = ({ activeFields, filter, labels, sample, obj }) => {
+  Object.entries(filter(obj))
+    .filter(([k]) => !RESERVED_FIELDS.includes(k) && activeFields.includes(k))
+    .forEach(([name, field]) => {
+      if (VALID_LIST_TYPES.includes(field._cls)) {
+        field[LABEL_LIST[field._cls]].forEach(({ _id }) => {
+          labels.push({
+            label_id: _id,
+            sample_id: sample._id,
+            field: name,
+            frame_number: obj.frame_number || null,
+          });
+        });
+      } else {
+        labels.push({
+          label_id: field._id,
+          sample_id: sample._id,
+          field: name,
+          frame_number: obj.frame_number || null,
+        });
+      }
+    });
+};
+
 export const modalLabels = selector<atoms.SelectedLabel[]>({
   key: "modalLabels",
   get: ({ get }) => {
     const sample = get(selectors.modalSample);
     const filter = get(sampleModalFilter);
     const activeFields = get(activeLabels({ modal: true, frames: false }));
+    const isVideo = get(selectors.isVideoDataset);
     const labels = [];
-    Object.entries(filter(sample))
-      .filter(([k]) => !RESERVED_FIELDS.includes(k) && activeFields.includes(k))
-      .forEach(([name, field]) => {
-        if (VALID_LIST_TYPES.includes(field._cls)) {
-          field[LABEL_LIST[field._cls]].forEach(({ _id }) => {
-            labels.push({
-              label_id: _id,
-              sample_id: sample._id,
-              field: name,
-              frame_number: null,
-            });
-          });
-        } else {
-          labels.push({
-            label_id: field._id,
-            sample_id: sample._id,
-            field: name,
-            frame_number: null,
-          });
-        }
-      });
+    addLabels({ activeFields, filter, labels, sample, obj: sample });
+    if (isVideo) {
+      const activeFrameLabels = get(
+        activeLabels({ modal: true, frames: true })
+      );
+      const frames = get(atoms.sampleFrameData(sample._id));
+      frames &&
+        frames.forEach((frame) =>
+          addLabels({
+            activeFields: activeFrameLabels,
+            labels,
+            sample,
+            obj: frame,
+            filter: (o) => filter(o, "frames."),
+          })
+        );
+    }
     return labels;
   },
 });

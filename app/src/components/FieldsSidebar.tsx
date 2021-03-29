@@ -12,7 +12,6 @@ import {
   PhotoLibrary,
   VideoLibrary,
   Visibility,
-  VisibilityOff,
 } from "@material-ui/icons";
 import { animated, useSpring } from "react-spring";
 import numeral from "numeral";
@@ -155,14 +154,10 @@ const makeTagData = (
   labels: boolean
 ): any => {
   const color = matchedTags.has(name) ? theme.font : theme.fontDark;
-  const Component =
-    matchedTags.has(name) || matchedTags.size === 0
-      ? Visibility
-      : VisibilityOff;
   return (
     <>
       <span>{makeData(filteredCount, totalCount)}</span>
-      <Component
+      <Visibility
         title={`Only show ${labels ? "labels" : "samples"} with this tag`}
         style={{
           color,

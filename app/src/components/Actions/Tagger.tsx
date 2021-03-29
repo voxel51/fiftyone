@@ -1,4 +1,4 @@
-import React, { Suspense, useEffect, useLayoutEffect, useState } from "react";
+import React, { Suspense, useLayoutEffect, useState } from "react";
 import numeral from "numeral";
 import { CircularProgress } from "@material-ui/core";
 import {
