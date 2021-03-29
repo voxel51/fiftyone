@@ -101,7 +101,7 @@ const Cell = React.memo(
                 highlight={false}
                 open={false}
                 icon={<Check />}
-                title={"Clear visibility"}
+                title={"Clear displayed"}
                 text={numeral(numSelected).format("0,0")}
                 style={{
                   height: "1.5rem",
