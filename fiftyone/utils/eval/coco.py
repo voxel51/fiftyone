@@ -123,8 +123,8 @@ class COCOEvaluation(DetectionEvaluation):
             a list of matched ``(gt_label, pred_label, iou, pred_confidence)``
             tuples
         """
-        gts = sample_or_frame[self.config.gt_field]
-        preds = sample_or_frame[self.config.pred_field]
+        gts = sample_or_frame[self.gt_field]
+        preds = sample_or_frame[self.pred_field]
 
         if eval_key is None:
             # Don't save results on user's data
@@ -164,10 +164,12 @@ class COCOEvaluation(DetectionEvaluation):
         if not self.config.compute_mAP:
             return DetectionResults(matches, classes=classes, missing=missing)
 
-        pred_field = self.config.pred_field
-        gt_field = self.config.gt_field
-        iou_threshs = self.config.iou_threshs
+        iter_samples = samples.select_fields(
+            [self.config.gt_field, self.config.pred_field]
+        )
+        processing_frames = samples._is_frame_field(self.config.pred_field)
 
+        iou_threshs = self.config.iou_threshs
         thresh_matches = {t: {} for t in iou_threshs}
         if classes is None:
             classes = []
@@ -175,39 +177,45 @@ class COCOEvaluation(DetectionEvaluation):
         # IoU sweep
         logger.info("Performing IoU sweep...")
         with fou.ProgressBar() as pb:
-            for sample in pb(samples):
-                # Don't mess with the user's data
-                gts = sample[gt_field].copy()
-                preds = sample[pred_field].copy()
+            for sample in pb(iter_samples):
+                if processing_frames:
+                    images = sample.frames.values()
+                else:
+                    images = [sample]
 
-                sample_matches = _coco_evaluation_iou_sweep(
-                    gts, preds, self.config
-                )
+                for image in images:
+                    # Don't mess with the user's data
+                    gts = image[self.gt_field].copy()
+                    preds = image[self.pred_field].copy()
 
-                for t, ms in sample_matches.items():
-                    for m in ms:
-                        # m = (gt_label, pred_label, iou, confidence, iscrowd)
-                        if m[4]:
-                            continue
+                    image_matches = _coco_evaluation_iou_sweep(
+                        gts, preds, self.config
+                    )
 
-                        c = m[0] if m[0] != None else m[1]
-                        if c not in classes:
-                            classes.append(c)
+                    for t, ms in image_matches.items():
+                        for m in ms:
+                            # m = (gt_label, pred_label, iou, confidence, iscrowd)
+                            if m[4]:
+                                continue
 
-                        if c not in thresh_matches[t]:
-                            thresh_matches[t][c] = {
-                                "tp": [],
-                                "fp": [],
-                                "num_gt": 0,
-                            }
+                            c = m[0] if m[0] != None else m[1]
+                            if c not in classes:
+                                classes.append(c)
 
-                        if m[0] == m[1]:
-                            thresh_matches[t][c]["tp"].append(m)
-                        elif m[1]:
-                            thresh_matches[t][c]["fp"].append(m)
+                            if c not in thresh_matches[t]:
+                                thresh_matches[t][c] = {
+                                    "tp": [],
+                                    "fp": [],
+                                    "num_gt": 0,
+                                }
 
-                        if m[0]:
-                            thresh_matches[t][c]["num_gt"] += 1
+                            if m[0] == m[1]:
+                                thresh_matches[t][c]["tp"].append(m)
+                            elif m[1]:
+                                thresh_matches[t][c]["fp"].append(m)
+
+                            if m[0]:
+                                thresh_matches[t][c]["num_gt"] += 1
 
         # Compute precision-recall array
         # Reference:
