@@ -372,6 +372,7 @@ const SampleModal = ({ onClose }: Props, ref) => {
   });
 
   const selectLabel = onSelectLabel(frameNumberRef);
+  console.log(sample);
 
   return (
     <Container

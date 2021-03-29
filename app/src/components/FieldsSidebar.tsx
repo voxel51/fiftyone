@@ -207,11 +207,7 @@ const makeClearMatchTags = (color, matchedTags, setMatchedTags) => {
     : [];
 };
 
-type TagsCellProps = {
-  modal: boolean;
-};
-
-const SampleTagsCell = ({ modal }: TagsCellProps) => {
+const useSampleTags = (modal) => {
   const tags = useRecoilValue(selectors.tagNames);
   const [activeTags, setActiveTags] = useRecoilState(
     fieldAtoms.activeTags(modal)
@@ -219,6 +215,30 @@ const SampleTagsCell = ({ modal }: TagsCellProps) => {
   const [matchedTags, setMatchedTags] = useRecoilState(
     selectors.matchedTags({ modal, key: "sample" })
   );
+  useEffect(() => {
+    const newMatches = new Set<string>();
+    matchedTags.forEach((tag) => {
+      tags.includes(tag) && newMatches.add(tag);
+    });
+
+    newMatches.size !== matchedTags.size && setMatchedTags(newMatches);
+  }, [matchedTags, tags]);
+
+  return { tags, activeTags, setActiveTags, matchedTags, setMatchedTags };
+};
+
+type TagsCellProps = {
+  modal: boolean;
+};
+
+const SampleTagsCell = ({ modal }: TagsCellProps) => {
+  const {
+    tags,
+    activeTags,
+    setActiveTags,
+    matchedTags,
+    setMatchedTags,
+  } = useSampleTags(modal);
   const colorMap = useRecoilValue(selectors.colorMap(modal));
   const [subCountAtom, countAtom] = modal
     ? [null, selectors.tagSampleModalCounts]
@@ -228,15 +248,6 @@ const SampleTagsCell = ({ modal }: TagsCellProps) => {
   const count = useRecoilValue(countAtom);
   const colorByLabel = useRecoilValue(atoms.colorByLabel(modal));
   const theme = useTheme();
-
-  useEffect(() => {
-    const newMatches = new Set<string>();
-    matchedTags.forEach((tag) => {
-      tags.includes(tag) && newMatches.add(tag);
-    });
-
-    newMatches.size != matchedTags.size && setMatchedTags(newMatches);
-  }, [matchedTags, tags]);
 
   return (
     <Cell
@@ -307,7 +318,7 @@ const SampleTagsCell = ({ modal }: TagsCellProps) => {
   );
 };
 
-const LabelTagsCell = ({ modal }: TagsCellProps) => {
+const useLabelTags = (modal, countAtom) => {
   let tags = useRecoilValue(selectors.labelTagNames);
   const [activeTags, setActiveTags] = useRecoilState(
     fieldAtoms.activeLabelTags(modal)
@@ -315,6 +326,29 @@ const LabelTagsCell = ({ modal }: TagsCellProps) => {
   const [matchedTags, setMatchedTags] = useRecoilState(
     selectors.matchedTags({ modal, key: "label" })
   );
+  const count = useRecoilValue(countAtom);
+  useEffect(() => {
+    const newMatches = new Set<string>();
+    matchedTags.forEach((tag) => {
+      tags.includes(tag) && newMatches.add(tag);
+    });
+
+    newMatches.size !== matchedTags.size && setMatchedTags(newMatches);
+  }, [matchedTags, tags]);
+
+  !modal && (tags = tags.filter((t) => count[t]));
+
+  return {
+    tags,
+    activeTags,
+    setActiveTags,
+    matchedTags,
+    setMatchedTags,
+    count,
+  };
+};
+
+const LabelTagsCell = ({ modal }: TagsCellProps) => {
   const colorMap = useRecoilValue(selectors.colorMap(modal));
   const [subCountAtom, countAtom] = modal
     ? [
@@ -323,14 +357,20 @@ const LabelTagsCell = ({ modal }: TagsCellProps) => {
       ]
     : [selectors.filteredLabelTagSampleCounts, selectors.labelTagSampleCounts];
 
+  const {
+    tags,
+    activeTags,
+    setActiveTags,
+    matchedTags,
+    setMatchedTags,
+    count,
+  } = useLabelTags(modal, countAtom);
+
   const subCount = subCountAtom ? useRecoilValue(subCountAtom) : null;
-  const count = useRecoilValue(countAtom);
   const colorByLabel = useRecoilValue(atoms.colorByLabel(modal));
   const theme = useTheme();
   const hasFilters = useRecoilValue(selectors.hasFilters);
   const extStats = useRecoilValue(selectors.extendedDatasetStats);
-
-  !modal && (tags = tags.filter((t) => count[t]));
 
   return (
     <Cell
