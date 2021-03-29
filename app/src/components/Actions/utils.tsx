@@ -120,6 +120,7 @@ export const selectedSampleLabelStatistics = selector<{
     const promise = new Promise((resolve) => {
       const listener = wrap(({ count, tags }) => {
         socket.removeEventListener("message", listener);
+        console.log(count, tags);
         resolve({ count, tags });
       }, "selected_statistics");
       socket.addEventListener("message", listener);

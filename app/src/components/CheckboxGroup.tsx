@@ -226,6 +226,7 @@ const Entry = React.memo(({ entry, onCheck, modal }: EntryProps) => {
         control={
           <Checkbox
             checked={selected}
+            title={`Show ${name}`}
             onChange={() => onCheck({ ...entry, selected: !entry.selected })}
             style={{
               display: hideCheckbox ? "none" : "block",
