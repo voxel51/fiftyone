@@ -76,9 +76,15 @@ class Aggregation(object):
         """
         raise NotImplementedError("subclasses must implement default_result()")
 
-    def _parse_field_and_expr(self, sample_collection, auto_unwind=True):
+    def _parse_field_and_expr(
+        self, sample_collection, auto_unwind=True, allow_missing=False
+    ):
         return _parse_field_and_expr(
-            sample_collection, self._field_name, auto_unwind, self._expr
+            sample_collection,
+            self._field_name,
+            self._expr,
+            auto_unwind,
+            allow_missing,
         )
 
 
@@ -1130,12 +1136,14 @@ class Values(Aggregation):
             fields
     """
 
-    def __init__(self, field_name, expr=None, missing_value=None):
+    def __init__(
+        self, field_name, expr=None, missing_value=None, _allow_missing=False
+    ):
         field_name, found_id_field = _handle_id_fields(field_name)
-
         super().__init__(field_name, expr=expr)
 
         self._missing_value = missing_value
+        self._allow_missing = _allow_missing
         self._found_id_field = found_id_field
         self._found_array_field = None
         self._num_list_fields = None
@@ -1172,7 +1180,9 @@ class Values(Aggregation):
 
     def to_mongo(self, sample_collection):
         path, pipeline, other_list_fields = self._parse_field_and_expr(
-            sample_collection, auto_unwind=False
+            sample_collection,
+            auto_unwind=False,
+            allow_missing=self._allow_missing,
         )
 
         self._found_array_field = sample_collection._is_array_field(path)
@@ -1242,7 +1252,9 @@ def _extract_list_values(subfield, expr):
     return F().map(map_expr)
 
 
-def _parse_field_and_expr(sample_collection, field_name, auto_unwind, expr):
+def _parse_field_and_expr(
+    sample_collection, field_name, expr, auto_unwind, allow_missing
+):
     if expr is not None:
         pipeline = sample_collection._make_set_field_pipeline(field_name, expr)
     else:
@@ -1254,7 +1266,7 @@ def _parse_field_and_expr(sample_collection, field_name, auto_unwind, expr):
         unwind_list_fields,
         other_list_fields,
     ) = sample_collection._parse_field_name(
-        field_name, auto_unwind=auto_unwind
+        field_name, auto_unwind=auto_unwind, allow_missing=allow_missing
     )
 
     if is_frame_field and auto_unwind:
