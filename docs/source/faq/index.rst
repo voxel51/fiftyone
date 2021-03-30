@@ -308,7 +308,7 @@ houses the |Dataset| using either the CLI or Python:
         session = fo.launch_app(dataset, remote=True)  # (optional) port=XXXX
 
 Then one or more users can use the CLI on their local machine to
-:ref:`connect to the remote session: <remote-app-local-machine>`.
+:ref:`connect to the remote session <remote-app-local-machine>`.
 
 .. note::
 
@@ -339,7 +339,7 @@ that you own), using commands similar to:
     .. code-block:: shell
 
         # On each remote machine
-        fiftyone app launch <dataset> --remote
+        fiftyone app launch <dataset> --remote --port RRRR
 
   .. group-tab:: Python
 
@@ -351,28 +351,28 @@ that you own), using commands similar to:
 
         dataset = fo.load_dataset(...)
 
-        session = fo.launch_app(dataset, remote=True)
+        session = fo.launch_app(dataset, remote=True, port=RRRR)
 
-On your local machine, you can launch App instances to
-:ref:`connect to the remote sessions <remote-app-local-machine>` using a
-local port for each session.
+On your local machine, you can
+:ref:`connect to these remote sessions <remote-app-local-machine>` using a
+different local port `XXXX` and `YYYY` for each.
 
-`XXXX` and `YYYY` used below are any open ports on your machine.
-
-If you do not have fiftyone installed on your local machine, open a new
+If you do not have Fiftyone installed on your local machine, open a new
 terminal window on your local machine and execute the following command to
-setup port forwarding to connect to your remote session. `RRRR` is the remote
-port number of the session you wish to connect to.
+setup port forwarding to connect to your remote sessions:
 
 .. code-block:: shell
 
-    # `[<username>@]<hostname>` refers to your remote machine
-    ssh -N -L XXXX:localhost:RRRR [<username>@]<hostname>
-    # then open `http://localhost:XXXX` in your web browser.
+    ssh -N -L XXXX:localhost:RRRR1 [<username1>@]<hostname1>
+    # Then open `http://localhost:XXXX` in your web browser
 
 .. code-block:: shell
 
-    ssh -N -L YYYY:localhost:RRRR [<username>@]<hostname>
+    ssh -N -L YYYY:localhost:RRRR2 [<username2>@]<hostname2>
+    # Then open `http://localhost:YYYY` in your web browser
+
+In the above, `[<username#>@]<hostname#>` refers to a remote machine and
+`RRRR#` is the remote port that you used for the remote session.
 
 Alternatively, if you have FiftyOne installed on your local machine, you can
 :ref:`use the CLI <cli-fiftyone-app-connect>` to automatically configure port
@@ -382,16 +382,16 @@ forwarding and open the App in your browser as follows:
 
     # Connect to first remote session
     fiftyone app connect \
-        --destination [<username1>@]<hostname> \
-        --port RRRR
+        --destination [<username1>@]<hostname1> \
+        --port RRRR1
         --local-port XXXX
 
 .. code-block:: shell
 
     # Connect to second remote session
     fiftyone app connect \
-        --destination [<username2>@]hostname \
-        --port RRRR
+        --destination [<username2>@]<hostname2> \
+        --port RRRR2
         --local-port YYYY
 
 .. note::
@@ -438,24 +438,25 @@ specifying different ports for each |Session| that you create:
         session1 = fo.launch_app(dataset1, remote=True, port=XXXX)
 
         # Create second remote session
-        # This can be done in either the same or another process
+        # This can be done in the same or another process
         dataset2 = fo.load_dataset(...)
         session2 = fo.launch_app(dataset2, remote=True, port=YYYY)
 
-On your local machine(s), you can launch App instances to
+On your local machine(s), you can now
 :ref:`connect to the remote sessions <remote-app-local-machine>`. Connections
 can be set up using port forwarding in the following way:
 
 .. code-block:: shell
 
-    # `[<username>@]<hostname>` refers to your remote machine
     ssh -N -L WWWW:localhost:XXXX [<username>@]<hostname>
-    # then open `http://localhost:WWWW` in your web browser.
+    # Then open `http://localhost:WWWW` in your web browser
 
 .. code-block:: shell
 
     ssh -N -L ZZZZ:localhost:YYYY [<username>@]<hostname>
+    # Then open `http://localhost:ZZZZ` in your web browser
 
+In the above, `[<username>@]<hostname>` refers to your remote machine, and
 `WWWW` and `ZZZZ` are any 4 digit ports on your local machine(s).
 
 Alternatively, if you have FiftyOne installed on your local machine, you can
@@ -481,7 +482,6 @@ forwarding and open the App in your browser as follows:
         --destination [<username>@]<hostname> \
         --port YYYY \
         --local-port ZZZZ
-
 
 .. _faq-downgrade:
 
