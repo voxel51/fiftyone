@@ -76,9 +76,15 @@ class Aggregation(object):
         """
         raise NotImplementedError("subclasses must implement default_result()")
 
-    def _parse_field_and_expr(self, sample_collection, auto_unwind=True):
+    def _parse_field_and_expr(
+        self, sample_collection, auto_unwind=True, allow_missing=False
+    ):
         return _parse_field_and_expr(
-            sample_collection, self._field_name, auto_unwind, self._expr
+            sample_collection,
+            self._field_name,
+            self._expr,
+            auto_unwind,
+            allow_missing,
         )
 
 
@@ -730,6 +736,9 @@ class HistogramValues(Aggregation):
 
     def _compute_bin_edges(self, sample_collection):
         bounds = sample_collection.bounds(self._field_name, expr=self._expr)
+        if any(b is None for b in bounds):
+            bounds = (-1, -1)
+
         return list(
             np.linspace(bounds[0], bounds[1] + 1e-6, self._num_bins + 1)
         )
@@ -1127,10 +1136,17 @@ class Values(Aggregation):
             fields
     """
 
-    def __init__(self, field_name, expr=None, missing_value=None):
+    def __init__(
+        self, field_name, expr=None, missing_value=None, _allow_missing=False
+    ):
+        field_name, found_id_field = _handle_id_fields(field_name)
         super().__init__(field_name, expr=expr)
+
         self._missing_value = missing_value
-        self._found_array_field = False
+        self._allow_missing = _allow_missing
+        self._found_id_field = found_id_field
+        self._found_array_field = None
+        self._num_list_fields = None
 
     def default_result(self):
         """Returns the default result for this aggregation.
@@ -1149,26 +1165,57 @@ class Values(Aggregation):
         Returns:
             the list of field values
         """
+        values = d["values"]
+
+        if self._found_id_field:
+            level = 1 + self._num_list_fields
+            return _transform_values(values, str, level=level)
+
         if self._found_array_field:
-            return _deserialize_arrays(d["values"])
+            fcn = fou.deserialize_numpy_array
+            level = 1 + self._num_list_fields
+            return _transform_values(values, fcn, level=level)
 
-        if self._field_name == "id":
-            return [str(_id) for _id in d["values"]]
-
-        return d["values"]
+        return values
 
     def to_mongo(self, sample_collection):
         path, pipeline, other_list_fields = self._parse_field_and_expr(
-            sample_collection, auto_unwind=False
+            sample_collection,
+            auto_unwind=False,
+            allow_missing=self._allow_missing,
         )
 
         self._found_array_field = sample_collection._is_array_field(path)
+        self._num_list_fields = len(other_list_fields)
 
         pipeline += _make_extract_values_pipeline(
             path, other_list_fields, self._missing_value
         )
 
         return pipeline
+
+
+def _handle_id_fields(field_name):
+    if field_name == "id":
+        field_name = "_id"
+        found_id_field = True
+    elif field_name.endswith(".id"):
+        field_name = field_name[: -len(".id")] + "._id"
+        found_id_field = True
+    else:
+        found_id_field = False
+
+    return field_name, found_id_field
+
+
+def _transform_values(values, fcn, level=1):
+    if values is None:
+        return None
+
+    if level < 1:
+        return fcn(values)
+
+    return [_transform_values(v, fcn, level=level - 1) for v in values]
 
 
 def _make_extract_values_pipeline(path, list_fields, missing_value):
@@ -1205,7 +1252,9 @@ def _extract_list_values(subfield, expr):
     return F().map(map_expr)
 
 
-def _parse_field_and_expr(sample_collection, field_name, auto_unwind, expr):
+def _parse_field_and_expr(
+    sample_collection, field_name, expr, auto_unwind, allow_missing
+):
     if expr is not None:
         pipeline = sample_collection._make_set_field_pipeline(field_name, expr)
     else:
@@ -1217,7 +1266,7 @@ def _parse_field_and_expr(sample_collection, field_name, auto_unwind, expr):
         unwind_list_fields,
         other_list_fields,
     ) = sample_collection._parse_field_name(
-        field_name, auto_unwind=auto_unwind
+        field_name, auto_unwind=auto_unwind, allow_missing=allow_missing
     )
 
     if is_frame_field and auto_unwind:
@@ -1244,13 +1293,3 @@ def _parse_field_and_expr(sample_collection, field_name, auto_unwind, expr):
     pipeline.append({"$project": {root: True}})
 
     return path, pipeline, other_list_fields
-
-
-def _deserialize_arrays(value):
-    if value is None:
-        return None
-
-    if isinstance(value, list):
-        return [_deserialize_arrays(v) for v in value]
-
-    return fou.deserialize_numpy_array(value)

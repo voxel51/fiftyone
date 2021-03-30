@@ -57,6 +57,19 @@ class DatasetView(foc.SampleCollection):
         self.__dataset__ = dataset
         self._stages = _stages
 
+    def __eq__(self, other_view):
+        if not isinstance(other_view, DatasetView):
+            return False
+
+        if self._dataset != other_view._dataset:
+            return False
+
+        # Two views into the same dataset are equal if their stage definitions
+        # are equal, excluding their UUIDs
+        d = self._serialize(include_uuids=False)
+        other_d = other_view._serialize(include_uuids=False)
+        return d == other_d
+
     def __len__(self):
         return self.count()
 
@@ -669,9 +682,6 @@ class DatasetView(foc.SampleCollection):
         if not attach_frames:
             attach_frames = self._needs_frames()
 
-        if not attach_frames:
-            detach_frames = False
-
         return self._dataset._pipeline(
             pipeline=_pipeline,
             attach_frames=attach_frames,
@@ -698,8 +708,11 @@ class DatasetView(foc.SampleCollection):
     def _doc(self):
         return self._dataset._doc
 
-    def _serialize(self):
-        return [stage._serialize() for stage in self._stages]
+    def _serialize(self, include_uuids=True):
+        return [
+            stage._serialize(include_uuid=include_uuids)
+            for stage in self._stages
+        ]
 
     @staticmethod
     def _build(dataset, stage_dicts):
