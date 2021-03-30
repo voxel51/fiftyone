@@ -3342,17 +3342,40 @@ class ViewExpression(object):
         """Returns an expression that generates a uniform random float in
         ``[0, 1]`` each time it is called.
 
+        .. warning::
+
+            This expression will generate new values each time it is used, so
+            you likely do not want to use it to construct dataset views, since
+            such views would produce different outputs each time they are used.
+
+            A typical usage for this expression is in conjunction with
+            :meth:`fiftyone.core.collections.SampleCollection.set_field` and
+            :meth:`fiftyone.core.collections.SampleCollection.save` to populate
+            a randomized field on a dataset.
+
         Examples::
 
             import fiftyone as fo
             import fiftyone.zoo as foz
-            from fiftyone import ViewField as F
+            from fiftyone import ViewExpression as E
 
-            dataset = foz.load_zoo_dataset("quickstart")
+            dataset = foz.load_zoo_dataset("quickstart").clone()
 
+            #
+            # Populate a new `rand` field with random numbers
+            #
+
+            dataset.add_sample_field("rand", fo.FloatField)
+            dataset.set_field("rand", E.rand()).save("rand")
+
+            print(dataset.bounds("rand"))
+
+            #
             # Create a view that contains a different 10%% of the dataset each
             # time it is used
-            view = dataset.match(F.rand() < 0.1)
+            #
+
+            view = dataset.match(E.rand() < 0.1)
 
             print(view.first().id)
             print(view.first().id)  # probably different!
@@ -3367,17 +3390,40 @@ class ViewExpression(object):
         """Returns an expression that generates a sample from the standard
         Gaussian distribution each time it is called.
 
+        .. warning::
+
+            This expression will generate new values each time it is used, so
+            you likely do not want to use it to construct dataset views, since
+            such views would produce different outputs each time they are used.
+
+            A typical usage for this expression is in conjunction with
+            :meth:`fiftyone.core.collections.SampleCollection.set_field` and
+            :meth:`fiftyone.core.collections.SampleCollection.save` to populate
+            a randomized field on a dataset.
+
         Examples::
 
             import fiftyone as fo
             import fiftyone.zoo as foz
-            from fiftyone import ViewField as F
+            from fiftyone import ViewExpression as E
 
-            dataset = foz.load_zoo_dataset("quickstart")
+            dataset = foz.load_zoo_dataset("quickstart").clone()
 
+            #
+            # Populate a new `randn` field with random numbers
+            #
+
+            dataset.add_sample_field("randn", fo.FloatField)
+            dataset.set_field("randn", E.randn()).save("randn")
+
+            print(dataset.bounds("randn"))
+
+            #
             # Create a view that contains a different 50%% of the dataset each
             # time it is used
-            view = dataset.match(F.randn() < 0)
+            #
+
+            view = dataset.match(E.randn() < 0)
 
             print(view.first().id)
             print(view.first().id)  # probably different!
