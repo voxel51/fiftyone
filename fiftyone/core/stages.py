@@ -1336,7 +1336,7 @@ class FilterLabels(FilterField):
         self._filter = filter
         self._new_field = _new_field or field
         self._only_matches = only_matches
-        self._prefix = ""
+        self._prefix = _prefix
         self._labels_field = None
         self._is_frame_field = None
         self._is_labels_list_field = None
@@ -1419,7 +1419,6 @@ def _get_filter_list_field_pipeline(
     filter_field, new_field, filter_arg, only_matches=True, prefix=""
 ):
     cond = _get_list_field_mongo_filter(filter_arg)
-
     pipeline = [
         {
             "$set": {
