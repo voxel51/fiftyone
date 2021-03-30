@@ -8,8 +8,6 @@ Classification evaluation.
 import itertools
 import warnings
 
-import matplotlib.pyplot as plt
-from mpl_toolkits.axes_grid1 import make_axes_locatable
 import numpy as np
 import sklearn.metrics as skm
 
@@ -17,7 +15,7 @@ import fiftyone.core.aggregations as foa
 import fiftyone.core.evaluation as foe
 from fiftyone.core.expressions import ViewField as F
 import fiftyone.core.fields as fof
-import fiftyone.core.utils as fou
+import fiftyone.core.plots as fop
 
 
 def evaluate_classifications(
@@ -187,20 +185,38 @@ class SimpleEvaluation(ClassificationEvaluation):
         is_frame_field = samples._is_frame_field(gt_field)
 
         gt = gt_field + ".label"
+        gt_id = gt_field + ".id"
         pred = pred_field + ".label"
+        pred_id = pred_field + ".id"
         pred_conf = pred_field + ".confidence"
 
-        ytrue, ypred, confs = samples.aggregate(
-            [foa.Values(gt), foa.Values(pred), foa.Values(pred_conf)]
+        ytrue, ytrue_ids, ypred, ypred_ids, confs = samples.aggregate(
+            [
+                foa.Values(gt),
+                foa.Values(gt_id),
+                foa.Values(pred),
+                foa.Values(pred_id),
+                foa.Values(pred_conf),
+            ]
         )
 
         if is_frame_field:
             ytrue = list(itertools.chain.from_iterable(ytrue))
+            ytrue_ids = list(itertools.chain.from_iterable(ytrue_ids))
             ypred = list(itertools.chain.from_iterable(ypred))
+            ypred_ids = list(itertools.chain.from_iterable(ypred_ids))
             confs = list(itertools.chain.from_iterable(confs))
 
         results = ClassificationResults(
-            ytrue, ypred, confs, classes=classes, missing=missing
+            ytrue,
+            ypred,
+            confs=confs,
+            gt_field=gt_field,
+            pred_field=pred_field,
+            ytrue_ids=ytrue_ids,
+            ypred_ids=ypred_ids,
+            classes=classes,
+            missing=missing,
         )
 
         if eval_key is None:
@@ -276,10 +292,12 @@ class TopKEvaluation(ClassificationEvaluation):
 
         # This extracts a potentially huge number of logits
         # @todo consider sample iteration for very large datasets
-        ytrue, ypred, logits = samples.aggregate(
+        ytrue, ytrue_ids, ypred, ypred_ids, logits = samples.aggregate(
             [
                 foa.Values(gt_field + ".label"),
+                foa.Values(gt_field + ".id"),
                 foa.Values(pred_field + ".label"),
+                foa.Values(pred_field + ".id"),
                 foa.Values(pred_field + ".logits"),
             ]
         )
@@ -297,7 +315,9 @@ class TopKEvaluation(ClassificationEvaluation):
                 correct.append(_correct)
 
             ytrue = list(itertools.chain.from_iterable(ytrue))
+            ytrue_ids = list(itertools.chain.from_iterable(ytrue_ids))
             ypred = list(itertools.chain.from_iterable(ypred))
+            ypred_ids = list(itertools.chain.from_iterable(ypred_ids))
             confs = list(itertools.chain.from_iterable(confs))
         else:
             confs, correct = _evaluate_top_k(
@@ -305,7 +325,15 @@ class TopKEvaluation(ClassificationEvaluation):
             )
 
         results = ClassificationResults(
-            ytrue, ypred, confs, classes=classes, missing=missing
+            ytrue,
+            ypred,
+            confs=confs,
+            gt_field=gt_field,
+            pred_field=pred_field,
+            ytrue_ids=ytrue_ids,
+            ypred_ids=ypred_ids,
+            classes=classes,
+            missing=missing,
         )
 
         if eval_key is None:
@@ -417,19 +445,38 @@ class BinaryEvaluation(ClassificationEvaluation):
         pos_label = classes[-1]
 
         gt = gt_field + ".label"
+        gt_id = gt_field + ".id"
         pred = pred_field + ".label"
+        pred_id = pred_field + ".id"
         pred_conf = pred_field + ".confidence"
 
-        ytrue, ypred, confs = samples.aggregate(
-            [foa.Values(gt), foa.Values(pred), foa.Values(pred_conf)]
+        ytrue, ytrue_ids, ypred, ypred_ids, confs = samples.aggregate(
+            [
+                foa.Values(gt),
+                foa.Values(gt_id),
+                foa.Values(pred),
+                foa.Values(pred_id),
+                foa.Values(pred_conf),
+            ]
         )
 
         if is_frame_field:
             ytrue = list(itertools.chain.from_iterable(ytrue))
+            ytrue_ids = list(itertools.chain.from_iterable(ytrue_ids))
             ypred = list(itertools.chain.from_iterable(ypred))
+            ypred_ids = list(itertools.chain.from_iterable(ypred_ids))
             confs = list(itertools.chain.from_iterable(confs))
 
-        results = BinaryClassificationResults(ytrue, ypred, confs, classes)
+        results = BinaryClassificationResults(
+            ytrue,
+            ypred,
+            confs,
+            classes,
+            gt_field=gt_field,
+            pred_field=pred_field,
+            ytrue_ids=ytrue_ids,
+            ypred_ids=ypred_ids,
+        )
 
         if eval_key is None:
             return results
@@ -485,6 +532,10 @@ class ClassificationResults(foe.EvaluationResults):
         ypred: a list of predicted labels
         confs (None): an optional list of confidences for the predictions
         weights (None): an optional list of sample weights
+        gt_field (None): the name of the ground truth field
+        pred_field (None): the name of the predictions field
+        ytrue_ids (None): a list of IDs for the ground truth labels
+        ypred_ids (None): a list of IDs for the predicted labels
         classes (None): the list of possible classes. If not provided, the
             observed ground truth/predicted labels are used
         missing (None): a missing label string. Any None-valued labels are
@@ -497,6 +548,10 @@ class ClassificationResults(foe.EvaluationResults):
         ypred,
         confs=None,
         weights=None,
+        gt_field=None,
+        pred_field=None,
+        ytrue_ids=None,
+        ypred_ids=None,
         classes=None,
         missing=None,
     ):
@@ -508,6 +563,14 @@ class ClassificationResults(foe.EvaluationResults):
         self.ypred = np.asarray(ypred)
         self.confs = np.asarray(confs) if confs is not None else None
         self.weights = np.asarray(weights) if weights is not None else None
+        self.gt_field = gt_field
+        self.pred_field = pred_field
+        self.ytrue_ids = (
+            np.asarray(ytrue_ids) if ytrue_ids is not None else None
+        )
+        self.ypred_ids = (
+            np.asarray(ypred_ids) if ypred_ids is not None else None
+        )
         self.classes = np.asarray(classes)
         self.missing = missing
 
@@ -625,7 +688,7 @@ class ClassificationResults(foe.EvaluationResults):
             a ``num_classes x num_classes`` confusion matrix
         """
         labels = self._get_labels(classes, include_missing=True)
-        confusion_matrix, _ = self._confusion_matrix(
+        confusion_matrix, _, _ = self._confusion_matrix(
             labels, include_other=include_other
         )
         return confusion_matrix
@@ -636,6 +699,7 @@ class ClassificationResults(foe.EvaluationResults):
         include_other=False,
         other_label=None,
         include_missing=False,
+        tabulate_ids=False,
     ):
         labels = list(labels)
 
@@ -654,26 +718,34 @@ class ClassificationResults(foe.EvaluationResults):
             ypred = self.ypred
             ytrue = self.ytrue
 
-        confusion_matrix = skm.confusion_matrix(
-            ytrue, ypred, labels=labels, sample_weight=self.weights
+        confusion_matrix, ids = _compute_confusion_matrix(
+            ytrue,
+            ypred,
+            labels,
+            weights=self.weights,
+            ytrue_ids=self.ytrue_ids,
+            ypred_ids=self.ypred_ids,
+            tabulate_ids=tabulate_ids,
         )
-        return confusion_matrix, labels
+
+        return confusion_matrix, labels, ids
 
     def plot_confusion_matrix(
         self,
         classes=None,
         include_other=True,
         other_label="(other)",
-        show_values=True,
-        show_colorbar=True,
-        cmap="viridis",
-        xticks_rotation=45.0,
-        ax=None,
-        figsize=None,
-        block=False,
-        return_ax=False,
+        backend="plotly",
+        **kwargs,
     ):
         """Plots a confusion matrix for the results.
+
+        If you are working in a notebook environment with the default plotly
+        backend, this method returns an interactive
+        :class:`fiftyone.core.plots.plotly.PlotlyHeatmap` that you can attach
+        to an App session via its :attr:`fiftyone.core.session.Session.plots`
+        attribute, which will automatically sync the session's view with the
+        currently selected cells in the confusion matrix.
 
         Args:
             classes (None): an optional list of classes to include in the
@@ -687,29 +759,27 @@ class ClassificationResults(foe.EvaluationResults):
                 are no predictions that fall in this case
             other_label ("(other)"): the label to use for "other" predictions.
                 Only applicable when ``include_other`` is True
-            show_values (True): whether to show counts in the confusion matrix
-                cells
-            show_colorbar (True): whether to show a colorbar
-            cmap ("viridis"): a colormap recognized by ``matplotlib``
-            xticks_rotation (45.0): a rotation for the x-tick labels. Can be
-                numeric degrees, "vertical", "horizontal", or None
-            ax (None): an optional matplotlib axis to plot in
-            figsize (None): an optional ``(width, height)`` for the figure, in
-                inches
-            block (False): whether to block execution when the plot is
-                displayed via ``matplotlib.pyplot.show(block=block)``
-            return_ax (False): whether to return the matplotlib axis containing
-                the plot
+            backend ("plotly"): the plotting backend to use. Supported values
+                are ``("plotly", "matplotlib")``
+            **kwargs: keyword arguments for the backend plotting method:
+
+                -   "plotly" backend: :meth:`fiftyone.core.plots.plotly.plot_confusion_matrix`
+                -   "matplotlib" backend: :meth:`fiftyone.core.plots.matplotlib.plot_confusion_matrix`
 
         Returns:
-            the matplotlib axis containing the plot
+            one of the following:
+
+            -   a :class:`fiftyone.core.plots.plotly.PlotlyHeatmap`, if the
+                plotly backend is used
+            -   a matplotlib figure, otherwise
         """
         _labels = self._get_labels(classes, include_missing=True)
-        confusion_matrix, labels = self._confusion_matrix(
+        confusion_matrix, labels, ids = self._confusion_matrix(
             _labels,
             include_other=include_other,
             other_label=other_label,
             include_missing=include_other,
+            tabulate_ids=True,
         )
 
         if include_other:
@@ -719,6 +789,7 @@ class ClassificationResults(foe.EvaluationResults):
             # Don't include extra ground truth rows
             if num_extra > 0:
                 confusion_matrix = confusion_matrix[:-num_extra, :]
+                ids = ids[:-num_extra, :]
 
             # Only include non-trivial extra prediction rows
             rm_inds = []
@@ -727,22 +798,19 @@ class ClassificationResults(foe.EvaluationResults):
                     rm_inds.append(idx)
 
             if rm_inds:
-                np.delete(confusion_matrix, rm_inds, axis=1)
+                confusion_matrix = np.delete(confusion_matrix, rm_inds, axis=1)
+                ids = np.delete(ids, rm_inds, axis=1)
                 labels = [l for i, l in enumerate(labels) if i not in rm_inds]
 
-        ax = _plot_confusion_matrix(
+        return fop.plot_confusion_matrix(
             confusion_matrix,
             labels,
-            show_values=show_values,
-            show_colorbar=show_colorbar,
-            cmap=cmap,
-            xticks_rotation=xticks_rotation,
-            ax=ax,
-            figsize=figsize,
+            ids=ids,
+            gt_field=self.gt_field,
+            pred_field=self.pred_field,
+            backend=backend,
+            **kwargs,
         )
-
-        plt.show(block=block)
-        return ax if return_ax else None
 
     @classmethod
     def _from_dict(cls, d, samples, **kwargs):
@@ -750,6 +818,10 @@ class ClassificationResults(foe.EvaluationResults):
         ypred = d["ypred"]
         confs = d.get("confs", None)
         weights = d.get("weights", None)
+        gt_field = d.get("gt_field", None)
+        pred_field = d.get("pred_field", None)
+        ytrue_ids = d.get("ytrue_ids", None)
+        ypred_ids = d.get("ypred_ids", None)
         classes = d.get("classes", None)
         missing = d.get("missing", None)
         return cls(
@@ -757,6 +829,10 @@ class ClassificationResults(foe.EvaluationResults):
             ypred,
             confs=confs,
             weights=weights,
+            gt_field=gt_field,
+            pred_field=pred_field,
+            ytrue_ids=ytrue_ids,
+            ypred_ids=ypred_ids,
             classes=classes,
             missing=missing,
             **kwargs,
@@ -775,14 +851,33 @@ class BinaryClassificationResults(ClassificationResults):
         confs: a list of confidences for the predictions
         classes: the ``(neg_label, pos_label)`` label strings for the task
         weights (None): an optional list of sample weights
+        gt_field (None): the name of the ground truth field
+        pred_field (None): the name of the predictions field
+        ytrue_ids (None): a list of IDs for the ground truth labels
+        ypred_ids (None): a list of IDs for the predicted labels
     """
 
-    def __init__(self, ytrue, ypred, confs, classes, weights=None):
+    def __init__(
+        self,
+        ytrue,
+        ypred,
+        confs,
+        classes,
+        weights=None,
+        gt_field=None,
+        pred_field=None,
+        ytrue_ids=None,
+        ypred_ids=None,
+    ):
         super().__init__(
             ytrue,
             ypred,
             confs=confs,
             weights=weights,
+            gt_field=gt_field,
+            pred_field=pred_field,
+            ytrue_ids=ytrue_ids,
+            ypred_ids=ypred_ids,
             classes=classes,
             missing=classes[0],
         )
@@ -813,31 +908,26 @@ class BinaryClassificationResults(ClassificationResults):
             sample_weight=self.weights,
         )
 
-    def plot_pr_curve(
-        self,
-        average="micro",
-        ax=None,
-        figsize=None,
-        block=False,
-        return_ax=False,
-        **kwargs,
-    ):
+    def plot_pr_curve(self, average="micro", backend="plotly", **kwargs):
         """Plots a precision-recall (PR) curve for the results.
 
         Args:
             average ("micro"): the averaging strategy to use when computing
                 average precision
-            ax (None): an optional matplotlib axis to plot in
-            figsize (None): an optional ``(width, height)`` for the figure, in
-                inches
-            block (False): whether to block execution when the plot is
-                displayed via ``matplotlib.pyplot.show(block=block)``
-            return_ax (False): whether to return the matplotlib axis containing
-                the plot
-            **kwargs: optional keyword arguments for matplotlib's ``plot()``
+            backend ("plotly"): the plotting backend to use. Supported values
+                are ``("plotly", "matplotlib")``
+            **kwargs: keyword arguments for the backend plotting method:
+
+                -   "plotly" backend: :meth:`fiftyone.core.plots.plotly.plot_pr_curve`
+                -   "matplotlib" backend: :meth:`fiftyone.core.plots.matplotlib.plot_pr_curve`
 
         Returns:
-            the matplotlib axis containing the plot
+            one of the following:
+
+            -   a :class:`fiftyone.core.plots.plotly.PlotlyNotebookPlot`, if
+                you are working in a notebook context and the plotly backend is
+                used
+            -   a plotly or matplotlib figure, otherwise
         """
         precision, recall, _ = skm.precision_recall_curve(
             self.ytrue,
@@ -846,36 +936,31 @@ class BinaryClassificationResults(ClassificationResults):
             sample_weight=self.weights,
         )
         avg_precision = self.average_precision(average=average)
-        display = skm.PrecisionRecallDisplay(
-            precision=precision, recall=recall
+        label = "AP = %.2f" % avg_precision
+
+        return fop.plot_pr_curve(
+            precision, recall, label=label, backend=backend, **kwargs
         )
 
-        label = "AP = %.2f" % avg_precision
-        display.plot(ax=ax, label=label, **kwargs)
-        if figsize is not None:
-            display.figure_.set_size_inches(*figsize)
-
-        plt.show(block=block)
-        return display.ax_ if return_ax else None
-
-    def plot_roc_curve(
-        self, ax=None, figsize=None, block=False, return_ax=False, **kwargs
-    ):
+    def plot_roc_curve(self, backend="plotly", **kwargs):
         """Plots a receiver operating characteristic (ROC) curve for the
         results.
 
         Args:
-            ax (None): an optional matplotlib axis to plot in
-            figsize (None): an optional ``(width, height)`` for the figure, in
-                inches
-            block (False): whether to block execution when the plot is
-                displayed via ``matplotlib.pyplot.show(block=block)``
-            return_ax (False): whether to return the matplotlib axis containing
-                the plot
-            **kwargs: optional keyword arguments for matplotlib's ``plot()``
+            backend ("plotly"): the plotting backend to use. Supported values
+                are ``("plotly", "matplotlib")``
+            **kwargs: keyword arguments for the backend plotting method:
+
+                -   "plotly" backend: :meth:`fiftyone.core.plots.plotly.plot_roc_curve`
+                -   "matplotlib" backend: :meth:`fiftyone.core.plots.matplotlib.plot_roc_curve`
 
         Returns:
-            the matplotlib axis containing the plot
+            one of the following:
+
+            -   a :class:`fiftyone.core.plots.plotly.PlotlyNotebookPlot`, if
+                you are working in a notebook context and the plotly backend is
+                used
+            -   a plotly or matplotlib figure, otherwise
         """
         fpr, tpr, _ = skm.roc_curve(
             self.ytrue,
@@ -884,13 +969,10 @@ class BinaryClassificationResults(ClassificationResults):
             sample_weight=self.weights,
         )
         roc_auc = skm.auc(fpr, tpr)
-        display = skm.RocCurveDisplay(fpr=fpr, tpr=tpr, roc_auc=roc_auc)
-        display.plot(ax=ax, **kwargs)
-        if figsize is not None:
-            display.figure_.set_size_inches(*figsize)
 
-        plt.show(block=block)
-        return display.ax_ if return_ax else None
+        return fop.plot_roc_curve(
+            fpr, tpr, roc_auc=roc_auc, backend=backend, **kwargs
+        )
 
 
 def _parse_config(config, pred_field, gt_field, method, **kwargs):
@@ -956,67 +1038,72 @@ def _to_binary_scores(y, confs, pos_label):
     return scores
 
 
-def _plot_confusion_matrix(
-    cm,
+def _compute_confusion_matrix(
+    ytrue,
+    ypred,
     labels,
-    show_values=True,
-    show_colorbar=True,
-    cmap="viridis",
-    xticks_rotation=None,
-    values_format=None,
-    ax=None,
-    figsize=None,
+    weights=None,
+    ytrue_ids=None,
+    ypred_ids=None,
+    tabulate_ids=False,
 ):
-    if ax is None:
-        fig, ax = plt.subplots()
+    ytrue = np.asarray(ytrue).flatten()
+    ypred = np.asarray(ypred).flatten()
+    labels = np.asarray(labels)
+
+    if weights is None:
+        weights = np.ones(ytrue.size, dtype=int)
     else:
-        fig = ax.figure
+        weights = np.asarray(weights).flatten()
 
-    nrows = cm.shape[0]
-    ncols = cm.shape[1]
-    im = ax.imshow(cm, interpolation="nearest", cmap=cmap)
+    if weights.dtype.kind in {"i", "u", "b"}:
+        dtype = np.int64
+    else:
+        dtype = np.float64
 
-    if show_values:
-        # Print text with appropriate color depending on background
-        cmap_min = im.cmap(0)
-        cmap_max = im.cmap(256)
-        thresh = (cm.max() + cm.min()) / 2.0
+    num_labels = labels.size
 
-        for i, j in itertools.product(range(nrows), range(ncols)):
-            color = cmap_max if cm[i, j] < thresh else cmap_min
+    confusion_matrix = np.zeros((num_labels, num_labels), dtype=dtype)
 
-            if values_format is None:
-                text_cm = format(cm[i, j], ".2g")
-                if cm.dtype.kind != "f":
-                    text_d = format(cm[i, j], "d")
-                    if len(text_d) < len(text_cm):
-                        text_cm = text_d
-            else:
-                text_cm = format(cm[i, j], values_format)
+    if tabulate_ids:
+        ids = np.empty((num_labels, num_labels), dtype=object)
+        for i in range(num_labels):
+            for j in range(num_labels):
+                ids[i, j] = []
+    else:
+        ytrue_ids = None
+        ypred_ids = None
+        ids = None
 
-            ax.text(j, i, text_cm, ha="center", va="center", color=color)
+    if num_labels == 0 or ytrue.size == 0:
+        return confusion_matrix, ids
 
-    ax.set(
-        xticks=np.arange(ncols),
-        yticks=np.arange(nrows),
-        xticklabels=labels[:ncols],
-        yticklabels=labels[:nrows],
-        xlabel="Predicted label",
-        ylabel="True label",
-    )
-    ax.set_ylim((nrows - 0.5, -0.5))  # flip axis
+    labels_to_inds = {label: idx for idx, label in enumerate(labels)}
+    ypred = np.array([labels_to_inds.get(y, -1) for y in ypred])
+    ytrue = np.array([labels_to_inds.get(y, -1) for y in ytrue])
 
-    if xticks_rotation is not None:
-        plt.setp(ax.get_xticklabels(), rotation=xticks_rotation)
+    found = np.logical_and(ypred >= 0, ytrue >= 0)
+    ypred = ypred[found]
+    ytrue = ytrue[found]
+    weights = weights[found]
 
-    if show_colorbar:
-        divider = make_axes_locatable(ax)
-        cax = divider.append_axes("right", size="5%", pad=0.1)
-        fig.colorbar(im, cax=cax)
+    if ytrue_ids is not None:
+        ytrue_ids = ytrue_ids[found]
+    else:
+        ytrue_ids = itertools.repeat(None)
 
-    if figsize is not None:
-        fig.set_size_inches(*figsize)
+    if ypred_ids is not None:
+        ypred_ids = ypred_ids[found]
+    else:
+        ypred_ids = itertools.repeat(None)
 
-    plt.tight_layout()
+    for yt, yp, w, it, ip in zip(ytrue, ypred, weights, ytrue_ids, ypred_ids):
+        confusion_matrix[yt, yp] += w
 
-    return ax
+        if it is not None:
+            ids[yt, yp].append(it)
+
+        if ip is not None:
+            ids[yt, yp].append(ip)
+
+    return confusion_matrix, ids

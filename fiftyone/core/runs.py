@@ -79,7 +79,7 @@ class RunConfig(Config):
     def build(self):
         """Builds the :class:`Run` instance associated with this config.
 
-        Returns:`
+        Returns:
             a :class:`Run` instance
         """
         return self.run_cls(self)

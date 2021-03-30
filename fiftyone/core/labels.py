@@ -969,11 +969,18 @@ class GeoLocations(ImageLabel, _HasID):
 _SINGLE_LABEL_FIELDS = (
     Classification,
     Detection,
-    Polyline,
+    GeoLocation,
     Keypoint,
+    Polyline,
     Segmentation,
 )
-_LABEL_LIST_FIELDS = (Classifications, Detections, Polylines, Keypoints)
+_LABEL_LIST_FIELDS = (
+    Classifications,
+    Detections,
+    GeoLocations,
+    Keypoints,
+    Polylines,
+)
 _LABEL_FIELDS = _SINGLE_LABEL_FIELDS + _LABEL_LIST_FIELDS
 
 

@@ -590,7 +590,7 @@ class SampleCollection(object):
 
     def _edit_sample_tags(self, edit_fcn):
         tags = self.values("tags")
-        tags = _transform_values(tags, edit_fcn)
+        tags = _transform_values(tags, edit_fcn, level=1)
         self.set_values("tags", tags)
 
     def count_sample_tags(self):
@@ -666,9 +666,10 @@ class SampleCollection(object):
 
         labels = []
         for label_field in view._get_label_fields():
-            sample_ids = view._get_sample_ids()
+            sample_ids = view.values("id")
 
-            _, id_path = view._get_label_field_path(label_field, "_id")
+            label_type, id_path = view._get_label_field_path(label_field, "id")
+            list_field = issubclass(label_type, fol._LABEL_LIST_FIELDS)
             label_ids = view.values(id_path)
 
             if self._is_frame_field(label_field):
@@ -679,27 +680,43 @@ class SampleCollection(object):
                     for frame_number, frame_label_ids in zip(
                         sample_frame_numbers, sample_label_ids
                     ):
+                        if not frame_label_ids:
+                            continue
+
+                        if not list_field:
+                            frame_label_ids = [frame_label_ids]
+
                         for label_id in frame_label_ids:
                             labels.append(
                                 {
-                                    "sample_id": str(sample_id),
+                                    "sample_id": sample_id,
                                     "frame_number": frame_number,
                                     "field": label_field,
-                                    "label_id": str(label_id),
+                                    "label_id": label_id,
                                 }
                             )
             else:
-                for sample_id, _label_ids in zip(sample_ids, label_ids):
-                    for label_id in _label_ids:
+                for sample_id, sample_label_ids in zip(sample_ids, label_ids):
+                    if not sample_label_ids:
+                        continue
+
+                    if not list_field:
+                        sample_label_ids = [sample_label_ids]
+
+                    for label_id in sample_label_ids:
                         labels.append(
                             {
-                                "sample_id": str(sample_id),
+                                "sample_id": sample_id,
                                 "field": label_field,
-                                "label_id": str(label_id),
+                                "label_id": label_id,
                             }
                         )
 
         return labels
+
+    def _get_label_ids(self, tags=None, fields=None):
+        labels = self._get_selected_labels(tags=tags, fields=fields)
+        return [l["label_id"] for l in labels]
 
     def count_label_tags(self, label_fields=None):
         """Counts the occurrences of all label tags in the specified label
@@ -730,7 +747,7 @@ class SampleCollection(object):
 
         return dict(counts)
 
-    def set_values(self, field_name, values):
+    def set_values(self, field_name, values, _allow_missing=False):
         """Sets the field or embedded field on each sample or frame in the
         collection to the given values.
 
@@ -780,7 +797,7 @@ class SampleCollection(object):
                 of ``values`` must be arrays of the same lengths
         """
         field_name, is_frame_field, list_fields, _ = self._parse_field_name(
-            field_name
+            field_name, allow_missing=_allow_missing
         )
 
         if list_fields:
@@ -793,19 +810,12 @@ class SampleCollection(object):
             self._set_sample_values(field_name, values, list_fields)
 
     def _set_sample_values(self, field_name, values, list_fields):
-        root = field_name.split(".", 1)[0]
-        if root not in self.get_field_schema():
-            raise ValueError(
-                "Field '%s' does not exist on collection '%s'"
-                % (root, self.name)
-            )
-
         if len(list_fields) > 1:
             raise ValueError(
                 "At most one array field can be unwound when setting values"
             )
 
-        sample_ids = self._get_sample_ids()
+        sample_ids = self.values("_id")
 
         if list_fields:
             list_field = list_fields[0]
@@ -818,19 +828,12 @@ class SampleCollection(object):
             self._set_values(field_name, sample_ids, values)
 
     def _set_frame_values(self, field_name, values, list_fields):
-        root = field_name.split(".", 1)[0]
-        if root not in self.get_frame_field_schema():
-            raise ValueError(
-                "Frame field '%s' does not exist on collection '%s'"
-                % (root, self.name)
-            )
-
         if len(list_fields) > 1:
             raise ValueError(
                 "At most one array field can be unwound when setting values"
             )
 
-        frame_ids = self._get_frame_ids()
+        frame_ids = self.values("frames._id")
         frame_ids = list(itertools.chain.from_iterable(frame_ids))
 
         values = list(itertools.chain.from_iterable(values))
@@ -3924,7 +3927,9 @@ class SampleCollection(object):
         return self.aggregate(foa.Sum(field_name, expr=expr))
 
     @aggregation
-    def values(self, field_name, expr=None, missing_value=None):
+    def values(
+        self, field_name, expr=None, missing_value=None, _allow_missing=False
+    ):
         """Extracts the values of a field from all samples in the collection.
 
         .. note::
@@ -3996,7 +4001,12 @@ class SampleCollection(object):
             the list of values
         """
         return self.aggregate(
-            foa.Values(field_name, expr=expr, missing_value=missing_value)
+            foa.Values(
+                field_name,
+                expr=expr,
+                missing_value=missing_value,
+                _allow_missing=_allow_missing,
+            )
         )
 
     def draw_labels(
@@ -4489,44 +4499,6 @@ class SampleCollection(object):
         """
         raise NotImplementedError("Subclass must implement _aggregate()")
 
-    def _get_sample_ids(self):
-        result = self._aggregate(
-            [{"$group": {"_id": None, "result": {"$push": "$_id"}}}],
-            attach_frames=False,
-        )
-
-        try:
-            return next(result)["result"]
-        except StopIteration:
-            return []
-
-    def _get_frame_ids(self):
-        if self.media_type != fom.VIDEO:
-            return []
-
-        result = self._aggregate(
-            [
-                {
-                    "$project": {
-                        "frames": {
-                            "$map": {
-                                "input": "$frames",
-                                "as": "this",
-                                "in": "$$this._id",
-                            }
-                        }
-                    }
-                },
-                {"$group": {"_id": None, "result": {"$push": "$frames"}}},
-            ],
-            attach_frames=True,
-        )
-
-        try:
-            return next(result)["result"]
-        except StopIteration:
-            return []
-
     async def _async_aggregate(self, sample_collection, aggregations):
         scalar_result, aggregations, facets = self._build_aggregation(
             aggregations
@@ -4604,8 +4576,12 @@ class SampleCollection(object):
             "default_mask_targets", default_mask_targets
         )
 
-    def _parse_field_name(self, field_name, auto_unwind=True):
-        return _parse_field_name(self, field_name, auto_unwind)
+    def _parse_field_name(
+        self, field_name, auto_unwind=True, allow_missing=False
+    ):
+        return _parse_field_name(
+            self, field_name, auto_unwind, allow_missing=allow_missing
+        )
 
     def _handle_frame_field(self, field_name):
         is_frame_field = self._is_frame_field(field_name)
@@ -4982,10 +4958,9 @@ def _get_field_with_type(label_fields, label_cls):
     return None
 
 
-def _parse_field_name(sample_collection, field_name, auto_unwind):
-    if field_name == "id":
-        return "_id", False, [], []
-
+def _parse_field_name(
+    sample_collection, field_name, auto_unwind, allow_missing=False
+):
     field_name, is_frame_field = sample_collection._handle_frame_field(
         field_name
     )
@@ -4993,9 +4968,9 @@ def _parse_field_name(sample_collection, field_name, auto_unwind):
         if not field_name:
             return "frames", True, [], []
 
-        schema = sample_collection.get_frame_field_schema()
+        schema = sample_collection.get_frame_field_schema(include_private=True)
     else:
-        schema = sample_collection.get_field_schema()
+        schema = sample_collection.get_field_schema(include_private=True)
 
     unwind_list_fields = set()
     other_list_fields = set()
@@ -5014,21 +4989,22 @@ def _parse_field_name(sample_collection, field_name, auto_unwind):
     # Array references [] have been stripped
     field_name = "".join(chunks)
 
-    # Ensure root field exists
+    # Get root field type, if possible
     root_field_name = field_name.split(".", 1)[0]
 
-    try:
-        if not root_field_name.startswith("_"):
-            root_field = schema[root_field_name]
-        else:
-            root_field = None
-    except KeyError:
+    if root_field_name in ("id", "_id"):
+        root_field = None
+    elif root_field_name not in schema:
+        if not allow_missing and not root_field_name.startswith("_"):
+            ftype = "Frame field" if is_frame_field else "Field"
+            raise ValueError(
+                "%s '%s' does not exist on collection '%s'"
+                % (ftype, root_field_name, sample_collection.name)
+            )
 
-        ftype = "Frame field" if is_frame_field else "Field"
-        raise ValueError(
-            "%s '%s' does not exist on collection '%s'"
-            % (ftype, root_field_name, sample_collection.name)
-        )
+        root_field = None
+    else:
+        root_field = schema[root_field_name]
 
     #
     # Detect certain list fields automatically
@@ -5117,13 +5093,13 @@ def _is_field_type(field, field_path, types):
 
 
 def _transform_values(values, fcn, level=1):
-    if level < 1 or not values:
-        return values
+    if values is None:
+        return None
 
-    if level == 1:
-        return [fcn(v) for v in values]
+    if level < 1:
+        return fcn(values)
 
-    return [_transform_values(v, fcn, level - 1) for v in values]
+    return [_transform_values(v, fcn, level=level - 1) for v in values]
 
 
 def _make_set_field_pipeline(sample_collection, field, expr, embedded_root):
