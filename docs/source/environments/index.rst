@@ -77,38 +77,56 @@ machine and launch a remote session:
     # On remote machine
     import fiftyone as fo
 
-    dataset = fo.Dataset(name="my_dataset")
+    dataset = fo.load_dataset(...)
 
-    session = fo.launch_app(dataset, remote=True)  # (optional) port=XXXX
+    session = fo.launch_app(dataset, remote=True)  # optional: port=XXXX
 
-Leave this session running, and note that instructions for connecting to this
-remote session were printed to your terminal (these are described below).
+Leave the Python REPL running and follow the instructions for connecting to
+this session remotely that were printed to your terminal (also described
+below).
 
-If you do not have `fiftyone` installed on your local machine, and do not want
-to install it, you can set up port forwarding manually, and view the App in
-your browser.
+.. note::
 
-.. code-block:: shell
+    You can manipulate the `session` object on the remote machine as usual to
+    programmatically interact with the App instance that you view locally.
 
-    # `[<username>@]<hostname>` refers to your remote machine
-    ssh -N -L 5151:127.0.0.1:%d [<username>@]<hostname>
-
-If you have `fiftyone` installed on the local machine, you can
-:ref:`use the CLI <cli-fiftyone-app-connect>` to automatically configure port
-forwarding and open the App in either the desktop App or your web browser.
-
-In a local terminal, run the command:
+If you do not have `fiftyone` installed on your local machine, open a new
+terminal window on your local machine and execute the following command to
+setup port forwarding to connect to your remote session:
 
 .. code-block:: shell
 
     # On local machine
-    fiftyone app connect --destination <user>@<remote-ip-address> --port 5151
+    ssh -N -L 5151:127.0.0.1:XXXX [<username>@]<hostname>
 
-The above instructions assume that you used the default port `5151` when
-launching the remote session on the remote machine. If you used a custom port,
-(or if you customized your default port via the ``default_app_port`` parameter
-of your :ref:`FiftyOne config <configuring-fiftyone>`), then substitute the
-appropriate value in the local commands too.
+Leave this process running and open http://localhost:5151 in your browser to
+access the App.
+
+In the above, `[<username>@]<hostname>` specifies the remote machine to connect
+to, `XXXX` refers to the port that you chose when you launched the session on
+your remote machine (the default is 5151), and `5151` specifies the local port
+to use to connect to the App (and can be customized).
+
+Alternatively, if you have FiftyOne installed on your local machine, you can
+:ref:`use the CLI <cli-fiftyone-app-connect>` to automatically configure port
+forwarding and open the App in your browser as follows:
+
+.. code-block:: shell
+
+    # On local machine
+    fiftyone app connect --destination [<username>@]<hostname>
+
+If you choose a custom port `XXXX` on the remote machine, add a ``--port XXXX``
+flag to the above command.
+
+If you would like to use a custom local port, add a ``--local-port YYYY`` flag
+to the above command.
+
+.. note::
+
+    You can customize the local/remote ports used when launching remote
+    sessions in order to connect/servce multiple remote sessions
+    simultaneously.
 
 .. note::
 
@@ -119,11 +137,6 @@ appropriate value in the local commands too.
     However, if you are using this key regularly,
     `it is recommended <https://unix.stackexchange.com/a/494485>`_ to add it
     to your `~/.ssh/config` as the default `IdentityFile`.
-
-.. note::
-
-    You can use custom ports when launching remote sessions in order to serve
-    multiple remote sessions simultaneously.
 
 .. _notebooks:
 
@@ -322,49 +335,8 @@ credentials as outlined in the
 
 Now that you can access your data from the compute instance, start up Python
 and :ref:`create a FiftyOne dataset <loading-datasets>` whose filepaths are in
-the mount point you specified above. Then launch the App as a
-:ref:`remote session <remote-session>`:
-
-.. code-block:: python
-    :linenos:
-
-    # On remote machine
-    import fiftyone as fo
-
-    dataset = fo.Dataset(name="my_dataset")
-
-    session = fo.launch_app(dataset, remote=True)  # (optional) port=XXXX
-
-**Step 5**
-
-Finally, on your local machine, connect to the remote session that you started
-on the cloud instance.
-
-.. code-block:: bash
-
-    # On local machine
-    fiftyone app connect --destination <user>@<remote-ip-address> --port 5151
-
-The above instructions assume that you used the default port `5151` when
-launching the remote session on the remote machine. If you used a custom port,
-(or if you customized your default port via the ``default_app_port`` parameter
-of your :ref:`FiftyOne config <configuring-fiftyone>`), then substitute the
-appropriate value in the local commands too.
-
-.. note::
-
-    If you use ssh keys to connect to your remote machine, you can use the
-    optional `--ssh-key` argument of the
-    :ref:`fiftyone app connect <cli-fiftyone-app-connect>` command.
-
-    However, if you are using this key regularly,
-    `it is recommended <https://unix.stackexchange.com/a/494485>`_ to add it
-    to your `~/.ssh/config` as the default `IdentityFile`.
-
-.. note::
-
-    You can use custom ports when launching remote sessions in order to serve
-    multiple remote sessions simultaneously.
+the mount point you specified above. Then you can launch the App and work with
+it locally in your browser using :ref:`remote sessions <remote-data>`.
 
 .. _google-cloud:
 
@@ -413,49 +385,8 @@ to do this:
 
 Now that you can access your data from the compute instance, start up Python
 and :ref:`create a FiftyOne dataset <loading-datasets>` whose filepaths are in
-the mount point you specified above. Then launch the App as a
-:ref:`remote session <remote-session>`:
-
-.. code-block:: python
-    :linenos:
-
-    # On remote machine
-    import fiftyone as fo
-
-    dataset = fo.Dataset(name="my_dataset")
-
-    session = fo.launch_app(dataset, remote=True)  # (optional) port=XXXX
-
-**Step 5**
-
-Finally, on your local machine, connect to the remote session that you started
-on the cloud instance.
-
-.. code-block:: bash
-
-    # On local machine
-    fiftyone app connect --destination <user>@<remote-ip-address> --port 5151
-
-The above instructions assume that you used the default port `5151` when
-launching the remote session on the remote machine. If you used a custom port,
-(or if you customized your default port via the ``default_app_port`` parameter
-of your :ref:`FiftyOne config <configuring-fiftyone>`), then substitute the
-appropriate value in the local commands too.
-
-.. note::
-
-    If you use ssh keys to connect to your remote machine, you can use the
-    optional `--ssh-key` argument of the
-    :ref:`fiftyone app connect <cli-fiftyone-app-connect>` command.
-
-    However, if you are using this key regularly,
-    `it is recommended <https://unix.stackexchange.com/a/494485>`_ to add it
-    to your `~/.ssh/config` as the default `IdentityFile`.
-
-.. note::
-
-    You can use custom ports when launching remote sessions in order to serve
-    multiple remote sessions simultaneously.
+the mount point you specified above. Then you can launch the App and work with
+it locally in your browser using :ref:`remote sessions <remote-data>`.
 
 .. _azure:
 
@@ -500,49 +431,8 @@ for this.
 
 Now that you can access your data from the compute instance, start up Python
 and :ref:`create a FiftyOne dataset <loading-datasets>` whose filepaths are in
-the mount point you specified above. Then launch the App as a
-:ref:`remote session <remote-session>`:
-
-.. code-block:: python
-    :linenos:
-
-    # On remote machine
-    import fiftyone as fo
-
-    dataset = fo.Dataset(name="my_dataset")
-
-    session = fo.launch_app(dataset, remote=True)  # (optional) port=XXXX
-
-**Step 5**
-
-Finally, on your local machine, connect to the remote session that you started
-on the cloud instance.
-
-.. code-block:: bash
-
-    # On local machine
-    fiftyone app connect --destination <user>@<remote-ip-address> --port 5151
-
-The above instructions assume that you used the default port `5151` when
-launching the remote session on the remote machine. If you used a custom port,
-(or if you customized your default port via the ``default_app_port`` parameter
-of your :ref:`FiftyOne config <configuring-fiftyone>`), then substitute the
-appropriate value in the local commands too.
-
-.. note::
-
-    If you use ssh keys to connect to your remote machine, you can use the
-    optional `--ssh-key` argument of the
-    :ref:`fiftyone app connect <cli-fiftyone-app-connect>` command.
-
-    However, if you are using this key regularly,
-    `it is recommended <https://unix.stackexchange.com/a/494485>`_ to add it
-    to your `~/.ssh/config` as the default `IdentityFile`.
-
-.. note::
-
-    You can use custom ports when launching remote sessions in order to serve
-    multiple remote sessions simultaneously.
+the mount point you specified above. Then you can launch the App and work with
+it locally in your browser using :ref:`remote sessions <remote-data>`.
 
 .. _compute-instance-setup:
 

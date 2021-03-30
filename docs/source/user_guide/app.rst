@@ -126,7 +126,7 @@ _______________
 
 If your data is stored on a remote machine, you can forward a session from
 the remote machine to your local machine and seemlessly browse your remote
-dataset via the App.
+dataset from you web browser.
 
 Check out the :ref:`environments page <environments>` for more information on
 possible configurations of local/remote/cloud data and App access.
@@ -158,12 +158,12 @@ using either the Python library or the CLI.
 
     You can use the optional ``port`` parameter to choose the port of your
     remote machine on which to serve the App. The default is ``5151``, which
-    can be customized via the ``default_app_port`` parameter of your
+    can also be customized via the ``default_app_port`` parameter of your
     :ref:`FiftyOne config <configuring-fiftyone>`.
 
     Note that you can manipulate the `session` object on the remote machine as
     usual to programmatically interact with the App instance that you'll
-    connect to next.
+    connect to locally next.
 
   .. group-tab:: CLI
 
@@ -178,7 +178,7 @@ using either the Python library or the CLI.
 
     You can use the optional ``--port`` flag to choose the port of your
     remote machine on which to serve the App. The default is ``5151``, which
-    can be customized via the ``default_app_port`` parameter of your
+    can also be customized via the ``default_app_port`` parameter of your
     :ref:`FiftyOne config <configuring-fiftyone>`.
 
 .. _remote-app-local-machine:
@@ -186,58 +186,39 @@ using either the Python library or the CLI.
 Local machine
 -------------
 
-On the local machine, you can launch an App instance connected to a remote
-session using either the Python library or the CLI (recommended).
+On the local machine, you can access an App instance connected to the remote
+session by either manually configuring port forwarding or via the FiftyOne CLI:
 
 .. tabs::
 
-  .. group-tab:: Python
+  .. group-tab:: Manual
 
-    Open two terminal windows on the local machine.
-
-    The first step is to configure port forwarding of the remote machine's port
-    to your local machine. Do this by running the following command in one
-    terminal and leave the process running:
+    Open a new terminal window on your local machine and execute the following
+    command to setup port forwarding to connect to your remote session:
 
     .. code-block:: shell
 
         # On local machine
+        ssh -N -L 5151:127.0.0.1:XXXX [<username>@]<hostname>
 
-        ssh -N -L 5151:127.0.0.1:5151 username@remote_machine_ip
+    Leave this process running and open http://localhost:5151 in your browser
+    to access the App.
 
-    If you chose a custom port `XXXX` on the remote machine, substitute it
-    for the second `5151` in the above command.
+    In the above, `[<username>@]<hostname>` specifies the remote machine to
+    connect to, `XXXX` refers to the port that you chose when you launched the
+    session on your remote machine (the default is 5151), and `5151` specifies
+    the local port to use to connect to the App (and can be customized).
 
-    If you would like to use a custom local port to serve the App, substitute
-    it for the first `5151` in the above command.
+  .. group-tab:: FiftyOne
 
-    In the other terminal, launch the FiftyOne App locally by starting Python
-    and running the following commands:
-
-    .. code-block:: python
-        :linenos:
-
-        # On local machine
-
-        import fiftyone as fo
-
-        fo.launch_app()  # optional: port=YYYY
-
-    If you chose a custom local port when configuring port forwarding, specify
-    it via the ``port`` parameter of
-    :meth:`launch_app() <fiftyone.core.session.launch_app>`.
-
-  .. group-tab:: CLI
-
-    On the local machine, use the
-    :ref:`fiftyone app connect <cli-fiftyone-app-connect>` command to connect
-    to a remote session:
+    If you have FiftyOne installed on your local machine, you can
+    :ref:`use the CLI <cli-fiftyone-app-connect>` to automatically configure
+    port forwarding and open the App in your browser as follows:
 
     .. code-block:: shell
 
         # On local machine
-
-        fiftyone app connect --destination username@remote_machine_ip
+        fiftyone app connect --destination [<username>@]<hostname>
 
     If you choose a custom port `XXXX` on the remote machine, add a
     ``--port XXXX`` flag to the above command.
@@ -265,7 +246,7 @@ by toggling the corresponding display options on the lefthand side of the App.
 Viewing a sample
 ________________
 
-Double-click a sample to open an expanded view of the sample. This modal also
+Click a sample to open an expanded view of the sample. This modal also
 contains information about the fields of the |Sample| and allows you to access
 the raw JSON description of the sample.
 
@@ -391,7 +372,7 @@ use this functionality to visually show/hide objects of interest in the App; or
 you can access the data for the selected objects from Python, for example by
 creating a |DatasetView| that includes/excludes the selected objects.
 
-To perform this workflow, open the expanded sample modal by double-clicking on
+To perform this workflow, open the expanded sample modal by clicking on
 a sample in the App. Then click on individual objects to select them:
 
 .. image:: ../images/app/app-object-selection.gif
@@ -457,11 +438,11 @@ below shows the basic pattern for customizing the App on a one-off basis:
     # Create a custom App config
     app_config = fo.AppConfig()
     app_config.show_confidence = False
-    app_config.show_attributes = False
+    app_config.show_attributes = True
 
     session = fo.launch_app(dataset, config=app_config)
 
-You can even reconfigure a live |Session| by editing its
+You can also reconfigure a live |Session| by editing its
 :meth:`session.config <fiftyone.core.session.Session.config>` property and
 calling :meth:`session.refresh() <fiftyone.core.session.Session.refresh>` to
 apply the changes:

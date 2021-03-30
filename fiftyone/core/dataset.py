@@ -12,11 +12,11 @@ import logging
 import numbers
 import os
 import random
-import reprlib
 import string
 
 from bson import ObjectId
 import mongoengine.errors as moe
+from pymongo import UpdateMany
 from pymongo.errors import BulkWriteError
 
 import eta.core.serial as etas
@@ -28,11 +28,9 @@ import fiftyone.constants as focn
 import fiftyone.core.collections as foc
 import fiftyone.core.fields as fof
 import fiftyone.core.frame as fofr
-import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 import fiftyone.migrations as fomi
 import fiftyone.core.odm as foo
-import fiftyone.core.odm.sample as foos
 import fiftyone.core.sample as fos
 from fiftyone.core.singleton import DatasetSingleton
 import fiftyone.core.view as fov
@@ -1316,12 +1314,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         else:
             coll = self._sample_collection
 
-        try:
-            for ops_batch in fou.iter_batches(ops, 100000):  # mongodb limit
-                coll.bulk_write(list(ops_batch), ordered=ordered)
-        except BulkWriteError as bwe:
-            msg = bwe.details["writeErrors"][0]["errmsg"]
-            raise ValueError(msg) from bwe
+        _bulk_write(coll, ops, ordered=ordered)
 
         if frames:
             fofr.Frame._reload_docs(self._frame_collection_name)
@@ -1349,8 +1342,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         Args:
             samples: an iterable of :class:`fiftyone.core.sample.Sample`
-                instances. For example, ``samples`` may be a :class:`Dataset`
-                or a :class:`fiftyone.core.views.DatasetView`
+                instances. For example, this may be a :class:`Dataset` or a
+                :class:`fiftyone.core.views.DatasetView`
             key_field ("filepath"): the sample field to use to decide whether
                 to join with an existing sample
             key_fcn (None): a function that accepts a
@@ -1374,9 +1367,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             and key_fcn is None
             and overwrite
         ):
-            self._merge_samples(
+            _merge_samples(
                 samples,
-                key_field=key_field,
+                self,
+                key_field,
                 omit_none_fields=omit_none_fields,
                 skip_existing=skip_existing,
                 insert_new=insert_new,
@@ -1385,7 +1379,15 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             return
 
         if key_fcn is None:
+            aggs = [foa.Values(key_field), foa.Values("id")]
+            id_map = {key: _id for key, _id in zip(*self.aggregate(aggs))}
             key_fcn = lambda sample: sample[key_field]
+        else:
+            id_map = {}
+            logger.info("Indexing dataset...")
+            with fou.ProgressBar() as pb:
+                for sample in pb(self):
+                    id_map[key_fcn(sample)] = sample.id
 
         if omit_default_fields:
             if insert_new:
@@ -1396,12 +1398,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             omit_fields = fos.get_default_sample_fields()
         else:
             omit_fields = None
-
-        id_map = {}
-        logger.info("Indexing dataset...")
-        with fou.ProgressBar() as pb:
-            for sample in pb(self):
-                id_map[key_fcn(sample)] = sample.id
 
         logger.info("Merging samples...")
         with fou.ProgressBar() as pb:
@@ -1419,108 +1415,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                         existing_sample.save()
                 elif insert_new:
                     self.add_sample(sample)
-
-    def _merge_samples(
-        self,
-        sample_collection,
-        key_field="filepath",
-        omit_none_fields=True,
-        skip_existing=False,
-        insert_new=True,
-        omit_default_fields=False,
-    ):
-        """Merges the given sample collection into this dataset.
-
-        By default, samples with the same absolute ``filepath`` are merged.
-        You can customize this behavior via the ``key_field`` parameter.
-
-        Args:
-            sample_collection: a
-                :class:`fiftyone.core.collections.SampleCollection`
-            key_field ("filepath"): the sample field to use to decide whether
-                to join with an existing sample
-            omit_none_fields (True): whether to omit ``None``-valued fields of
-                the provided samples when merging their fields
-            skip_existing (False): whether to skip existing samples (True) or
-                merge them (False)
-            insert_new (True): whether to insert new samples (True) or skip
-                them (False)
-            omit_default_fields (False): whether to omit default sample fields
-                when merging. If ``True``, ``insert_new`` must be ``False``
-        """
-        if self.media_type == fom.VIDEO:
-            raise ValueError("Merging video collections is not yet supported")
-
-        if omit_default_fields and insert_new:
-            raise ValueError(
-                "Cannot omit default fields when `insert_new=True`"
-            )
-
-        if key_field == "id":
-            key_field = "_id"
-
-        if skip_existing:
-            when_matched = "keepExisting"
-        else:
-            when_matched = "merge"
-
-        if insert_new:
-            when_not_matched = "insert"
-        else:
-            when_not_matched = "discard"
-
-        # Must create unique indexes in order to use `$merge`
-        self.create_index(key_field, unique=True)
-        sample_collection.create_index(key_field, unique=True)
-
-        schema = sample_collection.get_field_schema()
-        self._sample_doc_cls.merge_field_schema(schema)
-
-        if omit_default_fields:
-            omit_fields = list(
-                self.get_default_sample_fields(include_private=True)
-            )
-        else:
-            omit_fields = ["_id"]
-
-        try:
-            omit_fields.remove(key_field)
-        except ValueError:
-            pass
-
-        pipeline = []
-
-        if omit_fields:
-            pipeline.append({"$unset": omit_fields})
-
-        if omit_none_fields:
-            pipeline.append(
-                {
-                    "$replaceWith": {
-                        "$arrayToObject": {
-                            "$filter": {
-                                "input": {"$objectToArray": "$$ROOT"},
-                                "as": "item",
-                                "cond": {"$ne": ["$$item.v", None]},
-                            }
-                        }
-                    }
-                }
-            )
-
-        pipeline.append(
-            {
-                "$merge": {
-                    "into": self._sample_collection_name,
-                    "on": key_field,
-                    "whenMatched": when_matched,
-                    "whenNotMatched": when_not_matched,
-                }
-            }
-        )
-
-        sample_collection._aggregate(pipeline=pipeline, attach_frames=False)
-        fos.Sample._reload_docs(self._sample_collection_name)
 
     def remove_sample(self, sample_or_id):
         """Removes the given sample from the dataset.
@@ -2635,10 +2529,18 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         detach_frames=False,
         frames_only=False,
     ):
+        if self.media_type != fom.VIDEO:
+            attach_frames = False
+            detach_frames = False
+            frames_only = False
+
+        if not attach_frames:
+            detach_frames = False
+
         if frames_only:
             attach_frames = True
 
-        if attach_frames and (self.media_type == fom.VIDEO):
+        if attach_frames:
             _pipeline = [
                 {
                     "$lookup": {
@@ -3124,6 +3026,15 @@ def _load_dataset(name, migrate=True):
     return dataset_doc, sample_doc_cls, frame_doc_cls
 
 
+def _bulk_write(coll, ops, ordered=False):
+    try:
+        for ops_batch in fou.iter_batches(ops, 100000):  # mongodb limit
+            coll.bulk_write(list(ops_batch), ordered=ordered)
+    except BulkWriteError as bwe:
+        msg = bwe.details["writeErrors"][0]["errmsg"]
+        raise ValueError(msg) from bwe
+
+
 def _drop_samples(dataset_doc):
     conn = foo.get_db_conn()
 
@@ -3195,3 +3106,241 @@ def _parse_field_mapping(field_mapping):
             new_fields.append(new_field)
 
     return fields, new_fields, embedded_fields, embedded_new_fields
+
+
+def _merge_samples(
+    src_collection,
+    dst_dataset,
+    key_field,
+    omit_none_fields=True,
+    skip_existing=False,
+    insert_new=True,
+    omit_default_fields=False,
+):
+    if src_collection.media_type != dst_dataset.media_type:
+        raise ValueError(
+            "Cannot merge collection with media_type='%s' into a collection "
+            "with media_type='%s'"
+            % (src_collection.media_type, dst_dataset.media_type)
+        )
+
+    if omit_default_fields and insert_new:
+        raise ValueError("Cannot omit default fields when `insert_new=True`")
+
+    if key_field == "id":
+        key_field = "_id"
+
+    if skip_existing:
+        when_matched = "keepExisting"
+    else:
+        when_matched = "merge"
+
+    if insert_new:
+        when_not_matched = "insert"
+    else:
+        when_not_matched = "discard"
+
+    is_video = dst_dataset.media_type == fom.VIDEO
+    src_dataset = src_collection._dataset
+
+    # Must create unique indexes in order to use `$merge`
+    new_src_index = key_field not in src_collection.list_indexes()
+    new_dst_index = key_field not in dst_dataset.list_indexes()
+    src_collection.create_index(key_field, unique=True)
+    dst_dataset.create_index(key_field, unique=True)
+
+    # Merge sample schemas
+    schema = src_collection.get_field_schema()
+    dst_dataset._sample_doc_cls.merge_field_schema(schema)
+
+    #
+    # The implementation of merging video frames is currently a bit complex.
+    # It may be possible to simplify this...
+    #
+    # The trouble is that the `_sample_id` of the frame documents need to match
+    # the `_id` of the sample documents after merging. There may be a more
+    # clever way to make this happen via `$lookup` than what is implemented
+    # here, but here's the current workflow:
+    #
+    # - Store the `key_field` value on each frame document in both the source
+    #   and destination collections corresopnding to its parent sample in a
+    #   temporary `frame_key_field` field
+    # - Merge the sample documents without frames attached
+    # - Merge the frame documents on `[frame_key_field, frame_number]` with
+    #   their old `_sample_id`s unset
+    # - Generate a `key_field` -> `_id` mapping for the post-merge sample docs,
+    #   then make a pass over the frame documents and set
+    #   their `_sample_id` to the corresponding value from this mapping
+    # - The merge is complete, so delete `frame_key_field` from both frame
+    #   collections
+    #
+
+    if is_video:
+        frame_key_field = "_merge_key"
+        _index_frames(dst_dataset, key_field, frame_key_field)
+        _index_frames(src_collection, key_field, frame_key_field)
+
+        # Must create unique indexes in order to use `$merge`
+        frame_index_spec = [
+            (frame_key_field, foo.ASC),
+            ("frame_number", foo.ASC),
+        ]
+        dst_frame_index = dst_dataset._frame_collection.create_index(
+            frame_index_spec, unique=True
+        )
+        src_frame_index = src_dataset._frame_collection.create_index(
+            frame_index_spec, unique=True
+        )
+
+        # Merge frame schemas
+        schema = src_collection.get_frame_field_schema()
+        dst_dataset._frame_doc_cls.merge_field_schema(schema)
+
+    #
+    # Merge samples
+    #
+
+    if omit_default_fields:
+        omit_fields = list(
+            dst_dataset.get_default_sample_fields(include_private=True)
+        )
+    else:
+        omit_fields = ["_id"]
+
+    try:
+        omit_fields.remove(key_field)
+    except ValueError:
+        pass
+
+    sample_pipeline = src_collection._pipeline(detach_frames=True)
+
+    if omit_fields:
+        sample_pipeline.append({"$unset": omit_fields})
+
+    if omit_none_fields:
+        sample_pipeline.append(
+            {
+                "$replaceWith": {
+                    "$arrayToObject": {
+                        "$filter": {
+                            "input": {"$objectToArray": "$$ROOT"},
+                            "as": "item",
+                            "cond": {"$ne": ["$$item.v", None]},
+                        }
+                    }
+                }
+            }
+        )
+
+    sample_pipeline.append(
+        {
+            "$merge": {
+                "into": dst_dataset._sample_collection_name,
+                "on": key_field,
+                "whenMatched": when_matched,
+                "whenNotMatched": when_not_matched,
+            }
+        }
+    )
+
+    # Merge samples
+    src_dataset._aggregate(pipeline=sample_pipeline, attach_frames=False)
+
+    # Cleanup indexes
+
+    if new_dst_index:
+        dst_dataset.drop_index(key_field)
+
+    if new_src_index:
+        src_collection.drop_index(key_field)
+
+    #
+    # Merge frames
+    #
+
+    if is_video:
+        frame_pipeline = src_collection._pipeline(frames_only=True)
+
+        frame_pipeline.extend([{"$unset": ["_id", "_sample_id"]}])
+
+        if omit_none_fields:
+            frame_pipeline.append(
+                {
+                    "$replaceWith": {
+                        "$arrayToObject": {
+                            "$filter": {
+                                "input": {"$objectToArray": "$$ROOT"},
+                                "as": "item",
+                                "cond": {"$ne": ["$$item.v", None]},
+                            }
+                        }
+                    }
+                }
+            )
+
+        frame_pipeline.append(
+            {
+                "$merge": {
+                    "into": dst_dataset._frame_collection_name,
+                    "on": [frame_key_field, "frame_number"],
+                    "whenMatched": when_matched,
+                    "whenNotMatched": "insert",
+                }
+            }
+        )
+
+        # Merge frames
+        src_dataset._aggregate(pipeline=frame_pipeline, attach_frames=False)
+
+        # Drop indexes
+        dst_dataset._frame_collection.drop_index(dst_frame_index)
+        src_dataset._frame_collection.drop_index(src_frame_index)
+
+        # Finalize IDs
+        _finalize_frames(dst_dataset, key_field, frame_key_field)
+
+        # Cleanup merge key
+        cleanup_op = {"$unset": {frame_key_field: ""}}
+        src_dataset._frame_collection.update_many({}, cleanup_op)
+        dst_dataset._frame_collection.update_many({}, cleanup_op)
+
+    # Reload docs
+    fos.Sample._reload_docs(dst_dataset._sample_collection_name)
+    if is_video:
+        fofr.Frame._reload_docs(dst_dataset._frame_collection_name)
+
+
+def _index_frames(sample_collection, key_field, frame_key_field):
+    aggs = [foa.Values("_id"), foa.Values(key_field)]
+    keys_map = {k: v for k, v in zip(*sample_collection.aggregate(aggs))}
+
+    all_sample_ids = sample_collection.values("frames._sample_id")
+
+    frame_keys = []
+    for sample_ids in all_sample_ids:
+        if sample_ids:
+            sample_keys = [keys_map[_id] for _id in sample_ids]
+        else:
+            sample_keys = sample_ids
+
+        frame_keys.append(sample_keys)
+
+    sample_collection.set_values(
+        "frames." + frame_key_field, frame_keys, _allow_missing=True
+    )
+
+
+def _finalize_frames(sample_collection, key_field, frame_key_field):
+    aggs = [foa.Values(key_field), foa.Values("_id")]
+    ids_map = {k: v for k, v in zip(*sample_collection.aggregate(aggs))}
+
+    frame_coll = sample_collection._frame_collection
+
+    ops = [
+        UpdateMany(
+            {frame_key_field: key}, {"$set": {"_sample_id": ids_map[key]}}
+        )
+        for key in frame_coll.distinct(frame_key_field)
+    ]
+
+    _bulk_write(frame_coll, ops)

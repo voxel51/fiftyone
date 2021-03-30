@@ -1,4 +1,4 @@
-import React, { Suspense, useEffect, useLayoutEffect, useState } from "react";
+import React, { Suspense, useLayoutEffect, useState } from "react";
 import numeral from "numeral";
 import { CircularProgress } from "@material-ui/core";
 import {
@@ -314,7 +314,9 @@ const samplePlaceholder = () => {
 const packageGrid = ({ targetLabels, activeLabels, changes }) =>
   packageMessage("tag", {
     target_labels: targetLabels,
-    active_labels: activeLabels.filter((l) => !l.startsWith("tags.")),
+    active_labels: activeLabels.filter(
+      (l) => !(l.startsWith("tags.") || l.startsWith("_label_tags."))
+    ),
     changes,
   });
 

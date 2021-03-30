@@ -6,7 +6,9 @@ import useMeasure from "react-use-measure";
 import * as selectors from "../../recoil/selectors";
 import {
   BOOLEAN_FIELD,
+  RESERVED_FIELDS,
   STRING_FIELD,
+  VALID_LIST_TYPES,
   VALID_NUMERIC_TYPES,
 } from "../../utils/labels";
 
@@ -175,6 +177,33 @@ export const activeTags = selectorFamily<string[], boolean>({
       const prevActiveTags = get(activeTags(modal));
       let active = get(activeFields(modal)).filter((v) =>
         v.startsWith("tags.") ? tags.includes(v) : true
+      );
+      if (tags.length && prevActiveTags.length < tags.length) {
+        active = [tags[0], ...active.filter((v) => v !== tags[0])];
+      }
+      set(activeFields(modal), active);
+    }
+  },
+});
+
+export const activeLabelTags = selectorFamily<string[], boolean>({
+  key: "activeLabelTags",
+  get: (modal) => ({ get }) => {
+    const tags = get(selectors.labelTagNames);
+    return get(activeFields(modal))
+      .filter(
+        (t) =>
+          t.startsWith("_label_tags.") &&
+          tags.includes(t.slice("_label_tags.".length))
+      )
+      .map((t) => t.slice("_label_tags.".length));
+  },
+  set: (modal) => ({ get, set }, value) => {
+    if (Array.isArray(value)) {
+      const tags = value.map((v) => "_label_tags." + v);
+      const prevActiveTags = get(activeLabelTags(modal));
+      let active = get(activeFields(modal)).filter((v) =>
+        v.startsWith("_label_tags.") ? tags.includes(v) : true
       );
       if (tags.length && prevActiveTags.length < tags.length) {
         active = [tags[0], ...active.filter((v) => v !== tags[0])];

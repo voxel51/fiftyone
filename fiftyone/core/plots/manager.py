@@ -100,7 +100,7 @@ class PlotManager(object):
             a string summary
         """
         if not self._plots:
-            return ""
+            return "No plots"
 
         elements = []
 
@@ -425,16 +425,20 @@ class PlotManager(object):
             self._current_labels = None
             return
 
-        # If labels are selected in the App, only record those. Otherwise, get
-        # all labels in the current view
+        # If labels are selected in the App, only record those
+        # If samples are selected in the App, only record their labels
+        # Otherwise, record all labels in the current view
         if self.has_label_links:
             if self._session.selected_labels:
                 self._current_labels = self._session.selected_labels
+            elif self._session.selected:
+                selected_view = current_view.select(self._session.selected)
+                self._current_labels = selected_view._get_selected_labels()
             else:
                 self._current_labels = current_view._get_selected_labels()
 
-        # If samples are selected in the App, only record those. Otherwise, get
-        # IDs of all samples in the view
+        # If samples are selected in the App, only record those
+        # Otherwise, record all samples in the view
         if self.has_sample_links:
             if self._session.selected:
                 self._current_sample_ids = self._session.selected
@@ -482,7 +486,8 @@ class PlotManager(object):
                     % (name, plot.link_type)
                 )
 
-        self._update_view_plots(view_plot_names)
+        if view_plot_names:
+            self._update_view_plots(view_plot_names)
 
         for name in interactive_plot_names:
             self._update_interactive_plot(name)

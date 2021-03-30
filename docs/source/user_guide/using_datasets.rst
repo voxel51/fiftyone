@@ -2000,7 +2000,7 @@ in your dataset. For example, a view may contain only samples with a given tag,
 or samples whose labels meet a certain criteria.
 
 In turn, each |SampleView| represents a view into the content of the underlying
-|Sample| in the datset. For example, a |SampleView| may represent the contents
+|Sample| in the dataset. For example, a |SampleView| may represent the contents
 of a sample with |Detections| below a specified threshold filtered out.
 
 .. custombutton::

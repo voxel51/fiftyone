@@ -200,7 +200,7 @@ bash install.bash -d
 
 You can install from source in
 [Google Colab](https://colab.research.google.com) by running the following in a
-cell, and then **restarting the runtime**:
+cell and then **RESTARTING THE RUNTIME**:
 
 ```shell
 %%shell
@@ -209,14 +209,6 @@ git clone --depth 1 https://github.com/voxel51/fiftyone.git
 cd fiftyone
 bash install.bash
 ```
-
-### Customizing your ETA installation
-
-Installing FiftyOne from source includes an
-[ETA lite installation](https://github.com/voxel51/eta#lite-installation),
-which should be sufficient for most users. If you want a full ETA installation,
-or wish to otherwise customize your ETA installation,
-[see here](https://github.com/voxel51/eta).
 
 ### Generating documentation
 

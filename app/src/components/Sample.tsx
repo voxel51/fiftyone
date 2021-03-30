@@ -132,6 +132,7 @@ const SampleInfo = React.memo(({ id }) => {
   const colorByLabel = useRecoilValue(atoms.colorByLabel(false));
   const labelTypes = useRecoilValue(selectors.labelTypesMap);
   const sample = useRecoilValue(atoms.sample(id));
+
   const bubbles = activeFields.reduce((acc, cur) => {
     if (
       cur.startsWith("tags.") &&
@@ -144,11 +145,26 @@ const SampleInfo = React.memo(({ id }) => {
         <Tag
           key={cur}
           name={tag}
-          color={colorMap[tag]}
+          color={colorMap[cur]}
           title={tag}
           maxWidth={"calc(100% - 32px)"}
         />,
       ];
+    } else if (cur.startsWith("_label_tags.")) {
+      const tag = cur.slice("_label_tags.".length);
+      const count = sample._label_tags[tag] || 0;
+      if (count > 0) {
+        acc = [
+          ...acc,
+          <Tag
+            key={cur}
+            name={`${tag}: ${count}`}
+            color={colorMap[cur]}
+            title={`${tag}: ${count}`}
+            maxWidth={"calc(100% - 32px)"}
+          />,
+        ];
+      }
     } else if (
       scalars.includes(cur) &&
       ![null, undefined].includes(sample[cur])
@@ -166,8 +182,11 @@ const SampleInfo = React.memo(({ id }) => {
       ];
     } else if (VALID_CLASS_TYPES.includes(labelTypes[cur])) {
       const labelType = labelTypes[cur];
+
       const values = VALID_LIST_TYPES.includes(labelType)
-        ? sample[cur].classifications
+        ? sample[cur] && sample[cur].classifications
+          ? sample[cur].classifications
+          : []
         : sample[cur]
         ? [sample[cur]]
         : [];
