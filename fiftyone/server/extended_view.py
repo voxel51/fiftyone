@@ -29,7 +29,7 @@ def get_extended_view(view, filters, count_labels_tags=False):
         count_labels_tags (False): whether to set the hideen `_label_tags` field
             with counts of tags with respect to all label fields
     """
-    cleanup_pipeline = None
+    cleanup_fields = None
 
     if filters is not None and len(filters):
         label_tags = None
@@ -44,7 +44,7 @@ def get_extended_view(view, filters, count_labels_tags=False):
             if "sample" in tags:
                 view = view.match_tags(tags=tags["sample"])
 
-        stages, cleanup_pipeline = _make_filter_stages(
+        stages, cleanup_fields = _make_filter_stages(
             view, filters, label_tags=label_tags, hide_result=count_labels_tags
         )
 
@@ -53,8 +53,8 @@ def get_extended_view(view, filters, count_labels_tags=False):
 
     if count_labels_tags:
         view = _add_labels_tags_counts(view, filters)
-        if cleanup_pipeline:
-            view = view.mongo(cleanup_pipeline)
+        if cleanup_fields and False:
+            view = view.mongo([{"$unset": field} for field in cleanup_fields])
 
     return view
 
@@ -99,7 +99,7 @@ def _make_filter_stages(view, filters, label_tags=None, hide_result=False):
     )
 
     stages = []
-    cleanup = []
+    cleanup = set()
     for path, args in filters.items():
         if path == "tags":
             continue
@@ -127,7 +127,7 @@ def _make_filter_stages(view, filters, label_tags=None, hide_result=False):
                 stages.append(
                     fosg.FilterLabels(path, expr, _new_field=new_field)
                 )
-                cleanup.append({"$unset": new_field})
+                cleanup.add(new_field)
         else:
             expr = _make_scalar_expression(F(path), args)
             if expr is not None:
@@ -154,6 +154,7 @@ def _make_filter_stages(view, filters, label_tags=None, hide_result=False):
                     _prefix=prefix,
                 )
             )
+            cleanup.add(new_field)
 
         match_exprs = []
         for path, _ in fos.DatasetStatistics.labels(view):
@@ -254,7 +255,11 @@ def _add_frame_label_tags(path, field, view):
     tags = "%s.tags" % path
     view = view.set_field(
         _LABEL_TAGS,
-        F(_LABEL_TAGS).extend(F(frames).reduce(VALUE.extend(F(tags)), [])),
+        F(_LABEL_TAGS).extend(
+            F(frames).reduce(
+                VALUE.extend((F(tags) != None).if_else(F(tags), [])), []
+            )
+        ),
         _allow_missing=True,
     )
     return view
@@ -271,9 +276,10 @@ def _add_labels_tags(path, field, view):
 
 
 def _add_label_tags(path, field, view):
+    tags = "%s.tags" % path
     return view.set_field(
         _LABEL_TAGS,
-        F(_LABEL_TAGS).extend(F("%s.tags" % path)),
+        F(_LABEL_TAGS).extend((F(tags) != None).if_else(F(tags), [])),
         _allow_missing=True,
     )
 
