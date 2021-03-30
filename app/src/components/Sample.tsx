@@ -29,11 +29,11 @@ const SampleDiv = animated(styled.div`
 `);
 
 const SampleInfoDiv = animated(styled.div`
-  height: 36px;
-  display: flex;
   position: absolute;
   bottom: 0;
   padding: 0.5rem;
+  max-height: 100%;
+  overflow-y: auto;
   &::-webkit-scrollbar {
     width: 0px;
     background: transparent;
@@ -44,9 +44,8 @@ const SampleInfoDiv = animated(styled.div`
     display: none;
   }
   scrollbar-width: none;
-  overflow-x: scroll;
   width: 100%;
-  z-index: 499;
+  z-index: 498;
   pointer-events: none;
 `);
 
