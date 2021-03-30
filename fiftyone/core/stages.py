@@ -3089,14 +3089,7 @@ class SelectLabels(ViewStage):
         fields (None): a field or iterable of fields from which to select
     """
 
-    def __init__(
-        self,
-        labels=None,
-        ids=None,
-        tags=None,
-        fields=None,
-        _select_fields=True,
-    ):
+    def __init__(self, labels=None, ids=None, tags=None, fields=None):
         if labels is not None:
             sample_ids, labels_map = _parse_labels(labels)
         else:
@@ -3121,7 +3114,6 @@ class SelectLabels(ViewStage):
         self._ids = ids
         self._tags = tags
         self._fields = fields
-        self._select_fields = _select_fields
         self._sample_ids = sample_ids
         self._labels_map = labels_map
         self._pipeline = None
@@ -3217,10 +3209,9 @@ class SelectLabels(ViewStage):
         # our intention is not to remove other fields from the schema, only to
         # empty their sample fields in the returned view
         #
-        if self._select_fields:
-            stage = SelectFields(list(self._labels_map.keys()))
-            stage.validate(sample_collection)
-            pipeline.extend(stage.to_mongo(sample_collection))
+        stage = SelectFields(list(self._labels_map.keys()))
+        stage.validate(sample_collection)
+        pipeline.extend(stage.to_mongo(sample_collection))
 
         for field, labels_map in self._labels_map.items():
             label_type = sample_collection._get_label_field_type(field)
@@ -3256,10 +3247,9 @@ class SelectLabels(ViewStage):
         # our intention is not to remove other fields from the schema, only to
         # empty their sample fields in the returned view
         #
-        if self._select_fields:
-            stage = SelectFields(fields)
-            stage.validate(sample_collection)
-            pipeline.extend(stage.to_mongo(sample_collection))
+        stage = SelectFields(fields)
+        stage.validate(sample_collection)
+        pipeline.extend(stage.to_mongo(sample_collection))
 
         # Handle early exit
         if self._ids is None and self._tags is None:

@@ -2982,12 +2982,7 @@ class SampleCollection(object):
 
     @view_stage
     def select_labels(
-        self,
-        labels=None,
-        ids=None,
-        tags=None,
-        fields=None,
-        _select_fields=True,
+        self, labels=None, ids=None, tags=None, fields=None,
     ):
         """Selects only the specified labels from the collection.
 
@@ -3080,13 +3075,7 @@ class SampleCollection(object):
             a :class:`fiftyone.core.view.DatasetView`
         """
         return self._add_view_stage(
-            fos.SelectLabels(
-                labels=labels,
-                ids=ids,
-                tags=tags,
-                fields=fields,
-                _select_fields=_select_fields,
-            )
+            fos.SelectLabels(labels=labels, ids=ids, tags=tags, fields=fields,)
         )
 
     @view_stage
