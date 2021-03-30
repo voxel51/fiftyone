@@ -682,9 +682,6 @@ class DatasetView(foc.SampleCollection):
         if not attach_frames:
             attach_frames = self._needs_frames()
 
-        if not attach_frames:
-            detach_frames = False
-
         return self._dataset._pipeline(
             pipeline=_pipeline,
             attach_frames=attach_frames,

@@ -164,8 +164,8 @@ class OpenImagesEvaluation(DetectionEvaluation):
             ``(gt_label, pred_label, iou, pred_confidence, gt_id, pred_id)``
             tuples
         """
-        gts = sample_or_frame[self.config.gt_field]
-        preds = sample_or_frame[self.config.pred_field]
+        gts = sample_or_frame[self.gt_field]
+        preds = sample_or_frame[self.pred_field]
 
         pos_labs = None
         neg_labs = None
@@ -297,7 +297,13 @@ class OpenImagesEvaluation(DetectionEvaluation):
             recall[c] = rec
 
         return OpenImagesDetectionResults(
-            matches, precision, recall, _classes, missing=missing
+            matches,
+            precision,
+            recall,
+            _classes,
+            missing=missing,
+            gt_field=gt_field,
+            pred_field=pred_field,
         )
 
 
@@ -316,8 +322,24 @@ class OpenImagesDetectionResults(DetectionResults):
             given this label for evaluation purposes
     """
 
-    def __init__(self, matches, precision, recall, classes, missing=None):
-        super().__init__(matches, classes=classes, missing=missing)
+    def __init__(
+        self,
+        matches,
+        precision,
+        recall,
+        classes,
+        gt_field=None,
+        pred_field=None,
+        missing=None,
+    ):
+        super().__init__(
+            matches,
+            gt_field=gt_field,
+            pred_field=pred_field,
+            classes=classes,
+            missing=missing,
+        )
+
         self.precision = precision
         self.recall = recall
         self._classwise_AP = {}
@@ -438,7 +460,7 @@ _NO_MATCH_IOU = -1
 
 
 def _expand_label_hierarchy(labels, config, expand_child=False):
-    keyed_node = config.hierarchy_keyed_parent
+    keyed_nodes = config.hierarchy_keyed_parent
     if expand_child:
         keyed_nodes = config.hierarchy_keyed_child
     additional_labs = []

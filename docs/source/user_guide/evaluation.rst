@@ -1283,7 +1283,7 @@ Dataset Zoo:
 
     dataset.set_values("frames.predictions.detections.label", pred_labels)
 
-    print(datset)
+    print(dataset)
 
     # Evaluate the frame-level `predictions` against the frame-level
     # `ground_truth` objects

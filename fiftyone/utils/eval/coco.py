@@ -123,8 +123,8 @@ class COCOEvaluation(DetectionEvaluation):
             ``(gt_label, pred_label, iou, pred_confidence, gt_id, pred_id)``
             tuples
         """
-        gts = sample_or_frame[self.config.gt_field]
-        preds = sample_or_frame[self.config.pred_field]
+        gts = sample_or_frame[self.gt_field]
+        preds = sample_or_frame[self.pred_field]
 
         if eval_key is None:
             # Don't save results on user's data
@@ -164,7 +164,6 @@ class COCOEvaluation(DetectionEvaluation):
         """
         gt_field = self.config.gt_field
         pred_field = self.config.pred_field
-        iou_threshs = self.config.iou_threshs
 
         if not self.config.compute_mAP:
             return DetectionResults(
@@ -175,6 +174,10 @@ class COCOEvaluation(DetectionEvaluation):
                 missing=missing,
             )
 
+        iter_samples = samples.select_fields([gt_field, pred_field])
+        processing_frames = samples._is_frame_field(pred_field)
+
+        iou_threshs = self.config.iou_threshs
         thresh_matches = {t: {} for t in iou_threshs}
         if classes is None:
             classes = []
@@ -182,42 +185,48 @@ class COCOEvaluation(DetectionEvaluation):
         # IoU sweep
         logger.info("Performing IoU sweep...")
         with fou.ProgressBar() as pb:
-            for sample in pb(samples):
-                # Don't mess with the user's data
-                gts = sample[gt_field].copy()
-                preds = sample[pred_field].copy()
+            for sample in pb(iter_samples):
+                if processing_frames:
+                    images = sample.frames.values()
+                else:
+                    images = [sample]
 
-                matches_dict = _coco_evaluation_iou_sweep(
-                    gts, preds, self.config
-                )
+                for image in images:
+                    # Don't mess with the user's data
+                    gts = image[self.gt_field].copy()
+                    preds = image[self.pred_field].copy()
 
-                for t, t_matches in matches_dict.items():
-                    for match in t_matches:
-                        gt_label = match[0]
-                        pred_label = match[1]
-                        iscrowd = match[-1]
+                    image_matches = _coco_evaluation_iou_sweep(
+                        gts, preds, self.config
+                    )
 
-                        if iscrowd:
-                            continue
+                    for t, t_matches in image_matches.items():
+                        for match in t_matches:
+                            gt_label = match[0]
+                            pred_label = match[1]
+                            iscrowd = match[-1]
 
-                        c = gt_label if gt_label != None else pred_label
-                        if c not in classes:
-                            classes.append(c)
+                            if iscrowd:
+                                continue
 
-                        if c not in thresh_matches[t]:
-                            thresh_matches[t][c] = {
-                                "tp": [],
-                                "fp": [],
-                                "num_gt": 0,
-                            }
+                            c = gt_label if gt_label != None else pred_label
+                            if c not in classes:
+                                classes.append(c)
 
-                        if gt_label == pred_label:
-                            thresh_matches[t][c]["tp"].append(match)
-                        elif pred_label:
-                            thresh_matches[t][c]["fp"].append(match)
+                            if c not in thresh_matches[t]:
+                                thresh_matches[t][c] = {
+                                    "tp": [],
+                                    "fp": [],
+                                    "num_gt": 0,
+                                }
 
-                        if gt_label:
-                            thresh_matches[t][c]["num_gt"] += 1
+                            if gt_label == pred_label:
+                                thresh_matches[t][c]["tp"].append(match)
+                            elif pred_label:
+                                thresh_matches[t][c]["fp"].append(match)
+
+                            if gt_label:
+                                thresh_matches[t][c]["num_gt"] += 1
 
         # Compute precision-recall array
         # https://github.com/cocodataset/cocoapi/blob/master/PythonAPI/pycocotools/cocoeval.py

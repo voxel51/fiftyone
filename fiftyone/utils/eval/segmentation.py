@@ -217,13 +217,10 @@ class SimpleEvaluation(SegmentationEvaluation):
             values = _get_mask_values(samples, pred_field, gt_field)
             classes = [str(v) for v in values]
 
+        iter_samples = samples.select_fields([gt_field, pred_field])
+
         pred_field, processing_frames = samples._handle_frame_field(pred_field)
         gt_field, _ = samples._handle_frame_field(gt_field)
-
-        if not processing_frames:
-            iter_samples = samples.select_fields([gt_field, pred_field])
-        else:
-            iter_samples = samples
 
         nc = len(values)
         confusion_matrix = np.zeros((nc, nc), dtype=int)
