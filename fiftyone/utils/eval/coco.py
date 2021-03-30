@@ -8,10 +8,9 @@ COCO-style detection evaluation.
 import logging
 from collections import defaultdict
 
-import matplotlib.pyplot as plt
 import numpy as np
-import sklearn.metrics as skm
 
+import fiftyone.core.plots as fop
 import fiftyone.core.utils as fou
 
 from .detection import (
@@ -55,7 +54,7 @@ class COCOEvaluationConfig(DetectionEvaluationConfig):
         compute_mAP=False,
         iou_threshs=None,
         max_preds=None,
-        **kwargs
+        **kwargs,
     ):
         super().__init__(
             pred_field, gt_field, iou=iou, classwise=classwise, **kwargs
@@ -148,7 +147,8 @@ class COCOEvaluation(DetectionEvaluation):
 
         Args:
             samples: a :class:`fiftyone.core.SampleCollection`
-            matches: a list of ``(gt_label, pred_label, iou, pred_confidence)``
+            matches: a list of
+                ``(gt_label, pred_label, iou, pred_confidence, gt_id, pred_id)``
                 matches. Either label can be ``None`` to indicate an unmatched
                 object
             eval_key (None): the evaluation key for this evaluation
@@ -161,13 +161,20 @@ class COCOEvaluation(DetectionEvaluation):
         Returns:
             a :class:`DetectionResults`
         """
-        if not self.config.compute_mAP:
-            return DetectionResults(matches, classes=classes, missing=missing)
+        gt_field = self.config.gt_field
+        pred_field = self.config.pred_field
 
-        iter_samples = samples.select_fields(
-            [self.config.gt_field, self.config.pred_field]
-        )
-        processing_frames = samples._is_frame_field(self.config.pred_field)
+        if not self.config.compute_mAP:
+            return DetectionResults(
+                matches,
+                gt_field=gt_field,
+                pred_field=pred_field,
+                classes=classes,
+                missing=missing,
+            )
+
+        iter_samples = samples.select_fields([gt_field, pred_field])
+        processing_frames = samples._is_frame_field(pred_field)
 
         iou_threshs = self.config.iou_threshs
         thresh_matches = {t: {} for t in iou_threshs}
@@ -192,13 +199,16 @@ class COCOEvaluation(DetectionEvaluation):
                         gts, preds, self.config
                     )
 
-                    for t, ms in image_matches.items():
-                        for m in ms:
-                            # m = (gt_label, pred_label, iou, confidence, iscrowd)
-                            if m[4]:
+                    for t, t_matches in image_matches.items():
+                        for match in t_matches:
+                            gt_label = match[0]
+                            pred_label = match[1]
+                            iscrowd = match[-1]
+
+                            if iscrowd:
                                 continue
 
-                            c = m[0] if m[0] != None else m[1]
+                            c = gt_label if gt_label != None else pred_label
                             if c not in classes:
                                 classes.append(c)
 
@@ -209,16 +219,15 @@ class COCOEvaluation(DetectionEvaluation):
                                     "num_gt": 0,
                                 }
 
-                            if m[0] == m[1]:
-                                thresh_matches[t][c]["tp"].append(m)
-                            elif m[1]:
-                                thresh_matches[t][c]["fp"].append(m)
+                            if gt_label == pred_label:
+                                thresh_matches[t][c]["tp"].append(match)
+                            elif pred_label:
+                                thresh_matches[t][c]["fp"].append(match)
 
-                            if m[0]:
+                            if gt_label:
                                 thresh_matches[t][c]["num_gt"] += 1
 
         # Compute precision-recall array
-        # Reference:
         # https://github.com/cocodataset/cocoapi/blob/master/PythonAPI/pycocotools/cocoeval.py
         precision = -np.ones((len(iou_threshs), len(classes), 101))
         recall = np.linspace(0, 1, 101)
@@ -231,13 +240,14 @@ class COCOEvaluation(DetectionEvaluation):
                     continue
 
                 tp_fp = [1] * len(tp) + [0] * len(fp)
-                confs = [p[3] for p in tp] + [p[3] for p in fp]
+                confs = [m[3] for m in tp] + [m[3] for m in fp]
                 if None in confs:
                     raise ValueError(
-                        "Average precision is a ranking based metric,"
-                        " detections in pred_field should have a confidence"
-                        " attribute"
+                        "All predicted objects must have their `confidence` "
+                        "attribute populated in order to compute "
+                        "precision-recall curves"
                     )
+
                 inds = np.argsort(-np.array(confs), kind="mergesort")
                 tp_fp = np.array(tp_fp)[inds]
                 tp_sum = np.cumsum(tp_fp).astype(dtype=np.float)
@@ -246,7 +256,7 @@ class COCOEvaluation(DetectionEvaluation):
                 pre = tp_sum / total
                 rec = tp_sum / num_gt
 
-                q = np.zeros((101,))
+                q = np.zeros(101)
                 for i in range(len(pre) - 1, 0, -1):
                     if pre[i] > pre[i - 1]:
                         pre[i - 1] = pre[i]
@@ -261,7 +271,14 @@ class COCOEvaluation(DetectionEvaluation):
                 precision[iou_threshs.index(t)][classes.index(c)] = q
 
         return COCODetectionResults(
-            matches, precision, recall, iou_threshs, classes, missing=missing
+            matches,
+            precision,
+            recall,
+            iou_threshs,
+            classes,
+            gt_field=gt_field,
+            pred_field=pred_field,
+            missing=missing,
         )
 
 
@@ -269,7 +286,8 @@ class COCODetectionResults(DetectionResults):
     """Class that stores the results of a COCO detection evaluation.
 
     Args:
-        matches: a list of ``(gt_label, pred_label, iou, pred_confidence)``
+        matches: a list of
+            ``(gt_label, pred_label, iou, pred_confidence, gt_id, pred_id)``
             matches. Either label can be ``None`` to indicate an unmatched
             object
         precision: an array of precision values of shape
@@ -277,67 +295,68 @@ class COCODetectionResults(DetectionResults):
         recall: an array of recall values
         iou_threshs: the list of IoU thresholds
         classes: the list of possible classes
+        gt_field (None): the name of the ground truth field
+        pred_field (None): the name of the predictions field
         missing (None): a missing label string. Any unmatched objects are
             given this label for evaluation purposes
     """
 
     def __init__(
-        self, matches, precision, recall, iou_threshs, classes, missing=None
+        self,
+        matches,
+        precision,
+        recall,
+        iou_threshs,
+        classes,
+        gt_field=None,
+        pred_field=None,
+        missing=None,
     ):
-        super().__init__(matches, classes=classes, missing=missing)
+        super().__init__(
+            matches,
+            gt_field=gt_field,
+            pred_field=pred_field,
+            classes=classes,
+            missing=missing,
+        )
         self.precision = np.asarray(precision)
         self.recall = np.asarray(recall)
         self.iou_threshs = np.asarray(iou_threshs)
         self._classwise_AP = np.mean(precision, axis=(0, 2))
 
-    def plot_pr_curves(
-        self,
-        classes=None,
-        ax=None,
-        figsize=None,
-        block=False,
-        return_ax=False,
-        **kwargs
-    ):
-        """Plots precision-recall (PR) curves for the detection results.
+    def plot_pr_curves(self, classes=None, backend="plotly", **kwargs):
+        """Plots precision-recall (PR) curves for the results.
 
         Args:
             classes (None): a list of classes to generate curves for. By
                 default, top 3 AP classes will be plotted
-            ax (None): an optional matplotlib axis to plot in
-            figsize (None): an optional ``(width, height)`` for the figure, in
-                inches
-            block (False): whether to block execution when the plot is
-                displayed via ``matplotlib.pyplot.show(block=block)``
-            return_ax (False): whether to return the matplotlib axis containing
-                the plots
-            **kwargs: optional keyword arguments for
-                ``sklearn.metrics.PrecisionRecallDisplay.plot(**kwargs)``
+            backend ("plotly"): the plotting backend to use. Supported values
+                are ``("plotly", "matplotlib")``
+            **kwargs: keyword arguments for the backend plotting method:
+
+                -   "plotly" backend: :meth:`fiftyone.core.plots.plotly.plot_pr_curves`
+                -   "matplotlib" backend: :meth:`fiftyone.core.plots.matplotlib.plot_pr_curves`
 
         Returns:
-            None, or, if ``return_ax`` is True, the matplotlib axis containing
-            the plots
+            one of the following:
+
+            -   a :class:`fiftyone.core.plots.plotly.PlotlyNotebookPlot`, if
+                you are working in a notebook context and the plotly backend is
+                used
+            -   a plotly or matplotlib figure, otherwise
         """
         if not classes:
             inds = np.argsort(self._classwise_AP)[::-1][:3]
             classes = self.classes[inds]
 
+        precisions = []
         for c in classes:
             class_ind = self._get_class_index(c)
-            precision = np.mean(self.precision[:, class_ind], axis=0)
-            avg_precision = np.mean(precision)
-            display = skm.PrecisionRecallDisplay(
-                precision=precision, recall=self.recall
-            )
-            label = "AP = %.2f, class = %s" % (avg_precision, c)
-            display.plot(ax=ax, label=label, **kwargs)
-            ax = display.ax_
+            precisions.append(np.mean(self.precision[:, class_ind], axis=0))
 
-        if figsize is not None:
-            display.figure_.set_size_inches(*figsize)
-
-        plt.show(block=block)
-        return ax if return_ax else None
+        return fop.plot_pr_curves(
+            precisions, self.recall, classes, backend=backend, **kwargs
+        )
 
     def mAP(self, classes=None):
         """Computes COCO-style mean average precision (mAP) for the specified
@@ -407,7 +426,7 @@ def _coco_evaluation_single_iou(gts, preds, eval_key, config):
     )
 
     # omit iscrowd
-    return [m[:4] for m in matches]
+    return [m[:-1] for m in matches]
 
 
 def _coco_evaluation_iou_sweep(gts, preds, config):
@@ -419,7 +438,7 @@ def _coco_evaluation_iou_sweep(gts, preds, config):
         gts, preds, id_keys, iou_key, config, max_preds=config.max_preds
     )
 
-    matches = {
+    matches_dict = {
         i: _compute_matches(
             cats,
             pred_ious,
@@ -432,7 +451,7 @@ def _coco_evaluation_iou_sweep(gts, preds, config):
         for i, k in zip(iou_threshs, id_keys)
     }
 
-    return matches
+    return matches_dict
 
 
 def _coco_evaluation_setup(
@@ -544,24 +563,46 @@ def _compute_matches(
                             pred.label,
                             best_match_iou,
                             pred.confidence,
+                            gt.id,
+                            pred.id,
                             iscrowd(gt),
                         )
                     )
                 else:
                     pred[eval_key] = "fp"
                     matches.append(
-                        (None, pred.label, None, pred.confidence, None)
+                        (
+                            None,
+                            pred.label,
+                            None,
+                            pred.confidence,
+                            None,
+                            pred.id,
+                            None,
+                        )
                     )
 
             elif pred.label == cat:
                 pred[eval_key] = "fp"
-                matches.append((None, pred.label, None, pred.confidence, None))
+                matches.append(
+                    (
+                        None,
+                        pred.label,
+                        None,
+                        pred.confidence,
+                        None,
+                        pred.id,
+                        None,
+                    )
+                )
 
         # Leftover GTs are false negatives
         for gt in objects["gts"]:
             if gt[id_key] == _NO_MATCH_ID:
                 gt[eval_key] = "fn"
-                matches.append((gt.label, None, None, None, iscrowd(gt)))
+                matches.append(
+                    (gt.label, None, None, None, gt.id, None, iscrowd(gt))
+                )
 
     return matches
 

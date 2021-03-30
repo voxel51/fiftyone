@@ -41,8 +41,8 @@ FiftyOne supports the configuration options described below:
 +-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
 | `default_batch_size`          | `FIFTYONE_DEFAULT_BATCH_SIZE`       | `None`                        | A default batch size to use when :ref:`applying models to datasets <model-zoo-apply>`. |
 +-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
-| `requirement_error_level`     | `FIFTYONE_REQUIREMENT_ERROR_LEVEL`  | `0`                           | A default error level to use when ensuring/installing requirements for models from the |
-|                               |                                     |                               | model zoo. See :ref:`loading zoo models <model-zoo-load>` for more information.        |
+| `requirement_error_level`     | `FIFTYONE_REQUIREMENT_ERROR_LEVEL`  | `0`                           | A default error level to use when ensuring/installing requirements such as third-party |
+|                               |                                     |                               | packages. See :ref:`loading zoo models <model-zoo-load>` for an example usage.         |
 +-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
 | `default_sequence_idx`        | `FIFTYONE_DEFAULT_SEQUENCE_IDX`     | `%06d`                        | The default numeric string pattern to use when writing sequential lists of             |
 |                               |                                     |                               | files.                                                                                 |
@@ -258,7 +258,7 @@ The FiftyOne App can be configured in the ways described below:
 +-------------------+---------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
 | `notebook_height` | `FIFTYONE_APP_NOTEBOOK_HEIGHT`  | `800`                       | The default height of App instances displayed in notebook cells.                         |
 +-------------------+---------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
-| `show_attributes` | `FIFTYONE_APP_SHOW_ATTRIBUTES`  | `True`                      | Whether to show attributes when rendering labels in the App's expanded sample view.      |
+| `show_attributes` | `FIFTYONE_APP_SHOW_ATTRIBUTES`  | `False`                     | Whether to show attributes when rendering labels in the App's expanded sample view.      |
 +-------------------+---------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
 | `show_confidence` | `FIFTYONE_APP_SHOW_CONFIDENCE`  | `True`                      | Whether to show confidences when rendering labels in the App's expanded sample view.     |
 +-------------------+---------------------------------+-----------------------------+------------------------------------------------------------------------------------------+

@@ -331,7 +331,7 @@ from a pre-trained model from the :ref:`Model Zoo <model-zoo>`:
     )
 
     # We need the list of class labels corresponding to the logits
-    logits_classes = dataset.info["classes"]
+    logits_classes = dataset.default_classes
 
     # Add predictions (with logits) to 25 random samples
     predictions_view = dataset.take(25)

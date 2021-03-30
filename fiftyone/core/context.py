@@ -15,12 +15,30 @@ _context = None
 
 def is_notebook_context():
     """Determines whether this process is running in a notebook context, either
-    Colab or Jupyter.
+    Jupyter or Google Colab.
 
     Returns:
         True/False
     """
     return _get_context() != _NONE
+
+
+def is_jupyter_context():
+    """Determines whether this process is running in a Jupyter notebook.
+
+    Returns:
+        True/False
+    """
+    return _get_context() == _IPYTHON
+
+
+def is_colab_context():
+    """Determines whether this process is running in Google Colab.
+
+    Returns:
+        True/False
+    """
+    return _get_context() == _COLAB
 
 
 def _get_context():
@@ -68,3 +86,7 @@ def _get_context():
     _context = _NONE
 
     return _context
+
+
+class ContextError(EnvironmentError):
+    """Exception raised when an action is taken in an unsupported context."""
