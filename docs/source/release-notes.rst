@@ -3,6 +3,71 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+.. _release-notes-v0.8.0:
+
+FiftyOne 0.8.0
+--------------
+*Released March 31, 2021*
+
+App
+^^^
+- Added the ability to tag samples and labels directly from the App in both
+  the sample grid (macro) and expanded sample view (micro) with respect to and
+  filters or currently selected samples/labels
+- Added `LABEL TAGS` section to the Filters Sidebar to coincide with the
+  introduction of label tags
+- Expanded actions to list of button groups in the sample grid and expanded
+  sample view
+- Fixed hiding, clearing, and only showing selected samples in the samples grid
+
+Core
+^^^^
+- Added the `tag` attribute to all :class:`Label <fiftyone.core.labels.Label>`
+  types, e.g. `Detection <fiftyone.core.labels.Detection>`
+- Added the following  methods for working with sample and label tags:
+  - :meth:`SampleCollection.tag_samples() <fiftyone.core.collections.SampleCollection.tag_samples>`
+  - :meth:`SampleCollection.untag_samples() <fiftyone.core.collections.SampleCollection.untag_samples>`
+  - :meth:`SampleCollection.count_sample_tags() <fiftyone.core.collections.SampleCollection.count_sample_tags>`
+  - :meth:`SampleCollection.tag_labels() <fiftyone.core.collections.SampleCollection.tag_labels>`
+  - :meth:`SampleCollection.untag_labels() <fiftyone.core.collections.SampleCollection.untag_labels>`
+  - :meth:`SampleCollection.count_label_tags() <fiftyone.core.collection.SampleCollection.count_label_tags>`
+  - 
+- BREAKING CHANGE: Renamed all applicable API components to refer to `objects` as `labels`
+  Affected attributes, classes, and methods are:
+  - :attr:`Session.selected_labels <fiftyone.core.session.Session.selected_labels>`
+    (previously `Session.selected_objects`)
+  - :meth:`SampleCollection.select_labels() <fiftyone.core.collections.select_labels()`
+    (previously `SampleCollection.select_labels()`)
+  - :meth:`SampleCollection.select_labels() <fiftyone.core.collections.exclude_labels()`
+    (previously `SampleCollection.exclude_labels()`)
+  - :class:`SelectLabels <fiftyone.core.stages.SelectLabels>` (previously
+    `SelectObjects`)
+  - :class:`ExcludeLabels <fiftyone.core.stages.ExcludeLabels>` (previously
+    `ExcludeObjects`)
+- Added the keyword arguments `ids`, `tags`, and `fields` to 
+  :meth:`SampleCollection.select_labels() <fiftyone.core.collections.select_labels()`
+  and
+  :meth:`SampleCollection.select_labels() <fiftyone.core.collections.exclude_labels()`
+  (previsouly `SampleCollection.select_objects()` and
+  `SampleCollection.exclude_objects()`, respectively) and their corresponding view stages.
+- Added the brand new core :mod:`<fiftyone.core.plots>`. The API includes the ability
+  to interactively explore your datasets in Jupyter Notebooks. See ... for a full rundown.
+
+
+Brain
+^^^^^
+
+CLI
+^^^
+- Removed the `--desktop` flag from the
+- :ref:`fiftyone app connect <cli-fiftyone-app-connect>` command
+
+Utils
+^^^^^
+
+Docs
+^^^^
+
 .. _release-notes-v0.7.4:
 
 FiftyOne 0.7.4
@@ -12,7 +77,7 @@ FiftyOne 0.7.4
 App
 ^^^
 - Fixed a bug that prevented |Session| updates from triggering App updates
-- Fixed hiding objects in the expanded sample view
+- Fixed hiding labels in the expanded sample view
 
 Core
 ^^^^
@@ -55,7 +120,7 @@ FiftyOne 0.7.3
 
 App
 ^^^
-- Added filtering widgets to the Fields Sidebar for
+- Added filtering widgets to the Filters Sidebar for
   :class:`StringFields <fiftyone.core.fields.StringField>` and
   :class:`BooleanFields <fiftyone.core.fields.BooleanField>`
 - Added histogram plots for
@@ -64,9 +129,9 @@ App
   tab
 - Moved `None` selection for
   :class:`StringFields <fiftyone.core.fields.StringField>` to the input format
-  in the Fields Sidebar
+  in the Filters Sidebar
 - Changed `None` options to only be present when `None` values exist for a
-  supported :class:`Field <fiftyone.core.fields.Field>` in the Fields Sidebar
+  supported :class:`Field <fiftyone.core.fields.Field>` in the Filters Sidebar
 - Added `Color by label` support for
   :class:`Classification <fiftyone.core.labels.Classification>`,
   :class:`Classifications <fiftyone.core.labels.Classifications>`,
@@ -75,7 +140,7 @@ App
 - Added support excluding selected values for a
   :class:`StringField <fiftyone.core.fields.StringField>` in the Fields
   Sidebar
-- Various style and interaction improvements in the Fields Sidebar
+- Various style and interaction improvements in the Filters Sidebar
 - The App will no longer crash when samples whose source media is unsupported
   or missing are loaded
 
@@ -149,7 +214,7 @@ FiftyOne 0.7.2
 
 App
 ^^^
-- Changed the Fields Sidebar label filters to only return matched samples,
+- Changed the Filters Sidebar label filters to only return matched samples,
   i.e., samples with at least one matching label with respect to a filter
 - Fixed a bug in Colab notebooks that allowed for the `.ipynb` file to grow
   unnecessarily large
@@ -159,7 +224,7 @@ App
   :meth:`select_fields() <fiftyone.core.collections.SampleCollection.select_fields>`
   and
   :meth:`exclude_fields() <fiftyone.core.collections.SampleCollection.exclude_fields>`
-  from being properly respected by the Fields Sidebar
+  from being properly respected by the Filters Sidebar
 - Fixed a bug that prevented selected samples from being cleared when modifying
   your view or choosing an option from the select samples dropdown
 - Added an |AppConfig| for configuring options like the color pool to use when
@@ -248,7 +313,7 @@ FiftyOne 0.7.1
 App
 ^^^
 - Added automatic screenshotting for :ref:`notebook environments <notebooks>`
-- Fixed a bug where the Fields Sidebar statistics would not load for empty
+- Fixed a bug where the Filters Sidebar statistics would not load for empty
   views
 - Fixed style inconsistencies in Firefox
 
@@ -325,7 +390,7 @@ App
 - The desktop App can now be installed as an
   :ref:`optional dependency <installing-fiftyone-desktop>`
 - Fixed an issue where the App would freeze after filtering labels in the
-  Fields Sidebar
+  Filters Sidebar
 
 Core
 ^^^^
@@ -401,16 +466,16 @@ FiftyOne 0.6.5
 App
 ^^^
 - Added concurrency to the server wich greatly improves loading speeds and
-  time-to-interaction in the Grid, View Bar, and Fields Sidebar for larger
+  time-to-interaction in the Grid, View Bar, and Filters Sidebar for larger
   datasets and views
-- Renamed the Display Options Sidebar to the Fields Sidebar
-- Added support for coloring by `label` value in the Fields Sidebar
+- Renamed the Display Options Sidebar to the Filters Sidebar
+- Added support for coloring by `label` value in the Filters Sidebar
 - Added support for filtering
   :class:`keypoint <fiftyone.core.labels.Keypoint>`,
   :class:`keypoints <fiftyone.core.labels.Keypoints>`,
   :class:`polyline <fiftyone.core.labels.Polyline>`,
   :class:`polylines <fiftyone.core.labels.Polylines>` fields by `label` value
-  in the Fields Sidebar
+  in the Filters Sidebar
 - Moved plot tabs into an expandable window that can be resized and maximized.
   This allows for viewing distributions and the sample grid at the same time
 - Fixed video loading in the grid and modal for video samples with metadata
@@ -473,7 +538,7 @@ App
 - Improved support for frame- and sample-level labels in display options for
   video datasets
 - Added support for all label types in the labels distributions tab
-- Added support for selecting and hiding objects in the sample modal
+- Added support for selecting and hiding labels in the sample modal
 
 Core
 ^^^^
@@ -482,16 +547,16 @@ Core
   view stage, which supercedes the old dedicated per-label-type filtering
   stages
 - Added
-  :meth:`select_objects() <fiftyone.core.collections.SampleCollection.select_objects>`
+  :meth:`select_labels() <fiftyone.core.collections.SampleCollection.select_labels>`
   and
-  :meth:`exclude_objects() <fiftyone.core.collections.SampleCollection.exclude_objects>`
-  to select or exclude objects from a dataset or view
+  :meth:`exclude_labels() <fiftyone.core.collections.SampleCollection.exclude_labels>`
+  to select or exclude labels from a dataset or view
 - Added an :mod:`aggregations framework <fiftyone.core.aggregations>` for
   computing aggregate values via
   :meth:`aggregate() <fiftyone.core.collections.SampleCollection.aggregate>`
 - Added the
-  :attr:`selected_objects <fiftyone.core.session.Session.selected_objects>`
-  session attribute, which holds the currently selected objects in the App
+  :attr:`selected_labels <fiftyone.core.session.Session.selected_labels>`
+  session attribute, which holds the currently selected labels in the App
 - Added support for
   :meth:`adding <fiftyone.core.dataset.Dataset.add_frame_field>`,
   :meth:`renaming <fiftyone.core.dataset.Dataset.rename_frame_field>`, and
@@ -534,7 +599,7 @@ Core
   the :ref:`Dataset Zoo <dataset-zoo>`
 - Added new versions of `COCO <https://cocodataset.org/#home>`_ that contain
   instance segmentations to the :ref:`Dataset Zoo <dataset-zoo>`
-- Added utilities for selecting objects from datasets via the Python library
+- Added utilities for selecting labels from datasets via the Python library
 - Added a boolean `only_matches` parameter to all filter stages that enables
   the user to specify that a view should only contain samples that match the
   given filter
@@ -565,7 +630,7 @@ App
 
 Core
 ^^^^
-- |Polyline| instances can now represent objects composed of multiple shapes
+- |Polyline| instances can now represent labels composed of multiple shapes
 - Segmentations can now be :ref:`imported <COCODetectionDataset-import>` and
   :ref:`exported <COCODetectionDataset-export>` when using
   `COCO Object Detection Format <https://cocodataset.org/#format-data>`_.
@@ -719,7 +784,7 @@ App
   selecting samples
 - Simplified placeholders in the view bar
 - Added support for filtering sample JSON in the expanded sample view to match
-  the objects displayed in the media viewer
+  the labels displayed in the media viewer
 - Updated the instructions that appear when starting the App before connecting
   to a session
 
