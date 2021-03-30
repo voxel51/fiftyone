@@ -1182,10 +1182,53 @@ classification, detection, segmentation, and visual relationship tasks across
 
 Partial downloads:
 
--   You can specify subsets of data to download with the ``classes``,
-    ``attributes``, ``label_types``, and ``max_samples`` parameters
--   You can specify specific images to load by their ID using ``image_ids``
-    or ``image_ids_file`` parameters
+Open Images is a large dataset, FiftyOne provides parameters that can be
+used to download specific subsets of the dataset to suit your needs. It will
+only download the data relevant to the specified subset. When additional
+subsets are specified, the zoo will attempt to use existing downloaded data first
+to meet your specifications. These parameters are:
+
+- ``label_types``: a list of types of labels to load. Values are
+  ``("detections", "classifications", "relationships", "segmentations")``.
+  By default, all labels are loaded but not every sample will include
+  each label type. If ``max_samples`` and ``label_types`` are both
+  specified, then every sample will include the specified label
+  types.
+
+
+- ``split`` and ``splits``: either a string or list of strings dictating the splits
+  to load. Available splits are ``("test", "train", "validation")``
+
+
+- ``classes``: a list of strings specifying required classes to load.
+  Only samples containing at least one instance of a specified
+  class will be downloaded. Use :meth:`fiftyone.utils.openimages.get_classes` to see the
+  available classes and :meth:`fiftyone.utils.openimages.get_segmentation_classes` to see
+  available segmentation classes
+ 
+
+- ``attrs``: a list of strings for relationship attributes to load. This
+  parameter is only useful if ``"relationships"`` is in ``label_types``. Use 
+  :meth:`fiftyone.utils.openimages.get_attributes` to see the
+  available attributes
+
+
+- ``max_samples``: a maximum number of samples to import. By
+  default, all samples are imported
+
+- ``shuffle``: boolean dictating whether to randomly shuffle the order in which the
+  samples are imported
+ 
+- ``seed``: a random seed to use when shuffling
+
+- ``image_ids``: a list of specific image IDs to load. The IDs can be
+  specified either as ``<split>/<image-id>`` or ``<image-id>``
+
+- ``image_ids_file``: the path to a newline separated ``.txt``, ``.json``, or ``.csv``
+  file containing a list of image IDs to load. The IDs can be
+  specified either as ``<split>/<image-id>`` or ``<image-id>``. If
+  ``image_ids`` is provided, this parameter is ignored
+
 
 Full split stats:
 

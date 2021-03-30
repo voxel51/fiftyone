@@ -636,6 +636,93 @@ curves for your detections by passing the ``compute_mAP=True`` flag to
    :alt: coco-pr-curve
    :align: center
 
+
+mAP protocol details
+~~~~~~~~~~~~~~~~~~~~
+
+The protocol to compute mean average precision (mAP) often varies based on the
+implementation an dataset on which it is performed. The COCO mAP protocol is
+often considered the de-facto method, succeeding the 
+`PASCAL VOC-style calculation of mAP
+<https://jonathan-hui.medium.com/map-mean-average-precision-for-object-detection-45c121a31173>`_.
+
+COCO-style mAP calculation primarily adds the ability to evaluate `iscrowd`
+objects and evaluate a sweep of IoU values.
+
+The steps to compute COCO-style mAP are detailed below.
+
+Preprocessing:
+
+- Filter ground truth and predicted objects by class (unless `classwise=False`)
+
+- Sort predicted objects by confidence score so high confidence objects are
+  matched first. Only the top 100 predictions are factored into evaluation
+  (configurable with `max_preds`).
+
+- Sort ground truth objects so `iscrowd` objects are matched last
+
+- Compute IoU between every ground truth and predicted object within the same 
+  class (and between classes if `classwise=False`) in each image.
+
+- IoU between predictions and crowd objects is calculated as the intersection
+  of both boxes divided by the area of the prediction only. A prediction fully
+  inside the crowd box has an IoU of 1.
+
+
+
+Matching:
+
+Once IoUs have been computed, predictions and ground truth objects need to be
+matched to compute true positives, false positives, and false negatives.
+
+- For each class, start with the highest confidence prediction, match it to
+  the ground truth object that it overlaps with the highest IoU. A prediction
+  only matches if the IoU is above the specified IoU threshold.
+
+- If a prediction matched to a non-crowd object, it will not match to a crowd
+  even if the IoU is higher.
+
+- Multiple predictions can match to the same crowd ground truth object, each
+  counting as a true positive.
+
+- If a prediction maximally overlaps with a ground truth object that has
+  already been matched (by a higher confidence prediction), the prediction is
+  matched with the next highest IoU ground truth object.
+
+- (Only relevant if `classwise=False`) predictions can only match to crowds if they are
+  of the same class.
+
+
+Computing mAP:
+
+- Compute matches for 10 IoU thresholds from 0.5 to 0.95 in increments of
+  0.05.
+
+- The next 6 steps are computed separately for each
+  class and IoU threshold:
+
+- Construct a boolean array of true positives and false positives, sorted by
+  confidence. The 
+  `pycocotools documentation <https://github.com/cocodataset/cocoapi/blob/8c9bcc3cf640524c4c20a9c40e89cb6a2f2fa0e9/PythonAPI/pycocotools/cocoeval.py#L366>`_ 
+  states that it is crucial to use mergesort here.
+
+- Compute the cumlative sum of the true positive and false positive array.
+
+- Precision is initially computed as the tp fp sum array where each element is
+  divided by the total number of predictions up to that point.
+ 
+- Recall is initially computed as the tp fp sum array divided 
+  by the scalar number of ground truth objects for the class.
+
+- Ensure that precision is a non-increasing array.
+
+- Interpolate precision values so that they can be plotted with an array of
+  101 evenly spaced recall values.
+
+- Computing mAP: For every class that contains at least one ground truth
+  object, compute the AP by averaging the precision values over all 10 IoU
+  thresholds. Then take the mean of AP values of all classes to get mAP. 
+
 Open Images-style evaluation
 ----------------------------
 
@@ -801,6 +888,102 @@ due to not performing an IoU sweep.
 .. image:: ../images/evaluation/oi_pr_curve.png
    :alt: oi-pr-curve
    :align: center
+
+
+mAP protocol details
+~~~~~~~~~~~~~~~~~~~~
+
+Open Images is a more recent dataset than COCO and has taken slightly different
+approaches to computing mAP. Open Images mAP
+calculation is also based off of 
+`PASCAL VOC-style mAP. 
+<https://jonathan-hui.medium.com/map-mean-average-precision-for-object-detection-45c121a31173>`_.
+
+The primary differences between Open Images and COCO come in the way that 
+objects are matched to crowds. Additionaly, Open Images includes image-level
+labels and class hierarchies in evaluation, unlike COCO.
+
+The steps to compute Open Images-style mAP are detailed below.
+
+Preprocessing:
+
+- Filter ground truth and predicted objects by class (unless `classwise=False`)
+
+- Expand the ground truth classes (or predictions if using FiftyOne) by
+  duplicating every object and positive image-level label and modifying the class
+  to include all parent classes in the class hierarchy. Negative image-level labels
+  are expanded to include all child classes in the hierarchy for every label in
+  the image. 
+
+- Sort predicted objects by confidence score so high confidence objects are
+  matched first.
+
+- Sort ground truth objects so `IsGroupOf` objects (the name of crowd objects in Open
+  Images) are matched last
+
+- Compute IoU between every ground truth and predicted object within the same 
+  class (and between classes if `classwise=False`) in each image.
+
+- IoU between predictions and crowd objects is calculated as the intersection
+  of both boxes divided by the area of the prediction only. A prediction fully
+  inside the crowd box has an IoU of 1.
+
+
+Matching:
+
+Once IoUs have been computed, predictions and ground truth objects need to be
+matched to compute true positives, false positives, and false negatives.
+
+- For each class, start with the highest confidence prediction, match it to
+  the ground truth object that it overlaps with the highest IoU. A prediction
+  only matches if the IoU is above the specified IoU threshold (=0.5 by default).
+
+- If a prediction matched to a non-crowd gt object, it will not match to a crowd
+  even if the IoU is higher.
+
+- Multiple predictions can match to the same crowd ground truth object, but
+  only one counts as a true positive, the others are ignored (unlike COCO). 
+  If the crowd is unmatched by any prediction, it is a false negative.
+
+- (Unlike COCO) If a prediction maximally overlaps with a non-crowd ground 
+  truth object that has already been matched (by a higher confidence 
+  prediction), the prediction is marked as a false positive.
+
+- (Only relevant if `classwise=False`) predictions can only match to crowds if they are
+  of the same class.
+
+
+Computing mAP:
+
+- (Unlike COCO) Only one IoU threshold (=0.5) is used to compute mAP 
+
+- The next 6 steps are computed separately for each
+  class:
+
+- Construct an array of true positives and false positives, sorted by
+  confidence. 
+
+- Compute the cumlative sum of the true positive and false positive array.
+
+- Precision is computed as the tp fp sum array where each element is
+  divided by the total number of predictions (count of tp and fp) up to that point.
+ 
+- Recall is computed as the tp fp sum array divided 
+  by the scalar number of ground truth objects for the class.
+
+- Ensure that precision is a non-increasing array.
+
+- Add values `0` and `1` to precision and recall arrays.
+
+- (Unlike COCO) Precision values are not interpolated and all recall values 
+  are used to compute AP. This means that every class will produce a different
+  number of precision and recall values depending on the number of true and
+  false positives existing for that class.
+
+- Computing mAP: For every class that contains at least one ground truth
+  object, compute the AP by averaging the precision values. 
+  Then take the mean of AP values of all of these classes to get mAP. 
+
 
 .. _evaluating-segmentations:
 

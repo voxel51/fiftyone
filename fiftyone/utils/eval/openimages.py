@@ -77,9 +77,6 @@ class OpenImagesEvaluationConfig(DetectionEvaluationConfig):
             pred_field, gt_field, iou=iou, classwise=classwise, **kwargs
         )
 
-        if max_preds is None:
-            max_preds = 100
-
         self.iscrowd = iscrowd
         self.max_preds = max_preds
         self.hierarchy = hierarchy
@@ -189,7 +186,9 @@ class OpenImagesEvaluation(DetectionEvaluation):
             else:
                 neg_labs = [c.label for c in neg_labs.classifications]
                 if self.config.expand_gt_hierarchy:
-                    neg_labs = _expand_label_hierarchy(neg_labs, self.config)
+                    neg_labs = _expand_label_hierarchy(
+                        neg_labs, self.config, expand_child=True
+                    )
 
         if eval_key is None:
             # Don't save results on user's data
@@ -438,13 +437,14 @@ _NO_MATCH_ID = ""
 _NO_MATCH_IOU = -1
 
 
-def _expand_label_hierarchy(labels, config):
-    keyed_parents = config.hierarchy_keyed_parent
-    keyed_children = config.hierarchy_keyed_child
+def _expand_label_hierarchy(labels, config, expand_child=False):
+    keyed_node = config.hierarchy_keyed_parent
+    if expand_child:
+        keyed_nodes = config.hierarchy_keyed_child
     additional_labs = []
     for lab in labels:
-        if lab in keyed_children:
-            additional_labs += list(keyed_children[lab])
+        if lab in keyed_nodes:
+            additional_labs += list(keyed_nodes[lab])
     return list(set(labels + additional_labs))
 
 
@@ -465,7 +465,14 @@ def _open_images_evaluation_single_iou(
     iou_key = "%s_iou" % eval_key
 
     cats, pred_ious, iscrowd = _open_images_evaluation_setup(
-        gts, preds, id_key, iou_key, config, pos_labs, neg_labs
+        gts,
+        preds,
+        id_key,
+        iou_key,
+        config,
+        pos_labs,
+        neg_labs,
+        max_preds=config.max_preds,
     )
 
     matches = _compute_matches(
