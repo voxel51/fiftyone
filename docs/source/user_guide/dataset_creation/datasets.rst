@@ -2547,7 +2547,7 @@ should implement is determined by the type of dataset that you are importing.
     property of the importer allows it to declare whether its
     :meth:`get_dataset_info() <fiftyone.utils.data.importers.UnlabeledImageDatasetImporter.get_dataset_info>`
     method should be called after all samples have been imported to retrieve
-    dataset-level information to store on the FiftyOne datset. See
+    dataset-level information to store on the FiftyOne dataset. See
     :ref:`this section <importing-dataset-level-info>` for more information.
 
     The
@@ -2746,7 +2746,7 @@ should implement is determined by the type of dataset that you are importing.
     property of the importer allows it to declare whether its
     :meth:`get_dataset_info() <fiftyone.utils.data.importers.LabeledImageDatasetImporter.get_dataset_info>`
     method should be called after all samples have been imported to retrieve
-    dataset-level information to store on the FiftyOne datset. See
+    dataset-level information to store on the FiftyOne dataset. See
     :ref:`this section <importing-dataset-level-info>` for more information.
 
     The
@@ -2906,7 +2906,7 @@ should implement is determined by the type of dataset that you are importing.
     property of the importer allows it to declare whether its
     :meth:`get_dataset_info() <fiftyone.utils.data.importers.UnlabeledVideoDatasetImporter.get_dataset_info>`
     method should be called after all samples have been imported to retrieve
-    dataset-level information to store on the FiftyOne datset. See
+    dataset-level information to store on the FiftyOne dataset. See
     :ref:`this section <importing-dataset-level-info>` for more information.
 
     The
@@ -3151,7 +3151,7 @@ should implement is determined by the type of dataset that you are importing.
     property of the importer allows it to declare whether its
     :meth:`get_dataset_info() <fiftyone.utils.data.importers.LabeledVideoDatasetImporter.get_dataset_info>`
     method should be called after all samples have been imported to retrieve
-    dataset-level information to store on the FiftyOne datset. See
+    dataset-level information to store on the FiftyOne dataset. See
     :ref:`this section <importing-dataset-level-info>` for more information.
 
     The
