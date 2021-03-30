@@ -1,18 +1,25 @@
-import React, { useLayoutEffect, useRef, useState } from "react";
+import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { CircularProgress } from "@material-ui/core";
-import { Check, LocalOffer, Settings, VisibilityOff } from "@material-ui/icons";
+import {
+  Check,
+  LocalOffer,
+  Save,
+  Settings,
+  VisibilityOff,
+} from "@material-ui/icons";
 import useMeasure from "react-use-measure";
 import { useRecoilState, useRecoilValue } from "recoil";
 import styled from "styled-components";
 
-import { canTag } from "./utils";
 import Tagger from "./Tagger";
 import Selector from "./Selected";
 import Coloring from "./Options";
 import { PillButton } from "../utils";
 import * as atoms from "../../recoil/atoms";
 import * as selectors from "../../recoil/selectors";
+import socket from "../../shared/connection";
 import { useOutsideClick, useTheme } from "../../utils/hooks";
+import { packageMessage } from "../../utils/socket";
 
 const ActionDiv = styled.div`
   position: relative;
@@ -53,6 +60,7 @@ const Tag = ({ modal }) => {
         onClick={() => !disabled && setOpen(!open)}
         highlight={Boolean(selected.size) || open}
         ref={mRef}
+        title={`Tag sample${modal ? "" : "s"} or labels`}
       />
       {open && !close && (
         <Tagger modal={modal} bounds={bounds} close={() => setOpen(false)} />
@@ -85,6 +93,9 @@ const Selected = ({ modal, frameNumberRef }) => {
         highlight={numItems > 0 || open}
         text={`${numItems}`}
         ref={mRef}
+        title={`Manage selected ${modal ? "label" : "sample"}${
+          numItems > 1 ? "s" : ""
+        }`}
       />
       {open && (
         <Selector
@@ -112,6 +123,7 @@ const Options = ({ modal }) => {
         onClick={() => setOpen(!open)}
         highlight={open}
         ref={mRef}
+        title={"Display options"}
       />
       {open && <Coloring modal={modal} bounds={bounds} />}
     </ActionDiv>
@@ -126,6 +138,7 @@ const ShowJSON = () => {
       onClick={() => setShowJSON(!showJSON)}
       highlight={showJSON}
       text={"JSON"}
+      title={showJSON ? "Show JSON" : "Hide JSON"}
     />
   );
 };
@@ -145,8 +158,32 @@ const Hidden = () => {
       onClick={() => setHiddenObjects({})}
       highlight={true}
       text={`${count}`}
+      title={"Clear hidden labels"}
     />
   );
+};
+
+const SaveFilters = () => {
+  const hasFilters = useRecoilValue(selectors.hasFilters);
+  const [loading, setLoading] = useState(false);
+  const filters = useRecoilValue(selectors.filterStages);
+
+  useEffect(() => {
+    loading && setLoading(false);
+  }, [loading, filters]);
+
+  return hasFilters ? (
+    <PillButton
+      open={false}
+      highlight={true}
+      icon={<Save />}
+      onClick={() => {
+        setLoading(false);
+        socket.send(packageMessage("save_filters", {}));
+      }}
+      title={"Save current field filters as view stages"}
+    />
+  ) : null;
 };
 
 const ActionsRowDiv = styled.div`
@@ -195,6 +232,7 @@ const ActionsRow = ({ modal, frameNumberRef }: ActionsRowProps) => {
       <Options modal={modal} />
       <Tag modal={modal} />
       {modal && <Hidden />}
+      {!modal && <SaveFilters />}
       <Selected modal={modal} frameNumberRef={frameNumberRef} />
     </ActionsRowDiv>
   );

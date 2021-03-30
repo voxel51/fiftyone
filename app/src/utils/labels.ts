@@ -66,6 +66,13 @@ export const LABEL_LISTS = [
   "Polylines",
 ];
 
+export const LABEL_LIST = {
+  Classifications: "classifications",
+  Detections: "detections",
+  Keypoints: "keypoints",
+  Polylines: "polylines",
+};
+
 export const AGGS = {
   BOUNDS: "Bounds",
   COUNT: "Count",
@@ -247,6 +254,7 @@ const FIFTYONE_TO_ETA_CONVERTERS = {
         _id: obj._id,
         confidence: obj.confidence,
         value: obj.label,
+        tags: obj.tags,
         target: obj.target,
       };
     },
@@ -268,6 +276,7 @@ const FIFTYONE_TO_ETA_CONVERTERS = {
         confidence: obj.confidence,
         mask: obj.mask,
         target: obj.target,
+        tags: obj.tags,
         bounding_box: bb
           ? {
               top_left: { x: bb[0], y: bb[1] },
@@ -289,6 +298,7 @@ const FIFTYONE_TO_ETA_CONVERTERS = {
         _id: obj._id,
         label: obj.label,
         points: obj.points,
+        tags: obj.tags,
         target: obj.target,
       };
     },
@@ -301,6 +311,7 @@ const FIFTYONE_TO_ETA_CONVERTERS = {
         _id: obj._id,
         label: obj.label,
         points: obj.points,
+        tags: obj.tags,
         closed: Boolean(obj.closed),
         filled: Boolean(obj.filled),
         target: obj.target,
@@ -365,7 +376,7 @@ const convertImageSampleToETA = (
         convert(prefix + sampleField, field, frame_number)
       );
     } else if (VALID_LIST_TYPES.includes(field._cls)) {
-      for (const object of field[field._cls.toLowerCase()] ?? []) {
+      for (const object of field[LABEL_LIST[field._cls]] ?? []) {
         const { key, convert } = FIFTYONE_TO_ETA_CONVERTERS[object._cls];
         _addToETAContainer(
           imgLabels,
@@ -378,6 +389,7 @@ const convertImageSampleToETA = (
       imgLabels.masks.push({
         name: prefix + sampleField,
         mask: field.mask,
+        tags: field.tags,
         _id: field._id,
       });
     } else if (VALID_SCALAR_TYPES.includes(fieldSchema[sampleField])) {
@@ -410,7 +422,7 @@ export const listSampleLabels = (sample: { [key: string]: Label }) => {
         FIFTYONE_TO_ETA_CONVERTERS[field._cls].convert(fieldName, field)
       );
     } else if (VALID_LIST_TYPES.includes(field._cls)) {
-      for (const label of field[field._cls.toLowerCase()]) {
+      for (const label of field[LABEL_LIST[field._cls]]) {
         labels.push(
           FIFTYONE_TO_ETA_CONVERTERS[label._cls].convert(fieldName, label)
         );

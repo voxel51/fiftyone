@@ -492,7 +492,7 @@ const Player = ({
   });
   const ref = useRef(null);
   const containerRef = useRef(null);
-  const bind = useMove((s) => ref.current && ref.current(s));
+  const bindMove = useMove((s) => ref.current && ref.current(s));
 
   useEventHandler(
     player,
@@ -511,7 +511,7 @@ const Player = ({
       id={id}
       style={style}
       {...props}
-      {...bind()}
+      {...bindMove()}
       ref={containerRef}
     >
       {error && (

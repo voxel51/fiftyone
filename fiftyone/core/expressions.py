@@ -2298,11 +2298,7 @@ class ViewExpression(object):
             comp=comp, rev=rev
         )
 
-        sort_fcn = " ".join(sort_fcn.split())  # minimize
-
-        return ViewExpression(
-            {"$function": {"body": sort_fcn, "args": [self], "lang": "js"}}
-        )
+        return self._function(sort_fcn)
 
     def filter(self, expr):
         """Applies the given filter to the elements of this expression, which
@@ -2499,6 +2495,42 @@ class ViewExpression(object):
             a :class:`ViewExpression`
         """
         return ViewExpression({"$concatArrays": [self] + list(args)})
+
+    def union(self, *args):
+        """Takes the union of the given array(s) or array expression(s) to this
+        expression, which must resolve to an array.
+
+        The arrays are treated as sets, and all duplicates are removed.
+
+        Examples::
+
+            import fiftyone as fo
+            from fiftyone import ViewField as F
+
+            dataset = fo.Dataset()
+            dataset.add_samples(
+                [
+                    fo.Sample(
+                        filepath="image1.jpg",
+                        tags=["a", "b"],
+                        other_tags=["a", "c"]
+                    )
+                ]
+            )
+
+            # Sets `tags` as the union of `tags` and `other_tags`
+            view = dataset.set_field("tags", F("tags").union(F("other_tags")))
+
+            print(view.first().tags)
+
+        Args:
+            *args: one or more arrays or :class:`ViewExpression` instances that
+                resolve to array expressions
+
+        Returns:
+            a :class:`ViewExpression`
+        """
+        return ViewExpression({"$setUnion": [self] + list(args)})
 
     def sum(self):
         """Returns the sum of the values in this expression, which must resolve
@@ -3677,6 +3709,14 @@ class ViewExpression(object):
             zip_expr["defaults"] = defaults
 
         return ViewExpression({"$zip": zip_expr})
+
+    # Experimental expressions ###############################################
+
+    def _function(self, function):
+        function = " ".join(function.split())
+        return ViewExpression(
+            {"$function": {"body": function, "args": [self], "lang": "js"}}
+        )
 
 
 class ViewField(ViewExpression):

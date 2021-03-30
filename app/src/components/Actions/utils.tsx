@@ -13,7 +13,11 @@ import * as selectors from "../../recoil/selectors";
 import { useTheme } from "../../utils/hooks";
 import { packageMessage } from "../../utils/socket";
 import socket from "../../shared/connection";
-import { VALID_LABEL_TYPES, VALID_LIST_TYPES } from "../../utils/labels";
+import {
+  VALID_LABEL_TYPES,
+  VALID_LIST_TYPES,
+  LABEL_LIST,
+} from "../../utils/labels";
 
 export const HoverItemDiv = animated(styled.div`
   cursor: pointer;
@@ -56,17 +60,6 @@ export const useHighlightHover = (disabled, override) => {
     onMouseLeave,
   };
 };
-
-export const canTag = selector<boolean>({
-  key: "canTag",
-  get: ({ get }) => {
-    const hasFilters = Object.keys(get(selectors.filterStages)).length > 0;
-    const stats = hasFilters
-      ? get(selectors.extendedDatasetStats)
-      : get(selectors.datasetStats);
-    return stats !== null;
-  },
-});
 
 export const numTaggable = selectorFamily<
   number | null,
@@ -127,6 +120,7 @@ export const selectedSampleLabelStatistics = selector<{
     const promise = new Promise((resolve) => {
       const listener = wrap(({ count, tags }) => {
         socket.removeEventListener("message", listener);
+        console.log(count, tags);
         resolve({ count, tags });
       }, "selected_statistics");
       socket.addEventListener("message", listener);
@@ -155,19 +149,21 @@ const addLabelToTagsResult = (result, label, label_id = null) => {
     });
   };
   if (VALID_LIST_TYPES.includes(label._cls)) {
-    label[label._cls.toLowerCase()] &&
-      label[label._cls.toLowerCase()].forEach(add);
+    label[LABEL_LIST[label._cls]] && label[LABEL_LIST[label._cls]].forEach(add);
   } else {
     add(label);
   }
 };
 
-const labelModalTagCounts = selector<{ [key: string]: number }>({
+export const labelModalTagCounts = selectorFamily<
+  { [key: string]: number },
+  { filtered: boolean; selected: boolean }
+>({
   key: "labelModalTagCounts",
-  get: ({ get }) => {
+  get: ({ filtered, selected }) => ({ get }) => {
     const result = {};
 
-    if (get(selectors.selectedLabelIds).size > 0) {
+    if (selected && get(selectors.selectedLabelIds).size > 0) {
       const selected = get(selectors.selectedLabels);
 
       for (const label_id in selected) {
@@ -175,6 +171,9 @@ const labelModalTagCounts = selector<{ [key: string]: number }>({
 
         if (get(selectors.isVideoDataset) && frame_number) {
           const frame = get(selectors.sampleFramesMap(sample_id))[frame_number];
+          if (!frame) {
+            return null;
+          }
           addLabelToTagsResult(
             result,
             frame[field.slice("frames.".length)],
@@ -187,11 +186,19 @@ const labelModalTagCounts = selector<{ [key: string]: number }>({
       }
     } else {
       const filter = get(sampleModalFilter);
-      const sample = filter(get(selectors.modalSample));
+      const sample = filtered
+        ? filter(get(selectors.modalSample))
+        : get(selectors.modalSample);
       if (get(selectors.isVideoDataset)) {
         const frames = get(atoms.sampleFrameData(sample._id));
+
+        if (!frames) {
+          return null;
+        }
         frames.forEach((frame) => {
-          frame = filter(frame, "frames.");
+          if (filtered) {
+            frame = filter(frame, "frames.");
+          }
           for (const field in frame) {
             if (!frame[field] || !VALID_LABEL_TYPES.includes(frame[field]._cls))
               continue;
@@ -223,7 +230,7 @@ export const tagStats = selectorFamily<
     if (modal && labels) {
       return {
         ...Object.fromEntries(get(allTags).label.map((t) => [t, 0])),
-        ...get(labelModalTagCounts),
+        ...get(labelModalTagCounts({ filtered: true, selected: true })),
       };
     } else if (modal) {
       const sample = get(selectors.modalSample);
@@ -236,7 +243,7 @@ export const tagStats = selectorFamily<
       const active = [
         ...get(activeLabels({ modal, frames: false })),
         ...get(activeLabels({ modal, frames: true })),
-      ].map((l) => `${l}.${types[l].toLowerCase()}.tags`);
+      ].map((l) => `${l}.${LABEL_LIST[types[l]]}.tags`);
       const reducer = (acc, { name, result }) => {
         if (active.includes(name)) {
           acc[name] = result;
