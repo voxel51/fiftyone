@@ -2404,13 +2404,14 @@ class SetField(ViewStage):
             that defines the field value to set
     """
 
-    def __init__(self, field, expr):
+    def __init__(self, field, expr, _allow_missing=False):
         if isinstance(expr, MongoEngineBaseDocument):
             expr = expr.to_dict()
             expr.pop("_id", None)
 
         self._field = field
         self._expr = expr
+        self._allow_missing = _allow_missing
 
     @property
     def field(self):
@@ -2432,7 +2433,10 @@ class SetField(ViewStage):
 
     def to_mongo(self, sample_collection):
         return sample_collection._make_set_field_pipeline(
-            self._field, self._expr, embedded_root=True
+            self._field,
+            self._expr,
+            embedded_root=True,
+            allow_missing=self._allow_missing,
         )
 
     def _kwargs(self):
@@ -2461,6 +2465,9 @@ class SetField(ViewStage):
         return self._expr.to_mongo(prefix=prefix)
 
     def validate(self, sample_collection):
+        if self._allow_missing:
+            return
+
         sample_collection.validate_fields_exist(self._field)
 
 
