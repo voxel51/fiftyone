@@ -112,14 +112,11 @@ def evaluate_detections(
     )
     eval_method = config.build()
     eval_method.register_run(samples, eval_key)
+    eval_method.register_samples(samples)
 
-    pred_field, processing_frames = samples._handle_frame_field(pred_field)
-    gt_field, _ = samples._handle_frame_field(gt_field)
+    processing_frames = samples._is_frame_field(pred_field)
 
-    if not processing_frames:
-        iter_samples = samples.select_fields([gt_field, pred_field])
-    else:
-        iter_samples = samples
+    iter_samples = samples.select_fields([gt_field, pred_field])
 
     matches = []
     logger.info("Evaluating detections...")
@@ -191,6 +188,27 @@ class DetectionEvaluation(foe.EvaluationMethod):
     Args:
         config: a :class:`DetectionEvaluationConfig`
     """
+
+    def __init__(self, config):
+        super().__init__(config)
+        self.gt_field = None
+        self.pred_field = None
+
+    def register_samples(self, samples):
+        """Registers the sample collection on which evaluation will be
+        performed.
+
+        This method will be called before the first call to
+        :meth:`evaluate_image`. Subclasses can extend this method to perform
+        any setup required for an evaluation run.
+
+        Args:
+            samples: a :class:`fiftyone.core.collections.SampleCollection`
+        """
+        self.gt_field, _ = samples._handle_frame_field(self.config.gt_field)
+        self.pred_field, _ = samples._handle_frame_field(
+            self.config.pred_field
+        )
 
     def evaluate_image(self, sample_or_frame, eval_key=None):
         """Evaluates the ground truth and predicted objects in an image.

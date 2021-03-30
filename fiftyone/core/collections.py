@@ -2529,7 +2529,7 @@ class SampleCollection(object):
         return self._add_view_stage(fos.MapLabels(field, map))
 
     @view_stage
-    def set_field(self, field, expr):
+    def set_field(self, field, expr, _allow_missing=False):
         """Sets a field or embedded field on each sample in a collection by
         evaluating the given expression.
 
@@ -2636,7 +2636,9 @@ class SampleCollection(object):
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
         """
-        return self._add_view_stage(fos.SetField(field, expr))
+        return self._add_view_stage(
+            fos.SetField(field, expr, _allow_missing=_allow_missing)
+        )
 
     @view_stage
     def match(self, filter):
@@ -2982,12 +2984,7 @@ class SampleCollection(object):
 
     @view_stage
     def select_labels(
-        self,
-        labels=None,
-        ids=None,
-        tags=None,
-        fields=None,
-        _select_fields=True,
+        self, labels=None, ids=None, tags=None, fields=None,
     ):
         """Selects only the specified labels from the collection.
 
@@ -3080,13 +3077,7 @@ class SampleCollection(object):
             a :class:`fiftyone.core.view.DatasetView`
         """
         return self._add_view_stage(
-            fos.SelectLabels(
-                labels=labels,
-                ids=ids,
-                tags=tags,
-                fields=fields,
-                _select_fields=_select_fields,
-            )
+            fos.SelectLabels(labels=labels, ids=ids, tags=tags, fields=fields,)
         )
 
     @view_stage
@@ -4694,8 +4685,12 @@ class SampleCollection(object):
         if not self.has_sample_field(field_name):
             self._dataset.add_sample_field(field_name, ftype, **kwargs)
 
-    def _make_set_field_pipeline(self, field, expr, embedded_root=False):
-        return _make_set_field_pipeline(self, field, expr, embedded_root)
+    def _make_set_field_pipeline(
+        self, field, expr, embedded_root=False, allow_missing=False
+    ):
+        return _make_set_field_pipeline(
+            self, field, expr, embedded_root, allow_missing=allow_missing
+        )
 
 
 def get_label_fields(
@@ -4995,7 +4990,7 @@ def _parse_field_name(
     if root_field_name in ("id", "_id"):
         root_field = None
     elif root_field_name not in schema:
-        if not allow_missing and not root_field_name.startswith("_"):
+        if not allow_missing:
             ftype = "Frame field" if is_frame_field else "Field"
             raise ValueError(
                 "%s '%s' does not exist on collection '%s'"
@@ -5102,9 +5097,11 @@ def _transform_values(values, fcn, level=1):
     return [_transform_values(v, fcn, level=level - 1) for v in values]
 
 
-def _make_set_field_pipeline(sample_collection, field, expr, embedded_root):
+def _make_set_field_pipeline(
+    sample_collection, field, expr, embedded_root, allow_missing=False
+):
     path, is_frame_field, list_fields, _ = sample_collection._parse_field_name(
-        field
+        field, allow_missing=allow_missing
     )
 
     if is_frame_field and path != "frames":

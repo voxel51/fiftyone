@@ -246,7 +246,7 @@ by toggling the corresponding display options on the lefthand side of the App.
 Viewing a sample
 ________________
 
-Double-click a sample to open an expanded view of the sample. This modal also
+Click a sample to open an expanded view of the sample. This modal also
 contains information about the fields of the |Sample| and allows you to access
 the raw JSON description of the sample.
 
@@ -372,7 +372,7 @@ use this functionality to visually show/hide objects of interest in the App; or
 you can access the data for the selected objects from Python, for example by
 creating a |DatasetView| that includes/excludes the selected objects.
 
-To perform this workflow, open the expanded sample modal by double-clicking on
+To perform this workflow, open the expanded sample modal by clicking on
 a sample in the App. Then click on individual objects to select them:
 
 .. image:: ../images/app/app-object-selection.gif
@@ -438,11 +438,11 @@ below shows the basic pattern for customizing the App on a one-off basis:
     # Create a custom App config
     app_config = fo.AppConfig()
     app_config.show_confidence = False
-    app_config.show_attributes = False
+    app_config.show_attributes = True
 
     session = fo.launch_app(dataset, config=app_config)
 
-You can even reconfigure a live |Session| by editing its
+You can also reconfigure a live |Session| by editing its
 :meth:`session.config <fiftyone.core.session.Session.config>` property and
 calling :meth:`session.refresh() <fiftyone.core.session.Session.refresh>` to
 apply the changes:

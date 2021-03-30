@@ -2404,13 +2404,14 @@ class SetField(ViewStage):
             that defines the field value to set
     """
 
-    def __init__(self, field, expr):
+    def __init__(self, field, expr, _allow_missing=False):
         if isinstance(expr, MongoEngineBaseDocument):
             expr = expr.to_dict()
             expr.pop("_id", None)
 
         self._field = field
         self._expr = expr
+        self._allow_missing = _allow_missing
 
     @property
     def field(self):
@@ -2432,7 +2433,10 @@ class SetField(ViewStage):
 
     def to_mongo(self, sample_collection):
         return sample_collection._make_set_field_pipeline(
-            self._field, self._expr, embedded_root=True
+            self._field,
+            self._expr,
+            embedded_root=True,
+            allow_missing=self._allow_missing,
         )
 
     def _kwargs(self):
@@ -2461,6 +2465,9 @@ class SetField(ViewStage):
         return self._expr.to_mongo(prefix=prefix)
 
     def validate(self, sample_collection):
+        if self._allow_missing:
+            return
+
         sample_collection.validate_fields_exist(self._field)
 
 
@@ -3089,14 +3096,7 @@ class SelectLabels(ViewStage):
         fields (None): a field or iterable of fields from which to select
     """
 
-    def __init__(
-        self,
-        labels=None,
-        ids=None,
-        tags=None,
-        fields=None,
-        _select_fields=True,
-    ):
+    def __init__(self, labels=None, ids=None, tags=None, fields=None):
         if labels is not None:
             sample_ids, labels_map = _parse_labels(labels)
         else:
@@ -3121,7 +3121,6 @@ class SelectLabels(ViewStage):
         self._ids = ids
         self._tags = tags
         self._fields = fields
-        self._select_fields = _select_fields
         self._sample_ids = sample_ids
         self._labels_map = labels_map
         self._pipeline = None
@@ -3217,10 +3216,9 @@ class SelectLabels(ViewStage):
         # our intention is not to remove other fields from the schema, only to
         # empty their sample fields in the returned view
         #
-        if self._select_fields:
-            stage = SelectFields(list(self._labels_map.keys()))
-            stage.validate(sample_collection)
-            pipeline.extend(stage.to_mongo(sample_collection))
+        stage = SelectFields(list(self._labels_map.keys()))
+        stage.validate(sample_collection)
+        pipeline.extend(stage.to_mongo(sample_collection))
 
         for field, labels_map in self._labels_map.items():
             label_type = sample_collection._get_label_field_type(field)
@@ -3256,10 +3254,9 @@ class SelectLabels(ViewStage):
         # our intention is not to remove other fields from the schema, only to
         # empty their sample fields in the returned view
         #
-        if self._select_fields:
-            stage = SelectFields(fields)
-            stage.validate(sample_collection)
-            pipeline.extend(stage.to_mongo(sample_collection))
+        stage = SelectFields(fields)
+        stage.validate(sample_collection)
+        pipeline.extend(stage.to_mongo(sample_collection))
 
         # Handle early exit
         if self._ids is None and self._tags is None:

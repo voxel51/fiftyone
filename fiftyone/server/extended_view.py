@@ -38,7 +38,7 @@ def get_extended_view(view, filters, count_labels_tags=False):
             if "label" in tags:
                 label_tags = tags["label"]
 
-            if not count_labels_tags:
+            if not count_labels_tags and label_tags:
                 view = view.select_labels(tags=label_tags)
 
             if "sample" in tags:
@@ -61,7 +61,7 @@ def get_extended_view(view, filters, count_labels_tags=False):
 
 def _add_labels_tags_counts(view, filters):
     fields = fos.DatasetStatistics.labels(view)
-    view = view.set_field(_LABEL_TAGS, [])
+    view = view.set_field(_LABEL_TAGS, [], _allow_missing=True)
     for path, field in fields:
         if not issubclass(
             field.document_type, (fol._HasID, fol._HasLabelList)
@@ -244,6 +244,7 @@ def _add_frame_labels_tags(path, field, view):
                 VALUE.extend(F(items).reduce(VALUE.extend(F("tags")), [])), []
             )
         ),
+        _allow_missing=True,
     )
     return view
 
@@ -254,6 +255,7 @@ def _add_frame_label_tags(path, field, view):
     view = view.set_field(
         _LABEL_TAGS,
         F(_LABEL_TAGS).extend(F(frames).reduce(VALUE.extend(F(tags)), [])),
+        _allow_missing=True,
     )
     return view
 
@@ -263,13 +265,16 @@ def _add_labels_tags(path, field, view):
     view = view.set_field(
         _LABEL_TAGS,
         F(_LABEL_TAGS).extend(F(items).reduce(VALUE.extend(F("tags")), [])),
+        _allow_missing=True,
     )
     return view
 
 
 def _add_label_tags(path, field, view):
     return view.set_field(
-        _LABEL_TAGS, F(_LABEL_TAGS).extend(F("%s.tags" % path))
+        _LABEL_TAGS,
+        F(_LABEL_TAGS).extend(F("%s.tags" % path)),
+        _allow_missing=True,
     )
 
 
@@ -284,4 +289,6 @@ def _count_list_items(path, view):
         "}"
     )
 
-    return view.set_field(path, F(path)._function(function))
+    return view.set_field(
+        path, F(path)._function(function), _allow_missing=True
+    )

@@ -158,7 +158,9 @@ const makeTagData = (
     <>
       <span>{makeData(filteredCount, totalCount)}</span>
       <span
-        title={`Only show ${labels ? "labels" : "samples"} with this tag ${
+        title={`Only show ${
+          labels ? "labels" : "samples"
+        } with the "${name}" tag ${
           matchedTags.size ? "or other selected tags" : ""
         }`}
         onClick={toggleFilter}
@@ -268,6 +270,7 @@ const SampleTagsCell = ({ modal }: TagsCellProps) => {
             title: name,
             canFilter: !modal,
             path: "tags." + name,
+            type: "tags",
             data: modal ? (
               count[name] > 0 ? (
                 <Check style={{ color }} />
@@ -391,6 +394,7 @@ const LabelTagsCell = ({ modal }: TagsCellProps) => {
           selected: activeTags.includes(name),
           color,
           title: name,
+          type: "label tags",
           path: "_label_tags." + name,
           data: makeTagData(
             hasFilters && extStats && !modal && !subCount[name]
@@ -485,6 +489,7 @@ const LabelsCell = ({ modal, frames }: LabelsCellProps) => {
           color: colorByLabel ? theme.brand : colorMap[path],
           title: name,
           path,
+          type: "labels",
           data:
             count && subCount ? makeData(subCount[name], count[name]) : null,
           totalCount: count ? count[name] : null,
@@ -550,6 +555,7 @@ const ScalarsCell = ({ modal }: ScalarsCellProps) => {
         color: colorByLabel ? theme.brand : colorMap[name],
         title: name,
         path: name,
+        type: "values",
         data:
           count && subCount && !modal
             ? makeData(subCount[name], count[name])
