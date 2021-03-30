@@ -1314,12 +1314,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         else:
             coll = self._sample_collection
 
-        try:
-            for ops_batch in fou.iter_batches(ops, 100000):  # mongodb limit
-                coll.bulk_write(list(ops_batch), ordered=ordered)
-        except BulkWriteError as bwe:
-            msg = bwe.details["writeErrors"][0]["errmsg"]
-            raise ValueError(msg) from bwe
+        foo.bulk_write(ops, coll, ordered=ordered)
 
         if frames:
             fofr.Frame._reload_docs(self._frame_collection_name)
@@ -1667,7 +1662,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 dataset in ``dataset_dir``
             label_field ("ground_truth"): the name (or root name) of the
                 field(s) to use for the labels (if applicable)
-            tags (None): an optional list of tags to attach to each sample
+            tags (None): an optional tag or iterable of tags to attach to each
+                sample
             expand_schema (True): whether to dynamically add new sample fields
                 encountered to the dataset schema. If False, an error is raised
                 if a sample's schema is not a subset of the dataset schema
@@ -1756,7 +1752,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             cleanup (True): whether to delete the archive after extracting it
             label_field ("ground_truth"): the name (or root name) of the
                 field(s) to use for the labels (if applicable)
-            tags (None): an optional list of tags to attach to each sample
+            tags (None): an optional tag or iterable of tags to attach to each
+                sample
             expand_schema (True): whether to dynamically add new sample fields
                 encountered to the dataset schema. If False, an error is raised
                 if a sample's schema is not a subset of the dataset schema
@@ -1805,7 +1802,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 :class:`fiftyone.utils.data.importers.DatasetImporter`
             label_field ("ground_truth"): the name (or root name) of the
                 field(s) to use for the labels (if applicable)
-            tags (None): an optional list of tags to attach to each sample
+            tags (None): an optional tag or iterable of tags to attach to each
+                sample
             expand_schema (True): whether to dynamically add new sample fields
                 encountered to the dataset schema. If False, an error is raised
                 if a sample's schema is not a subset of the dataset schema
@@ -1841,7 +1839,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             sample_parser (None): a
                 :class:`fiftyone.utils.data.parsers.UnlabeledImageSampleParser`
                 instance to use to parse the samples
-            tags (None): an optional list of tags to attach to each sample
+            tags (None): an optional tag or iterable of tags to attach to each
+                sample
 
         Returns:
             a list of IDs of the samples that were added to the dataset
@@ -1876,7 +1875,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 instance to use to parse the samples
             label_field ("ground_truth"): the name (or root name) of the
                 field(s) to use for the labels (if applicable)
-            tags (None): an optional list of tags to attach to each sample
+            tags (None): an optional tag or iterable of tags to attach to each
+                sample
             expand_schema (True): whether to dynamically add new sample fields
                 encountered to the dataset schema. If False, an error is raised
                 if a sample's schema is not a subset of the dataset schema
@@ -1904,7 +1904,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         Args:
             images_dir: a directory of images
-            tags (None): an optional list of tags to attach to each sample
+            tags (None): an optional tag or iterable of tags to attach to each
+                sample
             recursive (True): whether to recursively traverse subdirectories
 
         Returns:
@@ -1922,7 +1923,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Args:
             images_patt: a glob pattern of images like
                 ``/path/to/images/*.jpg``
-            tags (None): an optional list of tags to attach to each sample
+            tags (None): an optional tag or iterable of tags to attach to each
+                sample
 
         Returns:
             a list of IDs of the samples in the dataset
@@ -1955,7 +1957,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             sample_parser (None): a
                 :class:`fiftyone.utils.data.parsers.UnlabeledImageSampleParser`
                 instance to use to parse the samples
-            tags (None): an optional list of tags to attach to each sample
+            tags (None): an optional tag or iterable of tags to attach to each
+                sample
             dataset_dir (None): the directory in which the images will be
                 written. By default, :func:`get_default_dataset_dir` is used
             image_format (None): the image format to use to write the images to
@@ -2003,7 +2006,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 instance to use to parse the samples
             label_field ("ground_truth"): the name (or root name) of the
                 field(s) to use for the labels (if applicable)
-            tags (None): an optional list of tags to attach to each sample
+            tags (None): an optional tag or iterable of tags to attach to each
+                sample
             expand_schema (True): whether to dynamically add new sample fields
                 encountered to the dataset schema. If False, an error is raised
                 if the sample's schema is not a subset of the dataset schema
@@ -2052,7 +2056,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             sample_parser (None): a
                 :class:`fiftyone.utils.data.parsers.UnlabeledImageSampleParser`
                 instance to use to parse the samples
-            tags (None): an optional list of tags to attach to each sample
+            tags (None): an optional tag or iterable of tags to attach to each
+                sample
 
         Returns:
             a list of IDs of the samples that were added to the dataset
@@ -2086,7 +2091,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 instance to use to parse the samples
             label_field ("ground_truth"): the name (or root name) of the
                 frame field(s) to use for the labels
-            tags (None): an optional list of tags to attach to each sample
+            tags (None): an optional tag or iterable of tags to attach to each
+                sample
             expand_schema (True): whether to dynamically add new sample fields
                 encountered to the dataset schema. If False, an error is raised
                 if a sample's schema is not a subset of the dataset schema
@@ -2114,7 +2120,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         Args:
             videos_dir: a directory of videos
-            tags (None): an optional list of tags to attach to each sample
+            tags (None): an optional tag or iterable of tags to attach to each
+                sample
             recursive (True): whether to recursively traverse subdirectories
 
         Returns:
@@ -2132,7 +2139,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Args:
             videos_patt: a glob pattern of videos like
                 ``/path/to/videos/*.mp4``
-            tags (None): an optional list of tags to attach to each sample
+            tags (None): an optional tag or iterable of tags to attach to each
+                sample
 
         Returns:
             a list of IDs of the samples in the dataset
@@ -2160,7 +2168,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             sample_parser (None): a
                 :class:`fiftyone.utils.data.parsers.UnlabeledImageSampleParser`
                 instance to use to parse the samples
-            tags (None): an optional list of tags to attach to each sample
+            tags (None): an optional tag or iterable of tags to attach to each
+                sample
             dataset_dir (None): the directory in which the videos will be
                 written. By default, :func:`get_default_dataset_dir` is used
 
@@ -2202,7 +2211,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             sample_parser: a
                 :class:`fiftyone.utils.data.parsers.LabeledVideoSampleParser`
                 instance to use to parse the samples
-            tags (None): an optional list of tags to attach to each sample
+            tags (None): an optional tag or iterable of tags to attach to each
+                sample
             expand_schema (True): whether to dynamically add new sample fields
                 encountered to the dataset schema. If False, an error is raised
                 if the sample's schema is not a subset of the dataset schema
@@ -2248,7 +2258,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 :func:`get_default_dataset_name` is used
             label_field ("ground_truth"): the name (or root name) of the
                 field(s) to use for the labels (if applicable)
-            tags (None): an optional list of tags to attach to each sample
+            tags (None): an optional tag or iterable of tags to attach to each
+                sample
             **kwargs: optional keyword arguments to pass to the constructor of
                 the :class:`fiftyone.utils.data.importers.DatasetImporter` for
                 the specified ``dataset_type`` via the syntax
@@ -2257,28 +2268,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             a :class:`Dataset`
         """
-        if inspect.isclass(dataset_type):
-            dataset_type = dataset_type()
-
-        dataset_importer_cls = dataset_type.get_dataset_importer_cls()
-        if issubclass(dataset_importer_cls, foud.BatchDatasetImporter):
-            try:
-                dataset_importer = dataset_importer_cls(dataset_dir, **kwargs)
-            except Exception as e:
-                importer_name = dataset_importer_cls.__name__
-                raise ValueError(
-                    "Failed to construct importer using syntax "
-                    "%s(dataset_dir, **kwargs); you may need to supply "
-                    "mandatory arguments to the constructor via `kwargs`. "
-                    "Please consult the documentation of `%s` to learn more"
-                    % (
-                        importer_name,
-                        etau.get_class_name(dataset_importer_cls),
-                    )
-                ) from e
-
-            return cls.from_importer(dataset_importer, name=name, tags=tags)
-
         dataset = cls(name)
         dataset.add_dir(
             dataset_dir,
@@ -2324,7 +2313,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 :func:`get_default_dataset_name` is used
             label_field ("ground_truth"): the name (or root name) of the
                 field(s) to use for the labels (if applicable)
-            tags (None): an optional list of tags to attach to each sample
+            tags (None): an optional tag or iterable of tags to attach to each
+                sample
             **kwargs: optional keyword arguments to pass to the constructor of
                 the :class:`fiftyone.utils.data.importers.DatasetImporter` for
                 the specified ``dataset_type`` via the syntax
@@ -2364,14 +2354,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 :func:`get_default_dataset_name` is used
             label_field ("ground_truth"): the name (or root name) of the
                 field(s) to use for the labels (if applicable)
-            tags (None): an optional list of tags to attach to each sample
+            tags (None): an optional tag or iterable of tags to attach to each
+                sample
 
         Returns:
             a :class:`Dataset`
         """
-        if isinstance(dataset_importer, foud.BatchDatasetImporter):
-            return foud.import_dataset(dataset_importer, name=name, tags=tags)
-
         dataset = cls(name)
         dataset.add_importer(
             dataset_importer, label_field=label_field, tags=tags
@@ -2396,7 +2384,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 instance to use to parse the samples
             name (None): a name for the dataset. By default,
                 :func:`get_default_dataset_name` is used
-            tags (None): an optional list of tags to attach to each sample
+            tags (None): an optional tag or iterable of tags to attach to each
+                sample
 
         Returns:
             a :class:`Dataset`
@@ -2433,7 +2422,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 :func:`get_default_dataset_name` is used
             label_field ("ground_truth"): the name (or root name) of the
                 field(s) to use for the labels
-            tags (None): an optional list of tags to attach to each sample
+            tags (None): an optional tag or iterable of tags to attach to each
+                sample
 
         Returns:
             a :class:`Dataset`
@@ -2454,7 +2444,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             images_dir: a directory of images
             name (None): a name for the dataset. By default,
                 :func:`get_default_dataset_name` is used
-            tags (None): an optional list of tags to attach to each sample
+            tags (None): an optional tag or iterable of tags to attach to each
+                sample
             recursive (True): whether to recursively traverse subdirectories
 
         Returns:
@@ -2475,7 +2466,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 ``/path/to/images/*.jpg``
             name (None): a name for the dataset. By default,
                 :func:`get_default_dataset_name` is used
-            tags (None): an optional list of tags to attach to each sample
+            tags (None): an optional tag or iterable of tags to attach to each
+                sample
 
         Returns:
             a :class:`Dataset`
@@ -2502,7 +2494,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 instance to use to parse the samples
             name (None): a name for the dataset. By default,
                 :func:`get_default_dataset_name` is used
-            tags (None): an optional list of tags to attach to each sample
+            tags (None): an optional tag or iterable of tags to attach to each
+                sample
 
         Returns:
             a :class:`Dataset`
@@ -2532,7 +2525,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 instance to use to parse the samples
             name (None): a name for the dataset. By default,
                 :func:`get_default_dataset_name` is used
-            tags (None): an optional list of tags to attach to each sample
+            tags (None): an optional tag or iterable of tags to attach to each
+                sample
 
         Returns:
             a :class:`Dataset`
@@ -2551,7 +2545,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             videos_dir: a directory of videos
             name (None): a name for the dataset. By default,
                 :func:`get_default_dataset_name` is used
-            tags (None): an optional list of tags to attach to each sample
+            tags (None): an optional tag or iterable of tags to attach to each
+                sample
             recursive (True): whether to recursively traverse subdirectories
 
         Returns:
@@ -2572,7 +2567,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 ``/path/to/videos/*.mp4``
             name (None): a name for the dataset. By default,
                 :func:`get_default_dataset_name` is used
-            tags (None): an optional list of tags to attach to each sample
+            tags (None): an optional tag or iterable of tags to attach to each
+                sample
 
         Returns:
             a :class:`Dataset`
@@ -3200,7 +3196,7 @@ def _create_frame_document_cls(frame_collection_name):
 
 def _load_dataset(name, migrate=True):
     if migrate:
-        fomi.migrate_dataset_if_necessary(name, destination=focn.VERSION)
+        fomi.migrate_dataset_if_necessary(name)
 
     try:
         # pylint: disable=no-member

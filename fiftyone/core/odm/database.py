@@ -277,16 +277,33 @@ def import_collection(json_path):
         return json_util.loads(f.read())
 
 
-def insert_collection(coll, docs):
+def insert_documents(docs, coll, ordered=False):
     """Inserts a list of documents into a collection.
 
     Args:
-        coll: a pymongo collection instance
         docs: the list of BSON document dicts to insert
+        coll: a pymongo collection instance
+        ordered (False): whether the documents must be inserted in order
     """
     try:
         for batch in fou.iter_batches(docs, 100000):  # mongodb limit
-            coll.insert_many(list(batch), ordered=True)
+            coll.insert_many(list(batch), ordered=ordered)
+    except BulkWriteError as bwe:
+        msg = bwe.details["writeErrors"][0]["errmsg"]
+        raise ValueError(msg) from bwe
+
+
+def bulk_write(ops, coll, ordered=False):
+    """Performs a batch of write operations on a collection.
+
+    Args:
+        ops: a list of pymongo operations
+        coll: a pymongo collection instance
+        ordered (False): whether the operations must be performed in order
+    """
+    try:
+        for ops_batch in fou.iter_batches(ops, 100000):  # mongodb limit
+            coll.bulk_write(list(ops_batch), ordered=ordered)
     except BulkWriteError as bwe:
         msg = bwe.details["writeErrors"][0]["errmsg"]
         raise ValueError(msg) from bwe

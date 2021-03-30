@@ -34,7 +34,8 @@ def add_images(dataset, samples, sample_parser, tags=None):
         sample_parser: a
             :class:`fiftyone.utils.data.parsers.UnlabeledImageSampleParser`
             instance to use to parse the samples
-        tags (None): an optional list of tags to attach to each sample
+        tags (None): an optional tag or iterable of tags to attach to each
+            sample
 
     Returns:
         a list of IDs of the samples that were added to the dataset
@@ -53,6 +54,11 @@ def add_images(dataset, samples, sample_parser, tags=None):
                 etau.get_class_name(sample_parser),
             )
         )
+
+    if etau.is_str(tags):
+        tags = [tags]
+    elif tags is not None:
+        tags = list(tags)
 
     def parse_sample(sample):
         sample_parser.with_sample(sample)
@@ -103,7 +109,8 @@ def add_labeled_images(
             instance to use to parse the samples
         label_field ("ground_truth"): the name (or root name) of the field(s)
             to use for the labels
-        tags (None): an optional list of tags to attach to each sample
+        tags (None): an optional tag or iterable of tags to attach to each
+            sample
         expand_schema (True): whether to dynamically add new sample fields
             encountered to the dataset schema. If False, an error is raised
             if a sample's schema is not a subset of the dataset schema
@@ -146,6 +153,11 @@ def add_labeled_images(
         label_key = lambda k: label_field + "_" + k
     else:
         label_key = lambda k: k
+
+    if etau.is_str(tags):
+        tags = [tags]
+    elif tags is not None:
+        tags = list(tags)
 
     def parse_sample(sample):
         sample_parser.with_sample(sample)
@@ -194,7 +206,8 @@ def add_videos(dataset, samples, sample_parser, tags=None):
         sample_parser: a
             :class:`fiftyone.utils.data.parsers.UnlabeledVideoSampleParser`
             instance to use to parse the samples
-        tags (None): an optional list of tags to attach to each sample
+        tags (None): an optional tag or iterable of tags to attach to each
+            sample
 
     Returns:
         a list of IDs of the samples that were added to the dataset
@@ -207,6 +220,11 @@ def add_videos(dataset, samples, sample_parser, tags=None):
                 etau.get_class_name(sample_parser),
             )
         )
+
+    if etau.is_str(tags):
+        tags = [tags]
+    elif tags is not None:
+        tags = list(tags)
 
     def parse_sample(sample):
         sample_parser.with_sample(sample)
@@ -258,7 +276,8 @@ def add_labeled_videos(
             instance to use to parse the samples
         label_field ("ground_truth"): the name (or root name) of the frame
             fields to use for the labels
-        tags (None): an optional list of tags to attach to each sample
+        tags (None): an optional tag or iterable of tags to attach to each
+            sample
         expand_schema (True): whether to dynamically add new sample fields
             encountered to the dataset schema. If False, an error is raised
             if a sample's schema is not a subset of the dataset schema
@@ -279,6 +298,11 @@ def add_labeled_videos(
         label_key = lambda k: label_field + "_" + k
     else:
         label_key = lambda k: k
+
+    if etau.is_str(tags):
+        tags = [tags]
+    elif tags is not None:
+        tags = list(tags)
 
     def parse_sample(sample):
         sample_parser.with_sample(sample)

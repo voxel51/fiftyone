@@ -731,7 +731,7 @@ def test_custom_multitask_image_dataset_imports(basedir):
 def test_custom_generic_dataset_imports(basedir):
     # Types of generic datasets to test
     dataset_types = [
-        fo.types.FiftyOneDataset,
+        fo.types.dataset_types.LegacyFiftyOneDataset,
     ]
 
     # Load a small generic dataset
@@ -756,34 +756,10 @@ def test_fiftyone_dataset_with_run_results(basedir):
     dataset.evaluate_detections("predictions", eval_key="eval")
     fob.compute_visualization(dataset, brain_key="umap")
 
-    export_dir = os.path.join(basedir, "fiftyone-dataset-with-results")
+    export_dir = os.path.join(basedir, "fiftyone-dataset")
 
     dataset.export(export_dir, fo.types.FiftyOneDataset)
     dataset2 = fo.Dataset.from_dir(export_dir, fo.types.FiftyOneDataset)
-
-    print(dataset)
-    print(dataset.get_evaluation_info("eval"))
-    print(dataset.get_brain_info("umap"))
-    print(repr(dataset.load_evaluation_results("eval")))
-    print(repr(dataset.load_brain_results("umap")))
-
-    print(dataset2)
-    print(dataset2.get_evaluation_info("eval"))
-    print(dataset2.get_brain_info("umap"))
-    print(repr(dataset2.load_evaluation_results("eval")))
-    print(repr(dataset2.load_brain_results("umap")))
-
-
-def test_fiftyone_batch_dataset_with_run_results(basedir):
-    dataset = foz.load_zoo_dataset("quickstart").clone()
-
-    dataset.evaluate_detections("predictions", eval_key="eval")
-    fob.compute_visualization(dataset, brain_key="umap")
-
-    export_dir = os.path.join(basedir, "fiftyone-batch-dataset-with-results")
-
-    dataset.export(export_dir, fo.types.FiftyOneBatchDataset)
-    dataset2 = fo.Dataset.from_dir(export_dir, fo.types.FiftyOneBatchDataset)
 
     print(dataset)
     print(dataset.get_evaluation_info("eval"))
@@ -804,10 +780,9 @@ def test_fiftyone_dataset_with_filtered_video(basedir):
         "frames.ground_truth_detections", F("label") == "vehicle"
     )
 
-    export_dir = os.path.join(basedir, "fiftyone-dataset-filtered-video")
+    export_dir = os.path.join(basedir, "fiftyone-dataset-video")
 
     view.export(export_dir, fo.types.FiftyOneDataset)
-
     dataset2 = fo.Dataset.from_dir(export_dir, fo.types.FiftyOneDataset)
 
     print(view)
@@ -821,17 +796,40 @@ def test_fiftyone_dataset_with_filtered_video(basedir):
     )
 
 
-def test_fiftyone_batch_dataset_with_filtered_video(basedir):
+def test_legacy_fiftyone_dataset_with_run_results(basedir):
+    dataset = foz.load_zoo_dataset("quickstart").clone()
+
+    dataset.evaluate_detections("predictions", eval_key="eval")
+    fob.compute_visualization(dataset, brain_key="umap")
+
+    export_dir = os.path.join(basedir, "legacy-fiftyone-dataset")
+
+    dataset.export(export_dir, fo.types.LegacyFiftyOneDataset)
+    dataset2 = fo.Dataset.from_dir(export_dir, fo.types.LegacyFiftyOneDataset)
+
+    print(dataset)
+    print(dataset.get_evaluation_info("eval"))
+    print(dataset.get_brain_info("umap"))
+    print(repr(dataset.load_evaluation_results("eval")))
+    print(repr(dataset.load_brain_results("umap")))
+
+    print(dataset2)
+    print(dataset2.get_evaluation_info("eval"))
+    print(dataset2.get_brain_info("umap"))
+    print(repr(dataset2.load_evaluation_results("eval")))
+    print(repr(dataset2.load_brain_results("umap")))
+
+
+def test_legacy_fiftyone_dataset_with_filtered_video(basedir):
     dataset = foz.load_zoo_dataset("quickstart-video").clone()
     view = dataset.filter_labels(
         "frames.ground_truth_detections", F("label") == "vehicle"
     )
 
-    export_dir = os.path.join(basedir, "fiftyone-batch-dataset-filtered-video")
+    export_dir = os.path.join(basedir, "legacy-fiftyone-dataset-video")
 
-    view.export(export_dir, fo.types.FiftyOneBatchDataset)
-
-    dataset2 = fo.Dataset.from_dir(export_dir, fo.types.FiftyOneBatchDataset)
+    view.export(export_dir, fo.types.dataset_types.LegacyFiftyOneDataset)
+    dataset2 = fo.Dataset.from_dir(export_dir, fo.types.LegacyFiftyOneDataset)
 
     print(view)
     print(view.count_values("frames.ground_truth_detections.detections.label"))

@@ -748,12 +748,16 @@ class LabeledVideoDatasetExporter(DatasetExporter, ExportsVideos):
         raise NotImplementedError("subclass must implement export_sample()")
 
 
-class FiftyOneDatasetExporter(GenericSampleDatasetExporter):
-    """Exporter that writes an entire FiftyOne dataset to disk in a serialized
-    JSON format along with its source media.
+class LegacyFiftyOneDatasetExporter(GenericSampleDatasetExporter):
+    """Legacy exporter that writes an entire FiftyOne dataset to disk in a
+    serialized JSON format along with its source media.
 
-    See :class:`fiftyone.types.dataset_types.FiftyOneDataset` for format
-    details.
+    .. warning::
+
+        The :class:`fiftyone.types.dataset_types.FiftyOneDataset` format was
+        upgraded in ``fiftyone==0.7.5`` and this exporter is now deprecated.
+
+        The new exporter is :class:`FiftyOneDatasetExporter`.
 
     Args:
         export_dir: the directory to write the export
@@ -874,11 +878,11 @@ class FiftyOneDatasetExporter(GenericSampleDatasetExporter):
         return outpath
 
 
-class FiftyOneBatchDatasetExporter(BatchDatasetExporter):
-    """Batch exporter that writes an entire FiftyOne dataset to disk in a
-    serialized JSON format along with its source media.
+class FiftyOneDatasetExporter(BatchDatasetExporter):
+    """Exporter that writes an entire FiftyOne dataset to disk in a serialized
+    JSON format along with its source media.
 
-    See :class:`fiftyone.types.dataset_types.FiftyOneBatchDataset` for format
+    See :class:`fiftyone.types.dataset_types.FiftyOneDataset` for format
     details.
 
     Args:

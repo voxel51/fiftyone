@@ -23,7 +23,8 @@ from .database import (
     export_collection,
     import_document,
     import_collection,
-    insert_collection,
+    insert_documents,
+    bulk_write,
     ASC,
     DESC,
 )
