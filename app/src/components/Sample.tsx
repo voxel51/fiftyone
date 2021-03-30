@@ -16,7 +16,6 @@ import { useVideoData, useTheme } from "../utils/hooks";
 import {
   stringify,
   VALID_CLASS_TYPES,
-  VALID_LABEL_TYPES,
   VALID_LIST_TYPES,
 } from "../utils/labels";
 
