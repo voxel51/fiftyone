@@ -3225,15 +3225,21 @@ class SelectLabels(ViewStage):
 
         #
         # We know that only fields in `_labels_map` will have matches, so
-        # select them
+        # exclude other label fields
         #
-        # Note that we don't implement `get_selected_fields()` here, because
+        # Note that we don't implement `get_excluded_fields()` here, because
         # our intention is not to remove other fields from the schema, only to
         # empty their sample fields in the returned view
         #
-        stage = SelectFields(list(self._labels_map.keys()))
-        stage.validate(sample_collection)
-        pipeline.extend(stage.to_mongo(sample_collection))
+
+        exclude_fields = list(
+            set(sample_collection._get_label_fields())
+            - set(self._labels_map.keys())
+        )
+        if exclude_fields:
+            stage = ExcludeFields(exclude_fields)
+            stage.validate(sample_collection)
+            pipeline.extend(stage.to_mongo(sample_collection))
 
         for field, labels_map in self._labels_map.items():
             label_type = sample_collection._get_label_field_type(field)
@@ -3263,15 +3269,21 @@ class SelectLabels(ViewStage):
         pipeline = []
 
         #
-        # We know that only `fields` will have matches, so select them
+        # We know that only `fields` will have matches, so exclude other label
+        # fields
         #
-        # Note that we don't implement `get_selected_fields()` here, because
+        # Note that we don't implement `get_excluded_fields()` here, because
         # our intention is not to remove other fields from the schema, only to
         # empty their sample fields in the returned view
         #
-        stage = SelectFields(fields)
-        stage.validate(sample_collection)
-        pipeline.extend(stage.to_mongo(sample_collection))
+
+        exclude_fields = list(
+            set(sample_collection._get_label_fields()) - set(fields)
+        )
+        if exclude_fields:
+            stage = ExcludeFields(exclude_fields)
+            stage.validate(sample_collection)
+            pipeline.extend(stage.to_mongo(sample_collection))
 
         # Handle early exit
         if self._ids is None and self._tags is None:
