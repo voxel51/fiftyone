@@ -1,5 +1,5 @@
 """
-Database connection.
+Database utilities.
 
 | Copyright 2017-2021, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -8,11 +8,16 @@ Database connection.
 from copy import copy
 import logging
 
+from bson import json_util
 from mongoengine import connect
 import motor
 import pymongo
+from pymongo.errors import BulkWriteError
+
+import eta.core.utils as etau
 
 import fiftyone.constants as foc
+import fiftyone.core.utils as fou
 
 
 _client = None
@@ -186,8 +191,6 @@ def stream_collection(collection_name):
     Args:
         collection_name: the name of the collection
     """
-    import fiftyone.core.utils as fou
-
     conn = get_db_conn()
     coll = conn[collection_name]
     objects = map(fou.pformat, coll.find({}))
@@ -208,6 +211,103 @@ def get_collection_stats(collection_name):
     stats["wiredTiger"] = None
     stats["indexDetails"] = None
     return stats
+
+
+def export_document(doc, json_path):
+    """Exports the document to disk in JSON format.
+
+    Args:
+        doc: a BSON document dict
+        json_path: the path to write the JSON file
+    """
+    etau.write_file(json_util.dumps(doc), json_path)
+
+
+def export_collection(docs, json_path, key="documents", num_docs=None):
+    """Exports the collection to disk in JSON format.
+
+    Args:
+        docs: an iteraable containing the documents to export
+        json_path: the path to write the JSON file
+        key ("documents"): the field name under which to store the documents
+        num_docs (None): the total number of documents. If omitted, this must
+            be computable via ``len(docs)``
+    """
+    if num_docs is None:
+        num_docs = len(docs)
+
+    etau.ensure_basedir(json_path)
+
+    with open(json_path, "w") as f:
+        f.write('{"%s": [' % key)
+        with fou.ProgressBar(total=num_docs, iters_str="docs") as pb:
+            for idx, doc in pb(enumerate(docs, 1)):
+                f.write(json_util.dumps(doc))
+                if idx < num_docs:
+                    f.write(",")
+
+        f.write("]}")
+
+
+def import_document(json_path):
+    """Imports a document from JSON on disk.
+
+    Args:
+        json_path: the path to the document
+
+    Returns:
+        a BSON document dict
+    """
+    with open(json_path, "r") as f:
+        return json_util.loads(f.read())
+
+
+def import_collection(json_path):
+    """Imports the collection from JSON on disk.
+
+    Args:
+        json_path: the path to the collection on disk
+
+    Returns:
+        a BSON dict
+    """
+    with open(json_path, "r") as f:
+        return json_util.loads(f.read())
+
+
+def insert_documents(docs, coll, ordered=False):
+    """Inserts a list of documents into a collection.
+
+    The ``_id`` field of the input documents will be populated if it is not
+    already set.
+
+    Args:
+        docs: the list of BSON document dicts to insert
+        coll: a pymongo collection instance
+        ordered (False): whether the documents must be inserted in order
+    """
+    try:
+        for batch in fou.iter_batches(docs, 100000):  # mongodb limit
+            coll.insert_many(list(batch), ordered=ordered)
+    except BulkWriteError as bwe:
+        msg = bwe.details["writeErrors"][0]["errmsg"]
+        raise ValueError(msg) from bwe
+
+
+def bulk_write(ops, coll, ordered=False):
+    """Performs a batch of write operations on a collection.
+
+    Args:
+        ops: a list of pymongo operations
+        coll: a pymongo collection instance
+        ordered (False): whether the operations must be performed in order
+    """
+    try:
+        for ops_batch in fou.iter_batches(ops, 100000):  # mongodb limit
+            coll.bulk_write(list(ops_batch), ordered=ordered)
+    except BulkWriteError as bwe:
+        msg = bwe.details["writeErrors"][0]["errmsg"]
+        raise ValueError(msg) from bwe
 
 
 def list_datasets():

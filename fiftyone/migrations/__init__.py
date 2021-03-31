@@ -11,4 +11,5 @@ from .runner import (
     migrate_all,
     migrate_database_if_necessary,
     migrate_dataset_if_necessary,
+    needs_migration,
 )

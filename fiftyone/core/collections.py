@@ -337,7 +337,7 @@ class SampleCollection(object):
                 which to restrict the returned schema. Must be a subclass of
                 :class:`fiftyone.core.odm.BaseEmbeddedDocument`
             include_private (False): whether to include fields that start with
-                `_` in the returned schema
+                ``_`` in the returned schema
 
         Returns:
              a dictionary mapping field names to field types
@@ -360,7 +360,7 @@ class SampleCollection(object):
                 which to restrict the returned schema. Must be a subclass of
                 :class:`fiftyone.core.odm.BaseEmbeddedDocument`
             include_private (False): whether to include fields that start with
-                `_` in the returned schema
+                ``_`` in the returned schema
 
         Returns:
             a dictionary mapping field names to field types, or ``None`` if
@@ -555,38 +555,48 @@ class SampleCollection(object):
                     % (field_name, ftype, field)
                 )
 
-    def tag_samples(self, tag):
-        """Adds the tag to all samples in this collection, if necessary.
+    def tag_samples(self, tags):
+        """Adds the tag(s) to all samples in this collection, if necessary.
 
         Args:
-            tag: a tag
+            tags: a tag or iterable of tags
         """
+        if etau.is_str(tags):
+            tags = [tags]
+        else:
+            tags = list(tags)
 
-        def _add_tag(tags):
-            if not tags:
-                return [tag]
+        def _add_tags(_tags):
+            if _tags is None:  # missing `Label`
+                return None
 
-            if tag in tags:
-                return tags
+            for tag in tags:
+                if tag not in _tags:
+                    _tags.append(tag)
 
-            return tags + [tag]
+            return _tags
 
-        self._edit_sample_tags(_add_tag)
+        self._edit_sample_tags(_add_tags)
 
-    def untag_samples(self, tag):
-        """Removes the tag from all samples in this collection, if necessary.
+    def untag_samples(self, tags):
+        """Removes the tag(s) from all samples in this collection, if
+        necessary.
 
         Args:
-            tag: a tag
+            tags: a tag or iterable of tags
         """
+        if etau.is_str(tags):
+            tags = [tags]
+        else:
+            tags = list(tags)
 
-        def _remove_tag(tags):
-            if not tags:
-                return tags
+        def _remove_tags(_tags):
+            if _tags is None:  # missing `Label`
+                return None
 
-            return [t for t in tags if t != tag]
+            return [t for t in _tags if t not in tags]
 
-        self._edit_sample_tags(_remove_tag)
+        self._edit_sample_tags(_remove_tags)
 
     def _edit_sample_tags(self, edit_fcn):
         tags = self.values("tags")
@@ -601,46 +611,55 @@ class SampleCollection(object):
         """
         return self.count_values("tags")
 
-    def tag_labels(self, tag, label_fields=None):
-        """Adds the tag to all labels in the specified label field(s) of this
-        collection, if necessary.
+    def tag_labels(self, tags, label_fields=None):
+        """Adds the tag(s) to all labels in the specified label field(s) of
+        this collection, if necessary.
 
         Args:
-            tag: a tag
+            tags: a tag or iterable of tags
             label_fields (None): an optional name or iterable of names of
                 :class:`fiftyone.core.labels.Label` fields. By default, all
                 label fields are used
         """
+        if etau.is_str(tags):
+            tags = [tags]
+        else:
+            tags = list(tags)
 
-        def _add_tag(tags):
-            if not tags:
-                return [tag]
+        def _add_tags(_tags):
+            if _tags is None:  # missing `Label`
+                return None
 
-            if tag in tags:
-                return tags
+            for tag in tags:
+                if tag not in _tags:
+                    _tags.append(tag)
 
-            return tags + [tag]
+            return _tags
 
-        self._edit_label_tags(_add_tag, label_fields=label_fields)
+        self._edit_label_tags(_add_tags, label_fields=label_fields)
 
-    def untag_labels(self, tag, label_fields=None):
+    def untag_labels(self, tags, label_fields=None):
         """Removes the tag from all labels in the specified label field(s) of
         this collection, if necessary.
 
         Args:
-            tag: a tag
+            tags: a tag or iterable of tags
             label_fields (None): an optional name or iterable of names of
                 :class:`fiftyone.core.labels.Label` fields. By default, all
                 label fields are used
         """
+        if etau.is_str(tags):
+            tags = [tags]
+        else:
+            tags = list(tags)
 
-        def _remove_tag(tags):
-            if not tags:
-                return tags
+        def _remove_tags(_tags):
+            if _tags is None:  # missing `Label`
+                return None
 
-            return [t for t in tags if t != tag]
+            return [t for t in _tags if t not in tags]
 
-        self._edit_label_tags(_remove_tag, label_fields=label_fields)
+        self._edit_label_tags(_remove_tags, label_fields=label_fields)
 
     def _edit_label_tags(self, edit_fcn, label_fields=None):
         if label_fields is None:
@@ -657,9 +676,12 @@ class SampleCollection(object):
             level += issubclass(label_type, fol._LABEL_LIST_FIELDS)
             level += self._is_frame_field(tags_path)
 
-            tags = self.values(tags_path)
+            # Omit samples/frames with no labels
+            view = self.exists(label_field)
+
+            tags = view.values(tags_path)
             tags = _transform_values(tags, edit_fcn, level=level)
-            self.set_values(tags_path, tags)
+            view.set_values(tags_path, tags)
 
     def _get_selected_labels(self, ids=None, tags=None, fields=None):
         view = self.select_labels(ids=ids, tags=tags, fields=fields)
@@ -747,7 +769,9 @@ class SampleCollection(object):
 
         return dict(counts)
 
-    def set_values(self, field_name, values, _allow_missing=False):
+    def set_values(
+        self, field_name, values, skip_none=False, _allow_missing=False
+    ):
         """Sets the field or embedded field on each sample or frame in the
         collection to the given values.
 
@@ -795,6 +819,8 @@ class SampleCollection(object):
                 an iterable of values, one for each frame of the sample. If
                 ``field_name`` contains array fields, the corresponding entries
                 of ``values`` must be arrays of the same lengths
+            skip_none (False): whether to treat None data in ``values`` as
+                missing data that should not be set
         """
         field_name, is_frame_field, list_fields, _ = self._parse_field_name(
             field_name, allow_missing=_allow_missing
@@ -805,11 +831,11 @@ class SampleCollection(object):
             list_fields = [lf for lf in list_fields if lf != field_name]
 
         if is_frame_field:
-            self._set_frame_values(field_name, values, list_fields)
+            self._set_frame_values(field_name, values, list_fields, skip_none)
         else:
-            self._set_sample_values(field_name, values, list_fields)
+            self._set_sample_values(field_name, values, list_fields, skip_none)
 
-    def _set_sample_values(self, field_name, values, list_fields):
+    def _set_sample_values(self, field_name, values, list_fields, skip_none):
         if len(list_fields) > 1:
             raise ValueError(
                 "At most one array field can be unwound when setting values"
@@ -822,12 +848,17 @@ class SampleCollection(object):
             elem_ids = self.values(list_field + "._id")
 
             self._set_list_values_by_id(
-                field_name, sample_ids, elem_ids, values, list_field
+                field_name,
+                sample_ids,
+                elem_ids,
+                values,
+                list_field,
+                skip_none,
             )
         else:
-            self._set_values(field_name, sample_ids, values)
+            self._set_values(field_name, sample_ids, values, skip_none)
 
-    def _set_frame_values(self, field_name, values, list_fields):
+    def _set_frame_values(self, field_name, values, list_fields, skip_none):
         if len(list_fields) > 1:
             raise ValueError(
                 "At most one array field can be unwound when setting values"
@@ -849,20 +880,33 @@ class SampleCollection(object):
                 elem_ids,
                 values,
                 list_field,
+                skip_none,
                 frames=True,
             )
         else:
-            self._set_values(field_name, frame_ids, values, frames=True)
+            self._set_values(
+                field_name, frame_ids, values, skip_none, frames=True
+            )
 
-    def _set_values(self, field_name, ids, values, frames=False):
-        ops = [
-            UpdateOne({"_id": _id}, {"$set": {field_name: value}})
-            for _id, value in zip(ids, values)
-        ]
+    def _set_values(self, field_name, ids, values, skip_none, frames=False):
+        ops = []
+        for _id, value in zip(ids, values):
+            if value is None and skip_none:
+                continue
+
+            ops.append(UpdateOne({"_id": _id}, {"$set": {field_name: value}}))
+
         self._dataset._bulk_write(ops, frames=frames)
 
     def _set_list_values_by_id(
-        self, field_name, ids, elem_ids, values, list_field, frames=False
+        self,
+        field_name,
+        ids,
+        elem_ids,
+        values,
+        list_field,
+        skip_none,
+        frames=False,
     ):
         root = list_field
         leaf = field_name[len(root) + 1 :]
@@ -873,6 +917,9 @@ class SampleCollection(object):
                 continue
 
             for _elem_id, value in zip(_elem_ids, _values):
+                if value is None and skip_none:
+                    continue
+
                 if _elem_id is None:
                     raise ValueError(
                         "Can only set values of array documents with IDs"
@@ -881,29 +928,6 @@ class SampleCollection(object):
                 update = {"$set": {root + ".$." + leaf: value}}
                 op = UpdateOne({"_id": _id, root + "._id": _elem_id}, update)
                 ops.append(op)
-
-        self._dataset._bulk_write(ops, frames=frames)
-
-    def _set_all_list_values(
-        self, field_name, ids, values, list_field, frames=False
-    ):
-        # If `self` is a view, this method will only work if the array's
-        # elements have not been filtered or reordered, since it updates the
-        # entire field on the dataset with one `$set`. Therefore, we do not use
-        # this approach currently. However, it does have the advantage that it
-        # works if the array contains items that do not have `_id`s, and it
-        # might (untested) be faster than `_set_list_values_by_id()`
-
-        root = list_field
-        leaf = field_name[len(root) + 1 :]
-
-        ops = []
-        for _id, _values in zip(ids, values):
-            expr = F.zip(F(root), _values).map(
-                F()[0].set_field(leaf, F()[1], relative=False)
-            )
-            update = [{"$set": {root: expr.to_mongo()}}]
-            ops.append(UpdateOne({"_id": _id}, update))
 
         self._dataset._bulk_write(ops, frames=frames)
 
@@ -1300,6 +1324,22 @@ class SampleCollection(object):
             **kwargs,
         )
 
+    @property
+    def has_evaluations(self):
+        """Whether this colection has any evaluation results."""
+        return bool(self.list_evaluations())
+
+    def has_evaluation(self, eval_key):
+        """Whether this collection has an evaluation with the given key.
+
+        Args:
+            eval_key: an evaluation key
+
+        Returns:
+            True/False
+        """
+        return eval_key in self.list_evaluations()
+
     def list_evaluations(self):
         """Returns a list of all evaluation keys on this collection.
 
@@ -1360,6 +1400,22 @@ class SampleCollection(object):
     def delete_evaluations(self):
         """Deletes all evaluation results from this collection."""
         foev.EvaluationMethod.delete_runs(self)
+
+    @property
+    def has_brain_runs(self):
+        """Whether this colection has any brain runs."""
+        return bool(self.list_brain_runs())
+
+    def has_brain_run(self, brain_key):
+        """Whether this collection has a brain method run with the given key.
+
+        Args:
+            brain_key: a brain key
+
+        Returns:
+            True/False
+        """
+        return brain_key in self.list_brain_runs()
 
     def list_brain_runs(self):
         """Returns a list of all brain keys on this collection.
@@ -3919,18 +3975,25 @@ class SampleCollection(object):
 
     @aggregation
     def values(
-        self, field_name, expr=None, missing_value=None, _allow_missing=False
+        self,
+        field_name,
+        expr=None,
+        missing_value=None,
+        unwind=False,
+        _allow_missing=False,
     ):
         """Extracts the values of a field from all samples in the collection.
 
         .. note::
 
-            Unlike other aggregations, :meth:`values` does not *automatically*
-            unwind top-level list fields and label list fields. This default
-            behavior ensures that there is a 1-1 correspondence between the
-            elements of the output list and the samples in the collection.
+            Unlike other aggregations, :meth:`values` does not automatically
+            unwind list fields, which ensures that the returned values match
+            the potentially-nested structure of the documents.
 
-            You can opt-in to unwinding list fields using the ``[]`` syntax.
+            You can opt-in to unwinding specific list fields using the ``[]``
+            syntax, or you can pass the optional ``unwind=True`` parameter to
+            unwind all supported list fields. See
+            :ref:`aggregations-list-fields` for more information.
 
         Examples::
 
@@ -3987,6 +4050,8 @@ class SampleCollection(object):
                 to apply to the field before aggregating
             missing_value (None): a value to insert for missing or
                 ``None``-valued fields
+            unwind (False): whether to automatically unwind all recognized list
+                fields
 
         Returns:
             the list of values
@@ -3996,6 +4061,7 @@ class SampleCollection(object):
                 field_name,
                 expr=expr,
                 missing_value=missing_value,
+                unwind=unwind,
                 _allow_missing=_allow_missing,
             )
         )
@@ -4086,7 +4152,14 @@ class SampleCollection(object):
 
         Args:
             export_dir (None): the directory to which to export the samples in
-                format ``dataset_type``
+                format ``dataset_type``. This can also be an archive path with
+                one of the following extensions::
+
+                    .zip, .tar, .tar.gz, .tgz, .tar.bz, .tbz
+
+                If an archive path is specified, the export is performed in a
+                directory of same name (minus extension) and then automatically
+                archived and the directory then deleted
             dataset_type (None): the
                 :class:`fiftyone.types.dataset_types.Dataset` type to write. If
                 not specified, the default type for ``label_field`` is used
@@ -4143,6 +4216,12 @@ class SampleCollection(object):
 
         if dataset_type is not None and inspect.isclass(dataset_type):
             dataset_type = dataset_type()
+
+        if export_dir is not None and etau.is_archive(export_dir):
+            archive_path = export_dir
+            export_dir = etau.split_archive(archive_path)[0]
+        else:
+            archive_path = None
 
         # If no dataset exporter was provided, construct one based on the
         # dataset type
@@ -4226,8 +4305,16 @@ class SampleCollection(object):
             frame_labels_field_or_dict=frame_labels_field_or_dict,
         )
 
-    def list_indexes(self):
+        # Archive, if requested
+        if archive_path is not None:
+            etau.make_archive(export_dir, archive_path, cleanup=True)
+
+    def list_indexes(self, include_private=False):
         """Returns the fields of the dataset that are indexed.
+
+        Args:
+            include_private (False): whether to include private fields that
+                start with ``_``
 
         Returns:
             a list of field names
@@ -4459,7 +4546,13 @@ class SampleCollection(object):
 
         return self._process_aggregations(aggregations, result, scalar_result)
 
-    def _pipeline(self, pipeline=None, attach_frames=True, frames_only=False):
+    def _pipeline(
+        self,
+        pipeline=None,
+        attach_frames=True,
+        detach_frames=False,
+        frames_only=False,
+    ):
         """Returns the MongoDB aggregation pipeline for the collection.
 
         Args:
@@ -4467,7 +4560,10 @@ class SampleCollection(object):
                 append to the current pipeline
             attach_frames (True): whether to attach the frame documents to the
                 result. Only applicable to video datasets
-            frames_only (True): whether to generate a pipeline that contains
+            detach_frames (False): whether to detach the frame documents from
+                the result at the end of the pipeline. Only applicable to video
+                datasets
+            frames_only (False): whether to generate a pipeline that contains
                 *only* the frames in the collection
 
         Returns:
@@ -4475,7 +4571,13 @@ class SampleCollection(object):
         """
         raise NotImplementedError("Subclass must implement _pipeline()")
 
-    def _aggregate(self, pipeline=None, attach_frames=True):
+    def _aggregate(
+        self,
+        pipeline=None,
+        attach_frames=True,
+        detach_frames=False,
+        frames_only=False,
+    ):
         """Runs the MongoDB aggregation pipeline on the collection and returns
         the result.
 
@@ -4484,6 +4586,11 @@ class SampleCollection(object):
                 append to the current pipeline
             attach_frames (True): whether to attach the frame documents to the
                 result. Only applicable to video datasets
+            detach_frames (False): whether to detach the frame documents from
+                the result at the end of the pipeline. Only applicable to video
+                datasets
+            frames_only (False): whether to generate a pipeline that contains
+                *only* the frames in the collection
 
         Returns:
             the aggregation result dict
@@ -4672,6 +4779,21 @@ class SampleCollection(object):
 
     def _is_array_field(self, field_name):
         return _is_array_field(self, field_name)
+
+    def _unwind_values(self, field_name, values):
+        if values is None:
+            return None
+
+        list_fields = self._parse_field_name(field_name, auto_unwind=False)[-1]
+        level = len(list_fields)
+
+        while level > 0:
+            values = list(
+                itertools.chain.from_iterable(v for v in values if v)
+            )
+            level -= 1
+
+        return values
 
     def _add_field_if_necessary(self, field_name, ftype, **kwargs):
         # @todo if field exists, validate that `ftype` and `**kwargs` match
