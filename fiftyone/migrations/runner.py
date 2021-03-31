@@ -115,6 +115,38 @@ def migrate_database_if_necessary(destination=None, verbose=False):
         os.remove(config_path)
 
 
+def needs_migration(name=None, head=None, destination=None):
+    """Determines whether a dataset requires a migration in order to be used in
+    the specified destination revision.
+
+    To use this method, specify either the ``name`` of an existing dataset or
+    provide the ``head`` revision of the dataset.
+
+    Args:
+        name (None): the name of the dataset
+        head (None): the current revision of the dataset
+        destination (None): the destination revision. By default, the
+            ``fiftyone`` package version is used
+
+    Returns:
+        True/False
+    """
+    if name is not None:
+        head = get_dataset_revision(name)
+
+    if head is None:
+        head = "0.0"  # < v0.6.2
+
+    if destination is None:
+        destination = foc.VERSION
+
+    if head == destination:
+        return False
+
+    runner = MigrationRunner(head=head, destination=destination)
+    return runner.has_revisions
+
+
 def migrate_dataset_if_necessary(name, destination=None, verbose=False):
     """Migrates the dataset from its current revision to the specified
     destination revision.

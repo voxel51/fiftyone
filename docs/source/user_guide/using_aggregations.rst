@@ -329,6 +329,18 @@ samples in a collection:
     print(len(labels))  # 200
     print(labels[0]) # ['bird', ..., 'bear', 'sheep']
 
+.. note::
+
+    Unlike other aggregations,
+    :meth:`values() <fiftyone.core.collections.SampleCollection.values>` does
+    not automatically unwind list fields, which ensures that the returned
+    values match the potentially-nested structure of the documents.
+
+    You can opt-in to unwinding specific list fields using the ``[]``
+    syntax, or you can pass the optional ``unwind=True`` parameter to unwind
+    all supported list fields. See :ref:`aggregations-list-fields` for more
+    information.
+
 .. _aggregations-advanced:
 
 Advanced usage
@@ -381,22 +393,27 @@ The example below demonstrates this capability:
 
 .. note::
 
-    There are three cases where FiftyOne will automatically unwind array fields
+    There are four cases where FiftyOne will automatically unwind array fields
     without requiring you to explicitly specify this via the ``[]`` syntax:
 
     **Top-level lists:** When you write an aggregation that refers to a
     top-level list field of a dataset; i.e., ``list_field`` is automatically
     coerced to ``list_field[]``, if necessary.
 
-    **Tags fields:** When you write an aggregation that refers to the ``tags``
-    attribute of a |Sample| or |Label| object; i.e., ``tags`` is automatically
-    coerced to ``tags[]``, if necessary.
-
     **Label lists:** When you write an aggregation that refers to the list
     field of a |Label| class, such as the
     :attr:`Detections.detections <fiftyone.core.labels.Detections.detections>`
     attribute; i.e., ``ground_truth.detections.label`` is automatically
     coerced to ``ground_truth.detections[].label``, if necessary.
+
+    **Frame fields:** When you write an aggregation that refers to a
+    frame-level field of a video dataset; i.e..,
+    ``frames.classification.label`` is automatically coerced to
+    ``frames[].classifcation.label`` if necessary.
+
+    **Tags fields:** When you write an aggregation that refers to the ``tags``
+    attribute of a |Sample| or |Label| object; i.e., ``classification.tags`` is
+    automatically coerced to ``classification.tags[]``, if necessary.
 
 .. _aggregations-expressions:
 
