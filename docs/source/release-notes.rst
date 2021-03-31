@@ -28,42 +28,91 @@ App
   fields
 - Fixed hiding, clearing, and only showing selected samples in the samples grid
 
+Brain
+^^^^^
+- Added a
+  :meth:`compute_visualization() <fiftyone.brain.compute_visualization>`
+  method that uses embeddings and dimensionality reduction methods to generate
+  interactive visualizations of the samples and/or labels in a dataset. For
+  more information, check out :ref:`this user guide page <XXXXXXXX>`. Features
+  include:
+    - Provide your own embeddings, or choose a model from the
+      :ref:`Model Zoo <model-zoo>`, or use the default model that we provide
+    - Supported dimensionality reduction methods include
+      `UMAP <https://github.com/lmcinnes/umap>`_,
+      `t-SNE <https://lvdmaaten.github.io/tsne>`_, and
+      `PCA <https://scikit-learn.org/stable/modules/generated/sklearn.decomposition.PCA.html>`
+    - Use this capability in a Jupyter notebook and you can interact with the
+      plots to select samples/labels of interest in a connected |Session|
+- Added support for saving brain method results on datasets. Previous brain
+  results can now be loaded at any time via
+  :meth:`Dataset.load_brain_results() <fiftyone.core.dataset.Dataset.load_brain_results>`
+- Added support for providing a custom |Model| or model from the
+  :ref:`Model Zoo <model-zoo>` to
+  :meth:`compute_uniqueness() <fiftyone.brain.compute_uniqueness>`
+
 Core
 ^^^^
-- Added the `tag` attribute to all
-  :class:`Label <fiftyone.core.labels.Label>` types, e.g.
-  :class:`Detection <fiftyone.core.labels.Detection>`, which is a list of
-  unique strings similar to :class:`Sample <fiftyone.core.sample.Sample>`
-  `tags`
-- Added the following  methods for working with sample and label tags:
-
-  - :meth:`SampleCollection.tag_samples() <fiftyone.core.collections.SampleCollection.tag_samples>`
-  - :meth:`SampleCollection.untag_samples() <fiftyone.core.collections.SampleCollection.untag_samples>`
-  - :meth:`SampleCollection.count_sample_tags() <fiftyone.core.collections.SampleCollection.count_sample_tags>`
-  - :meth:`SampleCollection.tag_labels() <fiftyone.core.collections.SampleCollection.tag_labels>`
-  - :meth:`SampleCollection.untag_labels() <fiftyone.core.collections.SampleCollection.untag_labels>`
-  - :meth:`SampleCollection.count_label_tags() <fiftyone.core.collections.SampleCollection.count_label_tags>`
-- BREAKING CHANGE: Renamed all applicable API components to refer to `objects` as `labels`
-  Affected attributes, classes, and methods are:
-
-  - :attr:`Session.selected_labels <fiftyone.core.session.Session.selected_labels>`
-    (previously `Session.selected_objects`)
-  - :meth:`SampleCollection.select_labels() <fiftyone.core.collections.SampleCollection.select_labels()>`
-    (previously `SampleCollection.select_labels()`)
-  - :meth:`SampleCollection.select_labels() <fiftyone.core.collections.SampleCollection.exclude_labels()>`
-    (previously `SampleCollection.exclude_labels()`)
-  - :class:`SelectLabels <fiftyone.core.stages.SelectLabels>` (previously
-    `SelectObjects`)
-  - :class:`ExcludeLabels <fiftyone.core.stages.ExcludeLabels>` (previously
-    `ExcludeObjects`)
-- Added the keyword arguments `ids`, `tags`, and `fields` to 
+- Added a :mod:`<fiftyone.core.plots>` module that provides a powerful API for
+  visualizing datasets, including interactive plots when used in Jupyter
+  notebooks. See :ref:`this user guide page <XXXXXXXX>` for more information.
+  Highlights include:
+    - :meth:`plot_confusion_matrix() <fiftyone.core.plots.base.plot_confusion_matrix>`:
+      an interactive confusion matrix that can be attached to a |Session|
+      object to visually explore model predictions
+    - :meth:`scatterplot() <fiftyone.core.plots.base.scatterplot>`: an
+      interacive scatterplot of 2D or 3D points that can be attached to a
+      |Session| to explore the samples/labels in a dataset based on their
+      locations in a low-dimensional embedding space
+    - :meth:`location_scatterplot() <fiftyone.core.plots.base.location_scatterplot>`:
+      an interacive scatterplot of a dataset via its |GeoLocation| coordinates
+- Added |GeoLocation| and |GeoLocations| label types that can be used to store
+  arbitrary GeoJSON location data on samples
+- Added the :class:`GeoJSONImageDataset <fiftyone.types.dataset_types.GeoJSONImageDataset>`
+  dataset type for importing and exporting datasets in GeoJSON format
+- Added :meth:`SampleCollection.geo_near() <fiftyone.core.collections.SampleCollection.geo_near>`
+  and
+  :meth:`SampleCollection.geo_within() <fiftyone.core.collections.SampleCollection.geo_within>`
+  view stages for querying datasets with location data
+- Upgraded the implementation of the
+  :ref:`FiftyOneDataset <FiftyOneDataset-export>` format, which is now 10-100x
+  faster at importing/exporting datasets
+- Added support for generating zip/tar/etc archives to
+  :meth:`SampleCollection.export() <fiftyone.core.collections.SampleCollection.export>`
+  by passing an archive path rather than a directory path
+- Added :meth:`Dataset.from_archive() <fiftyone.core.dataset.Dataset.from_archive>`
+  and :meth:`Dataset.add_archive() <fiftyone.core.dataset.Dataset.add_archive>`
+  factory methods for importing datasets stored in archives
+- Added support for saving evaluation results on a dataset. Results can now
+  be loaded at any time via
+  :meth:`Dataset.load_evaluation_results() <fiftyone.core.dataset.Dataset.load_evaluation_results>`
+- Added a ``tags`` attribute to all |Label| types that can store a list of
+  string tags for the labels (analogous to the ``tags`` attribute of |Sample|)
+- Added a number of methods for working with sample and label tags:
+    - :meth:`SampleCollection.tag_samples() <fiftyone.core.collections.SampleCollection.tag_samples>`
+    - :meth:`SampleCollection.untag_samples() <fiftyone.core.collections.SampleCollection.untag_samples>`
+    - :meth:`SampleCollection.count_sample_tags() <fiftyone.core.collections.SampleCollection.count_sample_tags>`
+    - :meth:`SampleCollection.tag_labels() <fiftyone.core.collections.SampleCollection.tag_labels>`
+    - :meth:`SampleCollection.untag_labels() <fiftyone.core.collections.SampleCollection.untag_labels>`
+    - :meth:`SampleCollection.count_label_tags() <fiftyone.core.collections.SampleCollection.count_label_tags>`
+- **BREAKING CHANGE**: Renamed all applicable API components to refer to
+  `objects` as `labels`. Affected attributes, classes, and methods are:
+    - :attr:`Session.selected_labels <fiftyone.core.session.Session.selected_labels>`
+      (previously `Session.selected_objects`)
+    - :meth:`SampleCollection.select_labels() <fiftyone.core.collections.SampleCollection.select_labels>`
+      (previously `SampleCollection.select_labels()`)
+    - :meth:`SampleCollection.select_labels() <fiftyone.core.collections.SampleCollection.exclude_labels>`
+      (previously `SampleCollection.exclude_labels()`)
+    - :class:`SelectLabels <fiftyone.core.stages.SelectLabels>` (previously
+      `SelectObjects`)
+    - :class:`ExcludeLabels <fiftyone.core.stages.ExcludeLabels>` (previously
+      `ExcludeObjects`)
+- Added new keyword arguments ``ids``, ``tags``, and ``fields`` to
   :meth:`SampleCollection.select_labels() <fiftyone.core.collections.SampleCollection.select_labels()>`
   and
   :meth:`SampleCollection.select_labels() <fiftyone.core.collections.SampleCollection.exclude_labels()>`
-  (previsouly `SampleCollection.select_objects()` and
-  `SampleCollection.exclude_objects()`, respectively) and their corresponding view stages.
-- Added the brand new core :mod:`<fiftyone.core.plots>`. The API includes the ability
-  to interactively explore your datasets in Jupyter Notebooks. See ... for a full rundown
+  and their corresponding view stages that enable easier-to-use selection of
+  labels by their IDs or tags
 - Added
   :meth:`Session.select_labels() <fiftyone.core.session.Session.select_labels()>`
   for programmatically selecting labels as well a setters for
@@ -82,74 +131,45 @@ Core
   fields for providing semantic labels for
   :class:`Segmentation <fiftyone.core.labels.Segmentation>` mask values to be
   used in the App's expanded sample view
-- Added :class:`GeoLocation <fiftyone.core.labels.GeoLocation>` and
-  :class:`GeoLocations <fiftyone.core.labels.GeoLocation>` label types
-- Added :meth:`SampleCollection.geo_near() <fiftyone.core.collections.SampleCollection.geo_near>`
-  and
-  :meth:`SampleCollection.geo_within() <fiftyone.core.collections.SampleCollection.geo_within>`
-  view stages
-- Fixed schema errors in |DatasetView| related to filtered fields
-- Fixed sorting on unindexed values for large datasets
-- Fixed copying of |DatasetView| in cases where
-  :class:`ViewField <fiftyone.core.expressions.ViewField>` is used
 - Improved the runtime of
   :meth:`Dataset.merge_samples() <fiftyone.core.dataset.Dataset.merge_samples>` by
   ~100x for image datasets and ~10x for video datasets
-- Added the trigonometric
-  :class:`ViewExpressions <fiftyone.core.expressions.ViewExpression>`
-  :meth:`cos() <fiftyone.core.expressions.ViewExpression.cos>`,
-  :meth:`sin() <fiftyone.core.expressions.ViewExpression.sin>`,
-  :meth:`tan() <fiftyone.core.expressions.ViewExpression.tan>`,
-  :meth:`cosh() <fiftyone.core.expressions.ViewExpression.cosh>`
-  :meth:`sinh() <fiftyone.core.expressions.ViewExpression.sinh>`,
-  :meth:`tanh() <fiftyone.core.expressions.ViewExpression.tanh>`,
-  :meth:`arccos() <fiftyone.core.expressions.ViewExpression.arccos>`,
-  :meth:`arcsin() <fiftyone.core.expressions.ViewExpression.arcsin>`,
-  :meth:`arcan() <fiftyone.core.expressions.ViewExpression.arctan>`
-  :meth:`arccosh() <fiftyone.core.expressions.ViewExpression.arccosh>`,
-  :meth:`arcsinh() <fiftyone.core.expressions.ViewExpression.arcsinh>`,
-  :meth:`arctanh() <fiftyone.core.expressions.ViewExpression.arctanh>`
-- Added the
-  :class:`ViewExpression.randn() <fiftyone.core.expressions.ViewExpression.randn>`
+- Added an :meth:`Dataset.add_collection() <fiftyone.core.dataset.Dataset.add_collection>`
+  method for adding the contents of a |SampleCollection| to another |Dataset|
+- Added the trigonometric view expresssions
+  :meth:`cos <fiftyone.core.expressions.ViewExpression.cos>`,
+  :meth:`sin <fiftyone.core.expressions.ViewExpression.sin>`,
+  :meth:`tan <fiftyone.core.expressions.ViewExpression.tan>`,
+  :meth:`cosh <fiftyone.core.expressions.ViewExpression.cosh>`
+  :meth:`sinh <fiftyone.core.expressions.ViewExpression.sinh>`,
+  :meth:`tanh <fiftyone.core.expressions.ViewExpression.tanh>`,
+  :meth:`arccos <fiftyone.core.expressions.ViewExpression.arccos>`,
+  :meth:`arcsin <fiftyone.core.expressions.ViewExpression.arcsin>`,
+  :meth:`arcan <fiftyone.core.expressions.ViewExpression.arctan>`
+  :meth:`arccosh <fiftyone.core.expressions.ViewExpression.arccosh>`,
+  :meth:`arcsinh <fiftyone.core.expressions.ViewExpression.arcsinh>`, and
+  :meth:`arctanh <fiftyone.core.expressions.ViewExpression.arctanh>`
+- Added a :class:`randn <fiftyone.core.expressions.ViewExpression.randn>`
   expression that can generate Gaussian random numbers
-- Added support for saving evaluation results on a dataset.Results can now
-  be loaded via
-  :meth:`Dataset.load_evaluation_results() <fiftyone.core.dataset.Dataset.load_evaluation_results>`
-
-Brain
-^^^^^
-- Added support for visualization (interactive in Jupyter Notebooks) of
-  samples or labels in datasets via their embeddings. Embeddings or a
-  :class:`Model <fiftyone.core.models.Model>` or Zoo Model that exposes
-  embeddings, or nothing at all may be provided. By default
-  `UMAP <https://github.com/lmcinnes/umap>`_ is used. Other options are
-  `t-SNE <https://lvdmaaten.github.io/tsne>`_ and standard PCA. See
-  :meth:`compute_visualization() <fiftyone.brain.compute_visualization>` for
-  more details
-- Added support for saving brain method results on a datasets. Results can now
-  be loaded via
-  :meth:`Dataset.load_brain_results() <fiftyone.core.dataset.Dataset.load_brain_results>`
-- Added support for providing an arbitrary
-  :class:`Model <fiftyone.core.models.Model>` that exposes embeddings to
-  :meth:`compute_uniqueness() <fiftyone.brain.compute_uniqueness>`
+- Fixed a bug that prevented
+  :meth:`evaluate_detections() <fiftyone.core.collections.SampleCollection.evaluate_detections>`
+  from being able to process video datasets
+- Added support for applying intensive view stages such as sorting to datasets
+  whose database representation exceeds 100MB
+- Fixed schema errors in |DatasetView| instances that contain selected or
+  excluded fields
+- Fixed copying of |DatasetView| instances where
+  :class:`ViewField <fiftyone.core.expressions.ViewField>` is used
 
 Zoo
 ^^^
-- Added the :ref:`quickstart-geo <dataset-zoo-quickstart-geo>` dataset to enable quick exploration of
-  location-based datasets
+- Added the :ref:`quickstart-geo <dataset-zoo-quickstart-geo>` dataset to
+  enable quick exploration of location-based datasets
 
 CLI
 ^^^
 - Removed the `--desktop` flag from the
   :ref:`fiftyone app connect <cli-fiftyone-app-connect>` command
-
-Utils
-^^^^^
-- Added the :class:`GeoJSONImageDataset <fiftyone.types.dataset_types.GeoJSONImageDataset>`
-  dataset type for importing and exporting datasets in `GeoJSON` format
-
-Docs
-^^^^
 
 .. _release-notes-v0.7.4:
 
