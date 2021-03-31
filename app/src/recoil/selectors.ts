@@ -886,7 +886,7 @@ export const modalLabelTags = selectorFamily<
       const tags = get(modalLabelAttrs(params)).filter(
         ([k, v]) => k === "tags"
       );
-      return tags && tags[0] && tags[0][1] ? Array.from(tags) : [];
+      return tags && tags[0] && tags[0][1] ? Array.from(tags[0][1]) : [];
     }
     return [];
   },
