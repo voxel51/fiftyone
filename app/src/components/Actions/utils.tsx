@@ -120,7 +120,6 @@ export const selectedSampleLabelStatistics = selector<{
     const promise = new Promise((resolve) => {
       const listener = wrap(({ count, tags }) => {
         socket.removeEventListener("message", listener);
-        console.log(count, tags);
         resolve({ count, tags });
       }, "selected_statistics");
       socket.addEventListener("message", listener);
@@ -144,9 +143,10 @@ export const numLabelsInSelectedSamples = selector<number>({
 const addLabelToTagsResult = (result, label, label_id = null) => {
   const add = (l) => {
     if (label_id && l._id !== label_id) return;
-    l.tags.forEach((t) => {
-      result[t] = t in result ? result[t] + 1 : 1;
-    });
+    l.tags &&
+      l.tags.forEach((t) => {
+        result[t] = t in result ? result[t] + 1 : 1;
+      });
   };
   if (VALID_LIST_TYPES.includes(label._cls)) {
     label[LABEL_LIST[label._cls]] && label[LABEL_LIST[label._cls]].forEach(add);
@@ -243,7 +243,9 @@ export const tagStats = selectorFamily<
       const active = [
         ...get(activeLabels({ modal, frames: false })),
         ...get(activeLabels({ modal, frames: true })),
-      ].map((l) => `${l}.${LABEL_LIST[types[l]]}.tags`);
+      ].map((l) =>
+        LABEL_LIST[types[l]] ? `${l}.${LABEL_LIST[types[l]]}.tags` : `${l}.tags`
+      );
       const reducer = (acc, { name, result }) => {
         if (active.includes(name)) {
           acc[name] = result;

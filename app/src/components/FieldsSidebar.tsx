@@ -596,6 +596,7 @@ const UnsupportedCell = ({ modal }: UnsupportedCellProps) => {
       icon={<Help />}
       entries={unsupported.map((e) => ({
         name: e,
+        path: name,
         title: e,
         data: null,
         disabled: true,

@@ -93,6 +93,7 @@ def import_samples(
     with dataset_importer:
         if isinstance(dataset_importer, BatchDatasetImporter):
             # Batch dataset
+            # @todo enforce `expand_schema` parameter here
             return dataset_importer.import_samples(dataset, tags=tags)
 
         #
@@ -1154,6 +1155,8 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
 
         fomi.migrate_dataset_if_necessary(name)
         dataset._reload(hard=True)
+
+        logger.info("Import complete")
 
         return sample_ids
 

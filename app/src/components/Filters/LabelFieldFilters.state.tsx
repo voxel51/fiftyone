@@ -439,6 +439,9 @@ export const labelCount = selectorFamily<number | null, boolean>({
 
     let sum = 0;
 
+    if (!counts || !frameCounts) {
+      return null;
+    }
     labels.forEach((l) => {
       if (!counts[l]) return;
       sum += counts[l];

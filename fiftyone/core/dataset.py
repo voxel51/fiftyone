@@ -1699,6 +1699,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     ):
         """Adds the contents of the given archive to the dataset.
 
+        If the archive does not exist but a dataset with the same root name
+        does exist, it is assumed that this directory contains the extracted
+        contents of the archive.
+
         See :doc:`this guide </user_guide/dataset_creation/datasets>` for
         descriptions of available dataset types.
 
@@ -1736,9 +1740,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             a list of IDs of the samples that were added to the dataset
         """
         dataset_dir = etau.split_archive(archive_path)[0]
-        etau.extract_archive(
-            archive_path, outdir=dataset_dir, delete_archive=cleanup
-        )
+        if os.path.isfile(archive_path) or not os.path.isdir(dataset_dir):
+            etau.extract_archive(
+                archive_path, outdir=dataset_dir, delete_archive=cleanup
+            )
 
         return self.add_dir(
             dataset_dir,
@@ -2259,6 +2264,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     ):
         """Creates a :class:`Dataset` from the contents of the given archive.
 
+        If the archive does not exist but a dataset with the same root name
+        does exist, it is assumed that this directory contains the extracted
+        contents of the archive.
+
         See :doc:`this guide </user_guide/dataset_creation/datasets>` for
         descriptions of available dataset types.
 
@@ -2291,17 +2300,16 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             a :class:`Dataset`
         """
-        dataset_dir = etau.split_archive(archive_path)[0]
-        etau.extract_archive(archive_path, delete_archive=cleanup)
-
-        return cls.from_dir(
-            dataset_dir,
+        dataset = cls(name)
+        dataset.add_archive(
+            archive_path,
             dataset_type,
-            name=name,
+            cleanup=cleanup,
             label_field=label_field,
             tags=tags,
             **kwargs,
         )
+        return dataset
 
     @classmethod
     def from_importer(

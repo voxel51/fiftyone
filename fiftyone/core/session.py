@@ -261,6 +261,7 @@ class Session(foc.HasClient):
         config=None,
     ):
         self._validate(dataset, view, plots, config)
+
         if port is None:
             port = fo.config.default_app_port
 

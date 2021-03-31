@@ -145,7 +145,13 @@ const Section = ({
     <>
       <TaggingContainerInput>
         <TaggingInput
-          placeholder={disabled ? "saving..." : placeholder}
+          placeholder={
+            disabled
+              ? count === null
+                ? "loading..."
+                : "saving..."
+              : placeholder
+          }
           value={value}
           onChange={(e) => {
             setValue(e.target.value);
