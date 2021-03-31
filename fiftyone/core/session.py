@@ -18,6 +18,7 @@ import fiftyone as fo
 import fiftyone.constants as focn
 import fiftyone.core.dataset as fod
 import fiftyone.core.client as foc
+from fiftyone.core.config import AppConfig
 import fiftyone.core.context as focx
 import fiftyone.core.frame as fof
 import fiftyone.core.media as fom
@@ -25,6 +26,7 @@ import fiftyone.core.plots as fop
 import fiftyone.core.sample as fosa
 import fiftyone.core.service as fos
 import fiftyone.core.utils as fou
+import fiftyone.core.view as fov
 import fiftyone.utils.templates as fout
 from fiftyone.core.state import StateDescription
 
@@ -258,6 +260,8 @@ class Session(foc.HasClient):
         auto=True,
         config=None,
     ):
+        self._validate(dataset, view, plots, config)
+
         if port is None:
             port = fo.config.default_app_port
 
@@ -344,6 +348,31 @@ class Session(foc.HasClient):
         if self._context == focx._NONE:
             self.open()
 
+    def _validate(self, dataset, view, plots, config):
+        if dataset is not None and not isinstance(dataset, fod.Dataset):
+            raise ValueError(
+                "`dataset` must be a %s or None; found %s"
+                % (fod.Dataset, type(dataset))
+            )
+
+        if view is not None and not isinstance(view, fov.DatasetView):
+            raise ValueError(
+                "`view` must be a %s or None; found %s"
+                % (fov.DatasetView, type(view))
+            )
+
+        if plots is not None and not isinstance(plots, fop.PlotManager):
+            raise ValueError(
+                "`plots` must be a %s or None; found %s"
+                % (fop.PlotManager, type(plots))
+            )
+
+        if config is not None and not isinstance(config, AppConfig):
+            raise ValueError(
+                "`config` must be a %s or None; found %s"
+                % (AppConfig, type(config))
+            )
+
     def __repr__(self):
         return self.summary()
 
@@ -425,6 +454,15 @@ class Session(foc.HasClient):
 
     @config.setter
     def config(self, config):
+        if config is None:
+            config = fo.app_config.copy()
+
+        if not isinstance(config, AppConfig):
+            raise ValueError(
+                "`Session.config` must be a %s or None; found %s"
+                % (AppConfig, type(config))
+            )
+
         self.state.config = config
 
     @property
@@ -446,6 +484,12 @@ class Session(foc.HasClient):
     @dataset.setter
     @_update_state(auto_show=True)
     def dataset(self, dataset):
+        if dataset is not None and not isinstance(dataset, fod.Dataset):
+            raise ValueError(
+                "`Session.dataset` must be a %s or None; found %s"
+                % (fod.Dataset, type(dataset))
+            )
+
         if dataset is not None:
             dataset._reload()
 
@@ -472,7 +516,14 @@ class Session(foc.HasClient):
     @view.setter
     @_update_state(auto_show=True)
     def view(self, view):
+        if view is not None and not isinstance(view, fov.DatasetView):
+            raise ValueError(
+                "`Session.view` must be a %s or None; found %s"
+                % (fov.DatasetView, type(view))
+            )
+
         self.state.view = view
+
         if view is not None:
             self.state.dataset = self.state.view._dataset
             self.state.dataset._reload()
@@ -502,6 +553,12 @@ class Session(foc.HasClient):
 
     @plots.setter
     def plots(self, plots):
+        if plots is not None and not isinstance(plots, fop.PlotManager):
+            raise ValueError(
+                "`Session.plots` must be a %s or None; found %s"
+                % (fop.PlotManager, type(plots))
+            )
+
         if plots is None:
             plots = fop.PlotManager(self)
         else:

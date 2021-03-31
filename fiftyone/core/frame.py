@@ -11,7 +11,6 @@ import weakref
 
 from pymongo import ReplaceOne
 
-from fiftyone.core.expressions import ViewField as F
 from fiftyone.core.document import Document
 import fiftyone.core.frame_utils as fofu
 import fiftyone.core.odm as foo
@@ -22,7 +21,8 @@ def get_default_frame_fields(include_private=False, include_id=False):
     """Returns the default fields present on all frames.
 
     Args:
-        include_private (False): whether to include fields that start with `_`
+        include_private (False): whether to include fields that start with
+            ``_``
         include_id (False): whether to include ID fields
 
     Returns:
@@ -71,13 +71,16 @@ class Frames(object):
             return len(self._replacements)
 
         self._save_replacements()
-        return self._frame_collection.find(
-            {"_sample_id": self._sample._id}
-        ).count()
+        return self._frames_view.count("frames")
 
     @property
     def _view(self):
         return getattr(self._sample, "_view", None)
+
+    @property
+    def _frames_view(self):
+        view = self._view or self._sample._dataset
+        return view.select(self._sample.id)
 
     def _set_replacement(self, frame):
         self._replacements[frame.frame_number] = frame
@@ -121,10 +124,7 @@ class Frames(object):
         self._replacements = {}
 
     def _make_filter(self, frame_number, sample_id):
-        return {
-            "frame_number": frame_number,
-            "_sample_id": sample_id,
-        }
+        return {"frame_number": frame_number, "_sample_id": sample_id}
 
     def _make_dict(self, frame):
         d = frame._doc.to_dict(extended=False)
@@ -356,15 +356,11 @@ class Frames(object):
 
         repl_fns = sorted(self._replacements.keys())
         repl_fn = repl_fns[0] if repl_fns else None
-        view = self._view or self._sample._dataset
-        try:
-            result = next(
-                view.match(F("filepath") == self._sample.filepath)._aggregate()
-            )
-        except:
-            result = {"frames": []}
 
-        for d in result["frames"]:
+        frame_dicts = self._frames_view._aggregate(frames_only=True)
+        frame_dicts = sorted(frame_dicts, key=lambda d: d["frame_number"])
+
+        for d in frame_dicts:
             if repl_fn is not None and d["frame_number"] >= repl_fn:
                 self._iter_frame = self._replacements[repl_fn]
                 repl_fn += 1

@@ -84,10 +84,11 @@
 .. |EmbeddingsMixin| replace:: :class:`EmbeddingsMixin <fiftyone.core.models.EmbeddingsMixin>`
 .. |TorchModelMixin| replace:: :class:`TorchModelMixin <fiftyone.core.models.TorchModelMixin>`
 
-.. |EvaluationResults| replace:: :class:`EvaluationResults <fiftyone.utils.eval.base.EvaluationResults>`
+.. |EvaluationResults| replace:: :class:`EvaluationResults <fiftyone.core.evaluation.EvaluationResults>`
+.. |BrainResults| replace:: :class:`BrainResults <fiftyone.core.brain.BrainResults>`
+
 .. |ClassificationResults| replace:: :class:`ClassificationResults <fiftyone.utils.eval.classification.ClassificationResults>`
 .. |BinaryClassificationResults| replace:: :class:`BinaryClassificationResults <fiftyone.utils.eval.classification.BinaryClassificationResults>`
 .. |DetectionResults| replace:: :class:`DetectionResults <fiftyone.utils.eval.detection.DetectionResults>`
 .. |SegmentationResults| replace:: :class:`SegmentationResults <fiftyone.utils.eval.segmentation.SegmentationResults>`
-
 .. |COCOEvaluationConfig| replace:: :class:`COCOEvaluationConfig <fiftyone.utils.eval.coco.COCOEvaluationConfig>`

@@ -185,3 +185,8 @@ export const savedPlayerOverlayOptions = atom({
   key: "savedPlayerOverlayOptions",
   default: {},
 });
+
+export const matchedTagsModal = atomFamily<Set<string>, string>({
+  key: "matchedTagsModal",
+  default: new Set(),
+});

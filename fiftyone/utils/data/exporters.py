@@ -7,8 +7,11 @@ Dataset exporters.
 """
 from collections import defaultdict
 import inspect
+import logging
 import os
 import warnings
+
+from bson import json_util
 
 import eta.core.datasets as etad
 import eta.core.image as etai
@@ -21,6 +24,7 @@ import fiftyone.core.eta_utils as foe
 import fiftyone.core.labels as fol
 import fiftyone.core.metadata as fom
 import fiftyone.core.media as fomm
+import fiftyone.core.odm as foo
 import fiftyone.core.utils as fou
 import fiftyone.types as fot
 
@@ -30,6 +34,9 @@ from .parsers import (
     FiftyOneLabeledVideoSampleParser,
     FiftyOneUnlabeledVideoSampleParser,
 )
+
+
+logger = logging.getLogger(__name__)
 
 
 def export_samples(
@@ -75,6 +82,10 @@ def export_samples(
     dataset_exporter = _get_dataset_exporter(
         export_dir, dataset_type, dataset_exporter, **kwargs
     )
+
+    if isinstance(dataset_exporter, BatchDatasetExporter):
+        _write_batch_dataset(dataset_exporter, samples)
+        return
 
     if isinstance(dataset_exporter, GenericSampleDatasetExporter):
         sample_parser = None
@@ -196,6 +207,17 @@ def _get_dataset_exporter(
         dataset_exporter = dataset_exporter_cls(export_dir, **kwargs)
 
     return dataset_exporter
+
+
+def _write_batch_dataset(dataset_exporter, samples):
+    if not isinstance(samples, foc.SampleCollection):
+        raise ValueError(
+            "%s can only export %s instances"
+            % (type(dataset_exporter), foc.SampleCollection)
+        )
+
+    with dataset_exporter:
+        dataset_exporter.export_samples(samples)
 
 
 def _write_generic_sample_dataset(dataset_exporter, samples, num_samples):
@@ -421,6 +443,34 @@ class DatasetExporter(object):
             *args: the arguments to :func:`DatasetExporter.__exit__`
         """
         pass
+
+
+class BatchDatasetExporter(DatasetExporter):
+    """Base interface for exporters that export entire
+    :class:`fiftyone.core.collections.SampleCollection` instances in a single
+    batch.
+
+    This interface allows for greater efficiency for export formats that
+    handle aggregating over the samples themselves.
+
+    Args:
+        export_dir: the directory to write the export
+    """
+
+    def export_sample(self, *args, **kwargs):
+        raise ValueError(
+            "Use export_samples() to perform exports with %s instances"
+            % self.__class__
+        )
+
+    def export_samples(self, sample_collection):
+        """Exports the given sample collection.
+
+        Args:
+            sample_collection: a
+                :class:`fiftyone.core.collections.SampleCollection`
+        """
+        raise NotImplementedError("subclass must implement export_samples()")
 
 
 class ExportsImages(object):
@@ -698,12 +748,15 @@ class LabeledVideoDatasetExporter(DatasetExporter, ExportsVideos):
         raise NotImplementedError("subclass must implement export_sample()")
 
 
-class FiftyOneDatasetExporter(GenericSampleDatasetExporter):
-    """Exporter that writes a FiftyOne dataset to disk along with its source
-    data in a serialized JSON format.
+class LegacyFiftyOneDatasetExporter(GenericSampleDatasetExporter):
+    """Legacy exporter that writes an entire FiftyOne dataset to disk in a
+    serialized JSON format along with its source media.
 
-    See :class:`fiftyone.types.dataset_types.FiftyOneDataset` for format
-    details.
+    .. warning::
+
+        The :class:`fiftyone.types.dataset_types.FiftyOneDataset` format was
+        upgraded in ``fiftyone==0.8`` and this exporter is now deprecated.
+        The new exporter is :class:`FiftyOneDatasetExporter`.
 
     Args:
         export_dir: the directory to write the export
@@ -733,6 +786,8 @@ class FiftyOneDatasetExporter(GenericSampleDatasetExporter):
         self.relative_filepaths = relative_filepaths
         self.pretty_print = pretty_print
         self._data_dir = None
+        self._eval_dir = None
+        self._brain_dir = None
         self._frame_labels_dir = None
         self._metadata_path = None
         self._samples_path = None
@@ -743,6 +798,8 @@ class FiftyOneDatasetExporter(GenericSampleDatasetExporter):
 
     def setup(self):
         self._data_dir = os.path.join(self.export_dir, "data")
+        self._eval_dir = os.path.join(self.export_dir, "evaluations")
+        self._brain_dir = os.path.join(self.export_dir, "brain")
         self._frame_labels_dir = os.path.join(self.export_dir, "frames")
         self._metadata_path = os.path.join(self.export_dir, "metadata.json")
         self._samples_path = os.path.join(self.export_dir, "samples.json")
@@ -786,6 +843,20 @@ class FiftyOneDatasetExporter(GenericSampleDatasetExporter):
 
         self._metadata["info"] = info
 
+        dataset = sample_collection._dataset
+
+        if dataset.has_evaluations:
+            d = dataset._doc.field_to_mongo("evaluations")
+            d = {k: json_util.dumps(v) for k, v in d.items()}
+            self._metadata["evaluations"] = d
+            _export_evaluation_results(dataset, self._eval_dir)
+
+        if dataset.has_brain_runs:
+            d = dataset._doc.field_to_mongo("brain_methods")
+            d = {k: json_util.dumps(v) for k, v in d.items()}
+            self._metadata["brain_methods"] = d
+            _export_brain_results(dataset, self._brain_dir)
+
     def export_sample(self, sample):
         sd = sample.to_dict()
 
@@ -828,6 +899,135 @@ class FiftyOneDatasetExporter(GenericSampleDatasetExporter):
         etas.write_json(frames_dict, outpath, pretty_print=self.pretty_print)
 
         return outpath
+
+
+class FiftyOneDatasetExporter(BatchDatasetExporter):
+    """Exporter that writes an entire FiftyOne dataset to disk in a serialized
+    JSON format along with its source media.
+
+    See :class:`fiftyone.types.dataset_types.FiftyOneDataset` for format
+    details.
+
+    Args:
+        export_dir: the directory to write the export
+        include_media (True): whether to include the source media in the export
+        move_media (False): whether to move (True) or copy (False) the source
+            media into its output destination
+        rel_dir (None): a relative directory to remove from the ``filepath`` of
+            each sample, if possible. The path is converted to an absolute path
+            (if necessary) via ``os.path.abspath(os.path.expanduser(rel_dir))``.
+            The typical use case for this argument is that your source data
+            lives in a single directory and you wish to serialize relative,
+            rather than absolute, paths to the data within that directory.
+            Only applicable when ``include_media`` is False
+    """
+
+    def __init__(
+        self, export_dir, include_media=True, move_media=False, rel_dir=None
+    ):
+        super().__init__(export_dir)
+        self.include_media = include_media
+        self.move_media = move_media
+        self.rel_dir = rel_dir
+        self._data_dir = None
+        self._eval_dir = None
+        self._brain_dir = None
+        self._metadata_path = None
+        self._samples_path = None
+        self._frames_path = None
+        self._filename_maker = None
+
+    def setup(self):
+        self._data_dir = os.path.join(self.export_dir, "data")
+        self._eval_dir = os.path.join(self.export_dir, "evaluations")
+        self._brain_dir = os.path.join(self.export_dir, "brain")
+        self._metadata_path = os.path.join(self.export_dir, "metadata.json")
+        self._samples_path = os.path.join(self.export_dir, "samples.json")
+        self._frames_path = os.path.join(self.export_dir, "frames.json")
+        if self.include_media:
+            self._filename_maker = fou.UniqueFilenameMaker(
+                output_dir=self._data_dir
+            )
+
+    def export_samples(self, sample_collection):
+        etau.ensure_dir(self.export_dir)
+
+        inpaths = sample_collection.values("filepath")
+
+        if self.include_media:
+            if self.rel_dir is not None:
+                logger.warning(
+                    "Ignoring `rel_dir` since `include_media` is True"
+                )
+
+            outpaths = [
+                self._filename_maker.get_output_path(p) for p in inpaths
+            ]
+
+            # Replace filepath prefixes with `data/` for samples export
+            _outpaths = ["data/" + os.path.basename(p) for p in outpaths]
+        elif self.rel_dir is not None:
+            # Remove `rel_dir` prefix from filepaths
+            rel_dir = (
+                os.path.abspath(os.path.expanduser(self.rel_dir)) + os.path.sep
+            )
+            len_rel_dir = len(rel_dir)
+
+            _outpaths = [
+                p[len_rel_dir:] if p.startswith(rel_dir) else p
+                for p in inpaths
+            ]
+        else:
+            # Export raw filepaths
+            _outpaths = inpaths
+
+        logger.info("Exporting samples...")
+        num_samples = sample_collection.count()
+        samples = list(sample_collection._aggregate(attach_frames=False))
+
+        for sample, filepath in zip(samples, _outpaths):
+            sample["filepath"] = filepath
+
+        foo.export_collection(
+            samples, self._samples_path, key="samples", num_docs=num_samples
+        )
+
+        if sample_collection.media_type == fomm.VIDEO:
+            logger.info("Exporting frames...")
+            num_frames = sample_collection.count("frames")
+            frames = sample_collection._aggregate(frames_only=True)
+            foo.export_collection(
+                frames, self._frames_path, key="frames", num_docs=num_frames
+            )
+
+        conn = foo.get_db_conn()
+        name = sample_collection._dataset.name
+        dataset_dict = conn.datasets.find_one({"name": name})
+        foo.export_document(dataset_dict, self._metadata_path)
+
+        if sample_collection.has_evaluations:
+            _export_evaluation_results(sample_collection, self._eval_dir)
+
+        if sample_collection.has_brain_runs:
+            _export_brain_results(sample_collection, self._brain_dir)
+
+        if self.include_media:
+            logger.info("Exporting media...")
+            fomm.export_media(inpaths, outpaths, move_media=self.move_media)
+
+
+def _export_evaluation_results(sample_collection, eval_dir):
+    for eval_key in sample_collection.list_evaluations():
+        results_path = os.path.join(eval_dir, eval_key + ".json")
+        results = sample_collection.load_evaluation_results(eval_key)
+        etas.write_json(results, results_path)
+
+
+def _export_brain_results(sample_collection, brain_dir):
+    for brain_key in sample_collection.list_brain_runs():
+        results_path = os.path.join(brain_dir, brain_key + ".json")
+        results = sample_collection.load_brain_results(brain_key)
+        etas.write_json(results, results_path)
 
 
 class ImageDirectoryExporter(UnlabeledImageDatasetExporter):

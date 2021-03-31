@@ -61,17 +61,6 @@ export const useHighlightHover = (disabled, override) => {
   };
 };
 
-export const canTag = selector<boolean>({
-  key: "canTag",
-  get: ({ get }) => {
-    const hasFilters = Object.keys(get(selectors.filterStages)).length > 0;
-    const stats = hasFilters
-      ? get(selectors.extendedDatasetStats)
-      : get(selectors.datasetStats);
-    return stats !== null;
-  },
-});
-
 export const numTaggable = selectorFamily<
   number | null,
   { modal: boolean; labels: boolean }
@@ -154,9 +143,10 @@ export const numLabelsInSelectedSamples = selector<number>({
 const addLabelToTagsResult = (result, label, label_id = null) => {
   const add = (l) => {
     if (label_id && l._id !== label_id) return;
-    l.tags.forEach((t) => {
-      result[t] = t in result ? result[t] + 1 : 1;
-    });
+    l.tags &&
+      l.tags.forEach((t) => {
+        result[t] = t in result ? result[t] + 1 : 1;
+      });
   };
   if (VALID_LIST_TYPES.includes(label._cls)) {
     label[LABEL_LIST[label._cls]] && label[LABEL_LIST[label._cls]].forEach(add);
@@ -165,12 +155,15 @@ const addLabelToTagsResult = (result, label, label_id = null) => {
   }
 };
 
-const labelModalTagCounts = selector<{ [key: string]: number }>({
+export const labelModalTagCounts = selectorFamily<
+  { [key: string]: number },
+  { filtered: boolean; selected: boolean }
+>({
   key: "labelModalTagCounts",
-  get: ({ get }) => {
+  get: ({ filtered, selected }) => ({ get }) => {
     const result = {};
 
-    if (get(selectors.selectedLabelIds).size > 0) {
+    if (selected && get(selectors.selectedLabelIds).size > 0) {
       const selected = get(selectors.selectedLabels);
 
       for (const label_id in selected) {
@@ -178,6 +171,9 @@ const labelModalTagCounts = selector<{ [key: string]: number }>({
 
         if (get(selectors.isVideoDataset) && frame_number) {
           const frame = get(selectors.sampleFramesMap(sample_id))[frame_number];
+          if (!frame) {
+            return null;
+          }
           addLabelToTagsResult(
             result,
             frame[field.slice("frames.".length)],
@@ -190,11 +186,19 @@ const labelModalTagCounts = selector<{ [key: string]: number }>({
       }
     } else {
       const filter = get(sampleModalFilter);
-      const sample = filter(get(selectors.modalSample));
+      const sample = filtered
+        ? filter(get(selectors.modalSample))
+        : get(selectors.modalSample);
       if (get(selectors.isVideoDataset)) {
         const frames = get(atoms.sampleFrameData(sample._id));
+
+        if (!frames) {
+          return null;
+        }
         frames.forEach((frame) => {
-          frame = filter(frame, "frames.");
+          if (filtered) {
+            frame = filter(frame, "frames.");
+          }
           for (const field in frame) {
             if (!frame[field] || !VALID_LABEL_TYPES.includes(frame[field]._cls))
               continue;
@@ -226,7 +230,7 @@ export const tagStats = selectorFamily<
     if (modal && labels) {
       return {
         ...Object.fromEntries(get(allTags).label.map((t) => [t, 0])),
-        ...get(labelModalTagCounts),
+        ...get(labelModalTagCounts({ filtered: true, selected: true })),
       };
     } else if (modal) {
       const sample = get(selectors.modalSample);
@@ -239,7 +243,9 @@ export const tagStats = selectorFamily<
       const active = [
         ...get(activeLabels({ modal, frames: false })),
         ...get(activeLabels({ modal, frames: true })),
-      ].map((l) => `${l}.${LABEL_LIST[types[l]]}.tags`);
+      ].map((l) =>
+        LABEL_LIST[types[l]] ? `${l}.${LABEL_LIST[types[l]]}.tags` : `${l}.tags`
+      );
       const reducer = (acc, { name, result }) => {
         if (active.includes(name)) {
           acc[name] = result;

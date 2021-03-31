@@ -217,7 +217,7 @@ def plot_roc_curve(fpr, tpr, roc_auc=None, ax=None, figsize=None, **kwargs):
 def scatterplot(
     points,
     samples=None,
-    label_field=None,
+    link_field=None,
     labels=None,
     sizes=None,
     classes=None,
@@ -239,7 +239,7 @@ def scatterplot(
     method.
 
     This method supports 2D or 3D visualizations, but interactive point
-    selection is only aviailable in 2D.
+    selection is only available in 2D.
 
     You can use the ``labels`` parameters to define a coloring for the points,
     and you can use the ``sizes`` parameter to scale the sizes of the points.
@@ -248,19 +248,33 @@ def scatterplot(
         points: a ``num_points x num_dims`` array of points
         samples (None): the :class:`fiftyone.core.collections.SampleCollection`
             whose data is being visualized
-        label_field (None): a :class:`fiftyone.core.labels.Label` field
-            containing the labels corresponding to ``points``. If not provided,
-            the points are assumed to correspond to samples
-        labels (None): data to use to color points. Can be a list (or nested
-            list, if ``label_field`` refers to a label list field like
-            :class:`fiftyone.core.labels.Detections`) or array-like of numeric
-            or string values, or the name of a sample field or
-            ``embedded.field.name`` of ``samples`` from which to extract values
-        sizes (None): data to use to scale the sizes of the points. Can be a
-            list (or nested list, if ``label_field`` refers to a label list
-            field like :class:`fiftyone.core.labels.Detections`) or array-like
-            of numeric values, or the name of a sample field or
-            ``embedded.field.name`` of ``samples`` from which to extract values
+        link_field (None): a field of ``samples`` whose data corresponds to
+            ``points``. Can be any of the following:
+
+            -   None, if the points correspond to samples
+            -   the name of a :class:`fiftyone.core.labels.Label` field, if the
+                points correspond linked to the labels in this field
+
+        labels (None): data to use to color the points. Can be any of the
+            following:
+
+            -   the name of a sample field or ``embedded.field.name`` of
+                ``samples`` from which to extract numeric or string values
+            -   a list or array-like of numeric or string values
+            -   a list of lists of numeric or string values, if ``link_field``
+                refers to a label list field like
+                :class:`fiftyone.core.labels.Detections`
+
+        sizes (None): data to use to scale the sizes of the points. Can be any
+            of the following:
+
+            -   the name of a sample field or ``embedded.field.name`` of
+                ``samples`` from which to extract numeric values
+            -   a list or array-like of numeric values
+            -   a list of lists of numeric or string values, if ``link_field``
+                refers to a label list field like
+                :class:`fiftyone.core.labels.Detections`
+
         classes (None): an optional list of classes whose points to plot.
             Only applicable when ``labels`` contains strings
         marker_size (None): the marker size to use. If ``sizes`` are provided,
@@ -297,7 +311,7 @@ def scatterplot(
             msg = "Interactive selection is only supported in 2D"
             warnings.warn(msg)
         else:
-            ids = _get_ids_for_points(points, samples, label_field=label_field)
+            ids = _get_ids_for_points(points, samples, link_field=link_field)
 
     with plt.style.context(style):
         collection, inds = _plot_scatter(
@@ -321,13 +335,13 @@ def scatterplot(
         if ids is not None and inds is not None:
             ids = ids[inds]
 
-        link_type = "labels" if label_field is not None else "samples"
+        link_type = "labels" if link_field is not None else "samples"
         return InteractiveCollection(
             collection,
             ids=ids,
             buttons=buttons,
             link_type=link_type,
-            label_fields=label_field,
+            label_fields=link_field,
             init_view=samples,
         )
 
@@ -343,15 +357,9 @@ def _get_data_for_points(points, samples, values, parameter):
                 "for the `%s` parameter" % parameter
             )
 
-        values = samples.values(values)
-
-    # Unroll one level of nested list if necessary (e.g., detection labels)
-    if (
-        isinstance(values, (list, tuple))
-        and values
-        and isinstance(values[0], (list, tuple))
-    ):
-        values = list(itertools.chain.from_iterable(values))
+        values = samples.values(values, unwind=True)
+    else:
+        values = _unwind_values(values)
 
     if len(values) != len(points):
         raise ValueError(
@@ -363,14 +371,21 @@ def _get_data_for_points(points, samples, values, parameter):
     return values
 
 
-def _get_ids_for_points(points, samples, label_field=None):
-    if label_field is not None:
-        ids = samples._get_label_ids(fields=label_field)
+def _unwind_values(values):
+    while any(isinstance(v, (list, tuple)) for v in values):
+        values = list(itertools.chain.from_iterable(v for v in values if v))
+
+    return values
+
+
+def _get_ids_for_points(points, samples, link_field=None):
+    if link_field is not None:
+        ids = samples._get_label_ids(fields=link_field)
     else:
         ids = samples.values("id")
 
     if len(ids) != len(points):
-        ptype = "label" if label_field is not None else "sample"
+        ptype = "label" if link_field is not None else "sample"
         raise ValueError(
             "Number of %s IDs (%d) does not match number of points "
             "(%d). You may have missing data/labels that you need to omit "
@@ -414,23 +429,34 @@ def location_scatterplot(
     and you can use the ``sizes`` parameter to scale the sizes of the points.
 
     Args:
-        locations (None): the location data to plot. Can be a
-            ``num_locations x 2`` array of ``(longitude, latitude)``
-            coordinates, or the name of a
-            :class:`fiftyone.core.labels.GeoLocation` field on ``samples`` with
-            ``(longitude, latitude)`` coordinates in its ``point`` attribute,
-            or None, in which case ``samples`` must have a single
-            :class:`fiftyone.core.labels.GeoLocation` field
+        locations (None): the location data to plot. Can be any of the
+            following:
+
+            -   None, in which case ``samples`` must have a single
+                :class:`fiftyone.core.labels.GeoLocation` field whose ``point``
+                attribute contains location data
+            -   a ``num_locations x 2`` array of ``(longitude, latitude)``
+                coordinates
+            -   the name of a :class:`fiftyone.core.labels.GeoLocation` field
+                of ``samples`` with ``(longitude, latitude)`` coordinates in
+                its ``point`` attribute
+
         samples (None): the :class:`fiftyone.core.collections.SampleCollection`
             whose data is being visualized
-        labels (None): data to use to color points. Can be an array-like of
-            numeric or string values, or the name of a sample field or
-            ``embedded.field.name`` of ``samples`` from which to extract values
-        sizes (None): data to use to scale the sizes of the points. Can be a
-            list (or nested list, if ``label_field`` refers to a label list
-            field like :class:`fiftyone.core.labels.Detections`) or array-like
-            of numeric values, or the name of a sample field or
-            ``embedded.field.name`` of ``samples`` from which to extract values
+        labels (None): data to use to color the points. Can be any of the
+            following:
+
+            -   the name of a sample field or ``embedded.field.name`` of
+                ``samples`` from which to extract numeric or string values
+            -   a list or array-like of numeric or string values
+
+        sizes (None): data to use to scale the sizes of the points. Can be any
+            of the following:
+
+            -   the name of a sample field or ``embedded.field.name`` of
+                ``samples`` from which to extract numeric values
+            -   a list or array-like of numeric values
+
         classes (None): an optional list of classes whose points to plot.
             Only applicable when ``labels`` contains strings
         map_type ("satellite"): the map type to render. Supported values are

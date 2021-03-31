@@ -28,11 +28,11 @@ const SampleDiv = animated(styled.div`
 `);
 
 const SampleInfoDiv = animated(styled.div`
-  height: 36px;
-  display: flex;
   position: absolute;
   bottom: 0;
   padding: 0.5rem;
+  max-height: 100%;
+  overflow-y: auto;
   &::-webkit-scrollbar {
     width: 0px;
     background: transparent;
@@ -43,9 +43,8 @@ const SampleInfoDiv = animated(styled.div`
     display: none;
   }
   scrollbar-width: none;
-  overflow-x: scroll;
   width: 100%;
-  z-index: 499;
+  z-index: 498;
   pointer-events: none;
 `);
 
@@ -132,6 +131,7 @@ const SampleInfo = React.memo(({ id }) => {
   const colorByLabel = useRecoilValue(atoms.colorByLabel(false));
   const labelTypes = useRecoilValue(selectors.labelTypesMap);
   const sample = useRecoilValue(atoms.sample(id));
+
   const bubbles = activeFields.reduce((acc, cur) => {
     if (
       cur.startsWith("tags.") &&
@@ -144,11 +144,26 @@ const SampleInfo = React.memo(({ id }) => {
         <Tag
           key={cur}
           name={tag}
-          color={colorMap[tag]}
+          color={colorMap[cur]}
           title={tag}
           maxWidth={"calc(100% - 32px)"}
         />,
       ];
+    } else if (cur.startsWith("_label_tags.")) {
+      const tag = cur.slice("_label_tags.".length);
+      const count = sample._label_tags[tag] || 0;
+      if (count > 0) {
+        acc = [
+          ...acc,
+          <Tag
+            key={cur}
+            name={`${tag}: ${count}`}
+            color={colorMap[cur]}
+            title={`${tag}: ${count}`}
+            maxWidth={"calc(100% - 32px)"}
+          />,
+        ];
+      }
     } else if (
       scalars.includes(cur) &&
       ![null, undefined].includes(sample[cur])

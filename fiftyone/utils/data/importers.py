@@ -10,16 +10,24 @@ import logging
 import os
 import random
 
+from bson import json_util
+
 import eta.core.datasets as etads
 import eta.core.image as etai
 import eta.core.serial as etas
 import eta.core.utils as etau
 import eta.core.video as etav
 
+import fiftyone.core.brain as fob
+import fiftyone.core.dataset as fod
+import fiftyone.core.evaluation as foe
 import fiftyone.core.frame as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.metadata as fom
 import fiftyone.core.media as fomm
+import fiftyone.migrations as fomi
+import fiftyone.core.odm as foo
+import fiftyone.core.runs as fors
 import fiftyone.core.sample as fos
 
 from .parsers import (
@@ -41,12 +49,11 @@ def import_samples(
     expand_schema=True,
     add_info=True,
 ):
-    """Adds the samples from the given
-    :class:`fiftyone.utils.data.importers.DatasetImporter` to the dataset.
+    """Adds the samples from the given :class:`DatasetImporter` to the dataset.
 
     See :ref:`this guide <custom-dataset-importer>` for more details about
     importing datasets in custom formats by defining your own
-    :class:`DatasetImporter <fiftyone.utils.data.importers.DatasetImporter>`.
+    :class:`DatasetImporter`.
 
     Args:
         dataset: a :class:`fiftyone.core.dataset.Dataset`
@@ -54,7 +61,8 @@ def import_samples(
         label_field (None): the name of the field in which to store the
             imported labels. Only applicable if ``dataset_importer`` is a
             :class:`LabeledImageDatasetImporter`
-        tags (None): an optional list of tags to attach to each sample
+        tags (None): an optional tag or iterable of tags to attach to each
+                sample
         expand_schema (True): whether to dynamically add new sample fields
             encountered to the dataset schema. If False, an error is raised
             if a sample's schema is not a subset of the dataset schema
@@ -64,9 +72,29 @@ def import_samples(
     Returns:
         a list of IDs of the samples that were added to the dataset
     """
+    if etau.is_str(tags):
+        tags = [tags]
+    elif tags is not None:
+        tags = list(tags)
+
+    # Handle data in legacy format
+    if (
+        isinstance(dataset_importer, FiftyOneDatasetImporter)
+        and dataset_importer._is_legacy_format_data()
+    ):
+        logger.debug(
+            "Found data in LegacyFiftyOneDataset format; converting to legacy "
+            "importer now"
+        )
+        dataset_importer = dataset_importer._to_legacy_importer()
+
     # Invoke the importer's context manager first, since some of its properies
     # may need to be initialized
     with dataset_importer:
+        if isinstance(dataset_importer, BatchDatasetImporter):
+            # Batch dataset
+            # @todo enforce `expand_schema` parameter here
+            return dataset_importer.import_samples(dataset, tags=tags)
 
         #
         # Construct function to parse samples
@@ -238,6 +266,10 @@ def import_samples(
             if info:
                 parse_info(dataset, info)
 
+        # Load run results
+        if isinstance(dataset_importer, LegacyFiftyOneDatasetImporter):
+            dataset_importer.import_run_results(dataset)
+
         return sample_ids
 
 
@@ -318,8 +350,8 @@ class DatasetImporter(object):
             TypeError: if the total number is not known
         """
         raise TypeError(
-            "The number of samples in a '%s' is not known a priori"
-            % etau.get_class_name(self)
+            "The number of samples in this %s is not known a priori"
+            % type(self)
         )
 
     def __next__(self):
@@ -358,8 +390,7 @@ class DatasetImporter(object):
         """
         if not self.has_dataset_info:
             raise ValueError(
-                "This '%s' does not provide dataset info"
-                % etau.get_class_name(self)
+                "This %s does not provide dataset info" % type(self)
             )
 
         raise NotImplementedError("subclass must implement get_dataset_info()")
@@ -399,6 +430,45 @@ class DatasetImporter(object):
             l = l[: self.max_samples]
 
         return l
+
+
+class BatchDatasetImporter(DatasetImporter):
+    """Base interface for importers that load all of their samples in a single
+    call to :meth:`import_samples`.
+
+    This interface allows for greater efficiency for import formats that
+    handle aggregating over the samples themselves.
+
+    Args:
+        dataset_dir: the dataset directory
+        shuffle (False): whether to randomly shuffle the order in which the
+            samples are imported
+        seed (None): a random seed to use when shuffling
+        max_samples (None): a maximum number of samples to import. By default,
+            all samples are imported
+    """
+
+    def __next__(self):
+        raise ValueError(
+            "%s instances cannot be iterated over. Use import_samples() "
+            "instead" % type(self)
+        )
+
+    @property
+    def has_dataset_info(self):
+        return False
+
+    def import_samples(self, dataset, tags=None):
+        """Imports the samples into the given dataset.
+
+        Args:
+            dataset: a :class:`fiftyone.core.dataset.Dataset`
+            tags (None): an optional list of tags to attach to each sample
+
+        Returns:
+            a list of IDs of the samples that were added to the dataset
+        """
+        raise NotImplementedError("subclass must implement import_samples()")
 
 
 class GenericSampleDatasetImporter(DatasetImporter):
@@ -728,11 +798,18 @@ class LabeledVideoDatasetImporter(DatasetImporter):
         raise NotImplementedError("subclass must implement frame_labels_cls")
 
 
-class FiftyOneDatasetImporter(GenericSampleDatasetImporter):
-    """Importer for FiftyOne datasets stored on disk in serialized format.
+class LegacyFiftyOneDatasetImporter(GenericSampleDatasetImporter):
+    """Legacy importer for FiftyOne datasets stored on disk in a serialized
+    JSON format.
 
-    See :class:`fiftyone.types.dataset_types.FiftyOneDataset` for format
-    details.
+    .. warning::
+
+        The :class:`fiftyone.types.dataset_types.FiftyOneDataset` format was
+        upgraded in ``fiftyone==0.8`` and this importer is now deprecated.
+
+        However, to maintain backwards compatibility,
+        :class:`FiftyOneDatasetImporter` will check for instances of datasets
+        of this type at runtime and defer to this class to load them.
 
     Args:
         dataset_dir: the dataset directory
@@ -750,6 +827,8 @@ class FiftyOneDatasetImporter(GenericSampleDatasetImporter):
             dataset_dir, shuffle=shuffle, seed=seed, max_samples=max_samples
         )
         self._metadata = None
+        self._eval_dir = None
+        self._brain_dir = None
         self._frame_labels_dir = None
         self._samples = None
         self._iter_samples = None
@@ -803,6 +882,8 @@ class FiftyOneDatasetImporter(GenericSampleDatasetImporter):
         else:
             self._metadata = {}
 
+        self._eval_dir = os.path.join(self.dataset_dir, "evaluations")
+        self._brain_dir = os.path.join(self.dataset_dir, "brain")
         self._frame_labels_dir = os.path.join(self.dataset_dir, "frames")
 
         samples_path = os.path.join(self.dataset_dir, "samples.json")
@@ -816,6 +897,49 @@ class FiftyOneDatasetImporter(GenericSampleDatasetImporter):
 
     def get_dataset_info(self):
         return self._metadata.get("info", {})
+
+    def import_run_results(self, sample_collection):
+        dataset = sample_collection._dataset
+
+        evaluations = self._metadata.get("evaluations", None)
+        if evaluations:
+            d = {k: json_util.loads(v) for k, v in evaluations.items()}
+            d = dataset._doc.field_to_python("evaluations", d)
+            for eval_key, run_doc in d.items():
+                # Results are stored in GridFS, which we import separately next
+                run_doc["results"] = None
+
+                if dataset.has_evaluation(eval_key):
+                    logger.warning(
+                        "Overwriting existing evaluation '%s'", eval_key
+                    )
+                    dataset.delete_evaluation(eval_key)
+
+            dataset._doc.evaluations.update(d)
+            _import_evaluation_results(
+                dataset, self._eval_dir, eval_keys=list(d.keys())
+            )
+            dataset._doc.save()
+
+        brain_methods = self._metadata.get("brain_methods", None)
+        if brain_methods:
+            d = {k: json_util.loads(v) for k, v in brain_methods.items()}
+            d = dataset._doc.field_to_python("brain_methods", d)
+            for brain_key, run_doc in d.items():
+                # Results are stored in GridFS, which we import separately next
+                run_doc["results"] = None
+
+                if dataset.has_brain_run(brain_key):
+                    logger.warning(
+                        "Overwriting existing brain run '%s'", brain_key
+                    )
+                    dataset.delete_brain_run(brain_key)
+
+            dataset._doc.brain_methods.update(d)
+            _import_brain_results(
+                dataset, self._brain_dir, brain_keys=list(d.keys())
+            )
+            dataset._doc.save()
 
     @staticmethod
     def get_classes(dataset_dir):
@@ -847,6 +971,270 @@ class FiftyOneDatasetImporter(GenericSampleDatasetImporter):
         frames_map = etas.load_json(labels_path).get("frames", {})
         for key, value in frames_map.items():
             sample.frames[int(key)] = fof.Frame.from_dict(value)
+
+
+class FiftyOneDatasetImporter(BatchDatasetImporter):
+    """Importer for FiftyOne datasets stored on disk in serialized JSON format.
+
+    See :class:`fiftyone.types.dataset_types.FiftyOneDataset` for format
+    details.
+
+    Args:
+        dataset_dir: the dataset directory
+        shuffle (False): whether to randomly shuffle the order in which the
+            samples are imported
+        seed (None): a random seed to use when shuffling
+        max_samples (None): a maximum number of samples to import. By default,
+            all samples are imported
+        rel_dir (None): a relative directory to prepend to the ``filepath``
+            of each sample if the filepath is not absolute (begins with a
+            path separator). The path is converted to an absolute path (if
+            necessary) via ``os.path.abspath(os.path.expanduser(rel_dir))``
+    """
+
+    def __init__(
+        self,
+        dataset_dir,
+        shuffle=False,
+        seed=None,
+        max_samples=None,
+        rel_dir=None,
+    ):
+        super().__init__(
+            dataset_dir, shuffle=shuffle, seed=seed, max_samples=max_samples
+        )
+        self.rel_dir = rel_dir
+        self._data_dir = None
+        self._eval_dir = None
+        self._brain_dir = None
+        self._metadata_path = None
+        self._samples_path = None
+        self._frames_path = None
+
+    def setup(self):
+        self._data_dir = os.path.join(self.dataset_dir, "data")
+        self._eval_dir = os.path.join(self.dataset_dir, "evaluations")
+        self._brain_dir = os.path.join(self.dataset_dir, "brain")
+        self._metadata_path = os.path.join(self.dataset_dir, "metadata.json")
+        self._samples_path = os.path.join(self.dataset_dir, "samples.json")
+        self._frames_path = os.path.join(self.dataset_dir, "frames.json")
+
+    def import_samples(self, dataset, tags=None):
+        dataset_dict = foo.import_document(self._metadata_path)
+
+        if len(dataset) > 0 and fomi.needs_migration(
+            head=dataset_dict["version"]
+        ):
+            # A migration is required in order to load this dataset, and the
+            # dataset we're loading into is non-empty, so we must first load
+            # into a temporary dataset, perform the migration, and then merge
+            # into the destination dataset
+            tmp_dataset = fod.Dataset()
+            sample_ids = self._import_samples(
+                tmp_dataset, dataset_dict, tags=tags
+            )
+            dataset.add_collection(tmp_dataset)
+            tmp_dataset.delete()
+            return sample_ids
+
+        return self._import_samples(dataset, dataset_dict, tags=tags)
+
+    def _import_samples(self, dataset, dataset_dict, tags=None):
+        name = dataset.name
+        empty_import = not bool(dataset)
+
+        #
+        # Import DatasetDocument
+        #
+        # This method handles two cases:
+        #   - `dataset` is empty, and a migration may or may not be required
+        #   - `dataset` is non-empty but no migration is required
+        #
+
+        if empty_import:
+            #
+            # The `dataset` we're importing into is empty, so we mostly replace
+            # its backing document with `dataset_dict`
+            #
+            # Note that we must work with dicts instead of `DatasetDocument`s
+            # here because the import may need migration
+            #
+            dataset_dict.update(
+                dict(
+                    _id=dataset._doc.id,
+                    name=dataset._doc.name,
+                    sample_collection_name=dataset._doc.sample_collection_name,
+                    persistent=dataset._doc.persistent,
+                )
+            )
+
+            # RunResults are imported separately
+
+            for run_doc in dataset_dict.get("evaluations", {}).values():
+                run_doc["results"] = None
+
+            for run_doc in dataset_dict.get("brain_methods", {}).values():
+                run_doc["results"] = None
+
+            conn = foo.get_db_conn()
+            conn.datasets.replace_one({"name": name}, dataset_dict)
+
+            dataset._reload(hard=True)
+        else:
+            #
+            # The dataset we're merging into is non-empty, but it is safe to
+            # use `DatasetDocument` here to perform the merge because no
+            # migration should be required
+            #
+            new_doc = foo.DatasetDocument.from_dict(dataset_dict)
+            dataset._merge_doc(new_doc)
+
+        #
+        # Import samples
+        #
+
+        logger.info("Importing samples...")
+        samples = foo.import_collection(self._samples_path).get("samples", [])
+
+        samples = self._preprocess_list(samples)
+
+        if self.rel_dir is not None:
+            # If a `rel_dir` was provided, prepend it to all relative paths
+            rel_dir = os.path.abspath(os.path.expanduser(self.rel_dir))
+            for sample in samples:
+                filepath = sample["filepath"]
+                if not filepath.startswith(os.path.sep):
+                    sample["filepath"] = os.path.join(rel_dir, filepath)
+        else:
+            # Prepend `dataset_dir` to all filepaths, which were stored as
+            # relative to `dataset_dir` during export
+            for sample in samples:
+                sample["filepath"] = os.path.join(
+                    self.dataset_dir, sample["filepath"]
+                )
+
+        if tags is not None:
+            for sample in samples:
+                sample["tags"].extend(tags)
+
+        foo.insert_documents(samples, dataset._sample_collection, ordered=True)
+
+        sample_ids = [s["_id"] for s in samples]
+
+        #
+        # Import frames
+        #
+
+        if os.path.exists(self._frames_path):
+            logger.info("Importing frames...")
+            frames = foo.import_collection(self._frames_path).get("frames", [])
+
+            if self.max_samples is not None:
+                frames = [
+                    f for f in frames if f["_sample_id"] in set(sample_ids)
+                ]
+
+            foo.insert_documents(
+                frames, dataset._frame_collection, ordered=True
+            )
+
+        #
+        # Import RunResults
+        #
+
+        if empty_import:
+            if os.path.isdir(self._eval_dir):
+                _import_evaluation_results(dataset, self._eval_dir)
+
+            if os.path.isdir(self._brain_dir):
+                _import_brain_results(dataset, self._brain_dir)
+
+        #
+        # Migrate dataset if necessary
+        #
+
+        fomi.migrate_dataset_if_necessary(name)
+        dataset._reload(hard=True)
+
+        logger.info("Import complete")
+
+        return sample_ids
+
+    @staticmethod
+    def get_classes(dataset_dir):
+        metadata_path = os.path.join(dataset_dir, "metadata.json")
+        metadata = etas.load_json(metadata_path)
+
+        classes = metadata.get("default_classes", None)
+        if classes:
+            return classes
+
+        classes = metadata.get("classes", {})
+        if classes:
+            return next(iter(classes.values()))
+
+        return metadata.get("info", {}).get("classes", None)
+
+    @staticmethod
+    def get_num_samples(dataset_dir):
+        samples_path = os.path.join(dataset_dir, "samples.json")
+        samples = etas.load_json(samples_path).get("samples", [])
+        return len(samples)
+
+    def _is_legacy_format_data(self):
+        metadata_path = os.path.join(self.dataset_dir, "metadata.json")
+        if os.path.exists(metadata_path):
+            metadata = etas.load_json(metadata_path)
+        else:
+            metadata = {}
+
+        return "version" not in metadata
+
+    def _to_legacy_importer(self):
+        return LegacyFiftyOneDatasetImporter(
+            self.dataset_dir,
+            shuffle=self.shuffle,
+            seed=self.seed,
+            max_samples=self.max_samples,
+        )
+
+
+def _import_evaluation_results(dataset, eval_dir, eval_keys=None):
+    if eval_keys is None:
+        eval_keys = [os.path.splitext(f)[0] for f in etau.list_files(eval_dir)]
+
+    for eval_key in eval_keys:
+        json_path = os.path.join(eval_dir, eval_key + ".json")
+        if not os.path.exists(json_path):
+            logger.warning(
+                "Evaluation results for eval_key='%s' not found at '%s'",
+                eval_key,
+                json_path,
+            )
+            continue
+
+        results = fors.RunResults.from_json(json_path, dataset)
+        foe.EvaluationMethod.save_run_results(dataset, eval_key, results)
+
+
+def _import_brain_results(dataset, brain_dir, brain_keys=None):
+    if brain_keys is None:
+        brain_keys = [
+            os.path.splitext(f)[0] for f in etau.list_files(brain_dir)
+        ]
+
+    for brain_key in brain_keys:
+        json_path = os.path.join(brain_dir, brain_key + ".json")
+        if not os.path.exists(json_path):
+            logger.warning(
+                "Brain results for brain_key='%s' not found at '%s'",
+                brain_key,
+                json_path,
+            )
+            continue
+
+        results = fors.RunResults.from_json(json_path, dataset)
+        fob.BrainMethod.save_run_results(dataset, brain_key, results)
 
 
 class ImageDirectoryImporter(UnlabeledImageDatasetImporter):

@@ -58,7 +58,7 @@ const modalIndex = selector<number>({
 const Container = styled.div`
   position: relative;
   display: grid;
-  grid-template-columns: auto 280px;
+  grid-template-columns: auto 296px;
   width: 90vw;
   height: 80vh;
   background-color: ${({ theme }) => theme.background};
@@ -437,7 +437,7 @@ const SampleModal = ({ onClose }: Props, ref) => {
         <ModalFooter
           style={{
             overlflowX: "auto",
-            width: 280,
+            width: 296,
             borderTop: "none",
             borderBottom: `2px solid ${theme.border}`,
             position: "relative",

@@ -265,7 +265,6 @@ class DatasetStatistics(object):
                 )
             else:
                 aggregations.append(foa.Count(field_name))
-                aggregations.append(foa.Count(field_name))
                 exists_aggregations.append(
                     foa.Count(field_name, expr=exists_expr)
                 )
