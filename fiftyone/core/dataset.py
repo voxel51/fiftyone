@@ -3416,7 +3416,7 @@ def _merge_samples(
     # Merge dataset metadata
     _merge_dataset_doc(
         dst_dataset,
-        src_dataset,
+        src_collection,
         merge_info=include_info,
         overwrite=overwrite_info,
     )
