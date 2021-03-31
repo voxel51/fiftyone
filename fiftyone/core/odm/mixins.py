@@ -20,7 +20,7 @@ import fiftyone.core.fields as fof
 import fiftyone.core.utils as fou
 
 from .database import get_db_conn
-from .dataset import SampleFieldDocument, DatasetDocument
+from .dataset import create_field, SampleFieldDocument, DatasetDocument
 from .document import Document, BaseEmbeddedDocument, SampleDocument
 
 
@@ -33,8 +33,9 @@ def get_default_fields(cls, include_private=False, include_id=False):
 
     Args:
         cls: the :class:`DatasetMixin` class
-        include_private (False): whether to include fields that start with `_`
-        include_id (False): whether to include the `_id` field
+        include_private (False): whether to include fields that start with
+            ``_``
+        include_id (False): whether to include the ``_id`` field
 
     Returns:
         a tuple of field names
@@ -132,7 +133,7 @@ class DatasetMixin(object):
                 which to restrict the returned schema. Must be a subclass of
                 :class:`fiftyone.core.odm.BaseEmbeddedDocument`
             include_private (False): whether to include fields that start with
-                `_` in the returned schema
+                ``_`` in the returned schema
 
         Returns:
              a dictionary mapping field names to field types
@@ -172,16 +173,17 @@ class DatasetMixin(object):
 
     @classmethod
     def merge_field_schema(cls, schema):
-        """Merges the field schema into the sample.
+        """Merges the field schema into this sample.
 
         Args:
-            schema: a dictionary mapping field names to field types
+            schema: a dictionary mapping field names to
+                :class:`fiftyone.core.fields.Field` instances
 
         Raises:
             ValueError: if a field in the schema is not compliant with an
                 existing field of the same name
         """
-        _schema = cls.get_field_schema()
+        _schema = cls.get_field_schema(include_private=True)
 
         add_fields = []
         for field_name, field in schema.items():
@@ -192,9 +194,7 @@ class DatasetMixin(object):
 
         for field_name in add_fields:
             field = schema[field_name]
-            cls._add_field_schema(
-                field_name, save=True, **get_field_kwargs(field)
-            )
+            cls._add_field_schema(field_name, **get_field_kwargs(field))
 
     def has_field(self, field_name):
         # pylint: disable=no-member
@@ -208,13 +208,7 @@ class DatasetMixin(object):
 
     @classmethod
     def add_field(
-        cls,
-        field_name,
-        ftype,
-        embedded_doc_type=None,
-        subfield=None,
-        save=True,
-        **kwargs
+        cls, field_name, ftype, embedded_doc_type=None, subfield=None
     ):
         """Adds a new field to the sample.
 
@@ -224,21 +218,18 @@ class DatasetMixin(object):
                 :class:`fiftyone.core.fields.Field`
             embedded_doc_type (None): the
                 :class:`fiftyone.core.odm.BaseEmbeddedDocument` type of the
-                field. Used only when ``ftype`` is an embedded
+                field. Only applicable when ``ftype`` is
                 :class:`fiftyone.core.fields.EmbeddedDocumentField`
-            subfield (None): the type of the contained field. Used only when
-                ``ftype`` is a :class:`fiftyone.core.fields.ListField` or
+            subfield (None): the :class:`fiftyone.core.fields.Field` type of
+                the contained field. Only applicable when ``ftype`` is
+                :class:`fiftyone.core.fields.ListField` or
                 :class:`fiftyone.core.fields.DictField`
         """
-        # Additional arg `save` is to prevent saving the fields when reloading
-        # a dataset from the database.
         cls._add_field_schema(
             field_name,
             ftype,
             embedded_doc_type=embedded_doc_type,
             subfield=subfield,
-            save=save,
-            **kwargs
         )
 
     @classmethod
@@ -582,42 +573,43 @@ class DatasetMixin(object):
         collection.update_many({}, [{"$unset": field_names}])
 
     @classmethod
+    def _declare_field(cls, field_or_doc):
+        if isinstance(field_or_doc, SampleFieldDocument):
+            field = field_or_doc.to_field()
+        else:
+            field = field_or_doc
+
+        cls._fields[field.name] = field
+        cls._fields_ordered += (field.name,)
+
+        try:
+            if issubclass(cls, SampleDocument):
+                setattr(cls, field.name, field)
+        except TypeError:
+            # Instance, not class
+            pass
+
+    @classmethod
     def _add_field_schema(
-        cls,
-        field_name,
-        ftype,
-        embedded_doc_type=None,
-        subfield=None,
-        save=True,
-        **kwargs
+        cls, field_name, ftype, embedded_doc_type=None, subfield=None
     ):
         # pylint: disable=no-member
         if field_name in cls._fields:
             raise ValueError("Field '%s' already exists" % field_name)
 
-        field = _create_field(
+        field = create_field(
             field_name,
             ftype,
             embedded_doc_type=embedded_doc_type,
             subfield=subfield,
-            kwargs=kwargs,
         )
 
-        cls._fields[field_name] = field
-        cls._fields_ordered += (field_name,)
-        try:
-            if issubclass(cls, SampleDocument):
-                setattr(cls, field_name, field)
-        except TypeError:
-            # Instance, not class, so do not `setattr`
-            pass
+        cls._declare_field(field)
 
-        if save:
-            dataset_doc = cls._dataset_doc()
-            field = cls._fields[field_name]
-            sample_field = SampleFieldDocument.from_field(field)
-            dataset_doc[cls._dataset_doc_fields_col()].append(sample_field)
-            dataset_doc.save()
+        dataset_doc = cls._dataset_doc()
+        sample_field = SampleFieldDocument.from_field(field)
+        dataset_doc[cls._dataset_doc_fields_col()].append(sample_field)
+        dataset_doc.save()
 
     @classmethod
     def _rename_field_schema(
@@ -658,9 +650,7 @@ class DatasetMixin(object):
     def _clone_field_schema(cls, field_name, new_field_name):
         # pylint: disable=no-member
         field = cls._fields[field_name]
-        cls._add_field_schema(
-            new_field_name, save=True, **get_field_kwargs(field)
-        )
+        cls._add_field_schema(new_field_name, **get_field_kwargs(field))
 
     @classmethod
     def _delete_field_schema(cls, field_name, are_frame_fields):
@@ -1089,33 +1079,6 @@ def _get_scalar_field_type(value):
         return fof.StringField
 
     return None
-
-
-def _create_field(
-    field_name, ftype, embedded_doc_type=None, subfield=None, kwargs=None
-):
-    if not issubclass(ftype, fof.Field):
-        raise ValueError(
-            "Invalid field type '%s'; must be a subclass of '%s'"
-            % (ftype, fof.Field)
-        )
-
-    if kwargs is None:
-        kwargs = {}
-
-    kwargs["db_field"] = field_name
-    kwargs["null"] = True
-
-    if issubclass(ftype, fof.EmbeddedDocumentField):
-        kwargs.update({"document_type": embedded_doc_type})
-    elif issubclass(ftype, (fof.ListField, fof.DictField)):
-        if subfield is not None:
-            kwargs["field"] = subfield
-
-    field = ftype(**kwargs)
-    field.name = field_name
-
-    return field
 
 
 def _rename_field(field, new_field_name):
