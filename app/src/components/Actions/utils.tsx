@@ -144,9 +144,10 @@ export const numLabelsInSelectedSamples = selector<number>({
 const addLabelToTagsResult = (result, label, label_id = null) => {
   const add = (l) => {
     if (label_id && l._id !== label_id) return;
-    l.tags.forEach((t) => {
-      result[t] = t in result ? result[t] + 1 : 1;
-    });
+    l.tags &&
+      l.tags.forEach((t) => {
+        result[t] = t in result ? result[t] + 1 : 1;
+      });
   };
   if (VALID_LIST_TYPES.includes(label._cls)) {
     label[LABEL_LIST[label._cls]] && label[LABEL_LIST[label._cls]].forEach(add);
