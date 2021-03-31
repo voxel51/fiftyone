@@ -56,7 +56,7 @@ Core
     `SelectObjects`)
   - :class:`ExcludeLabels <fiftyone.core.stages.ExcludeLabels>` (previously
     `ExcludeObjects`)
-- Added the keyword arguments `idscenternet-hg104-512-coco-tf2`, `tags`, and `fields` to 
+- Added the keyword arguments `ids`, `tags`, and `fields` to 
   :meth:`SampleCollection.select_labels() <fiftyone.core.collections.SampleCollection.select_labels()>`
   and
   :meth:`SampleCollection.select_labels() <fiftyone.core.collections.SampleCollection.exclude_labels()>`
@@ -112,9 +112,26 @@ Core
 - Added the
   :class:`ViewExpression.randn() <fiftyone.core.expressions.ViewExpression.randn>`
   expression that can generate Gaussian random numbers
+- Added support for saving evaluation results on a dataset.Results can now
+  be loaded via
+  :meth:`Dataset.load_evaluation_results() <fiftyone.core.dataset.Dataset.load_evaluation_results>`
 
 Brain
 ^^^^^
+- Added support for visualization (interactive in Jupyter Notebooks) of
+  samples or labels in datasets via their embeddings. Embeddings or a
+  :class:`Modal <fiftyone.core.models.Model>` or Zoo Model that exposes
+  embeddings, or nothing at all may be provided. By default
+  `UMAP <https://github.com/lmcinnes/umap>`_ is used. Other options are
+  `t-SNE <https://lvdmaaten.github.io/tsne>`_ and standard PCA. See
+  :meth:`compute_visualization() <fiftyone.brain.compute_visualization>` for
+  more details
+- Added support for saving brain method results on a datasets. Results can now
+  be loaded via
+  :meth:`Dataset.load_brain_results() <fiftyone.core.dataset.Dataset.load_brain_results>`
+- Added support for providing an arbitrary
+  :class:`Model <fiftyone.core.models.Model>` that exposes embeddings to
+  :meth:`compute_uniqueness() <fiftyone.brain.compute_uniqueness>`
 
 Zoo
 ^^^
