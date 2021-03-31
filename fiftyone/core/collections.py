@@ -466,6 +466,7 @@ class SampleCollection(object):
                     and (
                         field_name == "frames" and self.media_type != fom.VIDEO
                     )
+                    and not field_name.startswith("_")
                 ):
                     raise ValueError("Field '%s' does not exist" % field_name)
 
@@ -483,6 +484,7 @@ class SampleCollection(object):
                 if (
                     field_name not in frame_schema
                     and field_name not in default_frame_fields
+                    and not field_name.startswith("_")
                 ):
                     raise ValueError(
                         "Frame field '%s' does not exist" % field_name
@@ -2583,7 +2585,7 @@ class SampleCollection(object):
         return self._add_view_stage(fos.MapLabels(field, map))
 
     @view_stage
-    def set_field(self, field, expr):
+    def set_field(self, field, expr, _allow_missing=False):
         """Sets a field or embedded field on each sample in a collection by
         evaluating the given expression.
 
@@ -2690,7 +2692,9 @@ class SampleCollection(object):
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
         """
-        return self._add_view_stage(fos.SetField(field, expr))
+        return self._add_view_stage(
+            fos.SetField(field, expr, _allow_missing=_allow_missing)
+        )
 
     @view_stage
     def match(self, filter):
@@ -3035,7 +3039,9 @@ class SampleCollection(object):
         return self._add_view_stage(fos.SelectFields(field_names))
 
     @view_stage
-    def select_labels(self, labels=None, ids=None, tags=None, fields=None):
+    def select_labels(
+        self, labels=None, ids=None, tags=None, fields=None,
+    ):
         """Selects only the specified labels from the collection.
 
         The returned view will omit samples, sample fields, and individual
@@ -3127,7 +3133,7 @@ class SampleCollection(object):
             a :class:`fiftyone.core.view.DatasetView`
         """
         return self._add_view_stage(
-            fos.SelectLabels(labels=labels, ids=ids, tags=tags, fields=fields)
+            fos.SelectLabels(labels=labels, ids=ids, tags=tags, fields=fields,)
         )
 
     @view_stage
@@ -4776,8 +4782,12 @@ class SampleCollection(object):
         if not self.has_sample_field(field_name):
             self._dataset.add_sample_field(field_name, ftype, **kwargs)
 
-    def _make_set_field_pipeline(self, field, expr, embedded_root=False):
-        return _make_set_field_pipeline(self, field, expr, embedded_root)
+    def _make_set_field_pipeline(
+        self, field, expr, embedded_root=False, allow_missing=False
+    ):
+        return _make_set_field_pipeline(
+            self, field, expr, embedded_root, allow_missing=allow_missing
+        )
 
 
 def get_label_fields(
@@ -5184,9 +5194,11 @@ def _transform_values(values, fcn, level=1):
     return [_transform_values(v, fcn, level=level - 1) for v in values]
 
 
-def _make_set_field_pipeline(sample_collection, field, expr, embedded_root):
+def _make_set_field_pipeline(
+    sample_collection, field, expr, embedded_root, allow_missing=False
+):
     path, is_frame_field, list_fields, _ = sample_collection._parse_field_name(
-        field
+        field, allow_missing=allow_missing
     )
 
     if is_frame_field and path != "frames":

@@ -131,6 +131,7 @@ export type Entry = {
   filteredCount: number;
   canFilter?: boolean;
   icon?: any;
+  type: string;
 };
 
 type EntryProps = {
@@ -152,6 +153,7 @@ const Entry = React.memo(({ entry, onCheck, modal }: EntryProps) => {
     title,
     canFilter,
     icon,
+    type,
   } = entry;
   const [expanded, setExpanded] = useState(false);
   const theme = useTheme();
@@ -179,7 +181,7 @@ const Entry = React.memo(({ entry, onCheck, modal }: EntryProps) => {
             <span className="name" title={name}>
               {name}
             </span>
-            {data !== null ? (
+            {typeof data === "string" ? (
               <>
                 <span className="count" title={title}>
                   {data}
@@ -194,6 +196,8 @@ const Entry = React.memo(({ entry, onCheck, modal }: EntryProps) => {
                   />
                 )}
               </>
+            ) : data ? (
+              data
             ) : icon ? (
               icon
             ) : (
@@ -224,6 +228,7 @@ const Entry = React.memo(({ entry, onCheck, modal }: EntryProps) => {
         control={
           <Checkbox
             checked={selected}
+            title={`Show ${name} ${type}`}
             onChange={() => onCheck({ ...entry, selected: !entry.selected })}
             style={{
               display: hideCheckbox ? "none" : "block",

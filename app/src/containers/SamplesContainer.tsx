@@ -13,7 +13,7 @@ import * as atoms from "../recoil/atoms";
 const SidebarContainer = styled.div`
   display: block;
   height: 100%;
-  width 256px;
+  width 270px;
 `;
 
 const SidebarColumn = styled.div`

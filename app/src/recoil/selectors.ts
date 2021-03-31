@@ -12,6 +12,7 @@ import {
   AGGS,
   VALID_LIST_TYPES,
   HIDDEN_LABEL_ATTRS,
+  LABEL_LIST,
 } from "../utils/labels";
 import { packageMessage } from "../utils/socket";
 import { viewsAreEqual } from "../utils/view";
@@ -142,9 +143,19 @@ export const filterStages = selector({
       ...get(atoms.stateDescription),
       filters,
     };
+    state.selected.forEach((id) => {
+      set(atoms.isSelectedSample(id), false);
+    });
+    state.selected = [];
+    set(atoms.selectedSamples, new Set());
     socket.send(packageMessage("filters_update", { filters }));
     set(atoms.stateDescription, state);
   },
+});
+
+export const hasFilters = selector<boolean>({
+  key: "hasFilters",
+  get: ({ get }) => Object.keys(get(filterStages)).length > 0,
 });
 
 export const filterStage = selectorFamily<any, string>({
@@ -267,6 +278,61 @@ export const tagNames = selector<string[]>({
   },
 });
 
+export const labelTagNames = selector<string[]>({
+  key: "labelTagNames",
+  get: ({ get }) => {
+    const paths = get(labelTagsPaths);
+    const result = new Set<string>();
+    (get(datasetStats) ?? []).forEach((s) => {
+      if (paths.includes(s.name)) {
+        Object.keys(s.result).forEach((t) => result.add(t));
+      }
+    });
+
+    return Array.from(result).sort();
+  },
+});
+
+export const labelTagCounts = selector<{ [key: string]: number }>({
+  key: "labelTagCounts",
+  get: ({ get }) => {
+    const paths = get(labelPaths).map((p) => p + ".tags");
+    const result = {};
+    (get(datasetStats) ?? []).forEach((s) => {
+      if (paths.includes(s.name)) {
+        Object.entries(s.result).forEach(([tag, count]) => {
+          if (!(tag in result)) {
+            result[tag] = 0;
+          }
+          result[tag] += count;
+        });
+      }
+    });
+
+    return result;
+  },
+});
+
+export const filteredLabelTagCounts = selector<{ [key: string]: number }>({
+  key: "filteredLabelTagCounts",
+  get: ({ get }) => {
+    const paths = get(labelPaths).map((p) => p + ".tags");
+    const result = {};
+    (get(extendedDatasetStats) ?? []).forEach((s) => {
+      if (paths.includes(s.name)) {
+        Object.entries(s.result).forEach(([tag, count]) => {
+          if (!(tag in result)) {
+            result[tag] = 0;
+          }
+          result[tag] += count;
+        });
+      }
+    });
+
+    return result;
+  },
+});
+
 export const tagSampleCounts = selector({
   key: "tagSampleCounts",
   get: ({ get }) => {
@@ -296,6 +362,68 @@ export const filteredTagSampleCounts = selector({
           return acc;
         }, {})
       : {};
+  },
+});
+
+export const labelTagsPaths = selector({
+  key: "labelTagsPaths",
+  get: ({ get }) => {
+    const types = get(labelTypesMap);
+    return get(labelPaths).map((path) => {
+      path = VALID_LIST_TYPES.includes(types[path])
+        ? `${path}.${types[path].toLocaleLowerCase()}`
+        : path;
+      return `${path}.tags`;
+    });
+  },
+});
+
+export const labelTagSampleCounts = selector({
+  key: "labelTagSampleCounts",
+  get: ({ get }) => {
+    const stats = get(datasetStats);
+    const paths = get(labelTagsPaths);
+
+    const result = {};
+
+    stats &&
+      stats.forEach((s) => {
+        if (paths.includes(s.name)) {
+          Object.entries(s.result).forEach(([k, v]) => {
+            if (!(k in result)) {
+              result[k] = v;
+            } else {
+              result[k] += v;
+            }
+          });
+        }
+      });
+
+    return result;
+  },
+});
+
+export const filteredLabelTagSampleCounts = selector({
+  key: "filteredLabelTagSampleCounts",
+  get: ({ get }) => {
+    const stats = get(extendedDatasetStats);
+    const paths = get(labelTagsPaths);
+
+    const result = {};
+
+    stats &&
+      stats.forEach((s) => {
+        if (paths.includes(s.name)) {
+          Object.entries(s.result).forEach(([k, v]) => {
+            if (!(k in result)) {
+              result[k] = v;
+            } else {
+              result[k] += v;
+            }
+          });
+        }
+      });
+    return result;
   },
 });
 
@@ -545,6 +673,11 @@ export const colorMap = selectorFamily<{ [key: string]: string }, boolean>({
     let pool = get(atoms.colorPool);
     pool = pool.length ? pool : [darkTheme.brand];
     const seed = get(atoms.colorSeed(modal));
+
+    const tags = [
+      ...get(tagNames).map((t) => "tags." + t),
+      ...get(labelTagNames).map((t) => "_label_tags." + t),
+    ];
     if (colorByLabel) {
       let values = ["true", "false"];
       const stats = get(datasetStats);
@@ -553,7 +686,7 @@ export const colorMap = selectorFamily<{ [key: string]: string }, boolean>({
           values = [...values, ...result];
         }
       });
-      values = [...get(tagNames), ...values];
+      values = [...tags, ...values];
       return generateColorMap(pool, Array.from(new Set(values)), seed, false);
     } else {
       const colorLabelNames = get(labelTuples("sample"))
@@ -569,12 +702,7 @@ export const colorMap = selectorFamily<{ [key: string]: string }, boolean>({
 
       return generateColorMap(
         pool,
-        [
-          ...get(tagNames),
-          ...scalarsList,
-          ...colorLabelNames,
-          ...colorFrameLabelNames,
-        ],
+        [...tags, ...scalarsList, ...colorLabelNames, ...colorFrameLabelNames],
         seed
       );
     }
@@ -720,7 +848,7 @@ export const modalLabelAttrs = selectorFamily<
 
     let label = sample[field];
     if (VALID_LIST_TYPES.includes(type)) {
-      label = label[type.toLocaleLowerCase()].filter((l) => l._id === id)[0];
+      label = label[LABEL_LIST[type]].filter((l) => l._id === id)[0];
     }
 
     const hidden = HIDDEN_LABEL_ATTRS[label._cls];
@@ -846,5 +974,40 @@ export const hiddenFieldLabels = selectorFamily<string[], string>({
         .map(([label_id]) => label_id);
     }
     return [];
+  },
+});
+
+export const matchedTags = selectorFamily<
+  Set<string>,
+  { key: string; modal: boolean }
+>({
+  key: "matchedTags",
+  get: ({ key, modal }) => ({ get }) => {
+    if (modal) {
+      return get(atoms.matchedTagsModal(key));
+    }
+    const tags = get(filterStages).tags;
+    if (tags && tags[key]) {
+      return new Set(tags[key]);
+    }
+    return new Set();
+  },
+  set: ({ key, modal }) => ({ get, set }, value) => {
+    if (modal) {
+      set(atoms.matchedTagsModal(key), value);
+    } else {
+      const stages = { ...get(filterStages) };
+      const tags = { ...(stages.tags || {}) };
+      if (value instanceof Set && value.size) {
+        tags[key] = Array.from(value);
+      } else if (stages.tags && key in stages.tags) {
+        delete tags[key];
+      }
+      stages.tags = tags;
+      if (Object.keys(stages.tags).length === 0) {
+        delete stages["tags"];
+      }
+      set(filterStages, stages);
+    }
   },
 });

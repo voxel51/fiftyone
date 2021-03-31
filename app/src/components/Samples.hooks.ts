@@ -62,6 +62,7 @@ export default () => {
         reset(atoms.sampleFrameData(id));
         reset(atoms.sampleFrameRate(id));
         reset(atoms.sampleVideoLabels(id));
+        reset(atoms.sampleVideoDataRequested(id));
       };
       reset(atoms.gridRows);
       const rows = await snapshot.getPromise(atoms.gridRows);

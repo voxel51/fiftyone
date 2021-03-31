@@ -128,8 +128,7 @@ const PillButtonDiv = animated(styled.div`
   }
   & > svg {
     display: inline-block;
-    height: 1.5rem;
-    width: 1.5rem;
+    height: 100%;
   }
 `);
 
@@ -141,6 +140,7 @@ type PillButton = {
   icon?: any;
   arrow?: boolean;
   style?: object;
+  title?: string;
 };
 
 export const PillButton = React.memo(
@@ -154,25 +154,23 @@ export const PillButton = React.memo(
         highlight,
         arrow = false,
         style,
+        title,
       }: PillButton,
       ref
     ) => {
       const theme = useTheme();
       const props = useSpring({
-        opacity: 1,
         backgroundColor: !highlight ? theme.button : theme.brand,
-        from: {
-          opacity: 0,
-        },
       });
       return (
         <PillButtonDiv
           onClick={onClick}
           ref={ref}
           style={{ ...props, ...style }}
+          title={title}
         >
-          {icon}
           {text && <span>{text}</span>}
+          {icon}
           {arrow && (open ? <KeyboardArrowUp /> : <KeyboardArrowDown />)}
         </PillButtonDiv>
       );
