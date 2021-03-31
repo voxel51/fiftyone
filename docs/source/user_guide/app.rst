@@ -7,7 +7,7 @@ Using the FiftyOne App
 
 The FiftyOne App is a powerful graphical user interface that enables you to
 visualize, browse, and interact directly with your
-:ref:`FiftyOne Datasets <what-is-a-fiftyone-dataset>`.
+:ref:`FiftyOne Datasets <using-datasets>`.
 
 .. image:: ../images/app/app-filters.gif
    :alt: app-filters

@@ -30,18 +30,13 @@ App
 
 Brain
 ^^^^^
-- Added a
-  :meth:`compute_visualization() <fiftyone.brain.compute_visualization>`
-  method that uses embeddings and dimensionality reduction methods to generate
-  interactive visualizations of the samples and/or labels in a dataset. For
-  more information, check out :ref:`this user guide page <XXXXXXXX>`. Features
-  include:
+- Added a :meth:`compute_visualization() <fiftyone.brain.compute_visualization>` method that uses embeddings and dimensionality reduction methods to generate interactive visualizations of the samples and/or labels in a dataset. Check out :ref:`this user guide page <XXXXXXXX>` for details. Features include:
     - Provide your own embeddings, or choose a model from the
-      :ref:`Model Zoo <model-zoo>`, or use the default model that we provide
+      :ref:`Model Zoo <model-zoo>`, or use the provided default model
     - Supported dimensionality reduction methods include
       `UMAP <https://github.com/lmcinnes/umap>`_,
       `t-SNE <https://lvdmaaten.github.io/tsne>`_, and
-      `PCA <https://scikit-learn.org/stable/modules/generated/sklearn.decomposition.PCA.html>`
+      `PCA <https://scikit-learn.org/stable/modules/generated/sklearn.decomposition.PCA.html>`_
     - Use this capability in a Jupyter notebook and you can interact with the
       plots to select samples/labels of interest in a connected |Session|
 - Added support for saving brain method results on datasets. Previous brain
@@ -53,10 +48,7 @@ Brain
 
 Core
 ^^^^
-- Added a :mod:`<fiftyone.core.plots>` module that provides a powerful API for
-  visualizing datasets, including interactive plots when used in Jupyter
-  notebooks. See :ref:`this user guide page <XXXXXXXX>` for more information.
-  Highlights include:
+- Added a :mod:`fiftyone.core.plots` module that provides a powerful API for visualizing datasets, including interactive plots when used in Jupyter notebooks. See :ref:`this user guide page <XXXXXXXX>` for more information. Highlights include:
     - :meth:`plot_confusion_matrix() <fiftyone.core.plots.base.plot_confusion_matrix>`:
       an interactive confusion matrix that can be attached to a |Session|
       object to visually explore model predictions
@@ -66,14 +58,14 @@ Core
       locations in a low-dimensional embedding space
     - :meth:`location_scatterplot() <fiftyone.core.plots.base.location_scatterplot>`:
       an interacive scatterplot of a dataset via its |GeoLocation| coordinates
-- Added |GeoLocation| and |GeoLocations| label types that can be used to store
-  arbitrary GeoJSON location data on samples
-- Added the :class:`GeoJSONImageDataset <fiftyone.types.dataset_types.GeoJSONImageDataset>`
-  dataset type for importing and exporting datasets in GeoJSON format
-- Added :meth:`SampleCollection.geo_near() <fiftyone.core.collections.SampleCollection.geo_near>`
-  and
-  :meth:`SampleCollection.geo_within() <fiftyone.core.collections.SampleCollection.geo_within>`
-  view stages for querying datasets with location data
+    - Added |GeoLocation| and |GeoLocations| label types that can be used to store
+      arbitrary GeoJSON location data on samples
+    - Added the :class:`GeoJSONImageDataset <fiftyone.types.dataset_types.GeoJSONImageDataset>`
+      dataset type for importing and exporting datasets in GeoJSON format
+    - Added :meth:`SampleCollection.geo_near() <fiftyone.core.collections.SampleCollection.geo_near>`
+      and
+      :meth:`SampleCollection.geo_within() <fiftyone.core.collections.SampleCollection.geo_within>`
+      view stages for querying datasets with location data
 - Upgraded the implementation of the
   :ref:`FiftyOneDataset <FiftyOneDataset-export>` format, which is now 10-100x
   faster at importing/exporting datasets
@@ -89,24 +81,18 @@ Core
 - Added a ``tags`` attribute to all |Label| types that can store a list of
   string tags for the labels (analogous to the ``tags`` attribute of |Sample|)
 - Added a number of methods for working with sample and label tags:
-    - :meth:`SampleCollection.tag_samples() <fiftyone.core.collections.SampleCollection.tag_samples>`
-    - :meth:`SampleCollection.untag_samples() <fiftyone.core.collections.SampleCollection.untag_samples>`
-    - :meth:`SampleCollection.count_sample_tags() <fiftyone.core.collections.SampleCollection.count_sample_tags>`
-    - :meth:`SampleCollection.tag_labels() <fiftyone.core.collections.SampleCollection.tag_labels>`
-    - :meth:`SampleCollection.untag_labels() <fiftyone.core.collections.SampleCollection.untag_labels>`
-    - :meth:`SampleCollection.count_label_tags() <fiftyone.core.collections.SampleCollection.count_label_tags>`
-- **BREAKING CHANGE**: Renamed all applicable API components to refer to
-  `objects` as `labels`. Affected attributes, classes, and methods are:
-    - :attr:`Session.selected_labels <fiftyone.core.session.Session.selected_labels>`
-      (previously `Session.selected_objects`)
-    - :meth:`SampleCollection.select_labels() <fiftyone.core.collections.SampleCollection.select_labels>`
-      (previously `SampleCollection.select_labels()`)
-    - :meth:`SampleCollection.select_labels() <fiftyone.core.collections.SampleCollection.exclude_labels>`
-      (previously `SampleCollection.exclude_labels()`)
-    - :class:`SelectLabels <fiftyone.core.stages.SelectLabels>` (previously
-      `SelectObjects`)
-    - :class:`ExcludeLabels <fiftyone.core.stages.ExcludeLabels>` (previously
-      `ExcludeObjects`)
+   - :meth:`SampleCollection.tag_samples() <fiftyone.core.collections.SampleCollection.tag_samples>`
+   - :meth:`SampleCollection.untag_samples() <fiftyone.core.collections.SampleCollection.untag_samples>`
+   - :meth:`SampleCollection.count_sample_tags() <fiftyone.core.collections.SampleCollection.count_sample_tags>`
+   - :meth:`SampleCollection.tag_labels() <fiftyone.core.collections.SampleCollection.tag_labels>`
+   - :meth:`SampleCollection.untag_labels() <fiftyone.core.collections.SampleCollection.untag_labels>`
+   - :meth:`SampleCollection.count_label_tags() <fiftyone.core.collections.SampleCollection.count_label_tags>`
+- **BREAKING CHANGE**: Renamed all applicable API components that previously referenced "objects" to use the more widely applicable term "labels". Affected attributes, classes, and methods are:
+   - :attr:`Session.selected_labels <fiftyone.core.session.Session.selected_labels>` (previously `selected_objects`)
+   - :meth:`SampleCollection.select_labels() <fiftyone.core.collections.SampleCollection.select_labels>` (previously `select_labels()`)
+   - :meth:`SampleCollection.select_labels() <fiftyone.core.collections.SampleCollection.exclude_labels>` (previously `exclude_labels()`)
+   - :class:`SelectLabels <fiftyone.core.stages.SelectLabels>` (previously `SelectObjects`)
+   - :class:`ExcludeLabels <fiftyone.core.stages.ExcludeLabels>` (previously `ExcludeObjects`)
 - Added new keyword arguments ``ids``, ``tags``, and ``fields`` to
   :meth:`SampleCollection.select_labels() <fiftyone.core.collections.SampleCollection.select_labels()>`
   and
