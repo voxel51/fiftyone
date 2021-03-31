@@ -52,7 +52,7 @@ const IconsContainer = styled.div`
   right: 0;
   background-image: linear-gradient(
     to right,
-    rgba(255, 0, 0, 0),
+    rgba(0, 0, 0, 0),
     5%,
     ${({ theme }) => theme.backgroundDark}
   );
