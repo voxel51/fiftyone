@@ -2412,7 +2412,7 @@ class SetField(ViewStage):
 
     Args:
         field: the field or embedded field to set
-        expr: a :class:`fiftyone.core.expressions.ViewExpression, None, or
+        expr: a :class:`fiftyone.core.expressions.ViewExpression or
             `MongoDB aggregation expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
             that defines the field value to set
     """
@@ -2460,6 +2460,8 @@ class SetField(ViewStage):
 
     @classmethod
     def _params(self):
+        # @todo `expr` can actually be any valid JSON, including ints, strings
+        # lists, etc
         return [
             {"name": "field", "type": "field"},
             {"name": "expr", "type": "NoneType|dict", "placeholder": ""},
