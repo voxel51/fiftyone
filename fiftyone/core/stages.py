@@ -790,9 +790,23 @@ class Exists(ViewStage):
         """
         return self._bool
 
-    def to_mongo(self, _):
-        expr = F(self._field).exists(self._bool)
-        return [{"$match": {"$expr": expr.to_mongo()}}]
+    def to_mongo(self, sample_collection):
+        field_name, is_frame_field = sample_collection._handle_frame_field(
+            self._field
+        )
+
+        if not is_frame_field:
+            expr = F(field_name).exists(self._bool)
+            return [{"$match": {"$expr": expr.to_mongo()}}]
+
+        expr = F("frames").filter(F(field_name).exists(self._bool))
+        return [
+            {"$set": {"frames": expr.to_mongo()}},
+            {"$match": {"$expr": (F("frames").length() > 0).to_mongo()}},
+        ]
+
+    def _needs_frames(self, sample_collection):
+        return sample_collection._is_frame_field(self._field)
 
     def _kwargs(self):
         return [["field", self._field], ["bool", self._bool]]

@@ -1069,12 +1069,14 @@ class Values(Aggregation):
 
     .. note::
 
-        Unlike other aggregations, :class:`Values` does not *automatically*
-        unwind list fields. This ensures that there is a 1-1 correspondence
-        between the elements of the output list and the samples in the
-        collection.
+        Unlike other aggregations, :class:`Values` does not automatically
+        unwind list fields, which ensures that the returned values match the
+        potentially-nested structure of the documents.
 
-        You can opt-in to unwinding list fields using the ``[]`` syntax.
+        You can opt-in to unwinding specific list fields using the ``[]``
+        syntax, or you can pass the optional ``unwind=True`` parameter to
+        unwind all supported list fields. See :ref:`aggregations-list-fields`
+        for more information.
 
     Examples::
 
@@ -1134,15 +1136,23 @@ class Values(Aggregation):
             to apply to the field before aggregating
         missing_value (None): a value to insert for missing or ``None``-valued
             fields
+        unwind (False): whether to automatically unwind all recognized list
+            fields
     """
 
     def __init__(
-        self, field_name, expr=None, missing_value=None, _allow_missing=False
+        self,
+        field_name,
+        expr=None,
+        missing_value=None,
+        unwind=False,
+        _allow_missing=False,
     ):
         field_name, found_id_field = _handle_id_fields(field_name)
         super().__init__(field_name, expr=expr)
 
         self._missing_value = missing_value
+        self._unwind = unwind
         self._allow_missing = _allow_missing
         self._found_id_field = found_id_field
         self._found_array_field = None
@@ -1181,7 +1191,7 @@ class Values(Aggregation):
     def to_mongo(self, sample_collection):
         path, pipeline, other_list_fields = self._parse_field_and_expr(
             sample_collection,
-            auto_unwind=False,
+            auto_unwind=self._unwind,
             allow_missing=self._allow_missing,
         )
 
