@@ -22,9 +22,9 @@ App
 - Added support for rendering semantic labels in the new tooltip in the expanded
   sample view for :class:`Segmentation <fiftyone.core.labels.Segmentation>`
   mask values (pixel values) using the new
-  :attr:`Dataset.targets <fiftyone.core.dataset.Dataset.targets>`
+  :attr:`Dataset.mask_targets <fiftyone.core.dataset.Dataset.mask_targets>`
   and
-  :attr:`Dataset.default_targets <fiftyone.core.dataset.Dataset.default_targets>`
+  :attr:`Dataset.default_mask_targets <fiftyone.core.dataset.Dataset.default_mask_targets>`
   fields
 - Fixed hiding, clearing, and only showing selected samples in the samples grid
 
@@ -76,9 +76,9 @@ Core
   automatically used by methods like
   :meth:`Dataset.evaluate_classifications() <fiftyone.core.dataset.Dataset.evaluate_detections>`
   when knowledge of the full schema of a model is required
-- Added :attr:`Dataset.targets <fiftyone.core.dataset.Dataset.targets>`
+- Added :attr:`Dataset.mask_targets <fiftyone.core.dataset.Dataset.mask_targets>`
   and
-  :attr:`Dataset.default_targets <fiftyone.core.dataset.Dataset.default_targets>`
+  :attr:`Dataset.default_mask_targets <fiftyone.core.dataset.Dataset.default_mask_targets>`
   fields for providing semantic labels for
   :class:`Segmentation <fiftyone.core.labels.Segmentation>` mask values to be
   used in the App's expanded sample view
@@ -88,7 +88,7 @@ Core
   and
   :meth:`SampleCollection.geo_within() <fiftyone.core.collections.SampleCollection.geo_within>`
   view stages
-- Fixed schema errors in |DatasetView| with filtered fields
+- Fixed schema errors in |DatasetView| related to filtered fields
 - Fixed sorting on unindexed values for large datasets
 - Fixed copying of |DatasetView| in cases where
   :class:`ViewField <fiftyone.core.expressions.ViewField>` is used
@@ -120,7 +120,7 @@ Brain
 ^^^^^
 - Added support for visualization (interactive in Jupyter Notebooks) of
   samples or labels in datasets via their embeddings. Embeddings or a
-  :class:`Modal <fiftyone.core.models.Model>` or Zoo Model that exposes
+  :class:`Model <fiftyone.core.models.Model>` or Zoo Model that exposes
   embeddings, or nothing at all may be provided. By default
   `UMAP <https://github.com/lmcinnes/umap>`_ is used. Other options are
   `t-SNE <https://lvdmaaten.github.io/tsne>`_ and standard PCA. See
