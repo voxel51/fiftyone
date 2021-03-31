@@ -354,10 +354,10 @@ class Session(foc.HasClient):
                 % (fod.Dataset, type(dataset))
             )
 
-        if view is not None and not isinstance(dataset, fov.DatasetView):
+        if view is not None and not isinstance(view, fov.DatasetView):
             raise ValueError(
                 "`view` must be a %s or None; found %s"
-                % (fov.DatasetView, type(dataset))
+                % (fov.DatasetView, type(view))
             )
 
         if plots is not None and not isinstance(plots, fop.PlotManager):
