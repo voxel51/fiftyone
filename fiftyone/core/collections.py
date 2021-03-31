@@ -3975,18 +3975,25 @@ class SampleCollection(object):
 
     @aggregation
     def values(
-        self, field_name, expr=None, missing_value=None, _allow_missing=False
+        self,
+        field_name,
+        expr=None,
+        missing_value=None,
+        unwind=False,
+        _allow_missing=False,
     ):
         """Extracts the values of a field from all samples in the collection.
 
         .. note::
 
-            Unlike other aggregations, :meth:`values` does not *automatically*
-            unwind top-level list fields and label list fields. This default
-            behavior ensures that there is a 1-1 correspondence between the
-            elements of the output list and the samples in the collection.
+            Unlike other aggregations, :meth:`values` does not automatically
+            unwind list fields, which ensures that the returned values match
+            the potentially-nested structure of the documents.
 
-            You can opt-in to unwinding list fields using the ``[]`` syntax.
+            You can opt-in to unwinding specific list fields using the ``[]``
+            syntax, or you can pass the optional ``unwind=True`` parameter to
+            unwind all supported list fields. See
+            :ref:`aggregations-list-fields` for more information.
 
         Examples::
 
@@ -4043,6 +4050,8 @@ class SampleCollection(object):
                 to apply to the field before aggregating
             missing_value (None): a value to insert for missing or
                 ``None``-valued fields
+            unwind (False): whether to automatically unwind all recognized list
+                fields
 
         Returns:
             the list of values
@@ -4052,6 +4061,7 @@ class SampleCollection(object):
                 field_name,
                 expr=expr,
                 missing_value=missing_value,
+                unwind=unwind,
                 _allow_missing=_allow_missing,
             )
         )
@@ -4769,6 +4779,21 @@ class SampleCollection(object):
 
     def _is_array_field(self, field_name):
         return _is_array_field(self, field_name)
+
+    def _unwind_values(self, field_name, values):
+        if values is None:
+            return None
+
+        list_fields = self._parse_field_name(field_name, auto_unwind=False)[-1]
+        level = len(list_fields)
+
+        while level > 0:
+            values = list(
+                itertools.chain.from_iterable(v for v in values if v)
+            )
+            level -= 1
+
+        return values
 
     def _add_field_if_necessary(self, field_name, ftype, **kwargs):
         # @todo if field exists, validate that `ftype` and `**kwargs` match

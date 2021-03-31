@@ -165,7 +165,7 @@ def plot_roc_curve(fpr, tpr, roc_auc=None, backend="plotly", **kwargs):
 def scatterplot(
     points,
     samples=None,
-    label_field=None,
+    link_field=None,
     labels=None,
     sizes=None,
     classes=None,
@@ -181,7 +181,7 @@ def scatterplot(
     method.
 
     This method supports 2D or 3D visualizations, but interactive point
-    selection is only aviailable in 2D.
+    selection is only available in 2D.
 
     You can use the ``labels`` parameters to define a coloring for the points,
     and you can use the ``sizes`` parameter to scale the sizes of the points.
@@ -190,16 +190,20 @@ def scatterplot(
         points: a ``num_points x num_dims`` array of points
         samples (None): the :class:`fiftyone.core.collections.SampleCollection`
             whose data is being visualized
-        label_field (None): a :class:`fiftyone.core.labels.Label` field
-            containing the labels corresponding to ``points``. If not provided,
-            the points are assumed to correspond to samples
+        link_field (None): a field of ``samples`` whose data corresponds to
+            ``points``. Can be any of the following:
+
+            -   None, if the points correspond to samples
+            -   the name of a :class:`fiftyone.core.labels.Label` field, if the
+                points correspond linked to the labels in this field
+
         labels (None): data to use to color the points. Can be any of the
             following:
 
             -   the name of a sample field or ``embedded.field.name`` of
                 ``samples`` from which to extract numeric or string values
             -   a list or array-like of numeric or string values
-            -   a list of lists of numeric or string values, if ``label_field``
+            -   a list of lists of numeric or string values, if ``link_field``
                 refers to a label list field like
                 :class:`fiftyone.core.labels.Detections`
 
@@ -209,7 +213,7 @@ def scatterplot(
             -   the name of a sample field or ``embedded.field.name`` of
                 ``samples`` from which to extract numeric values
             -   a list or array-like of numeric values
-            -   a list of lists of numeric or string values, if ``label_field``
+            -   a list of lists of numeric or string values, if ``link_field``
                 refers to a label list field like
                 :class:`fiftyone.core.labels.Detections`
 
@@ -242,7 +246,7 @@ def scatterplot(
     return _scatterplot(
         points,
         samples=samples,
-        label_field=label_field,
+        link_field=link_field,
         labels=labels,
         sizes=sizes,
         classes=classes,
@@ -274,13 +278,18 @@ def location_scatterplot(
     and you can use the ``sizes`` parameter to scale the sizes of the points.
 
     Args:
-        locations (None): the location data to plot. Can be a
-            ``num_locations x 2`` array of ``(longitude, latitude)``
-            coordinates, or the name of a
-            :class:`fiftyone.core.labels.GeoLocation` field on ``samples`` with
-            ``(longitude, latitude)`` coordinates in its ``point`` attribute,
-            or None, in which case ``samples`` must have a single
-            :class:`fiftyone.core.labels.GeoLocation` field
+        locations (None): the location data to plot. Can be any of the
+            following:
+
+            -   None, in which case ``samples`` must have a single
+                :class:`fiftyone.core.labels.GeoLocation` field whose ``point``
+                attribute contains location data
+            -   a ``num_locations x 2`` array of ``(longitude, latitude)``
+                coordinates
+            -   the name of a :class:`fiftyone.core.labels.GeoLocation` field
+                of ``samples`` with ``(longitude, latitude)`` coordinates in
+                its ``point`` attribute
+
         samples (None): the :class:`fiftyone.core.collections.SampleCollection`
             whose data is being visualized
         labels (None): data to use to color the points. Can be any of the
