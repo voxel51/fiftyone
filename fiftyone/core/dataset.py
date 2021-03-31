@@ -2582,7 +2582,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """
         root = field_name.split(".", 1)[0]
 
-        if root not in self.get_field_schema():
+        if root not in self.get_field_schema(include_private=True):
             raise ValueError("Dataset has no field '%s'" % root)
 
         index_info = self._sample_collection.index_information()
@@ -3425,15 +3425,22 @@ def _merge_samples(
     # Prepare for merge
     #
 
-    # Must create unique indexes in order to use `$merge`
-    new_src_index = key_field not in src_collection.list_indexes(
-        include_private=True
-    )
-    new_dst_index = key_field not in dst_dataset.list_indexes(
-        include_private=True
-    )
-    src_collection.create_index(key_field, unique=True)
-    dst_dataset.create_index(key_field, unique=True)
+    if key_field not in ("_id", "filepath"):
+        # Must have unique indexes in order to use `$merge`
+        new_src_index = key_field not in src_collection.list_indexes(
+            include_private=True
+        )
+        new_dst_index = key_field not in dst_dataset.list_indexes(
+            include_private=True
+        )
+
+        # Re-run creation in case existing index is not unique. If the index
+        # is already unique, this is a no-op
+        src_collection.create_index(key_field, unique=True)
+        dst_dataset.create_index(key_field, unique=True)
+    else:
+        new_src_index = False
+        new_dst_index = False
 
     #
     # The implementation of merging video frames is currently a bit complex.
