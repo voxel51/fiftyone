@@ -260,6 +260,7 @@ class Session(foc.HasClient):
         auto=True,
         config=None,
     ):
+        self._validate(dataset, view, plots, config)
         if port is None:
             port = fo.config.default_app_port
 
@@ -345,6 +346,31 @@ class Session(foc.HasClient):
 
         if self._context == focx._NONE:
             self.open()
+
+    def _validate(self, dataset, view, plots, config):
+        if dataset is not None and not isinstance(dataset, fod.Dataset):
+            raise ValueError(
+                "`dataset` must be a %s or None; found %s"
+                % (fod.Dataset, type(dataset))
+            )
+
+        if view is not None and not isinstance(view, fov.DatasetView):
+            raise ValueError(
+                "`view` must be a %s or None; found %s"
+                % (fov.DatasetView, type(view))
+            )
+
+        if plots is not None and not isinstance(plots, fop.PlotManager):
+            raise ValueError(
+                "`plots` must be a %s or None; found %s"
+                % (fop.PlotManager, type(plots))
+            )
+
+        if config is not None and not isinstance(config, AppConfig):
+            raise ValueError(
+                "`config` must be a %s or None; found %s"
+                % (AppConfig, type(config))
+            )
 
     def __repr__(self):
         return self.summary()
