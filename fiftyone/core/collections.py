@@ -2685,7 +2685,7 @@ class SampleCollection(object):
 
         Args:
             field: the field or embedded field to set
-            expr: a :class:`fiftyone.core.expressions.ViewExpression`, None, or
+            expr: a :class:`fiftyone.core.expressions.ViewExpression` or
                 `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
                 that defines the field value to set
 

@@ -120,7 +120,6 @@ export const selectedSampleLabelStatistics = selector<{
     const promise = new Promise((resolve) => {
       const listener = wrap(({ count, tags }) => {
         socket.removeEventListener("message", listener);
-        console.log(count, tags);
         resolve({ count, tags });
       }, "selected_statistics");
       socket.addEventListener("message", listener);
@@ -244,7 +243,9 @@ export const tagStats = selectorFamily<
       const active = [
         ...get(activeLabels({ modal, frames: false })),
         ...get(activeLabels({ modal, frames: true })),
-      ].map((l) => `${l}.${LABEL_LIST[types[l]]}.tags`);
+      ].map((l) =>
+        LABEL_LIST[types[l]] ? `${l}.${LABEL_LIST[types[l]]}.tags` : `${l}.tags`
+      );
       const reducer = (acc, { name, result }) => {
         if (active.includes(name)) {
           acc[name] = result;
