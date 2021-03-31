@@ -567,8 +567,8 @@ class SampleCollection(object):
             tags = list(tags)
 
         def _add_tags(_tags):
-            if _tags is None:  # missing `Label`
-                return None
+            if not _tags:
+                return tags
 
             for tag in tags:
                 if tag not in _tags:
@@ -591,8 +591,8 @@ class SampleCollection(object):
             tags = list(tags)
 
         def _remove_tags(_tags):
-            if _tags is None:  # missing `Label`
-                return None
+            if not _tags:
+                return _tags
 
             return [t for t in _tags if t not in tags]
 
@@ -627,8 +627,8 @@ class SampleCollection(object):
             tags = list(tags)
 
         def _add_tags(_tags):
-            if _tags is None:  # missing `Label`
-                return None
+            if not _tags:
+                return tags
 
             for tag in tags:
                 if tag not in _tags:
@@ -654,8 +654,8 @@ class SampleCollection(object):
             tags = list(tags)
 
         def _remove_tags(_tags):
-            if _tags is None:  # missing `Label`
-                return None
+            if not _tags:
+                return _tags
 
             return [t for t in _tags if t not in tags]
 
@@ -5210,11 +5210,11 @@ def _is_field_type(field, field_path, types):
 
 
 def _transform_values(values, fcn, level=1):
-    if values is None:
-        return None
-
     if level < 1:
         return fcn(values)
+
+    if values is None:
+        return None
 
     return [_transform_values(v, fcn, level=level - 1) for v in values]
 
