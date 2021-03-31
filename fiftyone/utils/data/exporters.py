@@ -755,8 +755,7 @@ class LegacyFiftyOneDatasetExporter(GenericSampleDatasetExporter):
     .. warning::
 
         The :class:`fiftyone.types.dataset_types.FiftyOneDataset` format was
-        upgraded in ``fiftyone==0.7.5`` and this exporter is now deprecated.
-
+        upgraded in ``fiftyone==0.8`` and this exporter is now deprecated.
         The new exporter is :class:`FiftyOneDatasetExporter`.
 
     Args:

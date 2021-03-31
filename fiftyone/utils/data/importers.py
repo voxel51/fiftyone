@@ -77,6 +77,17 @@ def import_samples(
     elif tags is not None:
         tags = list(tags)
 
+    # Handle data in legacy format
+    if (
+        isinstance(dataset_importer, FiftyOneDatasetImporter)
+        and dataset_importer._is_legacy_format_data()
+    ):
+        logger.debug(
+            "Found data in LegacyFiftyOneDataset format; converting to legacy "
+            "importer now"
+        )
+        dataset_importer = dataset_importer._to_legacy_importer()
+
     # Invoke the importer's context manager first, since some of its properies
     # may need to be initialized
     with dataset_importer:
@@ -793,7 +804,7 @@ class LegacyFiftyOneDatasetImporter(GenericSampleDatasetImporter):
     .. warning::
 
         The :class:`fiftyone.types.dataset_types.FiftyOneDataset` format was
-        upgraded in ``fiftyone==0.7.5`` and this importer is now deprecated.
+        upgraded in ``fiftyone==0.8`` and this importer is now deprecated.
 
         However, to maintain backwards compatibility,
         :class:`FiftyOneDatasetImporter` will check for instances of datasets
@@ -1018,36 +1029,68 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
             # into a temporary dataset, perform the migration, and then merge
             # into the destination dataset
             tmp_dataset = fod.Dataset()
-            sample_ids = self._import_samples(tmp_dataset, tags=tags)
-            dataset.merge_samples(tmp_dataset, key_field="_id")
+            sample_ids = self._import_samples(
+                tmp_dataset, dataset_dict, tags=tags
+            )
+            dataset.add_collection(tmp_dataset)
             tmp_dataset.delete()
             return sample_ids
 
-        return self._import_samples(dataset, tags=tags)
+        return self._import_samples(dataset, dataset_dict, tags=tags)
 
-    def _import_samples(self, dataset, tags=None):
+    def _import_samples(self, dataset, dataset_dict, tags=None):
         name = dataset.name
+        empty_import = not bool(dataset)
 
-        dataset_dict = foo.import_document(self._metadata_path)
+        #
+        # Import DatasetDocument
+        #
+        # This method handles two cases:
+        #   - `dataset` is empty, and a migration may or may not be required
+        #   - `dataset` is non-empty but no migration is required
+        #
 
-        # @todo must merge sample/frame fields
-
-        # @todo we probably shouldn't import RunResults when `dataset` is
-        # non-empty, since the views likely won't work
-
-        # @todo must merge `info`, `classes`, etc here
-
-        dataset_dict.update(
-            dict(
-                _id=dataset._doc.id,
-                name=dataset._doc.name,
-                sample_collection_name=dataset._doc.sample_collection_name,
-                persistent=dataset._doc.persistent,
+        if empty_import:
+            #
+            # The `dataset` we're importing into is empty, so we mostly replace
+            # its backing document with `dataset_dict`
+            #
+            # Note that we must work with dicts instead of `DatasetDocument`s
+            # here because the import may need migration
+            #
+            dataset_dict.update(
+                dict(
+                    _id=dataset._doc.id,
+                    name=dataset._doc.name,
+                    sample_collection_name=dataset._doc.sample_collection_name,
+                    persistent=dataset._doc.persistent,
+                )
             )
-        )
 
-        conn = foo.get_db_conn()
-        conn.datasets.replace_one({"name": name}, dataset_dict)
+            # RunResults are imported separately
+
+            for run_doc in dataset_dict.get("evaluations", {}).values():
+                run_doc["results"] = None
+
+            for run_doc in dataset_dict.get("brain_methods", {}).values():
+                run_doc["results"] = None
+
+            conn = foo.get_db_conn()
+            conn.datasets.replace_one({"name": name}, dataset_dict)
+
+            dataset._reload(hard=True)
+        else:
+            #
+            # The dataset we're merging into is non-empty, but it is safe to
+            # use `DatasetDocument` here to perform the merge because no
+            # migration should be required
+            #
+            new_doc = foo.DatasetDocument.from_dict(dataset_dict)
+            dataset._merge_doc(new_doc)
+
+        #
+        # Import samples
+        #
 
         logger.info("Importing samples...")
         samples = foo.import_collection(self._samples_path).get("samples", [])
@@ -1077,6 +1120,10 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
 
         sample_ids = [s["_id"] for s in samples]
 
+        #
+        # Import frames
+        #
+
         if os.path.exists(self._frames_path):
             logger.info("Importing frames...")
             frames = foo.import_collection(self._frames_path).get("frames", [])
@@ -1090,15 +1137,23 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
                 frames, dataset._frame_collection, ordered=True
             )
 
-        if dataset.has_evaluations:
-            _import_evaluation_results(dataset, self._eval_dir)
+        #
+        # Import RunResults
+        #
 
-        if dataset.has_brain_runs:
-            _import_brain_results(dataset, self._brain_dir)
+        if empty_import:
+            if os.path.isdir(self._eval_dir):
+                _import_evaluation_results(dataset, self._eval_dir)
 
-        # Migrate if necessary
+            if os.path.isdir(self._brain_dir):
+                _import_brain_results(dataset, self._brain_dir)
+
+        #
+        # Migrate dataset if necessary
+        #
+
         fomi.migrate_dataset_if_necessary(name)
-        dataset._reload()
+        dataset._reload(hard=True)
 
         return sample_ids
 
@@ -1123,8 +1178,7 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
         samples = etas.load_json(samples_path).get("samples", [])
         return len(samples)
 
-    @staticmethod
-    def _is_legacy_format(self, dataset_dir):
+    def _is_legacy_format_data(self):
         metadata_path = os.path.join(self.dataset_dir, "metadata.json")
         if os.path.exists(metadata_path):
             metadata = etas.load_json(metadata_path)
@@ -1132,6 +1186,14 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
             metadata = {}
 
         return "version" not in metadata
+
+    def _to_legacy_importer(self):
+        return LegacyFiftyOneDatasetImporter(
+            self.dataset_dir,
+            shuffle=self.shuffle,
+            seed=self.seed,
+            max_samples=self.max_samples,
+        )
 
 
 def _import_evaluation_results(dataset, eval_dir, eval_keys=None):
@@ -1142,9 +1204,9 @@ def _import_evaluation_results(dataset, eval_dir, eval_keys=None):
         json_path = os.path.join(eval_dir, eval_key + ".json")
         if not os.path.exists(json_path):
             logger.warning(
-                "Evaluation results for eval_key='%s' not found in '%s'",
+                "Evaluation results for eval_key='%s' not found at '%s'",
                 eval_key,
-                eval_dir,
+                json_path,
             )
             continue
 
@@ -1162,9 +1224,9 @@ def _import_brain_results(dataset, brain_dir, brain_keys=None):
         json_path = os.path.join(brain_dir, brain_key + ".json")
         if not os.path.exists(json_path):
             logger.warning(
-                "Brain results for brain_key='%s' not found in '%s'",
+                "Brain results for brain_key='%s' not found at '%s'",
                 brain_key,
-                brain_dir,
+                json_path,
             )
             continue
 

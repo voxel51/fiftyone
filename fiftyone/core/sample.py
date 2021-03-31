@@ -8,7 +8,6 @@ Dataset samples.
 from collections import defaultdict
 from copy import deepcopy
 import os
-import warnings
 import weakref
 
 from fiftyone.core.document import Document
@@ -24,7 +23,8 @@ def get_default_sample_fields(include_private=False, include_id=False):
     """Returns the default fields present on all samples.
 
     Args:
-        include_private (False): whether to include fields that start with `_`
+        include_private (False): whether to include fields that start with
+            ``_``
         include_id (False): whether to include ID fields
 
     Returns:

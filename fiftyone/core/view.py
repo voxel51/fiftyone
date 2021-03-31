@@ -285,7 +285,7 @@ class DatasetView(foc.SampleCollection):
                 which to restrict the returned schema. Must be a subclass of
                 :class:`fiftyone.core.odm.BaseEmbeddedDocument`
             include_private (False): whether to include fields that start with
-                `_` in the returned schema
+                ``_`` in the returned schema
 
         Returns:
              an ``OrderedDict`` mapping field names to field types
@@ -314,7 +314,7 @@ class DatasetView(foc.SampleCollection):
                 which to restrict the returned schema. Must be a subclass of
                 :class:`fiftyone.core.odm.BaseEmbeddedDocument`
             include_private (False): whether to include fields that start with
-                `_` in the returned schema
+                ``_`` in the returned schema
 
         Returns:
             a dictionary mapping field names to field types, or ``None`` if
@@ -586,13 +586,17 @@ class DatasetView(foc.SampleCollection):
         """
         return self._dataset._clone(name=name, view=self)
 
-    def list_indexes(self):
+    def list_indexes(self, include_private=False):
         """Returns the fields of the dataset that are indexed.
+
+        Args:
+            include_private (False): whether to include private fields that
+                start with ``_``
 
         Returns:
             a list of field names
         """
-        return self._dataset.list_indexes()
+        return self._dataset.list_indexes(include_private=include_private)
 
     def create_index(self, field_name, unique=False, sphere2d=False):
         """Creates an index on the given field.

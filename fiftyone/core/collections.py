@@ -337,7 +337,7 @@ class SampleCollection(object):
                 which to restrict the returned schema. Must be a subclass of
                 :class:`fiftyone.core.odm.BaseEmbeddedDocument`
             include_private (False): whether to include fields that start with
-                `_` in the returned schema
+                ``_`` in the returned schema
 
         Returns:
              a dictionary mapping field names to field types
@@ -360,7 +360,7 @@ class SampleCollection(object):
                 which to restrict the returned schema. Must be a subclass of
                 :class:`fiftyone.core.odm.BaseEmbeddedDocument`
             include_private (False): whether to include fields that start with
-                `_` in the returned schema
+                ``_`` in the returned schema
 
         Returns:
             a dictionary mapping field names to field types, or ``None`` if
@@ -4293,8 +4293,12 @@ class SampleCollection(object):
         if archive_path is not None:
             etau.make_archive(export_dir, archive_path, cleanup=True)
 
-    def list_indexes(self):
+    def list_indexes(self, include_private=False):
         """Returns the fields of the dataset that are indexed.
+
+        Args:
+            include_private (False): whether to include private fields that
+                start with ``_``
 
         Returns:
             a list of field names

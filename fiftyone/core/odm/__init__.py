@@ -29,6 +29,7 @@ from .database import (
     DESC,
 )
 from .dataset import (
+    create_field,
     SampleFieldDocument,
     DatasetDocument,
 )

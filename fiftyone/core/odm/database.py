@@ -191,8 +191,6 @@ def stream_collection(collection_name):
     Args:
         collection_name: the name of the collection
     """
-    import fiftyone.core.utils as fou
-
     conn = get_db_conn()
     coll = conn[collection_name]
     objects = map(fou.pformat, coll.find({}))
@@ -279,6 +277,9 @@ def import_collection(json_path):
 
 def insert_documents(docs, coll, ordered=False):
     """Inserts a list of documents into a collection.
+
+    The ``_id`` field of the input documents will be populated if it is not
+    already set.
 
     Args:
         docs: the list of BSON document dicts to insert

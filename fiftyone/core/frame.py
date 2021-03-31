@@ -11,7 +11,6 @@ import weakref
 
 from pymongo import ReplaceOne
 
-from fiftyone.core.expressions import ViewField as F
 from fiftyone.core.document import Document
 import fiftyone.core.frame_utils as fofu
 import fiftyone.core.odm as foo
@@ -22,7 +21,8 @@ def get_default_frame_fields(include_private=False, include_id=False):
     """Returns the default fields present on all frames.
 
     Args:
-        include_private (False): whether to include fields that start with `_`
+        include_private (False): whether to include fields that start with
+            ``_``
         include_id (False): whether to include ID fields
 
     Returns:
