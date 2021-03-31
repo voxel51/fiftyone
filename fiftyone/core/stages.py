@@ -790,9 +790,23 @@ class Exists(ViewStage):
         """
         return self._bool
 
-    def to_mongo(self, _):
-        expr = F(self._field).exists(self._bool)
-        return [{"$match": {"$expr": expr.to_mongo()}}]
+    def to_mongo(self, sample_collection):
+        field_name, is_frame_field = sample_collection._handle_frame_field(
+            self._field
+        )
+
+        if not is_frame_field:
+            expr = F(field_name).exists(self._bool)
+            return [{"$match": {"$expr": expr.to_mongo()}}]
+
+        expr = F("frames").filter(F(field_name).exists(self._bool))
+        return [
+            {"$set": {"frames": expr.to_mongo()}},
+            {"$match": {"$expr": (F("frames").length() > 0).to_mongo()}},
+        ]
+
+    def _needs_frames(self, sample_collection):
+        return sample_collection._is_frame_field(self._field)
 
     def _kwargs(self):
         return [["field", self._field], ["bool", self._bool]]
@@ -1336,7 +1350,7 @@ class FilterLabels(FilterField):
         self._filter = filter
         self._new_field = _new_field or field
         self._only_matches = only_matches
-        self._prefix = ""
+        self._prefix = _prefix
         self._labels_field = None
         self._is_frame_field = None
         self._is_labels_list_field = None
@@ -1419,7 +1433,6 @@ def _get_filter_list_field_pipeline(
     filter_field, new_field, filter_arg, only_matches=True, prefix=""
 ):
     cond = _get_list_field_mongo_filter(filter_arg)
-
     pipeline = [
         {
             "$set": {
@@ -2399,7 +2412,7 @@ class SetField(ViewStage):
 
     Args:
         field: the field or embedded field to set
-        expr: a :class:`fiftyone.core.expressions.ViewExpression` or
+        expr: a :class:`fiftyone.core.expressions.ViewExpression or
             `MongoDB aggregation expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
             that defines the field value to set
     """
@@ -2447,9 +2460,11 @@ class SetField(ViewStage):
 
     @classmethod
     def _params(self):
+        # @todo `expr` can actually be any valid JSON, including ints, strings
+        # lists, etc
         return [
             {"name": "field", "type": "field"},
-            {"name": "expr", "type": "dict", "placeholder": ""},
+            {"name": "expr", "type": "NoneType|dict", "placeholder": ""},
         ]
 
     def _get_mongo_expr(self):
@@ -3210,15 +3225,21 @@ class SelectLabels(ViewStage):
 
         #
         # We know that only fields in `_labels_map` will have matches, so
-        # select them
+        # exclude other label fields
         #
-        # Note that we don't implement `get_selected_fields()` here, because
+        # Note that we don't implement `get_excluded_fields()` here, because
         # our intention is not to remove other fields from the schema, only to
         # empty their sample fields in the returned view
         #
-        stage = SelectFields(list(self._labels_map.keys()))
-        stage.validate(sample_collection)
-        pipeline.extend(stage.to_mongo(sample_collection))
+
+        exclude_fields = list(
+            set(sample_collection._get_label_fields())
+            - set(self._labels_map.keys())
+        )
+        if exclude_fields:
+            stage = ExcludeFields(exclude_fields)
+            stage.validate(sample_collection)
+            pipeline.extend(stage.to_mongo(sample_collection))
 
         for field, labels_map in self._labels_map.items():
             label_type = sample_collection._get_label_field_type(field)
@@ -3248,15 +3269,21 @@ class SelectLabels(ViewStage):
         pipeline = []
 
         #
-        # We know that only `fields` will have matches, so select them
+        # We know that only `fields` will have matches, so exclude other label
+        # fields
         #
-        # Note that we don't implement `get_selected_fields()` here, because
+        # Note that we don't implement `get_excluded_fields()` here, because
         # our intention is not to remove other fields from the schema, only to
         # empty their sample fields in the returned view
         #
-        stage = SelectFields(fields)
-        stage.validate(sample_collection)
-        pipeline.extend(stage.to_mongo(sample_collection))
+
+        exclude_fields = list(
+            set(sample_collection._get_label_fields()) - set(fields)
+        )
+        if exclude_fields:
+            stage = ExcludeFields(exclude_fields)
+            stage.validate(sample_collection)
+            pipeline.extend(stage.to_mongo(sample_collection))
 
         # Handle early exit
         if self._ids is None and self._tags is None:
