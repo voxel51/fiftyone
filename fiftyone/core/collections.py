@@ -565,7 +565,7 @@ class SampleCollection(object):
             tags = list(tags)
 
         def _add_tags(_tags):
-            if _tags is None:  # mising `Label`
+            if _tags is None:  # missing `Label`
                 return None
 
             for tag in tags:
@@ -589,7 +589,7 @@ class SampleCollection(object):
             tags = list(tags)
 
         def _remove_tags(_tags):
-            if _tags is None:  # mising `Label`
+            if _tags is None:  # missing `Label`
                 return None
 
             return [t for t in _tags if t not in tags]
@@ -625,7 +625,7 @@ class SampleCollection(object):
             tags = list(tags)
 
         def _add_tags(_tags):
-            if _tags is None:  # mising `Label`
+            if _tags is None:  # missing `Label`
                 return None
 
             for tag in tags:
@@ -652,7 +652,7 @@ class SampleCollection(object):
             tags = list(tags)
 
         def _remove_tags(_tags):
-            if _tags is None:  # mising `Label`
+            if _tags is None:  # missing `Label`
                 return None
 
             return [t for t in _tags if t not in tags]
