@@ -14,8 +14,9 @@ App
 - Added the ability to tag samples and labels directly from the App in both
   the sample grid (macro) and expanded sample view (micro) with respect to and
   filters or currently selected samples/labels
-- Added `LABEL TAGS` section to the Filters Sidebar to coincide with the
+- Added a `LABEL TAGS` section to the Filters Sidebar to coincide with the
   introduction of label tags
+- Added label tooltips that display on hover in the expanded sample view
 - Expanded actions to list of button groups in the sample grid and expanded
   sample view
 - Fixed hiding, clearing, and only showing selected samples in the samples grid
@@ -31,7 +32,6 @@ Core
   - :meth:`SampleCollection.tag_labels() <fiftyone.core.collections.SampleCollection.tag_labels>`
   - :meth:`SampleCollection.untag_labels() <fiftyone.core.collections.SampleCollection.untag_labels>`
   - :meth:`SampleCollection.count_label_tags() <fiftyone.core.collection.SampleCollection.count_label_tags>`
-  - 
 - BREAKING CHANGE: Renamed all applicable API components to refer to `objects` as `labels`
   Affected attributes, classes, and methods are:
   - :attr:`Session.selected_labels <fiftyone.core.session.Session.selected_labels>`
@@ -51,19 +51,67 @@ Core
   (previsouly `SampleCollection.select_objects()` and
   `SampleCollection.exclude_objects()`, respectively) and their corresponding view stages.
 - Added the brand new core :mod:`<fiftyone.core.plots>`. The API includes the ability
-  to interactively explore your datasets in Jupyter Notebooks. See ... for a full rundown.
-
+  to interactively explore your datasets in Jupyter Notebooks. See ... for a full rundown
+- Added
+  :meth:`Session.select_labels() <fiftyone.core.session.Session.select_labels()>`
+  for programmatically selecting labels as well a setters for
+  :attr:`Session.selected <fiftyone.core.session.Session.selected>` and
+  :attr:`Session.selected_labels <fiftyone.core.session.Session.selected_labels>`
+- Added :attr:`Dataset.classes <fiftyone.core.dataset.Dataset.classes>`
+  and
+  :attr:`Dataset.default_classes <fiftyone.core.dataset.Dataset.default_classes`
+  fields that enable storing class label lists at the dataset-level that can be
+  automatically used by methods like
+  :meth:`Dataset.evaluate_classifications() <fiftyone.core.dataset.Dataset.evaluate_detections>`
+  when knowledge of the full schema of a model is required
+- Added :class:`GeoLocation <fiftyone.core.labels.GeoLocation>` and
+  :class:`GeoLocations <fiftyone.core.labels.GeoLocation>` label types
+- Added :meth:`SampleCollection.geo_near <fiftyone.core.collections.SampleCollection.geo_near>`
+  and
+  :meth:`SampleCollection.geo_within <fiftyone.core.collection.SampleCollection.geo_within>`
+  view stages
+- Fixed schema errors in |DatasetView|s with filtered fields
+- Fixed sorting on unindexed values for large datasets
+- Fixed copying of |DatasetView|s in cases where
+  :class:`ViewField <fiftyone.core.expressions.ViewField>` is used
+- Improved the runtime of
+  :meth:`Dataset.merge_samples() <fiftyone.core.Dataset.merge_samples>` by
+  ~100x for image datasets and ~10x for video datasets
+- Added the trigonometric
+  :class`ViewExpressions <fiftyone.core.expressions.ViewExpression>`
+  :meth:`cos() <fiftyone.core.expressions.ViewExpression.cos>`,
+  :meth:`sin() <fiftyone.core.expressions.ViewExpression.sin>`,
+  :meth:`tan() <fiftyone.core.expressions.ViewExpression.tan>`,
+  :meth:`cosh() <fiftyone.core.expressions.ViewExpression.cosh>`
+  :meth:`sinh() <fiftyone.core.expressions.ViewExpression.sinh>`,
+  :meth:`tanh() <fiftyone.core.expressions.ViewExpression.tanh>`,
+  :meth:`arccos() <fiftyone.core.expressions.ViewExpression.arccos>`,
+  :meth:`arcsin() <fiftyone.core.expressions.ViewExpression.arcsin>`,
+  :meth:`arcan() <fiftyone.core.expressions.ViewExpression.arctan>`
+  :meth:`arccosh() <fiftyone.core.expressions.ViewExpression.arccosh>`,
+  :meth:`arcsinh() <fiftyone.core.expressions.ViewExpression.arcsinh>`,
+  :meth:`arctanh() <fiftyone.core.expressions.ViewExpression.arctanh>`
+- Added the
+  :class:`ViewExpression.randn() <fiftyone.core.expressions.ViewExpression.randn>`
+  expression that can generate Gaussian random numbers
 
 Brain
 ^^^^^
 
+Zoo
+^^^
+- Added the `quickstart-geo` dataset to enable quick exploration of
+  location-based datasets
+
 CLI
 ^^^
 - Removed the `--desktop` flag from the
-- :ref:`fiftyone app connect <cli-fiftyone-app-connect>` command
+  :ref:`fiftyone app connect <cli-fiftyone-app-connect>` command
 
 Utils
 ^^^^^
+- Added the :class:`GeoJSONImageDataset <fiftyone.types.GeoJSONImageDataset>`
+  dataset type for importing and exporting datasets in `GeoJSON` format
 
 Docs
 ^^^^
