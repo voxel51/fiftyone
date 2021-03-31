@@ -19,35 +19,47 @@ App
 - Added label tooltips that display on hover in the expanded sample view
 - Expanded actions to list of button groups in the sample grid and expanded
   sample view
+- Added support for rendering semantic labels in the new tooltip in the expanded
+  sample view for :class:`Segmentation <fiftyone.core.labels.Segmentation>`
+  mask values (pixel values) using the new
+  :attr:`Dataset.targets <fiftyone.core.dataset.Dataset.targets>`
+  and
+  :attr:`Dataset.default_targets <fiftyone.core.dataset.Dataset.default_targets>`
+  fields
 - Fixed hiding, clearing, and only showing selected samples in the samples grid
 
 Core
 ^^^^
-- Added the `tag` attribute to all :class:`Label <fiftyone.core.labels.Label>`
-  types, e.g. `Detection <fiftyone.core.labels.Detection>`
+- Added the `tag` attribute to all
+  :class:`Label <fiftyone.core.labels.Label>` types, e.g.
+  :class:`Detection <fiftyone.core.labels.Detection>`, which is a list of
+  unique strings similar to :class:`Sample <fiftyone.core.sample.Sample>`
+  `tags`
 - Added the following  methods for working with sample and label tags:
+
   - :meth:`SampleCollection.tag_samples() <fiftyone.core.collections.SampleCollection.tag_samples>`
   - :meth:`SampleCollection.untag_samples() <fiftyone.core.collections.SampleCollection.untag_samples>`
   - :meth:`SampleCollection.count_sample_tags() <fiftyone.core.collections.SampleCollection.count_sample_tags>`
   - :meth:`SampleCollection.tag_labels() <fiftyone.core.collections.SampleCollection.tag_labels>`
   - :meth:`SampleCollection.untag_labels() <fiftyone.core.collections.SampleCollection.untag_labels>`
-  - :meth:`SampleCollection.count_label_tags() <fiftyone.core.collection.SampleCollection.count_label_tags>`
+  - :meth:`SampleCollection.count_label_tags() <fiftyone.core.collections.SampleCollection.count_label_tags>`
 - BREAKING CHANGE: Renamed all applicable API components to refer to `objects` as `labels`
   Affected attributes, classes, and methods are:
+
   - :attr:`Session.selected_labels <fiftyone.core.session.Session.selected_labels>`
     (previously `Session.selected_objects`)
-  - :meth:`SampleCollection.select_labels() <fiftyone.core.collections.select_labels()`
+  - :meth:`SampleCollection.select_labels() <fiftyone.core.collections.SampleCollection.select_labels()>`
     (previously `SampleCollection.select_labels()`)
-  - :meth:`SampleCollection.select_labels() <fiftyone.core.collections.exclude_labels()`
+  - :meth:`SampleCollection.select_labels() <fiftyone.core.collections.SampleCollection.exclude_labels()>`
     (previously `SampleCollection.exclude_labels()`)
   - :class:`SelectLabels <fiftyone.core.stages.SelectLabels>` (previously
     `SelectObjects`)
   - :class:`ExcludeLabels <fiftyone.core.stages.ExcludeLabels>` (previously
     `ExcludeObjects`)
-- Added the keyword arguments `ids`, `tags`, and `fields` to 
-  :meth:`SampleCollection.select_labels() <fiftyone.core.collections.select_labels()`
+- Added the keyword arguments `idscenternet-hg104-512-coco-tf2`, `tags`, and `fields` to 
+  :meth:`SampleCollection.select_labels() <fiftyone.core.collections.SampleCollection.select_labels()>`
   and
-  :meth:`SampleCollection.select_labels() <fiftyone.core.collections.exclude_labels()`
+  :meth:`SampleCollection.select_labels() <fiftyone.core.collections.SampleCollection.exclude_labels()>`
   (previsouly `SampleCollection.select_objects()` and
   `SampleCollection.exclude_objects()`, respectively) and their corresponding view stages.
 - Added the brand new core :mod:`<fiftyone.core.plots>`. The API includes the ability
@@ -59,26 +71,32 @@ Core
   :attr:`Session.selected_labels <fiftyone.core.session.Session.selected_labels>`
 - Added :attr:`Dataset.classes <fiftyone.core.dataset.Dataset.classes>`
   and
-  :attr:`Dataset.default_classes <fiftyone.core.dataset.Dataset.default_classes`
+  :attr:`Dataset.default_classes <fiftyone.core.dataset.Dataset.default_classes>`
   fields that enable storing class label lists at the dataset-level that can be
   automatically used by methods like
   :meth:`Dataset.evaluate_classifications() <fiftyone.core.dataset.Dataset.evaluate_detections>`
   when knowledge of the full schema of a model is required
+- Added :attr:`Dataset.targets <fiftyone.core.dataset.Dataset.targets>`
+  and
+  :attr:`Dataset.default_targets <fiftyone.core.dataset.Dataset.default_targets>`
+  fields for providing semantic labels for
+  :class:`Segmentation <fiftyone.core.labels.Segmentation>` mask values to be
+  used in the App's expanded sample view
 - Added :class:`GeoLocation <fiftyone.core.labels.GeoLocation>` and
   :class:`GeoLocations <fiftyone.core.labels.GeoLocation>` label types
-- Added :meth:`SampleCollection.geo_near <fiftyone.core.collections.SampleCollection.geo_near>`
+- Added :meth:`SampleCollection.geo_near() <fiftyone.core.collections.SampleCollection.geo_near>`
   and
-  :meth:`SampleCollection.geo_within <fiftyone.core.collection.SampleCollection.geo_within>`
+  :meth:`SampleCollection.geo_within() <fiftyone.core.collections.SampleCollection.geo_within>`
   view stages
-- Fixed schema errors in |DatasetView|s with filtered fields
+- Fixed schema errors in |DatasetView| with filtered fields
 - Fixed sorting on unindexed values for large datasets
-- Fixed copying of |DatasetView|s in cases where
+- Fixed copying of |DatasetView| in cases where
   :class:`ViewField <fiftyone.core.expressions.ViewField>` is used
 - Improved the runtime of
-  :meth:`Dataset.merge_samples() <fiftyone.core.Dataset.merge_samples>` by
+  :meth:`Dataset.merge_samples() <fiftyone.core.dataset.Dataset.merge_samples>` by
   ~100x for image datasets and ~10x for video datasets
 - Added the trigonometric
-  :class`ViewExpressions <fiftyone.core.expressions.ViewExpression>`
+  :class:`ViewExpressions <fiftyone.core.expressions.ViewExpression>`
   :meth:`cos() <fiftyone.core.expressions.ViewExpression.cos>`,
   :meth:`sin() <fiftyone.core.expressions.ViewExpression.sin>`,
   :meth:`tan() <fiftyone.core.expressions.ViewExpression.tan>`,
@@ -100,7 +118,7 @@ Brain
 
 Zoo
 ^^^
-- Added the `quickstart-geo` dataset to enable quick exploration of
+- Added the :ref:`quickstart-geo <dataset-zoo-quickstart-geo>` dataset to enable quick exploration of
   location-based datasets
 
 CLI
@@ -110,7 +128,7 @@ CLI
 
 Utils
 ^^^^^
-- Added the :class:`GeoJSONImageDataset <fiftyone.types.GeoJSONImageDataset>`
+- Added the :class:`GeoJSONImageDataset <fiftyone.types.dataset_types.GeoJSONImageDataset>`
   dataset type for importing and exporting datasets in `GeoJSON` format
 
 Docs
