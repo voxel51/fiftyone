@@ -31,9 +31,8 @@ The builtin plots provided by FiftyOne are chosen to help you analyze and
 improve the quality of your datasets and models, with minimal customization
 required on your part to get started. At the same time, data/model
 interpretability is not a narrowly-defined space that can be fully automated.
-That's why FiftyOne's plotting framework is
-**highly customizable and extensible**, all by writing pure Python (no
-JavaScript knowledge required).
+That's why FiftyOne's plotting framework is highly customizable and extensible,
+all by writing pure Python (no JavaScript knowledge required).
 
 .. note::
 
@@ -49,8 +48,9 @@ ____________________
 
 The recommended way to work with FiftyOne's interactive plots is in
 `Jupyter notebooks <https://jupyter.org>`_ or
-`JupyterLab <https://jupyterlab.readthedocs.io/en/stable>`_. In these
-environments, you can leverage the full power of plots by
+`JupyterLab <https://jupyterlab.readthedocs.io/en/stable>`_.
+
+In these environments, you can leverage the full power of plots by
 :ref:`attaching them to the FiftyOne App <attaching-plots>` and bidirectionally
 interacting with the plots and the App to identify interesting subsets of your
 data.
@@ -105,8 +105,9 @@ below for your environment:
     If you run into any issues in JupyterLab, refer to
     `this troubleshooting guide <https://plotly.com/python/troubleshooting>`_.
 
+If you wish to use the ``matplotlib`` backend for any interactive plots, refer
+to :ref:`this section <matplotlib-in-notebooks>` for setup instructions.
 
-If you are use the `matplotlib` backend for any plots,
 .. _geolocation-plots:
 
 Geolocation plots
@@ -125,7 +126,7 @@ optional ``labels`` and ``sizes`` parameters to control the color and sizes
 of each point, respectively.
 
 The example below demonstrates this usage using the
-:ref:`quickstart-geo dataset <dataset-zoo-quickstart-geo>` from the zoo:
+:ref:`quickstart-geo <dataset-zoo-quickstart-geo>` dataset from the zoo:
 
 .. code-block:: python
     :linenos:
@@ -159,7 +160,7 @@ The example below demonstrates this usage using the
    :align: center
 
 You can also change the style to ``style="density"`` in order to view the data
-
+as a density plot:
 
 .. code-block:: python
     :linenos:
@@ -187,7 +188,7 @@ comes when you associate the location coordinates with the samples in a
 |Dataset| and then attach it to a |Session|.
 
 The example below demonstrates setting up an interactive location scatterplot
-for the :ref:`quickstart-geo dataset <dataset-zoo-quickstart-geo>` that is
+for the :ref:`quickstart-geo <dataset-zoo-quickstart-geo>` dataset that is
 :ref:`attached to the App <attaching-plots>`. In this setup, when points are
 lasso-ed in the plot, the corresponding samples are automatically selected in
 the Session's current :meth:`view <fiftyone.core.session.Session.view>`.
@@ -254,37 +255,38 @@ All |Session| instances provide a
 :meth:`plots attribute <fiftyone.core.session.Session.plots>` attribute that
 you can use to attach |ResponsivePlot| instances to the FiftyOne App.
 
-Plot types
+When |ResponsivePlot| instances are attached to a |Session|, they are
+automatically updated whenever
+:meth:`session.view <fiftyone.core.session.Session.view>` changes for any
+reason, whether you modify your view in the App, or programmatically change it
+by setting :meth:`session.view <fiftyone.core.session.Session.view>`, or if
+multiple plots are connected and another plot triggers a |Session| update!
+
+There are two main |ResponsivePlot| types, which are explained next.
+
+View plots
 ----------
 
-There are two basic |ResponsivePlot| types:
-
--   |ViewPlot|: Plots whose state is automatically updated whenever the current
-    :meth:`session.view <fiftyone.core.session.Session.view>` changes.
--   |InteractivePlot|: Plots that are bidirectionally linked to a |Session| via
-    the IDs of either samples or individual labels in the dataset. When the
-    user performs a selection in the plot, the
-    :meth:`session.view <fiftyone.core.session.Session.view>` is automatically
-    updated to select the corresponding samples/labels, and, conversely, when
-    :meth:`session.view <fiftyone.core.session.Session.view>` changes, the
-    contents of the current view is automatically selected in the plot.
+|ViewPlot| is a class of plots whose state is automatically updated whenever
+the current :meth:`session.view <fiftyone.core.session.Session.view>` changes.
 
 Examples of |ViewPlot| types include |CategoricalHistogram|,
-|NumericalHistogram|, and |ViewGrid|. See :ref:`this section <>` for example
-usages.
+|NumericalHistogram|, and |ViewGrid|. See :ref:`this section <XXXXXXXXX>` for
+example usages.
+
+Interactive plots
+-----------------
+
+|InteractivePlot| is a class of plots that are bidirectionally linked to a
+|Session| via the IDs of either samples or individual labels in the dataset.
+When the user performs a selection in the plot, the
+:meth:`session.view <fiftyone.core.session.Session.view>` is automatically
+updated to select the corresponding samples/labels, and, conversely, when
+:meth:`session.view <fiftyone.core.session.Session.view>` changes, the contents
+of the current view is automatically selected in the plot.
 
 Examples of |InteractivePlot| types include |InteractiveScatter| and
 |InteractiveHeatmap|, which are discussed in detail in the rest of this page.
-
-.. note::
-
-    When |ResponsivePlot| instances are attached to a |Session|, they are
-    automatically updated whenever
-    :meth:`session.view <fiftyone.core.session.Session.view>` changes for any
-    reason, whether you modify your view in the App, or programmatically change
-    it by setting :meth:`session.view <fiftyone.core.session.Session.view>`,
-    or if multiple plots are connected and another plot triggers a |Session|
-    update!
 
 Attaching a plot
 ----------------
@@ -329,8 +331,8 @@ You can view details about the plots attached to a |Session| by printing it:
     Connected plots:
         plot1: fiftyone.core.plots.plotly.InteractiveScatter
 
-By default, plots are given sequential names ``plot%d``, but you can customize
-their names via the optional ``name`` parameter of
+By default, plots are given sequential names ``plot1``, ``plot2``, etc., but
+you can customize their names via the optional ``name`` parameter of
 :meth:`session.plots.attach() <fiftyone.core.plots.manager.PlotManager.attach>`.
 
 You can retrieve a |ResponsivePlot| instance from its connected session by its
@@ -587,7 +589,7 @@ matplotlib plots:
     The recommended way to enable interactive matplotlib plots in Jupyter
     notebooks is to use the ``%matplotlib notebook`` magic command, which
     enables the ``nbagg backend`` that was
-    :ref:`introduced in matplotlib v1.4 <https://matplotlib.org/stable/users/prev_whats_new/whats_new_1.4.html#the-nbagg-backend>`_:
+    `introduced in matplotlib v1.4 <https://matplotlib.org/stable/users/prev_whats_new/whats_new_1.4.html#the-nbagg-backend>`_:
 
     .. code-block:: shell
 
