@@ -431,10 +431,13 @@ class PlotManager(object):
         self._update_plots_from_session()
 
     def _update_ids_from_session(self):
-        current_view = self._session.view
+        session = self._session
+        current_view = session._collection.view()
+        has_view = session.view is not None
+        has_selections = session.selected or session.selected_labels
 
-        # If no view is loaded in the session, we'll reset all plots
-        if current_view is None:
+        # If no view is loaded and nothing is selected, reset all plots
+        if not has_view and not has_selections:
             self._current_sample_ids = None
             self._current_labels = None
             return
@@ -443,10 +446,10 @@ class PlotManager(object):
         # If samples are selected in the App, only record their labels
         # Otherwise, record all labels in the current view
         if self.has_label_links:
-            if self._session.selected_labels:
-                self._current_labels = self._session.selected_labels
-            elif self._session.selected:
-                selected_view = current_view.select(self._session.selected)
+            if session.selected_labels:
+                self._current_labels = session.selected_labels
+            elif session.selected:
+                selected_view = current_view.select(session.selected)
                 self._current_labels = selected_view._get_selected_labels()
             else:
                 self._current_labels = current_view._get_selected_labels()
@@ -454,8 +457,8 @@ class PlotManager(object):
         # If samples are selected in the App, only record those
         # Otherwise, record all samples in the view
         if self.has_sample_links:
-            if self._session.selected:
-                self._current_sample_ids = self._session.selected
+            if session.selected:
+                self._current_sample_ids = session.selected
             else:
                 self._current_sample_ids = current_view.values("id")
 
