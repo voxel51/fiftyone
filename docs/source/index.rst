@@ -1,6 +1,8 @@
 FiftyOne
 ========
 
+**Visualize datasets, interpret models, improve ML**
+
 .. Social links ---------------------------------------------------------------
 
 .. raw:: html
@@ -30,25 +32,34 @@ FiftyOne
 
 .. End social links -----------------------------------------------------------
 
-*"Rapidly experiment with your datasets"*
-
-If you are looking to boost the performance of your machine learning models,
-chances are improving the quality of your dataset will provide the highest
-return on your investment. **Enter FiftyOne.** FiftyOne is a Python-based tool
-for machine learning/computer vision engineers and scientists that enables you
-to curate better datasets. Work efficiently with FiftyOne to achieve better
-models with dependable performance.
-
-*"Become one with your data"*
-
-FiftyOne does more than improve your dataset; it gets you closer to your data.
-Rapidly gain insight by visualizing samples overlayed with dynamic and
-queryable fields such as ground truth and predicted labels, dataset splits, and
-much more!
+FiftyOne is an open-source tool that lets you visualize and explore your
+image/video datasets and easily interpret model results, anywhere, fast. 
 
 .. image:: images/homepage1.png
    :alt: Overview
    :align: center
+
+.. code-block:: shell
+
+    pip install fiftyone
+
+Improving the quality of your data and understanding how your model behaves 
+are the most surefire ways to boost the performance of your machine learning models. 
+
+Using FiftyOne, you can quickly visualize complex labels, find duplicate images, 
+flag annotation mistakes, interactively
+explore embeddings, query your dataset fields, and much more!
+
+**"Like pandas for visual datasets"**
+
+FiftyOne is unlike other tools in the existing ML ecosystem. It is designed to
+be a lightweight hub for interactions with your data and labels, providing
+tight integrations with your favorite tools.
+
+
+.. image:: images/homepage_integrations.png
+    :alt: Integrations
+    :align: center
 
 .. note::
 
