@@ -30,10 +30,6 @@ from .base import InteractivePlot
 from .utils import load_button_icon
 
 
-# This module is designed to support showing plots via `show` flags
-plt.ioff()
-
-
 def plot_confusion_matrix(
     confusion_matrix,
     labels,
@@ -575,9 +571,17 @@ class InteractiveMatplotlibPlot(InteractivePlot):
         plt.show(block=False)
 
     def _freeze(self):
-        # Turn interactive plot into a static one
-        # https://github.com/matplotlib/matplotlib/issues/6071
-        plt.close(self._figure)
+        try:
+            # Turns an interactive plot into a static one when the
+            # `%matplotlib notebook` environment is being used
+            # https://github.com/matplotlib/matplotlib/issues/6071
+            plt.close(self._figure)
+        except:
+            # @todo how turn a matplotlib widget into a static plot when the
+            # `%matplotlib widget` environment is being used? As of this
+            # writing, it seems this is not yet supported
+            # https://github.com/matplotlib/ipympl/issues/16
+            pass
 
     def _reopen(self):
         # https://stackoverflow.com/a/31731945
