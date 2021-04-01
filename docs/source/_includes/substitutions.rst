@@ -92,3 +92,16 @@
 .. |DetectionResults| replace:: :class:`DetectionResults <fiftyone.utils.eval.detection.DetectionResults>`
 .. |SegmentationResults| replace:: :class:`SegmentationResults <fiftyone.utils.eval.segmentation.SegmentationResults>`
 .. |COCOEvaluationConfig| replace:: :class:`COCOEvaluationConfig <fiftyone.utils.eval.coco.COCOEvaluationConfig>`
+
+.. |Plot| replace:: :class:`Plot <fiftyone.core.plots.base.Plot>`
+.. |ResponsivePlot| replace:: :class:`ResponsivePlot <fiftyone.core.plots.base.ResponsivePlot>`
+.. |ViewPlot| replace:: :class:`ViewPlot <fiftyone.core.plots.base.ViewPlot>`
+.. |InteractivePlot| replace:: :class:`InteractivePlot <fiftyone.core.plots.base.InteractivePlot>`
+.. |PlotManager| replace:: :class:`Plot <fiftyone.core.plots.manager.PlotManager>`
+
+.. |CategoricalHistogram| replace:: :class:`CategoricalHistogram <fiftyone.core.plots.views.CategoricalHistogram>`
+.. |NumericalHistogram| replace:: :class:`NumericalHistogram <fiftyone.core.plots.views.NumericalHistogram>`
+.. |ViewGrid| replace:: :class:`ViewGrid <fiftyone.core.plots.views.ViewGrid>`
+
+.. |InteractiveScatter| replace:: :class:`InteractiveScatter <fiftyone.core.plots.plotly.InteractiveScatter>`
+.. |InteractiveHeatmap| replace:: :class:`InteractiveHeatmap <fiftyone.core.plots.plotly.InteractiveHeatmap>`

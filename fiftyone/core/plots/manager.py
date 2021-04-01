@@ -7,11 +7,15 @@ Session plot manager.
 """
 import datetime
 import itertools
+import logging
 import warnings
 
 import eta.core.utils as etau
 
 from .base import ResponsivePlot, ViewPlot, InteractivePlot
+
+
+logger = logging.getLogger(__name__)
 
 
 class PlotManager(object):
@@ -209,6 +213,16 @@ class PlotManager(object):
                 "working in an environment that does not support interactivity"
                 % (ResponsivePlot, type(plot))
             )
+
+        same_plots = [(n, p) for n, p in self._plots.items() if p is plot]
+        if same_plots:
+            current_name = same_plots[0][0]
+            if name is not None and name != current_name:
+                logger.warning(
+                    "Plot is already attached under name '%s'", current_name
+                )
+
+            return
 
         if name is None:
             name = "plot%d" % (len(self._plots) + 1)
