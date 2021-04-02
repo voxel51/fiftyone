@@ -345,12 +345,14 @@ select some samples in the App:
     :alt: app-selection
     :align: center
 
-The selected samples checkmark in the options row in the upper-left of the
-sample grid records the number of samples that you have currently selected. You
-can also take actions such as updating the view to only show (or exclude) the
-currently selected samples. Tagging also automatically applies to selected
-samples or their labels when any samples are selected. See
-:ref:`tagging <app-tagging>` for more details.
+The selected samples checkmark in the options row in the upper-left corner of
+the sample grid records the number of samples that you have currently selected.
+You can also take actions such as updating the view to only show (or exclude)
+the currently selected samples.
+
+Once sample
+Tagging also automatically applies to selected samples or their labels when any
+samples are selected. See :ref:`tagging <app-tagging>` for more details.
 
 You can also access the
 :meth:`Session.selected <fiftyone.core.session.Session.selected>` property of
@@ -384,7 +386,7 @@ creating a |DatasetView| that includes/excludes the selected labels.
 To perform this workflow, open the expanded sample modal by clicking on
 a sample in the App. Then click on individual labels to select them:
 
-.. image:: ../images/app/app-object-selection.gif
+.. image:: ../images/app/app-label-selection.gif
     :alt: app-label-selection
     :align: center
 
@@ -466,11 +468,8 @@ You can also use the tag menu to remove existing tags.
     unless you have selected individual samples, in which case the operation
     will only apply to the **selected samples**.
 
-    The UI provides helpful statistics about tagging operations that you define
-    that you can use as a sanity check before applying the operation.
-
-.. image:: ../images/app/app-tagging-grid.gif
-    :alt: app-tagging-grid
+.. image:: ../images/app/app-tagging-samples.gif
+    :alt: app-tagging-samples
     :align: center
 
 The App also supports tagging data in individual samples when you have opened
@@ -485,11 +484,11 @@ the top-right corner of the modal.
     individual labels, in which case the operation will only apply to the
     **selected labels**. The latter may span multiple samples.
 
-.. image:: ../images/app/app-tagging-modal.gif
-    :alt: app-tagging-modal
+.. image:: ../images/app/app-tagging-expanded.gif
+    :alt: app-tagging-expanded
     :align: center
 
-If your dataset has sample or label tags, you can use the ``TAGS`` and
+If your dataset has sample or label tags, you can use the ``SAMPLE TAGS`` and
 ``LABEL TAGS`` sections of the filters sidebar to filter by your tags.
 
 When you click the eye icon next to a sample tag, your view will update to only
