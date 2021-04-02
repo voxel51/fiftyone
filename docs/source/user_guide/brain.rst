@@ -28,7 +28,7 @@ workflow:
   that can help you answer many important questions about your data, from
   identifying the most critical failure modes of your model, to isolating
   examples of critical scenarios, to recommending new samples to add to your
-  training dataset, and more! The FiftyOne Brain provies a poweful
+  training dataset, and more! The FiftyOne Brain provides a powerful
   :meth:`compute_visualization() <fiftyone.brain.compute_visualization>` method
   that you can use to generate out-of-the-box or highly customized
   visualizations of your samples and labels.
@@ -86,6 +86,18 @@ App, and vice versa.
    :alt: mnist
    :align: center
 
+.. note::
+
+    Interactive plots are currently only supported in Jupyter notebooks. In the
+    meantime, you can still use FiftyOne's plotting features in other
+    environments, but you must manually call
+    :meth:`plot.show() <fiftyone.core.plots.base.Plot.show>` to update the
+    state of a plot to match the state of a connected |Session|, and any
+    callbacks that would normally be triggered in response to interacting with
+    a plot will not be triggered.
+
+    See :ref:`this section <working-in-notebooks>` for more information.
+
 There are two primary components to an embedding visualization: the method used
 to generate the embeddings, and the dimensionality reduction method used to
 compute a low-dimensional representation of the embeddings.
@@ -113,9 +125,10 @@ The ``method`` parameter of
 you to specify the dimensionality reduction method to use. The supported
 methods are:
 
--   `UMAP <https://github.com/lmcinnes/umap>`_ (default): Uniform Manifold Approximation and Projection
--   `t-SNE <https://lvdmaaten.github.io/tsne>`_: t-distributed Stochastic Neighbor Embedding
--   `PCA <https://scikit-learn.org/stable/modules/generated/sklearn.decomposition.PCA.html>`_: Principal Component Analysis
+-   ``"umap"`` (default): Uniform Manifold Approximation and Projection
+    (`UMAP <https://github.com/lmcinnes/umap>`_)
+-   ``"t-sne"``: t-distributed Stochastic Neighbor Embedding (`t-SNE <https://lvdmaaten.github.io/tsne>`_)
+-   ``"pca"``: Principal Component Analysis (`PCA <https://scikit-learn.org/stable/modules/generated/sklearn.decomposition.PCA.html>`_)
 
 .. note::
 

@@ -6,6 +6,7 @@ Matplotlib plots.
 |
 """
 import itertools
+import logging
 import warnings
 
 import numpy as np
@@ -28,6 +29,9 @@ import fiftyone.core.utils as fou
 
 from .base import InteractivePlot
 from .utils import load_button_icon
+
+
+logger = logging.getLogger(__name__)
 
 
 def plot_confusion_matrix(
@@ -581,7 +585,11 @@ class InteractiveMatplotlibPlot(InteractivePlot):
             # `%matplotlib widget` environment is being used? As of this
             # writing, it seems this is not yet supported
             # https://github.com/matplotlib/ipympl/issues/16
-            pass
+            logger.warning(
+                "Failed to freeze the plot. You may be using the "
+                "`%%matplotlib widget` backend, which does not support "
+                "programmatic freezing of figures"
+            )
 
     def _reopen(self):
         # https://stackoverflow.com/a/31731945

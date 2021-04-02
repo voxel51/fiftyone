@@ -24,7 +24,7 @@ responsive JavaScript-based plots that can be zommed, panned, and lasso-ed.
 Second, FiftyOne plots can be linked to the :ref:`FiftyOne App <fiftyone-app>`,
 so that selecting points in a plot will automatically load the corresponding
 samples/labels in the App (and vice versa) for you to visualize! Linking plots
-to their source media is a powerful paradigm that it is a critical part of any
+to their source media is a paradigm that should play a critical part in any
 visual dataset analysis pipeline.
 
 The builtin plots provided by FiftyOne are chosen to help you analyze and
@@ -69,7 +69,7 @@ multiple plots are connected and another plot triggers a |Session| update!
 
     See :ref:`this section <working-in-notebooks>` for more information.
 
-Thw two main classes of |ResponsivePlot| are explained next.
+The two main classes of |ResponsivePlot| are explained next.
 
 Interactive plots
 -----------------
@@ -96,9 +96,12 @@ View plots
 
 |ViewPlot| is a class of plots whose state is automatically updated whenever
 the current :meth:`session.view <fiftyone.core.session.Session.view>` changes.
-
 View plots can be used to construct :ref:`dynamic dashboards <view-plots>` that
 update to reflect the contents of your current view.
+
+More view plot types are being continually added to the library over time.
+Current varieties include |CategoricalHistogram|, |NumericalHistogram|, and
+|ViewGrid|.
 
 .. image:: ../images/plots/view-plots.gif
    :alt: view-plots
@@ -240,10 +243,10 @@ ground truth label!
 Interactive plots
 -----------------
 
-The real power of
+The full power of
 :meth:`compute_visualization() <fiftyone.brain.compute_visualization>` comes
-when you associate the scatterpoints with the samples in a |Dataset| and then
-attach it to a |Session|.|Dataset| and then attach it to a |Session|.
+when you associate the scatterpoints with the samples or objects in a |Dataset|
+and then attach it to a |Session|.
 
 The example below demonstrates setting up an interactive scatterplot for the
 test split of the :ref:`MNIST dataset <dataset-zoo-mnist>` that is
@@ -256,14 +259,14 @@ by the sample's ground truth label.
 
 Since the ``labels`` argument to
 :meth:`results.visualize() <fiftyone.brain.visualization.VisualizationResults.visualize>`
-is categorical, each class is rendered as its own trace and you can click or on
-the legend entires to show/hide individual classes, or double-click to
+is categorical, each class is rendered as its own trace and you can click on
+the legend entries to show/hide individual classes, or double-click to
 show/hide all other classes.
 
 When points are lasso-ed in the plot, the corresponding
 samples are automatically selected in the session's current
 :meth:`view <fiftyone.core.session.Session.view>`. Likewise, whenever you
-modify the Session's view, either in the App or by programmatically setting
+modify the session's view, either in the App or by programmatically setting
 :meth:`session.view <fiftyone.core.session.Session.view>`, the corresponding
 locations will be selected in the scatterplot.
 
@@ -490,8 +493,8 @@ interactively explore specific cases of your model's performance.
     See :ref:`this page <evaluating-models>` for an in-depth guide to using
     FiftyOne to evaluate models.
 
-The example below demonstrates setting up an interactive confusion matrix for
-the results of evaluating the predictions in the ``predictions`` field of the
+The example below demonstrates using an interactive confusion matrix to explore
+the results of an evaluation on the ``predictions`` field of the
 :ref:`quickstart <dataset-zoo-quickstart>` dataset.
 
 In this setup, you can click on individual cells of the confusion matrix to
@@ -605,8 +608,8 @@ Attaching plots to the App
 __________________________
 
 All |Session| instances provide a
-:meth:`plots attribute <fiftyone.core.session.Session.plots>` attribute that
-you can use to attach |ResponsivePlot| instances to the FiftyOne App.
+:meth:`plots <fiftyone.core.session.Session.plots>` attribute that you can use
+to attach |ResponsivePlot| instances to the FiftyOne App.
 
 When |ResponsivePlot| instances are attached to a |Session|, they are
 automatically updated whenever
