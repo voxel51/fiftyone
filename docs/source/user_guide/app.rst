@@ -431,11 +431,11 @@ Tagging is a first-class citizen in FiftyOne, at both the |Sample|-level and
 are always at your disposal in Python. But tagging, and filtering by tags also
 extends to the App.
 
-Tagging can be done via the Sample Grid to tag any shown labels or samples in
-the current view. Any filters in the Filters Sidebar will also be taken into
-account. In the case of labels, tagging in the App will also only apply to
-labels that are checked, i.e. visible. And when samples are selected in the
-grid, tagging will also be restrscted the selected samples.
+In the App, tagging can be done via the Sample Grid to tag any shown labels or
+samples in the current view. Any filters in the Filters Sidebar will also be
+taken into account. In the case of labels, tagging in the App will also only
+apply to labels that are checked, i.e. visible. And when samples are selected
+in the grid, tagging will also be restrscted the selected samples.
 
 For example, if you only want to tag labels in the `predictions` field in a
 dataset, simply uncheck all other labels fields and click the tag icon
@@ -451,6 +451,10 @@ And once you have tags on your samples or labels, the Filters Sidebar offers
 filtering by your tags. Simply click the eye icon next to tag in the sidebar
 and results will be limited to samples and labels with that tag. Note that
 filtering by multiple tags is an `OR` expression.
+
+.. image:: ../images/app/app-tagging.gif
+    :alt: app-tagging
+    :align: center
 
 .. _app-config:
 

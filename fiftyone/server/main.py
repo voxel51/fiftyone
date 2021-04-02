@@ -266,6 +266,7 @@ class PollingHandler(tornado.web.RequestHandler):
                 "get_video_data",
                 "all_tags",
                 "selected_statistics",
+                "tag_modal",
             }:
                 caller = self
             elif event in {"capture", "update"}:
@@ -675,6 +676,9 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             fosu.change_sample_tags(view, changes)
 
         StateHandler.state["refresh"] = not state.refresh
+        for clients in PollingHandler.clients.values():
+            clients.update({"update"})
+
         await StateHandler.on_update(caller, StateHandler.state)
 
     @staticmethod
@@ -740,10 +744,16 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             fields = {label["field"] for label in labels}
             fosu.change_label_tags(tag_view, changes, label_fields=fields)
 
-        asyncio.gather(
-            StateHandler.send_samples(sample_ids),
-            StateHandler.send_statistics(view, only=caller),
-        )
+        for clients in PollingHandler.clients.values():
+            clients.update({"extended_statistics", "statistics"})
+
+        if isinstance(caller, PollingHandler):
+            await StateHandler.send_samples(sample_ids, only=caller)
+
+        awaitables = [StateHandler.send_samples(sample_ids)]
+        awaitables += StateHandler.get_statistics_awaitables(StateHandler)
+
+        asyncio.gather(*awaitables)
 
     @staticmethod
     async def on_selected_statistics(caller, active_labels=[]):
@@ -776,7 +786,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         )
 
     @classmethod
-    async def send_samples(cls, sample_ids):
+    async def send_samples(cls, sample_ids, only=None):
         state = fos.StateDescription.from_dict(StateHandler.state)
         if state.view is not None:
             view = state.view
@@ -797,7 +807,9 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             view = view.select(sample_ids)
             result, _ = await _get_sample_data(col, view, len(sample_ids), 1)
 
-        _write_message({"type": "samples_update", "samples": result}, app=True)
+        _write_message(
+            {"type": "samples_update", "samples": result}, app=True, only=only
+        )
 
     @classmethod
     def get_statistics_awaitables(cls, only=None):
@@ -978,7 +990,7 @@ def _write_message(message, app=False, session=False, ignore=None, only=None):
     clients = StateHandler.app_clients if app else StateHandler.clients
     clients = _filter_deactivated_clients(clients)
 
-    if only and only in clients:
+    if only:
         only.write_message(message)
         return
 
