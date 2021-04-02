@@ -345,10 +345,12 @@ select some samples in the App:
     :alt: app-selection
     :align: center
 
-The selected samples dropdown on the upper-left of the sample grid records the
-number of samples that you have currently selected. You can also take actions
-such as updating the view to only show (or exclude) the currently selected
-samples.
+The selected samples checkmark in the options row in the upper-left of the
+sample grid records the number of samples that you have currently selected. You
+can also take actions such as updating the view to only show (or exclude) the
+currently selected samples. Tagging also automatically applies to selected
+samples or their labels when any samples are selected. See
+:ref:`tagging <app-tagging>` for more details.
 
 You can also access the
 :meth:`Session.selected <fiftyone.core.session.Session.selected>` property of
@@ -391,7 +393,7 @@ shows selecting an object detection, but classifications, polygons, polylines,
 segmentations, and keypoints can be selected as well.
 
 When you have selected labels in the App, you can use the selected labels
-options in the top-right (the orange checkmark button) to hide these labels
+options in the upper-right (the orange checkmark button) to hide these labels
 from view or exclude all other labels.
 
 You can also access the
