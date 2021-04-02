@@ -975,6 +975,30 @@ class BinaryClassificationResults(ClassificationResults):
             fpr, tpr, roc_auc=roc_auc, backend=backend, **kwargs
         )
 
+    @classmethod
+    def _from_dict(cls, d, samples, **kwargs):
+        ytrue = d["ytrue"]
+        ypred = d["ypred"]
+        confs = d["confs"]
+        classes = d["classes"]
+        weights = d.get("weights", None)
+        gt_field = d.get("gt_field", None)
+        pred_field = d.get("pred_field", None)
+        ytrue_ids = d.get("ytrue_ids", None)
+        ypred_ids = d.get("ypred_ids", None)
+        return cls(
+            ytrue,
+            ypred,
+            confs,
+            classes=classes,
+            weights=weights,
+            gt_field=gt_field,
+            pred_field=pred_field,
+            ytrue_ids=ytrue_ids,
+            ypred_ids=ypred_ids,
+            **kwargs,
+        )
+
 
 def _parse_config(config, pred_field, gt_field, method, **kwargs):
     if config is not None:
