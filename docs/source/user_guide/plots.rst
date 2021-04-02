@@ -41,6 +41,68 @@ all by writing pure Python (no JavaScript knowledge required).
     evaluation, identify model failure modes, recommend new samples for
     annotation, and more!
 
+.. _overview:
+
+Overview
+________
+
+All |Session| instances provide a
+:meth:`plots attribute <fiftyone.core.session.Session.plots>` attribute that
+you can use to attach |ResponsivePlot| instances to the FiftyOne App.
+
+When |ResponsivePlot| instances are attached to a |Session|, they are
+automatically updated whenever
+:meth:`session.view <fiftyone.core.session.Session.view>` changes for any
+reason, whether you modify your view in the App, or programmatically change it
+by setting :meth:`session.view <fiftyone.core.session.Session.view>`, or if
+multiple plots are connected and another plot triggers a |Session| update!
+
+There are two main |ResponsivePlot| types:
+
+Interactive plots
+-----------------
+
+|InteractivePlot| is a class of plots that are bidirectionally linked to a
+|Session| via the IDs of either samples or individual labels in the dataset.
+When the user performs a selection in the plot, the
+:meth:`session.view <fiftyone.core.session.Session.view>` is automatically
+updated to select the corresponding samples/labels, and, conversely, when
+:meth:`session.view <fiftyone.core.session.Session.view>` changes, the contents
+of the current view is automatically selected in the plot.
+
+Examples of |InteractivePlot| types include
+:ref:`scatterplots <embeddings-plots>`,
+:ref:`location scatterplots <geolocation-plots>`, and
+:ref:`interactive heatmaps <confusion-matrices>`.
+
+.. image:: ../images/plots/mnist-interactive1.gif
+   :alt: interactive-plots
+   :align: center
+
+View plots
+----------
+
+|ViewPlot| is a class of plots whose state is automatically updated whenever
+the current :meth:`session.view <fiftyone.core.session.Session.view>` changes.
+
+View plots can be used to construct :ref:`dynamic dashboards <view-plots>` that
+update to reflect the contents of your current view.
+
+.. note::
+
+    Interactive plots are currently only supported in Jupyter notebooks. In the
+    meantime, you can still use FiftyOne's plotting features in other
+    environments, but you must manually call
+    :meth:`plot.show() <fiftyone.core.plots.base.Plot.show>` to update the
+    state of a plot to match the state of a connected |Session|, and any
+    callbacks that would normally be triggered in response to interacting with
+    a plot will not be triggered. See
+    :ref:`this section <working-in-notebooks>` for more information.
+
+.. image:: ../images/plots/view-plots.gif
+   :alt: view-plots
+   :align: center
+
 .. _working-in-notebooks:
 
 Working in notebooks
@@ -108,6 +170,166 @@ below for your environment:
 If you wish to use the ``matplotlib`` backend for any interactive plots, refer
 to :ref:`this section <matplotlib-in-notebooks>` for setup instructions.
 
+.. _embeddings-plots:
+
+Visualizing embeddings
+______________________
+
+The :ref:`FiftyOne Brain <fiftyone-brain>` provides a powerful
+:meth:`compute_visualization() <fiftyone.brain.compute_visualization>` method
+that can be used to generate low-dimensional representations of the
+samples/object patches in a dataset that can be visualized using interactive
+FiftyOne plots.
+
+To learn more about the available embedding methods, dimensionality reduction
+techniques, and their applications to dataset analysis, refer to
+:ref:`this page <fiftyone-brain-XXXXXXXX>`. In this section, we'll just cover
+the basic mechanics of creating scatterplots and interacting with them.
+
+.. note::
+
+    The visualizations in this section are rendered under the hood via the
+    :meth:`scatterplot() <fiftyone.core.plots.base.scatterplot>` method, which
+    you can directly use to generate interactive plots for arbitrary 2D or 3D
+    representations of your data.
+
+Standalone plots
+----------------
+
+Let's use
+:meth:`compute_visualization() <fiftyone.brain.compute_visualization>` to
+generate a 2D visualization of the images in the test split of the
+:ref:`MNIST dataset <dataset-zoo-mnist>` and then visualize it using the
+:meth:`results.visualize() <fiftyone.brain.visualization.VisualizationResults.visualize>`
+method of the returned results object, where each point is colored by its
+ground truth label:
+
+.. code-block:: python
+    :linenos:
+
+    import cv2
+    import numpy as np
+
+    import fiftyone as fo
+    import fiftyone.brain as fob
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("mnist", split="test")
+
+    # Construct a `num_samples x num_pixels` array of images
+    images = np.array([
+        cv2.imread(f, cv2.IMREAD_UNCHANGED).ravel()
+        for f in dataset.values("filepath")
+    ])
+
+    # Compute 2D embeddings
+    results = fob.compute_visualization(dataset, embeddings=images, seed=51)
+
+    # Visualize embeddings, colored by ground truth label
+    plot = results.visualize(labels="ground_truth.label")
+    plot.show(height=720)
+
+.. image:: ../images/plots/mnist-scatterplot.png
+   :alt: mnist-scatterplot
+   :align: center
+
+As you can see, the 2D embeddings are naturally clustered according to their
+ground truth label!
+
+Interactive plots
+-----------------
+
+The real power of
+:meth:`compute_visualization() <fiftyone.brain.compute_visualization>` comes
+when you associate the scatterpoints with the samples in a |Dataset| and then
+attach it to a |Session|.|Dataset| and then attach it to a |Session|.
+
+The example below demonstrates setting up an interactive scatterplot for the
+test split of the :ref:`MNIST dataset <dataset-zoo-mnist>` that is
+:ref:`attached to the App <attaching-plots>`.
+
+In this setup, the scatterplot renders each sample using its corresponding 2D
+embedding generated by
+:meth:`compute_visualization() <fiftyone.brain.compute_visualization>`, colored
+by the sample's ground truth label.
+
+Since the ``labels`` argument to
+:meth:`results.visualize() <fiftyone.brain.visualization.VisualizationResults.visualize>`
+is categorical, each class is rendered as its own trace and you can click or on
+the legend entires to show/hide individual classes, or double-click to
+show/hide all other classes.
+
+When points are lasso-ed in the plot, the corresponding
+samples are automatically selected in the Session's current
+:meth:`view <fiftyone.core.session.Session.view>`. Likewise, whenever you
+modify the Session's view, either in the App or by programmatically setting
+:meth:`session.view <fiftyone.core.session.Session.view>`, the corresponding
+locations will be selected in the scatterplot.
+
+Each block in the example code below denotes a separate cell in a Jupyter
+notebook:
+
+.. code-block:: python
+    :linenos:
+
+    import cv2
+    import numpy as np
+
+    import fiftyone as fo
+    import fiftyone.brain as fob
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("mnist", split="test")
+
+    # Construct a `num_samples x num_pixels` array of images
+    images = np.array([
+        cv2.imread(f, cv2.IMREAD_UNCHANGED).ravel()
+        for f in dataset.values("filepath")
+    ])
+
+    # Compute 2D embeddings
+    results = fob.compute_visualization(dataset, embeddings=images, seed=51)
+
+    # Launch the App
+    session = fo.launch_app(dataset)
+
+.. code-block:: python
+    :linenos:
+
+    # Visualize embeddings, colored by ground truth label
+    plot = results.visualize(labels="ground_truth.label")
+    plot.show(height=720)
+
+    # Connect to session
+    session.plots.attach(plot)
+
+To give a taste of the possible interactions, let's hide all zero digit images
+and select the other digits near the zero cluster; this isolates the non-zero
+digit images in the App that are likely to be confused as zeros:
+
+.. image:: ../images/plots/mnist-interactive1.gif
+   :alt: mnist-interactive1
+   :align: center
+
+Alternatively, let's hide all classes except the zero digits, and then select
+the zero digits that are *not* in the zero cluster; this isolates the zero
+digit images in the App that are likely to be confused as other digits:
+
+.. image:: ../images/plots/mnist-interactive2.gif
+   :alt: mnist-interactive2
+   :align: center
+
+.. note::
+
+    Interactive plots are currently only supported in Jupyter notebooks. In the
+    meantime, you can still use FiftyOne's plotting features in other
+    environments, but you must manually call
+    :meth:`plot.show() <fiftyone.core.plots.base.Plot.show>` to update the
+    state of a plot to match the state of a connected |Session|, and any
+    callbacks that would normally be triggered in response to interacting with
+    a plot will not be triggered. See
+    :ref:`this section <working-in-notebooks>` for more information.
+
 .. _geolocation-plots:
 
 Geolocation plots
@@ -116,6 +338,22 @@ _________________
 You can use
 :meth:`location_scatterplot() <fiftyone.core.plots.base.location_scatterplot>`
 to generate interactive plots of datasets with geolocation data.
+
+You can store arbitrary location data in
+`GeoJSON <https://en.wikipedia.org/wiki/GeoJSON>`_ format on your datasets
+using the |GeoLocation| and |GeoLocations| label types. See
+:ref:`this section <geolocation>` for more information.
+
+The
+:meth:`location_scatterplot() <fiftyone.core.plots.base.location_scatterplot>`
+method only supports simple ``[longitude, latitude]`` coordinate points, which
+can be stored in the ``point`` attribute of a |GeoLocation| field.
+
+.. note::
+
+    Did you know? You can create
+    :ref:`location-based views <geolocation-views>` that filter your data by
+    their location!
 
 Standalone plots
 ----------------
@@ -126,7 +364,8 @@ optional ``labels`` and ``sizes`` parameters to control the color and sizes
 of each point, respectively.
 
 The example below demonstrates this usage using the
-:ref:`quickstart-geo <dataset-zoo-quickstart-geo>` dataset from the zoo:
+:ref:`quickstart-geo <dataset-zoo-quickstart-geo>` dataset from the zoo, which
+contains |GeoLocation| data in its ``location`` field:
 
 .. code-block:: python
     :linenos:
@@ -189,10 +428,16 @@ comes when you associate the location coordinates with the samples in a
 
 The example below demonstrates setting up an interactive location scatterplot
 for the :ref:`quickstart-geo <dataset-zoo-quickstart-geo>` dataset that is
-:ref:`attached to the App <attaching-plots>`. In this setup, when points are
-lasso-ed in the plot, the corresponding samples are automatically selected in
-the Session's current :meth:`view <fiftyone.core.session.Session.view>`.
-Likewise
+:ref:`attached to the App <attaching-plots>`.
+
+In this setup, the location plot renders each sample using its corresponding
+``[longitude, latitude]`` coordinates from the dataset's only |GeoLocation|
+field, ``location``. When points are lasso-ed in the plot, the corresponding
+samples are automatically selected in the Session's current
+:meth:`view <fiftyone.core.session.Session.view>`. Likewise, whenever you
+modify the Session's view, either in the App or by programmatically setting
+:meth:`session.view <fiftyone.core.session.Session.view>`, the corresponding
+locations will be selected in the scatterplot.
 
 Each block in the example code below denotes a separate cell in a Jupyter
 notebook:
@@ -210,7 +455,7 @@ notebook:
     fob.compute_uniqueness(dataset)
 
     # Launch the App
-    session = fo.launch_app(dataset, height=1000)
+    session = fo.launch_app(dataset)
 
 .. code-block:: python
     :linenos:
@@ -239,7 +484,158 @@ notebook:
 
     Interactive plots are currently only supported in Jupyter notebooks. In the
     meantime, you can still use FiftyOne's plotting features in other
-    environments but you must manually call
+    environments, but you must manually call
+    :meth:`plot.show() <fiftyone.core.plots.base.Plot.show>` to update the
+    state of a plot to match the state of a connected |Session|, and any
+    callbacks that would normally be triggered in response to interacting with
+    a plot will not be triggered. See
+    :ref:`this section <working-in-notebooks>` for more information.
+
+.. _confusion-matrices:
+
+Confusion matrices
+__________________
+
+When you use evaluation methods such as
+:meth:`evaluate_classifications() <fiftyone.core.collections.SampleCollection.evaluate_classifications>`
+and
+:meth:`evaluate_detections() <fiftyone.core.collections.SampleCollection.evaluate_detections>`
+to evaluate model predictions, the confusion matrices that you can generate
+by calling the
+:meth:`plot_confusion_matrix() <fiftyone.utils.eval.classification.ClassificationResults.plot_confusion_matrix>`
+method are responsive plots that can be attached to App instances to
+interactively explore specific cases of your model's performance.
+
+.. note::
+
+    See :ref:`this page <evaluating-models>` for an in-depth guide to using
+    FiftyOne to evaluate models.
+
+The example below demonstrates setting up an interactive confusion matrix for
+the results of evaluating the predictions in the ``predictions`` field of the
+:ref:`quickstart <dataset-zoo-quickstart>` dataset.
+
+In this setup, you can click on individual cells of the confusion matrix to
+select the corresponding ground truth and/or predicted |Detections| in the App.
+For example, if you click on a diagonal cell of the confusion matrix, you will
+see the true positive examples of that class in the App.
+
+Likewise, whenever you modify the Session's view, either in the App or by
+programmatically setting
+:meth:`session.view <fiftyone.core.session.Session.view>`, the confusion matrix
+is automatically updated to show the cell counts for only those detections that
+are included in the current view.
+
+Each block in the example code below denotes a separate cell in a Jupyter
+notebook:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+    from fiftyone import ViewField as F
+
+    dataset = foz.load_zoo_dataset("quickstart")
+
+    # Evaluate detections in the `predictions` field
+    results = dataset.evaluate_detections("predictions", gt_field="ground_truth")
+
+    # The top-10 most common classes
+    counts = dataset.count_values("ground_truth.detections.label")
+    classes = sorted(counts, key=counts.get, reverse=True)[:10]
+
+    # Launch App instance
+    session = fo.launch_app(dataset)
+
+.. code-block:: python
+    :linenos:
+
+    # Plot confusion matrix
+    plot = results.plot_confusion_matrix(classes=classes)
+    plot.show(height=600)
+
+    # Connect to session
+    session.plots.attach(plot)
+
+.. image:: ../images/plots/detection-evaluation.gif
+   :alt: detection-evaluation
+   :align: center
+
+.. note::
+
+    Interactive plots are currently only supported in Jupyter notebooks. In the
+    meantime, you can still use FiftyOne's plotting features in other
+    environments, but you must manually call
+    :meth:`plot.show() <fiftyone.core.plots.base.Plot.show>` to update the
+    state of a plot to match the state of a connected |Session|, and any
+    callbacks that would normally be triggered in response to interacting with
+    a plot will not be triggered. See
+    :ref:`this section <working-in-notebooks>` for more information.
+
+.. _view-plots:
+
+View plots
+__________
+
+|ViewPlot| is a class of plots whose state is automatically updated whenever
+the current :meth:`session.view <fiftyone.core.session.Session.view>` changes.
+
+Current varieties of view plots include |CategoricalHistogram|,
+|NumericalHistogram|, and |ViewGrid|.
+
+.. note::
+
+    New |ViewPlot| subclasses will be continually added over time, and it is
+    also straightforward to implement your own custom view plots. Contributions
+    are welcome at `https://github.com/voxel51/fiftyone`_!
+
+The example below demonstrates the use of |ViewGrid| to construct a dashboard
+of histograms of various aspects of a dataset, which can then be attached to a
+|Session| in order to automatically see how the statistics change when the
+session's :meth:`view <fiftyone.core.session.Session.view>` is modified.
+
+Each block in the example code below denotes a separate cell in a Jupyter
+notebook:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+    from fiftyone import ViewField as F
+
+    dataset = foz.load_zoo_dataset("quickstart")
+    dataset.compute_metadata()
+
+    # Define some interesting plots
+    plot1 = fo.NumericalHistogram("metadata.size_bytes", expr=F() / 1024, bins=50, xlabel="image size (KB)")
+    plot2 = fo.NumericalHistogram("predictions.detections.confidence", bins=50)
+    plot3 = fo.CategoricalHistogram("ground_truth.detections.label", order="frequency")
+    plot4 = fo.CategoricalHistogram("predictions.detections.label", order="frequency")
+
+    # Launch App instance
+    session = fo.launch_app(dataset)
+
+.. code-block:: python
+    :linenos:
+
+    # Construct a custom dashboard of plots
+    plot = fo.ViewGrid([plot1, plot2, plot3, plot4])
+    plot.show(height=720)
+
+    # Connect to session
+    session.plots.attach(plot)
+
+.. image:: ../images/plots/view-plots.gif
+   :alt: view-plots
+   :align: center
+
+.. note::
+
+    Interactive plots are currently only supported in Jupyter notebooks. In the
+    meantime, you can still use FiftyOne's plotting features in other
+    environments, but you must manually call
     :meth:`plot.show() <fiftyone.core.plots.base.Plot.show>` to update the
     state of a plot to match the state of a connected |Session|, and any
     callbacks that would normally be triggered in response to interacting with
@@ -262,32 +658,6 @@ reason, whether you modify your view in the App, or programmatically change it
 by setting :meth:`session.view <fiftyone.core.session.Session.view>`, or if
 multiple plots are connected and another plot triggers a |Session| update!
 
-There are two main |ResponsivePlot| types, which are explained next.
-
-View plots
-----------
-
-|ViewPlot| is a class of plots whose state is automatically updated whenever
-the current :meth:`session.view <fiftyone.core.session.Session.view>` changes.
-
-Examples of |ViewPlot| types include |CategoricalHistogram|,
-|NumericalHistogram|, and |ViewGrid|. See :ref:`this section <XXXXXXXXX>` for
-example usages.
-
-Interactive plots
------------------
-
-|InteractivePlot| is a class of plots that are bidirectionally linked to a
-|Session| via the IDs of either samples or individual labels in the dataset.
-When the user performs a selection in the plot, the
-:meth:`session.view <fiftyone.core.session.Session.view>` is automatically
-updated to select the corresponding samples/labels, and, conversely, when
-:meth:`session.view <fiftyone.core.session.Session.view>` changes, the contents
-of the current view is automatically selected in the plot.
-
-Examples of |InteractivePlot| types include |InteractiveScatter| and
-|InteractiveHeatmap|, which are discussed in detail in the rest of this page.
-
 Attaching a plot
 ----------------
 
@@ -309,8 +679,8 @@ to a |Session|:
     plot = fo.location_scatterplot(samples=dataset)
     plot.show()  # show the plot
 
-    # Attach the plot to the Session
-    # Updates will now automatically occur
+    # Attach the plot to the session
+    # Updates will automatically occur when the plot/session are updated
     session.plots.attach(plot)
 
 You can view details about the plots attached to a |Session| by printing it:
