@@ -424,19 +424,18 @@ labels in the App:
 Tags and tagging
 ________________
 
-Tagging is a first-class citizin in FiftyOne, at both the |Sample|-level and
+Tagging is a first-class citizen in FiftyOne, at both the |Sample|-level and
 |Label|-level. And |Dataset| and |DatasetView| methods like
 :meth:`tag_samples() <fiftyone.core.collections.SampleCollection.tag_samples>`,
-:meth:`tag_labels() <fiftyone.core.collections.SampleCollection.tag_samples>`,
-always at your
-disposal in Python. But tagging, and filtering by tags extends to the App,
-as well.
+:meth:`tag_labels() <fiftyone.core.collections.SampleCollection.tag_samples>`
+are always at your disposal in Python. But tagging, and filtering by tags also
+extends to the App.
 
 Tagging can be done via the Sample Grid to tag any shown labels or samples in
 the current view. Any filters in the Filters Sidebar will also be taken into
 account. In the case of labels, tagging in the App will also only apply to
 labels that are checked, i.e. visible. And when samples are selected in the
-grid, tagging will also be restricted the selected samples.
+grid, tagging will also be restrscted the selected samples.
 
 For example, if you only want to tag labels in `predictions` field in a
 dataset, simply uncheck all other labels fields and click the tag icon
@@ -445,7 +444,7 @@ dataset, simply uncheck all other labels fields and click the tag icon
 
 The Tagger is also available in the top-right of the Expanded Sample View.
 When in this view, any filters in the Filters Sidebar also apply when tagging
-labels. Individual labels can targeted by first selecting (even across
+labels. Individual labels can targeted by first selecting them (even across
 multiple samples). Or the sample itself can be tagged.
 
 And once you have tags on your samples or labels, the Filters Sidebar offers
