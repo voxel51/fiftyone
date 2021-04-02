@@ -35,9 +35,11 @@ FiftyOne
 FiftyOne is an open-source tool that lets you visualize and explore your
 image/video datasets and easily interpret model results, anywhere, fast. 
 
-.. image:: images/homepage1.png
-   :alt: Overview
-   :align: center
+.. raw:: html
+
+   <video controls muted poster="https://voxel51.com/images/fiftyone_long_sizzle_poster.png" style="width: 100%;">
+     <source src="https://voxel51.com/images/fiftyone_long_sizzle.mp4" type="video/mp4">
+   </video>
 
 .. code-block:: shell
 
