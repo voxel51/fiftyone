@@ -30,7 +30,7 @@ App
 
 Brain
 ^^^^^
-- Added a :meth:`compute_visualization() <fiftyone.brain.compute_visualization>` method that uses embeddings and dimensionality reduction methods to generate interactive visualizations of the samples and/or labels in a dataset. Check out :ref:`this user guide page <XXXXXXXX>` for details. Features include:
+- Added a :meth:`compute_visualization() <fiftyone.brain.compute_visualization>` method that uses embeddings and dimensionality reduction methods to generate interactive visualizations of the samples and/or labels in a dataset. Check out :ref:`this page <brain-embeddings-visualization>` for details. Features include:
     - Provide your own embeddings, or choose a model from the
       :ref:`Model Zoo <model-zoo>`, or use the provided default model
     - Supported dimensionality reduction methods include
@@ -48,7 +48,7 @@ Brain
 
 Core
 ^^^^
-- Added a :mod:`fiftyone.core.plots` module that provides a powerful API for visualizing datasets, including interactive plots when used in Jupyter notebooks. See :ref:`this user guide page <XXXXXXXX>` for more information. Highlights include:
+- Added a :mod:`fiftyone.core.plots` module that provides a powerful API for visualizing datasets, including interactive plots when used in Jupyter notebooks. See :ref:`this page <interactive-plots>` for more information. Highlights include:
     - :meth:`plot_confusion_matrix() <fiftyone.core.plots.base.plot_confusion_matrix>`:
       an interactive confusion matrix that can be attached to a |Session|
       object to visually explore model predictions

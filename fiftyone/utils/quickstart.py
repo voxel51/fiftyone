@@ -11,7 +11,7 @@ import fiftyone.core.session as fos
 import fiftyone.zoo.datasets as fozd
 
 
-def quickstart(video=False, port=None, remote=False, desktop=None, auto=True):
+def quickstart(video=False, port=None, remote=False, desktop=None):
     """Runs the FiftyOne quickstart.
 
     This method loads an interesting dataset from the Dataset Zoo, launches the
@@ -26,9 +26,6 @@ def quickstart(video=False, port=None, remote=False, desktop=None, auto=True):
         desktop (None): whether to launch the App in the browser (False) or as
             a desktop App (True). If None, ``fiftyone.config.desktop_app`` is
             used. Not applicable to notebook contexts
-        auto (True): whether to automatically show a new App window
-            whenever the state of the session is updated. Only applicable
-            in notebook contexts
 
     Returns:
         a tuple containing
@@ -38,26 +35,26 @@ def quickstart(video=False, port=None, remote=False, desktop=None, auto=True):
             the App that was launched
     """
     if video:
-        return _video_quickstart(port, remote, desktop, auto)
+        return _video_quickstart(port, remote, desktop)
 
-    return _quickstart(port, remote, desktop, auto)
+    return _quickstart(port, remote, desktop)
 
 
-def _quickstart(port, remote, desktop, auto):
+def _quickstart(port, remote, desktop):
     print(_QUICKSTART_GUIDE)
     dataset = fozd.load_zoo_dataset("quickstart")
-    return _launch_app(dataset, port, remote, desktop, auto)
+    return _launch_app(dataset, port, remote, desktop)
 
 
-def _video_quickstart(port, remote, desktop, auto):
+def _video_quickstart(port, remote, desktop):
     print(_VIDEO_QUICKSTART_GUIDE)
     dataset = fozd.load_zoo_dataset("quickstart-video")
-    return _launch_app(dataset, port, remote, desktop, auto)
+    return _launch_app(dataset, port, remote, desktop)
 
 
-def _launch_app(dataset, port, remote, desktop, auto):
+def _launch_app(dataset, port, remote, desktop):
     session = fos.launch_app(
-        dataset=dataset, port=port, remote=remote, desktop=desktop, auto=auto
+        dataset=dataset, port=port, remote=remote, desktop=desktop
     )
 
     return dataset, session
