@@ -266,6 +266,13 @@ field, click the caret icon to the right of the field's name.
 Whenever you modify a filter element, the App will automatically update to show
 only those samples and/or labels that match the filter.
 
+.. note::
+
+    Did you know? When you have applied filter(s) in the App, a save icon
+    appears in the top-left corner of the sample grid. Clicking this button
+    will convert your filters to an equivalent set of stage(s) in the
+    :ref:`view bar <app-create-view>`!
+
 .. image:: ../images/app/app-filters.gif
    :alt: app-filters
    :align: center
@@ -424,33 +431,69 @@ labels in the App:
 Tags and tagging
 ________________
 
-Tagging is a first-class citizen in FiftyOne, at both the |Sample|-level and
-|Label|-level. And |Dataset| and |DatasetView| methods like
-:meth:`tag_samples() <fiftyone.core.collections.SampleCollection.tag_samples>`,
-:meth:`tag_labels() <fiftyone.core.collections.SampleCollection.tag_samples>`
-are always at your disposal in Python. But tagging, and filtering by tags also
-extends to the App.
+Tagging is a first-class citizen in FiftyOne, as both |Sample| and |Label|
+instances have a ``tags`` attribute that you can use to store arbitrary string
+tags for your data.
 
-In the App, tagging can be done via the Sample Grid to tag any shown labels or
-samples in the current view. Any filters in the Filters Sidebar will also be
-taken into account. In the case of labels, tagging in the App will also only
-apply to labels that are checked, i.e. visible. And when samples are selected
-in the grid, tagging will also be restrscted the selected samples.
+The FiftyOne API provides methods like
+:meth:`tag_samples() <fiftyone.core.collections.SampleCollection.tag_samples>`
+and
+:meth:`tag_labels() <fiftyone.core.collections.SampleCollection.tag_labels>`
+that you can use to programmatically manage the tags on your dataset. However,
+the App also provides a convenient UI for interactively adding, removing, and
+filtering by |Sample| and |Label| tags.
 
-For example, if you only want to tag labels in the `predictions` field in a
-dataset, simply uncheck all other labels fields and click the tag icon
-(Tagger) in the top-left of the grid. Then select `Labels`, type in the tag,
-and click `Apply`. Removing tags can also be done within the Tagger.
+You can tag or untag batches of samples/labels in the App by clicking on the
+tag icon above the sample grid.
 
-The Tagger is also available in the top-right of the Expanded Sample View.
-When in this view, any filters in the Filters Sidebar also apply when tagging
-labels. Individual labels can targeted by first selecting them (even across
-multiple samples). Or the sample itself can be tagged.
+.. note::
 
-And once you have tags on your samples or labels, the Filters Sidebar offers
-filtering by your tags. Simply click the eye icon next to tag in the sidebar
-and results will be limited to samples and labels with that tag. Note that
-filtering by multiple tags is an `OR` expression.
+    Any tagging operations that you perform using the tagging UI above the
+    sample grid will be applied to your **current view**, respecting any
+    filters or show/hide checkboxes you have applied in the filters sidebar,
+    unless you have selected individual samples, in which case the operation
+    will only apply to the **selected samples**.
+
+    The UI provides helpful statistics about tagging operations that you define
+    that you can use as a sanity check before applying the operation.
+
+For example, take the following steps to tag all labels in the ``predictions``
+field of a dataset:
+
+-   Make sure that ``predictions`` is the only |Label| field checked in the
+    filters sidebar
+-   Click the tag icon in the top-left of the grid
+-   Select `Labels`, type in the tag, and then click `Apply`
+
+You can also use the tag menu to remove existing tags.
+
+The App also supports tagging data in individual samples when you have opened
+the expanded sample view by clicking on a sample. The tag icon is located in
+the top-right corner of the modal.
+
+.. note::
+
+    Any tagging operations that you perform using the tagging UI in expanded
+    sample mode will be applied to the **current sample**, respecting any
+    filters or show/hide checkboxes you have applied, unless you have selected
+    individual labels, in which case the operation will only apply to the
+    **selected labels**. The latter may span multiple samples.
+
+If your dataset has sample or label tags, you can use the ``TAGS`` and
+``LABEL TAGS`` sections of the filters sidebar to filter by your tags.
+
+When you click the eye icon next to a sample tag, your view will update to only
+include samples with the tag(s) you have selected. When you click the eye icon
+next to a label tag, your view will update to only include labels with tag(s)
+you have selected, and any samples with no matches will be automatically
+excluded.
+
+.. note::
+
+    Did you know? When you have applied filter(s) in the App, a save icon
+    appears in the top-left corner of the sample grid. Clicking this button
+    will convert your filters to an equivalent set of stage(s) in the
+    :ref:`view bar <app-create-view>`!
 
 .. image:: ../images/app/app-tagging.gif
     :alt: app-tagging
