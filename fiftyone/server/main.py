@@ -140,6 +140,7 @@ class ReactivateHandler(RequestHandler):
         Args:
             handle_id: a handle uuid
         """
+        StateHandler.state["active_handle"] = handle_id
         for client in StateHandler.clients:
             client.write_message({"type": "reactivate", "handle": handle_id})
 
@@ -265,6 +266,7 @@ class PollingHandler(tornado.web.RequestHandler):
                 "get_video_data",
                 "all_tags",
                 "selected_statistics",
+                "tag_modal",
             }:
                 caller = self
             elif event in {"capture", "update"}:
@@ -403,7 +405,9 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         current state to the new client.
         """
         StateHandler.clients.add(self)
-        self.write_message({"type": "update", "state": StateHandler.state})
+        _write_message(
+            {"type": "update", "state": StateHandler.state}, only=self
+        )
 
     def on_close(self):
         """On close, remove the client from the active clients set, and
@@ -427,15 +431,14 @@ class StateHandler(tornado.websocket.WebSocketHandler):
     @staticmethod
     async def on_capture(self, src, width):
         global _notebook_clients
-        for client in StateHandler.clients:
-            client.write_message(
-                {
-                    "type": "capture",
-                    "handle": _notebook_clients[self],
-                    "src": src,
-                    "width": width,
-                }
-            )
+        _write_message(
+            {
+                "type": "capture",
+                "handle": _notebook_clients[self],
+                "src": src,
+                "width": width,
+            }
+        )
 
     @staticmethod
     async def on_as_app(self, notebook=False, handle=None, ignore=None):
@@ -446,7 +449,6 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         global _notebook_clients
         if isinstance(self, StateHandler) and notebook:
             _notebook_clients[self] = handle
-            ignore = self
 
         if not isinstance(self, StateHandler):
             return
@@ -508,8 +510,9 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         elif state.dataset is not None:
             view = state.dataset.view()
         else:
-            self.write_message(
-                {"type": "page", "page": page, "results": [], "more": False}
+            _write_message(
+                {"type": "page", "page": page, "results": [], "more": False},
+                only=self,
             )
             return
 
@@ -530,7 +533,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             "more": more,
         }
 
-        self.write_message(message)
+        _write_message(message, only=self)
 
     @staticmethod
     async def on_update(caller, state, ignore_polling_client=None):
@@ -546,6 +549,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         global _deactivated_clients
         _deactivated_clients.discard(active_handle)
 
+        # ignore deactivated notebook cells
         if (
             active_handle
             and caller in _notebook_clients
@@ -556,6 +560,8 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         for client, events in PollingHandler.clients.items():
             if client in _notebook_clients:
                 uuid = _notebook_clients[client]
+
+                # deactivate the last active colab cell
                 if uuid != active_handle:
                     events.clear()
                     _deactivated_clients.add(uuid)
@@ -615,8 +621,9 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         """
         dataset = fod.load_dataset(dataset_name)
         config = fos.StateDescription.from_dict(StateHandler.state).config
+        active_handle = StateHandler.state["active_handle"]
         StateHandler.state = fos.StateDescription(
-            dataset=dataset, config=config
+            dataset=dataset, config=config, active_handle=active_handle
         ).serialize()
         await self.on_update(self, StateHandler.state)
 
@@ -639,13 +646,14 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         sample, frames, labels = result[0]
 
         fps = etav.get_frame_rate(sample["filepath"])
-        self.write_message(
+        _write_message(
             {
                 "type": "video_data-%s" % _id,
                 "frames": frames,
                 "labels": labels.serialize(),
                 "fps": fps,
-            }
+            },
+            only=self,
         )
 
     @staticmethod
@@ -668,6 +676,9 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             fosu.change_sample_tags(view, changes)
 
         StateHandler.state["refresh"] = not state.refresh
+        for clients in PollingHandler.clients.values():
+            clients.update({"update"})
+
         await StateHandler.on_update(caller, StateHandler.state)
 
     @staticmethod
@@ -733,10 +744,16 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             fields = {label["field"] for label in labels}
             fosu.change_label_tags(tag_view, changes, label_fields=fields)
 
-        asyncio.gather(
-            StateHandler.send_samples(sample_ids),
-            StateHandler.send_statistics(view, only=caller),
-        )
+        for clients in PollingHandler.clients.values():
+            clients.update({"extended_statistics", "statistics"})
+
+        if isinstance(caller, PollingHandler):
+            await StateHandler.send_samples(sample_ids, only=caller)
+
+        awaitables = [StateHandler.send_samples(sample_ids)]
+        awaitables += StateHandler.get_statistics_awaitables(StateHandler)
+
+        asyncio.gather(*awaitables)
 
     @staticmethod
     async def on_selected_statistics(caller, active_labels=[]):
@@ -769,7 +786,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         )
 
     @classmethod
-    async def send_samples(cls, sample_ids):
+    async def send_samples(cls, sample_ids, only=None):
         state = fos.StateDescription.from_dict(StateHandler.state)
         if state.view is not None:
             view = state.view
@@ -790,7 +807,9 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             view = view.select(sample_ids)
             result, _ = await _get_sample_data(col, view, len(sample_ids), 1)
 
-        _write_message({"type": "samples_update", "samples": result}, app=True)
+        _write_message(
+            {"type": "samples_update", "samples": result}, app=True, only=only
+        )
 
     @classmethod
     def get_statistics_awaitables(cls, only=None):
@@ -962,33 +981,49 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             results = await _gather_results(col, aggs, fields, view, ticks)
 
         results = sorted(results, key=lambda i: i["name"])
-        self.write_message({"type": "distributions", "results": results})
+        _write_message(
+            {"type": "distributions", "results": results}, only=self
+        )
 
 
 def _write_message(message, app=False, session=False, ignore=None, only=None):
+    clients = StateHandler.app_clients if app else StateHandler.clients
+    clients = _filter_deactivated_clients(clients)
+
     if only:
         only.write_message(message)
         return
 
-    global _notebook_clients
-    global _deactivated_clients
-    active_handle = StateHandler.state["active_handle"]
-    clients = StateHandler.app_clients if app else StateHandler.clients
     for client in clients:
         if session and client in StateHandler.app_clients:
             continue
-
-        if client in _notebook_clients:
-            uuid = _notebook_clients[client]
-            if uuid != active_handle and uuid not in _deactivated_clients:
-                _deactivated_clients.add(uuid)
-                client.write_message({"type": "deactivate"})
-                continue
 
         if client == ignore:
             continue
 
         client.write_message(message)
+
+
+def _filter_deactivated_clients(clients):
+    global _notebook_clients
+    global _deactivated_clients
+    active_handle = StateHandler.state["active_handle"]
+
+    filtered = []
+
+    for client in clients:
+        if client in _notebook_clients:
+            uuid = _notebook_clients[client]
+            if uuid != active_handle and uuid not in _deactivated_clients:
+                _deactivated_clients.add(uuid)
+                client.write_message({"type": "deactivate"})
+
+            if uuid != active_handle:
+                continue
+
+        filtered.append(client)
+
+    return filtered
 
 
 _DEFAULT_NUM_HISTOGRAM_BINS = 25

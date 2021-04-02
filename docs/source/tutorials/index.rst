@@ -47,7 +47,7 @@ your datasets and turn your good models into *great models*.
     :description: Evaluation made easy. This tutorial walks through and end-to-end example of fine-tuning a classifier and understanding its failure modes using FiftyOne.
     :link: evaluate_classifications.html
     :image: ../_static/images/tutorials/evaluate_classifications.png
-    :tags: Model-Evaluation
+    :tags: Getting-Started,Model-Evaluation,Brain
 
 .. customcarditem::
     :header: Visualizing embeddings
@@ -61,21 +61,21 @@ your datasets and turn your good models into *great models*.
     :description: Your models need diverse data. This tutorial shows how FiftyOne can remove near-duplicate images and recommend unique samples for model training.
     :link: uniqueness.html
     :image: ../_static/images/tutorials/uniqueness.png
-    :tags: Dataset-Evaluation,Brain
+    :tags: Getting-Started,Dataset-Evaluation,Brain
 
 .. customcarditem::
     :header: Finding classification mistakes
     :description: Better models start with better data. This tutorial shows how FiftyOne can automatically find possible label mistakes in your classification datasets.
     :link: classification_mistakes.html
     :image: ../_static/images/tutorials/classification_mistakes.png
-    :tags: Dataset-Evaluation,Brain
+    :tags: Getting-Started,Dataset-Evaluation,Brain
 
 .. customcarditem::
     :header: Finding detection mistakes
     :description: How good are your ground truth objects? Use the FiftyOne Brain's mistakenness feature to find annotation errors in your object detections.
     :link: detection_mistakes.html
     :image: ../_static/images/tutorials/detection_mistakes.png
-    :tags:Dataset-Evaluation,Brain
+    :tags: Getting-Started,Dataset-Evaluation,Brain
 
 .. End of tutorial cards
 
