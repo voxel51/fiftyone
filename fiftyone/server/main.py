@@ -751,7 +751,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             await StateHandler.send_samples(sample_ids, only=caller)
 
         awaitables = [StateHandler.send_samples(sample_ids)]
-        awaitables += StateHandler.get_statistics_awaitables(StateHandler)
+        awaitables += StateHandler.get_statistics_awaitables()
 
         asyncio.gather(*awaitables)
 
@@ -990,6 +990,7 @@ def _write_message(message, app=False, session=False, ignore=None, only=None):
     clients = StateHandler.app_clients if app else StateHandler.clients
     clients = _filter_deactivated_clients(clients)
 
+    print(only)
     if only:
         only.write_message(message)
         return
