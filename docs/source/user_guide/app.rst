@@ -7,7 +7,7 @@ Using the FiftyOne App
 
 The FiftyOne App is a powerful graphical user interface that enables you to
 visualize, browse, and interact directly with your
-:ref:`FiftyOne Datasets <what-is-a-fiftyone-dataset>`.
+:ref:`FiftyOne Datasets <using-datasets>`.
 
 .. image:: ../images/app/app-filters.gif
    :alt: app-filters
@@ -362,46 +362,46 @@ your session to retrieve the IDs of the currently selected samples in the App:
      '5ef0eef405059ebb0ddfa86e',
      '5ef0eef405059ebb0ddfa93c']
 
-.. _app-select-objects:
+.. _app-select-labels:
 
-Selecting objects
+Selecting labels
 _________________
 
-You can also use the App to select individual objects within samples. You can
-use this functionality to visually show/hide objects of interest in the App; or
-you can access the data for the selected objects from Python, for example by
-creating a |DatasetView| that includes/excludes the selected objects.
+You can also use the App to select individual labels within samples. You can
+use this functionality to visually show/hide labels of interest in the App; or
+you can access the data for the selected labels from Python, for example by
+creating a |DatasetView| that includes/excludes the selected labels.
 
 To perform this workflow, open the expanded sample modal by clicking on
-a sample in the App. Then click on individual objects to select them:
+a sample in the App. Then click on individual labels to select them:
 
 .. image:: ../images/app/app-object-selection.gif
     :alt: app-object-selection
     :align: center
 
-Selected objects will appear with dotted lines around them. The example above
-shows selecting an object detection, but polygons, polylines, segmentations,
-and keypoints can be selected as well.
+Selected labels will appear with dotted lines around them. The example above
+shows selecting an object detection, but classifications, polygons, polylines,
+segmentations, and keypoints can be selected as well.
 
-When you have selected objects in the App, you can use the selected objects
-dropdown menu under ``Fields`` to take actions such as hiding the selected
-samples from view.
+When you have selected labels in the App, you can use the selected labels
+options in the top-right (the orange checkmark button) to hide these labels
+from view or exclude all other labels.
 
 You can also access the
-:meth:`Session.selected_objects <fiftyone.core.session.Session.selected_objects>`
+:meth:`Session.selected_labels <fiftyone.core.session.Session.selected_labels>`
 property of your session to retrieve information about the currently selected
-objects in the App:
+labels in the App:
 
 .. code-block:: python
 
     # Print information about the currently selected samples in the App
-    fo.pprint(session.selected_objects)
+    fo.pprint(session.selected_labels)
 
-    # Create a view containing only the selected objects
-    selected_view = dataset.select_objects(session.selected_objects)
+    # Create a view containing only the selected labels
+    selected_view = dataset.select_labels(session.selected_labels)
 
-    # Create a view containing everything except the selected objects
-    excluded_view = dataset.exclude_objects(session.selected_objects)
+    # Create a view containing everything except the selected labels
+    excluded_view = dataset.exclude_labels(session.selected_labels)
 
 .. code-block:: text
 
@@ -418,6 +418,40 @@ objects in the App:
         },
         ...
     ]
+
+.. _app-tagging:
+
+Tags and tagging
+________________
+
+Tagging is a first-class citizin in FiftyOne, at both the |Sample|-level and
+|Label|-level. And |Dataset| and |DatasetView| methods like
+:meth:`tag_samples() <fiftyone.core.collections.SampleCollection.tag_samples>`,
+:meth:`tag_labels() <fiftyone.core.collections.SampleCollection.tag_samples>`,
+always at your
+disposal in Python. But tagging, and filtering by tags extends to the App,
+as well.
+
+Tagging can be done via the Sample Grid to tag any shown labels or samples in
+the current view. Any filters in the Filters Sidebar will also be taken into
+account. In the case of labels, tagging in the App will also only apply to
+labels that are checked, i.e. visible. And when samples are selected in the
+grid, tagging will also be restricted the selected samples.
+
+For example, if you only want to tag labels in `predictions` field in a
+dataset, simply uncheck all other labels fields and click the tag icon
+(Tagger) in the top-left of the grid. Then select `Labels`, type in the tag, and click
+`Apply`. Removing tags can also be done within the Tagger.
+
+The Tagger is also available in the top-right of the Expanded Sample View.
+When in this view, any filters in the Filters Sidebar also apply when tagging
+labels. Individual labels can targeted by first selecting (even across
+multiple samples). Or the sample itself can be tagged.
+
+And once you have tags on your samples or labels, the Filters Sidebar offers
+filtering by your tags. Simply click the eye icon next to tag in the sidebar
+and results will be limited to samples and labels with that tag. Note that
+filtering by multiple tags is an `OR` expression.
 
 .. _app-config:
 
