@@ -57,7 +57,19 @@ reason, whether you modify your view in the App, or programmatically change it
 by setting :meth:`session.view <fiftyone.core.session.Session.view>`, or if
 multiple plots are connected and another plot triggers a |Session| update!
 
-There are two main |ResponsivePlot| types:
+.. note::
+
+    Interactive plots are currently only supported in Jupyter notebooks. In the
+    meantime, you can still use FiftyOne's plotting features in other
+    environments, but you must manually call
+    :meth:`plot.show() <fiftyone.core.plots.base.Plot.show>` to update the
+    state of a plot to match the state of a connected |Session|, and any
+    callbacks that would normally be triggered in response to interacting with
+    a plot will not be triggered.
+
+    See :ref:`this section <working-in-notebooks>` for more information.
+
+Thw two main classes of |ResponsivePlot| are explained next.
 
 Interactive plots
 -----------------
@@ -87,17 +99,6 @@ the current :meth:`session.view <fiftyone.core.session.Session.view>` changes.
 
 View plots can be used to construct :ref:`dynamic dashboards <view-plots>` that
 update to reflect the contents of your current view.
-
-.. note::
-
-    Interactive plots are currently only supported in Jupyter notebooks. In the
-    meantime, you can still use FiftyOne's plotting features in other
-    environments, but you must manually call
-    :meth:`plot.show() <fiftyone.core.plots.base.Plot.show>` to update the
-    state of a plot to match the state of a connected |Session|, and any
-    callbacks that would normally be triggered in response to interacting with
-    a plot will not be triggered. See
-    :ref:`this section <working-in-notebooks>` for more information.
 
 .. image:: ../images/plots/view-plots.gif
    :alt: view-plots
@@ -183,8 +184,8 @@ FiftyOne plots.
 
 To learn more about the available embedding methods, dimensionality reduction
 techniques, and their applications to dataset analysis, refer to
-:ref:`this page <fiftyone-brain-XXXXXXXX>`. In this section, we'll just cover
-the basic mechanics of creating scatterplots and interacting with them.
+:ref:`this page <brain-embeddings-visualization>`. In this section, we'll just
+cover the basic mechanics of creating scatterplots and interacting with them.
 
 .. note::
 
@@ -260,7 +261,7 @@ the legend entires to show/hide individual classes, or double-click to
 show/hide all other classes.
 
 When points are lasso-ed in the plot, the corresponding
-samples are automatically selected in the Session's current
+samples are automatically selected in the session's current
 :meth:`view <fiftyone.core.session.Session.view>`. Likewise, whenever you
 modify the Session's view, either in the App or by programmatically setting
 :meth:`session.view <fiftyone.core.session.Session.view>`, the corresponding
@@ -318,17 +319,6 @@ digit images in the App that are likely to be confused as other digits:
 .. image:: ../images/plots/mnist-interactive2.gif
    :alt: mnist-interactive2
    :align: center
-
-.. note::
-
-    Interactive plots are currently only supported in Jupyter notebooks. In the
-    meantime, you can still use FiftyOne's plotting features in other
-    environments, but you must manually call
-    :meth:`plot.show() <fiftyone.core.plots.base.Plot.show>` to update the
-    state of a plot to match the state of a connected |Session|, and any
-    callbacks that would normally be triggered in response to interacting with
-    a plot will not be triggered. See
-    :ref:`this section <working-in-notebooks>` for more information.
 
 .. _geolocation-plots:
 
@@ -433,7 +423,7 @@ for the :ref:`quickstart-geo <dataset-zoo-quickstart-geo>` dataset that is
 In this setup, the location plot renders each sample using its corresponding
 ``[longitude, latitude]`` coordinates from the dataset's only |GeoLocation|
 field, ``location``. When points are lasso-ed in the plot, the corresponding
-samples are automatically selected in the Session's current
+samples are automatically selected in the session's current
 :meth:`view <fiftyone.core.session.Session.view>`. Likewise, whenever you
 modify the Session's view, either in the App or by programmatically setting
 :meth:`session.view <fiftyone.core.session.Session.view>`, the corresponding
@@ -479,17 +469,6 @@ notebook:
 .. image:: ../images/plots/location-scatterplot-interactive.gif
    :alt: location-scatterplot-interactive
    :align: center
-
-.. note::
-
-    Interactive plots are currently only supported in Jupyter notebooks. In the
-    meantime, you can still use FiftyOne's plotting features in other
-    environments, but you must manually call
-    :meth:`plot.show() <fiftyone.core.plots.base.Plot.show>` to update the
-    state of a plot to match the state of a connected |Session|, and any
-    callbacks that would normally be triggered in response to interacting with
-    a plot will not be triggered. See
-    :ref:`this section <working-in-notebooks>` for more information.
 
 .. _confusion-matrices:
 
@@ -562,17 +541,6 @@ notebook:
    :alt: detection-evaluation
    :align: center
 
-.. note::
-
-    Interactive plots are currently only supported in Jupyter notebooks. In the
-    meantime, you can still use FiftyOne's plotting features in other
-    environments, but you must manually call
-    :meth:`plot.show() <fiftyone.core.plots.base.Plot.show>` to update the
-    state of a plot to match the state of a connected |Session|, and any
-    callbacks that would normally be triggered in response to interacting with
-    a plot will not be triggered. See
-    :ref:`this section <working-in-notebooks>` for more information.
-
 .. _view-plots:
 
 View plots
@@ -588,7 +556,7 @@ Current varieties of view plots include |CategoricalHistogram|,
 
     New |ViewPlot| subclasses will be continually added over time, and it is
     also straightforward to implement your own custom view plots. Contributions
-    are welcome at `https://github.com/voxel51/fiftyone`_!
+    are welcome at https://github.com/voxel51/fiftyone!
 
 The example below demonstrates the use of |ViewGrid| to construct a dashboard
 of histograms of various aspects of a dataset, which can then be attached to a
@@ -631,17 +599,6 @@ notebook:
    :alt: view-plots
    :align: center
 
-.. note::
-
-    Interactive plots are currently only supported in Jupyter notebooks. In the
-    meantime, you can still use FiftyOne's plotting features in other
-    environments, but you must manually call
-    :meth:`plot.show() <fiftyone.core.plots.base.Plot.show>` to update the
-    state of a plot to match the state of a connected |Session|, and any
-    callbacks that would normally be triggered in response to interacting with
-    a plot will not be triggered. See
-    :ref:`this section <working-in-notebooks>` for more information.
-
 .. _attaching-plots:
 
 Attaching plots to the App
@@ -657,6 +614,18 @@ automatically updated whenever
 reason, whether you modify your view in the App, or programmatically change it
 by setting :meth:`session.view <fiftyone.core.session.Session.view>`, or if
 multiple plots are connected and another plot triggers a |Session| update!
+
+.. note::
+
+    Interactive plots are currently only supported in Jupyter notebooks. In the
+    meantime, you can still use FiftyOne's plotting features in other
+    environments, but you must manually call
+    :meth:`plot.show() <fiftyone.core.plots.base.Plot.show>` to update the
+    state of a plot to match the state of a connected |Session|, and any
+    callbacks that would normally be triggered in response to interacting with
+    a plot will not be triggered.
+
+    See :ref:`this section <working-in-notebooks>` for more information.
 
 Attaching a plot
 ----------------

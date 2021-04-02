@@ -17,6 +17,8 @@
 .. |StringField| replace:: :class:`StringField <fiftyone.core.fields.StringField>`
 .. |ListField| replace:: :class:`ListField <fiftyone.core.fields.ListField>`
 .. |DictField| replace:: :class:`DictField <fiftyone.core.fields.DictField>`
+.. |VectorField| replace:: :class:`VectorField <fiftyone.core.fields.VectorField>`
+.. |ArrayField| replace:: :class:`ArrayField <fiftyone.core.fields.ArrayField>`
 
 .. |ViewExpression| replace:: :class:`ViewExpression <fiftyone.core.expressions.ViewExpression>`
 .. |ViewField| replace:: :class:`ViewField <fiftyone.core.expressions.ViewField>`
