@@ -58,7 +58,7 @@ would like to run the App as a desktop application.
 
     :func:`fo.launch_app() <fiftyone.core.session.launch_app>` will launch the
     App asynchronously and return control to your Python process. The App will
-    then remain open until you close it or the process exits.
+    then remain connected until the process exits.
 
     If you are using the App in a non-interactive script, you should use
     :meth:`session.wait() <fiftyone.core.session.Session.wait>` to block
@@ -383,7 +383,7 @@ To perform this workflow, open the expanded sample modal by clicking on
 a sample in the App. Then click on individual labels to select them:
 
 .. image:: ../images/app/app-object-selection.gif
-    :alt: app-object-selection
+    :alt: app-label-selection
     :align: center
 
 Selected labels will appear with dotted lines around them. The example above
