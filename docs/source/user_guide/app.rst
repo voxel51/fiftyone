@@ -446,6 +446,16 @@ filtering by |Sample| and |Label| tags.
 You can tag or untag batches of samples/labels in the App by clicking on the
 tag icon above the sample grid.
 
+For example, take the following steps to tag all labels in the ``predictions``
+field of a dataset:
+
+-   Make sure that ``predictions`` is the only |Label| field checked in the
+    filters sidebar
+-   Click the tag icon in the top-left corner of the grid
+-   Select `Labels`, type in the tag, and then click `Apply`
+
+You can also use the tag menu to remove existing tags.
+
 .. note::
 
     Any tagging operations that you perform using the tagging UI above the
@@ -457,15 +467,9 @@ tag icon above the sample grid.
     The UI provides helpful statistics about tagging operations that you define
     that you can use as a sanity check before applying the operation.
 
-For example, take the following steps to tag all labels in the ``predictions``
-field of a dataset:
-
--   Make sure that ``predictions`` is the only |Label| field checked in the
-    filters sidebar
--   Click the tag icon in the top-left of the grid
--   Select `Labels`, type in the tag, and then click `Apply`
-
-You can also use the tag menu to remove existing tags.
+.. image:: ../images/app/app-tagging-grid.gif
+    :alt: app-tagging-grid
+    :align: center
 
 The App also supports tagging data in individual samples when you have opened
 the expanded sample view by clicking on a sample. The tag icon is located in
@@ -478,6 +482,10 @@ the top-right corner of the modal.
     filters or show/hide checkboxes you have applied, unless you have selected
     individual labels, in which case the operation will only apply to the
     **selected labels**. The latter may span multiple samples.
+
+.. image:: ../images/app/app-tagging-modal.gif
+    :alt: app-tagging-modal
+    :align: center
 
 If your dataset has sample or label tags, you can use the ``TAGS`` and
 ``LABEL TAGS`` sections of the filters sidebar to filter by your tags.
@@ -494,10 +502,6 @@ excluded.
     appears in the top-left corner of the sample grid. Clicking this button
     will convert your filters to an equivalent set of stage(s) in the
     :ref:`view bar <app-create-view>`!
-
-.. image:: ../images/app/app-tagging.gif
-    :alt: app-tagging
-    :align: center
 
 .. _app-config:
 
