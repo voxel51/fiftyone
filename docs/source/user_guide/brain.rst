@@ -68,15 +68,15 @@ workflow:
 
 .. _brain-embeddings-visualization:
 
-Embedding visualization
-_______________________
+Visualizing embeddings
+______________________
 
 The FiftyOne Brain provides a powerful
 :meth:`compute_visualization() <fiftyone.brain.compute_visualization>` method
 that you can use to generate low-dimensional representations of the samples
 and/or individual objects in your datasets.
 
-The 2D or 3D representations can be visualized via
+These representations can be visualized via
 :ref:`interactive plots <interactive-plots>`, which can be connected to the
 :ref:`FiftyOne App <fiftyone-app>` so that when points of interest are selected
 in the plot, the corresponding samples/labels are automatically selected in the
@@ -136,8 +136,8 @@ Here are a few of the many possible applications:
 -   Uncovering patterns in incorrect/spurious predictions
 -   Finding examples of target scenarios in your data lake
 -   Mining hard examples for your evaluation pipeline
--   Identifying data classes that require additional
--   Recommending samples from your data lake to annotate for training
+-   Recommending samples from your data lake for classes that need additional
+    training data
 -   Unsupervised pre-annotation of training data
 
 The best part about embedding visualizations is that you will likely discover
