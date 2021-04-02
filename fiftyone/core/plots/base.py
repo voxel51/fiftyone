@@ -26,10 +26,10 @@ def plot_confusion_matrix(
 
     If ``ids`` are provided and you are working in a notebook environment with
     the default plotly backend, this method returns an interactive
-    :class:`fiftyone.core.plots.plotly.PlotlyHeatmap` that you can attach to an
-    App session via its :attr:`fiftyone.core.session.Session.plots` attribute,
-    which will automatically sync the session's view with the currently
-    selected cells in the confusion matrix.
+    :class:`fiftyone.core.plots.plotly.InteractiveHeatmap` that you can attach
+    to an App session via its :attr:`fiftyone.core.session.Session.plots`
+    attribute, which will automatically sync the session's view with the
+    currently selected cells in the confusion matrix.
 
     Args:
         confusion_matrix: a ``num_true x num_preds`` confusion matrix
@@ -49,8 +49,8 @@ def plot_confusion_matrix(
     Returns:
         one of the following:
 
-        -   a :class:`fiftyone.core.plots.plotly.PlotlyHeatmap`, if ``ids`` are
-            provided and the plotly backend is used
+        -   a :class:`fiftyone.core.plots.plotly.InteractiveHeatmap`, if
+            ``ids`` are provided and the plotly backend is used
         -   a :class:`fiftyone.core.plots.plotly.PlotlyNotebookPlot`, if no
             ``ids`` are provided but you are working in a Jupyter notebook with
             the plotly backend

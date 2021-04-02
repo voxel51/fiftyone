@@ -128,8 +128,8 @@ class COCOEvaluation(DetectionEvaluation):
         if eval_key is None:
             # Don't save results on user's data
             eval_key = "eval"
-            gts = gts.copy()
-            preds = preds.copy()
+            gts = _copy_detections(gts)
+            preds = _copy_detections(preds)
 
         return _coco_evaluation_single_iou(gts, preds, eval_key, self.config)
 
@@ -192,8 +192,8 @@ class COCOEvaluation(DetectionEvaluation):
 
                 for image in images:
                     # Don't mess with the user's data
-                    gts = image[self.gt_field].copy()
-                    preds = image[self.pred_field].copy()
+                    gts = _copy_detections(image[self.gt_field])
+                    preds = _copy_detections(image[self.pred_field])
 
                     image_matches = _coco_evaluation_iou_sweep(
                         gts, preds, self.config
@@ -645,3 +645,13 @@ def _make_iscrowd_fcn(iscrowd_attr):
             return False
 
     return _iscrowd
+
+
+def _copy_detections(dets):
+    _dets = dets.copy()
+
+    # We need the IDs to stay the same
+    for _det, det in zip(_dets.detections, dets.detections):
+        _det._id = det._id
+
+    return _dets

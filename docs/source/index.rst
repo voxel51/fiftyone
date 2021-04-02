@@ -46,9 +46,11 @@ Rapidly gain insight by visualizing samples overlayed with dynamic and
 queryable fields such as ground truth and predicted labels, dataset splits, and
 much more!
 
-.. image:: images/homepage1.png
-   :alt: Overview
-   :align: center
+.. raw:: html
+
+   <video controls muted poster="https://voxel51.com/images/fiftyone_long_sizzle_poster.png" style="width: 100%;">
+     <source src="https://voxel51.com/images/fiftyone_long_sizzle.mp4" type="video/mp4">
+   </video>
 
 .. note::
 

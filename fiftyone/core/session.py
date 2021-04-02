@@ -93,6 +93,7 @@ def launch_app(
     port=None,
     remote=False,
     desktop=None,
+    height=None,
     auto=True,
     config=None,
 ):
@@ -113,6 +114,8 @@ def launch_app(
         desktop (None): whether to launch the App in the browser (False) or as
             a desktop App (True). If None, ``fiftyone.config.desktop_app`` is
             used. Not applicable to notebook contexts
+        height (None): an optional height, in pixels, at which to render App
+            instances in notebook cells. Only applicable in notebook contexts
         auto (True): whether to automatically show a new App window
             whenever the state of the session is updated. Only applicable
             in notebook contexts
@@ -141,6 +144,7 @@ def launch_app(
         port=port,
         remote=remote,
         desktop=desktop,
+        height=height,
         auto=auto,
         config=config,
     )
@@ -238,6 +242,8 @@ class Session(foc.HasClient):
         desktop (None): whether to launch the App in the browser (False) or as
             a desktop App (True). If None, ``fiftyone.config.desktop_app`` is
             used. Not applicable to notebook contexts (e.g., Jupyter and Colab)
+        height (None): an optional height, in pixels, at which to render App
+            instances in notebook cells. Only applicable in notebook contexts
         auto (True): whether to automatically show a new App window
             whenever the state of the session is updated. Only applicable
             in notebook contexts
@@ -257,6 +263,7 @@ class Session(foc.HasClient):
         port=None,
         remote=False,
         desktop=None,
+        height=None,
         auto=True,
         config=None,
     ):
@@ -267,6 +274,9 @@ class Session(foc.HasClient):
 
         if config is None:
             config = fo.app_config.copy()
+
+        if height is not None:
+            config.notebook_height = height
 
         state = self._HC_ATTR_TYPE()
         state.config = config
@@ -314,10 +324,10 @@ class Session(foc.HasClient):
             state.dataset._reload()
 
         state.datasets = fod.list_datasets()
-        state.active_handle = self._auto_show()
-        self.state = state
+        state.active_handle = self._auto_show(height=config.notebook_height)
 
         self.plots = plots
+        self.state = state
 
         if self._remote:
             if self._context != focx._NONE:
@@ -347,6 +357,7 @@ class Session(foc.HasClient):
 
         if self._context == focx._NONE:
             self.open()
+            return
 
     def _validate(self, dataset, view, plots, config):
         if dataset is not None and not isinstance(dataset, fod.Dataset):
@@ -873,13 +884,15 @@ class Session(foc.HasClient):
             raise ValueError("Only notebook sessions can be frozen")
 
         self.state.active_handle = None
-        self._update_state()
 
+        self._update_state()
         self.plots.freeze()
 
-    def _auto_show(self):
-        if self._auto and (self._context != focx._NONE):
-            return self._show()
+    def _auto_show(self, height=None):
+        if self._auto and self._context != focx._NONE:
+            return self._show(height=height)
+
+        return None
 
     def _capture(self, data):
         from IPython.display import HTML
@@ -935,7 +948,7 @@ class Session(foc.HasClient):
         fosa.Sample._reload_docs(self.dataset._sample_collection_name)
 
     def _show(self, height=None):
-        if (self._context == focx._NONE) or self._desktop:
+        if self._context == focx._NONE or self._desktop:
             return
 
         if self.dataset is not None:
@@ -945,6 +958,9 @@ class Session(foc.HasClient):
 
         handle = IPython.display.display(display_id=True)
         uuid = str(uuid4())
+
+        # @todo isn't it bad to set this here? The first time this is called
+        # is before `self.state` has been initialized
         self.state.active_handle = uuid
 
         if height is None:
@@ -952,7 +968,7 @@ class Session(foc.HasClient):
 
         self._handles[uuid] = {"target": handle, "height": height}
 
-        _display(self, handle, uuid, self._port, height=height)
+        _display(self, handle, uuid, self._port, height)
         return uuid
 
     def _update_state(self):
@@ -962,21 +978,22 @@ class Session(foc.HasClient):
         self.state = self.state
 
 
-def _display(session, handle, uuid, port=None, height=None, update=False):
-    """Displays a running FiftyOne instance.
-
-    Args:
-        port (None): the integer port on which the FiftyOne server is listening
-        height (None): the height of the frame into which to render the
-            FiftyOne UI, in pixels. If None, a default value is used
-    """
-    if height is None:
-        height = session.config.notebook_height
-
+def _display(session, handle, uuid, port, height, update=False):
+    """Displays a running FiftyOne instance."""
     funcs = {focx._COLAB: _display_colab, focx._IPYTHON: _display_ipython}
     fn = funcs[focx._get_context()]
+    fn(session, handle, uuid, port, height, update=update)
 
-    return fn(session, handle, uuid, port, height, update)
+
+def _display_ipython(session, handle, uuid, port, height, update=False):
+    import IPython.display
+
+    src = "http://localhost:%d/?notebook=true&handleId=%s" % (port, uuid)
+    iframe = IPython.display.IFrame(src, height=height, width="100%")
+    if update:
+        handle.update(iframe)
+    else:
+        handle.display(iframe)
 
 
 def _display_colab(session, handle, uuid, port, height, update=False):
@@ -1031,14 +1048,3 @@ def _display_colab(session, handle, uuid, port, height, update=False):
             )
 
     output.register_callback("fiftyone.%s" % uuid.replace("-", "_"), capture)
-
-
-def _display_ipython(session, handle, uuid, port, height, update=False):
-    import IPython.display
-
-    src = "http://localhost:%d/?notebook=true&handleId=%s" % (port, uuid)
-    iframe = IPython.display.IFrame(src, height=height, width="100%")
-    if update:
-        handle.update(iframe)
-    else:
-        handle.display(iframe)
