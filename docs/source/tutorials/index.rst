@@ -75,7 +75,7 @@ your datasets and turn your good models into *great models*.
     :description: How good are your ground truth objects? Use the FiftyOne Brain's mistakenness feature to find annotation errors in your object detections.
     :link: detection_mistakes.html
     :image: ../_static/images/tutorials/detection_mistakes.png
-    :tags:Dataset-Evaluation,Brain
+    :tags: Dataset-Evaluation,Brain
 
 .. End of tutorial cards
 
