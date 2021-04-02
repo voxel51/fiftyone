@@ -742,10 +742,11 @@ class ClassificationResults(foe.EvaluationResults):
 
         If you are working in a notebook environment with the default plotly
         backend, this method returns an interactive
-        :class:`fiftyone.core.plots.plotly.PlotlyHeatmap` that you can attach
-        to an App session via its :attr:`fiftyone.core.session.Session.plots`
-        attribute, which will automatically sync the session's view with the
-        currently selected cells in the confusion matrix.
+        :class:`fiftyone.core.plots.plotly.InteractiveHeatmap` that you can
+        attach to an App session via its
+        :attr:`fiftyone.core.session.Session.plots` attribute, which will
+        automatically sync the session's view with the currently selected cells
+        in the confusion matrix.
 
         Args:
             classes (None): an optional list of classes to include in the
@@ -769,8 +770,8 @@ class ClassificationResults(foe.EvaluationResults):
         Returns:
             one of the following:
 
-            -   a :class:`fiftyone.core.plots.plotly.PlotlyHeatmap`, if the
-                plotly backend is used
+            -   a :class:`fiftyone.core.plots.plotly.InteractiveHeatmap`, if
+                the plotly backend is used
             -   a matplotlib figure, otherwise
         """
         _labels = self._get_labels(classes, include_missing=True)
