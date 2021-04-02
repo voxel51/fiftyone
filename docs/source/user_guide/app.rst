@@ -58,7 +58,7 @@ would like to run the App as a desktop application.
 
     :func:`fo.launch_app() <fiftyone.core.session.launch_app>` will launch the
     App asynchronously and return control to your Python process. The App will
-    then remain open until you close it or the process exits.
+    then remain connected until the process exits.
 
     If you are using the App in a non-interactive script, you should use
     :meth:`session.wait() <fiftyone.core.session.Session.wait>` to block
@@ -376,7 +376,7 @@ To perform this workflow, open the expanded sample modal by clicking on
 a sample in the App. Then click on individual labels to select them:
 
 .. image:: ../images/app/app-object-selection.gif
-    :alt: app-object-selection
+    :alt: app-label-selection
     :align: center
 
 Selected labels will appear with dotted lines around them. The example above
@@ -424,28 +424,30 @@ labels in the App:
 Tags and tagging
 ________________
 
-Tagging is a first-class citizen in FiftyOne, at both the |Sample|-level and
+Tagging is a first-class citizen in FiftyOne. At both the |Sample|-level and
 |Label|-level. And |Dataset| and |DatasetView| methods like
 :meth:`tag_samples() <fiftyone.core.collections.SampleCollection.tag_samples>`,
 :meth:`tag_labels() <fiftyone.core.collections.SampleCollection.tag_samples>`
-are always at your disposal in Python. But tagging, and filtering by tags also
+are always at your disposal in Python. But tagging and filtering by tags also
 extends to the App.
 
-In the App, tagging can be done via the Sample Grid to tag any shown labels or
-samples in the current view. Any filters in the Filters Sidebar will also be
-taken into account. In the case of labels, tagging in the App will also only
+In the App, tagging can be done via the sample grid to tag any shown labels or
+samples in the current view. Any filters in the Filters Sidebar will also
+be taken into account. In the case of labels, tagging in the App will only
 apply to labels that are checked, i.e. visible. And when samples are selected
-in the grid, tagging will also be restrscted the selected samples.
+in the grid, tagging will also be restricted the selected samples.
 
-For example, if you only want to tag labels in the `predictions` field in a
-dataset, simply uncheck all other labels fields and click the tag icon
-(Tagger) in the top-left of the grid. Then select `Labels`, type in the tag,
-and click `Apply`. Removing tags can also be done within the Tagger.
+For example, if one only want to tag labels in the
+:class:`Detections <fiftyone.core.labels.Detections>` named `predictions`,
+simply uncheck all other labels fields and click the tag icon in the top-left
+of the grid. Then select `Labels`, type in the tag, hit enter, and then click
+`Apply`. Removing tags can also be done within the tagging element by
+unchecking any existing labels and clicking `Apply`.
 
-The Tagger is also available in the top-right of the Expanded Sample View.
-When in this view, any filters in the Filters Sidebar also apply when tagging
-labels. Individual labels can targeted by first selecting them (even across
-multiple samples). Or the sample itself can be tagged.
+Tagging is also available within the expanded sample view in the top-right
+corner. When in the expanded view, any filters in the Filters Sidebar also
+apply when tagging labels. Individual labels can targeted by first selecting,
+even across multiple samples. Or the current sample itself can be tagged.
 
 And once you have tags on your samples or labels, the Filters Sidebar offers
 filtering by your tags. Simply click the eye icon next to tag in the sidebar
