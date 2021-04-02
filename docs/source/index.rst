@@ -75,59 +75,73 @@ _________________
 FiftyOne provides advanced capabilities that will turbocharge your machine
 learning workflows.
 
-.. Callout items --------------------------------------------------------------
 
-.. raw:: html
+:doc:`Curate datasets <user_guide/dataset_creation/index>`
+----------------------------------------------------------
 
-    <div class="tutorials-callout-container">
-        <div class="row">
+Surveys show that machine learning engineers spend over half of their time 
+wrangling data, but it doesn't have to be that way. Use FiftyOne's powerful 
+dataset import and manipulation capabilities to manage your data with ease.
 
-.. Add callout items below this line
-
-.. customcalloutitem::
-    :header: Curating datasets
-    :description: Surveys show that machine learning engineers spend over half of their time wrangling data, but it doesn't have to be that way. Use FiftyOne's powerful dataset import and manipulation capabilities to manage your data with ease.
+.. custombutton::
     :button_text: Learn how to load data into FiftyOne
     :button_link: user_guide/dataset_creation/index.html
 
-.. customcalloutitem::
-    :header: Evaluating models
-    :description: Aggregate metrics alone don’t give you the full picture of your ML models. In practice, the limiting factor on your model’s performance is often data quality issues that you need to see to address. FiftyOne makes it easy to do just that.
+.. image:: images/homepage_curate.gif
+   :alt: Curate datasets
+   :align: center
+
+
+:doc:`Evaluate models <tutorials/evaluate_detections>`
+------------------------------------------------------
+
+Aggregate metrics alone don’t give you the full picture of your ML models. 
+In practice, the limiting factor on your model’s performance is often data 
+quality issues that you need to see to address. FiftyOne makes it easy to do 
+just that.
+
+.. custombutton::
     :button_text: See how to evaluate models with FiftyOne
     :button_link: tutorials/evaluate_detections.html
 
-.. customcalloutitem::
-    :header: Removing redundant images
-    :description: During model training, the best results will be seen when training on unique data. Use FiftyOne to automatically remove duplicate or near-duplicate images from your datasets and curate diverse training datasets from your raw data.
+.. image:: images/homepage_evaluate.gif
+   :alt: Evaluate models
+   :align: center
+
+
+:doc:`Remove redundant images <tutorials/uniqueness>`
+-----------------------------------------------------
+
+During model training, the best results will be seen when training on unique 
+data. Use FiftyOne to automatically remove duplicate or near-duplicate images 
+from your datasets and curate diverse training datasets from your raw data.
+
+
+.. custombutton::
     :button_text: Try the image uniqueness tutorial
     :button_link: tutorials/uniqueness.html
 
-.. customcalloutitem::
-    :header: Finding annotation mistakes
-    :description: Annotations mistakes create an artificial ceiling on the performance of your model. However, finding these mistakes by hand is not feasible! Use FiftyOne to automatically identify possible label mistakes in your datasets.
+.. image:: images/homepage_redundant.gif
+   :alt: Remove redundant images
+   :align: center
+
+
+:doc:`Find annotation mistakes <tutorials/classification_mistakes>`
+-------------------------------------------------------------------
+
+Annotations mistakes create an artificial ceiling on the performance of your 
+model. However, finding these mistakes by hand is not feasible! Use FiftyOne 
+to automatically identify possible label mistakes in your datasets.
+
+
+.. custombutton::
     :button_text: Check out the label mistakes tutorial
     :button_link: tutorials/classification_mistakes.html
 
-.. customcalloutitem::
-    :header: Bootstrapping datasets from raw images
-    :description: "What data should I select to annotate?" Use FiftyOne to automatically recommend unlabeled samples from your dataset to send for annotation, enabling you to bootsrap a training dataset that leads to demonstrably better model performance.
-    :button_text: Tutorial coming soon
-    :button_link:
+.. image:: images/homepage_mistakes.gif
+   :alt: Find annotation mistakes
+   :align: center
 
-.. customcalloutitem::
-    :header: Adding optimal samples to your dataset
-    :description: "What new samples should I add to my training dataset to see the largest improvement in my model?" FiftyOne provides methods for mining hard samples from your datasets, a tried and true measure of mature machine learning processes.
-    :button_text: Tutorial coming soon
-    :button_link:
-
-.. End callouts ---------------------------------------------------------------
-
-.. raw:: html
-
-        </div>
-    </div>
-
-.. End of callout items -------------------------------------------------------
 
 Core Concepts
 _____________
