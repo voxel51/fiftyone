@@ -437,10 +437,10 @@ account. In the case of labels, tagging in the App will also only apply to
 labels that are checked, i.e. visible. And when samples are selected in the
 grid, tagging will also be restrscted the selected samples.
 
-For example, if you only want to tag labels in `predictions` field in a
+For example, if you only want to tag labels in the `predictions` field in a
 dataset, simply uncheck all other labels fields and click the tag icon
-(Tagger) in the top-left of the grid. Then select `Labels`, type in the tag, and click
-`Apply`. Removing tags can also be done within the Tagger.
+(Tagger) in the top-left of the grid. Then select `Labels`, type in the tag,
+and click `Apply`. Removing tags can also be done within the Tagger.
 
 The Tagger is also available in the top-right of the Expanded Sample View.
 When in this view, any filters in the Filters Sidebar also apply when tagging
