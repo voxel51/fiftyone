@@ -32,8 +32,10 @@ FiftyOne
 
 .. End social links -----------------------------------------------------------
 
-FiftyOne is an open-source tool that lets you visualize and explore your
-image/video datasets and easily interpret model results, anywhere, fast. 
+FiftyOne will revamp your machine learning workflows by enabling you to
+visualize datasets and interpret models faster, easier, and more efficiently 
+than ever before. This open-source tool provides the building blocks for an optimized 
+data pipeline that lets you get hands-on with your data.
 
 .. raw:: html
 
@@ -78,72 +80,65 @@ FiftyOne provides advanced capabilities that will turbocharge your machine
 learning workflows.
 
 
-:doc:`Curate datasets <user_guide/dataset_creation/index>`
-----------------------------------------------------------
+.. Callout items --------------------------------------------------------------
 
-Surveys show that machine learning engineers spend over half of their time 
-wrangling data, but it doesn't have to be that way. Use FiftyOne's powerful 
-dataset import and manipulation capabilities to manage your data with ease.
+.. raw:: html
 
-.. custombutton::
+    <div class="tutorials-callout-container">
+        <div class="row">
+
+.. Add callout items below this line
+
+.. customcalloutitem::
+    :header: Curating datasets
+    :description: FiftyOne's flexible datasets and API let ML engineers spend less time wrangling data and more time training better models.    
     :button_text: Learn how to load data into FiftyOne
     :button_link: user_guide/dataset_creation/index.html
+    :image: _static/images/homepage_curate.gif
 
-.. image:: images/homepage_curate.gif
-   :alt: Curate datasets
-   :align: center
+.. customcalloutitem::
+    :header: Visualizing interactive embeddings 
+    :description: Unsupervised annotation, hard sample mining, finding incorrect predictions, and more is easy with embeddings visualizations in FiftyOne.
+    :button_text: Try out interactive embeddings yourself 
+    :button_link: tutorials/embeddings.html
+    :image: _static/images/homepage_embeddings.gif
 
-
-:doc:`Evaluate models <tutorials/evaluate_detections>`
-------------------------------------------------------
-
-Aggregate metrics alone don’t give you the full picture of your ML models. 
-In practice, the limiting factor on your model’s performance is often data 
-quality issues that you need to see to address. FiftyOne makes it easy to do 
-just that.
-
-.. custombutton::
+.. customcalloutitem::
+    :header: Evaluating models
+    :description: Aggregate metrics are not enough, FiftyOne provides hands-on evaluation of your model output to enable you to train better models.
     :button_text: See how to evaluate models with FiftyOne
     :button_link: tutorials/evaluate_detections.html
+    :image: _static/images/homepage_evaluate.gif
 
-.. image:: images/homepage_evaluate.gif
-   :alt: Evaluate models
-   :align: center
-
-
-:doc:`Remove redundant images <tutorials/uniqueness>`
------------------------------------------------------
-
-During model training, the best results will be seen when training on unique 
-data. Use FiftyOne to automatically remove duplicate or near-duplicate images 
-from your datasets and curate diverse training datasets from your raw data.
-
-
-.. custombutton::
-    :button_text: Try the image uniqueness tutorial
-    :button_link: tutorials/uniqueness.html
-
-.. image:: images/homepage_redundant.gif
-   :alt: Remove redundant images
-   :align: center
-
-
-:doc:`Find annotation mistakes <tutorials/classification_mistakes>`
--------------------------------------------------------------------
-
-Annotations mistakes create an artificial ceiling on the performance of your 
-model. However, finding these mistakes by hand is not feasible! Use FiftyOne 
-to automatically identify possible label mistakes in your datasets.
-
-
-.. custombutton::
+.. customcalloutitem::
+    :header: Finding annotation mistakes
+    :description: Annotation mistakes creep into any large dataset, but FiftyOne makes it easy to automatically identify, tag, and fix label mistakes.
     :button_text: Check out the label mistakes tutorial
     :button_link: tutorials/classification_mistakes.html
+    :image: _static/images/homepage_mistakes.gif
 
-.. image:: images/homepage_mistakes.gif
-   :alt: Find annotation mistakes
-   :align: center
+.. customcalloutitem::
+    :header: Removing redundant images
+    :description: FiftyOne helps find near-duplicate images and curate diverse datasets to improve model performance and reduce annotation costs.
+    :button_text: Try the image uniqueness tutorial
+    :button_link: tutorials/uniqueness.html
+    :image: _static/images/homepage_redundant.gif
 
+.. customcalloutitem::
+    :header: Visualizing geolocation data
+    :description: The plotting functionalities in FiftyOne are flexible enough to make even difficult annotations, like geolocation data, easy to explore.
+    :button_text: Tutorial coming soon! 
+    :button_link:
+    :image: _images/location-scatterplot.gif
+
+.. End callouts ---------------------------------------------------------------
+
+.. raw:: html
+
+        </div>
+    </div>
+
+.. End of callout items -------------------------------------------------------
 
 Core Concepts
 _____________
