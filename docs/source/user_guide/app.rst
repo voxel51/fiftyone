@@ -58,7 +58,7 @@ would like to run the App as a desktop application.
 
     :func:`fo.launch_app() <fiftyone.core.session.launch_app>` will launch the
     App asynchronously and return control to your Python process. The App will
-    then remain open until you close it or the process exits.
+    then remain connected until the process exits.
 
     If you are using the App in a non-interactive script, you should use
     :meth:`session.wait() <fiftyone.core.session.Session.wait>` to block
@@ -266,6 +266,13 @@ field, click the caret icon to the right of the field's name.
 Whenever you modify a filter element, the App will automatically update to show
 only those samples and/or labels that match the filter.
 
+.. note::
+
+    Did you know? When you have applied filter(s) in the App, a save icon
+    appears in the top-left corner of the sample grid. Clicking this button
+    will convert your filters to an equivalent set of stage(s) in the
+    :ref:`view bar <app-create-view>`!
+
 .. image:: ../images/app/app-filters.gif
    :alt: app-filters
    :align: center
@@ -338,10 +345,14 @@ select some samples in the App:
     :alt: app-selection
     :align: center
 
-The selected samples dropdown on the upper-left of the sample grid records the
-number of samples that you have currently selected. You can also take actions
-such as updating the view to only show (or exclude) the currently selected
-samples.
+The selected samples checkmark in the options row in the upper-left corner of
+the sample grid records the number of samples that you have currently selected.
+You can also take actions such as updating the view to only show (or exclude)
+the currently selected samples.
+
+Once sample
+Tagging also automatically applies to selected samples or their labels when any
+samples are selected. See :ref:`tagging <app-tagging>` for more details.
 
 You can also access the
 :meth:`Session.selected <fiftyone.core.session.Session.selected>` property of
@@ -362,46 +373,46 @@ your session to retrieve the IDs of the currently selected samples in the App:
      '5ef0eef405059ebb0ddfa86e',
      '5ef0eef405059ebb0ddfa93c']
 
-.. _app-select-objects:
+.. _app-select-labels:
 
-Selecting objects
+Selecting labels
 _________________
 
-You can also use the App to select individual objects within samples. You can
-use this functionality to visually show/hide objects of interest in the App; or
-you can access the data for the selected objects from Python, for example by
-creating a |DatasetView| that includes/excludes the selected objects.
+You can also use the App to select individual labels within samples. You can
+use this functionality to visually show/hide labels of interest in the App; or
+you can access the data for the selected labels from Python, for example by
+creating a |DatasetView| that includes/excludes the selected labels.
 
 To perform this workflow, open the expanded sample modal by clicking on
-a sample in the App. Then click on individual objects to select them:
+a sample in the App. Then click on individual labels to select them:
 
-.. image:: ../images/app/app-object-selection.gif
-    :alt: app-object-selection
+.. image:: ../images/app/app-label-selection.gif
+    :alt: app-label-selection
     :align: center
 
-Selected objects will appear with dotted lines around them. The example above
-shows selecting an object detection, but polygons, polylines, segmentations,
-and keypoints can be selected as well.
+Selected labels will appear with dotted lines around them. The example above
+shows selecting an object detection, but classifications, polygons, polylines,
+segmentations, and keypoints can be selected as well.
 
-When you have selected objects in the App, you can use the selected objects
-dropdown menu under ``Fields`` to take actions such as hiding the selected
-samples from view.
+When you have selected labels in the App, you can use the selected labels
+options in the upper-right (the orange checkmark button) to hide these labels
+from view or exclude all other labels.
 
 You can also access the
-:meth:`Session.selected_objects <fiftyone.core.session.Session.selected_objects>`
+:meth:`Session.selected_labels <fiftyone.core.session.Session.selected_labels>`
 property of your session to retrieve information about the currently selected
-objects in the App:
+labels in the App:
 
 .. code-block:: python
 
     # Print information about the currently selected samples in the App
-    fo.pprint(session.selected_objects)
+    fo.pprint(session.selected_labels)
 
-    # Create a view containing only the selected objects
-    selected_view = dataset.select_objects(session.selected_objects)
+    # Create a view containing only the selected labels
+    selected_view = dataset.select_labels(session.selected_labels)
 
-    # Create a view containing everything except the selected objects
-    excluded_view = dataset.exclude_objects(session.selected_objects)
+    # Create a view containing everything except the selected labels
+    excluded_view = dataset.exclude_labels(session.selected_labels)
 
 .. code-block:: text
 
@@ -418,6 +429,80 @@ objects in the App:
         },
         ...
     ]
+
+.. _app-tagging:
+
+Tags and tagging
+________________
+
+Tagging is a first-class citizen in FiftyOne, as both |Sample| and |Label|
+instances have a ``tags`` attribute that you can use to store arbitrary string
+tags for your data.
+
+The FiftyOne API provides methods like
+:meth:`tag_samples() <fiftyone.core.collections.SampleCollection.tag_samples>`
+and
+:meth:`tag_labels() <fiftyone.core.collections.SampleCollection.tag_labels>`
+that you can use to programmatically manage the tags on your dataset. However,
+the App also provides a convenient UI for interactively adding, removing, and
+filtering by |Sample| and |Label| tags.
+
+You can tag or untag batches of samples/labels in the App by clicking on the
+tag icon above the sample grid.
+
+For example, take the following steps to tag all labels in the ``predictions``
+field of a dataset:
+
+-   Make sure that ``predictions`` is the only |Label| field checked in the
+    filters sidebar
+-   Click the tag icon in the top-left corner of the grid
+-   Select `Labels`, type in the tag, and then click `Apply`
+
+You can also use the tag menu to remove existing tags.
+
+.. note::
+
+    Any tagging operations that you perform using the tagging UI above the
+    sample grid will be applied to your **current view**, respecting any
+    filters or show/hide checkboxes you have applied in the filters sidebar,
+    unless you have selected individual samples, in which case the operation
+    will only apply to the **selected samples**.
+
+.. image:: ../images/app/app-tagging-samples.gif
+    :alt: app-tagging-samples
+    :align: center
+
+The App also supports tagging data in individual samples when you have opened
+the expanded sample view by clicking on a sample. The tag icon is located in
+the top-right corner of the modal.
+
+.. note::
+
+    Any tagging operations that you perform using the tagging UI in expanded
+    sample mode will be applied to the **current sample**, respecting any
+    filters or show/hide checkboxes you have applied, unless you have selected
+    individual labels, in which case the operation will only apply to the
+    **selected labels**. The latter may span multiple samples.
+
+.. image:: ../images/app/app-tagging-expanded.gif
+    :alt: app-tagging-expanded
+    :align: center
+
+If your dataset has sample or label tags, you can use the ``SAMPLE TAGS`` and
+``LABEL TAGS`` sections of the filters sidebar to filter by your tags.
+
+When you click the eye icon next to a sample tag, your view will update to only
+include samples with the tag(s) you have selected. When you click the eye icon
+next to a label tag, your view will update to only include labels with tag(s)
+you have selected, and any samples with no matches will be automatically
+excluded.
+
+.. note::
+
+    Did you know? When you have applied filter(s) in the App, a save icon
+    appears in the top-left corner of the sample grid. Clicking this button
+    will convert your filters to an equivalent set of stage(s) in the
+    :ref:`view bar <app-create-view>`!
 
 .. _app-config:
 
