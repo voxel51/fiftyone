@@ -163,6 +163,7 @@ Docs
   use :meth:`compute_visualization() <fiftyone.brain.compute_visualization>`
   on image datasets
 - Added an :ref:`interactive plots <interactive-plots>` page to the user guide
+- Added a :ref:`Tags and tagging <app-tagging>` section to the App user guide
 - Added a :ref:`visualizing embedding <brain-embeddings-visualization>` section
   to the Brain user guide
 
