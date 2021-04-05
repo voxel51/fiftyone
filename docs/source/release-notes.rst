@@ -161,9 +161,8 @@ Docs
 ^^^^
 - Added :doc:`a tutorial </tutorials/image_embeddings>` demonstrating how to
   use :meth:`compute_visualization() <fiftyone.brain.compute_visualization>`
-  to analyze and improve image datasets
+  on image datasets
 - Added an :ref:`interactive plots <interactive-plots>` page to the user guide
-  that explains how to use the new interactive plotting features
 - Added a :ref:`visualizing embedding <brain-embeddings-visualization>` section
   to the Brain user guide
 
