@@ -41,8 +41,8 @@ visualize datasets and interpret models faster and more effectively.
 
 .. raw:: html
 
-  <div style="margin-top: 25px; margin-bottom: 25px">
-    <video controls muted poster="https://voxel51.com/images/fiftyone_long_sizzle_poster.png" style="width: 100%;">
+  <div style="margin-top: 20px; margin-bottom: 20px">
+    <video controls muted poster="https://user-images.githubusercontent.com/25985824/113626741-88a45600-9630-11eb-9634-904b3d6ff92e.png" style="width: 100%;">
       <source src="https://voxel51.com/images/fiftyone_long_sizzle.mp4" type="video/mp4">
     </video>
   </div>
