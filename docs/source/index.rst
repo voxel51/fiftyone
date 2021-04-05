@@ -166,7 +166,7 @@ _________________
 .. customcalloutitem::
     :header: Working with geolocation
     :description: Many datasets have location metadata, but visualizing location-based datasets has traditionally required closed source or cloud-based tools. FiftyOne provides native support for storing, visualizing, and querying datasets by location.
-    :button_text: Learn about location data
+    :button_text: Visualize your location data
     :button_link: user_guide/plots.html#geolocation-plots
     :image: _static/images/homepage_location.gif
 

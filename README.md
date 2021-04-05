@@ -36,16 +36,17 @@ models.**
 
 ---
 
-[FiftyOne](http://www.voxel51.com/docs/fiftyone) is an open source ML tool
-created by [Voxel51](https://voxel51.com) that helps you build high-quality
-datasets and computer vision models.
+Nothing hinders the success of machine learning systems more than poor quality
+data. And without the right tools, improving a model can be time-consuming and
+inefficient.
 
-With FiftyOne, you can search, sort, filter, visualize, analyze, and improve
-your datasets without excess wrangling or writing custom scripts. It also
-provides powerful functionality for analyzing your models, allowing you to
-understand their strengths and weaknesses, visualize, diagnose, and correct
-their failure modes, and more. FiftyOne is designed to be lightweight and
-easily integrate into your existing CV/ML workflows.
+[FiftyOne](http://fiftyone.ai) supercharges your machine learning workflows by
+enabling you to visualize datasets and interpret models faster and more
+effectively.
+
+Use FiftyOne to get hands-on with your data, including visualizing complex
+labels, evaluating your models, exploring scenarios of interest, identifying
+failure modes, finding annotation mistakes, and much more!
 
 You can get involved by joining our Slack community, reading our blog on
 Medium, and following us on social media:
