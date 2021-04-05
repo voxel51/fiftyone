@@ -158,7 +158,8 @@ more applications specific to your use case when you try it out on your data!
 
 .. note::
 
-    Check out the :doc:`embeddings tutorial <../tutorials/embeddings>` to see
+    Check out the
+    :doc:`image embeddings tutorial <../tutorials/image_embeddings>` to see
     example uses of the Brain's embeddings-powered visualization methods to
     uncover hidden structure in datasets.
 

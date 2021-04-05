@@ -159,11 +159,13 @@ CLI
 
 Docs
 ^^^^
-- Added an :ref:`Interctive plots user guide <interactive-plots>`
-- Added an :ref:`Tags and tagging <app-tagging>` section to the
-  :ref:`App user guide <fiftyone-app>`
-- Added a :ref:`Visualizing embeddings <brain-embeddings-visualization>`
-  section to the :ref:`Brain user guide <fiftyone-brain>`
+- Added :doc:`a tutorial </tutorials/image_embeddings>` demonstrating how to
+  use :meth:`compute_visualization() <fiftyone.brain.compute_visualization>`
+  on image datasets
+- Added an :ref:`interactive plots <interactive-plots>` page to the user guide
+- Added a :ref:`Tags and tagging <app-tagging>` section to the App user guide
+- Added a :ref:`visualizing embedding <brain-embeddings-visualization>` section
+  to the Brain user guide
 
 .. _release-notes-v0.7.4:
 
