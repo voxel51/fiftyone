@@ -6,7 +6,7 @@
 <img src="https://user-images.githubusercontent.com/25985824/106288518-24bb7680-6216-11eb-8f10-60052c519586.png" height="50px">
 
 **The open-source tool for building high-quality datasets and computer vision
-models.**
+models**
 
 ---
 
@@ -29,7 +29,7 @@ models.**
 [![Mailing list](http://bit.ly/2Md9rxM)](https://share.hsforms.com/1zpJ60ggaQtOoVeBqIZdaaA2ykyk)
 [![Twitter](https://img.shields.io/twitter/follow/Voxel51?style=social)](https://twitter.com/voxel51)
 
-<img alt="FiftyOne" src="https://user-images.githubusercontent.com/25985824/113623500-71636980-962c-11eb-981a-7c03cf86e63c.png">
+[![FiftOone](https://user-images.githubusercontent.com/25985824/113623500-71636980-962c-11eb-981a-7c03cf86e63c.png)](http://fiftyone.ai)
 
 </p>
 </div>
