@@ -250,8 +250,8 @@ dataset into any aspect you need; and more.
     :button_text: See more of the App
     :button_link: user_guide/app.html
 
-.. image:: images/homepage2.png
-   :alt: App
+.. image:: images/homepage_app.png
+   :alt: fiftyone-app
    :align: center
 
 :doc:`FiftyOne Brain <user_guide/brain>`
