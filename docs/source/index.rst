@@ -97,13 +97,6 @@ learning workflows.
     :image: _static/images/homepage_curate.gif
 
 .. customcalloutitem::
-    :header: Visualizing interactive embeddings 
-    :description: Unsupervised annotation, hard sample mining, finding incorrect predictions, and more is easy with embeddings visualizations in FiftyOne.
-    :button_text: Try out interactive embeddings yourself 
-    :button_link: tutorials/embeddings.html
-    :image: _static/images/homepage_embeddings.gif
-
-.. customcalloutitem::
     :header: Evaluating models
     :description: Aggregate metrics are not enough, FiftyOne provides hands-on evaluation of your model output to enable you to train better models.
     :button_text: See how to evaluate models with FiftyOne
@@ -123,6 +116,13 @@ learning workflows.
     :button_text: Try the image uniqueness tutorial
     :button_link: tutorials/uniqueness.html
     :image: _static/images/homepage_redundant.gif
+
+.. customcalloutitem::
+    :header: Visualizing interactive embeddings
+    :description: Unsupervised annotation, hard sample mining, finding incorrect predictions, and more is easy with embeddings visualizations in FiftyOne.
+    :button_text: Tutorial coming soon!
+    :button_link:
+    :image: _static/images/homepage_embeddings.gif
 
 .. customcalloutitem::
     :header: Visualizing geolocation data
