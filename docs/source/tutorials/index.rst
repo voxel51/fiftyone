@@ -103,7 +103,7 @@ your datasets and turn your good models into *great models*.
 
    Evaluating object detections <evaluate_detections.ipynb>
    Evaluating a classifier <evaluate_classifications.ipynb>
-   using image embeddings <image_embeddings.ipynb>
+   Using image embeddings <image_embeddings.ipynb>
    Exploring image uniqueness <uniqueness.ipynb>
    Finding class mistakes <classification_mistakes.ipynb>
    Finding detection mistakes <detection_mistakes.ipynb>
