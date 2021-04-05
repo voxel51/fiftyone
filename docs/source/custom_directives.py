@@ -226,3 +226,49 @@ _CUSTOM_BUTTON_TEMPLATE = """
         <a class="btn {classes} callout-button" href="{button_link}"{attributes}>{button_text}</a>
     </div>
 """
+
+
+class CustomImageLinkDirective(Directive):
+    """A custom image within a link nested in a div. Styling can be done via
+    a parent container.
+
+
+    Example usage::
+        .. customimagelink::
+            :image_link: other/page.html
+            :image_src: images/image.png
+            :image_src: My image
+    """
+
+    option_spec = {
+        "image_link": directives.unchanged,
+        "image_src": directives.unchanged,
+        "image_title": directives.unchanged,
+    }
+
+    def run(self):
+        image_link = self.options.get("image_link", "")
+        image_src = self.options.get("image_src", "")
+        image_title = self.options.get("image_title", "")
+
+        callout_rst = _CUSTOM_IMAGE_LINK_TEMPLATE.format(
+            image_link=image_link,
+            image_src=image_src,
+            image_title=image_title,
+        )
+
+        image_list = StringList(callout_rst.split("\n"))
+        image = nodes.paragraph()
+        self.state.nested_parse(image_list, self.content_offset, image)
+        return [image]
+
+
+_CUSTOM_IMAGE_LINK_TEMPLATE = """
+.. raw:: html
+
+    <div>
+        <a href="{image_link}" title="{image_title}">
+          <img src="{image_src}" alt="{image_title}"/>
+        </a>
+    </div>
+"""

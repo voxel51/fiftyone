@@ -18,6 +18,7 @@ from custom_directives import (
     CustomButtonDirective,
     CustomCalloutItemDirective,
     CustomCardItemDirective,
+    CustomImageLinkDirective,
 )
 from redirects import generate_redirects
 
@@ -209,3 +210,4 @@ def setup(app):
     app.add_directive("custombutton", CustomButtonDirective)
     app.add_directive("customcalloutitem", CustomCalloutItemDirective)
     app.add_directive("customcarditem", CustomCardItemDirective)
+    app.add_directive("customimagelink", CustomImageLinkDirective)

@@ -58,12 +58,66 @@ explore embeddings, query your dataset fields, and much more!
 
 FiftyOne is unlike other tools in the existing ML ecosystem. It is designed to
 be a lightweight hub for interactions with your data and labels, providing
-tight integrations with your favorite tools.
+integrations with your favorite tools.
 
 
-.. image:: images/homepage_integrations.png
-    :alt: Integrations
-    :align: center
+.. raw:: html
+
+    <div class="integrations-logos">
+
+.. customimagelink::
+    :image_link: environments/index.html?highlight=cloud#google-cloud
+    :image_src: https://voxel51.com/docs/fiftyone/images/integrations/google-cloud-128.png
+    :image_title: Google Cloud
+
+.. customimagelink::
+    :image_link: environments/index.html?highlight=cloud#aws
+    :image_src: https://voxel51.com/docs/fiftyone/images/integrations/aws-128.png
+    :image_title: Amazon Web Services
+
+.. customimagelink::
+    :image_link: environments/index.html?highlight=cloud#azure
+    :image_src: https://voxel51.com/docs/fiftyone/images/integrations/azure-128.png
+    :image_title: Azure
+
+.. customimagelink::
+    :image_link: api/fiftyone.utils.torch.html?highlight=pytorch
+    :image_src: https://voxel51.com/docs/fiftyone/images/integrations/pytorch-128.png
+    :image_title: PyTorch
+
+.. customimagelink::
+    :image_link: api/fiftyone.utils.tf.html?highlight=tensorflow
+    :image_src: https://voxel51.com/docs/fiftyone/images/integrations/tensorflow-128.png
+    :image_title: TensorFlow
+
+.. customimagelink::
+    :image_link: user_guide/plots.html
+    :image_src: https://voxel51.com/docs/fiftyone/images/integrations/plotly-128.png
+    :image_title: Plotly
+
+.. customimagelink::
+    :image_link: environments/index.html#notebooks
+    :image_src: https://voxel51.com/docs/fiftyone/images/integrations/jupyter-128.png
+    :image_title: Jupyter
+
+.. customimagelink::
+    :image_link: environments/index.html#notebooks
+    :image_src: https://voxel51.com/docs/fiftyone/images/integrations/colab-128.png
+    :image_title: Google Colab
+
+.. customimagelink::
+    :image_link: api/fiftyone.utils.scale.html?highlight=scale#module-fiftyone.utils.scale
+    :image_src: https://voxel51.com/docs/fiftyone/images/integrations/scale-128.png
+    :image_title: Scale AI
+
+.. customimagelink::
+    :image_link: api/fiftyone.utils.labelbox.html?highlight=labelbox#module-fiftyone.utils.labelbox
+    :image_src: https://voxel51.com/docs/fiftyone/images/integrations/labelbox-128.png
+    :image_title: Labelbox
+
+.. raw:: html
+
+    </div>
 
 .. note::
 
