@@ -173,7 +173,7 @@ class DatasetStatistics(object):
             collection: a :class:`fiftyone.core.collections.SampleCollection`
         
         Returns:
-            a `list` of (path, field) `tuple`s
+            a ``list`` of (path, field) ``tuple``s
         """
         schemas = [("", collection.get_field_schema())]
         if collection.media_type == fom.VIDEO:
@@ -208,7 +208,7 @@ class DatasetStatistics(object):
             collection: a :class:`fiftyone.core.collections.SampleCollection`
 
         Returns:
-            a `list` of (path, field) `tuple`s
+            a ``list`` of (path, field) ``tuple``s
         """
         return [
             (path, field)

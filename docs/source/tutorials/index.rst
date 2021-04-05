@@ -61,7 +61,7 @@ your datasets and turn your good models into *great models*.
     :description: Your models need diverse data. This tutorial shows how FiftyOne can remove near-duplicate images and recommend unique samples for model training.
     :link: uniqueness.html
     :image: ../_static/images/tutorials/uniqueness.png
-    :tags: Dataset-Evaluation,Brain
+    :tags: Getting-Started,Dataset-Evaluation,Brain
 
 .. customcarditem::
     :header: Finding classification mistakes

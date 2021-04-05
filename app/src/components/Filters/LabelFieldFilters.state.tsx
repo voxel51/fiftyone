@@ -357,7 +357,6 @@ export const labelSampleModalCounts = selectorFamily<Counts | null, string>({
 const sampleCountResolver = (value, type) => {
   if (!value) return 0;
 
-  if (!value[LABEL_LIST[type]]) return 0;
   if (VALID_LIST_TYPES.includes(type)) {
     const values = value[LABEL_LIST[type]];
     if (!values?.length) {

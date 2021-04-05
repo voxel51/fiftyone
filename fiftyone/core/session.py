@@ -580,7 +580,7 @@ class Session(foc.HasClient):
     @_update_state()
     def refresh(self):
         """Refreshes the current App window."""
-        pass
+        self.state.refresh = not self.state.refresh
 
     @property
     def selected(self):
@@ -926,6 +926,7 @@ class Session(foc.HasClient):
 
     def _reactivate(self, data):
         handle = data["handle"]
+        self.state.active_handle = handle
         if handle in self._handles:
             source = self._handles[handle]
             _display(
@@ -936,8 +937,6 @@ class Session(foc.HasClient):
                 source["height"],
                 update=True,
             )
-            self.state.active_handle = handle
-            self._update_state()
 
     def _reload(self):
         if self.dataset is None:
@@ -974,7 +973,6 @@ class Session(foc.HasClient):
 
     def _update_state(self):
         self.state.datasets = fod.list_datasets()
-        self.state.refresh = not self.state.refresh
 
         # See ``fiftyone.core.client`` to understand this
         self.state = self.state
