@@ -29,7 +29,7 @@ models.**
 [![Mailing list](http://bit.ly/2Md9rxM)](https://share.hsforms.com/1zpJ60ggaQtOoVeBqIZdaaA2ykyk)
 [![Twitter](https://img.shields.io/twitter/follow/Voxel51?style=social)](https://twitter.com/voxel51)
 
-<img alt="FiftyOne" src="https://user-images.githubusercontent.com/25985824/96070012-5c6fff80-0e6d-11eb-84d0-a88f8b026ee1.png">
+<img alt="FiftyOne" src="https://user-images.githubusercontent.com/25985824/113623500-71636980-962c-11eb-981a-7c03cf86e63c.png">
 
 </p>
 </div>
