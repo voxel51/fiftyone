@@ -632,15 +632,17 @@ a.with-right-arrow,
 .integrations-logos > div {
   display: flex;
   flex-direction: column;
-  padding: 1rem;
+  padding: 5px 15px 15px 15px;
   vertical-align: middle;
   text-align: center;
   justify-content: center;
+  width: 140px;
+  min-height: 96px;
 }
 
 .integrations-logos img {
-  max-height: 64px;
-  max-width: 128px;
+  max-height: 52px;
+  max-width: 110px;
   width: auto !important;
   height: auto;
 }
