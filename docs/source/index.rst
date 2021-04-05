@@ -1,6 +1,8 @@
 FiftyOne
 ========
 
+**Visualize datasets, interpret models, improve ML**
+
 .. Social links ---------------------------------------------------------------
 
 .. raw:: html
@@ -30,27 +32,38 @@ FiftyOne
 
 .. End social links -----------------------------------------------------------
 
-*"Rapidly experiment with your datasets"*
-
-If you are looking to boost the performance of your machine learning models,
-chances are improving the quality of your dataset will provide the highest
-return on your investment. **Enter FiftyOne.** FiftyOne is a Python-based tool
-for machine learning/computer vision engineers and scientists that enables you
-to curate better datasets. Work efficiently with FiftyOne to achieve better
-models with dependable performance.
-
-*"Become one with your data"*
-
-FiftyOne does more than improve your dataset; it gets you closer to your data.
-Rapidly gain insight by visualizing samples overlayed with dynamic and
-queryable fields such as ground truth and predicted labels, dataset splits, and
-much more!
+FiftyOne will revamp your machine learning workflows by enabling you to
+visualize datasets and interpret models faster, easier, and more efficiently 
+than ever before. This open-source tool provides the building blocks for an optimized 
+data pipeline that lets you get hands-on with your data.
 
 .. raw:: html
 
    <video controls muted poster="https://voxel51.com/images/fiftyone_long_sizzle_poster.png" style="width: 100%;">
      <source src="https://voxel51.com/images/fiftyone_long_sizzle.mp4" type="video/mp4">
    </video>
+
+.. code-block:: shell
+
+    pip install fiftyone
+
+Improving the quality of your data and understanding how your model behaves 
+are the most surefire ways to boost the performance of your machine learning models. 
+
+Using FiftyOne, you can quickly visualize complex labels, find duplicate images, 
+flag annotation mistakes, interactively
+explore embeddings, query your dataset fields, and much more!
+
+**"Like pandas for visual datasets"**
+
+FiftyOne is unlike other tools in the existing ML ecosystem. It is designed to
+be a lightweight hub for interactions with your data and labels, providing
+tight integrations with your favorite tools.
+
+
+.. image:: images/homepage_integrations.png
+    :alt: Integrations
+    :align: center
 
 .. note::
 
@@ -66,6 +79,7 @@ _________________
 FiftyOne provides advanced capabilities that will turbocharge your machine
 learning workflows.
 
+
 .. Callout items --------------------------------------------------------------
 
 .. raw:: html
@@ -77,39 +91,45 @@ learning workflows.
 
 .. customcalloutitem::
     :header: Curating datasets
-    :description: Surveys show that machine learning engineers spend over half of their time wrangling data, but it doesn't have to be that way. Use FiftyOne's powerful dataset import and manipulation capabilities to manage your data with ease.
+    :description: FiftyOne's flexible datasets and API let ML engineers spend less time wrangling data and more time training better models.    
     :button_text: Learn how to load data into FiftyOne
     :button_link: user_guide/dataset_creation/index.html
+    :image: _static/images/homepage_curate.gif
+
+.. customcalloutitem::
+    :header: Visualizing interactive embeddings 
+    :description: Unsupervised annotation, hard sample mining, finding incorrect predictions, and more is easy with embeddings visualizations in FiftyOne.
+    :button_text: Try out interactive embeddings yourself 
+    :button_link: tutorials/embeddings.html
+    :image: _static/images/homepage_embeddings.gif
 
 .. customcalloutitem::
     :header: Evaluating models
-    :description: Aggregate metrics alone don’t give you the full picture of your ML models. In practice, the limiting factor on your model’s performance is often data quality issues that you need to see to address. FiftyOne makes it easy to do just that.
+    :description: Aggregate metrics are not enough, FiftyOne provides hands-on evaluation of your model output to enable you to train better models.
     :button_text: See how to evaluate models with FiftyOne
     :button_link: tutorials/evaluate_detections.html
-
-.. customcalloutitem::
-    :header: Removing redundant images
-    :description: During model training, the best results will be seen when training on unique data. Use FiftyOne to automatically remove duplicate or near-duplicate images from your datasets and curate diverse training datasets from your raw data.
-    :button_text: Try the image uniqueness tutorial
-    :button_link: tutorials/uniqueness.html
+    :image: _static/images/homepage_evaluate.gif
 
 .. customcalloutitem::
     :header: Finding annotation mistakes
-    :description: Annotations mistakes create an artificial ceiling on the performance of your model. However, finding these mistakes by hand is not feasible! Use FiftyOne to automatically identify possible label mistakes in your datasets.
+    :description: Annotation mistakes creep into any large dataset, but FiftyOne makes it easy to automatically identify, tag, and fix label mistakes.
     :button_text: Check out the label mistakes tutorial
     :button_link: tutorials/classification_mistakes.html
+    :image: _static/images/homepage_mistakes.gif
 
 .. customcalloutitem::
-    :header: Bootstrapping datasets from raw images
-    :description: "What data should I select to annotate?" Use FiftyOne to automatically recommend unlabeled samples from your dataset to send for annotation, enabling you to bootsrap a training dataset that leads to demonstrably better model performance.
-    :button_text: Tutorial coming soon
-    :button_link:
+    :header: Removing redundant images
+    :description: FiftyOne helps find near-duplicate images and curate diverse datasets to improve model performance and reduce annotation costs.
+    :button_text: Try the image uniqueness tutorial
+    :button_link: tutorials/uniqueness.html
+    :image: _static/images/homepage_redundant.gif
 
 .. customcalloutitem::
-    :header: Adding optimal samples to your dataset
-    :description: "What new samples should I add to my training dataset to see the largest improvement in my model?" FiftyOne provides methods for mining hard samples from your datasets, a tried and true measure of mature machine learning processes.
-    :button_text: Tutorial coming soon
+    :header: Visualizing geolocation data
+    :description: The plotting functionalities in FiftyOne are flexible enough to make even difficult annotations, like geolocation data, easy to explore.
+    :button_text: Tutorial coming soon! 
     :button_link:
+    :image: _images/location-scatterplot.gif
 
 .. End callouts ---------------------------------------------------------------
 
