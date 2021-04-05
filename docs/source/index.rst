@@ -64,9 +64,63 @@ failure modes, finding annotation mistakes, and much more!
 FiftyOne integrates naturally with your favorite tools. Click on a logo to
 learn how!
 
-.. image:: images/homepage_integrations.png
-    :alt: integrations
-    :align: center
+.. raw:: html
+
+    <div class="integrations-logos">
+
+.. customimagelink::
+    :image_link: recipes/adding_detections.html
+    :image_src: https://voxel51.com/docs/fiftyone/images/integrations/pytorch-128.png
+    :image_title: PyTorch
+
+.. customimagelink::
+    :image_link: recipes/adding_detections.html
+    :image_src: https://voxel51.com/docs/fiftyone/images/integrations/tensorflow-128.png
+    :image_title: TensorFlow
+
+.. customimagelink::
+    :image_link: environments/index.html#notebooks
+    :image_src: https://voxel51.com/docs/fiftyone/images/integrations/jupyter-128.png
+    :image_title: Jupyter
+
+.. customimagelink::
+    :image_link: environments/index.html#notebooks
+    :image_src: https://voxel51.com/docs/fiftyone/images/integrations/colab-128.png
+    :image_title: Google Colab
+
+.. customimagelink::
+    :image_link: user_guide/plots.html
+    :image_src: https://voxel51.com/docs/fiftyone/images/integrations/plotly-128.png
+    :image_title: Plotly
+
+.. customimagelink::
+    :image_link: api/fiftyone.utils.scale.html
+    :image_src: https://voxel51.com/docs/fiftyone/images/integrations/scale-128.png
+    :image_title: Scale AI
+
+.. customimagelink::
+    :image_link: api/fiftyone.utils.labelbox.html
+    :image_src: https://voxel51.com/docs/fiftyone/images/integrations/labelbox-128.png
+    :image_title: Labelbox
+
+.. customimagelink::
+    :image_link: environments/index.html#google-cloud
+    :image_src: https://voxel51.com/docs/fiftyone/images/integrations/google-cloud-128.png
+    :image_title: Google Cloud
+
+.. customimagelink::
+    :image_link: environments/index.html#aws
+    :image_src: https://voxel51.com/docs/fiftyone/images/integrations/aws-128.png
+    :image_title: Amazon Web Services
+
+.. customimagelink::
+    :image_link: environments/index.html#azure
+    :image_src: https://voxel51.com/docs/fiftyone/images/integrations/azure-128.png
+    :image_title: Azure
+
+.. raw:: html
+
+    </div>
 
 .. note::
 
