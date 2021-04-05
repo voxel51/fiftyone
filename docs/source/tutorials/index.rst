@@ -50,10 +50,10 @@ your datasets and turn your good models into *great models*.
     :tags: Model-Evaluation
 
 .. customcarditem::
-    :header: Visualizing embeddings
-    :description: Visualize your data in new ways. This tutorial show how to use FiftyOne's powerful embeddings visualization capabilities to build high quality datasets.
-    :link: embeddings.html
-    :image: ../_static/images/tutorials/embeddings.png
+    :header: Visualizing image embeddings
+    :description: Visualize your data in new ways. This tutorial show how to use FiftyOne's powerful embeddings visualization capabilities to improve your image datasets.
+    :link: image_embeddings.html
+    :image: ../_static/images/tutorials/image_embeddings.png
     :tags: Visualization,Brain
 
 .. customcarditem::
@@ -103,7 +103,7 @@ your datasets and turn your good models into *great models*.
 
    Evaluating object detections<evaluate_detections.ipynb>
    Evaluating a classifier<evaluate_classifications.ipynb>
-   Visualizing embeddings<embeddings.ipynb>
+   Visualizing image embeddings<image_embeddings.ipynb>
    Exploring image uniqueness<uniqueness.ipynb>
    Finding class mistakes<classification_mistakes.ipynb>
    Finding detection mistakes<detection_mistakes.ipynb>
