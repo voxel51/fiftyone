@@ -7,7 +7,7 @@ FiftyOne Release Notes
 
 FiftyOne 0.8.0
 --------------
-*Released March 31, 2021*
+*Released April 5, 2021*
 
 App
 ^^^
@@ -156,6 +156,14 @@ CLI
 ^^^
 - Removed the `--desktop` flag from the
   :ref:`fiftyone app connect <cli-fiftyone-app-connect>` command
+
+Docs
+^^^^
+- Added an :ref:`Interctive plots user guide <interactive-plots>`
+- Added an :ref:`Tags and tagging <app-tagging>` section to the
+  :ref:`App user guide <fiftyone-app>`
+- Added a :ref:`Visualizing embeddings <brain-embeddings-visualization>`
+  section to the :ref:`Brain user guide <fiftyone-brain>`
 
 .. _release-notes-v0.7.4:
 
