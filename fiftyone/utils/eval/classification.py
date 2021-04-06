@@ -882,8 +882,11 @@ class BinaryClassificationResults(ClassificationResults):
             classes=classes,
             missing=classes[0],
         )
+
         self._pos_label = classes[1]
-        self.scores = _to_binary_scores(ypred, confs, self._pos_label)
+        self.scores = np.asarray(
+            _to_binary_scores(ypred, confs, self._pos_label)
+        )
 
     def _get_labels(self, classes, *args, **kwargs):
         if classes is not None:
