@@ -11,9 +11,9 @@ FiftyOne Installation
 
 .. note::
 
-    FiftyOne is rapidly growing.
-    `Sign up for the mailing list <https://share.hsforms.com/1zpJ60ggaQtOoVeBqIZdaaA2ykyk>`_
-    so we can keep you posted on new features as they come out!
+  FiftyOne is growing!
+  `Sign up for the mailing list <https://share.hsforms.com/1zpJ60ggaQtOoVeBqIZdaaA2ykyk>`_
+  to learn about new features as they come out.
 
 .. _install-prereqs:
 
@@ -73,7 +73,6 @@ suggestions for exploring the dataset!
 
 .. code-block:: shell
 
-    # Launch the FiftyOne quickstart
     fiftyone quickstart
 
 .. _installing-fiftyone-desktop:
