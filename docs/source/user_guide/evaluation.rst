@@ -415,7 +415,7 @@ from a pre-trained model from the :ref:`Model Zoo <model-zoo>`:
     results.print_report(classes=classes)
 
     # Launch the App to explore
-    #session = fo.launch_app(dataset)
+    session = fo.launch_app(dataset)
 
     # View only the incorrect predictions for the 10 most common classes
     session.view = (
