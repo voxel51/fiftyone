@@ -370,7 +370,7 @@ contains |GeoLocation| data in its ``location`` field:
 
     dataset = foz.load_zoo_dataset("quickstart-geo")
 
-    # A list of ``[longitude, latitute]`` coordinates
+    # A list of ``[longitude, latitude]`` coordinates
     locations = dataset.values("location.point.coordinates")
 
     # Scalar `uniqueness` values for each sample
@@ -384,6 +384,8 @@ contains |GeoLocation| data in its ``location`` field:
         locations=locations,
         labels=uniqueness,      # color points by their `uniqueness` values
         sizes=num_objects,      # scale point sizes by number of objects
+        labels_title="uniqueness",
+        sizes_title="objects",
     )
     plot.show()
 
@@ -463,6 +465,7 @@ notebook:
         samples=dataset,
         labels="uniqueness",    # color points by their `uniqueness` values
         sizes=num_objects,      # scale point sizes by number of objects
+        sizes_title="objects",
     )
     plot.show(height=720)
 
@@ -592,7 +595,7 @@ notebook:
     :linenos:
 
     # Construct a custom dashboard of plots
-    plot = fo.ViewGrid([plot1, plot2, plot3, plot4])
+    plot = fo.ViewGrid([plot1, plot2, plot3, plot4], init_view=dataset)
     plot.show(height=720)
 
     # Connect to session
@@ -633,7 +636,7 @@ multiple plots are connected and another plot triggers a |Session| update!
 Attaching a plot
 ----------------
 
-The code below demonstrates the basic pattern of connnecting a |ResponsivePlot|
+The code below demonstrates the basic pattern of connecting a |ResponsivePlot|
 to a |Session|:
 
 .. code-block:: python
@@ -684,6 +687,7 @@ name:
     :linenos:
 
     same_plot = session.plots["plot1"]
+    same_plot is plot  # True
 
 Connecting and disconnecting plots
 ----------------------------------
@@ -698,7 +702,7 @@ to temporarily suspend updates for an individual plot, you can use
 
     # Disconnect an individual plot
     # Plot updates will no longer update the session, and vice versa
-    plot.disconnnect()
+    plot.disconnect()
 
     # Note that `plot1` is now disconnected
     print(session)
@@ -721,9 +725,9 @@ You can reconnect a plot by calling
     :linenos:
 
     # Reconnect an individual plot
-    plot.connnect()
+    plot.connect()
 
-    # Note that `plot1` is now connected
+    # Note that `plot1` is connected again
     print(session)
 
 .. code-block:: text
@@ -828,7 +832,7 @@ In general, consult the documentation of the relevant
 :meth:`plot.show() <fiftyone.core.plots.base.Plot.show>` method for details on
 the supported parameters.
 
-Assuming you are using the default :ref:`plotly backend <plotting-backend>`,
+If you are using the default :ref:`plotly backend <plotting-backend>`,
 :meth:`plot.show() <fiftyone.core.plots.base.Plot.show>` will accept any valid
 keyword arguments for ``plotly.graph_objects.Figure.update_layout(**kwargs)``.
 
