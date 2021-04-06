@@ -198,6 +198,8 @@ Each block in the example code below denotes a separate cell in a
     )
 
     # Compute embeddings
+    # You will likely want to run this on a machine with GPU, as this requires
+    # running inference on 10,000 images
     model = foz.load_zoo_model("mobilenet-v2-imagenet-torch")
     embeddings = dataset.compute_embeddings(model)
 
