@@ -3,6 +3,170 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+.. _release-notes-v0.8.0:
+
+FiftyOne 0.8.0
+--------------
+*Released April 5, 2021*
+
+App
+^^^
+- Added the ability to tag samples and labels directly from the App in both
+  the sample grid (macro) and expanded sample view (micro) with respect to and
+  filters or currently selected samples/labels
+- Added a `LABEL TAGS` section to the Filters Sidebar to coincide with the
+  introduction of label tags
+- Added label tooltips that display on hover in the expanded sample view
+- Expanded actions to list of button groups in the sample grid and expanded
+  sample view
+- Added support for rendering semantic labels in the new tooltip in the expanded
+  sample view for :class:`Segmentation <fiftyone.core.labels.Segmentation>`
+  mask values (pixel values) using the new
+  :attr:`Dataset.mask_targets <fiftyone.core.dataset.Dataset.mask_targets>`
+  and
+  :attr:`Dataset.default_mask_targets <fiftyone.core.dataset.Dataset.default_mask_targets>`
+  fields
+- Fixed hiding, clearing, and only showing selected samples in the samples grid
+
+Brain
+^^^^^
+- Added a :meth:`compute_visualization() <fiftyone.brain.compute_visualization>` method that uses embeddings and dimensionality reduction methods to generate interactive visualizations of the samples and/or labels in a dataset. Check out :ref:`this page <brain-embeddings-visualization>` for details. Features include:
+    - Provide your own embeddings, or choose a model from the
+      :ref:`Model Zoo <model-zoo>`, or use the provided default model
+    - Supported dimensionality reduction methods include
+      `UMAP <https://github.com/lmcinnes/umap>`_,
+      `t-SNE <https://lvdmaaten.github.io/tsne>`_, and
+      `PCA <https://scikit-learn.org/stable/modules/generated/sklearn.decomposition.PCA.html>`_
+    - Use this capability in a Jupyter notebook and you can interact with the
+      plots to select samples/labels of interest in a connected |Session|
+- Added support for saving brain method results on datasets. Previous brain
+  results can now be loaded at any time via
+  :meth:`Dataset.load_brain_results() <fiftyone.core.dataset.Dataset.load_brain_results>`
+- Added support for providing a custom |Model| or model from the
+  :ref:`Model Zoo <model-zoo>` to
+  :meth:`compute_uniqueness() <fiftyone.brain.compute_uniqueness>`
+
+Core
+^^^^
+- Added a :mod:`fiftyone.core.plots` module that provides a powerful API for visualizing datasets, including interactive plots when used in Jupyter notebooks. See :ref:`this page <interactive-plots>` for more information. Highlights include:
+    - :meth:`plot_confusion_matrix() <fiftyone.core.plots.base.plot_confusion_matrix>`:
+      an interactive confusion matrix that can be attached to a |Session|
+      object to visually explore model predictions
+    - :meth:`scatterplot() <fiftyone.core.plots.base.scatterplot>`: an
+      interacive scatterplot of 2D or 3D points that can be attached to a
+      |Session| to explore the samples/labels in a dataset based on their
+      locations in a low-dimensional embedding space
+    - :meth:`location_scatterplot() <fiftyone.core.plots.base.location_scatterplot>`:
+      an interacive scatterplot of a dataset via its |GeoLocation| coordinates
+    - Added |GeoLocation| and |GeoLocations| label types that can be used to store
+      arbitrary GeoJSON location data on samples
+    - Added the :class:`GeoJSONImageDataset <fiftyone.types.dataset_types.GeoJSONImageDataset>`
+      dataset type for importing and exporting datasets in GeoJSON format
+    - Added :meth:`SampleCollection.geo_near() <fiftyone.core.collections.SampleCollection.geo_near>`
+      and
+      :meth:`SampleCollection.geo_within() <fiftyone.core.collections.SampleCollection.geo_within>`
+      view stages for querying datasets with location data
+- Upgraded the implementation of the
+  :ref:`FiftyOneDataset <FiftyOneDataset-export>` format, which is now 10-100x
+  faster at importing/exporting datasets
+- Added support for generating zip/tar/etc archives to
+  :meth:`SampleCollection.export() <fiftyone.core.collections.SampleCollection.export>`
+  by passing an archive path rather than a directory path
+- Added :meth:`Dataset.from_archive() <fiftyone.core.dataset.Dataset.from_archive>`
+  and :meth:`Dataset.add_archive() <fiftyone.core.dataset.Dataset.add_archive>`
+  factory methods for importing datasets stored in archives
+- Added support for saving evaluation results on a dataset. Results can now
+  be loaded at any time via
+  :meth:`Dataset.load_evaluation_results() <fiftyone.core.dataset.Dataset.load_evaluation_results>`
+- Added a ``tags`` attribute to all |Label| types that can store a list of
+  string tags for the labels (analogous to the ``tags`` attribute of |Sample|)
+- Added a number of methods for working with sample and label tags:
+   - :meth:`SampleCollection.tag_samples() <fiftyone.core.collections.SampleCollection.tag_samples>`
+   - :meth:`SampleCollection.untag_samples() <fiftyone.core.collections.SampleCollection.untag_samples>`
+   - :meth:`SampleCollection.count_sample_tags() <fiftyone.core.collections.SampleCollection.count_sample_tags>`
+   - :meth:`SampleCollection.tag_labels() <fiftyone.core.collections.SampleCollection.tag_labels>`
+   - :meth:`SampleCollection.untag_labels() <fiftyone.core.collections.SampleCollection.untag_labels>`
+   - :meth:`SampleCollection.count_label_tags() <fiftyone.core.collections.SampleCollection.count_label_tags>`
+- **BREAKING CHANGE**: Renamed all applicable API components that previously referenced "objects" to use the more widely applicable term "labels". Affected attributes, classes, and methods are:
+   - :attr:`Session.selected_labels <fiftyone.core.session.Session.selected_labels>` (previously `selected_objects`)
+   - :meth:`SampleCollection.select_labels() <fiftyone.core.collections.SampleCollection.select_labels>` (previously `select_labels()`)
+   - :meth:`SampleCollection.select_labels() <fiftyone.core.collections.SampleCollection.exclude_labels>` (previously `exclude_labels()`)
+   - :class:`SelectLabels <fiftyone.core.stages.SelectLabels>` (previously `SelectObjects`)
+   - :class:`ExcludeLabels <fiftyone.core.stages.ExcludeLabels>` (previously `ExcludeObjects`)
+- Added new keyword arguments ``ids``, ``tags``, and ``fields`` to
+  :meth:`SampleCollection.select_labels() <fiftyone.core.collections.SampleCollection.select_labels()>`
+  and
+  :meth:`SampleCollection.select_labels() <fiftyone.core.collections.SampleCollection.exclude_labels()>`
+  and their corresponding view stages that enable easier-to-use selection of
+  labels by their IDs or tags
+- Added
+  :meth:`Session.select_labels() <fiftyone.core.session.Session.select_labels()>`
+  for programmatically selecting labels as well a setters for
+  :attr:`Session.selected <fiftyone.core.session.Session.selected>` and
+  :attr:`Session.selected_labels <fiftyone.core.session.Session.selected_labels>`
+- Added :attr:`Dataset.classes <fiftyone.core.dataset.Dataset.classes>`
+  and
+  :attr:`Dataset.default_classes <fiftyone.core.dataset.Dataset.default_classes>`
+  fields that enable storing class label lists at the dataset-level that can be
+  automatically used by methods like
+  :meth:`Dataset.evaluate_classifications() <fiftyone.core.dataset.Dataset.evaluate_detections>`
+  when knowledge of the full schema of a model is required
+- Added :attr:`Dataset.mask_targets <fiftyone.core.dataset.Dataset.mask_targets>`
+  and
+  :attr:`Dataset.default_mask_targets <fiftyone.core.dataset.Dataset.default_mask_targets>`
+  fields for providing semantic labels for
+  :class:`Segmentation <fiftyone.core.labels.Segmentation>` mask values to be
+  used in the App's expanded sample view
+- Improved the runtime of
+  :meth:`Dataset.merge_samples() <fiftyone.core.dataset.Dataset.merge_samples>` by
+  ~100x for image datasets and ~10x for video datasets
+- Added an :meth:`Dataset.add_collection() <fiftyone.core.dataset.Dataset.add_collection>`
+  method for adding the contents of a |SampleCollection| to another |Dataset|
+- Added the trigonometric view expresssions
+  :meth:`cos <fiftyone.core.expressions.ViewExpression.cos>`,
+  :meth:`sin <fiftyone.core.expressions.ViewExpression.sin>`,
+  :meth:`tan <fiftyone.core.expressions.ViewExpression.tan>`,
+  :meth:`cosh <fiftyone.core.expressions.ViewExpression.cosh>`
+  :meth:`sinh <fiftyone.core.expressions.ViewExpression.sinh>`,
+  :meth:`tanh <fiftyone.core.expressions.ViewExpression.tanh>`,
+  :meth:`arccos <fiftyone.core.expressions.ViewExpression.arccos>`,
+  :meth:`arcsin <fiftyone.core.expressions.ViewExpression.arcsin>`,
+  :meth:`arcan <fiftyone.core.expressions.ViewExpression.arctan>`
+  :meth:`arccosh <fiftyone.core.expressions.ViewExpression.arccosh>`,
+  :meth:`arcsinh <fiftyone.core.expressions.ViewExpression.arcsinh>`, and
+  :meth:`arctanh <fiftyone.core.expressions.ViewExpression.arctanh>`
+- Added a :class:`randn <fiftyone.core.expressions.ViewExpression.randn>`
+  expression that can generate Gaussian random numbers
+- Fixed a bug that prevented
+  :meth:`evaluate_detections() <fiftyone.core.collections.SampleCollection.evaluate_detections>`
+  from being able to process video datasets
+- Added support for applying intensive view stages such as sorting to datasets
+  whose database representation exceeds 100MB
+- Fixed schema errors in |DatasetView| instances that contain selected or
+  excluded fields
+- Fixed copying of |DatasetView| instances where
+  :class:`ViewField <fiftyone.core.expressions.ViewField>` is used
+
+Zoo
+^^^
+- Added the :ref:`quickstart-geo <dataset-zoo-quickstart-geo>` dataset to
+  enable quick exploration of location-based datasets
+
+CLI
+^^^
+- Removed the `--desktop` flag from the
+  :ref:`fiftyone app connect <cli-fiftyone-app-connect>` command
+
+Docs
+^^^^
+- Added :doc:`a tutorial </tutorials/image_embeddings>` demonstrating how to
+  use :meth:`compute_visualization() <fiftyone.brain.compute_visualization>`
+  on image datasets
+- Added an :ref:`interactive plots <interactive-plots>` page to the user guide
+- Added a :ref:`Tags and tagging <app-tagging>` section to the App user guide
+- Added a :ref:`visualizing embedding <brain-embeddings-visualization>` section
+  to the Brain user guide
+
 .. _release-notes-v0.7.4:
 
 FiftyOne 0.7.4
@@ -12,7 +176,7 @@ FiftyOne 0.7.4
 App
 ^^^
 - Fixed a bug that prevented |Session| updates from triggering App updates
-- Fixed hiding objects in the expanded sample view
+- Fixed hiding labels in the expanded sample view
 
 Core
 ^^^^
@@ -55,7 +219,7 @@ FiftyOne 0.7.3
 
 App
 ^^^
-- Added filtering widgets to the Fields Sidebar for
+- Added filtering widgets to the Filters Sidebar for
   :class:`StringFields <fiftyone.core.fields.StringField>` and
   :class:`BooleanFields <fiftyone.core.fields.BooleanField>`
 - Added histogram plots for
@@ -64,9 +228,9 @@ App
   tab
 - Moved `None` selection for
   :class:`StringFields <fiftyone.core.fields.StringField>` to the input format
-  in the Fields Sidebar
+  in the Filters Sidebar
 - Changed `None` options to only be present when `None` values exist for a
-  supported :class:`Field <fiftyone.core.fields.Field>` in the Fields Sidebar
+  supported :class:`Field <fiftyone.core.fields.Field>` in the Filters Sidebar
 - Added `Color by label` support for
   :class:`Classification <fiftyone.core.labels.Classification>`,
   :class:`Classifications <fiftyone.core.labels.Classifications>`,
@@ -75,7 +239,7 @@ App
 - Added support excluding selected values for a
   :class:`StringField <fiftyone.core.fields.StringField>` in the Fields
   Sidebar
-- Various style and interaction improvements in the Fields Sidebar
+- Various style and interaction improvements in the Filters Sidebar
 - The App will no longer crash when samples whose source media is unsupported
   or missing are loaded
 
@@ -149,7 +313,7 @@ FiftyOne 0.7.2
 
 App
 ^^^
-- Changed the Fields Sidebar label filters to only return matched samples,
+- Changed the Filters Sidebar label filters to only return matched samples,
   i.e., samples with at least one matching label with respect to a filter
 - Fixed a bug in Colab notebooks that allowed for the `.ipynb` file to grow
   unnecessarily large
@@ -159,7 +323,7 @@ App
   :meth:`select_fields() <fiftyone.core.collections.SampleCollection.select_fields>`
   and
   :meth:`exclude_fields() <fiftyone.core.collections.SampleCollection.exclude_fields>`
-  from being properly respected by the Fields Sidebar
+  from being properly respected by the Filters Sidebar
 - Fixed a bug that prevented selected samples from being cleared when modifying
   your view or choosing an option from the select samples dropdown
 - Added an |AppConfig| for configuring options like the color pool to use when
@@ -248,7 +412,7 @@ FiftyOne 0.7.1
 App
 ^^^
 - Added automatic screenshotting for :ref:`notebook environments <notebooks>`
-- Fixed a bug where the Fields Sidebar statistics would not load for empty
+- Fixed a bug where the Filters Sidebar statistics would not load for empty
   views
 - Fixed style inconsistencies in Firefox
 
@@ -325,7 +489,7 @@ App
 - The desktop App can now be installed as an
   :ref:`optional dependency <installing-fiftyone-desktop>`
 - Fixed an issue where the App would freeze after filtering labels in the
-  Fields Sidebar
+  Filters Sidebar
 
 Core
 ^^^^
@@ -401,16 +565,16 @@ FiftyOne 0.6.5
 App
 ^^^
 - Added concurrency to the server wich greatly improves loading speeds and
-  time-to-interaction in the Grid, View Bar, and Fields Sidebar for larger
+  time-to-interaction in the Grid, View Bar, and Filters Sidebar for larger
   datasets and views
-- Renamed the Display Options Sidebar to the Fields Sidebar
-- Added support for coloring by `label` value in the Fields Sidebar
+- Renamed the Display Options Sidebar to the Filters Sidebar
+- Added support for coloring by `label` value in the Filters Sidebar
 - Added support for filtering
   :class:`keypoint <fiftyone.core.labels.Keypoint>`,
   :class:`keypoints <fiftyone.core.labels.Keypoints>`,
   :class:`polyline <fiftyone.core.labels.Polyline>`,
   :class:`polylines <fiftyone.core.labels.Polylines>` fields by `label` value
-  in the Fields Sidebar
+  in the Filters Sidebar
 - Moved plot tabs into an expandable window that can be resized and maximized.
   This allows for viewing distributions and the sample grid at the same time
 - Fixed video loading in the grid and modal for video samples with metadata
@@ -473,7 +637,7 @@ App
 - Improved support for frame- and sample-level labels in display options for
   video datasets
 - Added support for all label types in the labels distributions tab
-- Added support for selecting and hiding objects in the sample modal
+- Added support for selecting and hiding labels in the sample modal
 
 Core
 ^^^^
@@ -482,16 +646,16 @@ Core
   view stage, which supercedes the old dedicated per-label-type filtering
   stages
 - Added
-  :meth:`select_objects() <fiftyone.core.collections.SampleCollection.select_objects>`
+  :meth:`select_labels() <fiftyone.core.collections.SampleCollection.select_labels>`
   and
-  :meth:`exclude_objects() <fiftyone.core.collections.SampleCollection.exclude_objects>`
-  to select or exclude objects from a dataset or view
+  :meth:`exclude_labels() <fiftyone.core.collections.SampleCollection.exclude_labels>`
+  to select or exclude labels from a dataset or view
 - Added an :mod:`aggregations framework <fiftyone.core.aggregations>` for
   computing aggregate values via
   :meth:`aggregate() <fiftyone.core.collections.SampleCollection.aggregate>`
 - Added the
-  :attr:`selected_objects <fiftyone.core.session.Session.selected_objects>`
-  session attribute, which holds the currently selected objects in the App
+  :attr:`selected_labels <fiftyone.core.session.Session.selected_labels>`
+  session attribute, which holds the currently selected labels in the App
 - Added support for
   :meth:`adding <fiftyone.core.dataset.Dataset.add_frame_field>`,
   :meth:`renaming <fiftyone.core.dataset.Dataset.rename_frame_field>`, and
@@ -534,7 +698,7 @@ Core
   the :ref:`Dataset Zoo <dataset-zoo>`
 - Added new versions of `COCO <https://cocodataset.org/#home>`_ that contain
   instance segmentations to the :ref:`Dataset Zoo <dataset-zoo>`
-- Added utilities for selecting objects from datasets via the Python library
+- Added utilities for selecting labels from datasets via the Python library
 - Added a boolean `only_matches` parameter to all filter stages that enables
   the user to specify that a view should only contain samples that match the
   given filter
@@ -565,7 +729,7 @@ App
 
 Core
 ^^^^
-- |Polyline| instances can now represent objects composed of multiple shapes
+- |Polyline| instances can now represent labels composed of multiple shapes
 - Segmentations can now be :ref:`imported <COCODetectionDataset-import>` and
   :ref:`exported <COCODetectionDataset-export>` when using
   `COCO Object Detection Format <https://cocodataset.org/#format-data>`_.
@@ -719,7 +883,7 @@ App
   selecting samples
 - Simplified placeholders in the view bar
 - Added support for filtering sample JSON in the expanded sample view to match
-  the objects displayed in the media viewer
+  the labels displayed in the media viewer
 - Updated the instructions that appear when starting the App before connecting
   to a session
 
