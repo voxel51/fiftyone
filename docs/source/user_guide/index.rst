@@ -47,6 +47,12 @@ on your data quickly and easily.
     :button_link: app.html
 
 .. customcalloutitem::
+    :header: Interactive plots
+    :description: Use FiftyOne's powerful interactive plotting features to uncover patterns and improve your data.
+    :button_text: Dive into interactive plotting
+    :button_link: plots.html
+
+.. customcalloutitem::
     :header: Using aggregations
     :description: Efficiently compute aggregate statistics about your FiftyOne datasets and views.
     :button_text: Learn more about using aggregations
@@ -112,6 +118,7 @@ on your data quickly and easily.
     Using datasets <using_datasets>
     Dataset views <using_views>
     Using the App <app>
+    Interactive plots <plots>
     Using aggregations <using_aggregations>
     Evaluating models <evaluation>
     Exporting datasets <export_datasets>

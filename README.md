@@ -6,7 +6,7 @@
 <img src="https://user-images.githubusercontent.com/25985824/106288518-24bb7680-6216-11eb-8f10-60052c519586.png" height="50px">
 
 **The open-source tool for building high-quality datasets and computer vision
-models.**
+models**
 
 ---
 
@@ -29,23 +29,24 @@ models.**
 [![Mailing list](http://bit.ly/2Md9rxM)](https://share.hsforms.com/1zpJ60ggaQtOoVeBqIZdaaA2ykyk)
 [![Twitter](https://img.shields.io/twitter/follow/Voxel51?style=social)](https://twitter.com/voxel51)
 
-<img alt="FiftyOne" src="https://user-images.githubusercontent.com/25985824/96070012-5c6fff80-0e6d-11eb-84d0-a88f8b026ee1.png">
+[![FiftyOne](https://voxel51.com/images/fiftyone_poster.png)](http://fiftyone.ai)
 
 </p>
 </div>
 
 ---
 
-[FiftyOne](http://www.voxel51.com/docs/fiftyone) is an open source ML tool
-created by [Voxel51](https://voxel51.com) that helps you build high-quality
-datasets and computer vision models.
+Nothing hinders the success of machine learning systems more than poor quality
+data. And without the right tools, improving a model can be time-consuming and
+inefficient.
 
-With FiftyOne, you can search, sort, filter, visualize, analyze, and improve
-your datasets without excess wrangling or writing custom scripts. It also
-provides powerful functionality for analyzing your models, allowing you to
-understand their strengths and weaknesses, visualize, diagnose, and correct
-their failure modes, and more. FiftyOne is designed to be lightweight and
-easily integrate into your existing CV/ML workflows.
+[FiftyOne](http://fiftyone.ai) supercharges your machine learning workflows by
+enabling you to visualize datasets and interpret models faster and more
+effectively.
+
+Use FiftyOne to get hands-on with your data, including visualizing complex
+labels, evaluating your models, exploring scenarios of interest, identifying
+failure modes, finding annotation mistakes, and much more!
 
 You can get involved by joining our Slack community, reading our blog on
 Medium, and following us on social media:

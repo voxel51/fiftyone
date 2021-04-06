@@ -11,9 +11,9 @@ FiftyOne Installation
 
 .. note::
 
-    FiftyOne is rapidly growing.
-    `Sign up for the mailing list <https://share.hsforms.com/1zpJ60ggaQtOoVeBqIZdaaA2ykyk>`_
-    so we can keep you posted on new features as they come out!
+  FiftyOne is growing!
+  `Sign up for the mailing list <https://share.hsforms.com/1zpJ60ggaQtOoVeBqIZdaaA2ykyk>`_
+  to learn about new features as they come out.
 
 .. _install-prereqs:
 
@@ -55,9 +55,6 @@ your virtual environment by importing the `fiftyone` package:
 .. code-block:: text
 
     $ python
-    Python 3.6.9 (default, Apr 18 2020, 01:56:04)
-    [GCC 8.4.0] on linux
-    Type "help", "copyright", "credits" or "license" for more information.
     >>>
     >>> import fiftyone as fo
     >>>
@@ -76,7 +73,6 @@ suggestions for exploring the dataset!
 
 .. code-block:: shell
 
-    # Launch the FiftyOne quickstart
     fiftyone quickstart
 
 .. _installing-fiftyone-desktop:
@@ -162,25 +158,25 @@ packages via `pip` in your virtual environment:
 * `ipython` to follow along with interactive examples more easily (note that
   a system-wide IPython installation will *not* work in a virtual environment,
   even if it is accessible)
+* `torch` and `torchvision` for examples requiring PyTorch. The installation
+  process can vary depending on your system, so consult the
+  `PyTorch documentation <https://pytorch.org/get-started/locally/>`_ for
+  specific instructions.
 * `tensorflow` for examples requiring TensorFlow. The installation process
   can vary depending on your system, so consult the
   `Tensorflow documentation <https://www.tensorflow.org/install>`_ for specific
   instructions.
 * `tensorflow-datasets` for examples that rely on loading
   `TensorFlow datasets <https://www.tensorflow.org/datasets>`_
-* `torch` and `torchvision` for examples requiring PyTorch. The installation
-  process can vary depending on your system, so consult the
-  `PyTorch documentation <https://pytorch.org/get-started/locally/>`_ for
-  specific instructions.
-
-For your own work, FiftyOne does not strictly require any of these packages, so
-you can install only what you need.
+* `FFmpeg <https://ffmpeg.org>`_, in order to work with video datasets in
+  FiftyOne. See :ref:`this page <troubleshooting-video>` for installation
+  instructions.
 
 .. note::
 
-    You must install `FFmpeg <https://ffmpeg.org>`_ in order to work with video
-    datasets in FiftyOne. See :ref:`this page <troubleshooting-video>` for
-    installation instructions.
+  FiftyOne does not strictly require any of these packages, so you can install
+  only what you need. If you run something that requires an additional package,
+  you will see a helpful message telling you what to install.
 
 .. _upgrading-fiftyone:
 

@@ -40,35 +40,42 @@ your datasets and turn your good models into *great models*.
     :description: Aggregate statistics aren't sufficient for object detection. This tutorial shows how to use FiftyOne to perform powerful evaluation workflows on your detector.
     :link: evaluate_detections.html
     :image: ../_static/images/tutorials/evaluate_detections.png
-    :tags: Getting-Started,Model-Evaluation
+    :tags: Model-Evaluation
 
 .. customcarditem::
     :header: Evaluating a classifier
     :description: Evaluation made easy. This tutorial walks through and end-to-end example of fine-tuning a classifier and understanding its failure modes using FiftyOne.
     :link: evaluate_classifications.html
     :image: ../_static/images/tutorials/evaluate_classifications.png
-    :tags: Getting-Started,Model-Evaluation
+    :tags: Model-Evaluation
+
+.. customcarditem::
+    :header: Using image embeddings
+    :description: Visualize your data in new ways. This tutorial show how to use FiftyOne's powerful embeddings visualization capabilities to improve your image datasets.
+    :link: image_embeddings.html
+    :image: ../_static/images/tutorials/image_embeddings.png
+    :tags: Visualization,Brain
 
 .. customcarditem::
     :header: Exploring image uniqueness
     :description: Your models need diverse data. This tutorial shows how FiftyOne can remove near-duplicate images and recommend unique samples for model training.
     :link: uniqueness.html
     :image: ../_static/images/tutorials/uniqueness.png
-    :tags: Getting-Started,Dataset-Evaluation,Brian
+    :tags: Getting-Started,Dataset-Evaluation,Brain
 
 .. customcarditem::
     :header: Finding classification mistakes
     :description: Better models start with better data. This tutorial shows how FiftyOne can automatically find possible label mistakes in your classification datasets.
     :link: classification_mistakes.html
     :image: ../_static/images/tutorials/classification_mistakes.png
-    :tags: Getting-Started,Dataset-Evaluation,Brian
+    :tags: Dataset-Evaluation,Brain
 
 .. customcarditem::
     :header: Finding detection mistakes
     :description: How good are your ground truth objects? Use the FiftyOne Brain's mistakenness feature to find annotation errors in your object detections.
     :link: detection_mistakes.html
     :image: ../_static/images/tutorials/detection_mistakes.png
-    :tags: Getting-Started,Dataset-Evaluation,Brian
+    :tags: Dataset-Evaluation,Brain
 
 .. End of tutorial cards
 
@@ -94,8 +101,9 @@ your datasets and turn your good models into *great models*.
    :maxdepth: 1
    :hidden:
 
-   Evaluating object detections<evaluate_detections.ipynb>
-   Evaluating a classifier<evaluate_classifications.ipynb>
-   Exploring image uniqueness<uniqueness.ipynb>
-   Finding class mistakes<classification_mistakes.ipynb>
-   Finding detection mistakes<detection_mistakes.ipynb>
+   Evaluating object detections <evaluate_detections.ipynb>
+   Evaluating a classifier <evaluate_classifications.ipynb>
+   Using image embeddings <image_embeddings.ipynb>
+   Exploring image uniqueness <uniqueness.ipynb>
+   Finding class mistakes <classification_mistakes.ipynb>
+   Finding detection mistakes <detection_mistakes.ipynb>
