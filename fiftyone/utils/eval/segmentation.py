@@ -311,9 +311,11 @@ class SegmentationResults(ClassificationResults):
         pred_field=None,
         missing=None,
     ):
+        pixel_confusion_matrix = np.asarray(pixel_confusion_matrix)
         ytrue, ypred, weights = self._parse_confusion_matrix(
             pixel_confusion_matrix, classes
         )
+
         super().__init__(
             ytrue,
             ypred,
@@ -323,6 +325,7 @@ class SegmentationResults(ClassificationResults):
             classes=classes,
             missing=missing,
         )
+
         self.pixel_confusion_matrix = pixel_confusion_matrix
 
     def attributes(self):
