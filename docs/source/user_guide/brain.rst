@@ -198,6 +198,8 @@ Each block in the example code below denotes a separate cell in a
     )
 
     # Compute embeddings
+    # You will likely want to run this on a machine with GPU, as this requires
+    # running inference on 10,000 images
     model = foz.load_zoo_model("mobilenet-v2-imagenet-torch")
     embeddings = dataset.compute_embeddings(model)
 
@@ -211,7 +213,11 @@ Each block in the example code below denotes a separate cell in a
     :linenos:
 
     # Generate scatterplot
-    plot = results.visualize(labels="ground_truth_timeofday.label", axis_equal=True)
+    plot = results.visualize(
+        labels="ground_truth_timeofday.label",
+        labels_title="time of day",
+        axis_equal=True,
+    )
     plot.show(height=512)
 
     # Connect to session
@@ -252,7 +258,10 @@ predictions of a pre-trained model via the
 .. code-block:: python
     :linenos:
 
+    import fiftyone as fo
     import fiftyone.brain as fob
+
+    dataset = fo.load_dataset(...)
 
     fob.compute_uniqueness(dataset)
 
@@ -323,10 +332,13 @@ datasets.
         .. code-block:: python
             :linenos:
 
+            import fiftyone as fo
             import fiftyone.brain as fob
 
+            dataset = fo.load_dataset(...)
+
             fob.compute_mistakenness(
-                samples, "predictions", label_field="ground_truth"
+                dataset, "predictions", label_field="ground_truth"
             )
 
         **Input**: Label mistakes operate on samples for which there are both
@@ -365,10 +377,13 @@ datasets.
         .. code-block:: python
             :linenos:
 
+            import fiftyone as fo
             import fiftyone.brain as fob
 
+            dataset = fo.load_dataset(...)
+
             fob.compute_mistakenness(
-                samples, "predictions", label_field="ground_truth"
+                dataset, "predictions", label_field="ground_truth"
             )
 
         **Input**: You can compute label mistakes on samples for which there
@@ -452,7 +467,10 @@ and their logits to your FiftyOne |Dataset| and then run the
 .. code-block:: python
     :linenos:
 
+    import fiftyone as fo
     import fiftyone.brain as fob
+
+    dataset = fo.load_dataset(...)
 
     fob.compute_hardness(dataset, "predictions")
 
