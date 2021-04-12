@@ -1,13 +1,18 @@
 import { useLayoutEffect, useState } from "react";
-import { useRecoilCallback, useRecoilValue } from "recoil";
+import { atom, useRecoilCallback, useRecoilValue } from "recoil";
 
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
 import socket from "../shared/connection";
 import { useMessageHandler } from "../utils/hooks";
-import tile from "../utils/tile";
+import tile, { State } from "../utils/tile";
 import { packageMessage } from "../utils/socket";
 import { filterView } from "../utils/view";
+
+export const gridRowAspectRatio = atom<number>({
+  key: "gridRowAspectRatio",
+  default: 5,
+});
 
 const stringifyObj = (obj) => {
   if (typeof obj !== "object" || Array.isArray(obj)) return obj;
@@ -20,11 +25,12 @@ const stringifyObj = (obj) => {
   );
 };
 
-export default () => {
+export default (): [State, (state: State) => void] => {
   const filters = useRecoilValue(selectors.filterStages);
   const datasetName = useRecoilValue(selectors.datasetName);
   const view = useRecoilValue(selectors.view);
   const refresh = useRecoilValue(selectors.refresh);
+  const gridRatio = useRecoilValue(gridRowAspectRatio);
   const [state, setState] = useState({
     loadMore: false,
     isLoading: false,
@@ -35,7 +41,8 @@ export default () => {
   const handlePage = useRecoilCallback(
     ({ snapshot, set }) => async ({ results, more }) => {
       const rows = await snapshot.getPromise(atoms.gridRows);
-      const [newState, newRows] = tile(results, more, state, rows);
+      const ratio = await snapshot.getPromise(gridRowAspectRatio);
+      const [newState, newRows] = tile(results, more, state, rows, ratio);
       results.forEach(({ sample, width, height }) => {
         set(atoms.sample(sample._id), sample);
         set(atoms.sampleDimensions(sample._id), { width, height });
@@ -74,7 +81,13 @@ export default () => {
 
   useLayoutEffect(() => {
     clearPage();
-  }, [filterView(view), datasetName, refresh, stringifyObj(filters)]);
+  }, [
+    filterView(view),
+    datasetName,
+    refresh,
+    stringifyObj(filters),
+    gridRatio,
+  ]);
 
   useLayoutEffect(() => {
     if (!state.loadMore || state.isLoading || !state.hasMore) return;
