@@ -382,7 +382,7 @@ const SampleModal = ({ onClose }: Props, ref) => {
       <div className="player" ref={playerContainerRef}>
         {showJSON ? (
           <JSONView
-            object={sample}
+            currentFrame={frameNumberRef.current}
             filterJSON={enableJSONFilter}
             enableFilter={setEnableJSONFilter}
           />

@@ -402,8 +402,8 @@ export const filteredLabelSampleModalCounts = selectorFamily<
 
     return labels.reduce((acc, path) => {
       const result = sampleCountResolver(sample[path], types[path]);
+      acc[path] = !acc[path] ? 0 : acc[path];
       if (result > 0) {
-        acc[path] = !acc[path] ? 0 : acc[path];
         acc[path] += result;
       }
       return acc;
