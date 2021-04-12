@@ -141,6 +141,54 @@ attribute of this ground truth annotation has been incorrectly set to ``0``.
 Resolving mistakes like these will provide a much more accurate picture of the
 real performance of a model.
 
+.. _confusion-matrices:
+
+Confusion matrices
+------------------
+
+When you use evaluation methods such as
+:meth:`evaluate_classifications() <fiftyone.core.collections.SampleCollection.evaluate_classifications>`
+and
+:meth:`evaluate_detections() <fiftyone.core.collections.SampleCollection.evaluate_detections>`
+to evaluate model predictions, the confusion matrices that you can generate
+by calling the
+:meth:`plot_confusion_matrix() <fiftyone.utils.eval.classification.ClassificationResults.plot_confusion_matrix>`
+method are responsive plots that can be attached to App instances to
+interactively explore specific cases of your model's performance.
+
+.. note::
+
+    See :ref:`this page <interactive-plots>` for more information about
+    interactive plots in FiftyOne.
+
+Continuing with our example, the code block below generates a confusion matrix
+for our evaluation results and :ref:`attaches it to the App <attaching-plots>`.
+
+In this setup, you can click on individual cells of the confusion matrix to
+select the corresponding ground truth and/or predicted objects in the App. For
+example, if you click on a diagonal cell of the confusion matrix, you will
+see the true positive examples of that class in the App.
+
+Likewise, whenever you modify the Session's view, either in the App or by
+programmatically setting
+:meth:`session.view <fiftyone.core.session.Session.view>`, the confusion matrix
+is automatically updated to show the cell counts for only those detections that
+are included in the current view.
+
+.. code-block:: python
+    :linenos:
+
+    # Plot confusion matrix
+    plot = results.plot_confusion_matrix(classes=classes)
+    plot.show()
+
+    # Connect to session
+    session.plots.attach(plot)
+
+.. image:: ../images/plots/detection-evaluation.gif
+   :alt: detection-evaluation
+   :align: center
+
 Managing evaluations
 --------------------
 
@@ -157,11 +205,11 @@ on:
     # ['eval_predictions']
 
     # Print information about an evaluation
-    print(dataset.get_evaluation_info("eval_predictions")
+    print(dataset.get_evaluation_info("eval_predictions"))
 
     # Delete the evaluation
     # This will remove any evaluation data that was populated on your dataset
-    print(dataset.delete_evaluation("eval_predictions"))
+    dataset.delete_evaluation("eval_predictions")
 
 The sections below discuss evaluating various types of predictions in more
 detail.
@@ -260,28 +308,29 @@ fake predictions added to it to demonstrate the workflow:
     results.print_report()
 
     # Plot a confusion matrix
-    results.plot_confusion_matrix()
+    plot = results.plot_confusion_matrix()
+    plot.show()
 
     # Launch the App to explore
     session = fo.launch_app(dataset)
 
     # View only the incorrect predictions in the App
-    session.view = predictions_view.match(F("eval_simple") == False)
+    session.view = dataset.match(F("eval_simple") == False)
 
 .. code-block:: text
 
                   precision    recall  f1-score   support
 
-        airplane       0.93      0.91      0.92        94
-      automobile       0.92      0.93      0.93       105
-            bird       0.93      0.92      0.92       107
-             cat       0.96      0.87      0.92       111
-            deer       0.89      0.88      0.88       109
-             dog       0.87      0.93      0.90        82
-            frog       0.87      0.84      0.85       101
-           horse       0.88      0.88      0.88       103
-            ship       0.84      0.92      0.88        95
-           truck       0.89      0.92      0.91        93
+        airplane       0.91      0.90      0.91       118
+      automobile       0.93      0.90      0.91       101
+            bird       0.93      0.87      0.90       103
+             cat       0.92      0.91      0.92        94
+            deer       0.88      0.92      0.90       116
+             dog       0.85      0.84      0.84        86
+            frog       0.85      0.92      0.88        84
+           horse       0.88      0.91      0.89        96
+            ship       0.93      0.95      0.94        97
+           truck       0.92      0.89      0.90       105
 
         accuracy                           0.90      1000
        macro avg       0.90      0.90      0.90      1000
@@ -290,6 +339,13 @@ fake predictions added to it to demonstrate the workflow:
 .. image:: ../images/evaluation/cifar10_simple_confusion_matrix.png
    :alt: cifar10-simple-confusion-matrix
    :align: center
+
+.. note::
+
+    Did you know? You can
+    :ref:`attach confusion matrices to the App <confusion-matrices>` and
+    interactively explore them by clicking on their cells and/or modifying your
+    view in the App.
 
 Top-k evaluation
 ----------------
@@ -334,11 +390,11 @@ from a pre-trained model from the :ref:`Model Zoo <model-zoo>`:
     logits_classes = dataset.default_classes
 
     # Add predictions (with logits) to 25 random samples
-    predictions_view = dataset.take(25)
+    predictions_view = dataset.take(25, seed=51)
     model = foz.load_zoo_model("resnet50-imagenet-torch")
     predictions_view.apply_model(model, "predictions", store_logits=True)
 
-    print(dataset)
+    print(predictions_view)
 
     # Evaluate the predictions in the `predictions` field with respect to the
     # labels in the `ground_truth` field using top-5 accuracy
@@ -449,18 +505,19 @@ fake binary predictions added to it to demonstrate the workflow:
     results.print_report()
 
     # Plot a PR curve
-    results.plot_pr_curve()
+    plot = results.plot_pr_curve()
+    plot.show()
 
 .. code-block:: text
 
                   precision    recall  f1-score   support
 
-           other       0.92      0.52      0.66       912
-             cat       0.09      0.51      0.16        88
+           other       0.90      0.48      0.63       906
+             cat       0.09      0.50      0.15        94
 
-        accuracy                           0.52      1000
-       macro avg       0.50      0.51      0.41      1000
-    weighted avg       0.84      0.52      0.62      1000
+        accuracy                           0.48      1000
+       macro avg       0.50      0.49      0.39      1000
+    weighted avg       0.83      0.48      0.59      1000
 
 .. image:: ../images/evaluation/cifar10_binary_pr_curve.png
    :alt: cifar10-binary-pr-curve
@@ -556,9 +613,9 @@ The example below demonstrates COCO-style detection evaluation on the
     results.print_report(classes=classes)
 
     # Print some statistics about the total TP/FP/FN counts
-    print(dataset.sum("eval_coco_tp"))
-    print(dataset.sum("eval_coco_fp"))
-    print(dataset.sum("eval_coco_fn"))
+    print("TP: %d" % dataset.sum("eval_coco_tp"))
+    print("FP: %d" % dataset.sum("eval_coco_fp"))
+    print("FN: %d" % dataset.sum("eval_coco_fn"))
 
     # Create a view that has samples with the most false positives first, and
     # only includes false positive boxes in the `predictions` field
@@ -630,10 +687,11 @@ curves for your detections by passing the ``compute_mAP=True`` flag to
     print(results.mAP())
     # 0.3957
 
-    results.plot_pr_curves(classes=["person"])
+    plot = results.plot_pr_curves(classes=["person", "kite", "car"])
+    plot.show()
 
-.. image:: ../images/evaluation/coco_pr_curve.png
-   :alt: coco-pr-curve
+.. image:: ../images/evaluation/coco_pr_curves.png
+   :alt: coco-pr-curves
    :align: center
 
 
@@ -1099,9 +1157,9 @@ masks generated by two DeepLabv3 models (with
     )
 
     # Get a sense for the per-sample variation in likeness
-    print(dataset.bounds("eval_simple_accuracy"))
-    print(dataset.bounds("eval_simple_precision"))
-    print(dataset.bounds("eval_simple_recall"))
+    print("Accuracy range: (%f, %f)" % dataset.bounds("eval_simple_accuracy"))
+    print("Precision range: (%f, %f)" % dataset.bounds("eval_simple_precision"))
+    print("Recall range: (%f, %f)" % dataset.bounds("eval_simple_recall"))
 
     # Print a classification report
     results.print_report()

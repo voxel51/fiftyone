@@ -48,8 +48,8 @@ def plot_confusion_matrix(
 ):
     """Plots a confusion matrix.
 
-    If ``ids`` are provided, this method returns a :class:`PlotlyHeatmap` that
-    you can attach to an App session via its
+    If ``ids`` are provided, this method returns a :class:`InteractiveHeatmap`
+    that you can attach to an App session via its
     :attr:`fiftyone.core.session.Session.plots` attribute, which will
     automatically sync the session's view with the currently selected cells in
     the confusion matrix.
@@ -69,7 +69,7 @@ def plot_confusion_matrix(
     Returns:
         one of the following:
 
-        -   a :class:`PlotlyHeatmap`, if ``ids`` are provided
+        -   a :class:`InteractiveHeatmap`, if ``ids`` are provided
         -   a :class:`PlotlyNotebookPlot`, if no ``ids`` are provided and you
             are working in a Jupyter notebook
         -   a plotly figure, otherwise
@@ -178,7 +178,7 @@ def _plot_confusion_matrix_interactive(
     ids = np.flip(ids, axis=0)
     ylabels = np.flip(ylabels)
 
-    plot = PlotlyHeatmap(
+    plot = InteractiveHeatmap(
         confusion_matrix,
         ids,
         link_type="labels",
@@ -931,7 +931,9 @@ class PlotlyWidgetMixin(object):
                 "you can still use this plot, but note that (i) selecting "
                 "data will not trigger callbacks, and (ii) you must manually "
                 "call `plot.show()` to launch a new plot that reflects the "
-                "current state of an attached session"
+                "current state of an attached session.\n\n"
+                "See https://voxel51.com/docs/fiftyone/user_guide/plots.html#working-in-notebooks"
+                " for more information."
             )
             warnings.warn(msg)
 
@@ -1343,7 +1345,7 @@ class ManualInteractiveScatter(InteractiveScatter):
         self._ids = self._point_ids[found & mask]
 
 
-class PlotlyHeatmap(PlotlyInteractivePlot):
+class InteractiveHeatmap(PlotlyInteractivePlot):
     """An interactive Plotly heatmap.
 
     Unfortunately, the Plotly team has not gotten around to adding native
@@ -1362,9 +1364,9 @@ class PlotlyHeatmap(PlotlyInteractivePlot):
     -   Clicking any cell, if there are currently multiple cells selected
     -   Clicking the selected cell, if there is only one cell selected
 
-    When heatmap contents are selected via :meth:`PlotlyHeatmap.select_ids`,
-    the heatmap is updated to reflect the proportions of each cell included in
-    the selection.
+    When heatmap contents are selected via
+    :meth:`InteractiveHeatmap.select_ids`, the heatmap is updated to reflect
+    the proportions of each cell included in the selection.
 
     Args:
         Z: a ``num_cols x num_rows`` array of heatmap values

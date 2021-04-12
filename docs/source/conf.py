@@ -18,6 +18,7 @@ from custom_directives import (
     CustomButtonDirective,
     CustomCalloutItemDirective,
     CustomCardItemDirective,
+    CustomImageLinkDirective,
 )
 from redirects import generate_redirects
 
@@ -158,7 +159,7 @@ html_js_files = ["js/voxel51-website.js", "js/custom.js"]
 html_copy_source = False
 
 html_context = {
-    "address_main_line1": "410 N 4th Ave, 3rd Floor",
+    "address_main_line1": "330 E Liberty St",
     "address_main_line2": "Ann Arbor, MI 48104",
     "phone_main": "+1 734-489-1134",
     "email_info": "info@voxel51.com",
@@ -169,21 +170,11 @@ html_context = {
     "link_fiftyone": "https://voxel51.com/fiftyone/",
     "link_fiftyone_tutorials": "https://voxel51.com/docs/fiftyone/tutorials/index.html",
     "link_fiftyone_examples": "https://github.com/voxel51/fiftyone-examples",
-    "link_github": "https://github.com/",
     "link_home": "https://voxel51.com/",
-    "link_linkedin": "https://www.linkedin.com/in/",
     "link_ourstory": "https://voxel51.com/ourstory/",
     "link_press": "https://voxel51.com/press/",
     "link_privacypolicy": "https://voxel51.com/privacy/",
-    "link_schedulecall": "mailto:solutions@voxel51.com?subject=[Voxel51]%20Schedule%20a%20call",
-    "link_scheduledemo": "https://meetings.hubspot.com/michael908",
     "link_termsofservice": "https://voxel51.com/terms/",
-    "link_twitter": "https://twitter.com/",
-    "link_usecase_advertising": "https://voxel51.com/usecases/advertising/",
-    "link_usecase_auto": "https://voxel51.com/usecases/automotive/",
-    "link_usecase_research": "https://voxel51.com/usecases/research/",
-    "link_usecases": "https://voxel51.com/usecases/",
-    "link_usecases_entry": "https://voxel51.com/usecases/automotive/",
     "link_voxel51_facebook": "https://www.facebook.com/voxel51/",
     "link_voxel51_github": "https://github.com/voxel51/",
     "link_voxel51_linkedin": "https://www.linkedin.com/company/voxel51/",
@@ -209,3 +200,4 @@ def setup(app):
     app.add_directive("custombutton", CustomButtonDirective)
     app.add_directive("customcalloutitem", CustomCalloutItemDirective)
     app.add_directive("customcarditem", CustomCardItemDirective)
+    app.add_directive("customimagelink", CustomImageLinkDirective)

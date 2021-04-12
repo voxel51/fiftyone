@@ -6242,6 +6242,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"big-integer@npm:^1.6.7":
+  version: 1.6.48
+  resolution: "big-integer@npm:1.6.48"
+  checksum: 311f86a45e28513ddb12415082c5f437b868d80914bff71689a99e16f597beee5c0f12b0c9e65713b70b0516e6ed27f4006e256ea5393bfcf68bb18dc453f976
+  languageName: node
+  linkType: hard
+
 "big.js@npm:^5.2.2":
   version: 5.2.2
   resolution: "big.js@npm:5.2.2"
@@ -6408,6 +6415,15 @@ __metadata:
     type-fest: ^0.8.1
     widest-line: ^3.1.0
   checksum: 667b291d227a86134aaacd6f2f997828607a8e2ead0da7b2568372728382765634df46e211f73d3b11a43784db7ec53da627a57213adbd42ce10ad39609ee4e3
+  languageName: node
+  linkType: hard
+
+"bplist-parser@npm:^0.1.0":
+  version: 0.1.1
+  resolution: "bplist-parser@npm:0.1.1"
+  dependencies:
+    big-integer: ^1.6.7
+  checksum: aa0723e56681dd99e8a1d4890122c55ec9dd2e53c598673549ef05ae95e818659099ef65789f83f2c1cc8339cfe3eed8717cb0bb6bd21c6dadea7c041cc090e7
   languageName: node
   linkType: hard
 
@@ -8736,6 +8752,17 @@ __metadata:
   languageName: node
   linkType: hard
 
+"default-browser-id@npm:^2.0.0":
+  version: 2.0.0
+  resolution: "default-browser-id@npm:2.0.0"
+  dependencies:
+    bplist-parser: ^0.1.0
+    pify: ^2.3.0
+    untildify: ^2.0.0
+  checksum: 0c637e01567c8f3a9ecdaf5e0c5203b6b351f668903bf48100f015e5d552f7c413ce4be6281f3dff827ad029737cb667a98e1b148a4b9db7c4a2ee739f83b0cb
+  languageName: node
+  linkType: hard
+
 "defaults@npm:^1.0.3":
   version: 1.0.3
   resolution: "defaults@npm:1.0.3"
@@ -9762,11 +9789,11 @@ __metadata:
   linkType: hard
 
 "esbuild@npm:^0.8.7":
-  version: 0.8.36
-  resolution: "esbuild@npm:0.8.36"
+  version: 0.8.57
+  resolution: "esbuild@npm:0.8.57"
   bin:
     esbuild: bin/esbuild
-  checksum: dede3673b670a66c0db4b4d47020364c27d88ed002a3bb14d4519e2b6070384f272aef7f8eb9b34d8abfb1eee1ed898b994058066f9b7911e50ce4b0411f5d5e
+  checksum: 0942950a21a30b57a324380cfedcb425cc1245412e720593415afa0d4f1b7c5f931aa6330937dc1353c754d45c1e5ff7dbc52eb514f54d85517114971300b454
   languageName: node
   linkType: hard
 
@@ -10919,7 +10946,7 @@ __metadata:
     rollup-plugin-replace: ^2.2.0
     rollup-plugin-terser: ^7.0.2
     sinon: ^8.1.1
-    snowpack: next
+    snowpack: 3.0.13
     snowpack-plugin-mdx: ^0.3.1
     snowpack-plugin-replace: ^1.0.4
     spectron: ^10.0.0
@@ -13223,7 +13250,7 @@ fsevents@^2.2.0:
   languageName: node
   linkType: hard
 
-"is-core-module@npm:^2.1.0":
+"is-core-module@npm:^2.1.0, is-core-module@npm:^2.2.0":
   version: 2.2.0
   resolution: "is-core-module@npm:2.2.0"
   dependencies:
@@ -17245,6 +17272,16 @@ modclean-patterns-default@latest:
   languageName: node
   linkType: hard
 
+"open@npm:^7.0.4":
+  version: 7.4.2
+  resolution: "open@npm:7.4.2"
+  dependencies:
+    is-docker: ^2.0.0
+    is-wsl: ^2.1.1
+  checksum: 07545fa768e5fbc25c6f53c6f17465f1b7ee663a494f87608d99a7b3227c83d2d2e0f0e5ecb70325b4ddef97dcd02d206f9afe3f8d6bb3d6612db9ca310ed4eb
+  languageName: node
+  linkType: hard
+
 "opencollective-postinstall@npm:^2.0.2":
   version: 2.0.3
   resolution: "opencollective-postinstall@npm:2.0.3"
@@ -17864,7 +17901,7 @@ modclean-patterns-default@latest:
   languageName: node
   linkType: hard
 
-"pify@npm:^2.0.0":
+"pify@npm:^2.0.0, pify@npm:^2.3.0":
   version: 2.3.0
   resolution: "pify@npm:2.3.0"
   checksum: d5758aa570bbd5969c62b5f745065006827ef4859b32af302e3df2bb5978e6c1e50c2360d7ffefa102e451084f4530115c84570c185ba5153ee9871c977fe278
@@ -17966,11 +18003,11 @@ modclean-patterns-default@latest:
 
 "player51@file:./player51::locator=fiftyone%40workspace%3A.":
   version: 1.0.0
-  resolution: "player51@file:./player51#./player51::hash=f20fe5&locator=fiftyone%40workspace%3A."
+  resolution: "player51@file:./player51#./player51::hash=e5c920&locator=fiftyone%40workspace%3A."
   dependencies:
     "@ungap/event-target": ^0.2.2
     event-target: ^1.2.3
-  checksum: 983e98272089ff8e6adc00f9492e9a86b80005fffa6bec7f6bc8e9e2d1a28e61db736e09ee39770d9261e860664260c7200394d3a17b83043a3a44d60ee81401
+  checksum: a28966c7fa1cc563e598118a10af29bb0e954e932f1440dd7599588de87a0b5054e8995c79b19bf16de7725d1d61b6aba684ec08abf3fcaa5defdb0a4fe83674
   languageName: node
   linkType: hard
 
@@ -20699,6 +20736,16 @@ resolve@1.1.7:
   languageName: node
   linkType: hard
 
+resolve@^1.20.0:
+  version: 1.20.0
+  resolution: "resolve@npm:1.20.0"
+  dependencies:
+    is-core-module: ^2.2.0
+    path-parse: ^1.0.6
+  checksum: 0f5206d454b30e74d9b2d575b5f8aedf443c4d8b90b84cdf79474ade29bb459075220da3127b682896872a16022ed65cc4db09e0f23849654144d3d75c65cd1b
+  languageName: node
+  linkType: hard
+
 "resolve@patch:resolve@1.1.7#builtin<compat/resolve>":
   version: 1.1.7
   resolution: "resolve@patch:resolve@npm%3A1.1.7#builtin<compat/resolve>::version=1.1.7&hash=3388aa"
@@ -20713,6 +20760,16 @@ resolve@1.1.7:
     is-core-module: ^2.1.0
     path-parse: ^1.0.6
   checksum: 188d5167e8578a9af8d194faf382b8f3526aad5145391c24ecdc6246c6fc82c10fc66d6352267f8e93c5977c503d61803169c91b9e2ee36dd2de759915c9b673
+  languageName: node
+  linkType: hard
+
+"resolve@patch:resolve@^1.20.0#builtin<compat/resolve>":
+  version: 1.20.0
+  resolution: "resolve@patch:resolve@npm%3A1.20.0#builtin<compat/resolve>::version=1.20.0&hash=3388aa"
+  dependencies:
+    is-core-module: ^2.2.0
+    path-parse: ^1.0.6
+  checksum: c4a515b76026806b5b26513fc7bdb80458c532bc91c02ef45ac928d1025585f93bec0b904be39c02131118a37ff7e3f9258f1526850b025d2ec0948bb5fd03d0
   languageName: node
   linkType: hard
 
@@ -20936,6 +20993,20 @@ resolve@1.1.7:
   dependencies:
     estree-walker: ^0.6.1
   checksum: 6922c1a26df033cc3da4650106244fb2211b5ddf72a93be5010cbe51a0817c9abcab08f61cbc3f5fc906b2701df123d8c9b0dae0a34e69dd07218e34e5d357b8
+  languageName: node
+  linkType: hard
+
+"rollup@npm:^2.34.0":
+  version: 2.44.0
+  resolution: "rollup@npm:2.44.0"
+  dependencies:
+    fsevents: ~2.3.1
+  dependenciesMeta:
+    fsevents:
+      optional: true
+  bin:
+    rollup: dist/bin/rollup
+  checksum: 8142c058b297e478b4b0a1fcf114aac26a3ac2b9bb18b15af3895751a4c161708789f6a72f3bc02148cff8482a8dc69c303bd052cb56f2e61fcb4218c734cb11
   languageName: node
   linkType: hard
 
@@ -21632,19 +21703,23 @@ resolve@1.1.7:
   languageName: node
   linkType: hard
 
-"snowpack@npm:next":
-  version: 3.0.3
-  resolution: "snowpack@npm:3.0.3"
+"snowpack@npm:3.0.13":
+  version: 3.0.13
+  resolution: "snowpack@npm:3.0.13"
   dependencies:
+    default-browser-id: ^2.0.0
     esbuild: ^0.8.7
     fsevents: ^2.2.0
+    open: ^7.0.4
+    resolve: ^1.20.0
+    rollup: ^2.34.0
   dependenciesMeta:
     fsevents:
       optional: true
   bin:
     snowpack: index.bin.js
     sp: index.bin.js
-  checksum: 825ec93915fdee7920e4053d4740d95419b002d78ea6b76aac0141fff37e3d4b352f93eb4e0d2978573a85e1daf4263f3eb8641f9dba1adc9b28849df760cf31
+  checksum: 5ed74e2fb07727096aa3d61f52079d20c3d2926ac3a34c6df548abd91ee576b49c253ea2381ae0b293b5d417ceb2cea31fec66f70bbd893862760f3b6c61b658
   languageName: node
   linkType: hard
 
@@ -23775,6 +23850,15 @@ typescript@^3.7.5:
     has-value: ^0.3.1
     isobject: ^3.0.0
   checksum: b4c4853f2744a91e9bb5ccb3dfb28f78c32310bf851f0e6b9e781d3ca5244a803632926b2af701da5f9153a03e405023cebc1f90b87711f73b5fc86b6c33efae
+  languageName: node
+  linkType: hard
+
+"untildify@npm:^2.0.0":
+  version: 2.1.0
+  resolution: "untildify@npm:2.1.0"
+  dependencies:
+    os-homedir: ^1.0.0
+  checksum: 63ee08321c38ed162bef9fef6d3f64df3632fb5e150bb29930c5378a093468fc6ddd7659f60ee5123924e202a8e3639df8d365d1d9f9aa40e8d3051407caf1cf
   languageName: node
   linkType: hard
 

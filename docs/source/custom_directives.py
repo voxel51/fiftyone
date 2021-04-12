@@ -97,8 +97,8 @@ class CustomCalloutItemDirective(Directive):
     """A custom callout for use on table of contents-style pages that link into
     other pages.
 
-    The callout contains a header, a body, and a clickable button that links to
-    the provided link.
+    The callout contains a header, a body, a clickable button that links to
+    the provided link, and an optional image.
 
     Example usage::
 
@@ -107,6 +107,7 @@ class CustomCalloutItemDirective(Directive):
             :description: Custom body
             :button_text: Custom button
             :button_link: other/page.html
+            :image: ../_static/images/custom-image.jpg
     """
 
     option_spec = {
@@ -114,6 +115,7 @@ class CustomCalloutItemDirective(Directive):
         "description": directives.unchanged,
         "button_text": directives.unchanged,
         "button_link": directives.unchanged,
+        "image": directives.unchanged,
     }
 
     def run(self):
@@ -121,6 +123,7 @@ class CustomCalloutItemDirective(Directive):
         description = self.options.get("description", "")
         button_text = self.options.get("button_text", "")
         button_link = self.options.get("button_link", "")
+        image = self.options.get("image", "")
 
         classes = "with-right-arrow" if button_link else ""
         attributes = (
@@ -129,14 +132,31 @@ class CustomCalloutItemDirective(Directive):
             else 'onclick="return false;" style="pointer-events:none;cursor:default;"'
         )
 
-        callout_rst = _CUSTOM_CALLOUT_TEMPLATE.format(
-            header=header,
-            description=description,
-            button_text=button_text,
-            button_link=button_link,
-            classes=classes,
-            attributes=attributes,
-        )
+        if image:
+            callout_rst = _CUSTOM_CALLOUT_TEMPLATE.format(
+                header=header,
+                description=description,
+                button_text=button_text,
+                button_link=button_link,
+                classes=classes,
+                attributes=attributes,
+                image='<img src="%s">' % image,
+            )
+
+        else:
+            # No image
+            template = _CUSTOM_CALLOUT_TEMPLATE.replace(
+                "<div>{image}</div>", ""
+            )
+
+            callout_rst = template.format(
+                header=header,
+                description=description,
+                button_text=button_text,
+                button_link=button_link,
+                classes=classes,
+                attributes=attributes,
+            )
 
         button_list = StringList(callout_rst.split("\n"))
         button = nodes.paragraph()
@@ -151,7 +171,8 @@ _CUSTOM_CALLOUT_TEMPLATE = """
         <div class="text-container">
             <h3>{header}</h3>
             <p class="body-paragraph">{description}</p>
-            <a class="btn {classes} callout-button" href="{button_link}"{attributes}>{button_text}</a>
+            <p><a class="btn {classes} callout-button" href="{button_link}"{attributes}>{button_text}</a></p>
+            <div>{image}</div>
         </div>
     </div>
 """
@@ -203,5 +224,51 @@ _CUSTOM_BUTTON_TEMPLATE = """
 
     <div class="tutorials-callout-container">
         <a class="btn {classes} callout-button" href="{button_link}"{attributes}>{button_text}</a>
+    </div>
+"""
+
+
+class CustomImageLinkDirective(Directive):
+    """A custom image within a link nested in a div. Styling can be done via
+    a parent container.
+
+
+    Example usage::
+        .. customimagelink::
+            :image_link: other/page.html
+            :image_src: images/image.png
+            :image_src: My image
+    """
+
+    option_spec = {
+        "image_link": directives.unchanged,
+        "image_src": directives.unchanged,
+        "image_title": directives.unchanged,
+    }
+
+    def run(self):
+        image_link = self.options.get("image_link", "")
+        image_src = self.options.get("image_src", "")
+        image_title = self.options.get("image_title", "")
+
+        callout_rst = _CUSTOM_IMAGE_LINK_TEMPLATE.format(
+            image_link=image_link,
+            image_src=image_src,
+            image_title=image_title,
+        )
+
+        image_list = StringList(callout_rst.split("\n"))
+        image = nodes.paragraph()
+        self.state.nested_parse(image_list, self.content_offset, image)
+        return [image]
+
+
+_CUSTOM_IMAGE_LINK_TEMPLATE = """
+.. raw:: html
+
+    <div>
+        <a href="{image_link}" title="{image_title}">
+          <img src="{image_src}" alt="{image_title}"/>
+        </a>
     </div>
 """

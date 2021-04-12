@@ -337,7 +337,7 @@ const useTagCallback = (modal, targetLabels) => {
   return useRecoilCallback(
     ({ snapshot }) => async ({ changes }) => {
       const activeLabels = await snapshot.getPromise(
-        fieldAtoms.activeFields(modal)
+        fieldAtoms.activeLabelPaths(modal)
       );
       if (modal) {
         const hasSelectedLabels =

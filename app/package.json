@@ -1,7 +1,7 @@
 {
     "name": "fiftyone",
     "productName": "FiftyOne",
-    "version": "0.11.0",
+    "version": "0.12.0",
     "license": "Apache-2.0",
     "description": "FiftyOne by Voxel51",
     "main": "./dist/main.js",
@@ -205,7 +205,7 @@
         "rollup-plugin-replace": "^2.2.0",
         "rollup-plugin-terser": "^7.0.2",
         "sinon": "^8.1.1",
-        "snowpack": "next",
+        "snowpack": "3.0.13",
         "snowpack-plugin-mdx": "^0.3.1",
         "snowpack-plugin-replace": "^1.0.4",
         "spectron": "^10.0.0",

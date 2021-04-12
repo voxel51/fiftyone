@@ -262,7 +262,7 @@ The FiftyOne App can be configured in the ways described below:
 +-------------------+---------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
 | `show_confidence` | `FIFTYONE_APP_SHOW_CONFIDENCE`  | `True`                      | Whether to show confidences when rendering labels in the App's expanded sample view.     |
 +-------------------+---------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
-| `show_tooltip`    | `FIFTYONE_APP_SHOW_TOOLTIP   `  | `True`                      | Whether to show the tooltip when hovering over labels in the App's expanded sample view. |
+| `show_tooltip`    | `FIFTYONE_APP_SHOW_TOOLTIP`     | `True`                      | Whether to show the tooltip when hovering over labels in the App's expanded sample view. |
 +-------------------+---------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
 
 Viewing your App config
