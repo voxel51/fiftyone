@@ -133,7 +133,7 @@ const PillButtonDiv = animated(styled.div`
 `);
 
 type PillButton = {
-  onClick: () => void;
+  onClick: (event: Event) => void;
   open: boolean;
   highlight: boolean;
   text?: string;

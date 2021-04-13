@@ -1,20 +1,19 @@
 import React from "react";
 import {
+  RecoilValueReadOnly,
+  selector,
+  selectorFamily,
   useRecoilCallback,
-  useRecoilState,
   useRecoilValue,
-  useSetRecoilState,
 } from "recoil";
 
 import Popout from "./Popout";
 import { HoverItemDiv, useHighlightHover } from "./utils";
 import * as atoms from "../../recoil/atoms";
 import * as selectors from "../../recoil/selectors";
+import * as labelAtoms from "../Filters/LabelFieldFilters.state";
 import socket from "../../shared/connection";
 import { packageMessage } from "../../utils/socket";
-import { listSampleLabels } from "../../utils/labels";
-import * as labelAtoms from "../Filters/LabelFieldFilters.state";
-import { useSendMessage } from "../../utils/hooks";
 
 type ActionOptionProps = {
   onClick: () => void;
@@ -42,39 +41,6 @@ const ActionOption = ({
       {text}
     </HoverItemDiv>
   );
-};
-
-const addLabelsToSelection = (
-  selection: atoms.SelectedLabelMap,
-  addition: atoms.SelectedLabel[]
-) => {
-  return {
-    ...selection,
-    ...Object.fromEntries(
-      addition.map(({ label_id, ...rest }) => [label_id, rest])
-    ),
-  };
-};
-
-const removeMatchingLabelsFromSelection = (
-  selection: atoms.SelectedLabelMap,
-  filter: atoms.SelectedLabelData
-) => {
-  const newSelection = { ...selection };
-  if (Object.keys(filter).length) {
-    for (const [label_id, data] of Object.entries(selection)) {
-      if (
-        (filter.sample_id === undefined ||
-          filter.sample_id === data.sample_id) &&
-        (filter.field === undefined || filter.field === data.field) &&
-        (filter.frame_number === undefined ||
-          filter.frame_number === data.frame_number)
-      ) {
-        delete newSelection[label_id];
-      }
-    }
-  }
-  return newSelection;
 };
 
 const getGridActions = (close: () => void) => {
@@ -129,173 +95,123 @@ const getGridActions = (close: () => void) => {
   ];
 };
 
-const _addFrameNumberToLabels = (labels, frame_number) =>
-  labels.map((label) => ({ ...label, frame_number }));
+const visibleModalSampleLabels = selector<atoms.SelectedLabel[]>({
+  key: "visibleModalSampleLabels",
+  get: ({ get }) => {
+    return get(labelAtoms.modalLabels).filter(
+      ({ frame_number }) => typeof frame_number !== "number"
+    );
+  },
+});
+
+const visibleModalSampleLabelIds = selector<Set<string>>({
+  key: "visibleModalSampleLabelIds",
+  get: ({ get }) => {
+    return new Set(
+      get(visibleModalSampleLabels).map(({ label_id }) => label_id)
+    );
+  },
+});
+
+const visibleModalFrameLabelIds = selector<Set<string>>({
+  key: "visibleModalFrameLabelIds",
+  get: ({ get }) => {
+    return new Set(
+      get(labelAtoms.modalLabels)
+        .filter(({ frame_number }) => typeof frame_number === "number")
+        .map(({ label_id }) => label_id)
+    );
+  },
+});
+
+const visibleModalCurrentFrameLabelIds = selectorFamily<Set<string>, number>({
+  key: "visibleModalCurrentFrameLabelIds",
+  get: (frameNumber) => ({ get }) => {
+    return new Set(
+      get(labelAtoms.modalLabels)
+        .filter(({ frame_number }) => frame_number === frameNumber)
+        .map(({ label_id }) => label_id)
+    );
+  },
+});
+
+const toLabelMap = (labels: atoms.SelectedLabel[]) =>
+  Object.fromEntries(labels.map(({ label_id, ...rest }) => [label_id, rest]));
+
+const useSelectVisible = () => {
+  return useRecoilCallback(({ snapshot, set }) => async () => {
+    const selected = await snapshot.getPromise(selectors.selectedLabels);
+    const visible = await snapshot.getPromise(visibleModalSampleLabels);
+    set(selectors.selectedLabels, {
+      ...selected,
+      ...toLabelMap(visible),
+    });
+  });
+};
+
+const useClearSelectedLabels = () => {
+  return useRecoilCallback(({ set }) => async () =>
+    set(selectors.selectedLabels, {})
+  );
+};
+
+const useHideSelected = () => {
+  return useRecoilCallback(({ snapshot, set }) => async () => {
+    const selected = await snapshot.getPromise(selectors.selectedLabels);
+    const hidden = await snapshot.getPromise(atoms.hiddenLabels);
+    set(selectors.selectedLabels, {});
+    set(atoms.hiddenLabels, { ...hidden, ...selected });
+  });
+};
+
+const useHideOthers = () => {
+  return useRecoilCallback(({ snapshot, set }) => async () => {
+    const selected = await snapshot.getPromise(selectors.selectedLabelIds);
+    const visible = await snapshot.getPromise(visibleModalSampleLabels);
+    const hidden = await snapshot.getPromise(atoms.hiddenLabels);
+    set(atoms.hiddenLabels, {
+      ...hidden,
+      ...toLabelMap(visible.filter(({ label_id }) => !selected.has(label_id))),
+    });
+  });
+};
+
+const hasSetDiff = <T extends unknown>(a: Set<T>, b: Set<T>): boolean =>
+  new Set([...a].filter((e) => !b.has(e))).size > 0;
 
 const getModalActions = (frameNumberRef, close) => {
-  const sample = useRecoilValue(selectors.modalSample);
-  const [selectedLabels, setSelectedLabels] = useRecoilState(
-    selectors.selectedLabels
-  );
-  const filter = useRecoilValue(labelAtoms.sampleModalFilter);
-  const setHiddenLabels = useSetRecoilState(atoms.hiddenLabels);
-  const hiddenLabelIds = useRecoilValue(selectors.hiddenLabelIds);
-
-  const sampleFrameData =
-    useRecoilValue(atoms.sampleFrameData(sample._id)) || [];
-  const isVideo = useRecoilValue(selectors.mediaType) == "video";
-  const frameNumber = isVideo ? frameNumberRef.current : null;
-
-  useSendMessage(
-    "set_selected_labels",
-    {
-      selected_labels: Object.entries(
-        selectedLabels
-      ).map(([label_id, label]) => ({ label_id, ...label })),
-    },
-    null,
-    [selectedLabels]
-  );
-
-  const sampleLabels = isVideo
-    ? sampleFrameData
-        .map(listSampleLabels)
-        .filter((o) => hiddenLabelIds.has(o._id))
-        .map((arr, i) => _addFrameNumberToLabels(arr, i + 1))
-        .flat()
-    : listSampleLabels(filter(sample));
-  const frameLabels =
-    isVideo && frameNumber && sampleFrameData[frameNumber - 1]
-      ? _addFrameNumberToLabels(
-          listSampleLabels(
-            filter(sampleFrameData[frameNumber - 1], "frames.")
-          ).filter((l) => !hiddenLabelIds.has(l._id)),
-          frameNumber
-        )
-      : [];
-
-  const numTotalSelectedObjects = Object.keys(selectedLabels).length;
-  const numSampleSelectedObjects = sampleLabels.filter(
-    (label) => selectedLabels[label._id]
-  ).length;
-  const numFrameSelectedObjects = frameLabels.filter(
-    (label) => selectedLabels[label._id]
-  ).length;
-
-  const _getLabelSelectionData = (object) => ({
-    label_id: object._id,
-    sample_id: sample._id,
-    field: object.name,
-    frame_number: object.frame_number,
-  });
-
-  const _selectAll = (labels) => {
-    close();
-    setSelectedLabels((selection) => ({
-      ...selection,
-      ...Object.fromEntries(
-        labels
-          .map(_getLabelSelectionData)
-          .map(({ label_id, ...rest }) => [label_id, rest])
-      ),
-    }));
+  const selectedLabels = useRecoilValue(selectors.selectedLabelIds);
+  const visibleSampleLabels = useRecoilValue(visibleModalSampleLabelIds);
+  const closeAndCall = (useCallback) => {
+    const callback = useCallback();
+    return () => {
+      close();
+      callback();
+    };
   };
 
-  const selectAllInSample = () => _selectAll(sampleLabels);
-
-  const unselectAllInSample = () => {
-    close();
-    setSelectedLabels((selection) =>
-      removeMatchingLabelsFromSelection(selection, { sample_id: sample._id })
-    );
-  };
-
-  const selectAllInFrame = () => _selectAll(frameLabels);
-
-  const unselectAllInFrame = () => {
-    close();
-    setSelectedLabels((selection) =>
-      removeMatchingLabelsFromSelection(selection, {
-        sample_id: sample._id,
-        frame_number: frameNumberRef.current,
-      })
-    );
-  };
-
-  const hideSelected = () => {
-    close();
-    const ids = Object.keys(selectedLabels);
-    setSelectedLabels({});
-    // can copy data directly from selectedObjects since it's in the same format
-    setHiddenLabels((hiddenObjects) =>
-      addLabelsToSelection(
-        hiddenObjects,
-        ids.map((label_id) => ({ label_id, ...selectedLabels[label_id] }))
-      )
-    );
-  };
-
-  const hideOthers = (labels) => {
-    close();
-    console.log(
-      labels
-        .filter((label) => !selectedLabels[label._id])
-        .map(_getLabelSelectionData)
-    );
-    setHiddenLabels((hiddenLabels) =>
-      addLabelsToSelection(
-        hiddenLabels,
-        labels
-          .filter((label) => !selectedLabels[label._id])
-          .map(_getLabelSelectionData)
-      )
-    );
-  };
   return [
-    sampleLabels.length && {
+    {
       text: "Select all (current sample)",
-      disabled: numSampleSelectedObjects >= sampleLabels.length,
-      onClick: () => selectAllInSample(),
-    },
-    sampleLabels.length && {
-      text: "Unselect all (current sample)",
-      disabled: !numSampleSelectedObjects,
-      onClick: () => unselectAllInSample(),
-    },
-    frameLabels.length && {
-      text: "Select all (current frame)",
-      disabled: numFrameSelectedObjects >= frameLabels.length,
-      onClick: () => selectAllInFrame(),
-    },
-    frameLabels.length && {
-      text: "Unselect all (current frame)",
-      disabled: !numFrameSelectedObjects,
-      onClick: () => unselectAllInFrame(),
+      disabled: hasSetDiff(visibleSampleLabels, selectedLabels),
+      onClick: closeAndCall(useSelectVisible),
     },
     {
       text: "Clear selection",
-      disabled: !numTotalSelectedObjects,
-      onClick: () => {
-        close();
-        setSelectedLabels({});
-      },
+      disabled: hasSetDiff(selectedLabels, visibleSampleLabels),
+      onClick: closeAndCall(useClearSelectedLabels),
     },
     {
       text: "Hide selected",
-      disabled: numTotalSelectedObjects == 0,
-      onClick: () => hideSelected(),
+      disabled: selectedLabels.size > 0,
+      onClick: closeAndCall(useHideSelected),
     },
-    sampleLabels.length && {
+    {
       text: "Hide others (current sample)",
-      disabled: numSampleSelectedObjects == 0,
-      onClick: () => hideOthers(sampleLabels),
+      disabled: hasSetDiff(visibleSampleLabels, selectedLabels),
+      onClick: closeAndCall(useHideOthers),
     },
-    frameLabels.length && {
-      text: "Hide others (current frame)",
-      disabled: numFrameSelectedObjects == 0,
-      onClick: () => hideOthers(frameLabels),
-    },
-  ].filter(Boolean);
+  ].filter(({ disabled }) => !disabled);
 };
 
 const SelectionActions = ({ modal, close, frameNumberRef, bounds }) => {

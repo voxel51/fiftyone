@@ -25,10 +25,16 @@ const modalSampleOrCurrentFrame = selectorFamily<
       }
       object = {
         ...object,
-        frames: { currentFrame: op(frame, "frames.") },
+        frames: {
+          frameNumber: Object.fromEntries(
+            Object.entries(op(frame, "frames.")).map(([k, v]) => [k, v])
+          ),
+        },
       };
     }
-    return Object.entries(sample).filter(([k]) => !k.startsWith("_"));
+    return Object.fromEntries(
+      Object.entries(object).filter(([k]) => !k.startsWith("_"))
+    );
   },
 });
 
