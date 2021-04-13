@@ -74,6 +74,8 @@ const SliderStyled = styled(SliderUnstyled)`
   }
 `;
 
+const formatNumeral = (int) => (v) => numeral(v).format(int ? "0a" : "0.00a");
+
 type SliderValue = number | undefined;
 
 export type Range = [SliderValue, SliderValue];
@@ -84,17 +86,38 @@ type BaseSliderProps = {
   value: Range | number;
   onChange: (e: Event, v: Range | number) => void;
   onCommit: (e: Event, v: Range | number) => void;
+  showNumbers?: boolean;
+  int?: boolean;
 };
 
 const BaseSlider = React.memo(
-  ({ boundsAtom, color, onChange, onCommit, value }: BaseSliderProps) => {
+  ({
+    boundsAtom,
+    color,
+    int = false,
+    onChange,
+    onCommit,
+    showNumbers = true,
+    value,
+  }: BaseSliderProps) => {
     const theme = useContext(ThemeContext);
     const bounds = useRecoilValue(boundsAtom);
 
     const hasBounds = bounds.every((b) => b !== null);
-    return hasBounds ? (
-      <SliderContainer>
-        {bounds[0]}
+
+    if (!hasBounds) {
+      return null;
+    }
+    let step = (bounds[1] - bounds[0]) / 100;
+    if (int) {
+      step = Math.ceil(step);
+    }
+
+    const formatter = formatNumeral(int);
+
+    return (
+      <SliderContainer style={showNumbers ? {} : { padding: 0 }}>
+        {showNumbers && formatter(bounds[0])}
         <SliderStyled
           value={value}
           onChange={onChange}
@@ -106,17 +129,17 @@ const BaseSlider = React.memo(
             active: "active",
             valueLabel: "valueLabel",
           }}
-          valueLabelFormat={(v) => numeral(v).format("0.00a")}
+          valueLabelFormat={formatter}
           aria-labelledby="slider"
-          valueLabelDisplay={"on"}
+          valueLabelDisplay={showNumbers ? "on" : "off"}
           max={bounds[1]}
           min={bounds[0]}
-          step={(bounds[1] - bounds[0]) / 100}
+          step={step}
           theme={{ ...theme, brand: color }}
         />
-        {bounds[1]}
+        {showNumbers && formatter(bounds[1])}
       </SliderContainer>
-    ) : null;
+    );
   }
 );
 
@@ -124,6 +147,8 @@ type SliderProps = {
   valueAtom: RecoilState<SliderValue>;
   boundsAtom: RecoilValueReadOnly<Range>;
   color: string;
+  showNumbers: boolean;
+  int?: boolean;
 };
 
 export const Slider = ({ valueAtom, ...rest }: SliderProps) => {
@@ -139,7 +164,7 @@ export const Slider = ({ valueAtom, ...rest }: SliderProps) => {
       {...rest}
       onChange={(_, v) => setLocalValue(v)}
       onCommit={(_, v) => setValue(v)}
-      value={value}
+      value={localValue}
     />
   );
 };
@@ -148,6 +173,7 @@ type RangeSliderProps = {
   valueAtom: RecoilState<Range>;
   boundsAtom: RecoilValueReadOnly<Range>;
   color: string;
+  int?: boolean;
 };
 
 export const RangeSlider = ({ valueAtom, ...rest }: RangeSliderProps) => {
@@ -163,7 +189,7 @@ export const RangeSlider = ({ valueAtom, ...rest }: RangeSliderProps) => {
       {...rest}
       onChange={(_, v: Range) => setLocalValue(v)}
       onCommit={(_, v) => setValue(v)}
-      value={value}
+      value={[...localValue]}
     />
   );
 };
@@ -195,6 +221,7 @@ type NamedProps = {
   noneAtom: RecoilState<boolean>;
   name: string;
   valueName: string;
+  int?: boolean;
   color: string;
 };
 

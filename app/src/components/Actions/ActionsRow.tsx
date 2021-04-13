@@ -214,7 +214,6 @@ const ActionsRowDiv = styled.div`
 type ActionsRowProps = {
   modal: boolean;
   frameNumberRef?: any;
-  children: any;
 };
 
 const ActionsRow = ({ modal, frameNumberRef }: ActionsRowProps) => {

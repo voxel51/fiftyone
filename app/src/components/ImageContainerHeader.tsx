@@ -1,13 +1,10 @@
 import React from "react";
 import styled from "styled-components";
-import { constSelector, useRecoilValue } from "recoil";
+import { useRecoilValue } from "recoil";
 
 import DropdownHandle from "./DropdownHandle";
 import Actions from "./Actions";
 import * as selectors from "../recoil/selectors";
-import { Slider } from "./Filters/RangeSlider";
-import { gridRowAspectRatio } from "./Samples.hooks";
-import { useTheme } from "../utils/hooks";
 
 type Props = {
   showSidebar: boolean;
@@ -47,7 +44,6 @@ const CountDiv = styled.div`
 const ImageContainerHeader = ({ showSidebar, onShowSidebar }: Props) => {
   const totalCount = useRecoilValue(selectors.totalCount);
   const filteredCount = useRecoilValue(selectors.filteredCount);
-  const theme = useTheme();
 
   let countStr = null;
   if (
@@ -69,11 +65,6 @@ const ImageContainerHeader = ({ showSidebar, onShowSidebar }: Props) => {
       />
       <SamplesHeader>
         <Actions modal={false} />
-        <Slider
-          valueAtom={gridRowAspectRatio}
-          boundsAtom={constSelector([3, 7])}
-          color={theme.brand}
-        />
         {countStr !== null ? (
           <CountDiv>
             <div>

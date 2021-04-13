@@ -1,11 +1,29 @@
 import React from "react";
-import { useRecoilState } from "recoil";
+import { constSelector, useRecoilState } from "recoil";
 import { Autorenew } from "@material-ui/icons";
 
 import Popout from "./Popout";
 import { PopoutSectionTitle, TabOption } from "../utils";
 import * as atoms from "../../recoil/atoms";
 import { Button } from "../FieldsSidebar";
+import { gridRowAspectRatio } from "../Samples.hooks";
+import { useTheme } from "../../utils/hooks";
+import { Slider } from "../Filters/RangeSlider";
+
+const GridSizer = () => {
+  const theme = useTheme();
+  return (
+    <>
+      <PopoutSectionTitle>Zoom</PopoutSectionTitle>
+      <Slider
+        valueAtom={gridRowAspectRatio}
+        boundsAtom={constSelector([3, 7])}
+        color={theme.brand}
+        showNumbers={false}
+      />
+    </>
+  );
+};
 
 export const RefreshButton = ({ modal }) => {
   const [colorSeed, setColorSeed] = useRecoilState(
@@ -65,6 +83,7 @@ type OptionsProps = {
 const Options = ({ modal, bounds }: OptionsProps) => {
   return (
     <Popout modal={modal} bounds={bounds}>
+      {!modal && <GridSizer />}
       <ColorBy modal={modal} />
       <RefreshButton modal={modal} />
     </Popout>
