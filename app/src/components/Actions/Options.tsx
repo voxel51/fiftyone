@@ -6,7 +6,7 @@ import Popout from "./Popout";
 import { PopoutSectionTitle, TabOption } from "../utils";
 import * as atoms from "../../recoil/atoms";
 import { Button } from "../FieldsSidebar";
-import { gridRowAspectRatio } from "../Samples.hooks";
+import { gridZoom } from "../Samples.hooks";
 import { useTheme } from "../../utils/hooks";
 import { Slider } from "../Filters/RangeSlider";
 
@@ -16,8 +16,8 @@ const GridSizer = () => {
     <>
       <PopoutSectionTitle>Zoom</PopoutSectionTitle>
       <Slider
-        valueAtom={gridRowAspectRatio}
-        boundsAtom={constSelector([3, 7])}
+        valueAtom={gridZoom}
+        boundsAtom={constSelector([1, 9])}
         color={theme.brand}
         showNumbers={false}
       />

@@ -1,5 +1,5 @@
 import { useLayoutEffect, useState } from "react";
-import { atom, useRecoilCallback, useRecoilValue } from "recoil";
+import { atom, selector, useRecoilCallback, useRecoilValue } from "recoil";
 
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
@@ -9,9 +9,19 @@ import tile, { State } from "../utils/tile";
 import { packageMessage } from "../utils/socket";
 import { filterView } from "../utils/view";
 
-export const gridRowAspectRatio = atom<number>({
-  key: "gridRowAspectRatio",
+export const gridZoom = atom<number>({
+  key: "gridZoom",
   default: 5,
+});
+
+const gridRowAspectRatio = selector<number>({
+  key: "gridRowAspectRatio",
+  get: ({ get }) => 10 - get(gridZoom),
+});
+
+const pageSize = selector<number>({
+  key: "pageSize",
+  get: ({ get }) => Math.ceil(get(gridRowAspectRatio) * 4),
 });
 
 const stringifyObj = (obj) => {
@@ -30,7 +40,7 @@ export default (): [State, (state: State) => void] => {
   const datasetName = useRecoilValue(selectors.datasetName);
   const view = useRecoilValue(selectors.view);
   const refresh = useRecoilValue(selectors.refresh);
-  const gridRatio = useRecoilValue(gridRowAspectRatio);
+  const pageSizeValue = useRecoilValue(pageSize);
   const [state, setState] = useState({
     loadMore: false,
     isLoading: false,
@@ -79,6 +89,15 @@ export default (): [State, (state: State) => void] => {
     []
   );
 
+  const requestPage = useRecoilCallback(
+    ({ snapshot }) => async (pageToLoad) => {
+      const page_length = await snapshot.getPromise(pageSize);
+      socket.send(
+        packageMessage("page", { page: state.pageToLoad, page_length })
+      );
+    }
+  );
+
   useLayoutEffect(() => {
     clearPage();
   }, [
@@ -86,7 +105,7 @@ export default (): [State, (state: State) => void] => {
     datasetName,
     refresh,
     stringifyObj(filters),
-    gridRatio,
+    pageSizeValue,
   ]);
 
   useLayoutEffect(() => {
@@ -96,7 +115,7 @@ export default (): [State, (state: State) => void] => {
       isLoading: true,
       loadMore: false,
     });
-    socket.send(packageMessage("page", { page: state.pageToLoad }));
+    requestPage(state.pageToLoad);
   }, [state.isLoading, state.hasMore, state.loadMore]);
 
   return [state, setState];
