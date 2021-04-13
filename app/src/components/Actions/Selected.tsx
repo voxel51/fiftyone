@@ -1,4 +1,4 @@
-import React from "react";
+import React, { MutableRefObject } from "react";
 import {
   selector,
   selectorFamily,
@@ -206,11 +206,11 @@ const hasSetDiff = <T extends unknown>(a: Set<T>, b: Set<T>): boolean =>
 const hasSetInt = <T extends unknown>(a: Set<T>, b: Set<T>): boolean =>
   new Set([...a].filter((e) => b.has(e))).size > 0;
 
-const useModalActions = (frameNumber, close) => {
+const useModalActions = (frameNumberRef, close) => {
   const selectedLabels = useRecoilValue(selectors.selectedLabelIds);
   const visibleSampleLabels = useRecoilValue(visibleModalSampleLabelIds);
   const visibleFrameLabels = useRecoilValue(
-    visibleModalCurrentFrameLabelIds(frameNumber)
+    visibleModalCurrentFrameLabelIds(frameNumberRef.current)
   );
   const isVideo = useRecoilValue(selectors.isVideoDataset);
   const closeAndCall = (callback) => {
@@ -234,7 +234,7 @@ const useModalActions = (frameNumber, close) => {
     isVideo && {
       text: "Select visible (current frame)",
       disabled: !hasSetDiff(visibleFrameLabels, selectedLabels),
-      onClick: closeAndCall(useSelectVisibleFrame(frameNumber)),
+      onClick: closeAndCall(useSelectVisibleFrame(frameNumberRef.current)),
     },
     {
       text: "Clear selection",
@@ -257,18 +257,21 @@ const useModalActions = (frameNumber, close) => {
 interface SelectionActionsProps {
   modal: boolean;
   close: () => void;
-  frameNumber?: number;
+  playerRef?: any;
+  frameNumberRef: MutableRefObject<number>;
   bounds: any;
 }
 
 const SelectionActions = ({
   modal,
   close,
-  frameNumber,
+  playerRef,
+  frameNumberRef,
   bounds,
 }: SelectionActionsProps) => {
+  playerRef.current && playerRef.current.pause && playerRef.current.pause();
   const actions = modal
-    ? useModalActions(frameNumber, close)
+    ? useModalActions(frameNumberRef, close)
     : useGridActions(close);
 
   return (
