@@ -69,7 +69,13 @@ const Tag = ({ modal }) => {
   );
 };
 
-const Selected = ({ modal, frameNumberRef }) => {
+const Selected = ({
+  modal,
+  frameNumber,
+}: {
+  modal: boolean;
+  frameNumber?: number;
+}) => {
   const [open, setOpen] = useState(false);
   const selectedSamples = useRecoilValue(atoms.selectedSamples);
   const selectedObjects = useRecoilValue(selectors.selectedLabels);
@@ -101,7 +107,7 @@ const Selected = ({ modal, frameNumberRef }) => {
         <Selector
           modal={modal}
           close={() => setOpen(false)}
-          frameNumberRef={frameNumberRef}
+          frameNumber={frameNumber}
           bounds={bounds}
         />
       )}
@@ -213,11 +219,11 @@ const ActionsRowDiv = styled.div`
 
 type ActionsRowProps = {
   modal: boolean;
-  frameNumberRef?: any;
+  frameNumber?: number;
   children: any;
 };
 
-const ActionsRow = ({ modal, frameNumberRef }: ActionsRowProps) => {
+const ActionsRow = ({ modal, frameNumber }: ActionsRowProps) => {
   const style = modal
     ? {
         overflowX: "auto",
@@ -233,7 +239,7 @@ const ActionsRow = ({ modal, frameNumberRef }: ActionsRowProps) => {
       <Tag modal={modal} />
       {modal && <Hidden />}
       {!modal && <SaveFilters />}
-      <Selected modal={modal} frameNumberRef={frameNumberRef} />
+      <Selected modal={modal} frameNumber={frameNumber} />
     </ActionsRowDiv>
   );
 };

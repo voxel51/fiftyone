@@ -1,6 +1,5 @@
 import React from "react";
 import {
-  RecoilValueReadOnly,
   selector,
   selectorFamily,
   useRecoilCallback,
@@ -28,7 +27,7 @@ const ActionOption = ({
   title,
   disabled,
 }: ActionOptionProps) => {
-  const props = useHighlightHover(disabled, false);
+  const props = useHighlightHover(disabled);
   if (disabled) {
     return null;
   }
@@ -43,7 +42,7 @@ const ActionOption = ({
   );
 };
 
-const getGridActions = (close: () => void) => {
+const useGridActions = (close: () => void) => {
   const clearSelection = useRecoilCallback(
     ({ snapshot, set, reset }) => async () => {
       const [oldSelected, state] = await Promise.all([
@@ -98,9 +97,7 @@ const getGridActions = (close: () => void) => {
 const visibleModalSampleLabels = selector<atoms.SelectedLabel[]>({
   key: "visibleModalSampleLabels",
   get: ({ get }) => {
-    return get(labelAtoms.modalLabels).filter(
-      ({ frame_number }) => typeof frame_number !== "number"
-    );
+    return get(labelAtoms.modalLabels);
   },
 });
 
@@ -113,13 +110,15 @@ const visibleModalSampleLabelIds = selector<Set<string>>({
   },
 });
 
-const visibleModalFrameLabelIds = selector<Set<string>>({
-  key: "visibleModalFrameLabelIds",
-  get: ({ get }) => {
-    return new Set(
-      get(labelAtoms.modalLabels)
-        .filter(({ frame_number }) => typeof frame_number === "number")
-        .map(({ label_id }) => label_id)
+const visibleModalCurrentFrameLabels = selectorFamily<
+  atoms.SelectedLabel[],
+  number
+>({
+  key: "visibleModalCurrentFrameLabels",
+  get: (frameNumber) => ({ get }) => {
+    return get(labelAtoms.modalLabels).filter(
+      ({ frame_number }) =>
+        frame_number === frameNumber || typeof frame_number !== "number"
     );
   },
 });
@@ -128,9 +127,9 @@ const visibleModalCurrentFrameLabelIds = selectorFamily<Set<string>, number>({
   key: "visibleModalCurrentFrameLabelIds",
   get: (frameNumber) => ({ get }) => {
     return new Set(
-      get(labelAtoms.modalLabels)
-        .filter(({ frame_number }) => frame_number === frameNumber)
-        .map(({ label_id }) => label_id)
+      get(visibleModalCurrentFrameLabels(frameNumber)).map(
+        ({ label_id }) => label_id
+      )
     );
   },
 });
@@ -142,6 +141,31 @@ const useSelectVisible = () => {
   return useRecoilCallback(({ snapshot, set }) => async () => {
     const selected = await snapshot.getPromise(selectors.selectedLabels);
     const visible = await snapshot.getPromise(visibleModalSampleLabels);
+    set(selectors.selectedLabels, {
+      ...selected,
+      ...toLabelMap(visible),
+    });
+  });
+};
+
+const useUnselectVisible = () => {
+  return useRecoilCallback(({ snapshot, set }) => async () => {
+    const selected = await snapshot.getPromise(selectors.selectedLabels);
+    const visibleIds = await snapshot.getPromise(visibleModalSampleLabelIds);
+
+    const filtered = Object.entries(selected).filter(
+      ([label_id]) => !visibleIds.has(label_id)
+    );
+    set(selectors.selectedLabels, Object.fromEntries(filtered));
+  });
+};
+
+const useSelectVisibleFrame = (frameNumberRef) => {
+  return useRecoilCallback(({ snapshot, set }) => async () => {
+    const selected = await snapshot.getPromise(selectors.selectedLabels);
+    const visible = await snapshot.getPromise(
+      visibleModalCurrentFrameLabels(frameNumberRef.current)
+    );
     set(selectors.selectedLabels, {
       ...selected,
       ...toLabelMap(visible),
@@ -179,45 +203,73 @@ const useHideOthers = () => {
 const hasSetDiff = <T extends unknown>(a: Set<T>, b: Set<T>): boolean =>
   new Set([...a].filter((e) => !b.has(e))).size > 0;
 
-const getModalActions = (frameNumberRef, close) => {
+const hasSetInt = <T extends unknown>(a: Set<T>, b: Set<T>): boolean =>
+  new Set([...a].filter((e) => b.has(e))).size > 0;
+
+const useModalActions = (frameNumber, close) => {
   const selectedLabels = useRecoilValue(selectors.selectedLabelIds);
   const visibleSampleLabels = useRecoilValue(visibleModalSampleLabelIds);
-  const closeAndCall = (useCallback) => {
-    const callback = useCallback();
-    return () => {
+  const visibleFrameLabels = useRecoilValue(
+    visibleModalCurrentFrameLabelIds(frameNumber)
+  );
+  const isVideo = useRecoilValue(selectors.isVideoDataset);
+  const closeAndCall = (callback) => {
+    return React.useCallback(() => {
       close();
       callback();
-    };
+    }, []);
   };
 
   return [
     {
-      text: "Select all (current sample)",
-      disabled: hasSetDiff(visibleSampleLabels, selectedLabels),
-      onClick: closeAndCall(useSelectVisible),
+      text: "Select visible (current sample)",
+      disabled: !hasSetDiff(visibleSampleLabels, selectedLabels),
+      onClick: closeAndCall(useSelectVisible()),
+    },
+    {
+      text: "Unselect visible (current sample)",
+      disabled: !hasSetInt(selectedLabels, visibleSampleLabels),
+      onClick: closeAndCall(useUnselectVisible()),
+    },
+    isVideo && {
+      text: "Select visible (current frame)",
+      disabled: !hasSetDiff(visibleFrameLabels, selectedLabels),
+      onClick: closeAndCall(useSelectVisibleFrame(frameNumber)),
     },
     {
       text: "Clear selection",
-      disabled: hasSetDiff(selectedLabels, visibleSampleLabels),
-      onClick: closeAndCall(useClearSelectedLabels),
+      disabled: !selectedLabels.size,
+      onClick: closeAndCall(useClearSelectedLabels()),
     },
     {
       text: "Hide selected",
-      disabled: selectedLabels.size > 0,
-      onClick: closeAndCall(useHideSelected),
+      disabled: !selectedLabels.size,
+      onClick: closeAndCall(useHideSelected()),
     },
     {
       text: "Hide others (current sample)",
-      disabled: hasSetDiff(visibleSampleLabels, selectedLabels),
-      onClick: closeAndCall(useHideOthers),
+      disabled: !selectedLabels.size,
+      onClick: closeAndCall(useHideOthers()),
     },
-  ].filter(({ disabled }) => !disabled);
+  ].filter(Boolean);
 };
 
-const SelectionActions = ({ modal, close, frameNumberRef, bounds }) => {
+interface SelectionActionsProps {
+  modal: boolean;
+  close: () => void;
+  frameNumber?: number;
+  bounds: any;
+}
+
+const SelectionActions = ({
+  modal,
+  close,
+  frameNumber,
+  bounds,
+}: SelectionActionsProps) => {
   const actions = modal
-    ? getModalActions(frameNumberRef, close)
-    : getGridActions(close);
+    ? useModalActions(frameNumber, close)
+    : useGridActions(close);
 
   return (
     <Popout modal={modal} bounds={bounds}>

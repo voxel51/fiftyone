@@ -31,7 +31,7 @@ export const HoverItemDiv = animated(styled.div`
   color: ${({ theme }) => theme.fontDark};
 `);
 
-export const useHighlightHover = (disabled, override) => {
+export const useHighlightHover = (disabled, override = null) => {
   const [hovering, setHovering] = useState(false);
   const theme = useTheme();
   const on =
