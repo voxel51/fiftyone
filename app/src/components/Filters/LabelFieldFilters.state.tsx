@@ -509,3 +509,10 @@ export const modalLabels = selector<atoms.SelectedLabel[]>({
     return labels;
   },
 });
+
+export const visibleModalLabelIds = selector<Set<string>>({
+  key: "visibleModalLabelIds",
+  get: ({ get }) => {
+    return new Set(get(modalLabels).map(({ label_id }) => label_id));
+  },
+});

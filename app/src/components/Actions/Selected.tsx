@@ -15,7 +15,6 @@ import { packageMessage } from "../../utils/socket";
 import { listSampleLabels } from "../../utils/labels";
 import * as labelAtoms from "../Filters/LabelFieldFilters.state";
 import { useSendMessage } from "../../utils/hooks";
-import { update } from "xstate/lib/actionTypes";
 
 type ActionOptionProps = {
   onClick: () => void;
