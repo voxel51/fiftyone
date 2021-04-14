@@ -2948,7 +2948,7 @@ class SampleCollection(object):
         return self._add_view_stage(fos.Mongo(pipeline))
 
     @view_stage
-    def select(self, sample_ids):
+    def select(self, sample_ids, ordered=False):
         """Selects the samples with the given IDs from the collection.
 
         Examples::
@@ -2980,10 +2980,13 @@ class SampleCollection(object):
                 -   an iterable of :class:`fiftyone.core.sample.Sample` or
                     :class:`fiftyone.core.sample.SampleView` instances
 
+        ordered (False): whether to sort the samples in the returned view to
+            match the order of the provided IDs
+
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
         """
-        return self._add_view_stage(fos.Select(sample_ids))
+        return self._add_view_stage(fos.Select(sample_ids, ordered=ordered))
 
     @view_stage
     def select_fields(self, field_names=None):
