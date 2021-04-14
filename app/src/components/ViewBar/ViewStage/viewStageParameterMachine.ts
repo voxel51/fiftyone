@@ -7,7 +7,7 @@ const { assign } = actions;
 
 const convert = (v) => (typeof v !== "string" ? String(v) : v);
 
-export const toTypeAnnotation = (type) => {
+export const toTypeAnnotation = (type: string): string => {
   if (type.includes("|")) {
     return [
       "Union[",
@@ -131,6 +131,19 @@ export const PARSER = {
       try {
         const v = typeof value === "string" ? JSON.parse(value) : value;
         return v instanceof Object && !Array.isArray(value);
+      } catch {
+        return false;
+      }
+    },
+  },
+  json: {
+    castFrom: (value) => JSON.stringify(value, null, 2),
+    castTo: (value) => (typeof value === "string" ? JSON.parse(value) : value),
+    parse: (value) => value,
+    validate: (value) => {
+      try {
+        JSON.parse(value);
+        return true;
       } catch {
         return false;
       }

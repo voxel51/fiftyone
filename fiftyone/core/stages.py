@@ -2460,11 +2460,9 @@ class SetField(ViewStage):
 
     @classmethod
     def _params(self):
-        # @todo `expr` can actually be any valid JSON, including ints, strings
-        # lists, etc
         return [
-            {"name": "field", "type": "field"},
-            {"name": "expr", "type": "NoneType|dict", "placeholder": ""},
+            {"name": "field", "type": "field|str"},
+            {"name": "expr", "type": "json", "placeholder": ""},
         ]
 
     def _get_mongo_expr(self):
