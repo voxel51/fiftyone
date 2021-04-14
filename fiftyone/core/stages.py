@@ -2873,7 +2873,7 @@ class Select(ViewStage):
             {"$set": {"_select_order": {"$indexOfArray": [ids, "$_id"]}}},
             {"$match": {"_select_order": {"$gt": -1}}},
             {"$sort": {"_select_order": ASCENDING}},
-            {"$unset": "_rand_shuffle"},
+            {"$unset": "_select_order"},
         ]
 
     def _kwargs(self):
