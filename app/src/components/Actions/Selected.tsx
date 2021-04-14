@@ -287,7 +287,7 @@ const SelectionActions = ({
   frameNumberRef,
   bounds,
 }: SelectionActionsProps) => {
-  playerRef.current && playerRef.current.pause && playerRef.current.pause();
+  playerRef?.current?.pause && playerRef.current.pause();
   const actions = modal
     ? useModalActions(frameNumberRef, close)
     : useGridActions(close);
