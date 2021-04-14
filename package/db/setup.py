@@ -23,12 +23,18 @@ except ImportError:
     from urllib2 import urlopen
 
 
+# arm64 is not available for ubuntu1604 and debian9
 MONGODB_DOWNLOAD_URLS = {
-    "linux": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu1804-4.4.2.tgz",
+    "linux-x86_64": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu1804-4.4.2.tgz",
+    "linux-aarch64": "https://fastdl.mongodb.org/linux/mongodb-linux-aarch64-ubuntu1804-4.4.2.tgz",
     "mac": "https://fastdl.mongodb.org/osx/mongodb-macos-x86_64-4.4.2.tgz",
     "win": "https://fastdl.mongodb.org/windows/mongodb-windows-x86_64-4.4.2.zip",
-    "ubuntu1604": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu1604-4.4.2.tgz",
-    "debian9": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-debian92-4.4.2.tgz",
+    "ubuntu1604": {
+        "manylinux1_x86_64": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu1604-4.4.2.tgz",
+    },
+    "debian9": {
+        "manylinux1_x86_64": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-debian92-4.4.2.tgz",
+    },
 }
 
 # mongodb binaries to distribute
@@ -63,9 +69,11 @@ class CustomBdistWheel(bdist_wheel):
             # https://docs.mongodb.com/manual/tutorial/install-mongodb-on-os-x/#platform-support
             # also, we only distribute 64-bit binaries
             self.plat_name = "macosx_10_12_x86_64"
-        elif self.plat_name.startswith("linux"):
+        elif self.plat_name.startswith("linux-x86_64"):
             # we only distribute 64-bit binaries
             self.plat_name = "manylinux1_x86_64"
+        elif self.plat_name.startswith("linux-aarch64"):
+            self.plat_name = "manylinux2014_aarch64"
         elif self.plat_name.startswith("win"):
             # we only distribute 64-bit binaries
             self.plat_name = "win_amd64"
@@ -100,7 +108,7 @@ class CustomBdistWheel(bdist_wheel):
                 )
             if LINUX_DISTRO not in MONGODB_DOWNLOAD_URLS:
                 raise ValueError("Unrecognized distro: %r" % LINUX_DISTRO)
-            mongo_zip_url = MONGODB_DOWNLOAD_URLS[LINUX_DISTRO]
+            mongo_zip_url = MONGODB_DOWNLOAD_URLS[LINUX_DISTRO][self.plat_name]
         mongo_zip_filename = os.path.basename(mongo_zip_url)
         mongo_zip_dest = os.path.join(
             os.path.dirname(os.path.abspath(__file__)),
