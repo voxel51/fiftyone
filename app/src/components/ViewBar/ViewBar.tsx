@@ -83,7 +83,6 @@ const ViewBar = React.memo(() => {
   const [state, send] = useMachine(viewBarMachine);
   const [view, setView] = useRecoilState(selectors.view);
   const fieldPaths = useRecoilValue(selectors.fieldPaths);
-  console.log(view);
 
   useEffect(() => {
     send({
