@@ -16,6 +16,7 @@ import * as stringField from "./StringFieldFilter";
 const FilterHeader = styled.div`
   display: flex;
   justify-content: space-between;
+  margin: 3px;
 
   a {
     cursor: pointer;
