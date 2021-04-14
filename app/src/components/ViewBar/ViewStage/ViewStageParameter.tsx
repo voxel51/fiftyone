@@ -379,7 +379,7 @@ const ViewStageParameter = React.memo(({ parameterRef, barRef, stageRef }) => {
               autoFocus={state.matches("editing")}
               value={
                 isObject
-                  ? "..."
+                  ? ". . ."
                   : state.matches("reading") && value.length > 24
                   ? value.slice(0, 25) + "..."
                   : value
