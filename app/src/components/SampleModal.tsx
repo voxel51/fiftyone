@@ -443,7 +443,11 @@ const SampleModal = ({ onClose }: Props, ref) => {
             position: "relative",
           }}
         >
-          <Actions modal={true} playerRef={playerRef} />
+          <Actions
+            modal={true}
+            playerRef={playerRef}
+            frameNumberRef={frameNumberRef}
+          />
         </ModalFooter>
         <div className="sidebar-content">
           <h2>

@@ -229,10 +229,11 @@ const ActionsRowDiv = styled.div`
 type ActionsRowProps = {
   modal: boolean;
   playerRef?: any;
+  frameNumberRef: MutableRefObject<number>;
   children: any;
 };
 
-const ActionsRow = ({ modal, playerRef }: ActionsRowProps) => {
+const ActionsRow = ({ modal, playerRef, frameNumberRef }: ActionsRowProps) => {
   const style = modal
     ? {
         overflowX: "auto",
@@ -248,7 +249,11 @@ const ActionsRow = ({ modal, playerRef }: ActionsRowProps) => {
       <Tag modal={modal} />
       {modal && <Hidden />}
       {!modal && <SaveFilters />}
-      <Selected modal={modal} playerRef={playerRef} />
+      <Selected
+        modal={modal}
+        playerRef={playerRef}
+        frameNumberRef={frameNumberRef}
+      />
     </ActionsRowDiv>
   );
 };

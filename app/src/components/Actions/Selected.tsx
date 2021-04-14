@@ -1,5 +1,6 @@
 import React, { MutableRefObject } from "react";
 import {
+  RecoilValueReadOnly,
   selector,
   selectorFamily,
   useRecoilCallback,
@@ -117,8 +118,7 @@ const visibleModalCurrentFrameLabels = selectorFamily<
   key: "visibleModalCurrentFrameLabels",
   get: (frameNumber) => ({ get }) => {
     return get(labelAtoms.modalLabels).filter(
-      ({ frame_number }) =>
-        frame_number === frameNumber || typeof frame_number !== "number"
+      ({ frame_number }) => frame_number === frameNumber
     );
   },
 });
@@ -137,10 +137,12 @@ const visibleModalCurrentFrameLabelIds = selectorFamily<Set<string>, number>({
 const toLabelMap = (labels: atoms.SelectedLabel[]) =>
   Object.fromEntries(labels.map(({ label_id, ...rest }) => [label_id, rest]));
 
-const useSelectVisible = () => {
+const useSelectVisible = (
+  visibleAtom: RecoilValueReadOnly<atoms.SelectedLabel[]>
+) => {
   return useRecoilCallback(({ snapshot, set }) => async () => {
     const selected = await snapshot.getPromise(selectors.selectedLabels);
-    const visible = await snapshot.getPromise(visibleModalSampleLabels);
+    const visible = await snapshot.getPromise(visibleAtom);
     set(selectors.selectedLabels, {
       ...selected,
       ...toLabelMap(visible),
@@ -148,28 +150,17 @@ const useSelectVisible = () => {
   });
 };
 
-const useUnselectVisible = () => {
+const useUnselectVisible = (
+  visibleIdsAtom: RecoilValueReadOnly<Set<string>>
+) => {
   return useRecoilCallback(({ snapshot, set }) => async () => {
     const selected = await snapshot.getPromise(selectors.selectedLabels);
-    const visibleIds = await snapshot.getPromise(visibleModalSampleLabelIds);
+    const visibleIds = await snapshot.getPromise(visibleIdsAtom);
 
     const filtered = Object.entries(selected).filter(
       ([label_id]) => !visibleIds.has(label_id)
     );
     set(selectors.selectedLabels, Object.fromEntries(filtered));
-  });
-};
-
-const useSelectVisibleFrame = (frameNumberRef) => {
-  return useRecoilCallback(({ snapshot, set }) => async () => {
-    const selected = await snapshot.getPromise(selectors.selectedLabels);
-    const visible = await snapshot.getPromise(
-      visibleModalCurrentFrameLabels(frameNumberRef.current)
-    );
-    set(selectors.selectedLabels, {
-      ...selected,
-      ...toLabelMap(visible),
-    });
   });
 };
 
@@ -188,10 +179,12 @@ const useHideSelected = () => {
   });
 };
 
-const useHideOthers = () => {
+const useHideOthers = (
+  visibleAtom: RecoilValueReadOnly<atoms.SelectedLabel[]>
+) => {
   return useRecoilCallback(({ snapshot, set }) => async () => {
     const selected = await snapshot.getPromise(selectors.selectedLabelIds);
-    const visible = await snapshot.getPromise(visibleModalSampleLabels);
+    const visible = await snapshot.getPromise(visibleAtom);
     const hidden = await snapshot.getPromise(atoms.hiddenLabels);
     set(atoms.hiddenLabels, {
       ...hidden,
@@ -220,21 +213,39 @@ const useModalActions = (frameNumberRef, close) => {
     }, []);
   };
 
+  const hasVisibleUnselected = hasSetDiff(visibleSampleLabels, selectedLabels);
+  const hasFrameVisibleUnselected = hasSetDiff(
+    visibleFrameLabels,
+    selectedLabels
+  );
+  const hasVisibleSelection = hasSetInt(selectedLabels, visibleSampleLabels);
+
   return [
     {
       text: "Select visible (current sample)",
-      disabled: !hasSetDiff(visibleSampleLabels, selectedLabels),
-      onClick: closeAndCall(useSelectVisible()),
+      disabled: !hasVisibleUnselected,
+      onClick: closeAndCall(useSelectVisible(visibleModalSampleLabels)),
     },
     {
       text: "Unselect visible (current sample)",
-      disabled: !hasSetInt(selectedLabels, visibleSampleLabels),
-      onClick: closeAndCall(useUnselectVisible()),
+      disabled: !hasVisibleSelection,
+      onClick: closeAndCall(useUnselectVisible(visibleModalSampleLabelIds)),
     },
     isVideo && {
       text: "Select visible (current frame)",
-      disabled: !hasSetDiff(visibleFrameLabels, selectedLabels),
-      onClick: closeAndCall(useSelectVisibleFrame(frameNumberRef.current)),
+      disabled: !hasFrameVisibleUnselected,
+      onClick: closeAndCall(
+        useSelectVisible(visibleModalCurrentFrameLabels(frameNumberRef.current))
+      ),
+    },
+    isVideo && {
+      text: "Unselect visible (current frame)",
+      disabled: !hasVisibleSelection,
+      onClick: closeAndCall(
+        useUnselectVisible(
+          visibleModalCurrentFrameLabelIds(frameNumberRef.current)
+        )
+      ),
     },
     {
       text: "Clear selection",
@@ -247,9 +258,16 @@ const useModalActions = (frameNumberRef, close) => {
       onClick: closeAndCall(useHideSelected()),
     },
     {
-      text: "Hide others (current sample)",
-      disabled: !selectedLabels.size,
-      onClick: closeAndCall(useHideOthers()),
+      text: "Hide unselected (current sample)",
+      disabled: !hasVisibleUnselected,
+      onClick: closeAndCall(useHideOthers(visibleModalSampleLabels)),
+    },
+    isVideo && {
+      text: "Hide unselected (current frame)",
+      disabled: !hasFrameVisibleUnselected,
+      onClick: closeAndCall(
+        useHideOthers(visibleModalCurrentFrameLabels(frameNumberRef.current))
+      ),
     },
   ].filter(Boolean);
 };
