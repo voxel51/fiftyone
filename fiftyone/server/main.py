@@ -1208,73 +1208,9 @@ async def _get_video_data(col, state, view, _ids):
         convert([sample])
         convert(frames)
 
-        labels = _make_video_labels(state, view, sample, frames)
-        results.append((sample, frames, labels))
+        results.append((sample, frames))
 
     return results
-
-
-def _make_frame_labels(name, label, frame_number, prefix=""):
-    label = fol.ImageLabel.from_dict(label)
-    labels = etav.VideoFrameLabels.from_image_labels(
-        label.to_image_labels(name=prefix + name), frame_number,
-    )
-
-    for obj in labels.objects:
-        obj.frame_number = frame_number
-
-    for attr in labels.attributes():
-        container = getattr(labels, attr)
-
-        if isinstance(container, etal.LabelsContainer):
-            object_ids = _get_label_object_ids(label)
-            assert len(container) == len(object_ids)
-            for (obj, object_id) in zip(container, object_ids):
-                # force _id to be serialized
-                obj._id = object_id
-                attrs = obj.attributes() + ["_id"]
-                obj.attributes = lambda: attrs
-
-    return labels
-
-
-def _make_video_labels(state, view, sample, frames):
-    labels = etav.VideoLabels()
-    for frame_dict in frames:
-        frame_number = frame_dict["frame_number"]
-        frame_labels = etav.VideoFrameLabels(frame_number=frame_number)
-        for k, v in frame_dict.items():
-            if isinstance(v, dict) and "_cls" in v:
-                field_labels = _make_frame_labels(
-                    k, v, frame_number, prefix=view._FRAMES_PREFIX
-                )
-                frame_labels.merge_labels(field_labels)
-
-        labels.add_frame(frame_labels)
-
-    sample_schema = state.dataset.get_field_schema()
-    for frame_number in range(1, etav.get_frame_count(sample["filepath"]) + 1):
-        frame_labels = etav.VideoFrameLabels(frame_number=frame_number)
-        for k, v in sample.items():
-            if k not in sample_schema:
-                continue
-
-            field = sample_schema[k]
-            if not isinstance(field, fof.EmbeddedDocumentField):
-                continue
-
-            if not issubclass(field.document_type, fol.Label):
-                continue
-
-            field_labels = _make_frame_labels(k, v, frame_number)
-            for obj in field_labels.objects:
-                obj.frame_number = frame_number
-
-            frame_labels.merge_labels(field_labels)
-
-        labels.add_frame(frame_labels, overwrite=False)
-
-    return labels
 
 
 class FileHandler(tornado.web.StaticFileHandler):
