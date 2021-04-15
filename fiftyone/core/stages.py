@@ -618,19 +618,19 @@ class ExcludeLabels(ViewStage):
             {
                 "name": "ids",
                 "type": "NoneType|list<id>|id",
-                "placeholder": "...",
+                "placeholder": "ids",
                 "default": "None",
             },
             {
                 "name": "tags",
                 "type": "NoneType|list<str>|str",
-                "placeholder": "...",
+                "placeholder": "tags",
                 "default": "None",
             },
             {
                 "name": "fields",
                 "type": "NoneType|list<str>|str",
-                "placeholder": "...",
+                "placeholder": "fields",
                 "default": "None",
             },
             {
@@ -2910,7 +2910,7 @@ class Select(ViewStage):
                 "name": "ordered",
                 "type": "bool",
                 "default": "False",
-                "placeholder": "bool (default=False)",
+                "placeholder": "ordered (default=False)",
             },
         ]
 
@@ -3243,19 +3243,19 @@ class SelectLabels(ViewStage):
             {
                 "name": "ids",
                 "type": "NoneType|list<id>|id",
-                "placeholder": "...",
+                "placeholder": "ids",
                 "default": "None",
             },
             {
                 "name": "tags",
                 "type": "NoneType|list<str>|str",
-                "placeholder": "...",
+                "placeholder": "tags",
                 "default": "None",
             },
             {
                 "name": "fields",
                 "type": "NoneType|list<field>|field|list<str>|str",
-                "placeholder": "...",
+                "placeholder": "fields",
                 "default": "None",
             },
             {
