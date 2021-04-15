@@ -954,7 +954,7 @@ class FilterField(ViewStage):
     @classmethod
     def _params(self):
         return [
-            {"name": "field", "type": "field"},
+            {"name": "field", "type": "field|str"},
             {"name": "filter", "type": "json", "placeholder": ""},
             {
                 "name": "only_matches",
