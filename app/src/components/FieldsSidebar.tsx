@@ -65,7 +65,7 @@ type CellProps = {
   title: string;
   modal: boolean;
   onSelect: (entry: Entry) => void;
-  handleClear: () => void;
+  handleClear: (event: Event) => void;
   entries: Entry[];
   icon: any;
   children?: any;
@@ -150,7 +150,7 @@ const makeTagData = (
   matchedTags: Set<string>,
   name: string,
   theme,
-  toggleFilter: () => void,
+  toggleFilter: (event: Event) => void,
   labels: boolean
 ): any => {
   const color = matchedTags.has(name) ? theme.font : theme.fontDark;
@@ -284,7 +284,7 @@ const SampleTagsCell = ({ modal }: TagsCellProps) => {
                 matchedTags,
                 name,
                 theme,
-                (e) => {
+                (e: Event) => {
                   e.stopPropagation();
                   e.preventDefault();
                   const newMatch = new Set(matchedTags);
@@ -596,7 +596,7 @@ const UnsupportedCell = ({ modal }: UnsupportedCellProps) => {
       icon={<Help />}
       entries={unsupported.map((e) => ({
         name: e,
-        path: name,
+        path: e,
         title: e,
         data: null,
         disabled: true,
