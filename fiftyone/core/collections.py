@@ -1780,8 +1780,8 @@ class SampleCollection(object):
 
     @view_stage
     def filter_field(self, field, filter, only_matches=True):
-        """Filters the values of a given sample (or embedded document) field
-        of each sample in the collection.
+        """Filters the values of a field or embedded field of each sample in
+        the collection.
 
         Values of ``field`` for which ``filter`` returns ``False`` are
         replaced with ``None``.
@@ -1829,7 +1829,7 @@ class SampleCollection(object):
             view = dataset.filter_field("numeric_field", F() > 0)
 
         Args:
-            field: the name of the field to filter
+            field: the field name or ``embedded.field.name``
             filter: a :class:`fiftyone.core.expressions.ViewExpression` or
                 `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
                 that returns a boolean describing the filter to apply
@@ -2106,7 +2106,7 @@ class SampleCollection(object):
             view = dataset.filter_labels("predictions", F("points").length() < 4)
 
         Args:
-            field: the labels field to filter
+            field: the label field to filter
             filter: a :class:`fiftyone.core.expressions.ViewExpression` or
                 `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
                 that returns a boolean describing the filter to apply
@@ -2697,7 +2697,7 @@ class SampleCollection(object):
             print(view.count_values("predictions.detections.is_animal"))
 
         Args:
-            field: the field or embedded field to set
+            field: the field or ``embedded.field.name`` to set
             expr: a :class:`fiftyone.core.expressions.ViewExpression` or
                 `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
                 that defines the field value to set
@@ -3258,11 +3258,6 @@ class SampleCollection(object):
         """Sorts the samples in the collection by the given field or
         expression.
 
-        When sorting by an expression, ``field_or_expr`` can either be a
-        :class:`fiftyone.core.expressions.ViewExpression` or a
-        `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
-        that defines the quantity to sort by.
-
         Examples::
 
             import fiftyone as fo
@@ -3291,7 +3286,10 @@ class SampleCollection(object):
             view = dataset.sort_by(small_boxes.length(), reverse=True)
 
         Args:
-            field_or_expr: the field or expression to sort by
+            field_or_expr: the field or ``embedded.field.name`` to sort by, or
+                a :class:`fiftyone.core.expressions.ViewExpression` or a
+                `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+                that defines the quantity to sort by
             reverse (False): whether to return the results in descending order
 
         Returns:
