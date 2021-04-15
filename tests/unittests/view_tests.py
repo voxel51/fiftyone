@@ -962,6 +962,13 @@ class ViewStageTests(unittest.TestCase):
         self.assertIs(len(result), 1)
         self.assertEqual(result[0].id, self.sample1.id)
 
+    def test_select_ordered(self):
+        ids = [self.sample2.id, self.sample1.id]
+        view = self.dataset.select(ids, ordered=True)
+        self.assertIs(len(view), 2)
+        for sample, _id in zip(view, ids):
+            self.assertEqual(sample.id, _id)
+
     def test_select_fields(self):
         self.dataset.add_sample_field("select_fields_field", fo.IntField)
 

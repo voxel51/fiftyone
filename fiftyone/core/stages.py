@@ -2853,10 +2853,14 @@ class Select(ViewStage):
             -   a :class:`fiftyone.core.collections.SampleCollection`
             -   an iterable of :class:`fiftyone.core.sample.Sample` or
                 :class:`fiftyone.core.sample.SampleView` instances
+
+        ordered (False): whether to sort the samples in the returned view to
+            match the order of the provided IDs
     """
 
-    def __init__(self, sample_ids):
+    def __init__(self, sample_ids, ordered=False):
         self._sample_ids = _get_sample_ids(sample_ids)
+        self._ordered = ordered
         self._validate_params()
 
     @property
@@ -2864,12 +2868,26 @@ class Select(ViewStage):
         """The list of sample IDs to select."""
         return self._sample_ids
 
+    @property
+    def ordered(self):
+        """Whether to sort the samples in the same order as the IDs."""
+        return self._ordered
+
     def to_mongo(self, _):
-        sample_ids = [ObjectId(_id) for _id in self._sample_ids]
-        return [{"$match": {"_id": {"$in": sample_ids}}}]
+        ids = [ObjectId(_id) for _id in self._sample_ids]
+
+        if not self._ordered:
+            return [{"$match": {"_id": {"$in": ids}}}]
+
+        return [
+            {"$set": {"_select_order": {"$indexOfArray": [ids, "$_id"]}}},
+            {"$match": {"_select_order": {"$gt": -1}}},
+            {"$sort": {"_select_order": ASCENDING}},
+            {"$unset": "_select_order"},
+        ]
 
     def _kwargs(self):
-        return [["sample_ids", self._sample_ids]]
+        return [["sample_ids", self._sample_ids], ["ordered", self._ordered]]
 
     @classmethod
     def _params(cls):
@@ -2878,7 +2896,13 @@ class Select(ViewStage):
                 "name": "sample_ids",
                 "type": "list<id>|id",
                 "placeholder": "list,of,sample,ids",
-            }
+            },
+            {
+                "name": "ordered",
+                "type": "bool",
+                "default": "False",
+                "placeholder": "bool (default=False)",
+            },
         ]
 
     def _validate_params(self):
