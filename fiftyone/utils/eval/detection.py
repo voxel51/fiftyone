@@ -426,6 +426,8 @@ def _tally_matches(matches):
             fp += 1
         elif pred_label is None:
             fn += 1
+        elif gt_label != pred_label:
+            fp += 1
         else:
             tp += 1
 
