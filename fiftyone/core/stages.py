@@ -600,7 +600,7 @@ class ExcludeLabels(ViewStage):
         return [
             {
                 "name": "labels",
-                "type": "NoneType|dict",  # @todo use "list<dict>" when supported
+                "type": "NoneType|json",
                 "placeholder": "[{...}]",
                 "default": "None",
             },
@@ -814,7 +814,7 @@ class Exists(ViewStage):
     @classmethod
     def _params(cls):
         return [
-            {"name": "field", "type": "field"},
+            {"name": "field", "type": "field|str"},
             {
                 "name": "bool",
                 "type": "bool",
@@ -825,8 +825,8 @@ class Exists(ViewStage):
 
 
 class FilterField(ViewStage):
-    """Filters the values of a given sample (or embedded document) field of
-    each sample in a collection.
+    """Filters the values of a given field or embedded field of each sample in
+    a collection.
 
     Values of ``field`` for which ``filter`` returns ``False`` are
     replaced with ``None``.
@@ -876,7 +876,7 @@ class FilterField(ViewStage):
         view = dataset.add_stage(stage)
 
     Args:
-        field: the name of the field to filter
+        field: the field name or ``embedded.field.name``
         filter: a :class:`fiftyone.core.expressions.ViewExpression` or
             `MongoDB aggregation expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
             that returns a boolean describing the filter to apply
@@ -955,7 +955,7 @@ class FilterField(ViewStage):
     def _params(self):
         return [
             {"name": "field", "type": "field"},
-            {"name": "filter", "type": "dict", "placeholder": ""},
+            {"name": "filter", "type": "json", "placeholder": ""},
             {
                 "name": "only_matches",
                 "type": "bool",
@@ -1335,7 +1335,7 @@ class FilterLabels(FilterField):
         view = dataset.add_stage(stage)
 
     Args:
-        field: the labels field to filter
+        field: the label field to filter
         filter: a :class:`fiftyone.core.expressions.ViewExpression` or
             `MongoDB aggregation expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
             that returns a boolean describing the filter to apply
@@ -1870,10 +1870,10 @@ class GeoNear(_GeoStage):
     @classmethod
     def _params(self):
         return [
-            {"name": "point", "type": "dict", "placeholder": ""},
+            {"name": "point", "type": "json", "placeholder": ""},
             {
                 "name": "location_field",
-                "type": "NoneType|field",
+                "type": "NoneType|field|str",
                 "placeholder": "",
                 "default": "None",
             },
@@ -1982,10 +1982,10 @@ class GeoWithin(_GeoStage):
     @classmethod
     def _params(self):
         return [
-            {"name": "boundary", "type": "dict", "placeholder": ""},
+            {"name": "boundary", "type": "json", "placeholder": ""},
             {
                 "name": "location_field",
-                "type": "NoneType|field",
+                "type": "NoneType|field|str",
                 "placeholder": "",
                 "default": "None",
             },
@@ -2408,7 +2408,7 @@ class SetField(ViewStage):
         print(view.count_values("predictions.detections.is_animal"))
 
     Args:
-        field: the field or embedded field to set
+        field: the field or ``embedded.field.name`` to set
         expr: a :class:`fiftyone.core.expressions.ViewExpression or
             `MongoDB aggregation expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
             that defines the field value to set
@@ -2630,7 +2630,7 @@ class Match(ViewStage):
 
     @classmethod
     def _params(cls):
-        return [{"name": "filter", "type": "dict", "placeholder": ""}]
+        return [{"name": "filter", "type": "json", "placeholder": ""}]
 
 
 class MatchTags(ViewStage):
@@ -2818,7 +2818,7 @@ class Mongo(ViewStage):
 
     @classmethod
     def _params(self):
-        return [{"name": "pipeline", "type": "dict", "placeholder": ""}]
+        return [{"name": "pipeline", "type": "json", "placeholder": ""}]
 
 
 class Select(ViewStage):
@@ -3035,7 +3035,7 @@ class SelectFields(ViewStage):
         return [
             {
                 "name": "field_names",
-                "type": "NoneType|list<str>",
+                "type": "NoneType|list<field>|field|list<str>|str",
                 "default": "None",
                 "placeholder": "list,of,fields",
             }
@@ -3216,7 +3216,7 @@ class SelectLabels(ViewStage):
         return [
             {
                 "name": "labels",
-                "type": "NoneType|dict",  # @todo use "list<dict>" when supported
+                "type": "NoneType|json",
                 "placeholder": "[{...}]",
                 "default": "None",
             },
@@ -3234,7 +3234,7 @@ class SelectLabels(ViewStage):
             },
             {
                 "name": "fields",
-                "type": "NoneType|list<str>|str",
+                "type": "NoneType|list<field>|field|list<str>|str",
                 "placeholder": "...",
                 "default": "None",
             },
@@ -3514,11 +3514,6 @@ class Skip(ViewStage):
 class SortBy(ViewStage):
     """Sorts the samples in a collection by the given field or expression.
 
-    When sorting by an expression, ``field_or_expr`` can either be a
-    :class:`fiftyone.core.expressions.ViewExpression` or a
-    `MongoDB aggregation expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
-    that defines the quantity to sort by.
-
     Examples::
 
         import fiftyone as fo
@@ -3548,7 +3543,10 @@ class SortBy(ViewStage):
         view = dataset.add_stage(stage)
 
     Args:
-        field_or_expr: the field or expression to sort by
+        field_or_expr: the field or ``embedded.field.name`` to sort by, or a
+            :class:`fiftyone.core.expressions.ViewExpression` or a
+            `MongoDB aggregation expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+            that defines the quantity to sort by
         reverse (False): whether to return the results in descending order
     """
 
@@ -3598,7 +3596,7 @@ class SortBy(ViewStage):
     @classmethod
     def _params(cls):
         return [
-            {"name": "field_or_expr", "type": "dict|str"},
+            {"name": "field_or_expr", "type": "field|str|json"},
             {
                 "name": "reverse",
                 "type": "bool",
