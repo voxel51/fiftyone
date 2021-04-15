@@ -637,7 +637,7 @@ class ExcludeLabels(ViewStage):
                 "name": "omit_empty",
                 "type": "bool",
                 "default": "True",
-                "placeholder": "bool (default=True)",
+                "placeholder": "omit empty (default=True)",
             },
         ]
 
@@ -3262,7 +3262,7 @@ class SelectLabels(ViewStage):
                 "name": "omit_empty",
                 "type": "bool",
                 "default": "True",
-                "placeholder": "bool (default=True)",
+                "placeholder": "omit empty (default=True)",
             },
         ]
 
