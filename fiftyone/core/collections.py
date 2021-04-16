@@ -1767,8 +1767,8 @@ class SampleCollection(object):
 
     @view_stage
     def filter_field(self, field, filter, only_matches=True):
-        """Filters the values of a given sample (or embedded document) field
-        of each sample in the collection.
+        """Filters the values of a field or embedded field of each sample in
+        the collection.
 
         Values of ``field`` for which ``filter`` returns ``False`` are
         replaced with ``None``.
@@ -1816,7 +1816,7 @@ class SampleCollection(object):
             view = dataset.filter_field("numeric_field", F() > 0)
 
         Args:
-            field: the name of the field to filter
+            field: the field name or ``embedded.field.name``
             filter: a :class:`fiftyone.core.expressions.ViewExpression` or
                 `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
                 that returns a boolean describing the filter to apply
@@ -2093,7 +2093,7 @@ class SampleCollection(object):
             view = dataset.filter_labels("predictions", F("points").length() < 4)
 
         Args:
-            field: the labels field to filter
+            field: the label field to filter
             filter: a :class:`fiftyone.core.expressions.ViewExpression` or
                 `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
                 that returns a boolean describing the filter to apply
@@ -2684,7 +2684,7 @@ class SampleCollection(object):
             print(view.count_values("predictions.detections.is_animal"))
 
         Args:
-            field: the field or embedded field to set
+            field: the field or ``embedded.field.name`` to set
             expr: a :class:`fiftyone.core.expressions.ViewExpression` or
                 `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
                 that defines the field value to set
@@ -3237,11 +3237,6 @@ class SampleCollection(object):
         """Sorts the samples in the collection by the given field or
         expression.
 
-        When sorting by an expression, ``field_or_expr`` can either be a
-        :class:`fiftyone.core.expressions.ViewExpression` or a
-        `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
-        that defines the quantity to sort by.
-
         Examples::
 
             import fiftyone as fo
@@ -3270,7 +3265,10 @@ class SampleCollection(object):
             view = dataset.sort_by(small_boxes.length(), reverse=True)
 
         Args:
-            field_or_expr: the field or expression to sort by
+            field_or_expr: the field or ``embedded.field.name`` to sort by, or
+                a :class:`fiftyone.core.expressions.ViewExpression` or a
+                `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+                that defines the quantity to sort by
             reverse (False): whether to return the results in descending order
 
         Returns:
@@ -5240,24 +5238,26 @@ def _make_set_field_pipeline(
 
     # Case 1: no list fields
     if not list_fields:
-        path_expr = _render_expr(expr, path, embedded_root)
-        return [{"$set": {path: path_expr}}]
+        expr_dict = _render_expr(expr, path, embedded_root)
+        pipeline = [{"$set": {path: expr_dict}}]
+        return pipeline, expr_dict
 
     # Case 2: one list field
     if len(list_fields) == 1:
         list_field = list_fields[0]
         subfield = path[len(list_field) + 1 :]
-        expr = _set_terminal_list_field(
+        expr, expr_dict = _set_terminal_list_field(
             list_field, subfield, expr, embedded_root
         )
-        return [{"$set": {list_field: expr.to_mongo()}}]
+        pipeline = [{"$set": {list_field: expr.to_mongo()}}]
+        return pipeline, expr_dict
 
     # Case 3: multiple list fields
 
     last_list_field = list_fields[-1]
     terminal_prefix = last_list_field[len(list_fields[-2]) + 1 :]
     subfield = path[len(last_list_field) + 1 :]
-    expr = _set_terminal_list_field(
+    expr, expr_dict = _set_terminal_list_field(
         terminal_prefix, subfield, expr, embedded_root
     )
 
@@ -5269,7 +5269,9 @@ def _make_set_field_pipeline(
 
     expr = expr.to_mongo(prefix="$" + list_fields[0])
 
-    return [{"$set": {list_fields[0]: expr}}]
+    pipeline = [{"$set": {list_fields[0]: expr}}]
+
+    return pipeline, expr_dict
 
 
 def _set_terminal_list_field(list_field, subfield, expr, embedded_root):
@@ -5277,20 +5279,19 @@ def _set_terminal_list_field(list_field, subfield, expr, embedded_root):
     if subfield:
         map_path += "." + subfield
 
-    map_expr = _render_expr(expr, map_path, embedded_root)
+    expr_dict = _render_expr(expr, map_path, embedded_root)
 
     if subfield:
-        map_expr = F().set_field(subfield, map_expr)
+        map_expr = F().set_field(subfield, expr_dict)
     else:
-        map_expr = foe.ViewExpression(map_expr)
+        map_expr = foe.ViewExpression(expr_dict)
 
-    return F(list_field).map(map_expr)
+    set_expr = F(list_field).map(map_expr)
+
+    return set_expr, expr_dict
 
 
 def _render_expr(expr, path, embedded_root):
-    if not isinstance(expr, foe.ViewExpression):
-        return expr
-
     if not embedded_root:
         prefix = path
     elif "." in path:
@@ -5301,7 +5302,7 @@ def _render_expr(expr, path, embedded_root):
     if prefix:
         prefix = "$" + prefix
 
-    return expr.to_mongo(prefix=prefix)
+    return foe.to_mongo(expr, prefix=prefix)
 
 
 def _get_random_characters(n):

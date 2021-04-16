@@ -172,17 +172,17 @@ class ViewStage(object):
 
     def _kwargs(self):
         """Returns a list of ``[name, value]`` lists describing the parameters
-        that define the stage.
+        of this stage instance.
 
         Returns:
-            a JSON dict
+            a list of ``[name, value]`` lists
         """
         raise NotImplementedError("subclasses must implement `_kwargs()`")
 
     @classmethod
     def _params(self):
-        """Returns a list of JSON dicts describing the parameters that define
-        the stage.
+        """Returns a list of JSON dicts describing the stage's supported
+        parameters.
 
         Returns:
             a list of JSON dicts
@@ -600,26 +600,26 @@ class ExcludeLabels(ViewStage):
         return [
             {
                 "name": "labels",
-                "type": "NoneType|dict",  # @todo use "list<dict>" when supported
+                "type": "NoneType|json",
                 "placeholder": "[{...}]",
                 "default": "None",
             },
             {
                 "name": "ids",
                 "type": "NoneType|list<id>|id",
-                "placeholder": "...",
+                "placeholder": "ids",
                 "default": "None",
             },
             {
                 "name": "tags",
                 "type": "NoneType|list<str>|str",
-                "placeholder": "...",
+                "placeholder": "tags",
                 "default": "None",
             },
             {
                 "name": "fields",
                 "type": "NoneType|list<str>|str",
-                "placeholder": "...",
+                "placeholder": "fields",
                 "default": "None",
             },
         ]
@@ -814,7 +814,7 @@ class Exists(ViewStage):
     @classmethod
     def _params(cls):
         return [
-            {"name": "field", "type": "field"},
+            {"name": "field", "type": "field|str"},
             {
                 "name": "bool",
                 "type": "bool",
@@ -825,8 +825,8 @@ class Exists(ViewStage):
 
 
 class FilterField(ViewStage):
-    """Filters the values of a given sample (or embedded document) field of
-    each sample in a collection.
+    """Filters the values of a given field or embedded field of each sample in
+    a collection.
 
     Values of ``field`` for which ``filter`` returns ``False`` are
     replaced with ``None``.
@@ -876,7 +876,7 @@ class FilterField(ViewStage):
         view = dataset.add_stage(stage)
 
     Args:
-        field: the name of the field to filter
+        field: the field name or ``embedded.field.name``
         filter: a :class:`fiftyone.core.expressions.ViewExpression` or
             `MongoDB aggregation expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
             that returns a boolean describing the filter to apply
@@ -912,6 +912,7 @@ class FilterField(ViewStage):
             self._field
         )
         new_field = self._get_new_field(sample_collection)
+
         if is_frame_field:
             return _get_filter_frames_field_pipeline(
                 field_name,
@@ -937,9 +938,8 @@ class FilterField(ViewStage):
         return _get_field_mongo_filter(self._filter, prefix=self._field)
 
     def _get_new_field(self, sample_collection):
-        field, _ = sample_collection._handle_frame_field(self._new_field)
-
-        return field
+        new_field, _ = sample_collection._handle_frame_field(self._new_field)
+        return new_field
 
     def _needs_frames(self, sample_collection):
         return sample_collection._is_frame_field(self._field)
@@ -954,8 +954,8 @@ class FilterField(ViewStage):
     @classmethod
     def _params(self):
         return [
-            {"name": "field", "type": "field"},
-            {"name": "filter", "type": "dict", "placeholder": ""},
+            {"name": "field", "type": "field|str"},
+            {"name": "filter", "type": "json", "placeholder": ""},
             {
                 "name": "only_matches",
                 "type": "bool",
@@ -968,7 +968,7 @@ class FilterField(ViewStage):
         if not isinstance(self._filter, (foe.ViewExpression, dict)):
             raise ValueError(
                 "Filter must be a ViewExpression or a MongoDB aggregation "
-                "expression; found '%s'" % self._filter
+                "expression defining a filter; found '%s'" % self._filter
             )
 
     def validate(self, sample_collection):
@@ -1335,7 +1335,7 @@ class FilterLabels(FilterField):
         view = dataset.add_stage(stage)
 
     Args:
-        field: the labels field to filter
+        field: the label field to filter
         filter: a :class:`fiftyone.core.expressions.ViewExpression` or
             `MongoDB aggregation expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
             that returns a boolean describing the filter to apply
@@ -1415,10 +1415,7 @@ class FilterLabels(FilterField):
 
     def _get_new_field(self, sample_collection):
         field, _ = sample_collection._handle_frame_field(self._labels_field)
-
-        new_field = self._new_field
-        if self._new_field.startswith(sample_collection._FRAMES_PREFIX):
-            new_field = new_field[len(sample_collection._FRAMES_PREFIX) :]
+        new_field, _ = sample_collection._handle_frame_field(self._new_field)
 
         if "." in field:
             return ".".join([new_field, field.split(".")[-1]])
@@ -1524,11 +1521,8 @@ def _get_list_field_mongo_filter(filter_arg, prefix="$this"):
 
 class _FilterListField(FilterField):
     def _get_new_field(self, sample_collection):
-        field = self._new_field
-        if self._needs_frames(sample_collection):
-            field = field.split(".", 1)[1]  # remove `frames`
-
-        return field
+        new_field, _ = sample_collection._handle_frame_field(self._new_field)
+        return new_field
 
     @property
     def _filter_field(self):
@@ -1876,10 +1870,10 @@ class GeoNear(_GeoStage):
     @classmethod
     def _params(self):
         return [
-            {"name": "point", "type": "dict", "placeholder": ""},
+            {"name": "point", "type": "json", "placeholder": ""},
             {
                 "name": "location_field",
-                "type": "NoneType|field",
+                "type": "NoneType|field|str",
                 "placeholder": "",
                 "default": "None",
             },
@@ -1988,10 +1982,10 @@ class GeoWithin(_GeoStage):
     @classmethod
     def _params(self):
         return [
-            {"name": "boundary", "type": "dict", "placeholder": ""},
+            {"name": "boundary", "type": "json", "placeholder": ""},
             {
                 "name": "location_field",
-                "type": "NoneType|field",
+                "type": "NoneType|field|str",
                 "placeholder": "",
                 "default": "None",
             },
@@ -2291,7 +2285,10 @@ class MapLabels(ViewStage):
 
         label_path = labels_field + ".label"
         expr = F().map_values(self._map)
-        return sample_collection._make_set_field_pipeline(label_path, expr)
+        pipeline, _ = sample_collection._make_set_field_pipeline(
+            label_path, expr
+        )
+        return pipeline
 
     def _kwargs(self):
         return [
@@ -2411,7 +2408,7 @@ class SetField(ViewStage):
         print(view.count_values("predictions.detections.is_animal"))
 
     Args:
-        field: the field or embedded field to set
+        field: the field or ``embedded.field.name`` to set
         expr: a :class:`fiftyone.core.expressions.ViewExpression or
             `MongoDB aggregation expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
             that defines the field value to set
@@ -2425,6 +2422,8 @@ class SetField(ViewStage):
         self._field = field
         self._expr = expr
         self._allow_missing = _allow_missing
+        self._pipeline = None
+        self._expr_dict = None
 
     @property
     def field(self):
@@ -2445,12 +2444,13 @@ class SetField(ViewStage):
         return is_frame_field or is_frame_expr
 
     def to_mongo(self, sample_collection):
-        return sample_collection._make_set_field_pipeline(
-            self._field,
-            self._expr,
-            embedded_root=True,
-            allow_missing=self._allow_missing,
-        )
+        if self._pipeline is None:
+            raise ValueError(
+                "`validate()` must be called before using a %s stage"
+                % self.__class__
+            )
+
+        return self._pipeline
 
     def _kwargs(self):
         return [
@@ -2460,30 +2460,40 @@ class SetField(ViewStage):
 
     @classmethod
     def _params(self):
-        # @todo `expr` can actually be any valid JSON, including ints, strings
-        # lists, etc
         return [
-            {"name": "field", "type": "field"},
-            {"name": "expr", "type": "NoneType|dict", "placeholder": ""},
+            {"name": "field", "type": "field|str"},
+            {"name": "expr", "type": "json", "placeholder": ""},
         ]
 
     def _get_mongo_expr(self):
-        if not isinstance(self._expr, foe.ViewExpression):
-            return self._expr
+        if self._expr_dict is not None:
+            return self._expr_dict
 
-        # @todo doesn't handle list fields
+        #
+        # This won't be correct if there are list fields involved
+        #
+        # Note, however, that this code path won't be taken when this stage has
+        # been added to a view; this is purely for `ViewStage.__repr__`
+        #
         if "." in self._field:
             prefix = "$" + self._field.rsplit(".", 1)[0]
         else:
             prefix = None
 
-        return self._expr.to_mongo(prefix=prefix)
+        return foe.to_mongo(self._expr, prefix=prefix)
 
     def validate(self, sample_collection):
-        if self._allow_missing:
-            return
+        if not self._allow_missing:
+            sample_collection.validate_fields_exist(self._field)
 
-        sample_collection.validate_fields_exist(self._field)
+        pipeline, expr_dict = sample_collection._make_set_field_pipeline(
+            self._field,
+            self._expr,
+            embedded_root=True,
+            allow_missing=self._allow_missing,
+        )
+        self._pipeline = pipeline
+        self._expr_dict = expr_dict
 
 
 class Match(ViewStage):
@@ -2615,12 +2625,12 @@ class Match(ViewStage):
         if not isinstance(self._filter, (foe.ViewExpression, dict)):
             raise ValueError(
                 "Filter must be a ViewExpression or a MongoDB aggregation "
-                "expression; found '%s'" % self._filter
+                "expression defining a filter; found '%s'" % self._filter
             )
 
     @classmethod
     def _params(cls):
-        return [{"name": "filter", "type": "dict", "placeholder": ""}]
+        return [{"name": "filter", "type": "json", "placeholder": ""}]
 
 
 class MatchTags(ViewStage):
@@ -2808,7 +2818,7 @@ class Mongo(ViewStage):
 
     @classmethod
     def _params(self):
-        return [{"name": "pipeline", "type": "dict", "placeholder": ""}]
+        return [{"name": "pipeline", "type": "json", "placeholder": ""}]
 
 
 class Select(ViewStage):
@@ -2891,7 +2901,7 @@ class Select(ViewStage):
                 "name": "ordered",
                 "type": "bool",
                 "default": "False",
-                "placeholder": "bool (default=False)",
+                "placeholder": "ordered (default=False)",
             },
         ]
 
@@ -3025,7 +3035,7 @@ class SelectFields(ViewStage):
         return [
             {
                 "name": "field_names",
-                "type": "NoneType|list<str>",
+                "type": "NoneType|list<field>|field|list<str>|str",
                 "default": "None",
                 "placeholder": "list,of,fields",
             }
@@ -3206,26 +3216,26 @@ class SelectLabels(ViewStage):
         return [
             {
                 "name": "labels",
-                "type": "NoneType|dict",  # @todo use "list<dict>" when supported
+                "type": "NoneType|json",
                 "placeholder": "[{...}]",
                 "default": "None",
             },
             {
                 "name": "ids",
                 "type": "NoneType|list<id>|id",
-                "placeholder": "...",
+                "placeholder": "ids",
                 "default": "None",
             },
             {
                 "name": "tags",
                 "type": "NoneType|list<str>|str",
-                "placeholder": "...",
+                "placeholder": "tags",
                 "default": "None",
             },
             {
                 "name": "fields",
-                "type": "NoneType|list<str>|str",
-                "placeholder": "...",
+                "type": "NoneType|list<field>|field|list<str>|str",
+                "placeholder": "fields",
                 "default": "None",
             },
         ]
@@ -3504,11 +3514,6 @@ class Skip(ViewStage):
 class SortBy(ViewStage):
     """Sorts the samples in a collection by the given field or expression.
 
-    When sorting by an expression, ``field_or_expr`` can either be a
-    :class:`fiftyone.core.expressions.ViewExpression` or a
-    `MongoDB aggregation expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
-    that defines the quantity to sort by.
-
     Examples::
 
         import fiftyone as fo
@@ -3538,7 +3543,10 @@ class SortBy(ViewStage):
         view = dataset.add_stage(stage)
 
     Args:
-        field_or_expr: the field or expression to sort by
+        field_or_expr: the field or ``embedded.field.name`` to sort by, or a
+            :class:`fiftyone.core.expressions.ViewExpression` or a
+            `MongoDB aggregation expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+            that defines the quantity to sort by
         reverse (False): whether to return the results in descending order
     """
 
@@ -3588,7 +3596,7 @@ class SortBy(ViewStage):
     @classmethod
     def _params(cls):
         return [
-            {"name": "field_or_expr", "type": "dict|str"},
+            {"name": "field_or_expr", "type": "field|str|json"},
             {
                 "name": "reverse",
                 "type": "bool",
@@ -3822,7 +3830,7 @@ def _is_frames_expr(val):
     if isinstance(val, dict):
         return {_is_frames_expr(k): _is_frames_expr(v) for k, v in val.items()}
 
-    if isinstance(val, list):
+    if isinstance(val, (list, tuple)):
         return [_is_frames_expr(v) for v in val]
 
     return False
