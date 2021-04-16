@@ -3603,7 +3603,11 @@ class SortBy(ViewStage):
     @classmethod
     def _params(cls):
         return [
-            {"name": "field_or_expr", "type": "field|str|json"},
+            {
+                "name": "field_or_expr",
+                "type": "field|str|json",
+                "placeholder": "field or expression",
+            },
             {
                 "name": "reverse",
                 "type": "bool",
