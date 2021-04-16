@@ -190,3 +190,8 @@ export const matchedTagsModal = atomFamily<Set<string>, string>({
   key: "matchedTagsModal",
   default: new Set(),
 });
+
+export const gridZoom = atom<number | null>({
+  key: "gridZoom",
+  default: null,
+});

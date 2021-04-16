@@ -1,10 +1,13 @@
 import React from "react";
 import styled from "styled-components";
-import { useRecoilValue } from "recoil";
+import { constSelector, useRecoilValue } from "recoil";
 
 import DropdownHandle from "./DropdownHandle";
 import Actions from "./Actions";
+import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
+import { useTheme } from "./../utils/hooks";
+import { Slider } from "./Filters/RangeSlider";
 
 type Props = {
   showSidebar: boolean;
@@ -41,9 +44,22 @@ const CountDiv = styled.div`
   flex-direction: column;
 `;
 
+const RightContainer = styled.div`
+  display: flex;
+`;
+
+const SliderContainer = styled.div`
+  border-color: ${({ theme }) => theme.backgroundDarkBorder};
+  border-right-style: solid;
+  border-right-width: 1px;
+  margin: 0.25rem 0.5rem;
+  width: 6rem;
+`;
+
 const ImageContainerHeader = ({ showSidebar, onShowSidebar }: Props) => {
   const totalCount = useRecoilValue(selectors.totalCount);
   const filteredCount = useRecoilValue(selectors.filteredCount);
+  const theme = useTheme();
 
   let countStr = null;
   if (
@@ -65,13 +81,24 @@ const ImageContainerHeader = ({ showSidebar, onShowSidebar }: Props) => {
       />
       <SamplesHeader>
         <Actions modal={false} />
-        {countStr !== null ? (
-          <CountDiv>
-            <div>
-              Viewing <strong>{countStr} samples</strong>
-            </div>
-          </CountDiv>
-        ) : null}
+        <RightContainer>
+          <SliderContainer>
+            <Slider
+              valueAtom={atoms.gridZoom}
+              boundsAtom={constSelector([0, 10])}
+              color={theme.brand}
+              showNumbers={false}
+              int={true}
+            />
+          </SliderContainer>
+          {countStr !== null ? (
+            <CountDiv>
+              <div>
+                Viewing <strong>{countStr} samples</strong>
+              </div>
+            </CountDiv>
+          ) : null}
+        </RightContainer>
       </SamplesHeader>
     </Wrapper>
   );

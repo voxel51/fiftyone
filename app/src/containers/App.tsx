@@ -36,6 +36,10 @@ const useStateUpdate = () => {
       (s) => !oldSamples.has(s) && set(atoms.isSelectedSample(s), true)
     );
     const counter = await snapshot.getPromise(atoms.viewCounter);
+    const defaultGridZoom = await snapshot.getPromise(atoms.gridZoom);
+    if (defaultGridZoom !== state.config.grid_zoom) {
+      set(atoms.gridZoom, state.config.grid_zoom);
+    }
     set(atoms.viewCounter, counter + 1);
     set(atoms.loading, false);
     set(atoms.selectedSamples, newSamples);

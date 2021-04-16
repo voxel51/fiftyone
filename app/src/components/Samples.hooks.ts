@@ -9,14 +9,9 @@ import tile, { State } from "../utils/tile";
 import { packageMessage } from "../utils/socket";
 import { filterView } from "../utils/view";
 
-export const gridZoom = atom<number>({
-  key: "gridZoom",
-  default: 5,
-});
-
 const gridRowAspectRatio = selector<number>({
   key: "gridRowAspectRatio",
-  get: ({ get }) => 10 - get(gridZoom),
+  get: ({ get }) => 11 - get(atoms.gridZoom),
 });
 
 const pageSize = selector<number>({
@@ -92,9 +87,7 @@ export default (): [State, (state: State) => void] => {
   const requestPage = useRecoilCallback(
     ({ snapshot }) => async (pageToLoad) => {
       const page_length = await snapshot.getPromise(pageSize);
-      socket.send(
-        packageMessage("page", { page: state.pageToLoad, page_length })
-      );
+      socket.send(packageMessage("page", { page: pageToLoad, page_length }));
     }
   );
 

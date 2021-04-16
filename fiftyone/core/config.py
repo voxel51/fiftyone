@@ -211,6 +211,9 @@ class AppConfig(EnvConfig):
             env_var="FIFTYONE_APP_COLOR_POOL",
             default=foc.DEFAULT_APP_COLOR_POOL,
         )
+        self.grid_zoom = self.parse_int(
+            d, "grid_zoom", env_var="FIFTYONE_APP_GRID_ZOOM", default=5,
+        )
         self.notebook_height = self.parse_int(
             d,
             "notebook_height",
@@ -235,6 +238,28 @@ class AppConfig(EnvConfig):
             env_var="FIFTYONE_APP_SHOW_TOOLTIP",
             default=True,
         )
+
+        self._validate()
+
+    def _validate(self):
+        """Validates an :class:`AppConfig`
+
+        Raises:
+            :class:`AppConfigError`
+        """
+        if self.grid_zoom < 0 or self.grid_zoom > 10:
+            raise AppConfigError(
+                "Setting `grid_zoom` is not between 0 and 10. Encountered %d"
+                % self.grid_zoom
+            )
+
+
+class AppConfigError(etac.EnvConfigError):
+    """Exception raised when an invalid :class:`AppConfig` instance is
+    encountered.
+    """
+
+    pass
 
 
 def locate_config():
