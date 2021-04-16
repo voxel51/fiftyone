@@ -256,8 +256,8 @@ The FiftyOne App can be configured in the ways described below:
 | `color_pool`        | `FIFTYONE_APP_COLOR_POOL`         | See below                   | A list of browser supported color strings from which the App should draw from when       |
 |                     |                                   |                             | drawing labels (e.g., object bounding boxes).                                            |
 +---------------------+-----------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
-| `default_grid_zoom` | `FIFTYONE_APP_DEFAULT_GRID_ZOOM`  | `5`                         | The sample grid's default zoom level. A largerer value results in larger samples. Valid  |
-|                     |                                   |                             | values are integers in the range `[0, 10]`.                                              |
+| `default_grid_zoom` | `FIFTYONE_APP_DEFAULT_GRID_ZOOM`  | `5`                         | The default zoom level of the App's sample grid. Larger values result in larger samples  |
+|                     |                                   |                             | (and thus fewer samples in the grid). Supported values are `{0, 1, ..., 10}`.            |
 +---------------------+-----------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
 | `notebook_height`   | `FIFTYONE_APP_NOTEBOOK_HEIGHT`    | `800`                       | The height of App instances displayed in notebook cells.                                 |
 +---------------------+-----------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
