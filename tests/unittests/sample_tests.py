@@ -14,7 +14,6 @@ from mongoengine.errors import (
     ValidationError,
 )
 import numpy as np
-from pymongo.errors import DuplicateKeyError
 
 import fiftyone as fo
 from fiftyone import ViewField as F
@@ -264,14 +263,6 @@ class SampleInDatasetTests(unittest.TestCase):
         filepath = "/path/to/image.jpg"
         sample = fo.Sample(filepath=filepath, tags=["tag1", "tag2"])
         dataset.add_sample(sample)
-
-        # add duplicate filepath
-        with self.assertRaises(DuplicateKeyError):
-            dataset.add_sample(fo.Sample(filepath=filepath))
-
-        # @todo(Tyler)
-        # with self.assertRaises(DuplicateKeyError):
-        #     dataset.add_samples([fo.Sample(filepath=filepath)])
 
         self.assertEqual(len(dataset), 1)
 
