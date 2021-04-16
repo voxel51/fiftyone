@@ -46,6 +46,7 @@ const SliderStyled = styled(SliderUnstyled)`
   }
 
   .thumb:hover,
+  .thumb:focus,
   .thumb.active {
     box-shadow: none;
   }
@@ -85,7 +86,8 @@ type BaseSliderProps = {
   value: Range | number;
   onChange: (e: Event, v: Range | number) => void;
   onCommit: (e: Event, v: Range | number) => void;
-  showNumbers?: boolean;
+  persistValue?: boolean;
+  showBounds?: boolean;
   int?: boolean;
 };
 
@@ -96,11 +98,13 @@ const BaseSlider = React.memo(
     int = false,
     onChange,
     onCommit,
-    showNumbers = true,
+    persistValue = true,
+    showBounds = true,
     value,
   }: BaseSliderProps) => {
     const theme = useContext(ThemeContext);
     const bounds = useRecoilValue(boundsAtom);
+    const [clicking, setClicking] = useState(false);
 
     const hasBounds = bounds.every((b) => b !== null);
 
@@ -115,9 +119,11 @@ const BaseSlider = React.memo(
     const formatter = formatNumeral(int);
 
     return (
-      <SliderContainer style={showNumbers ? {} : { padding: 0 }}>
-        {showNumbers && formatter(bounds[0])}
+      <SliderContainer style={showBounds ? {} : { padding: 0 }}>
+        {showBounds && formatter(bounds[0])}
         <SliderStyled
+          onMouseDown={() => setClicking(true)}
+          onMouseUp={() => setClicking(false)}
           value={value}
           onChange={onChange}
           onChangeCommitted={onCommit}
@@ -130,13 +136,13 @@ const BaseSlider = React.memo(
           }}
           valueLabelFormat={formatter}
           aria-labelledby="slider"
-          valueLabelDisplay={showNumbers ? "on" : "off"}
+          valueLabelDisplay={clicking || persistValue ? "on" : "off"}
           max={bounds[1]}
           min={bounds[0]}
           step={step}
           theme={{ ...theme, brand: color }}
         />
-        {showNumbers && formatter(bounds[1])}
+        {showBounds && formatter(bounds[1])}
       </SliderContainer>
     );
   }
@@ -146,7 +152,8 @@ type SliderProps = {
   valueAtom: RecoilState<SliderValue>;
   boundsAtom: RecoilValueReadOnly<Range>;
   color: string;
-  showNumbers: boolean;
+  persistValue?: boolean;
+  showBounds?: boolean;
   int?: boolean;
 };
 

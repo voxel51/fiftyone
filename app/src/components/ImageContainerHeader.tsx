@@ -1,7 +1,7 @@
 import React from "react";
 import { Apps } from "@material-ui/icons";
 import styled from "styled-components";
-import { constSelector, useRecoilValue } from "recoil";
+import { constSelector, useRecoilValue, useResetRecoilState } from "recoil";
 
 import DropdownHandle from "./DropdownHandle";
 import Actions from "./Actions";
@@ -38,11 +38,15 @@ const SamplesHeader = styled.div`
 `;
 
 const CountDiv = styled.div`
-  padding-right: 1rem;
   display: flex;
   justify-content: center;
   align-content: center;
   flex-direction: column;
+  border-color: ${({ theme }) => theme.backgroundDarkBorder};
+  border-right-style: solid;
+  border-right-width: 1px;
+  margin: 0 0.25rem;
+  padding-right: 1rem;
 `;
 
 const RightContainer = styled.div`
@@ -51,16 +55,15 @@ const RightContainer = styled.div`
 
 const SliderContainer = styled.div`
   display: flex;
-  border-color: ${({ theme }) => theme.backgroundDarkBorder};
-  border-right-style: solid;
-  border-right-width: 1px;
-  margin: 0.25rem 1rem;
   width: 8rem;
+  padding-right: 1rem;
+  margin: 0.25rem 0;
 `;
 
 const ImageContainerHeader = ({ showSidebar, onShowSidebar }: Props) => {
   const totalCount = useRecoilValue(selectors.totalCount);
   const filteredCount = useRecoilValue(selectors.filteredCount);
+  const resetGridZoom = useResetRecoilState(gridZoom);
   const theme = useTheme();
 
   let countStr = null;
@@ -84,18 +87,6 @@ const ImageContainerHeader = ({ showSidebar, onShowSidebar }: Props) => {
       <SamplesHeader>
         <Actions modal={false} />
         <RightContainer>
-          <SliderContainer title={"Zoom"}>
-            <Apps style={{ margin: "2.5px 0.25rem" }} />
-            <div style={{ flexGrow: 1 }}>
-              <Slider
-                valueAtom={gridZoom}
-                boundsAtom={constSelector([0, 10])}
-                color={theme.brand}
-                showNumbers={false}
-                int={true}
-              />
-            </div>
-          </SliderContainer>
           {countStr !== null ? (
             <CountDiv>
               <div>
@@ -103,6 +94,25 @@ const ImageContainerHeader = ({ showSidebar, onShowSidebar }: Props) => {
               </div>
             </CountDiv>
           ) : null}
+          <SliderContainer>
+            <div style={{ flexGrow: 1 }} title={"Zoom"}>
+              <Slider
+                valueAtom={gridZoom}
+                boundsAtom={constSelector([0, 10])}
+                color={theme.brand}
+                showBounds={false}
+                persistValue={false}
+                int={true}
+              />
+            </div>
+            <div
+              title={"Reset zoom"}
+              onClick={() => resetGridZoom()}
+              style={{ cursor: "pointer" }}
+            >
+              <Apps style={{ marginTop: 2.5 }} />
+            </div>
+          </SliderContainer>
         </RightContainer>
       </SamplesHeader>
     </Wrapper>
