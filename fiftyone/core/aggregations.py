@@ -1266,7 +1266,9 @@ def _parse_field_and_expr(
     sample_collection, field_name, expr, auto_unwind, allow_missing
 ):
     if expr is not None:
-        pipeline = sample_collection._make_set_field_pipeline(field_name, expr)
+        pipeline, _ = sample_collection._make_set_field_pipeline(
+            field_name, expr
+        )
     else:
         pipeline = []
 

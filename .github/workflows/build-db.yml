@@ -53,24 +53,30 @@ jobs:
       - name: Build wheel (Linux)
         run: |
           cd package/db
-          python setup.py bdist_wheel --plat-name linux
-      - name: Build wheel (Ubuntu 16.04)
+          python setup.py bdist_wheel --plat-name linux-x86_64
+          python setup.py bdist_wheel --plat-name linux-aarch64
+      - name: Build wheel (Ubuntu 16.04 x86_64)
         env:
           FIFTYONE_DB_BUILD_LINUX_DISTRO: ubuntu1604
         run: |
           cd package/db
-          python setup.py bdist_wheel --plat-name linux
-      - name: Build wheel (Debian 9)
+          python setup.py bdist_wheel --plat-name linux-x86_64
+      - name: Build wheel (Debian 9 x86_64)
         env:
           FIFTYONE_DB_BUILD_LINUX_DISTRO: debian9
         run: |
           cd package/db
-          python setup.py bdist_wheel --plat-name linux
-      - name: Upload wheel (Linux)
+          python setup.py bdist_wheel --plat-name linux-x86_64
+      - name: Upload wheel (linux-86_64)
         uses: actions/upload-artifact@v2
         with:
-          name: wheel-linux
-          path: package/db/dist/fiftyone_db-*linux*.whl
+          name: wheel-linux-x86_64
+          path: package/db/dist/fiftyone_db-*linux1_x86_64.whl
+      - name: Upload wheel (linux-aarch64)
+        uses: actions/upload-artifact@v2
+        with:
+          name: wheel-linux-aarch64
+          path: package/db/dist/fiftyone_db-*linux2014_aarch64.whl
       - name: Upload wheel (Ubuntu 16.04)
         uses: actions/upload-artifact@v2
         with:

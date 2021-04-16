@@ -19,6 +19,33 @@ from fiftyone.core.odm.document import MongoEngineBaseDocument
 import fiftyone.core.utils as fou
 
 
+def to_mongo(expr, prefix=None):
+    """Converts an expression to its MongoDB representation.
+
+    Args:
+        expr: a :class:`ViewExpression` or an already serialized
+            `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+        prefix (None): an optional prefix to prepend to all :class:`ViewField`
+            instances in the expression
+
+    Returns:
+        a MongoDB expression
+    """
+    if isinstance(expr, ViewExpression):
+        return expr.to_mongo(prefix=prefix)
+
+    if isinstance(expr, dict):
+        return {
+            to_mongo(k, prefix=prefix): to_mongo(v, prefix=prefix)
+            for k, v in expr.items()
+        }
+
+    if isinstance(expr, (list, tuple)):
+        return [to_mongo(e, prefix=prefix) for e in expr]
+
+    return expr
+
+
 class ViewExpression(object):
     """An expression defining a possibly-complex manipulation of a document.
 
