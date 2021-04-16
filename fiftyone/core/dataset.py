@@ -3022,8 +3022,10 @@ def _create_dataset(name, persistent=False, media_type=None):
 
 def _create_indexes(sample_collection_name, frame_collection_name):
     conn = foo.get_db_conn()
+
     collection = conn[sample_collection_name]
-    collection.create_index("filepath", unique=True)
+    collection.create_index("filepath")
+
     frame_collection = conn[frame_collection_name]
     frame_collection.create_index(
         [("sample_id", foo.ASC), ("frame_number", foo.ASC)]
@@ -3433,7 +3435,7 @@ def _merge_samples(
     is_video = dst_dataset.media_type == fom.VIDEO
     src_dataset = src_collection._dataset
 
-    if key_field not in ("_id", "filepath"):
+    if key_field != "_id":
         # Must have unique indexes in order to use `$merge`
         new_src_index = key_field not in src_collection.list_indexes(
             include_private=True
