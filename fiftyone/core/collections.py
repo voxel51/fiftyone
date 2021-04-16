@@ -1599,7 +1599,9 @@ class SampleCollection(object):
         return self._add_view_stage(fos.ExcludeFields(field_names))
 
     @view_stage
-    def exclude_labels(self, labels=None, ids=None, tags=None, fields=None):
+    def exclude_labels(
+        self, labels=None, ids=None, tags=None, fields=None, omit_empty=True
+    ):
         """Excludes the specified labels from the collection.
 
         The returned view will omit samples, sample fields, and individual
@@ -1693,9 +1695,20 @@ class SampleCollection(object):
             ids (None): an ID or iterable of IDs of the labels to exclude
             tags (None): a tag or iterable of tags of labels to exclude
             fields (None): a field or iterable of fields from which to exclude
+            omit_empty (True): whether to omit samples that have no labels
+                after filtering
+
+        Returns:
+            a :class:`fiftyone.core.view.DatasetView`
         """
         return self._add_view_stage(
-            fos.ExcludeLabels(labels=labels, ids=ids, tags=tags, fields=fields)
+            fos.ExcludeLabels(
+                labels=labels,
+                ids=ids,
+                tags=tags,
+                fields=fields,
+                omit_empty=omit_empty,
+            )
         )
 
     @view_stage
@@ -3043,7 +3056,7 @@ class SampleCollection(object):
 
     @view_stage
     def select_labels(
-        self, labels=None, ids=None, tags=None, fields=None,
+        self, labels=None, ids=None, tags=None, fields=None, omit_empty=True
     ):
         """Selects only the specified labels from the collection.
 
@@ -3131,12 +3144,20 @@ class SampleCollection(object):
             ids (None): an ID or iterable of IDs of the labels to select
             tags (None): a tag or iterable of tags of labels to select
             fields (None): a field or iterable of fields from which to select
+            omit_empty (True): whether to omit samples that have no labels
+                after filtering
 
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
         """
         return self._add_view_stage(
-            fos.SelectLabels(labels=labels, ids=ids, tags=tags, fields=fields,)
+            fos.SelectLabels(
+                labels=labels,
+                ids=ids,
+                tags=tags,
+                fields=fields,
+                omit_empty=omit_empty,
+            )
         )
 
     @view_stage
