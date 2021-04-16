@@ -435,6 +435,13 @@ const TshirtForm = () => {
         onChange={setFormValue("email")}
       />
       <Input
+        key="discover"
+        placeholder={"How did you discover FiftyOne?"}
+        value={formState.discover ?? ""}
+        maxLength={100}
+        onChange={setFormValue("discover")}
+      />
+      <Input
         key="helping"
         placeholder={"Is FiftyOne helping your work?"}
         value={formState.helping ?? ""}
@@ -447,13 +454,6 @@ const TshirtForm = () => {
         value={formState.improve ?? ""}
         maxLength={100}
         onChange={setFormValue("improve")}
-      />
-      <Input
-        key="discover"
-        placeholder={"How did you discover FiftyOne?"}
-        value={formState.discover ?? ""}
-        maxLength={100}
-        onChange={setFormValue("discover")}
       />
       <div style={{ display: "flex" }}>
         <Checkbox
