@@ -3271,18 +3271,27 @@ def _save_view(view, fields):
 def _merge_dataset_doc(
     dataset, collection_or_doc, merge_info=True, overwrite=False
 ):
-    if collection_or_doc.media_type != dataset.media_type:
+    curr_doc = dataset._doc
+
+    #
+    # Merge media type
+    #
+
+    src_media_type = collection_or_doc.media_type
+    if curr_doc.media_type is None:
+        curr_doc.media_type = src_media_type
+
+    if src_media_type != curr_doc.media_type and src_media_type is not None:
         raise ValueError(
             "Cannot merge a dataset with media_type='%s' into a dataset "
-            "with media_type='%s'"
-            % (collection_or_doc.media_type, dataset.media_type)
+            "with media_type='%s'" % (src_media_type, curr_doc.media_type)
         )
 
     #
     # Merge schemas
     #
 
-    is_video = dataset.media_type == fom.VIDEO
+    is_video = curr_doc.media_type == fom.VIDEO
 
     if isinstance(collection_or_doc, foc.SampleCollection):
         # Respects filtered schemas, if any
@@ -3297,18 +3306,16 @@ def _merge_dataset_doc(
             frame_schema = {f.name: f.to_field() for f in doc.frame_fields}
 
     dataset._sample_doc_cls.merge_field_schema(schema)
-    if is_video:
+    if is_video and frame_schema is not None:
         dataset._frame_doc_cls.merge_field_schema(frame_schema)
 
     if not merge_info:
-        dataset._doc.reload()
+        curr_doc.reload()
         return
 
     #
     # Merge info
     #
-
-    curr_doc = dataset._doc
 
     if overwrite:
         curr_doc.info.update(doc.info)
@@ -3395,13 +3402,6 @@ def _merge_samples(
     include_info=True,
     overwrite_info=False,
 ):
-    if src_collection.media_type != dst_dataset.media_type:
-        raise ValueError(
-            "Cannot merge collection with media_type='%s' into a collection "
-            "with media_type='%s'"
-            % (src_collection.media_type, dst_dataset.media_type)
-        )
-
     if omit_default_fields and insert_new:
         raise ValueError("Cannot omit default fields when `insert_new=True`")
 
@@ -3418,9 +3418,6 @@ def _merge_samples(
     else:
         when_not_matched = "discard"
 
-    is_video = dst_dataset.media_type == fom.VIDEO
-    src_dataset = src_collection._dataset
-
     # Merge dataset metadata
     _merge_dataset_doc(
         dst_dataset,
@@ -3432,6 +3429,9 @@ def _merge_samples(
     #
     # Prepare for merge
     #
+
+    is_video = dst_dataset.media_type == fom.VIDEO
+    src_dataset = src_collection._dataset
 
     if key_field not in ("_id", "filepath"):
         # Must have unique indexes in order to use `$merge`

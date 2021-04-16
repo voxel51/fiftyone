@@ -7,7 +7,7 @@ const { assign } = actions;
 
 const convert = (v) => (typeof v !== "string" ? String(v) : v);
 
-export const toTypeAnnotation = (type) => {
+export const toTypeAnnotation = (type: string): string => {
   if (type.includes("|")) {
     return [
       "Union[",
@@ -29,12 +29,6 @@ export const toTypeAnnotation = (type) => {
  * for details about numbers and javascript
  */
 export const PARSER = {
-  NoneType: {
-    castFrom: (value) => (value === null ? "None" : value),
-    castTo: () => null,
-    parse: () => "None",
-    validate: (value) => [null, "None", ""].some((v) => value === v),
-  },
   bool: {
     castFrom: (value) => (value ? "True" : "False"),
     castTo: (value) => ["true", "false"].indexOf(value.toLowerCase()) === 0,
@@ -63,58 +57,6 @@ export const PARSER = {
       return stripped !== "" && !isNaN(+stripped);
     },
   },
-  id: {
-    castFrom: (value) => value,
-    castTo: (value) => value,
-    parse: (value) => value,
-    validate: (value) => /[0-9A-Fa-f]{24}/g.test(value),
-  },
-  int: {
-    castFrom: (value) => String(value).replace(/\B(?=(\d{3})+(?!\d))/g, ","),
-    castTo: (value) => +value.replace(/[,\s]/g, ""),
-    parse: (value) =>
-      String(+value.replace(/[,\s]/g, "")).replace(
-        /\B(?=(\d{3})+(?!\d))/g,
-        ","
-      ),
-    validate: (value) => /^\d+$/.test(convert(value).replace(/[,\s]/g, "")),
-  },
-  "list<str>": {
-    castFrom: (value) => value.join(","),
-    castTo: (value) => value.split(","),
-    parse: (value) => value.replace(/[\s\'\"\[\]]/g, ""),
-    validate: (value) => {
-      const stripped = value.replace(/[\s]/g, "");
-      let array = null;
-      try {
-        array = JSON.parse(stripped);
-      } catch {
-        array = stripped.split(",");
-      }
-      return Array.isArray(array) && array.every((e) => PARSER.str.validate(e));
-    },
-  },
-  "list<id>": {
-    castFrom: (value) => value.join(","),
-    castTo: (value) => value.split(","),
-    parse: (value) => value.replace(/[\s\'\"\[\]]/g, ""),
-    validate: (value) => {
-      const stripped = value.replace(/[\s]/g, "");
-      let array = null;
-      try {
-        array = JSON.parse(stripped);
-      } catch {
-        array = stripped.split(",");
-      }
-      return Array.isArray(array) && array.every((e) => PARSER.id.validate(e));
-    },
-  },
-  str: {
-    castFrom: (value) => value,
-    castTo: (value) => value,
-    parse: (value) => value,
-    validate: () => true,
-  },
   field: {
     castFrom: (value) => value,
     castTo: (value) => value,
@@ -133,6 +75,105 @@ export const PARSER = {
         return v instanceof Object && !Array.isArray(value);
       } catch {
         return false;
+      }
+    },
+  },
+  id: {
+    castFrom: (value) => value,
+    castTo: (value) => value,
+    parse: (value) => value,
+    validate: (value) => /[0-9A-Fa-f]{24}/g.test(value),
+  },
+  int: {
+    castFrom: (value) => String(value).replace(/\B(?=(\d{3})+(?!\d))/g, ","),
+    castTo: (value) => +value.replace(/[,\s]/g, ""),
+    parse: (value) =>
+      String(+value.replace(/[,\s]/g, "")).replace(
+        /\B(?=(\d{3})+(?!\d))/g,
+        ","
+      ),
+    validate: (value) => /^\d+$/.test(convert(value).replace(/[,\s]/g, "")),
+  },
+  json: {
+    castFrom: (value) => JSON.stringify(value, null, 2),
+    castTo: (value) => (typeof value === "string" ? JSON.parse(value) : value),
+    parse: (value) => value,
+    validate: (value) => {
+      try {
+        JSON.parse(value);
+        return true;
+      } catch {
+        return false;
+      }
+    },
+  },
+  "list<field>": {
+    castFrom: (value) => value.join(","),
+    castTo: (value) => value.split(","),
+    parse: (value) => value.replace(/[\s\'\"\[\]]/g, ""),
+    validate: (value, fields) => {
+      const stripped = value.replace(/[\s]/g, "");
+      let array = null;
+      try {
+        array = JSON.parse(stripped);
+      } catch {
+        array = stripped.split(",");
+      }
+      return (
+        Array.isArray(array) &&
+        array.every((e) => PARSER.field.validate(e, fields))
+      );
+    },
+  },
+  "list<id>": {
+    castFrom: (value) => value.join(","),
+    castTo: (value) => value.split(","),
+    parse: (value) => value.replace(/[\s\'\"\[\]]/g, ""),
+    validate: (value) => {
+      const stripped = value.replace(/[\s]/g, "");
+      let array = null;
+      try {
+        array = JSON.parse(stripped);
+      } catch {
+        array = stripped.split(",");
+      }
+      return Array.isArray(array) && array.every((e) => PARSER.id.validate(e));
+    },
+  },
+  "list<str>": {
+    castFrom: (value) => value.join(","),
+    castTo: (value) => value.split(","),
+    parse: (value) => value.replace(/[\s\'\"\[\]]/g, ""),
+    validate: (value) => {
+      const stripped = value.replace(/[\s]/g, "");
+      let array = null;
+      try {
+        array = JSON.parse(stripped);
+      } catch {
+        array = stripped.split(",");
+      }
+      return Array.isArray(array) && array.every((e) => PARSER.str.validate(e));
+    },
+  },
+  NoneType: {
+    castFrom: (value) => (value === null ? "None" : value),
+    castTo: () => null,
+    parse: () => "None",
+    validate: (value) => [null, "None", ""].some((v) => value === v),
+  },
+  str: {
+    castFrom: (value) => value,
+    castTo: (value) => value,
+    parse: (value) => value,
+    validate: (value) => {
+      if (typeof value !== "string") {
+        return false;
+      }
+      try {
+        JSON.parse(value);
+        return false;
+      } catch {
+        return true;
       }
     },
   },
