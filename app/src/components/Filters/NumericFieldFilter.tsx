@@ -6,12 +6,13 @@ import {
   GetRecoilValue,
   selectorFamily,
   SetRecoilState,
+  useRecoilValue,
 } from "recoil";
 
 import * as selectors from "../../recoil/selectors";
 import { NamedRangeSlider, Range } from "./RangeSlider";
 import { hasNoneField, useExpand } from "./utils";
-import { AGGS } from "../../utils/labels";
+import { AGGS, INT_FIELD } from "../../utils/labels";
 
 type NumericFilter = {
   range: Range;
@@ -101,14 +102,7 @@ export const boundsAtom = selectorFamily<
         minMax > bounds[1] ? minMax : bounds[1],
       ];
     }
-    return [
-      bounds[0] !== null && bounds[0] !== maxMin
-        ? Number((bounds[0] - 0.01).toFixed(2))
-        : bounds[0],
-      bounds[1] !== null && bounds[1] !== minMax
-        ? Number((bounds[1] + 0.01).toFixed(2))
-        : bounds[1],
-    ];
+    return [bounds[0], bounds[1]];
   },
 });
 
@@ -193,6 +187,7 @@ export const fieldIsFiltered = selectorFamily<
 
 const NumericFieldFilter = ({ expanded, entry }) => {
   const [ref, props] = useExpand(expanded);
+  const type = useRecoilValue(selectors.fieldType(entry.path));
   return (
     <animated.div style={props}>
       <NamedRangeSlider
@@ -201,8 +196,9 @@ const NumericFieldFilter = ({ expanded, entry }) => {
         valueName={"value"}
         boundsAtom={boundsAtom({ path: entry.path })}
         hasNoneAtom={hasNoneField(entry.path)}
-        rangeAtom={rangeAtom({ path: entry.path })}
+        valueAtom={rangeAtom({ path: entry.path })}
         noneAtom={noneAtom({ path: entry.path })}
+        int={type === INT_FIELD}
         ref={ref}
       />
     </animated.div>

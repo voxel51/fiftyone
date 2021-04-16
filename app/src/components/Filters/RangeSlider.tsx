@@ -18,7 +18,7 @@ const SliderContainer = styled.div`
   line-height: 1.9rem;
 `;
 
-const Slider = styled(SliderUnstyled)`
+const SliderStyled = styled(SliderUnstyled)`
   && {
     color: ${({ theme }) => theme.brand};
     margin: 0 1rem 0 0.8rem;
@@ -28,7 +28,6 @@ const Slider = styled(SliderUnstyled)`
   .rail {
     height: 7px;
     border-radius: 6px;
-    background: ${({ theme }) => theme.backgroundLight};
   }
 
   .track {
@@ -47,6 +46,7 @@ const Slider = styled(SliderUnstyled)`
   }
 
   .thumb:hover,
+  .thumb:focus,
   .thumb.active {
     box-shadow: none;
   }
@@ -74,55 +74,131 @@ const Slider = styled(SliderUnstyled)`
   }
 `;
 
-type RangeValue = number | undefined;
+const formatNumeral = (int) => (v) => numeral(v).format(int ? "0a" : "0.00a");
 
-export type Range = [RangeValue, RangeValue];
+type SliderValue = number | undefined;
 
-type Props = {
-  rangeAtom: RecoilState<Range>;
+export type Range = [SliderValue, SliderValue];
+
+type BaseSliderProps = {
   boundsAtom: RecoilValueReadOnly<Range>;
   color: string;
+  value: Range | number;
+  onChange: (e: Event, v: Range | number) => void;
+  onCommit: (e: Event, v: Range | number) => void;
+  persistValue?: boolean;
+  showBounds?: boolean;
+  int?: boolean;
 };
 
-const RangeSlider = React.memo(({ rangeAtom, boundsAtom, color }: Props) => {
-  const theme = useContext(ThemeContext);
-  const [value, setValue] = useRecoilState(rangeAtom);
-  const bounds = useRecoilValue(boundsAtom);
+const BaseSlider = React.memo(
+  ({
+    boundsAtom,
+    color,
+    int = false,
+    onChange,
+    onCommit,
+    persistValue = true,
+    showBounds = true,
+    value,
+  }: BaseSliderProps) => {
+    const theme = useContext(ThemeContext);
+    const bounds = useRecoilValue(boundsAtom);
+    const [clicking, setClicking] = useState(false);
+
+    const hasBounds = bounds.every((b) => b !== null);
+
+    if (!hasBounds) {
+      return null;
+    }
+    let step = (bounds[1] - bounds[0]) / 100;
+    if (int) {
+      step = Math.ceil(step);
+    }
+
+    const formatter = formatNumeral(int);
+
+    return (
+      <SliderContainer style={showBounds ? {} : { padding: 0 }}>
+        {showBounds && formatter(bounds[0])}
+        <SliderStyled
+          onMouseDown={() => setClicking(true)}
+          onMouseUp={() => setClicking(false)}
+          value={value}
+          onChange={onChange}
+          onChangeCommitted={onCommit}
+          classes={{
+            thumb: "thumb",
+            track: "track",
+            rail: "rail",
+            active: "active",
+            valueLabel: "valueLabel",
+          }}
+          valueLabelFormat={formatter}
+          aria-labelledby="slider"
+          valueLabelDisplay={clicking || persistValue ? "on" : "off"}
+          max={bounds[1]}
+          min={bounds[0]}
+          step={step}
+          theme={{ ...theme, brand: color }}
+        />
+        {showBounds && formatter(bounds[1])}
+      </SliderContainer>
+    );
+  }
+);
+
+type SliderProps = {
+  valueAtom: RecoilState<SliderValue>;
+  boundsAtom: RecoilValueReadOnly<Range>;
+  color: string;
+  persistValue?: boolean;
+  showBounds?: boolean;
+  int?: boolean;
+};
+
+export const Slider = ({ valueAtom, ...rest }: SliderProps) => {
+  const [value, setValue] = useRecoilState(valueAtom);
+  const [localValue, setLocalValue] = useState<SliderValue>(null);
+  useEffect(() => {
+    JSON.stringify(value) !== JSON.stringify(localValue) &&
+      setLocalValue(value);
+  }, [value]);
+
+  return (
+    <BaseSlider
+      {...rest}
+      onChange={(_, v) => setLocalValue(v)}
+      onCommit={(_, v) => setValue(v)}
+      value={localValue}
+    />
+  );
+};
+
+type RangeSliderProps = {
+  valueAtom: RecoilState<Range>;
+  boundsAtom: RecoilValueReadOnly<Range>;
+  color: string;
+  int?: boolean;
+};
+
+export const RangeSlider = ({ valueAtom, ...rest }: RangeSliderProps) => {
+  const [value, setValue] = useRecoilState(valueAtom);
   const [localValue, setLocalValue] = useState<Range>([null, null]);
   useEffect(() => {
     JSON.stringify(value) !== JSON.stringify(localValue) &&
       setLocalValue(value);
   }, [value]);
 
-  const hasBounds = bounds.every((b) => b !== null);
-  return hasBounds ? (
-    <SliderContainer>
-      {bounds[0]}
-      <Slider
-        value={[...localValue]}
-        onChange={(_, v: Range) => setLocalValue(v)}
-        onChangeCommitted={(_, v: Range) => {
-          setValue(v);
-        }}
-        classes={{
-          thumb: "thumb",
-          track: "track",
-          rail: "rail",
-          active: "active",
-          valueLabel: "valueLabel",
-        }}
-        valueLabelFormat={(v) => numeral(v).format("0.00a")}
-        aria-labelledby="range-slider"
-        valueLabelDisplay={"on"}
-        max={bounds[1]}
-        min={bounds[0]}
-        step={(bounds[1] - bounds[0]) / 100}
-        theme={{ ...theme, brand: color }}
-      />
-      {bounds[1]}
-    </SliderContainer>
-  ) : null;
-});
+  return (
+    <BaseSlider
+      {...rest}
+      onChange={(_, v: Range) => setLocalValue(v)}
+      onCommit={(_, v) => setValue(v)}
+      value={[...localValue]}
+    />
+  );
+};
 
 const NamedRangeSliderContainer = styled.div`
   padding-bottom: 0.5rem;
@@ -145,12 +221,13 @@ const RangeSliderContainer = styled.div`
 `;
 
 type NamedProps = {
-  rangeAtom: RecoilState<Range>;
+  valueAtom: RecoilState<Range>;
   boundsAtom: RecoilValueReadOnly<Range>;
   hasNoneAtom: RecoilValueReadOnly<boolean>;
   noneAtom: RecoilState<boolean>;
   name: string;
   valueName: string;
+  int?: boolean;
   color: string;
 };
 
@@ -173,7 +250,7 @@ export const NamedRangeSlider = React.memo(
       const theme = useContext(ThemeContext);
       const hasNone = useRecoilValue(hasNoneAtom);
       const [includeNone, setIncludeNone] = useRecoilState(noneAtom);
-      const [range, setRange] = useRecoilState(rangeSliderProps.rangeAtom);
+      const [range, setRange] = useRecoilState(rangeSliderProps.valueAtom);
       const bounds = useRecoilValue(rangeSliderProps.boundsAtom);
       const hasDefaultRange = isDefaultRange(range, bounds);
       const hasBounds = bounds.every((b) => b !== null);

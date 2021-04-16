@@ -382,7 +382,7 @@ const SampleModal = ({ onClose }: Props, ref) => {
       <div className="player" ref={playerContainerRef}>
         {showJSON ? (
           <JSONView
-            object={sample}
+            currentFrame={frameNumberRef.current}
             filterJSON={enableJSONFilter}
             enableFilter={setEnableJSONFilter}
           />
@@ -443,7 +443,11 @@ const SampleModal = ({ onClose }: Props, ref) => {
             position: "relative",
           }}
         >
-          <Actions modal={true} frameNumberRef={frameNumberRef} />
+          <Actions
+            modal={true}
+            playerRef={playerRef}
+            frameNumberRef={frameNumberRef}
+          />
         </ModalFooter>
         <div className="sidebar-content">
           <h2>

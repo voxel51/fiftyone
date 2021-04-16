@@ -250,20 +250,23 @@ property.
 
 The FiftyOne App can be configured in the ways described below:
 
-+-------------------+---------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
-| Config field      | Environment variable            | Default value               | Description                                                                              |
-+===================+=================================+=============================+==========================================================================================+
-| `color_pool`      | `FIFTYONE_APP_COLOR_POOL`       | See below                   | A list of browser supported color strings from which the App should draw from when       |
-|                   |                                 |                             | drawing labels (e.g., object bounding boxes).                                            |
-+-------------------+---------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
-| `notebook_height` | `FIFTYONE_APP_NOTEBOOK_HEIGHT`  | `800`                       | The default height of App instances displayed in notebook cells.                         |
-+-------------------+---------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
-| `show_attributes` | `FIFTYONE_APP_SHOW_ATTRIBUTES`  | `False`                     | Whether to show attributes when rendering labels in the App's expanded sample view.      |
-+-------------------+---------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
-| `show_confidence` | `FIFTYONE_APP_SHOW_CONFIDENCE`  | `True`                      | Whether to show confidences when rendering labels in the App's expanded sample view.     |
-+-------------------+---------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
-| `show_tooltip`    | `FIFTYONE_APP_SHOW_TOOLTIP`     | `True`                      | Whether to show the tooltip when hovering over labels in the App's expanded sample view. |
-+-------------------+---------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
++---------------------+-----------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
+| Config field        | Environment variable              | Default value               | Description                                                                              |
++=====================+===================================+=============================+==========================================================================================+
+| `color_pool`        | `FIFTYONE_APP_COLOR_POOL`         | See below                   | A list of browser supported color strings from which the App should draw from when       |
+|                     |                                   |                             | drawing labels (e.g., object bounding boxes).                                            |
++---------------------+-----------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
+| `default_grid_zoom` | `FIFTYONE_APP_DEFAULT_GRID_ZOOM`  | `5`                         | The default zoom level of the App's sample grid. Larger values result in larger samples  |
+|                     |                                   |                             | (and thus fewer samples in the grid). Supported values are `{0, 1, ..., 10}`.            |
++---------------------+-----------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
+| `notebook_height`   | `FIFTYONE_APP_NOTEBOOK_HEIGHT`    | `800`                       | The height of App instances displayed in notebook cells.                                 |
++---------------------+-----------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
+| `show_attributes`   | `FIFTYONE_APP_SHOW_ATTRIBUTES`    | `False`                     | Whether to show attributes when rendering labels in the App's expanded sample view.      |
++---------------------+-----------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
+| `show_confidence`   | `FIFTYONE_APP_SHOW_CONFIDENCE`    | `True`                      | Whether to show confidences when rendering labels in the App's expanded sample view.     |
++---------------------+-----------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
+| `show_tooltip`      | `FIFTYONE_APP_SHOW_TOOLTIP`       | `True`                      | Whether to show the tooltip when hovering over labels in the App's expanded sample view. |
++---------------------+-----------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
 
 Viewing your App config
 -----------------------
@@ -303,6 +306,7 @@ the next section) at any time via the Python library and the CLI.
                 "#cc33cc",
                 "#777799"
             ],
+            "default_grid_zoom": 5,
             "notebook_height": 800,
             "show_confidence": true,
             "show_attributes": true
@@ -338,6 +342,7 @@ the next section) at any time via the Python library and the CLI.
                 "#cc33cc",
                 "#777799"
             ],
+            "default_grid_zoom": 5,
             "notebook_height": 800,
             "show_confidence": true,
             "show_attributes": true
