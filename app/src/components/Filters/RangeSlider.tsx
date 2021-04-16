@@ -28,7 +28,6 @@ const SliderStyled = styled(SliderUnstyled)`
   .rail {
     height: 7px;
     border-radius: 6px;
-    background: ${({ theme }) => theme.backgroundLight};
   }
 
   .track {

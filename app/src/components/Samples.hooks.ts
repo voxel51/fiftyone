@@ -9,9 +9,17 @@ import tile, { State } from "../utils/tile";
 import { packageMessage } from "../utils/socket";
 import { filterView } from "../utils/view";
 
+export const gridZoom = atom<number | null>({
+  key: "gridZoom",
+  default: selectors.defaultGridZoom,
+});
+
 const gridRowAspectRatio = selector<number>({
   key: "gridRowAspectRatio",
-  get: ({ get }) => 11 - get(atoms.gridZoom),
+  get: ({ get }) => {
+    console.log(get(gridZoom));
+    return 11 - get(gridZoom);
+  },
 });
 
 const pageSize = selector<number>({

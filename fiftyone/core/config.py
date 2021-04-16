@@ -211,8 +211,11 @@ class AppConfig(EnvConfig):
             env_var="FIFTYONE_APP_COLOR_POOL",
             default=foc.DEFAULT_APP_COLOR_POOL,
         )
-        self.grid_zoom = self.parse_int(
-            d, "grid_zoom", env_var="FIFTYONE_APP_GRID_ZOOM", default=5,
+        self.default_grid_zoom = self.parse_int(
+            d,
+            "default_grid_zoom",
+            env_var="FIFTYONE_APP_GRID_ZOOM",
+            default=5,
         )
         self.notebook_height = self.parse_int(
             d,
@@ -247,10 +250,10 @@ class AppConfig(EnvConfig):
         Raises:
             :class:`AppConfigError`
         """
-        if self.grid_zoom < 0 or self.grid_zoom > 10:
+        if self.default_grid_zoom < 0 or self.default_grid_zoom > 10:
             raise AppConfigError(
-                "Setting `grid_zoom` is not between 0 and 10. Encountered %d"
-                % self.grid_zoom
+                "Setting `default_grid_zoom` is not between 0 and 10. Encountered %d"
+                % self.default_grid_zoom
             )
 
 

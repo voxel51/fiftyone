@@ -65,7 +65,6 @@ type OptionsProps = {
 const Options = ({ modal, bounds }: OptionsProps) => {
   return (
     <Popout modal={modal} bounds={bounds}>
-      {!modal && <GridSizer />}
       <ColorBy modal={modal} />
       <RefreshButton modal={modal} />
     </Popout>

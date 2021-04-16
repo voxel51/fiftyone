@@ -498,6 +498,13 @@ const selectedFields = selectorFamily({
   },
 });
 
+export const defaultGridZoom = selector<number | null>({
+  key: "defaultGridZoom",
+  get: ({ get }) => {
+    return get(appConfig).default_grid_zoom;
+  },
+});
+
 export const defaultPlayerOverlayOptions = selector({
   key: "defaultPlayerOverlayOptions",
   get: ({ get }) => {

@@ -1,11 +1,12 @@
 import React from "react";
+import { Apps } from "@material-ui/icons";
 import styled from "styled-components";
 import { constSelector, useRecoilValue } from "recoil";
 
 import DropdownHandle from "./DropdownHandle";
 import Actions from "./Actions";
-import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
+import { gridZoom } from "./Samples.hooks";
 import { useTheme } from "./../utils/hooks";
 import { Slider } from "./Filters/RangeSlider";
 
@@ -49,11 +50,12 @@ const RightContainer = styled.div`
 `;
 
 const SliderContainer = styled.div`
+  display: flex;
   border-color: ${({ theme }) => theme.backgroundDarkBorder};
   border-right-style: solid;
   border-right-width: 1px;
-  margin: 0.25rem 0.5rem;
-  width: 6rem;
+  margin: 0.25rem 1rem;
+  width: 8rem;
 `;
 
 const ImageContainerHeader = ({ showSidebar, onShowSidebar }: Props) => {
@@ -82,14 +84,17 @@ const ImageContainerHeader = ({ showSidebar, onShowSidebar }: Props) => {
       <SamplesHeader>
         <Actions modal={false} />
         <RightContainer>
-          <SliderContainer>
-            <Slider
-              valueAtom={atoms.gridZoom}
-              boundsAtom={constSelector([0, 10])}
-              color={theme.brand}
-              showNumbers={false}
-              int={true}
-            />
+          <SliderContainer title={"Zoom"}>
+            <Apps style={{ margin: "2.5px 0.25rem" }} />
+            <div style={{ flexGrow: 1 }}>
+              <Slider
+                valueAtom={gridZoom}
+                boundsAtom={constSelector([0, 10])}
+                color={theme.brand}
+                showNumbers={false}
+                int={true}
+              />
+            </div>
           </SliderContainer>
           {countStr !== null ? (
             <CountDiv>
