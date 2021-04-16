@@ -784,7 +784,7 @@ Computing mAP:
 Open Images-style evaluation
 ----------------------------
 
-You can specify to use 
+You can use 
 `Open Images-style evaluation <https://storage.googleapis.com/openimages/web/evaluation.html>`_ to
 analyze predictions by setting the ``method`` parameter to ``"open-images"`` 
 when calling
@@ -804,7 +804,9 @@ when calling
     evaluation.
 
 `Open Images-style evaluation <https://storage.googleapis.com/openimages/web/evaluation.html>`_
-provides a few features setting it apart from COCO-style evaluation:
+provides a few features setting it apart from COCO-style evaluation. All
+parameters unique to Open Images evaluation are defined in the 
+:class:`OpenImagesEvaluationConfig <fiftyone.utils.eval.openimages.OpenImagesEvaluationConfig>`:
 
 -   Open Images has positive and negative image-level labels indicating which 
     classes of detections to evaluate. Other classes are ignored. These labels 
@@ -824,7 +826,7 @@ provides a few features setting it apart from COCO-style evaluation:
     used to calculate mAP.
 
 -   When dealing with crowd objects, Open Images evaluation dictates that if a
-    crowd is matched with multiple predictions, they all could as one since true
+    crowd is matched with multiple predictions, they all count as one true
     positive when calculating mAP.
 
 When you specify an ``eval_key`` parameter, a number of helpful fields will be
@@ -875,9 +877,9 @@ The example below demonstrates Open Images-style detection evaluation on the
     results.print_report(classes=classes)
 
     # Print some statistics about the total TP/FP/FN counts
-    print(dataset.sum("eval_oi_tp"))
-    print(dataset.sum("eval_oi_fp"))
-    print(dataset.sum("eval_oi_fn"))
+    print("TP: %d" % dataset.sum("eval_oi_tp"))
+    print("FP: %d" % dataset.sum("eval_oi_fp"))
+    print("FN: %d" % dataset.sum("eval_oi_fn"))
 
     # Create a view that has samples with the most false positives first, and
     # only includes false positive boxes in the `predictions` field
@@ -903,11 +905,11 @@ The example below demonstrates Open Images-style detection evaluation on the
         surfboard       0.17      0.73      0.28        30
          airplane       0.36      0.83      0.50        24
     traffic light       0.32      0.79      0.45        24
-            bench       0.17      0.52      0.26        23
+          giraffe       0.36      0.91      0.52        23
     
-        micro avg       0.21      0.78      0.33       750
-        macro avg       0.21      0.70      0.32       750
-     weighted avg       0.23      0.78      0.35       750
+        micro avg       0.21      0.79      0.34       750
+        macro avg       0.23      0.74      0.34       750
+     weighted avg       0.23      0.79      0.36       750
 
 .. image:: ../images/evaluation/quickstart_evaluate_detections_oi.png
    :alt: quickstart-evaluate-detections-oi
@@ -917,7 +919,7 @@ Computing mAP and PR curves
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Unlike COCO-style evaluation, mean average precision (mAP) and precision-recall (PR)
-curves can be computed by default for your detections when performing
+curves can be computed by default when performing
 Open Images-style evaluation since it is lighter weight 
 due to not performing an IoU sweep.
 
@@ -939,9 +941,11 @@ due to not performing an IoU sweep.
     )
 
     print(results.mAP())
-    # 0.601
+    # 0.599
 
-    results.plot_pr_curves(classes=["person"])
+    plot = results.plot_pr_curves(classes=["person", "dog", "car"])
+    plot.show()
+
 
 .. image:: ../images/evaluation/oi_pr_curve.png
    :alt: oi-pr-curve
@@ -1001,7 +1005,7 @@ matched to compute true positives, false positives, and false negatives.
 
 - Multiple predictions can match to the same crowd ground truth object, but
   only one counts as a true positive, the others are ignored (unlike COCO). 
-  If the crowd is unmatched by any prediction, it is a false negative.
+  If the crowd is not matched by any prediction, it is a false negative.
 
 - (Unlike COCO) If a prediction maximally overlaps with a non-crowd ground 
   truth object that has already been matched (by a higher confidence 
@@ -1021,13 +1025,15 @@ Computing mAP:
 - Construct an array of true positives and false positives, sorted by
   confidence. 
 
-- Compute the cumlative sum of the true positive and false positive array.
+- Compute the 
+  `cumlative sum <https://numpy.org/doc/stable/reference/generated/numpy.cumsum.html>`_ 
+  of this true and false positive array.
 
-- Precision is computed as the tp fp sum array where each element is
+- Precision is an array equal to the the tp fp sum array with each element
   divided by the total number of predictions (count of tp and fp) up to that point.
  
-- Recall is computed as the tp fp sum array divided 
-  by the scalar number of ground truth objects for the class.
+- Recall is an array equal to the tp fp sum array with every element divided 
+  by the same scalar number of ground truth objects for the class.
 
 - Ensure that precision is a non-increasing array.
 
