@@ -245,14 +245,9 @@ class AppConfig(EnvConfig):
         self._validate()
 
     def _validate(self):
-        """Validates an :class:`AppConfig`
-
-        Raises:
-            :class:`AppConfigError`
-        """
         if self.default_grid_zoom < 0 or self.default_grid_zoom > 10:
             raise AppConfigError(
-                "Setting `default_grid_zoom` is not between 0 and 10. Encountered %d"
+                "`default_grid_zoom` must be in [0, 10]; found %d"
                 % self.default_grid_zoom
             )
 
