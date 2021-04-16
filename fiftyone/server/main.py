@@ -315,25 +315,6 @@ class PollingHandler(tornado.web.RequestHandler):
         self.write(message)
 
 
-def _get_label_object_ids(label):
-    """Returns a list of all object IDs contained in the label.
-
-    Args:
-        label: an ImageLabel instance
-
-    Returns:
-        list of IDs as strings
-    """
-    list_field_name = type(label).__name__.lower()
-    if hasattr(label, "id"):
-        return [label.id]
-
-    if list_field_name in label:
-        return [obj.id for obj in label[list_field_name]]
-
-    raise TypeError("Cannot serialize label type: " + str(type(label)))
-
-
 class StateHandler(tornado.websocket.WebSocketHandler):
     """WebSocket handler for bi-directional state communication.
 
@@ -516,7 +497,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             )
             return
 
-        view = get_extended_view(view, state.filters, count_labels_tags=True)
+        view = get_extended_view(view, state.filters)
         view = view.skip((page - 1) * page_length)
 
         if view.media_type == fom.VIDEO:
@@ -626,35 +607,6 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             dataset=dataset, config=config, active_handle=active_handle
         ).serialize()
         await self.on_update(self, StateHandler.state)
-
-    @staticmethod
-    async def on_get_video_data(self, _id):
-        """Gets the frame labels for video samples.
-
-        Args:
-            _id: a sample _id
-        """
-        state = fos.StateDescription.from_dict(StateHandler.state)
-        if state.view is not None:
-            view = state.view
-        else:
-            view = state.dataset
-
-        result = await _get_video_data(
-            self.sample_collection(), state, view, [_id]
-        )
-        sample, frames, labels = result[0]
-
-        fps = etav.get_frame_rate(sample["filepath"])
-        _write_message(
-            {
-                "type": "video_data-%s" % _id,
-                "frames": frames,
-                "labels": labels.serialize(),
-                "fps": fps,
-            },
-            only=self,
-        )
 
     @staticmethod
     async def on_tag(
@@ -793,19 +745,12 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         else:
             view = state.dataset
 
-        view = get_extended_view(view, state.filters, count_labels_tags=True)
+        view = get_extended_view(view, state.filters, count_label_tags=True)
 
         col = cls.sample_collection()
 
-        if view.media_type == fom.VIDEO:
-            samples = await _get_video_data(col, state, view, sample_ids)
-            result = [
-                {"sample": s, "frames": f, "labels": l.serialize()}
-                for (s, f, l) in samples
-            ]
-        else:
-            view = view.select(sample_ids)
-            result, _ = await _get_sample_data(col, view, len(sample_ids), 1)
+        view = view.select(sample_ids)
+        result, _ = await _get_sample_data(col, view, len(sample_ids), 1)
 
         _write_message(
             {"type": "samples_update", "samples": result}, app=True, only=only
@@ -1176,7 +1121,7 @@ async def _numeric_histograms(coll, view, schema, prefix=""):
 
 
 async def _get_sample_data(col, view, page_length, page):
-    pipeline = view._pipeline()
+    pipeline = view._pipeline(detach_frames=True)
 
     samples = await foo.aggregate(col, pipeline).to_list(page_length + 1)
     convert(samples)
@@ -1192,25 +1137,6 @@ async def _get_sample_data(col, view, page_length, page):
         r["height"] = h
 
     return results, more
-
-
-async def _get_video_data(col, state, view, _ids):
-    view = view.select(_ids)
-    pipeline = view._pipeline()
-    results = []
-    async for sample in col.aggregate(pipeline):
-        frames = sample["frames"]
-        if frames:
-            sample["frames"] = frames[0]
-        else:
-            sample["frames"] = None
-
-        convert([sample])
-        convert(frames)
-
-        results.append((sample, frames))
-
-    return results
 
 
 class FileHandler(tornado.web.StaticFileHandler):

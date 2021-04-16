@@ -2,7 +2,7 @@ import mime from "mime-types";
 import React, { useState, useEffect, useRef } from "react";
 import ReactDOM from "react-dom";
 import styled from "styled-components";
-import { useRecoilState, useRecoilValue } from "recoil";
+import { useRecoilValue, useSetRecoilState } from "recoil";
 import { Warning } from "@material-ui/icons";
 import { animated, useSpring } from "react-spring";
 
@@ -10,7 +10,6 @@ import { ContentDiv, ContentHeader } from "./utils";
 import ExternalLink from "./ExternalLink";
 import Player51 from "player51";
 import { useEventHandler } from "../utils/hooks";
-import { convertSampleToETA } from "../utils/labels";
 import { useMove } from "react-use-gesture";
 
 import * as atoms from "../recoil/atoms";
@@ -344,32 +343,28 @@ const Player = ({
   src,
   style,
   onClick,
-  overlay = null,
   onLoad = () => {},
   onMouseEnter = () => {},
   onMouseLeave = () => {},
   keep = false,
   activeLabelsAtom,
   colorByLabel,
-  fieldSchema = {},
   filterSelector,
   playerRef,
   selectedLabels,
   onSelectLabel,
+  sampleAtom,
 }) => {
   const isVideo = useRecoilValue(selectors.isVideoDataset);
   const filter = useRecoilValue(filterSelector);
-  const sample = useRecoilValue(atoms.sample(id));
+  const sample = useRecoilValue(sampleAtom);
   const fps = useRecoilValue(atoms.sampleFrameRate(id));
   const overlayOptions = useRecoilValue(selectors.playerOverlayOptions);
   const defaultTargets = useRecoilValue(selectors.defaultTargets);
-  const [savedOverlayOptions, setSavedOverlayOptions] = useRecoilState(
+  const setSavedOverlayOptions = useSetRecoilState(
     atoms.savedPlayerOverlayOptions
   );
   const colorMap = useRecoilValue(selectors.colorMap(!thumbnail));
-  if (overlay === null) {
-    overlay = convertSampleToETA(sample, fieldSchema);
-  }
   const [initLoad, setInitLoad] = useState(false);
   const [error, setError] = useState(null);
   const mimetype =
@@ -386,7 +381,7 @@ const Player = ({
           src,
           type: mimetype,
         },
-        overlay,
+        overlay: sample,
         colorMap,
         activeLabels: activeLabelPaths,
         filter,
@@ -434,13 +429,13 @@ const Player = ({
       player.updateOverlayOptions(overlayOptions);
       if (!thumbnail) {
         player.updateOptions({ selectedObjects: selectedLabels });
-        player.updateOverlay(overlay);
+        player.updateOverlay(sample);
       }
     }
   }, [
     player,
     filter,
-    overlay,
+    sample,
     activeLabelPaths,
     colorMap,
     colorByLabel,

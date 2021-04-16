@@ -20,16 +20,18 @@ _STR_FILTER = "str"
 _LABEL_TAGS = "_label_tags"
 
 
-def get_extended_view(view, filters):
+def get_extended_view(view, filters, count_label_tags=False):
     """Create an extended view with the provided filters.
 
     Args:
         view: a :class:`fiftyone.core.collections.SampleCollection`
         filters: a `dict` of App defined filters
+        count_labels_tags (False): whether to set the hideen `_label_tags` field
+            with counts of tags with respect to all label fields
     """
     label_tags = None
     if filters is None or not filters:
-        return
+        return view
 
     if "tags" in filters:
         tags = filters.get("tags")
@@ -47,7 +49,9 @@ def get_extended_view(view, filters):
     for stage in stages:
         view = view.add_stage(stage)
 
-    view = _add_labels_tags_counts(view)
+    if count_label_tags:
+        view = _add_labels_tags_counts(view)
+
     return view
 
 

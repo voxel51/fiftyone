@@ -357,6 +357,7 @@ const Sample = ({ id }) => {
             position: "absolute",
             cursor: "pointer",
           }}
+          sampleAtom={atoms.sample(id)}
           id={id}
           thumbnail={true}
           activeLabelsAtom={labelAtoms.activeFields(false)}
