@@ -165,7 +165,17 @@ export const PARSER = {
     castFrom: (value) => value,
     castTo: (value) => value,
     parse: (value) => value,
-    validate: () => true,
+    validate: (value) => {
+      if (typeof value !== "string") {
+        return false;
+      }
+      try {
+        JSON.parse(value);
+        return false;
+      } catch {
+        return true;
+      }
+    },
   },
 };
 
