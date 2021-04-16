@@ -1,6 +1,4 @@
-const THRESHOLD = 5;
-
-interface State {
+export interface State {
   hasMore: boolean;
   isLoading: boolean;
   loadMore: boolean;
@@ -9,7 +7,7 @@ interface State {
 
 interface RowStyle {
   display: string;
-  gridTemplateColums: string;
+  gridTemplateColumns: string;
   width: string;
   margin: number;
 }
@@ -18,16 +16,24 @@ interface Row {
   style: RowStyle;
   columns: number;
   samples: string[];
-  aspectRation: number;
-  extraMargin: number;
+  aspectRatio: number;
+  extraMargins: number;
 }
 
 interface Rows {
   rows: Row[];
-  remainder: Row[];
+  remainder: Sample[];
 }
 
-const lastRowRefWidth = (row) => {
+interface Sample {
+  width: number;
+  height: number;
+}
+
+const lastRowRefWidth = (
+  row: Sample[],
+  threshold: number
+): [number, number] => {
   const baseAspectRatio = row[0].width / row[0].height;
   const sameAspectRatios = row
     .slice(1)
@@ -37,21 +43,22 @@ const lastRowRefWidth = (row) => {
     let currentWidth = row[0].width;
     const currentHeight = row[0].height;
     let extraMargins = 0;
-    while (currentWidth / currentHeight < THRESHOLD) {
+    while (currentWidth / currentHeight < threshold) {
       currentWidth += row[0].width;
       extraMargins += 1;
     }
     return [currentWidth, extraMargins];
   } else {
-    return [row[0].height * THRESHOLD, 0];
+    return [row[0].height * threshold, 0];
   }
 };
 
 export default function tile(
-  data: object[],
+  data: Sample[],
   newHasMore: boolean,
   state: State,
-  { rows, remainder: oldRemainder }
+  { rows, remainder: oldRemainder }: Rows,
+  rowAspectRatioThreshold: number
 ): [State, Rows] {
   const samplesToFit = [...oldRemainder, ...data];
   rows = [...rows];
@@ -68,7 +75,7 @@ export default function tile(
       continue;
     }
 
-    if (currentWidth / currentHeight >= THRESHOLD) {
+    if (currentWidth / currentHeight >= rowAspectRatioThreshold) {
       newRows.push(currentRow);
       currentRow = [s];
       currentWidth = s.width;
@@ -90,8 +97,8 @@ export default function tile(
     const [refWidth, extraMargins] =
       !Boolean(newHasMore) &&
       i === String(newRows.length - 1) &&
-      currentWidth / currentHeight < THRESHOLD
-        ? lastRowRefWidth(row)
+      currentWidth / currentHeight < rowAspectRatioThreshold
+        ? lastRowRefWidth(row, rowAspectRatioThreshold)
         : [
             row.reduce(
               (acc, val) => acc + (baseHeight / val.height) * val.width,

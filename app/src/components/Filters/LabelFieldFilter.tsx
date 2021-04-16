@@ -108,7 +108,7 @@ const LabelFilter = ({ expanded, entry, modal }: Props) => {
                 path: cPath,
                 defaultRange: [0, 1],
               })}
-              rangeAtom={confidenceRange({ path: cPath, defaultRange: [0, 1] })}
+              valueAtom={confidenceRange({ path: cPath, defaultRange: [0, 1] })}
             />
           )}
         </div>

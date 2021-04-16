@@ -8,8 +8,8 @@ const boundsAtom = atom<Range>({
   default: [0, 1],
 });
 
-const rangeAtom = atom<Range>({
-  key: "rangeAtom",
+const valueAtom = atom<Range>({
+  key: "valueAtom",
   default: [0, 1],
 });
 
@@ -28,12 +28,14 @@ export default {
   title: "RangeSlider",
 };
 
-export const standard = () => <RangeSlider {...{ rangeAtom, boundsAtom }} />;
+export const standard = () => (
+  <RangeSlider {...{ valueAtom, boundsAtom, color: "#000000" }} />
+);
 
 export const named = () => {
   const props = {
     boundsAtom,
-    rangeAtom,
+    valueAtom,
     noneAtom,
     hasNoneAtom,
     color: "pink",
