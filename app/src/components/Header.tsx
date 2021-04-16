@@ -338,6 +338,7 @@ const Input = styled.input`
 const TshirtForm = () => {
   const [formState, setFormState] = useState({
     email: "",
+    discover: "",
     helping: "",
     improve: "",
     tshirt: false,
@@ -359,7 +360,8 @@ const TshirtForm = () => {
     !(
       formState.email?.length &&
       formState.helping?.length &&
-      formState.improve?.length
+      formState.improve?.length &&
+      formState.discover?.length
     ) || submitted.submitted;
   const submit = () => {
     if (disabled) {
@@ -395,6 +397,10 @@ const TshirtForm = () => {
             value: formState.improve,
           },
           {
+            name: "app_how_did_you_hear_about_us",
+            value: formState.discover,
+          },
+          {
             name: "zoom_call_and_t_shirt",
             value: formState.tshirt,
           },
@@ -403,7 +409,7 @@ const TshirtForm = () => {
             value: appContext,
           },
         ],
-        context: { pageUri: "www.example.com/page", pageName: "Example page" },
+        context: { pageName: "FiftyOne App" },
       }),
     })
       .then((response) => {
@@ -427,6 +433,13 @@ const TshirtForm = () => {
         type="email"
         value={formState.email ?? ""}
         onChange={setFormValue("email")}
+      />
+      <Input
+        key="discover"
+        placeholder={"How did you discover FiftyOne?"}
+        value={formState.discover ?? ""}
+        maxLength={100}
+        onChange={setFormValue("discover")}
       />
       <Input
         key="helping"

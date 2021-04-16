@@ -230,7 +230,6 @@ type ActionsRowProps = {
   modal: boolean;
   playerRef?: any;
   frameNumberRef: MutableRefObject<number>;
-  children: any;
 };
 
 const ActionsRow = ({ modal, playerRef, frameNumberRef }: ActionsRowProps) => {

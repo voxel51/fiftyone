@@ -1,4 +1,4 @@
-export const isElectron = () => {
+export const isElectron = (): boolean => {
   return (
     window.process &&
     window.process.versions &&
@@ -6,6 +6,6 @@ export const isElectron = () => {
   );
 };
 
-export const isFloat = (n) => {
+export const isFloat = (n: number): boolean => {
   return Number(n) === n && n % 1 !== 0;
 };
