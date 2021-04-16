@@ -16,6 +16,7 @@ import * as stringField from "./StringFieldFilter";
 const FilterHeader = styled.div`
   display: flex;
   justify-content: space-between;
+  margin: 3px;
 
   a {
     cursor: pointer;
@@ -87,6 +88,7 @@ const LabelFilter = ({ expanded, entry, modal }: Props) => {
     <animated.div style={{ ...props }}>
       <div ref={ref}>
         <div style={{ margin: 3 }}>
+          {modal && <HiddenLabelFilter entry={entry} />}
           <NamedStringFilter
             color={entry.color}
             name={"Labels"}
@@ -95,7 +97,6 @@ const LabelFilter = ({ expanded, entry, modal }: Props) => {
             selectedValuesAtom={selectedLabels(lPath)}
             excludeAtom={exclude(lPath)}
           />
-          {modal && <HiddenLabelFilter entry={entry} />}
           {CONFIDENCE_LABELS.includes(entry.labelType) && (
             <NamedRangeSlider
               color={entry.color}
