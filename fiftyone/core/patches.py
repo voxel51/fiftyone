@@ -1,5 +1,5 @@
 """
-Patch views.
+Patch methods.
 
 | Copyright 2017-2021, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -8,21 +8,25 @@ Patch views.
 import fiftyone as fo
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
+import fiftyone.core.utils as fou
+
+fouc = fou.lazy_import("fiftyone.utils.eval.coco")
 
 
-_PATCHES_TYPES = (fol.Detections, fol.Polylines)
 _SINGLE_TYPES_MAP = {
     fol.Detections: fol.Detection,
     fol.Polylines: fol.Polyline,
 }
+_PATCHES_TYPES = (fol.Detections, fol.Polylines)
+_NO_MATCH_ID = ""
 
 
 def make_patches_dataset(sample_collection, field, name=None):
     """Creates a dataset that contains one sample per object patch in the
     specified field of the collection.
 
-    Only ``field`` and the default sample fields are included in the new
-    dataset.
+    Fields other than ``field`` and the default sample fields will not be
+    included in the patches dataset.
 
     .. note::
 
@@ -48,24 +52,28 @@ def make_patches_dataset(sample_collection, field, name=None):
     )
 
     patches_view = _make_patches_view(sample_collection, field)
-    _merge_samples(dataset, patches_view)
+    _add_samples(dataset, patches_view)
 
     return dataset
 
 
-def make_evaluation_dataset(
-    sample_collection, eval_key, crowd_attr=None, name=None
-):
+def make_evaluation_dataset(sample_collection, eval_key, name=None):
     """Creates a dataset based on the results of the evaluation with the given
     key that contains one sample for each true positive, false positive, and
     false negative example in the input collection, respectively.
+
+    If multiple predictions are matched to a ground truth object (e.g., if the
+    evaluation protocol includes a crowd annotation), then all matched
+    predictions will be stored in the single sample along with the ground truth
+    object.
 
     True positive examples will result in samples with both their ground truth
     and predicted fields populated, while false positive/negative examples will
     only have their predicted/ground truth fields populated, respectively.
 
     The returned dataset will also have top-level ``type`` and ``iou`` fields
-    populated based on the evaluation results for that example.
+    populated based on the evaluation results for that example, as well as a
+    ``crowd`` field if the evaluation protocol defined a crowd attribute.
 
     .. note::
 
@@ -78,21 +86,24 @@ def make_evaluation_dataset(
         eval_key: an evaluation key that corresponds to the evaluation of
             ground truth/predicted fields that are of type
             :class:`fiftyone.core.labels.Detections`
-        crowd_attr (None): the name or ``embedded.field.name`` of the crowd
-            attribute for the ground truth objects. If provided, a ``crowd``
-            field will be populated on the samples of the returned dataset
         name (None): a name for the returned dataset
 
     Returns:
         a :class:`fiftyone.core.dataset.Dataset`
     """
+    # Parse evaluation info
     eval_info = sample_collection.get_evaluation_info(eval_key)
     pred_field = eval_info.config.pred_field
     gt_field = eval_info.config.gt_field
+    if isinstance(eval_info.config, fouc.COCOEvaluationConfig):
+        crowd_attr = eval_info.config.iscrowd
+    else:
+        crowd_attr = None
 
-    pred_type = _get_single_label_field_type(sample_collection, pred_field)
-    gt_type = _get_single_label_field_type(sample_collection, gt_field)
+    pred_type = sample_collection._get_label_field_type(pred_field)
+    gt_type = sample_collection._get_label_field_type(gt_field)
 
+    # Setup dataset with correct schema
     dataset = fo.Dataset(name)
     dataset.add_sample_field(
         pred_field, fof.EmbeddedDocumentField, embedded_doc_type=pred_type
@@ -105,22 +116,31 @@ def make_evaluation_dataset(
     if crowd_attr is not None:
         dataset.add_sample_field("crowd", fof.BooleanField)
 
-    pred_view = _make_patches_view(sample_collection, pred_field)
-    pred_view = _upgrade_eval(pred_view, pred_field, eval_key)
-    _merge_samples(dataset, pred_view)
+    # Add ground truth patches
+    gt_view = _make_eval_view(
+        sample_collection, eval_key, gt_field, crowd_attr=crowd_attr
+    )
+    _write_samples(dataset, gt_view)
 
-    gt_view = _make_patches_view(sample_collection, gt_field)
-    gt_view = _upgrade_eval(gt_view, gt_field, eval_key, upgrade_id=True)
+    # Merge matched predictions
+    _merge_matched_labels(dataset, sample_collection, eval_key, pred_field)
 
-    if crowd_attr is not None:
-        crowd_path = gt_field + "." + crowd_attr
-        gt_view = gt_view.mongo(
-            [{"$set": {"crowd": {"$toBool": "$" + crowd_path}}}]
-        )
-
-    _merge_samples(dataset, gt_view)
+    # Add unmatched predictions
+    unmatched_pred_view = _make_eval_view(
+        sample_collection, eval_key, pred_field, skip_matched=True
+    )
+    _add_samples(dataset, unmatched_pred_view)
 
     return dataset
+
+
+def _get_single_label_field_type(sample_collection, field):
+    label_type = sample_collection._get_label_field_type(field)
+
+    if label_type not in _SINGLE_TYPES_MAP:
+        raise ValueError("Unsupported label field type %s" % label_type)
+
+    return _SINGLE_TYPES_MAP[label_type]
 
 
 def _make_patches_view(sample_collection, field, keep_label_lists=False):
@@ -155,56 +175,145 @@ def _make_patches_view(sample_collection, field, keep_label_lists=False):
     return sample_collection.select_fields(field).mongo(pipeline)
 
 
-def _get_single_label_field_type(sample_collection, field):
-    label_type = sample_collection._get_label_field_type(field)
-
-    if label_type not in _SINGLE_TYPES_MAP:
-        raise ValueError("Unsupported label field type %s" % label_type)
-
-    return _SINGLE_TYPES_MAP[label_type]
-
-
-def _upgrade_eval(view, field, eval_key, upgrade_id=False):
+def _make_eval_view(
+    sample_collection, eval_key, field, skip_matched=False, crowd_attr=None
+):
     eval_type = field + "." + eval_key
     eval_id = field + "." + eval_key + "_id"
     eval_iou = field + "." + eval_key + "_iou"
 
-    pipeline = []
+    view = _make_patches_view(sample_collection, field)
 
-    if upgrade_id:
-        pipeline.append(
-            {
-                "$set": {
-                    "_id": {
-                        "$cond": {
-                            "if": {"$ne": ["$" + eval_id, ""]},
-                            "then": {"$toObjectId": "$" + eval_id},
-                            "else": "$_id",
-                        }
-                    }
-                }
-            }
+    if skip_matched:
+        view = view.mongo(
+            [{"$match": {"$expr": {"$eq": ["$" + eval_id, _NO_MATCH_ID]}}}]
         )
 
-    pipeline.extend(
+    view = view.mongo(
         [
             {"$set": {"type": "$" + eval_type}},
             {"$set": {"iou": "$" + eval_iou}},
-            {"$unset": [eval_type, eval_id, eval_iou]},
         ]
     )
 
-    return view.mongo(pipeline)
+    # optional: remove eval info from detections
+    # {"$unset": [eval_type, eval_id, eval_iou]}
+
+    if crowd_attr is not None:
+        crowd_path1 = "$" + field + "." + crowd_attr
+        crowd_path2 = "$" + field + ".attributes." + crowd_attr + ".value"
+        view = view.mongo(
+            [
+                {
+                    "$set": {
+                        "crowd": {
+                            "$cond": {
+                                "if": {"$gt": [crowd_path1, None]},
+                                "then": {"$toBool": crowd_path1},
+                                "else": {
+                                    "$cond": {
+                                        "if": {"$gt": [crowd_path2, None]},
+                                        "then": {"$toBool": crowd_path2},
+                                        "else": None,
+                                    }
+                                },
+                            }
+                        }
+                    }
+                }
+            ]
+        )
+
+    return _upgrade_labels(view, field)
 
 
-def _merge_samples(dataset, src_collection):
+def _upgrade_labels(view, field):
+    label_type = view._get_label_field_type(field)
+    tmp_field = "_" + field
+    list_field = field + "." + label_type._LABEL_LIST_FIELD
+    return view.mongo(
+        [
+            {"$set": {tmp_field: "$" + field}},
+            {"$unset": field},
+            {"$set": {field + "._cls": label_type.__name__}},
+            {"$set": {list_field: ["$" + tmp_field]}},
+            {"$unset": tmp_field},
+        ]
+    )
+
+
+def _merge_matched_labels(dataset, src_collection, eval_key, field):
+    field_type = src_collection._get_label_field_type(field)
+
+    list_field = field + "." + field_type._LABEL_LIST_FIELD
+    eval_id = eval_key + "_id"
+    foreign_key = "key"
+
+    lookup_pipeline = src_collection._pipeline(detach_frames=True)
+    lookup_pipeline.extend(
+        [
+            {"$project": {list_field: 1}},
+            {"$unwind": "$" + list_field},
+            {"$replaceRoot": {"newRoot": "$" + list_field}},
+            {
+                "$match": {
+                    "$expr": {
+                        "$and": [
+                            {"$ne": ["$" + eval_id, _NO_MATCH_ID]},
+                            {
+                                "$eq": [
+                                    {"$toObjectId": "$" + eval_id},
+                                    "$$" + foreign_key,
+                                ]
+                            },
+                        ]
+                    }
+                }
+            },
+        ]
+    )
+
+    pipeline = [
+        {"$set": {field + "._cls": field_type.__name__}},
+        {
+            "$lookup": {
+                "from": src_collection._dataset._sample_collection_name,
+                "let": {foreign_key: "$_id"},
+                "pipeline": lookup_pipeline,
+                "as": list_field,
+            }
+        },
+        {
+            "$set": {
+                field: {
+                    "$cond": {
+                        "if": {"$gt": [{"$size": "$" + list_field}, 0]},
+                        "then": "$" + field,
+                        "else": None,
+                    }
+                }
+            }
+        },
+        {"$out": dataset._sample_collection_name},
+    ]
+
+    dataset._aggregate(pipeline=pipeline, attach_frames=False)
+
+
+def _write_samples(dataset, src_collection):
+    pipeline = src_collection._pipeline(detach_frames=True)
+    pipeline.append({"$out": dataset._sample_collection_name})
+    src_collection._dataset._aggregate(pipeline=pipeline, attach_frames=False)
+
+
+def _add_samples(dataset, src_collection):
     pipeline = src_collection._pipeline(detach_frames=True)
     pipeline.append(
         {
             "$merge": {
                 "into": dataset._sample_collection_name,
                 "on": "_id",
-                "whenMatched": "merge",
+                "whenMatched": "keepExisting",
                 "whenNotMatched": "insert",
             }
         }

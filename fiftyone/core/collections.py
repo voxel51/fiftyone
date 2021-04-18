@@ -1093,8 +1093,8 @@ class SampleCollection(object):
         """Creates a dataset that contains one sample per object patch in the
         specified field of the collection.
 
-        Only ``field`` and the default sample fields are included in the new
-        dataset.
+        Fields other than ``field`` and the default sample fields will not be
+        included in the patches dataset.
 
         .. note::
 
@@ -1384,11 +1384,16 @@ class SampleCollection(object):
         """
         return foev.EvaluationMethod.get_run_info(self, eval_key)
 
-    def to_evaluation_dataset(self, eval_key, crowd_attr=None, name=None):
+    def to_evaluation_dataset(self, eval_key, name=None):
         """Creates a dataset based on the results of the evaluation with the
         given key that contains one sample for each true positive, false
         positive, and false negative example in the input collection,
         respectively.
+
+        If multiple predictions are matched to a ground truth object (e.g., if
+        the evaluation protocol includes a crowd annotation), then all matched
+        predictions will be stored in the single sample along with the ground
+        truth object.
 
         True positive examples will result in samples with both their ground
         truth and predicted fields populated, while false positive/negative
@@ -1396,7 +1401,9 @@ class SampleCollection(object):
         respectively.
 
         The returned dataset will also have top-level ``type`` and ``iou``
-        fields populated based on the evaluation results for that example.
+        fields populated based on the evaluation results for that example, as
+        well as a ``crowd`` field if the evaluation protocol defined a crowd
+        attribute.
 
         .. note::
 
@@ -1407,17 +1414,12 @@ class SampleCollection(object):
             eval_key: an evaluation key that corresponds to the evaluation of
                 ground truth/predicted fields that are of type
                 :class:`fiftyone.core.labels.Detections`
-            crowd_attr (None): the name or ``embedded.field.name`` of the crowd
-                attribute for the ground truth objects. If provided, a ``crowd``
-                field will be populated on the samples of the returned dataset
             name (None): a name for the returned dataset
 
         Returns:
             a :class:`fiftyone.core.dataset.Dataset`
         """
-        return fop.make_evaluation_dataset(
-            self, eval_key, name=name, crowd_attr=crowd_attr
-        )
+        return fop.make_evaluation_dataset(self, eval_key, name=name)
 
     def load_evaluation_results(self, eval_key):
         """Loads the :class:`fiftyone.core.evaluation.EvaluationResults` for
