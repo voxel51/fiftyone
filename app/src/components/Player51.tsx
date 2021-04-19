@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef, MutableRefObject } from "react";
 import ReactDOM from "react-dom";
 import styled from "styled-components";
 import {
-  RecoilRootProps,
+  RecoilState,
   RecoilValueReadOnly,
   SerializableParam,
   useRecoilValue,
@@ -14,6 +14,7 @@ import { animated, useSpring } from "react-spring";
 
 import { ContentDiv, ContentHeader } from "./utils";
 import ExternalLink from "./ExternalLink";
+import { LabelFilters } from "./Filters/LabelFieldFilters.state";
 import Player51 from "player51";
 import { useEventHandler } from "../utils/hooks";
 import { useMove } from "react-use-gesture";
@@ -348,7 +349,7 @@ interface PlayerProps {
   id: string;
   colorByLabel: boolean;
   keep?: boolean;
-  filterSelector: RecoilValueReadOnly<SerializableParam>;
+  filterSelector: RecoilState<LabelFilters>;
   onClick: (event: Event) => void;
   onLoad: (event: Event) => void;
   onMouseEnter?: (event: Event) => void;

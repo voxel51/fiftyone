@@ -1,10 +1,5 @@
 import { useCallback, useContext, useEffect, useRef, useState } from "react";
-import {
-  useRecoilCallback,
-  useRecoilState,
-  useSetRecoilState,
-  useRecoilValue,
-} from "recoil";
+import { useRecoilCallback, useRecoilValue } from "recoil";
 import ResizeObserver from "resize-observer-polyfill";
 import ReactGA from "react-ga";
 import { ThemeContext } from "styled-components";
@@ -149,7 +144,7 @@ export const useVideoData = (socket, id, callback = null) => {
         set(atoms.sampleFrameRate(id), fps);
         callback && callback({ labels, frames, counter }, ...args);
       };
-      attachDisposableHandler(socket, event, handler);
+      attachDisposableHandler(event, handler);
       socket.send(packageMessage("get_video_data", { _id: id }));
       set(atoms.sampleVideoDataRequested(id), counter);
     },

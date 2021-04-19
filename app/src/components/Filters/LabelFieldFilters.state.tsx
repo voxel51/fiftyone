@@ -41,7 +41,7 @@ interface Label {
   label?: number;
 }
 
-type LabelFilters = {
+export type LabelFilters = {
   [key: string]: (label: Label) => boolean;
 };
 

@@ -516,6 +516,20 @@ class StateHandler(tornado.websocket.WebSocketHandler):
 
         _write_message(message, only=self)
 
+    @classmethod
+    async def on_sample(cls, self, sample_id):
+        state = fos.StateDescription.from_dict(StateHandler.state)
+        if state.view is not None:
+            view = state.view
+        elif state.dataset is not None:
+            view = state.dataset.view()
+
+        view = view.select(sample_id)
+
+        results, more = await _get_samples(cls.sample_collection(), view, 1, 0)
+
+        message = {"type": "sample", "sample": results[0]}
+
     @staticmethod
     async def on_update(caller, state, ignore_polling_client=None):
         """Event for state updates. Sends an update message to all active
@@ -1120,15 +1134,22 @@ async def _numeric_histograms(coll, view, schema, prefix=""):
     return aggregations, fields, ticks
 
 
-async def _get_sample_data(col, view, page_length, page):
+async def _get_samples(col, view, page_length, page):
     pipeline = view._pipeline(detach_frames=True)
 
     samples = await foo.aggregate(col, pipeline).to_list(page_length + 1)
+
     convert(samples)
     more = False
     if len(samples) > page_length:
         samples = samples[:page_length]
         more = page + 1
+
+    return samples, more
+
+
+async def _get_sample_data(col, view, page_length, page):
+    samples, more = await _get_samples(col, view, page_length, page)
 
     results = [{"sample": s} for s in samples]
     for r in results:

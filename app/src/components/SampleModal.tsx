@@ -388,21 +388,22 @@ const SampleModal = ({ onClose }: Props, ref) => {
           />
         ) : (
           <Player51
+            activeLabelsAtom={labelAtoms.activeFields(true)}
+            colorByLabel={colorByLabel}
             key={sampleUrl} // force re-render when this changes
             src={sampleUrl}
+            filterSelector={labelFilters(true)}
+            id={sample._id}
+            keep={true}
             onLoad={handleResize}
+            onSelectLabel={selectLabel}
+            playerRef={playerRef}
+            sampleAtom={atoms.sampleModal(sample._id)}
+            selectedLabels={selectedLabelIds}
             style={{
               position: "relative",
               ...playerStyle,
             }}
-            id={sample._id}
-            keep={true}
-            colorByLabel={colorByLabel}
-            activeLabelsAtom={labelAtoms.activeFields(true)}
-            filterSelector={labelFilters(true)}
-            playerRef={playerRef}
-            selectedLabels={selectedLabelIds}
-            onSelectLabel={selectLabel}
           />
         )}
         {index > 0 ? (

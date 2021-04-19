@@ -1,4 +1,6 @@
-export const attachDisposableHandler = (socket, type, handler) => {
+import socket from "../shared/connection";
+
+export const attachDisposableHandler = (type, handler) => {
   const wrapper = ({ data }) => {
     data = JSON.parse(data);
     if (data.type === type) {
@@ -14,4 +16,22 @@ export const packageMessage = (type, data) => {
     ...data,
     type,
   });
+};
+
+const requestWrapper = (type, handler) => ({ data }) => {
+  data = JSON.parse(data);
+  data.type === type && handler(data);
+};
+
+export const request = (type, args) => {
+  const promise = new Promise((resolve) => {
+    const listener = requestWrapper(type, (data) => {
+      socket.removeEventListener("message", listener);
+      resolve(data);
+    });
+    socket.addEventListener("message", listener);
+    socket.send(packageMessage(type, args));
+  });
+
+  return promise;
 };
