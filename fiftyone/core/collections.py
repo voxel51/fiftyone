@@ -1089,17 +1089,18 @@ class SampleCollection(object):
             handle_missing=handle_missing,
         )
 
-    def to_patches_dataset(self, field, name=None):
+    def to_patches(self, field, name=None):
         """Creates a dataset that contains one sample per object patch in the
         specified field of the collection.
 
         Fields other than ``field`` and the default sample fields will not be
-        included in the patches dataset.
+        included in the returned dataset. A ``sample_id`` field will be added
+        that records the sample ID from which each patch was taken.
 
         .. note::
 
-            The returned dataset is independent from the input collection, so
-            modifying its contents will not affect the input collection.
+            The returned dataset is independent from the source collection;
+            modifying it will not affect the source collection.
 
         Args:
             field: the patches field, which must be of type
@@ -1384,36 +1385,37 @@ class SampleCollection(object):
         """
         return foev.EvaluationMethod.get_run_info(self, eval_key)
 
-    def to_evaluation_dataset(self, eval_key, name=None):
+    def to_evaluation_patches(self, eval_key, name=None):
         """Creates a dataset based on the results of the evaluation with the
         given key that contains one sample for each true positive, false
-        positive, and false negative example in the input collection,
-        respectively.
-
-        If multiple predictions are matched to a ground truth object (e.g., if
-        the evaluation protocol includes a crowd annotation), then all matched
-        predictions will be stored in the single sample along with the ground
-        truth object.
+        positive, and false negative example in the collection, respectively.
 
         True positive examples will result in samples with both their ground
         truth and predicted fields populated, while false positive/negative
-        examples will only have their predicted/ground truth fields populated,
-        respectively.
+        examples will only have one of their corresponding predicted/ground
+        truth fields populated, respectively.
+
+        If multiple predictions are matched to a ground truth object (e.g., if
+        the evaluation protocol includes a crowd attribute), then all matched
+        predictions will be stored in the single sample along with the ground
+        truth object.
 
         The returned dataset will also have top-level ``type`` and ``iou``
         fields populated based on the evaluation results for that example, as
-        well as a ``crowd`` field if the evaluation protocol defined a crowd
+        well as a ``sample_id`` field recording the sample ID of the example,
+        and a ``crowd`` field if the evaluation protocol defines a crowd
         attribute.
 
         .. note::
 
-            The returned dataset is independent from the input collection, so
-            modifying its contents will not affect the input collection.
+            The returned dataset is independent from the source collection;
+            modifying it will not affect the source collection.
 
         Args:
             eval_key: an evaluation key that corresponds to the evaluation of
                 ground truth/predicted fields that are of type
-                :class:`fiftyone.core.labels.Detections`
+                :class:`fiftyone.core.labels.Detections` or
+                :class:`fiftyone.core.labels.Polylines`
             name (None): a name for the returned dataset
 
         Returns:

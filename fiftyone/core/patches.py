@@ -26,12 +26,13 @@ def make_patches_dataset(sample_collection, field, name=None):
     specified field of the collection.
 
     Fields other than ``field`` and the default sample fields will not be
-    included in the patches dataset.
+    included in the returned dataset. A ``sample_id`` field will be added that
+    records the sample ID from which each patch was taken.
 
     .. note::
 
-        The returned dataset is independent from the input collection, so
-        modifying its contents will not affect the input collection.
+        The returned dataset is independent from the source collection;
+        modifying it will not affect the source collection.
 
     Args:
         sample_collection: a
@@ -47,12 +48,13 @@ def make_patches_dataset(sample_collection, field, name=None):
     field_type = _get_single_label_field_type(sample_collection, field)
 
     dataset = fo.Dataset(name)
+    dataset.add_sample_field("sample_id", fof.StringField)
     dataset.add_sample_field(
         field, fof.EmbeddedDocumentField, embedded_doc_type=field_type
     )
 
     patches_view = _make_patches_view(sample_collection, field)
-    _add_samples(dataset, patches_view)
+    _write_samples(dataset, patches_view)
 
     return dataset
 
@@ -62,30 +64,33 @@ def make_evaluation_dataset(sample_collection, eval_key, name=None):
     key that contains one sample for each true positive, false positive, and
     false negative example in the input collection, respectively.
 
+    True positive examples will result in samples with both their ground truth
+    and predicted fields populated, while false positive/negative examples will
+    only have one of their corresponding predicted/ground truth fields
+    populated, respectively.
+
     If multiple predictions are matched to a ground truth object (e.g., if the
-    evaluation protocol includes a crowd annotation), then all matched
+    evaluation protocol includes a crowd attribute), then all matched
     predictions will be stored in the single sample along with the ground truth
     object.
 
-    True positive examples will result in samples with both their ground truth
-    and predicted fields populated, while false positive/negative examples will
-    only have their predicted/ground truth fields populated, respectively.
-
     The returned dataset will also have top-level ``type`` and ``iou`` fields
     populated based on the evaluation results for that example, as well as a
-    ``crowd`` field if the evaluation protocol defined a crowd attribute.
+    ``sample_id`` field recording the sample ID of the example, and a ``crowd``
+    field if the evaluation protocol defines a crowd attribute.
 
     .. note::
 
-        The returned dataset is independent from the input collection, so
-        modifying its contents will not affect the input collection.
+        The returned dataset is independent from the source collection;
+        modifying it will not affect the source collection.
 
     Args:
         sample_collection: a
             :class:`fiftyone.core.collections.SampleCollection`
         eval_key: an evaluation key that corresponds to the evaluation of
             ground truth/predicted fields that are of type
-            :class:`fiftyone.core.labels.Detections`
+            :class:`fiftyone.core.labels.Detections` or
+            :class:`fiftyone.core.labels.Polylines`
         name (None): a name for the returned dataset
 
     Returns:
@@ -93,6 +98,7 @@ def make_evaluation_dataset(sample_collection, eval_key, name=None):
     """
     # Parse evaluation info
     eval_info = sample_collection.get_evaluation_info(eval_key)
+    eval_collection = sample_collection.load_evaluation_view(eval_key)
     pred_field = eval_info.config.pred_field
     gt_field = eval_info.config.gt_field
     if isinstance(eval_info.config, fouc.COCOEvaluationConfig):
@@ -100,8 +106,8 @@ def make_evaluation_dataset(sample_collection, eval_key, name=None):
     else:
         crowd_attr = None
 
-    pred_type = sample_collection._get_label_field_type(pred_field)
-    gt_type = sample_collection._get_label_field_type(gt_field)
+    pred_type = eval_collection._get_label_field_type(pred_field)
+    gt_type = eval_collection._get_label_field_type(gt_field)
 
     # Setup dataset with correct schema
     dataset = fo.Dataset(name)
@@ -111,6 +117,7 @@ def make_evaluation_dataset(sample_collection, eval_key, name=None):
     dataset.add_sample_field(
         gt_field, fof.EmbeddedDocumentField, embedded_doc_type=gt_type
     )
+    dataset.add_sample_field("sample_id", fof.StringField)
     dataset.add_sample_field("type", fof.StringField)
     dataset.add_sample_field("iou", fof.FloatField)
     if crowd_attr is not None:
@@ -118,16 +125,16 @@ def make_evaluation_dataset(sample_collection, eval_key, name=None):
 
     # Add ground truth patches
     gt_view = _make_eval_view(
-        sample_collection, eval_key, gt_field, crowd_attr=crowd_attr
+        eval_collection, eval_key, gt_field, crowd_attr=crowd_attr
     )
     _write_samples(dataset, gt_view)
 
     # Merge matched predictions
-    _merge_matched_labels(dataset, sample_collection, eval_key, pred_field)
+    _merge_matched_labels(dataset, eval_collection, eval_key, pred_field)
 
     # Add unmatched predictions
     unmatched_pred_view = _make_eval_view(
-        sample_collection, eval_key, pred_field, skip_matched=True
+        eval_collection, eval_key, pred_field, skip_matched=True
     )
     _add_samples(dataset, unmatched_pred_view)
 
@@ -159,9 +166,11 @@ def _make_patches_view(sample_collection, field, keep_label_lists=False):
             % (label_type, _PATCHES_TYPES)
         )
 
-    # One sample per patch, upgrade label ID to sample ID
+    # One sample per patch, upgrade label ID to sample ID, and store sample ID
+    # in `sample_id` field
     pipeline = [
         {"$unwind": "$" + list_field},
+        {"$set": {"sample_id": {"$toString": "$_id"}}},
         {"$set": {"_id": "$" + list_field + "._id"}},
     ]
 
@@ -196,9 +205,6 @@ def _make_eval_view(
         ]
     )
 
-    # optional: remove eval info from detections
-    # {"$unset": [eval_type, eval_id, eval_iou]}
-
     if crowd_attr is not None:
         crowd_path1 = "$" + field + "." + crowd_attr
         crowd_path2 = "$" + field + ".attributes." + crowd_attr + ".value"
@@ -228,15 +234,20 @@ def _make_eval_view(
 
 
 def _upgrade_labels(view, field):
-    label_type = view._get_label_field_type(field)
     tmp_field = "_" + field
-    list_field = field + "." + label_type._LABEL_LIST_FIELD
+    label_type = view._get_label_field_type(field)
     return view.mongo(
         [
             {"$set": {tmp_field: "$" + field}},
             {"$unset": field},
-            {"$set": {field + "._cls": label_type.__name__}},
-            {"$set": {list_field: ["$" + tmp_field]}},
+            {
+                "$set": {
+                    field: {
+                        "_cls": label_type.__name__,
+                        label_type._LABEL_LIST_FIELD: ["$" + tmp_field],
+                    }
+                }
+            },
             {"$unset": tmp_field},
         ]
     )
