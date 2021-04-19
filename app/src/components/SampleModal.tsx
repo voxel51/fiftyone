@@ -397,10 +397,8 @@ const SampleModal = ({ onClose }: Props, ref) => {
             }}
             id={sample._id}
             keep={true}
-            overlay={videoLabels}
             colorByLabel={colorByLabel}
             activeLabelsAtom={labelAtoms.activeFields(true)}
-            fieldSchema={fieldSchema}
             filterSelector={labelFilters(true)}
             playerRef={playerRef}
             selectedLabels={selectedLabelIds}

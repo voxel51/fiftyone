@@ -1,8 +1,14 @@
 import mime from "mime-types";
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, MutableRefObject } from "react";
 import ReactDOM from "react-dom";
 import styled from "styled-components";
-import { useRecoilValue, useSetRecoilState } from "recoil";
+import {
+  RecoilRootProps,
+  RecoilValueReadOnly,
+  SerializableParam,
+  useRecoilValue,
+  useSetRecoilState,
+} from "recoil";
 import { Warning } from "@material-ui/icons";
 import { animated, useSpring } from "react-spring";
 
@@ -157,14 +163,14 @@ const AttrInfo = ({ field, id, frameNumber, children = null }) => {
     return null;
   }
 
-  const defaults = entries.filter(([name]) =>
+  const defaults: [string, string | number | null] = entries.filter(([name]) =>
     ["label", "confidence"].includes(name)
   );
 
   const other = entries.filter(
     ([name]) => !["label", "confidence"].includes(name)
   );
-  const mapper = ([name, value]) => (
+  const mapper = ([name, value]: [string, string | number | null]) => (
     <ContentItem key={name} name={name} value={value} />
   );
 
@@ -215,7 +221,7 @@ const KeypointInfo = ({ info }) => {
   );
 };
 
-const MaskInfo = ({ info }) => {
+const SegmentationInfo = ({ info }) => {
   const targetValue = useTarget(info.field, info.target);
 
   return (
@@ -254,11 +260,11 @@ const Border = ({ color, id }) => {
 };
 
 const OVERLAY_INFO = {
-  classification: ClassificationInfo,
-  detection: DetectionInfo,
-  keypoints: KeypointInfo,
-  mask: MaskInfo,
-  polyline: PolylineInfo,
+  Classification: ClassificationInfo,
+  Detection: DetectionInfo,
+  Keypoint: KeypointInfo,
+  Segmentation: SegmentationInfo,
+  Polyline: PolylineInfo,
 };
 
 const TagInfo = ({ field, id, frameNumber }) => {
@@ -337,16 +343,35 @@ const TooltipInfo = ({ player, moveRef }) => {
     : null;
 };
 
+interface PlayerProps {
+  activeLabelsAtom: RecoilValueReadOnly<string[]>;
+  id: string;
+  colorByLabel: boolean;
+  keep?: boolean;
+  filterSelector: RecoilValueReadOnly<SerializableParam>;
+  onClick: (event: Event) => void;
+  onLoad: (event: Event) => void;
+  onMouseEnter?: (event: Event) => void;
+  onMouseLeave?: (event: Event) => void;
+  onSelectLabel?: ({ id, name }: { id: string; name: string }) => void;
+  playerRef: MutableRefObject<any>;
+  sampleAtom: RecoilValueReadOnly<SerializableParam>;
+  selectedLabels: string[];
+  src: string;
+  style?: any;
+  thumbnail?: boolean;
+}
+
 const Player = ({
-  thumbnail,
   id,
   src,
+  keep = false,
+  thumbnail = false,
   style,
   onClick,
   onLoad = () => {},
   onMouseEnter = () => {},
   onMouseLeave = () => {},
-  keep = false,
   activeLabelsAtom,
   colorByLabel,
   filterSelector,
@@ -354,7 +379,7 @@ const Player = ({
   selectedLabels,
   onSelectLabel,
   sampleAtom,
-}) => {
+}: PlayerProps) => {
   const isVideo = useRecoilValue(selectors.isVideoDataset);
   const filter = useRecoilValue(filterSelector);
   const sample = useRecoilValue(sampleAtom);
@@ -375,32 +400,28 @@ const Player = ({
   const colorGenerator = useRecoilValue(selectors.colorGenerator(!thumbnail));
 
   const [player] = useState(() => {
-    try {
-      return new Player51({
-        media: {
-          src,
-          type: mimetype,
-        },
-        overlay: sample,
-        colorMap,
-        activeLabels: activeLabelPaths,
-        filter,
-        colorGenerator,
-        enableOverlayOptions: {
-          attrRenderMode: false,
-          attrsOnlyOnClick: false,
-          attrRenderBox: false,
-        },
-        defaultOverlayOptions: {
-          ...overlayOptions,
-          action: "hover",
-          attrRenderMode: "attr-value",
-          smoothMasks: false,
-        },
-      });
-    } catch (e) {
-      setError(`This file type (${mimetype}) is not supported.`);
-    }
+    return new Player51({
+      media: {
+        src,
+        type: mimetype,
+      },
+      sample,
+      colorMap,
+      activeLabels: activeLabelPaths,
+      filter,
+      colorGenerator,
+      enableOverlayOptions: {
+        attrRenderMode: false,
+        attrsOnlyOnClick: false,
+        attrRenderBox: false,
+      },
+      defaultOverlayOptions: {
+        ...overlayOptions,
+        action: "hover",
+        attrRenderMode: "attr-value",
+        smoothMasks: false,
+      },
+    });
   });
 
   if (playerRef) {
@@ -428,8 +449,8 @@ const Player = ({
       });
       player.updateOverlayOptions(overlayOptions);
       if (!thumbnail) {
-        player.updateOptions({ selectedObjects: selectedLabels });
-        player.updateOverlay(sample);
+        player.updateOptions({ selectedLabels });
+        player.updateSample(sample);
       }
     }
   }, [
