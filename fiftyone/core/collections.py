@@ -4708,24 +4708,30 @@ class SampleCollection(object):
         return any(issubclass(label_type, t) for t in label_type_or_types)
 
     def _get_label_fields(self):
-        fields = list(
+        fields = self._get_sample_label_fields()
+
+        if self.media_type == fom.VIDEO:
+            fields.extend(self._get_frame_label_fields())
+
+        return fields
+
+    def _get_sample_label_fields(self):
+        return list(
             self.get_field_schema(
                 ftype=fof.EmbeddedDocumentField, embedded_doc_type=fol.Label
             ).keys()
         )
 
-        if self.media_type == fom.VIDEO:
-            fields.extend(
-                [
-                    self._FRAMES_PREFIX + field
-                    for field in self.get_frame_field_schema(
-                        ftype=fof.EmbeddedDocumentField,
-                        embedded_doc_type=fol.Label,
-                    ).keys()
-                ]
-            )
+    def _get_frame_label_fields(self):
+        if self.media_type != fom.VIDEO:
+            return None
 
-        return fields
+        return [
+            self._FRAMES_PREFIX + field
+            for field in self.get_frame_field_schema(
+                ftype=fof.EmbeddedDocumentField, embedded_doc_type=fol.Label
+            ).keys()
+        ]
 
     def _get_label_field_type(self, field_name):
         field_name, is_frame_field = self._handle_frame_field(field_name)
