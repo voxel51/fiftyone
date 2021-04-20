@@ -1521,7 +1521,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             )
 
     def delete_labels(
-        self, labels=None, samples=None, ids=None, tags=None, fields=None
+        self, labels=None, ids=None, tags=None, view=None, fields=None
     ):
         """Deletes the specified labels from the dataset.
 
@@ -1531,13 +1531,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             dicts in the format returned by
             :meth:`fiftyone.core.session.Session.selected_labels`
 
-        -   Provide the ``samples`` argument to delete all of the labels in a
-            collection. This syntax is useful if you have constructed a
-            :class:`fiftyone.core.view.DatasetView` defining the labels to
-            delete
-
         -   Provide the ``ids`` or ``tags`` arguments to specify the labels to
             delete via their IDs and/or tags
+
+        -   Provide the ``view`` argument to delete all of the labels in a view
+            into this dataset. This syntax is useful if you have constructed a
+            :class:`fiftyone.core.view.DatasetView` defining the labels to
+            delete
 
         Additionally, you can specify the ``fields`` argument to restrict
         deletion to specific field(s), either for efficiency or to ensure that
@@ -1548,21 +1548,21 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             labels (None): a list of dicts specifying the labels to delete in
                 the format returned by
                 :meth:`fiftyone.core.session.Session.selected_labels`
-            samples (None): a :class:`fiftyone.core.samples.SampleCollection`
-                containing the labels to delete
             ids (None): an ID or iterable of IDs of the labels to delete
             tags (None): a tag or iterable of tags of the labels to delete
+            view (None): a :class:`fiftyone.core.view.DatasetView` into this
+                dataset containing the labels to delete
             fields (None): a field or iterable of fields from which to delete
                 labels
         """
         if labels is not None:
             self._delete_labels(labels, fields=fields)
 
-        if samples is None and ids is None and tags is None:
+        if ids is None and tags is None and view is None:
             return
 
-        if samples is not None and samples._dataset is not self:
-            raise ValueError("`samples` must be a view into the same dataset")
+        if view is not None and view._dataset is not self:
+            raise ValueError("`view` must be a view into the same dataset")
 
         if etau.is_str(ids):
             ids = [ids]
@@ -1581,11 +1581,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         sample_ops = []
         frame_ops = []
         for field in fields:
-            if samples is not None:
-                _, id_path = samples._get_label_field_path(field, "_id")
-                label_ids = samples.values(id_path, unwind=True)
+            if view is not None:
+                _, id_path = view._get_label_field_path(field, "_id")
+                view_ids = view.values(id_path, unwind=True)
             else:
-                label_ids = None
+                view_ids = None
 
             label_type = self._get_label_field_type(field)
             field, is_frame_field = self._handle_frame_field(field)
@@ -1594,13 +1594,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             if issubclass(label_type, fol._LABEL_LIST_FIELDS):
                 array_field = field + "." + label_type._LABEL_LIST_FIELD
 
-                if label_ids is not None:
+                if view_ids is not None:
                     ops.append(
                         UpdateMany(
                             {},
                             {
                                 "$pull": {
-                                    array_field: {"_id": {"$in": label_ids}}
+                                    array_field: {"_id": {"$in": view_ids}}
                                 }
                             },
                         )
@@ -1627,10 +1627,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                         )
                     )
             else:
-                if label_ids is not None:
+                if view_ids is not None:
                     ops.append(
                         UpdateMany(
-                            {field + "._id": {"$in": label_ids}},
+                            {field + "._id": {"$in": view_ids}},
                             {"$set": {field: None}},
                         )
                     )
@@ -1658,17 +1658,17 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         if sample_ops:
             foo.bulk_write(sample_ops, self._sample_collection)
-            fos.Sample._reset_docs(self._sample_collection_name)
+            fos.Sample._reload_docs(self._sample_collection_name)
 
         if frame_ops:
             foo.bulk_write(frame_ops, self._frame_collection)
-            fofr.Frame._reset_docs(self._frame_collection_name)
+            fofr.Frame._reload_docs(self._frame_collection_name)
 
     def _delete_labels(self, labels, fields=None):
         if etau.is_str(fields):
             fields = [fields]
 
-        # Parse selected labels
+        # Partition labels by field
         sample_ids = set()
         labels_map = defaultdict(list)
         for l in labels:
@@ -1777,13 +1777,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         if sample_ops:
             foo.bulk_write(sample_ops, self._sample_collection)
-            fos.Sample._reset_docs(
+            fos.Sample._reload_docs(
                 self._sample_collection_name, doc_ids=sample_ids
             )
 
         if frame_ops:
             foo.bulk_write(frame_ops, self._frame_collection)
-            fofr.Frame._reset_docs(
+            fofr.Frame._reload_docs(
                 self._frame_collection_name, sample_ids=sample_ids
             )
 
