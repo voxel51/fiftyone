@@ -320,14 +320,14 @@ class OpenImagesDatasetImporter(foud.LabeledImageDatasetImporter):
                     # prioritize samples with all labels but also add samples with
                     # any to reach max_samples
                     ids_not_all = ids_any_labels - ids_all_labels
-                    ids_all_labels = list(ids_all_labels)
-                    ids_not_all = list(ids_not_all)
+                    ids_all_labels = sorted(list(ids_all_labels))
+                    ids_not_all = sorted(list(ids_not_all))
                     if shuffle:
                         random.shuffle(ids_all_labels)
                         random.shuffle(ids_not_all)
                         shuffle = False
 
-                    valid_ids = list(ids_all_labels) + list(ids_not_all)
+                    valid_ids = ids_all_labels + ids_not_all
 
                 else:
                     valid_ids = ids_all_labels
@@ -1208,22 +1208,22 @@ def _load_open_images_split(
                 # prioritize samples with all labels but also add samples with
                 # any to reach max_samples
                 ids_not_all = ids_any_labels - ids_all_labels
-                ids_all_labels = list(ids_all_labels)
-                ids_not_all = list(ids_not_all)
-                if shuffle:
-                    random.shuffle(ids_all_labels)
-                    random.shuffle(ids_not_all)
-                    shuffle = False
 
                 # Prioritize loading existing images first
-                non_existing_ids = set(ids_not_all) - set(downloaded_ids)
-                existing_ids = set(ids_not_all) - non_existing_ids
+                non_existing_ids = ids_not_all - set(downloaded_ids)
+                existing_ids = ids_not_all - non_existing_ids
 
-                valid_ids = (
-                    list(ids_all_labels)
-                    + list(existing_ids)
-                    + list(non_existing_ids)
-                )
+                ids_all_labels = sorted(list(ids_all_labels))
+                existing_ids = sorted(list(existing_ids))
+                non_existing_ids = sorted(list(non_existing_ids))
+
+                if shuffle:
+                    random.shuffle(ids_all_labels)
+                    random.shuffle(existing_ids)
+                    random.shuffle(non_existing_ids)
+                    shuffle = False
+
+                valid_ids = ids_all_labels + existing_ids + non_existing_ids
                 valid_ids = valid_ids[:max_samples]
 
             else:
@@ -1233,16 +1233,23 @@ def _load_open_images_split(
 
     valid_ids = list(valid_ids)
 
-    if shuffle:
-        random.shuffle(valid_ids)
-
     if max_samples and len(valid_ids) > max_samples:
         # Prioritize loading existing images first
         non_existing_ids = set(valid_ids) - set(downloaded_ids)
         existing_ids = set(valid_ids) - non_existing_ids
-        valid_ids = list(existing_ids) + list(non_existing_ids)
 
+        non_existing_ids = sorted(list(non_existing_ids))
+        existing_ids = sorted(list(existing_ids))
+
+        if shuffle:
+            random.shuffle(existing_ids)
+            random.shuffle(non_existing_ids)
+
+        valid_ids = existing_ids + non_existing_ids
         valid_ids = valid_ids[:max_samples]
+
+    elif shuffle:
+        random.shuffle(valid_ids)
 
     if not valid_ids:
         return 0

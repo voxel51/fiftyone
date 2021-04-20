@@ -125,7 +125,7 @@ const Submit = React.memo(({ send }) => {
 
 const convert = (value, placeholder) => {
   const isObject = PARSER.dict.validate(value);
-  if (isObject) return "{ ... }";
+  if (isObject) return "  . . .  ";
   else if (value === "") {
     return placeholder;
   }
@@ -307,9 +307,11 @@ const ViewStageParameter = React.memo(({ parameterRef, barRef, stageRef }) => {
     results,
     bestMatch,
   } = state.context;
-  const hasObjectType = typeof type === "string" && type.includes("dict");
+  const hasObjectType = type
+    .split("|")
+    .some((t) => ["dict", "json"].includes(t));
 
-  const hasExpansion = state.context.type === "dict|str";
+  const hasExpansion = type === "dict|str";
   const isObjectEditor = hasObjectType && (!hasExpansion || expanded);
   let isObject = false;
   try {
@@ -377,7 +379,7 @@ const ViewStageParameter = React.memo(({ parameterRef, barRef, stageRef }) => {
               autoFocus={state.matches("editing")}
               value={
                 isObject
-                  ? "{ ... }"
+                  ? ". . ."
                   : state.matches("reading") && value.length > 24
                   ? value.slice(0, 25) + "..."
                   : value
