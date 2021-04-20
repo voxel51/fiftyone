@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useRef } from "react";
-import { useRecoilValue, useRecoilCallback } from "recoil";
+import React, { useEffect, useRef } from "react";
+import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 
 import SamplesContainer from "./SamplesContainer";
@@ -8,10 +8,9 @@ import SampleModal from "../components/SampleModal";
 import { ModalWrapper } from "../components/utils";
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
-import { useClearModalSamples } from "../recoil/utils";
+import { useClearModal } from "../recoil/utils";
 import {
   useOutsideClick,
-  useSendMessage,
   useScreenshot,
   useSampleUpdate,
   useGA,
@@ -43,29 +42,17 @@ function Dataset() {
 
   useScreenshot();
 
-  useEffect(() => {
-    document.body.classList.toggle("noscroll", modal.visible);
-  }, [modal.visible]);
+  useEffect(() => {}, [modal.visible]);
 
-  const clearModalSamples = useClearModalSamples();
-
-  const closeModal = useRecoilCallback(
-    ({ reset }) => async () => {
-      reset(atoms.modal);
-      reset(selectors.selectedLabels);
-      reset(atoms.hiddenLabels);
-      clearModalSamples();
-    },
-    []
-  );
+  const clearModal = useClearModal();
   const ref = useRef();
 
-  useOutsideClick(ref, closeModal);
+  useOutsideClick(ref, clearModal);
   return (
     <>
       {modal.visible ? (
         <ModalWrapper key={0}>
-          <SampleModal onClose={closeModal} ref={ref} />
+          <SampleModal onClose={clearModal} ref={ref} />
         </ModalWrapper>
       ) : null}
       <Container key={1}>

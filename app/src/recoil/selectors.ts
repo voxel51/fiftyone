@@ -768,7 +768,7 @@ export const modalSample = selector({
   key: "modalSample",
   get: ({ get }) => {
     const id = get(atoms.modal).sample_id;
-    return get(atoms.sample(id));
+    return get(atoms.sampleModal(id));
   },
 });
 
@@ -1028,5 +1028,14 @@ export const fieldType = selectorFamily<string, string>({
     return frame
       ? entry[path.slice("frames.".length)].ftype
       : entry[path].ftype;
+  },
+});
+
+export const sampleSrc = selectorFamily({
+  key: "sampleSrc",
+  get: (id: string) => ({ get }) => {
+    return `${http}/filepath/${encodeURI(
+      get(atoms.sample(id).filepath)
+    )}?id=${id}`;
   },
 });

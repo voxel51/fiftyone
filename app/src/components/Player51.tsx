@@ -6,8 +6,10 @@ import {
   RecoilState,
   RecoilValueReadOnly,
   SerializableParam,
+  selectorFamily,
   useRecoilValue,
   useSetRecoilState,
+  useRecoilCallback,
 } from "recoil";
 import { Warning } from "@material-ui/icons";
 import { animated, useSpring } from "react-spring";
@@ -285,7 +287,7 @@ const TagInfo = ({ field, id, frameNumber }) => {
   );
 };
 
-const TooltipInfo = ({ player, moveRef }) => {
+const TooltipInfo = ({ playerRef, moveRef }) => {
   const [display, setDisplay] = useState(false);
   const [coords, setCoords] = useState({
     top: -1000,
@@ -305,11 +307,11 @@ const TooltipInfo = ({ player, moveRef }) => {
   const [overlay, setOverlay] = useState(null);
   const ref = useRef<HTMLDivElement>(null);
 
-  useEventHandler(player, "tooltipinfo", (e) => {
+  useEventHandler(playerRef.current, "tooltipinfo", (e) => {
     setOverlay(e.data.overlays.length ? e.data.overlays[0] : null);
   });
-  useEventHandler(player, "mouseenter", () => setDisplay(true));
-  useEventHandler(player, "mouseleave", () => setDisplay(false));
+  useEventHandler(playerRef.current, "mouseenter", () => setDisplay(true));
+  useEventHandler(playerRef.current, "mouseleave", () => setDisplay(false));
 
   useEffect(() => {
     moveRef.current = ({ values }) => {
@@ -344,136 +346,76 @@ const TooltipInfo = ({ player, moveRef }) => {
     : null;
 };
 
-interface PlayerProps {
-  activeLabelsAtom: RecoilValueReadOnly<string[]>;
-  id: string;
-  colorByLabel: boolean;
-  keep?: boolean;
-  filterSelector: RecoilState<LabelFilters>;
+interface Player51Options {
   onClick: (event: Event) => void;
-  onLoad: (event: Event) => void;
-  onMouseEnter?: (event: Event) => void;
-  onMouseLeave?: (event: Event) => void;
-  onSelectLabel?: ({ id, name }: { id: string; name: string }) => void;
-  playerRef: MutableRefObject<any>;
-  sampleAtom: RecoilValueReadOnly<SerializableParam>;
-  selectedLabels: string[];
-  src: string;
-  style?: any;
-  thumbnail?: boolean;
+  thumbnail: boolean;
+  activeFields: string[];
+  sample: { [key: string]: SerializableParam };
 }
 
-const Player = ({
-  id,
-  src,
-  keep = false,
-  thumbnail = false,
-  style,
-  onClick,
-  onLoad = () => {},
-  onMouseEnter = () => {},
-  onMouseLeave = () => {},
-  activeLabelsAtom,
-  colorByLabel,
-  filterSelector,
-  playerRef,
-  selectedLabels,
-  onSelectLabel,
-  sampleAtom,
-}: PlayerProps) => {
-  const isVideo = useRecoilValue(selectors.isVideoDataset);
-  const filter = useRecoilValue(filterSelector);
-  const sample = useRecoilValue(sampleAtom);
-  const fps = useRecoilValue(atoms.sampleFrameRate(id));
-  const overlayOptions = useRecoilValue(selectors.playerOverlayOptions);
-  const defaultTargets = useRecoilValue(selectors.defaultTargets);
-  const setSavedOverlayOptions = useSetRecoilState(
-    atoms.savedPlayerOverlayOptions
-  );
-  const colorMap = useRecoilValue(selectors.colorMap(!thumbnail));
-  const [initLoad, setInitLoad] = useState(false);
-  const [error, setError] = useState(null);
-  const mimetype =
-    (sample.metadata && sample.metadata.mime_type) ||
-    mime.lookup(sample.filepath) ||
-    "image/jpg";
-  const activeLabelPaths = useRecoilValue(activeLabelsAtom);
-  const colorGenerator = useRecoilValue(selectors.colorGenerator(!thumbnail));
-
-  const [player] = useState(() => {
-    return new Player51({
-      media: {
-        src,
-        type: mimetype,
-      },
-      sample,
-      colorMap,
-      activeLabels: activeLabelPaths,
-      filter,
-      colorGenerator,
-      enableOverlayOptions: {
+const player51Options = selectorFamily<
+  Player51Options,
+  { sampleId: string; thumbnail: boolean }
+>({
+  key: "playerOptions",
+  get: ({ sampleId, thumbnail }) => ({ get }) => {
+    const modal = !thumbnail;
+    return {
+      thumbnail,
+      src: get(selectors.sampleSrc(sampleId)),
+      colorMap: get(selectors.colorMap(modal)),
+      enableOverlayOPtions: {
         attrRenderMode: false,
         attrsOnlyOnClick: false,
         attrRenderBox: false,
       },
       defaultOverlayOptions: {
-        ...overlayOptions,
         action: "hover",
         attrRenderMode: "attr-value",
         smoothMasks: false,
       },
-    });
-  });
+    };
+  },
+});
 
-  if (playerRef) {
-    playerRef.current = player;
-  }
-  const props = thumbnail ? { onClick } : {};
+interface PlayerProps {
+  sampleId: string;
+  playerRef?: MutableRefObject<any>;
+  style: React.CSSProperties;
+  thumbnail: boolean;
+}
+
+const Player = ({ playerRef, sampleId, style, thumbnail }: PlayerProps) => {
+  const isVideo = useRecoilValue(selectors.isVideoDataset);
+  const {
+    onClick,
+    onLoad,
+    onMouseEnter,
+    onMouseLeave,
+    onSelectLabel,
+    ...playerOptions
+  } = useRecoilValue(player51Options({ sampleId, thumbnail }));
+  const [error, setError] = useState(null);
+  playerRef = playerRef ? playerRef : useRef();
+
   useEffect(() => {
-    if (!player || error) {
-      return;
-    }
-    if (!initLoad) {
-      if (thumbnail) {
-        player.thumbnailMode();
-      }
-      player.render(id);
-      setInitLoad(true);
+    if (playerRef && playerRef.current) {
     } else {
-      player.updateOptions({
-        activeLabels: activeLabelPaths,
-        colorByLabel,
-        filter,
-        colorMap,
-        fps,
-        colorGenerator,
-      });
-      player.updateOverlayOptions(overlayOptions);
-      if (!thumbnail) {
-        player.updateOptions({ selectedLabels });
-        player.updateSample(sample);
+      try {
+        playerRef.current = new Player51(playerOptions);
+        playerRef.current.render(sampleId);
+      } catch {
+        setError(`This file is not supported.`);
       }
     }
-  }, [
-    player,
-    filter,
-    sample,
-    activeLabelPaths,
-    colorMap,
-    colorByLabel,
-    fps,
-    overlayOptions,
-    defaultTargets,
-    selectedLabels,
-    colorGenerator,
-  ]);
+  }, [playerOptions]);
 
   useEffect(() => {
-    return () => player && !keep && player.destroy();
-  }, [player]);
+    return () => !thumbnail && playerRef.current && playerRef.current.destroy();
+  }, [playerRef.current]);
 
-  useEventHandler(player, "load", onLoad);
-  useEventHandler(player, "error", () =>
+  useEventHandler(playerRef.current, "load", onLoad);
+  useEventHandler(playerRef.current, "error", () =>
     setError(
       <>
         <p>
@@ -498,9 +440,9 @@ const Player = ({
     )
   );
 
-  useEventHandler(player, "mouseenter", onMouseEnter);
-  useEventHandler(player, "mouseleave", onMouseLeave);
-  useEventHandler(player, "select", (e) => {
+  useEventHandler(playerRef.current, "mouseenter", onMouseEnter);
+  useEventHandler(playerRef.current, "mouseleave", onMouseLeave);
+  useEventHandler(playerRef.current, "select", (e) => {
     const _id = e.data?.id;
     const name = e.data?.name;
     if (_id && onSelectLabel) {
@@ -512,7 +454,7 @@ const Player = ({
   const bindMove = useMove((s) => ref.current && ref.current(s));
 
   useEventHandler(
-    player,
+    playerRef.current,
     "options",
     ({ data: { showAttrs, showConfidence, showTooltip } }) => {
       setSavedOverlayOptions({
@@ -525,9 +467,9 @@ const Player = ({
 
   return (
     <animated.div
-      id={id}
+      id={`${thumbnail ? "thumbnail" : ""}-${id}`}
       style={style}
-      {...props}
+      onClick={onClick}
       {...bindMove()}
       ref={containerRef}
     >
@@ -537,7 +479,11 @@ const Player = ({
           {thumbnail ? null : <div>{error}</div>}{" "}
         </InfoWrapper>
       )}
-      <TooltipInfo player={player} moveRef={ref} containerRef={containerRef} />
+      <TooltipInfo
+        playerRef={playerRef}
+        moveRef={ref}
+        containerRef={containerRef}
+      />
     </animated.div>
   );
 };

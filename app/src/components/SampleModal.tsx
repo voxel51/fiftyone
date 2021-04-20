@@ -3,7 +3,6 @@ import styled from "styled-components";
 import { Close, Fullscreen, FullscreenExit } from "@material-ui/icons";
 import {
   useRecoilValue,
-  useSetRecoilState,
   useRecoilState,
   selector,
   useRecoilCallback,
@@ -18,25 +17,13 @@ import Player51 from "./Player51";
 import { ModalFooter } from "./utils";
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
-import socket, { http } from "../shared/connection";
 import {
   useEventHandler,
   useKeydownHandler,
   useResizeHandler,
-  useVideoData,
   useTheme,
 } from "../utils/hooks";
 import { formatMetadata } from "../utils/labels";
-
-const modalSrc = selector<string>({
-  key: "modalSrc",
-  get: ({ get }) => {
-    const sample = get(selectors.modalSample);
-    if (sample) {
-      return `${http}/filepath/${encodeURI(sample.filepath)}?id=${sample._id}`;
-    }
-  },
-});
 
 const modalIndex = selector<number>({
   key: "modalIndex",
@@ -289,18 +276,10 @@ const SampleModal = ({ onClose }: Props, ref) => {
     height: "100%",
     width: "100%",
   });
-  const setModalFilters = useSetRecoilState(labelFilters(true));
   const showJSON = useRecoilValue(atoms.showModalJSON);
   const [enableJSONFilter, setEnableJSONFilter] = useState(true);
   const [fullscreen, setFullscreen] = useState(false);
-  const fieldSchema = useRecoilValue(selectors.fieldSchema("sample"));
   const colorByLabel = useRecoilValue(atoms.colorByLabel(true));
-  const requestLabels = useVideoData(socket, sample._id);
-  const videoLabels = useRecoilValue(atoms.sampleVideoLabels(sample._id));
-  useEffect(() => {
-    setModalFilters(null);
-    requestLabels();
-  }, []);
 
   const selectedLabelIds = Array.from(
     useRecoilValue(selectors.selectedLabelIds)
@@ -398,7 +377,7 @@ const SampleModal = ({ onClose }: Props, ref) => {
             onLoad={handleResize}
             onSelectLabel={selectLabel}
             playerRef={playerRef}
-            sampleAtom={atoms.sampleModal(sample._id)}
+            sampleAtom={selectors.modalSample}
             selectedLabels={selectedLabelIds}
             style={{
               position: "relative",

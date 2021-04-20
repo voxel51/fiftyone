@@ -18,6 +18,7 @@ import {
   VALID_CLASS_TYPES,
   VALID_LIST_TYPES,
 } from "../utils/labels";
+import { useLoadModalSample } from "../recoil/utils";
 
 const SampleDiv = animated(styled.div`
   position: relative;
@@ -309,9 +310,7 @@ const Selector = React.memo(({ id, spring }: { id: string; spring: any }) => {
 });
 
 const Sample = ({ id }) => {
-  const setModal = useSetRecoilState(atoms.modal);
   const sample = useRecoilValue(atoms.sample(id));
-  const src = `${http}/filepath/${encodeURI(sample.filepath)}?id=${id}`;
   const colorByLabel = useRecoilValue(atoms.colorByLabel(false));
   const [hovering, setHovering] = useState(false);
   const isSelected = useRecoilValue(atoms.isSelectedSample(id));
@@ -323,6 +322,8 @@ const Sample = ({ id }) => {
 
   const selectSample = useSelect(id);
 
+  const loadModal = useLoadModalSample();
+
   const onClick = useRecoilCallback(
     ({ snapshot }) => async (e) => {
       const hasSelected = (await snapshot.getPromise(atoms.selectedSamples))
@@ -330,7 +331,7 @@ const Sample = ({ id }) => {
       if (hasSelected) {
         selectSample(e);
       } else {
-        setModal({ visible: true, sample_id: id });
+        loadModal(id);
       }
     },
     [id]
@@ -350,22 +351,14 @@ const Sample = ({ id }) => {
         <Selector key={id} id={id} spring={selectorSpring} />
         <SampleInfo id={id} />
         <Player51
-          src={src}
           style={{
             height: "100%",
             width: "100%",
             position: "absolute",
             cursor: "pointer",
           }}
-          sampleAtom={atoms.sample(id)}
-          id={id}
+          sampleId={id}
           thumbnail={true}
-          activeLabelsAtom={labelAtoms.activeFields(false)}
-          colorByLabel={colorByLabel}
-          filterSelector={labelFilters(false)}
-          onMouseEnter={onMouseEnter}
-          onMouseLeave={onMouseLeave}
-          onClick={onClick}
         />
         {bar.map(({ key, props }) => (
           <LoadingBar key={key} style={props} />
