@@ -1,16 +1,15 @@
 import React, { useState } from "react";
-import { useRecoilCallback, useRecoilValue, useSetRecoilState } from "recoil";
+import { useRecoilCallback, useRecoilValue } from "recoil";
 import styled from "styled-components";
 import { animated, useSpring, useTransition } from "react-spring";
 import { Checkbox } from "@material-ui/core";
 
-import { labelFilters } from "./Filters/LabelFieldFilters.state";
 import * as labelAtoms from "./Filters/utils";
 import Player51 from "./Player51";
 import Tag from "./Tags/Tag";
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
-import socket, { http } from "../shared/connection";
+import socket from "../shared/connection";
 import { packageMessage } from "../utils/socket";
 import { useVideoData, useTheme } from "../utils/hooks";
 import {
@@ -67,36 +66,6 @@ const LoadingBar = animated(styled.div`
 
 const useHoverLoad = (socket, id) => {
   const [barItem, setBarItem] = useState([]);
-  const [loaded, setLoaded] = useState(null);
-
-  const requestLabels = useVideoData(socket, id, (data, player) => {
-    if (!data) return;
-    const { labels, counter } = data;
-    setLoaded(counter);
-    setBarItem([]);
-    player.updateOverlay(labels);
-    if (player.isHovering()) player.play();
-  });
-
-  const onMouseEnter = useRecoilCallback(
-    ({ snapshot }) => async (e) => {
-      const isVideo = await snapshot.getPromise(selectors.isVideoDataset);
-      const counter = await snapshot.getPromise(atoms.viewCounter);
-      if (!isVideo) return;
-      e.preventDefault();
-      const {
-        data: { player },
-      } = e;
-      if (loaded === counter) {
-        barItem.length && setBarItem([]);
-        player.play();
-        return;
-      }
-      setBarItem([0]);
-      requestLabels(player);
-    },
-    [barItem, loaded]
-  );
 
   const onMouseLeave = () => barItem.length && setBarItem([]);
 
@@ -125,13 +94,13 @@ const revealSample = () => {
   });
 };
 
-const SampleInfo = React.memo(({ id }) => {
+const SampleInfo = React.memo(({ sampleId }: { sampleId: string }) => {
   const activeFields = useRecoilValue(labelAtoms.activeFields(false));
   const colorMap = useRecoilValue(selectors.colorMap(false));
   const scalars = useRecoilValue(selectors.scalarNames("sample"));
   const colorByLabel = useRecoilValue(atoms.colorByLabel(false));
   const labelTypes = useRecoilValue(selectors.labelTypesMap);
-  const sample = useRecoilValue(atoms.sample(id));
+  const sample = useRecoilValue(atoms.sample(sampleId));
 
   const bubbles = activeFields.reduce((acc, cur) => {
     if (
@@ -287,40 +256,39 @@ const useSelect = (id: string) => {
   );
 };
 
-const Selector = React.memo(({ id, spring }: { id: string; spring: any }) => {
-  const theme = useTheme();
-  const isSelected = useRecoilValue(atoms.isSelectedSample(id));
+const Selector = React.memo(
+  ({ sampleId, spring }: { sampleId: string; spring: any }) => {
+    const theme = useTheme();
+    const isSelected = useRecoilValue(atoms.isSelectedSample(sampleId));
 
-  const handleClick = useSelect(id);
-  return (
-    <SelectorDiv
-      style={{ ...spring }}
-      onClick={handleClick}
-      title={"Click to select sample, Ctrl+Click to select a range"}
-    >
-      <Checkbox
-        checked={isSelected}
-        style={{
-          color: theme.brand,
-        }}
+    const handleClick = useSelect(sampleId);
+    return (
+      <SelectorDiv
+        style={{ ...spring }}
+        onClick={handleClick}
         title={"Click to select sample, Ctrl+Click to select a range"}
-      />
-    </SelectorDiv>
-  );
-});
+      >
+        <Checkbox
+          checked={isSelected}
+          style={{
+            color: theme.brand,
+          }}
+          title={"Click to select sample, Ctrl+Click to select a range"}
+        />
+      </SelectorDiv>
+    );
+  }
+);
 
-const Sample = ({ id }) => {
-  const sample = useRecoilValue(atoms.sample(id));
-  const colorByLabel = useRecoilValue(atoms.colorByLabel(false));
+const Sample = ({ sampleId }: { sampleId: string }) => {
   const [hovering, setHovering] = useState(false);
-  const isSelected = useRecoilValue(atoms.isSelectedSample(id));
+  const isSelected = useRecoilValue(atoms.isSelectedSample(sampleId));
 
-  const [bar, onMouseEnter, onMouseLeave] = useHoverLoad(socket, sample._id);
   const selectorSpring = useSpring({
     opacity: hovering || isSelected ? 1 : 0,
   });
 
-  const selectSample = useSelect(id);
+  const selectSample = useSelect(sampleId);
 
   const loadModal = useLoadModalSample();
 
@@ -331,10 +299,10 @@ const Sample = ({ id }) => {
       if (hasSelected) {
         selectSample(e);
       } else {
-        loadModal(id);
+        loadModal(sampleId);
       }
     },
-    [id]
+    [sampleId]
   );
 
   return (
@@ -348,8 +316,8 @@ const Sample = ({ id }) => {
         onMouseEnter={() => setHovering(true)}
         onMouseLeave={() => setHovering(false)}
       >
-        <Selector key={id} id={id} spring={selectorSpring} />
-        <SampleInfo id={id} />
+        <Selector key={sampleId} sampleId={sampleId} spring={selectorSpring} />
+        <SampleInfo sampleId={sampleId} />
         <Player51
           style={{
             height: "100%",
@@ -357,12 +325,11 @@ const Sample = ({ id }) => {
             position: "absolute",
             cursor: "pointer",
           }}
-          sampleId={id}
+          sampleId={sampleId}
           thumbnail={true}
         />
-        {bar.map(({ key, props }) => (
-          <LoadingBar key={key} style={props} />
-        ))}
+        {false &&
+          bar.map(({ key, props }) => <LoadingBar key={key} style={props} />)}
       </div>
     </SampleDiv>
   );

@@ -1,3 +1,4 @@
+import mime from "mime-types";
 import { selector, selectorFamily, SerializableParam } from "recoil";
 
 import * as atoms from "./atoms";
@@ -1031,9 +1032,21 @@ export const fieldType = selectorFamily<string, string>({
   },
 });
 
-export const sampleSrc = selectorFamily({
+export const sampleMimeType = selectorFamily<string, string>({
+  key: "sampleMimeType",
+  get: (id) => ({ get }) => {
+    const sample = get(atoms.sample(id));
+    return (
+      (sample.metadata && sample.metadata.mime_type) ||
+      mime.lookup(sample.filepath) ||
+      "image/jpg"
+    );
+  },
+});
+
+export const sampleSrc = selectorFamily<string, string>({
   key: "sampleSrc",
-  get: (id: string) => ({ get }) => {
+  get: (id) => ({ get }) => {
     return `${http}/filepath/${encodeURI(
       get(atoms.sample(id).filepath)
     )}?id=${id}`;

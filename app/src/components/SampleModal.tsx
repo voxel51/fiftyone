@@ -25,6 +25,11 @@ import {
 } from "../utils/hooks";
 import { formatMetadata } from "../utils/labels";
 
+const modalSrc = selector<string | null>({
+  key: "modalSrc",
+  get: ({ get }) => get(selectors.sampleSrc(get(atoms.modal).sample_id)),
+});
+
 const modalIndex = selector<number>({
   key: "modalIndex",
   get: ({ get }) => {
@@ -246,16 +251,23 @@ type Props = {
   onClose: () => void;
 };
 
+interface SelectEvent {
+  data: {
+    id: string;
+    field: string;
+  };
+}
+
 const onSelectLabel = (frameNumberRef) => {
   return useRecoilCallback(
-    ({ snapshot, set }) => async ({ id, name }) => {
+    ({ snapshot, set }) => async ({ data: { id, field } }: SelectEvent) => {
       const { sample_id } = await snapshot.getPromise(atoms.modal);
       let labels = { ...(await snapshot.getPromise(selectors.selectedLabels)) };
       if (labels[id]) {
         delete labels[id];
       } else {
         labels[id] = {
-          field: name,
+          field,
           sample_id,
           frame_number: frameNumberRef.current,
         };
@@ -268,7 +280,7 @@ const onSelectLabel = (frameNumberRef) => {
 
 const SampleModal = ({ onClose }: Props, ref) => {
   const sample = useRecoilValue(selectors.modalSample);
-  const sampleUrl = useRecoilValue(modalSrc);
+  const sampleSrc = useRecoilValue(modalSrc);
   const [index, setIndex] = useRecoilState(modalIndex);
   const numSamples = useRecoilValue(selectors.currentSamplesSize);
   const playerContainerRef = useRef();
@@ -279,11 +291,6 @@ const SampleModal = ({ onClose }: Props, ref) => {
   const showJSON = useRecoilValue(atoms.showModalJSON);
   const [enableJSONFilter, setEnableJSONFilter] = useState(true);
   const [fullscreen, setFullscreen] = useState(false);
-  const colorByLabel = useRecoilValue(atoms.colorByLabel(true));
-
-  const selectedLabelIds = Array.from(
-    useRecoilValue(selectors.selectedLabelIds)
-  );
 
   // save overlay options when navigating - these are restored by passing them
   // in defaultOverlayOptions when the new player is created
@@ -342,15 +349,10 @@ const SampleModal = ({ onClose }: Props, ref) => {
     }
   });
   const theme = useTheme();
-
-  // store in a ref to avoid re-rendering this component when the frame number
-  // changes
   const frameNumberRef = useRef(null);
   useEventHandler(playerRef.current, "timeupdate", (e) => {
     frameNumberRef.current = e.data.frame_number;
   });
-
-  const selectLabel = onSelectLabel(frameNumberRef);
 
   return (
     <Container
@@ -367,18 +369,9 @@ const SampleModal = ({ onClose }: Props, ref) => {
           />
         ) : (
           <Player51
-            activeLabelsAtom={labelAtoms.activeFields(true)}
-            colorByLabel={colorByLabel}
-            key={sampleUrl} // force re-render when this changes
-            src={sampleUrl}
-            filterSelector={labelFilters(true)}
-            id={sample._id}
-            keep={true}
-            onLoad={handleResize}
-            onSelectLabel={selectLabel}
-            playerRef={playerRef}
-            sampleAtom={selectors.modalSample}
-            selectedLabels={selectedLabelIds}
+            key={sampleSrc} // force re-render when this changes
+            sampleId={sample._id}
+            thumbnail={false}
             style={{
               position: "relative",
               ...playerStyle,

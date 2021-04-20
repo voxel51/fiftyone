@@ -346,11 +346,64 @@ const TooltipInfo = ({ playerRef, moveRef }) => {
     : null;
 };
 
+const usePlayer51Error = (playerRef, sampleId, setError) => {
+  const handler = useRecoilCallback(
+    ({ snapshot }) => async () => {
+      const isVideo = await snapshot.getPromise(selectors.isVideoDataset);
+      const mimeType = await snapshot.getPromise(
+        selectors.sampleMimeType(sampleId)
+      );
+      setError(
+        <>
+          <p>
+            This {isVideo ? "video" : "image"} failed to load. The file may not
+            exist, or its type ({mimeType}) may be unsupported.
+          </p>
+          <p>
+            {isVideo && (
+              <>
+                {" "}
+                You can use{" "}
+                <code>
+                  <ExternalLink href="https://voxel51.com/docs/fiftyone/api/fiftyone.utils.video.html#fiftyone.utils.video.reencode_videos">
+                    fiftyone.utils.video.reencode_videos()
+                  </ExternalLink>
+                </code>{" "}
+                to re-encode videos in a supported format.
+              </>
+            )}
+          </p>
+        </>
+      );
+    },
+    [sampleId]
+  );
+  useEventHandler(playerRef.current, "error", handler);
+};
+
+const usePlayer51OptionsUpdate = (playerRef) => {
+  const handler = useRecoilCallback(
+    ({ set }) => async ({
+      data: { showAttrs, showConfidence, showTooltip },
+    }) => {
+      set(atoms.savedPlayerOverlayOptions, {
+        showAttrs,
+        showConfidence,
+        showTooltip,
+      });
+    },
+    []
+  );
+
+  useEventHandler(playerRef.current, "options", handler);
+};
+
+type EventCallback = (event: Event) => void;
+
 interface Player51Options {
-  onClick: (event: Event) => void;
-  thumbnail: boolean;
   activeFields: string[];
   sample: { [key: string]: SerializableParam };
+  thumbnail: boolean;
 }
 
 const player51Options = selectorFamily<
@@ -379,31 +432,42 @@ const player51Options = selectorFamily<
 });
 
 interface PlayerProps {
-  sampleId: string;
+  onClick?: React.MouseEventHandler<HTMLDivElement>;
+  onLoad?: EventCallback;
+  onSelect?: EventCallback;
   playerRef?: MutableRefObject<any>;
+  sampleId: string;
   style: React.CSSProperties;
   thumbnail: boolean;
 }
 
-const Player = ({ playerRef, sampleId, style, thumbnail }: PlayerProps) => {
-  const isVideo = useRecoilValue(selectors.isVideoDataset);
-  const {
-    onClick,
-    onLoad,
-    onMouseEnter,
-    onMouseLeave,
-    onSelectLabel,
-    ...playerOptions
-  } = useRecoilValue(player51Options({ sampleId, thumbnail }));
+const Player = ({
+  onClick,
+  onLoad,
+  onSelect,
+  playerRef,
+  sampleId,
+  style,
+  thumbnail,
+}: PlayerProps) => {
+  const playerOptions = useRecoilValue(
+    player51Options({ sampleId, thumbnail })
+  );
   const [error, setError] = useState(null);
+  const id = `${thumbnail ? "thumbnail" : ""}-${sampleId}`;
   playerRef = playerRef ? playerRef : useRef();
 
   useEffect(() => {
     if (playerRef && playerRef.current) {
+      try {
+        playerRef.current.update(playerOptions);
+      } catch {
+        setError(`An error occurred.`);
+      }
     } else {
       try {
         playerRef.current = new Player51(playerOptions);
-        playerRef.current.render(sampleId);
+        playerRef.current.render(id);
       } catch {
         setError(`This file is not supported.`);
       }
@@ -414,76 +478,23 @@ const Player = ({ playerRef, sampleId, style, thumbnail }: PlayerProps) => {
     return () => !thumbnail && playerRef.current && playerRef.current.destroy();
   }, [playerRef.current]);
 
-  useEventHandler(playerRef.current, "load", onLoad);
-  useEventHandler(playerRef.current, "error", () =>
-    setError(
-      <>
-        <p>
-          This {isVideo ? "video" : "image"} failed to load. The file may not
-          exist, or its type ({mimetype}) may be unsupported.
-        </p>
-        <p>
-          {isVideo && (
-            <>
-              {" "}
-              You can use{" "}
-              <code>
-                <ExternalLink href="https://voxel51.com/docs/fiftyone/api/fiftyone.utils.video.html#fiftyone.utils.video.reencode_videos">
-                  fiftyone.utils.video.reencode_videos()
-                </ExternalLink>
-              </code>{" "}
-              to re-encode videos in a supported format.
-            </>
-          )}
-        </p>
-      </>
-    )
-  );
+  usePlayer51Error(playerRef, sampleId, setError);
+  usePlayer51OptionsUpdate(playerRef);
 
-  useEventHandler(playerRef.current, "mouseenter", onMouseEnter);
-  useEventHandler(playerRef.current, "mouseleave", onMouseLeave);
-  useEventHandler(playerRef.current, "select", (e) => {
-    const _id = e.data?.id;
-    const name = e.data?.name;
-    if (_id && onSelectLabel) {
-      onSelectLabel({ id: _id, name });
-    }
-  });
+  onLoad && useEventHandler(playerRef.current, "load", onLoad);
+  onSelect && useEventHandler(playerRef.current, "select", onSelect);
   const ref = useRef(null);
-  const containerRef = useRef(null);
   const bindMove = useMove((s) => ref.current && ref.current(s));
 
-  useEventHandler(
-    playerRef.current,
-    "options",
-    ({ data: { showAttrs, showConfidence, showTooltip } }) => {
-      setSavedOverlayOptions({
-        showAttrs,
-        showConfidence,
-        showTooltip,
-      });
-    }
-  );
-
   return (
-    <animated.div
-      id={`${thumbnail ? "thumbnail" : ""}-${id}`}
-      style={style}
-      onClick={onClick}
-      {...bindMove()}
-      ref={containerRef}
-    >
+    <animated.div id={id} style={style} onClick={onClick} {...bindMove()}>
       {error && (
         <InfoWrapper>
           <Warning classes={{ root: "error" }} />
           {thumbnail ? null : <div>{error}</div>}{" "}
         </InfoWrapper>
       )}
-      <TooltipInfo
-        playerRef={playerRef}
-        moveRef={ref}
-        containerRef={containerRef}
-      />
+      <TooltipInfo playerRef={playerRef} moveRef={ref} />
     </animated.div>
   );
 };
