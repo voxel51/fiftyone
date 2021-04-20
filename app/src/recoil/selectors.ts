@@ -1048,7 +1048,7 @@ export const sampleSrc = selectorFamily<string, string>({
   key: "sampleSrc",
   get: (id) => ({ get }) => {
     return `${http}/filepath/${encodeURI(
-      get(atoms.sample(id).filepath)
+      get(atoms.sample(id)).filepath
     )}?id=${id}`;
   },
 });

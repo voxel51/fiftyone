@@ -414,8 +414,6 @@ const player51Options = selectorFamily<
   get: ({ sampleId, thumbnail }) => ({ get }) => {
     const modal = !thumbnail;
     return {
-      thumbnail,
-      src: get(selectors.sampleSrc(sampleId)),
       colorMap: get(selectors.colorMap(modal)),
       enableOverlayOPtions: {
         attrRenderMode: false,
@@ -427,6 +425,9 @@ const player51Options = selectorFamily<
         attrRenderMode: "attr-value",
         smoothMasks: false,
       },
+      sample: get(modal ? atoms.sampleModal(sampleId) : atoms.sample(sampleId)),
+      src: get(selectors.sampleSrc(sampleId)),
+      thumbnail,
     };
   },
 });
@@ -457,6 +458,7 @@ const Player = ({
   const id = `${thumbnail ? "thumbnail" : ""}-${sampleId}`;
   playerRef = playerRef ? playerRef : useRef();
 
+  console.log(playerOptions);
   useEffect(() => {
     if (playerRef && playerRef.current) {
       try {

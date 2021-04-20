@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react";
+import React, { useRef } from "react";
 import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 
@@ -37,17 +37,14 @@ const Body = styled.div`
 function Dataset() {
   const modal = useRecoilValue(atoms.modal);
   const hasDataset = useRecoilValue(selectors.hasDataset);
-  useGA();
-  useSampleUpdate();
+  const ref = useRef();
+  const clearModal = useClearModal();
 
+  useGA();
+  useOutsideClick(ref, clearModal);
+  useSampleUpdate();
   useScreenshot();
 
-  useEffect(() => {}, [modal.visible]);
-
-  const clearModal = useClearModal();
-  const ref = useRef();
-
-  useOutsideClick(ref, clearModal);
   return (
     <>
       {modal.visible ? (

@@ -48,7 +48,7 @@ function Samples() {
               {r.samples.map((id, j) => (
                 <React.Fragment key={j}>
                   <div key={"column"} style={{ padding: 0, width: "100%" }}>
-                    <Sample id={id} />
+                    <Sample sampleId={id} />
                   </div>
                   {j < r.samples.length - 1 && (
                     <div

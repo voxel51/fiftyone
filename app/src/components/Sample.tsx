@@ -289,15 +289,14 @@ const Sample = ({ sampleId }: { sampleId: string }) => {
   });
 
   const selectSample = useSelect(sampleId);
-
   const loadModal = useLoadModalSample();
 
   const onClick = useRecoilCallback(
-    ({ snapshot }) => async (e) => {
+    ({ snapshot }) => async (event: React.MouseEvent) => {
       const hasSelected = (await snapshot.getPromise(atoms.selectedSamples))
         .size;
       if (hasSelected) {
-        selectSample(e);
+        selectSample(event);
       } else {
         loadModal(sampleId);
       }
@@ -319,6 +318,7 @@ const Sample = ({ sampleId }: { sampleId: string }) => {
         <Selector key={sampleId} sampleId={sampleId} spring={selectorSpring} />
         <SampleInfo sampleId={sampleId} />
         <Player51
+          onClick={onClick}
           style={{
             height: "100%",
             width: "100%",
