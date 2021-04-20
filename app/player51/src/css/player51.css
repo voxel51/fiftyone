@@ -1,0 +1,374 @@
+/* player51.css
+ *
+ * Creates the style sheet for the Player51 web component.
+ * Part of this style sheet is for actual functionality while other parts are
+ * for look and feel.  These are denoted in the comments.
+ *
+ * Copyright 2017-2021, Voxel51, Inc.
+ *
+ * Jason Corso, jason@voxel51.com
+ */
+
+/* Look and Feel */
+.p51-video-controls {
+  font-family: Arial, sans-serif;
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  opacity: 0;
+  z-index: 20;
+  padding-bottom: 0.25rem;
+  display: grid;
+  grid-template-columns: 1rem max-content max-content 1fr max-content max-content 1rem;
+  grid-gap: 0.25rem;
+  justify-items: center;
+  align-items: center;
+
+  color: #eee;
+
+  -webkit-transition: opacity 0.5s;
+  -moz-transition: opacity 0.5s;
+  -o-transition: opacity 0.5s;
+  -ms-transition: opacity 0.5s;
+  transition: opacity 0.5s;
+  background-color: rgba(33, 33, 33, 0.5);
+}
+
+.p51-video-controls {
+  width: 100%;
+}
+
+.p51-video-controls * {
+  color: #eee;
+}
+
+.p51-video-controls img {
+  height: 1.75rem;
+}
+
+.p51-video-controls *,
+.p51-video-controls .p51-material-icons {
+  font-size: 1.25rem;
+}
+
+.p51-video-options-panel {
+  font-family: Arial, sans-serif;
+  position: absolute;
+  right: 0;
+  bottom: 3em; /* overridden by _repositionOptionsPanel */
+  padding: 5px;
+  line-height: 1;
+  opacity: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+
+  color: #eee;
+
+  display: grid;
+
+  background: rgba(33, 33, 33, 0.75);
+
+  -webkit-transition: opacity 0.5s;
+  -moz-transition: opacity 0.5s;
+  -o-transition: opacity 0.5s;
+  -ms-transition: opacity 0.5s;
+  transition: opacity 0.5s;
+}
+
+.p51-video-opt-input {
+  background: rgba(0, 0, 0, 0.5);
+  border: 0;
+  color: #eee;
+
+  -webkit-border-radius: 3px;
+  -moz-border-radius: 3px;
+  -o-border-radius: 3px;
+  border-radius: 3px;
+  padding: 3px;
+  margin: 3px;
+}
+
+.p51-video-opt-input.hidden {
+  display: none;
+}
+
+.p51-video-opt-input .p51-section-header {
+  display: block;
+  margin-bottom: 2px;
+}
+
+.p51-video-opt-input label {
+  display: grid;
+  justify-items: end;
+  grid-template-columns: max-content 1fr;
+  cursor: pointer;
+  margin: 0 0 1px;
+  padding: 0;
+  line-height: 1.2;
+}
+
+.p51-video-controls button {
+  background: rgba(0, 0, 0, 0.5);
+  border: 0;
+  color: #eee;
+  -webkit-border-radius: 3px;
+  -moz-border-radius: 3px;
+  -o-border-radius: 3px;
+  border-radius: 3px;
+  margin: 3px;
+  min-width: max-content;
+  min-height: max-content;
+  width: 10%;
+  height: fit-content;
+  padding: 1%;
+}
+
+.p51-video-controls button:hover {
+  cursor: pointer;
+}
+
+.p51-play-pause {
+  width: 15%;
+  height: 80%;
+}
+
+/* seek bar stuff */
+.p51-seek-bar {
+  width: 100%;
+  margin: 3px;
+}
+.p51-video-controls input[type="range"] {
+  width: 100%;
+  height: 4px;
+  cursor: pointer;
+  animate: 0.2s;
+  background: rgb(175, 175, 175);
+  outline: none;
+  border: none;
+}
+.p51-video-controls input[type="range"]:focus {
+  outline: none;
+  border: none;
+}
+.p51-video-controls input[type="range"]::-webkit-slider-runnable-track {
+  width: 100%;
+  height: 4px;
+  cursor: pointer;
+  animate: 0.2s;
+  background: rgb(175, 175, 175);
+}
+.p51-video-controls input[type="range"]::-webkit-slider-thumb,
+.p51-seek-bar {
+  height: 16px;
+  width: 16px;
+  border-radius: 8px;
+  background: rgb(225, 100, 40);
+  cursor: pointer;
+  -webkit-appearance: none;
+  margin-top: -6px;
+}
+.p51-video-controls input[type="range"]:hover::-webkit-slider-runnable-track {
+  animate: 0.2s;
+  height: 6px;
+  background: rgb(200, 200, 200);
+}
+.p51-video-controls input[type="range"]:hover::-webkit-slider-thumb {
+  height: 20px;
+  width: 20px;
+  border-radius: 10px;
+  background: rgb(225, 100, 40);
+  cursor: pointer;
+  -webkit-appearance: none;
+  margin-top: -7px;
+}
+.p51-video-controls input[type="range"]::-moz-range-runnable-track {
+  width: 100%;
+  height: 4px;
+  cursor: pointer;
+  animate: 0.2s;
+  background: rgb(175, 175, 175);
+  outline: 0;
+  border: none;
+}
+.p51-video-controls input[type="range"]::-moz-range-thumb {
+  height: 16px;
+  width: 16px;
+  border-radius: 8px;
+  background: rgb(225, 100, 40);
+  cursor: pointer;
+  margin-top: -6px;
+  outline: 0;
+  border: none;
+}
+.p51-video-controls input[type="range"]:hover::-moz-range-runnable-track {
+  animate: 0.2s;
+  height: 6px;
+  background: rgb(200, 200, 200);
+}
+.p51-video-controls input[type="range"]:hover::-moz-range-thumb {
+  height: 20px;
+  width: 20px;
+  border-radius: 10px;
+  background: rgb(225, 100, 40);
+  cursor: pointer;
+  margin-top: -7px;
+}
+.p51-video-controls *:hover,
+.p51-video-controls *:active,
+.p51-video-controls *:focus {
+  outline: none;
+}
+.p51-video-options-panel *:hover,
+.p51-video-options-panel *:active,
+.p51-video-options-panel *:focus {
+  outline: none;
+}
+
+/* Hide the browser's default checkbox */
+.p51-video-options-panel input {
+  position: absolute;
+
+  cursor: pointer;
+  height: 0;
+  width: 0;
+}
+
+/* Create a custom checkbox */
+.p51-label input[type="radio"],
+.p51-label input[type="checkbox"] {
+  top: 0;
+  left: 0;
+  opacity: 0;
+}
+
+.p51-radio {
+  border-radius: 50%;
+}
+
+.p51-label .p51-radio,
+.p51-label .p51-checkbox {
+  top: 0;
+  left: 0;
+  height: 20px;
+  width: 20px;
+  background: rgb(55, 55, 55);
+  margin-left: 1rem;
+}
+.p51-label:hover input[type="radio"] ~ .p51-radio,
+.p51-label:hover input[type="checkbox"] ~ .p51-checkbox {
+  background: rgb(122, 122, 122);
+}
+.p51-label input[type="radio"]:checked ~ .p51-radio {
+  background: rgb(225, 100, 40);
+}
+.p51-radio:after {
+  content: "";
+  position: relative;
+  display: none;
+}
+.p51-label input[type="radio"]:checked ~ .p51-radio:after {
+  display: block;
+}
+
+.p51-label input[type="checkbox"]:checked ~ .p51-checkbox {
+  background-image: url("data:image/svg+xml,%3Csvg%20width%3D%2220%22%20height%3D%2220%22%20version%3D%221.1%22%20viewBox%3D%220%200%2020%2020%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Crect%20y%3D%22-1.4433e-15%22%20width%3D%2220%22%20height%3D%2220%22%20fill%3D%22%23e16428%22%2F%3E%3Cg%20transform%3D%22translate(0%20-291.71)%22%3E%3Cpath%20d%3D%22m8%20307.71%209.5-9.5-2.5-2.5-7%207-3-3-2.5%202.5z%22%20fill%3D%22%23fff%22%20opacity%3D%22.9%22%20stroke-width%3D%220%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E");
+}
+
+.p51-label .p51-radio:after {
+  top: 6px;
+  left: 6px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: white;
+}
+
+/* Functionality Parts.  Do not edit. */
+.p51-contained-video {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  right: 0;
+  margin: auto;
+  height: 100%;
+  width: 100%;
+  object-fit: contain;
+}
+
+div.p51-contained-canvas {
+  position: absolute;
+  height: 100%;
+  width: 100%;
+  top: 0;
+}
+
+canvas.p51-contained-canvas {
+  width: 100%;
+  height: 100%;
+}
+
+img.p51-contained-image {
+  display: block;
+  width: 100%;
+  height: 100%;
+
+  image-rendering: optimizeSpeed; /* STOP SMOOTHING, GIVE ME SPEED  */
+  image-rendering: -moz-crisp-edges; /* Firefox                        */
+  image-rendering: -o-crisp-edges; /* Opera                          */
+  image-rendering: -webkit-optimize-contrast; /* Chrome (and eventually Safari) */
+  image-rendering: pixelated; /* Chrome */
+  image-rendering: optimize-contrast; /* CSS3 Proposed                  */
+  -ms-interpolation-mode: nearest-neighbor; /* IE8+                           */
+}
+
+div.p51-contained-image {
+  position: absolute;
+  width: 100%;
+  top: 0;
+}
+
+.p51-contained-canvas {
+  z-index: 10;
+}
+
+.p51-gallery-right-nav,
+.p51-gallery-left-nav {
+  cursor: pointer;
+  position: absolute;
+  z-index: 20;
+  top: 50%;
+  width: auto;
+  padding: 16px;
+  margin-top: -24px;
+  background-color: rgba(0, 0, 0, 0.2);
+  color: white;
+  font-weight: bold;
+  font-size: 25px;
+  border-radius: 0 3px 3px 0;
+  user-select: none;
+  -webkit-user-select: none;
+  height: auto;
+}
+
+.p51-gallery-right-nav:hover,
+.p51-gallery-left-nav:hover {
+  background-color: rgba(0, 0, 0, 0.8);
+}
+
+.p51-gallery-right-nav {
+  right: 0;
+  border-radius: 3px 0 0 3px;
+}
+
+.p51-display-none {
+  display: none;
+}
+
+.p51-clickable {
+  cursor: pointer;
+}

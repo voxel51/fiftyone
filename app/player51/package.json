@@ -1,0 +1,28 @@
+{
+    "name": "player51",
+    "version": "1.0.0",
+    "description": "Javascript media player that can render metadata overlays.",
+    "main": "src/js/player51.js",
+    "devDependencies": {
+        "snowpack": "^3.3.4"
+    },
+    "scripts": {
+        "start": "snowpack dev",
+        "build": "snowpack build"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+ssh://git@github.com/voxel51/player51.git"
+    },
+    "author": "Voxel51, Inc.",
+    "license": "Apache-2.0",
+    "bugs": {
+        "url": "https://github.com/voxel51/player51/issues"
+    },
+    "homepage": "https://github.com/voxel51/player51#readme",
+    "dependencies": {
+        "@ungap/event-target": "^0.2.2",
+        "event-target": "^1.2.3",
+        "mime-types": "^2.1.30"
+    }
+}
