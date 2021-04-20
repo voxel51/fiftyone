@@ -5,6 +5,7 @@ FiftyOne datasets.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+from collections import defaultdict
 from copy import deepcopy
 import datetime
 import fnmatch
@@ -16,8 +17,9 @@ import random
 import string
 
 from bson import ObjectId
+from deprecated import deprecated
 import mongoengine.errors as moe
-from pymongo import UpdateMany
+from pymongo import UpdateMany, UpdateOne
 from pymongo.errors import BulkWriteError
 
 import eta.core.serial as etas
@@ -31,6 +33,7 @@ import fiftyone.core.collections as foc
 import fiftyone.core.evaluation as foe
 import fiftyone.core.fields as fof
 import fiftyone.core.frame as fofr
+import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 import fiftyone.migrations as fomi
 import fiftyone.core.odm as foo
@@ -1483,43 +1486,15 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 elif insert_new:
                     self.add_sample(sample)
 
-    def remove_sample(self, sample_or_id):
-        """Removes the given sample from the dataset.
+    def delete_samples(self, samples_or_ids):
+        """Deletes the given sample(s) from the dataset.
 
         If reference to a sample exists in memory, the sample object will be
         updated such that ``sample.in_dataset == False``.
 
         Args:
-            sample_or_id: the sample to remove. Can be any of the following:
-
-                -   a sample ID
-                -   a :class:`fiftyone.core.sample.Sample`
-                -   a :class:`fiftyone.core.sample.SampleView`
-        """
-        if isinstance(sample_or_id, (fos.Sample, fos.SampleView)):
-            sample_id = sample_or_id.id
-        else:
-            sample_id = sample_or_id
-
-        self._sample_collection.delete_one({"_id": ObjectId(sample_id)})
-
-        fos.Sample._reset_docs(
-            self._sample_collection_name, doc_ids=[sample_id]
-        )
-
-        if self.media_type == fom.VIDEO:
-            fofr.Frame._reset_docs(
-                self._frame_collection_name, sample_ids=[sample_id]
-            )
-
-    def remove_samples(self, samples_or_ids):
-        """Removes the given samples from the dataset.
-
-        If reference to a sample exists in memory, the sample object will be
-        updated such that ``sample.in_dataset == False``.
-
-        Args:
-            samples_or_ids: the samples to remove. Can be any of the following:
+            samples_or_ids: the sample(s) to delete. Can be any of the
+                following:
 
                 -   a sample ID
                 -   an iterable of sample IDs
@@ -1544,6 +1519,320 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             fofr.Frame._reset_docs(
                 self._frame_collection_name, sample_ids=sample_ids
             )
+
+    def delete_labels(
+        self, labels=None, samples=None, ids=None, tags=None, fields=None
+    ):
+        """Deletes the specified labels from the dataset.
+
+        You can specify the labels to delete via any of the following methods:
+
+        -   Provide the ``labels`` argument, which should contain a list of
+            dicts in the format returned by
+            :meth:`fiftyone.core.session.Session.selected_labels`
+
+        -   Provide the ``samples`` argument to delete all of the labels in a
+            collection. This syntax is useful if you have constructed a
+            :class:`fiftyone.core.view.DatasetView` defining the labels to
+            delete
+
+        -   Provide the ``ids`` or ``tags`` arguments to specify the labels to
+            delete via their IDs and/or tags
+
+        Additionally, you can specify the ``fields`` argument to restrict
+        deletion to specific field(s), either for efficiency or to ensure that
+        labels from other fields are not deleted if their contents are included
+        in the other arguments.
+
+        Args:
+            labels (None): a list of dicts specifying the labels to delete in
+                the format returned by
+                :meth:`fiftyone.core.session.Session.selected_labels`
+            samples (None): a :class:`fiftyone.core.samples.SampleCollection`
+                containing the labels to delete
+            ids (None): an ID or iterable of IDs of the labels to delete
+            tags (None): a tag or iterable of tags of the labels to delete
+            fields (None): a field or iterable of fields from which to delete
+                labels
+        """
+        if labels is not None:
+            self._delete_labels(labels, fields=fields)
+
+        if samples is None and ids is None and tags is None:
+            return
+
+        if samples is not None and samples._dataset is not self:
+            raise ValueError("`samples` must be a view into the same dataset")
+
+        if etau.is_str(ids):
+            ids = [ids]
+
+        if ids is not None:
+            ids = [ObjectId(_id) for _id in ids]
+
+        if etau.is_str(tags):
+            tags = [tags]
+
+        if fields is None:
+            fields = self._get_label_fields()
+        elif etau.is_str(fields):
+            fields = [fields]
+
+        sample_ops = []
+        frame_ops = []
+        for field in fields:
+            if samples is not None:
+                _, id_path = samples._get_label_field_path(field, "_id")
+                label_ids = samples.values(id_path, unwind=True)
+            else:
+                label_ids = None
+
+            label_type = self._get_label_field_type(field)
+            field, is_frame_field = self._handle_frame_field(field)
+
+            ops = []
+            if issubclass(label_type, fol._LABEL_LIST_FIELDS):
+                array_field = field + "." + label_type._LABEL_LIST_FIELD
+
+                if label_ids is not None:
+                    ops.append(
+                        UpdateMany(
+                            {},
+                            {
+                                "$pull": {
+                                    array_field: {"_id": {"$in": label_ids}}
+                                }
+                            },
+                        )
+                    )
+
+                if ids is not None:
+                    ops.append(
+                        UpdateMany(
+                            {}, {"$pull": {array_field: {"_id": {"$in": ids}}}}
+                        )
+                    )
+
+                if tags is not None:
+                    ops.append(
+                        UpdateMany(
+                            {},
+                            {
+                                "$pull": {
+                                    array_field: {
+                                        "tags": {"$elemMatch": {"$in": tags}}
+                                    }
+                                }
+                            },
+                        )
+                    )
+            else:
+                if label_ids is not None:
+                    ops.append(
+                        UpdateMany(
+                            {field + "._id": {"$in": label_ids}},
+                            {"$set": {field: None}},
+                        )
+                    )
+
+                if ids is not None:
+                    ops.append(
+                        UpdateMany(
+                            {field + "._id": {"$in": ids}},
+                            {"$set": {field: None}},
+                        )
+                    )
+
+                if tags is not None:
+                    ops.append(
+                        UpdateMany(
+                            {field + ".tags": {"$elemMatch": {"$in": tags}}},
+                            {"$set": {field: None}},
+                        )
+                    )
+
+            if is_frame_field:
+                frame_ops.extend(ops)
+            else:
+                sample_ops.extend(ops)
+
+        if sample_ops:
+            foo.bulk_write(sample_ops, self._sample_collection)
+            fos.Sample._reset_docs(self._sample_collection_name)
+
+        if frame_ops:
+            foo.bulk_write(frame_ops, self._frame_collection)
+            fofr.Frame._reset_docs(self._frame_collection_name)
+
+    def _delete_labels(self, labels, fields=None):
+        if etau.is_str(fields):
+            fields = [fields]
+
+        # Parse selected labels
+        sample_ids = set()
+        labels_map = defaultdict(list)
+        for l in labels:
+            sample_ids.add(l["sample_id"])
+            labels_map[l["field"]].append(l)
+
+        sample_ops = []
+        frame_ops = []
+        for field, field_labels in labels_map.items():
+            if fields is not None and field not in fields:
+                continue
+
+            label_type = self._get_label_field_type(field)
+            field, is_frame_field = self._handle_frame_field(field)
+
+            if is_frame_field:
+                # Partition by (sample ID, frame number)
+                _labels_map = defaultdict(list)
+                for l in field_labels:
+                    _labels_map[(l["sample_id"], l["frame_number"])].append(
+                        ObjectId(l["label_id"])
+                    )
+
+                if issubclass(label_type, fol._LABEL_LIST_FIELDS):
+                    array_field = field + "." + label_type._LABEL_LIST_FIELD
+
+                    for (
+                        (sample_id, frame_number),
+                        label_ids,
+                    ) in _labels_map.items():
+                        frame_ops.append(
+                            UpdateOne(
+                                {
+                                    "_sample_id": ObjectId(sample_id),
+                                    "frame_number": frame_number,
+                                },
+                                {
+                                    "$pull": {
+                                        array_field: {
+                                            "_id": {"$in": label_ids}
+                                        }
+                                    }
+                                },
+                            )
+                        )
+                else:
+                    for (
+                        (sample_id, frame_number),
+                        label_ids,
+                    ) in _labels_map.items():
+                        # If the data is well-formed, `label_ids` should have
+                        # exactly one element, and this is redundant anyhow
+                        # since `sample_id` should uniquely define the label to
+                        # delete, but we still include `label_id` in the query
+                        # just to be safe
+                        for label_id in label_ids:
+                            frame_ops.append(
+                                UpdateOne(
+                                    {
+                                        "_sample_id": ObjectId(sample_id),
+                                        "frame_number": frame_number,
+                                        field + "._id": label_id,
+                                    },
+                                    {"$set": {field: None}},
+                                )
+                            )
+            else:
+                # Partition by sample ID
+                _labels_map = defaultdict(list)
+                for l in field_labels:
+                    _labels_map[l["sample_id"]].append(ObjectId(l["label_id"]))
+
+                if issubclass(label_type, fol._LABEL_LIST_FIELDS):
+                    array_field = field + "." + label_type._LABEL_LIST_FIELD
+
+                    for sample_id, label_ids in _labels_map.items():
+                        sample_ops.append(
+                            UpdateOne(
+                                {"_id": ObjectId(sample_id)},
+                                {
+                                    "$pull": {
+                                        array_field: {
+                                            "_id": {"$in": label_ids}
+                                        }
+                                    }
+                                },
+                            )
+                        )
+                else:
+                    for sample_id, label_ids in _labels_map.items():
+                        # If the data is well-formed, `label_ids` should have
+                        # exactly one element, and this is redundant anyhow
+                        # since `sample_id` should uniquely define the label to
+                        # delete, but we still include `label_id` in the query
+                        # just to be safe
+                        for label_id in label_ids:
+                            sample_ops.append(
+                                UpdateOne(
+                                    {
+                                        "_id": ObjectId(sample_id),
+                                        field + "._id": label_id,
+                                    },
+                                    {"$set": {field: None}},
+                                )
+                            )
+
+        if sample_ops:
+            foo.bulk_write(sample_ops, self._sample_collection)
+            fos.Sample._reset_docs(
+                self._sample_collection_name, doc_ids=sample_ids
+            )
+
+        if frame_ops:
+            foo.bulk_write(frame_ops, self._frame_collection)
+            fofr.Frame._reset_docs(
+                self._frame_collection_name, sample_ids=sample_ids
+            )
+
+    @deprecated(reason="Use delete_samples() instead")
+    def remove_sample(self, sample_or_id):
+        """Removes the given sample from the dataset.
+
+        If reference to a sample exists in memory, the sample object will be
+        updated such that ``sample.in_dataset == False``.
+
+        .. warning::
+
+            This method is deprecated and will be removed in a future release.
+            Use the drop-in replacement :meth:`delete_samples` instead.
+
+        Args:
+            sample_or_id: the sample to remove. Can be any of the following:
+
+                -   a sample ID
+                -   a :class:`fiftyone.core.sample.Sample`
+                -   a :class:`fiftyone.core.sample.SampleView`
+        """
+        self.delete_samples(sample_or_id)
+
+    @deprecated(reason="Use delete_samples() instead")
+    def remove_samples(self, samples_or_ids):
+        """Removes the given samples from the dataset.
+
+        If reference to a sample exists in memory, the sample object will be
+        updated such that ``sample.in_dataset == False``.
+
+        .. warning::
+
+            This method is deprecated and will be removed in a future release.
+            Use the drop-in replacement :meth:`delete_samples` instead.
+
+        Args:
+            samples_or_ids: the samples to remove. Can be any of the following:
+
+                -   a sample ID
+                -   an iterable of sample IDs
+                -   a :class:`fiftyone.core.sample.Sample` or
+                    :class:`fiftyone.core.sample.SampleView`
+                -   an iterable of sample IDs
+                -   a :class:`fiftyone.core.collections.SampleCollection`
+                -   an iterable of :class:`fiftyone.core.sample.Sample` or
+                    :class:`fiftyone.core.sample.SampleView` instances
+        """
+        self.delete_samples(samples_or_ids)
 
     def save(self):
         """Saves the dataset to the database.
