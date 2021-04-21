@@ -1090,7 +1090,7 @@ class SampleCollection(object):
             handle_missing=handle_missing,
         )
 
-    def to_patches(self, field, name=None):
+    def to_patches(self, field, keep_label_lists=False, name=None):
         """Creates a dataset that contains one sample per object patch in the
         specified field of the collection.
 
@@ -1107,12 +1107,17 @@ class SampleCollection(object):
             field: the patches field, which must be of type
                 :class:`fiftyone.core.labels.Detections` or
                 :class:`fiftyone.core.labels.Polylines`
+            keep_label_lists (False): whether to store the patches in label
+                list fields of the same type as the input collection rather
+                than using their single label variants
             name (None): a name for the returned dataset
 
         Returns:
             a :class:`fiftyone.core.dataset.Dataset`
         """
-        return foup.make_patches_dataset(self, field, name=name)
+        return foup.make_patches_dataset(
+            self, field, keep_label_lists=keep_label_lists, name=name
+        )
 
     def to_frames(
         self,

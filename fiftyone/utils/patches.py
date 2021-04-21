@@ -21,7 +21,9 @@ _PATCHES_TYPES = (fol.Detections, fol.Polylines)
 _NO_MATCH_ID = ""
 
 
-def make_patches_dataset(sample_collection, field, name=None):
+def make_patches_dataset(
+    sample_collection, field, keep_label_lists=False, name=None
+):
     """Creates a dataset that contains one sample per object patch in the
     specified field of the collection.
 
@@ -40,12 +42,18 @@ def make_patches_dataset(sample_collection, field, name=None):
         field: the patches field, which must be of type
             :class:`fiftyone.core.labels.Detections` or
             :class:`fiftyone.core.labels.Polylines`
+        keep_label_lists (False): whether to store the patches in label list
+            fields of the same type as the input collection rather than using
+            their single label variants
         name (None): a name for the returned dataset
 
     Returns:
         a :class:`fiftyone.core.dataset.Dataset`
     """
-    field_type = _get_single_label_field_type(sample_collection, field)
+    if keep_label_lists:
+        field_type = sample_collection._get_label_field_type(field)
+    else:
+        field_type = _get_single_label_field_type(sample_collection, field)
 
     dataset = fod.Dataset(name)
     dataset.add_sample_field("sample_id", fof.StringField)
@@ -53,10 +61,21 @@ def make_patches_dataset(sample_collection, field, name=None):
         field, fof.EmbeddedDocumentField, embedded_doc_type=field_type
     )
 
-    patches_view = _make_patches_view(sample_collection, field)
+    patches_view = _make_patches_view(
+        sample_collection, field, keep_label_lists=keep_label_lists
+    )
     _write_samples(dataset, patches_view)
 
     return dataset
+
+
+def _get_single_label_field_type(sample_collection, field):
+    label_type = sample_collection._get_label_field_type(field)
+
+    if label_type not in _SINGLE_TYPES_MAP:
+        raise ValueError("Unsupported label field type %s" % label_type)
+
+    return _SINGLE_TYPES_MAP[label_type]
 
 
 def make_evaluation_dataset(sample_collection, eval_key, name=None):
@@ -141,19 +160,11 @@ def make_evaluation_dataset(sample_collection, eval_key, name=None):
     return dataset
 
 
-def _get_single_label_field_type(sample_collection, field):
-    label_type = sample_collection._get_label_field_type(field)
-
-    if label_type not in _SINGLE_TYPES_MAP:
-        raise ValueError("Unsupported label field type %s" % label_type)
-
-    return _SINGLE_TYPES_MAP[label_type]
-
-
 def _make_patches_view(sample_collection, field, keep_label_lists=False):
     if sample_collection._is_frame_field(field):
         raise ValueError(
-            "Extracting patches for video datasets is not yet supported"
+            "Frame label patches cannot be directly extracted; you must first "
+            "convert video datasets to frame datasets via `to_frames()`"
         )
 
     label_type = sample_collection._get_label_field_type(field)
@@ -166,20 +177,20 @@ def _make_patches_view(sample_collection, field, keep_label_lists=False):
             % (label_type, _PATCHES_TYPES)
         )
 
-    # One sample per patch, upgrade label ID to sample ID, and store sample ID
-    # in `sample_id` field
     pipeline = [
         {"$unwind": "$" + list_field},
-        {"$set": {"sample_id": {"$toString": "$_id"}}},
+        {
+            "$set": {
+                "sample_id": {"$toString": "$_id"},
+                "_rand": {"$rand": {}},
+            }
+        },
         {"$set": {"_id": "$" + list_field + "._id"}},
-        {"$set": {"_rand": {"$rand": {}}}},
     ]
 
     if keep_label_lists:
-        # Convert back to label lists
         pipeline.append({"$set": {list_field: ["$" + list_field]}})
     else:
-        # Convert to single label field
         pipeline.append({"$set": {field: "$" + list_field}})
 
     return sample_collection.select_fields(field).mongo(pipeline)
@@ -200,10 +211,7 @@ def _make_eval_view(
         )
 
     view = view.mongo(
-        [
-            {"$set": {"type": "$" + eval_type}},
-            {"$set": {"iou": "$" + eval_iou}},
-        ]
+        [{"$set": {"type": "$" + eval_type, "iou": "$" + eval_iou}}]
     )
 
     if crowd_attr is not None:
@@ -315,6 +323,7 @@ def _merge_matched_labels(dataset, src_collection, eval_key, field):
 def _write_samples(dataset, src_collection):
     pipeline = src_collection._pipeline(detach_frames=True)
     pipeline.append({"$out": dataset._sample_collection_name})
+
     src_collection._dataset._aggregate(pipeline=pipeline, attach_frames=False)
 
 
