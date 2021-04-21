@@ -3659,22 +3659,27 @@ class SortBySimilarity(ViewStage):
     Args:
         query_ids: an ID or iterable of query IDs. These may be sample IDs or
             label IDs depending on ``brain_key``
+        k (None): the number of matches to return. By default, the entire
+            collection is sorted
+        reverse (False): whether to sort by least similarity
         brain_key (None): the brain key of an existing
             :meth:`fiftyone.brain.compute_similarity` run on the dataset. If
             not provided, the dataset must have exactly one similarity run,
             which will be used
-        reverse (False): whether to sort by least similarity
     """
 
-    def __init__(self, query_ids, brain_key=None, reverse=False, _state=None):
+    def __init__(
+        self, query_ids, k=None, reverse=False, brain_key=None, _state=None
+    ):
         if etau.is_str(query_ids):
             query_ids = [query_ids]
         else:
             query_ids = list(query_ids)
 
-        self._brain_key = brain_key
         self._query_ids = query_ids
+        self._k = k
         self._reverse = reverse
+        self._brain_key = brain_key
         self._pipeline = self._parse_state(_state)
 
     @property
@@ -3683,16 +3688,21 @@ class SortBySimilarity(ViewStage):
         return self._query_ids
 
     @property
-    def brain_key(self):
-        """The brain key of the
-        :class:`fiftyone.brain.similiarity.SimilarityResults` to use.
-        """
-        return self._brain_key
+    def k(self):
+        """The number of matches to return."""
+        return self._k
 
     @property
     def reverse(self):
         """Whether to sort by least similiarity."""
         return self._reverse
+
+    @property
+    def brain_key(self):
+        """The brain key of the
+        :class:`fiftyone.brain.similiarity.SimilarityResults` to use.
+        """
+        return self._brain_key
 
     def to_mongo(self, _):
         if self._pipeline is None:
@@ -3710,15 +3720,17 @@ class SortBySimilarity(ViewStage):
         # edited
         state = {
             "query_ids": self._query_ids,
-            "brain_key": self._brain_key,
+            "k": self._k,
             "reverse": self._reverse,
+            "brain_key": self._brain_key,
             "pipeline": self._pipeline,
         }
 
         return [
             ["query_ids", self._query_ids],
-            ["brain_key", self._brain_key],
+            ["k", self._k],
             ["reverse", self._reverse],
+            ["brain_key", self._brain_key],
             ["_state", state],
         ]
 
@@ -3731,16 +3743,22 @@ class SortBySimilarity(ViewStage):
                 "placeholder": "list,of,ids",
             },
             {
-                "name": "brain_key",
-                "type": "NoneType|str",
+                "name": "k",
+                "type": "NoneType|int",
                 "default": "None",
-                "placeholder": "brain key",
+                "placeholder": "k (default=None)",
             },
             {
                 "name": "reverse",
                 "type": "bool",
                 "default": "False",
                 "placeholder": "reverse (default=False)",
+            },
+            {
+                "name": "brain_key",
+                "type": "NoneType|str",
+                "default": "None",
+                "placeholder": "brain key",
             },
             {"name": "_state", "type": "NoneType|json", "default": "None"},
         ]
@@ -3768,7 +3786,7 @@ class SortBySimilarity(ViewStage):
 
         results = sample_collection.load_brain_results(brain_key)
         view = results.sort_by_similarity(
-            self._query_ids, reverse=self._reverse
+            self._query_ids, k=self._k, reverse=self._reverse
         )
 
         try:
@@ -3785,9 +3803,10 @@ class SortBySimilarity(ViewStage):
     def _parse_state(self, state):
         if (
             not isinstance(state, dict)
-            or state.get("brain_key", None) != self._brain_key
             or state.get("query_ids", None) != self._query_ids
+            or state.get("k", None) != self._k
             or state.get("reverse", None) != self._reverse
+            or state.get("brain_key", None) != self._brain_key
         ):
             return None
 
