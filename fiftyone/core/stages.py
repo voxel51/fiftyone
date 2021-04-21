@@ -3629,6 +3629,171 @@ class SortBy(ViewStage):
             sample_collection.create_index(field_or_expr)
 
 
+class SortBySimilarity(ViewStage):
+    """Sorts the samples in a collection by visual similiarity to a specified
+    set of query ID(s).
+
+    In order to use this stage, you must first use
+    :meth:`fiftyone.brain.compute_similarity` to index your dataset by visual
+    similiarity.
+
+    Examples::
+
+        import fiftyone as fo
+        import fiftyone.brain as fob
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("quickstart").clone()
+
+        fob.compute_similarity(dataset, brain_key="similarity")
+
+        #
+        # Sort the samples by their visual similarity to the first sample
+        # in the dataset
+        #
+
+        query_id = dataset.first().id
+        stage = fo.SortBySimilarity(query_id)
+        view = dataset.add_stage(stage)
+
+    Args:
+        query_ids: an ID or iterable of query IDs. These may be sample IDs or
+            label IDs depending on ``brain_key``
+        brain_key (None): the brain key of an existing
+            :meth:`fiftyone.brain.compute_similarity` run on the dataset. If
+            not provided, the dataset must have exactly one similarity run,
+            which will be used
+        reverse (False): whether to sort by least similarity
+    """
+
+    def __init__(self, query_ids, brain_key=None, reverse=False, _state=None):
+        if etau.is_str(query_ids):
+            query_ids = [query_ids]
+        else:
+            query_ids = list(query_ids)
+
+        self._brain_key = brain_key
+        self._query_ids = query_ids
+        self._reverse = reverse
+        self._pipeline = self._parse_state(_state)
+
+    @property
+    def query_ids(self):
+        """The list of query IDs."""
+        return self._query_ids
+
+    @property
+    def brain_key(self):
+        """The brain key of the
+        :class:`fiftyone.brain.similiarity.SimilarityResults` to use.
+        """
+        return self._brain_key
+
+    @property
+    def reverse(self):
+        """Whether to sort by least similiarity."""
+        return self._reverse
+
+    def to_mongo(self, _):
+        if self._pipeline is None:
+            raise ValueError(
+                "`validate()` must be called before using a %s stage"
+                % self.__class__
+            )
+
+        return self._pipeline
+
+    def _kwargs(self):
+        # @todo we could just directly send `_pipeline` here if the App adopted
+        # the convention that private data is omitted when serializing stages
+        # to send to the backend whenever the public parameters of a stage are
+        # edited
+        state = {
+            "query_ids": self._query_ids,
+            "brain_key": self._brain_key,
+            "reverse": self._reverse,
+            "pipeline": self._pipeline,
+        }
+
+        return [
+            ["query_ids", self._query_ids],
+            ["brain_key", self._brain_key],
+            ["reverse", self._reverse],
+            ["_state", state],
+        ]
+
+    @classmethod
+    def _params(cls):
+        return [
+            {
+                "name": "query_ids",
+                "type": "list<id>|id",
+                "placeholder": "list,of,ids",
+            },
+            {
+                "name": "brain_key",
+                "type": "NoneType|str",
+                "default": "None",
+                "placeholder": "brain key",
+            },
+            {
+                "name": "reverse",
+                "type": "bool",
+                "default": "False",
+                "placeholder": "reverse (default=False)",
+            },
+            {"name": "_state", "type": "NoneType|json", "default": "None"},
+        ]
+
+    def validate(self, sample_collection):
+        if self._pipeline is not None:
+            return
+
+        if self._brain_key is not None:
+            brain_key = self._brain_key
+        else:
+            brain_keys = sample_collection._get_similarity_keys()
+            if not brain_keys:
+                raise ValueError(
+                    "Dataset '%s' has no similarity results. You must run "
+                    "`fiftyone.brain.compute_similarity()` in order to sort "
+                    "by similarity" % sample_collection._dataset.name
+                )
+
+            brain_key = brain_keys[0]
+
+            if len(brain_keys) > 1:
+                msg = "Multiple similarity runs found; using '%s'" % brain_key
+                warnings.warn(msg)
+
+        results = sample_collection.load_brain_results(brain_key)
+        view = results.sort_by_similarity(
+            self._query_ids, reverse=self._reverse
+        )
+
+        try:
+            offset = len(results._samples._stages)
+        except:
+            offset = 0
+
+        pipeline = []
+        for stage in view._stages[offset:]:
+            pipeline.extend(stage.to_mongo(sample_collection))
+
+        self._pipeline = pipeline
+
+    def _parse_state(self, state):
+        if (
+            not isinstance(state, dict)
+            or state.get("brain_key", None) != self._brain_key
+            or state.get("query_ids", None) != self._query_ids
+            or state.get("reverse", None) != self._reverse
+        ):
+            return None
+
+        return state.get("pipeline", None)
+
+
 class Take(ViewStage):
     """Randomly samples the given number of samples from a collection.
 
@@ -3911,5 +4076,6 @@ _STAGES = [
     SetField,
     Skip,
     SortBy,
+    SortBySimilarity,
     Take,
 ]

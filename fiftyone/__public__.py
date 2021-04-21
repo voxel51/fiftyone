@@ -147,6 +147,7 @@ from .core.stages import (
     SetField,
     Skip,
     SortBy,
+    SortBySimilarity,
     Take,
 )
 from .core.session import (
