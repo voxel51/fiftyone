@@ -1477,23 +1477,32 @@ class SampleCollection(object):
         """Deletes all brain method runs from this collection."""
         fob.BrainMethod.delete_runs(self)
 
-    def _get_similarity_keys(self):
+    def _get_similarity_keys(self, **kwargs):
         from fiftyone.brain import SimilarityConfig
 
-        return self._get_brain_runs_with_type(SimilarityConfig)
+        return self._get_brain_runs_with_type(SimilarityConfig, **kwargs)
 
-    def _get_visualization_keys(self):
+    def _get_visualization_keys(self, **kwargs):
         from fiftyone.brain import VisualizationConfig
 
-        return self._get_brain_runs_with_type(VisualizationConfig)
+        return self._get_brain_runs_with_type(VisualizationConfig, **kwargs)
 
-    def _get_brain_runs_with_type(self, run_type):
+    def _get_brain_runs_with_type(self, run_type, **kwargs):
         brain_keys = []
         for brain_key in self.list_brain_runs():
             brain_info = self.get_brain_info(brain_key)
+
             run_cls = etau.get_class(brain_info.config.cls)
-            if issubclass(run_cls, run_type):
-                brain_keys.append(brain_key)
+            if not issubclass(run_cls, run_type):
+                continue
+
+            if any(
+                getattr(brain_info.config, key) != value
+                for key, value in kwargs.items()
+            ):
+                continue
+
+            brain_keys.append(brain_key)
 
         return brain_keys
 
