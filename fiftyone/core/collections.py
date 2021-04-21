@@ -31,7 +31,6 @@ import fiftyone.core.media as fom
 import fiftyone.core.metadata as fomt
 import fiftyone.core.models as fomo
 import fiftyone.core.odm as foo
-import fiftyone.core.patches as fop
 import fiftyone.core.sample as fosa
 import fiftyone.core.stages as fos
 import fiftyone.core.utils as fou
@@ -39,6 +38,8 @@ import fiftyone.core.utils as fou
 foua = fou.lazy_import("fiftyone.utils.annotations")
 foud = fou.lazy_import("fiftyone.utils.data")
 foue = fou.lazy_import("fiftyone.utils.eval")
+foup = fou.lazy_import("fiftyone.utils.patches")
+fouv = fou.lazy_import("fiftyone.utils.video")
 
 
 logger = logging.getLogger(__name__)
@@ -1111,7 +1112,86 @@ class SampleCollection(object):
         Returns:
             a :class:`fiftyone.core.dataset.Dataset`
         """
-        return fop.make_patches_dataset(self, field, name=name)
+        return foup.make_patches_dataset(self, field, name=name)
+
+    def to_frames(
+        self,
+        frames_patt=None,
+        size=None,
+        min_size=None,
+        max_size=None,
+        sample_frames=True,
+        force_sample=False,
+        name=None,
+    ):
+        """Creates a dataset that contains one sample per video frame in the
+        collection.
+
+        This method samples each video in the collection into a directory of
+        per-frame images with the same basename as the input video with frame
+        numbers/format specified by ``frames_patt``.
+
+        For example, if ``frames_patt = "%%06d.jpg"``, then videos with the
+        following paths::
+
+            /path/to/video1.mp4
+            /path/to/video2.mp4
+            ...
+
+        would be sampled as follows::
+
+            /path/to/video1/
+                000001.jpg
+                000002.jpg
+                ...
+            /path/to/video2/
+                000001.jpg
+                000002.jpg
+                ...
+
+        .. note::
+
+            The returned dataset is independent from the source collection;
+            modifying it will not affect the source collection.
+
+        Args:
+            sample_collection: a
+                :class:`fiftyone.core.collections.SampleCollection`
+            frames_patt (None): a pattern specifying the filename/format to use
+                to store the sampled frames, e.g., ``"%%06d.jpg"``. The default
+                value is
+                ``fiftyone.config.default_sequence_idx + fiftyone.config.default_image_ext``
+            size (None): an optional ``(width, height)`` for each frame. One
+                dimension can be -1, in which case the aspect ratio is
+                preserved
+            min_size (None): an optional minimum ``(width, height)`` for each
+                frame. A dimension can be -1 if no constraint should be
+                applied. The frames are resized (aspect-preserving) if
+                necessary to meet this constraint
+            max_size (None): an optional maximum ``(width, height)`` for each
+                frame. A dimension can be -1 if no constraint should be
+                applied. The frames are resized (aspect-preserving) if
+                necessary to meet this constraint
+            sample_frames (True): whether to sample the video frames. If False,
+                the ``filepath`` of the samples in the returned dataset will
+                not exist, so, e.g., the dataset cannot be view in the App
+            force_sample (False): whether to resample videos whose sampled
+                frames already exist
+            name (None): a name for the returned dataset
+
+        Returns:
+            a :class:`fiftyone.core.dataset.Dataset`
+        """
+        return fouv.make_frames_dataset(
+            self,
+            frames_patt=frames_patt,
+            size=size,
+            min_size=min_size,
+            max_size=max_size,
+            sample_frames=sample_frames,
+            force_sample=force_sample,
+            name=name,
+        )
 
     def evaluate_classifications(
         self,
@@ -1421,7 +1501,7 @@ class SampleCollection(object):
         Returns:
             a :class:`fiftyone.core.dataset.Dataset`
         """
-        return fop.make_evaluation_dataset(self, eval_key, name=name)
+        return foup.make_evaluation_dataset(self, eval_key, name=name)
 
     def load_evaluation_results(self, eval_key):
         """Loads the :class:`fiftyone.core.evaluation.EvaluationResults` for

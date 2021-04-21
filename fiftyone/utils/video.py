@@ -5,6 +5,7 @@ Video utilities.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import logging
 import os
 
 import eta.core.image as etai
@@ -12,8 +13,242 @@ import eta.core.numutils as etan
 import eta.core.utils as etau
 import eta.core.video as etav
 
+import fiftyone as fo
+import fiftyone.core.aggregations as foa
+import fiftyone.core.dataset as fod
+import fiftyone.core.fields as fof
 import fiftyone.core.media as fom
+import fiftyone.core.odm as foo
 import fiftyone.core.utils as fou
+
+
+logger = logging.getLogger(__name__)
+
+
+def make_frames_dataset(
+    sample_collection,
+    frames_patt=None,
+    size=None,
+    min_size=None,
+    max_size=None,
+    sample_frames=True,
+    force_sample=False,
+    name=None,
+):
+    """Creates a dataset that contains one sample per video frame in the
+    collection.
+
+    This method samples each video in the collection into a directory of
+    per-frame images with the same basename as the input video with frame
+    numbers/format specified by ``frames_patt``.
+
+    For example, if ``frames_patt = "%%06d.jpg"``, then videos with the
+    following paths::
+
+        /path/to/video1.mp4
+        /path/to/video2.mp4
+        ...
+
+    would be sampled as follows::
+
+        /path/to/video1/
+            000001.jpg
+            000002.jpg
+            ...
+        /path/to/video2/
+            000001.jpg
+            000002.jpg
+            ...
+
+    .. note::
+
+        The returned dataset is independent from the source collection;
+        modifying it will not affect the source collection.
+
+    Args:
+        sample_collection: a
+            :class:`fiftyone.core.collections.SampleCollection`
+        frames_patt (None): a pattern specifying the filename/format to use to
+            store the sampled frames, e.g., ``"%%06d.jpg"``. The default value
+            is ``fiftyone.config.default_sequence_idx + fiftyone.config.default_image_ext``
+        size (None): an optional ``(width, height)`` for each frame. One
+            dimension can be -1, in which case the aspect ratio is preserved
+        min_size (None): an optional minimum ``(width, height)`` for each
+            frame. A dimension can be -1 if no constraint should be applied.
+            The frames are resized (aspect-preserving) if necessary to meet
+            this constraint
+        max_size (None): an optional maximum ``(width, height)`` for each
+            frame. A dimension can be -1 if no constraint should be applied.
+            The frames are resized (aspect-preserving) if necessary to meet
+            this constraint
+        sample_frames (True): whether to sample the video frames. If False,
+            the ``filepath`` of the samples in the returned dataset will not
+            exist, so, e.g., the dataset cannot be view in the App
+        force_sample (False): whether to resample videos whose sampled frames
+            already exist
+        name (None): a name for the returned dataset
+
+    Returns:
+        a :class:`fiftyone.core.dataset.Dataset`
+    """
+    if sample_collection.media_type != fom.VIDEO:
+        raise ValueError(
+            "'%s' is not a video collection" % sample_collection.name
+        )
+
+    if frames_patt is None:
+        frames_patt = (
+            fo.config.default_sequence_idx + fo.config.default_image_ext
+        )
+
+    images_patts, frame_counts, ids_to_sample = _parse_frames_collection(
+        sample_collection, frames_patt
+    )
+
+    #
+    # Create dataset with proper schema
+    #
+
+    dataset = fod.Dataset(name=name)
+    dataset.add_sample_field("sample_id", fof.StringField)
+    dataset.add_sample_field("frame_id", fof.StringField)
+
+    schema = sample_collection.get_field_schema()
+    dataset._sample_doc_cls.merge_field_schema(schema)
+
+    frame_schema = sample_collection.get_frame_field_schema()
+    dataset._sample_doc_cls.merge_field_schema(frame_schema)
+
+    #
+    # Convert videos to per-frame images, if necessary/requested
+    #
+
+    if sample_frames and ids_to_sample:
+        logger.info("Sampling video frames...")
+        sample_videos(
+            sample_collection.select(ids_to_sample),
+            frames_patt=frames_patt,
+            size=size,
+            min_size=min_size,
+            max_size=max_size,
+            force_sample=force_sample,
+        )
+
+    #
+    # Populate samples
+    #
+
+    # This is necessary as some frames may not have `Frame` docs
+    _initialize_frames(dataset, sample_collection)
+
+    _merge_frame_labels(dataset, sample_collection)
+    _finalize_frames(dataset, images_patts, frame_counts)
+
+    return dataset
+
+
+def _parse_frames_collection(sample_collection, frames_patt):
+    # We need frame counts
+    sample_collection.compute_metadata()
+
+    sample_ids, video_paths, frame_counts = sample_collection.aggregate(
+        [
+            foa.Values("id"),
+            foa.Values("filepath"),
+            foa.Values("metadata.total_frame_count"),
+        ]
+    )
+
+    images_patts = []
+    ids_to_sample = []
+    for sample_id, video_path in zip(sample_ids, video_paths):
+        images_patt, found = _prep_for_sampling(video_path, frames_patt)
+        images_patts.append(images_patt)
+        if not found:
+            ids_to_sample.append(sample_id)
+
+    return images_patts, frame_counts, ids_to_sample
+
+
+def _initialize_frames(dataset, src_collection):
+    pipeline = src_collection._pipeline(detach_frames=True)
+    pipeline.extend(
+        [
+            {
+                "$set": {
+                    "_sample_id": "$_id",
+                    "frame_number": {
+                        "$range": [
+                            1,
+                            {"$add": ["$metadata.total_frame_count", 1]},
+                        ]
+                    },
+                }
+            },
+            {
+                "$unset": [
+                    "_id",
+                    "_rand",
+                    "_media_type",
+                    "filepath",
+                    "metadata",
+                    "frames",
+                ]
+            },
+            {"$unwind": "$frame_number"},
+            {"$out": dataset._sample_collection_name},
+        ]
+    )
+
+    src_collection._dataset._aggregate(pipeline=pipeline, attach_frames=False)
+
+
+def _merge_frame_labels(dataset, src_collection):
+    # Must create unique indexes in order to use `$merge`
+    index_spec = [("_sample_id", foo.ASC), ("frame_number", foo.ASC)]
+    index = dataset._sample_collection.create_index(index_spec, unique=True)
+
+    pipeline = src_collection._pipeline(frames_only=True)
+    pipeline.extend(
+        [
+            {"$set": {"frame_id": {"$toString": "$_id"}}},
+            {"$unset": "_id"},
+            {
+                "$merge": {
+                    "into": dataset._sample_collection_name,
+                    "on": ["_sample_id", "frame_number"],
+                    "whenMatched": "merge",
+                    "whenNotMatched": "insert",
+                }
+            },
+        ]
+    )
+
+    src_collection._dataset._aggregate(pipeline=pipeline, attach_frames=False)
+
+    dataset._sample_collection.drop_index(index)
+
+
+def _finalize_frames(dataset, images_patts, frame_counts):
+    dataset._sample_collection.update_many(
+        {},
+        [
+            {
+                "$set": {
+                    "sample_id": {"$toString": "$_sample_id"},
+                    "_media_type": "image",
+                    "_rand": {"$rand": {}},
+                }
+            },
+            {"$unset": "_sample_id"},
+        ],
+    )
+
+    filepaths = []
+    for images_patt, frame_count in zip(images_patts, frame_counts):
+        filepaths.extend(images_patt % fn for fn in range(1, frame_count + 1))
+
+    dataset.set_values("filepath", filepaths)
 
 
 def reencode_videos(
@@ -146,6 +381,96 @@ def transform_videos(
     )
 
 
+def sample_videos(
+    sample_collection,
+    frames_patt=None,
+    fps=None,
+    min_fps=None,
+    max_fps=None,
+    size=None,
+    min_size=None,
+    max_size=None,
+    force_sample=False,
+    delete_originals=False,
+    verbose=False,
+    **kwargs
+):
+    """Samples the videos in the sample collection into directories of
+    per-frame images according to the provided parameters using ``ffmpeg``.
+
+    The frames for each sample are stored in a directory with the same basename
+    as the input video with frame numbers/format specified by ``frames_patt``.
+
+    For example, if ``frames_patt = "%%06d.jpg"``, then videos with the
+    following paths::
+
+        /path/to/video1.mp4
+        /path/to/video2.mp4
+        ...
+
+    would be sampled as follows::
+
+        /path/to/video1/
+            000001.jpg
+            000002.jpg
+            ...
+        /path/to/video2/
+            000001.jpg
+            000002.jpg
+            ...
+
+    Args:
+        sample_collection: a
+            :class:`fiftyone.core.collections.SampleCollection`
+        frames_patt (None): a pattern specifying the filename/format to use to
+            store the sampled frames, e.g., ``"%%06d.jpg"``. The default value
+            is ``fiftyone.config.default_sequence_idx + fiftyone.config.default_image_ext``
+        fps (None): an optional frame rate at which to sample frames
+        min_fps (None): an optional minimum frame rate. Videos with frame rate
+            below this value are upsampled
+        max_fps (None): an optional maximum frame rate. Videos with frame rate
+            exceeding this value are downsampled
+        size (None): an optional ``(width, height)`` for each frame. One
+            dimension can be -1, in which case the aspect ratio is preserved
+        min_size (None): an optional minimum ``(width, height)`` for each
+            frame. A dimension can be -1 if no constraint should be applied.
+            The frames are resized (aspect-preserving) if necessary to meet
+            this constraint
+        max_size (None): an optional maximum ``(width, height)`` for each
+            frame. A dimension can be -1 if no constraint should be applied.
+            The frames are resized (aspect-preserving) if necessary to meet
+            this constraint
+        force_sample (False): whether to resample videos whose sampled frames
+            already exist
+        delete_originals (False): whether to delete the original videos after
+            sampling
+        verbose (False): whether to log the ``ffmpeg`` commands that are
+            executed
+        **kwargs: keyword arguments for ``eta.core.video.FFmpeg(**kwargs)``
+    """
+    if sample_collection.media_type != fom.VIDEO:
+        raise ValueError(
+            "Sample collection '%s' does not contain videos (media_type = "
+            "'%s')" % (sample_collection.name, sample_collection.media_type)
+        )
+
+    _transform_videos(
+        sample_collection,
+        fps=fps,
+        min_fps=min_fps,
+        max_fps=max_fps,
+        size=size,
+        min_size=min_size,
+        max_size=max_size,
+        sample_frames=True,
+        frames_patt=frames_patt,
+        force_reencode=force_sample,
+        delete_originals=delete_originals,
+        verbose=verbose,
+        **kwargs
+    )
+
+
 def reencode_video(input_path, output_path, verbose=False, **kwargs):
     """Re-encodes the video using the H.264 codec.
 
@@ -239,6 +564,59 @@ def transform_video(
     )
 
 
+def sample_video(
+    input_path,
+    output_patt,
+    fps=None,
+    min_fps=None,
+    max_fps=None,
+    size=None,
+    min_size=None,
+    max_size=None,
+    verbose=False,
+    **kwargs
+):
+    """Samples the video into a directory of per-frame images according to the
+    provided parameters using ``ffmpeg``.
+
+    Args:
+        input_path: the path to the input video
+        output_patt: a pattern like ``/path/to/images/%%06d.jpg`` specifying
+            the filename/format to write the sampled frames
+        fps (None): an optional frame rate at which to sample the frames
+        min_fps (None): an optional minimum frame rate. Videos with frame rate
+            below this value are upsampled
+        max_fps (None): an optional maximum frame rate. Videos with frame rate
+            exceeding this value are downsampled
+        size (None): an optional ``(width, height)`` for each frame. One
+            dimension can be -1, in which case the aspect ratio is preserved
+        min_size (None): an optional minimum ``(width, height)`` for each
+            frame. A dimension can be -1 if no constraint should be applied.
+            The frames are resized (aspect-preserving) if necessary to meet
+            this constraint
+        max_size (None): an optional maximum ``(width, height)`` for each
+            frame. A dimension can be -1 if no constraint should be applied.
+            The frames are resized (aspect-preserving) if necessary to meet
+            this constraint
+        verbose (False): whether to log the ``ffmpeg`` command that is executed
+        **kwargs: keyword arguments for ``eta.core.video.FFmpeg(**kwargs)``
+    """
+    _transform_video(
+        input_path,
+        output_patt,
+        fps=fps,
+        min_fps=min_fps,
+        max_fps=max_fps,
+        size=size,
+        min_size=min_size,
+        max_size=max_size,
+        reencode=True,
+        force_reencode=True,
+        verbose=verbose,
+        **kwargs
+    )
+
+
 def _transform_videos(
     sample_collection,
     fps=None,
@@ -247,17 +625,31 @@ def _transform_videos(
     size=None,
     min_size=None,
     max_size=None,
+    sample_frames=False,
+    frames_patt=None,
     reencode=False,
     force_reencode=False,
     delete_originals=False,
     verbose=False,
     **kwargs
 ):
+    if sample_frames:
+        reencode = True
+        if frames_patt is None:
+            frames_patt = (
+                fo.config.default_sequence_idx + fo.config.default_image_ext
+            )
+
     with fou.ProgressBar() as pb:
         for sample in pb(sample_collection.select_fields()):
             inpath = sample.filepath
 
-            if reencode:
+            if sample_frames:
+                outpath, found = _prep_for_sampling(inpath, frames_patt)
+                if found and not force_reencode:
+                    continue
+
+            elif reencode:
                 outpath = os.path.splitext(inpath)[0] + ".mp4"
             else:
                 outpath = inpath
@@ -278,8 +670,19 @@ def _transform_videos(
                 **kwargs
             )
 
-            sample.filepath = outpath
-            sample.save()
+            if not sample_frames:
+                sample.filepath = outpath
+                sample.save()
+
+
+def _prep_for_sampling(inpath, frames_patt):
+    outdir = os.path.splitext(inpath)[0]
+    outpatt = os.path.join(outdir, frames_patt)
+
+    # If the first frame exists, assume the video has already been sampled
+    found = os.path.exists(outpatt % 1)
+
+    return outpatt, found
 
 
 def _transform_video(
@@ -309,8 +712,6 @@ def _transform_video(
         or size is not None
         or min_size is not None
         or max_size is not None
-        or in_ext != out_ext
-        or reencode
     ):
         fps, size = _parse_parameters(
             inpath, fps, min_fps, max_fps, size, min_size, max_size
@@ -346,6 +747,7 @@ def _transform_video(
     if should_reencode:
         with etav.FFmpeg(fps=fps, size=size, **kwargs) as ffmpeg:
             ffmpeg.run(inpath, outpath, verbose=verbose)
+
     elif diff_path:
         etau.copy_file(inpath, outpath)
 
