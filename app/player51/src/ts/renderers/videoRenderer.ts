@@ -2,7 +2,8 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 
-import { parseMediaFragmentsUri } from "../mediafragments.js";
+import { parseMediaFragmentsUri } from "../mediaFragments";
+import { checkFontHeight, ICONS } from "../util.js";
 
 const secondsToHhmmss = function (number: number): string {
   let str = "";
@@ -27,7 +28,9 @@ const renderTime = ({ decimals = 1, duration, numSeconds }) => {
   const seconds = numSeconds % 60;
 
   const mmss =
-    secondsToHhmmss(minutes) + ":" + secondsToHhmmss(seconds.toFixed(decimals));
+    secondsToHhmmss(minutes) +
+    ":" +
+    secondsToHhmmss(+seconds.toFixed(decimals));
 
   if (renderHours) {
     return secondsToHhmmss(hours) + ":" + mmss;
@@ -85,7 +88,6 @@ export function asVideoRenderer(options) {
   const renderer = Object.assign(this, {
     initPlayer() {
       this.checkParentandMedia();
-      this.checkBorderBox();
       this.eleDivVideo = document.createElement("div");
       this.eleDivVideo.className = "p51-contained-video";
       this.eleVideo = document.createElement("video");
@@ -105,8 +107,6 @@ export function asVideoRenderer(options) {
     },
 
     initPlayerControls() {
-      this.checkPlayer();
-
       if (this.player._boolHasPoster) {
         this.eleVideo.setAttribute("poster", this.player._loadingPosterURL);
         if (this.player._boolForcedSize) {
@@ -333,284 +333,274 @@ export function asVideoRenderer(options) {
       });
     },
 
-    determineMediaDimensions() {
-      this.mediaHeight = this.mediaElement.videoHeight;
-      this.mediaWidth = this.mediaElement.videoWidth;
+    updateFromDynamicState() {
+      if (!this._isRendered || !this._isSizePrepared) {
+        return;
+      }
+      if (this.options.fps && this.frameRate !== this.options.fps) {
+        this.frameRate = this.options.fps;
+        this.frameDuration = 1 / this.frameRate;
+      }
+      if (this._boolAutoplay) {
+        this._boolAutoplay = false;
+        this._boolPlaying = true;
+      }
+      if (this._boolPlaying) {
+        if (
+          this.eleVideo.paused &&
+          !this._boolSingleFrame &&
+          !this._boolManualSeek &&
+          this._isOverlayPrepared
+        ) {
+          this.eleVideo.play();
+        }
+      } else {
+        if (!this.eleVideo.paused && !this._boolSingleFrame) {
+          this.eleVideo.pause();
+          this.eleVideo.currentTime = this.clampTimeToFrameStart();
+          this._updateFrame();
+        }
+      }
+      this.updatePlayButton(this._boolPlaying);
+      this.updateControlsDisplayState();
+      this.processFrame();
+    },
+
+    updateFromLoadingState() {
+      if (this._isRendered && this._isSizePrepared) {
+        if (this._isDataLoaded) {
+          this._isReadyProcessFrames = true;
+        }
+        // prepare overlay once video and labels are loaded
+        if (this._overlayData !== null && this._isVideoMetadataLoaded) {
+          this._overlayCanBePrepared = true;
+        }
+      }
+
+      if (this._overlayCanBePrepared) {
+        this.prepareOverlay();
+      }
+
+      if (this._isOverlayPrepared) {
+        if (
+          (!isFinite(this.frameRate) || !isFinite(this.frameDuration)) &&
+          isFinite(this.eleVideo.duration)
+        ) {
+          // FPS wasn't provided, so guess it from the labels. If we don't have
+          // labels either, we can't determine anything, so fall back to FPS = 30.
+          const numFrames =
+            Object.keys(this.frameOverlay).length ||
+            this.eleVideo.duration * 30;
+          this.frameRate = numFrames / this.eleVideo.duration;
+          this.frameDuration = 1 / this.frameRate;
+        }
+      }
+    },
+
+    _updateFrame() {
+      let cfn = this.computeFrameNumber();
+      // check if we have a media fragment and should be looping
+      // if so, reset the playing location appropriately
+      cfn = this.checkForFragmentReset(cfn);
+      if (cfn !== this._frameNumber && !this.eleVideo.seeking) {
+        this._frameNumber = cfn;
+        this.processFrame();
+      }
+    },
+
+    customDraw(context) {
+      // @todo double-buffering
+      // @todo give a css class to the frame number so its positioning and format
+      // can be controlled easily from the css
+      if (this.player.boolDrawFrameNumber) {
+        context.fillText(this._frameNumber || 0, 15, 30, 70);
+      }
+
+      let hhmmss;
+
+      if (this.overlayOptions.showFrameCount) {
+        const frame = this.currentFrameStamp();
+        const total = this.totalFrameStamp();
+        this.updateTimeStamp(`${frame} / ${total}`);
+      } else {
+        hhmmss = this.currentTimestamp();
+        const duration = this.durationStamp();
+        this.updateTimeStamp(`${hhmmss} / ${duration}`);
+      }
+
+      if (this.player.boolDrawTimestamp) {
+        // @todo better handling of the context paintbrush styles
+        // working on a new way of forcing certain font sizes
+        let fontheight = 24;
+        const fhInWindow = fontheight / this.canvasMultiplier;
+        if (fhInWindow < 12) {
+          fontheight = 8 * this.canvasMultiplier;
+        }
+        fontheight = checkFontHeight(fontheight);
+        context.font = `${fontheight}px Arial, sans-serif`;
+        if (hhmmss === undefined) {
+          hhmmss = this.currentTimestamp();
+        }
+        const tw = context.measureText(hhmmss).width;
+        const pad = 4;
+        const pad2 = 2; // pad divided by 2
+        const w = tw + pad + pad;
+        const h = fontheight + pad + pad;
+        const x = 10;
+        const y = this.canvasHeight - 10 - pad - pad - fontheight;
+
+        context.fillStyle = this.metadataOverlayBGColor;
+        context.fillRect(x, y, w, h);
+
+        context.fillStyle = this.colorGenerator.white;
+        context.fillText(hhmmss, x + pad, y + pad + fontheight - pad2, tw + 8);
+      }
+    },
+
+    timerCallback() {
+      if (this.eleVideo.paused || this.eleVideo.ended) {
+        this._updateFrame();
+        return;
+      }
+      this.updateStateFromTimeChange();
+      // if we are manually seeking right now, then do not set the manual callback
+      if (!this._boolManualSeek) {
+        requestAnimationFrame(this.timerCallback.bind(this));
+      } else {
+        /* eslint-disable-next-line no-console */
+        console.log("NOT SETTING TIME CALLBACK");
+      }
+    },
+
+    setMediaFragment() {
+      // when we have a media fragment passed in, by
+      // default, we force the player to stay within that fragment.  If the video is
+      // looping, for example, then it will always go to the beginning of the
+      // fragment.  However, as soon as the user scrubs the video, we turn off the
+      // importance of the fragment so that the user can watch the whole video.
+      const mfParse = parseMediaFragmentsUri(this.media.src);
+      if (typeof mfParse.hash.t !== "undefined") {
+        this._mfBeginT = mfParse.hash.t[0].startNormalized;
+        this._mfEndT = mfParse.hash.t[0].endNormalized;
+        this._mfBeginF = this.computeFrameNumber(this._mfBeginT);
+        this._mfEndF = this.computeFrameNumber(this._mfEndT);
+        this._hasMediaFragment = true;
+        this._lockToMF = true;
+        if (this._mfBeginF === this._mfEndF) {
+          this._boolSingleFrame = true;
+        }
+      }
+    },
+
+    checkForFragmentReset(fn) {
+      if (!this._hasMediaFragment || !this._boolPlaying || !this._lockToMF) {
+        return fn;
+      }
+
+      if (fn >= this._mfEndF || this.eleVideo.ended) {
+        if (this._boolLoop) {
+          this.eleVideo.currentTime = this._mfBeginT;
+          fn = this._mfBeginF;
+        } else {
+          this._boolPlaying = false;
+        }
+      }
+
+      return fn;
+    },
+
+    computeFrameNumber(time) {
+      if (typeof time === "undefined") {
+        time = this.eleVideo.currentTime;
+      }
+      // account for exact end of video
+      if (this.eleVideo && time === this.eleVideo.duration) {
+        time -= this.frameDuration / 2;
+      }
+      const frameNumber = time * this.frameRate + 1;
+      return Math.floor(frameNumber);
+    },
+
+    computeFrameTime(frameNumber) {
+      if (typeof frameNumber === "undefined") {
+        frameNumber = this.computeFrameNumber();
+      }
+      frameNumber -= 1;
+      // offset by 1/100 of a frame to avoid browser issues where being *exactly*
+      // on a frame boundary sometimes renders the previous frame
+      return (frameNumber + 0.01) * this.frameDuration;
+    },
+
+    clampTimeToFrameStart(time) {
+      if (typeof time === "undefined") {
+        time = this.eleVideo.currentTime;
+      }
+      if (!isFinite(this.frameRate)) {
+        return time;
+      }
+      return this.computeFrameTime(this.computeFrameNumber(time));
+    },
+
+    currentFrameStamp() {
+      return this._renderFrameCount(this.computeFrameNumber());
+    },
+
+    totalFrameStamp() {
+      return this._renderFrameCount(this.getTotalFrameCount());
+    },
+
+    getTotalFrameCount() {
+      if (this.totalFrameCount === undefined) {
+        this.totalFrameCount = this.computeFrameNumber(this.eleVideo.duration);
+      }
+      return this.totalFrameCount;
+    },
+
+    _renderFrameCount(numFrames) {
+      if (this._totalFramesLen === undefined) {
+        this._totalFramesLen = this.getTotalFrameCount().toString().length;
+      }
+      let frameStr = numFrames.toString();
+      while (frameStr.length < this._totalFramesLen) {
+        frameStr = "0" + frameStr;
+      }
+      return frameStr;
+    },
+
+    durationStamp() {
+      return renderTime({
+        numSeconds: this.eleVideo.duration,
+        duration: this.eleVideo.duration,
+      });
+    },
+
+    currentTimestamp() {
+      return this._renderTime({
+        numSeconds: this.eleVideo.currentTime,
+        duration: this.eleVideo.duration,
+      });
+    },
+
+    updateTimeStamp(timeStr) {
+      if (!this.eleTimeStamp) {
+        return;
+      }
+      this.eleTimeStamp.innerHTML = timeStr;
+    },
+
+    updatePlayButton(playing) {
+      if (this.elePlayPauseButton) {
+        if (playing) {
+          this.elePlayPauseButton.src = ICONS.pause;
+          this.elePlayPauseButton.title = "Pause (space)";
+        } else {
+          this.elePlayPauseButton.src = ICONS.play;
+          this.elePlayPauseButton.title = "Play (space)";
+        }
+      }
     },
   });
 
   renderer.setMediaFragment();
   return renderer;
 }
-
-VideoRenderer.prototype.updateFromDynamicState = function () {
-  if (!this._isRendered || !this._isSizePrepared) {
-    return;
-  }
-  if (this.options.fps && this.frameRate !== this.options.fps) {
-    this.frameRate = this.options.fps;
-    this.frameDuration = 1 / this.frameRate;
-  }
-  if (this._boolAutoplay) {
-    this._boolAutoplay = false;
-    this._boolPlaying = true;
-  }
-  if (this._boolPlaying) {
-    if (
-      this.eleVideo.paused &&
-      !this._boolSingleFrame &&
-      !this._boolManualSeek &&
-      this._isOverlayPrepared
-    ) {
-      this.eleVideo.play();
-    }
-  } else {
-    if (!this.eleVideo.paused && !this._boolSingleFrame) {
-      this.eleVideo.pause();
-      this.eleVideo.currentTime = this.clampTimeToFrameStart();
-      this._updateFrame();
-    }
-  }
-  this.updatePlayButton(this._boolPlaying);
-  this.updateControlsDisplayState();
-  this.processFrame();
-};
-
-/**
- * This function is a controller
- * The loading state of the player has changed and various settings have to be
- * toggled.
- *
- * @member updateFromLoadingState
- */
-VideoRenderer.prototype.updateFromLoadingState = function () {
-  if (this._isRendered && this._isSizePrepared) {
-    if (this._isDataLoaded) {
-      this._isReadyProcessFrames = true;
-    }
-    // prepare overlay once video and labels are loaded
-    if (this._overlayData !== null && this._isVideoMetadataLoaded) {
-      this._overlayCanBePrepared = true;
-    }
-  }
-
-  if (this._overlayCanBePrepared) {
-    this.prepareOverlay();
-  }
-
-  if (this._isOverlayPrepared) {
-    if (
-      (!isFinite(this.frameRate) || !isFinite(this.frameDuration)) &&
-      isFinite(this.eleVideo.duration)
-    ) {
-      // FPS wasn't provided, so guess it from the labels. If we don't have
-      // labels either, we can't determine anything, so fall back to FPS = 30.
-      const numFrames =
-        Object.keys(this.frameOverlay).length || this.eleVideo.duration * 30;
-      this.frameRate = numFrames / this.eleVideo.duration;
-      this.frameDuration = 1 / this.frameRate;
-    }
-  }
-};
-
-VideoRenderer.prototype._updateFrame = function () {
-  let cfn = this.computeFrameNumber();
-  // check if we have a media fragment and should be looping
-  // if so, reset the playing location appropriately
-  cfn = this.checkForFragmentReset(cfn);
-  if (cfn !== this._frameNumber && !this.eleVideo.seeking) {
-    this._frameNumber = cfn;
-    this.processFrame();
-  }
-};
-
-/**
- * Draws custom case objects onto a frame.
- *
- * @member customDraw
- * @param {context} context
- */
-VideoRenderer.prototype.customDraw = function (context) {
-  // @todo double-buffering
-  // @todo give a css class to the frame number so its positioning and format
-  // can be controlled easily from the css
-  if (this.player.boolDrawFrameNumber) {
-    context.fillText(this._frameNumber || 0, 15, 30, 70);
-  }
-
-  let hhmmss;
-
-  if (this.overlayOptions.showFrameCount) {
-    const frame = this.currentFrameStamp();
-    const total = this.totalFrameStamp();
-    this.updateTimeStamp(`${frame} / ${total}`);
-  } else {
-    hhmmss = this.currentTimestamp();
-    const duration = this.durationStamp();
-    this.updateTimeStamp(`${hhmmss} / ${duration}`);
-  }
-
-  if (this.player.boolDrawTimestamp) {
-    // @todo better handling of the context paintbrush styles
-    // working on a new way of forcing certain font sizes
-    let fontheight = 24;
-    const fhInWindow = fontheight / this.canvasMultiplier;
-    if (fhInWindow < 12) {
-      fontheight = 8 * this.canvasMultiplier;
-    }
-    fontheight = this.checkFontHeight(fontheight);
-    context.font = `${fontheight}px Arial, sans-serif`;
-    if (hhmmss === undefined) {
-      hmmss = this.currentTimestamp();
-    }
-    const tw = context.measureText(hhmmss).width;
-    const pad = 4;
-    const pad2 = 2; // pad divided by 2
-    const w = tw + pad + pad;
-    const h = fontheight + pad + pad;
-    const x = 10;
-    const y = this.canvasHeight - 10 - pad - pad - fontheight;
-
-    context.fillStyle = this.metadataOverlayBGColor;
-    context.fillRect(x, y, w, h);
-
-    context.fillStyle = this.colorGenerator.white;
-    context.fillText(hhmmss, x + pad, y + pad + fontheight - pad2, tw + 8);
-  }
-};
-
-/**
- * This is called periodically when the video is playing.  It checks if the
- * video playing has encountered a new frame and, if so, draws the overlays for
- * that frame.
- *
- * @member timerCallback
- */
-VideoRenderer.prototype.timerCallback = function () {
-  if (this.eleVideo.paused || this.eleVideo.ended) {
-    this._updateFrame();
-    return;
-  }
-  this.updateStateFromTimeChange();
-  // if we are manually seeking right now, then do not set the manual callback
-  if (!this._boolManualSeek) {
-    requestAnimationFrame(this.timerCallback.bind(this));
-  } else {
-    /* eslint-disable-next-line no-console */
-    console.log("NOT SETTING TIME CALLBACK");
-  }
-};
-
-/**
- * Sets media fragment variables.
- *
- * @member setMediaFragment
- */
-VideoRenderer.prototype.setMediaFragment = function () {
-  // when we have a media fragment passed in, by
-  // default, we force the player to stay within that fragment.  If the video is
-  // looping, for example, then it will always go to the beginning of the
-  // fragment.  However, as soon as the user scrubs the video, we turn off the
-  // importance of the fragment so that the user can watch the whole video.
-  const mfParse = parseMediaFragmentsUri(this.media.src);
-  if (typeof mfParse.hash.t !== "undefined") {
-    this._mfBeginT = mfParse.hash.t[0].startNormalized;
-    this._mfEndT = mfParse.hash.t[0].endNormalized;
-    this._mfBeginF = this.computeFrameNumber(this._mfBeginT);
-    this._mfEndF = this.computeFrameNumber(this._mfEndT);
-    this._hasMediaFragment = true;
-    this._lockToMF = true;
-    if (this._mfBeginF === this._mfEndF) {
-      this._boolSingleFrame = true;
-    }
-  }
-};
-
-VideoRenderer.prototype.checkForFragmentReset = function (fn) {
-  if (!this._hasMediaFragment || !this._boolPlaying || !this._lockToMF) {
-    return fn;
-  }
-
-  if (fn >= this._mfEndF || this.eleVideo.ended) {
-    if (this._boolLoop) {
-      this.eleVideo.currentTime = this._mfBeginT;
-      fn = this._mfBeginF;
-    } else {
-      this._boolPlaying = false;
-    }
-  }
-
-  return fn;
-};
-
-VideoRenderer.prototype.computeFrameNumber = function (time) {
-  if (typeof time === "undefined") {
-    time = this.eleVideo.currentTime;
-  }
-  // account for exact end of video
-  if (this.eleVideo && time === this.eleVideo.duration) {
-    time -= this.frameDuration / 2;
-  }
-  const frameNumber = time * this.frameRate + 1;
-  return Math.floor(frameNumber);
-};
-
-VideoRenderer.prototype.computeFrameTime = function (frameNumber) {
-  if (typeof frameNumber === "undefined") {
-    frameNumber = this.computeFrameNumber();
-  }
-  frameNumber -= 1;
-  // offset by 1/100 of a frame to avoid browser issues where being *exactly*
-  // on a frame boundary sometimes renders the previous frame
-  return (frameNumber + 0.01) * this.frameDuration;
-};
-
-VideoRenderer.prototype.clampTimeToFrameStart = function (time) {
-  if (typeof time === "undefined") {
-    time = this.eleVideo.currentTime;
-  }
-  if (!isFinite(this.frameRate)) {
-    return time;
-  }
-  return this.computeFrameTime(this.computeFrameNumber(time));
-};
-
-VideoRenderer.prototype.currentFrameStamp = function () {
-  return this._renderFrameCount(this.computeFrameNumber());
-};
-
-VideoRenderer.prototype.totalFrameStamp = function () {
-  return this._renderFrameCount(this.getTotalFrameCount());
-};
-
-VideoRenderer.prototype.getTotalFrameCount = function () {
-  if (this.totalFrameCount === undefined) {
-    this.totalFrameCount = this.computeFrameNumber(this.eleVideo.duration);
-  }
-  return this.totalFrameCount;
-};
-
-VideoRenderer.prototype._renderFrameCount = function (numFrames) {
-  if (this._totalFramesLen === undefined) {
-    this._totalFramesLen = this.getTotalFrameCount().toString().length;
-  }
-  let frameStr = numFrames.toString();
-  while (frameStr.length < this._totalFramesLen) {
-    frameStr = "0" + frameStr;
-  }
-  return frameStr;
-};
-
-VideoRenderer.prototype.durationStamp = function () {
-  return renderTime({
-    numSeconds: this.eleVideo.duration,
-    duration: this.eleVideo.duration,
-  });
-};
-
-VideoRenderer.prototype.currentTimestamp = function () {
-  return this._renderTime({
-    numSeconds: this.eleVideo.currentTime,
-    duration: this.eleVideo.duration,
-  });
-};

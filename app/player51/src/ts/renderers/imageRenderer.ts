@@ -6,7 +6,6 @@ export function asImageRenderer() {
   return Object.assign(this, {
     initPlayer() {
       this.checkParentandMedia();
-      this.checkBorderBox();
       this.eleDivImage = document.createElement("div");
       this.eleDivImage.className = "p51-contained-image";
       this.eleImage = document.createElement("img");
@@ -23,7 +22,6 @@ export function asImageRenderer() {
     },
 
     initPlayerControls() {
-      this.checkPlayer();
       const self = this;
 
       // Update size
@@ -93,11 +91,6 @@ export function asImageRenderer() {
         }
         self.updateFromDynamicState();
       });
-    },
-
-    determineMediaDimensions() {
-      this.mediaHeight = this.mediaElement.height;
-      this.mediaWidth = this.mediaElement.width;
     },
 
     updateFromDynamicState() {

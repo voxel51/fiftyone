@@ -40,9 +40,38 @@ let logWarning = function (message) {
   }
 };
 
+interface NamedValue {
+  name: string;
+  value: string;
+}
+
+interface WindowValue {
+  value: string;
+  unit: "pixel" | "percent";
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+interface FrameValue {
+  value: string;
+  unit: "npt";
+  start: start;
+  end: end;
+  startNormalized: startNormalized;
+  endNormalized: endNormalized;
+}
+
+type WindowResult = WindowValue | false;
+
+type FrameResult = FrameValue | false;
+
+const namedValue = (value: string): NamedValue => ({ name: value, value });
+
 // the currently supported media fragments dimensions are: t, xywh, track, id
 // allows for O(1) checks for existence of valid keys
-let dimensions = {
+const DIMENSIONS = {
   t: function (value) {
     let components = value.split(",");
     if (components.length > 2) {
@@ -270,7 +299,7 @@ let dimensions = {
     logWarning("Invalid time dimension.");
     return false;
   },
-  xywh: function (value) {
+  xywh: function (value: string): WindowResult {
     // "pixel:" is optional
     let pixelCoordinates = /^(pixel\:)?\d+,\d+,\d+,\d+$/;
     // "percent:" is obligatory
@@ -342,30 +371,19 @@ let dimensions = {
       return false;
     }
   },
-  track: function (value) {
-    return {
-      value: value,
-      name: value,
-    };
-  },
-  id: function (value) {
-    return {
-      value: value,
-      name: value,
-    };
-  },
-  chapter: function (value) {
-    return {
-      value: value,
-      chapter: value,
-    };
-  },
+  track: namedValue,
+  id: namedValue,
+  chapter: namedValue,
 };
+
+interface KeyValues {
+  [key: string]: string[];
+}
 
 /**
  * splits an octet string into allowed key-value pairs
  */
-let splitKeyValuePairs = function (octetString) {
+let splitKeyValuePairs = function (octetString: string): null | KeyValues {
   let keyValues = {};
   let keyValuePairs = octetString.split(SEPARATOR);
   keyValuePairs.forEach(function (keyValuePair) {

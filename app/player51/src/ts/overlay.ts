@@ -3,11 +3,12 @@
  */
 
 import {
-  inRect,
-  distance,
-  distanceFromLineSegment,
+  checkFontHeight,
   compareData,
   computeBBoxForTextOverlay,
+  distance,
+  distanceFromLineSegment,
+  inRect,
 } from "./util.js";
 import { deserialize } from "./numpy.js";
 
@@ -945,9 +946,9 @@ DetectionOverlay.prototype.setup = function (
   this.w = w * canvasWidth;
   this.h = h * canvasHeight;
   this.headerFontHeight = Math.min(20, 0.09 * canvasHeight);
-  this.headerFontHeight = this.renderer.checkFontHeight(this.headerFontHeight);
+  this.headerFontHeight = checkFontHeight(this.headerFontHeight);
   this.attrFontHeight = Math.min(18, 0.088 * canvasHeight);
-  this.attrFontHeight = this.renderer.checkFontHeight(this.attrFontHeight);
+  this.attrFontHeight = checkFontHeight(this.attrFontHeight);
 
   this.headerHeight = Math.min(26, 0.13 * canvasHeight);
   // this is *0.4 instead of / 2 because it looks better

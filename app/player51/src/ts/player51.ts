@@ -4,7 +4,7 @@
 
 import mime from "mime-types";
 
-import { Video } from "./video.js";
+import { asVideo } from "./video.js";
 import Renderer from "./renderers/renderer";
 import { colorGenerator } from "./overlay.js";
 
@@ -29,14 +29,14 @@ let installedEventHandlers = false;
 let instances: Player51[] = [];
 let focusedInstance = null;
 
-const handleGlobalKeyboard = (e) => {
+const handleGlobalKeyboard = (e: MouseEvent): void => {
   if (focusedInstance && focusedInstance.renderer._handleKeyboardEvent(e)) {
     e.preventDefault();
     e.stopPropagation();
   }
 };
 
-const handleGlobalClick = (e) => {
+const handleGlobalClick = (e: MouseEvent): void => {
   for (const player of instances) {
     if (player.renderer.parent && player.renderer.parent.contains(e.target)) {
       focusedInstance = player;
@@ -47,7 +47,7 @@ const handleGlobalClick = (e) => {
   focusedInstance = null;
 };
 
-const installEventHandlers = () => {
+const installEventHandlers = (): void => {
   window.addEventListener("click", handleGlobalClick);
   window.addEventListener("keydown", handleGlobalKeyboard);
   installedEventHandlers = true;
@@ -74,7 +74,7 @@ export default class Player51 {
       "image/jpg";
 
     if (mimeType.startsWith("video/")) {
-      return Video.call(this);
+      return asVideo.call(this);
     }
 
     instances.push(this);
@@ -106,21 +106,12 @@ export default class Player51 {
     delete this.renderer;
   }
 
-  dynamicRender() {
-    this.renderer.setPlayer(this);
-    this.renderer.initSharedControls();
-    this.renderer.initPlayerControls();
-  }
-
-  staticRender(parentElement) {
+  render(parentElement) {
     this.renderer.setParentofMedia(parentElement);
     this.renderer.initPlayer();
     this.renderer._isRendered = true;
-  }
-
-  render(parentElement) {
-    this.staticRender(parentElement);
-    this.dynamicRender();
+    this.renderer.initSharedControls();
+    this.renderer.initPlayerControls();
   }
 
   update({ sample, src, rest }) {

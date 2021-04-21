@@ -53,10 +53,6 @@ const DATA_TYPES = {
  * Polyfill to convert a 64-bit integer array to a 32-bit integer array. This
  * assumes that no element actually requires more than 32 bits to store, which
  * should be a safe assumption for our purposes.
- *
- * @param {function} TargetArrayType the TypedArray subclass to produce (either
- *   Int32Array or Uint32Array)
- * @return {function} wrapper around the TargetArrayType constructor
  */
 function convert64to32Array(TargetArrayType) {
   // we only need the 3-argument constructor to be implemented. For details:

@@ -159,7 +159,6 @@ export function computeBBoxForTextOverlay(
 /**
  * Get the max height for an array of text lines
  */
-export { asVideoRenderer };
 export function getMaxHeightForText(
   lines: string[],
   textHeight: number,
@@ -235,4 +234,16 @@ export const clearNamedTimeout = function (
     clearTimeout(timeouts[name]);
     delete timeouts[name];
   }
+};
+
+/**
+ * Return 10 if 0, else return value
+ */
+export const checkFontHeight = (h: number): number => {
+  if (h == 0) {
+    /* eslint-disable-next-line no-console */
+    console.log("PLAYER51 WARN: fontheight 0");
+    return 10;
+  }
+  return h;
 };
