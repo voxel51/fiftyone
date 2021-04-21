@@ -5,11 +5,10 @@
 import mime from "mime-types";
 
 import { Video } from "./video.js";
+import Renderer from "./renderers/renderer";
 import { colorGenerator } from "./overlay.js";
 
 export { ColorGenerator } from "./overlay.js";
-
-export default Player51;
 
 const defaults = {
   colorMap: {},
@@ -17,13 +16,17 @@ const defaults = {
   activeFields: {},
   filter: {},
   enableOverlayOptions: {},
-  defaultOverlayOptions: {},
+  overlayOptions: {
+    showAttrs: false,
+    showTooltip: true,
+    showConfidence: true,
+  },
   selectedLabels: [],
   colorGenerator,
 };
 
 let installedEventHandlers = false;
-let instances: typeof Player51[] = [];
+let instances: Player51[] = [];
 let focusedInstance = null;
 
 const handleGlobalKeyboard = (e) => {
@@ -50,76 +53,83 @@ const installEventHandlers = () => {
   installedEventHandlers = true;
 };
 
-function Player51({ sample, src, ...rest }) {
-  this.sample = sample;
-  this.src = src;
-  this.options = Object.assign({}, defaults, rest);
+interface Sample {
+  [key: string]: object;
+}
 
-  !installedEventHandlers && installEventHandlers();
+export default class Player51 {
+  sample: Sample;
+  src: string;
+  options: typeof defaults;
+  renderer: Renderer;
 
-  Object.assign(this, {
-    addEventListener(eventType, handler, ...args) {
-      this.renderer.eventTarget.addEventListener(eventType, handler, ...args);
-    },
+  constructor({ sample, src, ...rest }) {
+    this.sample = sample;
+    this.src = src;
+    this.options = Object.assign({}, defaults, rest);
+    !installedEventHandlers && installEventHandlers();
+    const mimeType =
+      (sample.metadata && sample.metadata.mime_type) ||
+      mime.lookup(sample.filepath) ||
+      "image/jpg";
 
-    removeEventListener(eventType, handler, ...args) {
-      this.renderer &&
-        this.renderer.eventTarget.removeEventListener(
-          eventType,
-          handler,
-          ...args
-        );
-    },
+    if (mimeType.startsWith("video/")) {
+      return Video.call(this);
+    }
 
-    grabKeyboardFocus(grab = true) {
-      focusedInstance = grab ? this : null;
-    },
-
-    destroy() {
-      instances = instances.filter((player) => player !== this);
-      if (focusedInstance === this) {
-        focusedInstance = null;
-      }
-      this.renderer.destroy();
-      delete this.renderer;
-    },
-
-    dynamicRender() {
-      this.renderer.setPlayer(this);
-      this.renderer.initSharedControls();
-      this.renderer.initPlayerControls();
-    },
-
-    staticRender(parentElement) {
-      this.renderer.setParentofMedia(parentElement);
-      this.renderer.initPlayer();
-      this.renderer._isRendered = true;
-    },
-
-    render(parentElement) {
-      this.staticRender(parentElement);
-      this.dynamicRender();
-    },
-
-    update({ sample, src, rest }) {
-      Object.assign(this.options, rest);
-      sample && (this.sample = sample);
-      src && (this.src = src);
-      this.renderer.eleOptCtlShowAttr.checked = this.options.overlayOptions.showAttrs;
-      this.renderer.eleOptCtlShowConfidence.checked = this.options.overlayOptions.showConfidence;
-      this.renderer.eleOptCtlShowTooltip.checked = this.options.overlayOptions.showTooltip;
-      this.renderer.processFrame();
-    },
-  });
-
-  const mimeType =
-    (sample.metadata && sample.metadata.mime_type) ||
-    mime.lookup(sample.filepath) ||
-    "image/jpg";
-
-  if (mimeType.startsWith("video/")) {
-    return Video.call(this);
+    instances.push(this);
   }
 
-  instances.push(this);
+  addEventListener(eventType, handler, ...args) {
+    this.renderer.eventTarget.addEventListener(eventType, handler, ...args);
+  }
+
+  removeEventListener(eventType, handler, ...args) {
+    this.renderer &&
+      this.renderer.eventTarget.removeEventListener(
+        eventType,
+        handler,
+        ...args
+      );
+  }
+
+  grabKeyboardFocus(grab = true) {
+    focusedInstance = grab ? this : null;
+  }
+
+  destroy() {
+    instances = instances.filter((player) => player !== this);
+    if (focusedInstance === this) {
+      focusedInstance = null;
+    }
+    this.renderer.destroy();
+    delete this.renderer;
+  }
+
+  dynamicRender() {
+    this.renderer.setPlayer(this);
+    this.renderer.initSharedControls();
+    this.renderer.initPlayerControls();
+  }
+
+  staticRender(parentElement) {
+    this.renderer.setParentofMedia(parentElement);
+    this.renderer.initPlayer();
+    this.renderer._isRendered = true;
+  }
+
+  render(parentElement) {
+    this.staticRender(parentElement);
+    this.dynamicRender();
+  }
+
+  update({ sample, src, rest }) {
+    Object.assign(this.options, rest);
+    sample && (this.sample = sample);
+    src && (this.src = src);
+    this.renderer.eleOptCtlShowAttr.checked = this.options.overlayOptions.showAttrs;
+    this.renderer.eleOptCtlShowConfidence.checked = this.options.overlayOptions.showConfidence;
+    this.renderer.eleOptCtlShowTooltip.checked = this.options.overlayOptions.showTooltip;
+    this.renderer.processFrame();
+  }
 }

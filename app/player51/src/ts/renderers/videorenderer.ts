@@ -4,7 +4,7 @@
 
 import { parseMediaFragmentsUri } from "../mediafragments.js";
 
-const secondsToHhmmss = function (number) {
+const secondsToHhmmss = function (number: number): string {
   let str = "";
   if (number == 0) {
     str = "00";
@@ -551,7 +551,7 @@ VideoRenderer.prototype.computeFrameNumber = function (time) {
   if (this.eleVideo && time === this.eleVideo.duration) {
     time -= this.frameDuration / 2;
   }
-  const frameNumber = time * this.frameRate + this.frameZeroOffset;
+  const frameNumber = time * this.frameRate + 1;
   return Math.floor(frameNumber);
 };
 
@@ -559,7 +559,7 @@ VideoRenderer.prototype.computeFrameTime = function (frameNumber) {
   if (typeof frameNumber === "undefined") {
     frameNumber = this.computeFrameNumber();
   }
-  frameNumber -= this.frameZeroOffset;
+  frameNumber -= 1;
   // offset by 1/100 of a frame to avoid browser issues where being *exactly*
   // on a frame boundary sometimes renders the previous frame
   return (frameNumber + 0.01) * this.frameDuration;

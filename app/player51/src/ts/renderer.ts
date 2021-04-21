@@ -1,160 +1,146 @@
 import EventTarget from "@ungap/event-target";
-import { ClassificationsOverlay, FROM_FO } from "./overlay.js";
-import { ICONS, rescale } from "./util.js";
-
-export { Renderer };
+import { ClassificationsOverlay, FROM_FO } from "../overlay.js";
+import { ICONS, rescale } from "../util.js";
 
 const clearCanvas = (canvas, canvasWidth, canvasHeight) => {
   canvas.getContext("2d").clearRect(0, 0, canvasWidth, canvasHeight);
 };
 
-function Renderer(media, sample, options) {
-  this.player = undefined;
-  this.parent = undefined;
-  this.eventTarget = new EventTarget();
-  this.options = options;
-  this.sample = sample;
-  this.frameZeroOffset = 1;
-  this._rect = null;
-  // Player state attributes
-  this._isRendered = false;
-  this._isSizePrepared = false;
+export default abstract class Renderer {
+  eventTarget = new EventTarget();
+  metadataOverlayBGColor = "hsla(210, 20%, 10%, 0.8)";
+  sample;
+  parent: HTMLElement;
 
-  this.metadataOverlayBGColor = "hsla(210, 20%, 10%, 0.8)";
-  // Rendering options
-  this._boolBorderBox = false;
-  this.overlayOptions = Object.assign(
-    {
-      showFrameCount: false,
-      labelsOnlyOnClick: false,
-      attrsOnlyOnClick: false,
-      showAttrs: true,
-      showConfidence: true,
-      showTooltip: true,
-      attrRenderMode: "value",
-      attrRenderBox: true,
-      action: "click",
-      smoothMasks: true,
-    },
-    this.options.defaultOverlayOptions
-  );
-  this._actionOptions = {
-    click: { name: "Click", type: "click", labelText: "clicked" },
-    hover: { name: "Hover", type: "mousemove", labelText: "hovered" },
-  };
-  this._attrRenderModeOptions = [
-    {
-      name: "Value",
-      value: "value",
-    },
-    {
-      name: "Attribute: Value",
-      value: "attr-value",
-    },
-  ];
-  this._overlayOptionWrappers = {}; // overlayOptions key -> element
-  this._boolShowVideoOptions = false;
-  this._focusIndex = -1;
-  this.seekBarMax = 100;
-  // Loading state attributes
-  this._frameNumber = undefined;
-  this._isReadyProcessFrames = false;
-  this._isDataLoaded = false;
-  this._overlayCanBePrepared = true;
-  this._isOverlayPrepared = false;
-  this._mouseX = null;
-  this._mouseY = null;
-  this._overlayHasDetectionAttrs = false;
-  this._timeouts = {};
-  this._canFocus = true;
-  this._focusPos = { x: -1, y: -1 };
-  this._boolHoveringControls = false;
-  this._boolDisableShowControls = false;
-  this._boolShowControls = false;
-  this._overlays = [];
-  this._orderedOverlayCache = null;
-  this._rotateIndex = 0;
-  this._handleMouseEvent = this._handleMouseEvent.bind(this);
+  private _isRendered = false;
+  private _isSizePrepared = false;
+  private _rect;
+
+  constructor(media, sample, options) {
+    this.parent = undefined;
+    this.this.options = options;
+    // Player state attributes;
+
+    // Rendering options
+    this.this._boolBorderBox = false;
+    this.overlayOptions = Object.assign(
+      {
+        showFrameCount: false,
+        labelsOnlyOnClick: false,
+        attrsOnlyOnClick: false,
+        showAttrs: true,
+        showConfidence: true,
+        showTooltip: true,
+        attrRenderMode: "value",
+        attrRenderBox: true,
+        action: "click",
+        smoothMasks: true,
+      },
+      this.options.defaultOverlayOptions
+    );
+    this._actionOptions = {
+      click: { name: "Click", type: "click", labelText: "clicked" },
+      hover: { name: "Hover", type: "mousemove", labelText: "hovered" },
+    };
+    this._attrRenderModeOptions = [
+      {
+        name: "Value",
+        value: "value",
+      },
+      {
+        name: "Attribute: Value",
+        value: "attr-value",
+      },
+    ];
+    this._overlayOptionWrappers = {}; // overlayOptions key -> element
+    this._boolShowVideoOptions = false;
+    this._focusIndex = -1;
+    this.seekBarMax = 100;
+    // Loading state attributes
+    this._frameNumber = undefined;
+    this._isReadyProcessFrames = false;
+    this._isDataLoaded = false;
+    this._overlayCanBePrepared = true;
+    this._isOverlayPrepared = false;
+    this._mouseX = null;
+    this._mouseY = null;
+    this._overlayHasDetectionAttrs = false;
+    this._timeouts = {};
+    this._canFocus = true;
+    this._focusPos = { x: -1, y: -1 };
+    this._boolHoveringControls = false;
+    this._boolDisableShowControls = false;
+    this._boolShowControls = false;
+    this._overlays = [];
+    this._orderedOverlayCache = null;
+    this._rotateIndex = 0;
+    this._handleMouseEvent = this._handleMouseEvent.bind(this);
+  }
+
+  destroy() {
+    Object.entries(this.parent.children).forEach(([_, child]) => {
+      this.parent.removeChild(child);
+    });
+  }
+
+  abstract initPlayer(): void;
+
+  abstract initPlayerControls(): void;
+
+  abstract determineMediaDimensions(): [number, number];
+
+  abstract updateFromDynamicState(): void;
+
+  abstract updateFromLoadingState(): void;
+
+  abstract customDraw(): void;
+
+  dispatchEvent(eventType, { data, ...args } = {}): boolean {
+    const e = new Event(eventType, args);
+    e.data = data;
+    return this.eventTarget.dispatchEvent(e);
+  }
+
+  prepareOverlay() {
+    if (this._isOverlayPrepared || !this.sample) {
+      return;
+    }
+    this._isPreparingOverlay = true;
+
+    const context = this.setupCanvasContext();
+
+    const classifications = [];
+    for (const field in this.sample) {
+      const label = this.sample[field];
+      if (!label) {
+        continue;
+      }
+      if (label._cls in FROM_FO) {
+        const overlays = FROM_FO[label._cls](field, label, this);
+        overlays.forEach((o) =>
+          o.setup(context, this.canvasWidth, this.canvasHeight)
+        );
+        this._overlays = [...this._overlays, ...overlays];
+      } else if (label._cls === "Classification") {
+        classifications.push([field, [null, [label]]]);
+      } else if (label._cls === "Classifications") {
+        classifications.push([field, [null, label.classifications]]);
+      }
+    }
+
+    if (classifications.length > 0) {
+      const overlay = new ClassificationsOverlay(classifications, this);
+      overlay.setup(context, this.canvasWidth, this.canvasHeight);
+      this._overlays.push(overlay);
+    }
+    this._updateOverlayOptionVisibility();
+    this._reBindMouseHandler();
+
+    this._isOverlayPrepared = true;
+    this.updateFromLoadingState();
+    this.updateFromDynamicState();
+  }
 }
-
-Renderer.prototype.destroy = function () {
-  for (const child of this.parent.children) {
-    this.parent.removeChild(child);
-  }
-};
-
-Renderer.prototype.initPlayer = function () {
-  throw new Error("Method initPlayer() must be implemented.");
-};
-
-Renderer.prototype.initPlayerControls = function () {
-  throw new Error("Method initPlayerControls() must be implemented.");
-};
-
-Renderer.prototype.determineMediaDimensions = function () {
-  throw new Error("Method determineMediaDimensions() must be implemented.");
-};
-
-Renderer.prototype.updateFromDynamicState = function () {
-  throw new Error("Method updateFromDynamicState() must be implemented.");
-};
-
-Renderer.prototype.updateFromLoadingState = function () {
-  throw new Error("Method updateFromLoadingState() must be implemented.");
-};
-
-Renderer.prototype.customDraw = function () {
-  throw new Error("Method customDraw() must be implemented.");
-};
-
-Renderer.prototype.dispatchEvent = function (
-  eventType,
-  { data, ...args } = {}
-) {
-  const e = new Event(eventType, args);
-  e.data = data;
-  return this.eventTarget.dispatchEvent(e);
-};
-
-Renderer.prototype.prepareOverlay = function () {
-  if (this._isOverlayPrepared || !this.sample) {
-    return;
-  }
-  this._isPreparingOverlay = true;
-
-  const context = this.setupCanvasContext();
-
-  const classifications = [];
-  for (const field in this.sample) {
-    const label = this.sample[field];
-    if (!label) {
-      continue;
-    }
-    if (label._cls in FROM_FO) {
-      const overlays = FROM_FO[label._cls](field, label, this);
-      overlays.forEach((o) =>
-        o.setup(context, this.canvasWidth, this.canvasHeight)
-      );
-      this._overlays = [...this._overlays, ...overlays];
-    } else if (label._cls === "Classification") {
-      classifications.push([field, [null, [label]]]);
-    } else if (label._cls === "Classifications") {
-      classifications.push([field, [null, label.classifications]]);
-    }
-  }
-
-  if (classifications.length > 0) {
-    const overlay = new ClassificationsOverlay(classifications, this);
-    overlay.setup(context, this.canvasWidth, this.canvasHeight);
-    this._overlays.push(overlay);
-  }
-  this._updateOverlayOptionVisibility();
-  this._reBindMouseHandler();
-
-  this._isOverlayPrepared = true;
-  this.updateFromLoadingState();
-  this.updateFromDynamicState();
-};
 
 Renderer.prototype._reBindMouseHandler = function () {
   for (const action of Object.values(this._actionOptions)) {
@@ -1001,16 +987,4 @@ Renderer.prototype.updateTimeStamp = function (timeStr) {
     return;
   }
   this.eleTimeStamp.innerHTML = timeStr;
-};
-
-Renderer.prototype.setTimeout = function (name, callback, delay) {
-  this.clearTimeout(name);
-  this._timeouts[name] = setTimeout(callback, delay);
-};
-
-Renderer.prototype.clearTimeout = function (name) {
-  if (name in this._timeouts) {
-    clearTimeout(this._timeouts[name]);
-    delete this._timeouts[name];
-  }
 };

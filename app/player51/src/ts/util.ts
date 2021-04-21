@@ -159,6 +159,7 @@ export function computeBBoxForTextOverlay(
 /**
  * Get the max height for an array of text lines
  */
+export { asVideoRenderer };
 export function getMaxHeightForText(
   lines: string[],
   textHeight: number,
@@ -206,3 +207,32 @@ export function argMin<T>(array: T[]): number {
     .map((x, i): [T, number] => [x, i])
     .reduce((r, a) => (a[0] < r[0] ? a : r))[1];
 }
+
+export interface Timeouts {
+  [key: string]: ReturnType<typeof setTimeout>;
+}
+
+/**
+ * Set a named timeout.
+ */
+export const setNamedTimeout = function (
+  name: string,
+  callback: (...args: any[]) => any,
+  delay: number,
+  timeouts: Timeouts
+): void {
+  clearNamedTimeout(name, timeouts);
+  this._timeouts[name] = setTimeout(callback, delay);
+};
+/**
+ * Clear a named timeout.
+ */
+export const clearNamedTimeout = function (
+  name: string,
+  timeouts: Timeouts
+): void {
+  if (name in timeouts) {
+    clearTimeout(timeouts[name]);
+    delete timeouts[name];
+  }
+};
