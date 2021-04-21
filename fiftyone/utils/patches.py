@@ -1,11 +1,11 @@
 """
-Patch methods.
+Patch utilities.
 
 | Copyright 2017-2021, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-import fiftyone as fo
+import fiftyone.core.dataset as fod
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.utils as fou
@@ -47,7 +47,7 @@ def make_patches_dataset(sample_collection, field, name=None):
     """
     field_type = _get_single_label_field_type(sample_collection, field)
 
-    dataset = fo.Dataset(name)
+    dataset = fod.Dataset(name)
     dataset.add_sample_field("sample_id", fof.StringField)
     dataset.add_sample_field(
         field, fof.EmbeddedDocumentField, embedded_doc_type=field_type
@@ -110,7 +110,7 @@ def make_evaluation_dataset(sample_collection, eval_key, name=None):
     gt_type = eval_collection._get_label_field_type(gt_field)
 
     # Setup dataset with correct schema
-    dataset = fo.Dataset(name)
+    dataset = fod.Dataset(name)
     dataset.add_sample_field(
         pred_field, fof.EmbeddedDocumentField, embedded_doc_type=pred_type
     )
@@ -172,6 +172,7 @@ def _make_patches_view(sample_collection, field, keep_label_lists=False):
         {"$unwind": "$" + list_field},
         {"$set": {"sample_id": {"$toString": "$_id"}}},
         {"$set": {"_id": "$" + list_field + "._id"}},
+        {"$set": {"_rand": {"$rand": {}}}},
     ]
 
     if keep_label_lists:
