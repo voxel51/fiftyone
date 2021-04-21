@@ -229,7 +229,7 @@
         "lodash": "^4.17.20",
         "mime-types": "^2.1.27",
         "numeral": "^2.0.6",
-        "player51": "./player51",
+        "player51": "*",
         "prop-types": "^15.7.2",
         "re-resizable": "^6.8.0",
         "react": "17.0.0",

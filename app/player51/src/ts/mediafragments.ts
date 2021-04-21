@@ -412,7 +412,7 @@ let splitKeyValuePairs = function (octetString) {
   return keyValues;
 };
 
-function parseMediaFragmentsUri(opt_uri) {
+function parseMediaFragmentsUri(opt_uri: string) {
   let uri = opt_uri ? opt_uri : window.location.href;
   // retrieve the query part of the URI
   let indexOfHash = uri.indexOf("#");

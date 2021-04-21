@@ -1,25 +1,27 @@
-export { Video };
+/**
+ * Copyright 2017-2021, Voxel51, Inc.
+ */
 
-function Video() {
+export function Video() {
   return Object.assign(this, {
     boolDrawFrameNumber: false,
     boolDrawTimestamp: false,
 
-    loop(boolLoop = true) {
+    loop(boolLoop: boolean = true): void {
       this.renderer._boolLoop = boolLoop;
     },
 
-    play() {
+    play(): void {
       this.renderer._boolPlaying = true;
       this.renderer.updateFromDynamicState();
     },
 
-    pause() {
+    pause(): void {
       this.renderer._boolPlaying = false;
       this.renderer.updateFromDynamicState();
     },
 
-    autoplay(boolAutoplay = true) {
+    autoplay(boolAutoplay: boolean = true): void {
       if (this.renderer._boolSingleFrame && boolAutoplay) {
         boolAutoplay = false;
         this.renderer._boolPlaying = true;
@@ -28,7 +30,7 @@ function Video() {
       this.renderer.updateFromDynamicState();
     },
 
-    resetToFragment() {
+    resetToFragment(): boolean {
       if (!this.renderer._hasMediaFragment || !this.renderer._isRendered) {
         return false;
       }

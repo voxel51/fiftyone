@@ -4,4 +4,6 @@
 !.yarn/sdks
 !.yarn/versions
 
+node_modules
+
 yarn-error.log

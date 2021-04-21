@@ -1,3 +1,7 @@
+/**
+ * Copyright 2017-2021, Voxel51, Inc.
+ */
+
 import mime from "mime-types";
 
 import { Video } from "./video.js";
@@ -19,7 +23,7 @@ const defaults = {
 };
 
 let installedEventHandlers = false;
-let instances = [];
+let instances: typeof Player51[] = [];
 let focusedInstance = null;
 
 const handleGlobalKeyboard = (e) => {
@@ -101,10 +105,9 @@ function Player51({ sample, src, ...rest }) {
       Object.assign(this.options, rest);
       sample && (this.sample = sample);
       src && (this.src = src);
-      this.renderer.eleOptCtlShowAttr.checked = overlayOptions.showAttrs;
-      this.renderer.eleOptCtlShowConfidence.checked =
-        overlayOptions.showConfidence;
-      this.renderer.eleOptCtlShowTooltip.checked = overlayOptions.showTooltip;
+      this.renderer.eleOptCtlShowAttr.checked = this.options.overlayOptions.showAttrs;
+      this.renderer.eleOptCtlShowConfidence.checked = this.options.overlayOptions.showConfidence;
+      this.renderer.eleOptCtlShowTooltip.checked = this.options.overlayOptions.showTooltip;
       this.renderer.processFrame();
     },
   });

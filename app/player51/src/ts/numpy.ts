@@ -1,14 +1,23 @@
 /**
- * @module numpy.js
- * @summary Utilities to parse serialized numpy arrays
- *
  * Copyright 2017-2021, Voxel51, Inc.
- * Alan Stahl, alan@voxel51.com
  */
 
-import pako from "./pako_inflate.js";
+import pako from "pako";
 
 export { deserialize };
+
+type TypedArray =
+  | Uint8Array
+  | Int8Array
+  | Uint16Array
+  | Int16Array
+  | Uint32Array
+  | Int32Array;
+
+interface NumpyResult {
+  data: TypedArray;
+  shape: [number, number];
+}
 
 const DATA_TYPES = {
   // < = little-endian, > = big-endian, | = host architecture
@@ -70,24 +79,15 @@ function convert64to32Array(TargetArrayType) {
 /**
  * Parses a uint16 (unsigned 16-bit integer) at a specified position in a
  * Uint8Array
- *
- * @param {Uint8Array} array input array
- * @param {number} index index of uint16
- * @return {number} parsed uint16
  */
-function readUint16At(array, index) {
+function readUint16At(array: Uint8Array, index: number) {
   return array[index] + (array[index + 1] << 8);
 }
 
 /**
  * Parses a string at a specified position in a Uint8Array
- *
- * @param {Uint8Array} array input array
- * @param {number} start index where string starts (inclusive)
- * @param {number} end index where string ends (exclusive)
- * @return {string}
  */
-function readStringAt(array, start, end) {
+function readStringAt(array: Uint8Array, start: number, end: number) {
   return Array.from(array.slice(start, end))
     .map((c) => String.fromCharCode(c))
     .join("");
@@ -95,13 +95,8 @@ function readStringAt(array, start, end) {
 
 /**
  * Parses a saved numpy array
- *
- * @param {Uint8Array} array raw input array
- * @return {object} output, with keys:
- *   shape {array}: dimensions of data
- *   data {TypedArray}: data
  */
-function parse(array) {
+function parse(array: Uint8Array): NumpyResult {
   if (readStringAt(array, 0, 6) !== "\x93NUMPY") {
     throw new Error("Invalid magic number");
   }
@@ -142,12 +137,7 @@ function parse(array) {
 
 /**
  * Deserializes and parses a saved numpy array
- *
- * @param {string} str input string (zlib-compressed and base64-encoded)
- * @return {object} output, with keys:
- *   shape {array}: dimensions of data
- *   data {TypedArray}: data
  */
-function deserialize(str) {
+function deserialize(str: string): NumpyResult {
   return parse(pako.inflate(atob(str)));
 }

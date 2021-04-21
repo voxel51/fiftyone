@@ -1,14 +1,14 @@
 {
     "name": "player51",
-    "version": "1.0.0",
+    "version": "0.5.1",
     "description": "Javascript media player that can render metadata overlays.",
-    "main": "src/js/player51.js",
-    "devDependencies": {
-        "snowpack": "^3.3.4"
-    },
+    "main": "dist/index.js",
+    "files": [
+        "dist",
+        "src"
+    ],
     "scripts": {
-        "start": "snowpack dev",
-        "build": "snowpack build"
+        "build": "rm -rf dist && tsc --build tsconfig.build.json"
     },
     "repository": {
         "type": "git",
@@ -23,6 +23,10 @@
     "dependencies": {
         "@ungap/event-target": "^0.2.2",
         "event-target": "^1.2.3",
-        "mime-types": "^2.1.30"
+        "mime-types": "^2.1.30",
+        "pako": "^2.0.3"
+    },
+    "devDependencies": {
+        "tslib": "^2.2.0"
     }
 }

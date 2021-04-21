@@ -1,6 +1,8 @@
-import { parseMediaFragmentsUri } from "../mediafragments.js";
+/**
+ * Copyright 2017-2021, Voxel51, Inc.
+ */
 
-export { asVideoRenderer };
+import { parseMediaFragmentsUri } from "../mediafragments.js";
 
 const secondsToHhmmss = function (number) {
   let str = "";
@@ -33,7 +35,7 @@ const renderTime = ({ decimals = 1, duration, numSeconds }) => {
   return mmss;
 };
 
-function asVideoRenderer(options) {
+export function asVideoRenderer(options) {
   const state = {
     boolAutoplay: false,
     boolLoop: false,
@@ -53,7 +55,7 @@ function asVideoRenderer(options) {
   };
 
   const handleKeyboardEvent = (e) => {
-    Renderer.prototype._handleKeyboardEvent.call(this, e);
+    this.prototype._handleKeyboardEvent.call(this, e);
     if (e.keyCode === 32) {
       // space
       this._boolPlaying = !this._boolPlaying;

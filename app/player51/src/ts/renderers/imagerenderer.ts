@@ -1,6 +1,8 @@
-export { asImageRenderer };
+/**
+ * Copyright 2017-2021, Voxel51, Inc.
+ */
 
-function asImageRenderer() {
+export function asImageRenderer() {
   return Object.assign(this, {
     initPlayer() {
       this.checkParentandMedia();

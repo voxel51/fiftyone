@@ -1,13 +1,5 @@
 /**
- * @module overlay.js
- * @summary Defines a series of helper classes that render the overlays on top
- * of either the video or image player.
- *
  * Copyright 2017-2021, Voxel51, Inc.
- * Jason Corso, jason@voxel51.com
- * Benjamin Kane, ben@voxel51.com
- * Brandon Paris, brandon@voxel51.com
- * Kevin Qi, kevin@voxel51.com
  */
 
 import {
@@ -32,7 +24,7 @@ const _rawColorCache = {};
  * A Class to encapsulate the creation of suitable colors for drawing the
  * overlays and maintaining their identity over the entire video.
  */
-function ColorGenerator(seed) {
+function ColorGenerator(seed = null) {
   // member will store all colors created
   this.colors = {};
   this._rawColors = {};
@@ -63,12 +55,8 @@ function ColorGenerator(seed) {
 
 /**
  * Provide a color based on an index.
- *
- * @member color
- * @param {int} index
- * @return {color} color
  */
-ColorGenerator.prototype.color = function (index) {
+ColorGenerator.prototype.color = function (index: number): string {
   if (!(index in this.colors)) {
     if (typeof this._colorSet === "undefined") {
       this._generateColorSet();
@@ -82,12 +70,8 @@ ColorGenerator.prototype.color = function (index) {
 
 /**
  * Provide raw RGBA values for a color based on an index.
- *
- * @member color
- * @param {int} index
- * @return {color} color
  */
-ColorGenerator.prototype.rawColor = function (index) {
+ColorGenerator.prototype.rawColor = function (index: number): number {
   if (!(index in this._rawColors)) {
     this.color(index);
   }
@@ -96,12 +80,8 @@ ColorGenerator.prototype.rawColor = function (index) {
 
 /**
  * Generates the entire dictionary of colors.
- *
- * @member _generateColorSet
- * @private
- * @param {int} n
  */
-ColorGenerator.prototype._generateColorSet = function (n = 36) {
+ColorGenerator.prototype._generateColorSet = function (n = 36): void {
   const canvas = document.createElement("canvas");
   canvas.width = 1;
   canvas.height = 1;
@@ -126,13 +106,8 @@ const colorGenerator = new ColorGenerator();
 
 /**
  * Checks whether an overlay be shown.
- *
- * @param {object} filter map of field -> filter callbacks
- * @param {string} field the field name
- * @param {object} label the label data
- * @return {boolean}
  */
-function _isOverlayShown(filter, field, label) {
+function _isOverlayShown(filter: any, field: string, label: object): boolean {
   return filter && filter[field] && filter[field].call
     ? filter[field](label)
     : true;
@@ -298,10 +273,12 @@ ClassificationsOverlay.prototype.getSelectData = function (x, y) {
 };
 
 ClassificationsOverlay.prototype._getFilteredClassifications = function () {
-  const filter = ([_, label]) =>
-    _isOverlayShown(this.renderer.options.filter, field, label);
-
-  return this.labels.map(([field, labels]) => [field, labels.filter(filter)]);
+  return this.labels.map(([field, labels]) => [
+    field,
+    labels.filter(([_, label]) =>
+      _isOverlayShown(this.renderer.options.filter, field, label)
+    ),
+  ]);
 };
 
 ClassificationsOverlay.prototype._updateClassifications = function () {
@@ -480,6 +457,7 @@ function SegmentationOverlay(field, label, renderer, frameNumber = null) {
   this.renderer = renderer;
   this._selectedCache = null;
 }
+SegmentationOverlay._tempMaskCanvas = null;
 SegmentationOverlay.prototype = Object.create(Overlay.prototype);
 SegmentationOverlay.prototype.constructor = SegmentationOverlay;
 
@@ -561,7 +539,7 @@ SegmentationOverlay.prototype.draw = function (
   maskContext.putImageData(maskImage, 0, 0);
   context.imageSmoothingEnabled = this.renderer.overlayOptions.smoothMasks;
   context.drawImage(
-    FrameMaskOverlay._tempMaskCanvas,
+    SegmentationOverlay._tempMaskCanvas,
     0,
     0,
     maskWidth,
@@ -790,7 +768,7 @@ PolylineOverlay.prototype.setup = function (
   for (const shape of this.label.points) {
     const shapePath = new Path2D();
     for (const [pidx, point] of Object.entries(shape)) {
-      if (pidx > 0) {
+      if (Number(pidx) > 0) {
         shapePath.lineTo(canvasWidth * point[0], canvasHeight * point[1]);
       } else {
         shapePath.moveTo(canvasWidth * point[0], canvasHeight * point[1]);
@@ -942,6 +920,7 @@ function DetectionOverlay(field, label, renderer, frameNumber = null) {
   this.attrWidth = 0;
   this.attrHeight = 0;
 }
+DetectionOverlay._tempMaskCanvas = null;
 DetectionOverlay.prototype = Object.create(Overlay.prototype);
 DetectionOverlay.prototype.constructor = DetectionOverlay;
 

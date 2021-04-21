@@ -4,8 +4,8 @@ import { ICONS, rescale } from "./util.js";
 
 export { Renderer };
 
-const clearCanvas = (canvas) => {
-  canvas.getContext("2d").clearRect(0, 0, this.canvasWidth, this.canvasHeight);
+const clearCanvas = (canvas, canvasWidth, canvasHeight) => {
+  canvas.getContext("2d").clearRect(0, 0, canvasWidth, canvasHeight);
 };
 
 function Renderer(media, sample, options) {
@@ -77,10 +77,6 @@ function Renderer(media, sample, options) {
   this._handleMouseEvent = this._handleMouseEvent.bind(this);
 }
 
-/*
- * Destroy the renderer
- * @member destroy
- */
 Renderer.prototype.destroy = function () {
   for (const child of this.parent.children) {
     this.parent.removeChild(child);
@@ -111,13 +107,6 @@ Renderer.prototype.customDraw = function () {
   throw new Error("Method customDraw() must be implemented.");
 };
 
-/**
- * Emit a custom event.
- *
- * @param {string} eventType - the type of the event
- * @param {*} args - additional arguments to pass to the Event constructor
- * @return {boolean} false if the event was cancelled
- */
 Renderer.prototype.dispatchEvent = function (
   eventType,
   { data, ...args } = {}
@@ -155,7 +144,7 @@ Renderer.prototype.prepareOverlay = function () {
   }
 
   if (classifications.length > 0) {
-    const overlay = new ClassificationsOverlay(labels, this);
+    const overlay = new ClassificationsOverlay(classifications, this);
     overlay.setup(context, this.canvasWidth, this.canvasHeight);
     this._overlays.push(overlay);
   }
@@ -217,7 +206,7 @@ Renderer.prototype.processFrame = function () {
   if (!this._isReadyProcessFrames) {
     return;
   }
-  this.clearCanvas();
+  clearCanvas(this.eleCanvas, this.canvasWidth, this.canvasHeight);
   const context = this.setupCanvasContext();
   this.customDraw(context);
   if (this._isOverlayPrepared) {
@@ -390,11 +379,6 @@ Renderer.prototype._handleMouseEvent = function (e) {
   processFrame && this.processFrame();
 };
 
-/**
- * Handle a keyboard event
- * @param {Event} e
- * @return {boolean} true if the event was handled and should not be propagated
- */
 Renderer.prototype._handleKeyboardEvent = function (e) {
   // esc: hide settings
   if (e.keyCode === 27 && this._boolShowVideoOptions) {
@@ -412,22 +396,12 @@ Renderer.prototype._handleKeyboardEvent = function (e) {
   }
 };
 
-/**
- * Called when the player loses focus
- */
 Renderer.prototype._handleFocusLost = function () {
   this._boolShowVideoOptions = false;
   this._boolShowControls = false;
   this.updateFromDynamicState();
 };
 
-/**
- * Used by overlay rendering code.
- *
- * @member checkFontHeight
- * @param {int} h is font height
- * @return {int} h is the current height
- */
 Renderer.prototype.checkFontHeight = function (h) {
   if (h == 0) {
     /* eslint-disable-next-line no-console */
@@ -437,32 +411,16 @@ Renderer.prototype.checkFontHeight = function (h) {
   return h;
 };
 
-/**
- * This function checks if player is set
- *
- * @member checkPlayer
- */
 Renderer.prototype.checkPlayer = function () {
   if (typeof this.player === "undefined") {
     throw new TypeError("Player not set.");
   }
 };
 
-/**
- * This function sets the player
- *
- * @member setPlayer
- * @param {player} player
- */
 Renderer.prototype.setPlayer = function (player) {
   this.player = player;
 };
 
-/**
- * This function checks if parent and media are set
- *
- * @member checkParentandMedia
- */
 Renderer.prototype.checkParentandMedia = function () {
   if (typeof this.parent === "undefined") {
     throw new TypeError("Parent not set.");
@@ -473,13 +431,6 @@ Renderer.prototype.checkParentandMedia = function () {
   }
 };
 
-/**
- * This function sets the parent of the media to be loaded.
- *
- * @member setParentofMedia
- * @param {domElement} parentElement String Id of the parentElement or actual
- * Div object.
- */
 Renderer.prototype.setParentofMedia = function (parentElement) {
   if (typeof parentElement === "string") {
     this.parent = document.getElementById(parentElement);
@@ -488,11 +439,6 @@ Renderer.prototype.setParentofMedia = function (parentElement) {
   }
 };
 
-/**
- * This function checks if parent is borderBox
- *
- * @member checkBorderBox
- */
 Renderer.prototype.checkBorderBox = function () {
   const cBS = window
     .getComputedStyle(this.parent, null)
@@ -502,12 +448,6 @@ Renderer.prototype.checkBorderBox = function () {
   }
 };
 
-/**
- * This function loads a canvas in parent
- *
- * @member initCanvas
- * @required setParentandMedia called beforehand
- */
 Renderer.prototype.initCanvas = function () {
   this.checkParentandMedia();
   this.eleDivCanvas = document.createElement("div");

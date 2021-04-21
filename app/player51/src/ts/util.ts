@@ -1,9 +1,5 @@
 /**
- * @module util.js
- * @summary Utilities for player51
- *
  * Copyright 2017-2021, Voxel51, Inc.
- * Alan Stahl, alan@voxel51.com
  */
 
 export const ICONS = Object.freeze({
@@ -17,11 +13,8 @@ export const ICONS = Object.freeze({
 
 /**
  * Shallow data-object comparison for equality
- * @param {Object} a - first object to compare
- * @param {Object} b - second object to compare
- * @return {boolean} true if ==
  */
-export function compareData(a, b) {
+export function compareData(a: object, b: object): boolean {
   for (const p in a) {
     if (a.hasOwnProperty(p) !== b.hasOwnProperty(p)) {
       return false;
@@ -39,72 +32,62 @@ export function compareData(a, b) {
 
 /**
  * Scales a number from one range to another.
- *
- * @param {number} n number to scale
- * @param {number} oldMin minumum of current range
- * @param {number} oldMax maximum of current range
- * @param {number} newMin minumum of range to scale to
- * @param {number} newMax maximum of range to scale to
- * @return {number} scaled value
  */
-export function rescale(n, oldMin, oldMax, newMin, newMax) {
+export function rescale(
+  n: number,
+  oldMin: number,
+  oldMax: number,
+  newMin: number,
+  newMax: number
+) {
   const normalized = (n - oldMin) / (oldMax - oldMin);
   return normalized * (newMax - newMin) + newMin;
 }
 
 /**
  * Checks whether a point is contained in a rectangle.
- *
- * @param {number} x point X coordinate
- * @param {number} y point Y coordinate
- * @param {number} rectX rectangle's leftmost X coordinate
- * @param {number} rectY rectangle's topmost Y coordinate
- * @param {number} rectW rectangle's width
- * @param {number} rectH rectangle's height
- * @return {boolean}
  */
-export function inRect(x, y, rectX, rectY, rectW, rectH) {
+export function inRect(
+  x: number,
+  y: number,
+  rectX: number,
+  rectY: number,
+  rectW: number,
+  rectH: number
+): boolean {
   return x >= rectX && x <= rectX + rectW && y >= rectY && y <= rectY + rectH;
 }
 
 /**
  * Calculates the distance between two points.
- *
- * @param {number} x1 point 1 X coordinate
- * @param {number} y1 point 1 Y coordinate
- * @param {number} x2 point 2 X coordinate
- * @param {number} y2 point 2 Y coordinate
- * @return {number} distance
  */
-export function distance(x1, y1, x2, y2) {
+export function distance(
+  x1: number,
+  y1: number,
+  x2: number,
+  y2: number
+): number {
   return Math.sqrt((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1));
 }
 
 /**
  * Calculates the dot product of two 2D vectors.
- *
- * @param {number} ax vector 1 X coordinate
- * @param {number} ay vector 1 Y coordinate
- * @param {number} bx vector 2 X coordinate
- * @param {number} by vector 2 Y coordinate
- * @return {number} dot product
  */
-export function dot2d(ax, ay, bx, by) {
+export function dot2d(ax: number, ay: number, bx: number, by: number): number {
   return ax * bx + ay * by;
 }
 
 /**
  * Projects a point onto a line defined by two other points.
- *
- * @param {number} px point X coordinate
- * @param {number} py point Y coordinate
- * @param {number} ax line point 1 X coordinate
- * @param {number} ay line point 1 Y coordinate
- * @param {number} bx line point 2 X coordinate
- * @param {number} by line point 2 Y coordinate
- * @return {array} projected [x, y] coordinates
  */
-export function project2d(px, py, ax, ay, bx, by) {
+export function project2d(
+  px: number,
+  py: number,
+  ax: number,
+  ay: number,
+  bx: number,
+  by: number
+): [number, number] {
   // line vector - this is relative to (0, 0), so coordinates of p need to be
   // transformed accordingly
   const vx = bx - ax;
@@ -118,16 +101,15 @@ export function project2d(px, py, ax, ay, bx, by) {
 /**
  * Calculates the distance from a point to a line segment defined by two other
  * points.
- *
- * @param {number} px point X coordinate
- * @param {number} py point Y coordinate
- * @param {number} ax line point 1 X coordinate
- * @param {number} ay line point 1 Y coordinate
- * @param {number} bx line point 2 X coordinate
- * @param {number} by line point 2 Y coordinate
- * @return {number} distance
  */
-export function distanceFromLineSegment(px, py, ax, ay, bx, by) {
+export function distanceFromLineSegment(
+  px: number,
+  py: number,
+  ax: number,
+  ay: number,
+  bx: number,
+  by: number
+): number {
   const segmentLength = distance(ax, ay, bx, by);
   const [projX, projY] = project2d(px, py, ax, ay, bx, by);
   if (
@@ -144,25 +126,30 @@ export function distanceFromLineSegment(px, py, ax, ay, bx, by) {
   }
 }
 
+interface Node {
+  childNodes: Node[];
+}
+
 /**
  * Recursively map a function to all nodes in a tree
- * @param {Object} node - an object with children accessed by .childNodes
- * @param {Function} func - function that takes node as an argument
  */
-export function recursiveMap(node, func) {
-  node.childNodes.forEach((n) => recursiveMap(n, func));
-  func(node);
+export function recursiveMap(node: Node, fn: (node: Node) => void) {
+  node.childNodes.forEach((n) => recursiveMap(n, fn));
+  fn(node);
 }
 
 /**
  * Get the Bbox dimensions for an array of text and their rendering sizes
- * @param {RenderingContext} context - the rendering context
- * @param {Array/String} text - array of strings split by line
- * @param {Number} textHeight - height of the font for the text
- * @param {Number} padding - amount of padding, num pixels
- * @return {Object} object with keys: width, height
  */
-export function computeBBoxForTextOverlay(context, text, textHeight, padding) {
+export function computeBBoxForTextOverlay(
+  context: CanvasRenderingContext2D,
+  text: string[],
+  textHeight: number,
+  padding: number
+): {
+  width: number;
+  height: number;
+} {
   const lines = getArrayByLine(text);
   const width = getMaxWidthByLine(context, lines, padding);
   const height = getMaxHeightForText(lines, textHeight, padding);
@@ -171,23 +158,23 @@ export function computeBBoxForTextOverlay(context, text, textHeight, padding) {
 
 /**
  * Get the max height for an array of text lines
- * @param {Array} lines - array of strings split by line
- * @param {Number} textHeight - height of the font for the text
- * @param {Number} padding - amount of padding, num pixels
- * @return {Number} height
  */
-export function getMaxHeightForText(lines, textHeight, padding) {
+export function getMaxHeightForText(
+  lines: string[],
+  textHeight: number,
+  padding: number
+): number {
   return lines.length * (textHeight + padding) + padding;
 }
 
 /**
  * Get the max width of an array of text lines
- * @param {RenderingContext} context - the rendering context
- * @param {Array} lines - array of strings split by line
- * @param {Number} padding - amount of padding, num pixels
- * @return {Number} width
  */
-export function getMaxWidthByLine(context, lines, padding) {
+export function getMaxWidthByLine(
+  context: CanvasRenderingContext2D,
+  lines: string[],
+  padding: number
+): number {
   let maxWidth = 0;
   for (const line of lines) {
     const lineWidth = context.measureText(line).width;
@@ -203,10 +190,8 @@ export function getMaxWidthByLine(context, lines, padding) {
 
 /**
  * Get text as an array of lines
- * @param {Array/String} text - array of strings split by line
- * @return {Array} width
  */
-function getArrayByLine(text) {
+function getArrayByLine(text: string[] | string): string[] {
   if (Array.isArray(text)) {
     return text;
   }
@@ -215,10 +200,9 @@ function getArrayByLine(text) {
 
 /**
  * Retrieve the array key corresponding to the smallest element in the array.
- *
- * @param {Array.<number>} array Input array
- * @return {number} Index of array element with smallest value
  */
-export function argMin(array) {
-  return array.map((x, i) => [x, i]).reduce((r, a) => (a[0] < r[0] ? a : r))[1];
+export function argMin<T>(array: T[]): number {
+  return array
+    .map((x, i): [T, number] => [x, i])
+    .reduce((r, a) => (a[0] < r[0] ? a : r))[1];
 }
