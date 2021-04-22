@@ -2933,13 +2933,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def _frame_dict_to_doc(self, d):
         return self._frame_doc_cls.from_dict(d, extended=False)
 
-    def _to_fields_str(self, field_schema):
-        max_len = max([len(field_name) for field_name in field_schema]) + 1
-        return "\n".join(
-            "    %s %s" % ((field_name + ":").ljust(max_len), str(field))
-            for field_name, field in field_schema.items()
-        )
-
     def _validate_sample(self, sample):
         fields = self.get_field_schema(include_private=True)
 

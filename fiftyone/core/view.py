@@ -208,16 +208,14 @@ class DatasetView(foc.SampleCollection):
             "Num samples:    %d" % aggs[0],
             "Tags:           %s" % aggs[1],
             "Sample fields:",
-            self._dataset._to_fields_str(self.get_field_schema()),
+            self._to_fields_str(self.get_field_schema()),
         ]
 
         if self.media_type == fom.VIDEO:
             elements.extend(
                 [
                     "Frame fields:",
-                    self._dataset._to_fields_str(
-                        self.get_frame_field_schema()
-                    ),
+                    self._to_fields_str(self.get_frame_field_schema()),
                 ]
             )
 

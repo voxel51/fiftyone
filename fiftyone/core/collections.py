@@ -4844,6 +4844,13 @@ class SampleCollection(object):
             "default_mask_targets", default_mask_targets
         )
 
+    def _to_fields_str(self, field_schema):
+        max_len = max([len(field_name) for field_name in field_schema]) + 1
+        return "\n".join(
+            "    %s %s" % ((field_name + ":").ljust(max_len), str(field))
+            for field_name, field in field_schema.items()
+        )
+
     def _parse_field_name(
         self, field_name, auto_unwind=True, allow_missing=False
     ):
