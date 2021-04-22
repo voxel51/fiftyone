@@ -478,10 +478,10 @@ export function asVideoRenderer(options) {
       // looping, for example, then it will always go to the beginning of the
       // fragment.  However, as soon as the user scrubs the video, we turn off the
       // importance of the fragment so that the user can watch the whole video.
-      const mfParse = parseMediaFragmentsUri(this.media.src);
-      if (typeof mfParse.hash.t !== "undefined") {
-        this._mfBeginT = mfParse.hash.t[0].startNormalized;
-        this._mfEndT = mfParse.hash.t[0].endNormalized;
+      const mfResult = parseMediaFragmentsUri(this.media.src);
+      if (typeof mfResult.length) {
+        this._mfBeginT = mfResult[0].startNormalized;
+        this._mfEndT = mfResult[0].endNormalized;
         this._mfBeginF = this.computeFrameNumber(this._mfBeginT);
         this._mfEndF = this.computeFrameNumber(this._mfEndT);
         this._hasMediaFragment = true;

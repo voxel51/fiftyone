@@ -2,9 +2,15 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 
-export function asImageRenderer() {
+import Renderer from "./baseRenderer";
+
+class ImageRenderer extends Renderer {
+  constructor() {
+
+  }
+}
   return Object.assign(this, {
-    initPlayer() {
+    createAndAttachElements() {
       this.checkParentandMedia();
       this.eleDivImage = document.createElement("div");
       this.eleDivImage.className = "p51-contained-image";

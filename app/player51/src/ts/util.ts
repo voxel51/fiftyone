@@ -223,6 +223,7 @@ export const setNamedTimeout = function (
   clearNamedTimeout(name, timeouts);
   this._timeouts[name] = setTimeout(callback, delay);
 };
+
 /**
  * Clear a named timeout.
  */

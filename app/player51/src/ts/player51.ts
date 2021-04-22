@@ -4,11 +4,12 @@
 
 import mime from "mime-types";
 
-import { asVideo } from "./video.js";
-import Renderer from "./renderers/renderer";
-import { colorGenerator } from "./overlay.js";
+import { asVideo } from "./video";
+import Renderer from "./renderers/baseRenderer";
+import OverlaysManager from "./overlaysManager"
+import { colorGenerator } from "./overlays";
 
-export { ColorGenerator } from "./overlay.js";
+export { ColorGenerator } from "./overlays";
 
 const defaults = {
   colorMap: {},
@@ -38,7 +39,10 @@ const handleGlobalKeyboard = (e: MouseEvent): void => {
 
 const handleGlobalClick = (e: MouseEvent): void => {
   for (const player of instances) {
-    if (player.renderer.parent && player.renderer.parent.contains(e.target)) {
+    if (
+      player.renderer.parent &&
+      player.renderer.parent.contains(<Node>e.target)
+    ) {
       focusedInstance = player;
       return;
     }
@@ -58,18 +62,17 @@ interface Sample {
 }
 
 export default class Player51 {
-  sample: Sample;
   src: string;
-  options: typeof defaults;
+  mimeType?: string;
+  options: typeof defaults = defaults;
+  overlaysManager: OverlaysManager;
   renderer: Renderer;
 
-  constructor({ sample, src, ...rest }) {
-    this.sample = sample;
+  constructor({ src, ...options }) {
     this.src = src;
     this.options = Object.assign({}, defaults, rest);
     !installedEventHandlers && installEventHandlers();
-    const mimeType =
-      (sample.metadata && sample.metadata.mime_type) ||
+    const mimeType = sample.metadata.mime_type) ||
       mime.lookup(sample.filepath) ||
       "image/jpg";
 
@@ -104,14 +107,6 @@ export default class Player51 {
     }
     this.renderer.destroy();
     delete this.renderer;
-  }
-
-  render(parentElement) {
-    this.renderer.setParentofMedia(parentElement);
-    this.renderer.initPlayer();
-    this.renderer._isRendered = true;
-    this.renderer.initSharedControls();
-    this.renderer.initPlayerControls();
   }
 
   update({ sample, src, rest }) {
