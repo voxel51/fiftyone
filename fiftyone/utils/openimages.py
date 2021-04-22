@@ -1295,9 +1295,9 @@ def _create_labels(lab_id_data, image_id, classes_map):
     neg_cls = []
     for c in cls:
         if c.confidence > 0.1:
-            pos_cls.append(cls)
+            pos_cls.append(c)
         else:
-            neg_cls.append(cls)
+            neg_cls.append(c)
 
     pos_labels = fol.Classifications(classifications=pos_cls)
     neg_labels = fol.Classifications(classifications=neg_cls)
@@ -1318,8 +1318,6 @@ def _create_detections(det_id_data, image_id, classes_map):
 
     def _generate_one_label(row):
         # [ImageID,Source,LabelName,Confidence,XMin,XMax,YMin,YMax,IsOccluded,IsTruncated,IsGroupOf,IsDepiction,IsInside]
-        print(row)
-        print(type(row))
         label = classes_map[row["LabelName"]]
         xmin = float(row["XMin"])
         xmax = float(row["XMax"])

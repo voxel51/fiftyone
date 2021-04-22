@@ -353,6 +353,8 @@ class OpenImagesDetectionResults(DetectionResults):
             self._classwise_AP[c] = ap
 
     def _compute_class_AP(self, precision, recall):
+        recall = np.array(recall)
+        precision = np.array(precision)
         indices = np.where(recall[1:] != recall[:-1])[0] + 1
         average_precision = np.sum(
             (recall[indices] - recall[indices - 1]) * precision[indices]
