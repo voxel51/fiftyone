@@ -991,8 +991,10 @@ def _get_label_data(
     if ids_only:
         # Only interested in downloading image ids, not loading annotations
         del df
+        del relevant_df
         return {}, relevant_ids
 
+    relevant_df.sort_values("ImageID", inplace=True)
     label_id_data = {
         "all_ids": all_label_ids,
         "relevant_ids": relevant_ids,
@@ -1243,6 +1245,12 @@ def _load_open_images_split(
     return len(valid_ids)
 
 
+def _get_dataframe_rows(df, image_id):
+    left = df["ImageID"].searchsorted(image_id, "left")
+    right = df["ImageID"].searchsorted(image_id, "right")
+    return df[left:right]
+
+
 def _create_labels(lab_id_data, image_id, classes_map):
     all_label_ids = lab_id_data["all_ids"]
     relevant_ids = lab_id_data["relevant_ids"]
@@ -1261,7 +1269,7 @@ def _create_labels(lab_id_data, image_id, classes_map):
         cls = fol.Classification(label=label, confidence=conf)
         return cls
 
-    matching_df = df.loc[df["ImageID"] == image_id]
+    matching_df = _get_dataframe_rows(df, image_id)
     cls = [
         _generate_one_label(row[0], row[1])
         for row in zip(matching_df["LabelName"], matching_df["Confidence"])
@@ -1311,7 +1319,7 @@ def _create_detections(det_id_data, image_id, classes_map):
         detection["IsInside"] = bool(int(row["IsInside"]))
         return detection
 
-    matching_df = df.loc[df["ImageID"] == image_id]
+    matching_df = _get_dataframe_rows(df, image_id)
     dets = [_generate_one_label(row[1]) for row in matching_df.iterrows()]
     detections = fol.Detections(detections=dets)
 
@@ -1378,7 +1386,7 @@ def _create_relationships(rel_id_data, image_id, classes_map, attrs_map):
 
         return detection_rel
 
-    matching_df = df.loc[df["ImageID"] == image_id]
+    matching_df = _get_dataframe_rows(df, image_id)
     rels = [_generate_one_label(row[1]) for row in matching_df.iterrows()]
     relationships = fol.Detections(detections=rels)
 
@@ -1428,7 +1436,7 @@ def _create_segmentations(seg_id_data, image_id, classes_map, dataset_dir):
         )
         return segmentation
 
-    matching_df = df.loc[df["ImageID"] == image_id]
+    matching_df = _get_dataframe_rows(df, image_id)
     segs = [_generate_one_label(row[1]) for row in matching_df.iterrows()]
     segs = [s for s in segs if s is not None]
     segmentations = fol.Detections(detections=segs)
