@@ -13,6 +13,7 @@ import os
 import random
 import string
 
+from bson import ObjectId
 from deprecated import deprecated
 from pymongo import UpdateOne
 
@@ -115,6 +116,14 @@ class SampleCollection(object):
         such as patch/evaluation collections.
         """
         raise NotImplementedError("Subclass must implement _root_dataset")
+
+    @property
+    def _element_str(self):
+        return "sample"
+
+    @property
+    def _elements_str(self):
+        return "samples"
 
     @property
     def name(self):
@@ -942,6 +951,43 @@ class SampleCollection(object):
                 ops.append(op)
 
         self._dataset._bulk_write(ops, frames=frames)
+
+    def _set_labels_by_id(self, field_name, ids, docs):
+        label_type = self._get_label_field_type(field_name)
+        field_name, is_frame_field = self._handle_frame_field(field_name)
+
+        ops = []
+        if issubclass(label_type, fol._LABEL_LIST_FIELDS):
+            root, leaf = field_name.rsplit(".", 1)
+            set_path = root + ".$." + leaf
+
+            for _id, _docs in zip(ids, docs):
+                if not _docs:
+                    continue
+
+                for doc in _docs:
+                    ops.append(
+                        UpdateOne(
+                            {
+                                "_id": ObjectId(_id),
+                                field_name + "._id": doc["_id"],
+                            },
+                            {"$set": {set_path: doc}},
+                        )
+                    )
+        else:
+            for _id, doc in zip(ids, docs):
+                ops.append(
+                    UpdateOne(
+                        {
+                            "_id": ObjectId(_id),
+                            field_name + "._id": doc["_id"],
+                        },
+                        {"$set": {field_name: doc}},
+                    )
+                )
+
+        self._dataset._bulk_write(ops, frames=is_frame_field)
 
     def compute_metadata(
         self, overwrite=False, num_workers=None, skip_failures=True
@@ -4957,7 +5003,11 @@ class SampleCollection(object):
         if issubclass(label_type, fol._LABEL_LIST_FIELDS):
             field_name += "." + label_type._LABEL_LIST_FIELD
 
-        field_path = field_name + "." + subfield
+        if subfield:
+            field_path = field_name + "." + subfield
+        else:
+            field_path = field_name
+
         return label_type, field_path
 
     def _get_geo_location_field(self):

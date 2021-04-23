@@ -23,7 +23,6 @@ from fiftyone.core.fields import (
 
 from .document import Document, EmbeddedDocument, BaseEmbeddedDocument
 from .runs import RunDocument
-from .patches import PatchesDocument
 
 
 def create_field(field_name, ftype, embedded_doc_type=None, subfield=None):
@@ -194,7 +193,6 @@ class DatasetDocument(Document):
         document_type=SampleFieldDocument
     )
     frame_fields = EmbeddedDocumentListField(document_type=SampleFieldDocument)
-    patches = EmbeddedDocumentField(document_type=PatchesDocument)
     classes = DictField(ClassesField())
     default_classes = ClassesField()
     mask_targets = DictField(TargetsField())

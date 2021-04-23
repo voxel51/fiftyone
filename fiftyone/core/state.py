@@ -171,7 +171,7 @@ class DatasetStatistics(object):
 
         Args:
             collection: a :class:`fiftyone.core.collections.SampleCollection`
-        
+
         Returns:
             a ``list`` of (path, field) ``tuple``s
         """

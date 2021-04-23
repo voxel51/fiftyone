@@ -297,9 +297,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     @property
     def _root_dataset(self):
-        if self.is_patches:
-            return load_dataset(self._doc.patches.dataset)
-
         return self
 
     @property
@@ -353,12 +350,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     @persistent.setter
     def persistent(self, value):
-        if value and self.is_patches:
-            raise ValueError(
-                "You must `clone()` a patches dataset before it can be made "
-                "persistent"
-            )
-
         _value = self._doc.persistent
         try:
             self._doc.persistent = value
@@ -366,11 +357,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         except:
             self._doc.persistent = _value
             raise
-
-    @property
-    def is_patches(self):
-        """Whether this dataset contains patches from another dataset."""
-        return self._doc.patches is not None
 
     @property
     def info(self):
@@ -530,25 +516,31 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         aggs = self.aggregate(
             [foa.Count(), foa.Distinct("tags")], _attach_frames=False
         )
+
         elements = [
-            "Name:           %s" % self.name,
-            "Media type:     %s" % self.media_type,
-            "Num samples:    %d" % aggs[0],
-            "Persistent:     %s" % self.persistent,
-            "Tags:           %s" % aggs[1],
-            "Sample fields:",
-            self._to_fields_str(self.get_field_schema()),
+            ("Name:", self.name),
+            ("Media type:", self.media_type),
+            ("Num samples:", aggs[0]),
+            ("Persistent:", self.persistent),
+            ("Tags:", aggs[1]),
         ]
 
+        elements = fou.justify_headings(elements)
+        lines = ["%s %s" % tuple(e) for e in elements]
+
+        lines.extend(
+            ["Sample fields:", self._to_fields_str(self.get_field_schema())]
+        )
+
         if self.media_type == fom.VIDEO:
-            elements.extend(
+            lines.extend(
                 [
                     "Frame fields:",
                     self._to_fields_str(self.get_frame_field_schema()),
                 ]
             )
 
-        return "\n".join(elements)
+        return "\n".join(lines)
 
     def stats(self, include_media=False, compressed=False):
         """Returns stats about the dataset on disk.
@@ -3149,7 +3141,6 @@ def _clone_dataset_or_view(dataset_or_view, name):
     dataset_doc.name = name
     dataset_doc.persistent = False
     dataset_doc.sample_collection_name = sample_collection_name
-    dataset_doc.patches = None  # forget about source dataset, if any
 
     # Run results get special treatment at the end
     dataset_doc.evaluations = {}

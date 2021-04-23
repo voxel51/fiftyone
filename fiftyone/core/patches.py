@@ -6,11 +6,15 @@ Patches views.
 |
 """
 from copy import deepcopy
+import itertools
 
 import eta.core.utils as etau
 
 import fiftyone.core.aggregations as foa
+import fiftyone.core.labels as fol
+import fiftyone.core.media as fom
 import fiftyone.core.sample as fos
+import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
 
 
@@ -31,7 +35,16 @@ class PatchView(fos.SampleView):
             filtered in this patch view
     """
 
-    pass
+    def save(self, update_source=True):
+        """Saves the patch to the database.
+
+        Args:
+            update_source (True): whether to push changes to the source dataset
+        """
+        super().save()
+
+        if update_source:
+            self._view._sync_source_sample(self)
 
 
 class PatchesView(fov.DatasetView):
@@ -71,6 +84,14 @@ class PatchesView(fov.DatasetView):
         self._patches_dataset = patches_dataset
         self._stages = _stages
 
+        self._patches_field = patches_stage.field
+        self._label_type = self._patches_dataset._get_label_field_type(
+            self._patches_field
+        )
+        self._has_label_lists = issubclass(
+            self._label_type, fol._LABEL_LIST_FIELDS
+        )
+
     def __copy__(self):
         return self.__class__(
             self._source_collection,
@@ -88,6 +109,14 @@ class PatchesView(fov.DatasetView):
         return self._source_collection._root_dataset
 
     @property
+    def _element_str(self):
+        return "patch"
+
+    @property
+    def _elements_str(self):
+        return "patches"
+
+    @property
     def _all_stages(self):
         return (
             self._source_collection.view()._all_stages
@@ -102,7 +131,7 @@ class PatchesView(fov.DatasetView):
     @property
     def patches_field(self):
         """The field from which the patches in this view were extracted."""
-        return self._patches_stage.field
+        return self._patches_field
 
     def summary(self):
         """Returns a string summary of the view.
@@ -114,18 +143,32 @@ class PatchesView(fov.DatasetView):
         aggs = self.aggregate(
             [foa.Count(), foa.Distinct(tags_path)], _attach_frames=False
         )
+
         elements = [
-            "Dataset:        %s" % self.dataset_name,
-            "Media type:     %s" % self.media_type,
-            "Num patches:    %d" % aggs[0],
-            "Patch tags:     %s" % aggs[1],
-            "Patch fields:",
-            self._to_fields_str(self.get_field_schema()),
+            ("Dataset:", self.dataset_name),
+            ("Media type:", self.media_type),
+            ("Num patches:", aggs[0]),
+            ("Patch tags:", aggs[1]),
         ]
 
-        elements.extend(["View stages:", self._make_view_stages_str()])
+        elements = fou.justify_headings(elements)
+        lines = ["%s %s" % tuple(e) for e in elements]
 
-        return "\n".join(elements)
+        lines.extend(
+            ["Patch fields:", self._to_fields_str(self.get_field_schema()),]
+        )
+
+        if self.media_type == fom.VIDEO:
+            lines.extend(
+                [
+                    "Frame fields:",
+                    self._to_fields_str(self.get_frame_field_schema()),
+                ]
+            )
+
+        lines.extend(["View stages:", self._make_view_stages_str()])
+
+        return "\n".join(lines)
 
     def tag_samples(self, tags, update_source=True):
         """Adds the tag(s) to all samples in this collection, if necessary.
@@ -141,7 +184,7 @@ class PatchesView(fov.DatasetView):
             sync_fcn = lambda view: view.tag_labels(
                 tags, label_fields=self.patches_field
             )
-            self._sync_source_patches(sync_fcn)
+            self._sync_source_fcn(sync_fcn)
 
     def untag_samples(self, tags, update_source=True):
         """Removes the tag(s) from all samples in this collection, if
@@ -149,8 +192,7 @@ class PatchesView(fov.DatasetView):
 
         Args:
             tags: a tag or iterable of tags
-            update_source (True): whether to remove the tags from the labels in
-                the source dataset
+            update_source (True): whether to push changes to the source dataset
         """
         super().untag_samples(tags)
 
@@ -158,7 +200,7 @@ class PatchesView(fov.DatasetView):
             sync_fcn = lambda view: view.untag_labels(
                 tags, label_fields=self.patches_field
             )
-            self._sync_source_patches(sync_fcn)
+            self._sync_source_fcn(sync_fcn)
 
     def tag_labels(self, tags, label_fields=None, update_source=True):
         """Adds the tag(s) to all labels in the specified label field(s) of
@@ -169,8 +211,7 @@ class PatchesView(fov.DatasetView):
             label_fields (None): an optional name or iterable of names of
                 :class:`fiftyone.core.labels.Label` fields. By default, all
                 label fields are used
-            update_source (True): whether to add the tags to the labels in the
-                source dataset
+            update_source (True): whether to push changes to the source dataset
         """
         if etau.is_str(label_fields):
             label_fields = [label_fields]
@@ -183,7 +224,7 @@ class PatchesView(fov.DatasetView):
             sync_fcn = lambda view: view.tag_labels(
                 tags, label_fields=self.patches_field
             )
-            self._sync_source_patches(sync_fcn)
+            self._sync_source_fcn(sync_fcn)
 
     def untag_labels(self, tags, label_fields=None, update_source=True):
         """Removes the tag from all labels in the specified label field(s) of
@@ -194,8 +235,7 @@ class PatchesView(fov.DatasetView):
             label_fields (None): an optional name or iterable of names of
                 :class:`fiftyone.core.labels.Label` fields. By default, all
                 label fields are used
-            update_source (True): whether to remove the tags from the labels in
-                the source dataset
+            update_source (True): whether to push changes to the source dataset
         """
         if etau.is_str(label_fields):
             label_fields = [label_fields]
@@ -208,9 +248,45 @@ class PatchesView(fov.DatasetView):
             sync_fcn = lambda view: view.untag_labels(
                 tags, label_fields=self.patches_field
             )
-            self._sync_source_patches(sync_fcn)
+            self._sync_source_fcn(sync_fcn)
 
-    def _sync_source_patches(self, sync_fcn):
+    def save(self, fields=None, update_source=True):
+        """Overwrites the underlying dataset with the contents of the view.
+
+        .. warning::
+
+            This will permanently delete any omitted, filtered, or otherwise
+            modified contents of the dataset.
+
+        Args:
+            fields (None): an optional field or list of fields to save. If
+                specified, only these fields are overwritten
+            update_source (True): whether to push changes to the source dataset
+        """
+        if etau.is_str(fields):
+            fields = [fields]
+
+        super().save(fields=fields)
+
+        if update_source and (fields is None or self.patches_field in fields):
+            self._sync_source_all()
+
+    def _sync_source_sample(self, sample):
+        doc = sample._doc.field_to_mongo(sample, self.patches_field)
+
+        # Merge sample-level tags into label tags
+        if self._has_label_lists:
+            doc = doc.get(self._label_type._LABEL_LIST_FIELD, [])
+            for _doc in doc:
+                _doc["tags"].extend(sample.tags)
+        else:
+            doc["tags"].extend(sample.tags)
+
+        self._source_collection._set_labels_by_id(
+            self.patches_field, [sample.sample_id], [doc]
+        )
+
+    def _sync_source_fcn(self, sync_fcn):
         _, id_path = self._get_label_field_path(self.patches_field, "id")
         ids = self.values(id_path, unwind=True)
         source_labels_view = self._source_collection.select_labels(
@@ -218,3 +294,59 @@ class PatchesView(fov.DatasetView):
         )
 
         sync_fcn(source_labels_view)
+
+    def _sync_source_all(self):
+        _, id_path = self._get_label_field_path(self.patches_field, "id")
+        label_path = id_path.rsplit(".", 1)[0]
+
+        #
+        # Sync label updates
+        #
+
+        sample_ids, tags, docs = self.aggregate(
+            [
+                foa.Values("sample_id"),
+                foa.Values("tags"),
+                foa.Values(label_path),
+            ]
+        )
+
+        # Merge sample-level tags into label tags
+        if self._has_label_lists:
+            for _tags, _docs in zip(tags, docs):
+                if not _tags:
+                    continue
+
+                for doc in _docs:
+                    doc["tags"].extend(_tags)
+        else:
+            for _tags, doc in zip(tags, docs):
+                if not _tags:
+                    continue
+
+                doc["tags"].extend(_tags)
+
+        self._source_collection._set_labels_by_id(
+            self.patches_field, sample_ids, docs
+        )
+
+        #
+        # Sync label deletions
+        #
+
+        if self._has_label_lists:
+            _docs = list(
+                itertools.chain.from_iterable(_docs for _docs in docs if _docs)
+            )
+            ids = [d["_id"] for d in _docs]
+        else:
+            ids = [d["_id"] for d in docs]
+
+        all_ids = self._patches_dataset.values(id_path, unwind=True)
+        deleted_ids = set(all_ids) - set(ids)
+
+        if deleted_ids:
+            # @todo optimize by using `labels` syntax
+            self._source_collection.delete_labels(
+                ids=deleted_ids, fields=self.patches_field
+            )

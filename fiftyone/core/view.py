@@ -19,6 +19,7 @@ import fiftyone.core.media as fom
 import fiftyone.core.odm as foo
 import fiftyone.core.sample as fos
 import fiftyone.core.stages as fost
+import fiftyone.core.utils as fou
 
 
 class DatasetView(foc.SampleCollection):
@@ -210,26 +211,32 @@ class DatasetView(foc.SampleCollection):
         aggs = self.aggregate(
             [foa.Count(), foa.Distinct("tags")], _attach_frames=False
         )
+
         elements = [
-            "Dataset:        %s" % self.dataset_name,
-            "Media type:     %s" % self.media_type,
-            "Num samples:    %d" % aggs[0],
-            "Tags:           %s" % aggs[1],
-            "Sample fields:",
-            self._to_fields_str(self.get_field_schema()),
+            ("Dataset:", self.dataset_name),
+            ("Media type:", self.media_type),
+            ("Num samples:", aggs[0]),
+            ("Tags:", aggs[1]),
         ]
 
+        elements = fou.justify_headings(elements)
+        lines = ["%s %s" % tuple(e) for e in elements]
+
+        lines.extend(
+            ["Sample fields:", self._to_fields_str(self.get_field_schema())]
+        )
+
         if self.media_type == fom.VIDEO:
-            elements.extend(
+            lines.extend(
                 [
                     "Frame fields:",
                     self._to_fields_str(self.get_frame_field_schema()),
                 ]
             )
 
-        elements.extend(["View stages:", self._make_view_stages_str()])
+        lines.extend(["View stages:", self._make_view_stages_str()])
 
-        return "\n".join(elements)
+        return "\n".join(lines)
 
     def _make_view_stages_str(self):
         if not self._all_stages:
@@ -663,7 +670,7 @@ class DatasetView(foc.SampleCollection):
             pretty_print=pretty_print,
         )
         samples = d.pop("samples")  # hack so that `samples` is last in JSON
-        d["stages"] = self._serialize()
+        d["stages"] = self._serialize(include_uuids=False)
         d["samples"] = samples
         return d
 

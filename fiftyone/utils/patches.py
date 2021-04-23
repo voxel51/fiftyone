@@ -178,6 +178,7 @@ def _make_patches_view(sample_collection, field, keep_label_lists=False):
         )
 
     pipeline = [
+        {"$project": {"_id": 1, "filepath": 1, field: 1}},
         {"$unwind": "$" + list_field},
         {
             "$set": {
@@ -193,7 +194,7 @@ def _make_patches_view(sample_collection, field, keep_label_lists=False):
     else:
         pipeline.append({"$set": {field: "$" + list_field}})
 
-    return sample_collection.select_fields(field).mongo(pipeline)
+    return sample_collection.mongo(pipeline)
 
 
 def _make_eval_view(

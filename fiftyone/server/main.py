@@ -379,7 +379,12 @@ class StateHandler(tornado.websocket.WebSocketHandler):
     def sample_collection():
         """Getter for the current sample collection."""
         state = fos.StateDescription.from_dict(StateHandler.state)
-        return db[state.dataset._sample_collection_name]
+        if state.view is not None:
+            dataset = state.view._dataset
+        else:
+            dataset = state.dataset
+
+        return db[dataset._sample_collection_name]
 
     def write_message(self, message):
         """Writes a message to the client.
@@ -474,8 +479,8 @@ class StateHandler(tornado.websocket.WebSocketHandler):
 
     @staticmethod
     async def on_filters_update(self, filters):
-        """Event for updating state filters. Sends an extended dataset statistics
-        message to active App clients.
+        """Event for updating state filters. Sends an extended dataset
+        statistics message to active App clients.
 
         Args:
             filters: a :class:`dict` mapping field path to a serialized
@@ -508,7 +513,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         if state.view is not None:
             view = state.view
         elif state.dataset is not None:
-            view = state.dataset.view()
+            view = state.dataset
         else:
             _write_message(
                 {"type": "page", "page": page, "results": [], "more": False},
@@ -684,7 +689,10 @@ class StateHandler(tornado.websocket.WebSocketHandler):
     @staticmethod
     async def on_all_tags(caller):
         state = fos.StateDescription.from_dict(StateHandler.state)
-        dataset = state.dataset
+        if state.view is not None:
+            dataset = state.view._dataset
+        else:
+            dataset = state.dataset
 
         if dataset is None:
             label = []
@@ -766,7 +774,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         view = get_extended_view(view, state.filters)
         view = view.select(state.selected).select_fields(active_labels)
 
-        (count_aggs, tag_aggs,) = fos.DatasetStatistics.get_label_aggregations(
+        count_aggs, tag_aggs = fos.DatasetStatistics.get_label_aggregations(
             view
         )
         results = await view._async_aggregate(
@@ -923,7 +931,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         if state.view is not None:
             view = state.view
         elif state.dataset is not None:
-            view = state.dataset.view()
+            view = state.dataset
         else:
             results = []
 
@@ -1252,7 +1260,12 @@ def _make_video_labels(state, view, sample, frames):
 
         labels.add_frame(frame_labels)
 
-    sample_schema = state.dataset.get_field_schema()
+    if state.view is not None:
+        dataset = state.view._dataset
+    else:
+        dataset = state.dataset
+
+    sample_schema = dataset.get_field_schema()
     for frame_number in range(1, etav.get_frame_count(sample["filepath"]) + 1):
         frame_labels = etav.VideoFrameLabels(frame_number=frame_number)
         for k, v in sample.items():
