@@ -31,11 +31,6 @@ def make_patches_dataset(
     included in the returned dataset. A ``sample_id`` field will be added that
     records the sample ID from which each patch was taken.
 
-    .. note::
-
-        The returned dataset is independent from the source collection;
-        modifying it will not affect the source collection.
-
     Args:
         sample_collection: a
             :class:`fiftyone.core.collections.SampleCollection`
@@ -97,11 +92,6 @@ def make_evaluation_dataset(sample_collection, eval_key, name=None):
     populated based on the evaluation results for that example, as well as a
     ``sample_id`` field recording the sample ID of the example, and a ``crowd``
     field if the evaluation protocol defines a crowd attribute.
-
-    .. note::
-
-        The returned dataset is independent from the source collection;
-        modifying it will not affect the source collection.
 
     Args:
         sample_collection: a

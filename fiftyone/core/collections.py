@@ -113,7 +113,7 @@ class SampleCollection(object):
         collection is derived.
 
         This is typically the same as :meth:`_dataset` but may differ in cases
-        such as patch/evaluation collections.
+        such as collections of patches.
         """
         raise NotImplementedError("Subclass must implement _root_dataset")
 
@@ -1181,11 +1181,6 @@ class SampleCollection(object):
                 000002.jpg
                 ...
 
-        .. note::
-
-            The returned dataset is independent from the source collection;
-            modifying it will not affect the source collection.
-
         Args:
             sample_collection: a
                 :class:`fiftyone.core.collections.SampleCollection`
@@ -1517,11 +1512,6 @@ class SampleCollection(object):
         well as a ``sample_id`` field recording the sample ID of the example,
         and a ``crowd`` field if the evaluation protocol defines a crowd
         attribute.
-
-        .. note::
-
-            The returned dataset is independent from the source collection;
-            modifying it will not affect the source collection.
 
         Args:
             eval_key: an evaluation key that corresponds to the evaluation of
