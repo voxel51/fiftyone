@@ -978,42 +978,21 @@ def _get_label_data(
     df = _parse_csv(csv_path, dataframe=True)
 
     # Find intersection of ImageIDs with all annotations
+    # Only keep samples with at least one label relevant to specified classes
+    # or attributes
+
     label_id_data = {}
     relevant_ids = set()
     oi_classes_attrs = set(oi_classes) | set(oi_attrs)
     all_label_ids = df["ImageID"].unique()
     relevant_df = df[df.isin(oi_classes_attrs).any(axis=1)]
     relevant_ids = set(relevant_df["ImageID"].unique())
-    # for l in data[1:]:  # first row is headers
-    #    image_id = l[id_ind]
-    #    if image_id not in label_id_data:
-    #        label_id_data[image_id] = [l]
-    #    else:
-    #        label_id_data[image_id].append(l)
-
-    #    # Check that any labels for this entry exist in the given classes or
-    #    # attributes
-    #    valid_labels = []
-    #    for i in label_inds:
-    #        valid_labels.append(l[i] in oi_classes_attrs)
-
-    #    if any(valid_labels):
-    #        relevant_ids.add(image_id)
 
     if ids_only:
+        # Only interested in downloading image ids, not loading annotations
         del df
         return {}, relevant_ids
 
-    ##
-    ## Only keep samples with at least one label relevant to specified classes
-    ## or attributes
-    ##
-    ## Images without specified classes or attributes are []
-    ## Images without any of this label type do not exist in this dict
-    ##
-    # for image_id, data in label_id_data.items():
-    #    if image_id not in relevant_ids:
-    #        label_id_data[image_id] = []
     label_id_data = {
         "all_ids": all_label_ids,
         "relevant_ids": relevant_ids,
@@ -1277,10 +1256,6 @@ def _create_labels(lab_id_data, image_id, classes_map):
 
     def _generate_one_label(label, conf):
         # [ImageID,Source,LabelName,Confidence]
-        # label = classes_map[sample_lab[2]]
-        # conf = float(sample_lab[3])
-        # label = classes_map[row["LabelName"]]
-        # conf = float(row["Confidence"])
         label = classes_map[label]
         conf = float(conf)
         cls = fol.Classification(label=label, confidence=conf)
@@ -1323,22 +1298,12 @@ def _create_detections(det_id_data, image_id, classes_map):
         xmax = float(row["XMax"])
         ymin = float(row["YMin"])
         ymax = float(row["YMax"])
-        # label = classes_map[sample_det[2]]
-        # xmin = float(sample_det[4])
-        # xmax = float(sample_det[5])
-        # ymin = float(sample_det[6])
-        # ymax = float(sample_det[7])
 
         # Convert to [top-left-x, top-left-y, width, height]
         bbox = [xmin, ymin, xmax - xmin, ymax - ymin]
 
         detection = fol.Detection(bounding_box=bbox, label=label)
 
-        # detection["IsOccluded"] = bool(int(sample_det[8]))
-        # detection["IsTruncated"] = bool(int(sample_det[9]))
-        # detection["IsGroupOf"] = bool(int(sample_det[10]))
-        # detection["IsDepiction"] = bool(int(sample_det[11]))
-        # detection["IsInside"] = bool(int(sample_det[12]))
         detection["IsOccluded"] = bool(int(row["IsOccluded"]))
         detection["IsTruncated"] = bool(int(row["IsTruncated"]))
         detection["IsGroupOf"] = bool(int(row["IsGroupOf"]))
@@ -1431,20 +1396,9 @@ def _create_segmentations(seg_id_data, image_id, classes_map, dataset_dir):
     if image_id not in relevant_ids:
         return []
 
-    # if image_id not in seg_id_data:
-    #    return None
-
-    # segs = []
-    # sample_segs = seg_id_data[image_id]
-
-    # for sample_seg in sample_segs:
     def _generate_one_label(row):
         # [MaskPath,ImageID,LabelName,BoxID,BoxXMin,BoxXMax,BoxYMin,BoxYMax,PredictedIoU,Clicks]
-        # label = classes_map[sample_seg[2]]
-        # xmin = float(sample_seg[4])
-        # xmax = float(sample_seg[5])
-        # ymin = float(sample_seg[6])
-        # ymax = float(sample_seg[7])
+
         mask_path = row["MaskPath"]
         label = classes_map[row["LabelName"]]
         xmin = float(row["BoxXMin"])
