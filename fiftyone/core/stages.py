@@ -29,6 +29,7 @@ import fiftyone.core.sample as fos
 import fiftyone.core.utils as fou
 
 foug = fou.lazy_import("fiftyone.utils.geojson")
+foup = fou.lazy_import("fiftyone.utils.patches")
 
 
 class ViewStage(object):
@@ -59,6 +60,14 @@ class ViewStage(object):
 
         kwargs_str = ", ".join(kwargs_list)
         return "%s(%s)" % (self.__class__.__name__, kwargs_str)
+
+    @property
+    def has_view(self):
+        """Whether this stage's output view can be loaded via :meth:`load_view`
+        rather than appending stages to an aggregation pipeline via
+        :meth:`to_mongo`.
+        """
+        return False
 
     def get_filtered_list_fields(self):
         """Returns a list of names of fields or subfields that contain arrays
@@ -107,6 +116,24 @@ class ViewStage(object):
         """
         return None
 
+    def load_view(self, sample_collection):
+        """Loads the :class:`fiftyone.core.view.DatasetView` for the stage.
+
+        Args:
+            sample_collection: the
+                :class:`fiftyone.core.collections.SampleCollection` to which
+                the stage is being applied
+
+        Returns:
+            a :class:`fiftyone.core.view.DatasetView`
+        """
+        if not self.has_view:
+            raise ValueError(
+                "%s stages use `to_mongo()`, not `load_view()`" % type(self)
+            )
+
+        raise NotImplementedError("subclasses must implement `load_view()`")
+
     def to_mongo(self, sample_collection):
         """Returns the MongoDB aggregation pipeline for the stage.
 
@@ -118,6 +145,11 @@ class ViewStage(object):
         Returns:
             a MongoDB aggregation pipeline (list of dicts)
         """
+        if not self.has_view:
+            raise ValueError(
+                "%s stages use `load_view()`, not `to_mongo()`" % type(self)
+            )
+
         raise NotImplementedError("subclasses must implement `to_mongo()`")
 
     def validate(self, sample_collection):
@@ -3726,8 +3758,129 @@ class Take(ViewStage):
         ]
 
 
+class ToPatches(ViewStage):
+    """Creates a view that contains one sample per object patch in the
+    specified field of a collection.
+
+    Fields other than ``field`` and the default sample fields will not be
+    included in the returned view. A ``sample_id`` field will be added that
+    records the sample ID from which each patch was taken.
+
+    Examples::
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("quickstart")
+
+        session = fo.launch_app(dataset)
+
+        #
+        # Create a view containing the ground truth patches
+        #
+
+        stage = fo.ToPatches("ground_truth")
+        view = dataset.add_stage(stage)
+        print(view)
+
+        session.view = view
+
+    Args:
+        field: the patches field, which must be of type
+            :class:`fiftyone.core.labels.Detections` or
+            :class:`fiftyone.core.labels.Polylines`
+        keep_label_lists (False): whether to store the patches in label list
+            fields of the same type as the input collection rather than using
+            their single label variants
+    """
+
+    def __init__(self, field, keep_label_lists=False, _state=None):
+        self._field = field
+        self._keep_label_lists = keep_label_lists
+        self._name = self._parse_state(_state)
+
+    @property
+    def has_view(self):
+        return True
+
+    @property
+    def field(self):
+        """The patches field."""
+        return self._field
+
+    @property
+    def keep_label_lists(self):
+        """Whether to store the patches in label list fields rather than their
+        single label variants.
+        """
+        return self._keep_label_lists
+
+    def load_view(self, sample_collection):
+        import fiftyone.core.dataset as fod
+        import fiftyone.core.patches as fop
+
+        if self._name is None:
+            raise ValueError(
+                "`validate()` must be called before using a %s stage"
+                % self.__class__
+            )
+
+        patches_dataset = fod.load_dataset(self._name)
+        return fop.PatchesView(sample_collection, self, patches_dataset)
+
+    def _kwargs(self):
+        # @todo we could just directly send `_name` here if the App adopted
+        # the convention that private data is omitted when serializing stages
+        # to send to the backend whenever the public parameters of a stage are
+        # edited
+        state = {
+            "field": self._field,
+            "keep_label_lists": self._keep_label_lists,
+            "name": self._name,
+        }
+
+        return [
+            ["field", self._field],
+            ["keep_label_lists", self._keep_label_lists],
+            ["_state", state],
+        ]
+
+    @classmethod
+    def _params(self):
+        return [
+            {"name": "field", "type": "field", "placeholder": "label field"},
+            {
+                "name": "keep_label_lists",
+                "type": "bool",
+                "default": "False",
+                "placeholder": "keep label lists (default=False)",
+            },
+            {"name": "_state", "type": "NoneType|json", "default": "None"},
+        ]
+
+    def validate(self, sample_collection):
+        if self._name is not None:
+            return
+
+        patches_dataset = foup.make_patches_dataset(
+            sample_collection,
+            self._field,
+            keep_label_lists=self._keep_label_lists,
+        )
+        self._name = patches_dataset.name
+
+    def _parse_state(self, state):
+        if (
+            not isinstance(state, dict)
+            or state.get("field", None) != self._field
+            or state.get("keep_label_lists", None) != self._keep_label_lists
+        ):
+            return None
+
+        return state.get("name", None)
+
+
 def _get_sample_ids(samples_or_ids):
-    # avoid circular import...
     import fiftyone.core.collections as foc
 
     if etau.is_str(samples_or_ids):
@@ -3912,4 +4065,5 @@ _STAGES = [
     Skip,
     SortBy,
     Take,
+    ToPatches,
 ]

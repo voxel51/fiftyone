@@ -19,6 +19,7 @@ import fiftyone.core.media as fom
 import fiftyone.core.odm as foo
 import fiftyone.core.sample as fos
 import fiftyone.core.stages as fost
+import fiftyone.core.utils as fou
 
 
 class DatasetView(foc.SampleCollection):
@@ -34,11 +35,11 @@ class DatasetView(foc.SampleCollection):
 
     The stages of a dataset view specify:
 
-    -   what subset of samples (and their order) should be included
-    -   what "parts" (fields and their elements) of the sample should be
+    -   The subset of samples (and their order) that should be included
+    -   The "parts" (e.g., fields or patches) of each sample that should be
         included
 
-    Samples retrieved from dataset views are returns as
+    Samples retrieved from dataset views are returned as
     :class:`fiftyone.core.sample.SampleView` objects, as opposed to
     :class:`fiftyone.core.sample.Sample` objects, since they may contain a
     subset of the sample's content.
@@ -47,21 +48,21 @@ class DatasetView(foc.SampleCollection):
     overview of working with dataset views.
 
     Args:
-        dataset: a :class:`fiftyone.core.dataset.Dataset`
+        dataset: the underlying :class:`fiftyone.core.dataset.Dataset` for the
+            view
     """
+
+    _SAMPLE_CLS = fos.SampleView
 
     def __init__(self, dataset, _stages=None):
         if _stages is None:
             _stages = []
 
-        self.__dataset__ = dataset
+        self.__dataset = dataset
         self._stages = _stages
 
     def __eq__(self, other_view):
-        if not isinstance(other_view, DatasetView):
-            return False
-
-        if self._dataset != other_view._dataset:
+        if type(other_view) != type(self):
             return False
 
         # Two views into the same dataset are equal if their stage definitions
@@ -102,16 +103,20 @@ class DatasetView(foc.SampleCollection):
 
     def __copy__(self):
         _stages = deepcopy(self._stages)
-        return self.__class__(self._dataset, _stages=_stages)
+        return self.__class__(self.__dataset, _stages=_stages)
 
     @property
     def _dataset(self):
-        return self.__dataset__
+        return self.__dataset
+
+    @property
+    def _root_dataset(self):
+        return self.__dataset
 
     @property
     def media_type(self):
         """The media type of the underlying dataset."""
-        return self._dataset.media_type
+        return self._root_dataset.media_type
 
     @property
     def name(self):
@@ -121,7 +126,7 @@ class DatasetView(foc.SampleCollection):
     @property
     def dataset_name(self):
         """The name of the underlying dataset."""
-        return self._dataset.name
+        return self._root_dataset.name
 
     @property
     def info(self):
@@ -129,11 +134,11 @@ class DatasetView(foc.SampleCollection):
 
         See :meth:`fiftyone.core.dataset.Dataset.info` for more information.
         """
-        return self._dataset.info
+        return self._root_dataset.info
 
     @info.setter
     def info(self, info):
-        self._dataset.info = info
+        self._root_dataset.info = info
 
     @property
     def classes(self):
@@ -141,11 +146,11 @@ class DatasetView(foc.SampleCollection):
 
         See :meth:`fiftyone.core.dataset.Dataset.classes` for more information.
         """
-        return self._dataset.classes
+        return self._root_dataset.classes
 
     @classes.setter
     def classes(self, classes):
-        self._dataset.classes = classes
+        self._root_dataset.classes = classes
 
     @property
     def default_classes(self):
@@ -154,11 +159,11 @@ class DatasetView(foc.SampleCollection):
         See :meth:`fiftyone.core.dataset.Dataset.default_classes` for more
         information.
         """
-        return self._dataset.default_classes
+        return self._root_dataset.default_classes
 
     @default_classes.setter
     def default_classes(self, classes):
-        self._dataset.default_classes = classes
+        self._root_dataset.default_classes = classes
 
     @property
     def mask_targets(self):
@@ -167,11 +172,11 @@ class DatasetView(foc.SampleCollection):
         See :meth:`fiftyone.core.dataset.Dataset.mask_targets` for more
         information.
         """
-        return self._dataset.mask_targets
+        return self._root_dataset.mask_targets
 
     @mask_targets.setter
     def mask_targets(self, targets):
-        self._dataset.mask_targets = targets
+        self._root_dataset.mask_targets = targets
 
     @property
     def default_mask_targets(self):
@@ -180,17 +185,21 @@ class DatasetView(foc.SampleCollection):
         See :meth:`fiftyone.core.dataset.Dataset.default_mask_targets` for more
         information.
         """
-        return self._dataset.default_mask_targets
+        return self._root_dataset.default_mask_targets
 
     @default_mask_targets.setter
     def default_mask_targets(self, targets):
-        self._dataset.default_mask_targets = targets
+        self._root_dataset.default_mask_targets = targets
 
     @property
     def stages(self):
-        """The list of :class:`fiftyone.core.stages.ViewStage` instances in
-        this view's pipeline.
+        """The list of :class:`fiftyone.core.stages.ViewStage` instances that
+        define this view.
         """
+        return self._stages
+
+    @property
+    def _all_stages(self):
         return self._stages
 
     def summary(self):
@@ -202,37 +211,41 @@ class DatasetView(foc.SampleCollection):
         aggs = self.aggregate(
             [foa.Count(), foa.Distinct("tags")], _attach_frames=False
         )
+
         elements = [
-            "Dataset:        %s" % self.dataset_name,
-            "Media type:     %s" % self.media_type,
-            "Num samples:    %d" % aggs[0],
-            "Tags:           %s" % aggs[1],
-            "Sample fields:",
-            self._dataset._to_fields_str(self.get_field_schema()),
+            ("Dataset:", self.dataset_name),
+            ("Media type:", self.media_type),
+            ("Num samples:", aggs[0]),
+            ("Tags:", aggs[1]),
         ]
 
+        elements = fou.justify_headings(elements)
+        lines = ["%s %s" % tuple(e) for e in elements]
+
+        lines.extend(
+            ["Sample fields:", self._to_fields_str(self.get_field_schema())]
+        )
+
         if self.media_type == fom.VIDEO:
-            elements.extend(
+            lines.extend(
                 [
                     "Frame fields:",
-                    self._dataset._to_fields_str(
-                        self.get_frame_field_schema()
-                    ),
+                    self._to_fields_str(self.get_frame_field_schema()),
                 ]
             )
 
-        elements.extend(["View stages:", self._make_view_stages_str()])
+        lines.extend(["View stages:", self._make_view_stages_str()])
 
-        return "\n".join(elements)
+        return "\n".join(lines)
 
     def _make_view_stages_str(self):
-        if not self._stages:
+        if not self._all_stages:
             return "    ---"
 
         return "    " + "\n    ".join(
             [
                 "%d. %s" % (idx, str(stage))
-                for idx, stage in enumerate(self._stages, 1)
+                for idx, stage in enumerate(self._all_stages, 1)
             ]
         )
 
@@ -250,13 +263,14 @@ class DatasetView(foc.SampleCollection):
         Returns:
             an iterator over :class:`fiftyone.core.sample.SampleView` instances
         """
+        sample_cls = self._SAMPLE_CLS
         selected_fields, excluded_fields = self._get_selected_excluded_fields()
         filtered_fields = self._get_filtered_fields()
 
         for d in self._aggregate(detach_frames=True):
             try:
                 doc = self._dataset._sample_dict_to_doc(d)
-                sample = fos.SampleView(
+                sample = sample_cls(
                     doc,
                     self,
                     selected_fields=selected_fields,
@@ -656,7 +670,7 @@ class DatasetView(foc.SampleCollection):
             pretty_print=pretty_print,
         )
         samples = d.pop("samples")  # hack so that `samples` is last in JSON
-        d["stages"] = [s._serialize() for s in self._stages]
+        d["stages"] = self._serialize(include_uuids=False)
         d["samples"] = samples
         return d
 
@@ -708,14 +722,10 @@ class DatasetView(foc.SampleCollection):
         )
         return foo.aggregate(self._dataset._sample_collection, _pipeline)
 
-    @property
-    def _doc(self):
-        return self._dataset._doc
-
     def _serialize(self, include_uuids=True):
         return [
             stage._serialize(include_uuid=include_uuids)
-            for stage in self._stages
+            for stage in self._all_stages
         ]
 
     @staticmethod
@@ -765,8 +775,12 @@ class DatasetView(foc.SampleCollection):
     def _add_view_stage(self, stage):
         stage.validate(self)
 
-        view = copy(self)
-        view._stages.append(stage)
+        if stage.has_view:
+            view = stage.load_view(self)
+        else:
+            view = copy(self)
+            view._stages.append(stage)
+
         return view
 
     def _get_filtered_schema(self, schema, frames=False):

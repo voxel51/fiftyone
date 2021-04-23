@@ -13,6 +13,7 @@ import os
 import random
 import string
 
+from bson import ObjectId
 from deprecated import deprecated
 from pymongo import UpdateOne
 
@@ -105,6 +106,24 @@ class SampleCollection(object):
         collection.
         """
         raise NotImplementedError("Subclass must implement _dataset")
+
+    @property
+    def _root_dataset(self):
+        """The root :class:`fiftyone.core.dataset.Dataset` from which this
+        collection is derived.
+
+        This is typically the same as :meth:`_dataset` but may differ in cases
+        such as collections of patches.
+        """
+        raise NotImplementedError("Subclass must implement _root_dataset")
+
+    @property
+    def _element_str(self):
+        return "sample"
+
+    @property
+    def _elements_str(self):
+        return "samples"
 
     @property
     def name(self):
@@ -933,6 +952,43 @@ class SampleCollection(object):
 
         self._dataset._bulk_write(ops, frames=frames)
 
+    def _set_labels_by_id(self, field_name, ids, docs):
+        label_type = self._get_label_field_type(field_name)
+        field_name, is_frame_field = self._handle_frame_field(field_name)
+
+        ops = []
+        if issubclass(label_type, fol._LABEL_LIST_FIELDS):
+            root, leaf = field_name.rsplit(".", 1)
+            set_path = root + ".$." + leaf
+
+            for _id, _docs in zip(ids, docs):
+                if not _docs:
+                    continue
+
+                for doc in _docs:
+                    ops.append(
+                        UpdateOne(
+                            {
+                                "_id": ObjectId(_id),
+                                field_name + "._id": doc["_id"],
+                            },
+                            {"$set": {set_path: doc}},
+                        )
+                    )
+        else:
+            for _id, doc in zip(ids, docs):
+                ops.append(
+                    UpdateOne(
+                        {
+                            "_id": ObjectId(_id),
+                            field_name + "._id": doc["_id"],
+                        },
+                        {"$set": {field_name: doc}},
+                    )
+                )
+
+        self._dataset._bulk_write(ops, frames=is_frame_field)
+
     def compute_metadata(
         self, overwrite=False, num_workers=None, skip_failures=True
     ):
@@ -1088,35 +1144,6 @@ class SampleCollection(object):
             force_square=force_square,
             alpha=alpha,
             handle_missing=handle_missing,
-        )
-
-    def to_patches(self, field, keep_label_lists=False, name=None):
-        """Creates a dataset that contains one sample per object patch in the
-        specified field of the collection.
-
-        Fields other than ``field`` and the default sample fields will not be
-        included in the returned dataset. A ``sample_id`` field will be added
-        that records the sample ID from which each patch was taken.
-
-        .. note::
-
-            The returned dataset is independent from the source collection;
-            modifying it will not affect the source collection.
-
-        Args:
-            field: the patches field, which must be of type
-                :class:`fiftyone.core.labels.Detections` or
-                :class:`fiftyone.core.labels.Polylines`
-            keep_label_lists (False): whether to store the patches in label
-                list fields of the same type as the input collection rather
-                than using their single label variants
-            name (None): a name for the returned dataset
-
-        Returns:
-            a :class:`fiftyone.core.dataset.Dataset`
-        """
-        return foup.make_patches_dataset(
-            self, field, keep_label_lists=keep_label_lists, name=name
         )
 
     def to_frames(
@@ -1490,11 +1517,6 @@ class SampleCollection(object):
         well as a ``sample_id`` field recording the sample ID of the example,
         and a ``crowd`` field if the evaluation protocol defines a crowd
         attribute.
-
-        .. note::
-
-            The returned dataset is independent from the source collection;
-            modifying it will not affect the source collection.
 
         Args:
             eval_key: an evaluation key that corresponds to the evaluation of
@@ -3498,6 +3520,48 @@ class SampleCollection(object):
         """
         return self._add_view_stage(fos.Take(size, seed=seed))
 
+    @view_stage
+    def to_patches(self, field, keep_label_lists=False):
+        """Creates a view that contains one sample per object patch in the
+        specified field of the collection.
+
+        Fields other than ``field`` and the default sample fields will not be
+        included in the returned view. A ``sample_id`` field will be added that
+        records the sample ID from which each patch was taken.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            session = fo.launch_app(dataset)
+
+            #
+            # Create a view containing the ground truth patches
+            #
+
+            view = dataset.to_patches("ground_truth")
+            print(view)
+
+            session.view = view
+
+        Args:
+            field: the patches field, which must be of type
+                :class:`fiftyone.core.labels.Detections` or
+                :class:`fiftyone.core.labels.Polylines`
+            keep_label_lists (False): whether to store the patches in label
+                list fields of the same type as the input collection rather
+                than using their single label variants
+
+        Returns:
+            a :class:`fiftyone.core.patches.PatchesView`
+        """
+        return self._add_view_stage(
+            fos.ToPatches(field, keep_label_lists=keep_label_lists)
+        )
+
     @classmethod
     def list_aggregations(cls):
         """Returns a list of all available methods on this collection that
@@ -4811,10 +4875,6 @@ class SampleCollection(object):
 
         return results[0] if scalar_result else results
 
-    def _serialize(self):
-        # pylint: disable=no-member
-        return self._doc.to_dict(extended=True)
-
     def _serialize_field_schema(self):
         return self._serialize_schema(self.get_field_schema())
 
@@ -4825,23 +4885,32 @@ class SampleCollection(object):
         return {field_name: str(field) for field_name, field in schema.items()}
 
     def _serialize_mask_targets(self):
-        return self._dataset._doc.field_to_mongo("mask_targets")
+        return self._root_dataset._doc.field_to_mongo("mask_targets")
 
     def _serialize_default_mask_targets(self):
-        return self._dataset._doc.field_to_mongo("default_mask_targets")
+        return self._root_dataset._doc.field_to_mongo("default_mask_targets")
 
     def _parse_mask_targets(self, mask_targets):
         if not mask_targets:
             return mask_targets
 
-        return self._dataset._doc.field_to_python("mask_targets", mask_targets)
+        return self._root_dataset._doc.field_to_python(
+            "mask_targets", mask_targets
+        )
 
     def _parse_default_mask_targets(self, default_mask_targets):
         if not default_mask_targets:
             return default_mask_targets
 
-        return self._dataset._doc.field_to_python(
+        return self._root_dataset._doc.field_to_python(
             "default_mask_targets", default_mask_targets
+        )
+
+    def _to_fields_str(self, field_schema):
+        max_len = max([len(field_name) for field_name in field_schema]) + 1
+        return "\n".join(
+            "    %s %s" % ((field_name + ":").ljust(max_len), str(field))
+            for field_name, field in field_schema.items()
         )
 
     def _parse_field_name(
@@ -4929,7 +4998,11 @@ class SampleCollection(object):
         if issubclass(label_type, fol._LABEL_LIST_FIELDS):
             field_name += "." + label_type._LABEL_LIST_FIELD
 
-        field_path = field_name + "." + subfield
+        if subfield:
+            field_path = field_name + "." + subfield
+        else:
+            field_path = field_name
+
         return label_type, field_path
 
     def _get_geo_location_field(self):

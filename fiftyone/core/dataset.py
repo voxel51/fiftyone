@@ -296,6 +296,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return self
 
     @property
+    def _root_dataset(self):
+        return self
+
+    @property
     def media_type(self):
         """The media type of the dataset."""
         return self._doc.media_type
@@ -512,25 +516,31 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         aggs = self.aggregate(
             [foa.Count(), foa.Distinct("tags")], _attach_frames=False
         )
+
         elements = [
-            "Name:           %s" % self.name,
-            "Media type:     %s" % self.media_type,
-            "Num samples:    %d" % aggs[0],
-            "Persistent:     %s" % self.persistent,
-            "Tags:           %s" % aggs[1],
-            "Sample fields:",
-            self._to_fields_str(self.get_field_schema()),
+            ("Name:", self.name),
+            ("Media type:", self.media_type),
+            ("Num samples:", aggs[0]),
+            ("Persistent:", self.persistent),
+            ("Tags:", aggs[1]),
         ]
 
+        elements = fou.justify_headings(elements)
+        lines = ["%s %s" % tuple(e) for e in elements]
+
+        lines.extend(
+            ["Sample fields:", self._to_fields_str(self.get_field_schema())]
+        )
+
         if self.media_type == fom.VIDEO:
-            elements.extend(
+            lines.extend(
                 [
                     "Frame fields:",
                     self._to_fields_str(self.get_frame_field_schema()),
                 ]
             )
 
-        return "\n".join(elements)
+        return "\n".join(lines)
 
     def stats(self, include_media=False, compressed=False):
         """Returns stats about the dataset on disk.
@@ -2933,13 +2943,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def _frame_dict_to_doc(self, d):
         return self._frame_doc_cls.from_dict(d, extended=False)
 
-    def _to_fields_str(self, field_schema):
-        max_len = max([len(field_name) for field_name in field_schema]) + 1
-        return "\n".join(
-            "    %s %s" % ((field_name + ":").ljust(max_len), str(field))
-            for field_name, field in field_schema.items()
-        )
-
     def _validate_sample(self, sample):
         fields = self.get_field_schema(include_private=True)
 
@@ -2977,6 +2980,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             self._sample_doc_cls,
             self._frame_doc_cls,
         ) = _load_dataset(self.name, migrate=False)
+
+    def _serialize(self):
+        return self._doc.to_dict(extended=True)
 
 
 def _get_random_characters(n):

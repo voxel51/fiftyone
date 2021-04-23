@@ -138,6 +138,25 @@ def indent_lines(s, indent=4, skip=0):
     return s
 
 
+def justify_headings(elements, width=None):
+    """Justifies the headings in a list of ``(heading, content)`` string tuples
+    by appending whitespace as necessary to each ``heading``.
+
+    Args:
+        elements: a list of ``(heading, content)`` tuples
+        width (None): an optional justification width. By default, the maximum
+            heading length is used
+
+    Returns:
+        a list of justified ``(heading, content)`` tuples
+    """
+    if width is None:
+        width = max(len(e[0]) for e in elements)
+
+    fmt = "%%-%ds" % width
+    return [(fmt % e[0], e[1]) for e in elements]
+
+
 def available_patterns():
     """Returns the available patterns that can be used by
     :meth:`fill_patterns`.
