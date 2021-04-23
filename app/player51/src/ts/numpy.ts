@@ -57,7 +57,7 @@ const DATA_TYPES = {
 function convert64to32Array(TargetArrayType) {
   // we only need the 3-argument constructor to be implemented. For details:
   // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/TypedArray
-  const makeArray = function (buffer, byteOffset, length) {
+  const makeArray = function (buffer, byteOffset: number, length: number) {
     // view buffer as 32-bit type and copy the 4 lowest bytes out of every 8
     // bytes into a new array (assumes little-endian)
     const source = new TargetArrayType(buffer, byteOffset, length * 2);
@@ -76,7 +76,7 @@ function convert64to32Array(TargetArrayType) {
  * Parses a uint16 (unsigned 16-bit integer) at a specified position in a
  * Uint8Array
  */
-function readUint16At(array: Uint8Array, index: number) {
+function readUint16At(array: Uint8Array, index: number): number {
   return array[index] + (array[index + 1] << 8);
 }
 

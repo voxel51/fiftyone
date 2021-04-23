@@ -15,42 +15,8 @@ export default abstract class Renderer {
 
   constructor(media, sample, options) {
     this.parent = undefined;
-    this.this.options = options;
-
-    this.overlayOptions = Object.assign(
-      {
-        showFrameCount: false,
-        labelsOnlyOnClick: false,
-        attrsOnlyOnClick: false,
-        showAttrs: true,
-        showConfidence: true,
-        showTooltip: true,
-        attrRenderMode: "value",
-        attrRenderBox: true,
-        action: "click",
-        smoothMasks: true,
-      },
-      this.options.defaultOverlayOptions
-    );
-    this._actionOptions = {
-      click: { name: "Click", type: "click", labelText: "clicked" },
-      hover: { name: "Hover", type: "mousemove", labelText: "hovered" },
-    };
-    this._attrRenderModeOptions = [
-      {
-        name: "Value",
-        value: "value",
-      },
-      {
-        name: "Attribute: Value",
-        value: "attr-value",
-      },
-    ];
-    this._overlayOptionWrappers = {}; // overlayOptions key -> element
-    this._focusIndex = -1;
     this.seekBarMax = 100;
-    // Loading state attributes
-    this._frameNumber = undefined;
+
     this._isDataLoaded = false;
     this._mouseX = null;
     this._mouseY = null;
@@ -73,31 +39,12 @@ export default abstract class Renderer {
     });
   }
 
-  abstract initPlayer(): void;
-
-  abstract initPlayerControls(): void;
-
-  abstract updateFromDynamicState(): void;
-
-  abstract updateFromLoadingState(): void;
-
   abstract customDraw(): void;
 
   dispatchEvent(eventType: string, { data, ...args }): boolean {
     const e = new Event(eventType, args);
     e.data = data;
     return this.eventTarget.dispatchEvent(e);
-  }
-
-  private reBindMouseHandler() {
-    for (const action of Object.values(this._actionOptions)) {
-      this.eleCanvas.removeEventListener(action.type, this._handleMouseEvent);
-    }
-    const eventType = this._actionOptions[this.overlayOptions.action].type;
-    this.eleCanvas.addEventListener(eventType, this._handleMouseEvent);
-    if (eventType !== "click") {
-      this.eleCanvas.addEventListener("click", this._handleMouseEvent);
-    }
   }
 
   private processFrame() {
@@ -242,86 +189,5 @@ export default abstract class Renderer {
     this._boolShowVideoOptions = false;
     this._boolShowControls = false;
     this.updateFromDynamicState();
-  }
-
-  initCanvas() {
-    this.checkParentandMedia();
-    this.eleDivCanvas = document.createElement("div");
-    this.eleDivCanvas.className = "p51-contained-canvas";
-    this.eleCanvas = document.createElement("canvas");
-    this.eleCanvas.className = "p51-contained-canvas";
-    this.eleDivCanvas.appendChild(this.eleCanvas);
-    this.parent.appendChild(this.eleDivCanvas);
-  }
-
-  checkMouseOnControls(e) {
-    if (
-      this.eleDivVideoControls &&
-      this.eleDivVideoControls.contains(e.target)
-    ) {
-      return true;
-    } else if (
-      this.eleDivVideoOpts &&
-      this.eleDivVideoOpts.contains(e.target)
-    ) {
-      return true;
-    }
-    return false;
-  }
-
-  updateControlsDisplayState() {
-    if (!this.eleDivVideoControls) {
-      return;
-    }
-    if (this._boolShowControls && !this._boolDisableShowControls) {
-      this.eleDivVideoControls.style.opacity = "0.9";
-      this.eleDivVideoControls.style.height = "unset";
-    } else {
-      this.eleDivVideoControls.style.opacity = "0.0";
-      this.eleDivVideoControls.style.height = 0;
-      if (this.player.options.thumbnail) {
-        this.eleDivVideoControls.remove();
-      }
-    }
-    this._updateOptionsDisplayState();
-  }
-
-  _updateOptionsDisplayState() {
-    if (!this.eleDivVideoOpts) {
-      return;
-    }
-    if (
-      this._boolShowVideoOptions &&
-      this._boolShowControls &&
-      !this._boolDisableShowControls
-    ) {
-      this.eleDivVideoOpts.style.opacity = "0.9";
-      this.eleDivVideoOpts.classList.remove("p51-display-none");
-    } else {
-      this.eleDivVideoOpts.style.opacity = "0.0";
-      this.eleDivVideoOpts.classList.add("p51-display-none");
-      if (this.player.options.thumbnail) {
-        this.eleDivVideoOpts.remove();
-      }
-    }
-    this._updateOverlayOptionVisibility();
-  }
-
-  _updateOverlayOptionVisibility() {
-    this.eleOptCtlShowAttrWrapper.classList.toggle(
-      "hidden",
-      !this._overlayHasDetectionAttrs
-    );
-    this.attrOptsElements.forEach((e) =>
-      e.classList.toggle(
-        "hidden",
-        !this._overlayHasDetectionAttrs || !this.overlayOptions.showAttrs
-      )
-    );
-    for (const [key, wrapper] of Object.entries(this._overlayOptionWrappers)) {
-      if (this.options.enableOverlayOptions[key] === false) {
-        wrapper.classList.add("hidden");
-      }
-    }
   }
 }

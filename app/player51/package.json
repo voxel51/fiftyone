@@ -23,6 +23,7 @@
     "dependencies": {
         "@ungap/event-target": "^0.2.2",
         "event-target": "^1.2.3",
+        "immutable": "^4.0.0-rc.12",
         "mime-types": "^2.1.30",
         "pako": "^2.0.3"
     },

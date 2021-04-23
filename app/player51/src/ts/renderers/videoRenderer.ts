@@ -3,40 +3,7 @@
  */
 
 import { parseMediaFragmentsUri } from "../mediaFragments";
-import { checkFontHeight, ICONS } from "../util.js";
-
-const secondsToHhmmss = function (number: number): string {
-  let str = "";
-  if (number == 0) {
-    str = "00";
-  } else if (number < 10) {
-    str += "0" + number;
-  } else {
-    str = `${number}`;
-  }
-  return str;
-};
-
-const renderTime = ({ decimals = 1, duration, numSeconds }) => {
-  const renderHours = Math.floor(duration / 3600) > 0;
-  let hours = 0;
-  if (renderHours) {
-    hours = Math.floor(numSeconds / 3600);
-  }
-  numSeconds = numSeconds % 3600;
-  const minutes = Math.floor(numSeconds / 60);
-  const seconds = numSeconds % 60;
-
-  const mmss =
-    secondsToHhmmss(minutes) +
-    ":" +
-    secondsToHhmmss(+seconds.toFixed(decimals));
-
-  if (renderHours) {
-    return secondsToHhmmss(hours) + ":" + mmss;
-  }
-  return mmss;
-};
+import { checkFontHeight, ICONS } from "../util";
 
 export function asVideoRenderer(options) {
   const state = {
@@ -86,26 +53,6 @@ export function asVideoRenderer(options) {
   };
 
   const renderer = Object.assign(this, {
-    initPlayer() {
-      this.checkParentandMedia();
-      this.eleDivVideo = document.createElement("div");
-      this.eleDivVideo.className = "p51-contained-video";
-      this.eleVideo = document.createElement("video");
-      this.eleVideo.className = "p51-contained-video";
-      this.eleVideo.setAttribute("preload", "metadata");
-      this.eleVideo.setAttribute("src", this.media.src);
-      this.eleVideo.muted = true; // this works whereas .setAttribute does not
-
-      this.eleDivVideo.appendChild(this.eleVideo);
-      this.parent.appendChild(this.eleDivVideo);
-
-      // Video controls
-      this.initPlayerControlHTML(this.eleDivVideo);
-      this.mediaElement = this.eleVideo;
-      this.mediaDiv = this.eleDivVideo;
-      this.initCanvas();
-    },
-
     initPlayerControls() {
       if (this.player._boolHasPoster) {
         this.eleVideo.setAttribute("poster", this.player._loadingPosterURL);

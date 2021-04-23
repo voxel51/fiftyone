@@ -6,7 +6,7 @@ import mime from "mime-types";
 
 import { asVideo } from "./video";
 import Renderer from "./renderers/baseRenderer";
-import OverlaysManager from "./overlaysManager"
+import OverlaysManager from "./overlaysManager";
 import { colorGenerator } from "./overlays";
 
 export { ColorGenerator } from "./overlays";
@@ -69,16 +69,7 @@ export default class Player51 {
   renderer: Renderer;
 
   constructor({ src, ...options }) {
-    this.src = src;
-    this.options = Object.assign({}, defaults, rest);
     !installedEventHandlers && installEventHandlers();
-    const mimeType = sample.metadata.mime_type) ||
-      mime.lookup(sample.filepath) ||
-      "image/jpg";
-
-    if (mimeType.startsWith("video/")) {
-      return asVideo.call(this);
-    }
 
     instances.push(this);
   }
@@ -96,11 +87,15 @@ export default class Player51 {
       );
   }
 
-  grabKeyboardFocus(grab = true) {
-    focusedInstance = grab ? this : null;
+  focus(): void {
+    focusedInstance = this;
   }
 
-  destroy() {
+  blur(): void {
+    focusedInstance === this && (focusedInstance = null);
+  }
+
+  destroy(): void {
     instances = instances.filter((player) => player !== this);
     if (focusedInstance === this) {
       focusedInstance = null;
