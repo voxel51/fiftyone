@@ -3529,8 +3529,8 @@ class SampleCollection(object):
             fos.ToPatches(field, keep_label_lists=keep_label_lists)
         )
 
-    # @todo convert to view stage
-    def to_evaluation_patches(self, eval_key, name=None):
+    @view_stage
+    def to_evaluation_patches(self, eval_key):
         """Creates a view based on the results of the evaluation with the
         given key that contains one sample for each true positive, false
         positive, and false negative example in the collection, respectively.
@@ -3551,17 +3551,35 @@ class SampleCollection(object):
         and a ``crowd`` field if the evaluation protocol defines a crowd
         attribute.
 
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+
+            dataset = foz.load_zoo_dataset("quickstart")
+            dataset.evaluate_detections("predictions", eval_key="eval")
+
+            session = fo.launch_app(dataset)
+
+            #
+            # Create a patches view for the evaluation results
+            #
+
+            view = dataset.to_evaluation_patches("eval")
+            print(view)
+
+            session.view = view
+
         Args:
             eval_key: an evaluation key that corresponds to the evaluation of
                 ground truth/predicted fields that are of type
                 :class:`fiftyone.core.labels.Detections` or
                 :class:`fiftyone.core.labels.Polylines`
-            name (None): a name for the returned dataset
 
         Returns:
-            a :class:`fiftyone.core.dataset.Dataset`
+            a :class:`fiftyone.core.patches.EvaluationPatchesView`
         """
-        return foup.make_evaluation_dataset(self, eval_key, name=name)
+        return self._add_view_stage(fos.ToEvaluationPatches(eval_key))
 
     @classmethod
     def list_aggregations(cls):

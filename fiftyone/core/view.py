@@ -215,7 +215,7 @@ class DatasetView(foc.SampleCollection):
         elements = [
             ("Dataset:", self.dataset_name),
             ("Media type:", self.media_type),
-            ("Num samples:", aggs[0]),
+            ("Num %s:" % self._elements_str, aggs[0]),
             ("Tags:", aggs[1]),
         ]
 
@@ -223,7 +223,10 @@ class DatasetView(foc.SampleCollection):
         lines = ["%s %s" % tuple(e) for e in elements]
 
         lines.extend(
-            ["Sample fields:", self._to_fields_str(self.get_field_schema())]
+            [
+                "%s fields:" % self._element_str.capitalize(),
+                self._to_fields_str(self.get_field_schema()),
+            ]
         )
 
         if self.media_type == fom.VIDEO:

@@ -6,10 +6,10 @@ View stages.
 |
 """
 from collections import defaultdict
+from copy import deepcopy
 import random
 import reprlib
 import uuid
-import warnings
 
 from bson import ObjectId
 from deprecated import deprecated
@@ -3797,7 +3797,7 @@ class ToPatches(ViewStage):
     def __init__(self, field, keep_label_lists=False, _state=None):
         self._field = field
         self._keep_label_lists = keep_label_lists
-        self._name = self._parse_state(_state)
+        self._state = _state
 
     @property
     def has_view(self):
@@ -3819,30 +3819,38 @@ class ToPatches(ViewStage):
         import fiftyone.core.dataset as fod
         import fiftyone.core.patches as fop
 
-        if self._name is None:
-            raise ValueError(
-                "`validate()` must be called before using a %s stage"
-                % self.__class__
+        state = {
+            "dataset": sample_collection._root_dataset.name,
+            "stages": sample_collection.view()._serialize(include_uuids=False),
+            "field": self._field,
+            "keep_label_lists": self._keep_label_lists,
+        }
+
+        last_state = deepcopy(self._state)
+        if last_state is not None:
+            name = last_state.pop("name", None)
+        else:
+            name = None
+
+        if state != last_state or not fod.dataset_exists(name):
+            patches_dataset = foup.make_patches_dataset(
+                sample_collection,
+                self._field,
+                keep_label_lists=self._keep_label_lists,
             )
 
-        patches_dataset = fod.load_dataset(self._name)
+            state["name"] = patches_dataset.name
+            self._state = state
+        else:
+            patches_dataset = fod.load_dataset(name)
+
         return fop.PatchesView(sample_collection, self, patches_dataset)
 
     def _kwargs(self):
-        # @todo we could just directly send `_name` here if the App adopted
-        # the convention that private data is omitted when serializing stages
-        # to send to the backend whenever the public parameters of a stage are
-        # edited
-        state = {
-            "field": self._field,
-            "keep_label_lists": self._keep_label_lists,
-            "name": self._name,
-        }
-
         return [
             ["field", self._field],
             ["keep_label_lists", self._keep_label_lists],
-            ["_state", state],
+            ["_state", self._state],
         ]
 
     @classmethod
@@ -3858,26 +3866,109 @@ class ToPatches(ViewStage):
             {"name": "_state", "type": "NoneType|json", "default": "None"},
         ]
 
-    def validate(self, sample_collection):
-        if self._name is not None:
-            return
 
-        patches_dataset = foup.make_patches_dataset(
-            sample_collection,
-            self._field,
-            keep_label_lists=self._keep_label_lists,
+class ToEvaluationPatches(ViewStage):
+    """Creates a view based on the results of the evaluation with the given key
+    that contains one sample for each true positive, false positive, and false
+    negative example in the collection, respectively.
+
+    True positive examples will result in samples with both their ground truth
+    and predicted fields populated, while false positive/negative examples wilL
+    only have one of their corresponding predicted/ground truth fields
+    populated, respectively.
+
+    If multiple predictions are matched to a ground truth object (e.g., if the
+    evaluation protocol includes a crowd attribute), then all matched
+    predictions will be stored in the single sample along with the ground truth
+    object.
+
+    The returned dataset will also have top-level ``type`` and ``iou`` fields
+    populated based on the evaluation results for that example, as well as a
+    ``sample_id`` field recording the sample ID of the example, and a ``crowd``
+    field if the evaluation protocol defines a crowd attribute.
+
+    Examples::
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("quickstart")
+        dataset.evaluate_detections("predictions", eval_key="eval")
+
+        session = fo.launch_app(dataset)
+
+        #
+        # Create a patches view for the evaluation results
+        #
+
+        stage = fo.ToEvaluationPatches("eval")
+        view = dataset.add_stage(stage)
+        print(view)
+
+        session.view = view
+
+    Args:
+        eval_key: an evaluation key that corresponds to the evaluation of
+            ground truth/predicted fields that are of type
+            :class:`fiftyone.core.labels.Detections` or
+            :class:`fiftyone.core.labels.Polylines`
+    """
+
+    def __init__(self, eval_key, _state=None):
+        self._eval_key = eval_key
+        self._state = _state
+
+    @property
+    def has_view(self):
+        return True
+
+    @property
+    def eval_key(self):
+        """The evaluation key to extract patches for."""
+        return self._eval_key
+
+    def load_view(self, sample_collection):
+        import fiftyone.core.dataset as fod
+        import fiftyone.core.patches as fop
+
+        state = {
+            "dataset": sample_collection._root_dataset.name,
+            "stages": sample_collection.view()._serialize(include_uuids=False),
+            "eval_key": self._eval_key,
+        }
+
+        last_state = deepcopy(self._state)
+        if last_state is not None:
+            name = last_state.pop("name", None)
+        else:
+            name = None
+
+        if state != last_state or not fod.dataset_exists(name):
+            eval_patches_dataset = foup.make_evaluation_dataset(
+                sample_collection, self._eval_key
+            )
+
+            state["name"] = eval_patches_dataset.name
+            self._state = state
+        else:
+            patches_dataset = fod.load_dataset(name)
+
+        return fop.EvaluationPatchesView(
+            sample_collection, self, eval_patches_dataset
         )
-        self._name = patches_dataset.name
 
-    def _parse_state(self, state):
-        if (
-            not isinstance(state, dict)
-            or state.get("field", None) != self._field
-            or state.get("keep_label_lists", None) != self._keep_label_lists
-        ):
-            return None
+    def _kwargs(self):
+        return [
+            ["eval_key", self._eval_key],
+            ["_state", self._state],
+        ]
 
-        return state.get("name", None)
+    @classmethod
+    def _params(self):
+        return [
+            {"name": "eval_key", "type": "str", "placeholder": "eval key"},
+            {"name": "_state", "type": "NoneType|json", "default": "None"},
+        ]
 
 
 def _get_sample_ids(samples_or_ids):
@@ -4066,4 +4157,5 @@ _STAGES = [
     SortBy,
     Take,
     ToPatches,
+    ToEvaluationPatches,
 ]

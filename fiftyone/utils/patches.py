@@ -174,7 +174,6 @@ def _make_patches_view(sample_collection, field, keep_label_lists=False):
                 "_media_type": 1,
                 "filepath": 1,
                 "metadata": 1,
-                "tags": 1,
                 field + "._cls": 1,
                 list_field: 1,
             }
@@ -182,6 +181,7 @@ def _make_patches_view(sample_collection, field, keep_label_lists=False):
         {"$unwind": "$" + list_field},
         {
             "$set": {
+                "tags": [],
                 "sample_id": {"$toString": "$_id"},
                 "_rand": {"$rand": {}},
             }

@@ -149,6 +149,7 @@ from .core.stages import (
     SortBy,
     Take,
     ToPatches,
+    ToEvaluationPatches,
 )
 from .core.session import (
     close_app,
