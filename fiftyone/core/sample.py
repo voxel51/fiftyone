@@ -488,8 +488,8 @@ class SampleView(_Sample):
             restricted to
         excluded_fields (None): a set of field names that are excluded from
             this sample view
-        filtered_fields (None): a set of field names of list fields that are
-            filtered in this view and thus need special handling when saving
+        filtered_fields (None): a set of field names of list fields that have
+            been filtered in this sample view
     """
 
     def __init__(

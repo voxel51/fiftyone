@@ -148,6 +148,7 @@ from .core.stages import (
     Skip,
     SortBy,
     Take,
+    ToPatches,
 )
 from .core.session import (
     close_app,

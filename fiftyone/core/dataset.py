@@ -296,6 +296,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return self
 
     @property
+    def _root_dataset(self):
+        if self.is_patches:
+            return load_dataset(self._doc.patches.dataset)
+
+        return self
+
+    @property
     def media_type(self):
         """The media type of the dataset."""
         return self._doc.media_type
@@ -346,6 +353,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     @persistent.setter
     def persistent(self, value):
+        if value and self.is_patches:
+            raise ValueError(
+                "You must `clone()` a patches dataset before it can be made "
+                "persistent"
+            )
+
         _value = self._doc.persistent
         try:
             self._doc.persistent = value
@@ -353,6 +366,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         except:
             self._doc.persistent = _value
             raise
+
+    @property
+    def is_patches(self):
+        """Whether this dataset contains patches from another dataset."""
+        return self._doc.patches is not None
 
     @property
     def info(self):
@@ -2971,6 +2989,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             self._frame_doc_cls,
         ) = _load_dataset(self.name, migrate=False)
 
+    def _serialize(self):
+        return self._doc.to_dict(extended=True)
+
 
 def _get_random_characters(n):
     return "".join(
@@ -3128,6 +3149,7 @@ def _clone_dataset_or_view(dataset_or_view, name):
     dataset_doc.name = name
     dataset_doc.persistent = False
     dataset_doc.sample_collection_name = sample_collection_name
+    dataset_doc.patches = None  # forget about source dataset, if any
 
     # Run results get special treatment at the end
     dataset_doc.evaluations = {}

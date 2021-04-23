@@ -107,6 +107,16 @@ class SampleCollection(object):
         raise NotImplementedError("Subclass must implement _dataset")
 
     @property
+    def _root_dataset(self):
+        """The root :class:`fiftyone.core.dataset.Dataset` from which this
+        collection is derived.
+
+        This is typically the same as :meth:`_dataset` but may differ in cases
+        such as patch/evaluation collections.
+        """
+        raise NotImplementedError("Subclass must implement _root_dataset")
+
+    @property
     def name(self):
         """The name of the collection."""
         raise NotImplementedError("Subclass must implement name")
@@ -1088,35 +1098,6 @@ class SampleCollection(object):
             force_square=force_square,
             alpha=alpha,
             handle_missing=handle_missing,
-        )
-
-    def to_patches(self, field, keep_label_lists=False, name=None):
-        """Creates a dataset that contains one sample per object patch in the
-        specified field of the collection.
-
-        Fields other than ``field`` and the default sample fields will not be
-        included in the returned dataset. A ``sample_id`` field will be added
-        that records the sample ID from which each patch was taken.
-
-        .. note::
-
-            The returned dataset is independent from the source collection;
-            modifying it will not affect the source collection.
-
-        Args:
-            field: the patches field, which must be of type
-                :class:`fiftyone.core.labels.Detections` or
-                :class:`fiftyone.core.labels.Polylines`
-            keep_label_lists (False): whether to store the patches in label
-                list fields of the same type as the input collection rather
-                than using their single label variants
-            name (None): a name for the returned dataset
-
-        Returns:
-            a :class:`fiftyone.core.dataset.Dataset`
-        """
-        return foup.make_patches_dataset(
-            self, field, keep_label_lists=keep_label_lists, name=name
         )
 
     def to_frames(
@@ -3498,6 +3479,48 @@ class SampleCollection(object):
         """
         return self._add_view_stage(fos.Take(size, seed=seed))
 
+    @view_stage
+    def to_patches(self, field, keep_label_lists=False):
+        """Creates a view that contains one sample per object patch in the
+        specified field of the collection.
+
+        Fields other than ``field`` and the default sample fields will not be
+        included in the returned view. A ``sample_id`` field will be added that
+        records the sample ID from which each patch was taken.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            session = fo.launch_app(dataset)
+
+            #
+            # Create a view containing the ground truth patches
+            #
+
+            view = dataset.to_patches("ground_truth")
+            print(view)
+
+            session.view = view
+
+        Args:
+            field: the patches field, which must be of type
+                :class:`fiftyone.core.labels.Detections` or
+                :class:`fiftyone.core.labels.Polylines`
+            keep_label_lists (False): whether to store the patches in label
+                list fields of the same type as the input collection rather
+                than using their single label variants
+
+        Returns:
+            a :class:`fiftyone.core.patches.PatchesView`
+        """
+        return self._add_view_stage(
+            fos.ToPatches(field, keep_label_lists=keep_label_lists)
+        )
+
     @classmethod
     def list_aggregations(cls):
         """Returns a list of all available methods on this collection that
@@ -4811,10 +4834,6 @@ class SampleCollection(object):
 
         return results[0] if scalar_result else results
 
-    def _serialize(self):
-        # pylint: disable=no-member
-        return self._doc.to_dict(extended=True)
-
     def _serialize_field_schema(self):
         return self._serialize_schema(self.get_field_schema())
 
@@ -4825,22 +4844,24 @@ class SampleCollection(object):
         return {field_name: str(field) for field_name, field in schema.items()}
 
     def _serialize_mask_targets(self):
-        return self._dataset._doc.field_to_mongo("mask_targets")
+        return self._root_dataset._doc.field_to_mongo("mask_targets")
 
     def _serialize_default_mask_targets(self):
-        return self._dataset._doc.field_to_mongo("default_mask_targets")
+        return self._root_dataset._doc.field_to_mongo("default_mask_targets")
 
     def _parse_mask_targets(self, mask_targets):
         if not mask_targets:
             return mask_targets
 
-        return self._dataset._doc.field_to_python("mask_targets", mask_targets)
+        return self._root_dataset._doc.field_to_python(
+            "mask_targets", mask_targets
+        )
 
     def _parse_default_mask_targets(self, default_mask_targets):
         if not default_mask_targets:
             return default_mask_targets
 
-        return self._dataset._doc.field_to_python(
+        return self._root_dataset._doc.field_to_python(
             "default_mask_targets", default_mask_targets
         )
 
