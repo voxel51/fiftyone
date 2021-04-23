@@ -1181,6 +1181,11 @@ class SampleCollection(object):
                 000002.jpg
                 ...
 
+        .. note::
+
+            The returned dataset is independent from the source collection;
+            modifying it will not affect the source collection.
+
         Args:
             sample_collection: a
                 :class:`fiftyone.core.collections.SampleCollection`
