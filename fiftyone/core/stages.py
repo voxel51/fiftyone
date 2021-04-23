@@ -3951,7 +3951,7 @@ class ToEvaluationPatches(ViewStage):
             state["name"] = eval_patches_dataset.name
             self._state = state
         else:
-            patches_dataset = fod.load_dataset(name)
+            eval_patches_dataset = fod.load_dataset(name)
 
         return fop.EvaluationPatchesView(
             sample_collection, self, eval_patches_dataset
