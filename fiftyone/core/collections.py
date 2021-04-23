@@ -1497,39 +1497,6 @@ class SampleCollection(object):
         """
         return foev.EvaluationMethod.get_run_info(self, eval_key)
 
-    def to_evaluation_patches(self, eval_key, name=None):
-        """Creates a dataset based on the results of the evaluation with the
-        given key that contains one sample for each true positive, false
-        positive, and false negative example in the collection, respectively.
-
-        True positive examples will result in samples with both their ground
-        truth and predicted fields populated, while false positive/negative
-        examples will only have one of their corresponding predicted/ground
-        truth fields populated, respectively.
-
-        If multiple predictions are matched to a ground truth object (e.g., if
-        the evaluation protocol includes a crowd attribute), then all matched
-        predictions will be stored in the single sample along with the ground
-        truth object.
-
-        The returned dataset will also have top-level ``type`` and ``iou``
-        fields populated based on the evaluation results for that example, as
-        well as a ``sample_id`` field recording the sample ID of the example,
-        and a ``crowd`` field if the evaluation protocol defines a crowd
-        attribute.
-
-        Args:
-            eval_key: an evaluation key that corresponds to the evaluation of
-                ground truth/predicted fields that are of type
-                :class:`fiftyone.core.labels.Detections` or
-                :class:`fiftyone.core.labels.Polylines`
-            name (None): a name for the returned dataset
-
-        Returns:
-            a :class:`fiftyone.core.dataset.Dataset`
-        """
-        return foup.make_evaluation_dataset(self, eval_key, name=name)
-
     def load_evaluation_results(self, eval_key):
         """Loads the :class:`fiftyone.core.evaluation.EvaluationResults` for
         the evaluation with the given key on this collection.
@@ -3561,6 +3528,40 @@ class SampleCollection(object):
         return self._add_view_stage(
             fos.ToPatches(field, keep_label_lists=keep_label_lists)
         )
+
+    # @todo convert to view stage
+    def to_evaluation_patches(self, eval_key, name=None):
+        """Creates a view based on the results of the evaluation with the
+        given key that contains one sample for each true positive, false
+        positive, and false negative example in the collection, respectively.
+
+        True positive examples will result in samples with both their ground
+        truth and predicted fields populated, while false positive/negative
+        examples will only have one of their corresponding predicted/ground
+        truth fields populated, respectively.
+
+        If multiple predictions are matched to a ground truth object (e.g., if
+        the evaluation protocol includes a crowd attribute), then all matched
+        predictions will be stored in the single sample along with the ground
+        truth object.
+
+        The returned dataset will also have top-level ``type`` and ``iou``
+        fields populated based on the evaluation results for that example, as
+        well as a ``sample_id`` field recording the sample ID of the example,
+        and a ``crowd`` field if the evaluation protocol defines a crowd
+        attribute.
+
+        Args:
+            eval_key: an evaluation key that corresponds to the evaluation of
+                ground truth/predicted fields that are of type
+                :class:`fiftyone.core.labels.Detections` or
+                :class:`fiftyone.core.labels.Polylines`
+            name (None): a name for the returned dataset
+
+        Returns:
+            a :class:`fiftyone.core.dataset.Dataset`
+        """
+        return foup.make_evaluation_dataset(self, eval_key, name=name)
 
     @classmethod
     def list_aggregations(cls):
