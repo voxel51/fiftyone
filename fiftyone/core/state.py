@@ -8,6 +8,7 @@ Defines the shared state between the FiftyOne App and backend.
 import logging
 
 import eta.core.serial as etas
+import eta.core.utils as etau
 
 import fiftyone as fo
 import fiftyone.core.aggregations as foa
@@ -73,12 +74,29 @@ class StateDescription(etas.Serializable):
     def serialize(self, reflective=False):
         with fou.disable_progress_bars():
             d = super().serialize(reflective=reflective)
-            d["dataset"] = (
-                self.dataset._serialize() if self.dataset is not None else None
-            )
-            d["view"] = (
-                self.view._serialize() if self.view is not None else None
-            )
+
+            _dataset = None
+            _view = None
+            _view_cls = None
+
+            if self.dataset is not None:
+                _dataset = self.dataset._serialize()
+
+                if self.view is not None:
+                    _view = self.view._serialize()
+                    _view_cls = etau.get_class_name(self.view)
+
+                    # If the view uses a temporary dataset, we must use its
+                    # field schema
+                    if self.view._dataset != self.dataset:
+                        _tmp = self.view._dataset._serialize()
+                        _dataset["sample_fields"] = _tmp["sample_fields"]
+                        _dataset["frame_fields"] = _tmp["frame_fields"]
+
+            d["dataset"] = _dataset
+            d["view"] = _view
+            d["view_cls"] = _view_cls
+
             return d
 
     def attributes(self):
