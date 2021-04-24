@@ -441,22 +441,9 @@ class ExcludeLabels(ViewStage):
     -   Provide one or both of the ``ids`` and ``tags`` arguments, and
         optionally the ``fields`` argument
 
-    -   Provide the ``labels`` argument, which should have the following
-        format::
-
-            [
-                {
-                    "sample_id": "5f8d254a27ad06815ab89df4",
-                    "field": "ground_truth",
-                    "label_id": "5f8d254a27ad06815ab89df3",
-                },
-                {
-                    "sample_id": "5f8d255e27ad06815ab93bf8",
-                    "field": "ground_truth",
-                    "label_id": "5f8d255e27ad06815ab93bf6",
-                },
-                ...
-            ]
+    -   Provide the ``labels`` argument, which should contain a list of dicts
+        in the format returned by
+        :meth:`fiftyone.core.session.Session.selected_labels`
 
     Examples::
 
@@ -523,7 +510,9 @@ class ExcludeLabels(ViewStage):
         print(view.count("predictions.detections"))
 
     Args:
-        labels (None): a list of dicts specifying the labels to exclude
+        labels (None): a list of dicts specifying the labels to exclude in the
+            format returned by
+            :meth:`fiftyone.core.session.Session.selected_labels`
         ids (None): an ID or iterable of IDs of the labels to exclude
         tags (None): a tag or iterable of tags of labels to exclude
         fields (None): a field or iterable of fields from which to exclude
@@ -3072,22 +3061,9 @@ class SelectLabels(ViewStage):
     -   Provide one or both of the ``ids`` and ``tags`` arguments, and
         optionally the ``fields`` argument
 
-    -   Provide the ``labels`` argument, which should have the following
-        format::
-
-            [
-                {
-                    "sample_id": "5f8d254a27ad06815ab89df4",
-                    "field": "ground_truth",
-                    "label_id": "5f8d254a27ad06815ab89df3",
-                },
-                {
-                    "sample_id": "5f8d255e27ad06815ab93bf8",
-                    "field": "ground_truth",
-                    "label_id": "5f8d255e27ad06815ab93bf6",
-                },
-                ...
-            ]
+    -   Provide the ``labels`` argument, which should contain a list of dicts
+        in the format returned by
+        :meth:`fiftyone.core.session.Session.selected_labels`
 
     Examples::
 
@@ -3148,7 +3124,9 @@ class SelectLabels(ViewStage):
         print(view.count("predictions.detections"))
 
     Args:
-        labels (None): a list of dicts specifying the labels to select
+        labels (None): a list of dicts specifying the labels to select in the
+            format returned by
+            :meth:`fiftyone.core.session.Session.selected_labels`
         ids (None): an ID or iterable of IDs of the labels to select
         tags (None): a tag or iterable of tags of labels to select
         fields (None): a field or iterable of fields from which to select
