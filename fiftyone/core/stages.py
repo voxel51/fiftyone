@@ -6,6 +6,7 @@ View stages.
 |
 """
 from collections import defaultdict
+from copy import deepcopy
 import random
 import reprlib
 import uuid
@@ -3658,7 +3659,8 @@ class SortBySimilarity(ViewStage):
         self._k = k
         self._reverse = reverse
         self._brain_key = brain_key
-        self._pipeline = self._parse_state(_state)
+        self._state = _state
+        self._pipeline = None
 
     @property
     def query_ids(self):
@@ -3692,24 +3694,12 @@ class SortBySimilarity(ViewStage):
         return self._pipeline
 
     def _kwargs(self):
-        # @todo we could just directly send `_pipeline` here if the App adopted
-        # the convention that private data is omitted when serializing stages
-        # to send to the backend whenever the public parameters of a stage are
-        # edited
-        state = {
-            "query_ids": self._query_ids,
-            "k": self._k,
-            "reverse": self._reverse,
-            "brain_key": self._brain_key,
-            "pipeline": self._pipeline,
-        }
-
         return [
             ["query_ids", self._query_ids],
             ["k", self._k],
             ["reverse", self._reverse],
             ["brain_key", self._brain_key],
-            ["_state", state],
+            ["_state", self._state],
         ]
 
     @classmethod
@@ -3742,9 +3732,31 @@ class SortBySimilarity(ViewStage):
         ]
 
     def validate(self, sample_collection):
-        if self._pipeline is not None:
-            return
+        state = {
+            # @todo use `_root_dataset` when available
+            "dataset": sample_collection._dataset.name,
+            "stages": sample_collection.view()._serialize(include_uuids=False),
+            "query_ids": self._query_ids,
+            "k": self._k,
+            "reverse": self._reverse,
+            "brain_key": self._brain_key,
+        }
 
+        last_state = deepcopy(self._state)
+        if last_state is not None:
+            pipeline = last_state.pop("pipeline", None)
+        else:
+            pipeline = None
+
+        if state != last_state or pipeline is None:
+            pipeline = self._make_pipeline(sample_collection)
+
+            state["pipeline"] = pipeline
+            self._state = state
+
+        self._pipeline = pipeline
+
+    def _make_pipeline(self, sample_collection):
         if self._brain_key is not None:
             brain_key = self._brain_key
         else:
@@ -3763,32 +3775,13 @@ class SortBySimilarity(ViewStage):
                 warnings.warn(msg)
 
         results = sample_collection.load_brain_results(brain_key)
-        view = results.sort_by_similarity(
-            self._query_ids, k=self._k, reverse=self._reverse
+        return results.sort_by_similarity(
+            self._query_ids,
+            k=self._k,
+            reverse=self._reverse,
+            samples=sample_collection,
+            mongo=True,
         )
-
-        try:
-            offset = len(results._samples._stages)
-        except:
-            offset = 0
-
-        pipeline = []
-        for stage in view._stages[offset:]:
-            pipeline.extend(stage.to_mongo(sample_collection))
-
-        self._pipeline = pipeline
-
-    def _parse_state(self, state):
-        if (
-            not isinstance(state, dict)
-            or state.get("query_ids", None) != self._query_ids
-            or state.get("k", None) != self._k
-            or state.get("reverse", None) != self._reverse
-            or state.get("brain_key", None) != self._brain_key
-        ):
-            return None
-
-        return state.get("pipeline", None)
 
 
 class Take(ViewStage):
