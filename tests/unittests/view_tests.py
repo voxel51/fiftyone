@@ -590,6 +590,68 @@ class SliceTests(unittest.TestCase):
         self.assertEqual(len(view), 0)
 
 
+class ViewValuesTests(unittest.TestCase):
+    @drop_datasets
+    def setUp(self):
+        self.dataset = fo.Dataset()
+        self.dataset.add_samples(
+            [
+                fo.Sample(filepath="test1.png", int_field=1),
+                fo.Sample(filepath="test2.png", int_field=2),
+                fo.Sample(filepath="test3.png", int_field=3),
+                fo.Sample(filepath="test4.png", int_field=4),
+            ]
+        )
+
+    def test_set_values_dataset(self):
+        n = len(self.dataset)
+
+        int_values = [int(i) for i in range(n)]
+        float_values = [float(i) for i in range(n)]
+        str_values = [str(i) for i in range(n)]
+        classification_values = [
+            fo.Classification(label=str(i)) for i in range(n)
+        ]
+        detections_values = [
+            fo.Detections(
+                detections=[fo.Detection(label=str(j)) for j in range(i)]
+            )
+            for i in range(n)
+        ]
+
+        # Set existing field
+        self.dataset.set_values("int_field", int_values)
+        _int_values = self.dataset.values("int_field")
+        self.assertListEqual(_int_values, int_values)
+
+        # Test no schema expanding
+        with self.assertRaises(ValueError):
+            self.dataset.set_values(
+                "float_field", float_values, expand_schema=False
+            )
+
+        # Set new primitive field
+        self.dataset.set_values("str_field", str_values)
+        schema = self.dataset.get_field_schema()
+        self.assertIn("str_field", schema)
+        _str_values = self.dataset.values("str_field")
+        self.assertListEqual(_str_values, str_values)
+
+        # Set new Classification field
+        self.dataset.set_values("classification_field", classification_values)
+        schema = self.dataset.get_field_schema()
+        self.assertIn("classification_field", schema)
+        _classification_values = self.dataset.values("classification_field")
+        self.assertListEqual(_classification_values, classification_values)
+
+        # Set new Detections field
+        self.dataset.set_values("detections_field", detections_values)
+        schema = self.dataset.get_field_schema()
+        self.assertIn("detections_field", schema)
+        _detections_values = self.dataset.values("detections_field")
+        self.assertListEqual(_detections_values, detections_values)
+
+
 class ViewStageTests(unittest.TestCase):
     @drop_datasets
     def setUp(self):

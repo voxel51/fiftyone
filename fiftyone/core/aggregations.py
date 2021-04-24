@@ -1147,6 +1147,7 @@ class Values(Aggregation):
         missing_value=None,
         unwind=False,
         _allow_missing=False,
+        _raw=False,
     ):
         field_name, found_id_field = _handle_id_fields(field_name)
         super().__init__(field_name, expr=expr)
@@ -1154,8 +1155,9 @@ class Values(Aggregation):
         self._missing_value = missing_value
         self._unwind = unwind
         self._allow_missing = _allow_missing
+        self._raw = _raw
         self._found_id_field = found_id_field
-        self._found_array_field = None
+        self._field_type = None
         self._num_list_fields = None
 
     def default_result(self):
@@ -1177,12 +1179,15 @@ class Values(Aggregation):
         """
         values = d["values"]
 
+        if self._raw:
+            return values
+
         if self._found_id_field:
             level = 1 + self._num_list_fields
             return _transform_values(values, str, level=level)
 
-        if self._found_array_field:
-            fcn = fou.deserialize_numpy_array
+        if self._field_type is not None:
+            fcn = self._field_type.to_python
             level = 1 + self._num_list_fields
             return _transform_values(values, fcn, level=level)
 
@@ -1195,7 +1200,7 @@ class Values(Aggregation):
             allow_missing=self._allow_missing,
         )
 
-        self._found_array_field = sample_collection._is_array_field(path)
+        self._field_type = sample_collection._get_field_type(path)
         self._num_list_fields = len(other_list_fields)
 
         pipeline += _make_extract_values_pipeline(

@@ -894,6 +894,9 @@ class SampleCollection(object):
             if value is None and skip_none:
                 continue
 
+            if hasattr(value, "to_dict"):
+                value = value.to_dict()
+
             ops.append(UpdateOne({"_id": _id}, {"$set": {field_name: value}}))
 
         self._dataset._bulk_write(ops, frames=frames)
@@ -910,6 +913,11 @@ class SampleCollection(object):
     ):
         root = list_field
         leaf = field_name[len(root) + 1 :]
+        if not leaf:
+            raise ValueError(
+                "Entire array elements cannot be updated in-place when "
+                "setting values"
+            )
 
         ops = []
         for _id, _elem_ids, _values in zip(ids, elem_ids, values):
@@ -3981,6 +3989,7 @@ class SampleCollection(object):
         missing_value=None,
         unwind=False,
         _allow_missing=False,
+        _raw=False,
     ):
         """Extracts the values of a field from all samples in the collection.
 
@@ -4063,6 +4072,7 @@ class SampleCollection(object):
                 missing_value=missing_value,
                 unwind=unwind,
                 _allow_missing=_allow_missing,
+                _raw=_raw,
             )
         )
 
@@ -4783,8 +4793,8 @@ class SampleCollection(object):
 
         return next(iter(geo_schema.keys()))
 
-    def _is_array_field(self, field_name):
-        return _is_array_field(self, field_name)
+    def _get_field_type(self, field_name):
+        return _get_field_type(self, field_name)
 
     def _unwind_values(self, field_name, values):
         if values is None:
@@ -5170,7 +5180,7 @@ def _parse_field_name(
     return field_name, is_frame_field, unwind_list_fields, other_list_fields
 
 
-def _is_array_field(sample_collection, field_name):
+def _get_field_type(sample_collection, field_name):
     field_name, is_frame_field = sample_collection._handle_frame_field(
         field_name
     )
@@ -5188,19 +5198,21 @@ def _is_array_field(sample_collection, field_name):
     else:
         root, field_path = field_name.split(".", 1)
 
-    field = schema.get(root, None)
-    return _is_field_type(field, field_path, fof._ARRAY_FIELDS)
+    if root not in schema:
+        return None
+
+    return _do_get_field_type(schema[root], field_path)
 
 
-def _is_field_type(field, field_path, types):
+def _do_get_field_type(field, field_path):
+    if not field_path:
+        return field
+
     if isinstance(field, fof.ListField):
-        return _is_field_type(field.field, field_path, types)
+        return _do_get_field_type(field.field, field_path)
 
     if isinstance(field, fof.EmbeddedDocumentField):
-        return _is_field_type(field.document_type, field_path, types)
-
-    if not field_path:
-        return isinstance(field, types)
+        return _do_get_field_type(field.document_type, field_path)
 
     if "." not in field_path:
         root, field_path = field_path, None
@@ -5210,9 +5222,9 @@ def _is_field_type(field, field_path, types):
     try:
         field = getattr(field, root)
     except AttributeError:
-        return False
+        return None
 
-    return _is_field_type(field, field_path, types)
+    return _do_get_field_type(field, field_path)
 
 
 def _transform_values(values, fcn, level=1):
@@ -5314,3 +5326,11 @@ def _get_random_characters(n):
     return "".join(
         random.choice(string.ascii_lowercase + string.digits) for _ in range(n)
     )
+
+
+def _get_non_none_value(values):
+    for value in values:
+        if value is not None:
+            return value
+
+    return None
