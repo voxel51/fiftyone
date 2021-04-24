@@ -73,7 +73,6 @@ autodoc_default_options = {
     "inherited-members": True,
     "member-order": "bysource",
     "autosummary": True,
-    "autosummary-no-nesting": True,
 }
 autodoc_inherit_docstrings = True
 autoclass_content = "class"
