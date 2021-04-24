@@ -36,8 +36,7 @@ class DatasetView(foc.SampleCollection):
     The stages of a dataset view specify:
 
     -   The subset of samples (and their order) that should be included
-    -   The "parts" (e.g., fields or patches) of each sample that should be
-        included
+    -   The possibly-filtered fields of each sample that should be included
 
     Samples retrieved from dataset views are returned as
     :class:`fiftyone.core.sample.SampleView` objects, as opposed to
@@ -59,7 +58,7 @@ class DatasetView(foc.SampleCollection):
             _stages = []
 
         self.__dataset = dataset
-        self._stages = _stages
+        self.__stages = _stages
 
     def __eq__(self, other_view):
         if type(other_view) != type(self):
@@ -102,8 +101,7 @@ class DatasetView(foc.SampleCollection):
             )
 
     def __copy__(self):
-        _stages = deepcopy(self._stages)
-        return self.__class__(self.__dataset, _stages=_stages)
+        return self.__class__(self.__dataset, _stages=deepcopy(self.__stages))
 
     @property
     def _dataset(self):
@@ -112,6 +110,14 @@ class DatasetView(foc.SampleCollection):
     @property
     def _root_dataset(self):
         return self.__dataset
+
+    @property
+    def _stages(self):
+        return self.__stages
+
+    @property
+    def _all_stages(self):
+        return self.__stages
 
     @property
     def media_type(self):
@@ -190,17 +196,6 @@ class DatasetView(foc.SampleCollection):
     @default_mask_targets.setter
     def default_mask_targets(self, targets):
         self._root_dataset.default_mask_targets = targets
-
-    @property
-    def stages(self):
-        """The list of :class:`fiftyone.core.stages.ViewStage` instances that
-        define this view.
-        """
-        return self._stages
-
-    @property
-    def _all_stages(self):
-        return self._stages
 
     def summary(self):
         """Returns a string summary of the view.

@@ -832,7 +832,7 @@ class LegacyFiftyOneDatasetExporter(GenericSampleDatasetExporter):
         # exported, otherwise the view for the run cannot be reconstructed
         # based on the information encoded in the run's document
 
-        dataset = sample_collection._dataset
+        dataset = sample_collection._root_dataset
         if sample_collection != dataset:
             return
 
@@ -990,7 +990,7 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
         # exported, otherwise the view for the run cannot be reconstructed
         # based on the information encoded in the run's document
 
-        export_runs = dataset == sample_collection
+        export_runs = sample_collection == sample_collection._root_dataset
 
         if not export_runs:
             dataset_dict["evaluations"] = {}

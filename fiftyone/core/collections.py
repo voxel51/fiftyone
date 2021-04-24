@@ -102,8 +102,8 @@ class SampleCollection(object):
 
     @property
     def _dataset(self):
-        """The underlying :class:`fiftyone.core.dataset.Dataset` for the
-        collection.
+        """The :class:`fiftyone.core.dataset.Dataset` that serves the samples
+        in this collection.
         """
         raise NotImplementedError("Subclass must implement _dataset")
 
@@ -3466,7 +3466,7 @@ class SampleCollection(object):
         return self._add_view_stage(fos.Take(size, seed=seed))
 
     @view_stage
-    def to_patches(self, field, keep_label_lists=False):
+    def to_patches(self, field):
         """Creates a view that contains one sample per object patch in the
         specified field of the collection.
 
@@ -3496,16 +3496,11 @@ class SampleCollection(object):
             field: the patches field, which must be of type
                 :class:`fiftyone.core.labels.Detections` or
                 :class:`fiftyone.core.labels.Polylines`
-            keep_label_lists (False): whether to store the patches in label
-                list fields of the same type as the input collection rather
-                than using their single label variants
 
         Returns:
             a :class:`fiftyone.core.patches.PatchesView`
         """
-        return self._add_view_stage(
-            fos.ToPatches(field, keep_label_lists=keep_label_lists)
-        )
+        return self._add_view_stage(fos.ToPatches(field))
 
     @view_stage
     def to_evaluation_patches(self, eval_key):

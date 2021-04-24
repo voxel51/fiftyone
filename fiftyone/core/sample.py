@@ -472,24 +472,25 @@ class SampleView(_Sample):
     """A view of a sample returned by a:class:`fiftyone.core.view.DatasetView`.
 
     SampleViews should never be created manually, only returned by dataset
-    views. Sample views differ from samples similar to how dataset views differ
+    views.
+
+    Sample views differ from samples similar to how dataset views differ
     from datasets:
 
-    -   A sample view only exposes a subset of all data for a sample
-    -   If a user attempts to modify an excluded field an error is raised
-    -   If a user attempts to modify a filtered field (the field itself, not
-        its elements) behavior is not guaranteed
+    -   A sample view may expose only a subset of fields of a sample
+    -   The contents of a sample view field may be filtered or transformed from
+        its underlying sample
 
     Args:
         doc: a :class:`fiftyone.core.odm.DatasetSampleDocument`
         view: the :class:`fiftyone.core.view.DatasetView` that the sample
             belongs to
-        selected_fields (None): a set of field names that this sample view is
+        selected_fields (None): a set of field names that this view is
             restricted to
         excluded_fields (None): a set of field names that are excluded from
-            this sample view
+            this view
         filtered_fields (None): a set of field names of list fields that have
-            been filtered in this sample view
+            been filtered in this view
     """
 
     def __init__(

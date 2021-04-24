@@ -63,9 +63,9 @@ class ViewStage(object):
 
     @property
     def has_view(self):
-        """Whether this stage's output view can be loaded via :meth:`load_view`
-        rather than appending stages to an aggregation pipeline via
-        :meth:`to_mongo`.
+        """Whether this stage's output view should be loaded via
+        :meth:`load_view` rather than appending stages to an aggregation
+        pipeline via :meth:`to_mongo`.
         """
         return False
 
@@ -117,7 +117,10 @@ class ViewStage(object):
         return None
 
     def load_view(self, sample_collection):
-        """Loads the :class:`fiftyone.core.view.DatasetView` for the stage.
+        """Loads the :class:`fiftyone.core.view.DatasetView` containing the
+        output of the stage.
+
+        Only usable if :meth:`has_view` is ``True``.
 
         Args:
             sample_collection: the
@@ -136,6 +139,8 @@ class ViewStage(object):
 
     def to_mongo(self, sample_collection):
         """Returns the MongoDB aggregation pipeline for the stage.
+
+        Only usable if :meth:`has_view` is ``False``.
 
         Args:
             sample_collection: the
@@ -3767,14 +3772,10 @@ class ToPatches(ViewStage):
         field: the patches field, which must be of type
             :class:`fiftyone.core.labels.Detections` or
             :class:`fiftyone.core.labels.Polylines`
-        keep_label_lists (False): whether to store the patches in label list
-            fields of the same type as the input collection rather than using
-            their single label variants
     """
 
-    def __init__(self, field, keep_label_lists=False, _state=None):
+    def __init__(self, field, _state=None):
         self._field = field
-        self._keep_label_lists = keep_label_lists
         self._state = _state
 
     @property
@@ -3786,13 +3787,6 @@ class ToPatches(ViewStage):
         """The patches field."""
         return self._field
 
-    @property
-    def keep_label_lists(self):
-        """Whether to store the patches in label list fields rather than their
-        single label variants.
-        """
-        return self._keep_label_lists
-
     def load_view(self, sample_collection):
         import fiftyone.core.dataset as fod
         import fiftyone.core.patches as fop
@@ -3801,7 +3795,6 @@ class ToPatches(ViewStage):
             "dataset": sample_collection._root_dataset.name,
             "stages": sample_collection.view()._serialize(include_uuids=False),
             "field": self._field,
-            "keep_label_lists": self._keep_label_lists,
         }
 
         last_state = deepcopy(self._state)
@@ -3812,9 +3805,7 @@ class ToPatches(ViewStage):
 
         if state != last_state or not fod.dataset_exists(name):
             patches_dataset = foup.make_patches_dataset(
-                sample_collection,
-                self._field,
-                keep_label_lists=self._keep_label_lists,
+                sample_collection, self._field
             )
 
             state["name"] = patches_dataset.name
@@ -3827,7 +3818,6 @@ class ToPatches(ViewStage):
     def _kwargs(self):
         return [
             ["field", self._field],
-            ["keep_label_lists", self._keep_label_lists],
             ["_state", self._state],
         ]
 
@@ -3835,12 +3825,6 @@ class ToPatches(ViewStage):
     def _params(self):
         return [
             {"name": "field", "type": "field", "placeholder": "label field"},
-            {
-                "name": "keep_label_lists",
-                "type": "bool",
-                "default": "False",
-                "placeholder": "keep label lists (default=False)",
-            },
             {"name": "_state", "type": "NoneType|json", "default": "None"},
         ]
 

@@ -16,7 +16,28 @@ import fiftyone.core.sample as fos
 import fiftyone.core.view as fov
 
 
-class PatchView(fos.SampleView):
+class _PatchView(fos.SampleView):
+    """Base class for sample patch views.
+
+    Args:
+        doc: a :class:`fiftyone.core.odm.DatasetSampleDocument`
+        view: the :class:`_PatchesView` that the patch belongs to
+        selected_fields (None): a set of field names that this view is
+            restricted to
+        excluded_fields (None): a set of field names that are excluded from
+            this view
+        filtered_fields (None): a set of field names of list fields that are
+            filtered in this view
+    """
+
+    def save(self):
+        super().save()
+
+        # Update source collection
+        self._view._sync_source_sample(self)
+
+
+class PatchView(_PatchView):
     """A patch in a :class:`PatchesView`.
 
     :class:`PatchView` instances should not be created manually; they are
@@ -25,27 +46,18 @@ class PatchView(fos.SampleView):
     Args:
         doc: a :class:`fiftyone.core.odm.DatasetSampleDocument`
         view: the :class:`PatchesView` that the patch belongs to
-        selected_fields (None): a set of field names that this patch view is
+        selected_fields (None): a set of field names that this view is
             restricted to
         excluded_fields (None): a set of field names that are excluded from
-            this patch view
+            this view
         filtered_fields (None): a set of field names of list fields that are
-            filtered in this patch view
+            filtered in this view
     """
 
-    def save(self, update_source=True):
-        """Saves the patch to the database.
-
-        Args:
-            update_source (True): whether to push changes to the source dataset
-        """
-        super().save()
-
-        if update_source:
-            self._view._sync_source_sample(self)
+    pass
 
 
-class EvaluationPatchView(fos.SampleView):
+class EvaluationPatchView(_PatchView):
     """A patch in an :class:`EvaluationPatchesView`.
 
     :class:`EvaluationPatchView` instances should not be created manually; they
@@ -54,27 +66,31 @@ class EvaluationPatchView(fos.SampleView):
     Args:
         doc: a :class:`fiftyone.core.odm.DatasetSampleDocument`
         view: the :class:`EvaluationPatchesView` that the patch belongs to
-        selected_fields (None): a set of field names that this patch view is
+        selected_fields (None): a set of field names that this view is
             restricted to
         excluded_fields (None): a set of field names that are excluded from
-            this patch view
+            this view
         filtered_fields (None): a set of field names of list fields that are
-            filtered in this patch view
+            filtered in this view
     """
 
-    def save(self, update_source=True):
-        """Saves the patch to the database.
-
-        Args:
-            update_source (True): whether to push changes to the source dataset
-        """
-        super().save()
-
-        if update_source:
-            self._view._sync_source_sample(self)
+    pass
 
 
 class _PatchesView(fov.DatasetView):
+    """Base class for :class:`fiftyone.core.view.DatasetView` classes that
+    contain sample patches.
+
+    Args:
+        source_collection: the
+            :class:`fiftyone.core.collections.SampleCollection` from which this
+            view was created
+        patches_stage: the :class:`fiftyone.core.stages.ViewStage` stage that
+            defines how the patches were extracted
+        patches_dataset: the :class:`fiftyone.core.dataset.Dataset` that serves
+            the patches in this view
+    """
+
     def __init__(
         self, source_collection, patches_stage, patches_dataset, _stages=None
     ):
@@ -84,14 +100,14 @@ class _PatchesView(fov.DatasetView):
         self._source_collection = source_collection
         self._patches_stage = patches_stage
         self._patches_dataset = patches_dataset
-        self._stages = _stages
+        self.__stages = _stages
 
     def __copy__(self):
         return self.__class__(
             self._source_collection,
             deepcopy(self._patches_stage),
             self._patches_dataset,
-            _stages=deepcopy(self._stages),
+            _stages=deepcopy(self.__stages),
         )
 
     @property
@@ -107,6 +123,18 @@ class _PatchesView(fov.DatasetView):
         return self._source_collection._root_dataset
 
     @property
+    def _stages(self):
+        return self.__stages
+
+    @property
+    def _all_stages(self):
+        return (
+            self._source_collection.view()._all_stages
+            + [self._patches_stage]
+            + self.__stages
+        )
+
+    @property
     def _element_str(self):
         return "patch"
 
@@ -115,130 +143,79 @@ class _PatchesView(fov.DatasetView):
         return "patches"
 
     @property
-    def _all_stages(self):
-        return (
-            self._source_collection.view()._all_stages
-            + [self._patches_stage]
-            + self._stages
-        )
-
-    @property
     def name(self):
         return self.dataset_name + "-patches"
 
-    def tag_samples(self, tags, update_source=True):
-        """Adds the tag(s) to all samples in this collection, if necessary.
-
-        Args:
-            tags: a tag or iterable of tags
-            update_source (True): whether to add the tags to the labels in the
-                source dataset
-        """
+    def tag_samples(self, tags):
         super().tag_samples(tags)
 
-        if update_source:
+        # Update source collection
 
-            def sync_fcn(view, fields=None):
-                view.tag_labels(tags, label_fields=fields)
+        def sync_fcn(view, fields=None):
+            view.tag_labels(tags, label_fields=fields)
 
-            self._sync_source_fcn(sync_fcn, fields=self._label_fields)
+        self._sync_source_fcn(sync_fcn, fields=self._label_fields)
 
-    def untag_samples(self, tags, update_source=True):
-        """Removes the tag(s) from all samples in this collection, if
-        necessary.
-
-        Args:
-            tags: a tag or iterable of tags
-            update_source (True): whether to push changes to the source dataset
-        """
+    def untag_samples(self, tags):
         super().untag_samples(tags)
 
-        if update_source:
+        # Update source collection
 
-            def sync_fcn(view, fields=None):
-                view.untag_labels(tags, label_fields=fields)
+        def sync_fcn(view, fields=None):
+            view.untag_labels(tags, label_fields=fields)
 
-            self._sync_source_fcn(sync_fcn, fields=self._label_fields)
+        self._sync_source_fcn(sync_fcn, fields=self._label_fields)
 
-    def tag_labels(self, tags, label_fields=None, update_source=True):
-        """Adds the tag(s) to all labels in the specified label field(s) of
-        this collection, if necessary.
-
-        Args:
-            tags: a tag or iterable of tags
-            label_fields (None): an optional name or iterable of names of
-                :class:`fiftyone.core.labels.Label` fields. By default, all
-                label fields are used
-            update_source (True): whether to push changes to the source dataset
-        """
+    def tag_labels(self, tags, label_fields=None):
         if etau.is_str(label_fields):
             label_fields = [label_fields]
 
         super().tag_labels(tags, label_fields=label_fields)
 
-        if update_source:
-            if label_fields is None:
-                fields = self._label_fields
-            else:
-                fields = [l for l in label_fields if l in self._label_fields]
+        # Update source collection
 
-            def sync_fcn(view, fields=None):
-                view.tag_labels(tags, label_fields=fields)
+        if label_fields is None:
+            fields = self._label_fields
+        else:
+            fields = [l for l in label_fields if l in self._label_fields]
 
-            self._sync_source_fcn(sync_fcn, fields=fields)
+        def sync_fcn(view, fields=None):
+            view.tag_labels(tags, label_fields=fields)
 
-    def untag_labels(self, tags, label_fields=None, update_source=True):
-        """Removes the tag from all labels in the specified label field(s) of
-        this collection, if necessary.
+        self._sync_source_fcn(sync_fcn, fields=fields)
 
-        Args:
-            tags: a tag or iterable of tags
-            label_fields (None): an optional name or iterable of names of
-                :class:`fiftyone.core.labels.Label` fields. By default, all
-                label fields are used
-            update_source (True): whether to push changes to the source dataset
-        """
+    def untag_labels(self, tags, label_fields=None):
         if etau.is_str(label_fields):
             label_fields = [label_fields]
 
         super().untag_labels(tags, label_fields=label_fields)
 
-        if update_source:
-            if label_fields is None:
-                fields = self._label_fields
-            else:
-                fields = [l for l in label_fields if l in self._label_fields]
+        # Update source collection
 
-            def sync_fcn(view, fields=None):
-                view.untag_labels(tags, label_fields=fields)
+        if label_fields is None:
+            fields = self._label_fields
+        else:
+            fields = [l for l in label_fields if l in self._label_fields]
 
-            self._sync_source_fcn(sync_fcn, fields=fields)
+        def sync_fcn(view, fields=None):
+            view.untag_labels(tags, label_fields=fields)
 
-    def save(self, fields=None, update_source=True):
-        """Overwrites the underlying dataset with the contents of the view.
+        self._sync_source_fcn(sync_fcn, fields=fields)
 
-        .. warning::
-
-            This will permanently delete any omitted, filtered, or otherwise
-            modified contents of the dataset.
-
-        Args:
-            fields (None): an optional field or list of fields to save. If
-                specified, only these fields are overwritten
-            update_source (True): whether to push changes to the source dataset
-        """
+    def save(self, fields=None):
         if etau.is_str(fields):
             fields = [fields]
 
         super().save(fields=fields)
 
-        if update_source:
-            if fields is None:
-                fields = self._label_fields
-            else:
-                fields = [l for l in fields if l in self._label_fields]
+        # Update source collection
 
-            self._sync_source_all(fields=fields)
+        if fields is None:
+            fields = self._label_fields
+        else:
+            fields = [l for l in fields if l in self._label_fields]
+
+        self._sync_source_all(fields=fields)
 
     def _sync_source_sample(self, sample):
         for field in self._label_fields:
@@ -334,21 +311,19 @@ class _PatchesView(fov.DatasetView):
         delete_ids = set(all_ids) - set(ids)
 
         if delete_ids:
-            # @todo optimize by using `labels` syntax
-            self._source_collection.delete_labels(ids=delete_ids, fields=field)
+            # @todo optimize by using `labels` syntax?
+            self._source_collection._dataset.delete_labels(
+                ids=delete_ids, fields=field
+            )
 
 
 class PatchesView(_PatchesView):
-    """A view of patches from a :class:`fiftyone.core.dataset.Dataset`.
+    """A :class:`fiftyone.core.view.DatasetView` of patches from a
+    :class:`fiftyone.core.dataset.Dataset`.
 
     Patches views contain an ordered collection of patch samples, each of which
     contains a subset of a sample of the parent dataset corresponding to a
     single object or logical grouping of of objects.
-
-    Patches views are :class:`fiftyone.core.view.DatasetView` instances, so
-    they can be refined by adding :class:`fiftyone.core.stages.ViewStage`
-    instances to them to create a chain of operations defining the patches
-    of interest.
 
     Patches retrieved from patches views are returned as :class:`PatchView`
     objects.
@@ -359,7 +334,8 @@ class PatchesView(_PatchesView):
             view was created
         patches_stage: the :class:`fiftyone.core.stages.ToPatches` stage that
             defines how the patches were extracted
-        patches_dataset: the patches :class:`fiftyone.core.dataset.Dataset`
+        patches_dataset: the :class:`fiftyone.core.dataset.Dataset` that serves
+            the patches in this view
     """
 
     _SAMPLE_CLS = PatchView
@@ -370,14 +346,6 @@ class PatchesView(_PatchesView):
         super().__init__(
             source_collection, patches_stage, patches_dataset, _stages=_stages
         )
-
-        if _stages is None:
-            _stages = []
-
-        self._source_collection = source_collection
-        self._patches_stage = patches_stage
-        self._patches_dataset = patches_dataset
-        self._stages = _stages
 
         self._patches_field = patches_stage.field
 
@@ -392,18 +360,13 @@ class PatchesView(_PatchesView):
 
 
 class EvaluationPatchesView(_PatchesView):
-    """A view of evaluation patches from a
-    :class:`fiftyone.core.dataset.Dataset`.
+    """A :class:`fiftyone.core.view.DatasetView` containing evaluation patches
+    from a :class:`fiftyone.core.dataset.Dataset`.
 
     Evalation patches views contain an ordered collection of evaluation
     examples, each of which contains the ground truth and/or predicted labels
     for a true positive, false positive, or false negative example from an
     evaluation run on the underlying dataset.
-
-    Evalation patches views are :class:`fiftyone.core.view.DatasetView`
-    instances, so they can be refined by adding
-    :class:`fiftyone.core.stages.ViewStage` instances to them to create a chain
-    of operations defining the patches of interest.
 
     Patches retrieved from patches views are returned as
     :class:`EvaluationPatchView` objects.
@@ -414,7 +377,8 @@ class EvaluationPatchesView(_PatchesView):
             view was created
         patches_stage: the :class:`fiftyone.core.stages.ToEvaluationPatches`
             stage that defines how the patches were extracted
-        patches_dataset: the patches :class:`fiftyone.core.dataset.Dataset`
+        patches_dataset: the :class:`fiftyone.core.dataset.Dataset` that serves
+            the patches in this view
     """
 
     _SAMPLE_CLS = EvaluationPatchView
