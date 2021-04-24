@@ -770,7 +770,12 @@ class SampleCollection(object):
         return dict(counts)
 
     def set_values(
-        self, field_name, values, skip_none=False, _allow_missing=False
+        self,
+        field_name,
+        values,
+        skip_none=False,
+        expand_schema=True,
+        _allow_missing=False,
     ):
         """Sets the field or embedded field on each sample or frame in the
         collection to the given values.
@@ -821,7 +826,13 @@ class SampleCollection(object):
                 of ``values`` must be arrays of the same lengths
             skip_none (False): whether to treat None data in ``values`` as
                 missing data that should not be set
+            expand_schema (True): whether to dynamically add new sample/frame
+                fields encountered to the dataset schema. If False, an error is
+                raised if the root ``field_name`` does not exist
         """
+        if expand_schema:
+            self._expand_schema_from_values(field_name, values)
+
         field_name, is_frame_field, list_fields, _ = self._parse_field_name(
             field_name, allow_missing=_allow_missing
         )
@@ -834,6 +845,41 @@ class SampleCollection(object):
             self._set_frame_values(field_name, values, list_fields, skip_none)
         else:
             self._set_sample_values(field_name, values, list_fields, skip_none)
+
+    def _expand_schema_from_values(self, field_name, values):
+        field_name, is_frame_field = self._handle_frame_field(field_name)
+        root = field_name.rsplit(".", 1)[0]
+
+        if is_frame_field:
+            schema = self._dataset.get_frame_field_schema(include_private=True)
+
+            if root in schema:
+                return
+
+            if root != field_name:
+                raise ValueError(
+                    "Cannot infer an appropriate type for new frame "
+                    "field '%s' when setting embedded field '%s'"
+                    % (root, field_name)
+                )
+
+            value = _get_non_none_value(itertools.chain.from_iterable(values))
+            self._dataset._add_implied_frame_field(field_name, value)
+        else:
+            schema = self._dataset.get_field_schema(include_private=True)
+
+            if root in schema:
+                return
+
+            if root != field_name:
+                raise ValueError(
+                    "Cannot infer an appropriate type for new sample "
+                    "field '%s' when setting embedded field '%s'"
+                    % (root, field_name)
+                )
+
+            value = _get_non_none_value(values)
+            self._dataset._add_implied_sample_field(field_name, value)
 
     def _set_sample_values(self, field_name, values, list_fields, skip_none):
         if len(list_fields) > 1:
@@ -4810,18 +4856,6 @@ class SampleCollection(object):
             level -= 1
 
         return values
-
-    def _add_field_if_necessary(self, field_name, ftype, **kwargs):
-        # @todo if field exists, validate that `ftype` and `**kwargs` match
-        field_name, is_frame_field = self._handle_frame_field(field_name)
-        if is_frame_field:
-            if not self.has_frame_field(field_name):
-                self._dataset.add_frame_field(field_name, ftype, **kwargs)
-
-            return
-
-        if not self.has_sample_field(field_name):
-            self._dataset.add_sample_field(field_name, ftype, **kwargs)
 
     def _make_set_field_pipeline(
         self, field, expr, embedded_root=False, allow_missing=False
