@@ -1761,9 +1761,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                     for sample_id, label_ids in _labels_map.items():
                         # If the data is well-formed, `label_ids` should have
                         # exactly one element, and this is redundant anyhow
-                        # since `sample_id` should uniquely define the label to
-                        # delete, but we still include `label_id` in the query
-                        # just to be safe
+                        # since `sample_id` and `frame_number` should uniquely
+                        # define the label to delete, but we still include
+                        # `label_id` in the query just to be safe
                         for label_id in label_ids:
                             sample_ops.append(
                                 UpdateOne(
