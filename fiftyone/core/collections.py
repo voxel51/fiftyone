@@ -818,6 +818,54 @@ class SampleCollection(object):
 
                 sample.save()
 
+        The dual function of :meth:`set_values` is :meth:`values`, which can be
+        used to efficiently extract the values of a field or embedded field of
+        all samples in a collection as lists of values in the same structure
+        expected by this method.
+
+        .. note::
+
+            If the values you are setting can be described by a
+            :class:`fiftyone.core.expressions.ViewExpression` applied to the
+            existing dataset contents, then consider using :meth:`set_field` +
+            :meth:`save` for an even more efficient alternative to explicitly
+            iterating over the dataset or calling :meth:`values` +
+            :meth:`set_values` to perform the update in-memory.
+
+        Examples::
+
+            import random
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset("quickstart").clone()
+
+            #
+            # Create a new sample field
+            #
+
+            values = [random.random() for _ in range(len(dataset))]
+            dataset.set_values("random", values)
+
+            print(dataset.bounds("random"))
+
+            #
+            # Add a tag to all low confidence labels
+            #
+
+            view = dataset.filter_labels("predictions", F("confidence") < 0.06)
+
+            detections = view.values("predictions.detections")
+            for sample_detections in detections:
+                for detection in sample_detections:
+                    detection.tags.append("low confidence")
+
+            view.set_values("predictions.detections", detections)
+
+            print(dataset.count_label_tags())
+
         Args:
             field_name: a field or ``embedded.field.name``
             values: an iterable of values, one for each sample in the
@@ -4117,6 +4165,15 @@ class SampleCollection(object):
     ):
         """Extracts the values of a field from all samples in the collection.
 
+        Values aggregations are useful for efficiently extracting a slice of
+        field or embedded field values across all samples in a collection. See
+        the examples below for more details.
+
+        The dual function of :meth:`values` is :meth:`set_values`, which can be
+        used to efficiently set a field or embedded field of all samples in a
+        collection by providing lists of values of same structure returned by
+        this aggregation.
+
         .. note::
 
             Unlike other aggregations, :meth:`values` does not automatically
@@ -4131,6 +4188,7 @@ class SampleCollection(object):
         Examples::
 
             import fiftyone as fo
+            import fiftyone.zoo as foz
             from fiftyone import ViewField as F
 
             dataset = fo.Dataset()
@@ -4174,6 +4232,21 @@ class SampleCollection(object):
 
             values = dataset.values("numeric_field", expr=2 * (F() + 1))
             print(values)  # [4.0, 10.0, None]
+
+            #
+            # Get values from a label list field
+            #
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            # list of `Detections`
+            detections = dataset.values("ground_truth")
+
+            # list of lists of `Detection` instances
+            detections = dataset.values("ground_truth.detections")
+
+            # list of lists of detection labels
+            labels = dataset.values("ground_truth.detections.label")
 
         Args:
             field_name: the name of the field to operate on

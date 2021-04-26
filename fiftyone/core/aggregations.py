@@ -1072,6 +1072,16 @@ class Sum(Aggregation):
 class Values(Aggregation):
     """Extracts the values of the field from all samples in a collection.
 
+    Values aggregations are useful for efficiently extracting a slice of field
+    or embedded field values across all samples in a collection. See the
+    examples below for more details.
+
+    The dual function of :class:`Values` is
+    :meth:`set_values() <fiftyone.core.collections.SampleCollection.set_values>`,
+    which can be used to efficiently set a field or embedded field of all
+    samples in a collection by providing lists of values of same structure
+    returned by this aggregation.
+
     .. note::
 
         Unlike other aggregations, :class:`Values` does not automatically
@@ -1086,6 +1096,7 @@ class Values(Aggregation):
     Examples::
 
         import fiftyone as fo
+        import fiftyone.zoo as foz
         from fiftyone import ViewField as F
 
         dataset = fo.Dataset()
@@ -1132,6 +1143,24 @@ class Values(Aggregation):
         aggregation = fo.Values("numeric_field", expr=2 * (F() + 1))
         values = dataset.aggregate(aggregation)
         print(values)  # [4.0, 10.0, None]
+
+        #
+        # Get values from a label list field
+        #
+
+        dataset = foz.load_zoo_dataset("quickstart")
+
+        # list of `Detections`
+        aggregation = fo.Values("ground_truth")
+        detections = dataset.aggregate(aggregation)
+
+        # list of lists of `Detection` instances
+        aggregation = fo.Values("ground_truth.detections")
+        detections = dataset.aggregate(aggregation)
+
+        # list of lists of detection labels
+        aggregation = fo.Values("ground_truth.detections.label")
+        labels = dataset.aggregate(aggregation)
 
     Args:
         field_name: the name of the field to operate on
