@@ -167,27 +167,4 @@ export default abstract class Renderer {
 
     processFrame && this.processFrame();
   }
-
-  handleKeyboardEvent(e) {
-    // esc: hide settings
-    if (e.keyCode === 27 && this._boolShowVideoOptions) {
-      this._boolShowVideoOptions = false;
-      this._repositionOptionsPanel();
-      this.updateFromDynamicState();
-      return true;
-    }
-    // s: toggle settings
-    if (e.key === "s") {
-      this._boolShowVideoOptions = !this._boolShowVideoOptions;
-      this._repositionOptionsPanel();
-      this.updateFromDynamicState();
-      return true;
-    }
-  }
-
-  handleFocusLost() {
-    this._boolShowVideoOptions = false;
-    this._boolShowControls = false;
-    this.updateFromDynamicState();
-  }
 }

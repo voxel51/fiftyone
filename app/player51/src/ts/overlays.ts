@@ -136,12 +136,12 @@ Overlay.prototype.setup = function (context, canvasWidth, canvasHeight) {
 
 Overlay.prototype._isShown = function () {
   if (
-    this.renderer.options.activeLabels &&
-    !this.renderer.options.activeLabels.includes(this.field)
+    this.state.options.activeLabels &&
+    !this.state.options.activeLabels.includes(this.field)
   ) {
     return false;
   }
-  if (!_isOverlayShown(this.renderer.options.filter, this.field, this.label)) {
+  if (!_isOverlayShown(this.state.options.filter, this.field, this.label)) {
     return false;
   }
   return true;

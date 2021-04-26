@@ -547,7 +547,4 @@ export function asVideoRenderer(options) {
       }
     },
   });
-
-  renderer.setMediaFragment();
-  return renderer;
 }

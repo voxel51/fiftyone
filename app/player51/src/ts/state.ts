@@ -3,7 +3,10 @@
  */
 
 interface BaseOptions {
+  activeLabels: string[];
   colorByLabel: boolean;
+  filter: (label: { label?: string; confidence?: number }) => boolean;
+  selectedLabels: string[];
   showAttrs: boolean;
   showConfidence: boolean;
   showTooltip: boolean;
@@ -36,6 +39,8 @@ export interface BaseState {
   cursorCoordinates?: [number, number];
   disableControls: boolean;
   focused: boolean;
+  hovering: boolean;
+  hoveringControls: boolean;
   showControls: boolean;
   showOptions: boolean;
   tooltipOverlay?: {
@@ -53,7 +58,17 @@ export interface BaseState {
   };
 }
 
+export interface FrameState extends BaseState {
+  config: FrameConfig;
+  options: FrameOptions;
+}
+
 export interface ImageState extends BaseState {
   config: ImageConfig;
+  options: ImageOptions;
+}
+
+export interface VideoState extends BaseState {
+  config: VideoConfig;
   options: ImageOptions;
 }

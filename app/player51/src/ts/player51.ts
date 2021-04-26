@@ -26,37 +26,6 @@ const defaults = {
   colorGenerator,
 };
 
-let installedEventHandlers = false;
-let instances: Player51[] = [];
-let focusedInstance = null;
-
-const handleGlobalKeyboard = (e: MouseEvent): void => {
-  if (focusedInstance && focusedInstance.renderer._handleKeyboardEvent(e)) {
-    e.preventDefault();
-    e.stopPropagation();
-  }
-};
-
-const handleGlobalClick = (e: MouseEvent): void => {
-  for (const player of instances) {
-    if (
-      player.renderer.parent &&
-      player.renderer.parent.contains(<Node>e.target)
-    ) {
-      focusedInstance = player;
-      return;
-    }
-  }
-  focusedInstance && focusedInstance.renderer._handleFocusLost();
-  focusedInstance = null;
-};
-
-const installEventHandlers = (): void => {
-  window.addEventListener("click", handleGlobalClick);
-  window.addEventListener("keydown", handleGlobalKeyboard);
-  installedEventHandlers = true;
-};
-
 interface Sample {
   [key: string]: object;
 }
@@ -66,13 +35,9 @@ export default class Player51 {
   mimeType?: string;
   options: typeof defaults = defaults;
   overlaysManager: OverlaysManager;
-  renderer: Renderer;
+  renderTree: Renderer;
 
-  constructor({ src, ...options }) {
-    !installedEventHandlers && installEventHandlers();
-
-    instances.push(this);
-  }
+  constructor({ src, ...options }) {}
 
   addEventListener(eventType, handler, ...args) {
     this.renderer.eventTarget.addEventListener(eventType, handler, ...args);
@@ -106,11 +71,5 @@ export default class Player51 {
 
   update({ sample, src, rest }) {
     Object.assign(this.options, rest);
-    sample && (this.sample = sample);
-    src && (this.src = src);
-    this.renderer.eleOptCtlShowAttr.checked = this.options.overlayOptions.showAttrs;
-    this.renderer.eleOptCtlShowConfidence.checked = this.options.overlayOptions.showConfidence;
-    this.renderer.eleOptCtlShowTooltip.checked = this.options.overlayOptions.showTooltip;
-    this.renderer.processFrame();
   }
 }

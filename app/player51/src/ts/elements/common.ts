@@ -6,13 +6,32 @@ import { BaseElement, EventMap } from "./base";
 import { ICONS, makeCheckboxRow, makeWrapper } from "./util";
 
 export class PlayerBaseElement extends BaseElement {
-  events: {
-    mouseenter: ({}) => {};
+  events = {
+    blur: ({ update }) => {
+      update({ showOptions: false, showControls: false, focused: false });
+    },
+    focus: ({ update }) => {
+      update({ focused: true });
+    },
+    keydown: ({ event, update }) => {
+      // esc: hide settings
+      if (event.keyCode === 27) {
+        update({ showControls: false, showOptions: false });
+      }
+      // s: toggle settings
+      else if (event.key === "s") {
+        update((state) => ({
+          showOptions: state.showOptions,
+          showControls: state.showControls,
+        }));
+      }
+    },
   };
 
   createHTMLElement() {
     const element = document.createElement("div");
     element.className = "p51";
+    element.tabIndex = 0;
     return element;
   }
 
@@ -26,11 +45,13 @@ export class CanvasElement extends BaseElement {
     click: ({ update }) => {
       update({ showOptions: false });
     },
-    mouseenter: ({ update }) => {
-      update({ canFocus: true });
-    },
+    mousenter: ({ update }) => {},
     mouseleave: ({ update }) => {
-      update({ canFocus: false, tooltipOverlay: null, mouseCoordinates: null });
+      update({
+        tooltipOverlay: null,
+        cursorCoordinates: null,
+        disableControls: false,
+      });
     },
     mousemove: ({ event, update }) => {
       update({
@@ -62,7 +83,7 @@ export class ControlsElement extends BaseElement {
     click: ({ update }) => {
       update({
         showControls: false,
-        disableShowControls: true,
+        disableControls: true,
         showOptions: false,
       });
     },
