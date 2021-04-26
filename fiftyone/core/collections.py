@@ -3981,6 +3981,7 @@ class SampleCollection(object):
         missing_value=None,
         unwind=False,
         _allow_missing=False,
+        _big_result=False,
     ):
         """Extracts the values of a field from all samples in the collection.
 
@@ -4063,6 +4064,7 @@ class SampleCollection(object):
                 missing_value=missing_value,
                 unwind=unwind,
                 _allow_missing=_allow_missing,
+                _big_result=_big_result,
             )
         )
 
@@ -4531,20 +4533,41 @@ class SampleCollection(object):
             an aggregation result or list of aggregation results corresponding
             to the input aggregation(s)
         """
-        scalar_result, aggregations, facets = self._build_aggregation(
-            aggregations
-        )
         if not aggregations:
             return []
 
-        pipeline = self._pipeline(
-            pipeline=facets, attach_frames=_attach_frames
+        pipeline, scalar_result, big_result = self._build_aggregation(
+            aggregations
         )
 
-        result = foo.aggregate(self._dataset._sample_collection, pipeline)
-        result = next(result)
+        result = self._aggregate(
+            pipeline=pipeline, attach_frames=_attach_frames
+        )
 
-        return self._process_aggregations(aggregations, result, scalar_result)
+        if not scalar_result:
+            result = next(result)  # extract result of $facet
+
+        return self._process_aggregations(
+            aggregations, result, scalar_result, big_result
+        )
+
+    async def _async_aggregate(self, sample_collection, aggregations):
+        if not aggregations:
+            return []
+
+        pipeline, scalar_result, big_result = self._build_aggregation(
+            aggregations
+        )
+
+        pipeline = self._pipeline(pipeline=pipeline)
+
+        result = await foo.aggregate(sample_collection, pipeline)
+        if not scalar_result:
+            result = result.to_list(1)[0]  # extract result of $facet
+
+        return self._process_aggregations(
+            aggregations, result, scalar_result, big_result
+        )
 
     def _pipeline(
         self,
@@ -4597,40 +4620,49 @@ class SampleCollection(object):
         """
         raise NotImplementedError("Subclass must implement _aggregate()")
 
-    async def _async_aggregate(self, sample_collection, aggregations):
-        scalar_result, aggregations, facets = self._build_aggregation(
-            aggregations
-        )
-        if not aggregations:
-            return []
-
-        # pylint: disable=no-member
-        pipeline = self._pipeline(pipeline=facets)
-
-        result = await foo.aggregate(sample_collection, pipeline).to_list(1)
-        result = result[0]
-
-        return self._process_aggregations(aggregations, result, scalar_result)
-
     def _build_aggregation(self, aggregations):
         scalar_result = isinstance(aggregations, foa.Aggregation)
+
         if scalar_result:
-            aggregations = [aggregations]
-        elif not aggregations:
-            return False, [], None
+            pipeline = aggregations.to_mongo(self)
+            big_result = aggregations.big_result
+        else:
+            facets = {}
+            for idx, agg in enumerate(aggregations):
+                if not isinstance(agg, foa.Aggregation):
+                    raise TypeError(
+                        "'%s' is not an %s" % (agg.__class__, foa.Aggregation)
+                    )
 
-        pipelines = {}
-        for idx, agg in enumerate(aggregations):
-            if not isinstance(agg, foa.Aggregation):
-                raise TypeError(
-                    "'%s' is not an %s" % (agg.__class__, foa.Aggregation)
-                )
+                if agg.big_result:
+                    raise ValueError(
+                        "%s aggregation with big_result=True must be executed "
+                        "alone" % agg.__class__
+                    )
 
-            pipelines[str(idx)] = agg.to_mongo(self)
+                facets[str(idx)] = agg.to_mongo(self)
 
-        return scalar_result, aggregations, [{"$facet": pipelines}]
+            pipeline = [{"$facet": facets}]
+            big_result = False
 
-    def _process_aggregations(self, aggregations, result, scalar_result):
+        return pipeline, scalar_result, big_result
+
+    def _process_aggregations(
+        self, aggregations, result, scalar_result, big_result
+    ):
+        if big_result:
+            if result:
+                # pass result iterable directly to aggregation
+                return aggregations.parse_result(result)
+            else:
+                return aggregations.default_result()
+
+        if scalar_result:
+            if result:
+                return aggregations.parse_result(next(result))
+            else:
+                return aggregations.default_result()
+
         results = []
         for idx, agg in enumerate(aggregations):
             _result = result[str(idx)]
@@ -4639,7 +4671,7 @@ class SampleCollection(object):
             else:
                 results.append(agg.default_result())
 
-        return results[0] if scalar_result else results
+        return results
 
     def _serialize(self):
         # pylint: disable=no-member
