@@ -4658,9 +4658,9 @@ class SampleCollection(object):
                 return aggregations.default_result()
 
         if scalar_result:
-            if result:
+            try:
                 return aggregations.parse_result(next(result))
-            else:
+            except StopIteration:
                 return aggregations.default_result()
 
         results = []
