@@ -77,13 +77,18 @@ class Aggregation(object):
         raise NotImplementedError("subclasses must implement default_result()")
 
     def _parse_field_and_expr(
-        self, sample_collection, auto_unwind=True, allow_missing=False
+        self,
+        sample_collection,
+        auto_unwind=True,
+        omit_terminal_lists=False,
+        allow_missing=False,
     ):
         return _parse_field_and_expr(
             sample_collection,
             self._field_name,
             self._expr,
             auto_unwind,
+            omit_terminal_lists,
             allow_missing,
         )
 
@@ -183,7 +188,7 @@ class Bounds(Aggregation):
         return d["min"], d["max"]
 
     def to_mongo(self, sample_collection):
-        path, pipeline, _ = self._parse_field_and_expr(sample_collection)
+        path, _, pipeline, _ = self._parse_field_and_expr(sample_collection)
 
         pipeline.append(
             {
@@ -306,7 +311,7 @@ class Count(Aggregation):
         if self._field_name is None:
             return [{"$count": "count"}]
 
-        path, pipeline, _ = self._parse_field_and_expr(sample_collection)
+        path, _, pipeline, _ = self._parse_field_and_expr(sample_collection)
 
         if sample_collection.media_type != fom.VIDEO or path != "frames":
             pipeline.append({"$match": {"$expr": {"$gt": ["$" + path, None]}}})
@@ -413,7 +418,7 @@ class CountValues(Aggregation):
         return {i["k"]: i["count"] for i in d["result"]}
 
     def to_mongo(self, sample_collection):
-        path, pipeline, _ = self._parse_field_and_expr(sample_collection)
+        path, _, pipeline, _ = self._parse_field_and_expr(sample_collection)
 
         pipeline += [
             {"$group": {"_id": "$" + path, "count": {"$sum": 1}}},
@@ -527,7 +532,7 @@ class Distinct(Aggregation):
         return sorted(d["values"])
 
     def to_mongo(self, sample_collection):
-        path, pipeline, _ = self._parse_field_and_expr(sample_collection)
+        path, _, pipeline, _ = self._parse_field_and_expr(sample_collection)
 
         pipeline += [
             {"$match": {"$expr": {"$gt": ["$" + path, None]}}},
@@ -672,7 +677,7 @@ class HistogramValues(Aggregation):
         return self._parse_result_edges(d)
 
     def to_mongo(self, sample_collection):
-        path, pipeline, _ = self._parse_field_and_expr(sample_collection)
+        path, _, pipeline, _ = self._parse_field_and_expr(sample_collection)
 
         if self._auto:
             pipeline.append(
@@ -858,7 +863,7 @@ class Mean(Aggregation):
         return d["mean"]
 
     def to_mongo(self, sample_collection):
-        path, pipeline, _ = self._parse_field_and_expr(sample_collection)
+        path, _, pipeline, _ = self._parse_field_and_expr(sample_collection)
 
         pipeline.append(
             {"$group": {"_id": None, "mean": {"$avg": "$" + path}}}
@@ -961,7 +966,7 @@ class Std(Aggregation):
         return d["std"]
 
     def to_mongo(self, sample_collection):
-        path, pipeline, _ = self._parse_field_and_expr(sample_collection)
+        path, _, pipeline, _ = self._parse_field_and_expr(sample_collection)
 
         op = "$stdDevSamp" if self._sample else "$stdDevPop"
         pipeline.append({"$group": {"_id": None, "std": {op: "$" + path}}})
@@ -1057,7 +1062,7 @@ class Sum(Aggregation):
         return d["sum"]
 
     def to_mongo(self, sample_collection):
-        path, pipeline, _ = self._parse_field_and_expr(sample_collection)
+        path, _, pipeline, _ = self._parse_field_and_expr(sample_collection)
 
         pipeline.append({"$group": {"_id": None, "sum": {"$sum": "$" + path}}})
 
@@ -1194,17 +1199,27 @@ class Values(Aggregation):
         return values
 
     def to_mongo(self, sample_collection):
-        path, pipeline, other_list_fields = self._parse_field_and_expr(
+        (
+            path,
+            is_frame_field,
+            pipeline,
+            list_fields,
+        ) = self._parse_field_and_expr(
             sample_collection,
             auto_unwind=self._unwind,
+            omit_terminal_lists=not self._unwind,
             allow_missing=self._allow_missing,
         )
 
-        self._field_type = sample_collection._get_field_type(path)
-        self._num_list_fields = len(other_list_fields)
+        if self._expr is None:
+            self._field_type = sample_collection._get_field_type(
+                path, is_frame_field=is_frame_field, ignore_primitives=True
+            )
+
+        self._num_list_fields = len(list_fields)
 
         pipeline += _make_extract_values_pipeline(
-            path, other_list_fields, self._missing_value
+            path, list_fields, self._missing_value
         )
 
         return pipeline
@@ -1268,7 +1283,12 @@ def _extract_list_values(subfield, expr):
 
 
 def _parse_field_and_expr(
-    sample_collection, field_name, expr, auto_unwind, allow_missing
+    sample_collection,
+    field_name,
+    expr,
+    auto_unwind,
+    omit_terminal_lists,
+    allow_missing,
 ):
     if expr is not None:
         pipeline, _ = sample_collection._make_set_field_pipeline(
@@ -1283,7 +1303,10 @@ def _parse_field_and_expr(
         unwind_list_fields,
         other_list_fields,
     ) = sample_collection._parse_field_name(
-        field_name, auto_unwind=auto_unwind, allow_missing=allow_missing
+        field_name,
+        auto_unwind=auto_unwind,
+        omit_terminal_lists=omit_terminal_lists,
+        allow_missing=allow_missing,
     )
 
     if is_frame_field and auto_unwind:
@@ -1295,12 +1318,6 @@ def _parse_field_and_expr(
         pipeline.append({"$unwind": "$" + list_field})
 
     if other_list_fields:
-        # Don't unroll terminal lists unless explicitly requested
-        other_list_fields = [
-            lf for lf in other_list_fields if lf != field_name
-        ]
-
-    if other_list_fields:
         root = other_list_fields[0]
         leaf = path[len(root) + 1 :]
     else:
@@ -1309,4 +1326,4 @@ def _parse_field_and_expr(
 
     pipeline.append({"$project": {root: True}})
 
-    return path, pipeline, other_list_fields
+    return path, is_frame_field, pipeline, other_list_fields

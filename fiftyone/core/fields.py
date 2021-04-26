@@ -533,3 +533,4 @@ class EmbeddedDocumentListField(
 
 
 _ARRAY_FIELDS = (VectorField, ArrayField)
+_PRIMITIVE_FIELDS = (IntField, FloatField, StringField, BooleanField)
