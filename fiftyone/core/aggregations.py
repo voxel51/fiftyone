@@ -1268,7 +1268,7 @@ def _parse_field_and_expr(
         )
 
     if field_name is None:
-        field_name, expr = _normalize_expression(expr)
+        field_name, expr = _extract_prefix_from_expression(expr)
 
     if expr is not None:
         if field_name is None:
@@ -1321,7 +1321,7 @@ def _parse_field_and_expr(
     return path, pipeline, other_list_fields
 
 
-def _normalize_expression(expr):
+def _extract_prefix_from_expression(expr):
     prefixes = []
     _find_prefixes(expr, prefixes)
 
