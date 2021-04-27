@@ -17,7 +17,7 @@ import fiftyone.core.view as fov
 
 
 class _PatchView(fos.SampleView):
-    """Base class for sample patch views.
+    """Base class for patch views.
 
     Args:
         doc: a :class:`fiftyone.core.odm.DatasetSampleDocument`
@@ -79,7 +79,7 @@ class EvaluationPatchView(_PatchView):
 
 class _PatchesView(fov.DatasetView):
     """Base class for :class:`fiftyone.core.view.DatasetView` classes that
-    contain sample patches.
+    contain patches.
 
     Args:
         source_collection: the
@@ -146,26 +146,6 @@ class _PatchesView(fov.DatasetView):
     def name(self):
         return self.dataset_name + "-patches"
 
-    def tag_samples(self, tags):
-        super().tag_samples(tags)
-
-        # Update source collection
-
-        def sync_fcn(view, fields=None):
-            view.tag_labels(tags, label_fields=fields)
-
-        self._sync_source_fcn(sync_fcn, fields=self._label_fields)
-
-    def untag_samples(self, tags):
-        super().untag_samples(tags)
-
-        # Update source collection
-
-        def sync_fcn(view, fields=None):
-            view.untag_labels(tags, label_fields=fields)
-
-        self._sync_source_fcn(sync_fcn, fields=self._label_fields)
-
     def tag_labels(self, tags, label_fields=None):
         if etau.is_str(label_fields):
             label_fields = [label_fields]
@@ -222,20 +202,7 @@ class _PatchesView(fov.DatasetView):
             self._sync_source_sample_field(sample, field)
 
     def _sync_source_sample_field(self, sample, field):
-        # @todo precompute this for each field?
-        label_type = self._patches_dataset._get_label_field_type(field)
-        is_list_field = issubclass(label_type, fol._LABEL_LIST_FIELDS)
-
         doc = sample._doc.field_to_mongo(sample, field)
-
-        # Merge sample-level tags into label tags
-        if is_list_field:
-            doc = doc.get(label_type._LABEL_LIST_FIELD, [])
-            for _doc in doc:
-                _doc["tags"].extend(sample.tags)
-        else:
-            doc["tags"].extend(sample.tags)
-
         self._source_collection._set_labels_by_id(
             field, [sample.sample_id], [doc]
         )
@@ -271,28 +238,9 @@ class _PatchesView(fov.DatasetView):
         # Sync label updates
         #
 
-        sample_ids, tags, docs = self.aggregate(
-            [
-                foa.Values("sample_id"),
-                foa.Values("tags"),
-                foa.Values(label_path),
-            ]
+        sample_ids, docs = self.aggregate(
+            [foa.Values("sample_id"), foa.Values(label_path)]
         )
-
-        # Merge sample-level tags into label tags
-        if is_list_field:
-            for _tags, _docs in zip(tags, docs):
-                if not _tags:
-                    continue
-
-                for doc in _docs:
-                    doc["tags"].extend(_tags)
-        else:
-            for _tags, doc in zip(tags, docs):
-                if not _tags:
-                    continue
-
-                doc["tags"].extend(_tags)
 
         self._source_collection._set_labels_by_id(field, sample_ids, docs)
 
