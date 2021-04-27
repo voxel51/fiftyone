@@ -6,9 +6,7 @@ import useMeasure from "react-use-measure";
 import * as selectors from "../../recoil/selectors";
 import {
   BOOLEAN_FIELD,
-  RESERVED_FIELDS,
   STRING_FIELD,
-  VALID_LIST_TYPES,
   VALID_NUMERIC_TYPES,
 } from "../../utils/labels";
 
@@ -149,6 +147,9 @@ export const activeScalars = selectorFamily<string[], boolean>({
     return get(activeFields(modal)).filter((v) => scalars.includes(v));
   },
   set: (modal) => ({ get, set }, value) => {
+    if (modal) {
+      return [];
+    }
     if (Array.isArray(value)) {
       const scalars = get(selectors.scalarNames("sample"));
       const prevActiveScalars = get(activeScalars(modal));

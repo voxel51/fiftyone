@@ -35,11 +35,9 @@ const ActionDiv = styled.div`
 
 const Patches = () => {
   const [open, setOpen] = useState(false);
-  const theme = useTheme();
   const ref = useRef();
   useOutsideClick(ref, () => open && setOpen(false));
   const [mRef, bounds] = useMeasure();
-  const close = useRecoilValue(selectors.selectedLoading);
 
   useLayoutEffect(() => {
     close && setOpen(false);
@@ -55,7 +53,7 @@ const Patches = () => {
         ref={mRef}
         title={"Patches"}
       />
-      {open && <Patcher />}
+      {open && <Patcher close={() => setOpen(false)} />}
     </ActionDiv>
   );
 };

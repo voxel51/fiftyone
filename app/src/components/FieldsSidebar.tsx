@@ -64,7 +64,7 @@ type CellProps = {
   label: string;
   title: string;
   modal: boolean;
-  onSelect: (entry: Entry) => void;
+  onSelect?: (entry: Entry) => void;
   handleClear: (event: Event) => void;
   entries: Entry[];
   icon: any;
@@ -570,13 +570,17 @@ const ScalarsCell = ({ modal }: ScalarsCellProps) => {
         modal,
         canFilter: !modal,
       }))}
-      onSelect={({ name, selected }) => {
-        setActiveScalars(
-          selected
-            ? [name, ...activeScalars]
-            : activeScalars.filter((t) => t !== name)
-        );
-      }}
+      onSelect={
+        !modal
+          ? ({ name, selected }) => {
+              setActiveScalars(
+                selected
+                  ? [name, ...activeScalars]
+                  : activeScalars.filter((t) => t !== name)
+              );
+            }
+          : null
+      }
       handleClear={(e) => {
         e.stopPropagation();
         setActiveScalars([]);

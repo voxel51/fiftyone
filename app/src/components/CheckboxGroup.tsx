@@ -137,7 +137,7 @@ export type Entry = {
 type EntryProps = {
   entry: Entry;
   modal: boolean;
-  onCheck: (entry: Entry) => void;
+  onCheck?: (entry: Entry) => void;
 };
 
 const Entry = React.memo(({ entry, onCheck, modal }: EntryProps) => {

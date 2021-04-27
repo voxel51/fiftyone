@@ -16,6 +16,7 @@ import socket from "../../shared/connection";
 import { packageMessage } from "../../utils/socket";
 
 const useGridActions = (close: () => void) => {
+  const itemNames = useRecoilValue(selectors.itemNames);
   const clearSelection = useRecoilCallback(
     ({ snapshot, set, reset }) => async () => {
       const [oldSelected, state] = await Promise.all([
@@ -50,18 +51,18 @@ const useGridActions = (close: () => void) => {
 
   return [
     {
-      text: "Clear selected samples",
-      title: "Deselect all selected samples",
+      text: `Clear selected ${itemNames.plural}`,
+      title: `Deselect all selected ${itemNames.plural}`,
       onClick: clearSelection,
     },
     {
-      text: "Only show selected samples",
-      title: "Hide all other samples",
+      text: `Only show selected ${itemNames.plural}`,
+      title: `Hide all other ${itemNames.plural}`,
       onClick: () => addStage("Select"),
     },
     {
-      text: "Hide selected samples",
-      title: "Show only unselected samples",
+      text: `Hide selected ${itemNames.plural}`,
+      title: `Show only unselected ${itemNames.plural}`,
       onClick: () => addStage("Exclude"),
     },
   ];
@@ -184,6 +185,7 @@ const useModalActions = (frameNumberRef, close) => {
       callback();
     }, []);
   };
+  const itemNames = useRecoilValue(selectors.itemNames);
 
   const hasVisibleUnselected = hasSetDiff(visibleSampleLabels, selectedLabels);
   const hasFrameVisibleUnselected = hasSetDiff(
@@ -194,12 +196,12 @@ const useModalActions = (frameNumberRef, close) => {
 
   return [
     {
-      text: "Select visible (current sample)",
+      text: `Select visible (current ${itemNames.singular})`,
       hidden: !hasVisibleUnselected,
       onClick: closeAndCall(useSelectVisible(visibleModalSampleLabels)),
     },
     {
-      text: "Unselect visible (current sample)",
+      text: `Unselect visible (current ${itemNames.singular})`,
       hidden: !hasVisibleSelection,
       onClick: closeAndCall(useUnselectVisible(visibleModalSampleLabelIds)),
     },

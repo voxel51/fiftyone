@@ -1,10 +1,5 @@
 import React, { useState } from "react";
-import {
-  selector,
-  snapshot_UNSTABLE,
-  useRecoilCallback,
-  useRecoilValue,
-} from "recoil";
+import { selector, useRecoilCallback, useRecoilValue } from "recoil";
 import { useSpring } from "react-spring";
 
 import Popout from "./Popout";
@@ -14,10 +9,6 @@ import * as atoms from "../../recoil/atoms";
 import * as selectors from "../../recoil/selectors";
 import { PATCHES_FIELDS } from "../../utils/labels";
 import { useTheme } from "../../utils/hooks";
-
-type PatcherProps = {
-  modal: boolean;
-};
 
 const patchesFields = selector<string[]>({
   key: "parchesFields",
@@ -68,7 +59,7 @@ const useToEvaluationPatches = () => {
   });
 };
 
-const LabelsPatches = () => {
+const LabelsPatches = ({ close }) => {
   const fields = useRecoilValue(patchesFields);
   const toPatches = useToPatches();
 
@@ -81,7 +72,10 @@ const LabelsPatches = () => {
               key={field}
               text={field}
               title={`Switch to ${field} patches view`}
-              onClick={() => toPatches(field)}
+              onClick={() => {
+                close();
+                toPatches(field);
+              }}
             />
           );
         })}
@@ -98,7 +92,7 @@ const LabelsPatches = () => {
   );
 };
 
-const EvaluationPatches = () => {
+const EvaluationPatches = ({ close }) => {
   const evaluations = useRecoilValue(evaluationKeys);
   const toEvaluationPatches = useToEvaluationPatches();
 
@@ -111,7 +105,10 @@ const EvaluationPatches = () => {
               key={evaluation}
               text={evaluation}
               title={`Switch to ${evaluation} evaluation patches view`}
-              onClick={() => toEvaluationPatches(evaluation)}
+              onClick={() => {
+                close();
+                toEvaluationPatches(evaluation);
+              }}
             />
           );
         })}
@@ -127,7 +124,12 @@ const EvaluationPatches = () => {
   );
 };
 
-const Patcher = ({ modal, bounds }: PatcherProps) => {
+type PatcherProps = {
+  modal: boolean;
+  close: () => void;
+};
+
+const Patcher = ({ modal, bounds, close }: PatcherProps) => {
   const theme = useTheme();
   const [labels, setLabels] = useState(true);
 
@@ -155,8 +157,8 @@ const Patcher = ({ modal, bounds }: PatcherProps) => {
           Evaluations
         </SwitchDiv>
       </SwitcherDiv>
-      {labels && <LabelsPatches />}
-      {!labels && <EvaluationPatches />}
+      {labels && <LabelsPatches close={close} />}
+      {!labels && <EvaluationPatches close={close} />}
     </Popout>
   );
 };
