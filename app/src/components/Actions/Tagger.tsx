@@ -9,16 +9,11 @@ import {
   useRecoilValue,
 } from "recoil";
 import styled from "styled-components";
-import { useSpring } from "react-spring";
+import { animated, useSpring } from "react-spring";
 
 import Checker, { CheckState } from "./Checker";
 import Popout from "./Popout";
-import {
-  tagStats,
-  numLabelsInSelectedSamples,
-  SwitchDiv,
-  SwitcherDiv,
-} from "./utils";
+import { tagStats, numLabelsInSelectedSamples } from "./utils";
 import { Button } from "../FieldsSidebar";
 import * as labelAtoms from "../Filters/LabelFieldFilters.state";
 import * as fieldAtoms from "../Filters/utils";
@@ -249,6 +244,25 @@ const Section = ({
   );
 };
 
+const SwitcherDiv = styled.div`
+  border-bottom: 1px solid ${({ theme }) => theme.background};
+  display: flex;
+  margin: 0 -0.5rem;
+  padding: 0 0.5rem;
+`;
+
+const SwitchDiv = animated(styled.div`
+  flex-basis: 0;
+  flex-grow: 1;
+  font-size: 1rem;
+  padding-left: 0.4rem;
+  line-height: 2;
+  font-weight: bold;
+  border-bottom-color: ${({ theme }) => theme.brand};
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+`);
+
 const labelsPlaceholder = (selection, numLabels, numSamples) => {
   if (numSamples === 0) {
     return "no samples";
@@ -281,15 +295,15 @@ const labelsModalPlaceholder = (selection, numLabels) => {
   }`;
 };
 
-const samplesPlaceholder = (selection, _, numSamples) => {
+const samplesPlaceholder = (selection, _, numSamples, itemNames) => {
   if (numSamples === 0) {
     return "no samples";
   }
   if (selection) {
     numSamples = selection;
     const formatted = numeral(numSamples).format("0,0");
-    return `+ tag ${numSamples > 1 ? `${formatted} ` : ""}selected sample${
-      numSamples === 1 ? "" : "s"
+    return `+ tag ${numSamples > 1 ? `${formatted} ` : ""}selected ${
+      numSamples === 1 ? itemNames.singular : itemNames.plural
     }`;
   }
 
@@ -358,7 +372,8 @@ const Loader = () => {
 
 const usePlaceHolder = (
   modal: boolean,
-  labels: boolean
+  labels: boolean,
+  itemNames: { plural: string; singular: string }
 ): (() => [number, string]) => {
   return () => {
     const selection = useRecoilValue(
@@ -370,7 +385,7 @@ const usePlaceHolder = (
       labelCount = selection > 0 ? selection : labelCount;
       return [labelCount, labelsModalPlaceholder(selection, labelCount)];
     } else if (modal) {
-      return [1, samplePlaceholder()];
+      return [1, samplePlaceholder(itemNames)];
     } else {
       const totalSamples = useRecoilValue(selectors.totalCount);
       const filteredSamples = useRecoilValue(selectors.filteredCount);
@@ -382,7 +397,7 @@ const usePlaceHolder = (
       } else {
         return [
           selection > 0 ? selection : count,
-          samplesPlaceholder(selection, labelCount, count),
+          samplesPlaceholder(selection, labelCount, count, itemNames),
         ];
       }
     }
@@ -397,6 +412,7 @@ type TaggerProps = {
 
 const Tagger = ({ modal, bounds, close }: TaggerProps) => {
   const [labels, setLabels] = useState(modal);
+  const itemNames = useRecoilValue(selectors.itemNames);
   const theme = useTheme();
   const sampleProps = useSpring({
     borderBottomColor: labels ? theme.backgroundDark : theme.brand,
@@ -409,7 +425,7 @@ const Tagger = ({ modal, bounds, close }: TaggerProps) => {
   });
 
   const submit = useTagCallback(modal, labels);
-  const placeholder = usePlaceHolder(modal, labels);
+  const placeholder = usePlaceHolder(modal, labels, itemNames);
 
   return (
     <Popout style={{ width: "12rem" }} modal={modal} bounds={bounds}>
@@ -418,7 +434,7 @@ const Tagger = ({ modal, bounds, close }: TaggerProps) => {
           style={sampleProps}
           onClick={() => labels && setLabels(false)}
         >
-          Sample{modal ? "" : "s"}
+          {modal ? itemNames.singular : itemNames.plural}
         </SwitchDiv>
         <SwitchDiv
           style={labelProps}
@@ -440,7 +456,7 @@ const Tagger = ({ modal, bounds, close }: TaggerProps) => {
         </Suspense>
       )}
       {!labels && (
-        <Suspense fallback={<Loader />} key={"samples"}>
+        <Suspense fallback={<Loader />} key={itemNames.plural}>
           <Section
             countAndPlaceholder={placeholder}
             submit={submit}

@@ -246,14 +246,17 @@ const SampleTagsCell = ({ modal }: TagsCellProps) => {
     ? [null, selectors.tagSampleModalCounts]
     : [selectors.filteredTagSampleCounts, selectors.tagSampleCounts];
 
+  const isRootView = useRecoilValue(selectors.isRootView);
+
   const subCount = subCountAtom ? useRecoilValue(subCountAtom) : null;
   const count = useRecoilValue(countAtom);
   const colorByLabel = useRecoilValue(atoms.colorByLabel(modal));
   const theme = useTheme();
 
+  const element = isRootView ? "Sample" : "Patch";
   return (
     <Cell
-      label="Sample tags"
+      label={`${element} tags`}
       icon={<Note />}
       pills={makeClearMatchTags(theme.font, matchedTags, setMatchedTags)}
       entries={tags
@@ -316,7 +319,7 @@ const SampleTagsCell = ({ modal }: TagsCellProps) => {
         setActiveTags([]);
       }}
       modal={modal}
-      title={"Sample tags"}
+      title={`${element} tags`}
     />
   );
 };

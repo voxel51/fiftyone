@@ -195,24 +195,24 @@ const useModalActions = (frameNumberRef, close) => {
   return [
     {
       text: "Select visible (current sample)",
-      disabled: !hasVisibleUnselected,
+      hidden: !hasVisibleUnselected,
       onClick: closeAndCall(useSelectVisible(visibleModalSampleLabels)),
     },
     {
       text: "Unselect visible (current sample)",
-      disabled: !hasVisibleSelection,
+      hidden: !hasVisibleSelection,
       onClick: closeAndCall(useUnselectVisible(visibleModalSampleLabelIds)),
     },
     isVideo && {
       text: "Select visible (current frame)",
-      disabled: !hasFrameVisibleUnselected,
+      hidden: !hasFrameVisibleUnselected,
       onClick: closeAndCall(
         useSelectVisible(visibleModalCurrentFrameLabels(frameNumberRef.current))
       ),
     },
     isVideo && {
       text: "Unselect visible (current frame)",
-      disabled: !hasVisibleSelection,
+      hidden: !hasVisibleSelection,
       onClick: closeAndCall(
         useUnselectVisible(
           visibleModalCurrentFrameLabelIds(frameNumberRef.current)
@@ -221,22 +221,22 @@ const useModalActions = (frameNumberRef, close) => {
     },
     {
       text: "Clear selection",
-      disabled: !selectedLabels.size,
+      hidden: !selectedLabels.size,
       onClick: closeAndCall(useClearSelectedLabels()),
     },
     {
       text: "Hide selected",
-      disabled: !selectedLabels.size,
+      hidden: !selectedLabels.size,
       onClick: closeAndCall(useHideSelected()),
     },
     {
       text: "Hide unselected (current sample)",
-      disabled: !hasVisibleUnselected,
+      hidden: !hasVisibleUnselected,
       onClick: closeAndCall(useHideOthers(visibleModalSampleLabels)),
     },
     isVideo && {
       text: "Hide unselected (current frame)",
-      disabled: !hasFrameVisibleUnselected,
+      hidden: !hasFrameVisibleUnselected,
       onClick: closeAndCall(
         useHideOthers(visibleModalCurrentFrameLabels(frameNumberRef.current))
       ),

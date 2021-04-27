@@ -19,18 +19,6 @@ import {
   LABEL_LIST,
 } from "../../utils/labels";
 
-export const HoverItemDiv = animated(styled.div`
-  cursor: pointer;
-  margin: 0 -0.5rem;
-  padding: 0.25rem 0.5rem;
-  font-weight: bold;
-  display: flex;
-  justify-content: center;
-  align-content: center;
-  flex-direction: column;
-  color: ${({ theme }) => theme.fontDark};
-`);
-
 export const SwitcherDiv = styled.div`
   border-bottom: 1px solid ${({ theme }) => theme.background};
   display: flex;
@@ -48,6 +36,20 @@ export const SwitchDiv = animated(styled.div`
   border-bottom-color: ${({ theme }) => theme.brand};
   border-bottom-style: solid;
   border-bottom-width: 2px;
+  text-transform: capitalize;
+`);
+
+export const ItemAction = animated(styled.a`
+  cursor: pointer;
+  margin: 0 -0.5rem;
+  padding: 0.25rem 0.5rem;
+  font-weight: bold;
+  display: flex;
+  justify-content: center;
+  align-content: center;
+  flex-direction: column;
+  text-decoration: none;
+  color: ${({ theme }) => theme.fontDark};
 `);
 
 export const useHighlightHover = (disabled, override = null) => {
@@ -61,7 +63,7 @@ export const useHighlightHover = (disabled, override = null) => {
     backgroundColor: on
       ? theme.backgroundLight
       : disabled
-      ? theme.backgroundDarker
+      ? theme.backgroundDark
       : theme.backgroundDark,
     color: on ? theme.font : theme.fontDark,
   });
@@ -73,7 +75,7 @@ export const useHighlightHover = (disabled, override = null) => {
   return {
     style: {
       ...style,
-      cursor: disabled ? "disabled" : "pointer",
+      cursor: disabled ? "default" : "pointer",
     },
     onMouseEnter,
     onMouseLeave,

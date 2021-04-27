@@ -18,6 +18,7 @@ import { packageMessage } from "../utils/socket";
 import { viewsAreEqual } from "../utils/view";
 import { darkTheme } from "../shared/colors";
 import socket, { handleId, isNotebook, http } from "../shared/connection";
+import { string } from "prop-types";
 
 export const refresh = selector<boolean>({
   key: "refresh",
@@ -1045,5 +1046,20 @@ export const fieldType = selectorFamily<string, string>({
     return frame
       ? entry[path.slice("frames.".length)].ftype
       : entry[path].ftype;
+  },
+});
+
+export const itemNames = selector<{ plural: string; singular: string }>({
+  key: "itemNames",
+  get: ({ get }) => {
+    return get(isRootView)
+      ? {
+          plural: "samples",
+          singular: "samples",
+        }
+      : {
+          plural: "patches",
+          singular: "patch",
+        };
   },
 });

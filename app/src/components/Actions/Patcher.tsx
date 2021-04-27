@@ -35,7 +35,6 @@ const appendStage = (set, view, stage) => {
 const evaluationKeys = selector<string[]>({
   key: "evaluationKeys",
   get: ({ get }) => {
-    console.log(get(atoms.stateDescription).dataset);
     return Object.keys(get(atoms.stateDescription).dataset.evaluations || {});
   },
 });
@@ -47,7 +46,7 @@ const useToPatches = () => {
       appendStage(set, view, {
         _cls: "fiftyone.core.stages.ToPatches",
         kwargs: [
-          ["field", "ground_truth"],
+          ["field", field],
           ["_state", null],
         ],
       });
@@ -62,7 +61,7 @@ const useToEvaluationPatches = () => {
     appendStage(set, view, {
       _cls: "fiftyone.core.stages.ToEvaluationPatches",
       kwargs: [
-        ["field", "ground_truth"],
+        ["eval_key", evaluation],
         ["_state", null],
       ],
     });
@@ -82,7 +81,6 @@ const LabelsPatches = () => {
               key={field}
               text={field}
               title={`Switch to ${field} patches view`}
-              disabled={false}
               onClick={() => toPatches(field)}
             />
           );
@@ -93,10 +91,9 @@ const LabelsPatches = () => {
 
   return (
     <ActionOption
-      key={null}
-      text={"No valid labels fields"}
+      text={"No labels fields"}
+      title={"No labels fields"}
       disabled={true}
-      onClick={() => {}}
     />
   );
 };
@@ -105,7 +102,7 @@ const EvaluationPatches = () => {
   const evaluations = useRecoilValue(evaluationKeys);
   const toEvaluationPatches = useToEvaluationPatches();
 
-  if ([].length > 0) {
+  if (evaluations.length) {
     return (
       <>
         {evaluations.map((evaluation) => {
@@ -114,7 +111,6 @@ const EvaluationPatches = () => {
               key={evaluation}
               text={evaluation}
               title={`Switch to ${evaluation} evaluation patches view`}
-              disabled={false}
               onClick={() => toEvaluationPatches(evaluation)}
             />
           );
@@ -124,10 +120,9 @@ const EvaluationPatches = () => {
   }
   return (
     <ActionOption
-      key={null}
       text={"No evaluations"}
+      title={"No evaluations"}
       disabled={true}
-      onClick={() => {}}
     />
   );
 };
