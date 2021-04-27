@@ -9,11 +9,16 @@ import {
   useRecoilValue,
 } from "recoil";
 import styled from "styled-components";
-import { animated, useSpring } from "react-spring";
+import { useSpring } from "react-spring";
 
 import Checker, { CheckState } from "./Checker";
 import Popout from "./Popout";
-import { tagStats, numLabelsInSelectedSamples } from "./utils";
+import {
+  tagStats,
+  numLabelsInSelectedSamples,
+  SwitchDiv,
+  SwitcherDiv,
+} from "./utils";
 import { Button } from "../FieldsSidebar";
 import * as labelAtoms from "../Filters/LabelFieldFilters.state";
 import * as fieldAtoms from "../Filters/utils";
@@ -243,25 +248,6 @@ const Section = ({
     </>
   );
 };
-
-const SwitcherDiv = styled.div`
-  border-bottom: 1px solid ${({ theme }) => theme.background};
-  display: flex;
-  margin: 0 -0.5rem;
-  padding: 0 0.5rem;
-`;
-
-const SwitchDiv = animated(styled.div`
-  flex-basis: 0;
-  flex-grow: 1;
-  font-size: 1rem;
-  padding-left: 0.4rem;
-  line-height: 2;
-  font-weight: bold;
-  border-bottom-color: ${({ theme }) => theme.brand};
-  border-bottom-style: solid;
-  border-bottom-width: 2px;
-`);
 
 const labelsPlaceholder = (selection, numLabels, numSamples) => {
   if (numSamples === 0) {

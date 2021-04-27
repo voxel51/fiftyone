@@ -31,6 +31,25 @@ export const HoverItemDiv = animated(styled.div`
   color: ${({ theme }) => theme.fontDark};
 `);
 
+export const SwitcherDiv = styled.div`
+  border-bottom: 1px solid ${({ theme }) => theme.background};
+  display: flex;
+  margin: 0 -0.5rem;
+  padding: 0 0.5rem;
+`;
+
+export const SwitchDiv = animated(styled.div`
+  flex-basis: 0;
+  flex-grow: 1;
+  font-size: 1rem;
+  padding-left: 0.4rem;
+  line-height: 2;
+  font-weight: bold;
+  border-bottom-color: ${({ theme }) => theme.brand};
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+`);
+
 export const useHighlightHover = (disabled, override = null) => {
   const [hovering, setHovering] = useState(false);
   const theme = useTheme();

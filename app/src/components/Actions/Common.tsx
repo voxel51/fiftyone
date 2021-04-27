@@ -1,3 +1,4 @@
+import React from "react";
 import { HoverItemDiv, useHighlightHover } from "./utils";
 
 type ActionOptionProps = {
@@ -7,23 +8,20 @@ type ActionOptionProps = {
   disabled?: boolean;
 };
 
-export const ActionOption = ({
-  onClick,
-  text,
-  title,
-  disabled,
-}: ActionOptionProps) => {
-  const props = useHighlightHover(disabled);
-  if (disabled) {
-    return null;
+export const ActionOption = React.memo(
+  ({ onClick, text, title, disabled }: ActionOptionProps) => {
+    const props = useHighlightHover(disabled);
+    if (disabled) {
+      return null;
+    }
+    return (
+      <HoverItemDiv
+        title={title ? title : text}
+        onClick={disabled ? null : onClick}
+        {...props}
+      >
+        {text}
+      </HoverItemDiv>
+    );
   }
-  return (
-    <HoverItemDiv
-      title={title ? title : text}
-      onClick={disabled ? null : onClick}
-      {...props}
-    >
-      {text}
-    </HoverItemDiv>
-  );
-};
+);
