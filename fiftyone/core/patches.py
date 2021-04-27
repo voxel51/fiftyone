@@ -202,9 +202,20 @@ class _PatchesView(fov.DatasetView):
             self._sync_source_sample_field(sample, field)
 
     def _sync_source_sample_field(self, sample, field):
-        doc = sample._doc.field_to_mongo(sample, field)
+        # @todo precompute this for each field?
+        label_type = self._patches_dataset._get_label_field_type(field)
+        is_list_field = issubclass(label_type, fol._LABEL_LIST_FIELDS)
+
+        # The field in `_source_collection` is a label list field, so we must
+        # package up the docs appropriately
+        doc = sample._doc.field_to_mongo(field)
+        if is_list_field:
+            docs = doc[label_type._LABEL_LIST_FIELD]
+        else:
+            docs = [doc]
+
         self._source_collection._set_labels_by_id(
-            field, [sample.sample_id], [doc]
+            field, [sample.sample_id], [docs]
         )
 
     def _sync_source_fcn(self, sync_fcn, fields):
@@ -238,9 +249,18 @@ class _PatchesView(fov.DatasetView):
         # Sync label updates
         #
 
-        sample_ids, docs = self.aggregate(
-            [foa.Values("sample_id"), foa.Values(label_path)]
+        sample_ids, docs, label_ids = self.aggregate(
+            [
+                foa.Values("sample_id"),
+                foa.Values(label_path),
+                foa.Values(id_path, unwind=True),
+            ]
         )
+
+        # The field in `_source_collection` is a label list field, so we must
+        # package up the docs appropriately
+        if not is_list_field:
+            docs = [[doc] for doc in docs]
 
         self._source_collection._set_labels_by_id(field, sample_ids, docs)
 
@@ -248,15 +268,9 @@ class _PatchesView(fov.DatasetView):
         # Sync label deletions
         #
 
-        if is_list_field:
-            docs = list(
-                itertools.chain.from_iterable(_docs for _docs in docs if _docs)
-            )
-
-        ids = [d["_id"]["$oid"] for d in docs]
-
-        all_ids = self._patches_dataset.values(id_path, unwind=True)
-        delete_ids = set(all_ids) - set(ids)
+        _, id_path = self._source_collection._get_label_field_path(field, "id")
+        all_ids = self._source_collection.values(id_path, unwind=True)
+        delete_ids = set(all_ids) - set(label_ids)
 
         if delete_ids:
             # @todo optimize by using `labels` syntax?

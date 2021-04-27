@@ -956,10 +956,13 @@ class SampleCollection(object):
         label_type = self._get_label_field_type(field_name)
         field_name, is_frame_field = self._handle_frame_field(field_name)
 
+        # @todo use `set_values()` here
+        # https://github.com/voxel51/fiftyone/pull/983 is merged
         ops = []
         if issubclass(label_type, fol._LABEL_LIST_FIELDS):
-            root, leaf = field_name.rsplit(".", 1)
-            set_path = root + ".$." + leaf
+            root = field_name + "." + label_type._LABEL_LIST_FIELD
+            elem_id = root + "._id"
+            set_path = root + ".$"
 
             for _id, _docs in zip(ids, docs):
                 if not _docs:
@@ -968,21 +971,17 @@ class SampleCollection(object):
                 for doc in _docs:
                     ops.append(
                         UpdateOne(
-                            {
-                                "_id": ObjectId(_id),
-                                field_name + "._id": doc["_id"],
-                            },
+                            {"_id": ObjectId(_id), elem_id: doc["_id"]},
                             {"$set": {set_path: doc}},
                         )
                     )
         else:
+            elem_id = field_name + "._id"
+
             for _id, doc in zip(ids, docs):
                 ops.append(
                     UpdateOne(
-                        {
-                            "_id": ObjectId(_id),
-                            field_name + "._id": doc["_id"],
-                        },
+                        {"_id": ObjectId(_id), elem_id: doc["_id"]},
                         {"$set": {field_name: doc}},
                     )
                 )
