@@ -10,13 +10,10 @@ import { useSpring } from "react-spring";
 import Popout from "./Popout";
 import { ActionOption } from "./Common";
 import { SwitcherDiv, SwitchDiv } from "./utils";
-import { PopoutSectionTitle, TabOption } from "../utils";
-import socket from "../../shared/connection";
 import * as atoms from "../../recoil/atoms";
 import * as selectors from "../../recoil/selectors";
 import { PATCHES_FIELDS } from "../../utils/labels";
 import { useTheme } from "../../utils/hooks";
-import { packageMessage } from "../../utils/socket";
 
 type PatcherProps = {
   modal: boolean;
@@ -38,7 +35,8 @@ const appendStage = (set, view, stage) => {
 const evaluationKeys = selector<string[]>({
   key: "evaluationKeys",
   get: ({ get }) => {
-    return get(atoms.stateDescription).evaluations;
+    console.log(get(atoms.stateDescription).dataset);
+    return Object.keys(get(atoms.stateDescription).dataset.evaluations || {});
   },
 });
 
@@ -74,20 +72,32 @@ const useToEvaluationPatches = () => {
 const LabelsPatches = () => {
   const fields = useRecoilValue(patchesFields);
   const toPatches = useToPatches();
+
+  if (fields.length) {
+    return (
+      <>
+        {fields.map((field) => {
+          return (
+            <ActionOption
+              key={field}
+              text={field}
+              title={`Switch to ${field} patches view`}
+              disabled={false}
+              onClick={() => toPatches(field)}
+            />
+          );
+        })}
+      </>
+    );
+  }
+
   return (
-    <>
-      {fields.map((field) => {
-        return (
-          <ActionOption
-            key={field}
-            text={field}
-            title={`Switch to ${field} patches view`}
-            disabled={false}
-            onClick={() => toPatches(field)}
-          />
-        );
-      })}
-    </>
+    <ActionOption
+      key={null}
+      text={"No valid labels fields"}
+      disabled={true}
+      onClick={() => {}}
+    />
   );
 };
 
@@ -95,7 +105,7 @@ const EvaluationPatches = () => {
   const evaluations = useRecoilValue(evaluationKeys);
   const toEvaluationPatches = useToEvaluationPatches();
 
-  if (evaluations.length) {
+  if ([].length > 0) {
     return (
       <>
         {evaluations.map((evaluation) => {
@@ -112,6 +122,14 @@ const EvaluationPatches = () => {
       </>
     );
   }
+  return (
+    <ActionOption
+      key={null}
+      text={"No evaluations"}
+      disabled={true}
+      onClick={() => {}}
+    />
+  );
 };
 
 const Patcher = ({ modal, bounds }: PatcherProps) => {
