@@ -14,6 +14,9 @@ export const VALID_LIST_TYPES = [
   "Keypoints",
   "Polylines",
 ];
+
+export const PATCHES_FIELDS = ["Detections", "Polylines"];
+
 export const VALID_LABEL_TYPES = [
   ...VALID_CLASS_TYPES,
   ...VALID_OBJECT_TYPES,
