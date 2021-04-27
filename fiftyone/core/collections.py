@@ -3340,7 +3340,7 @@ class SampleCollection(object):
         return list(aggregation.all)
 
     @aggregation
-    def bounds(self, field_name=None, expr=None):
+    def bounds(self, field_or_expr, expr=None):
         """Computes the bounds of a numeric field of the collection.
 
         ``None``-valued fields are ignored.
@@ -3398,18 +3398,22 @@ class SampleCollection(object):
             print(bounds)  # (min, max)
 
         Args:
-            field_name (None): the field to operate on
+            field_or_expr: a field name,
+                :class:`fiftyone.core.expressions.ViewExpression`, or
+                `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+                defining the field or expression to aggregate
             expr (None): a :class:`fiftyone.core.expressions.ViewExpression` or
                 `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
-                to apply to the field before aggregating
+                to apply to ``field_or_expr`` (which must be a field) before
+                aggregating
 
         Returns:
             the ``(min, max)`` bounds
         """
-        return self.aggregate(foa.Bounds(field_name=field_name, expr=expr))
+        return self.aggregate(foa.Bounds(field_or_expr, expr=expr))
 
     @aggregation
-    def count(self, field_name=None, expr=None):
+    def count(self, field_or_expr=None, expr=None):
         """Counts the number of field values in the collection.
 
         ``None``-valued fields are ignored.
@@ -3479,20 +3483,26 @@ class SampleCollection(object):
             print(count)  # the count
 
         Args:
-            field_name (None): the field to operate on. If neither
-                ``field_name`` or ``expr`` is provided, the samples themselves
-                are counted
+            field_or_expr (None): a field name,
+                :class:`fiftyone.core.expressions.ViewExpression`, or
+                `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+                defining the field or expression to aggregate. If neither
+                ``field_or_expr`` or ``expr`` is provided, the samples
+                themselves are counted
             expr (None): a :class:`fiftyone.core.expressions.ViewExpression` or
                 `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
-                to apply to the field before aggregating
+                to apply to ``field_or_expr`` (which must be a field) before
+                aggregating
 
         Returns:
             the count
         """
-        return self.aggregate(foa.Count(field_name=field_name, expr=expr))
+        return self.aggregate(
+            foa.Count(field_or_expr=field_or_expr, expr=expr)
+        )
 
     @aggregation
-    def count_values(self, field_name=None, expr=None):
+    def count_values(self, field_or_expr, expr=None):
         """Counts the occurrences of field values in the collection.
 
         This aggregation is typically applied to *countable* field types (or
@@ -3559,20 +3569,22 @@ class SampleCollection(object):
             print(counts)  # dict mapping values to counts
 
         Args:
-            field_name (None): the field to operate on
+            field_or_expr: a field name,
+                :class:`fiftyone.core.expressions.ViewExpression`, or
+                `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+                defining the field or expression to aggregate
             expr (None): a :class:`fiftyone.core.expressions.ViewExpression` or
                 `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
-                to apply to the field before aggregating
+                to apply to ``field_or_expr`` (which must be a field) before
+                aggregating
 
         Returns:
             a dict mapping values to counts
         """
-        return self.aggregate(
-            foa.CountValues(field_name=field_name, expr=expr)
-        )
+        return self.aggregate(foa.CountValues(field_or_expr, expr=expr))
 
     @aggregation
-    def distinct(self, field_name=None, expr=None):
+    def distinct(self, field_or_expr, expr=None):
         """Computes the distinct values of a field in the collection.
 
         ``None``-valued fields are ignored.
@@ -3641,19 +3653,23 @@ class SampleCollection(object):
             print(values)  # list of distinct values
 
         Args:
-            field_name (None): the field to operate on
+            field_or_expr: a field name,
+                :class:`fiftyone.core.expressions.ViewExpression`, or
+                `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+                defining the field or expression to aggregate
             expr (None): a :class:`fiftyone.core.expressions.ViewExpression` or
                 `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
-                to apply to the field before aggregating
+                to apply to ``field_or_expr`` (which must be a field) before
+                aggregating
 
         Returns:
             a sorted list of distinct values
         """
-        return self.aggregate(foa.Distinct(field_name=field_name, expr=expr))
+        return self.aggregate(foa.Distinct(field_or_expr, expr=expr))
 
     @aggregation
     def histogram_values(
-        self, field_name=None, expr=None, bins=None, range=None, auto=False
+        self, field_or_expr, expr=None, bins=None, range=None, auto=False
     ):
         """Computes a histogram of the field values in the collection.
 
@@ -3724,10 +3740,14 @@ class SampleCollection(object):
             plt.show(block=False)
 
         Args:
-            field_name (None): the field to operate on
+            field_or_expr: a field name,
+                :class:`fiftyone.core.expressions.ViewExpression`, or
+                `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+                defining the field or expression to aggregate
             expr (None): a :class:`fiftyone.core.expressions.ViewExpression` or
                 `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
-                to apply to the field before aggregating
+                to apply to ``field_or_expr`` (which must be a field) before
+                aggregating
             bins (None): can be either an integer number of bins to generate or
                 a monotonically increasing sequence specifying the bin edges to
                 use. By default, 10 bins are created. If ``bins`` is an integer
@@ -3754,16 +3774,12 @@ class SampleCollection(object):
         """
         return self.aggregate(
             foa.HistogramValues(
-                field_name=field_name,
-                expr=expr,
-                bins=bins,
-                range=range,
-                auto=auto,
+                field_or_expr, expr=expr, bins=bins, range=range, auto=auto
             )
         )
 
     @aggregation
-    def mean(self, field_name=None, expr=None):
+    def mean(self, field_or_expr, expr=None):
         """Computes the arithmetic mean of the field values of the collection.
 
         ``None``-valued fields are ignored.
@@ -3821,18 +3837,22 @@ class SampleCollection(object):
             print(mean)  # the mean
 
         Args:
-            field_name (None): the field to operate on
+            field_or_expr: a field name,
+                :class:`fiftyone.core.expressions.ViewExpression`, or
+                `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+                defining the field or expression to aggregate
             expr (None): a :class:`fiftyone.core.expressions.ViewExpression` or
                 `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
-                to apply to the field before aggregating
+                to apply to ``field_or_expr`` (which must be a field) before
+                aggregating
 
         Returns:
             the mean
         """
-        return self.aggregate(foa.Mean(field_name=field_name, expr=expr))
+        return self.aggregate(foa.Mean(field_or_expr, expr=expr))
 
     @aggregation
-    def std(self, field_name=None, expr=None, sample=False):
+    def std(self, field_or_expr, expr=None, sample=False):
         """Computes the standard deviation of the field values of the
         collection.
 
@@ -3891,22 +3911,24 @@ class SampleCollection(object):
             print(std)  # the standard deviation
 
         Args:
-            field_name (None): the field to operate on
+            field_or_expr: a field name,
+                :class:`fiftyone.core.expressions.ViewExpression`, or
+                `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+                defining the field or expression to aggregate
             expr (None): a :class:`fiftyone.core.expressions.ViewExpression` or
                 `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
-                to apply to the field before aggregating
+                to apply to ``field_or_expr`` (which must be a field) before
+                aggregating
             sample (False): whether to compute the sample standard deviation rather
                 than the population standard deviation
 
         Returns:
             the standard deviation
         """
-        return self.aggregate(
-            foa.Std(field_name=field_name, expr=expr, sample=sample)
-        )
+        return self.aggregate(foa.Std(field_or_expr, expr=expr, sample=sample))
 
     @aggregation
-    def sum(self, field_name=None, expr=None):
+    def sum(self, field_or_expr, expr=None):
         """Computes the sum of the field values of the collection.
 
         ``None``-valued fields are ignored.
@@ -3964,20 +3986,24 @@ class SampleCollection(object):
             print(total)  # the sum
 
         Args:
-            field_name (None): the field to operate on
+            field_or_expr: a field name,
+                :class:`fiftyone.core.expressions.ViewExpression`, or
+                `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+                defining the field or expression to aggregate
             expr (None): a :class:`fiftyone.core.expressions.ViewExpression` or
                 `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
-                to apply to the field before aggregating
+                to apply to ``field_or_expr`` (which must be a field) before
+                aggregating
 
         Returns:
             the sum
         """
-        return self.aggregate(foa.Sum(field_name=field_name, expr=expr))
+        return self.aggregate(foa.Sum(field_or_expr, expr=expr))
 
     @aggregation
     def values(
         self,
-        field_name=None,
+        field_or_expr,
         expr=None,
         missing_value=None,
         unwind=False,
@@ -4044,10 +4070,14 @@ class SampleCollection(object):
             print(values)  # [4.0, 10.0, None]
 
         Args:
-            field_name (None): the field to operate on
+            field_or_expr: a field name,
+                :class:`fiftyone.core.expressions.ViewExpression`, or
+                `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+                defining the field or expression to aggregate
             expr (None): a :class:`fiftyone.core.expressions.ViewExpression` or
                 `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
-                to apply to the field before aggregating
+                to apply to ``field_or_expr`` (which must be a field) before
+                aggregating
             missing_value (None): a value to insert for missing or
                 ``None``-valued fields
             unwind (False): whether to automatically unwind all recognized list
@@ -4058,7 +4088,7 @@ class SampleCollection(object):
         """
         return self.aggregate(
             foa.Values(
-                field_name=field_name,
+                field_or_expr,
                 expr=expr,
                 missing_value=missing_value,
                 unwind=unwind,

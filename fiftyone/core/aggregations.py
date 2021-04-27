@@ -24,27 +24,40 @@ class Aggregation(object):
     of a :class:`fiftyone.core.collections.SampleCollection` instance.
 
     Args:
-        field_name (None): the field to operate on
+        field_or_expr: a field name,
+            :class:`fiftyone.core.expressions.ViewExpression`, or
+            `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+            defining the field or expression to aggregate
         expr (None): a :class:`fiftyone.core.expressions.ViewExpression` or
             `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
-            to apply to the field before aggregating
+            to apply to ``field_or_expr`` (which must be a field) before
+            aggregating
     """
 
-    def __init__(self, field_name=None, expr=None):
+    def __init__(self, field_or_expr, expr=None):
+        if field_or_expr is not None and not etau.is_str(field_or_expr):
+            if expr is not None:
+                raise ValueError(
+                    "`field_or_expr` must be a field name when the `expr` "
+                    "argument is provided"
+                )
+
+            field_name = None
+            expr = field_or_expr
+        else:
+            field_name = field_or_expr
+
         self._field_name = field_name
         self._expr = expr
 
     @property
     def field_name(self):
-        """The field name being computed on."""
+        """The name of the field being computed on, if any."""
         return self._field_name
 
     @property
     def expr(self):
-        """The :class:`fiftyone.core.expressions.ViewExpression` or MongoDB
-        expression that will be applied to the field before aggregating, if
-        any.
-        """
+        """The expression being computed, if any."""
         return self._expr
 
     def to_mongo(self, sample_collection):
@@ -159,10 +172,14 @@ class Bounds(Aggregation):
         print(bounds)  # (min, max)
 
     Args:
-        field_name (None): the field to operate on
+        field_or_expr: a field name,
+            :class:`fiftyone.core.expressions.ViewExpression`, or
+            `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+            defining the field or expression to aggregate
         expr (None): a :class:`fiftyone.core.expressions.ViewExpression` or
             `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
-            to apply to the field before aggregating
+            to apply to ``field_or_expr`` (which must be a field) before
+            aggregating
     """
 
     def default_result(self):
@@ -205,7 +222,7 @@ class Count(Aggregation):
 
     ``None``-valued fields are ignored.
 
-    If no field is provided, the samples themselves are counted.
+    If no field or expression is provided, the samples themselves are counted.
 
     Examples::
 
@@ -274,15 +291,20 @@ class Count(Aggregation):
         print(count)  # the count
 
     Args:
-        field_name (None): the field to operate on. If neither ``field_name``
-            or ``expr`` is provided, the samples themselves are counted
+        field_or_expr (None): a field name,
+            :class:`fiftyone.core.expressions.ViewExpression`, or
+            `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+            defining the field or expression to aggregate. If neither
+            ``field_or_expr`` or ``expr`` is provided, the samples themselves
+            are counted
         expr (None): a :class:`fiftyone.core.expressions.ViewExpression` or
             `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
-            to apply to the field before aggregating
+            to apply to ``field_or_expr`` (which must be a field) before
+            aggregating
     """
 
-    def __init__(self, field_name=None, expr=None):
-        super().__init__(field_name=field_name, expr=expr)
+    def __init__(self, field_or_expr=None, expr=None):
+        super().__init__(field_or_expr, expr=expr)
 
     def default_result(self):
         """Returns the default result for this aggregation.
@@ -387,10 +409,14 @@ class CountValues(Aggregation):
         print(counts)  # dict mapping values to counts
 
     Args:
-        field_name (None): the field to operate on
+        field_or_expr: a field name,
+            :class:`fiftyone.core.expressions.ViewExpression`, or
+            `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+            defining the field or expression to aggregate
         expr (None): a :class:`fiftyone.core.expressions.ViewExpression` or
             `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
-            to apply to the field before aggregating
+            to apply to ``field_or_expr`` (which must be a field) before
+            aggregating
     """
 
     def default_result(self):
@@ -500,10 +526,14 @@ class Distinct(Aggregation):
         print(values)  # list of distinct values
 
     Args:
-        field_name (None): the field to operate on
+        field_or_expr: a field name,
+            :class:`fiftyone.core.expressions.ViewExpression`, or
+            `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+            defining the field or expression to aggregate
         expr (None): a :class:`fiftyone.core.expressions.ViewExpression` or
             `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
-            to apply to the field before aggregating
+            to apply to ``field_or_expr`` (which must be a field) before
+            aggregating
     """
 
     def default_result(self):
@@ -605,10 +635,14 @@ class HistogramValues(Aggregation):
         plt.show(block=False)
 
     Args:
-        field_name (None): the field to operate on
+        field_or_expr: a field name,
+            :class:`fiftyone.core.expressions.ViewExpression`, or
+            `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+            defining the field or expression to aggregate
         expr (None): a :class:`fiftyone.core.expressions.ViewExpression` or
             `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
-            to apply to the field before aggregating
+            to apply to ``field_or_expr`` (which must be a field) before
+            aggregating
         bins (None): can be either an integer number of bins to generate or a
             monotonically increasing sequence specifying the bin edges to use.
             By default, 10 bins are created. If ``bins`` is an integer and no
@@ -624,9 +658,9 @@ class HistogramValues(Aggregation):
     """
 
     def __init__(
-        self, field_name=None, expr=None, bins=None, range=None, auto=False
+        self, field_or_expr, expr=None, bins=None, range=None, auto=False
     ):
-        super().__init__(field_name=field_name, expr=expr)
+        super().__init__(field_or_expr, expr=expr)
         self._bins = bins
         self._range = range
         self._auto = auto
@@ -829,10 +863,14 @@ class Mean(Aggregation):
         print(mean)  # the mean
 
     Args:
-        field_name (None): the field to operate on
+        field_or_expr: a field name,
+            :class:`fiftyone.core.expressions.ViewExpression`, or
+            `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+            defining the field or expression to aggregate
         expr (None): a :class:`fiftyone.core.expressions.ViewExpression` or
             `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
-            to apply to the field before aggregating
+            to apply to ``field_or_expr`` (which must be a field) before
+            aggregating
     """
 
     def default_result(self):
@@ -925,16 +963,20 @@ class Std(Aggregation):
         print(std)  # the standard deviation
 
     Args:
-        field_name (None): the field to operate on
+        field_or_expr: a field name,
+            :class:`fiftyone.core.expressions.ViewExpression`, or
+            `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+            defining the field or expression to aggregate
         expr (None): a :class:`fiftyone.core.expressions.ViewExpression` or
             `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
-            to apply to the field before aggregating
+            to apply to ``field_or_expr`` (which must be a field) before
+            aggregating
         sample (False): whether to compute the sample standard deviation rather
             than the population standard deviation
     """
 
-    def __init__(self, field_name=None, expr=None, sample=False):
-        super().__init__(field_name=field_name, expr=expr)
+    def __init__(self, field_or_expr, expr=None, sample=False):
+        super().__init__(field_or_expr, expr=expr)
         self._sample = sample
 
     def default_result(self):
@@ -1026,10 +1068,14 @@ class Sum(Aggregation):
         print(total)  # the sum
 
     Args:
-        field_name (None): the field to operate on
+        field_or_expr: a field name,
+            :class:`fiftyone.core.expressions.ViewExpression`, or
+            `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+            defining the field or expression to aggregate
         expr (None): a :class:`fiftyone.core.expressions.ViewExpression` or
             `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
-            to apply to the field before aggregating
+            to apply to ``field_or_expr`` (which must be a field) before
+            aggregating
     """
 
     def default_result(self):
@@ -1124,10 +1170,14 @@ class Values(Aggregation):
         print(values)  # [4.0, 10.0, None]
 
     Args:
-        field_name (None): the field to operate on
+        field_or_expr: a field name,
+            :class:`fiftyone.core.expressions.ViewExpression`, or
+            `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+            defining the field or expression to aggregate
         expr (None): a :class:`fiftyone.core.expressions.ViewExpression` or
             `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
-            to apply to the field before aggregating
+            to apply to ``field_or_expr`` (which must be a field) before
+            aggregating
         missing_value (None): a value to insert for missing or ``None``-valued
             fields
         unwind (False): whether to automatically unwind all recognized list
@@ -1136,14 +1186,14 @@ class Values(Aggregation):
 
     def __init__(
         self,
-        field_name=None,
+        field_or_expr,
         expr=None,
         missing_value=None,
         unwind=False,
         _allow_missing=False,
     ):
-        field_name, found_id_field = _handle_id_fields(field_name)
-        super().__init__(field_name=field_name, expr=expr)
+        field_or_expr, found_id_field = _handle_id_fields(field_or_expr)
+        super().__init__(field_or_expr, expr=expr)
 
         self._missing_value = missing_value
         self._unwind = unwind
@@ -1200,7 +1250,7 @@ class Values(Aggregation):
 
 
 def _handle_id_fields(field_name):
-    if field_name is None:
+    if not etau.is_str(field_name):
         found_id_field = False
     elif field_name == "id":
         field_name = "_id"
@@ -1263,12 +1313,12 @@ def _parse_field_and_expr(
 ):
     if field_name is None and expr is None:
         raise ValueError(
-            "You must provide a field and/or an expression in order to "
-            "perform an aggregation"
+            "You must provide a field or an expression in order to define an "
+            "aggregation"
         )
 
     if field_name is None:
-        field_name, expr = _extract_prefix_from_expression(expr)
+        field_name, expr = _extract_prefix_from_expr(expr)
 
     if expr is not None:
         if field_name is None:
@@ -1321,7 +1371,7 @@ def _parse_field_and_expr(
     return path, pipeline, other_list_fields
 
 
-def _extract_prefix_from_expression(expr):
+def _extract_prefix_from_expr(expr):
     prefixes = []
     _find_prefixes(expr, prefixes)
 
