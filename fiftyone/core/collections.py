@@ -3354,6 +3354,7 @@ class SampleCollection(object):
         Examples::
 
             import fiftyone as fo
+            from fiftyone import ViewField as F
 
             dataset = fo.Dataset()
             dataset.add_samples(
@@ -3394,11 +3395,11 @@ class SampleCollection(object):
             # Compute the bounds of a transformation of a numeric field
             #
 
-            bounds = dataset.bounds("numeric_field", expr=2 * (F() + 1))
+            bounds = dataset.bounds(2 * (F("numeric_field") + 1))
             print(bounds)  # (min, max)
 
         Args:
-            field_or_expr: a field name,
+            field_or_expr: a field name, ``embedded.field.name``,
                 :class:`fiftyone.core.expressions.ViewExpression`, or
                 `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
                 defining the field or expression to aggregate
@@ -3423,6 +3424,7 @@ class SampleCollection(object):
         Examples::
 
             import fiftyone as fo
+            from fiftyone import ViewField as F
 
             dataset = fo.Dataset()
             dataset.add_samples(
@@ -3475,15 +3477,18 @@ class SampleCollection(object):
             print(count)  # the count
 
             #
-            # Count the number of samples with more than 2 predictions
+            # Count the number of objects in samples with > 2 predictions
             #
 
-            expr = (F("detections").length() > 2).if_else(F("detections"), None)
-            count = dataset.count("predictions", expr=expr)
+            count = dataset.count(
+                (F("predictions.detections").length() > 2).if_else(
+                    F("predictions.detections"), None
+                )
+            )
             print(count)  # the count
 
         Args:
-            field_or_expr (None): a field name,
+            field_or_expr (None): a field name, ``embedded.field.name``,
                 :class:`fiftyone.core.expressions.ViewExpression`, or
                 `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
                 defining the field or expression to aggregate. If neither
@@ -3515,6 +3520,7 @@ class SampleCollection(object):
         Examples::
 
             import fiftyone as fo
+            from fiftyone import ViewField as F
 
             dataset = fo.Dataset()
             dataset.add_samples(
@@ -3564,12 +3570,15 @@ class SampleCollection(object):
             # Compute the predicted label counts after some normalization
             #
 
-            expr = F().map_values({"cat": "pet", "dog": "pet"}).upper()
-            counts = dataset.count_values("predictions.detections.label", expr=expr)
+            counts = dataset.count_values(
+                F("predictions.detections.label").map_values(
+                    {"cat": "pet", "dog": "pet"}
+                ).upper()
+            )
             print(counts)  # dict mapping values to counts
 
         Args:
-            field_or_expr: a field name,
+            field_or_expr: a field name, ``embedded.field.name``,
                 :class:`fiftyone.core.expressions.ViewExpression`, or
                 `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
                 defining the field or expression to aggregate
@@ -3599,6 +3608,7 @@ class SampleCollection(object):
         Examples::
 
             import fiftyone as fo
+            from fiftyone import ViewField as F
 
             dataset = fo.Dataset()
             dataset.add_samples(
@@ -3648,12 +3658,15 @@ class SampleCollection(object):
             # Get the distinct predicted labels after some normalization
             #
 
-            expr = F().map_values({"cat": "pet", "dog": "pet"}).upper()
-            values = dataset.distinct("predictions.detections.label", expr=expr)
+            values = dataset.distinct(
+                F("predictions.detections.label").map_values(
+                    {"cat": "pet", "dog": "pet"}
+                ).upper()
+            )
             print(values)  # list of distinct values
 
         Args:
-            field_or_expr: a field name,
+            field_or_expr: a field name, ``embedded.field.name``,
                 :class:`fiftyone.core.expressions.ViewExpression`, or
                 `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
                 defining the field or expression to aggregate
@@ -3685,6 +3698,7 @@ class SampleCollection(object):
             import matplotlib.pyplot as plt
 
             import fiftyone as fo
+            from fiftyone import ViewField as F
 
             samples = []
             for idx in range(100):
@@ -3733,14 +3747,14 @@ class SampleCollection(object):
             #
 
             counts, edges, other = dataset.histogram_values(
-                "numeric_field", expr=2 * (F() + 1), bins=50
+                2 * (F("numeric_field") + 1), bins=50
             )
 
             plot_hist(counts, edges)
             plt.show(block=False)
 
         Args:
-            field_or_expr: a field name,
+            field_or_expr: a field name, ``embedded.field.name``,
                 :class:`fiftyone.core.expressions.ViewExpression`, or
                 `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
                 defining the field or expression to aggregate
@@ -3793,6 +3807,7 @@ class SampleCollection(object):
         Examples::
 
             import fiftyone as fo
+            from fiftyone import ViewField as F
 
             dataset = fo.Dataset()
             dataset.add_samples(
@@ -3833,11 +3848,11 @@ class SampleCollection(object):
             # Compute the mean of a transformation of a numeric field
             #
 
-            mean = dataset.mean("numeric_field", expr=2 * (F() + 1))
+            mean = dataset.mean(2 * (F("numeric_field") + 1))
             print(mean)  # the mean
 
         Args:
-            field_or_expr: a field name,
+            field_or_expr: a field name, ``embedded.field.name``,
                 :class:`fiftyone.core.expressions.ViewExpression`, or
                 `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
                 defining the field or expression to aggregate
@@ -3867,6 +3882,7 @@ class SampleCollection(object):
         Examples::
 
             import fiftyone as fo
+            from fiftyone import ViewField as F
 
             dataset = fo.Dataset()
             dataset.add_samples(
@@ -3907,11 +3923,11 @@ class SampleCollection(object):
             # Compute the standard deviation of a transformation of a numeric field
             #
 
-            std = dataset.std("numeric_field", expr=2 * (F() + 1))
+            std = dataset.std(2 * (F("numeric_field") + 1))
             print(std)  # the standard deviation
 
         Args:
-            field_or_expr: a field name,
+            field_or_expr: a field name, ``embedded.field.name``,
                 :class:`fiftyone.core.expressions.ViewExpression`, or
                 `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
                 defining the field or expression to aggregate
@@ -3942,6 +3958,7 @@ class SampleCollection(object):
         Examples::
 
             import fiftyone as fo
+            from fiftyone import ViewField as F
 
             dataset = fo.Dataset()
             dataset.add_samples(
@@ -3982,11 +3999,11 @@ class SampleCollection(object):
             # Compute the sum of a transformation of a numeric field
             #
 
-            total = dataset.sum("numeric_field", expr=2 * (F() + 1))
+            total = dataset.sum(2 * (F("numeric_field") + 1))
             print(total)  # the sum
 
         Args:
-            field_or_expr: a field name,
+            field_or_expr: a field name, ``embedded.field.name``,
                 :class:`fiftyone.core.expressions.ViewExpression`, or
                 `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
                 defining the field or expression to aggregate
@@ -4066,11 +4083,11 @@ class SampleCollection(object):
             # Get all values of transformed field
             #
 
-            values = dataset.values("numeric_field", expr=2 * (F() + 1))
+            values = dataset.values(2 * (F("numeric_field") + 1))
             print(values)  # [4.0, 10.0, None]
 
         Args:
-            field_or_expr: a field name,
+            field_or_expr: a field name, ``embedded.field.name``,
                 :class:`fiftyone.core.expressions.ViewExpression`, or
                 `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
                 defining the field or expression to aggregate
