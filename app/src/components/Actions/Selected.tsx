@@ -232,7 +232,7 @@ const useModalActions = (frameNumberRef, close) => {
       onClick: closeAndCall(useHideSelected()),
     },
     {
-      text: "Hide unselected (current sample)",
+      text: `Hide unselected (current ${itemNames.singular})`,
       hidden: !hasVisibleUnselected,
       onClick: closeAndCall(useHideOthers(visibleModalSampleLabels)),
     },
