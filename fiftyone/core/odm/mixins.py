@@ -55,7 +55,7 @@ def validate_fields_match(
     the existing field.
 
     Args:
-        field_name: the name of the fiel
+        field_name: the name of the field
         field_or_kwargs: a :class:`fiftyone.core.fields.Field` instance or a
             dict of keyword arguments describing it
         existing_field_or_kwargs: a :class:`fiftyone.core.fields.Field` instance or
