@@ -8,40 +8,12 @@ import {
 } from "recoil";
 
 import Popout from "./Popout";
-import { HoverItemDiv, useHighlightHover } from "./utils";
+import { ActionOption } from "./Common";
 import * as atoms from "../../recoil/atoms";
 import * as selectors from "../../recoil/selectors";
 import * as labelAtoms from "../Filters/LabelFieldFilters.state";
 import socket from "../../shared/connection";
 import { packageMessage } from "../../utils/socket";
-
-type ActionOptionProps = {
-  onClick: () => void;
-  text: string;
-  title?: string;
-  disabled?: boolean;
-};
-
-const ActionOption = ({
-  onClick,
-  text,
-  title,
-  disabled,
-}: ActionOptionProps) => {
-  const props = useHighlightHover(disabled);
-  if (disabled) {
-    return null;
-  }
-  return (
-    <HoverItemDiv
-      title={title ? title : text}
-      onClick={disabled ? null : onClick}
-      {...props}
-    >
-      {text}
-    </HoverItemDiv>
-  );
-};
 
 const useGridActions = (close: () => void) => {
   const clearSelection = useRecoilCallback(

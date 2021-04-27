@@ -85,6 +85,23 @@ export const datasetName = selector({
   },
 });
 
+export const viewCls = selector<string>({
+  key: "viewCls",
+  get: ({ get }) => {
+    const stateDescription = get(atoms.stateDescription);
+    return stateDescription.view_cls;
+  },
+});
+
+export const isRootView = selector<boolean>({
+  key: "isRootView",
+  get: ({ get }) => {
+    return [undefined, null, "fiftyone.core.view.DatasetView"].includes(
+      get(viewCls)
+    );
+  },
+});
+
 export const datasets = selector({
   key: "datasets",
   get: ({ get }) => {

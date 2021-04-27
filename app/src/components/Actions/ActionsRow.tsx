@@ -7,6 +7,7 @@ import React, {
 } from "react";
 import { CircularProgress } from "@material-ui/core";
 import {
+  AspectRatio,
   Check,
   LocalOffer,
   Save,
@@ -17,9 +18,10 @@ import useMeasure from "react-use-measure";
 import { useRecoilState, useRecoilValue } from "recoil";
 import styled from "styled-components";
 
-import Tagger from "./Tagger";
-import Selector from "./Selected";
 import Coloring from "./Options";
+import Patcher from "./Patcher";
+import Selector from "./Selected";
+import Tagger from "./Tagger";
 import { PillButton } from "../utils";
 import * as atoms from "../../recoil/atoms";
 import * as selectors from "../../recoil/selectors";
@@ -30,6 +32,33 @@ import { packageMessage } from "../../utils/socket";
 const ActionDiv = styled.div`
   position: relative;
 `;
+
+const Patches = () => {
+  const [open, setOpen] = useState(false);
+  const theme = useTheme();
+  const ref = useRef();
+  useOutsideClick(ref, () => open && setOpen(false));
+  const [mRef, bounds] = useMeasure();
+  const close = useRecoilValue(selectors.selectedLoading);
+
+  useLayoutEffect(() => {
+    close && setOpen(false);
+  }, [close]);
+
+  return (
+    <ActionDiv ref={ref}>
+      <PillButton
+        icon={<AspectRatio />}
+        open={open}
+        onClick={() => setOpen(!open)}
+        highlight={open}
+        ref={mRef}
+        title={"Patches"}
+      />
+      {open && <Patcher />}
+    </ActionDiv>
+  );
+};
 
 const Tag = ({ modal }) => {
   const [open, setOpen] = useState(false);
@@ -233,6 +262,7 @@ type ActionsRowProps = {
 };
 
 const ActionsRow = ({ modal, playerRef, frameNumberRef }: ActionsRowProps) => {
+  const isRootView = useRecoilValue(selectors.isRootView);
   const style = modal
     ? {
         overflowX: "auto",
@@ -246,6 +276,7 @@ const ActionsRow = ({ modal, playerRef, frameNumberRef }: ActionsRowProps) => {
       {modal && <ShowJSON />}
       <Options modal={modal} />
       <Tag modal={modal} />
+      {!modal && isRootView && <Patches modal={modal} />}
       {modal && <Hidden />}
       {!modal && <SaveFilters />}
       <Selected
