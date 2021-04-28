@@ -9,6 +9,7 @@ import { CircularProgress } from "@material-ui/core";
 import {
   AspectRatio,
   Check,
+  FlipToBack,
   LocalOffer,
   Save,
   Settings,
@@ -28,6 +29,7 @@ import * as selectors from "../../recoil/selectors";
 import socket from "../../shared/connection";
 import { useOutsideClick, useTheme } from "../../utils/hooks";
 import { packageMessage } from "../../utils/socket";
+import Similar from "./Similar";
 
 const ActionDiv = styled.div`
   position: relative;
@@ -54,6 +56,31 @@ const Patches = () => {
         title={"Patches"}
       />
       {open && <Patcher close={() => setOpen(false)} />}
+    </ActionDiv>
+  );
+};
+
+const Similarity = () => {
+  const [open, setOpen] = useState(false);
+  const ref = useRef();
+  useOutsideClick(ref, () => open && setOpen(false));
+  const [mRef, bounds] = useMeasure();
+
+  useLayoutEffect(() => {
+    close && setOpen(false);
+  }, [close]);
+
+  return (
+    <ActionDiv ref={ref}>
+      <PillButton
+        icon={<FlipToBack />}
+        open={open}
+        onClick={() => setOpen(!open)}
+        highlight={open}
+        ref={mRef}
+        title={"Similarity"}
+      />
+      {open && <Similar close={() => setOpen(false)} />}
     </ActionDiv>
   );
 };
@@ -232,25 +259,9 @@ const ActionsRowDiv = styled.div`
   display: flex;
   justify-content: ltr;
   margin-top: 2.5px;
-
-  scrollbar-width: none;
-  @-moz-document url-prefix() {
-    padding-right: 16px;
-  }
-
-  ::-webkit-scrollbar {
-    width: 0px;
-    background: transparent;
-    display: none;
-  }
-  ::-webkit-scrollbar-thumb {
-    width: 0px;
-    display: none;
-  }
-
-  & > div {
-    margin-right: 0.5rem;
-  }
+  flex-wrap: wrap;
+  row-gap: 0.5rem;
+  column-gap: 0.5rem;
 `;
 
 type ActionsRowProps = {
@@ -274,7 +285,8 @@ const ActionsRow = ({ modal, playerRef, frameNumberRef }: ActionsRowProps) => {
       {modal && <ShowJSON />}
       <Options modal={modal} />
       <Tag modal={modal} />
-      {!modal && isRootView && <Patches modal={modal} />}
+      {!modal && isRootView && <Patches />}
+      {isRootView && <Similarity modal={modal} />}
       {modal && <Hidden />}
       {!modal && <SaveFilters />}
       <Selected

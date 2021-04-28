@@ -125,11 +125,10 @@ const EvaluationPatches = ({ close }) => {
 };
 
 type PatcherProps = {
-  modal: boolean;
   close: () => void;
 };
 
-const Patcher = ({ modal, bounds, close }: PatcherProps) => {
+const Patcher = ({ bounds, close }: PatcherProps) => {
   const theme = useTheme();
   const [labels, setLabels] = useState(true);
 
@@ -142,7 +141,7 @@ const Patcher = ({ modal, bounds, close }: PatcherProps) => {
     cursor: labels ? "pointer" : "default",
   });
   return (
-    <Popout modal={modal} bounds={bounds}>
+    <Popout modal={false} bounds={bounds}>
       <SwitcherDiv>
         <SwitchDiv
           style={labelProps}

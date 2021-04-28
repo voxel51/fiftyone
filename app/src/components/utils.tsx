@@ -61,7 +61,7 @@ export const ModalFooter = styled.div`
   right: 0;
   bottom: 0;
   width: 100%;
-  height: 64.5px;
+  min-height: 64.5px;
 `;
 
 export const scrollbarStyles = ({ theme }) => `
