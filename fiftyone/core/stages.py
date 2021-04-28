@@ -10,6 +10,7 @@ from copy import deepcopy
 import random
 import reprlib
 import uuid
+import warnings
 
 from bson import ObjectId
 from deprecated import deprecated
@@ -3644,6 +3645,181 @@ class SortBy(ViewStage):
             sample_collection.create_index(field_or_expr)
 
 
+class SortBySimilarity(ViewStage):
+    """Sorts the samples in a collection by visual similiarity to a specified
+    set of query ID(s).
+
+    In order to use this stage, you must first use
+    :meth:`fiftyone.brain.compute_similarity` to index your dataset by visual
+    similiarity.
+
+    Examples::
+
+        import fiftyone as fo
+        import fiftyone.brain as fob
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("quickstart").clone()
+
+        fob.compute_similarity(dataset, brain_key="similarity")
+
+        #
+        # Sort the samples by their visual similarity to the first sample
+        # in the dataset
+        #
+
+        query_id = dataset.first().id
+        stage = fo.SortBySimilarity(query_id)
+        view = dataset.add_stage(stage)
+
+    Args:
+        query_ids: an ID or iterable of query IDs. These may be sample IDs or
+            label IDs depending on ``brain_key``
+        k (None): the number of matches to return. By default, the entire
+            collection is sorted
+        reverse (False): whether to sort by least similarity
+        brain_key (None): the brain key of an existing
+            :meth:`fiftyone.brain.compute_similarity` run on the dataset. If
+            not provided, the dataset must have exactly one similarity run,
+            which will be used
+    """
+
+    def __init__(
+        self, query_ids, k=None, reverse=False, brain_key=None, _state=None
+    ):
+        if etau.is_str(query_ids):
+            query_ids = [query_ids]
+        else:
+            query_ids = list(query_ids)
+
+        self._query_ids = query_ids
+        self._k = k
+        self._reverse = reverse
+        self._brain_key = brain_key
+        self._state = _state
+        self._pipeline = None
+
+    @property
+    def query_ids(self):
+        """The list of query IDs."""
+        return self._query_ids
+
+    @property
+    def k(self):
+        """The number of matches to return."""
+        return self._k
+
+    @property
+    def reverse(self):
+        """Whether to sort by least similiarity."""
+        return self._reverse
+
+    @property
+    def brain_key(self):
+        """The brain key of the
+        :class:`fiftyone.brain.similiarity.SimilarityResults` to use.
+        """
+        return self._brain_key
+
+    def to_mongo(self, _):
+        if self._pipeline is None:
+            raise ValueError(
+                "`validate()` must be called before using a %s stage"
+                % self.__class__
+            )
+
+        return self._pipeline
+
+    def _kwargs(self):
+        return [
+            ["query_ids", self._query_ids],
+            ["k", self._k],
+            ["reverse", self._reverse],
+            ["brain_key", self._brain_key],
+            ["_state", self._state],
+        ]
+
+    @classmethod
+    def _params(cls):
+        return [
+            {
+                "name": "query_ids",
+                "type": "list<id>|id",
+                "placeholder": "list,of,ids",
+            },
+            {
+                "name": "k",
+                "type": "NoneType|int",
+                "default": "None",
+                "placeholder": "k (default=None)",
+            },
+            {
+                "name": "reverse",
+                "type": "bool",
+                "default": "False",
+                "placeholder": "reverse (default=False)",
+            },
+            {
+                "name": "brain_key",
+                "type": "NoneType|str",
+                "default": "None",
+                "placeholder": "brain key",
+            },
+            {"name": "_state", "type": "NoneType|json", "default": "None"},
+        ]
+
+    def validate(self, sample_collection):
+        state = {
+            "dataset": sample_collection._root_dataset.name,
+            "stages": sample_collection.view()._serialize(include_uuids=False),
+            "query_ids": self._query_ids,
+            "k": self._k,
+            "reverse": self._reverse,
+            "brain_key": self._brain_key,
+        }
+
+        last_state = deepcopy(self._state)
+        if last_state is not None:
+            pipeline = last_state.pop("pipeline", None)
+        else:
+            pipeline = None
+
+        if state != last_state or pipeline is None:
+            pipeline = self._make_pipeline(sample_collection)
+
+            state["pipeline"] = pipeline
+            self._state = state
+
+        self._pipeline = pipeline
+
+    def _make_pipeline(self, sample_collection):
+        if self._brain_key is not None:
+            brain_key = self._brain_key
+        else:
+            brain_keys = sample_collection._get_similarity_keys()
+            if not brain_keys:
+                raise ValueError(
+                    "Dataset '%s' has no similarity results. You must run "
+                    "`fiftyone.brain.compute_similarity()` in order to sort "
+                    "by similarity" % sample_collection._dataset.name
+                )
+
+            brain_key = brain_keys[0]
+
+            if len(brain_keys) > 1:
+                msg = "Multiple similarity runs found; using '%s'" % brain_key
+                warnings.warn(msg)
+
+        results = sample_collection.load_brain_results(brain_key)
+        return results.sort_by_similarity(
+            self._query_ids,
+            k=self._k,
+            reverse=self._reverse,
+            samples=sample_collection,
+            mongo=True,
+        )
+
+
 class Take(ViewStage):
     """Randomly samples the given number of samples from a collection.
 
@@ -3712,7 +3888,7 @@ class Take(ViewStage):
         if self._size <= 0:
             return [{"$match": {"_id": None}}]
 
-        # @todo avoid creating new field here?
+        # @todo can we avoid creating a new field here?
         return [
             {"$set": {"_rand_take": {"$mod": [self._randint, "$_rand"]}}},
             {"$sort": {"_rand_take": ASCENDING}},
@@ -4117,6 +4293,7 @@ _STAGES = [
     SetField,
     Skip,
     SortBy,
+    SortBySimilarity,
     Take,
     ToPatches,
     ToEvaluationPatches,
