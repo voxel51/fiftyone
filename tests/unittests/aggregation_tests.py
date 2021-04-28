@@ -62,6 +62,9 @@ class DatasetTests(unittest.TestCase):
         self.assertEqual(
             d.bounds("detections.detections.confidence"), (0, 1),
         )
+        self.assertEqual(
+            d.bounds(1 + F("detections.detections.confidence")), (1, 2),
+        )
 
         d = fo.Dataset()
         s = fo.Sample(filepath="video.mp4")
@@ -86,12 +89,18 @@ class DatasetTests(unittest.TestCase):
 
         s["single"] = fo.Classification()
         s["list"] = fo.Classifications(
-            classifications=[fo.Classification()] * 2
+            classifications=[
+                fo.Classification(label="a"),
+                fo.Classification(label="b"),
+            ]
         )
         s["empty"] = fo.Classifications()
         s.save()
         self.assertEqual(d.count("single"), 1)
         self.assertEqual(d.count("list.classifications"), 2)
+        self.assertEqual(
+            d.count(F("list.classifications").filter(F("label") == "a")), 1
+        )
         self.assertEqual(d.count("empty.classifications"), 0)
 
         d = fo.Dataset()
@@ -133,6 +142,10 @@ class DatasetTests(unittest.TestCase):
             {"one": 1, "two": 2},
         )
         self.assertEqual(
+            d.count_values(F("classifications.classifications.label").upper()),
+            {"ONE": 1, "TWO": 2},
+        )
+        self.assertEqual(
             d.count_values("frames.classifications.classifications.label"),
             {"one": 1, "two": 2},
         )
@@ -168,6 +181,11 @@ class DatasetTests(unittest.TestCase):
             ["one", "two"],
         )
 
+        self.assertEqual(
+            d.distinct(F("classifications.classifications.label").upper()),
+            ["ONE", "TWO"],
+        )
+
         d = fo.Dataset()
         s = fo.Sample(filepath="video.mp4")
         s[1]["classification"] = fo.Classification(label="label", confidence=1)
@@ -188,6 +206,8 @@ class DatasetTests(unittest.TestCase):
         d.add_sample(s)
         self.assertEqual(d.sum("numeric_field"), 3)
 
+        self.assertAlmostEqual(d.sum(2.0 * (F("numeric_field") + 1)), 10.0)
+
     @drop_datasets
     def test_mean(self):
         d = fo.Dataset()
@@ -202,6 +222,8 @@ class DatasetTests(unittest.TestCase):
         d.add_sample(s)
         self.assertEqual(d.mean("numeric_field"), 2)
 
+        self.assertAlmostEqual(d.mean(2.0 * (F("numeric_field") + 1)), 6.0)
+
     @drop_datasets
     def test_std(self):
         d = fo.Dataset()
@@ -215,6 +237,8 @@ class DatasetTests(unittest.TestCase):
         s = fo.Sample(filepath="image2.jpeg", numeric_field=3)
         d.add_sample(s)
         self.assertEqual(d.std("numeric_field"), 1)
+
+        self.assertAlmostEqual(d.std(2.0 * (F("numeric_field") + 1)), 2.0)
 
     @drop_datasets
     def test_values(self):
@@ -291,6 +315,11 @@ class DatasetTests(unittest.TestCase):
         )
 
         self.assertListEqual(
+            d.values(F("predictions.detections[].label")),
+            ["cat", "dog", "cat", "rabbit", "squirrel", "elephant", None],
+        )
+
+        self.assertListEqual(
             d.values(
                 "predictions.detections[].label", missing_value="missing"
             ),
@@ -298,14 +327,29 @@ class DatasetTests(unittest.TestCase):
         )
 
         self.assertListEqual(
-            d.values("predictions.detections", expr=F().length()),
-            [2, 3, 2, 0, 0],
+            d.values(F("predictions.detections").length()), [2, 3, 2, 0, 0],
         )
 
         self.assertListEqual(
             d.values(
-                "predictions.detections[]",
-                expr=(F("label") != None).if_else("found", "missing"),
+                (F("predictions.detections.label") != None).if_else(
+                    "found", "missing"
+                )
+            ),
+            [
+                ["found", "found"],
+                ["found", "found", "found"],
+                ["found", "missing"],
+                None,
+                None,
+            ],
+        )
+
+        self.assertListEqual(
+            d.values(
+                (F("predictions.detections[].label") != None).if_else(
+                    "found", "missing"
+                )
             ),
             ["found", "found", "found", "found", "found", "found", "missing"],
         )
