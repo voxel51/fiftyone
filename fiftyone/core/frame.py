@@ -352,10 +352,11 @@ class Frames(object):
         repl_fns = sorted(self._replacements.keys())
         repl_fn = repl_fns[0] if repl_fns else None
 
-        frame_dicts = self._frames_view._aggregate(frames_only=True)
-        frame_dicts = sorted(frame_dicts, key=lambda d: d["frame_number"])
+        pipeline = self._frames_view._pipeline(frames_only=True) + [
+            {"$sort": {"frame_number": 1}}
+        ]
 
-        for d in frame_dicts:
+        for d in self._sample._dataset._aggregate(pipeline):
             if repl_fn is not None and d["frame_number"] >= repl_fn:
                 self._iter_frame = self._replacements[repl_fn]
                 repl_fn += 1
