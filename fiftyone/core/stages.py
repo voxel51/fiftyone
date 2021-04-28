@@ -3811,61 +3811,6 @@ class SortBySimilarity(ViewStage):
         )
 
 
-def _get_default_similarity_run(sample_collection):
-    if isinstance(sample_collection, fop.PatchesView):
-        patches_field = sample_collection.patches_field
-        brain_keys = sample_collection._get_similarity_keys(
-            patches_field=patches_field
-        )
-
-        if not brain_keys:
-            raise ValueError(
-                "Dataset '%s' has no similarity results for field '%s'. You "
-                "must run "
-                "`fiftyone.brain.compute_similarity(..., patches_field='%s', ...)` "
-                "in order to sort the patches in this view by similarity"
-                % (
-                    sample_collection.dataset_name,
-                    patches_field,
-                    patches_field,
-                )
-            )
-
-    elif isinstance(sample_collection, fop.EvaluationPatchesView):
-        gt_field = sample_collection.gt_field
-        pred_field = sample_collection.pred_field
-
-        brain_keys = sample_collection._get_similarity_keys(
-            patches_field=gt_field
-        ) + sample_collection._get_similarity_keys(patches_field=pred_field)
-
-        if not brain_keys:
-            raise ValueError(
-                "Dataset '%s' has no similarity results for its '%s' or '%s' "
-                "fields. You must run "
-                "`fiftyone.brain.compute_similarity(..., patches_field=label_field, ...)` "
-                "in order to sort the patches in this view by similarity"
-                % (sample_collection.dataset_name, gt_field, pred_field)
-            )
-    else:
-        brain_keys = sample_collection._get_similarity_keys(patches_field=None)
-
-        if not brain_keys:
-            raise ValueError(
-                "Dataset '%s' has no similarity results for its samples. You "
-                "must run `fiftyone.brain.compute_similarity()` in order to "
-                "sort by similarity" % sample_collection.dataset_name
-            )
-
-    brain_key = brain_keys[0]
-
-    if len(brain_keys) > 1:
-        msg = "Multiple similarity runs found; using '%s'" % brain_key
-        warnings.warn(msg)
-
-    return brain_key
-
-
 class Take(ViewStage):
     """Randomly samples the given number of samples from a collection.
 
@@ -4289,6 +4234,61 @@ def _make_omit_empty_pipeline(sample_collection, fields):
     stage = Match(F.any(match_exprs))
     stage.validate(sample_collection)
     return stage.to_mongo(sample_collection)
+
+
+def _get_default_similarity_run(sample_collection):
+    if isinstance(sample_collection, fop.PatchesView):
+        patches_field = sample_collection.patches_field
+        brain_keys = sample_collection._get_similarity_keys(
+            patches_field=patches_field
+        )
+
+        if not brain_keys:
+            raise ValueError(
+                "Dataset '%s' has no similarity results for field '%s'. You "
+                "must run "
+                "`fiftyone.brain.compute_similarity(..., patches_field='%s', ...)` "
+                "in order to sort the patches in this view by similarity"
+                % (
+                    sample_collection.dataset_name,
+                    patches_field,
+                    patches_field,
+                )
+            )
+
+    elif isinstance(sample_collection, fop.EvaluationPatchesView):
+        gt_field = sample_collection.gt_field
+        pred_field = sample_collection.pred_field
+
+        brain_keys = sample_collection._get_similarity_keys(
+            patches_field=gt_field
+        ) + sample_collection._get_similarity_keys(patches_field=pred_field)
+
+        if not brain_keys:
+            raise ValueError(
+                "Dataset '%s' has no similarity results for its '%s' or '%s' "
+                "fields. You must run "
+                "`fiftyone.brain.compute_similarity(..., patches_field=label_field, ...)` "
+                "in order to sort the patches in this view by similarity"
+                % (sample_collection.dataset_name, gt_field, pred_field)
+            )
+    else:
+        brain_keys = sample_collection._get_similarity_keys(patches_field=None)
+
+        if not brain_keys:
+            raise ValueError(
+                "Dataset '%s' has no similarity results for its samples. You "
+                "must run `fiftyone.brain.compute_similarity()` in order to "
+                "sort by similarity" % sample_collection.dataset_name
+            )
+
+    brain_key = brain_keys[0]
+
+    if len(brain_keys) > 1:
+        msg = "Multiple similarity runs found; using '%s'" % brain_key
+        warnings.warn(msg)
+
+    return brain_key
 
 
 class _ViewStageRepr(reprlib.Repr):
