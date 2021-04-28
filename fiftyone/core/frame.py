@@ -86,55 +86,16 @@ class Frames(object):
         view = self._view or self._sample._dataset
         return view.select(self._sample.id)
 
-    def _set_replacement(self, frame):
-        self._replacements[frame.frame_number] = frame
+    @property
+    def _in_db(self):
+        return self._sample._in_db
 
-    def _set_replacements(self, frames):
-        frame_dict_to_doc = self._sample._dataset._frame_dict_to_doc
-        for d in frames:
-            if d["frame_number"] in self._replacements:
-                continue
-            frame = Frame.from_doc(
-                frame_dict_to_doc(d),
-                dataset=self._sample._dataset,
-                view=self._view,
-            )
-            self._replacements[frame.frame_number] = frame
+    @property
+    def _frame_collection(self):
+        return self._sample._dataset._frame_collection
 
-    def _save_replacements(self, insert=False):
-        if not self._replacements:
-            return
-
-        if insert:
-            self._frame_collection.insert_many(
-                [
-                    self._make_dict(frame)
-                    for frame in self._replacements.values()
-                ]
-            )
-        else:
-            self._frame_collection.bulk_write(
-                [
-                    ReplaceOne(
-                        self._make_filter(frame_number, self._sample._id),
-                        self._make_dict(frame),
-                        upsert=True,
-                    )
-                    for frame_number, frame in self._replacements.items()
-                ],
-                ordered=False,
-            )
-
-        self._replacements = {}
-
-    def _make_filter(self, frame_number, sample_id):
-        return {"frame_number": frame_number, "_sample_id": sample_id}
-
-    def _make_dict(self, frame):
-        d = frame._doc.to_dict(extended=False)
-        d.pop("_id", None)
-        d["_sample_id"] = self._sample._id
-        return d
+    def _get_field_cls(self):
+        return self._sample._doc.frames.__class__
 
     def __iter__(self):
         self._iter = self.keys()
@@ -197,25 +158,20 @@ class Frames(object):
         fofu.validate_frame_number(frame_number)
 
         if not isinstance(frame, Frame):
-            raise ValueError("Value must be a %s" % Frame.__name__)
+            raise ValueError(
+                "Expected a %s, but found %s" % (Frame, type(frame))
+            )
 
-        doc = frame._doc
-        doc.set_field("frame_number", frame_number)
-        doc._sample_id = self._sample._id
+        if frame._in_db:
+            frame = frame.copy()
 
-        if not self._in_db and frame_number not in self._replacements:
-            pass
-        elif self._in_db:
-            if (
-                self._iter_frame is not None
-                and frame_number != self._iter_frame.frame_number
-            ):
-                self._frame_collection.find(
-                    {
-                        "_sample_id": self._sample._id,
-                        "frame_number": frame_number,
-                    }
-                )
+        frame._doc._sample_id = self._sample._id
+        frame._doc.frame_number = frame_number
+
+        if self._in_db:
+            d = self._make_dict(frame)
+            doc = self._sample._dataset._frame_dict_to_doc(d)
+            frame._set_backing_doc(doc, dataset=self._sample._dataset)
 
         self._set_replacement(frame)
 
@@ -340,14 +296,6 @@ class Frames(object):
                 {"_sample_id": self._sample._id}
             )
             self._sample._doc.clear_field("frames")
-
-    @property
-    def _in_db(self):
-        return self._sample._in_db
-
-    @property
-    def _frame_collection(self):
-        return self._sample._dataset._frame_collection
 
     def _iter_frames(self):
         if not self._in_db:
