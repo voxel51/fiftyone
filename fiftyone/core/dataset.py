@@ -1230,7 +1230,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self._sample_collection.insert_one(d)  # adds `_id` to `d`
 
         if not sample._in_db:
-            doc = self._sample_doc_cls.from_dict(d, extended=False)
+            doc = self._sample_dict_to_doc(d)
             sample._set_backing_doc(doc, dataset=self)
 
         if self.media_type == fom.VIDEO:
@@ -1344,7 +1344,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         for sample, d in zip(samples, dicts):
             if not sample._in_db:
-                doc = self._sample_doc_cls.from_dict(d, extended=False)
+                doc = self._sample_dict_to_doc(d)
                 sample._set_backing_doc(doc, dataset=self)
 
             if self.media_type == fom.VIDEO:
@@ -3217,10 +3217,18 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             )
 
     def _sample_dict_to_doc(self, d):
-        return self._sample_doc_cls.from_dict(d, extended=False)
+        try:
+            return self._sample_doc_cls.from_dict(d, extended=False)
+        except:
+            self.reload()
+            return self._sample_doc_cls.from_dict(d, extended=False)
 
     def _frame_dict_to_doc(self, d):
-        return self._frame_doc_cls.from_dict(d, extended=False)
+        try:
+            return self._frame_doc_cls.from_dict(d, extended=False)
+        except:
+            self.reload()
+            return self._frame_doc_cls.from_dict(d, extended=False)
 
     def _to_fields_str(self, field_schema):
         max_len = max([len(field_name) for field_name in field_schema]) + 1
