@@ -202,6 +202,9 @@ def scatterplot(
 
             -   the name of a sample field or ``embedded.field.name`` of
                 ``samples`` from which to extract numeric or string values
+            -   a :class:`fiftyone.core.expressions.ViewExpression` defining
+                numeric or string values to compute from ``samples`` via
+                :meth:`fiftyone.core.collections.SampleCollection.values`
             -   a list or array-like of numeric or string values
             -   a list of lists of numeric or string values, if ``link_field``
                 refers to a label list field like
@@ -212,6 +215,9 @@ def scatterplot(
 
             -   the name of a sample field or ``embedded.field.name`` of
                 ``samples`` from which to extract numeric values
+            -   a :class:`fiftyone.core.expressions.ViewExpression` defining
+                numeric values to compute from ``samples`` via
+                :meth:`fiftyone.core.collections.SampleCollection.values`
             -   a list or array-like of numeric values
             -   a list of lists of numeric or string values, if ``link_field``
                 refers to a label list field like
@@ -297,6 +303,9 @@ def location_scatterplot(
 
             -   the name of a sample field or ``embedded.field.name`` of
                 ``samples`` from which to extract numeric or string values
+            -   a :class:`fiftyone.core.expressions.ViewExpression` defining
+                numeric or string values to compute from ``samples`` via
+                :meth:`fiftyone.core.collections.SampleCollection.values`
             -   a list or array-like of numeric or string values
 
         sizes (None): data to use to scale the sizes of the points. Can be any
@@ -304,6 +313,9 @@ def location_scatterplot(
 
             -   the name of a sample field or ``embedded.field.name`` of
                 ``samples`` from which to extract numeric values
+            -   a :class:`fiftyone.core.expressions.ViewExpression` defining
+                numeric values to compute from ``samples`` via
+                :meth:`fiftyone.core.collections.SampleCollection.values`
             -   a list or array-like of numeric values
 
         classes (None): an optional list of classes whose points to plot.
