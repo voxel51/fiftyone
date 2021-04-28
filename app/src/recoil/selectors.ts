@@ -1,4 +1,4 @@
-import { selector, selectorFamily } from "recoil";
+import { selector, selectorFamily, SerializableParam } from "recoil";
 
 import * as atoms from "./atoms";
 import { ColorGenerator } from "player51";
@@ -450,7 +450,7 @@ const scalarFilter = (f) => {
   );
 };
 
-const fields = selectorFamily({
+const fields = selectorFamily<{ [key: string]: SerializableParam }, string>({
   key: "fields",
   get: (dimension: string) => ({ get }) => {
     return get(fieldSchema(dimension)).reduce((acc, cur) => {
@@ -495,6 +495,13 @@ const selectedFields = selectorFamily({
       }
     });
     return fields_;
+  },
+});
+
+export const defaultGridZoom = selector<number | null>({
+  key: "defaultGridZoom",
+  get: ({ get }) => {
+    return get(appConfig).default_grid_zoom;
   },
 });
 
@@ -1009,5 +1016,17 @@ export const matchedTags = selectorFamily<
       }
       set(filterStages, stages);
     }
+  },
+});
+
+export const fieldType = selectorFamily<string, string>({
+  key: "fieldType",
+  get: (path) => ({ get }) => {
+    const frame = path.startsWith("frames.") && get(isVideoDataset);
+
+    const entry = get(fields(frame ? "frame" : "sample"));
+    return frame
+      ? entry[path.slice("frames.".length)].ftype
+      : entry[path].ftype;
   },
 });

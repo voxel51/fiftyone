@@ -174,7 +174,7 @@ export const sampleModalFilter = selector({
     const labels = get(activeFields(true));
     const hiddenLabels = get(atoms.hiddenLabels);
     const fields = get(activeFields(false));
-    return (sample, prefix = null) => {
+    return (sample, prefix = null, allFields = false) => {
       return Object.entries(sample).reduce((acc, [key, value]) => {
         if (value && hiddenLabels[value.id ?? value._id]) {
           return acc;
@@ -187,9 +187,9 @@ export const sampleModalFilter = selector({
         } else if (
           value &&
           VALID_LIST_TYPES.includes(value._cls) &&
-          labels.includes(key)
+          (labels.includes(key) || allFields)
         ) {
-          if (fields.includes(key)) {
+          if (allFields || fields.includes(key)) {
             acc[key] =
               filters[key] && value !== null
                 ? {
@@ -206,14 +206,14 @@ export const sampleModalFilter = selector({
           value !== null &&
           filters[key] &&
           filters[key](value) &&
-          labels.includes(key)
+          (labels.includes(key) || allFields)
         ) {
           acc[key] = value;
         } else if (RESERVED_FIELDS.includes(key)) {
           acc[key] = value;
         } else if (
           ["string", "number", "null"].includes(typeof value) &&
-          labels.includes(key)
+          (labels.includes(key) || allFields)
         ) {
           acc[key] = value;
         }
@@ -383,14 +383,14 @@ export const filteredLabelSampleModalCounts = selectorFamily<
     const labels = get(selectors.labelNames(dimension));
     const types = get(selectors.labelTypesMap);
     const filter = get(sampleModalFilter);
-    const sample = filter(get(selectors.modalSample) || {});
+    const sample = filter(get(selectors.modalSample) || {}, null, true);
     const frameData = get(atoms.sampleFrameData(sample._id));
     if (dimension === "frame") {
       return labels.reduce((acc, path) => {
         if (!(path in acc)) acc[path] = 0;
         if (!Boolean(frameData)) return acc;
         for (const frame of frameData) {
-          const filtered = filter(frame, "frames.");
+          const filtered = filter(frame, "frames.", true);
           acc[path] += sampleCountResolver(
             filtered["frames." + path],
             types["frames." + path]
@@ -402,8 +402,8 @@ export const filteredLabelSampleModalCounts = selectorFamily<
 
     return labels.reduce((acc, path) => {
       const result = sampleCountResolver(sample[path], types[path]);
+      acc[path] = !acc[path] ? 0 : acc[path];
       if (result > 0) {
-        acc[path] = !acc[path] ? 0 : acc[path];
         acc[path] += result;
       }
       return acc;

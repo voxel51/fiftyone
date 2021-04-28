@@ -79,21 +79,19 @@ export const AGGS = {
   DISTINCT: "Distinct",
 };
 
-export const VALID_SCALAR_TYPES = [
-  "fiftyone.core.fields.BooleanField",
-  "fiftyone.core.fields.FloatField",
-  "fiftyone.core.fields.IntField",
-  "fiftyone.core.fields.StringField",
-];
-
-export const VALID_NUMERIC_TYPES = [
-  "fiftyone.core.fields.FloatField",
-  "fiftyone.core.fields.IntField",
-];
-
 export const BOOLEAN_FIELD = "fiftyone.core.fields.BooleanField";
-
+export const FLOAT_FIELD = "fiftyone.core.fields.FloatField";
+export const INT_FIELD = "fiftyone.core.fields.IntField";
 export const STRING_FIELD = "fiftyone.core.fields.StringField";
+
+export const VALID_SCALAR_TYPES = [
+  BOOLEAN_FIELD,
+  FLOAT_FIELD,
+  INT_FIELD,
+  STRING_FIELD,
+];
+
+export const VALID_NUMERIC_TYPES = [FLOAT_FIELD, INT_FIELD];
 
 export const RESERVED_FIELDS = [
   "_id",

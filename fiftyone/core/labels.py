@@ -977,7 +977,6 @@ _SINGLE_LABEL_FIELDS = (
 _LABEL_LIST_FIELDS = (
     Classifications,
     Detections,
-    GeoLocations,
     Keypoints,
     Polylines,
 )

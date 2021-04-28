@@ -1,4 +1,10 @@
-import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
+import React, {
+  MutableRefObject,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import { CircularProgress } from "@material-ui/core";
 import {
   Check,
@@ -69,7 +75,15 @@ const Tag = ({ modal }) => {
   );
 };
 
-const Selected = ({ modal, frameNumberRef }) => {
+const Selected = ({
+  modal,
+  playerRef,
+  frameNumberRef,
+}: {
+  modal: boolean;
+  playerRef?: any;
+  frameNumberRef?: MutableRefObject<number>;
+}) => {
   const [open, setOpen] = useState(false);
   const selectedSamples = useRecoilValue(atoms.selectedSamples);
   const selectedObjects = useRecoilValue(selectors.selectedLabels);
@@ -101,6 +115,7 @@ const Selected = ({ modal, frameNumberRef }) => {
         <Selector
           modal={modal}
           close={() => setOpen(false)}
+          playerRef={playerRef}
           frameNumberRef={frameNumberRef}
           bounds={bounds}
         />
@@ -213,11 +228,11 @@ const ActionsRowDiv = styled.div`
 
 type ActionsRowProps = {
   modal: boolean;
-  frameNumberRef?: any;
-  children: any;
+  playerRef?: any;
+  frameNumberRef: MutableRefObject<number>;
 };
 
-const ActionsRow = ({ modal, frameNumberRef }: ActionsRowProps) => {
+const ActionsRow = ({ modal, playerRef, frameNumberRef }: ActionsRowProps) => {
   const style = modal
     ? {
         overflowX: "auto",
@@ -233,7 +248,11 @@ const ActionsRow = ({ modal, frameNumberRef }: ActionsRowProps) => {
       <Tag modal={modal} />
       {modal && <Hidden />}
       {!modal && <SaveFilters />}
-      <Selected modal={modal} frameNumberRef={frameNumberRef} />
+      <Selected
+        modal={modal}
+        playerRef={playerRef}
+        frameNumberRef={frameNumberRef}
+      />
     </ActionsRowDiv>
   );
 };

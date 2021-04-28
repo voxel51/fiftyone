@@ -14,7 +14,7 @@ const Popout = ({ modal, children, style = {}, bounds }) => {
       duration: 100,
     },
   });
-  const { height, width } = useWindowSize();
+  const { width } = useWindowSize();
   const position =
     modal && bounds
       ? {
