@@ -7,7 +7,7 @@ Dataset runs framework.
 """
 from copy import copy
 import datetime
-import json
+from bson import json_util
 
 import numpy as np
 
@@ -300,7 +300,7 @@ class Run(Configurable):
         """
         key = run_info.key
         dataset_doc = samples._root_dataset._doc
-        view_stages = [json.dumps(s) for s in samples.view()._serialize()]
+        view_stages = [json_util.dumps(s) for s in samples.view()._serialize()]
         run_docs = getattr(dataset_doc, cls._runs_field())
 
         if key in run_docs:
@@ -397,7 +397,7 @@ class Run(Configurable):
         import fiftyone.core.view as fov
 
         run_doc = cls._get_run_doc(samples, key)
-        stage_dicts = [json.loads(s) for s in run_doc.view_stages]
+        stage_dicts = [json_util.loads(s) for s in run_doc.view_stages]
         view = fov.DatasetView._build(samples._root_dataset, stage_dicts)
 
         if not select_fields:
@@ -476,8 +476,8 @@ class Run(Configurable):
         run_doc = run_docs.get(key, None)
         if run_doc is None:
             raise ValueError(
-                "%s key '%s' not found on collection '%s'"
-                % (cls._run_str().capitalize(), key, samples.name)
+                "%s key '%s' not found on dataset '%s'"
+                % (cls._run_str().capitalize(), key, samples._dataset.name)
             )
 
         return run_doc

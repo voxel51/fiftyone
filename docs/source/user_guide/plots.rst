@@ -583,7 +583,7 @@ notebook:
     dataset.compute_metadata()
 
     # Define some interesting plots
-    plot1 = fo.NumericalHistogram("metadata.size_bytes", expr=F() / 1024, bins=50, xlabel="image size (KB)")
+    plot1 = fo.NumericalHistogram(F("metadata.size_bytes") / 1024, bins=50, xlabel="image size (KB)")
     plot2 = fo.NumericalHistogram("predictions.detections.confidence", bins=50)
     plot3 = fo.CategoricalHistogram("ground_truth.detections.label", order="frequency")
     plot4 = fo.CategoricalHistogram("predictions.detections.label", order="frequency")
