@@ -854,7 +854,6 @@ class LegacyFiftyOneDatasetImporter(GenericSampleDatasetImporter):
 
             sample = fos.Sample.from_dict(d)
 
-            # @todo clean up this hack
             sample._frames = fof.Frames(sample=sample)
             self._import_frame_labels(sample, labels_path)
         else:

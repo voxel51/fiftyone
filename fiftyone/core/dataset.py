@@ -2989,7 +2989,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
                 sample = fos.Sample.from_dict(sd)
 
-                # @todo clean up this hack
                 sample._frames = fofr.Frames(sample=sample)
                 for key, value in frames.items():
                     sample.frames[int(key)] = fofr.Frame.from_dict(value)
