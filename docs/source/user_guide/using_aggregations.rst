@@ -66,13 +66,14 @@ transform the data in arbitrarily complex ways:
 
     from fiftyone import ViewField as F
 
-    num_objects = F("detections").length()
+    # Expression that computes the number of predicted objects
+    num_objects = F("predictions.detections").length()
 
     # The `(min, max)` number of predictions per sample
-    print(dataset.bounds("predictions", expr=num_objects))
+    print(dataset.bounds(num_objects))
 
     # The average number of predictions per sample
-    print(dataset.mean("predictions", expr=num_objects))
+    print(dataset.mean(num_objects))
 
 The sections below discuss the available aggregations in more detail. You can
 also refer to the :mod:`fiftyone.core.aggregations` module documentation for
@@ -445,17 +446,17 @@ The following examples demonstrate the power of aggregating with expressions:
 
             dataset = foz.load_zoo_dataset("quickstart")
 
-            # Expression that computes the number of objects in a `Detections` field
-            num_objects = F("detections").length()
+            # Expression that computes the number of predicted objects
+            num_objects = F("predictions.detections").length()
 
             # The `(min, max)` number of predictions per sample
-            print(dataset.bounds("predictions", expr=num_objects))
+            print(dataset.bounds(num_objects))
 
             # The average number of predictions per sample
-            print(dataset.mean("predictions", expr=num_objects))
+            print(dataset.mean(num_objects))
 
             # Two equivalent ways of computing the total number of predictions
-            print(dataset.sum("predictions", expr=num_objects))
+            print(dataset.sum(num_objects))
             print(dataset.count("predictions.detections"))
 
     .. tab:: Normalized labels
@@ -479,10 +480,12 @@ The following examples demonstrate the power of aggregating with expressions:
 
             # Expression that replaces all animal labels with "animal" and then
             # capitalizes all labels
-            normed_labels = F("label").map_values({a: "animal" for a in ANIMALS}).upper()
+            normed_labels = F("predictions.detections.label").map_values(
+                {a: "animal" for a in ANIMALS}
+            ).upper()
 
             # A histogram of normalized predicted labels
-            print(dataset.count_values("predictions.detections[]", expr=normed_labels))
+            print(dataset.count_values(normed_labels))
 
     .. tab:: Bounding box areas
 
@@ -505,18 +508,17 @@ The following examples demonstrate the power of aggregating with expressions:
             bbox_height = F("bounding_box")[3] * F("$metadata.height")
             bbox_area = bbox_width * bbox_height
 
-            # Compute (min, max, mean) of ground truth bounding boxes
-            print(dataset.bounds("ground_truth.detections[]", expr=bbox_area))
-            print(dataset.mean("ground_truth.detections[]", expr=bbox_area))
+            # Expression that computes the area of ground truth bboxes
+            gt_areas = F("ground_truth.detections[]").apply(bbox_area)
 
-            # Compute same statistics for the predictions
-            print(dataset.bounds("predictions.detections[]", expr=bbox_area))
-            print(dataset.mean("predictions.detections[]", expr=bbox_area))
+            # Compute (min, max, mean) of ground truth bounding boxes
+            print(dataset.bounds(gt_areas))
+            print(dataset.mean(gt_areas))
 
 .. note::
 
-    When aggregating with expressions, field names may contain list fields, and
-    such field paths are handled as
+    When aggregating expressions, field names may contain list fields, and such
+    field paths are handled as
     :ref:`explained above <aggregations-list-fields>`.
 
     However, there is one important exception when expressions are involved:
@@ -535,17 +537,19 @@ The following examples demonstrate the power of aggregating with expressions:
         dataset = foz.load_zoo_dataset("quickstart")
 
         # Counts the number of predicted objects
-        # Here, ``predictions.detections`` is treated as ``predictions.detections[]``
+        # Here, `predictions.detections` is treated as `predictions.detections[]`
         print(dataset.count("predictions.detections"))
 
         # Counts the number of predicted objects with confidence > 0.9
-        # Here, ``predictions.detections`` is not automatically unwound
-        print(
-            dataset.sum(
-                "predictions.detections",
-                expr=F().filter(F("confidence") > 0.9).length()
-            )
-        )
+        # Here, `predictions.detections` is not automatically unwound
+        num_preds = F("predictions.detections").filter(F("confidence") > 0.9).length()
+        print(dataset.sum(num_preds))
+
+        # Computes the (min, max) bounding box area in normalized coordinates
+        # Here we must manually specify that we want to unwind terminal list field
+        # `predictions.detections` by appending `[]`
+        bbox_area = F("bounding_box")[2] * F("bounding_box")[3]
+        print(dataset.bounds(F("ground_truth.detections[]").apply(bbox_area)))
 
 .. _aggregations-batching:
 
