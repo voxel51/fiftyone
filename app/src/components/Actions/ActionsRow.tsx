@@ -78,7 +78,7 @@ const Similarity = () => {
         onClick={() => setOpen(!open)}
         highlight={open}
         ref={mRef}
-        title={"Similarity"}
+        title={"Sort by similarity"}
       />
       {open && <Similar close={() => setOpen(false)} />}
     </ActionDiv>
