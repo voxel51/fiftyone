@@ -3770,8 +3770,7 @@ class SortBySimilarity(ViewStage):
 
     def validate(self, sample_collection):
         state = {
-            # @todo use `_root_dataset` when available
-            "dataset": sample_collection._dataset.name,
+            "dataset": sample_collection._root_dataset.name,
             "stages": sample_collection.view()._serialize(include_uuids=False),
             "query_ids": self._query_ids,
             "k": self._k,
@@ -3889,7 +3888,7 @@ class Take(ViewStage):
         if self._size <= 0:
             return [{"$match": {"_id": None}}]
 
-        # @todo avoid creating new field here?
+        # @todo can we avoid creating a new field here?
         return [
             {"$set": {"_rand_take": {"$mod": [self._randint, "$_rand"]}}},
             {"$sort": {"_rand_take": ASCENDING}},
