@@ -627,6 +627,15 @@ class DatasetView(foc.SampleCollection):
         """
         self._dataset.drop_index(field_name)
 
+    def reload(self):
+        """Reloads the underlying dataset from the database.
+
+        Note that :class:`fiftyone.core.sample.SampleView` instances are not
+        singletons, so any in-memory samples extracted from this view will not
+        be updated by calling this method.
+        """
+        self._dataset.reload()
+
     def to_dict(self, rel_dir=None, frame_labels_dir=None, pretty_print=False):
         """Returns a JSON dictionary representation of the view.
 

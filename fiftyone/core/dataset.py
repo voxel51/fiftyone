@@ -1234,7 +1234,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             sample._set_backing_doc(doc, dataset=self)
 
         if self.media_type == fom.VIDEO:
-            sample.frames._serve(sample)
+            sample.frames._sample = sample
             sample.frames._save(insert=True)
 
         return str(d["_id"])
@@ -1348,7 +1348,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 sample._set_backing_doc(doc, dataset=self)
 
             if self.media_type == fom.VIDEO:
-                sample.frames._serve(sample)
+                sample.frames._sample = sample
                 sample.frames._save(insert=True)
 
         return [str(d["_id"]) for d in dicts]
@@ -2989,7 +2989,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
                 sample = fos.Sample.from_dict(sd)
 
-                sample._frames = fofr.Frames()  # @todo clean up this hack
+                # @todo clean up this hack
+                sample._frames = fofr.Frames(sample=sample)
                 for key, value in frames.items():
                     sample.frames[int(key)] = fofr.Frame.from_dict(value)
             else:
@@ -3255,6 +3256,15 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 continue
 
             field.validate(value)
+
+    def reload(self):
+        """Reloads the dataset and any in-memory samples from the database."""
+        self._reload(hard=True)
+
+        fos.Sample._reload_docs(self._sample_collection_name, hard=True)
+
+        if self.media_type == fom.VIDEO:
+            fofr.Frame._reload_docs(self._frame_collection_name, hard=True)
 
     def _reload(self, hard=False):
         if not hard:

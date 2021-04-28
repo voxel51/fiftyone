@@ -5,8 +5,6 @@ Base class for objects that are backed by database documents.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from copy import deepcopy
-
 import eta.core.serial as etas
 
 
@@ -16,11 +14,13 @@ class Document(object):
     documents in database collections.
 
     Args:
+        doc: the backing :class:`fiftyone.core.odm.document.Document`
         dataset (None): the :class:`fiftyone.core.dataset.Dataset` to which the
             document belongs
     """
 
-    def __init__(self, dataset=None):
+    def __init__(self, doc, dataset=None):
+        self._doc = doc
         self._dataset = dataset
 
     def __dir__(self):
@@ -41,11 +41,6 @@ class Document(object):
         ):
             super().__setattr__(name, value)
         else:
-            try:
-                self._secure_media(name, value)
-            except AttributeError:
-                pass
-
             self._doc.__setattr__(name, value)
 
     def __delattr__(self, name):
@@ -266,8 +261,7 @@ class Document(object):
         Returns:
             a :class:`Document`
         """
-        kwargs = {k: deepcopy(v) for k, v in self.iter_fields()}
-        return self.__class__(**kwargs)
+        raise NotImplementedError("subclass must implement copy()")
 
     def to_dict(self):
         """Serializes the document to a JSON dictionary.
@@ -307,10 +301,18 @@ class Document(object):
         """Saves the document to the database."""
         self._doc.save()
 
-    def reload(self):
+    def reload(self, hard=False):
         """Reloads the document from the database."""
-        # only reload attrs that are in our schema
-        self._doc.reload(*list(self._doc))
+        if hard:
+            self._reload_backing_doc()
+        else:
+            # We can only reload fields that are in our schema
+            self._doc.reload(*list(self._doc))
+
+    def _reload_backing_doc(self):
+        raise NotImplementedError(
+            "subclass must implement _reload_backing_doc()"
+        )
 
     def _delete(self):
         """Deletes the document from the database."""
@@ -354,9 +356,7 @@ class Document(object):
 
         self._doc = doc
 
-        samples = self._instances[doc.collection_name]
-        if self.id not in samples:
-            samples[self.id] = self
+        self._instances[doc.collection_name][self.id] = self
 
         self._dataset = dataset
 
@@ -419,7 +419,7 @@ class Document(object):
                 document._doc._data.pop(field_name, None)
 
     @classmethod
-    def _reload_docs(cls, collection_name, doc_ids=None):
+    def _reload_docs(cls, collection_name, doc_ids=None, hard=False):
         """Reloads the backing documents for all in-memory documents in the
         collection.
 
@@ -440,14 +440,14 @@ class Document(object):
         # Reload all docs
         if doc_ids is None:
             for document in documents.values():
-                document.reload()
+                document.reload(hard=hard)
 
         # Reload docs with `doc_ids`, reset others
         if doc_ids is not None:
             reset_ids = set()
             for document in documents.values():
                 if document.id in doc_ids:
-                    document.reload()
+                    document.reload(hard=hard)
                 else:
                     reset_ids.add(document.id)
                     document._reset_backing_doc()

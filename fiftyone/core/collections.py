@@ -4348,6 +4348,12 @@ class SampleCollection(object):
         """
         raise NotImplementedError("Subclass must implement drop_index()")
 
+    def reload(self):
+        """Reloads the collection and any in-memory samples from the
+        database.
+        """
+        raise NotImplementedError("Subclass must implement reload()")
+
     def to_dict(self, rel_dir=None, frame_labels_dir=None, pretty_print=False):
         """Returns a JSON dictionary representation of the collection.
 

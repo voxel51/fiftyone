@@ -778,7 +778,7 @@ class DatasetMixin(object):
                 filtered_field = "test_dets.detections"
 
             Output:
-                ObjectID("5f2062bf27c024654f5286a0")
+                ObjectId("5f2062bf27c024654f5286a0")
                 "test_dets.detections.$[element].label"
         """
         el = self
@@ -971,27 +971,12 @@ class NoDatasetMixin(object):
         return cls(**kwargs)
 
     def save(self):
-        """Saves the sample to the database.
-
-        Because the sample does not belong to a dataset, this method does
-        nothing.
-        """
         pass
 
     def reload(self):
-        """Reloads the sample from the database.
-
-        Because the sample does not belong to a dataset, this method does
-        nothing.
-        """
         pass
 
     def delete(self):
-        """Deletes the sample from the database.
-
-        Because the sample does not belong to a dataset, this method does
-        nothing.
-        """
         pass
 
 

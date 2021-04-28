@@ -49,10 +49,14 @@ class Frames(object):
     :class:`Frames` instances behave like ``defaultdict(Frame)`` instances; an
     empty :class:`Frame` instance is returned when accessing a new frame
     number.
+
+    Args:
+        sample (None): the :class:`fiftyone.core.sample.Sample` to which the
+            frames are attached
     """
 
-    def __init__(self):
-        self._sample = None
+    def __init__(self, sample=None):
+        self._sample = sample
         self._iter = None
         self._iter_frame = None
         self._replacements = {}
@@ -158,11 +162,11 @@ class Frames(object):
         fofu.validate_frame_number(frame_number)
 
         frame = None
-        d = None
         default_d = {
             "_sample_id": self._sample._id,
             "frame_number": frame_number,
         }
+
         if (
             self._iter is not None
             and frame_number == self._iter_frame.frame_number
@@ -374,32 +378,66 @@ class Frames(object):
             self._set_replacement(self._iter_frame)
             yield self._iter_frame
 
+    def _set_replacement(self, frame):
+        self._replacements[frame.frame_number] = frame
+
+    def _save_replacements(self, insert=False):
+        if not self._replacements:
+            return
+
+        if insert:
+            self._frame_collection.insert_many(
+                [
+                    self._make_dict(frame)
+                    for frame in self._replacements.values()
+                ]
+            )
+        else:
+            self._frame_collection.bulk_write(
+                [
+                    ReplaceOne(
+                        self._make_filter(frame_number, self._sample._id),
+                        self._make_dict(frame),
+                        upsert=True,
+                    )
+                    for frame_number, frame in self._replacements.items()
+                ],
+                ordered=False,
+            )
+
+        self._replacements = {}
+
+    def _make_filter(self, frame_number, sample_id):
+        return {"frame_number": frame_number, "_sample_id": sample_id}
+
+    def _make_dict(self, frame):
+        d = frame._doc.to_dict(extended=False)
+        d.pop("_id", None)
+        d["_sample_id"] = self._sample._id
+        return d
+
     def _to_frames_dict(self):
         return {
             str(frame_number): frame.to_dict()
             for frame_number, frame in self.items()
         }
 
-    def _get_field_cls(self):
-        return self._sample._doc.frames.__class__
-
     def _save(self, insert=False):
         if not self._in_db:
             return
 
-        self._save_replacements(insert)
-
-    def _serve(self, sample):
-        self._sample = sample
-        return self
+        self._save_replacements(insert=insert)
 
 
 class Frame(Document):
     """A frame in a video :class:`fiftyone.core.sample.Sample`.
 
-    :class:`Frame` instances can hold any :class:`fiftyone.core.label.Label`
+    :class:`Frame` instances can hold any :class:`fiftyone.core.labels.Label`
     or other :class:`fiftyone.core.fields.Field` type that can be assigned
     directly to :class:`fiftyone.core.sample.Sample` instances.
+
+    Args:
+        **kwargs: frame fields and values
     """
 
     # Instance references keyed by [collection_name][sample_id][frame_number]
@@ -409,8 +447,8 @@ class Frame(Document):
     _NO_COLL_CLS = foo.NoDatasetFrameSampleDocument
 
     def __init__(self, **kwargs):
-        self._doc = foo.NoDatasetFrameSampleDocument(**kwargs)
-        super().__init__()
+        doc = foo.NoDatasetFrameSampleDocument(**kwargs)
+        super().__init__(doc)
 
     def __str__(self):
         return repr(self)
@@ -464,18 +502,16 @@ class Frame(Document):
         """
         if isinstance(doc, foo.NoDatasetFrameSampleDocument):
             frame = cls.__new__(cls)
-            frame._dataset = None
             frame._doc = doc
+            frame._dataset = None
             return frame
 
         frame = None
         if view is None:
             try:
-                # Get instance if exists
-                key = str(doc._sample_id)
-                frame = cls._instances[doc.collection_name][key][
-                    doc.frame_number
-                ]
+                frame = cls._instances[doc.collection_name][
+                    str(doc._sample_id)
+                ][doc.frame_number]
             except KeyError:
                 pass
 
@@ -496,12 +532,20 @@ class Frame(Document):
             doc.save()
 
         self._doc = doc
-
-        frames = self._instances[doc.collection_name][str(self._sample_id)]
-        if self.frame_number not in frames:
-            frames[self.frame_number] = self
-
         self._dataset = dataset
+
+        self._instances[doc.collection_name][str(self._sample_id)][
+            self.frame_number
+        ] = self
+
+    def _reload_backing_doc(self):
+        if not self._in_db:
+            return
+
+        d = self._dataset._frame_collection.find_one(
+            {"_sample_id": self._sample_id, "frame_number": self.frame_number}
+        )
+        self._doc = self._dataset._frame_dict_to_doc(d)
 
     @classmethod
     def _rename_fields(cls, collection_name, field_names, new_field_names):
@@ -537,7 +581,9 @@ class Frame(Document):
                     document._doc._data.pop(field_name, None)
 
     @classmethod
-    def _reload_docs(cls, collection_name, doc_ids=None, sample_ids=None):
+    def _reload_docs(
+        cls, collection_name, doc_ids=None, sample_ids=None, hard=False
+    ):
         if collection_name not in cls._instances:
             return
 
@@ -547,7 +593,7 @@ class Frame(Document):
         if doc_ids is None and sample_ids is None:
             for frames in samples.values():
                 for document in frames.values():
-                    document.reload()
+                    document.reload(hard=hard)
 
         # Reload docs for samples with `sample_ids`, reset others
         if sample_ids is not None:
@@ -555,7 +601,7 @@ class Frame(Document):
             for sample_id, frames in samples.items():
                 if sample_id in sample_ids:
                     for document in frames.values():
-                        document.reload()
+                        document.reload(hard=hard)
                 else:
                     reset_ids.add(sample_id)
                     for document in frames.values():
@@ -570,7 +616,7 @@ class Frame(Document):
                 reset_ids = set()
                 for document in frames.values():
                     if document.id in doc_ids:
-                        document.reload()
+                        document.reload(hard=hard)
                     else:
                         reset_ids.add(document.id)
                         document._reset_backing_doc()

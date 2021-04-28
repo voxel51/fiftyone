@@ -38,9 +38,16 @@ def get_default_sample_fields(include_private=False, include_id=False):
 
 
 class _Sample(Document):
+    def __init__(self, doc, dataset=None):
+        super().__init__(doc, dataset=dataset)
+        if self.media_type == fomm.VIDEO:
+            self._frames = fofr.Frames(sample=self)
+        else:
+            self._frames = None
+
     def __getattr__(self, name):
         if name == "frames" and self.media_type == fomm.VIDEO:
-            return self._frames._serve(self)
+            return self._frames
 
         return super().__getattr__(name)
 
@@ -49,6 +56,7 @@ class _Sample(Document):
             self.set_field("frames", value)
             return
 
+        self._secure_media(name, value)
         super().__setattr__(name, value)
 
     def __getitem__(self, field_name):
@@ -89,7 +97,7 @@ class _Sample(Document):
 
     def get_field(self, field_name):
         if field_name == "frames" and self.media_type == fomm.VIDEO:
-            return self._frames._serve(self)
+            return self._frames
 
         return super().get_field(field_name)
 
@@ -328,13 +336,10 @@ class Sample(_Sample):
     _instances = defaultdict(weakref.WeakValueDictionary)
 
     def __init__(self, filepath, tags=None, metadata=None, **kwargs):
-        self._doc = foo.NoDatasetSampleDocument(
+        doc = foo.NoDatasetSampleDocument(
             filepath=filepath, tags=tags, metadata=metadata, **kwargs
         )
-        if self.media_type == fomm.VIDEO:
-            self._frames = fofr.Frames()
-
-        super().__init__()
+        super().__init__(doc)
 
     def __str__(self):
         return repr(self)
@@ -342,7 +347,7 @@ class Sample(_Sample):
     def __repr__(self):
         kwargs = {}
         if self.media_type == fomm.VIDEO:
-            kwargs["frames"] = self._frames._serve(self)
+            kwargs["frames"] = self._frames
 
         return self._doc.fancy_repr(
             class_name=self.__class__.__name__, **kwargs
@@ -350,7 +355,7 @@ class Sample(_Sample):
 
     def __iter__(self):
         if self.media_type == fomm.VIDEO:
-            return self._frames._serve(self).__iter__()
+            return iter(self._frames)
 
         raise StopIteration
 
@@ -410,7 +415,7 @@ class Sample(_Sample):
             sample._set_backing_doc(doc, dataset=dataset)
 
         if sample.media_type == fomm.VIDEO:
-            sample._frames = fofr.Frames()
+            sample._frames = fofr.Frames(sample=sample)
 
         return sample
 
@@ -456,9 +461,6 @@ class Sample(_Sample):
             sample.reload()
 
     def _set_backing_doc(self, doc, dataset=None):
-        if isinstance(self._doc, foo.DatasetSampleDocument):
-            raise TypeError("Sample already belongs to a dataset")
-
         if not isinstance(doc, foo.DatasetSampleDocument):
             raise TypeError(
                 "Backing doc must be an instance of %s; found %s"
@@ -466,6 +468,13 @@ class Sample(_Sample):
             )
 
         super()._set_backing_doc(doc, dataset=dataset)
+
+    def _reload_backing_doc(self):
+        if not self._in_db:
+            return
+
+        d = self._dataset._sample_collection.find_one({"_id": self._id})
+        self._doc = self._dataset._sample_dict_to_doc(d)
 
 
 class SampleView(_Sample):
@@ -513,17 +522,12 @@ class SampleView(_Sample):
             selected_fields = selected_fields.difference(excluded_fields)
             excluded_fields = None
 
-        self._doc = doc
         self._view = view
         self._selected_fields = selected_fields
         self._excluded_fields = excluded_fields
         self._filtered_fields = filtered_fields
 
-        if self.media_type == fomm.VIDEO:
-            self._frames = fofr.Frames()
-            self._frames._serve(self)
-
-        super().__init__(dataset=view._dataset)
+        super().__init__(doc, dataset=view._dataset)
 
     def __str__(self):
         return repr(self)
@@ -536,7 +540,7 @@ class SampleView(_Sample):
 
         kwargs = {}
         if self.media_type == fomm.VIDEO:
-            kwargs["frames"] = self._frames._serve(self)
+            kwargs["frames"] = self._frames
 
         return self._doc.fancy_repr(
             class_name=self.__class__.__name__,
