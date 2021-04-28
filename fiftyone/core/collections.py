@@ -3477,8 +3477,8 @@ class SampleCollection(object):
             reverse (False): whether to sort by least similarity
             brain_key (None): the brain key of an existing
                 :meth:`fiftyone.brain.compute_similarity` run on the dataset.
-                If not provided, the dataset must have exactly one similarity
-                run, which will be used
+                If not specified, the dataset must have an applicable run,
+                which will be used by default
 
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
