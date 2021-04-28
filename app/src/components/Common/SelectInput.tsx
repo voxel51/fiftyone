@@ -37,6 +37,8 @@ const SearchResultsDiv = animated(styled.div`
   }
 `);
 
+const SelectInputDiv = styled.div``;
+
 interface SelectInputProps {
   choicesAtom?: RecoilValueReadOnly<{ hasMore: boolean; choices: string[] }>;
   onChange: (selections: string[]) => void;

@@ -1,12 +1,14 @@
 import React, { useState } from "react";
 import { useSpring } from "react-spring";
-import { selector, useRecoilCallback, useRecoilValue } from "recoil";
+import { selector, Snapshot, useRecoilCallback, useRecoilValue } from "recoil";
 
 import Popout from "./Popout";
 import { ActionOption } from "./Common";
 import { SwitcherDiv, SwitchDiv } from "./utils";
 import * as atoms from "../../recoil/atoms";
+import * as selectors from "../../recoil/selectors";
 import { useTheme } from "../../utils/hooks";
+import { PopoutSectionTitle } from "../utils";
 
 interface BrainMethod {
   method: string;
@@ -48,8 +50,22 @@ const similarityKeys = selector<{ patches: string[]; samples: string[] }>({
   },
 });
 
+const getQueryIds = async (snapshot: Snapshot, brainKey: string) => {
+  const;
+};
+
+const appendStage = (set, view, stage) => {
+  set(selectors.view, [...view, stage]);
+};
+
 const useSortBySimilarity = () => {
-  return useRecoilCallback(({ snapshot, set }) => (key: string) => {}, []);
+  return useRecoilCallback(
+    ({ snapshot, set }) => async (key: string) => {
+      const view = await snapshot.getPromise(selectors.view);
+      appendStage(set, view, {});
+    },
+    []
+  );
 };
 
 const SampleKeys = ({ close }) => {
@@ -101,39 +117,24 @@ const PatchesKeys = ({ close }) => {
 
 interface SortBySimilarityProps {
   modal: boolean;
+  close: () => void;
+  bounds?: any;
+}
+
+interface SortByKwargs {
+  brainKey: string;
+  k: number;
+  patchesFields?: string;
+  reverse?: boolean;
 }
 
 const SortBySimilarity = React.memo(
   ({ bounds, close }: SortBySimilarityProps) => {
-    const theme = useTheme();
-    const [patches, setPatches] = useState(true);
+    const;
 
-    const patchesProps = useSpring({
-      borderBottomColor: patches ? theme.brand : theme.backgroundDark,
-      cursor: patches ? "default" : "pointer",
-    });
-    const samplesProps = useSpring({
-      borderBottomColor: patches ? theme.backgroundDark : theme.brand,
-      cursor: patches ? "pointer" : "default",
-    });
     return (
       <Popout modal={false} bounds={bounds}>
-        <SwitcherDiv>
-          <SwitchDiv
-            style={samplesProps}
-            onClick={() => patches && setPatches(false)}
-          >
-            Sample Keys
-          </SwitchDiv>
-          <SwitchDiv
-            style={patchesProps}
-            onClick={() => !patches && setPatches(true)}
-          >
-            Patches Keys
-          </SwitchDiv>
-        </SwitcherDiv>
-        {!patches && <SampleKeys close={close} />}
-        {patches && <PatchesKeys close={close} />}
+        <PopoutSectionTitle>Sort by similarity</PopoutSectionTitle>
       </Popout>
     );
   }
