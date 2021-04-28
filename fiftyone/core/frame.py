@@ -155,25 +155,7 @@ class Frames(object):
         return frame
 
     def __setitem__(self, frame_number, frame):
-        fofu.validate_frame_number(frame_number)
-
-        if not isinstance(frame, Frame):
-            raise ValueError(
-                "Expected a %s, but found %s" % (Frame, type(frame))
-            )
-
-        if frame._in_db:
-            frame = frame.copy()
-
-        frame._doc._sample_id = self._sample._id
-        frame._doc.frame_number = frame_number
-
-        if self._in_db:
-            d = self._make_dict(frame)
-            doc = self._sample._dataset._frame_dict_to_doc(d)
-            frame._set_backing_doc(doc, dataset=self._sample._dataset)
-
-        self._set_replacement(frame)
+        self.add_frame(frame_number, frame)
 
     @property
     def field_names(self):
@@ -232,7 +214,48 @@ class Frames(object):
         for frame in self._iter_frames():
             yield frame
 
-    def update(self, frames, overwrite=True):
+    def add_frame(self, frame_number, frame, expand_schema=True):
+        """Adds the frame to this instance.
+
+        If an existing frame with the same frame number exists, it is
+        overwritten.
+
+        If the frame instance does not belong to a dataset, it is updated
+        in-place to reflect its membership in this dataset. If the frame
+        instance belongs to another dataset, it is not modified.
+
+        Args:
+            frame_number: the frame number
+            frame: a :class:`Frame`
+            expand_schema (True): whether to dynamically add new frame fields
+                encountered to the dataset schema. If False, an error is raised
+                if the frame's schema is not a subset of the dataset schema.
+                This flag has no effect if this sample has not been added to a
+                dataset
+        """
+        fofu.validate_frame_number(frame_number)
+
+        if not isinstance(frame, Frame):
+            raise ValueError(
+                "Expected a %s, but found %s" % (Frame, type(frame))
+            )
+
+        if frame._in_db:
+            frame = frame.copy()
+
+        frame.frame_number = frame_number
+
+        if self._in_db:
+            d = {"_sample_id": self._sample._id, "frame_number": frame_number}
+            doc = self._sample._dataset._frame_dict_to_doc(d)
+            for field, value in frame.iter_fields():
+                doc.set_field(field, value, create=expand_schema)
+
+            frame._set_backing_doc(doc, dataset=self._sample._dataset)
+
+        self._set_replacement(frame)
+
+    def update(self, frames, overwrite=True, expand_schema=True):
         """Adds the frame labels to this instance.
 
         Args:
@@ -246,18 +269,30 @@ class Frames(object):
                     instances
 
             overwrite (True): whether to overwrite existing frames
+            expand_schema (True): whether to dynamically add new frame fields
+                encountered to the dataset schema. If False, an error is raised
+                if the frame's schema is not a subset of the dataset schema.
+                This flag has no effect if this sample has not been added to a
+                dataset
         """
         for frame_number, frame in frames.items():
             if overwrite or frame_number not in self:
                 if isinstance(frame, dict):
                     frame = Frame(frame_number=frame_number, **frame)
 
-                self[frame_number] = frame
+                self.add_frame(
+                    frame_number, frame, expand_schema=expand_schema
+                )
 
     def merge(
-        self, frames, omit_fields=None, omit_none_fields=True, overwrite=True
+        self,
+        frames,
+        omit_fields=None,
+        omit_none_fields=True,
+        overwrite=True,
+        expand_schema=True,
     ):
-        """Merges the frame labels into this instance.
+        """Merges the given frames into this instance.
 
         Args:
             frames: can be any of the following
@@ -273,6 +308,11 @@ class Frames(object):
             omit_none_fields (True): whether to omit ``None``-valued fields of
                 the provided frames
             overwrite (True): whether to overwrite existing fields
+            expand_schema (True): whether to dynamically add new frame fields
+                encountered to the dataset schema. If False, an error is raised
+                if the frame's schema is not a subset of the dataset schema.
+                This flag has no effect if this sample has not been added to a
+                dataset
         """
         for frame_number, frame in frames.items():
             if isinstance(frame, dict):
@@ -284,9 +324,12 @@ class Frames(object):
                     omit_fields=omit_fields,
                     omit_none_fields=omit_none_fields,
                     overwrite=overwrite,
+                    create=expand_schema,
                 )
             else:
-                self[frame_number] = frame
+                self.add_frame(
+                    frame_number, frame, expand_schema=expand_schema
+                )
 
     def clear(self):
         """Removes all frames from this instance."""

@@ -1366,9 +1366,15 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         else:
             fos.Sample._reload_docs(self._sample_collection_name)
 
-    def _merge_doc(self, doc, merge_info=True, overwrite=False):
+    def _merge_doc(
+        self, doc, expand_schema=True, merge_info=True, overwrite_info=False
+    ):
         _merge_dataset_doc(
-            self, doc, merge_info=merge_info, overwrite=overwrite
+            self,
+            doc,
+            expand_schema=expand_schema,
+            merge_info=merge_info,
+            overwrite_info=overwrite_info,
         )
 
     def merge_samples(
@@ -1379,6 +1385,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         omit_none_fields=True,
         skip_existing=False,
         insert_new=True,
+        expand_schema=True,
         omit_default_fields=False,
         overwrite=True,
         include_info=True,
@@ -1408,6 +1415,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 merge them (False)
             insert_new (True): whether to insert new samples (True) or skip
                 them (False)
+            expand_schema (True): whether to dynamically add new fields
+                encountered to the dataset schema. If False, an error is raised
+                if a sample's schema is not a subset of the dataset schema
             omit_default_fields (False): whether to omit default sample fields
                 when merging. If ``True``, ``insert_new`` must be ``False``
             overwrite (True): whether to overwrite (True) or skip (False)
@@ -1434,6 +1444,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 omit_none_fields=omit_none_fields,
                 skip_existing=skip_existing,
                 insert_new=insert_new,
+                expand_schema=expand_schema,
                 omit_default_fields=omit_default_fields,
                 include_info=include_info,
                 overwrite_info=overwrite_info,
@@ -1454,8 +1465,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             _merge_dataset_doc(
                 self,
                 samples,
+                expand_schema=expand_schema,
                 merge_info=include_info,
-                overwrite=overwrite_info,
+                overwrite_info=overwrite_info,
             )
 
         if key_fcn is None:
@@ -1481,10 +1493,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                             omit_fields=omit_fields,
                             omit_none_fields=omit_none_fields,
                             overwrite=overwrite,
+                            create=expand_schema,
                         )
                         existing_sample.save()
                 elif insert_new:
-                    self.add_sample(sample)
+                    self.add_sample(sample, expand_schema=expand_schema)
 
     def delete_samples(self, samples_or_ids):
         """Deletes the given sample(s) from the dataset.
@@ -3575,7 +3588,11 @@ def _save_view(view, fields):
 
 
 def _merge_dataset_doc(
-    dataset, collection_or_doc, merge_info=True, overwrite=False
+    dataset,
+    collection_or_doc,
+    expand_schema=True,
+    merge_info=True,
+    overwrite_info=False,
 ):
     curr_doc = dataset._doc
 
@@ -3611,9 +3628,13 @@ def _merge_dataset_doc(
         if is_video:
             frame_schema = {f.name: f.to_field() for f in doc.frame_fields}
 
-    dataset._sample_doc_cls.merge_field_schema(schema)
+    dataset._sample_doc_cls.merge_field_schema(
+        schema, expand_schema=expand_schema
+    )
     if is_video and frame_schema is not None:
-        dataset._frame_doc_cls.merge_field_schema(frame_schema)
+        dataset._frame_doc_cls.merge_field_schema(
+            frame_schema, expand_schema=expand_schema
+        )
 
     if not merge_info:
         curr_doc.reload()
@@ -3623,7 +3644,7 @@ def _merge_dataset_doc(
     # Merge info
     #
 
-    if overwrite:
+    if overwrite_info:
         curr_doc.info.update(doc.info)
         curr_doc.classes.update(doc.classes)
         curr_doc.mask_targets.update(doc.mask_targets)
@@ -3704,6 +3725,7 @@ def _merge_samples(
     omit_none_fields=True,
     skip_existing=False,
     insert_new=True,
+    expand_schema=True,
     omit_default_fields=False,
     include_info=True,
     overwrite_info=False,
@@ -3728,8 +3750,9 @@ def _merge_samples(
     _merge_dataset_doc(
         dst_dataset,
         src_collection,
+        expand_schema=expand_schema,
         merge_info=include_info,
-        overwrite=overwrite_info,
+        overwrite_info=overwrite_info,
     )
 
     #

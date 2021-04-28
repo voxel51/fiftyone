@@ -217,10 +217,9 @@ class Document(object):
         omit_fields=None,
         omit_none_fields=True,
         overwrite=True,
+        create=True,
     ):
         """Merges the fields of the document into this document.
-
-        ``None``-valued fields are always omitted.
 
         Args:
             document: a :class:`Document` of the same type
@@ -230,6 +229,7 @@ class Document(object):
             overwrite (True): whether to overwrite existing fields. Note that
                 existing fields whose values are ``None`` are always
                 overwritten
+            create (True): whether to create fields if they do not exist
         """
         if omit_fields is not None:
             omit_fields = set(omit_fields)
@@ -252,7 +252,7 @@ class Document(object):
             ):
                 continue
 
-            self.set_field(field_name, value)
+            self.set_field(field_name, value, create=create)
 
     def copy(self):
         """Returns a deep copy of the document that has not been added to the

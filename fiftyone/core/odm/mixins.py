@@ -172,16 +172,18 @@ class DatasetMixin(object):
         return d
 
     @classmethod
-    def merge_field_schema(cls, schema):
+    def merge_field_schema(cls, schema, expand_schema=True):
         """Merges the field schema into this sample.
 
         Args:
             schema: a dictionary mapping field names to
                 :class:`fiftyone.core.fields.Field` instances
+            expand_schema (True): whether to add new fields to the schema
 
         Raises:
             ValueError: if a field in the schema is not compliant with an
-                existing field of the same name
+                existing field of the same name or a new field is found but
+                ``expand_schema == False``
         """
         _schema = cls.get_field_schema(include_private=True)
 
@@ -191,6 +193,10 @@ class DatasetMixin(object):
                 validate_fields_match(field_name, field, _schema[field_name])
             else:
                 add_fields.append(field_name)
+
+        if not expand_schema and add_fields:
+            dtype = "Sample" if not cls._is_frames_doc() else "Frame"
+            raise ValueError("%s fields %s do not exist" % (dtype, add_fields))
 
         for field_name in add_fields:
             field = schema[field_name]
@@ -202,7 +208,8 @@ class DatasetMixin(object):
 
     def get_field(self, field_name):
         if not self.has_field(field_name):
-            raise AttributeError("Sample has no field '%s'" % field_name)
+            dtype = "Sample" if not self._is_frames_doc() else "Frame"
+            raise AttributeError("%s has no field '%s'" % (dtype, field_name))
 
         return getattr(self, field_name)
 
@@ -261,16 +268,15 @@ class DatasetMixin(object):
             if create:
                 self.add_implied_field(field_name, value)
             else:
-                msg = "Sample does not have field '%s'." % field_name
-                if value is not None:
-                    msg += " Use `create=True` to create a new field"
-
-                raise ValueError(msg)
+                dtype = "Sample" if not self._is_frames_doc() else "Frame"
+                raise ValueError(
+                    "%s does not have field '%s'." % (dtype, field_name)
+                )
 
         self.__setattr__(field_name, value)
 
     def clear_field(self, field_name):
-        self.set_field(field_name, None, create=False)
+        self.set_field(field_name, None)
 
     @classmethod
     def _rename_fields(
@@ -880,6 +886,10 @@ class NoDatasetMixin(object):
 
         raise ValueError("Field '%s' has no default" % field)
 
+    @classmethod
+    def _is_frames_doc(cls):
+        return "Frame" in cls.__name__
+
     def has_field(self, field_name):
         try:
             return field_name in self._data
@@ -889,7 +899,8 @@ class NoDatasetMixin(object):
 
     def get_field(self, field_name):
         if not self.has_field(field_name):
-            raise AttributeError("Sample has no field '%s'" % field_name)
+            dtype = "Sample" if not self._is_frames_doc() else "Frame"
+            raise AttributeError("%s has no field '%s'" % (dtype, field_name))
 
         return getattr(self, field_name)
 
@@ -908,11 +919,10 @@ class NoDatasetMixin(object):
                 # dummy value so that it is identified by __setattr__
                 self._data[field_name] = None
             else:
-                msg = "Sample does not have field '%s'." % field_name
-                if value is not None:
-                    msg += " Use `create=True` to create a new field"
-
-                raise ValueError(msg)
+                dtype = "Sample" if not self._is_frames_doc() else "Frame"
+                raise ValueError(
+                    "%s does not have field '%s'." % (dtype, field_name)
+                )
 
         self.__setattr__(field_name, value)
 
@@ -923,7 +933,8 @@ class NoDatasetMixin(object):
             return
 
         if field_name not in self._data:
-            raise ValueError("Sample has no field '%s'" % field_name)
+            dtype = "Sample" if not self._is_frames_doc() else "Frame"
+            raise ValueError("%s has no field '%s'" % (dtype, field_name))
 
         self._data.pop(field_name)
 

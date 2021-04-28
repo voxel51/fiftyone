@@ -221,6 +221,7 @@ class _Sample(Document):
         omit_frame_fields=None,
         omit_none_fields=True,
         overwrite=True,
+        create=True,
     ):
         """Merges the fields of the sample into this sample.
 
@@ -233,6 +234,7 @@ class _Sample(Document):
             overwrite (True): whether to overwrite existing fields. Note that
                 existing fields whose values are ``None`` are always
                 overwritten
+            create (True): whether to create fields if they do not exist
         """
         if sample.media_type != self.media_type:
             raise ValueError(
@@ -245,6 +247,7 @@ class _Sample(Document):
             omit_fields=omit_fields,
             omit_none_fields=omit_none_fields,
             overwrite=overwrite,
+            create=create,
         )
 
         if self.media_type == fomm.VIDEO:
@@ -253,6 +256,7 @@ class _Sample(Document):
                 omit_fields=omit_frame_fields,
                 omit_none_fields=omit_none_fields,
                 overwrite=overwrite,
+                expand_schema=create,
             )
 
     def copy(self):
