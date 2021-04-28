@@ -674,11 +674,11 @@ class DatasetView(foc.SampleCollection):
         detach_frames=False,
         frames_only=False,
     ):
-        _view = self._dataset.view()
         _pipeline = []
+        _view = self._dataset.view()
         for stage in self._stages:
-            _view = _view.add_stage(stage)
             _pipeline.extend(stage.to_mongo(_view))
+            _view._stages.append(stage)
 
         if pipeline is not None:
             _pipeline.extend(pipeline)

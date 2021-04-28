@@ -1477,6 +1477,35 @@ class SampleCollection(object):
         """Deletes all brain method runs from this collection."""
         fob.BrainMethod.delete_runs(self)
 
+    def _get_similarity_keys(self, **kwargs):
+        from fiftyone.brain import SimilarityConfig
+
+        return self._get_brain_runs_with_type(SimilarityConfig, **kwargs)
+
+    def _get_visualization_keys(self, **kwargs):
+        from fiftyone.brain import VisualizationConfig
+
+        return self._get_brain_runs_with_type(VisualizationConfig, **kwargs)
+
+    def _get_brain_runs_with_type(self, run_type, **kwargs):
+        brain_keys = []
+        for brain_key in self.list_brain_runs():
+            brain_info = self.get_brain_info(brain_key)
+
+            run_cls = etau.get_class(brain_info.config.cls)
+            if not issubclass(run_cls, run_type):
+                continue
+
+            if any(
+                getattr(brain_info.config, key) != value
+                for key, value in kwargs.items()
+            ):
+                continue
+
+            brain_keys.append(brain_key)
+
+        return brain_keys
+
     @classmethod
     def list_view_stages(cls):
         """Returns a list of all available methods on this collection that
@@ -3274,6 +3303,55 @@ class SampleCollection(object):
             a :class:`fiftyone.core.view.DatasetView`
         """
         return self._add_view_stage(fos.SortBy(field_or_expr, reverse=reverse))
+
+    @view_stage
+    def sort_by_similarity(
+        self, query_ids, k=None, reverse=False, brain_key=None
+    ):
+        """Sorts the samples in the collection by visual similiarity to a
+        specified set of query ID(s).
+
+        In order to use this stage, you must first use
+        :meth:`fiftyone.brain.compute_similarity` to index your dataset by
+        visual similiarity.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.brain as fob
+            import fiftyone.zoo as foz
+
+            dataset = foz.load_zoo_dataset("quickstart").clone()
+
+            fob.compute_similarity(dataset, brain_key="similarity")
+
+            #
+            # Sort the samples by their visual similarity to the first sample
+            # in the dataset
+            #
+
+            query_id = dataset.first().id
+            view = dataset.sort_by_similarity(query_id)
+
+        Args:
+            query_ids: an ID or iterable of query IDs. These may be sample IDs
+                or label IDs depending on ``brain_key``
+            k (None): the number of matches to return. By default, the entire
+                collection is sorted
+            reverse (False): whether to sort by least similarity
+            brain_key (None): the brain key of an existing
+                :meth:`fiftyone.brain.compute_similarity` run on the dataset.
+                If not provided, the dataset must have exactly one similarity
+                run, which will be used
+
+        Returns:
+            a :class:`fiftyone.core.view.DatasetView`
+        """
+        return self._add_view_stage(
+            fos.SortBySimilarity(
+                query_ids, k=k, reverse=reverse, brain_key=brain_key
+            )
+        )
 
     @view_stage
     def take(self, size, seed=None):
