@@ -1,13 +1,14 @@
 /**
  * Copyright 2017-2021, Voxel51, Inc.
  */
-
+import {} from "immutable";
 import mime from "mime-types";
 
 import { asVideo } from "./video";
 import Renderer from "./renderers/baseRenderer";
 import OverlaysManager from "./overlaysManager";
 import { colorGenerator } from "./overlays";
+import { FrameState, ImageState, VideoState } from "./state";
 
 export { ColorGenerator } from "./overlays";
 
@@ -35,21 +36,22 @@ export default class Player51 {
   mimeType?: string;
   options: typeof defaults = defaults;
   overlaysManager: OverlaysManager;
-  renderTree: Renderer;
 
-  constructor({ src, ...options }) {}
+  private renderTree: Renderer;
+  private eventTarget: EventTarget;
+  private state: FrameState | ImageState | VideoState;
+
+  constructor({ src, ...options }) {
+    this.eventTarget = new EventTarget();
+    this.state;
+  }
 
   addEventListener(eventType, handler, ...args) {
-    this.renderer.eventTarget.addEventListener(eventType, handler, ...args);
+    this.eventTarget.addEventListener(eventType, handler, ...args);
   }
 
   removeEventListener(eventType, handler, ...args) {
-    this.renderer &&
-      this.renderer.eventTarget.removeEventListener(
-        eventType,
-        handler,
-        ...args
-      );
+    this.eventTarget.removeEventListener(eventType, handler, ...args);
   }
 
   focus(): void {

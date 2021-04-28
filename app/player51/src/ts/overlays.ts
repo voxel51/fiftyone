@@ -121,9 +121,8 @@ function _isOverlayShown(filter: any, field: string, label: object): boolean {
  *
  * @param {Renderer} renderer Associated renderer
  */
-function Overlay(renderer) {
-  this.renderer = renderer;
-  this.options = renderer.overlayOptions;
+function Overlay(refs) {
+  this.refs = refs;
 }
 Overlay.prototype.draw = function (context, canvasWidth, canvasHeight) {
   /* eslint-disable-next-line no-console */
@@ -136,31 +135,33 @@ Overlay.prototype.setup = function (context, canvasWidth, canvasHeight) {
 
 Overlay.prototype._isShown = function () {
   if (
-    this.state.options.activeLabels &&
-    !this.state.options.activeLabels.includes(this.field)
+    this.refs.state.options.activeLabels &&
+    !this.refs.state.options.activeLabels.includes(this.field)
   ) {
     return false;
   }
-  if (!_isOverlayShown(this.state.options.filter, this.field, this.label)) {
+  if (
+    !_isOverlayShown(this.refs.state.options.filter, this.field, this.label)
+  ) {
     return false;
   }
   return true;
 };
 Overlay.prototype._getColor = function (field, { index, label }) {
-  const options = this.renderer.options;
+  const options = this.refs.state.options;
   const key = options.colorByLabel ? label : field;
   const hasColor = options.colorMap && options.colorMap[key];
   if (hasColor) {
     return options.colorMap[key];
   } else {
-    return this.renderer.options.colorGenerator.color(label);
+    return this.refs.state.options.colorGenerator.color(label);
   }
   // @todo: resurrect me
-  return this.renderer.options.colorGenerator.color(index);
+  return this.refs.state.options.colorGenerator.color(index);
 };
 
 Overlay.prototype.hasFocus = function () {
-  return this.renderer.isFocus(this);
+  return this.refs.focusedOverlay === this;
 };
 
 // in numerical order (CONTAINS_BORDER takes precedence over CONTAINS_CONTENT)
@@ -193,7 +194,7 @@ Overlay.prototype.isSelectable = function (x, y) {
 };
 
 Overlay.prototype.isSelected = function () {
-  return this.renderer.options.selectedLabels.includes(this.label._id);
+  return this.refs.state.options.selectedLabels.includes(this.label._id);
 };
 
 Overlay.prototype.getSelectData = function (x, y) {
@@ -211,8 +212,8 @@ Overlay.prototype.getSelectData = function (x, y) {
  * @param {Renderer} renderer the associated renderer
  *
  */
-function ClassificationsOverlay(labels, renderer) {
-  Overlay.call(this, renderer);
+function ClassificationsOverlay(labels, refs) {
+  Overlay.call(this, refs);
 
   this.name = null;
   this.labels = labels;
@@ -249,7 +250,7 @@ ClassificationsOverlay.prototype.setup = function (
   if (typeof this.labels !== undefined) {
     this._updateTextLines();
   }
-  this.textPadder = (3 / this.renderer.height) * canvasHeight;
+  this.textPadder = (3 / this.refs.height) * canvasHeight;
   if (this.x === null || this.y === null) {
     this.x = this.textPadder;
     this.y = this.textPadder;
@@ -277,7 +278,7 @@ ClassificationsOverlay.prototype._getFilteredClassifications = function () {
   return this.labels.map(([field, labels]) => [
     field,
     labels.filter(([_, label]) =>
-      _isOverlayShown(this.renderer.options.filter, field, label)
+      _isOverlayShown(this.refs.state.options.filter, field, label)
     ),
   ]);
 };
@@ -298,7 +299,7 @@ ClassificationsOverlay.prototype._updateClassifications = function () {
             : label;
 
         let s = `${name}: ${label}`;
-        if (this.options.showConfidence && !isNaN(confidence)) {
+        if (this.refs.state.options.showConfidence && !isNaN(confidence)) {
           s += ` (${Number(confidence).toFixed(2)})`;
         }
 
@@ -328,7 +329,7 @@ ClassificationsOverlay.prototype.draw = function (
     this.setup(context, canvasWidth, canvasHeight);
   }
 
-  if (this.renderer.player.options.thumbnail) {
+  if (this.refs.state.config.thumbnail) {
     return;
   }
 
@@ -364,7 +365,7 @@ ClassificationsOverlay.prototype.draw = function (
       y + this.fontHeight + this.textPadder
     );
     const { field, label } = labels[l];
-    if (this.renderer.options.selectedLabels.includes(label._id)) {
+    if (this.refs.state.options.selectedLabels.includes(label._id)) {
       context.lineWidth = this.textPadder / 2;
       context.strokeRect(this.x, y, this.w, this.labelHeight);
       context.strokeStyle = this._getColor(field, label);
@@ -440,12 +441,12 @@ ClassificationsOverlay.prototype.getPointInfo = function (x, y) {
  * @param {Renderer} renderer the associated renderer
  * @param {number} frameNumber an optional frame number, only applicable to video
  */
-function SegmentationOverlay(field, label, renderer, frameNumber = null) {
+function SegmentationOverlay(field, label, refs, frameNumber = null) {
   if (!SegmentationOverlay._tempMaskCanvas) {
     SegmentationOverlay._tempMaskCanvas = document.createElement("canvas");
   }
 
-  Overlay.call(this, renderer);
+  Overlay.call(this, refs);
 
   this.field = field;
   this.label = label;
@@ -455,7 +456,6 @@ function SegmentationOverlay(field, label, renderer, frameNumber = null) {
   this.y = null;
   this.w = null;
   this.h = null;
-  this.renderer = renderer;
   this._selectedCache = null;
 }
 SegmentationOverlay._tempMaskCanvas = null;
@@ -512,11 +512,11 @@ SegmentationOverlay.prototype.draw = function (
   const imageColors = new Uint32Array(maskImage.data.buffer);
   if (
     this.mask.rendered &&
-    this._generator === this.renderer.options.colorGenerator
+    this._generator === this.refs.state.options.colorGenerator
   ) {
     imageColors.set(this.imageColors);
   } else {
-    this._generator = this.renderer.options.colorGenerator;
+    this._generator = this.refs.state.options.colorGenerator;
     const maskColors = this.isSelected()
       ? this._generator.rawMaskColorsSelected
       : this._generator.rawMaskColors;
