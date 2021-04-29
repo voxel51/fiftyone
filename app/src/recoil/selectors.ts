@@ -1083,7 +1083,14 @@ export const similarityKeys = selector<{
     const state = get(atoms.stateDescription);
     const brainKeys = (state?.dataset?.brain_methods || {}) as BrainMethods;
     return Object.entries(brainKeys)
-      .filter(([_, { method }]) => method === "similarity")
+      .filter(
+        ([
+          _,
+          {
+            config: { method },
+          },
+        ]) => method === "similarity"
+      )
       .reduce(
         (
           { patches, samples },

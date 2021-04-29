@@ -1,41 +1,20 @@
-import React, { Suspense } from "react";
-import { RecoilState, RecoilValueReadOnly, useRecoilState } from "recoil";
+import React, { Suspense, useMemo, useState } from "react";
+import {
+  selector,
+  RecoilState,
+  RecoilValueReadOnly,
+  selector,
+  useRecoilState,
+  useRecoilValue,
+} from "recoil";
 import { animated } from "react-spring";
 import styled from "styled-components";
 import { CircularProgress } from "@material-ui/core";
+import uuid from "uuid-v4";
 
-const ResultDiv = animated(styled.div`
-  cursor: pointer;
-  margin: 0.25rem 0.25rem;
-  padding: 0.1rem 0.25rem;
-  font-weight: bold;
-  color: ${({ theme }) => theme.fontDark};
-`);
-
-const SearchResultsDiv = animated(styled.div`
-  background-color: ${({ theme }) => theme.backgroundDark};
-  border: 1px solid ${({ theme }) => theme.backgroundDarkBorder};
-  border-radius: 2px;
-  box-shadow: 0 2px 20px ${({ theme }) => theme.backgroundDark};
-  box-sizing: border-box;
-  margin-top: 2.5rem;
-  position: fixed;
-  width: auto;
-  z-index: 801;
-  max-height: 328px;
-  overflow-y: scroll;
-  scrollbar-width: none;
-
-  &::-webkit-scrollbar {
-    width: 0px;
-    background: transparent;
-    display: none;
-  }
-  &::-webkit-scrollbar-thumb {
-    width: 0px;
-    display: none;
-  }
-`);
+import Input from "./Input";
+import RadioGroup from "./RadioGroup";
+import { PopoutSectionTitle } from "../utils";
 
 const SelectInputDiv = styled.div``;
 
@@ -44,6 +23,7 @@ interface SelectInputProps {
   onChange: (selections: string[]) => void;
   radio?: boolean;
   valueAtom: RecoilState<string>;
+  placeholder?: string;
 }
 
 const SelectInputContainer = React.memo(
@@ -53,8 +33,20 @@ const SelectInputContainer = React.memo(
     radio = false,
     onChange,
   }: SelectInputProps) => {
-    const [value, setValue] = useRecoilState(valueAtom);
+    const [id] = useState(uuid());
 
+    const { hasMore } = useRecoilValue(choicesAtom);
+
+    const choicesArray = useMemo(() => {
+      return selector({
+        key: id,
+        get: ({ get }) => get(choicesAtom).choices,
+      });
+    }, [id]);
+
+    if (!hasMore && radio) {
+      return <RadioGroup valueAtom={valueAtom} choicesAtom={choicesArray} />;
+    }
     return null;
   }
 );

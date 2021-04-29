@@ -92,7 +92,7 @@ const Similarity = ({ modal }: { modal: boolean }) => {
         icon={<FlipToBack />}
         open={open}
         onClick={() => setOpen(!open)}
-        highlight={open}
+        highlight={true}
         ref={mRef}
         title={"Sort by similarity"}
       />
