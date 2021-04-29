@@ -508,7 +508,7 @@ def _make_data_loader(
         if len(errors) == 1:
             return errors[0]
 
-        return Exception("\n\n".join([str(e) for e in errors]))
+        return Exception("\n" + "\n".join([str(e) for e in errors]))
 
     if model.ragged_batches:
 
