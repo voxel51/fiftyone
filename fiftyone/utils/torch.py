@@ -230,6 +230,11 @@ class TorchImageModel(
         self._no_grad = None
 
     @property
+    def media_type(self):
+        """The media type processed by the model."""
+        return "image"
+
+    @property
     def has_logits(self):
         """Whether this instance can generate logits."""
         return isinstance(self._output_processor, ClassifierOutputProcessor)

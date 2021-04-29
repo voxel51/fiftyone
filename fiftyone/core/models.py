@@ -65,13 +65,24 @@ def apply_model(
             "Model must be a %s instance; found %s" % (Model, type(model))
         )
 
+    if model.media_type == "video" and samples.media_type != fom.VIDEO:
+        raise ValueError("Video models can only be applied to video datasets")
+
+    if model.media_type not in ("image", "video"):
+        raise ValueError(
+            "Unsupported model `media_type=%s`. Supported values are "
+            "('image', 'video')" % model.media_type
+        )
+
     if store_logits and not model.has_logits:
         raise ValueError(
             "The provided model does not expose logits "
             "(model.has_logits = %s)" % model.has_logits
         )
 
-    use_data_loader = isinstance(model, TorchModelMixin)
+    use_data_loader = (
+        isinstance(model, TorchModelMixin) and samples.media_type == fom.IMAGE
+    )
 
     if num_workers is not None and not use_data_loader:
         logger.warning(
@@ -103,12 +114,22 @@ def apply_model(
         # pylint: disable=no-member
         context.enter_context(model)
 
-        if samples.media_type == fom.VIDEO:
+        if samples.media_type == fom.VIDEO and model.media_type == "video":
             return _apply_video_model(
                 samples, model, label_field, confidence_thresh
             )
 
         batch_size = _parse_batch_size(batch_size, model, use_data_loader)
+
+        if samples.media_type == fom.VIDEO and model.media_type == "image":
+            if batch_size is not None:
+                return _apply_image_model_to_frames_batch(
+                    samples, model, label_field, confidence_thresh, batch_size
+                )
+
+            return _apply_image_model_to_frames_single(
+                samples, model, label_field, confidence_thresh
+            )
 
         if use_data_loader:
             return _apply_image_model_data_loader(
@@ -177,6 +198,86 @@ def _apply_image_model_data_loader(
             pb.set_iteration(pb.iteration + len(imgs))
 
 
+def _apply_image_model_to_frames_single(
+    samples, model, label_field, confidence_thresh
+):
+    samples.compute_metadata()
+
+    frame_counts = np.cumsum(samples.values("metadata.total_frame_count"))
+    total_frame_count = frame_counts[-1] if frame_counts.size > 0 else 0
+
+    with fou.ProgressBar(total=total_frame_count) as pb:
+        for idx, sample in enumerate(samples):
+            frames = {}
+
+            with etav.FFmpegVideoReader(sample.filepath) as video_reader:
+                for img in video_reader:
+                    frames[video_reader.frame_number] = model.predict(img)
+                    pb.update()
+
+            sample.add_labels(
+                frames, label_field, confidence_thresh=confidence_thresh
+            )
+
+            # Explicitly set in case actual # frames differed from expected #
+            pb.set_iteration(frame_counts[idx])
+
+
+def _apply_image_model_to_frames_batch(
+    samples, model, label_field, confidence_thresh, batch_size
+):
+    samples.compute_metadata()
+
+    frame_counts = np.cumsum(samples.values("metadata.total_frame_count"))
+    total_frame_count = frame_counts[-1] if frame_counts.size > 0 else 0
+
+    with fou.ProgressBar(total=total_frame_count) as pb:
+        for idx, sample in enumerate(samples):
+            frames = {}
+
+            with etav.FFmpegVideoReader(sample.filepath) as video_reader:
+                for fns, imgs in _iter_batches(video_reader, batch_size):
+                    labels_batch = model.predict_all(imgs)
+
+                    for frame_number, labels in zip(fns, labels_batch):
+                        frames[frame_number] = labels
+
+                    pb.update(len(imgs))
+
+            sample.add_labels(
+                frames, label_field, confidence_thresh=confidence_thresh
+            )
+
+            # Explicitly set in case actual # frames differed from expected #
+            pb.set_iteration(frame_counts[idx])
+
+
+def _iter_batches(video_reader, batch_size):
+    frame_numbers = []
+    imgs = []
+    for img in video_reader:
+        imgs.append(img)
+        frame_numbers.append(video_reader.frame_number)
+        if len(imgs) >= batch_size:
+            yield frame_numbers, imgs
+            frame_numbers = []
+            imgs = []
+
+    return frame_numbers, imgs
+
+
+def _apply_video_model(samples, model, label_field, confidence_thresh):
+    with fou.ProgressBar() as pb:
+        for sample in pb(samples):
+            with etav.FFmpegVideoReader(sample.filepath) as video_reader:
+                labels = model.predict(video_reader)
+
+            # Save labels
+            sample.add_labels(
+                labels, label_field, confidence_thresh=confidence_thresh
+            )
+
+
 def _make_data_loader(samples, model, batch_size, num_workers):
     # This function supports DataLoaders that emit numpy arrays that can
     # therefore be used for non-Torch models; but we do not currenly use this
@@ -206,18 +307,6 @@ def _make_data_loader(samples, model, batch_size, num_workers):
     return tud.DataLoader(
         dataset, batch_size=batch_size, num_workers=num_workers, **kwargs
     )
-
-
-def _apply_video_model(samples, model, label_field, confidence_thresh):
-    with fou.ProgressBar() as pb:
-        for sample in pb(samples):
-            with etav.FFmpegVideoReader(sample.filepath) as video_reader:
-                labels = model.predict(video_reader)
-
-            # Save labels
-            sample.add_labels(
-                labels, label_field, confidence_thresh=confidence_thresh
-            )
 
 
 def compute_embeddings(
@@ -818,6 +907,14 @@ class Model(etal.Model):
 
     def __exit__(self, *args):
         pass
+
+    @property
+    def media_type(self):
+        """The media type processed by the model.
+
+        Supported values are "image" and "video".
+        """
+        raise NotImplementedError("subclasses must implement media_type")
 
     @property
     def has_logits(self):
