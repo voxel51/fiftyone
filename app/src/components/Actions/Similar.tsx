@@ -17,6 +17,7 @@ import * as atoms from "../../recoil/atoms";
 import * as selectors from "../../recoil/selectors";
 import { PopoutSectionTitle } from "../utils";
 import Checkbox from "../Common/Checkbox";
+import { useTheme } from "../../utils/hooks";
 
 const getQueryIds = async (snapshot: Snapshot, brainKey: string) => {};
 
@@ -108,6 +109,7 @@ interface SortByKwargs {
 const SortBySimilarity = React.memo(
   ({ modal, bounds, close }: SortBySimilarityProps) => {
     const setBrainKeyValue = useSetRecoilState(brainKeyValue);
+    const theme = useTheme();
     const brainKey = useRecoilValue(brainKeyValue);
 
     return (
@@ -119,6 +121,9 @@ const SortBySimilarity = React.memo(
           valueAtom={kValue}
         />
         <Checkbox name={"reverse"} valueAtom={reverseValue} />
+        <PopoutSectionTitle style={{ fontSize: 14 }}>
+          Brain key
+        </PopoutSectionTitle>
         <SelectInput
           choicesAtom={currentSimilarityKeys(modal)}
           radio={true}

@@ -87,7 +87,7 @@ const LabelsPatches = ({ close }) => {
     <ActionOption
       text={"No labels fields"}
       title={"No labels fields"}
-      disabled={true}
+      href={"https://fiftyone.ai"}
     />
   );
 };
@@ -119,7 +119,7 @@ const EvaluationPatches = ({ close }) => {
     <ActionOption
       text={"No evaluations"}
       title={"No evaluations"}
-      disabled={true}
+      href={"https://fiftyone.ai"}
     />
   );
 };

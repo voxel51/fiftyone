@@ -50,6 +50,11 @@ export const ItemAction = animated(styled.a`
   flex-direction: column;
   text-decoration: none;
   color: ${({ theme }) => theme.fontDark};
+
+  & > span {
+    display: flex;
+    justify-content: space-between;
+  }
 `);
 
 export const useHighlightHover = (disabled, override = null) => {

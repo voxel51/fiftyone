@@ -1,8 +1,5 @@
 import React from "react";
-import {
-  Radio as MaterialRadio,
-  RadioGroup as MaterialRadioGroup,
-} from "@material-ui/core";
+import { Check } from "@material-ui/icons";
 import {
   RecoilState,
   RecoilValue,
@@ -14,12 +11,6 @@ import styled from "styled-components";
 
 import { ItemAction, useHighlightHover } from "../Actions/utils";
 import { useTheme } from "../../utils/hooks";
-
-interface CheckboxProps {
-  color?: string;
-  name: string;
-  valueAtom: RecoilState<boolean>;
-}
 
 const StyledRadioContainer = styled.div`
   margin: 0 -0.5rem 0.25rem -0.5rem;
@@ -39,21 +30,25 @@ const RadioName = styled.div`
 `;
 
 interface RadioProps {
-  value: string;
+  color: string;
   setValue: (value: string) => void;
+  value: string;
+  currentValue: string;
 }
 
-const Radio = React.memo(({ value, setValue }: RadioProps) => {
-  const props = useHighlightHover(false);
-  return (
-    <StyledRadioContainer>
-      <StyledRadio {...props} onClick={() => setValue(value)}>
-        <MaterialRadio />
-        <RadioName>{value}</RadioName>
-      </StyledRadio>
-    </StyledRadioContainer>
-  );
-});
+const Radio = React.memo(
+  ({ color, currentValue, setValue, value }: RadioProps) => {
+    const props = useHighlightHover(false);
+    return (
+      <StyledRadioContainer>
+        <StyledRadio {...props} onClick={() => setValue(value)}>
+          <RadioName>{value}</RadioName>
+          {currentValue === value && <Check style={{ color }} />}
+        </StyledRadio>
+      </StyledRadioContainer>
+    );
+  }
+);
 
 interface RadioGroupProps {
   choicesAtom: RecoilValue<string[]>;
@@ -68,16 +63,17 @@ const RadioGroup = React.memo(
     const theme = useTheme();
     color = color ?? theme.brand;
 
-    const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-      setValue((event.target as HTMLInputElement).value);
-    };
-
     return (
-      <MaterialRadioGroup value={value} onChange={handleChange}>
+      <div>
         {choices.map((choice) => (
-          <Radio value={choice} setValue={setValue} />
+          <Radio
+            value={choice}
+            setValue={setValue}
+            color={color}
+            currentValue={value}
+          />
         ))}
-      </MaterialRadioGroup>
+      </div>
     );
   }
 );
