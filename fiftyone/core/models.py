@@ -326,7 +326,7 @@ def _apply_image_model_to_frames_single(
     errors = []
 
     with fou.ProgressBar(total=total_frame_count) as pb:
-        for idx, sample in enumerate(samples, 1):
+        for idx, sample in enumerate(samples):
             try:
                 with etav.FFmpegVideoReader(sample.filepath) as video_reader:
                     for img in video_reader:
@@ -872,7 +872,7 @@ def _compute_frame_embeddings_single(
     errors = []
 
     with fou.ProgressBar(total=total_frame_count) as pb:
-        for idx, sample in enumerate(samples, 1):
+        for idx, sample in enumerate(samples):
             embeddings = []
 
             try:
