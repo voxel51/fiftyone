@@ -8,12 +8,37 @@ interface InputProps {
   color?: string;
   placeholder?: string;
   type: "int" | "float" | "string";
-  valueAtom: RecoilState<string>;
+  valueAtom: RecoilState<any>;
 }
 
+const StyledInputContainer = styled.div`
+  font-size: 14px;
+  border-bottom: 1px ${({ theme }) => theme.brand} solid;
+  position: relative;
+  margin: 0.5rem 0;
+`;
+
 const StyledInput = styled.input`
-  width: 100%;
+  background-color: transparent;
+  border: none;
+  color: ${({ theme }) => theme.font};
+  height: 2rem;
+  font-size: 14px;
+  border: none;
+  align-items: center;
   font-weight: bold;
+  width: 100%;
+
+  &:focus {
+    border: none;
+    outline: none;
+    font-weight: bold;
+  }
+
+  &::placeholder {
+    color: ${({ theme }) => theme.fontDark};
+    font-weight: bold;
+  }
 `;
 
 const Input = React.memo(
@@ -23,14 +48,21 @@ const Input = React.memo(
     color = color ?? theme.brand;
 
     return (
-      <StyledInput
-        style={{ borderBottom: `1px solid ${color}` }}
-        placeholder={placeholder}
-        value={value}
-        onChange={(e: React.FormEvent<HTMLInputElement>) => {
-          setValue(e.currentTarget.value);
-        }}
-      />
+      <StyledInputContainer style={{ borderBottom: `1px solid ${color}` }}>
+        <StyledInput
+          placeholder={placeholder}
+          value={value}
+          onChange={(e: React.FormEvent<HTMLInputElement>) => {
+            const re = /^[0-9\b]+$/;
+            if (
+              e.currentTarget.value === "" ||
+              re.test(e.currentTarget.value)
+            ) {
+              setValue(e.currentTarget.value);
+            }
+          }}
+        />
+      </StyledInputContainer>
     );
   }
 );

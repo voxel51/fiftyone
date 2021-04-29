@@ -1,14 +1,19 @@
 import React, { useState } from "react";
-import { useSpring } from "react-spring";
-import { selector, Snapshot, useRecoilCallback, useRecoilValue } from "recoil";
+import {
+  atom,
+  selector,
+  Snapshot,
+  useRecoilCallback,
+  useRecoilValue,
+} from "recoil";
 
 import Popout from "./Popout";
 import { ActionOption } from "./Common";
-import { SwitcherDiv, SwitchDiv } from "./utils";
+import Input from "../Common/Input";
 import * as atoms from "../../recoil/atoms";
 import * as selectors from "../../recoil/selectors";
-import { useTheme } from "../../utils/hooks";
 import { PopoutSectionTitle } from "../utils";
+import Checkbox from "../Common/Checkbox";
 
 interface BrainMethod {
   method: string;
@@ -50,9 +55,7 @@ const similarityKeys = selector<{ patches: string[]; samples: string[] }>({
   },
 });
 
-const getQueryIds = async (snapshot: Snapshot, brainKey: string) => {
-  const;
-};
+const getQueryIds = async (snapshot: Snapshot, brainKey: string) => {};
 
 const appendStage = (set, view, stage) => {
   set(selectors.view, [...view, stage]);
@@ -115,6 +118,16 @@ const PatchesKeys = ({ close }) => {
   );
 };
 
+const kValue = atom<number>({
+  key: "kValue",
+  default: null,
+});
+
+const reverseValue = atom<boolean>({
+  key: "reverseValue",
+  default: false,
+});
+
 interface SortBySimilarityProps {
   modal: boolean;
   close: () => void;
@@ -130,11 +143,17 @@ interface SortByKwargs {
 
 const SortBySimilarity = React.memo(
   ({ bounds, close }: SortBySimilarityProps) => {
-    const;
+    const [state, setState] = useState({
+      reverse: false,
+      k: null,
+      brainKey: null,
+    });
 
     return (
       <Popout modal={false} bounds={bounds}>
         <PopoutSectionTitle>Sort by similarity</PopoutSectionTitle>
+        <Input placeholder={"k (None)"} type="int" valueAtom={kValue} />
+        <Checkbox name={"reverse"} valueAtom={reverseValue} />
       </Popout>
     );
   }
