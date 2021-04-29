@@ -35,6 +35,7 @@ const CheckboxContainer = styled.div`
   border-radius: 2px;
   color: ${({ theme }) => theme.fontDark};
   margin-top: 0.25rem;
+  padding: 0.25rem 0.5rem 0 0.5rem;
 `;
 
 type Props = {

@@ -34,7 +34,7 @@ const appendStage = (set, view, stage) => {
 
 const useSortBySimilarity = () => {
   return useRecoilCallback(
-    ({ snapshot, set }) => async (key: string) => {
+    ({ snapshot, set }) => async () => {
       const view = await snapshot.getPromise(selectors.view);
       const params = await snapshot.getPromise(sortBySimilarityParameters);
       const queryIds = await getQueryIds(snapshot);
@@ -78,7 +78,6 @@ const availableSimilarityKeys = selectorFamily<string[], boolean>({
   get: (modal) => ({ get }) => {
     const isRoot = get(selectors.isRootView);
     const keys = get(selectors.similarityKeys);
-    let result = [];
     if (isRoot && !modal) {
       return keys.samples;
     } else if (modal) {
@@ -166,7 +165,10 @@ const SortBySimilarity = React.memo(
                 <PopoutSectionTitle></PopoutSectionTitle>
                 <Button
                   text={"Apply"}
-                  onClick={() => sortBySimilarity()}
+                  onClick={() => {
+                    close();
+                    sortBySimilarity();
+                  }}
                   style={{
                     margin: "0.25rem -0.5rem",
                     paddingLeft: "2.5rem",
