@@ -1001,7 +1001,12 @@ class SampleCollection(object):
         )
 
     def compute_embeddings(
-        self, model, embeddings_field=None, batch_size=None, num_workers=None
+        self,
+        model,
+        embeddings_field=None,
+        batch_size=None,
+        num_workers=None,
+        skip_failures=True,
     ):
         """Computes embeddings for the samples in the collection using the
         given :class:`fiftyone.core.models.Model`.
@@ -1020,11 +1025,19 @@ class SampleCollection(object):
                 for image samples
             num_workers (None): the number of workers to use when loading
                 images. Only applicable for Torch models
+            skip_failures (True): whether to gracefully continue without
+                raising an error if embeddings cannot be generated for a sample
 
         Returns:
-            ``None``, if an ``embeddings_field`` is provided; otherwise, a
-            numpy array whose first dimension is ``len(samples)`` containing
-            the embeddings
+            one of the following:
+
+            -   ``None``, if an ``embeddings_field`` is provided
+            -   a ``num_samples x num_dim`` array of embeddings, if no
+                ``embeddings_field`` was provided and embeddings were
+                successfully computed for all samples
+            -   otherwise, a list of length ``num_samples`` containing
+                embedding vectors along with ``None`` entries for samples for
+                which embeddings could not be computed
         """
         return fomo.compute_embeddings(
             self,
@@ -1032,6 +1045,7 @@ class SampleCollection(object):
             embeddings_field=embeddings_field,
             batch_size=batch_size,
             num_workers=num_workers,
+            skip_failures=skip_failures,
         )
 
     def compute_patch_embeddings(
@@ -1044,6 +1058,7 @@ class SampleCollection(object):
         handle_missing="skip",
         batch_size=None,
         num_workers=None,
+        skip_failures=True,
     ):
         """Computes embeddings for the image patches defined by
         ``patches_field`` of the samples in the collection using the given
@@ -1082,10 +1097,16 @@ class SampleCollection(object):
             batch_size (None): an optional batch size to use
             num_workers (None): the number of workers to use when loading
                 images. Only applicable for Torch models
+            skip_failures (True): whether to gracefully continue without
+                raising an error if embeddings cannot be generated for a sample
 
         Returns:
-            ``None``, if an ``embeddings_field`` is provided; otherwise, a dict
-            mapping sample IDs to arrays of patch embeddings
+            one of the following:
+
+            -   ``None``, if an ``embeddings_field`` is provided
+            -   otherwise, a dict mapping sample IDs to arrays of patch
+                embeddings. This dictionary will contain ``None`` values for
+                any samples for which embeddings could not be computed
         """
         return fomo.compute_patch_embeddings(
             self,
@@ -1097,6 +1118,7 @@ class SampleCollection(object):
             force_square=force_square,
             alpha=alpha,
             handle_missing=handle_missing,
+            skip_failures=skip_failures,
         )
 
     def evaluate_classifications(
