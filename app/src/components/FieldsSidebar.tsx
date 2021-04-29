@@ -650,7 +650,7 @@ export const OptionText = ({ style, children }) => {
   );
 };
 
-export const Button = ({ onClick, text, children, style }) => {
+export const Button = ({ onClick, text, children = null, style }) => {
   const theme = useTheme();
   const [hover, setHover] = useState(false);
   const props = useSpring({

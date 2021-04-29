@@ -1,16 +1,18 @@
-import React, { useState } from "react";
+import React from "react";
 import {
   atom,
   selector,
+  selectorFamily,
   Snapshot,
   useRecoilCallback,
   useRecoilValue,
+  useSetRecoilState,
 } from "recoil";
 
 import Popout from "./Popout";
-import { ActionOption } from "./Common";
 import Input from "../Common/Input";
 import SelectInput from "../Common/SelectInput";
+import { Button } from "../FieldsSidebar";
 import * as atoms from "../../recoil/atoms";
 import * as selectors from "../../recoil/selectors";
 import { PopoutSectionTitle } from "../utils";
@@ -26,35 +28,6 @@ interface BrainMethod {
 interface BrainMethods {
   [key: string]: BrainMethod;
 }
-
-const similarityKeys = selector<{ patches: string[]; samples: string[] }>({
-  key: "similarityKeys",
-  get: ({ get }) => {
-    const state = get(atoms.stateDescription);
-    const brainKeys = (state?.dataset?.brain_methods || {}) as BrainMethods;
-    return Object.entries(brainKeys)
-      .filter(([_, { method }]) => method === "similarity")
-      .reduce(
-        (
-          { patches, samples },
-          [
-            key,
-            {
-              config: { patches_field },
-            },
-          ]
-        ) => {
-          if (patches_field) {
-            patches.push(key);
-          } else {
-            samples.push(key);
-          }
-          return { patches, samples };
-        },
-        { patches: [], samples: [] }
-      );
-  },
-});
 
 const getQueryIds = async (snapshot: Snapshot, brainKey: string) => {};
 
@@ -72,53 +45,6 @@ const useSortBySimilarity = () => {
   );
 };
 
-const SampleKeys = ({ close }) => {
-  const { samples } = useRecoilValue(similarityKeys);
-
-  const sortBySimilarity = useSortBySimilarity();
-
-  return (
-    <>
-      {samples.map((key) => {
-        return (
-          <ActionOption
-            key={key}
-            text={key}
-            title={`Sort by selected with ${key} patches view`}
-            onClick={() => {
-              sortBySimilarity(key);
-              close();
-            }}
-          />
-        );
-      })}
-    </>
-  );
-};
-
-const PatchesKeys = ({ close }) => {
-  const { patches } = useRecoilValue(similarityKeys);
-
-  const sortBySimilarity = useSortBySimilarity();
-  return (
-    <>
-      {patches.map((key) => {
-        return (
-          <ActionOption
-            key={key}
-            text={key}
-            title={`Sort by selected with ${key} patches view`}
-            onClick={() => {
-              sortBySimilarity(key);
-              close();
-            }}
-          />
-        );
-      })}
-    </>
-  );
-};
-
 const kValue = atom<number>({
   key: "kValue",
   default: null,
@@ -132,6 +58,54 @@ const reverseValue = atom<boolean>({
 const brainKeyValue = atom<string>({
   key: "brainKeyValue",
   default: null,
+});
+
+const searchBrainKeyValue = atom<string>({
+  key: "searchBrainKeyValue",
+  default: "",
+});
+
+const similarityKeys = selectorFamily<
+  { hasMore: boolean; choices: string[] },
+  boolean
+>({
+  key: "similarityKeys",
+  get: (modal) => ({ get }) => {
+    const state = get(atoms.stateDescription);
+    const isRoot = get(selectors.isRootView);
+    const searchBrainKey = get(searchBrainKeyValue);
+    const brainKeys = (state?.dataset?.brain_methods || {}) as BrainMethods;
+    const keys = Object.entries(brainKeys)
+      .filter(([_, { method }]) => method === "similarity")
+      .reduce(
+        (
+          { patches, samples },
+          [
+            key,
+            {
+              config: { patches_field },
+            },
+          ]
+        ) => {
+          if (patches_field) {
+            patches.push([key, patches_field]);
+          } else {
+            samples.push(key);
+          }
+          return { patches, samples };
+        },
+        { patches: [], samples: [] }
+      );
+    let result = [];
+    if (isRoot && !modal) {
+      result = keys.samples.filter((k) => k.includes(searchBrainKey)).sort();
+    } else {
+    }
+    return {
+      hasMore: result.length > 10,
+      choices: result.slice(0, 11),
+    };
+  },
 });
 
 interface SortBySimilarityParameters {
@@ -165,12 +139,9 @@ interface SortByKwargs {
 }
 
 const SortBySimilarity = React.memo(
-  ({ bounds, close }: SortBySimilarityProps) => {
-    const [state, setState] = useState({
-      reverse: false,
-      k: null,
-      brainKey: null,
-    });
+  ({ modal, bounds, close }: SortBySimilarityProps) => {
+    const setBrainKeyValue = useSetRecoilState(brainKeyValue);
+    const brainKey = useRecoilValue(brainKeyValue);
 
     return (
       <Popout modal={false} bounds={bounds}>
@@ -181,7 +152,27 @@ const SortBySimilarity = React.memo(
           valueAtom={kValue}
         />
         <Checkbox name={"reverse"} valueAtom={reverseValue} />
-        <SelectInput valueAtom={brainKeyValue} radio={true} choicesAtom={} />
+        <SelectInput
+          choicesAtom={similarityKeys(modal)}
+          radio={true}
+          valueAtom={brainKeyValue}
+          onChange={([value]) => setBrainKeyValue(value)}
+        />
+        {brainKey && (
+          <>
+            <PopoutSectionTitle></PopoutSectionTitle>
+            <Button
+              text={"Apply"}
+              onClick={() => {}}
+              style={{
+                margin: "0.25rem -0.5rem",
+                paddingLeft: "2.5rem",
+                height: "2rem",
+                borderRadius: 0,
+              }}
+            ></Button>
+          </>
+        )}
       </Popout>
     );
   }
