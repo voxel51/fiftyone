@@ -10,6 +10,7 @@ import {
 import Popout from "./Popout";
 import { ActionOption } from "./Common";
 import Input from "../Common/Input";
+import SelectInput from "../Common/SelectInput";
 import * as atoms from "../../recoil/atoms";
 import * as selectors from "../../recoil/selectors";
 import { PopoutSectionTitle } from "../utils";
@@ -128,6 +129,28 @@ const reverseValue = atom<boolean>({
   default: false,
 });
 
+const brainKeyValue = atom<string>({
+  key: "brainKeyValue",
+  default: null,
+});
+
+interface SortBySimilarityParameters {
+  k: number | null;
+  reverse: boolean;
+  brainKey: string;
+}
+
+const sortBySimilarityParameters = selector<SortBySimilarityParameters>({
+  key: "sortBySimilarityParameters",
+  get: ({ get }) => {
+    return {
+      k: get(kValue),
+      brainKey: get(brainKeyValue),
+      reverse: get(reverseValue),
+    };
+  },
+});
+
 interface SortBySimilarityProps {
   modal: boolean;
   close: () => void;
@@ -152,8 +175,13 @@ const SortBySimilarity = React.memo(
     return (
       <Popout modal={false} bounds={bounds}>
         <PopoutSectionTitle>Sort by similarity</PopoutSectionTitle>
-        <Input placeholder={"k (None)"} type="int" valueAtom={kValue} />
+        <Input
+          placeholder={"k (default = None)"}
+          type="int"
+          valueAtom={kValue}
+        />
         <Checkbox name={"reverse"} valueAtom={reverseValue} />
+        <SelectInput valueAtom={brainKeyValue} radio={true} choicesAtom={} />
       </Popout>
     );
   }

@@ -138,7 +138,10 @@ export const selectedSampleLabelStatistics = selector<{
       data.type === type && handler(data);
     };
 
-    const promise = new Promise((resolve) => {
+    const promise = new Promise<{
+      count: number;
+      tags: { [key: string]: number };
+    }>((resolve) => {
       const listener = wrap(({ count, tags }) => {
         socket.removeEventListener("message", listener);
         resolve({ count, tags });

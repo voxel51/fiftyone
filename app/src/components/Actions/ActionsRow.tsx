@@ -39,7 +39,6 @@ const Patches = () => {
   const [open, setOpen] = useState(false);
   const ref = useRef();
   useOutsideClick(ref, () => open && setOpen(false));
-  const [mRef, bounds] = useMeasure();
 
   useLayoutEffect(() => {
     close && setOpen(false);
@@ -52,7 +51,6 @@ const Patches = () => {
         open={open}
         onClick={() => setOpen(!open)}
         highlight={open}
-        ref={mRef}
         title={"Patches"}
       />
       {open && <Patcher close={() => setOpen(false)} />}
@@ -60,7 +58,7 @@ const Patches = () => {
   );
 };
 
-const Similarity = () => {
+const Similarity = ({ modal }) => {
   const [open, setOpen] = useState(false);
   const ref = useRef();
   useOutsideClick(ref, () => open && setOpen(false));
@@ -80,7 +78,7 @@ const Similarity = () => {
         ref={mRef}
         title={"Sort by similarity"}
       />
-      {open && <Similar close={() => setOpen(false)} />}
+      {open && <Similar close={() => setOpen(false)} bounds={bounds} />}
     </ActionDiv>
   );
 };
