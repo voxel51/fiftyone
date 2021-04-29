@@ -10,14 +10,13 @@ import {
 } from "recoil";
 
 import Popout from "./Popout";
+import { ActionOption } from "./Common";
 import Input from "../Common/Input";
 import SelectInput from "../Common/SelectInput";
 import { Button } from "../FieldsSidebar";
-import * as atoms from "../../recoil/atoms";
 import * as selectors from "../../recoil/selectors";
 import { PopoutSectionTitle } from "../utils";
 import Checkbox from "../Common/Checkbox";
-import { useTheme } from "../../utils/hooks";
 
 const getQueryIds = async (snapshot: Snapshot, brainKey: string) => {};
 
@@ -55,20 +54,38 @@ const searchBrainKeyValue = atom<string>({
   default: "",
 });
 
-const currentSimilarityKeys = selectorFamily<
-  { hasMore: boolean; choices: string[] },
-  boolean
->({
-  key: "currentSimilarityKeys",
+const availableSimilarityKeys = selectorFamily<string[], boolean>({
+  key: "availableSimilarityKeys",
   get: (modal) => ({ get }) => {
     const isRoot = get(selectors.isRootView);
     const searchBrainKey = get(searchBrainKeyValue);
     const keys = get(selectors.similarityKeys);
     let result = [];
     if (isRoot && !modal) {
-      result = keys.samples.filter((k) => k.includes(searchBrainKey)).sort();
-    } else {
+      return keys.samples;
+    } else if (modal) {
+      const selectedLabels = get(selectors.selectedLabels);
+      const fields = Object.values(selectedLabels).reduce((acc, { field }) => {
+        acc.add(field);
+        return acc;
+      }, new Set<string>());
+      if (fields.size === 1) {
+        return keys.patches[fields.values()[0]] ?? [];
+      }
     }
+    return [];
+  },
+});
+
+const currentSimilarityKeys = selectorFamily<
+  { hasMore: boolean; choices: string[] },
+  boolean
+>({
+  key: "currentSimilarityKeys",
+  get: (modal) => ({ get }) => {
+    const searchBrainKey = get(searchBrainKeyValue);
+    const keys = get(availableSimilarityKeys(modal));
+    const result = keys.filter((k) => k.includes(searchBrainKey)).sort();
     return {
       hasMore: result.length > 10,
       choices: result.slice(0, 11),
@@ -109,41 +126,52 @@ interface SortByKwargs {
 const SortBySimilarity = React.memo(
   ({ modal, bounds, close }: SortBySimilarityProps) => {
     const setBrainKeyValue = useSetRecoilState(brainKeyValue);
-    const theme = useTheme();
     const brainKey = useRecoilValue(brainKeyValue);
+    const hasSimilarityKeys =
+      useRecoilValue(availableSimilarityKeys(modal)).length > 0;
 
     return (
       <Popout modal={false} bounds={bounds}>
         <PopoutSectionTitle>Sort by similarity</PopoutSectionTitle>
-        <Input
-          placeholder={"k (default = None)"}
-          type="int"
-          valueAtom={kValue}
-        />
-        <Checkbox name={"reverse"} valueAtom={reverseValue} />
-        <PopoutSectionTitle style={{ fontSize: 14 }}>
-          Brain key
-        </PopoutSectionTitle>
-        <SelectInput
-          choicesAtom={currentSimilarityKeys(modal)}
-          radio={true}
-          valueAtom={brainKeyValue}
-          onChange={([value]) => setBrainKeyValue(value)}
-        />
-        {brainKey && (
+        {hasSimilarityKeys ? (
           <>
-            <PopoutSectionTitle></PopoutSectionTitle>
-            <Button
-              text={"Apply"}
-              onClick={() => {}}
-              style={{
-                margin: "0.25rem -0.5rem",
-                paddingLeft: "2.5rem",
-                height: "2rem",
-                borderRadius: 0,
-              }}
-            ></Button>
+            <Input
+              placeholder={"k (default = None)"}
+              type="int"
+              valueAtom={kValue}
+            />
+            <Checkbox name={"reverse"} valueAtom={reverseValue} />
+            <PopoutSectionTitle style={{ fontSize: 14 }}>
+              Brain key
+            </PopoutSectionTitle>
+            <SelectInput
+              choicesAtom={currentSimilarityKeys(modal)}
+              radio={true}
+              valueAtom={brainKeyValue}
+              onChange={([value]) => setBrainKeyValue(value)}
+            />
+            {brainKey && (
+              <>
+                <PopoutSectionTitle></PopoutSectionTitle>
+                <Button
+                  text={"Apply"}
+                  onClick={() => {}}
+                  style={{
+                    margin: "0.25rem -0.5rem",
+                    paddingLeft: "2.5rem",
+                    height: "2rem",
+                    borderRadius: 0,
+                  }}
+                ></Button>
+              </>
+            )}
           </>
+        ) : (
+          <ActionOption
+            text={"No runs available"}
+            title={"No similarity runs are available"}
+            href={"https://fiftyone.ai"}
+          />
         )}
       </Popout>
     );

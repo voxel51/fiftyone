@@ -61,13 +61,11 @@ const Patches = () => {
 const hasSimilarityKeys = selectorFamily<boolean, boolean>({
   key: "hasSimilarityKeys",
   get: (modal) => ({ get }) => {
+    const isRoot = get(selectors.isRootView);
     if (modal) {
-      return false;
+      return !isRoot || Boolean(get(selectors.selectedLabelIds).size);
     }
-    return (
-      Boolean(get(atoms.selectedSamples).size) &&
-      Boolean(get(selectors.similarityKeys).samples.length)
-    );
+    return Boolean(get(atoms.selectedSamples).size);
   },
 });
 

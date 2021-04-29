@@ -33,6 +33,7 @@ export const ActionOption = React.memo(
         onClick={disabled ? null : onClick}
         {...props}
         href={href}
+        target={href ? "_blank" : null}
       >
         <span style={href ? { textDecoration: "underline" } : {}}>
           {text}
