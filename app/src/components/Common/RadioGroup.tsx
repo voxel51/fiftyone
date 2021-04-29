@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useLayoutEffect } from "react";
 import { Radio as MaterialRadio } from "@material-ui/core";
 import {
   RecoilState,
@@ -42,7 +42,10 @@ const Radio = React.memo(
     return (
       <StyledRadioContainer>
         <StyledRadio {...props} onClick={() => setValue(value)}>
-          <MaterialRadio />
+          <MaterialRadio
+            style={{ color, padding: "0 0.5rem 0 0" }}
+            checked={value === currentValue}
+          />
           <RadioName>{value}</RadioName>
         </StyledRadio>
       </StyledRadioContainer>
@@ -63,6 +66,14 @@ const RadioGroup = React.memo(
     const theme = useTheme();
     color = color ?? theme.brand;
 
+    useLayoutEffect(() => {
+      choices.length === 1 && !values[0] && setValues(choices);
+    }, [values, choices]);
+
+    if (!values[0]) {
+      return null;
+    }
+
     return (
       <div>
         {choices.map((choice) => (
@@ -71,6 +82,7 @@ const RadioGroup = React.memo(
             setValue={(value) => setValues([value])}
             color={color}
             currentValue={values[0]}
+            key={choice}
           />
         ))}
       </div>

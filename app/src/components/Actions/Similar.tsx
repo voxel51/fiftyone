@@ -14,11 +14,20 @@ import { ActionOption } from "./Common";
 import Input from "../Common/Input";
 import SelectInput from "../Common/SelectInput";
 import { Button } from "../FieldsSidebar";
+import * as atoms from "../../recoil/atoms";
 import * as selectors from "../../recoil/selectors";
 import { PopoutSectionTitle } from "../utils";
 import Checkbox from "../Common/Checkbox";
 
-const getQueryIds = async (snapshot: Snapshot, brainKey: string) => {};
+const getQueryIds = async (snapshot: Snapshot) => {
+  const selectedLabels = await snapshot.getPromise(selectors.selectedLabelIds);
+  if (selectedLabels.size) {
+    return [...selectedLabels];
+  }
+
+  const selectedSamples = await snapshot.getPromise(atoms.selectedSamples);
+  return [...selectedSamples];
+};
 
 const appendStage = (set, view, stage) => {
   set(selectors.view, [...view, stage]);
@@ -28,7 +37,18 @@ const useSortBySimilarity = () => {
   return useRecoilCallback(
     ({ snapshot, set }) => async (key: string) => {
       const view = await snapshot.getPromise(selectors.view);
-      appendStage(set, view, {});
+      const params = await snapshot.getPromise(sortBySimilarityParameters);
+      const queryIds = await getQueryIds(snapshot);
+      appendStage(set, view, {
+        _cls: "fiftyone.core.stages.SortBySimilarity",
+        kwargs: [
+          ["query_ids", queryIds],
+          ["k", params.k],
+          ["reverse", params.reverse],
+          ["brain_key", params.brainKey],
+          ["_state", null],
+        ],
+      });
     },
     []
   );
@@ -44,9 +64,9 @@ const reverseValue = atom<boolean>({
   default: false,
 });
 
-const brainKeyValue = atom<string>({
+const brainKeyValue = atom<string[]>({
   key: "brainKeyValue",
-  default: null,
+  default: [null],
 });
 
 const searchBrainKeyValue = atom<string>({
@@ -104,7 +124,7 @@ const sortBySimilarityParameters = selector<SortBySimilarityParameters>({
   get: ({ get }) => {
     return {
       k: get(kValue),
-      brainKey: get(brainKeyValue),
+      brainKey: get(brainKeyValue)[0],
       reverse: get(reverseValue),
     };
   },
@@ -125,10 +145,11 @@ interface SortByKwargs {
 
 const SortBySimilarity = React.memo(
   ({ modal, bounds, close }: SortBySimilarityProps) => {
-    const setBrainKeyValue = useSetRecoilState(brainKeyValue);
     const brainKey = useRecoilValue(brainKeyValue);
     const hasSimilarityKeys =
       useRecoilValue(availableSimilarityKeys(modal)).length > 0;
+
+    const sortBySimilarity = useSortBySimilarity();
 
     return (
       <Popout modal={false} bounds={bounds}>
@@ -147,15 +168,14 @@ const SortBySimilarity = React.memo(
             <SelectInput
               choicesAtom={currentSimilarityKeys(modal)}
               radio={true}
-              valueAtom={brainKeyValue}
-              onChange={([value]) => setBrainKeyValue(value)}
+              valuesAtom={brainKeyValue}
             />
             {brainKey && (
               <>
                 <PopoutSectionTitle></PopoutSectionTitle>
                 <Button
                   text={"Apply"}
-                  onClick={() => {}}
+                  onClick={() => sortBySimilarity()}
                   style={{
                     margin: "0.25rem -0.5rem",
                     paddingLeft: "2.5rem",
