@@ -460,11 +460,7 @@ const labelFilter = (f) => {
 };
 
 const scalarFilter = (f) => {
-  return (
-    VALID_SCALAR_TYPES.includes(f.ftype) &&
-    !f.name.startsWith("_") &&
-    f.name !== "filepath"
-  );
+  return VALID_SCALAR_TYPES.includes(f.ftype) && !f.name.startsWith("_");
 };
 
 const fields = selectorFamily<{ [key: string]: SerializableParam }, string>({

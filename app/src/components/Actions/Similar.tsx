@@ -6,7 +6,6 @@ import {
   Snapshot,
   useRecoilCallback,
   useRecoilValue,
-  useSetRecoilState,
 } from "recoil";
 
 import Popout from "./Popout";
@@ -78,7 +77,6 @@ const availableSimilarityKeys = selectorFamily<string[], boolean>({
   key: "availableSimilarityKeys",
   get: (modal) => ({ get }) => {
     const isRoot = get(selectors.isRootView);
-    const searchBrainKey = get(searchBrainKeyValue);
     const keys = get(selectors.similarityKeys);
     let result = [];
     if (isRoot && !modal) {
@@ -134,13 +132,6 @@ interface SortBySimilarityProps {
   modal: boolean;
   close: () => void;
   bounds?: any;
-}
-
-interface SortByKwargs {
-  brainKey: string;
-  k: number;
-  patchesFields?: string;
-  reverse?: boolean;
 }
 
 const SortBySimilarity = React.memo(

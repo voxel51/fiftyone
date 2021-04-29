@@ -207,7 +207,10 @@ class DatasetStatistics(object):
         result = []
         for prefix, schema in schemas:
             for field_name, field in schema.items():
-                if field_name in default_fields or (
+
+                if (
+                    field_name in default_fields and field_name != "filepath"
+                ) or (
                     prefix == collection._FRAMES_PREFIX
                     and field_name == "frame_number"
                 ):

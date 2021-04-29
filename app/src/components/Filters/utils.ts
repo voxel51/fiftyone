@@ -55,7 +55,7 @@ export const unsupportedFields = selector<string[]>({
         !get(isNumericField(f)) &&
         !get(isStringField(f)) &&
         !get(isBooleanField(f)) &&
-        !["filepath", "metadata", "tags"].includes(f)
+        !["metadata", "tags"].includes(f)
     );
   },
 });

@@ -102,7 +102,6 @@ export const RESERVED_FIELDS = [
   "_media_type",
   "metadata",
   "tags",
-  "filepath",
   "frames",
   "frame_number",
 ];
