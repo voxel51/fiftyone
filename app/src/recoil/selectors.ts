@@ -1062,3 +1062,46 @@ export const itemNames = selector<{ plural: string; singular: string }>({
         };
   },
 });
+
+interface BrainMethod {
+  method: string;
+  config: {
+    patches_field: string;
+  };
+}
+
+interface BrainMethods {
+  [key: string]: BrainMethod;
+}
+
+export const similarityKeys = selector<{
+  patches: [string, string][];
+  samples: string[];
+}>({
+  key: "similarityKeys",
+  get: ({ get }) => {
+    const state = get(atoms.stateDescription);
+    const brainKeys = (state?.dataset?.brain_methods || {}) as BrainMethods;
+    return Object.entries(brainKeys)
+      .filter(([_, { method }]) => method === "similarity")
+      .reduce(
+        (
+          { patches, samples },
+          [
+            key,
+            {
+              config: { patches_field },
+            },
+          ]
+        ) => {
+          if (patches_field) {
+            patches.push([key, patches_field]);
+          } else {
+            samples.push(key);
+          }
+          return { patches, samples };
+        },
+        { patches: [], samples: [] }
+      );
+  },
+});

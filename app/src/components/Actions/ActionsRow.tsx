@@ -16,7 +16,7 @@ import {
   VisibilityOff,
 } from "@material-ui/icons";
 import useMeasure from "react-use-measure";
-import { useRecoilState, useRecoilValue } from "recoil";
+import { selectorFamily, useRecoilState, useRecoilValue } from "recoil";
 import styled from "styled-components";
 
 import Coloring from "./Options";
@@ -58,15 +58,33 @@ const Patches = () => {
   );
 };
 
-const Similarity = ({ modal }) => {
+const hasSimilarityKeys = selectorFamily<boolean, boolean>({
+  key: "hasSimilarityKeys",
+  get: (modal) => ({ get }) => {
+    if (modal) {
+      return false;
+    }
+    return (
+      Boolean(get(atoms.selectedSamples).size) &&
+      Boolean(get(selectors.similarityKeys).samples.length)
+    );
+  },
+});
+
+const Similarity = ({ modal }: { modal: boolean }) => {
   const [open, setOpen] = useState(false);
   const ref = useRef();
   useOutsideClick(ref, () => open && setOpen(false));
+  const hasSimilarity = useRecoilValue(hasSimilarityKeys(modal));
   const [mRef, bounds] = useMeasure();
 
   useLayoutEffect(() => {
     close && setOpen(false);
   }, [close]);
+
+  if (!hasSimilarity) {
+    return null;
+  }
 
   return (
     <ActionDiv ref={ref}>

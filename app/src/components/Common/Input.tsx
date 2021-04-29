@@ -51,7 +51,7 @@ const Input = React.memo(
       <StyledInputContainer style={{ borderBottom: `1px solid ${color}` }}>
         <StyledInput
           placeholder={placeholder}
-          value={value}
+          value={value === null ? "" : String(value)}
           onChange={(e: React.FormEvent<HTMLInputElement>) => {
             const re = /^[0-9\b]+$/;
             if (

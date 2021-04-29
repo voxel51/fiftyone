@@ -18,17 +18,6 @@ import * as selectors from "../../recoil/selectors";
 import { PopoutSectionTitle } from "../utils";
 import Checkbox from "../Common/Checkbox";
 
-interface BrainMethod {
-  method: string;
-  config: {
-    patches_field: string;
-  };
-}
-
-interface BrainMethods {
-  [key: string]: BrainMethod;
-}
-
 const getQueryIds = async (snapshot: Snapshot, brainKey: string) => {};
 
 const appendStage = (set, view, stage) => {
@@ -65,37 +54,15 @@ const searchBrainKeyValue = atom<string>({
   default: "",
 });
 
-const similarityKeys = selectorFamily<
+const currentSimilarityKeys = selectorFamily<
   { hasMore: boolean; choices: string[] },
   boolean
 >({
-  key: "similarityKeys",
+  key: "currentSimilarityKeys",
   get: (modal) => ({ get }) => {
-    const state = get(atoms.stateDescription);
     const isRoot = get(selectors.isRootView);
     const searchBrainKey = get(searchBrainKeyValue);
-    const brainKeys = (state?.dataset?.brain_methods || {}) as BrainMethods;
-    const keys = Object.entries(brainKeys)
-      .filter(([_, { method }]) => method === "similarity")
-      .reduce(
-        (
-          { patches, samples },
-          [
-            key,
-            {
-              config: { patches_field },
-            },
-          ]
-        ) => {
-          if (patches_field) {
-            patches.push([key, patches_field]);
-          } else {
-            samples.push(key);
-          }
-          return { patches, samples };
-        },
-        { patches: [], samples: [] }
-      );
+    const keys = get(selectors.similarityKeys);
     let result = [];
     if (isRoot && !modal) {
       result = keys.samples.filter((k) => k.includes(searchBrainKey)).sort();
@@ -153,7 +120,7 @@ const SortBySimilarity = React.memo(
         />
         <Checkbox name={"reverse"} valueAtom={reverseValue} />
         <SelectInput
-          choicesAtom={similarityKeys(modal)}
+          choicesAtom={currentSimilarityKeys(modal)}
           radio={true}
           valueAtom={brainKeyValue}
           onChange={([value]) => setBrainKeyValue(value)}
