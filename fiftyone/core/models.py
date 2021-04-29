@@ -20,6 +20,7 @@ import eta.core.video as etav
 import eta.core.web as etaw
 
 import fiftyone as fo
+import fiftyone.core.frame as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 import fiftyone.core.utils as fou
@@ -204,8 +205,8 @@ def _apply_image_model_single(
             estr = "%d image" % num_errors
 
         lines.append(
-            "Failed to generate predictions for %s. See above for details."
-            % estr
+            "Errors occured while generating predictions for %s. See above "
+            "for details." % estr
         )
 
         logger.warning("\n\n".join(lines))
@@ -249,8 +250,8 @@ def _apply_image_model_batch(
             estr = "%d batch" % num_errors
 
         lines.append(
-            "Failed to generate predictions for %s. See above for details."
-            % estr
+            "Errors occured while generating predictions for %s. See above "
+            "for details." % estr
         )
 
         logger.warning("\n\n".join(lines))
@@ -307,8 +308,8 @@ def _apply_image_model_data_loader(
             estr = "%d batch" % num_errors
 
         lines.append(
-            "Failed to generate predictions for %s. See above for details."
-            % estr
+            "Errors occured while generating predictions for %s. See above "
+            "for details." % estr
         )
 
         logger.warning("\n\n".join(lines))
@@ -361,8 +362,8 @@ def _apply_image_model_to_frames_single(
             estr = "%d video" % num_errors
 
         lines.append(
-            "Failed to generate predictions for %s. See above for details."
-            % estr
+            "Errors occured while generating predictions for %s. See above "
+            "for details." % estr
         )
 
         logger.warning("\n\n".join(lines))
@@ -418,8 +419,8 @@ def _apply_image_model_to_frames_batch(
             estr = "%d video" % num_errors
 
         lines.append(
-            "Failed to generate predictions for %s. See above for details."
-            % estr
+            "Errors occured while generating predictions for %s. See above "
+            "for details." % estr
         )
 
         logger.warning("\n\n".join(lines))
@@ -459,8 +460,8 @@ def _apply_video_model(
             estr = "%d video" % num_errors
 
         lines.append(
-            "Failed to generate predictions for %s. See above for details."
-            % estr
+            "Errors occurred while generating predictions for %s. See above "
+            "for details." % estr
         )
 
         logger.warning("\n\n".join(lines))
@@ -525,7 +526,7 @@ def _make_data_loader(samples, model, batch_size, num_workers, skip_failures):
                 return error
 
             try:
-                return np.stack(batch, axis=0)
+                return np.stack(batch)
             except Exception as e:
                 if not skip_failures:
                     raise e
@@ -569,6 +570,12 @@ def compute_embeddings(
     """Computes embeddings for the samples in the collection using the given
     :class:`Model`.
 
+    This method supports all the following cases:
+
+    -   Using an image model to compute embeddings for an image collection
+    -   Using an image model to compute frame embeddings for a video collection
+    -   Using a video model to compute embeddings for a video collection
+
     The ``model`` must expose embeddings, i.e., :meth:`Model.has_embeddings`
     must return ``True``.
 
@@ -591,12 +598,19 @@ def compute_embeddings(
         one of the following:
 
         -   ``None``, if an ``embeddings_field`` is provided
-        -   a ``num_samples x num_dim`` array of embeddings, if no
-            ``embeddings_field`` was provided and embeddings were successfully
-            computed for all samples
-        -   otherwise, a list of length ``num_samples`` containing embedding
-            vectors along with ``None`` entries for samples for which
-            embeddings could not be computed
+        -   a ``num_samples x num_dim`` array of embeddings, when computing
+            embeddings for image/video collections with image/video models,
+            respectively, and no ``embeddings_field`` is provided. If
+            ``skip_failures`` is ``True`` and any errors are detected, a list
+            of length ``num_samples`` is returned instead containing all
+            successfully computed embedding vectors along with ``None`` entries
+            for samples for which embeddings could not be computed
+        -   a dictionary mapping sample IDs to ``num_frames x num_dim`` arrays
+            of embeddings, when computing frame embeddings for video
+            collections using an image model. If ``skip_failures`` is ``True``
+            and any errors are detected, the values of this dictionary will
+            contain arrays of embeddings for all frames 1, 2, ... until the
+            error occurred, or ``None`` if no embeddings were computed at all
     """
     if not isinstance(model, Model):
         raise ValueError(
@@ -605,11 +619,22 @@ def compute_embeddings(
 
     if not model.has_embeddings:
         raise ValueError(
-            "Model does not expose embeddings (model.has_embeddings = %s)"
+            "Model must expose embeddings; found model.has_embeddings = %s"
             % model.has_embeddings
         )
 
-    use_data_loader = isinstance(model, TorchModelMixin)
+    if model.media_type == "video" and samples.media_type != fom.VIDEO:
+        raise ValueError("Video models can only be applied to video datasets")
+
+    if model.media_type not in ("image", "video"):
+        raise ValueError(
+            "Unsupported model `media_type=%s`. Supported values are "
+            "('image', 'video')" % model.media_type
+        )
+
+    use_data_loader = (
+        isinstance(model, TorchModelMixin) and samples.media_type == fom.IMAGE
+    )
 
     if num_workers is not None and not use_data_loader:
         logger.warning(
@@ -624,12 +649,22 @@ def compute_embeddings(
         # pylint: disable=no-member
         context.enter_context(model)
 
-        if samples.media_type == fom.VIDEO:
+        if samples.media_type == fom.VIDEO and model.media_type == "video":
             return _compute_video_embeddings(
                 samples, model, embeddings_field, skip_failures
             )
 
         batch_size = _parse_batch_size(batch_size, model, use_data_loader)
+
+        if samples.media_type == fom.VIDEO and model.media_type == "image":
+            if batch_size is not None:
+                return _compute_frame_embeddings_batch(
+                    samples, model, embeddings_field, batch_size, skip_failures
+                )
+
+            return _compute_frame_embeddings_single(
+                samples, model, embeddings_field, skip_failures
+            )
 
         if use_data_loader:
             return _compute_image_embeddings_data_loader(
@@ -689,8 +724,8 @@ def _compute_image_embeddings_single(
             estr = "%d image" % num_errors
 
         lines.append(
-            "Failed to generate embeddings for %s. See above for details."
-            % estr
+            "Errors occurred while generating embeddings for %s. See above "
+            "for details." % estr
         )
 
         logger.warning("\n\n".join(lines))
@@ -701,7 +736,7 @@ def _compute_image_embeddings_single(
     if errors:
         return embeddings  # may contain None, must return as list
 
-    return np.stack(embeddings, axis=0)
+    return np.stack(embeddings)
 
 
 def _compute_image_embeddings_batch(
@@ -744,8 +779,8 @@ def _compute_image_embeddings_batch(
             estr = "%d batch" % num_errors
 
         lines.append(
-            "Failed to generate embeddings for %s. See above for details."
-            % estr
+            "Errors occurred while generating embeddings for %s. See above "
+            "for details." % estr
         )
 
         logger.warning("\n\n".join(lines))
@@ -756,7 +791,7 @@ def _compute_image_embeddings_batch(
     if errors:
         return embeddings  # may contain None, must return as list
 
-    return np.stack(embeddings, axis=0)
+    return np.stack(embeddings)
 
 
 def _compute_image_embeddings_data_loader(
@@ -810,8 +845,8 @@ def _compute_image_embeddings_data_loader(
             estr = "%d batch" % num_errors
 
         lines.append(
-            "Failed to generate embeddings for %s. See above for details."
-            % estr
+            "Errors occurred while generating embeddings for %s. See above "
+            "for details." % estr
         )
 
         logger.warning("\n\n".join(lines))
@@ -822,7 +857,156 @@ def _compute_image_embeddings_data_loader(
     if errors:
         return embeddings  # may contain None, must return as list
 
-    return np.stack(embeddings, axis=0)
+    return np.stack(embeddings)
+
+
+def _compute_frame_embeddings_single(
+    samples, model, embeddings_field, skip_failures
+):
+    samples.compute_metadata()
+
+    frame_counts = np.cumsum(samples.values("metadata.total_frame_count"))
+    total_frame_count = frame_counts[-1] if frame_counts.size > 0 else 0
+
+    embeddings_dict = {}
+    errors = []
+
+    with fou.ProgressBar(total=total_frame_count) as pb:
+        for idx, sample in enumerate(samples, 1):
+            embeddings = []
+
+            try:
+                with etav.FFmpegVideoReader(sample.filepath) as video_reader:
+                    for img in video_reader:
+                        embedding = model.embed(img)[0]
+
+                        if embeddings_field is not None:
+                            sample.add_labels(
+                                {video_reader.frame_number: embedding},
+                                embeddings_field,
+                            )
+                        else:
+                            embeddings.append(embedding)
+
+                        pb.update()
+
+            except Exception as e:
+                if not skip_failures:
+                    raise e
+
+                errors.append((sample.filepath, e))
+
+            if embeddings_field is None:
+                if embeddings:
+                    embeddings = np.stack(embeddings)
+                else:
+                    embeddings = None
+
+                embeddings_dict[sample.id] = embeddings
+
+            # Explicitly set in case actual # frames differed from expected #
+            pb.set_iteration(frame_counts[idx])
+
+    if errors:
+        lines = [
+            "Video: %s\nError: %s" % (filepath, str(e))
+            for filepath, e in errors
+        ]
+
+        num_errors = len(errors)
+        if num_errors > 1:
+            estr = "%d videos" % num_errors
+        else:
+            estr = "%d video" % num_errors
+
+        lines.append(
+            "Errors occurred while generating embeddings for %s. See above "
+            "for details." % estr
+        )
+
+        logger.warning("\n\n".join(lines))
+
+    if embeddings_field:
+        return None
+
+    return embeddings_dict
+
+
+def _compute_frame_embeddings_batch(
+    samples, model, embeddings_field, batch_size, skip_failures
+):
+    samples.compute_metadata()
+
+    frame_counts = np.cumsum(samples.values("metadata.total_frame_count"))
+    total_frame_count = frame_counts[-1] if frame_counts.size > 0 else 0
+
+    embeddings_dict = {}
+    errors = []
+
+    with fou.ProgressBar(total=total_frame_count) as pb:
+        for idx, sample in enumerate(samples):
+            embeddings = []
+
+            try:
+                with etav.FFmpegVideoReader(sample.filepath) as video_reader:
+                    for fns, imgs in _iter_batches(video_reader, batch_size):
+                        embeddings_batch = model.embed_all(imgs)
+
+                        if embeddings_field is not None:
+                            sample.add_labels(
+                                {
+                                    fn: embedding
+                                    for fn, embedding in zip(
+                                        fns, embeddings_batch
+                                    )
+                                },
+                                embeddings_field,
+                            )
+                        else:
+                            embeddings.append(embeddings_batch)
+
+                        pb.update(len(imgs))
+
+            except Exception as e:
+                if not skip_failures:
+                    raise e
+
+                errors.append((sample.filepath, e))
+
+            if embeddings_field is None:
+                if embeddings:
+                    embeddings = np.concatenate(embeddings)
+                else:
+                    embeddings = None
+
+                embeddings_dict[sample.id] = embeddings
+
+            # Explicitly set in case actual # frames differed from expected #
+            pb.set_iteration(frame_counts[idx])
+
+    if errors:
+        lines = [
+            "Video: %s\nError: %s" % (filepath, str(e))
+            for filepath, e in errors
+        ]
+
+        num_errors = len(errors)
+        if num_errors > 1:
+            estr = "%d videos" % num_errors
+        else:
+            estr = "%d video" % num_errors
+
+        lines.append(
+            "Errors occurred while generating embeddings for %s. See above "
+            "for details." % estr
+        )
+
+        logger.warning("\n\n".join(lines))
+
+    if embeddings_field:
+        return None
+
+    return embeddings_dict
 
 
 def _compute_video_embeddings(samples, model, embeddings_field, skip_failures):
@@ -862,8 +1046,8 @@ def _compute_video_embeddings(samples, model, embeddings_field, skip_failures):
             estr = "%d video" % num_errors
 
         lines.append(
-            "Failed to generate embeddings for %s. See above for details."
-            % estr
+            "Errors occurred while generating embeddings for %s. See above "
+            "for details." % estr
         )
 
         logger.warning("\n\n".join(lines))
@@ -874,7 +1058,7 @@ def _compute_video_embeddings(samples, model, embeddings_field, skip_failures):
     if errors:
         return embeddings  # may contain None, must return as list
 
-    return np.stack(embeddings, axis=0)
+    return np.stack(embeddings)
 
 
 def compute_patch_embeddings(
@@ -891,6 +1075,13 @@ def compute_patch_embeddings(
 ):
     """Computes embeddings for the image patches defined by ``patches_field``
     of the samples in the collection using the given :class:`Model`.
+
+    This method supports all the following cases:
+
+    -   Using an image model to compute patch embeddings for an image
+        collection
+    -   Using an image model to compute frame patch embeddings for a video
+        collection
 
     The ``model`` must expose embeddings, i.e., :meth:`Model.has_embeddings`
     must return ``True``.
@@ -933,13 +1124,19 @@ def compute_patch_embeddings(
         one of the following:
 
         -   ``None``, if an ``embeddings_field`` is provided
-        -   otherwise, a dict mapping sample IDs to arrays of patch embeddings.
-            This dictionary will contain ``None`` values for any samples for
-            which embeddings could not be computed
+        -   a dict mapping sample IDs to ``num_patches x num_dim`` arrays of
+            patch embeddings, when computing patch embeddings for image
+            collections and no ``embeddings_field`` is provided. If
+            ``skip_failures`` is ``True`` and any errors are detected, this
+            dictionary will contain ``None`` values for any samples for which
+            embeddings could not be computed
+        -   a dict of dicts mapping sample IDs to frame numbers to
+            ``num_patches x num_dim`` arrays of patch embeddings, when
+            computing patch embeddings for the frames of video collections and
+            no ``embeddings_field`` is provided. If ``skip_failures`` is
+            ``True`` and any errors are detected, this nested dict will contain
+            missing or ``None`` values to indicate uncomputable embeddings
     """
-    if samples.media_type != fom.IMAGE:
-        raise ValueError("This method only supports image samples")
-
     if not isinstance(model, Model):
         raise ValueError(
             "Model must be a %s instance; found %s" % (Model, type(model))
@@ -947,11 +1144,15 @@ def compute_patch_embeddings(
 
     if not model.has_embeddings:
         raise ValueError(
-            "Model does not expose embeddings (model.has_embeddings = %s)"
+            "Model must expose embeddings; found model.has_embeddings = %s"
             % model.has_embeddings
         )
 
-    use_data_loader = isinstance(model, TorchModelMixin)
+    if model.media_type != "image":
+        raise ValueError(
+            "This method only supports image models; found "
+            "model.media_type = %s" % model.media_type
+        )
 
     _handle_missing_supported = {"skip", "image", "error"}
     if handle_missing not in _handle_missing_supported:
@@ -959,6 +1160,10 @@ def compute_patch_embeddings(
             "Unsupported handle_missing = '%s'; supported values are %s"
             % (handle_missing, _handle_missing_supported)
         )
+
+    use_data_loader = (
+        isinstance(model, TorchModelMixin) and samples.media_type == fom.IMAGE
+    )
 
     if num_workers is not None and not use_data_loader:
         logger.warning(
@@ -975,8 +1180,6 @@ def compute_patch_embeddings(
 
     batch_size = _parse_batch_size(batch_size, model, use_data_loader)
 
-    embeddings_dict = {}
-
     with contextlib.ExitStack() as context:
         if use_data_loader:
             # pylint: disable=no-member
@@ -985,13 +1188,25 @@ def compute_patch_embeddings(
         # pylint: disable=no-member
         context.enter_context(model)
 
-        if use_data_loader:
-            _embed_patches_data_loader(
+        if samples.media_type == fom.VIDEO:
+            return _embed_frame_patches(
                 samples,
                 model,
                 patches_field,
                 embeddings_field,
-                embeddings_dict,
+                force_square,
+                alpha,
+                handle_missing,
+                batch_size,
+                skip_failures,
+            )
+
+        if use_data_loader:
+            return _embed_patches_data_loader(
+                samples,
+                model,
+                patches_field,
+                embeddings_field,
                 force_square,
                 alpha,
                 handle_missing,
@@ -999,21 +1214,18 @@ def compute_patch_embeddings(
                 num_workers,
                 skip_failures,
             )
-        else:
-            _embed_patches(
-                samples,
-                model,
-                patches_field,
-                embeddings_field,
-                embeddings_dict,
-                force_square,
-                alpha,
-                handle_missing,
-                batch_size,
-                skip_failures,
-            )
 
-    return embeddings_dict if not embeddings_field else None
+        return _embed_patches(
+            samples,
+            model,
+            patches_field,
+            embeddings_field,
+            force_square,
+            alpha,
+            handle_missing,
+            batch_size,
+            skip_failures,
+        )
 
 
 def _embed_patches(
@@ -1021,13 +1233,13 @@ def _embed_patches(
     model,
     patches_field,
     embeddings_field,
-    embeddings_dict,
     force_square,
     alpha,
     handle_missing,
     batch_size,
     skip_failures,
 ):
+    embeddings_dict = {}
     errors = []
 
     with fou.ProgressBar() as pb:
@@ -1079,11 +1291,16 @@ def _embed_patches(
             estr = "%d image" % num_errors
 
         lines.append(
-            "Failed to generate embeddings for %s. See above for details."
-            % estr
+            "Errors occured while generating embeddings for %s. See above "
+            "for details." % estr
         )
 
         logger.warning("\n\n".join(lines))
+
+    if embeddings_field:
+        return None
+
+    return embeddings_dict
 
 
 def _embed_patches_single(model, img, detections, force_square, alpha):
@@ -1116,7 +1333,6 @@ def _embed_patches_data_loader(
     model,
     patches_field,
     embeddings_field,
-    embeddings_dict,
     force_square,
     alpha,
     handle_missing,
@@ -1135,6 +1351,7 @@ def _embed_patches_data_loader(
         skip_failures,
     )
 
+    embeddings_dict = {}
     errors = []
 
     with fou.ProgressBar(samples) as pb:
@@ -1180,11 +1397,102 @@ def _embed_patches_data_loader(
             estr = "%d batch" % num_errors
 
         lines.append(
-            "Failed to generate embeddings for %s. See above for details."
-            % estr
+            "Errors occurred while generating embeddings for %s. See above "
+            "for details." % estr
         )
 
         logger.warning("\n\n".join(lines))
+
+    if embeddings_field:
+        return None
+
+    return embeddings_dict
+
+
+def _embed_frame_patches(
+    samples,
+    model,
+    patches_field,
+    embeddings_field,
+    force_square,
+    alpha,
+    handle_missing,
+    batch_size,
+    skip_failures,
+):
+    embeddings_dict = {}
+    errors = []
+
+    with fou.ProgressBar() as pb:
+        for sample in pb(samples):
+            frame_embeddings_dict = {}
+
+            try:
+                with etav.FFmpegVideoReader(sample.filepath) as video_reader:
+                    for img in video_reader:
+                        frame_number = video_reader.frame_number
+                        frame = sample.frames[frame_number]
+
+                        patches = _parse_patches(
+                            frame, patches_field, handle_missing
+                        )
+
+                        if patches is not None:
+                            if batch_size is None:
+                                embeddings = _embed_patches_single(
+                                    model, img, patches, force_square, alpha
+                                )
+                            else:
+                                embeddings = _embed_patches_batch(
+                                    model,
+                                    img,
+                                    patches,
+                                    force_square,
+                                    alpha,
+                                    batch_size,
+                                )
+
+                        if embeddings_field is not None:
+                            sample.add_labels(
+                                {frame_number: embeddings}, embeddings_field,
+                            )
+                        else:
+                            frame_embeddings_dict[frame_number] = embeddings
+
+                        pb.update()
+
+            except Exception as e:
+                if not skip_failures:
+                    raise e
+
+                errors.append((sample.filepath, e))
+
+            if embeddings_field is None:
+                embeddings_dict[sample.id] = frame_embeddings_dict
+
+    if errors:
+        lines = [
+            "Video: %s:\nError: %s" % (filepath, str(e))
+            for filepath, e in errors
+        ]
+
+        num_errors = len(errors)
+        if num_errors > 1:
+            estr = "%d videos" % num_errors
+        else:
+            estr = "%d video" % num_errors
+
+        lines.append(
+            "Errors occured while generating embeddings for %s. See above "
+            "for details." % estr
+        )
+
+        logger.warning("\n\n".join(lines))
+
+    if embeddings_field:
+        return None
+
+    return embeddings_dict
 
 
 def _make_patch_data_loader(
@@ -1232,8 +1540,8 @@ def _make_patch_data_loader(
     )
 
 
-def _parse_patches(sample, patches_field, handle_missing):
-    label = sample[patches_field]
+def _parse_patches(sample_or_frame, patches_field, handle_missing):
+    label = sample_or_frame[patches_field]
 
     if isinstance(label, fol.Detections):
         patches = label
@@ -1260,7 +1568,14 @@ def _parse_patches(sample, patches_field, handle_missing):
                 detections=[fol.Detection(bounding_box=[0, 0, 1, 1])]
             )
         else:
-            raise ValueError("Sample '%s' has no patches" % sample.id)
+            if isinstance(sample_or_frame, fof.Frame):
+                dtype = "Frame"
+            else:
+                dtype = "Sample"
+
+            raise ValueError(
+                "%s '%s' has no patches" % (dtype, sample_or_frame.id)
+            )
 
     return patches
 
@@ -1570,7 +1885,7 @@ class EmbeddingsMixin(object):
         Returns:
             a numpy array containing the embeddings stacked along axis 0
         """
-        return np.stack([self.embed(arg) for arg in args], axis=0)
+        return np.stack([self.embed(arg) for arg in args])
 
 
 class TorchModelMixin(object):

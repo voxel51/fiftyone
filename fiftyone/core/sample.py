@@ -197,6 +197,7 @@ class _Sample(Document):
                         for frame_number, label in labels.items()
                     }
                 )
+
         elif isinstance(labels, dict):
             # Multiple sample-level fields
             self.update_fields({label_key(k): v for k, v in labels.items()})

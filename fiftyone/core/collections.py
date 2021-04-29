@@ -1011,6 +1011,13 @@ class SampleCollection(object):
         """Computes embeddings for the samples in the collection using the
         given :class:`fiftyone.core.models.Model`.
 
+        This method supports all the following cases:
+
+        -   Using an image model to compute embeddings for an image collection
+        -   Using an image model to compute frame embeddings for a video
+            collection
+        -   Using a video model to compute embeddings for a video collection
+
         The ``model`` must expose embeddings, i.e.,
         :meth:`fiftyone.core.models.Model.has_embeddings` must return ``True``.
 
@@ -1032,12 +1039,20 @@ class SampleCollection(object):
             one of the following:
 
             -   ``None``, if an ``embeddings_field`` is provided
-            -   a ``num_samples x num_dim`` array of embeddings, if no
-                ``embeddings_field`` was provided and embeddings were
-                successfully computed for all samples
-            -   otherwise, a list of length ``num_samples`` containing
-                embedding vectors along with ``None`` entries for samples for
-                which embeddings could not be computed
+            -   a ``num_samples x num_dim`` array of embeddings, when computing
+                embeddings for image/video collections with image/video models,
+                respectively, and no ``embeddings_field`` is provided. If
+                ``skip_failures`` is ``True`` and any errors are detected, a
+                list of length ``num_samples`` is returned instead containing
+                all successfully computed embedding vectors along with ``None``
+                entries for samples for which embeddings could not be computed
+            -   a dictionary mapping sample IDs to ``num_frames x num_dim``
+                arrays of embeddings, when computing frame embeddings for video
+                collections using an image model. If ``skip_failures`` is
+                ``True`` and any errors are detected, the values of this
+                dictionary will contain arrays of embeddings for all frames
+                1, 2, ... until the error occurred, or ``None`` if no
+                embeddings were computed at all
         """
         return fomo.compute_embeddings(
             self,
@@ -1063,6 +1078,13 @@ class SampleCollection(object):
         """Computes embeddings for the image patches defined by
         ``patches_field`` of the samples in the collection using the given
         :class:`fiftyone.core.models.Model`.
+
+        This method supports all the following cases:
+
+        -   Using an image model to compute patch embeddings for an image
+            collection
+        -   Using an image model to compute frame patch embeddings for a video
+            collection
 
         The ``model`` must expose embeddings, i.e.,
         :meth:`fiftyone.core.models.Model.has_embeddings` must return ``True``.
@@ -1104,9 +1126,19 @@ class SampleCollection(object):
             one of the following:
 
             -   ``None``, if an ``embeddings_field`` is provided
-            -   otherwise, a dict mapping sample IDs to arrays of patch
-                embeddings. This dictionary will contain ``None`` values for
-                any samples for which embeddings could not be computed
+            -   a dict mapping sample IDs to ``num_patches x num_dim`` arrays
+                of patch embeddings, when computing patch embeddings for image
+                collections and no ``embeddings_field`` is provided. If
+                ``skip_failures`` is ``True`` and any errors are detected, this
+                dictionary will contain ``None`` values for any samples for
+                which embeddings could not be computed
+            -   a dict of dicts mapping sample IDs to frame numbers to
+                ``num_patches x num_dim`` arrays of patch embeddings, when
+                computing patch embeddings for the frames of video collections
+                and no ``embeddings_field`` is provided. If ``skip_failures``
+                is ``True`` and any errors are detected, this nested dict will
+                contain missing or ``None`` values to indicate uncomputable
+                embeddings
         """
         return fomo.compute_patch_embeddings(
             self,
