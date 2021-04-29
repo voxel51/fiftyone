@@ -192,7 +192,10 @@ def _apply_image_model_single(
                 errors.append((sample.filepath, e))
 
     if errors:
-        lines = ["%s:\n%s" % (filepath, str(e)) for filepath, e in errors]
+        lines = [
+            "Image: %s:\nError: %s" % (filepath, str(e))
+            for filepath, e in errors
+        ]
 
         num_errors = len(errors)
         if num_errors > 1:
@@ -216,7 +219,7 @@ def _apply_image_model_batch(
     errors = []
 
     with fou.ProgressBar(samples) as pb:
-        for idx, sample_batch in enumerate(samples_loader):
+        for idx, sample_batch in enumerate(samples_loader, 1):
             try:
                 imgs = [etai.read(sample.filepath) for sample in sample_batch]
                 labels_batch = model.predict_all(imgs)
@@ -237,7 +240,7 @@ def _apply_image_model_batch(
             pb.set_iteration(pb.iteration + len(sample_batch))
 
     if errors:
-        lines = ["Batch %s:\n%s" % (idx, str(e)) for idx, e in errors]
+        lines = ["Batch: %s\nError: %s" % (idx, str(e)) for idx, e in errors]
 
         num_errors = len(errors)
         if num_errors > 1:
@@ -271,7 +274,7 @@ def _apply_image_model_data_loader(
 
     with fou.ProgressBar(samples) as pb:
         for idx, (sample_batch, imgs) in enumerate(
-            zip(samples_loader, data_loader)
+            zip(samples_loader, data_loader), 1
         ):
             try:
                 if isinstance(imgs, Exception):
@@ -295,7 +298,7 @@ def _apply_image_model_data_loader(
             pb.set_iteration(pb.iteration + len(sample_batch))
 
     if errors:
-        lines = ["Batch %s:\n%s" % (idx, str(e)) for idx, e in errors]
+        lines = ["Batch: %s\nError: %s" % (idx, str(e)) for idx, e in errors]
 
         num_errors = len(errors)
         if num_errors > 1:
@@ -322,7 +325,7 @@ def _apply_image_model_to_frames_single(
     errors = []
 
     with fou.ProgressBar(total=total_frame_count) as pb:
-        for idx, sample in enumerate(samples):
+        for idx, sample in enumerate(samples, 1):
             try:
                 with etav.FFmpegVideoReader(sample.filepath) as video_reader:
                     for img in video_reader:
@@ -346,7 +349,10 @@ def _apply_image_model_to_frames_single(
             pb.set_iteration(frame_counts[idx])
 
     if errors:
-        lines = ["%s:\n%s" % (filepath, str(e)) for filepath, e in errors]
+        lines = [
+            "Video: %s:\nError: %s" % (filepath, str(e))
+            for filepath, e in errors
+        ]
 
         num_errors = len(errors)
         if num_errors > 1:
@@ -400,7 +406,10 @@ def _apply_image_model_to_frames_batch(
             pb.set_iteration(frame_counts[idx])
 
     if errors:
-        lines = ["%s:\n%s" % (filepath, str(e)) for filepath, e in errors]
+        lines = [
+            "Video: %s:\nError: %s" % (filepath, str(e))
+            for filepath, e in errors
+        ]
 
         num_errors = len(errors)
         if num_errors > 1:
@@ -438,7 +447,10 @@ def _apply_video_model(
                 errors.append((sample.filepath, e))
 
     if errors:
-        lines = ["%s:\n%s" % (filepath, str(e)) for filepath, e in errors]
+        lines = [
+            "Video: %s:\nError: %s" % (filepath, str(e))
+            for filepath, e in errors
+        ]
 
         num_errors = len(errors)
         if num_errors > 1:
