@@ -20,19 +20,14 @@ const SelectInputDiv = styled.div``;
 
 interface SelectInputProps {
   choicesAtom?: RecoilValueReadOnly<{ hasMore: boolean; choices: string[] }>;
-  onChange: (selections: string[]) => void;
   radio?: boolean;
-  valueAtom: RecoilState<string>;
+  valuesAtom: RecoilState<string[]>;
   placeholder?: string;
+  color?: string;
 }
 
 const SelectInputContainer = React.memo(
-  ({
-    valueAtom,
-    choicesAtom = null,
-    radio = false,
-    onChange,
-  }: SelectInputProps) => {
+  ({ valuesAtom, choicesAtom = null, radio = false }: SelectInputProps) => {
     const [id] = useState(uuid());
 
     const { hasMore } = useRecoilValue(choicesAtom);
@@ -45,7 +40,7 @@ const SelectInputContainer = React.memo(
     }, [id]);
 
     if (!hasMore && radio) {
-      return <RadioGroup valueAtom={valueAtom} choicesAtom={choicesArray} />;
+      return <RadioGroup valuesAtom={valuesAtom} choicesAtom={choicesArray} />;
     }
     return null;
   }

@@ -1,5 +1,5 @@
 import React from "react";
-import { Check } from "@material-ui/icons";
+import { Radio as MaterialRadio } from "@material-ui/core";
 import {
   RecoilState,
   RecoilValue,
@@ -42,8 +42,8 @@ const Radio = React.memo(
     return (
       <StyledRadioContainer>
         <StyledRadio {...props} onClick={() => setValue(value)}>
+          <MaterialRadio />
           <RadioName>{value}</RadioName>
-          {currentValue === value && <Check style={{ color }} />}
         </StyledRadio>
       </StyledRadioContainer>
     );
@@ -52,14 +52,14 @@ const Radio = React.memo(
 
 interface RadioGroupProps {
   choicesAtom: RecoilValue<string[]>;
-  valueAtom: RecoilState<string>;
+  valuesAtom: RecoilState<string[]>;
   color?: string;
 }
 
 const RadioGroup = React.memo(
-  ({ choicesAtom, color = null, valueAtom }: RadioGroupProps) => {
+  ({ choicesAtom, color = null, valuesAtom }: RadioGroupProps) => {
     const choices = useRecoilValue(choicesAtom);
-    const [value, setValue] = useRecoilState(valueAtom);
+    const [values, setValues] = useRecoilState(valuesAtom);
     const theme = useTheme();
     color = color ?? theme.brand;
 
@@ -68,9 +68,9 @@ const RadioGroup = React.memo(
         {choices.map((choice) => (
           <Radio
             value={choice}
-            setValue={setValue}
+            setValue={(value) => setValues([value])}
             color={color}
-            currentValue={value}
+            currentValue={values[0]}
           />
         ))}
       </div>

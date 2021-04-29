@@ -1,12 +1,16 @@
-import React, { useContext } from "react";
+import React, { useContext, useMemo } from "react";
 import {
   RecoilState,
   RecoilValueReadOnly,
+  selector,
   useRecoilState,
   useRecoilValue,
 } from "recoil";
 import { Checkbox, FormControlLabel } from "@material-ui/core";
+import uuid from "uuid-v4";
+
 import styled, { ThemeContext } from "styled-components";
+import SelectInput from "../Common/SelectInput";
 
 const BooleanFilterContainer = styled.div`
   position: relative;
@@ -99,16 +103,66 @@ type NamedProps = {
 export const NamedBooleanFilter = React.memo(
   React.forwardRef(
     (
-      { name, hasNoneAtom, noneAtom, ...booleanFilterProps }: NamedProps,
+      { color, name, hasNoneAtom, noneAtom, falseAtom, trueAtom }: NamedProps,
       ref
     ) => {
       const [none, setNone] = useRecoilState(noneAtom);
-      const hasNone = useRecoilValue(hasNoneAtom);
-      const [falseValue, setFalse] = useRecoilState(
-        booleanFilterProps.falseAtom
-      );
-      const theme = useContext(ThemeContext);
-      const [trueValue, setTrue] = useRecoilState(booleanFilterProps.trueAtom);
+      const [falseValue, setFalse] = useRecoilState(falseAtom);
+      const [trueValue, setTrue] = useRecoilState(trueAtom);
+
+      const [choicesAtom, valuesAtom] = useMemo(() => {
+        return [
+          selector({
+            key: uuid(),
+            get: ({ get }) => {
+              const choices = ["False", "True"];
+              if (get(hasNoneAtom)) {
+                choices.push("None");
+              }
+
+              return {
+                choices,
+                hasMore: false,
+              };
+            },
+          }),
+          selector<string[]>({
+            key: uuid(),
+            get: ({ get }) => {
+              const withTrue = get(trueAtom);
+              const withFalse = get(falseAtom);
+              let values: string[] = [];
+              if (get(hasNoneAtom)) {
+                const withNone = get(hasNoneAtom);
+                if (!withTrue || !withFalse || !withNone) {
+                  !withTrue && values.push("True");
+                  !withFalse && values.push("False");
+                  !withNone && values.push("None");
+                }
+              } else {
+                if (!withTrue || !withFalse) {
+                  !withTrue && values.push("True");
+                  !withFalse && values.push("False");
+                }
+              }
+              return values;
+            },
+            set: ({ set }, newValue) => {
+              if (Array.isArray(newValue)) {
+                if (newValue.includes("True")) {
+                  set(trueAtom, true);
+                }
+                if (newValue.includes("False")) {
+                  set(falseAtom, true);
+                }
+                if (newValue.includes("None")) {
+                  set(noneAtom, true);
+                }
+              }
+            },
+          }),
+        ];
+      }, [hasNoneAtom, noneAtom, falseAtom, trueAtom]);
 
       return (
         <NamedBooleanFilterContainer ref={ref}>
@@ -130,29 +184,11 @@ export const NamedBooleanFilter = React.memo(
 
           <BooleanFilterContainer>
             <CheckboxContainer>
-              <BooleanFilter {...booleanFilterProps} />
-              {hasNone && (
-                <FormControlLabel
-                  label={
-                    <div style={{ lineHeight: "20px", fontSize: 14 }}>
-                      Exclude{" "}
-                      <code style={{ color: booleanFilterProps.color }}>
-                        None
-                      </code>
-                    </div>
-                  }
-                  control={
-                    <Checkbox
-                      checked={!none}
-                      onChange={() => setNone(!none)}
-                      style={{
-                        padding: "0 5px",
-                        color: booleanFilterProps.color,
-                      }}
-                    />
-                  }
-                />
-              )}
+              <SelectInput
+                color={color}
+                choicesAtom={choicesAtom}
+                valuesAtom={valuesAtom}
+              />
             </CheckboxContainer>
           </BooleanFilterContainer>
         </NamedBooleanFilterContainer>
