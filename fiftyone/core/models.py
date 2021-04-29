@@ -208,16 +208,17 @@ def _apply_image_model_to_frames_single(
 
     with fou.ProgressBar(total=total_frame_count) as pb:
         for idx, sample in enumerate(samples):
-            frames = {}
-
             with etav.FFmpegVideoReader(sample.filepath) as video_reader:
                 for img in video_reader:
-                    frames[video_reader.frame_number] = model.predict(img)
-                    pb.update()
+                    labels = model.predict(img)
 
-            sample.add_labels(
-                frames, label_field, confidence_thresh=confidence_thresh
-            )
+                    sample.add_labels(
+                        {video_reader.frame_number: labels},
+                        label_field,
+                        confidence_thresh=confidence_thresh,
+                    )
+
+                    pb.update()
 
             # Explicitly set in case actual # frames differed from expected #
             pb.set_iteration(frame_counts[idx])
@@ -233,20 +234,17 @@ def _apply_image_model_to_frames_batch(
 
     with fou.ProgressBar(total=total_frame_count) as pb:
         for idx, sample in enumerate(samples):
-            frames = {}
-
             with etav.FFmpegVideoReader(sample.filepath) as video_reader:
                 for fns, imgs in _iter_batches(video_reader, batch_size):
                     labels_batch = model.predict_all(imgs)
 
-                    for frame_number, labels in zip(fns, labels_batch):
-                        frames[frame_number] = labels
+                    sample.add_labels(
+                        {fn: labels for fn, labels in zip(fns, labels_batch)},
+                        label_field,
+                        confidence_thresh=confidence_thresh,
+                    )
 
                     pb.update(len(imgs))
-
-            sample.add_labels(
-                frames, label_field, confidence_thresh=confidence_thresh
-            )
 
             # Explicitly set in case actual # frames differed from expected #
             pb.set_iteration(frame_counts[idx])
