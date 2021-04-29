@@ -174,7 +174,7 @@ class SampleInDatasetTests(unittest.TestCase):
 
         # delete all samples
         num_delete = 7
-        dataset.remove_samples(ids[:num_delete])
+        dataset.delete_samples(ids[:num_delete])
         self.assertEqual(len(dataset), num_samples - num_delete)
 
     @drop_datasets
