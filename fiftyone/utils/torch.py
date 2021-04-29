@@ -909,6 +909,8 @@ class TorchImageDataset(Dataset):
         use_numpy (False): whether to use numpy arrays rather than PIL images
             and Torch tensors when loading data
         force_rgb (False): whether to force convert the images to RGB
+        skip_failures (False): whether to return an ``Exception`` object rather
+            than raising it if an error occurs while loading a sample
     """
 
     def __init__(
@@ -918,22 +920,31 @@ class TorchImageDataset(Dataset):
         transform=None,
         use_numpy=False,
         force_rgb=False,
+        skip_failures=False,
     ):
         self.image_paths = list(image_paths)
         self.sample_ids = list(sample_ids) if sample_ids else None
         self.transform = transform
         self.force_rgb = force_rgb
         self.use_numpy = use_numpy
+        self.skip_failures = skip_failures
 
     def __len__(self):
         return len(self.image_paths)
 
     def __getitem__(self, idx):
-        image_path = self.image_paths[idx]
-        img = _load_image(image_path, self.use_numpy, self.force_rgb)
+        try:
+            image_path = self.image_paths[idx]
 
-        if self.transform is not None:
-            img = self.transform(img)
+            img = _load_image(image_path, self.use_numpy, self.force_rgb)
+
+            if self.transform is not None:
+                img = self.transform(img)
+        except Exception as e:
+            if self.skip_failures:
+                img = e
+            else:
+                raise e
 
         if self.has_sample_ids:
             # pylint: disable=unsubscriptable-object
@@ -969,6 +980,8 @@ class TorchImageClassificationDataset(Dataset):
         use_numpy (False): whether to use numpy arrays rather than PIL images
             and Torch tensors when loading data
         force_rgb (False): whether to force convert the images to RGB
+        skip_failures (False): whether to return an ``Exception`` object rather
+            than raising it if an error occurs while loading a sample
     """
 
     def __init__(
@@ -979,6 +992,7 @@ class TorchImageClassificationDataset(Dataset):
         transform=None,
         use_numpy=False,
         force_rgb=False,
+        skip_failures=False,
     ):
         self.image_paths = list(image_paths)
         self.targets = list(targets)
@@ -986,17 +1000,24 @@ class TorchImageClassificationDataset(Dataset):
         self.transform = transform
         self.use_numpy = use_numpy
         self.force_rgb = force_rgb
+        self.skip_failures = skip_failures
 
     def __len__(self):
         return len(self.image_paths)
 
     def __getitem__(self, idx):
-        image_path = self.image_paths[idx]
-        img = _load_image(image_path, self.use_numpy, self.force_rgb)
-        target = self.targets[idx]
+        try:
+            image_path = self.image_paths[idx]
+            img = _load_image(image_path, self.use_numpy, self.force_rgb)
+            target = self.targets[idx]
 
-        if self.transform is not None:
-            img = self.transform(img)
+            if self.transform is not None:
+                img = self.transform(img)
+        except Exception as e:
+            if self.skip_failures:
+                img = e
+            else:
+                raise e
 
         if self.has_sample_ids:
             # pylint: disable=unsubscriptable-object
@@ -1051,6 +1072,8 @@ class TorchImagePatchesDataset(Dataset):
             ``alpha < 0``) by ``(100 * alpha)%``. For example, set
             ``alpha = 1.1`` to expand the boxes by 10%, and set ``alpha = 0.9``
             to contract the boxes by 10%
+        skip_failures (False): whether to return an ``Exception`` object rather
+            than raising it if an error occurs while loading a sample
     """
 
     def __init__(
@@ -1064,6 +1087,7 @@ class TorchImagePatchesDataset(Dataset):
         force_rgb=False,
         force_square=False,
         alpha=None,
+        skip_failures=False,
     ):
         self.image_paths = list(image_paths)
         self.detections = list(detections)
@@ -1074,17 +1098,24 @@ class TorchImagePatchesDataset(Dataset):
         self.force_rgb = force_rgb
         self.force_square = force_square
         self.alpha = alpha
+        self.skip_failures = skip_failures
 
     def __len__(self):
         return len(self.image_paths)
 
     def __getitem__(self, idx):
-        detections = self.detections[idx]
-        if detections is None or not detections.detections:
-            img_patches = None
-        else:
-            image_path = self.image_paths[idx]
-            img_patches = self._extract_patches(image_path, detections)
+        try:
+            detections = self.detections[idx]
+            if detections is None or not detections.detections:
+                img_patches = None
+            else:
+                image_path = self.image_paths[idx]
+                img_patches = self._extract_patches(image_path, detections)
+        except Exception as e:
+            if self.skip_failures:
+                img_patches = e
+            else:
+                raise e
 
         if self.has_sample_ids:
             # pylint: disable=unsubscriptable-object

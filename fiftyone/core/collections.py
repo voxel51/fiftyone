@@ -961,9 +961,16 @@ class SampleCollection(object):
         store_logits=False,
         batch_size=None,
         num_workers=None,
+        skip_failures=True,
     ):
         """Applies the :class:`fiftyone.core.models.Model` to the samples in
         the collection.
+
+        This method supports all the following cases:
+
+        -   Applying an image model to an image collection
+        -   Applying an image model to the frames of a video collection
+        -   Applying a video model to a video collection
 
         Args:
             model: a :class:`fiftyone.core.models.Model`
@@ -978,6 +985,9 @@ class SampleCollection(object):
                 for image samples
             num_workers (None): the number of workers to use when loading
                 images. Only applicable for Torch models
+            skip_failures (True): whether to gracefully continue without
+                raising an error if predictions cannot be generated for a
+                sample
         """
         fomo.apply_model(
             self,
@@ -987,6 +997,7 @@ class SampleCollection(object):
             store_logits=store_logits,
             batch_size=batch_size,
             num_workers=num_workers,
+            skip_failures=skip_failures,
         )
 
     def compute_embeddings(

@@ -42,8 +42,15 @@ def apply_model(
     store_logits=False,
     batch_size=None,
     num_workers=None,
+    skip_failures=True,
 ):
     """Applies the given :class:`Model` to the samples in the collection.
+
+    This method supports all the following cases:
+
+    -   Applying an image model to an image collection
+    -   Applying an image model to the frames of a video collection
+    -   Applying a video model to a video collection
 
     Args:
         samples: a :class:`fiftyone.core.collections.SampleCollection`
@@ -59,6 +66,8 @@ def apply_model(
             image samples
         num_workers (None): the number of workers to use when loading images.
             Only applicable for Torch models
+        skip_failures (True): whether to gracefully continue without raising an
+            error if predictions cannot be generated for a sample
     """
     if not isinstance(model, Model):
         raise ValueError(
@@ -116,7 +125,7 @@ def apply_model(
 
         if samples.media_type == fom.VIDEO and model.media_type == "video":
             return _apply_video_model(
-                samples, model, label_field, confidence_thresh
+                samples, model, label_field, confidence_thresh, skip_failures
             )
 
         batch_size = _parse_batch_size(batch_size, model, use_data_loader)
@@ -124,11 +133,16 @@ def apply_model(
         if samples.media_type == fom.VIDEO and model.media_type == "image":
             if batch_size is not None:
                 return _apply_image_model_to_frames_batch(
-                    samples, model, label_field, confidence_thresh, batch_size
+                    samples,
+                    model,
+                    label_field,
+                    confidence_thresh,
+                    batch_size,
+                    skip_failures,
                 )
 
             return _apply_image_model_to_frames_single(
-                samples, model, label_field, confidence_thresh
+                samples, model, label_field, confidence_thresh, skip_failures
             )
 
         if use_data_loader:
@@ -139,115 +153,305 @@ def apply_model(
                 confidence_thresh,
                 batch_size,
                 num_workers,
+                skip_failures,
             )
 
         if batch_size is not None:
             return _apply_image_model_batch(
-                samples, model, label_field, confidence_thresh, batch_size
+                samples,
+                model,
+                label_field,
+                confidence_thresh,
+                batch_size,
+                skip_failures,
             )
 
         return _apply_image_model_single(
-            samples, model, label_field, confidence_thresh
+            samples, model, label_field, confidence_thresh, skip_failures
         )
 
 
-def _apply_image_model_single(samples, model, label_field, confidence_thresh):
+def _apply_image_model_single(
+    samples, model, label_field, confidence_thresh, skip_failures
+):
+    errors = []
+
     with fou.ProgressBar() as pb:
         for sample in pb(samples):
-            img = etai.read(sample.filepath)
-            labels = model.predict(img)
+            try:
+                img = etai.read(sample.filepath)
+                labels = model.predict(img)
 
-            sample.add_labels(
-                labels, label_field, confidence_thresh=confidence_thresh
-            )
+                sample.add_labels(
+                    labels, label_field, confidence_thresh=confidence_thresh
+                )
+            except Exception as e:
+                if not skip_failures:
+                    raise e
+
+                errors.append((sample.filepath, e))
+
+    if errors:
+        lines = ["%s:\n%s" % (filepath, str(e)) for filepath, e in errors]
+
+        num_errors = len(errors)
+        if num_errors > 1:
+            estr = "%d images" % num_errors
+        else:
+            estr = "%d image" % num_errors
+
+        lines.append(
+            "Failed to generate predictions for %s. See above for details"
+            % estr
+        )
+
+        logger.warning("\n\n".join(lines))
 
 
 def _apply_image_model_batch(
-    samples, model, label_field, confidence_thresh, batch_size
+    samples, model, label_field, confidence_thresh, batch_size, skip_failures
 ):
     samples_loader = fou.iter_batches(samples, batch_size)
 
+    errors = []
+
     with fou.ProgressBar(samples) as pb:
-        for sample_batch in samples_loader:
-            imgs = [etai.read(sample.filepath) for sample in sample_batch]
-            labels_batch = model.predict_all(imgs)
+        for idx, sample_batch in enumerate(samples_loader):
+            try:
+                imgs = [etai.read(sample.filepath) for sample in sample_batch]
+                labels_batch = model.predict_all(imgs)
 
-            for sample, labels in zip(sample_batch, labels_batch):
-                sample.add_labels(
-                    labels, label_field, confidence_thresh=confidence_thresh,
-                )
+                for sample, labels in zip(sample_batch, labels_batch):
+                    sample.add_labels(
+                        labels,
+                        label_field,
+                        confidence_thresh=confidence_thresh,
+                    )
 
-            pb.set_iteration(pb.iteration + len(imgs))
+            except Exception as e:
+                if not skip_failures:
+                    raise e
+
+                errors.append((idx, e))
+
+            pb.set_iteration(pb.iteration + len(sample_batch))
+
+    if errors:
+        lines = ["Batch %s:\n%s" % (idx, str(e)) for idx, e in errors]
+
+        num_errors = len(errors)
+        if num_errors > 1:
+            estr = "%d batches" % num_errors
+        else:
+            estr = "%d batch" % num_errors
+
+        lines.append(
+            "Failed to generate predictions for %s. See above for details"
+            % estr
+        )
+
+        logger.warning("\n\n".join(lines))
 
 
 def _apply_image_model_data_loader(
-    samples, model, label_field, confidence_thresh, batch_size, num_workers
+    samples,
+    model,
+    label_field,
+    confidence_thresh,
+    batch_size,
+    num_workers,
+    skip_failures,
 ):
     samples_loader = fou.iter_batches(samples, batch_size)
-    data_loader = _make_data_loader(samples, model, batch_size, num_workers)
+    data_loader = _make_data_loader(
+        samples, model, batch_size, num_workers, skip_failures
+    )
+
+    errors = []
 
     with fou.ProgressBar(samples) as pb:
-        for sample_batch, imgs in zip(samples_loader, data_loader):
-            labels_batch = model.predict_all(imgs)
+        for idx, (sample_batch, imgs) in enumerate(
+            zip(samples_loader, data_loader)
+        ):
+            try:
+                if isinstance(imgs, Exception):
+                    raise imgs
 
-            for sample, labels in zip(sample_batch, labels_batch):
-                sample.add_labels(
-                    labels, label_field, confidence_thresh=confidence_thresh,
-                )
+                labels_batch = model.predict_all(imgs)
 
-            pb.set_iteration(pb.iteration + len(imgs))
+                for sample, labels in zip(sample_batch, labels_batch):
+                    sample.add_labels(
+                        labels,
+                        label_field,
+                        confidence_thresh=confidence_thresh,
+                    )
+
+            except Exception as e:
+                if not skip_failures:
+                    raise e
+
+                errors.append((idx, e))
+
+            pb.set_iteration(pb.iteration + len(sample_batch))
+
+    if errors:
+        lines = ["Batch %s:\n%s" % (idx, str(e)) for idx, e in errors]
+
+        num_errors = len(errors)
+        if num_errors > 1:
+            estr = "%d batches" % num_errors
+        else:
+            estr = "%d batch" % num_errors
+
+        lines.append(
+            "Failed to generate predictions for %s. See above for details"
+            % estr
+        )
+
+        logger.warning("\n\n".join(lines))
 
 
 def _apply_image_model_to_frames_single(
-    samples, model, label_field, confidence_thresh
+    samples, model, label_field, confidence_thresh, skip_failures
 ):
     samples.compute_metadata()
 
     frame_counts = np.cumsum(samples.values("metadata.total_frame_count"))
     total_frame_count = frame_counts[-1] if frame_counts.size > 0 else 0
 
+    errors = []
+
     with fou.ProgressBar(total=total_frame_count) as pb:
         for idx, sample in enumerate(samples):
-            with etav.FFmpegVideoReader(sample.filepath) as video_reader:
-                for img in video_reader:
-                    labels = model.predict(img)
+            try:
+                with etav.FFmpegVideoReader(sample.filepath) as video_reader:
+                    for img in video_reader:
+                        labels = model.predict(img)
 
-                    sample.add_labels(
-                        {video_reader.frame_number: labels},
-                        label_field,
-                        confidence_thresh=confidence_thresh,
-                    )
+                        sample.add_labels(
+                            {video_reader.frame_number: labels},
+                            label_field,
+                            confidence_thresh=confidence_thresh,
+                        )
 
-                    pb.update()
+                        pb.update()
+
+            except Exception as e:
+                if not skip_failures:
+                    raise e
+
+                errors.append((sample.filepath, e))
 
             # Explicitly set in case actual # frames differed from expected #
             pb.set_iteration(frame_counts[idx])
+
+    if errors:
+        lines = ["%s:\n%s" % (filepath, str(e)) for filepath, e in errors]
+
+        num_errors = len(errors)
+        if num_errors > 1:
+            estr = "%d videos" % num_errors
+        else:
+            estr = "%d video" % num_errors
+
+        lines.append(
+            "Failed to generate predictions for %s. See above for details"
+            % estr
+        )
+
+        logger.warning("\n\n".join(lines))
 
 
 def _apply_image_model_to_frames_batch(
-    samples, model, label_field, confidence_thresh, batch_size
+    samples, model, label_field, confidence_thresh, batch_size, skip_failures
 ):
     samples.compute_metadata()
 
     frame_counts = np.cumsum(samples.values("metadata.total_frame_count"))
     total_frame_count = frame_counts[-1] if frame_counts.size > 0 else 0
 
+    errors = []
+
     with fou.ProgressBar(total=total_frame_count) as pb:
         for idx, sample in enumerate(samples):
-            with etav.FFmpegVideoReader(sample.filepath) as video_reader:
-                for fns, imgs in _iter_batches(video_reader, batch_size):
-                    labels_batch = model.predict_all(imgs)
+            try:
+                with etav.FFmpegVideoReader(sample.filepath) as video_reader:
+                    for fns, imgs in _iter_batches(video_reader, batch_size):
+                        labels_batch = model.predict_all(imgs)
 
-                    sample.add_labels(
-                        {fn: labels for fn, labels in zip(fns, labels_batch)},
-                        label_field,
-                        confidence_thresh=confidence_thresh,
-                    )
+                        sample.add_labels(
+                            {
+                                fn: labels
+                                for fn, labels in zip(fns, labels_batch)
+                            },
+                            label_field,
+                            confidence_thresh=confidence_thresh,
+                        )
 
-                    pb.update(len(imgs))
+                        pb.update(len(imgs))
+
+            except Exception as e:
+                if not skip_failures:
+                    raise e
+
+                errors.append((sample.filepath, e))
 
             # Explicitly set in case actual # frames differed from expected #
             pb.set_iteration(frame_counts[idx])
+
+    if errors:
+        lines = ["%s:\n%s" % (filepath, str(e)) for filepath, e in errors]
+
+        num_errors = len(errors)
+        if num_errors > 1:
+            estr = "%d videos" % num_errors
+        else:
+            estr = "%d video" % num_errors
+
+        lines.append(
+            "Failed to generate predictions for %s. See above for details"
+            % estr
+        )
+
+        logger.warning("\n\n".join(lines))
+
+
+def _apply_video_model(
+    samples, model, label_field, confidence_thresh, skip_failures
+):
+    errors = []
+
+    with fou.ProgressBar() as pb:
+        for sample in pb(samples):
+            try:
+                with etav.FFmpegVideoReader(sample.filepath) as video_reader:
+                    labels = model.predict(video_reader)
+
+                # Save labels
+                sample.add_labels(
+                    labels, label_field, confidence_thresh=confidence_thresh
+                )
+            except Exception as e:
+                if not skip_failures:
+                    raise e
+
+                errors.append((sample.filepath, e))
+
+    if errors:
+        lines = ["%s:\n%s" % (filepath, str(e)) for filepath, e in errors]
+
+        num_errors = len(errors)
+        if num_errors > 1:
+            estr = "%d videos" % num_errors
+        else:
+            estr = "%d video" % num_errors
+
+        lines.append(
+            "Failed to generate predictions for %s. See above for details"
+            % estr
+        )
+
+        logger.warning("\n\n".join(lines))
 
 
 def _iter_batches(video_reader, batch_size):
@@ -264,19 +468,9 @@ def _iter_batches(video_reader, batch_size):
     return frame_numbers, imgs
 
 
-def _apply_video_model(samples, model, label_field, confidence_thresh):
-    with fou.ProgressBar() as pb:
-        for sample in pb(samples):
-            with etav.FFmpegVideoReader(sample.filepath) as video_reader:
-                labels = model.predict(video_reader)
-
-            # Save labels
-            sample.add_labels(
-                labels, label_field, confidence_thresh=confidence_thresh
-            )
-
-
-def _make_data_loader(samples, model, batch_size, num_workers):
+def _make_data_loader(
+    samples, model, batch_size, num_workers, skip_failures=False
+):
     # This function supports DataLoaders that emit numpy arrays that can
     # therefore be used for non-Torch models; but we do not currenly use this
     # functionality
@@ -290,20 +484,67 @@ def _make_data_loader(samples, model, batch_size, num_workers):
         transform=model.transforms,
         use_numpy=use_numpy,
         force_rgb=True,
+        skip_failures=skip_failures,
     )
 
+    def handle_errors(batch):
+        errors = [b for b in batch if isinstance(b, Exception)]
+
+        if not errors:
+            return None
+
+        if len(errors) == 1:
+            return errors[0]
+
+        return Exception("\n\n".join([str(e) for e in errors]))
+
     if model.ragged_batches:
-        kwargs = dict(collate_fn=lambda batch: batch)  # return list
+
+        def collate_fn(batch):
+            error = handle_errors(batch)
+            if error is not None:
+                return error
+
+            return batch  # return list
+
     elif use_numpy:
-        kwargs = dict(collate_fn=lambda batch: np.stack(batch, axis=0))
+
+        def collate_fn(batch):
+            error = handle_errors(batch)
+            if error is not None:
+                return error
+
+            try:
+                return np.stack(batch, axis=0)
+            except Exception as e:
+                if not skip_failures:
+                    raise e
+
+                return e
+
     else:
-        kwargs = {}
+
+        def collate_fn(batch):
+            error = handle_errors(batch)
+            if error is not None:
+                return error
+
+            try:
+                return tud.dataloader.default_collate(batch)
+            except Exception as e:
+                if not skip_failures:
+                    raise e
+
+                return e
 
     if batch_size is None:
         batch_size = 1
 
     return tud.DataLoader(
-        dataset, batch_size=batch_size, num_workers=num_workers, **kwargs
+        dataset,
+        batch_size=batch_size,
+        num_workers=num_workers,
+        collate_fn=collate_fn,
     )
 
 
