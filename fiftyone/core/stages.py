@@ -61,9 +61,16 @@ class ViewStage(object):
         kwargs_str = ", ".join(kwargs_list)
         return "%s(%s)" % (self.__class__.__name__, kwargs_str)
 
-    def get_filtered_list_fields(self):
-        """Returns a list of names of fields or subfields that contain arrays
-        that may have been filtered by the stage, if any.
+    def get_filtered_fields(self, sample_collection, frames=False):
+        """Returns a list of names of fields or embedded fields that contain
+        **arrays** have been filtered by the stage, if any.
+
+        Args:
+            sample_collection: the
+                :class:`fiftyone.core.collections.SampleCollection` to which
+                the stage is being applied
+            frames (False): whether to return sample-level (False) or
+                frame-level (True) fields
 
         Returns:
             a list of fields, or ``None`` if no fields have been filtered
@@ -1353,11 +1360,10 @@ class FilterLabels(FilterField):
         self._labels_field = None
         self._is_frame_field = None
         self._is_labels_list_field = None
-        self._is_frame_field = None
         self._validate_params()
 
-    def get_filtered_list_fields(self):
-        if self._is_labels_list_field:
+    def get_filtered_fields(self, sample_collection, frames=False):
+        if self._is_labels_list_field and (frames == self._is_frame_field):
             return [self._labels_field]
 
         return None
@@ -1527,8 +1533,12 @@ class _FilterListField(FilterField):
     def _filter_field(self):
         raise NotImplementedError("subclasses must implement `_filter_field`")
 
-    def get_filtered_list_fields(self):
-        return [self._filter_field]
+    def get_filtered_fields(self, sample_collection, frames=False):
+        is_frame_field = sample_collection._is_frame_field(self._filter_field)
+        if frames == is_frame_field:
+            return [self._filter_field]
+
+        return None
 
     def to_mongo(self, sample_collection):
         filter_field, is_frame_field = sample_collection._handle_frame_field(

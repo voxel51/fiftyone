@@ -610,6 +610,13 @@ class SampleView(_Sample):
         """
         return self._excluded_fields
 
+    @property
+    def filtered_field_names(self):
+        """The set of field names that have been filtered on this sample, or
+        ``None`` if no fields were filtered.
+        """
+        return self._filtered_fields
+
     def to_dict(self, include_frames=False):
         """Serializes the sample to a JSON dictionary.
 

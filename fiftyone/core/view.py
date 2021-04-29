@@ -830,11 +830,18 @@ class DatasetView(foc.SampleCollection):
 
         return set(dataset_schema.keys()) - set(view_schema.keys())
 
-    def _get_filtered_fields(self):
+    def _get_filtered_fields(self, frames=False):
         filtered_fields = set()
         for stage in self._stages:
-            _filtered_fields = stage.get_filtered_list_fields()
+            _filtered_fields = stage.get_filtered_fields(self, frames=frames)
             if _filtered_fields:
                 filtered_fields.update(_filtered_fields)
 
         return filtered_fields
+
+    def _contains_all_fields(self, frames=False):
+        selected_fields, excluded_fields = self._get_selected_excluded_fields(
+            frames=frames
+        )
+        filtered_fields = self._get_filtered_fields(frames=frames)
+        return not any((selected_fields, excluded_fields, filtered_fields))
