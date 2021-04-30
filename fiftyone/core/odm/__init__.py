@@ -45,7 +45,12 @@ from .frame import (
     DatasetFrameSampleDocument,
     NoDatasetFrameSampleDocument,
 )
-from .mixins import get_default_fields
+from .mixins import (
+    get_default_fields,
+    get_field_kwargs,
+    get_implied_field_kwargs,
+    validate_fields_match,
+)
 from .sample import (
     DatasetSampleDocument,
     NoDatasetSampleDocument,

@@ -394,8 +394,9 @@ The example below demonstrates this capability:
 
 .. note::
 
-    There are four cases where FiftyOne will automatically unwind array fields
-    without requiring you to explicitly specify this via the ``[]`` syntax:
+    FiftyOne will automatically unwind all array fields that are defined in the
+    dataset's schema without requiring you to explicitly specify this via the
+    ``[]`` syntax. This includes the following cases:
 
     **Top-level lists:** When you write an aggregation that refers to a
     top-level list field of a dataset; i.e., ``list_field`` is automatically
