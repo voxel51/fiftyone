@@ -775,7 +775,7 @@ def _compute_image_embeddings_batch(
 
             try:
                 imgs = [etai.read(sample.filepath) for sample in sample_batch]
-                embeddings_batch = model.embed_all(imgs)
+                embeddings_batch = list(model.embed_all(imgs))  # list of 1D
             except Exception as e:
                 if not skip_failures:
                     raise e
@@ -841,7 +841,7 @@ def _compute_image_embeddings_data_loader(
                 if isinstance(imgs, Exception):
                     raise imgs
 
-                embeddings_batch = model.embed_all(imgs)
+                embeddings_batch = list(model.embed_all(imgs))  # list of 1D
             except Exception as e:
                 if not skip_failures:
                     raise e
@@ -853,7 +853,7 @@ def _compute_image_embeddings_data_loader(
                     sample[embeddings_field] = embedding
                     sample.save()
             else:
-                embeddings.append(embeddings_batch)
+                embeddings.extend(embeddings_batch)
 
             pb.update(len(sample_batch))
 
@@ -966,7 +966,9 @@ def _compute_frame_embeddings_batch(
             try:
                 with etav.FFmpegVideoReader(sample.filepath) as video_reader:
                     for fns, imgs in _iter_batches(video_reader, batch_size):
-                        embeddings_batch = model.embed_all(imgs)
+                        embeddings_batch = list(
+                            model.embed_all(imgs)
+                        )  # list of 1D
 
                         if embeddings_field is not None:
                             sample.add_labels(
@@ -979,7 +981,7 @@ def _compute_frame_embeddings_batch(
                                 embeddings_field,
                             )
                         else:
-                            embeddings.append(embeddings_batch)
+                            embeddings.extend(embeddings_batch)
 
                         pb.update(len(imgs))
 
@@ -991,7 +993,7 @@ def _compute_frame_embeddings_batch(
 
             if embeddings_field is None:
                 if embeddings:
-                    embeddings = np.concatenate(embeddings)
+                    embeddings = np.stack(embeddings)
                 else:
                     embeddings = None
 
