@@ -328,9 +328,7 @@ def _apply_image_model_data_loader(
 def _apply_image_model_to_frames_single(
     samples, model, label_field, confidence_thresh, skip_failures
 ):
-    samples.compute_metadata()
-    frame_counts = np.cumsum(samples.values("metadata.total_frame_count"))
-    total_frame_count = frame_counts[-1] if frame_counts.size > 0 else 0
+    frame_counts, total_frame_count = _get_frame_counts(samples)
 
     errors = []
 
@@ -381,9 +379,7 @@ def _apply_image_model_to_frames_single(
 def _apply_image_model_to_frames_batch(
     samples, model, label_field, confidence_thresh, batch_size, skip_failures
 ):
-    samples.compute_metadata()
-    frame_counts = np.cumsum(samples.values("metadata.total_frame_count"))
-    total_frame_count = frame_counts[-1] if frame_counts.size > 0 else 0
+    frame_counts, total_frame_count = _get_frame_counts(samples)
 
     errors = []
 
@@ -473,6 +469,18 @@ def _apply_video_model(
         )
 
         logger.warning("\n\n".join(lines))
+
+
+def _get_frame_counts(samples):
+    samples.compute_metadata()
+
+    frame_counts = np.cumsum(
+        [(fc or 0) for fc in samples.values("metadata.total_frame_count")]
+    )
+
+    total_frame_count = frame_counts[-1] if frame_counts.size > 0 else 0
+
+    return frame_counts, total_frame_count
 
 
 def _iter_batches(video_reader, batch_size):
@@ -818,7 +826,7 @@ def _compute_image_embeddings_data_loader(
     if embeddings_field:
         samples_loader = fou.iter_batches(samples, batch_size)
     else:
-        samples_loader = itertools.repeat(None)
+        samples_loader = itertools.repeat([None] * batch_size)
 
     embeddings = []
     errors = []
@@ -827,7 +835,7 @@ def _compute_image_embeddings_data_loader(
         for idx, (sample_batch, imgs) in enumerate(
             zip(samples_loader, data_loader), 1
         ):
-            embeddings_batch = [None] % len(sample_batch)
+            embeddings_batch = [None] * len(sample_batch)
 
             try:
                 if isinstance(imgs, Exception):
@@ -877,9 +885,7 @@ def _compute_image_embeddings_data_loader(
 def _compute_frame_embeddings_single(
     samples, model, embeddings_field, skip_failures
 ):
-    samples.compute_metadata()
-    frame_counts = np.cumsum(samples.values("metadata.total_frame_count"))
-    total_frame_count = frame_counts[-1] if frame_counts.size > 0 else 0
+    frame_counts, total_frame_count = _get_frame_counts(samples)
 
     embeddings_dict = {}
     errors = []
@@ -948,9 +954,7 @@ def _compute_frame_embeddings_single(
 def _compute_frame_embeddings_batch(
     samples, model, embeddings_field, batch_size, skip_failures
 ):
-    samples.compute_metadata()
-    frame_counts = np.cumsum(samples.values("metadata.total_frame_count"))
-    total_frame_count = frame_counts[-1] if frame_counts.size > 0 else 0
+    frame_counts, total_frame_count = _get_frame_counts(samples)
 
     embeddings_dict = {}
     errors = []
@@ -1440,9 +1444,7 @@ def _embed_frame_patches(
     batch_size,
     skip_failures,
 ):
-    samples.compute_metadata()
-    frame_counts = np.cumsum(samples.values("metadata.total_frame_count"))
-    total_frame_count = frame_counts[-1] if frame_counts.size > 0 else 0
+    frame_counts, total_frame_count = _get_frame_counts(samples)
 
     embeddings_dict = {}
     errors = []
