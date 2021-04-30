@@ -12,6 +12,7 @@ import logging
 import os
 import random
 import string
+import warnings
 
 from deprecated import deprecated
 from pymongo import UpdateOne
@@ -35,6 +36,7 @@ import fiftyone.core.sample as fosa
 import fiftyone.core.stages as fos
 import fiftyone.core.utils as fou
 
+fov = fou.lazy_import("fiftyone.core.view")
 foua = fou.lazy_import("fiftyone.utils.annotations")
 foud = fou.lazy_import("fiftyone.utils.data")
 foue = fou.lazy_import("fiftyone.utils.eval")
@@ -770,7 +772,12 @@ class SampleCollection(object):
         return dict(counts)
 
     def set_values(
-        self, field_name, values, skip_none=False, _allow_missing=False
+        self,
+        field_name,
+        values,
+        skip_none=False,
+        expand_schema=True,
+        _allow_missing=False,
     ):
         """Sets the field or embedded field on each sample or frame in the
         collection to the given values.
@@ -812,6 +819,54 @@ class SampleCollection(object):
 
                 sample.save()
 
+        The dual function of :meth:`set_values` is :meth:`values`, which can be
+        used to efficiently extract the values of a field or embedded field of
+        all samples in a collection as lists of values in the same structure
+        expected by this method.
+
+        .. note::
+
+            If the values you are setting can be described by a
+            :class:`fiftyone.core.expressions.ViewExpression` applied to the
+            existing dataset contents, then consider using :meth:`set_field` +
+            :meth:`save` for an even more efficient alternative to explicitly
+            iterating over the dataset or calling :meth:`values` +
+            :meth:`set_values` to perform the update in-memory.
+
+        Examples::
+
+            import random
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset("quickstart").clone()
+
+            #
+            # Create a new sample field
+            #
+
+            values = [random.random() for _ in range(len(dataset))]
+            dataset.set_values("random", values)
+
+            print(dataset.bounds("random"))
+
+            #
+            # Add a tag to all low confidence labels
+            #
+
+            view = dataset.filter_labels("predictions", F("confidence") < 0.06)
+
+            detections = view.values("predictions.detections")
+            for sample_detections in detections:
+                for detection in sample_detections:
+                    detection.tags.append("low confidence")
+
+            view.set_values("predictions.detections", detections)
+
+            print(dataset.count_label_tags())
+
         Args:
             field_name: a field or ``embedded.field.name``
             values: an iterable of values, one for each sample in the
@@ -821,21 +876,122 @@ class SampleCollection(object):
                 of ``values`` must be arrays of the same lengths
             skip_none (False): whether to treat None data in ``values`` as
                 missing data that should not be set
+            expand_schema (True): whether to dynamically add new sample/frame
+                fields encountered to the dataset schema. If False, an error is
+                raised if the root ``field_name`` does not exist
         """
+        if expand_schema:
+            self._expand_schema_from_values(field_name, values)
+
         field_name, is_frame_field, list_fields, _ = self._parse_field_name(
-            field_name, allow_missing=_allow_missing
+            field_name, omit_terminal_lists=True, allow_missing=_allow_missing
         )
 
-        if list_fields:
-            # Don't unroll terminal lists unless explicitly requested
-            list_fields = [lf for lf in list_fields if lf != field_name]
+        field_type = self._get_field_type(
+            field_name, is_frame_field=is_frame_field, ignore_primitives=True
+        )
+        if field_type is not None:
+            to_mongo = field_type.to_mongo
+        else:
+            to_mongo = None
+
+        # Setting an entire label list document whose label elements have been
+        # filtered is not allowed because this would delete the filtered labels
+        if (
+            isinstance(field_type, fof.EmbeddedDocumentField)
+            and issubclass(field_type.document_type, fol._LABEL_LIST_FIELDS)
+            and isinstance(self, fov.DatasetView)
+        ):
+            label_type = field_type.document_type
+            list_field = label_type._LABEL_LIST_FIELD
+            path = field_name + "." + list_field
+            if is_frame_field:
+                path = self._FRAMES_PREFIX + path
+
+            # pylint: disable=no-member
+            if path in self._get_filtered_fields():
+                msg = (
+                    "Detected a label list field '%s' with filtered elements; "
+                    "only the list elements will be updated"
+                ) % path
+                warnings.warn(msg)
+
+                fcn = lambda l: l[list_field]
+                level = 1 + is_frame_field
+                list_values = _transform_values(values, fcn, level=level)
+
+                return self.set_values(
+                    path,
+                    list_values,
+                    skip_none=skip_none,
+                    expand_schema=expand_schema,
+                    _allow_missing=_allow_missing,
+                )
+
+        # If we're directly updating a document list field of a dataset view,
+        # then update list elements by ID in case the field has been filtered
+        if (
+            isinstance(field_type, fof.ListField)
+            and isinstance(field_type.field, fof.EmbeddedDocumentField)
+            and isinstance(self, fov.DatasetView)
+        ):
+            list_fields = sorted(set(list_fields + [field_name]))
 
         if is_frame_field:
-            self._set_frame_values(field_name, values, list_fields, skip_none)
+            self._set_frame_values(
+                field_name,
+                values,
+                list_fields,
+                to_mongo=to_mongo,
+                skip_none=skip_none,
+            )
         else:
-            self._set_sample_values(field_name, values, list_fields, skip_none)
+            self._set_sample_values(
+                field_name,
+                values,
+                list_fields,
+                to_mongo=to_mongo,
+                skip_none=skip_none,
+            )
 
-    def _set_sample_values(self, field_name, values, list_fields, skip_none):
+    def _expand_schema_from_values(self, field_name, values):
+        field_name, is_frame_field = self._handle_frame_field(field_name)
+        root = field_name.split(".", 1)[0]
+
+        if is_frame_field:
+            schema = self._dataset.get_frame_field_schema(include_private=True)
+
+            if root in schema:
+                return
+
+            if root != field_name:
+                raise ValueError(
+                    "Cannot infer an appropriate type for new frame "
+                    "field '%s' when setting embedded field '%s'"
+                    % (root, field_name)
+                )
+
+            value = _get_non_none_value(itertools.chain.from_iterable(values))
+            self._dataset._add_implied_frame_field(field_name, value)
+        else:
+            schema = self._dataset.get_field_schema(include_private=True)
+
+            if root in schema:
+                return
+
+            if root != field_name:
+                raise ValueError(
+                    "Cannot infer an appropriate type for new sample "
+                    "field '%s' when setting embedded field '%s'"
+                    % (root, field_name)
+                )
+
+            value = _get_non_none_value(values)
+            self._dataset._add_implied_sample_field(field_name, value)
+
+    def _set_sample_values(
+        self, field_name, values, list_fields, to_mongo=None, skip_none=False
+    ):
         if len(list_fields) > 1:
             raise ValueError(
                 "At most one array field can be unwound when setting values"
@@ -853,12 +1009,21 @@ class SampleCollection(object):
                 elem_ids,
                 values,
                 list_field,
-                skip_none,
+                to_mongo=to_mongo,
+                skip_none=skip_none,
             )
         else:
-            self._set_values(field_name, sample_ids, values, skip_none)
+            self._set_values(
+                field_name,
+                sample_ids,
+                values,
+                to_mongo=to_mongo,
+                skip_none=skip_none,
+            )
 
-    def _set_frame_values(self, field_name, values, list_fields, skip_none):
+    def _set_frame_values(
+        self, field_name, values, list_fields, to_mongo=None, skip_none=False
+    ):
         if len(list_fields) > 1:
             raise ValueError(
                 "At most one array field can be unwound when setting values"
@@ -880,19 +1045,36 @@ class SampleCollection(object):
                 elem_ids,
                 values,
                 list_field,
-                skip_none,
+                to_mongo=to_mongo,
+                skip_none=skip_none,
                 frames=True,
             )
         else:
             self._set_values(
-                field_name, frame_ids, values, skip_none, frames=True
+                field_name,
+                frame_ids,
+                values,
+                to_mongo=to_mongo,
+                skip_none=skip_none,
+                frames=True,
             )
 
-    def _set_values(self, field_name, ids, values, skip_none, frames=False):
+    def _set_values(
+        self,
+        field_name,
+        ids,
+        values,
+        to_mongo=None,
+        skip_none=False,
+        frames=False,
+    ):
         ops = []
         for _id, value in zip(ids, values):
             if value is None and skip_none:
                 continue
+
+            if to_mongo is not None:
+                value = to_mongo(value)
 
             ops.append(UpdateOne({"_id": _id}, {"$set": {field_name: value}}))
 
@@ -905,11 +1087,17 @@ class SampleCollection(object):
         elem_ids,
         values,
         list_field,
-        skip_none,
+        to_mongo=None,
+        skip_none=False,
         frames=False,
     ):
         root = list_field
         leaf = field_name[len(root) + 1 :]
+        elem_id = root + "._id"
+        if leaf:
+            elem = root + ".$." + leaf
+        else:
+            elem = root + ".$"
 
         ops = []
         for _id, _elem_ids, _values in zip(ids, elem_ids, values):
@@ -920,14 +1108,20 @@ class SampleCollection(object):
                 if value is None and skip_none:
                     continue
 
+                if to_mongo is not None:
+                    value = to_mongo(value)
+
                 if _elem_id is None:
                     raise ValueError(
                         "Can only set values of array documents with IDs"
                     )
 
-                update = {"$set": {root + ".$." + leaf: value}}
-                op = UpdateOne({"_id": _id, root + "._id": _elem_id}, update)
-                ops.append(op)
+                ops.append(
+                    UpdateOne(
+                        {"_id": _id, elem_id: _elem_id},
+                        {"$set": {elem: value}},
+                    )
+                )
 
         self._dataset._bulk_write(ops, frames=frames)
 
@@ -4103,8 +4297,18 @@ class SampleCollection(object):
         missing_value=None,
         unwind=False,
         _allow_missing=False,
+        _raw=False,
     ):
         """Extracts the values of a field from all samples in the collection.
+
+        Values aggregations are useful for efficiently extracting a slice of
+        field or embedded field values across all samples in a collection. See
+        the examples below for more details.
+
+        The dual function of :meth:`values` is :meth:`set_values`, which can be
+        used to efficiently set a field or embedded field of all samples in a
+        collection by providing lists of values of same structure returned by
+        this aggregation.
 
         .. note::
 
@@ -4120,6 +4324,7 @@ class SampleCollection(object):
         Examples::
 
             import fiftyone as fo
+            import fiftyone.zoo as foz
             from fiftyone import ViewField as F
 
             dataset = fo.Dataset()
@@ -4164,6 +4369,21 @@ class SampleCollection(object):
             values = dataset.values(2 * (F("numeric_field") + 1))
             print(values)  # [4.0, 10.0, None]
 
+            #
+            # Get values from a label list field
+            #
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            # list of `Detections`
+            detections = dataset.values("ground_truth")
+
+            # list of lists of `Detection` instances
+            detections = dataset.values("ground_truth.detections")
+
+            # list of lists of detection labels
+            labels = dataset.values("ground_truth.detections.label")
+
         Args:
             field_or_expr: a field name, ``embedded.field.name``,
                 :class:`fiftyone.core.expressions.ViewExpression`, or
@@ -4188,6 +4408,7 @@ class SampleCollection(object):
                 missing_value=missing_value,
                 unwind=unwind,
                 _allow_missing=_allow_missing,
+                _raw=_raw,
             )
         )
 
@@ -4804,10 +5025,14 @@ class SampleCollection(object):
         )
 
     def _parse_field_name(
-        self, field_name, auto_unwind=True, allow_missing=False
+        self,
+        field_name,
+        auto_unwind=True,
+        omit_terminal_lists=False,
+        allow_missing=False,
     ):
         return _parse_field_name(
-            self, field_name, auto_unwind, allow_missing=allow_missing
+            self, field_name, auto_unwind, omit_terminal_lists, allow_missing
         )
 
     def _handle_frame_field(self, field_name):
@@ -4912,8 +5137,15 @@ class SampleCollection(object):
 
         return next(iter(geo_schema.keys()))
 
-    def _is_array_field(self, field_name):
-        return _is_array_field(self, field_name)
+    def _get_field_type(
+        self, field_name, is_frame_field=None, ignore_primitives=False
+    ):
+        return _get_field_type(
+            self,
+            field_name,
+            is_frame_field=is_frame_field,
+            ignore_primitives=ignore_primitives,
+        )
 
     def _unwind_values(self, field_name, values):
         if values is None:
@@ -4929,18 +5161,6 @@ class SampleCollection(object):
             level -= 1
 
         return values
-
-    def _add_field_if_necessary(self, field_name, ftype, **kwargs):
-        # @todo if field exists, validate that `ftype` and `**kwargs` match
-        field_name, is_frame_field = self._handle_frame_field(field_name)
-        if is_frame_field:
-            if not self.has_frame_field(field_name):
-                self._dataset.add_frame_field(field_name, ftype, **kwargs)
-
-            return
-
-        if not self.has_sample_field(field_name):
-            self._dataset.add_sample_field(field_name, ftype, **kwargs)
 
     def _make_set_field_pipeline(
         self, field, expr, embedded_root=False, allow_missing=False
@@ -5211,7 +5431,11 @@ def _get_field_with_type(label_fields, label_cls):
 
 
 def _parse_field_name(
-    sample_collection, field_name, auto_unwind, allow_missing=False
+    sample_collection,
+    field_name,
+    auto_unwind,
+    omit_terminal_lists,
+    allow_missing,
 ):
     field_name, is_frame_field = sample_collection._handle_frame_field(
         field_name
@@ -5227,12 +5451,6 @@ def _parse_field_name(
     unwind_list_fields = set()
     other_list_fields = set()
 
-    def _record_list_field(field_name):
-        if auto_unwind:
-            unwind_list_fields.add(field_name)
-        elif field_name not in unwind_list_fields:
-            other_list_fields.add(field_name)
-
     # Parse explicit array references
     chunks = field_name.split("[]")
     for idx in range(len(chunks) - 1):
@@ -5243,7 +5461,6 @@ def _parse_field_name(
 
     # Get root field type, if possible
     root_field_name = field_name.split(".", 1)[0]
-
     if root_field_name in ("id", "_id"):
         root_field = None
     elif root_field_name not in schema:
@@ -5258,31 +5475,29 @@ def _parse_field_name(
     else:
         root_field = schema[root_field_name]
 
-    #
-    # Detect certain list fields automatically
-    #
-    # @todo this implementation would be greatly improved by using the schema
-    # to detect list fields
-    #
+    # Detect list fields in schema
+    path = None
+    for part in field_name.split("."):
+        if path is None:
+            path = part
+        else:
+            path += "." + part
 
-    if isinstance(root_field, fof.ListField):
-        _record_list_field(root_field_name)
+        field_type = sample_collection._get_field_type(
+            path, is_frame_field=is_frame_field
+        )
 
-    if isinstance(root_field, fof.EmbeddedDocumentField):
-        root_type = root_field.document_type
+        if field_type is None:
+            break
 
-        if root_type in fol._SINGLE_LABEL_FIELDS:
-            if field_name == root_field_name + ".tags":
-                _record_list_field(field_name)
+        if isinstance(field_type, fof.ListField):
+            if omit_terminal_lists and path == field_name:
+                break
 
-        if root_type in fol._LABEL_LIST_FIELDS:
-            path = root_field_name + "." + root_type._LABEL_LIST_FIELD
-
-            if field_name.startswith(path):
-                _record_list_field(path)
-
-            if field_name == path + ".tags":
-                _record_list_field(field_name)
+            if auto_unwind:
+                unwind_list_fields.add(path)
+            elif path not in unwind_list_fields:
+                other_list_fields.add(path)
 
     # Sorting is important here because one must unwind field `x` before
     # embedded field `x.y`
@@ -5299,14 +5514,18 @@ def _parse_field_name(
     return field_name, is_frame_field, unwind_list_fields, other_list_fields
 
 
-def _is_array_field(sample_collection, field_name):
-    field_name, is_frame_field = sample_collection._handle_frame_field(
-        field_name
-    )
-    if is_frame_field:
-        if not field_name:
-            return False
+def _get_field_type(
+    sample_collection,
+    field_name,
+    is_frame_field=None,
+    ignore_primitives=False,
+):
+    if is_frame_field is None:
+        field_name, is_frame_field = sample_collection._handle_frame_field(
+            field_name
+        )
 
+    if is_frame_field:
         schema = sample_collection.get_frame_field_schema()
     else:
         schema = sample_collection.get_field_schema()
@@ -5317,19 +5536,32 @@ def _is_array_field(sample_collection, field_name):
     else:
         root, field_path = field_name.split(".", 1)
 
-    field = schema.get(root, None)
-    return _is_field_type(field, field_path, fof._ARRAY_FIELDS)
+    if root not in schema:
+        return None
+
+    field_type = _do_get_field_type(schema[root], field_path)
+
+    if ignore_primitives:
+        if type(field_type) in fof._PRIMITIVE_FIELDS:
+            return None
+
+        if type(field_type) in (fof.ListField, fof.DictField):
+            subfield = field_type.field
+            if subfield is None or type(subfield) in fof._PRIMITIVE_FIELDS:
+                return None
+
+    return field_type
 
 
-def _is_field_type(field, field_path, types):
+def _do_get_field_type(field, field_path):
+    if not field_path:
+        return field
+
     if isinstance(field, fof.ListField):
-        return _is_field_type(field.field, field_path, types)
+        return _do_get_field_type(field.field, field_path)
 
     if isinstance(field, fof.EmbeddedDocumentField):
-        return _is_field_type(field.document_type, field_path, types)
-
-    if not field_path:
-        return isinstance(field, types)
+        return _do_get_field_type(field.document_type, field_path)
 
     if "." not in field_path:
         root, field_path = field_path, None
@@ -5339,9 +5571,9 @@ def _is_field_type(field, field_path, types):
     try:
         field = getattr(field, root)
     except AttributeError:
-        return False
+        return None
 
-    return _is_field_type(field, field_path, types)
+    return _do_get_field_type(field, field_path)
 
 
 def _transform_values(values, fcn, level=1):
@@ -5358,7 +5590,10 @@ def _make_set_field_pipeline(
     sample_collection, field, expr, embedded_root, allow_missing=False
 ):
     path, is_frame_field, list_fields, _ = sample_collection._parse_field_name(
-        field, allow_missing=allow_missing
+        field,
+        auto_unwind=True,
+        omit_terminal_lists=True,
+        allow_missing=allow_missing,
     )
 
     if is_frame_field and path != "frames":
@@ -5366,9 +5601,6 @@ def _make_set_field_pipeline(
         list_fields = ["frames"] + [
             sample_collection._FRAMES_PREFIX + lf for lf in list_fields
         ]
-
-    # Don't unroll terminal lists unless explicitly requested
-    list_fields = [lf for lf in list_fields if lf != field]
 
     # Case 1: no list fields
     if not list_fields:
@@ -5443,3 +5675,11 @@ def _get_random_characters(n):
     return "".join(
         random.choice(string.ascii_lowercase + string.digits) for _ in range(n)
     )
+
+
+def _get_non_none_value(values):
+    for value in values:
+        if value is not None:
+            return value
+
+    return None

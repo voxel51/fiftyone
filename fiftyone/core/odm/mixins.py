@@ -48,6 +48,133 @@ def get_default_fields(cls, include_private=False, include_id=False):
     return fields
 
 
+def validate_fields_match(
+    field_name, field_or_kwargs, existing_field_or_kwargs
+):
+    """Validates that a given field or field description matches the type of
+    the existing field.
+
+    Args:
+        field_name: the name of the field
+        field_or_kwargs: a :class:`fiftyone.core.fields.Field` instance or a
+            dict of keyword arguments describing it
+        existing_field_or_kwargs: a :class:`fiftyone.core.fields.Field` instance or
+            dict of keyword arguments defining the reference field type
+
+    Raises:
+        ValueError: if the proposed field does not match the reference field
+    """
+    if isinstance(field_or_kwargs, dict):
+        field = create_field(field_name, **field_or_kwargs)
+    else:
+        field = field_or_kwargs
+
+    if isinstance(existing_field_or_kwargs, dict):
+        existing_field = create_field(field_name, **existing_field_or_kwargs)
+    else:
+        existing_field = existing_field_or_kwargs
+
+    if type(field) is not type(existing_field):
+        raise ValueError(
+            "Field '%s' type %s does not match existing field "
+            "type %s" % (field_name, field, existing_field)
+        )
+
+    if isinstance(field, fof.EmbeddedDocumentField):
+        if not issubclass(field.document_type, existing_field.document_type):
+            raise ValueError(
+                "Embedded document field '%s' type %s does not match existing "
+                "field type %s"
+                % (
+                    field_name,
+                    field.document_type,
+                    existing_field.document_type,
+                )
+            )
+
+    if isinstance(field, (fof.ListField, fof.DictField)):
+        if (existing_field.field is not None) and not isinstance(
+            field.field, type(existing_field.field)
+        ):
+            raise ValueError(
+                "%s '%s' type %s does not match existing "
+                "field type %s"
+                % (
+                    field.__class__.__name__,
+                    field_name,
+                    field.field,
+                    existing_field.field,
+                )
+            )
+
+
+def get_field_kwargs(field):
+    """Constructs the field keyword arguments dictionary for the given
+    :class:`fiftyone.core.fields.Field` instance.
+
+    Args:
+        field: a :class:`fiftyone.core.fields.Field`
+
+    Returns:
+        a field specification dict
+    """
+    ftype = type(field)
+    kwargs = {"ftype": ftype}
+
+    if issubclass(ftype, fof.EmbeddedDocumentField):
+        kwargs["embedded_doc_type"] = field.document_type
+
+    if issubclass(ftype, (fof.ListField, fof.DictField)):
+        kwargs["subfield"] = field.field
+
+    return kwargs
+
+
+def get_implied_field_kwargs(value):
+    """Infers the field keyword arguments dictionary for a field that can hold
+    values of the given type.
+
+    Args:
+        value: a value
+
+    Returns:
+        a field specification dict
+    """
+    if isinstance(value, BaseEmbeddedDocument):
+        return {
+            "ftype": fof.EmbeddedDocumentField,
+            "embedded_doc_type": type(value),
+        }
+
+    if isinstance(value, bool):
+        return {"ftype": fof.BooleanField}
+
+    if isinstance(value, six.integer_types):
+        return {"ftype": fof.IntField}
+
+    if isinstance(value, numbers.Number):
+        return {"ftype": fof.FloatField}
+
+    if isinstance(value, six.string_types):
+        return {"ftype": fof.StringField}
+
+    if isinstance(value, (list, tuple)):
+        return {"ftype": fof.ListField}
+
+    if isinstance(value, np.ndarray):
+        if value.ndim == 1:
+            return {"ftype": fof.VectorField}
+
+        return {"ftype": fof.ArrayField}
+
+    if isinstance(value, dict):
+        return {"ftype": fof.DictField}
+
+    raise TypeError(
+        "Cannot infer an appropriate field type for value '%s'" % value
+    )
+
+
 class DatasetMixin(object):
     """Mixin for concrete :class:`fiftyone.core.odm.document.SampleDocument`
     subtypes that are backed by a dataset.
@@ -989,92 +1116,6 @@ class NoDatasetMixin(object):
 
     def delete(self):
         pass
-
-
-def validate_fields_match(field_name, field, ref_field):
-    if type(field) is not type(ref_field):
-        raise ValueError(
-            "Field '%s' type %s does not match existing field "
-            "type %s" % (field_name, field, ref_field)
-        )
-
-    if isinstance(field, fof.EmbeddedDocumentField):
-        if not issubclass(field.document_type, ref_field.document_type):
-            raise ValueError(
-                "Embedded document field '%s' type %s does not match existing "
-                "field type %s"
-                % (field_name, field.document_type, ref_field.document_type)
-            )
-
-    if isinstance(field, (fof.ListField, fof.DictField)):
-        if (ref_field.field is not None) and not isinstance(
-            field.field, type(ref_field.field)
-        ):
-            raise ValueError(
-                "%s '%s' type %s does not match existing "
-                "field type %s"
-                % (
-                    field.__class__.__name__,
-                    field_name,
-                    field.field,
-                    ref_field.field,
-                )
-            )
-
-
-def get_field_kwargs(field):
-    ftype = type(field)
-    kwargs = {"ftype": ftype}
-
-    if issubclass(ftype, fof.EmbeddedDocumentField):
-        kwargs["embedded_doc_type"] = field.document_type
-
-    if issubclass(ftype, (fof.ListField, fof.DictField)):
-        kwargs["subfield"] = field.field
-
-    return kwargs
-
-
-def get_implied_field_kwargs(value):
-    if isinstance(value, BaseEmbeddedDocument):
-        return {
-            "ftype": fof.EmbeddedDocumentField,
-            "embedded_doc_type": type(value),
-        }
-
-    ftype = _get_scalar_field_type(value)
-    if ftype is not None:
-        return {"ftype": ftype}
-
-    if isinstance(value, (list, tuple)):
-        return {"ftype": fof.ListField}
-
-    if isinstance(value, np.ndarray):
-        if value.ndim == 1:
-            return {"ftype": fof.VectorField}
-
-        return {"ftype": fof.ArrayField}
-
-    if isinstance(value, dict):
-        return {"ftype": fof.DictField}
-
-    raise TypeError("Unsupported field value '%s'" % type(value))
-
-
-def _get_scalar_field_type(value):
-    if isinstance(value, bool):
-        return fof.BooleanField
-
-    if isinstance(value, six.integer_types):
-        return fof.IntField
-
-    if isinstance(value, numbers.Number):
-        return fof.FloatField
-
-    if isinstance(value, six.string_types):
-        return fof.StringField
-
-    return None
 
 
 def _rename_field(field, new_field_name):
