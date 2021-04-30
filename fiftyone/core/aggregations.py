@@ -207,7 +207,7 @@ class Bounds(Aggregation):
         return d["min"], d["max"]
 
     def to_mongo(self, sample_collection):
-        path, _, pipeline, _ = self._parse_field_and_expr(sample_collection)
+        path, pipeline, _ = self._parse_field_and_expr(sample_collection)
 
         pipeline.append(
             {
@@ -338,7 +338,7 @@ class Count(Aggregation):
         if self._field_name is None and self._expr is None:
             return [{"$count": "count"}]
 
-        path, _, pipeline, _ = self._parse_field_and_expr(sample_collection)
+        path, pipeline, _ = self._parse_field_and_expr(sample_collection)
 
         if sample_collection.media_type != fom.VIDEO or path != "frames":
             pipeline.append({"$match": {"$expr": {"$gt": ["$" + path, None]}}})
@@ -452,7 +452,7 @@ class CountValues(Aggregation):
         return {i["k"]: i["count"] for i in d["result"]}
 
     def to_mongo(self, sample_collection):
-        path, _, pipeline, _ = self._parse_field_and_expr(sample_collection)
+        path, pipeline, _ = self._parse_field_and_expr(sample_collection)
 
         pipeline += [
             {"$group": {"_id": "$" + path, "count": {"$sum": 1}}},
@@ -573,7 +573,7 @@ class Distinct(Aggregation):
         return sorted(d["values"])
 
     def to_mongo(self, sample_collection):
-        path, _, pipeline, _ = self._parse_field_and_expr(sample_collection)
+        path, pipeline, _ = self._parse_field_and_expr(sample_collection)
 
         pipeline += [
             {"$match": {"$expr": {"$gt": ["$" + path, None]}}},
@@ -720,7 +720,7 @@ class HistogramValues(Aggregation):
         return self._parse_result_edges(d)
 
     def to_mongo(self, sample_collection):
-        path, _, pipeline, _ = self._parse_field_and_expr(sample_collection)
+        path, pipeline, _ = self._parse_field_and_expr(sample_collection)
 
         if self._auto:
             pipeline.append(
@@ -910,7 +910,7 @@ class Mean(Aggregation):
         return d["mean"]
 
     def to_mongo(self, sample_collection):
-        path, _, pipeline, _ = self._parse_field_and_expr(sample_collection)
+        path, pipeline, _ = self._parse_field_and_expr(sample_collection)
 
         pipeline.append(
             {"$group": {"_id": None, "mean": {"$avg": "$" + path}}}
@@ -1017,7 +1017,7 @@ class Std(Aggregation):
         return d["std"]
 
     def to_mongo(self, sample_collection):
-        path, _, pipeline, _ = self._parse_field_and_expr(sample_collection)
+        path, pipeline, _ = self._parse_field_and_expr(sample_collection)
 
         op = "$stdDevSamp" if self._sample else "$stdDevPop"
         pipeline.append({"$group": {"_id": None, "std": {op: "$" + path}}})
@@ -1117,7 +1117,7 @@ class Sum(Aggregation):
         return d["sum"]
 
     def to_mongo(self, sample_collection):
-        path, _, pipeline, _ = self._parse_field_and_expr(sample_collection)
+        path, pipeline, _ = self._parse_field_and_expr(sample_collection)
 
         pipeline.append({"$group": {"_id": None, "sum": {"$sum": "$" + path}}})
 
@@ -1286,12 +1286,7 @@ class Values(Aggregation):
         return values
 
     def to_mongo(self, sample_collection):
-        (
-            path,
-            is_frame_field,
-            pipeline,
-            list_fields,
-        ) = self._parse_field_and_expr(
+        path, pipeline, list_fields = self._parse_field_and_expr(
             sample_collection,
             auto_unwind=self._unwind,
             omit_terminal_lists=not self._unwind,
@@ -1300,7 +1295,7 @@ class Values(Aggregation):
 
         if self._expr is None:
             self._field_type = sample_collection._get_field_type(
-                path, is_frame_field=is_frame_field, ignore_primitives=True
+                self._field_name, ignore_primitives=True
             )
 
         self._num_list_fields = len(list_fields)
@@ -1433,7 +1428,7 @@ def _parse_field_and_expr(
 
     pipeline.append({"$project": {root: True}})
 
-    return path, is_frame_field, pipeline, other_list_fields
+    return path, pipeline, other_list_fields
 
 
 def _extract_prefix_from_expr(expr):

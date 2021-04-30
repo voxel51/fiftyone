@@ -12,6 +12,7 @@ import logging
 import os
 import random
 import string
+import warnings
 
 from deprecated import deprecated
 from pymongo import UpdateOne
@@ -895,23 +896,36 @@ class SampleCollection(object):
             to_mongo = None
 
         # Setting an entire label list document whose label elements have been
-        # filtered is not allowed because this would omit any filtered labels.
+        # filtered is not allowed because this would delete the filtered labels
         if (
             isinstance(field_type, fof.EmbeddedDocumentField)
             and issubclass(field_type.document_type, fol._LABEL_LIST_FIELDS)
             and isinstance(self, fov.DatasetView)
         ):
+            label_type = field_type.document_type
+            list_field = label_type._LABEL_LIST_FIELD
+            path = field_name + "." + list_field
             if is_frame_field:
-                path = self._FRAMES_PREFIX + field_name
-            else:
-                path = field_name
+                path = self._FRAMES_PREFIX + path
 
             # pylint: disable=no-member
             if path in self._get_filtered_fields():
-                raise ValueError(
-                    "Cannot set field '%s' of type %s because its label "
-                    "elements have been filtered in this view"
-                    % (path, field_type.document_type)
+                msg = (
+                    "Detected a label list field '%s' with filtered elements; "
+                    "only the list elements will be updated"
+                ) % path
+                warnings.warn(msg)
+
+                fcn = lambda l: l[list_field]
+                level = 1 + is_frame_field
+                list_values = _transform_values(values, fcn, level=level)
+
+                return self.set_values(
+                    path,
+                    list_values,
+                    skip_none=skip_none,
+                    expand_schema=expand_schema,
+                    _allow_missing=_allow_missing,
                 )
 
         # If we're directly updating a document list field of a dataset view,
