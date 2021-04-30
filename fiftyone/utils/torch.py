@@ -941,10 +941,10 @@ class TorchImageDataset(Dataset):
             if self.transform is not None:
                 img = self.transform(img)
         except Exception as e:
-            if self.skip_failures:
-                img = e
-            else:
+            if not self.skip_failures:
                 raise e
+
+            img = e
 
         if self.has_sample_ids:
             # pylint: disable=unsubscriptable-object
@@ -1014,10 +1014,10 @@ class TorchImageClassificationDataset(Dataset):
             if self.transform is not None:
                 img = self.transform(img)
         except Exception as e:
-            if self.skip_failures:
-                img = e
-            else:
+            if not self.skip_failures:
                 raise e
+
+            img = e
 
         if self.has_sample_ids:
             # pylint: disable=unsubscriptable-object
@@ -1112,10 +1112,10 @@ class TorchImagePatchesDataset(Dataset):
                 image_path = self.image_paths[idx]
                 img_patches = self._extract_patches(image_path, detections)
         except Exception as e:
-            if self.skip_failures:
-                img_patches = e
-            else:
+            if not self.skip_failures:
                 raise e
+
+            img_patches = e
 
         if self.has_sample_ids:
             # pylint: disable=unsubscriptable-object
