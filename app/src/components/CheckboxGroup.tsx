@@ -66,6 +66,8 @@ const Body = styled.div`
       color: unset;
       line-height: 29px;
       height: 29px;
+      justify-content; space-between;
+      max-width: 100%;
 
       span.name {
         display: block;
@@ -86,6 +88,9 @@ const Body = styled.div`
         height: 29px;
         line-height: 29px;
         vertical-align: middle;
+        max-width: 100%;
+        text-overflow: ellipsis;
+        overflow: hidden;
       }
 
       span.data {
@@ -165,11 +170,7 @@ const Entry = React.memo(({ entry, onCheck, modal }: EntryProps) => {
 
   const checkboxClass = hideCheckbox ? "no-checkbox" : "with-checkbox";
   const containerProps = useSpring({
-    backgroundColor: fieldFiltered
-      ? "#6C757D"
-      : hideCheckbox || selected
-      ? theme.backgroundLight
-      : theme.background,
+    backgroundColor: fieldFiltered ? "#6C757D" : theme.backgroundLight,
   });
   const ArrowType = expanded ? ArrowDropUp : ArrowDropDown;
   return (

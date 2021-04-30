@@ -1,15 +1,7 @@
 import React from "react";
-import { RecoilState, useRecoilState } from "recoil";
 import styled from "styled-components";
 
 import { useTheme } from "../../utils/hooks";
-
-interface InputProps {
-  color?: string;
-  placeholder?: string;
-  type: "int" | "float" | "string";
-  valueAtom: RecoilState<any>;
-}
 
 const StyledInputContainer = styled.div`
   font-size: 14px;
@@ -41,10 +33,25 @@ const StyledInput = styled.input`
   }
 `;
 
+interface InputProps {
+  color?: string;
+  placeholder?: string;
+  validator?: (value: string) => boolean;
+  setter: (value: string) => void;
+  value: string;
+  disabled?: boolean;
+}
+
 const Input = React.memo(
-  ({ color = null, placeholder, type, valueAtom }: InputProps) => {
+  ({
+    color = null,
+    placeholder,
+    validator = () => true,
+    setter,
+    value,
+    disabled = false,
+  }: InputProps) => {
     const theme = useTheme();
-    const [value, setValue] = useRecoilState(valueAtom);
     color = color ?? theme.brand;
 
     return (
@@ -53,14 +60,12 @@ const Input = React.memo(
           placeholder={placeholder}
           value={value === null ? "" : String(value)}
           onChange={(e: React.FormEvent<HTMLInputElement>) => {
-            const re = /^[0-9\b]+$/;
-            if (
-              e.currentTarget.value === "" ||
-              re.test(e.currentTarget.value)
-            ) {
-              setValue(e.currentTarget.value);
+            if (validator(e.currentTarget.value)) {
+              setter(e.currentTarget.value);
             }
           }}
+          style={disabled ? { color: theme.fontDark } : {}}
+          disabled={disabled}
         />
       </StyledInputContainer>
     );

@@ -1,12 +1,4 @@
 import React, { Suspense, useMemo, useState } from "react";
-import {
-  selector,
-  RecoilState,
-  RecoilValueReadOnly,
-  selector,
-  useRecoilState,
-  useRecoilValue,
-} from "recoil";
 import { animated } from "react-spring";
 import styled from "styled-components";
 import { CircularProgress } from "@material-ui/core";
@@ -14,27 +6,32 @@ import uuid from "uuid-v4";
 
 import Input from "./Input";
 import RadioGroup from "./RadioGroup";
-import { PopoutSectionTitle } from "../utils";
 import Checkbox from "./Checkbox";
 
 const SelectInputDiv = styled.div``;
 
 interface SelectInputProps {
-  choices: { hasMore: boolean; choices: string[] };
+  choices: { total: number; choices: string[] };
   radio?: boolean;
   values: string[];
   setValues: (values: string[]) => void;
   placeholder?: string;
   color?: string;
+  limit?: number;
 }
 
 const SelectInputContainer = React.memo(
-  ({ color, values, choices, radio = false, setValues }: SelectInputProps) => {
-    const [id] = useState(uuid());
+  ({
+    color,
+    values,
+    choices,
+    radio = false,
+    setValues,
+    limit = 15,
+  }: SelectInputProps) => {
+    const { total, choices: choicesList } = choices;
 
-    const { hasMore, choices: choicesList } = choices;
-
-    if (!hasMore && radio) {
+    if (total == choicesList.length && radio) {
       return (
         <RadioGroup
           color={color}
@@ -45,8 +42,7 @@ const SelectInputContainer = React.memo(
       );
     }
 
-    if (!hasMore) {
-      console.log(choices, values);
+    if (total === choicesList.length) {
       return (
         <>
           {choicesList.map((choice) => (

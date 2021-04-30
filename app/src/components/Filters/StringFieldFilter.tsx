@@ -9,9 +9,12 @@ import {
 import { animated } from "react-spring";
 
 import * as selectors from "../../recoil/selectors";
-import { NamedStringFilter } from "./StringFilter";
+import StringFilter from "./StringFilter";
 import { AGGS } from "../../utils/labels";
 import { useExpand, hasNoneField } from "./utils";
+import socket from "../../shared/connection";
+import { packageMessage } from "../../utils/socket";
+import { number } from "prop-types";
 
 type StringFilter = {
   values: string[];
@@ -80,19 +83,56 @@ export const excludeModalAtom = atomFamily<boolean, string>({
   default: false,
 });
 
-export const valuesAtom = selectorFamily<Value[], string>({
+export const searchStringField = atomFamily<string, string>({
+  key: "searchStringField",
+  default: "",
+});
+
+export const stringFieldValues = selectorFamily<
+  { count: number; results: string[] },
+  string
+>({
+  key: "searchStringFields",
+  get: (path) => async ({ get }) => {
+    const search = get(searchStringField(path));
+
+    const wrap = (handler, type) => ({ data }) => {
+      data = JSON.parse(data);
+      data.type === type && handler(data);
+    };
+
+    const promise = new Promise<{ count: number; results: string[] }>(
+      (resolve) => {
+        const listener = wrap(({ count, results }) => {
+          socket.removeEventListener("message", listener);
+          resolve({ count, results });
+        }, "distinct");
+        socket.addEventListener("message", listener);
+        socket.send(packageMessage("all_tags", { path, search }));
+      }
+    );
+
+    const result = await promise;
+    return result;
+  },
+});
+
+export const valuesAtom = selectorFamily<
+  { total: number; count: number; results: string[] },
+  string
+>({
   key: "stringFieldValues",
   get: (path) => ({ get }) => {
-    let i = (get(selectors.datasetStats) ?? []).reduce((acc, cur) => {
-      if (cur.name === path && cur._CLS === AGGS.DISTINCT) {
+    let total = (get(selectors.datasetStats) ?? []).reduce((acc, cur) => {
+      if (cur.name === path && cur._CLS === AGGS.DISTINCT_COUNT) {
         return cur.result;
       }
       return acc;
     }, []);
-    if (get(hasNoneField(path))) {
-      return [null, ...i];
-    }
-    return i;
+    return {
+      total,
+      ...get(stringFieldValues(path)),
+    };
   },
 });
 
@@ -113,7 +153,7 @@ const StringFieldFilter = ({ expanded, entry }) => {
 
   return (
     <animated.div style={props}>
-      <NamedStringFilter
+      <StringFilter
         name={"Values"}
         valueName={"value"}
         color={entry.color}

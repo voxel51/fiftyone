@@ -80,6 +80,7 @@ export const AGGS = {
   BOUNDS: "Bounds",
   COUNT: "Count",
   DISTINCT: "Distinct",
+  DISTINCT_COUNT: "DistinctCount",
 };
 
 export const BOOLEAN_FIELD = "fiftyone.core.fields.BooleanField";

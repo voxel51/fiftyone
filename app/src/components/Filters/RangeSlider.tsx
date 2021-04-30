@@ -7,9 +7,9 @@ import {
   useRecoilState,
   useRecoilValue,
 } from "recoil";
-import { Checkbox, FormControlLabel } from "@material-ui/core";
-
 import { Slider as SliderUnstyled } from "@material-ui/core";
+
+import Checkbox from "../Common/Checkbox";
 
 const SliderContainer = styled.div`
   font-weight: bold;
@@ -217,6 +217,7 @@ const RangeSliderContainer = styled.div`
   border-radius: 2px;
   color: ${({ theme }) => theme.fontDark};
   margin-top: 0.25rem;
+  padding: 0.25rem 0.5rem 0 0.5rem;
 `;
 
 type NamedProps = {
@@ -290,23 +291,11 @@ export const NamedRangeSlider = React.memo(
               <RangeSlider {...rangeSliderProps} />
             )}
             {hasNone && hasDefaultRange && (
-              <FormControlLabel
-                label={
-                  <div style={{ lineHeight: "20px", fontSize: 14 }}>
-                    Exclude{" "}
-                    <code style={{ color: rangeSliderProps.color }}>None</code>
-                  </div>
-                }
-                control={
-                  <Checkbox
-                    checked={!includeNone}
-                    onChange={() => setIncludeNone(!includeNone)}
-                    style={{
-                      padding: "0 5px",
-                      color: rangeSliderProps.color,
-                    }}
-                  />
-                }
+              <Checkbox
+                color={rangeSliderProps.color}
+                name={"None"}
+                value={includeNone}
+                setValue={setIncludeNone}
               />
             )}
           </RangeSliderContainer>

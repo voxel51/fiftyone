@@ -276,7 +276,6 @@ const ActionsRowDiv = styled.div`
   display: flex;
   justify-content: ltr;
   margin-top: 2.5px;
-  flex-wrap: wrap;
   row-gap: 0.5rem;
   column-gap: 0.5rem;
 `;
@@ -295,8 +294,11 @@ const ActionsRow = ({ modal, playerRef, frameNumberRef }: ActionsRowProps) => {
         overflowY: "hidden",
         margin: "0 -1em",
         padding: "0 1em",
+        flexWrap: "wrap",
       }
-    : {};
+    : {
+        flexWrap: "no-wrap",
+      };
   return (
     <ActionsRowDiv style={style}>
       {modal && <ShowJSON />}

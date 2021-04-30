@@ -273,7 +273,7 @@ class DatasetStatistics(object):
                 tags_path = "%s.tags" % path
                 aggregations.extend(
                     [
-                        foa.Distinct(label_path),
+                        foa.DistinctCount(label_path),
                         foa.Bounds(confidence_path),
                         foa.CountValues(tags_path),
                     ]
@@ -293,7 +293,7 @@ class DatasetStatistics(object):
                 if _meets_type(field, (fof.IntField, fof.FloatField)):
                     aggregations.append(foa.Bounds(field_name))
                 elif _meets_type(field, fof.StringField):
-                    aggregations.append(foa.Distinct(field_name))
+                    aggregations.append(foa.DistinctCount(field_name))
 
         return aggregations, exists_aggregations
 

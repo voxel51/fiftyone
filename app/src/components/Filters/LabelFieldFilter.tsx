@@ -5,7 +5,7 @@ import styled from "styled-components";
 
 import { hasNoneField, useExpand } from "./utils";
 import { NamedRangeSlider } from "./RangeSlider";
-import { NamedStringFilter } from "./StringFilter";
+import StringFilter from "./StringFilter";
 import { CONFIDENCE_LABELS } from "../../utils/labels";
 import { getPathExtension } from "./LabelFieldFilters.state";
 import * as atoms from "../../recoil/atoms";
@@ -89,7 +89,7 @@ const LabelFilter = ({ expanded, entry, modal }: Props) => {
       <div ref={ref}>
         <div style={{ margin: 3 }}>
           {modal && <HiddenLabelFilter entry={entry} />}
-          <NamedStringFilter
+          <StringFilter
             color={entry.color}
             name={"Labels"}
             valueName={"label"}

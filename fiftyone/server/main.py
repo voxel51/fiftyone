@@ -917,6 +917,37 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         _write_message(message, app=True, only=only)
 
     @classmethod
+    async def on_distinct(cls, self, path, search="", limit=10):
+        state = fos.StateDescription.from_dict(StateHandler.state)
+        results = None
+        col = cls.sample_collection()
+        if state.view is not None:
+            view = state.view
+        elif state.dataset is not None:
+            view = state.dataset
+        else:
+            results = []
+
+        view = get_extended_view(view, state.filters)
+        view = view.match(F(path).re_match(search))
+
+        count = await view._async_aggregate(col, foa.DistinctCount(path))
+
+        pipeline = view._pipeline()
+        results = await foo.aggregate(
+            col,
+            pipeline
+            + [
+                {"$group": {"_id": "$filepath"}},
+                {"$sort": {"_id": 1}},
+                {"$limit": limit},
+            ],
+        ).to_list()
+
+        message = {"count": count, "results": [d["_id"] for d in results]}
+        _write_message(message, app=True, only=self)
+
+    @classmethod
     async def on_distributions(cls, self, group):
         """Sends distribution data with respect to a group to the requesting
         client.
@@ -998,7 +1029,6 @@ def _write_message(message, app=False, session=False, ignore=None, only=None):
     clients = StateHandler.app_clients if app else StateHandler.clients
     clients = _filter_deactivated_clients(clients)
 
-    print(only)
     if only:
         only.write_message(message)
         return

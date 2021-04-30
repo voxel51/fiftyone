@@ -5,6 +5,7 @@ import {
   selectorFamily,
   Snapshot,
   useRecoilCallback,
+  useRecoilState,
   useRecoilValue,
 } from "recoil";
 
@@ -95,7 +96,7 @@ const availableSimilarityKeys = selectorFamily<string[], boolean>({
 });
 
 const currentSimilarityKeys = selectorFamily<
-  { hasMore: boolean; choices: string[] },
+  { total: number; choices: string[] },
   boolean
 >({
   key: "currentSimilarityKeys",
@@ -104,7 +105,7 @@ const currentSimilarityKeys = selectorFamily<
     const keys = get(availableSimilarityKeys(modal));
     const result = keys.filter((k) => k.includes(searchBrainKey)).sort();
     return {
-      hasMore: result.length > 10,
+      total: keys.length,
       choices: result.slice(0, 11),
     };
   },
@@ -135,11 +136,14 @@ interface SortBySimilarityProps {
 
 const SortBySimilarity = React.memo(
   ({ modal, bounds, close }: SortBySimilarityProps) => {
-    const brainKey = useRecoilValue(brainKeyValue);
+    const [brainKey, setBrainKey] = useRecoilState(brainKeyValue);
     const hasSimilarityKeys =
       useRecoilValue(availableSimilarityKeys(modal)).length > 0;
 
+    const choices = useRecoilValue(currentSimilarityKeys(modal));
     const sortBySimilarity = useSortBySimilarity();
+    const [reverse, setReverse] = useRecoilState(reverseValue);
+    const [k, setK] = useRecoilState(kValue);
 
     return (
       <Popout modal={modal} bounds={bounds}>
@@ -148,17 +152,21 @@ const SortBySimilarity = React.memo(
           <>
             <Input
               placeholder={"k (default = None)"}
-              type="int"
-              valueAtom={kValue}
+              validator={(value) => value === "" || /^[0-9\b]+$/.test(value)}
+              value={k === null ? "" : String(k)}
+              setter={(value) => {
+                setK(value === "" ? null : Number(value));
+              }}
             />
-            <Checkbox name={"reverse"} valueAtom={reverseValue} />
+            <Checkbox name={"reverse"} value={reverse} setValue={setReverse} />
             <PopoutSectionTitle style={{ fontSize: 14 }}>
               Brain key
             </PopoutSectionTitle>
             <SelectInput
-              choicesAtom={currentSimilarityKeys(modal)}
+              choices={choices}
               radio={true}
-              valuesAtom={brainKeyValue}
+              values={brainKey}
+              setValues={setBrainKey}
             />
             {brainKey && (
               <>
