@@ -5,6 +5,9 @@ Base class for objects that are backed by database documents.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+from collections import defaultdict
+import weakref
+
 import eta.core.serial as etas
 
 
@@ -19,6 +22,11 @@ class Document(object):
             document belongs
     """
 
+    _NO_DATASET_DOC_CLS = None
+
+    # Instance references keyed by [collection_name][sample_id]
+    _instances = defaultdict(weakref.WeakValueDictionary)
+
     def __init__(self, doc, dataset=None):
         self._doc = doc
         self._dataset = dataset
@@ -30,10 +38,7 @@ class Document(object):
         try:
             return super().__getattribute__(name)
         except AttributeError:
-            if name == "_doc":
-                raise
-
-        return self._doc.get_field(name)
+            return self._doc.get_field(name)
 
     def __setattr__(self, name, value):
         if name.startswith("_") or (
@@ -265,7 +270,7 @@ class Document(object):
         Returns:
             a :class:`Document`
         """
-        raise NotImplementedError("subclass must implement copy()")
+        return self.__class__(self._doc.copy(), dataset=self._dataset)
 
     def to_dict(self):
         """Serializes the document to a JSON dictionary.
@@ -313,40 +318,6 @@ class Document(object):
             # We can only reload fields that are in our schema
             self._doc.reload(*list(self._doc))
 
-    def _reload_backing_doc(self):
-        raise NotImplementedError(
-            "subclass must implement _reload_backing_doc()"
-        )
-
-    def _delete(self):
-        """Deletes the document from the database."""
-        self._doc.delete()
-
-    @classmethod
-    def from_dict(cls, d):
-        """Loads the document from a JSON dictionary.
-
-        The returned document will not belong to a dataset.
-
-        Returns:
-            a :class:`Document`
-        """
-        doc = cls._NO_COLL_CLS.from_dict(d, extended=True)
-        return cls.from_doc(doc)
-
-    @classmethod
-    def from_json(cls, s):
-        """Loads the document from a JSON string.
-
-        Args:
-            s: the JSON string
-
-        Returns:
-            a :class:`Document`
-        """
-        doc = cls._NO_COLL_CL.from_json(s)
-        return cls.from_doc(doc)
-
     def _set_backing_doc(self, doc, dataset=None):
         """Sets the backing doc for the document.
 
@@ -359,10 +330,9 @@ class Document(object):
             doc.save()
 
         self._doc = doc
+        self._dataset = dataset
 
         self._instances[doc.collection_name][self.id] = self
-
-        self._dataset = dataset
 
     def _reset_backing_doc(self):
         """Resets the backing doc for the document.
@@ -371,6 +341,79 @@ class Document(object):
         """
         self._doc = self.copy()._doc
         self._dataset = None
+
+    def _reload_backing_doc(self):
+        """Reloads the backing doc from the database, if possible.
+
+        Subclasses should implement this method if they support hot reloading.
+        """
+        pass
+
+    def _delete(self):
+        """Deletes the document from the database."""
+        self._doc.delete()
+
+    @classmethod
+    def from_doc(cls, doc, dataset=None):
+        """Creates a :class:`Document` backed by the given database document.
+
+        Args:
+            doc: a :class:`fiftyone.core.odm.Document`
+            dataset (None): the :class:`fiftyone.core.dataset.Dataset` that
+                the document belongs to, if any
+
+        Returns:
+            a :class:`Document`
+        """
+        if isinstance(doc, cls._NO_DATASET_DOC_CLS):
+            document = cls.__new__(cls)
+            document._doc = doc
+            document._dataset = None
+            return document
+
+        try:
+            return cls._instances[doc.collection_name][str(doc.id)]
+        except KeyError:
+            pass
+
+        if dataset is None:
+            raise ValueError(
+                "`dataset` argument must be provided for documents in "
+                "datasets"
+            )
+
+        document = cls.__new__(cls)
+        document._doc = None  # prevents recursion
+        document._set_backing_doc(doc, dataset=dataset)
+
+        return document
+
+    @classmethod
+    def from_dict(cls, d):
+        """Loads the document from a JSON dictionary.
+
+        The returned document will not belong to a dataset.
+
+        Returns:
+            a :class:`Document`
+        """
+        doc = cls._NO_DATASET_DOC_CLS.from_dict(d, extended=True)
+        return cls.from_doc(doc)
+
+    @classmethod
+    def from_json(cls, s):
+        """Loads the document from a JSON string.
+
+        The returned document will not belong to a dataset.
+
+        Args:
+            s: the JSON string
+
+        Returns:
+            a :class:`Document`
+        """
+        doc = cls._NO_DATASET_DOC_CLS.from_json(s)
+        return cls.from_doc(doc)
 
     @classmethod
     def _rename_fields(cls, collection_name, field_names, new_field_names):
@@ -421,6 +464,22 @@ class Document(object):
         for document in cls._instances[collection_name].values():
             for field_name in field_names:
                 document._doc._data.pop(field_name, None)
+
+    @classmethod
+    def _reload_doc(cls, collection_name, doc_id, hard=False):
+        """Reloads the backing document for the specified document if it exists
+        in memory.
+
+        Args:
+            collection_name: the name of the MongoDB collection
+            doc_id: the document ID
+        """
+        if collection_name not in cls._instances:
+            return
+
+        document = cls._instances[collection_name].get(doc_id, None)
+        if document is not None:
+            document.reload(hard=hard)
 
     @classmethod
     def _reload_docs(cls, collection_name, doc_ids=None, hard=False):

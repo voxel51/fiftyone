@@ -35,27 +35,26 @@ def get_default_frame_fields(include_private=False, include_id=False):
     )
 
 
-#
-# This class is instantiated automatically and depends on an owning
-# :class:`fiftyone.core.sample.Sample`. Not for independent use or direct
-# assignment to :class:`fiftyone.core.sample.Sample`s.
-#
 class Frames(object):
-    """An ordered dictionary of labels for the frames of a
-    :class:`fiftyone.core.sample.Sample`.
-
-    The frame labels are stored in :class:`Frame` instances.
+    """An ordered dictionary of :class:`Frame` instances keyed by frame number
+    representing the frames of a video :class:`fiftyone.core.sample.Sample`.
 
     :class:`Frames` instances behave like ``defaultdict(Frame)`` instances; an
     empty :class:`Frame` instance is returned when accessing a new frame
     number.
 
+    .. note::
+
+        This class is instantiated automatically when a video
+        :class:`fiftyone.core.sample.Sample` is created. Instances of this
+        class should not be manually created.
+
     Args:
-        sample (None): the :class:`fiftyone.core.sample.Sample` to which the
-            frames are attached
+        sample: the :class:`fiftyone.core.sample.Sample` to which the frames
+            are attached
     """
 
-    def __init__(self, sample=None):
+    def __init__(self, sample):
         self._sample = sample
         self._iter = None
         self._iter_frame = None
@@ -503,14 +502,13 @@ class Frame(Document):
         **kwargs: frame fields and values
     """
 
+    _NO_DATASET_DOC_CLS = foo.NoDatasetFrameSampleDocument
+
     # Instance references keyed by [collection_name][sample_id][frame_number]
     _instances = defaultdict(lambda: defaultdict(weakref.WeakValueDictionary))
 
-    _COLL_CLS = foo.DatasetFrameSampleDocument
-    _NO_COLL_CLS = foo.NoDatasetFrameSampleDocument
-
     def __init__(self, **kwargs):
-        doc = foo.NoDatasetFrameSampleDocument(**kwargs)
+        doc = self._NO_DATASET_DOC_CLS(**kwargs)
         super().__init__(doc)
 
     def __str__(self):
@@ -563,7 +561,7 @@ class Frame(Document):
         Returns:
             a :class:`Frame`
         """
-        if isinstance(doc, foo.NoDatasetFrameSampleDocument):
+        if isinstance(doc, cls._NO_DATASET_DOC_CLS):
             frame = cls.__new__(cls)
             frame._doc = doc
             frame._dataset = None
@@ -584,15 +582,16 @@ class Frame(Document):
             frame._doc = None  # prevents recursion
             if dataset is None:
                 raise ValueError(
-                    "`dataset` arg must be provided if frame is in a dataset"
+                    "`dataset` argument must be provided for frames in "
+                    "datasets"
                 )
 
             frame._set_backing_doc(doc, dataset=dataset, view=view)
 
         return frame
 
-    def _set_backing_doc(self, doc, dataset=None, view=None, save=False):
-        if save and not doc.id:
+    def _set_backing_doc(self, doc, dataset=None, view=None):
+        if not doc.id:
             doc.save()
 
         self._doc = doc
@@ -644,6 +643,25 @@ class Frame(Document):
             for document in frames.values():
                 for field_name in field_names:
                     document._doc._data.pop(field_name, None)
+
+    @classmethod
+    def _reload_doc(cls, collection_name, doc_id, sample_id=None, hard=False):
+        if collection_name not in cls._instances:
+            return
+
+        samples = cls._instances[collection_name]
+
+        if sample_id is not None:
+            document = samples.get(sample_id, {}).get(doc_id, None)
+            if document is not None:
+                document.reload(hard=hard)
+
+            return
+
+        for frames in samples.values():
+            document = frames.get(doc_id, None)
+            if document is not None:
+                document.reload(hard=hard)
 
     @classmethod
     def _reload_docs(

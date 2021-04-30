@@ -5,10 +5,8 @@ Dataset samples.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from collections import defaultdict
 from copy import deepcopy
 import os
-import weakref
 
 from fiftyone.core.document import Document
 import fiftyone.core.frame as fofr
@@ -38,12 +36,12 @@ def get_default_sample_fields(include_private=False, include_id=False):
 
 
 class _Sample(Document):
+
+    _NO_DATASET_DOC_CLS = foo.NoDatasetSampleDocument
+
     def __init__(self, doc, dataset=None):
         super().__init__(doc, dataset=dataset)
-        if self.media_type == fomm.VIDEO:
-            self._frames = fofr.Frames(sample=self)
-        else:
-            self._frames = None
+        self._frames = None
 
     def __getattr__(self, name):
         if name == "frames" and self.media_type == fomm.VIDEO:
@@ -60,7 +58,7 @@ class _Sample(Document):
         super().__setattr__(name, value)
 
     def __getitem__(self, field_name):
-        if fofu.is_frame_number(field_name) and self.media_type == fomm.VIDEO:
+        if self.media_type == fomm.VIDEO and fofu.is_frame_number(field_name):
             return self.frames[field_name]
 
         try:
@@ -71,7 +69,7 @@ class _Sample(Document):
             )
 
     def __setitem__(self, field_name, value):
-        if fofu.is_frame_number(field_name) and self.media_type == fomm.VIDEO:
+        if self.media_type == fomm.VIDEO and fofu.is_frame_number(field_name):
             self.frames[field_name] = value
             return
 
@@ -278,8 +276,7 @@ class _Sample(Document):
         Returns:
             a :class:`Sample`
         """
-        kwargs = {k: deepcopy(v) for k, v in self.iter_fields()}
-        sample = Sample(**kwargs)
+        sample = Sample(**{k: deepcopy(v) for k, v in self.iter_fields()})
 
         if self.media_type == fomm.VIDEO:
             sample.frames.update({k: v.copy() for k, v in self.frames.items()})
@@ -308,27 +305,19 @@ class _Sample(Document):
 
         return d
 
-    def to_mongo_dict(self):
-        """Serializes the sample to a BSON dictionary equivalent to the
-        representation that would be stored in the database.
-
-        Returns:
-            a BSON dict
-        """
-        d = super().to_mongo_dict()
-        return d
-
     def _secure_media(self, field_name, value):
-        if field_name == "filepath":
-            value = os.path.abspath(os.path.expanduser(value))
-            # pylint: disable=no-member
-            new_media_type = fomm.get_media_type(value)
-            if self.media_type != new_media_type:
-                raise fomm.MediaTypeError(
-                    "A sample's 'filepath' can be changed, but its media type "
-                    "cannot; current '%s', new '%s'"
-                    % (self.media_type, new_media_type)
-                )
+        if field_name != "filepath":
+            return
+
+        value = os.path.abspath(os.path.expanduser(value))
+
+        new_media_type = fomm.get_media_type(value)
+        if self.media_type != new_media_type:
+            raise fomm.MediaTypeError(
+                "A sample's 'filepath' can be changed, but its media type "
+                "cannot; current '%s', new '%s'"
+                % (self.media_type, new_media_type)
+            )
 
 
 class Sample(_Sample):
@@ -348,14 +337,15 @@ class Sample(_Sample):
         **kwargs: additional fields to dynamically set on the sample
     """
 
-    # Instance references keyed by [collection_name][sample_id]
-    _instances = defaultdict(weakref.WeakValueDictionary)
-
     def __init__(self, filepath, tags=None, metadata=None, **kwargs):
-        doc = foo.NoDatasetSampleDocument(
+        doc = self._NO_DATASET_DOC_CLS(
             filepath=filepath, tags=tags, metadata=metadata, **kwargs
         )
+
         super().__init__(doc)
+
+        if self.media_type == fomm.VIDEO:
+            self._frames = fofr.Frames(sample=self)
 
     def __str__(self):
         return repr(self)
@@ -374,6 +364,13 @@ class Sample(_Sample):
             return iter(self._frames)
 
         raise StopIteration
+
+    def _reload_backing_doc(self):
+        if not self._in_db:
+            return
+
+        d = self._dataset._sample_collection.find_one({"_id": self._id})
+        self._doc = self._dataset._sample_dict_to_doc(d)
 
     def save(self):
         """Saves the sample to the database."""
@@ -408,89 +405,12 @@ class Sample(_Sample):
         Returns:
             a :class:`Sample`
         """
-        if isinstance(doc, foo.NoDatasetSampleDocument):
-            sample = cls.__new__(cls)
-            sample._dataset = None
-            sample._doc = doc
-            return sample
-
-        if not doc.id:
-            raise ValueError("`doc` is not saved to the database.")
-
-        try:
-            # Get instance if exists
-            sample = cls._instances[doc.collection_name][str(doc.id)]
-        except KeyError:
-            sample = cls.__new__(cls)
-            sample._doc = None  # set to prevent RecursionError
-            if dataset is None:
-                raise ValueError(
-                    "`dataset` arg must be provided for samples in datasets"
-                )
-
-            sample._set_backing_doc(doc, dataset=dataset)
+        sample = super().from_doc(doc, dataset=dataset)
 
         if sample.media_type == fomm.VIDEO:
             sample._frames = fofr.Frames(sample=sample)
 
         return sample
-
-    @classmethod
-    def from_dict(cls, d):
-        """Loads the sample from a JSON dictionary.
-
-        The returned sample will not belong to a dataset.
-
-        Returns:
-            a :class:`Sample`
-        """
-        doc = foo.NoDatasetSampleDocument.from_dict(d, extended=True)
-        return cls.from_doc(doc)
-
-    @classmethod
-    def from_json(cls, s):
-        """Loads the sample from a JSON string.
-
-        Args:
-            s: the JSON string
-
-        Returns:
-            a :class:`Sample`
-        """
-        doc = foo.NoDatasetSampleDocument.from_json(s)
-        return cls.from_doc(doc)
-
-    @classmethod
-    def _reload_sample(cls, collection_name, sample_id):
-        """Reloads the fields for the specified in-memory sample in the
-        collection, if necessary.
-
-        Args:
-            collection_name: the name of the MongoDB collection
-            sample_id: the sample ID
-        """
-        if collection_name not in cls._instances:
-            return
-
-        sample = cls._instances[collection_name].get(sample_id, None)
-        if sample is not None:
-            sample.reload()
-
-    def _set_backing_doc(self, doc, dataset=None):
-        if not isinstance(doc, foo.DatasetSampleDocument):
-            raise TypeError(
-                "Backing doc must be an instance of %s; found %s"
-                % (foo.DatasetSampleDocument, type(doc))
-            )
-
-        super()._set_backing_doc(doc, dataset=dataset)
-
-    def _reload_backing_doc(self):
-        if not self._in_db:
-            return
-
-        d = self._dataset._sample_collection.find_one({"_id": self._id})
-        self._doc = self._dataset._sample_dict_to_doc(d)
 
 
 class SampleView(_Sample):
@@ -525,15 +445,6 @@ class SampleView(_Sample):
         excluded_fields=None,
         filtered_fields=None,
     ):
-        if not isinstance(doc, foo.DatasetSampleDocument):
-            raise TypeError(
-                "Backing doc must be an instance of %s; found %s"
-                % (foo.DatasetSampleDocument, type(doc))
-            )
-
-        if not doc.id:
-            raise ValueError("`doc` is not saved to the database.")
-
         if selected_fields is not None and excluded_fields is not None:
             selected_fields = selected_fields.difference(excluded_fields)
             excluded_fields = None
@@ -544,6 +455,9 @@ class SampleView(_Sample):
         self._filtered_fields = filtered_fields
 
         super().__init__(doc, dataset=view._dataset)
+
+        if self.media_type == fomm.VIDEO:
+            self._frames = fofr.Frames(sample=self)
 
     def __str__(self):
         return repr(self)
@@ -624,8 +538,8 @@ class SampleView(_Sample):
 
     @property
     def filtered_field_names(self):
-        """The set of field names that have been filtered on this sample, or
-        ``None`` if no fields were filtered.
+        """The set of field names or ``embedded.field.name`` that have been
+        filtered on this sample, or ``None`` if no fields were filtered.
         """
         return self._filtered_fields
 
@@ -659,8 +573,8 @@ class SampleView(_Sample):
 
         self._doc.save(filtered_fields=self._filtered_fields)
 
-        # Reload the sample if it exists in memory
-        Sample._reload_sample(self.dataset._sample_collection_name, self.id)
+        # Reload the parent sample of this view if it exists in memory
+        Sample._reload_doc(self.dataset._sample_collection_name, self.id)
 
 
 def _apply_confidence_thresh(label, confidence_thresh):

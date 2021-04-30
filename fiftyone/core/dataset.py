@@ -281,6 +281,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self.remove_sample(sample_id)
 
     def __getattribute__(self, name):
+        #
+        # The attributes necessary to determine a dataset's name and whether
+        # it is deleted are always available. If a dataset is deleted, no other
+        # methods are available
+        #
         if name.startswith("__") or name in (
             "name",
             "deleted",
@@ -3057,7 +3062,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
                 sample = fos.Sample.from_dict(sd)
 
-                sample._frames = fofr.Frames(sample=sample)
                 for key, value in frames.items():
                     sample.frames[int(key)] = fofr.Frame.from_dict(value)
             else:
