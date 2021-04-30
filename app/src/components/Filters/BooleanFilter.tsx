@@ -30,7 +30,6 @@ const NamedBooleanFilterHeader = styled.div`
 
 const CheckboxContainer = styled.div`
   background: ${({ theme }) => theme.backgroundDark};
-  box-shadow: 0 8px 15px 0 rgba(0, 0, 0, 0.43);
   border: 1px solid #191c1f;
   border-radius: 2px;
   color: ${({ theme }) => theme.fontDark};
@@ -110,60 +109,12 @@ export const NamedBooleanFilter = React.memo(
       const [none, setNone] = useRecoilState(noneAtom);
       const [falseValue, setFalse] = useRecoilState(falseAtom);
       const [trueValue, setTrue] = useRecoilState(trueAtom);
+      const hasNone = useRecoilValue(hasNoneAtom);
 
-      const [choicesAtom, valuesAtom] = useMemo(() => {
-        return [
-          selector({
-            key: uuid(),
-            get: ({ get }) => {
-              const choices = ["False", "True"];
-              if (get(hasNoneAtom)) {
-                choices.push("None");
-              }
-
-              return {
-                choices,
-                hasMore: false,
-              };
-            },
-          }),
-          selector<string[]>({
-            key: uuid(),
-            get: ({ get }) => {
-              const withTrue = get(trueAtom);
-              const withFalse = get(falseAtom);
-              let values: string[] = [];
-              if (get(hasNoneAtom)) {
-                const withNone = get(hasNoneAtom);
-                if (!withTrue || !withFalse || !withNone) {
-                  !withTrue && values.push("True");
-                  !withFalse && values.push("False");
-                  !withNone && values.push("None");
-                }
-              } else {
-                if (!withTrue || !withFalse) {
-                  !withTrue && values.push("True");
-                  !withFalse && values.push("False");
-                }
-              }
-              return values;
-            },
-            set: ({ set }, newValue) => {
-              if (Array.isArray(newValue)) {
-                if (newValue.includes("True")) {
-                  set(trueAtom, true);
-                }
-                if (newValue.includes("False")) {
-                  set(falseAtom, true);
-                }
-                if (newValue.includes("None")) {
-                  set(noneAtom, true);
-                }
-              }
-            },
-          }),
-        ];
-      }, [hasNoneAtom, noneAtom, falseAtom, trueAtom]);
+      const choices = ["True", "False"];
+      if (hasNone) {
+        choices.push("None");
+      }
 
       return (
         <NamedBooleanFilterContainer ref={ref}>
@@ -187,8 +138,8 @@ export const NamedBooleanFilter = React.memo(
             <CheckboxContainer>
               <SelectInput
                 color={color}
-                choicesAtom={choicesAtom}
-                valuesAtom={valuesAtom}
+                choices={{ choices, hasMore: false }}
+                values={values}
               />
             </CheckboxContainer>
           </BooleanFilterContainer>

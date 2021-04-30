@@ -75,6 +75,7 @@ const Similarity = ({ modal }: { modal: boolean }) => {
   useOutsideClick(ref, () => open && setOpen(false));
   const hasSimilarity = useRecoilValue(hasSimilarityKeys(modal));
   const [mRef, bounds] = useMeasure();
+  const close = useRecoilValue(selectors.selectedLoading);
 
   useLayoutEffect(() => {
     close && setOpen(false);
@@ -94,7 +95,9 @@ const Similarity = ({ modal }: { modal: boolean }) => {
         ref={mRef}
         title={"Sort by similarity"}
       />
-      {open && <Similar close={() => setOpen(false)} bounds={bounds} />}
+      {open && (
+        <Similar modal={modal} close={() => setOpen(false)} bounds={bounds} />
+      )}
     </ActionDiv>
   );
 };

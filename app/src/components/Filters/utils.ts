@@ -67,34 +67,22 @@ export const hasNoneField = selectorFamily<boolean, string>({
   },
 });
 
-type Overflow = "hidden" | "visible";
-
 type ExpandStyle = {
-  overflow: Overflow;
   height: number;
+  overflow: "hidden";
 };
 
 export const useExpand = (
   expanded: boolean
 ): [(element: HTMLElement | null) => void, ExpandStyle] => {
-  const [overflow, setOverflow] = useState<Overflow>("hidden");
-
   const [ref, { height }] = useMeasure();
   const props = useSpring({
     height: expanded ? height : 0,
     from: {
       height: 0,
     },
-    onStart: () => !expanded && setOverflow("hidden"),
-    onRest: () => expanded && setOverflow("visible"),
   });
-  return [
-    ref,
-    {
-      overflow,
-      ...props,
-    },
-  ];
+  return [ref, { ...props, overflow: "hidden" }];
 };
 
 export const activeFields = atomFamily<string[], boolean>({

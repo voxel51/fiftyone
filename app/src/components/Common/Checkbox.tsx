@@ -1,7 +1,6 @@
 import React from "react";
 import { Checkbox as MaterialCheckbox } from "@material-ui/core";
 import { animated } from "react-spring";
-import { RecoilState, useRecoilState } from "recoil";
 import styled from "styled-components";
 
 import { ItemAction, useHighlightHover } from "../Actions/utils";
@@ -10,7 +9,8 @@ import { useTheme } from "../../utils/hooks";
 interface CheckboxProps {
   color?: string;
   name: string;
-  valueAtom: RecoilState<boolean>;
+  value: boolean;
+  setValue: (value: boolean) => void;
 }
 
 const StyledCheckboxContainer = styled.div`
@@ -30,25 +30,30 @@ const CheckboxName = styled.div`
   flex-grow: 1;
 `;
 
-const Checkbox = React.memo(({ color, name, valueAtom }: CheckboxProps) => {
-  const theme = useTheme();
-  color = color ?? theme.brand;
-  const [value, setValue] = useRecoilState(valueAtom);
-  const props = useHighlightHover(false);
+const Checkbox = React.memo(
+  ({ color, name, value, setValue }: CheckboxProps) => {
+    const theme = useTheme();
+    color = color ?? theme.brand;
+    const props = useHighlightHover(false);
 
-  return (
-    <StyledCheckboxContainer>
-      <StyledCheckbox {...props} onClick={() => setValue(!value)}>
-        <MaterialCheckbox
-          checked={value}
-          title={name}
-          style={{ color, padding: "0 0.5rem 0 0" }}
-          onChange={() => setValue(!value)}
-        />
-        <CheckboxName>{name}</CheckboxName>
-      </StyledCheckbox>
-    </StyledCheckboxContainer>
-  );
-});
+    return (
+      <StyledCheckboxContainer>
+        <StyledCheckbox {...props} onClick={() => setValue(!value)}>
+          <MaterialCheckbox
+            checked={value}
+            title={name}
+            style={{ color, padding: "0 0.5rem 0 0" }}
+            onChange={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setValue(!value);
+            }}
+          />
+          <CheckboxName>{name}</CheckboxName>
+        </StyledCheckbox>
+      </StyledCheckboxContainer>
+    );
+  }
+);
 
 export default Checkbox;

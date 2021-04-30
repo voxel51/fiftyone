@@ -1,11 +1,5 @@
 import React, { useLayoutEffect } from "react";
 import { Radio as MaterialRadio } from "@material-ui/core";
-import {
-  RecoilState,
-  RecoilValue,
-  useRecoilState,
-  useRecoilValue,
-} from "recoil";
 import { animated } from "react-spring";
 import styled from "styled-components";
 
@@ -54,23 +48,22 @@ const Radio = React.memo(
 );
 
 interface RadioGroupProps {
-  choicesAtom: RecoilValue<string[]>;
-  valuesAtom: RecoilState<string[]>;
+  choices: string[];
+  setValue: (value: string) => void;
+  value: string;
   color?: string;
 }
 
 const RadioGroup = React.memo(
-  ({ choicesAtom, color = null, valuesAtom }: RadioGroupProps) => {
-    const choices = useRecoilValue(choicesAtom);
-    const [values, setValues] = useRecoilState(valuesAtom);
+  ({ choices, color = null, value, setValue }: RadioGroupProps) => {
     const theme = useTheme();
     color = color ?? theme.brand;
 
     useLayoutEffect(() => {
-      choices.length === 1 && !values[0] && setValues(choices);
-    }, [values, choices]);
+      choices.length === 1 && !value && setValue(choices[0]);
+    }, [value, choices]);
 
-    if (!values[0]) {
+    if (!value) {
       return null;
     }
 
@@ -79,9 +72,9 @@ const RadioGroup = React.memo(
         {choices.map((choice) => (
           <Radio
             value={choice}
-            setValue={(value) => setValues([value])}
+            setValue={setValue}
             color={color}
-            currentValue={values[0]}
+            currentValue={value}
             key={choice}
           />
         ))}

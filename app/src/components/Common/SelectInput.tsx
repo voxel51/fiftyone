@@ -20,66 +20,44 @@ import Checkbox from "./Checkbox";
 const SelectInputDiv = styled.div``;
 
 interface SelectInputProps {
-  choicesAtom?: RecoilValueReadOnly<{ hasMore: boolean; choices: string[] }>;
+  choices: { hasMore: boolean; choices: string[] };
   radio?: boolean;
-  valuesAtom: RecoilState<string[]>;
+  values: string[];
+  setValues: (values: string[]) => void;
   placeholder?: string;
   color?: string;
 }
 
 const SelectInputContainer = React.memo(
-  ({
-    color,
-    valuesAtom,
-    choicesAtom = null,
-    radio = false,
-  }: SelectInputProps) => {
+  ({ color, values, choices, radio = false, setValues }: SelectInputProps) => {
     const [id] = useState(uuid());
 
-    const { hasMore, choices } = useRecoilValue(choicesAtom);
-    const values = useRecoilValue(valuesAtom);
-    console.log(values);
-
-    const choicesArray = useMemo(() => {
-      return selector({
-        key: id,
-        get: ({ get }) => get(choicesAtom).choices,
-      });
-    }, [id]);
+    const { hasMore, choices: choicesList } = choices;
 
     if (!hasMore && radio) {
       return (
         <RadioGroup
           color={color}
-          valuesAtom={valuesAtom}
-          choicesAtom={choicesArray}
+          value={values[0]}
+          choices={choicesList}
+          setValue={(value) => setValues([value])}
         />
       );
     }
 
     if (!hasMore) {
+      console.log(choices, values);
       return (
         <>
-          {choices.map((choice) => (
+          {choicesList.map((choice) => (
             <Checkbox
               color={color}
               name={choice}
-              valueAtom={selector<boolean>({
-                key: uuid(),
-                get: ({ get }) => {
-                  return get(valuesAtom).includes(choice);
-                },
-                set: ({ set, get }, newValue) => {
-                  const newValues = new Set(get(valuesAtom));
-                  if (newValue) {
-                    newValues.add(choice);
-                  } else {
-                    newValues.delete(choice);
-                  }
-                  console.log(newValues, newValue);
-                  set(valuesAtom, [...newValues].sort());
-                },
-              })}
+              key={choice}
+              value={values.includes(choice)}
+              setValue={(value: boolean) => {
+                value && setValues([...values, choice]);
+              }}
             />
           ))}
         </>

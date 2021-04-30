@@ -142,7 +142,7 @@ const SortBySimilarity = React.memo(
     const sortBySimilarity = useSortBySimilarity();
 
     return (
-      <Popout modal={false} bounds={bounds}>
+      <Popout modal={modal} bounds={bounds}>
         <PopoutSectionTitle>Sort by similarity</PopoutSectionTitle>
         {hasSimilarityKeys ? (
           <>

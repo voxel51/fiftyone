@@ -213,7 +213,6 @@ const NamedRangeSliderHeader = styled.div`
 
 const RangeSliderContainer = styled.div`
   background: ${({ theme }) => theme.backgroundDark};
-  box-shadow: 0 8px 15px 0 rgba(0, 0, 0, 0.43);
   border: 1px solid #191c1f;
   border-radius: 2px;
   color: ${({ theme }) => theme.fontDark};

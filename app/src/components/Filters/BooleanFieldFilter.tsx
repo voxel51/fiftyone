@@ -23,16 +23,16 @@ type BooleanFilter = {
 const getFilter = (get: GetRecoilValue, path: string): BooleanFilter => {
   return {
     ...{
-      true: true,
-      false: true,
-      none: true,
+      true: false,
+      false: false,
+      none: false,
     },
     ...get(selectors.filterStage(path)),
   };
 };
 
 const meetsDefault = (filter: BooleanFilter) =>
-  filter.true === true && filter.false === true && filter.none === true;
+  filter.true === false && filter.false === false && filter.none === false;
 
 const setFilter = (
   get: GetRecoilValue,
@@ -46,6 +46,7 @@ const setFilter = (
     [key]: value,
     _CLS: "bool",
   };
+  console.log(filter);
   if (meetsDefault(filter)) {
     set(selectors.filterStage(path), null);
   } else {
@@ -62,7 +63,7 @@ const trueAtom = selectorFamily<boolean, string>({
 
 export const trueModalAtom = atomFamily<boolean, string>({
   key: "modalFilterBooleanFieldTrue",
-  default: true,
+  default: false,
 });
 
 const falseAtom = selectorFamily<boolean, string>({
@@ -74,7 +75,7 @@ const falseAtom = selectorFamily<boolean, string>({
 
 export const falseModalAtom = atomFamily<boolean, string>({
   key: "modalFilterBooleanFieldFalse",
-  default: true,
+  default: false,
 });
 
 const noneAtom = selectorFamily<boolean, string>({
@@ -86,7 +87,7 @@ const noneAtom = selectorFamily<boolean, string>({
 
 const noneModalAtom = atomFamily<boolean, string>({
   key: "modalFilterBooleanFieldNone",
-  default: true,
+  default: false,
 });
 
 export const fieldIsFiltered = selectorFamily<
