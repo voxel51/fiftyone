@@ -59,12 +59,10 @@ def test_compute_patch_embeddings():
 
     model = foz.load_zoo_model("mobilenet-v2-imagenet-tf1")
 
-    patch_embeddings1a = view.compute_patch_embeddings(
-        model, "ground_truth_detections"
-    )
+    patch_embeddings1a = view.compute_patch_embeddings(model, "ground_truth")
 
     view.compute_patch_embeddings(
-        model, "ground_truth_detections", embeddings_field="patch_embeddings1"
+        model, "ground_truth", embeddings_field="patch_embeddings1"
     )
     patch_embeddings1b = {
         _id: e
@@ -74,11 +72,11 @@ def test_compute_patch_embeddings():
     # patch_embeddings1a and patch_embeddings1b should match
 
     patch_embeddings2a = view.compute_patch_embeddings(
-        model, "ground_truth_detections", batch_size=8
+        model, "ground_truth", batch_size=8
     )
 
     view.compute_patch_embeddings(
-        model, "ground_truth_detections", embeddings_field="patch_embeddings2"
+        model, "ground_truth", embeddings_field="patch_embeddings2"
     )
     patch_embeddings2b = {
         _id: e
