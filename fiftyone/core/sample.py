@@ -125,7 +125,9 @@ class _Sample(Document):
         """
         fom.compute_sample_metadata(self, skip_failures=skip_failures)
 
-    def add_labels(self, labels, label_field, confidence_thresh=None):
+    def add_labels(
+        self, labels, label_field, confidence_thresh=None, expand_schema=True
+    ):
         """Adds the given labels to the sample.
 
         The provided ``labels`` can be any of the following:
@@ -171,6 +173,9 @@ class _Sample(Document):
             label_field: the sample field or prefix in which to save the labels
             confidence_thresh (None): an optional confidence threshold to apply
                 to any applicable labels before saving them
+            expand_schema (True): whether to dynamically add new fields
+                encountered to the dataset schema. If False, an error is raised
+                if any fields are not in the dataset schema
         """
         if label_field:
             label_key = lambda k: label_field + "_" + k
@@ -195,7 +200,8 @@ class _Sample(Document):
                             for fname, flabel in frame_dict.items()
                         }
                         for frame_number, frame_dict in labels.items()
-                    }
+                    },
+                    expand_schema=expand_schema,
                 )
             else:
                 # Single frame-level field
@@ -203,14 +209,18 @@ class _Sample(Document):
                     {
                         frame_number: {label_field: label}
                         for frame_number, label in labels.items()
-                    }
+                    },
+                    expand_schema=expand_schema,
                 )
         elif isinstance(labels, dict):
             # Multiple sample-level fields
-            self.update_fields({label_key(k): v for k, v in labels.items()})
+            self.update_fields(
+                {label_key(k): v for k, v in labels.items()},
+                expand_schema=expand_schema,
+            )
         elif labels is not None:
             # Single sample-level field
-            self[label_field] = labels
+            self.set_field(label_field, labels, create=expand_schema)
 
         self.save()
 
@@ -221,7 +231,7 @@ class _Sample(Document):
         omit_frame_fields=None,
         omit_none_fields=True,
         overwrite=True,
-        create=True,
+        expand_schema=True,
     ):
         """Merges the fields of the sample into this sample.
 
@@ -234,7 +244,9 @@ class _Sample(Document):
             overwrite (True): whether to overwrite existing fields. Note that
                 existing fields whose values are ``None`` are always
                 overwritten
-            create (True): whether to create fields if they do not exist
+            expand_schema (True): whether to dynamically add new fields
+                encountered to the dataset schema. If False, an error is raised
+                if any fields are not in the dataset schema
         """
         if sample.media_type != self.media_type:
             raise ValueError(
@@ -247,7 +259,7 @@ class _Sample(Document):
             omit_fields=omit_fields,
             omit_none_fields=omit_none_fields,
             overwrite=overwrite,
-            create=create,
+            expand_schema=expand_schema,
         )
 
         if self.media_type == fomm.VIDEO:
@@ -256,7 +268,7 @@ class _Sample(Document):
                 omit_fields=omit_frame_fields,
                 omit_none_fields=omit_none_fields,
                 overwrite=overwrite,
-                expand_schema=create,
+                expand_schema=expand_schema,
             )
 
     def copy(self):

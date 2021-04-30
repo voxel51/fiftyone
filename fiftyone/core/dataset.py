@@ -1548,7 +1548,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                             omit_fields=omit_fields,
                             omit_none_fields=omit_none_fields,
                             overwrite=overwrite,
-                            create=expand_schema,
+                            expand_schema=expand_schema,
                         )
                         existing_sample.save()
                 elif insert_new:
@@ -3288,14 +3288,20 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         try:
             return self._sample_doc_cls.from_dict(d, extended=False)
         except:
+            # The dataset's schema may have been changed in another process;
+            # let's try reloading to see if that fixes things
             self.reload()
+
             return self._sample_doc_cls.from_dict(d, extended=False)
 
     def _frame_dict_to_doc(self, d):
         try:
             return self._frame_doc_cls.from_dict(d, extended=False)
         except:
+            # The dataset's schema may have been changed in another process;
+            # let's try reloading to see if that fixes things
             self.reload()
+
             return self._frame_doc_cls.from_dict(d, extended=False)
 
     def _to_fields_str(self, field_schema):

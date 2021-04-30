@@ -266,9 +266,7 @@ class Frames(object):
             frame: a :class:`Frame`
             expand_schema (True): whether to dynamically add new frame fields
                 encountered to the dataset schema. If False, an error is raised
-                if the frame's schema is not a subset of the dataset schema.
-                This flag has no effect if this sample has not been added to a
-                dataset
+                if the frame's schema is not a subset of the dataset schema
         """
         fofu.validate_frame_number(frame_number)
 
@@ -310,9 +308,7 @@ class Frames(object):
             overwrite (True): whether to overwrite existing frames
             expand_schema (True): whether to dynamically add new frame fields
                 encountered to the dataset schema. If False, an error is raised
-                if the frame's schema is not a subset of the dataset schema.
-                This flag has no effect if this sample has not been added to a
-                dataset
+                if the frame's schema is not a subset of the dataset schema
         """
         for frame_number, frame in frames.items():
             if overwrite or frame_number not in self:
@@ -349,9 +345,7 @@ class Frames(object):
             overwrite (True): whether to overwrite existing fields
             expand_schema (True): whether to dynamically add new frame fields
                 encountered to the dataset schema. If False, an error is raised
-                if the frame's schema is not a subset of the dataset schema.
-                This flag has no effect if this sample has not been added to a
-                dataset
+                if the frame's schema is not a subset of the dataset schema
         """
         for frame_number, frame in frames.items():
             if isinstance(frame, dict):
@@ -363,7 +357,7 @@ class Frames(object):
                     omit_fields=omit_fields,
                     omit_none_fields=omit_none_fields,
                     overwrite=overwrite,
-                    create=expand_schema,
+                    expand_schema=expand_schema,
                 )
             else:
                 self.add_frame(

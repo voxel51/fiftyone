@@ -175,15 +175,17 @@ class Document(object):
 
         self._doc.set_field(field_name, value, create=create)
 
-    def update_fields(self, fields_dict, create=True):
+    def update_fields(self, fields_dict, expand_schema=True):
         """Sets the dictionary of fields on the document.
 
         Args:
             fields_dict: a dict mapping field names to values
-            create (True): whether to create fields if they do not exist
+            expand_schema (True): whether to dynamically add new fields
+                encountered to the document schema. If False, an error is
+                raised if any fields are not in the document schema
         """
         for field_name, value in fields_dict.items():
-            self.set_field(field_name, value, create=create)
+            self.set_field(field_name, value, create=expand_schema)
 
     def clear_field(self, field_name):
         """Clears the value of a field of the document.
@@ -217,7 +219,7 @@ class Document(object):
         omit_fields=None,
         omit_none_fields=True,
         overwrite=True,
-        create=True,
+        expand_schema=True,
     ):
         """Merges the fields of the document into this document.
 
@@ -229,7 +231,9 @@ class Document(object):
             overwrite (True): whether to overwrite existing fields. Note that
                 existing fields whose values are ``None`` are always
                 overwritten
-            create (True): whether to create fields if they do not exist
+            expand_schema (True): whether to dynamically add new fields
+                encountered to the document schema. If False, an error is
+                raised if any fields are not in the document schema
         """
         if omit_fields is not None:
             omit_fields = set(omit_fields)
@@ -252,7 +256,7 @@ class Document(object):
             ):
                 continue
 
-            self.set_field(field_name, value, create=create)
+            self.set_field(field_name, value, create=expand_schema)
 
     def copy(self):
         """Returns a deep copy of the document that has not been added to the
