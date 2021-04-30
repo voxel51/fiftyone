@@ -222,24 +222,25 @@ class SimpleEvaluation(ClassificationEvaluation):
         if eval_key is None:
             return results
 
+        dataset = samples._dataset
         if is_frame_field:
             eval_frame = samples._FRAMES_PREFIX + eval_key
             gt = gt[len(samples._FRAMES_PREFIX) :]
             pred = pred[len(samples._FRAMES_PREFIX) :]
 
             # Sample-level accuracies
-            samples._add_field_if_necessary(eval_key, fof.FloatField)
+            dataset._add_sample_field_if_necessary(eval_key, fof.FloatField)
             samples.set_field(
                 eval_key,
                 F("frames").map((F(gt) == F(pred)).to_double()).mean(),
             ).save(eval_key)
 
             # Per-frame accuracies
-            samples._add_field_if_necessary(eval_frame, fof.BooleanField)
+            dataset._add_frame_field_if_necessary(eval_key, fof.BooleanField)
             samples.set_field(eval_frame, F(gt) == F(pred)).save(eval_frame)
         else:
             # Per-sample accuracies
-            samples._add_field_if_necessary(eval_key, fof.BooleanField)
+            dataset._add_sample_field_if_necessary(eval_key, fof.BooleanField)
             samples.set_field(eval_key, F(gt) == F(pred)).save(eval_key)
 
         return results
@@ -343,15 +344,12 @@ class TopKEvaluation(ClassificationEvaluation):
             eval_frame = samples._FRAMES_PREFIX + eval_key
 
             # Sample-level accuracies
-            samples._add_field_if_necessary(eval_key, fof.FloatField)
             samples.set_values(eval_key, [np.mean(c) for c in correct])
 
             # Per-frame accuracies
-            samples._add_field_if_necessary(eval_frame, fof.BooleanField)
             samples.set_values(eval_frame, correct)
         else:
             # Per-sample accuracies
-            samples._add_field_if_necessary(eval_key, fof.BooleanField)
             samples.set_values(eval_key, correct)
 
         return results
@@ -481,20 +479,21 @@ class BinaryEvaluation(ClassificationEvaluation):
         if eval_key is None:
             return results
 
+        dataset = samples._dataset
         if is_frame_field:
             eval_frame = samples._FRAMES_PREFIX + eval_key
             gt = gt[len(samples._FRAMES_PREFIX) :]
             pred = pred[len(samples._FRAMES_PREFIX) :]
 
             # Sample-level accuracies
-            samples._add_field_if_necessary(eval_key, fof.FloatField)
+            dataset._add_sample_field_if_necessary(eval_key, fof.FloatField)
             samples.set_field(
                 eval_key,
                 F("frames").map((F(gt) == F(pred)).to_double()).mean(),
             ).save(eval_key)
 
             # Per-frame accuracies
-            samples._add_field_if_necessary(eval_frame, fof.StringField)
+            dataset._add_frame_field_if_necessary(eval_key, fof.StringField)
             samples.set_field(
                 eval_frame,
                 F().switch(
@@ -508,7 +507,7 @@ class BinaryEvaluation(ClassificationEvaluation):
             ).save(eval_frame)
         else:
             # Per-sample accuracies
-            samples._add_field_if_necessary(eval_key, fof.StringField)
+            dataset._add_sample_field_if_necessary(eval_key, fof.StringField)
             samples.set_field(
                 eval_key,
                 F().switch(

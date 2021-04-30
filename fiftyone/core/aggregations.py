@@ -100,13 +100,18 @@ class Aggregation(object):
         raise NotImplementedError("subclasses must implement default_result()")
 
     def _parse_field_and_expr(
-        self, sample_collection, auto_unwind=True, allow_missing=False
+        self,
+        sample_collection,
+        auto_unwind=True,
+        omit_terminal_lists=False,
+        allow_missing=False,
     ):
         return _parse_field_and_expr(
             sample_collection,
             self._field_name,
             self._expr,
             auto_unwind,
+            omit_terminal_lists,
             allow_missing,
         )
 
@@ -1129,6 +1134,16 @@ class Sum(Aggregation):
 class Values(Aggregation):
     """Extracts the values of the field from all samples in a collection.
 
+    Values aggregations are useful for efficiently extracting a slice of field
+    or embedded field values across all samples in a collection. See the
+    examples below for more details.
+
+    The dual function of :class:`Values` is
+    :meth:`set_values() <fiftyone.core.collections.SampleCollection.set_values>`,
+    which can be used to efficiently set a field or embedded field of all
+    samples in a collection by providing lists of values of same structure
+    returned by this aggregation.
+
     .. note::
 
         Unlike other aggregations, :class:`Values` does not automatically
@@ -1143,6 +1158,7 @@ class Values(Aggregation):
     Examples::
 
         import fiftyone as fo
+        import fiftyone.zoo as foz
         from fiftyone import ViewField as F
 
         dataset = fo.Dataset()
@@ -1190,6 +1206,24 @@ class Values(Aggregation):
         values = dataset.aggregate(aggregation)
         print(values)  # [4.0, 10.0, None]
 
+        #
+        # Get values from a label list field
+        #
+
+        dataset = foz.load_zoo_dataset("quickstart")
+
+        # list of `Detections`
+        aggregation = fo.Values("ground_truth")
+        detections = dataset.aggregate(aggregation)
+
+        # list of lists of `Detection` instances
+        aggregation = fo.Values("ground_truth.detections")
+        detections = dataset.aggregate(aggregation)
+
+        # list of lists of detection labels
+        aggregation = fo.Values("ground_truth.detections.label")
+        labels = dataset.aggregate(aggregation)
+
     Args:
         field_or_expr: a field name, ``embedded.field.name``,
             :class:`fiftyone.core.expressions.ViewExpression`, or
@@ -1213,6 +1247,7 @@ class Values(Aggregation):
         unwind=False,
         _allow_missing=False,
         _big_result=False,
+        _raw=False,
     ):
         field_or_expr, found_id_field = _handle_id_fields(field_or_expr)
         super().__init__(field_or_expr, expr=expr)
@@ -1221,8 +1256,9 @@ class Values(Aggregation):
         self._unwind = unwind
         self._allow_missing = _allow_missing
         self._big_result = _big_result
+        self._raw = _raw
         self._found_id_field = found_id_field
-        self._found_array_field = None
+        self._field_type = None
         self._num_list_fields = None
 
     @property
@@ -1251,30 +1287,38 @@ class Values(Aggregation):
         else:
             values = d["values"]
 
+        if self._raw:
+            return values
+
         if self._found_id_field:
             level = 1 + self._num_list_fields
             return _transform_values(values, str, level=level)
 
-        if self._found_array_field:
-            fcn = fou.deserialize_numpy_array
+        if self._field_type is not None:
+            fcn = self._field_type.to_python
             level = 1 + self._num_list_fields
             return _transform_values(values, fcn, level=level)
 
         return values
 
     def to_mongo(self, sample_collection):
-        path, pipeline, other_list_fields = self._parse_field_and_expr(
+        path, pipeline, list_fields = self._parse_field_and_expr(
             sample_collection,
             auto_unwind=self._unwind,
+            omit_terminal_lists=not self._unwind,
             allow_missing=self._allow_missing,
         )
 
-        self._found_array_field = sample_collection._is_array_field(path)
-        self._num_list_fields = len(other_list_fields)
+        if self._expr is None:
+            self._field_type = sample_collection._get_field_type(
+                self._field_name, ignore_primitives=True
+            )
+
+        self._num_list_fields = len(list_fields)
 
         pipeline.extend(
             _make_extract_values_pipeline(
-                path, other_list_fields, self._missing_value, self._big_result
+                path, list_fields, self._missing_value, self._big_result
             )
         )
 
@@ -1349,7 +1393,12 @@ def _extract_list_values(subfield, expr):
 
 
 def _parse_field_and_expr(
-    sample_collection, field_name, expr, auto_unwind, allow_missing
+    sample_collection,
+    field_name,
+    expr,
+    auto_unwind,
+    omit_terminal_lists,
+    allow_missing,
 ):
     if field_name is None and expr is None:
         raise ValueError(
@@ -1384,7 +1433,10 @@ def _parse_field_and_expr(
         unwind_list_fields,
         other_list_fields,
     ) = sample_collection._parse_field_name(
-        field_name, auto_unwind=auto_unwind, allow_missing=allow_missing
+        field_name,
+        auto_unwind=auto_unwind,
+        omit_terminal_lists=omit_terminal_lists,
+        allow_missing=allow_missing,
     )
 
     if is_frame_field and auto_unwind:
@@ -1394,12 +1446,6 @@ def _parse_field_and_expr(
 
     for list_field in unwind_list_fields:
         pipeline.append({"$unwind": "$" + list_field})
-
-    if other_list_fields:
-        # Don't unroll terminal lists unless explicitly requested
-        other_list_fields = [
-            lf for lf in other_list_fields if lf != field_name
-        ]
 
     if other_list_fields:
         root = other_list_fields[0]
