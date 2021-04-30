@@ -5,12 +5,11 @@ import {
   GetRecoilValue,
   selectorFamily,
   SetRecoilState,
-  useRecoilValue,
 } from "recoil";
 import { animated } from "react-spring";
 
 import * as selectors from "../../recoil/selectors";
-import { NamedBooleanFilter } from "./BooleanFilter";
+import BooleanFilter from "./BooleanFilter";
 import { hasNoneField, useExpand } from "./utils";
 
 type BooleanFilter = {
@@ -46,7 +45,6 @@ const setFilter = (
     [key]: value,
     _CLS: "bool",
   };
-  console.log(filter);
   if (meetsDefault(filter)) {
     set(selectors.filterStage(path), null);
   } else {
@@ -99,7 +97,7 @@ export const fieldIsFiltered = selectorFamily<
     const [none, trueValue, falseValue] = modal
       ? [noneModalAtom, trueModalAtom, falseModalAtom]
       : [noneAtom, trueAtom, falseAtom];
-    return !get(none(path)) || !get(trueValue(path)) || !get(falseValue(path));
+    return get(none(path)) || get(trueValue(path)) || get(falseValue(path));
   },
 });
 
@@ -108,7 +106,7 @@ const BooleanFieldFilter = ({ expanded, entry }) => {
 
   return (
     <animated.div style={props}>
-      <NamedBooleanFilter
+      <BooleanFilter
         name={"Boolean"}
         color={entry.color}
         hasNoneAtom={hasNoneField(entry.path)}
