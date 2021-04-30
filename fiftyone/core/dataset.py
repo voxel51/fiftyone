@@ -782,6 +782,32 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         )
         self._reload()
 
+    def _add_sample_field_if_necessary(
+        self, field_name, ftype, embedded_doc_type=None, subfield=None
+    ):
+        field_kwargs = dict(
+            ftype=ftype,
+            embedded_doc_type=embedded_doc_type,
+            subfield=subfield,
+        )
+
+        schema = self.get_field_schema()
+        if field_name in schema:
+            foo.validate_fields_match(
+                field_name, field_kwargs, schema[field_name]
+            )
+        else:
+            self.add_sample_field(field_name, **field_kwargs)
+
+    def _add_implied_sample_field(self, field_name, value):
+        self._sample_doc_cls.add_implied_field(field_name, value)
+        self._reload()
+
+    def _add_implied_sample_field_if_necessary(self, field_name, value):
+        self._add_sample_field_if_necessary(
+            field_name, **foo.get_implied_field_kwargs(value)
+        )
+
     def add_frame_field(
         self, field_name, ftype, embedded_doc_type=None, subfield=None
     ):
@@ -812,6 +838,35 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             subfield=subfield,
         )
         self._reload()
+
+    def _add_frame_field_if_necessary(
+        self, field_name, ftype, embedded_doc_type=None, subfield=None
+    ):
+        field_kwargs = dict(
+            ftype=ftype,
+            embedded_doc_type=embedded_doc_type,
+            subfield=subfield,
+        )
+
+        schema = self.get_frame_field_schema()
+        if field_name in schema:
+            foo.validate_fields_match(
+                field_name, field_kwargs, schema[field_name]
+            )
+        else:
+            self.add_frame_field(field_name, **field_kwargs)
+
+    def _add_implied_frame_field(self, field_name, value):
+        if self.media_type != fom.VIDEO:
+            raise ValueError("Only video datasets have frame fields")
+
+        self._frame_doc_cls.add_implied_field(field_name, value)
+        self._reload()
+
+    def _add_implied_frame_field_if_necessary(self, field_name, value):
+        self._add_frame_field_if_necessary(
+            field_name, **foo.get_implied_field_kwargs(value)
+        )
 
     def rename_sample_field(self, field_name, new_field_name):
         """Renames the sample field to the given new name.
@@ -3916,7 +3971,10 @@ def _index_frames(sample_collection, key_field, frame_key_field):
         frame_keys.append(sample_keys)
 
     sample_collection.set_values(
-        "frames." + frame_key_field, frame_keys, _allow_missing=True
+        "frames." + frame_key_field,
+        frame_keys,
+        expand_schema=False,
+        _allow_missing=True,
     )
 
 
