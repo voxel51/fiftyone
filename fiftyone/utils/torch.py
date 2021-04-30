@@ -1018,6 +1018,7 @@ class TorchImageClassificationDataset(Dataset):
                 raise e
 
             img = e
+            target = None
 
         if self.has_sample_ids:
             # pylint: disable=unsubscriptable-object
