@@ -5,15 +5,14 @@ Video frames.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from collections import defaultdict
 from copy import deepcopy
-import weakref
 
 from pymongo import ReplaceOne, UpdateOne
 
 from fiftyone.core.document import Document
 import fiftyone.core.frame_utils as fofu
 import fiftyone.core.odm as foo
+from fiftyone.core.singletons import FrameSingleton
 import fiftyone.core.utils as fou
 
 
@@ -491,49 +490,13 @@ class Frames(object):
         self._save_replacements(insert=insert)
 
 
-class Frame(Document):
-    """A frame in a video :class:`fiftyone.core.sample.Sample`.
-
-    :class:`Frame` instances can hold any :class:`fiftyone.core.labels.Label`
-    or other :class:`fiftyone.core.fields.Field` type that can be assigned
-    directly to :class:`fiftyone.core.sample.Sample` instances.
-
-    Args:
-        **kwargs: frame fields and values
-    """
+class _Frame(Document):
 
     _NO_DATASET_DOC_CLS = foo.NoDatasetFrameSampleDocument
-
-    # Instance references keyed by [collection_name][sample_id][frame_number]
-    _instances = defaultdict(lambda: defaultdict(weakref.WeakValueDictionary))
-
-    def __init__(self, **kwargs):
-        doc = self._NO_DATASET_DOC_CLS(**kwargs)
-        super().__init__(doc)
-
-    def __str__(self):
-        return repr(self)
-
-    def __repr__(self):
-        return self._doc.fancy_repr(class_name=self.__class__.__name__)
-
-    def __getitem__(self, field_name):
-        try:
-            return self.get_field(field_name)
-        except AttributeError:
-            raise KeyError(
-                "%s has no field '%s'" % (self.__class__.__name__, field_name)
-            )
-
-    def __setitem__(self, field_name, value):
-        self.set_field(field_name, value=value)
 
     @property
     def _skip_iter_field_names(self):
         return ("frame_number",)
-
-    def _get_field_names(self, include_private=False):
-        return self._doc._get_field_names(include_private=include_private)
 
     def copy(self):
         """Returns a deep copy of the frame that has not been added to the
@@ -545,6 +508,33 @@ class Frame(Document):
         kwargs = {k: deepcopy(v) for k, v in self.iter_fields()}
         kwargs["frame_number"] = self.frame_number
         return self.__class__(**kwargs)
+
+
+class Frame(_Frame, metaclass=FrameSingleton):
+    """A frame in a video :class:`fiftyone.core.sample.Sample`.
+
+    Frames store all information associated with a particular frame of a video,
+    including one or more sets of labels (ground truth, user-provided, or
+    FiftyOne-generated) as well as additional features associated with subsets
+    of the data and/or label sets.
+
+    :class:`Frame` instances can hold any :class:`fiftyone.core.labels.Label`
+    or other :class:`fiftyone.core.fields.Field` type that can be assigned
+    directly to :class:`fiftyone.core.sample.Sample` instances.
+
+    .. note::
+
+        :class:`Frame` instances that are attached to samples **in datasets**
+        are singletons, i.e.,  ``sample.frames[frame_number]`` will always
+        return the same :class:`Frame` instance.
+
+    Args:
+        **kwargs: frame fields and values
+    """
+
+    def __init__(self, **kwargs):
+        doc = self._NO_DATASET_DOC_CLS(**kwargs)
+        super().__init__(doc)
 
     @classmethod
     def from_doc(cls, doc, dataset=None, view=None):
@@ -567,26 +557,19 @@ class Frame(Document):
             frame._dataset = None
             return frame
 
-        frame = None
+        if view is None and issubclass(type(cls), FrameSingleton):
+            frame = cls._get_instance(doc)
+            if frame is not None:
+                return frame
 
-        if view is None:
-            try:
-                frame = cls._instances[doc.collection_name][
-                    str(doc._sample_id)
-                ][doc.frame_number]
-            except KeyError:
-                pass
+        if dataset is None:
+            raise ValueError(
+                "`dataset` argument must be provided for frames in " "datasets"
+            )
 
-        if frame is None:
-            frame = cls.__new__(cls)
-            frame._doc = None  # prevents recursion
-            if dataset is None:
-                raise ValueError(
-                    "`dataset` argument must be provided for frames in "
-                    "datasets"
-                )
-
-            frame._set_backing_doc(doc, dataset=dataset, view=view)
+        frame = cls.__new__(cls)
+        frame._doc = None  # prevents recursion
+        frame._set_backing_doc(doc, dataset=dataset, view=view)
 
         return frame
 
@@ -597,10 +580,9 @@ class Frame(Document):
         self._doc = doc
         self._dataset = dataset
 
-        if view is None:
-            self._instances[doc.collection_name][str(self._sample_id)][
-                self.frame_number
-            ] = self
+        cls = self.__class__
+        if view is None and issubclass(type(cls), FrameSingleton):
+            cls._register_instance(self)
 
     def _reload_backing_doc(self):
         if not self._in_db:
@@ -610,129 +592,3 @@ class Frame(Document):
             {"_sample_id": self._sample_id, "frame_number": self.frame_number}
         )
         self._doc = self._dataset._frame_dict_to_doc(d)
-
-    @classmethod
-    def _rename_fields(cls, collection_name, field_names, new_field_names):
-        if collection_name not in cls._instances:
-            return
-
-        for frames in cls._instances[collection_name].values():
-            for document in frames.values():
-                data = document._doc._data
-                for field_name, new_field_name in zip(
-                    field_names, new_field_names
-                ):
-                    data[new_field_name] = data.pop(field_name, None)
-
-    @classmethod
-    def _clear_fields(cls, collection_name, field_names):
-        if collection_name not in cls._instances:
-            return
-
-        for frames in cls._instances[collection_name].values():
-            for document in frames.values():
-                for field_name in field_names:
-                    document._doc._data[field_name] = None
-
-    @classmethod
-    def _purge_fields(cls, collection_name, field_names):
-        if collection_name not in cls._instances:
-            return
-
-        for frames in cls._instances[collection_name].values():
-            for document in frames.values():
-                for field_name in field_names:
-                    document._doc._data.pop(field_name, None)
-
-    @classmethod
-    def _reload_doc(cls, collection_name, doc_id, sample_id=None, hard=False):
-        if collection_name not in cls._instances:
-            return
-
-        samples = cls._instances[collection_name]
-
-        if sample_id is not None:
-            document = samples.get(sample_id, {}).get(doc_id, None)
-            if document is not None:
-                document.reload(hard=hard)
-
-            return
-
-        for frames in samples.values():
-            document = frames.get(doc_id, None)
-            if document is not None:
-                document.reload(hard=hard)
-
-    @classmethod
-    def _reload_docs(
-        cls, collection_name, doc_ids=None, sample_ids=None, hard=False
-    ):
-        if collection_name not in cls._instances:
-            return
-
-        samples = cls._instances[collection_name]
-
-        # Reload all docs
-        if doc_ids is None and sample_ids is None:
-            for frames in samples.values():
-                for document in frames.values():
-                    document.reload(hard=hard)
-
-        # Reload docs for samples with `sample_ids`, reset others
-        if sample_ids is not None:
-            reset_ids = set()
-            for sample_id, frames in samples.items():
-                if sample_id in sample_ids:
-                    for document in frames.values():
-                        document.reload(hard=hard)
-                else:
-                    reset_ids.add(sample_id)
-                    for document in frames.values():
-                        document._reset_backing_doc()
-
-            for sample_id in reset_ids:
-                samples.pop(sample_id, None)
-
-        # Reload docs with `doc_ids`, reset others
-        if doc_ids is not None:
-            for frames in samples.values():
-                reset_ids = set()
-                for document in frames.values():
-                    if document.id in doc_ids:
-                        document.reload(hard=hard)
-                    else:
-                        reset_ids.add(document.id)
-                        document._reset_backing_doc()
-
-                for doc_id in reset_ids:
-                    frames.pop(doc_id, None)
-
-    @classmethod
-    def _reset_docs(cls, collection_name, doc_ids=None, sample_ids=None):
-        if collection_name not in cls._instances:
-            return
-
-        # Reset all docs
-        if doc_ids is None and sample_ids is None:
-            samples = cls._instances.pop(collection_name)
-            for frames in samples.values():
-                for document in frames.values():
-                    document._reset_backing_doc()
-
-        # Reset docs for samples with `sample_ids`
-        if sample_ids is not None:
-            samples = cls._instances[collection_name]
-            for sample_id in sample_ids:
-                frames = samples.pop(sample_id, None)
-                if frames is not None:
-                    for document in frames.values():
-                        document._reset_backing_doc()
-
-        # Reset docs with `doc_ids`
-        if doc_ids is not None:
-            samples = cls._instances[collection_name]
-            for frames in samples.values():
-                for doc_id in doc_ids:
-                    document = frames.pop(doc_id, None)
-                    if document is not None:
-                        document._reset_backing_doc()

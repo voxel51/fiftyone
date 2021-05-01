@@ -15,6 +15,7 @@ import fiftyone.core.labels as fol
 import fiftyone.core.metadata as fom
 import fiftyone.core.media as fomm
 import fiftyone.core.odm as foo
+from fiftyone.core.singletons import DocumentSingleton
 
 
 def get_default_sample_fields(include_private=False, include_id=False):
@@ -61,12 +62,7 @@ class _Sample(Document):
         if self.media_type == fomm.VIDEO and fofu.is_frame_number(field_name):
             return self.frames[field_name]
 
-        try:
-            return self.get_field(field_name)
-        except AttributeError:
-            raise KeyError(
-                "%s has no field '%s'" % (self.__class__.__name__, field_name)
-            )
+        return super().__getitem__(field_name)
 
     def __setitem__(self, field_name, value):
         if self.media_type == fomm.VIDEO and fofu.is_frame_number(field_name):
@@ -74,7 +70,13 @@ class _Sample(Document):
             return
 
         self._secure_media(field_name, value)
-        self.set_field(field_name, value)
+        super().__setitem__(field_name, value)
+
+    def __iter__(self):
+        if self.media_type == fomm.VIDEO:
+            return iter(self._frames)
+
+        raise AttributeError("Image samples are not iterable")
 
     @property
     def filename(self):
@@ -320,13 +322,19 @@ class _Sample(Document):
             )
 
 
-class Sample(_Sample):
+class Sample(_Sample, metaclass=DocumentSingleton):
     """A sample in a :class:`fiftyone.core.dataset.Dataset`.
 
     Samples store all information associated with a particular piece of data in
     a dataset, including basic metadata about the data, one or more sets of
     labels (ground truth, user-provided, or FiftyOne-generated), and additional
     features associated with subsets of the data and/or label sets.
+
+    .. note::
+
+        :class:`Sample` instances that are **in datasets** are singletons,
+        i.e.,  ``dataset[sample_id]`` will always return the same
+        :class:`Sample` instance.
 
     Args:
         filepath: the path to the data on disk. The path is converted to an
@@ -347,9 +355,6 @@ class Sample(_Sample):
         if self.media_type == fomm.VIDEO:
             self._frames = fofr.Frames(sample=self)
 
-    def __str__(self):
-        return repr(self)
-
     def __repr__(self):
         kwargs = {}
         if self.media_type == fomm.VIDEO:
@@ -359,12 +364,6 @@ class Sample(_Sample):
             class_name=self.__class__.__name__, **kwargs
         )
 
-    def __iter__(self):
-        if self.media_type == fomm.VIDEO:
-            return iter(self._frames)
-
-        raise StopIteration
-
     def _reload_backing_doc(self):
         if not self._in_db:
             return
@@ -373,7 +372,7 @@ class Sample(_Sample):
         self._doc = self._dataset._sample_dict_to_doc(d)
 
     def save(self):
-        """Saves the sample to the database."""
+        """Saves the contents of the sample to the database."""
         if self.media_type == fomm.VIDEO and self._in_db:
             self.frames._save()
 
@@ -458,9 +457,6 @@ class SampleView(_Sample):
 
         if self.media_type == fomm.VIDEO:
             self._frames = fofr.Frames(sample=self)
-
-    def __str__(self):
-        return repr(self)
 
     def __repr__(self):
         if self._selected_fields is not None:
@@ -563,7 +559,7 @@ class SampleView(_Sample):
         return d
 
     def save(self):
-        """Saves the sample to the database."""
+        """Saves the contents of this sample view to the database."""
         if self.media_type == fomm.VIDEO and self._in_db:
             try:
                 self.frames._save()

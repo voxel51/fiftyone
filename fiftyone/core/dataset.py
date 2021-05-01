@@ -38,7 +38,7 @@ import fiftyone.core.media as fom
 import fiftyone.migrations as fomi
 import fiftyone.core.odm as foo
 import fiftyone.core.sample as fos
-from fiftyone.core.singleton import DatasetSingleton
+from fiftyone.core.singletons import DatasetSingleton
 import fiftyone.core.view as fov
 import fiftyone.core.utils as fou
 import fiftyone.types as fot
@@ -277,8 +277,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         doc = self._sample_dict_to_doc(d)
         return fos.Sample.from_doc(doc, dataset=self)
 
-    def __delitem__(self, sample_id):
-        self.remove_sample(sample_id)
+    def __delitem__(self, samples_or_ids):
+        self.delete_samples(samples_or_ids)
 
     def __getattribute__(self, name):
         #
@@ -3342,14 +3342,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
             field.validate(value)
 
-    def reload(self):
+    def reload(self, hard=True):
         """Reloads the dataset and any in-memory samples from the database."""
         self._reload(hard=True)
-
-        fos.Sample._reload_docs(self._sample_collection_name, hard=True)
-
-        if self.media_type == fom.VIDEO:
-            fofr.Frame._reload_docs(self._frame_collection_name, hard=True)
+        self._reload_docs(hard=True)
 
     def _reload(self, hard=False):
         if not hard:
@@ -3361,6 +3357,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             self._sample_doc_cls,
             self._frame_doc_cls,
         ) = _load_dataset(self.name, migrate=False)
+
+    def _reload_docs(self, hard=False):
+        fos.Sample._reload_docs(self._sample_collection_name, hard=hard)
+
+        if self.media_type == fom.VIDEO:
+            fofr.Frame._reload_docs(self._frame_collection_name, hard=hard)
 
 
 def _get_random_characters(n):

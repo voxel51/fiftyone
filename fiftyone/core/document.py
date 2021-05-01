@@ -5,10 +5,32 @@ Base class for objects that are backed by database documents.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from collections import defaultdict
-import weakref
+from functools import wraps
+import inspect
 
 import eta.core.serial as etas
+
+from fiftyone.core.singletons import DocumentSingleton
+
+
+# @todo not yet used
+def no_views(func):
+    @wraps(func)
+    def wrapper(self_or_cls, *args, **kwargs):
+        if self_or_cls._IS_VIEW:
+            cls = (
+                self_or_cls
+                if inspect.isclass(self_or_cls)
+                else self_or_cls.__class__
+            )
+            raise ValueError(
+                "The %s() method cannot be invoked; the %s class is a view"
+                % (func.__name__, cls.__name__)
+            )
+
+        return func(self_or_cls, *args, **kwargs)
+
+    return wrapper
 
 
 class Document(object):
@@ -24,12 +46,15 @@ class Document(object):
 
     _NO_DATASET_DOC_CLS = None
 
-    # Instance references keyed by [collection_name][sample_id]
-    _instances = defaultdict(weakref.WeakValueDictionary)
-
     def __init__(self, doc, dataset=None):
         self._doc = doc
         self._dataset = dataset
+
+    def __str__(self):
+        return repr(self)
+
+    def __repr__(self):
+        return self._doc.fancy_repr(class_name=self.__class__.__name__)
 
     def __dir__(self):
         return super().__dir__() + list(self.field_names)
@@ -53,6 +78,17 @@ class Document(object):
             self.__delitem__(name)
         except KeyError:
             super().__delattr__(name)
+
+    def __getitem__(self, field_name):
+        try:
+            return self.get_field(field_name)
+        except AttributeError:
+            raise KeyError(
+                "%s has no field '%s'" % (self.__class__.__name__, field_name)
+            )
+
+    def __setitem__(self, field_name, value):
+        self.set_field(field_name, value=value)
 
     def __delitem__(self, field_name):
         try:
@@ -109,9 +145,7 @@ class Document(object):
 
     @property
     def _in_db(self):
-        """Whether the underlying :class:`fiftyone.core.odm.Document` has
-        been inserted into the database.
-        """
+        """Whether the document has been inserted into the database."""
         return self._doc.in_db
 
     @property
@@ -318,47 +352,12 @@ class Document(object):
             # We can only reload fields that are in our schema
             self._doc.reload(*list(self._doc))
 
-    def _set_backing_doc(self, doc, dataset=None):
-        """Sets the backing doc for the document.
-
-        Args:
-            doc: a :class:`fiftyone.core.odm.SampleDocument`
-            dataset (None): the :class:`fiftyone.core.dataset.Dataset` to which
-                the document belongs, if any
-        """
-        if not doc.id:
-            doc.save()
-
-        self._doc = doc
-        self._dataset = dataset
-
-        self._instances[doc.collection_name][self.id] = self
-
-    def _reset_backing_doc(self):
-        """Resets the backing doc for the document.
-
-        The document will no longer belong to a dataset.
-        """
-        self._doc = self.copy()._doc
-        self._dataset = None
-
-    def _reload_backing_doc(self):
-        """Reloads the backing doc from the database, if possible.
-
-        Subclasses should implement this method if they support hot reloading.
-        """
-        pass
-
-    def _delete(self):
-        """Deletes the document from the database."""
-        self._doc.delete()
-
     @classmethod
     def from_doc(cls, doc, dataset=None):
         """Creates a :class:`Document` backed by the given database document.
 
         Args:
-            doc: a :class:`fiftyone.core.odm.Document`
+            doc: a :class:`fiftyone.core.odm.document.Document`
             dataset (None): the :class:`fiftyone.core.dataset.Dataset` that
                 the document belongs to, if any
 
@@ -371,10 +370,10 @@ class Document(object):
             document._dataset = None
             return document
 
-        try:
-            return cls._instances[doc.collection_name][str(doc.id)]
-        except KeyError:
-            pass
+        if issubclass(type(cls), DocumentSingleton):
+            document = cls._get_instance(doc)
+            if document is not None:
+                return document
 
         if dataset is None:
             raise ValueError(
@@ -415,135 +414,39 @@ class Document(object):
         doc = cls._NO_DATASET_DOC_CLS.from_json(s)
         return cls.from_doc(doc)
 
-    @classmethod
-    def _rename_fields(cls, collection_name, field_names, new_field_names):
-        """Renames the field on all in-memory documents in the collection.
+    def _set_backing_doc(self, doc, dataset=None):
+        """Sets the backing doc for the document.
 
         Args:
-            collection_name: the name of the MongoDB collection
-            field_names: an iterable of field names
-            new_field_names: an iterable of new field names
+            doc: a :class:`fiftyone.core.odm.document.Document`
+            dataset (None): the :class:`fiftyone.core.dataset.Dataset` to which
+                the document belongs, if any
         """
-        if collection_name not in cls._instances:
-            return
+        if not doc.id:
+            doc.save()
 
-        for document in cls._instances[collection_name].values():
-            data = document._doc._data
-            for field_name, new_field_name in zip(
-                field_names, new_field_names
-            ):
-                data[new_field_name] = data.pop(field_name, None)
+        self._doc = doc
+        self._dataset = dataset
 
-    @classmethod
-    def _clear_fields(cls, collection_name, field_names):
-        """Clears the values for the given field(s) (i.e., sets them to None)
-        on all in-memory documents in the collection.
+        cls = self.__class__
+        if issubclass(type(cls), DocumentSingleton):
+            cls._register_instance(self)
 
-        Args:
-            collection_name: the name of the MongoDB collection
-            field_names: an iterable of field names
+    def _reset_backing_doc(self):
+        """Resets the backing doc for the document.
+
+        The document will no longer belong to a dataset.
         """
-        if collection_name not in cls._instances:
-            return
+        self._doc = self.copy()._doc
+        self._dataset = None
 
-        for document in cls._instances[collection_name].values():
-            for field_name in field_names:
-                document._doc._data[field_name] = None
+    def _reload_backing_doc(self):
+        """Reloads the backing doc from the database, if possible.
 
-    @classmethod
-    def _purge_fields(cls, collection_name, field_names):
-        """Removes the field(s) from all in-memory documents in the collection.
-
-        Args:
-            collection_name: the name of the MongoDB collection
-            field_names: an iterable of field names
+        Subclasses should implement this method if they support hot reloading.
         """
-        if collection_name not in cls._instances:
-            return
+        pass
 
-        for document in cls._instances[collection_name].values():
-            for field_name in field_names:
-                document._doc._data.pop(field_name, None)
-
-    @classmethod
-    def _reload_doc(cls, collection_name, doc_id, hard=False):
-        """Reloads the backing document for the specified document if it exists
-        in memory.
-
-        Args:
-            collection_name: the name of the MongoDB collection
-            doc_id: the document ID
-        """
-        if collection_name not in cls._instances:
-            return
-
-        document = cls._instances[collection_name].get(doc_id, None)
-        if document is not None:
-            document.reload(hard=hard)
-
-    @classmethod
-    def _reload_docs(cls, collection_name, doc_ids=None, hard=False):
-        """Reloads the backing documents for all in-memory documents in the
-        collection.
-
-        Documents that are still in the collection will be reloaded, and
-        documents that are no longer in the collection will be reset.
-
-        Args:
-            collection_name: the name of the MongoDB collection
-            doc_ids (None): a list of IDs of documents that are still in the
-                collection. If not provided, all documents are assumed to still
-                be in the collection
-        """
-        if collection_name not in cls._instances:
-            return
-
-        documents = cls._instances[collection_name]
-
-        # Reload all docs
-        if doc_ids is None:
-            for document in documents.values():
-                document.reload(hard=hard)
-
-        # Reload docs with `doc_ids`, reset others
-        if doc_ids is not None:
-            reset_ids = set()
-            for document in documents.values():
-                if document.id in doc_ids:
-                    document.reload(hard=hard)
-                else:
-                    reset_ids.add(document.id)
-                    document._reset_backing_doc()
-
-            for doc_id in reset_ids:
-                documents.pop(doc_id, None)
-
-    @classmethod
-    def _reset_docs(cls, collection_name, doc_ids=None):
-        """Resets the backing documents for in-memory documents in the
-        collection.
-
-        Reset documents will no longer belong to their parent dataset.
-
-        Args:
-            collection_name: the name of the MongoDB collection
-            doc_ids (None): an optional list of document IDs to reset. By
-                default, all documents are reset
-        """
-        if collection_name not in cls._instances:
-            return
-
-        # Reset all docs
-        if doc_ids is None:
-            documents = cls._instances.pop(collection_name)
-            for document in documents.values():
-                document._reset_backing_doc()
-
-        # Reset docs with `doc_ids`
-        if doc_ids is not None:
-            documents = cls._instances[collection_name]
-
-            for doc_id in doc_ids:
-                document = documents.pop(doc_id, None)
-                if document is not None:
-                    document._reset_backing_doc()
+    def _delete(self):
+        """Deletes the document from the database."""
+        self._doc.delete()

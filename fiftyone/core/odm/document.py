@@ -363,9 +363,7 @@ class BaseDocument(MongoEngineBaseDocument):
 
     @property
     def in_db(self):
-        """Whether the underlying :class:`fiftyone.core.odm.Document` has
-        been inserted into the database.
-        """
+        """Whether the document has been inserted into the database."""
         # pylint: disable=no-member
         return self.id is not None
 
