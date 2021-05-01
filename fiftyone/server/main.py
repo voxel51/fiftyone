@@ -931,7 +931,11 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         view = get_extended_view(view, state.filters)
         search = _escape_regex_chars(search)
         if search != "":
-            view = view.match(F(path).re_match(search))
+            if "." in path:
+                path = path.split(".")[0]
+                view = view.filter_labels(path, F("label").re_match(search))
+            else:
+                view = view.match(F(path).re_match(search))
 
         count = await view._async_aggregate(col, foa.DistinctCount(path))
 
@@ -940,7 +944,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             col,
             pipeline
             + [
-                {"$group": {"_id": "$filepath"}},
+                {"$group": {"_id": path}},
                 {"$sort": {"_id": 1}},
                 {"$limit": limit},
             ],

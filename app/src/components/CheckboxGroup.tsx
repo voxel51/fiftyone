@@ -69,10 +69,13 @@ const Body = styled.div`
       justify-content; space-between;
       max-width: 100%;
 
+      span {
+        white-space: nowrap;
+      }
+
       span.name {
         display: block;
         padding: 0 4px;
-        white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
         flex-grow: 1;
@@ -84,7 +87,6 @@ const Body = styled.div`
       }
       span.count {
         display: block;
-        white-space: nowrap;
         height: 29px;
         line-height: 29px;
         vertical-align: middle;

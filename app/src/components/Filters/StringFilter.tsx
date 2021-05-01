@@ -39,13 +39,11 @@ interface WrapperProps {
   selectedValuesAtom: RecoilState<string[]>;
   searchAtom: RecoilState<string>;
   name: string;
-  valueName: string;
   color: string;
 }
 
 const Wrapper = ({
   color,
-  valueName,
   valuesAtom,
   selectedValuesAtom,
   searchAtom,
@@ -145,7 +143,6 @@ const StringFilter = React.memo(
                 searchAtom={searchAtom}
                 color={color}
                 name={name}
-                valueName={valueName}
                 valuesAtom={valuesAtom}
                 selectedValuesAtom={selectedValuesAtom}
               />

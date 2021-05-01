@@ -14,7 +14,7 @@ import Checkbox from "../Common/Checkbox";
 const SliderContainer = styled.div`
   font-weight: bold;
   display: flex;
-  padding: 1.5rem 0.5rem 0.5rem;
+  padding: 1.5rem 0 0.5rem;
   line-height: 1.9rem;
 `;
 
@@ -256,6 +256,10 @@ export const NamedRangeSlider = React.memo(
       const hasBounds = bounds.every((b) => b !== null);
       const isSingleValue = hasBounds && bounds[0] === bounds[1];
 
+      if (!hasBounds) {
+        return null;
+      }
+
       return (
         <NamedRangeSliderContainer ref={ref}>
           <NamedRangeSliderHeader>
@@ -290,7 +294,7 @@ export const NamedRangeSlider = React.memo(
             {hasBounds && !isSingleValue && (
               <RangeSlider {...rangeSliderProps} />
             )}
-            {hasNone && hasDefaultRange && (
+            {hasNone && hasBounds && hasDefaultRange && (
               <Checkbox
                 color={rangeSliderProps.color}
                 name={"None"}
