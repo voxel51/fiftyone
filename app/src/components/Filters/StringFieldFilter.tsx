@@ -7,14 +7,14 @@ import {
   SetRecoilState,
 } from "recoil";
 import { animated } from "react-spring";
+import uuid from "uuid-v4";
 
 import * as selectors from "../../recoil/selectors";
 import StringFilter from "./StringFilter";
 import { AGGS } from "../../utils/labels";
-import { useExpand, hasNoneField } from "./utils";
+import { useExpand } from "./utils";
 import socket from "../../shared/connection";
 import { packageMessage } from "../../utils/socket";
-import { number } from "prop-types";
 
 type StringFilter = {
   values: string[];
@@ -95,20 +95,23 @@ export const stringFieldValues = selectorFamily<
   key: "searchStringFields",
   get: (path) => async ({ get }) => {
     const search = get(searchStringField(path));
+    const id = uuid();
 
     const wrap = (handler, type) => ({ data }) => {
       data = JSON.parse(data);
-      data.type === type && handler(data);
+      data.type === type && handler(data, id);
     };
 
     const promise = new Promise<{ count: number; results: string[] }>(
       (resolve) => {
-        const listener = wrap(({ count, results }) => {
-          socket.removeEventListener("message", listener);
-          resolve({ count, results });
+        const listener = wrap(({ count, results }, token) => {
+          if (id === token) {
+            socket.removeEventListener("message", listener);
+            resolve({ count, results });
+          }
         }, "distinct");
         socket.addEventListener("message", listener);
-        socket.send(packageMessage("all_tags", { path, search }));
+        socket.send(packageMessage("distinct", { path, search, limit: 5 }));
       }
     );
 
@@ -160,6 +163,7 @@ const StringFieldFilter = ({ expanded, entry }) => {
         valuesAtom={valuesAtom(entry.path)}
         selectedValuesAtom={selectedValuesAtom(entry.path)}
         excludeAtom={excludeAtom(entry.path)}
+        searchAtom={searchStringField(entry.path)}
         ref={ref}
       />
     </animated.div>

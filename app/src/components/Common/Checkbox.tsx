@@ -21,13 +21,16 @@ const StyledCheckbox = animated(styled(ItemAction)`
   display: flex;
   justify-content: space-between;
   flex-direction: row;
+  flex-wrap: nowrap;
   margin: 0;
 `);
 
 const CheckboxName = styled.div`
-  text-overflow: ellipses;
+  text-overflow: ellipsis;
   font-weight: bold;
   flex-grow: 1;
+  max-width: 100%;
+  overflow: hidden;
 `;
 
 const Checkbox = React.memo(
@@ -37,7 +40,7 @@ const Checkbox = React.memo(
     const props = useHighlightHover(false);
 
     return (
-      <StyledCheckboxContainer>
+      <StyledCheckboxContainer title={name}>
         <StyledCheckbox {...props} onClick={() => setValue(!value)}>
           <MaterialCheckbox
             checked={value}

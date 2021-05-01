@@ -1,53 +1,22 @@
 import React, { Suspense } from "react";
-import { RecoilState, RecoilValueReadOnly, useRecoilState } from "recoil";
+import {
+  RecoilState,
+  RecoilValueReadOnly,
+  useRecoilState,
+  useRecoilValue,
+} from "recoil";
 import styled from "styled-components";
+import Checkbox from "../Common/Checkbox";
 
 import Input from "../Common/Input";
 
-const StringInput = styled.input`
-  width: 100%;
+const StringFilterContainer = styled.div`
   background: ${({ theme }) => theme.backgroundDark};
   border: 1px solid #191c1f;
   border-radius: 2px;
-  font-size: 14px;
-  height: 2.5rem;
-  font-weight: bold;
-  padding: 0.5rem;
-  margin-bottom: 0.5rem;
-
-  &:focus {
-    outline: none;
-  }
-`;
-
-const Selected = styled.div`
-  display: flex;
-  justify-content: flex-start;
-  margin: 0 -0.25rem;
-  padding-bottom: 0.5rem;
-  flex-wrap: wrap;
-`;
-
-const StringButton = styled.button`
-    background: ${({ theme }) => theme.background};
-    border: 2px solid #393C3F;
-    background-color: #2D3034;
-    border-radius: 11px;
-    text-align: center
-    vertical-align: middle;
-    margin: 0.5rem 0.25rem 0;
-    padding: 0 0.5rem;
-    line-height: 20px;
-    font-weight: bold;
-    cursor: pointer;
-    &:focus {
-      outline: none;
-    }
-  `;
-
-const StringFilterContainer = styled.div`
-  position: relative;
-  margin: 0.25rem 0;
+  color: ${({ theme }) => theme.fontDark};
+  margin-top: 0.25rem;
+  padding: 0.25rem 0.5rem 0 0.5rem;
 `;
 
 const NamedStringFilterContainer = styled.div`
@@ -61,59 +30,131 @@ const NamedStringFilterHeader = styled.div`
   justify-content: space-between;
 `;
 
-type Props = {
-  valuesAtom: RecoilValueReadOnly<string[]>;
+interface WrapperProps {
+  valuesAtom: RecoilValueReadOnly<{
+    total: number;
+    count: number;
+    results: string[];
+  }>;
+  selectedValuesAtom: RecoilState<string[]>;
+  searchAtom: RecoilState<string>;
+  name: string;
+  valueName: string;
+  color: string;
+}
+
+const Wrapper = ({
+  color,
+  valueName,
+  valuesAtom,
+  selectedValuesAtom,
+  searchAtom,
+}: WrapperProps) => {
+  const [selected, setSelected] = useRecoilState(selectedValuesAtom);
+  const values = useRecoilValue(valuesAtom);
+  const search = useRecoilValue(searchAtom);
+  const selectedSet = new Set(selected);
+
+  const allValues = [...new Set([...values.results, ...selected])]
+    .sort()
+    .filter((v) => v.includes(search));
+
+  return (
+    <>
+      {allValues.map((value) => (
+        <Checkbox
+          key={value}
+          color={color}
+          value={selectedSet.has(value)}
+          name={value}
+          setValue={(checked: boolean) => {
+            if (checked) {
+              selectedSet.add(value);
+            } else {
+              selectedSet.delete(value);
+            }
+            setSelected([...selectedSet].sort());
+          }}
+        />
+      ))}
+    </>
+  );
+};
+
+interface Props {
+  valuesAtom: RecoilValueReadOnly<{
+    total: number;
+    count: number;
+    results: string[];
+  }>;
   selectedValuesAtom: RecoilState<string[]>;
   searchAtom: RecoilState<string>;
   excludeAtom: RecoilState<boolean>;
   name: string;
   valueName: string;
   color: string;
-};
+}
 
 const StringFilter = React.memo(
-  React.forwardRef(({ name, searchAtom, ...stringFilterProps }: Props, ref) => {
-    const [values, setValues] = useRecoilState(
-      stringFilterProps.selectedValuesAtom
-    );
-    const [search, setSearch] = useRecoilState(searchAtom);
+  React.forwardRef(
+    (
+      {
+        name,
+        searchAtom,
+        valueName,
+        valuesAtom,
+        color,
+        selectedValuesAtom,
+      }: Props,
+      ref
+    ) => {
+      const [values, setValues] = useRecoilState(selectedValuesAtom);
+      const [search, setSearch] = useRecoilState(searchAtom);
+      const [selected, setSelected] = useRecoilState(selectedValuesAtom);
 
-    return (
-      <NamedStringFilterContainer ref={ref}>
-        <NamedStringFilterHeader>
-          {name}
-          <div>
-            {values.length > 0 ? (
-              <a
-                style={{ cursor: "pointer", textDecoration: "underline" }}
-                onClick={() => setValues([])}
-              >
-                reset
-              </a>
-            ) : null}
-          </div>
-        </NamedStringFilterHeader>
-        <StringFilterContainer>
-          <Suspense
-            fallback={
-              <Input
-                color={stringFilterProps.color}
-                setter={() => {}}
-                value={"Loading"}
-                disabled={true}
-              />
-            }
-          >
+      return (
+        <NamedStringFilterContainer ref={ref}>
+          <NamedStringFilterHeader>
+            {name}
+            <div>
+              {values.length > 0 ? (
+                <a
+                  style={{ cursor: "pointer", textDecoration: "underline" }}
+                  onClick={() => setValues([])}
+                >
+                  reset
+                </a>
+              ) : null}
+            </div>
+          </NamedStringFilterHeader>
+          <StringFilterContainer>
             <Input
-              color={stringFilterProps.color}
+              color={color}
               setter={(value) => setSearch(value)}
               value={search}
+              onEnter={() => {
+                const newSelected = new Set([...selected]);
+                newSelected.add(search);
+                setSelected([...newSelected].sort());
+                setSearch("");
+              }}
+              placeholder={`+ filter by ${valueName}`}
             />
-          </Suspense>
-        </StringFilterContainer>
-      </NamedStringFilterContainer>
-    );
-  })
+            <Suspense fallback={"Loading"}>
+              <Wrapper
+                searchAtom={searchAtom}
+                color={color}
+                name={name}
+                valueName={valueName}
+                valuesAtom={valuesAtom}
+                selectedValuesAtom={selectedValuesAtom}
+              />
+            </Suspense>
+          </StringFilterContainer>
+        </NamedStringFilterContainer>
+      );
+    }
+  )
 );
 
 export default StringFilter;

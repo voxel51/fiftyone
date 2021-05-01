@@ -29,7 +29,7 @@ os.environ["FIFTYONE_SERVER"] = "1"
 import fiftyone as fo
 import fiftyone.core.aggregations as foa
 import fiftyone.constants as foc
-from fiftyone.core.expressions import ViewField as F
+from fiftyone.core.expressions import ViewField as F, _escape_regex_chars
 import fiftyone.core.dataset as fod
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
@@ -929,7 +929,9 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             results = []
 
         view = get_extended_view(view, state.filters)
-        view = view.match(F(path).re_match(search))
+        search = _escape_regex_chars(search)
+        if search != "":
+            view = view.match(F(path).re_match(search))
 
         count = await view._async_aggregate(col, foa.DistinctCount(path))
 
@@ -942,9 +944,13 @@ class StateHandler(tornado.websocket.WebSocketHandler):
                 {"$sort": {"_id": 1}},
                 {"$limit": limit},
             ],
-        ).to_list()
+        ).to_list(limit)
 
-        message = {"count": count, "results": [d["_id"] for d in results]}
+        message = {
+            "type": "distinct",
+            "count": count,
+            "results": [d["_id"] for d in results],
+        }
         _write_message(message, app=True, only=self)
 
     @classmethod

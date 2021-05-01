@@ -39,6 +39,7 @@ interface InputProps {
   validator?: (value: string) => boolean;
   setter: (value: string) => void;
   value: string;
+  onEnter?: () => void;
   disabled?: boolean;
 }
 
@@ -50,6 +51,7 @@ const Input = React.memo(
     setter,
     value,
     disabled = false,
+    onEnter,
   }: InputProps) => {
     const theme = useTheme();
     color = color ?? theme.brand;
@@ -63,6 +65,9 @@ const Input = React.memo(
             if (validator(e.currentTarget.value)) {
               setter(e.currentTarget.value);
             }
+          }}
+          onKeyPress={(e: React.KeyboardEvent<HTMLInputElement>) => {
+            e.key === "Enter" && onEnter && onEnter();
           }}
           style={disabled ? { color: theme.fontDark } : {}}
           disabled={disabled}
