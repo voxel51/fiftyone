@@ -548,6 +548,10 @@ class Distinct(Aggregation):
             aggregating
     """
 
+    def __init__(self, field_or_expr, expr=None, _first=None):
+        super().__init__(field_or_expr, expr=expr)
+        self._first = _first
+
     def default_result(self):
         """Returns the default result for this aggregation.
 
@@ -565,135 +569,26 @@ class Distinct(Aggregation):
         Returns:
             a sorted list of distinct values
         """
-        return sorted(d["values"])
+        if self._first is None:
+            return d["values"]
+
+        return d["count"], d["values"]
 
     def to_mongo(self, sample_collection):
         path, pipeline, _ = self._parse_field_and_expr(sample_collection)
 
         pipeline += [
             {"$match": {"$expr": {"$gt": ["$" + path, None]}}},
+            {"$sort": {path: 1}},
             {"$group": {"_id": None, "values": {"$addToSet": "$" + path}}},
         ]
 
-        return pipeline
-
-
-class DistinctCount(Aggregation):
-    """Computes the number of distinct values of a field in a collection.
-
-    ``None``-valued fields are ignored.
-
-    This aggregation is typically applied to *countable* field types (or lists
-    of such types):
-
-    -   :class:`fiftyone.core.fields.BooleanField`
-    -   :class:`fiftyone.core.fields.IntField`
-    -   :class:`fiftyone.core.fields.StringField`
-
-    Examples::
-
-        import fiftyone as fo
-        from fiftyone import ViewField as F
-
-        dataset = fo.Dataset()
-        dataset.add_samples(
-            [
-                fo.Sample(
-                    filepath="/path/to/image1.png",
-                    tags=["sunny"],
-                    predictions=fo.Detections(
-                        detections=[
-                            fo.Detection(label="cat"),
-                            fo.Detection(label="dog"),
-                        ]
-                    ),
-                ),
-                fo.Sample(
-                    filepath="/path/to/image2.png",
-                    tags=["sunny", "cloudy"],
-                    predictions=fo.Detections(
-                        detections=[
-                            fo.Detection(label="cat"),
-                            fo.Detection(label="rabbit"),
-                        ]
-                    ),
-                ),
-                fo.Sample(
-                    filepath="/path/to/image3.png",
-                    predictions=None,
-                ),
-            ]
-        )
-
-        #
-        # Get the distinct tags in a dataset
-        #
-
-        aggregation = fo.DistinctCount("tags")
-        count = dataset.aggregate(aggregation)
-        print(count)  # number of distinct values
-
-        #
-        # Get the number of distinct filepaths in a dataset
-        #
-
-        aggregation = fo.Distinct("filepath")
-        values = dataset.aggregate(aggregation)
-        print(values)  # number of distinct filepaths
-
-    Args:
-        field_or_expr: a field name, ``embedded.field.name``,
-            :class:`fiftyone.core.expressions.ViewExpression`, or
-            `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
-            defining the field or expression to aggregate
-        expr (None): a :class:`fiftyone.core.expressions.ViewExpression` or
-            `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
-            to apply to ``field_or_expr`` (which must be a field) before
-            aggregating
-    """
-
-    def __init__(self, field_or_expr, expr=None, _first=None):
-        super().__init__(field_or_expr, expr=expr)
-        self._first = _first
-
-    def default_result(self):
-        """Returns the default result for this aggregation.
-
-        Returns:
-            ``0``
-        """
-        return 0
-
-    def parse_result(self, d):
-        """Parses the output of :meth:`to_mongo`.
-
-        Args:
-            d: the result dict
-
-        Returns:
-            a count of distinct values
-        """
-        return d["count"]
-
-    def to_mongo(self, sample_collection):
-        path, pipeline, _ = self._parse_field_and_expr(sample_collection)
-
-        if self._first is None:
-            pipeline += [{"$group": {"_id": "$" + path}}, {"$count": "count"}]
-        else:
+        if self._first is not None:
             pipeline += [
-                {"$group": {"_id": "$" + path}},
-                {"$sort", {"_id": 1}},
                 {
-                    "$group": {
-                        "count": {"$sum": 1},
-                        "first": {
-                            "$cond": [
-                                {"$lt": [{"$size": "$first"}, self._first]},
-                                {"$push": "$" + path},
-                                None,
-                            ]
-                        },
+                    "$set": {
+                        "count": {"$size": "$values"},
+                        "values": {"$slice": ["$values", self._first]},
                     }
                 },
             ]

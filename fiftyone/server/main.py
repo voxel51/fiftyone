@@ -937,25 +937,14 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             else:
                 view = view.match(F(path).re_match(search))
 
-        count = await view._async_aggregate(col, foa.DistinctCount(path))
-
-        pipeline = view._pipeline()
-        results = await foo.aggregate(
-            col,
-            pipeline
-            + [
-                {"$group": {"_id": path}},
-                {"$sort": {"_id": 1}},
-                {"$limit": limit},
-            ],
-        ).to_list(limit)
-
+        count, first = await view._async_aggregate(
+            col, foa.Distinct(path, _first=limit)
+        )
         message = {
             "type": "distinct",
             "count": count,
-            "results": [d["_id"] for d in results],
+            "results": first,
         }
-        _write_message(message, app=True, only=self)
 
     @classmethod
     async def on_distributions(cls, self, group):
