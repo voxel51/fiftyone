@@ -60,7 +60,7 @@ const RadioGroup = React.memo(
     color = color ?? theme.brand;
 
     useLayoutEffect(() => {
-      choices.length === 1 && !value && setValue(choices[0]);
+      choices.length >= 1 && !value && setValue(choices[0]);
     }, [value, choices]);
 
     if (!value) {

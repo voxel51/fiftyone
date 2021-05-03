@@ -12,12 +12,12 @@ import {
 import Popout from "./Popout";
 import { ActionOption } from "./Common";
 import Input from "../Common/Input";
-import SelectInput from "../Common/SelectInput";
 import { Button } from "../FieldsSidebar";
 import * as atoms from "../../recoil/atoms";
 import * as selectors from "../../recoil/selectors";
 import { PopoutSectionTitle } from "../utils";
 import Checkbox from "../Common/Checkbox";
+import RadioGroup from "../Common/RadioGroup";
 
 const getQueryIds = async (snapshot: Snapshot) => {
   const selectedLabels = await snapshot.getPromise(selectors.selectedLabelIds);
@@ -64,9 +64,9 @@ const reverseValue = atom<boolean>({
   default: false,
 });
 
-const brainKeyValue = atom<string[]>({
+const brainKeyValue = atom<string>({
   key: "brainKeyValue",
-  default: [null],
+  default: null,
 });
 
 const searchBrainKeyValue = atom<string>({
@@ -122,7 +122,7 @@ const sortBySimilarityParameters = selector<SortBySimilarityParameters>({
   get: ({ get }) => {
     return {
       k: get(kValue),
-      brainKey: get(brainKeyValue)[0],
+      brainKey: get(brainKeyValue),
       reverse: get(reverseValue),
     };
   },
@@ -162,11 +162,10 @@ const SortBySimilarity = React.memo(
             <PopoutSectionTitle style={{ fontSize: 14 }}>
               Brain key
             </PopoutSectionTitle>
-            <SelectInput
-              choices={choices}
-              radio={true}
-              values={brainKey}
-              setValues={setBrainKey}
+            <RadioGroup
+              choices={choices.choices}
+              value={brainKey}
+              setValue={setBrainKey}
             />
             {brainKey && (
               <>
