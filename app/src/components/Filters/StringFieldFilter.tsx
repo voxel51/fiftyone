@@ -12,7 +12,7 @@ import uuid from "uuid-v4";
 import * as selectors from "../../recoil/selectors";
 import StringFilter from "./StringFilter";
 import { AGGS } from "../../utils/labels";
-import { useExpand } from "./utils";
+import { useExpand, hasNoneField } from "./utils";
 import socket from "../../shared/connection";
 import { packageMessage } from "../../utils/socket";
 
@@ -88,7 +88,7 @@ export const searchStringField = atomFamily<string, string>({
   default: "",
 });
 
-export const stringFieldValues = selectorFamily<
+export const searchStringFields = selectorFamily<
   { count: number; results: string[] },
   string
 >({
@@ -132,10 +132,15 @@ export const valuesAtom = selectorFamily<
       }
       return acc;
     }, []);
-    return {
+    const values = {
       total,
-      ...get(stringFieldValues(path)),
+      ...get(searchStringFields(path)),
     };
+
+    if (get(hasNoneField(path))) {
+      values.results = [null, ...values.results];
+    }
+    return values;
   },
 });
 
@@ -157,8 +162,7 @@ const StringFieldFilter = ({ expanded, entry }) => {
   return (
     <animated.div style={props}>
       <StringFilter
-        name={"Values"}
-        valueName={"value"}
+        valueName={entry.path}
         color={entry.color}
         valuesAtom={valuesAtom(entry.path)}
         selectedValuesAtom={selectedValuesAtom(entry.path)}

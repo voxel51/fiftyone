@@ -4,12 +4,12 @@ import {
   RecoilValueReadOnly,
   useRecoilState,
   useRecoilValue,
-  useResetRecoilState,
 } from "recoil";
 import styled from "styled-components";
 
 import Checkbox from "../Common/Checkbox";
 import Input from "../Common/Input";
+import { TabOption } from "../utils";
 import * as selectors from "../../recoil/selectors";
 import { filterView } from "../../utils/view";
 
@@ -52,10 +52,18 @@ const format = (num) => {
   return num.toLocaleString("en", { useGrouping: true });
 };
 
-const SelectionString = ({ selected, excluded }) => {
+const SelectionString = ({ selected, excludeAtom }) => {
+  const excluded = useRecoilValue(excludeAtom);
   return (
     <span>
-      {format(selected.size)} {selected.size === 1 ? "selection" : "selections"}
+      {format(selected.size)}{" "}
+      {selected.size === 1
+        ? excluded
+          ? "exclusion"
+          : "selection"
+        : excluded
+        ? "exclusions"
+        : "selections"}
     </span>
   );
 };
@@ -68,6 +76,7 @@ interface WrapperProps {
   }>;
   selectedValuesAtom: RecoilState<string[]>;
   searchAtom: RecoilState<string>;
+  excludeAtom: RecoilState<boolean>;
   name: string;
   color: string;
 }
@@ -77,6 +86,7 @@ const Wrapper = ({
   valuesAtom,
   selectedValuesAtom,
   searchAtom,
+  excludeAtom,
 }: WrapperProps) => {
   const [selected, setSelected] = useRecoilState(selectedValuesAtom);
   const { count, total, results } = useRecoilValue(valuesAtom);
@@ -85,7 +95,7 @@ const Wrapper = ({
 
   const allValues = [...new Set([...results, ...selected])]
     .sort()
-    .filter((v) => v.includes(search));
+    .filter((v) => v && v.includes(search));
 
   return (
     <>
@@ -106,7 +116,7 @@ const Wrapper = ({
         />
       ))}
       <Footer>
-        <SelectionString selected={selectedSet} excluded={false} />
+        <SelectionString selected={selectedSet} excludeAtom={excludeAtom} />
         <span>
           {count !== total ? `${format(count)} of ` : null}
           {format(total)}
@@ -125,7 +135,7 @@ interface Props {
   selectedValuesAtom: RecoilState<string[]>;
   searchAtom: RecoilState<string>;
   excludeAtom: RecoilState<boolean>;
-  name: string;
+  name?: string;
   valueName: string;
   color: string;
 }
@@ -140,6 +150,7 @@ const StringFilter = React.memo(
         valuesAtom,
         color,
         selectedValuesAtom,
+        excludeAtom,
       }: Props,
       ref
     ) => {
@@ -155,7 +166,7 @@ const StringFilter = React.memo(
       return (
         <NamedStringFilterContainer ref={ref}>
           <NamedStringFilterHeader>
-            {name}
+            {name && <>{name}</>}
             <div>
               {selected.length > 0 ? (
                 <a
@@ -190,6 +201,7 @@ const StringFilter = React.memo(
                 name={name}
                 valuesAtom={valuesAtom}
                 selectedValuesAtom={selectedValuesAtom}
+                excludeAtom={excludeAtom}
               />
             </Suspense>
           </StringFilterContainer>

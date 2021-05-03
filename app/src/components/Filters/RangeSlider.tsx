@@ -89,6 +89,7 @@ type BaseSliderProps = {
   persistValue?: boolean;
   showBounds?: boolean;
   int?: boolean;
+  style?: React.CSSProperties;
 };
 
 const BaseSlider = React.memo(
@@ -101,6 +102,7 @@ const BaseSlider = React.memo(
     persistValue = true,
     showBounds = true,
     value,
+    style,
   }: BaseSliderProps) => {
     const theme = useContext(ThemeContext);
     const bounds = useRecoilValue(boundsAtom);
@@ -119,7 +121,7 @@ const BaseSlider = React.memo(
     const formatter = formatNumeral(int);
 
     return (
-      <SliderContainer style={showBounds ? {} : { padding: 0 }}>
+      <SliderContainer style={style}>
         {showBounds && formatter(bounds[0])}
         <SliderStyled
           onMouseDown={() => setClicking(true)}
@@ -179,6 +181,7 @@ type RangeSliderProps = {
   valueAtom: RecoilState<Range>;
   boundsAtom: RecoilValueReadOnly<Range>;
   color: string;
+  showBounds?: boolean;
   int?: boolean;
 };
 
@@ -292,7 +295,7 @@ export const NamedRangeSlider = React.memo(
               </span>
             )}
             {hasBounds && !isSingleValue && (
-              <RangeSlider {...rangeSliderProps} />
+              <RangeSlider {...rangeSliderProps} showBounds={false} />
             )}
             {hasNone && hasBounds && hasDefaultRange && (
               <Checkbox

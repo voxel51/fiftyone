@@ -6,6 +6,7 @@ import {
   BurstMode,
   Check,
   Close,
+  FilterList,
   Help,
   LocalOffer,
   Note,
@@ -39,17 +40,18 @@ const Container = styled.div`
     align-items: center;
     color: ${({ theme }) => theme.fontDark};
 
-    * {
-      display: flex;
+    span {
     }
 
     .label {
       text-transform: uppercase;
+      flex-grow: 1;
+      display: flex;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
-    .push {
-      margin-left: auto;
-    }
     .icon {
       margin-left: 2px;
     }
@@ -59,6 +61,27 @@ const Container = styled.div`
     margin-right: 4px;
   }
 `;
+
+const ResetFiltersPill = () => {
+  const theme = useTheme();
+  return (
+    <PillButton
+      onClick={() => {}}
+      highlight={false}
+      open={false}
+      icon={<FilterList />}
+      title={"Reset filters"}
+      text={"1"}
+      style={{
+        marginLeft: "0.25rem",
+        height: "1.5rem",
+        fontSize: "0.8rem",
+        lineHeight: "1rem",
+        color: theme.font,
+      }}
+    />
+  );
+};
 
 type CellProps = {
   label: string;
@@ -94,7 +117,6 @@ const Cell = React.memo(
           <>
             {icon ? <span className="left-icon">{icon}</span> : null}
             <span className="label">{label}</span>
-            <span className="push" />
             {numSelected ? (
               <PillButton
                 onClick={handleClear}
@@ -481,6 +503,7 @@ const LabelsCell = ({ modal, frames }: LabelsCellProps) => {
       icon={
         frames ? <BurstMode /> : video ? <VideoLibrary /> : <PhotoLibrary />
       }
+      pills={<ResetFiltersPill />}
       entries={labels.map((name) => {
         const path = frames ? "frames." + name : name;
         return {

@@ -11,7 +11,7 @@ import {
   Check,
   FlipToBack,
   LocalOffer,
-  Save,
+  Code,
   Settings,
   VisibilityOff,
 } from "@material-ui/icons";
@@ -262,7 +262,7 @@ const SaveFilters = () => {
     <PillButton
       open={false}
       highlight={true}
-      icon={<Save />}
+      icon={<Code />}
       onClick={() => {
         setLoading(false);
         socket.send(packageMessage("save_filters", {}));
@@ -283,7 +283,7 @@ const ActionsRowDiv = styled.div`
 type ActionsRowProps = {
   modal: boolean;
   playerRef?: any;
-  frameNumberRef: MutableRefObject<number>;
+  frameNumberRef?: MutableRefObject<number>;
 };
 
 const ActionsRow = ({ modal, playerRef, frameNumberRef }: ActionsRowProps) => {

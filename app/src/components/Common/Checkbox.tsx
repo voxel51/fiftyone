@@ -31,6 +31,7 @@ const CheckboxName = styled.div`
   flex-grow: 1;
   max-width: 100%;
   overflow: hidden;
+  white-space: nowrap;
 `;
 
 const Checkbox = React.memo(
@@ -44,7 +45,7 @@ const Checkbox = React.memo(
         <StyledCheckbox {...props} onClick={() => setValue(!value)}>
           <MaterialCheckbox
             checked={value}
-            title={name}
+            title={name === null ? "None" : name}
             style={{ color, padding: "0 0.5rem 0 0" }}
             onChange={(e) => {
               e.preventDefault();
@@ -52,7 +53,9 @@ const Checkbox = React.memo(
               setValue(!value);
             }}
           />
-          <CheckboxName>{name}</CheckboxName>
+          <CheckboxName style={name === null ? { color: color } : {}}>
+            {name}
+          </CheckboxName>
         </StyledCheckbox>
       </StyledCheckboxContainer>
     );
