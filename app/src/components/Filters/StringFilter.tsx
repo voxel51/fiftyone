@@ -1,14 +1,17 @@
-import React, { Suspense } from "react";
+import React, { Suspense, useLayoutEffect } from "react";
 import {
   RecoilState,
   RecoilValueReadOnly,
   useRecoilState,
   useRecoilValue,
+  useResetRecoilState,
 } from "recoil";
 import styled from "styled-components";
-import Checkbox from "../Common/Checkbox";
 
+import Checkbox from "../Common/Checkbox";
 import Input from "../Common/Input";
+import * as selectors from "../../recoil/selectors";
+import { filterView } from "../../utils/view";
 
 const StringFilterContainer = styled.div`
   background: ${({ theme }) => theme.backgroundDark};
@@ -30,6 +33,34 @@ const NamedStringFilterHeader = styled.div`
   justify-content: space-between;
 `;
 
+const Footer = styled.div`
+  cursor: pointer;
+  margin: 0 -0.5rem;
+  padding: 0.25rem 0.5rem;
+  font-weight: bold;
+  display: flex;
+  justify-content: space-between;
+  text-decoration: none;
+  color: ${({ theme }) => theme.font};
+
+  & > span {
+    display: flex;
+    justify-content: space-between;
+  }
+`;
+
+const format = (num) => {
+  return num.toLocaleString("en", { useGrouping: true });
+};
+
+const SelectionString = ({ selected, excluded }) => {
+  return (
+    <span>
+      {format(selected.size)} {selected.size === 1 ? "selection" : "selections"}
+    </span>
+  );
+};
+
 interface WrapperProps {
   valuesAtom: RecoilValueReadOnly<{
     total: number;
@@ -49,13 +80,20 @@ const Wrapper = ({
   searchAtom,
 }: WrapperProps) => {
   const [selected, setSelected] = useRecoilState(selectedValuesAtom);
-  const values = useRecoilValue(valuesAtom);
+  const { count, total, results } = useRecoilValue(valuesAtom);
+  const view = useRecoilValue(selectors.view);
   const search = useRecoilValue(searchAtom);
+  const resetSearch = useResetRecoilState(searchAtom);
+  const datasetName = useRecoilValue(selectors.datasetName);
   const selectedSet = new Set(selected);
 
-  const allValues = [...new Set([...values.results, ...selected])]
+  const allValues = [...new Set([...results, ...selected])]
     .sort()
     .filter((v) => v.includes(search));
+
+  useLayoutEffect(() => {
+    resetSearch();
+  }, [filterView(view), datasetName]);
 
   return (
     <>
@@ -75,6 +113,13 @@ const Wrapper = ({
           }}
         />
       ))}
+      <Footer>
+        <SelectionString selected={selectedSet} excluded={false} />
+        <span>
+          {count !== total ? `${format(count)} of ` : null}
+          {format(total)}
+        </span>
+      </Footer>
     </>
   );
 };
@@ -117,7 +162,10 @@ const StringFilter = React.memo(
               {selected.length > 0 ? (
                 <a
                   style={{ cursor: "pointer", textDecoration: "underline" }}
-                  onClick={() => setSelected([])}
+                  onClick={() => {
+                    setSelected([]);
+                    setSearch("");
+                  }}
                 >
                   reset
                 </a>
@@ -137,7 +185,7 @@ const StringFilter = React.memo(
               }}
               placeholder={`+ filter by ${valueName}`}
             />
-            <Suspense fallback={"Loading"}>
+            <Suspense fallback={"..."}>
               <Wrapper
                 searchAtom={searchAtom}
                 color={color}

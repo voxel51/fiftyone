@@ -928,7 +928,6 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         else:
             results = []
 
-        view = get_extended_view(view, state.filters)
         search = _escape_regex_chars(search)
 
         if search != "":
