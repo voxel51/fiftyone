@@ -97,21 +97,21 @@ export const stringFieldValues = selectorFamily<
     const search = get(searchStringField(path));
     const id = uuid();
 
-    const wrap = (handler, type) => ({ data }) => {
+    const wrap = (handler) => ({ data }) => {
       data = JSON.parse(data);
-      data.type === type && handler(data, id);
+      data.type === id && handler(data);
     };
 
     const promise = new Promise<{ count: number; results: string[] }>(
       (resolve) => {
-        const listener = wrap(({ count, results }, token) => {
-          if (id === token) {
-            socket.removeEventListener("message", listener);
-            resolve({ count, results });
-          }
-        }, "distinct");
+        const listener = wrap(({ count, results }) => {
+          socket.removeEventListener("message", listener);
+          resolve({ count, results });
+        });
         socket.addEventListener("message", listener);
-        socket.send(packageMessage("distinct", { path, search, limit: 5 }));
+        socket.send(
+          packageMessage("distinct", { path, uuid: id, search, limit: 5 })
+        );
       }
     );
 

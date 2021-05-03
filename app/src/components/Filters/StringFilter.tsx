@@ -106,7 +106,6 @@ const StringFilter = React.memo(
       }: Props,
       ref
     ) => {
-      const [values, setValues] = useRecoilState(selectedValuesAtom);
       const [search, setSearch] = useRecoilState(searchAtom);
       const [selected, setSelected] = useRecoilState(selectedValuesAtom);
 
@@ -115,10 +114,10 @@ const StringFilter = React.memo(
           <NamedStringFilterHeader>
             {name}
             <div>
-              {values.length > 0 ? (
+              {selected.length > 0 ? (
                 <a
                   style={{ cursor: "pointer", textDecoration: "underline" }}
-                  onClick={() => setValues([])}
+                  onClick={() => setSelected([])}
                 >
                   reset
                 </a>

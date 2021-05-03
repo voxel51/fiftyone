@@ -917,7 +917,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         _write_message(message, app=True, only=only)
 
     @classmethod
-    async def on_distinct(cls, self, path, search="", limit=10):
+    async def on_distinct(cls, self, path, uuid=None, search="", limit=10):
         state = fos.StateDescription.from_dict(StateHandler.state)
         results = None
         col = cls.sample_collection()
@@ -930,18 +930,20 @@ class StateHandler(tornado.websocket.WebSocketHandler):
 
         view = get_extended_view(view, state.filters)
         search = _escape_regex_chars(search)
+
         if search != "":
             if "." in path:
-                path = path.split(".")[0]
-                view = view.filter_labels(path, F("label").re_match(search))
+                field = path.split(".")[0]
+                view = view.filter_labels(field, F("label").re_match(search))
             else:
                 view = view.match(F(path).re_match(search))
 
         count, first = await view._async_aggregate(
             col, foa.Distinct(path, _first=limit)
         )
+
         message = {
-            "type": "distinct",
+            "type": uuid,
             "count": count,
             "results": first,
         }
