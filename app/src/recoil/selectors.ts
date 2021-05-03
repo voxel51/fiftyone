@@ -1060,8 +1060,8 @@ export const itemNames = selector<{ plural: string; singular: string }>({
 });
 
 interface BrainMethod {
-  method: string;
   config: {
+    method: string;
     patches_field: string;
   };
 }

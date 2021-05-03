@@ -81,6 +81,13 @@ const availableSimilarityKeys = selectorFamily<string[], boolean>({
     const keys = get(selectors.similarityKeys);
     if (isRoot && !modal) {
       return keys.samples;
+    } else if (!modal) {
+      return keys.patches.reduce((acc, [key, field]) => {
+        if (get(selectors.labelPaths).includes(field)) {
+          acc = [...acc, key];
+        }
+        return acc;
+      }, []);
     } else if (modal) {
       const selectedLabels = get(selectors.selectedLabels);
       const fields = Object.values(selectedLabels).reduce((acc, { field }) => {
@@ -88,7 +95,13 @@ const availableSimilarityKeys = selectorFamily<string[], boolean>({
         return acc;
       }, new Set<string>());
       if (fields.size === 1) {
-        return keys.patches[fields.values()[0]] ?? [];
+        const field = [...fields][0];
+        const patches = keys.patches
+          .filter(([k, v]) => v === field)
+          .reduce((acc, [k]) => {
+            return [...acc, k];
+          }, []);
+        return patches;
       }
     }
     return [];

@@ -80,19 +80,12 @@ const Wrapper = ({
 }: WrapperProps) => {
   const [selected, setSelected] = useRecoilState(selectedValuesAtom);
   const { count, total, results } = useRecoilValue(valuesAtom);
-  const view = useRecoilValue(selectors.view);
   const search = useRecoilValue(searchAtom);
-  const resetSearch = useResetRecoilState(searchAtom);
-  const datasetName = useRecoilValue(selectors.datasetName);
   const selectedSet = new Set(selected);
 
   const allValues = [...new Set([...results, ...selected])]
     .sort()
     .filter((v) => v.includes(search));
-
-  useLayoutEffect(() => {
-    resetSearch();
-  }, [filterView(view), datasetName]);
 
   return (
     <>
@@ -152,6 +145,12 @@ const StringFilter = React.memo(
     ) => {
       const [search, setSearch] = useRecoilState(searchAtom);
       const [selected, setSelected] = useRecoilState(selectedValuesAtom);
+      const view = useRecoilValue(selectors.view);
+      const datasetName = useRecoilValue(selectors.datasetName);
+
+      useLayoutEffect(() => {
+        setSearch("");
+      }, [filterView(view), datasetName]);
 
       return (
         <NamedStringFilterContainer ref={ref}>

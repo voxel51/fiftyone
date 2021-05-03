@@ -305,7 +305,7 @@ const ActionsRow = ({ modal, playerRef, frameNumberRef }: ActionsRowProps) => {
       <Options modal={modal} />
       <Tag modal={modal} />
       {!modal && isRootView && <Patches />}
-      {isRootView && <Similarity modal={modal} />}
+      <Similarity modal={modal} />
       {modal && <Hidden />}
       {!modal && <SaveFilters />}
       <Selected
