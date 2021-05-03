@@ -107,7 +107,6 @@ export const stringFieldValues = selectorFamily<
         const listener = wrap(({ count, results }, token) => {
           if (id === token) {
             socket.removeEventListener("message", listener);
-            console.log(path, results);
             resolve({ count, results });
           }
         }, "distinct");

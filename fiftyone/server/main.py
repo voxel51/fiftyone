@@ -945,6 +945,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             "count": count,
             "results": first,
         }
+        _write_message(message, app=True, only=self)
 
     @classmethod
     async def on_distributions(cls, self, group):
