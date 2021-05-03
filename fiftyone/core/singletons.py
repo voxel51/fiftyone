@@ -126,74 +126,81 @@ class SampleSingleton(DocumentSingleton):
             for field_name in field_names:
                 sample._doc._data.pop(field_name, None)
 
-    def _reload_doc(cls, collection_name, doc_id, hard=False):
-        """Reloads the backing document for the specified sample if it exists
-        in memory.
+    def _reload_doc(cls, collection_name, sample_id, hard=False):
+        """Reloads the backing document for the given sample if it is
+        in-memory.
         """
         if collection_name not in cls._instances:
             return
 
-        sample = cls._instances[collection_name].get(doc_id, None)
+        sample = cls._instances[collection_name].get(sample_id, None)
         if sample is not None:
             sample.reload(hard=hard)
 
-    def _reload_docs(cls, collection_name, doc_ids=None, hard=False):
-        """Reloads the backing documents for all in-memory samples in the
+    def _reload_docs(cls, collection_name, sample_ids=None, hard=False):
+        """Reloads the backing documents for in-memory samples in the
         collection.
 
-        If no ``doc_ids`` are provided, all in-memory sample documents are
-        reloaded.
-
-        If ``doc_ids`` are provided, these are assumed to enumerate the samples
-        that are still in the collection. Their backing documents will be
-        reloaded and any samples whose IDs are not in this set will be reset.
+        If ``sample_ids`` are provided, only those samples are reloaded.
         """
         if collection_name not in cls._instances:
             return
 
         samples = cls._instances[collection_name]
 
-        # Reload all docs
-        if doc_ids is None:
+        if sample_ids is not None:
+            for sample in samples.values():
+                if sample.id in sample_ids:
+                    sample.reload(hard=hard)
+        else:
             for sample in samples.values():
                 sample.reload(hard=hard)
 
-        # Reload docs with `doc_ids`, reset others
-        if doc_ids is not None:
-            reset_ids = set()
-            for sample in samples.values():
-                if sample.id in doc_ids:
-                    sample.reload(hard=hard)
-                else:
-                    reset_ids.add(sample.id)
-                    sample._reset_backing_doc()
+    def _sync_docs(cls, collection_name, sample_ids, hard=False):
+        """Syncs the backing documents for all in-memory samples in the
+        collection according to the following rules:
 
-            for doc_id in reset_ids:
-                samples.pop(doc_id, None)
-
-    def _reset_docs(cls, collection_name, doc_ids=None):
-        """Resets the backing documents for in-memory samples in the
-        collection.
-
-        Reset samples will no longer belong to their parent dataset.
+        -   Documents whose IDs are in ``sample_ids`` are reloaded
+        -   Documents whose IDs are not in ``sample_ids`` are reset
         """
         if collection_name not in cls._instances:
             return
 
-        # Reset all docs
-        if doc_ids is None:
+        samples = cls._instances[collection_name]
+
+        reset_ids = set()
+        for sample in samples.values():
+            if sample.id in sample_ids:
+                sample.reload(hard=hard)
+            else:
+                reset_ids.add(sample.id)
+                sample._reset_backing_doc()
+
+        for sample_id in reset_ids:
+            samples.pop(sample_id, None)
+
+    def _reset_docs(cls, collection_name, sample_ids=None):
+        """Resets the backing documents for in-memory samples in the
+        collection.
+
+        Reset samples will no longer belong to their parent dataset.
+
+        If ``sample_ids`` are provided, only those samples are reset.
+        """
+        if collection_name not in cls._instances:
+            return
+
+        if sample_ids is not None:
+            samples = cls._instances[collection_name]
+
+            for sample_id in sample_ids:
+                sample = samples.pop(sample_id, None)
+                if sample is not None:
+                    sample._reset_backing_doc()
+        else:
             samples = cls._instances.pop(collection_name)
             for sample in samples.values():
                 sample._reset_backing_doc()
-
-        # Reset docs with `doc_ids`
-        if doc_ids is not None:
-            samples = cls._instances[collection_name]
-
-            for doc_id in doc_ids:
-                sample = samples.pop(doc_id, None)
-                if sample is not None:
-                    sample._reset_backing_doc()
 
 
 class FrameSingleton(DocumentSingleton):
@@ -262,25 +269,25 @@ class FrameSingleton(DocumentSingleton):
                 for field_name in field_names:
                     frame._doc._data.pop(field_name, None)
 
-    # @todo all `doc_id` references are broken; this class uses frame numbers!
-    def _reload_docs_for_sample(
-        cls,
-        collection_name,
-        sample_id,
-        doc_id=None,
-        frame_numbers=None,
-        hard=False,
+    def _reload_doc(cls, collection_name, sample_id, frame_number, hard=False):
+        """Reloads the backing document for the given frame if it is in-memory.
+        """
+        if collection_name not in cls._instances:
+            return
+
+        frames = cls._instances[collection_name].get(sample_id, {})
+        frame = frames.get(frame_number, None)
+        if frame is not None:
+            frame.reload(hard=hard)
+
+    def _sync_docs_for_sample(
+        cls, collection_name, sample_id, frame_numbers, hard=False
     ):
-        """Reloads the backing documents for the frames attached to a sample.
+        """Syncs the backing documents for all in-memory frames attached to the
+        specified sample according to the following rules:
 
-        If a ``doc_id`` is provided, only that frame document is reloaded.
-
-        If ``frame_numbers`` are provided, these are assumed to enumerate the
-        frames that are still in the collection. Their backing documents will
-        be reloaded and any frames whose frame numbers are not in this set will
-        be reset.
-
-        Otherwise, all in-memory frame documents for the sample are reloaded.
+        -   Frames whose frame numbers are in ``frame_numbers`` are reloaded
+        -   Frames whose frame numbers are not in ``frame_numbers`` are reset
         """
         if collection_name not in cls._instances:
             return
@@ -288,116 +295,83 @@ class FrameSingleton(DocumentSingleton):
         samples = cls._instances[collection_name]
         frames = samples.get(sample_id, {})
 
-        # Reload all docs
-        if doc_id is None and frame_numbers is None:
-            for frame in frames.values():
+        reset_fns = set()
+        for frame_number, frame in frames.items():
+            if frame_number in frame_numbers:
                 frame.reload(hard=hard)
+            else:
+                reset_fns.add(frame_number)
+                frame._reset_backing_doc()
 
-        # Reload specific doc
-        if doc_id is not None:
-            frame = frames.get(doc_id, None)
-            if frame is not None:
-                frame.reload(hard=hard)
+        for frame_number in reset_fns:
+            frames.pop(frame_number)
 
-        # Reload docs with `frame_numbers`, reset others
-        if frame_numbers is not None:
-            reset_fns = set()
-            for frame_number, frame in frames.items():
-                if frame_number in frame_numbers:
-                    frame.reload(hard=hard)
-                else:
-                    reset_fns.add(frame_number)
-                    frame._reset_backing_doc()
+    def _sync_docs(cls, collection_name, sample_ids, hard=False):
+        """Syncs the backing documents for all in-memory frames according to
+        the following rules:
 
-            for frame_number in reset_fns:
-                frames.pop(frame_number, None)
-
-    def _reload_docs(
-        cls, collection_name, doc_ids=None, sample_ids=None, hard=False
-    ):
-        """Reloads the backing documents for in-memory frames in the
-        collection.
-
-        If ``doc_ids`` are provided, these are assumed to enumerate the frames
-        that are still in the collection. Their backing documents will
-        be reloaded and any frames whose IDs are not in this set will be reset.
-
-        If ``sample_ids`` are provided, these are assumed to enumerate the
-        samples that are still in the collection. Their backing documents will
-        be reloaded and any frames attached to samples whose IDs are not in
-        this set will be reset.
-
-        Otherwise, all in-memory frame documents are reloaded.
+        -   Frames attached to samples whose IDs are in ``sample_ids`` are
+            reloaded
+        -   Frames attached to samples whose IDs are not in ``sample_ids`` are
+            reset
         """
         if collection_name not in cls._instances:
             return
 
         samples = cls._instances[collection_name]
 
-        # Reload all docs
-        if doc_ids is None and sample_ids is None:
-            for frames in samples.values():
+        reset_ids = set()
+        for sample_id, frames in samples.items():
+            if sample_id in sample_ids:
                 for frame in frames.values():
                     frame.reload(hard=hard)
-
-        # Reload docs for samples with `sample_ids`, reset others
-        if sample_ids is not None:
-            reset_ids = set()
-            for sample_id, frames in samples.items():
-                if sample_id in sample_ids:
-                    for frame in frames.values():
-                        frame.reload(hard=hard)
-                else:
-                    reset_ids.add(sample_id)
-                    for frame in frames.values():
-                        frame._reset_backing_doc()
-
-            for sample_id in reset_ids:
-                samples.pop(sample_id, None)
-
-        # Reload docs with `doc_ids`, reset others
-        if doc_ids is not None:
-            for frames in samples.values():
-                reset_ids = set()
+            else:
+                reset_ids.add(sample_id)
                 for frame in frames.values():
-                    if frame.id in doc_ids:
-                        frame.reload(hard=hard)
-                    else:
-                        reset_ids.add(frame.id)
-                        frame._reset_backing_doc()
+                    frame._reset_backing_doc()
 
-                for doc_id in reset_ids:
-                    frames.pop(doc_id, None)
+        for sample_id in reset_ids:
+            frames = samples.pop(sample_id)
 
-    def _reset_docs(cls, collection_name, doc_ids=None, sample_ids=None):
-        """Resets the backing documents for in-memory frames in the collection.
+    def _reload_docs(cls, collection_name, sample_ids=None, hard=False):
+        """Reloads the backing documents for in-memory frames in the
+        collection.
 
-        Reset frames will no longer belong to their parent dataset.
+        If ``sample_ids`` are provided, only frames attached to samples with
+        these IDs are reloaded.
         """
         if collection_name not in cls._instances:
             return
 
-        # Reset all docs
-        if doc_ids is None and sample_ids is None:
+        samples = cls._instances[collection_name]
+
+        if sample_ids is not None:
+            for sample_id in sample_ids:
+                frames = samples.get(sample_id, {})
+                for frame in frames.values():
+                    frame.reload(hard=hard)
+        else:
+            for frames in samples.values():
+                for frame in frames.values():
+                    frame.reload(hard=hard)
+
+    def _reset_docs(cls, collection_name, sample_ids=None):
+        """Resets the backing documents for in-memory frames in the collection.
+
+        If ``sample_ids`` are provided, only frames attached to samples with
+        the given sample IDs are reset.
+        """
+        if collection_name not in cls._instances:
+            return
+
+        if sample_ids is not None:
+            samples = cls._instances[collection_name]
+            for sample_id in sample_ids:
+                frames = samples.pop(sample_id, {})
+                for frame in frames.values():
+                    frame._reset_backing_doc()
+        else:
             samples = cls._instances.pop(collection_name)
             for frames in samples.values():
                 for frame in frames.values():
                     frame._reset_backing_doc()
-
-        # Reset docs for samples with `sample_ids`
-        if sample_ids is not None:
-            samples = cls._instances[collection_name]
-            for sample_id in sample_ids:
-                frames = samples.pop(sample_id, None)
-                if frames is not None:
-                    for frame in frames.values():
-                        frame._reset_backing_doc()
-
-        # Reset docs with `doc_ids`
-        if doc_ids is not None:
-            samples = cls._instances[collection_name]
-            for frames in samples.values():
-                for doc_id in doc_ids:
-                    frame = frames.pop(doc_id, None)
-                    if frame is not None:
-                        frame._reset_backing_doc()

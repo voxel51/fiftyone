@@ -224,7 +224,7 @@ class Frames(object):
             if frame._in_db:
                 frame = frame.copy()
 
-            frame.frame_number = frame_number
+            frame.set_field("frame_number", frame_number)
 
         self._set_replacement(frame)
 
@@ -321,10 +321,10 @@ class Frames(object):
         self._delete_frames.clear()
         self._replacements.clear()
 
-        Frame._reload_docs_for_sample(
+        Frame._sync_docs_for_sample(
             self._dataset._frame_collection_name,
             self._sample.id,
-            frame_numbers=self._get_frame_numbers(),
+            self._get_frame_numbers(),
             hard=hard,
         )
 
@@ -555,7 +555,7 @@ class FramesView(Frames):
         for field, value in frame.iter_fields():
             frame_view.set_field(field, value, create=expand_schema)
 
-        frame_view.frame_number = frame_number
+        frame_view.set_field("frame_number", frame_number)
         self._set_replacement(frame_view)
 
     def _get_frame_numbers_db(self):
@@ -731,9 +731,8 @@ class FrameView(DocumentView):
         super().save()
 
         # Reload the parent frame of this view if it exists in memory
-        # @todo update to use `frame_number`
-        Frame._reload_docs_for_sample(
+        Frame._reload_doc(
             self._dataset._frame_collection_name,
             str(self._sample_id),
-            doc_id=self.id,
+            self.frame_number,
         )

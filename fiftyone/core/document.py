@@ -621,7 +621,3 @@ class DocumentView(_Document):
     def save(self):
         """Saves the contents of this sample view to the database."""
         self._doc.save(filtered_fields=self._filtered_fields)
-
-        # @todo add support for refreshing parent Document singleton here.
-        # Currently this is implemented by subclasses since Sample and Frame
-        # have different key structures

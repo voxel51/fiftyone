@@ -1581,7 +1581,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         )
 
         fos.Sample._reset_docs(
-            self._sample_collection_name, doc_ids=sample_ids
+            self._sample_collection_name, sample_ids=sample_ids
         )
 
         if self.media_type == fom.VIDEO:
@@ -1849,7 +1849,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             foo.bulk_write(sample_ops, self._sample_collection)
 
             fos.Sample._reload_docs(
-                self._sample_collection_name, doc_ids=sample_ids
+                self._sample_collection_name, sample_ids=sample_ids
             )
 
         if frame_ops:
@@ -3644,15 +3644,13 @@ def _save_view(view, fields):
     #
 
     # The samples now in the collection
-    doc_ids = dataset.values("id")
+    sample_ids = dataset.values("id")
 
     if dataset.media_type == fom.VIDEO:
         # pylint: disable=unexpected-keyword-arg
-        fofr.Frame._reload_docs(
-            dataset._frame_collection_name, sample_ids=doc_ids
-        )
+        fofr.Frame._sync_docs(dataset._frame_collection_name, sample_ids)
 
-    fos.Sample._reload_docs(dataset._sample_collection_name, doc_ids=doc_ids)
+    fos.Sample._sync_docs(dataset._sample_collection_name, sample_ids)
 
 
 def _merge_dataset_doc(
