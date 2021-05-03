@@ -183,20 +183,7 @@ class DatasetMixin(object):
     _FRAME_COLLECTION_PREFIX = "frames."
 
     def __setattr__(self, name, value):
-        # pylint: disable=no-member
-        has_field = self.has_field(name)
-
-        if name.startswith("_") or (hasattr(self, name) and not has_field):
-            super().__setattr__(name, value)
-            return
-
-        if not has_field:
-            raise ValueError(
-                "Adding sample fields using the `sample.field = value` syntax "
-                "is not allowed; use `sample['field'] = value` instead"
-            )
-
-        if value is not None:
+        if name in self._fields and value is not None:
             self._fields[name].validate(value)
 
         super().__setattr__(name, value)
@@ -396,9 +383,7 @@ class DatasetMixin(object):
                 self.add_implied_field(field_name, value)
             else:
                 dtype = "Sample" if not self._is_frames_doc() else "Frame"
-                raise ValueError(
-                    "%s does not have field '%s'." % (dtype, field_name)
-                )
+                raise ValueError("%s has no field '%s'" % (dtype, field_name))
 
         self.__setattr__(field_name, value)
 
@@ -947,30 +932,20 @@ class NoDatasetMixin(object):
 
     def __getattr__(self, name):
         try:
-            return self._data[name]
-        except Exception:
+            return super().__getattribute__(name)
+        except AttributeError:
             pass
 
-        return super().__getattribute__(name)
+        try:
+            return self._data[name]
+        except KeyError as e:
+            raise AttributeError(e.args[0])
 
     def __setattr__(self, name, value):
         if name.startswith("_"):
             super().__setattr__(name, value)
-            return
-
-        has_field = self.has_field(name)
-
-        if hasattr(self, name) and not has_field:
-            super().__setattr__(name, value)
-            return
-
-        if not has_field:
-            raise ValueError(
-                "Adding sample fields using the `sample.field = value` syntax "
-                "is not allowed; use `sample['field'] = value` instead"
-            )
-
-        self._data[name] = value
+        else:
+            self._data[name] = value
 
     @property
     def id(self):
@@ -1047,9 +1022,7 @@ class NoDatasetMixin(object):
                 self._data[field_name] = None
             else:
                 dtype = "Sample" if not self._is_frames_doc() else "Frame"
-                raise ValueError(
-                    "%s does not have field '%s'." % (dtype, field_name)
-                )
+                raise ValueError("%s has no field '%s'" % (dtype, field_name))
 
         self.__setattr__(field_name, value)
 

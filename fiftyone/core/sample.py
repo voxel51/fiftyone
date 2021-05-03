@@ -5,17 +5,16 @@ Dataset samples.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from copy import deepcopy
 import os
 
-from fiftyone.core.document import Document
+from fiftyone.core.document import Document, DocumentView
 import fiftyone.core.frame as fofr
 import fiftyone.core.frame_utils as fofu
 import fiftyone.core.labels as fol
 import fiftyone.core.metadata as fom
 import fiftyone.core.media as fomm
 import fiftyone.core.odm as foo
-from fiftyone.core.singletons import DocumentSingleton
+from fiftyone.core.singletons import SampleSingleton
 
 
 def get_default_sample_fields(include_private=False, include_id=False):
@@ -36,14 +35,7 @@ def get_default_sample_fields(include_private=False, include_id=False):
     )
 
 
-class _Sample(Document):
-
-    _NO_DATASET_DOC_CLS = foo.NoDatasetSampleDocument
-
-    def __init__(self, doc, dataset=None):
-        super().__init__(doc, dataset=dataset)
-        self._frames = None
-
+class _SampleMixin(object):
     def __getattr__(self, name):
         if name == "frames" and self.media_type == fomm.VIDEO:
             return self._frames
@@ -87,13 +79,6 @@ class _Sample(Document):
     def media_type(self):
         """The media type of the sample."""
         return self._media_type
-
-    @property
-    def _skip_iter_field_names(self):
-        if self.media_type == fomm.VIDEO:
-            return ("frames",)
-
-        return tuple()
 
     def get_field(self, field_name):
         if field_name == "frames" and self.media_type == fomm.VIDEO:
@@ -271,20 +256,6 @@ class _Sample(Document):
                 expand_schema=expand_schema,
             )
 
-    def copy(self):
-        """Returns a deep copy of the sample that has not been added to the
-        database.
-
-        Returns:
-            a :class:`Sample`
-        """
-        sample = Sample(**{k: deepcopy(v) for k, v in self.iter_fields()})
-
-        if self.media_type == fomm.VIDEO:
-            sample.frames.update({k: v.copy() for k, v in self.frames.items()})
-
-        return sample
-
     def to_dict(self, include_frames=False):
         """Serializes the sample to a JSON dictionary.
 
@@ -322,7 +293,7 @@ class _Sample(Document):
             )
 
 
-class Sample(_Sample, metaclass=DocumentSingleton):
+class Sample(_SampleMixin, Document, metaclass=SampleSingleton):
     """A sample in a :class:`fiftyone.core.dataset.Dataset`.
 
     Samples store all information associated with a particular piece of data in
@@ -345,15 +316,17 @@ class Sample(_Sample, metaclass=DocumentSingleton):
         **kwargs: additional fields to dynamically set on the sample
     """
 
+    _NO_DATASET_DOC_CLS = foo.NoDatasetSampleDocument
+
     def __init__(self, filepath, tags=None, metadata=None, **kwargs):
-        doc = self._NO_DATASET_DOC_CLS(
+        super().__init__(
             filepath=filepath, tags=tags, metadata=metadata, **kwargs
         )
 
-        super().__init__(doc)
-
         if self.media_type == fomm.VIDEO:
-            self._frames = fofr.Frames(sample=self)
+            self._frames = fofr.Frames(self)
+        else:
+            self._frames = None
 
     def __repr__(self):
         kwargs = {}
@@ -371,9 +344,36 @@ class Sample(_Sample, metaclass=DocumentSingleton):
         d = self._dataset._sample_collection.find_one({"_id": self._id})
         self._doc = self._dataset._sample_dict_to_doc(d)
 
+    def copy(self):
+        """Returns a deep copy of the sample that has not been added to the
+        database.
+
+        Returns:
+            a :class:`Sample`
+        """
+        sample = super().copy()
+
+        if self.media_type == fomm.VIDEO:
+            sample.frames.update({k: v.copy() for k, v in self.frames.items()})
+
+        return sample
+
+    def reload(self, hard=False):
+        """Reloads the sample from the database.
+
+        Args:
+            hard (False): whether to reload the sample's schema in addition to
+                its field values. This is necessary if new fields may have been
+                added to the dataset schema
+        """
+        if self.media_type == fomm.VIDEO:
+            self.frames._reload(hard=hard)
+
+        super().reload(hard=hard)
+
     def save(self):
         """Saves the contents of the sample to the database."""
-        if self.media_type == fomm.VIDEO and self._in_db:
+        if self.media_type == fomm.VIDEO:
             self.frames._save()
 
         super().save()
@@ -407,33 +407,46 @@ class Sample(_Sample, metaclass=DocumentSingleton):
         sample = super().from_doc(doc, dataset=dataset)
 
         if sample.media_type == fomm.VIDEO:
-            sample._frames = fofr.Frames(sample=sample)
+            sample._frames = fofr.Frames(sample)
 
         return sample
 
 
-class SampleView(_Sample):
-    """A view of a sample returned by a:class:`fiftyone.core.view.DatasetView`.
+class SampleView(_SampleMixin, DocumentView):
+    """A view into a :class:`Sample` in a dataset.
 
-    SampleViews should never be created manually, only returned by dataset
-    views. Sample views differ from samples similar to how dataset views differ
-    from datasets:
+    Like :class:`Sample` instances, the fields of a :class:`SampleView`
+    instance can be modified, new fields can be created, and any changes can be
+    saved to the database.
 
-    -   A sample view only exposes a subset of all data for a sample
-    -   If a user attempts to modify an excluded field an error is raised
-    -   If a user attempts to modify a filtered field (the field itself, not
-        its elements) behavior is not guaranteed
+    :class:`SampleView` instances differ from :class:`Sample` instances in the
+    following ways:
+
+    -   A sample view may contain only a subset of the fields of its source
+        sample, either by selecting and/or excluding specific fields
+    -   A sample view may contain array fields or embedded array fields that
+        have been filtered, thus containing only a subset of the array elements
+        from the source sample
+    -   Excluded fields of a sample view may not be accessed or modified
+
+    .. note::
+
+        :meth:`SampleView.save` will not delete any excluded fields or filtered
+        array elements from the source sample.
+
+    Sample views should never be created manually; they are generated when
+    accessing the samples in a :class:`fiftyone.core.view.DatasetView`.
 
     Args:
-        doc: a :class:`fiftyone.core.odm.DatasetSampleDocument`
+        doc: a :class:`fiftyone.core.odm.mixins.DatasetSampleDocument`
         view: the :class:`fiftyone.core.view.DatasetView` that the sample
             belongs to
         selected_fields (None): a set of field names that this sample view is
-            restricted to
+            restricted to, if any
         excluded_fields (None): a set of field names that are excluded from
-            this sample view
+            this sample view, if any
         filtered_fields (None): a set of field names of list fields that are
-            filtered in this view and thus need special handling when saving
+            filtered in this sample view, if any
     """
 
     def __init__(
@@ -444,19 +457,18 @@ class SampleView(_Sample):
         excluded_fields=None,
         filtered_fields=None,
     ):
-        if selected_fields is not None and excluded_fields is not None:
-            selected_fields = selected_fields.difference(excluded_fields)
-            excluded_fields = None
-
-        self._view = view
-        self._selected_fields = selected_fields
-        self._excluded_fields = excluded_fields
-        self._filtered_fields = filtered_fields
-
-        super().__init__(doc, dataset=view._dataset)
+        super().__init__(
+            doc,
+            view,
+            selected_fields=selected_fields,
+            excluded_fields=excluded_fields,
+            filtered_fields=filtered_fields,
+        )
 
         if self.media_type == fomm.VIDEO:
-            self._frames = fofr.Frames(sample=self)
+            self._frames = fofr.FramesView(self)
+        else:
+            self._frames = None
 
     def __repr__(self):
         if self._selected_fields is not None:
@@ -475,74 +487,10 @@ class SampleView(_Sample):
             **kwargs,
         )
 
-    def __getattr__(self, name):
-        if not name.startswith("_") and name != "frames":
-            if (
-                self._selected_fields is not None
-                and name not in self._selected_fields
-            ):
-                raise AttributeError(
-                    "Field '%s' is not selected from this %s"
-                    % (name, type(self).__name__)
-                )
-
-            if (
-                self._excluded_fields is not None
-                and name in self._excluded_fields
-            ):
-                raise AttributeError(
-                    "Field '%s' is excluded from this %s"
-                    % (name, type(self).__name__)
-                )
-
-        return super().__getattr__(name)
-
-    @property
-    def field_names(self):
-        """An ordered tuple of field names of this sample.
-
-        This may be a subset of all fields of the dataset if fields have been
-        selected or excluded.
-        """
-        field_names = self._doc.field_names
-
-        if self._selected_fields is not None:
-            field_names = tuple(
-                fn for fn in field_names if fn in self._selected_fields
-            )
-
-        if self._excluded_fields is not None:
-            field_names = tuple(
-                fn for fn in field_names if fn not in self._excluded_fields
-            )
-
-        return field_names
-
-    @property
-    def selected_field_names(self):
-        """The set of field names that were selected on this sample, or
-        ``None`` if no fields were explicitly selected.
-        """
-        return self._selected_fields
-
-    @property
-    def excluded_field_names(self):
-        """The set of field names that were excluded on this sample, or
-        ``None`` if no fields were explicitly excluded.
-        """
-        return self._excluded_fields
-
-    @property
-    def filtered_field_names(self):
-        """The set of field names or ``embedded.field.name`` that have been
-        filtered on this sample, or ``None`` if no fields were filtered.
-        """
-        return self._filtered_fields
-
     def to_dict(self, include_frames=False):
-        """Serializes the sample to a JSON dictionary.
+        """Serializes the sample view to a JSON dictionary.
 
-        Sample IDs and private fields are excluded in this representation.
+        The sample ID and private fields are excluded in this representation.
 
         Args:
             include_frames (False): whether to include the frame labels for
@@ -560,17 +508,17 @@ class SampleView(_Sample):
 
     def save(self):
         """Saves the contents of this sample view to the database."""
-        if self.media_type == fomm.VIDEO and self._in_db:
+        if self.media_type == fomm.VIDEO:
             try:
                 self.frames._save()
             except AttributeError:
                 # frames is not selected, so we don't need to save it
                 pass
 
-        self._doc.save(filtered_fields=self._filtered_fields)
+        super().save()
 
         # Reload the parent sample of this view if it exists in memory
-        Sample._reload_doc(self.dataset._sample_collection_name, self.id)
+        Sample._reload_doc(self._dataset._sample_collection_name, self.id)
 
 
 def _apply_confidence_thresh(label, confidence_thresh):

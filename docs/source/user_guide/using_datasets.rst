@@ -451,19 +451,17 @@ Removing samples from a dataset
 
 Samples can be removed from a |Dataset| through their ID, either one at a time
 or in batches via
-:meth:`remove_sample() <fiftyone.core.dataset.Dataset.remove_sample>` and
-:meth:`remove_samples() <fiftyone.core.dataset.Dataset.remove_samples>`,
-respectively:
+:meth:`delete_samples() <fiftyone.core.dataset.Dataset.delete_samples>`:
 
 .. code-block:: python
     :linenos:
 
-    dataset.remove_sample(sample_id)
+    dataset.delete_samples(sample_id)
 
     # equivalent to above
     del dataset[sample_id]
 
-    dataset.remove_samples([sample_id2, sample_id3])
+    dataset.delete_samples([sample_id2, sample_id3])
 
 Samples can also be removed from a |Dataset| by passing |Sample| instance(s)
 or |DatasetView| instances:
@@ -473,11 +471,11 @@ or |DatasetView| instances:
 
     # Remove a random sample
     sample = dataset.take(1).first()
-    dataset.remove_sample(sample)
+    dataset.delete_samples(sample)
 
     # Remove 10 random samples
     view = dataset.take(10)
-    dataset.remove_samples(view)
+    dataset.delete_samples(view)
 
 If a |Sample| object in memory is deleted from a dataset, it will revert to
 a |Sample| that has not been added to a |Dataset|:
@@ -671,8 +669,8 @@ Setting a field to an inappropriate type raises an error:
 .. note::
 
     If a |Sample| is in a |Dataset|, then
-    :meth:`sample.save() <fiftyone.core.sample.Sample.save>` must be used
-    whenever the sample is updated.
+    :meth:`sample.save() <fiftyone.core.sample.Sample.save>` must be called in
+    order to persist the changes to the database.
 
 Removing fields from a sample
 -----------------------------
@@ -683,11 +681,12 @@ A field can be deleted from a |Sample| using `del`:
     :linenos:
 
     del sample["integer_field"]
-    print(sample.integer_field)
-    # None
+
+If the |Sample| is not yet in a dataset, deleting a field will remove it from
+the sample. If the |Sample| is in a dataset, the field's value will be `None`.
 
 Fields can also be deleted at the |Dataset| level, in which case they are
-deleted from every |Sample| in the dataset:
+removed from every |Sample| in the dataset:
 
 .. code-block:: python
     :linenos:

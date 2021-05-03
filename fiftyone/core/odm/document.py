@@ -262,13 +262,13 @@ class MongoEngineBaseDocument(SerializableDocument):
 
     def set_field(self, field_name, value, create=False):
         if not create and not self.has_field(field_name):
-            raise ValueError("Document has no field '%s'" % field_name)
+            raise AttributeError("Document has no field '%s'" % field_name)
 
         setattr(self, field_name, value)
 
     def clear_field(self, field_name):
         if not self.has_field(field_name):
-            raise ValueError("Document has no field '%s'" % field_name)
+            raise AttributeError("Document has no field '%s'" % field_name)
 
         super().__delattr__(field_name)
 

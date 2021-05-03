@@ -1,51 +1,18 @@
 """
-Base class for objects that are backed by database documents.
+Base classes for objects that are backed by database documents.
 
 | Copyright 2017-2021, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from functools import wraps
-import inspect
+from copy import deepcopy
 
 import eta.core.serial as etas
 
 from fiftyone.core.singletons import DocumentSingleton
 
 
-# @todo not yet used
-def no_views(func):
-    @wraps(func)
-    def wrapper(self_or_cls, *args, **kwargs):
-        if self_or_cls._IS_VIEW:
-            cls = (
-                self_or_cls
-                if inspect.isclass(self_or_cls)
-                else self_or_cls.__class__
-            )
-            raise ValueError(
-                "The %s() method cannot be invoked; the %s class is a view"
-                % (func.__name__, cls.__name__)
-            )
-
-        return func(self_or_cls, *args, **kwargs)
-
-    return wrapper
-
-
-class Document(object):
-    """Base class for objects that are associated with
-    :class:`fiftyone.core.dataset.Dataset` instances and are backed by
-    documents in database collections.
-
-    Args:
-        doc: the backing :class:`fiftyone.core.odm.document.Document`
-        dataset (None): the :class:`fiftyone.core.dataset.Dataset` to which the
-            document belongs
-    """
-
-    _NO_DATASET_DOC_CLS = None
-
+class _Document(object):
     def __init__(self, doc, dataset=None):
         self._doc = doc
         self._dataset = dataset
@@ -59,51 +26,56 @@ class Document(object):
     def __dir__(self):
         return super().__dir__() + list(self.field_names)
 
-    def __getattr__(self, name):
-        try:
-            return super().__getattribute__(name)
-        except AttributeError:
-            return self._doc.get_field(name)
-
-    def __setattr__(self, name, value):
-        if name.startswith("_") or (
-            hasattr(self, name) and not self._doc.has_field(name)
-        ):
-            super().__setattr__(name, value)
-        else:
-            self._doc.__setattr__(name, value)
-
-    def __delattr__(self, name):
-        try:
-            self.__delitem__(name)
-        except KeyError:
-            super().__delattr__(name)
-
-    def __getitem__(self, field_name):
-        try:
-            return self.get_field(field_name)
-        except AttributeError:
-            raise KeyError(
-                "%s has no field '%s'" % (self.__class__.__name__, field_name)
-            )
-
-    def __setitem__(self, field_name, value):
-        self.set_field(field_name, value=value)
-
-    def __delitem__(self, field_name):
-        try:
-            self.clear_field(field_name)
-        except ValueError as e:
-            raise KeyError(e.args[0])
-
-    def __copy__(self):
-        return self.copy()
-
     def __eq__(self, other):
         if not isinstance(other, self.__class__):
             return False
 
         return self._doc == other._doc
+
+    def __getattr__(self, name):
+        try:
+            return super().__getattribute__(name)
+        except AttributeError:
+            return self.get_field(name)
+
+    def __setattr__(self, name, value):
+        if name.startswith("_"):
+            super().__setattr__(name, value)
+            return
+
+        if not self.has_field(name):
+            dtype = "frame" if "Frame" in self.__class__.__name__ else "sample"
+            raise ValueError(
+                "Adding %s fields using the `%s.field = value` syntax is not "
+                "allowed; use `%s['field'] = value` instead"
+                % (dtype, dtype, dtype)
+            )
+
+        self.set_field(name, value)
+
+    def __delattr__(self, name):
+        try:
+            super().__delattr__(name)
+        except AttributeError:
+            self.clear_field(name)
+
+    def __getitem__(self, field_name):
+        try:
+            return self.get_field(field_name)
+        except AttributeError as e:
+            raise KeyError(e.args[0])
+
+    def __setitem__(self, field_name, value):
+        self.set_field(field_name, value)
+
+    def __delitem__(self, field_name):
+        try:
+            self.clear_field(field_name)
+        except AttributeError as e:
+            raise KeyError(e.args[0])
+
+    def __copy__(self):
+        return self.copy()
 
     @property
     def id(self):
@@ -148,13 +120,6 @@ class Document(object):
         """Whether the document has been inserted into the database."""
         return self._doc.in_db
 
-    @property
-    def _skip_iter_field_names(self):
-        """A tuple of names of fields to skip when :meth:`iter_fields` is
-        called.
-        """
-        return tuple()
-
     def _get_field_names(self, include_private=False):
         """Returns an ordered tuple of field names of this document.
 
@@ -192,7 +157,12 @@ class Document(object):
         if field_name == "id":
             return self.id
 
-        return self._doc.get_field(field_name)
+        try:
+            return self._doc.get_field(field_name)
+        except AttributeError:
+            raise AttributeError(
+                "%s has no field '%s'" % (self.__class__.__name__, field_name)
+            )
 
     def set_field(self, field_name, value, create=True):
         """Sets the value of a field of the document.
@@ -203,8 +173,8 @@ class Document(object):
             create (True): whether to create the field if it does not exist
 
         Raises:
-            ValueError: if ``field_name`` is not an allowed field name or does
-                not exist and ``create == False``
+            ValueError: if ``field_name`` is not an allowed field name
+            AttirubteError: if the field does not exist and ``create == False``
         """
         if field_name.startswith("_"):
             raise ValueError(
@@ -222,6 +192,10 @@ class Document(object):
             expand_schema (True): whether to dynamically add new fields
                 encountered to the document schema. If False, an error is
                 raised if any fields are not in the document schema
+
+        Raises:
+            AttributeError: if ``expand_schema == False`` and a field does not
+                exist
         """
         for field_name, value in fields_dict.items():
             self.set_field(field_name, value, create=expand_schema)
@@ -233,7 +207,7 @@ class Document(object):
             field_name: the name of the field to clear
 
         Raises:
-            ValueError: if the field does not exist
+            AttributeError: if the field does not exist
         """
         self._doc.clear_field(field_name)
 
@@ -241,15 +215,10 @@ class Document(object):
         """Returns an iterator over the ``(name, value)`` pairs of the fields
         of the document.
 
-        Private fields are omitted.
-
         Returns:
             an iterator that emits ``(name, value)`` tuples
         """
-        field_names = tuple(
-            f for f in self.field_names if f not in self._skip_iter_field_names
-        )
-        for field_name in field_names:
+        for field_name in self.field_names:
             yield field_name, self.get_field(field_name)
 
     def merge(
@@ -273,6 +242,10 @@ class Document(object):
             expand_schema (True): whether to dynamically add new fields
                 encountered to the document schema. If False, an error is
                 raised if any fields are not in the document schema
+
+        Raises:
+            AttributeError: if ``expand_schema == False`` and a field does not
+                exist
         """
         if omit_fields is not None:
             omit_fields = set(omit_fields)
@@ -309,7 +282,7 @@ class Document(object):
     def to_dict(self):
         """Serializes the document to a JSON dictionary.
 
-        Sample IDs and private fields are excluded in this representation.
+        The document ID and private fields are excluded in this representation.
 
         Returns:
             a JSON dict
@@ -320,7 +293,7 @@ class Document(object):
     def to_json(self, pretty_print=False):
         """Serializes the document to a JSON string.
 
-        Sample IDs and private fields are excluded in this representation.
+        The document ID and private fields are excluded in this representation.
 
         Args:
             pretty_print (False): whether to render the JSON in human readable
@@ -338,14 +311,54 @@ class Document(object):
         Returns:
             a BSON dict
         """
-        return self._doc.to_dict(extended=False)
+        return self._doc.to_dict()
 
     def save(self):
         """Saves the document to the database."""
         self._doc.save()
 
+
+class Document(_Document):
+    """Abstract base class for objects that are associated with
+    :class:`fiftyone.core.dataset.Dataset` instances and are backed by
+    documents in database collections.
+
+    Document subclasses whose in-dataset instances should be singletons can
+    inherit this behavior by deriving from the
+    :class:`fiftyone.core.singletons.DocumentSingleton` metaclass.
+
+    Args:
+        **kwargs: field names and values
+    """
+
+    # The :class:`fiftyone.core.odm.document.Document` class used by this class
+    # to store backing documents for instances that are *not* in the dataset
+    _NO_DATASET_DOC_CLS = None
+
+    def __init__(self, **kwargs):
+        # pylint: disable=not-callable
+        doc = self._NO_DATASET_DOC_CLS(**kwargs)
+        super().__init__(doc)
+
+    def copy(self):
+        """Returns a deep copy of the document that has not been added to the
+        database.
+
+        Returns:
+            a :class:`Document`
+        """
+        return self.__class__(
+            **{k: deepcopy(v) for k, v in self.iter_fields()}
+        )
+
     def reload(self, hard=False):
-        """Reloads the document from the database."""
+        """Reloads the document from the database.
+
+        Args:
+            hard (False): whether to reload the document's schema in addition
+                to its field values. This is necessary if new fields may have
+                been added to the document schema
+        """
         if hard:
             self._reload_backing_doc()
         else:
@@ -414,6 +427,12 @@ class Document(object):
         doc = cls._NO_DATASET_DOC_CLS.from_json(s)
         return cls.from_doc(doc)
 
+    def _reload_backing_doc(self):
+        """Reloads the backing doc from the database."""
+        raise NotImplementedError(
+            "subclass must implement _reload_backing_doc()"
+        )
+
     def _set_backing_doc(self, doc, dataset=None):
         """Sets the backing doc for the document.
 
@@ -422,9 +441,6 @@ class Document(object):
             dataset (None): the :class:`fiftyone.core.dataset.Dataset` to which
                 the document belongs, if any
         """
-        if not doc.id:
-            doc.save()
-
         self._doc = doc
         self._dataset = dataset
 
@@ -440,13 +456,172 @@ class Document(object):
         self._doc = self.copy()._doc
         self._dataset = None
 
-    def _reload_backing_doc(self):
-        """Reloads the backing doc from the database, if possible.
 
-        Subclasses should implement this method if they support hot reloading.
+class DocumentView(_Document):
+    """A view into a :class:`Document` in a dataset.
+
+    Like :class:`Document` instances, the fields of a :class:`DocumentView`
+    instance can be modified, new fields can be created, and any changes can be
+    saved to the database.
+
+    :class:`DocumentView` instances differ from :class:`Document` instances
+    in the following ways:
+
+    -   A document view may contain only a subset of the fields of its source
+        document, either by selecting and/or excluding specific fields
+    -   A document view may contain array fields or embedded array fields that
+        have been filtered, thus containing only a subset of the array elements
+        from the source document
+    -   Excluded fields of a document view may not be accessed or modified
+
+    .. note::
+
+        :meth:`DocumentView.save` will not delete any excluded fields or
+        filtered array elements from the source document.
+
+    Document views should never be created manually; they are generated when
+    accessing the contents of a :class:`fiftyone.core.view.DatasetView`.
+
+    Args:
+        doc: a :class:`fiftyone.core.odm.document.Document`
+        view: the :class:`fiftyone.core.view.DatasetView` that the document
+            belongs to
+        selected_fields (None): a set of field names that this document view is
+            restricted to, if any
+        excluded_fields (None): a set of field names that are excluded from
+            this document view, if any
+        filtered_fields (None): a set of field names of array fields that are
+            filtered in this document view, if any
+    """
+
+    def __init__(
+        self,
+        doc,
+        view,
+        selected_fields=None,
+        excluded_fields=None,
+        filtered_fields=None,
+    ):
+        if selected_fields is not None and excluded_fields is not None:
+            selected_fields = selected_fields.difference(excluded_fields)
+            excluded_fields = None
+
+        self._view = view
+        self._selected_fields = selected_fields
+        self._excluded_fields = excluded_fields
+        self._filtered_fields = filtered_fields
+
+        super().__init__(doc, dataset=view._dataset)
+
+    def __repr__(self):
+        if self._selected_fields is not None:
+            select_fields = ("id",) + tuple(self._selected_fields)
+        else:
+            select_fields = None
+
+        return self._doc.fancy_repr(
+            class_name=self.__class__.__name__,
+            select_fields=select_fields,
+            exclude_fields=self._excluded_fields,
+        )
+
+    def __getattr__(self, name):
+        if not name.startswith("_"):
+            if (
+                self._selected_fields is not None
+                and name not in self._selected_fields
+            ):
+                raise AttributeError(
+                    "The '%s' field does not exist or has not been selected "
+                    "on this %s" % (name, self.__class__.__name__)
+                )
+
+            if (
+                self._excluded_fields is not None
+                and name in self._excluded_fields
+            ):
+                raise AttributeError(
+                    "Field '%s' is excluded from this %s"
+                    % (name, self.__class__.__name__)
+                )
+
+        return super().__getattr__(name)
+
+    @property
+    def field_names(self):
+        """An ordered tuple of field names of this document.
+
+        This may be a subset of all fields of the dataset if fields have been
+        selected or excluded.
         """
-        pass
+        field_names = super().field_names
 
-    def _delete(self):
-        """Deletes the document from the database."""
-        self._doc.delete()
+        if self._selected_fields is not None:
+            field_names = tuple(
+                fn for fn in field_names if fn in self._selected_fields
+            )
+
+        if self._excluded_fields is not None:
+            field_names = tuple(
+                fn for fn in field_names if fn not in self._excluded_fields
+            )
+
+        return field_names
+
+    @property
+    def selected_field_names(self):
+        """The set of field names that were selected on this document view, or
+        ``None`` if no fields were explicitly selected.
+        """
+        return self._selected_fields
+
+    @property
+    def excluded_field_names(self):
+        """The set of field names that were excluded on this document view, or
+        ``None`` if no fields were explicitly excluded.
+        """
+        return self._excluded_fields
+
+    @property
+    def filtered_field_names(self):
+        """The set of field names or ``embedded.field.names`` that have been
+        filtered on this document view, or ``None`` if no fields were filtered.
+        """
+        return self._filtered_fields
+
+    def to_dict(self):
+        """Serializes the document view to a JSON dictionary.
+
+        The document ID and private fields are excluded in this representation.
+
+        Returns:
+            a JSON dict
+        """
+        d = super().to_dict()
+
+        if self._selected_fields or self._excluded_fields:
+            d = {k: v for k, v in d.items() if k in self.field_names}
+
+        return d
+
+    def copy(self):
+        """Returns a deep copy of the document view.
+
+        Returns:
+            a :class:`DocumentView`
+        """
+        return self.__class__(
+            self._doc.copy(),
+            self._view,
+            selected_fields=self._selected_fields,
+            excluded_fields=self._excluded_fields,
+            filtered_fields=self._filtered_fields,
+        )
+
+    def save(self):
+        """Saves the contents of this sample view to the database."""
+        self._doc.save(filtered_fields=self._filtered_fields)
+
+        # @todo add support for refreshing parent Document singleton here.
+        # Currently this is implemented by subclasses since Sample and Frame
+        # have different key structures

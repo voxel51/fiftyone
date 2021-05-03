@@ -517,9 +517,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             a string summary
         """
-        aggs = self.aggregate(
-            [foa.Count(), foa.Distinct("tags")], _attach_frames=False
-        )
+        aggs = self.aggregate([foa.Count(), foa.Distinct("tags")])
         elements = [
             "Name:           %s" % self.name,
             "Media type:     %s" % self.media_type,
@@ -1294,7 +1292,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             sample._set_backing_doc(doc, dataset=self)
 
         if self.media_type == fom.VIDEO:
-            sample.frames._sample = sample
             sample.frames._save(insert=True)
 
         return str(d["_id"])
@@ -1408,7 +1405,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 sample._set_backing_doc(doc, dataset=self)
 
             if self.media_type == fom.VIDEO:
-                sample.frames._sample = sample
                 sample.frames._save(insert=True)
 
         return [str(d["_id"]) for d in dicts]
@@ -1589,6 +1585,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         )
 
         if self.media_type == fom.VIDEO:
+            # pylint: disable=unexpected-keyword-arg
             fofr.Frame._reset_docs(
                 self._frame_collection_name, sample_ids=sample_ids
             )
@@ -1850,12 +1847,15 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         if sample_ops:
             foo.bulk_write(sample_ops, self._sample_collection)
+
             fos.Sample._reload_docs(
                 self._sample_collection_name, doc_ids=sample_ids
             )
 
         if frame_ops:
             foo.bulk_write(frame_ops, self._frame_collection)
+
+            # pylint: disable=unexpected-keyword-arg
             fofr.Frame._reload_docs(
                 self._frame_collection_name, sample_ids=sample_ids
             )
@@ -3114,7 +3114,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def _pipeline(
         self,
         pipeline=None,
-        attach_frames=True,
+        attach_frames=False,
         detach_frames=False,
         frames_only=False,
     ):
@@ -3160,7 +3160,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def _aggregate(
         self,
         pipeline=None,
-        attach_frames=True,
+        attach_frames=False,
         detach_frames=False,
         frames_only=False,
     ):
@@ -3342,7 +3342,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
             field.validate(value)
 
-    def reload(self, hard=True):
+    def reload(self):
         """Reloads the dataset and any in-memory samples from the database."""
         self._reload(hard=True)
         self._reload_docs(hard=True)
@@ -3551,7 +3551,7 @@ def _clone_dataset_or_view(dataset_or_view, name):
     # Clone samples
     #
 
-    pipeline = dataset_or_view._pipeline(attach_frames=False)
+    pipeline = dataset_or_view._pipeline(detach_frames=True)
     pipeline += [{"$out": sample_collection_name}]
     foo.aggregate(dataset._sample_collection, pipeline)
 
@@ -3604,7 +3604,7 @@ def _save_view(view, fields):
     # Save samples
     #
 
-    pipeline = view._pipeline(attach_frames=False)
+    pipeline = view._pipeline(detach_frames=True)
 
     if merge:
         if sample_fields:
@@ -3647,6 +3647,7 @@ def _save_view(view, fields):
     doc_ids = dataset.values("id")
 
     if dataset.media_type == fom.VIDEO:
+        # pylint: disable=unexpected-keyword-arg
         fofr.Frame._reload_docs(
             dataset._frame_collection_name, sample_ids=doc_ids
         )
@@ -3933,7 +3934,7 @@ def _merge_samples(
     )
 
     # Merge samples
-    src_dataset._aggregate(pipeline=sample_pipeline, attach_frames=False)
+    src_dataset._aggregate(pipeline=sample_pipeline)
 
     # Cleanup indexes
 
@@ -3979,7 +3980,7 @@ def _merge_samples(
         )
 
         # Merge frames
-        src_dataset._aggregate(pipeline=frame_pipeline, attach_frames=False)
+        src_dataset._aggregate(pipeline=frame_pipeline)
 
         # Drop indexes
         dst_dataset._frame_collection.drop_index(dst_frame_index)
