@@ -652,6 +652,10 @@ class DistinctCount(Aggregation):
             aggregating
     """
 
+    def __init__(self, field_or_expr, expr=None, _first=None):
+        super().__init__(field_or_expr, expr=expr)
+        self._first = _first
+
     def default_result(self):
         """Returns the default result for this aggregation.
 
@@ -674,7 +678,25 @@ class DistinctCount(Aggregation):
     def to_mongo(self, sample_collection):
         path, pipeline, _ = self._parse_field_and_expr(sample_collection)
 
-        pipeline += [{"$group": {"_id": "$" + path}}, {"$count": "count"}]
+        if self._first is None:
+            pipeline += [{"$group": {"_id": "$" + path}}, {"$count": "count"}]
+        else:
+            pipeline += [
+                {"$group": {"_id": "$" + path}},
+                {"$sort", {"_id": 1}},
+                {
+                    "$group": {
+                        "count": {"$sum": 1},
+                        "first": {
+                            "$cond": [
+                                {"$lt": [{"$size": "$first"}, self._first]},
+                                {"$push": "$" + path},
+                                None,
+                            ]
+                        },
+                    }
+                },
+            ]
 
         return pipeline
 
