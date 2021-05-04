@@ -85,70 +85,24 @@ export const excludeModalAtom = atomFamily<boolean, string>({
   default: false,
 });
 
-export const searchStringField = atomFamily<string, string>({
-  key: "searchStringField",
-  default: "",
-});
-
-export const searchStringFields = selectorFamily<
+export const totalAtom = selectorFamily<
   { count: number; results: string[] },
-  { path: string; limit?: number }
+  string
 >({
-  key: "searchStringFields",
-  get: ({ path, limit = LIST_LIMIT }) => async ({ get }) => {
-    const search = get(searchStringField(path));
-    const id = uuid();
-
-    const wrap = (handler) => ({ data }) => {
-      data = JSON.parse(data);
-      data.type === id && handler(data);
-    };
-
-    const promise = new Promise<{ count: number; results: string[] }>(
-      (resolve) => {
-        const listener = wrap(({ count, results }) => {
-          socket.removeEventListener("message", listener);
-          resolve({ count, results });
-        });
-        socket.addEventListener("message", listener);
-        socket.send(
-          packageMessage("distinct", { path, uuid: id, search, limit })
-        );
-      }
-    );
-
-    const result = await promise;
-    return result;
-  },
-});
-
-export const totalAtom = selectorFamily<number, string>({
   key: "stringFieldTotal",
   get: (path) => ({ get }) => {
-    return (get(selectors.datasetStats) ?? []).reduce((acc, cur) => {
-      if (cur.name === path && cur._CLS === AGGS.DISTINCT_COUNT) {
-        return cur.result;
-      }
-      return acc;
-    }, null);
-  },
-});
-
-export const valuesAtom = selectorFamily<
-  { total: number; count: number; results: string[] },
-  { path: string; limit?: number }
->({
-  key: "stringFieldValues",
-  get: ({ path, limit = LIST_LIMIT }) => ({ get }) => {
-    const values = {
-      total: get(totalAtom(path)),
-      ...get(searchStringFields({ path, limit })),
-    };
-
-    if (get(hasNoneField(path))) {
-      values.results = [null, ...values.results];
-    }
-    return values;
+    return (get(selectors.datasetStats) ?? []).reduce(
+      (acc, cur) => {
+        if (cur.name === path && cur._CLS === AGGS.DISTINCT) {
+          return {
+            count: cur.result[0],
+            results: cur.result[1],
+          };
+        }
+        return acc;
+      },
+      { count: 0, results: [] }
+    );
   },
 });
 
@@ -172,10 +126,8 @@ const StringFieldFilter = ({ expanded, entry }) => {
       <StringFilter
         valueName={entry.path}
         color={entry.color}
-        valuesAtom={valuesAtom({ path: entry.path })}
         selectedValuesAtom={selectedValuesAtom(entry.path)}
         excludeAtom={excludeAtom(entry.path)}
-        searchAtom={searchStringField(entry.path)}
         totalAtom={totalAtom(entry.path)}
         ref={ref}
       />

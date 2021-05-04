@@ -9,15 +9,15 @@ import {
   useSetRecoilState,
 } from "recoil";
 import styled from "styled-components";
+import uuid from "uuid-v4";
 
 import Checkbox from "../Common/Checkbox";
 import Input from "../Common/Input";
 import Results, { ResultsContainer } from "../Common/Results";
 import { Button } from "../FieldsSidebar";
 import { PopoutSectionTitle, TabOption } from "../utils";
-import * as selectors from "../../recoil/selectors";
-import { filterView } from "../../utils/view";
 import { LIST_LIMIT } from "./StringFieldFilter";
+import { ItemAction } from "../Actions/utils";
 
 const StringFilterContainer = styled.div`
   background: ${({ theme }) => theme.backgroundDark};
@@ -87,34 +87,30 @@ const ExcludeOption = ({
 };
 
 interface WrapperProps {
-  valuesAtom: RecoilValueReadOnly<{
-    total: number;
-    count: number;
-    results: string[];
-  }>;
+  results: string[];
   selectedValuesAtom: RecoilState<string[]>;
-  searchAtom: RecoilState<string>;
   excludeAtom: RecoilState<boolean>;
   name: string;
   valueName: string;
   color: string;
+  count: number;
 }
 
 const Wrapper = ({
   color,
-  valuesAtom,
+  results,
+  count,
   selectedValuesAtom,
   excludeAtom,
   valueName,
 }: WrapperProps) => {
   const [selected, setSelected] = useRecoilState(selectedValuesAtom);
-  const { total, results } = useRecoilValue(valuesAtom);
   const selectedSet = new Set(selected);
   const setExcluded = useSetRecoilState(excludeAtom);
 
   let allValues = selected;
 
-  if (total <= LIST_LIMIT) {
+  if (count <= LIST_LIMIT) {
     allValues = [...allValues, ...results];
   }
 
@@ -173,11 +169,7 @@ const useOnSelect = (selectedAtom: RecoilState<string[]>) => {
 };
 
 interface ResultsWrapperProps {
-  valuesAtom: RecoilValueReadOnly<{
-    total: number;
-    count: number;
-    results: string[];
-  }>;
+  results: string[];
   color: string;
   shown: boolean;
   onSelect: (value: string) => void;
@@ -186,15 +178,13 @@ interface ResultsWrapperProps {
 }
 
 const ResultsWrapper = ({
-  valuesAtom,
+  results,
   color,
   shown,
   onSelect,
   onMouseEnter,
   onMouseLeave,
 }: ResultsWrapperProps) => {
-  const { results } = useRecoilValue(valuesAtom);
-
   return (
     <>
       {shown && (
@@ -202,14 +192,16 @@ const ResultsWrapper = ({
           onMouseEnter={onMouseEnter}
           onMouseLeave={onMouseLeave}
         >
-          <Suspense fallback={"..."}>
+          {results ? (
             <Results
               onSelect={onSelect}
               results={results}
               active={null}
               highlight={color}
             />
-          </Suspense>
+          ) : (
+            <ItemAction style={{ cursor: "default" }}>Loading...</ItemAction>
+          )}
         </ResultsContainer>
       )}
     </>
@@ -217,15 +209,12 @@ const ResultsWrapper = ({
 };
 
 interface Props {
-  valuesAtom: RecoilValueReadOnly<{
-    total: number;
+  totalAtom: RecoilValueReadOnly<{
     count: number;
     results: string[];
   }>;
   selectedValuesAtom: RecoilState<string[]>;
-  searchAtom: RecoilState<string>;
   excludeAtom: RecoilState<boolean>;
-  totalAtom: RecoilValueReadOnly<number>;
   name?: string;
   valueName: string;
   color: string;
@@ -236,9 +225,7 @@ const StringFilter = React.memo(
     (
       {
         name,
-        searchAtom,
         valueName,
-        valuesAtom,
         color,
         selectedValuesAtom,
         excludeAtom,
@@ -246,19 +233,17 @@ const StringFilter = React.memo(
       }: Props,
       ref
     ) => {
-      const [search, setSearch] = useRecoilState(searchAtom);
       const [selected, setSelected] = useRecoilState(selectedValuesAtom);
-      const view = useRecoilValue(selectors.view);
-      const total = useRecoilValue(totalAtom);
-      const datasetName = useRecoilValue(selectors.datasetName);
+      const { count, results } = useRecoilValue(totalAtom);
       const [focused, setFocused] = useState(false);
       const [hovering, setHovering] = useState(false);
+      const [searchResults, setSearchResults] = useState<string[]>(null);
 
       const onSelect = useOnSelect(selectedValuesAtom);
 
       useLayoutEffect(() => {
-        setSearch("");
-      }, [filterView(view), datasetName]);
+        // todo
+      }, []);
 
       return (
         <NamedStringFilterContainer ref={ref}>
@@ -266,26 +251,21 @@ const StringFilter = React.memo(
             {name && <>{name}</>}
           </NamedStringFilterHeader>
           <StringFilterContainer>
-            {total > LIST_LIMIT && (
+            {count > LIST_LIMIT && (
               <>
                 <Input
                   key={"input"}
                   color={color}
-                  setter={(value) => setSearch(value)}
-                  value={search}
-                  onEnter={() => {
-                    const newSelected = new Set([...selected]);
-                    newSelected.add(search);
-                    setSelected([...newSelected].sort());
-                    setSearch("");
-                  }}
+                  setter={(v) => {}}
+                  value={""}
+                  onEnter={() => {}}
                   placeholder={`+ filter by ${valueName}`}
                   onFocus={() => setFocused(true)}
                   onBlur={() => !hovering && setFocused(false)}
                 />
                 <ResultsWrapper
                   key={"results"}
-                  valuesAtom={valuesAtom}
+                  results={searchResults}
                   color={color}
                   shown={focused || hovering}
                   onSelect={onSelect}
@@ -294,17 +274,16 @@ const StringFilter = React.memo(
                 />
               </>
             )}
-            <Suspense fallback={"..."}>
-              <Wrapper
-                searchAtom={searchAtom}
-                color={color}
-                name={name}
-                valuesAtom={valuesAtom}
-                selectedValuesAtom={selectedValuesAtom}
-                excludeAtom={excludeAtom}
-                valueName={valueName}
-              />
-            </Suspense>
+
+            <Wrapper
+              color={color}
+              name={name}
+              results={results}
+              selectedValuesAtom={selectedValuesAtom}
+              excludeAtom={excludeAtom}
+              valueName={valueName}
+              count={count}
+            />
           </StringFilterContainer>
         </NamedStringFilterContainer>
       );

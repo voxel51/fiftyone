@@ -38,10 +38,14 @@ interface ResultProps {
   onClick: () => void;
 }
 
-const Result = React.memo(({ highlight, result }: ResultProps) => {
+const Result = React.memo(({ highlight, result, onClick }: ResultProps) => {
   const props = useHighlightHover(false);
   return (
-    <ItemAction style={result === null ? { color: highlight } : {}} {...props}>
+    <ItemAction
+      style={result === null ? { color: highlight } : {}}
+      {...props}
+      onClick={onClick}
+    >
       {result === null ? "None" : result}
     </ItemAction>
   );
