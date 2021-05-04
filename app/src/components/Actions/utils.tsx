@@ -57,7 +57,7 @@ export const ItemAction = animated(styled.a`
   }
 `);
 
-export const useHighlightHover = (disabled, override = null) => {
+export const useHighlightHover = (disabled, override = null, color = null) => {
   const [hovering, setHovering] = useState(false);
   const theme = useTheme();
   const on =
@@ -70,7 +70,7 @@ export const useHighlightHover = (disabled, override = null) => {
       : disabled
       ? theme.backgroundDark
       : theme.backgroundDark,
-    color: on ? theme.font : theme.fontDark,
+    color: color ? color : on ? theme.font : theme.fontDark,
   });
 
   const onMouseEnter = () => setHovering(true);

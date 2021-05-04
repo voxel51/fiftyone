@@ -13,8 +13,6 @@ import * as selectors from "../../recoil/selectors";
 import StringFilter from "./StringFilter";
 import { AGGS } from "../../utils/labels";
 import { useExpand, hasNoneField } from "./utils";
-import socket from "../../shared/connection";
-import { packageMessage } from "../../utils/socket";
 
 export const LIST_LIMIT = 15;
 
@@ -91,7 +89,8 @@ export const totalAtom = selectorFamily<
 >({
   key: "stringFieldTotal",
   get: (path) => ({ get }) => {
-    return (get(selectors.datasetStats) ?? []).reduce(
+    const hasNone = get(hasNoneField(path));
+    const data = (get(selectors.datasetStats) ?? []).reduce(
       (acc, cur) => {
         if (cur.name === path && cur._CLS === AGGS.DISTINCT) {
           return {
@@ -103,6 +102,12 @@ export const totalAtom = selectorFamily<
       },
       { count: 0, results: [] }
     );
+
+    if (hasNone) {
+      data.count = data.count + 1;
+      data.results = [...data.results, null].sort();
+    }
+    return data;
   },
 });
 
@@ -129,6 +134,7 @@ const StringFieldFilter = ({ expanded, entry }) => {
         selectedValuesAtom={selectedValuesAtom(entry.path)}
         excludeAtom={excludeAtom(entry.path)}
         totalAtom={totalAtom(entry.path)}
+        hasNoneAtom={hasNoneField(entry.path)}
         path={entry.path}
         ref={ref}
       />

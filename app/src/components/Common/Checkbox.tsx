@@ -54,7 +54,7 @@ const Checkbox = React.memo(
             }}
           />
           <CheckboxName style={name === null ? { color: color } : {}}>
-            {name}
+            {name === null ? "None" : name}
           </CheckboxName>
         </StyledCheckbox>
       </StyledCheckboxContainer>

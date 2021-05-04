@@ -48,12 +48,12 @@ interface ResultProps {
 
 const Result = React.memo(
   ({ highlight, result, onClick, alignRight }: ResultProps) => {
-    const props = useHighlightHover(false);
-    const style = result === null ? { color: highlight } : {};
-
-    if (alignRight) {
-      style.textAlign = "right";
-    }
+    const props = useHighlightHover(
+      false,
+      null,
+      result === null ? highlight : null
+    );
+    const style = result === null ? { textAlign: "right" } : {};
 
     return (
       <ResultDiv style={style} {...props} onClick={onClick}>

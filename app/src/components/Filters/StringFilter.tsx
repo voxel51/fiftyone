@@ -163,11 +163,12 @@ const Wrapper = ({
   );
 };
 
-const useOnSelect = (selectedAtom: RecoilState<string[]>) => {
+const useOnSelect = (selectedAtom: RecoilState<string[]>, callbacks) => {
   return useRecoilCallback(({ snapshot, set }) => async (value: string) => {
     const selected = new Set(await snapshot.getPromise(selectedAtom));
     selected.add(value);
     set(selectedAtom, [...selected].sort());
+    callbacks.forEach((callback) => callback());
   });
 };
 
@@ -195,7 +196,7 @@ const ResultsWrapper = ({
   const theme = useTheme();
   return (
     <>
-      {shown && (
+      {shown && results && (
         <ResultsContainer
           onMouseEnter={onMouseEnter}
           onMouseLeave={onMouseLeave}
@@ -209,20 +210,19 @@ const ResultsWrapper = ({
               alignRight={alignRight}
             />
           )}
-          {results && subCount > results.length && (
-            <>
-              <PopoutSectionTitle />
-              <ItemAction
-                style={{
-                  cursor: "default",
-                  textAlign: "right",
-                  color: theme.font,
-                }}
-              >
-                {(subCount - results.length).toLocaleString()} more results
-              </ItemAction>
-            </>
-          )}
+          <PopoutSectionTitle />
+          <ItemAction
+            style={{
+              cursor: "default",
+              textAlign: "right",
+              color: theme.font,
+            }}
+          >
+            {results && subCount > results.length && (
+              <>{(subCount - results.length).toLocaleString()} more results</>
+            )}
+            {results && results.length === 0 && <>No results</>}
+          </ItemAction>
         </ResultsContainer>
       )}
     </>
@@ -236,6 +236,7 @@ interface Props {
   }>;
   selectedValuesAtom: RecoilState<string[]>;
   excludeAtom: RecoilState<boolean>;
+  hasNoneAtom: RecoilValueReadOnly<boolean>;
   name?: string;
   valueName: string;
   color: string;
@@ -252,16 +253,18 @@ const StringFilter = React.memo(
         selectedValuesAtom,
         excludeAtom,
         totalAtom,
+        hasNoneAtom,
         path,
       }: Props,
       ref
     ) => {
       const selected = useRecoilValue(selectedValuesAtom);
       const { count, results } = useRecoilValue(totalAtom);
+      const hasNone = useRecoilValue(hasNoneAtom);
       const [focused, setFocused] = useState(false);
       const [hovering, setHovering] = useState(false);
       const [search, setSearch] = useState("");
-      const [active, setActive] = useState(null);
+      const [active, setActive] = useState(undefined);
       const [subCount, setSubCount] = useState(null);
       const [searchResults, setSearchResults] = useState<string[]>(null);
       const currentPromise = useRef<
@@ -271,7 +274,10 @@ const StringFilter = React.memo(
         }>
       >();
 
-      const onSelect = useOnSelect(selectedValuesAtom);
+      const onSelect = useOnSelect(selectedValuesAtom, [
+        () => setSearchResults(null),
+        () => setSearch(""),
+      ]);
 
       useLayoutEffect(() => {
         const id = uuid();
@@ -307,6 +313,11 @@ const StringFilter = React.memo(
             if (currentPromise.current !== promise) {
               return;
             }
+            if (hasNone) {
+              results.push(null);
+              count++;
+              results.sort();
+            }
             setSearchResults(results);
             setSubCount(count);
           });
@@ -329,7 +340,6 @@ const StringFilter = React.memo(
                   onEnter={() => {
                     if (results && results.includes(search)) {
                       onSelect(search);
-                      setSearch("");
                     }
                   }}
                   placeholder={
@@ -347,7 +357,6 @@ const StringFilter = React.memo(
                     onSelect(value);
                     setHovering(false);
                     setFocused(false);
-                    setSearch("");
                   }}
                   subCount={subCount}
                   alignRight={path === "filepath"}
