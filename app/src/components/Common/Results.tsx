@@ -13,12 +13,12 @@ export const ResultsContainer = styled.div`
   position: absolute;
   width: auto;
   z-index: 801;
-  max-height: 328px;
   overflow-y: scroll;
   scrollbar-width: none;
   padding: 0 0.5rem;
   width: calc(100% - 12px);
   left: 6px;
+  margin-bottom: 1rem;
 
   &::-webkit-scrollbar {
     width: 0px;
@@ -29,33 +29,39 @@ export const ResultsContainer = styled.div`
     width: 0px;
     display: none;
   }
+`;
 
-  & > {
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
+const ResultDiv = styled(ItemAction)`
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: block;
 `;
 
 interface ResultProps {
   result: ResultValue;
   highlight: string;
   active: boolean;
+  alignRight: boolean;
   onClick: () => void;
 }
 
-const Result = React.memo(({ highlight, result, onClick }: ResultProps) => {
-  const props = useHighlightHover(false);
-  return (
-    <ItemAction
-      style={result === null ? { color: highlight } : {}}
-      {...props}
-      onClick={onClick}
-    >
-      {result === null ? "None" : result}
-    </ItemAction>
-  );
-});
+const Result = React.memo(
+  ({ highlight, result, onClick, alignRight }: ResultProps) => {
+    const props = useHighlightHover(false);
+    const style = result === null ? { color: highlight } : {};
+
+    if (alignRight) {
+      style.textAlign = "right";
+    }
+
+    return (
+      <ResultDiv style={style} {...props} onClick={onClick}>
+        {result === null ? "None" : result}
+      </ResultDiv>
+    );
+  }
+);
 
 type ResultValue = string | null;
 
@@ -64,10 +70,17 @@ interface ResultsProps {
   highlight: string;
   onSelect: (result: ResultValue) => void;
   active: ResultValue;
+  alignRight?: boolean;
 }
 
 const Results = React.memo(
-  ({ onSelect, results, highlight, active = undefined }: ResultsProps) => {
+  ({
+    onSelect,
+    results,
+    highlight,
+    active = undefined,
+    alignRight,
+  }: ResultsProps) => {
     return (
       <>
         {results.map((result) => (
@@ -76,6 +89,7 @@ const Results = React.memo(
             highlight={highlight}
             onClick={() => onSelect(result)}
             active={active === result}
+            alignRight={alignRight}
           />
         ))}
       </>

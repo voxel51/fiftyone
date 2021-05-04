@@ -20,6 +20,7 @@ import { LIST_LIMIT } from "./StringFieldFilter";
 import { ItemAction } from "../Actions/utils";
 import socket from "../../shared/connection";
 import { packageMessage } from "../../utils/socket";
+import { useTheme } from "../../utils/hooks";
 
 const StringFilterContainer = styled.div`
   background: ${({ theme }) => theme.backgroundDark};
@@ -177,6 +178,8 @@ interface ResultsWrapperProps {
   onSelect: (value: string) => void;
   onMouseEnter: () => void;
   onMouseLeave: () => void;
+  subCount: number;
+  alignRight?: boolean;
 }
 
 const ResultsWrapper = ({
@@ -186,7 +189,10 @@ const ResultsWrapper = ({
   onSelect,
   onMouseEnter,
   onMouseLeave,
+  subCount,
+  alignRight,
 }: ResultsWrapperProps) => {
+  const theme = useTheme();
   return (
     <>
       {shown && (
@@ -200,7 +206,22 @@ const ResultsWrapper = ({
               results={results}
               active={null}
               highlight={color}
+              alignRight={alignRight}
             />
+          )}
+          {results && subCount > results.length && (
+            <>
+              <PopoutSectionTitle />
+              <ItemAction
+                style={{
+                  cursor: "default",
+                  textAlign: "right",
+                  color: theme.font,
+                }}
+              >
+                {(subCount - results.length).toLocaleString()} more results
+              </ItemAction>
+            </>
           )}
         </ResultsContainer>
       )}
@@ -235,12 +256,13 @@ const StringFilter = React.memo(
       }: Props,
       ref
     ) => {
-      const [selected, setSelected] = useRecoilState(selectedValuesAtom);
+      const selected = useRecoilValue(selectedValuesAtom);
       const { count, results } = useRecoilValue(totalAtom);
       const [focused, setFocused] = useState(false);
       const [hovering, setHovering] = useState(false);
       const [search, setSearch] = useState("");
       const [active, setActive] = useState(null);
+      const [subCount, setSubCount] = useState(null);
       const [searchResults, setSearchResults] = useState<string[]>(null);
       const currentPromise = useRef<
         Promise<{
@@ -286,6 +308,7 @@ const StringFilter = React.memo(
               return;
             }
             setSearchResults(results);
+            setSubCount(count);
           });
         }
       }, [focused, search, selected]);
@@ -326,6 +349,8 @@ const StringFilter = React.memo(
                     setFocused(false);
                     setSearch("");
                   }}
+                  subCount={subCount}
+                  alignRight={path === "filepath"}
                   onMouseEnter={() => setHovering(true)}
                   onMouseLeave={() => setHovering(false)}
                 />
