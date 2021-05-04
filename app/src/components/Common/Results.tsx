@@ -46,23 +46,25 @@ interface ResultProps {
   onClick: () => void;
 }
 
-const Result = React.memo(({ highlight, result, onClick }: ResultProps) => {
-  const props = useHighlightHover(
-    false,
-    null,
-    result === null ? highlight : null
-  );
+const Result = React.memo(
+  ({ active, highlight, result, onClick }: ResultProps) => {
+    const props = useHighlightHover(
+      false,
+      active ? active : null,
+      result === null ? highlight : null
+    );
 
-  return (
-    <ResultDiv
-      title={result === null ? "None" : result}
-      {...props}
-      onClick={onClick}
-    >
-      {result === null ? "None" : result}
-    </ResultDiv>
-  );
-});
+    return (
+      <ResultDiv
+        title={result === null ? "None" : result}
+        {...props}
+        onClick={onClick}
+      >
+        {result === null ? "None" : result}
+      </ResultDiv>
+    );
+  }
+);
 
 type ResultValue = string | null;
 
@@ -86,6 +88,7 @@ const Results = React.memo(
       <>
         {results.map((result) => (
           <Result
+            key={result}
             result={result}
             highlight={highlight}
             onClick={() => onSelect(result)}

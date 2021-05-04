@@ -1024,24 +1024,30 @@ class StateHandler(tornado.websocket.WebSocketHandler):
 def _get_search_view(view, path, search, selected):
     search = _escape_regex_chars(search)
 
-    if search != "":
-        if "." in path:
-            fields = path.split(".")
-            if view.media_type == fom.VIDEO and fields[0] == "frames":
-                field = ".".join(fields[:2])
-            else:
-                field = fields[0]
+    if search == "" and not selected:
+        return view
 
-            view = view.filter_labels(
-                field,
-                F("label").re_match(search) & ~F("label").is_in(selected),
-            )
+    if "." in path:
+        fields = path.split(".")
+        if view.media_type == fom.VIDEO and fields[0] == "frames":
+            field = ".".join(fields[:2])
         else:
-            view = view.match(
-                F(path).re_match(search) & ~F(path).is_in(selected)
-            )
+            field = fields[0]
 
-    return view
+        vf = F("label")
+        meth = lambda expr: view.filter_labels(field, expr)
+    else:
+        vf = F(path)
+        meth = view.match
+
+    if search != "" and selected:
+        expr = vf.re_match(search) & ~vf.is_in(selected)
+    elif search != "":
+        expr = vf.re_match(search)
+    elif selected:
+        expr = ~vf.is_in(selected)
+
+    return meth(expr)
 
 
 def _write_message(message, app=False, session=False, ignore=None, only=None):

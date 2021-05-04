@@ -181,6 +181,7 @@ interface ResultsWrapperProps {
   onMouseLeave: () => void;
   subCount: number;
   alignRight?: boolean;
+  active: string | null;
 }
 
 const ResultsWrapper = ({
@@ -191,6 +192,7 @@ const ResultsWrapper = ({
   onMouseEnter,
   onMouseLeave,
   subCount,
+  active,
   alignRight,
 }: ResultsWrapperProps) => {
   const theme = useTheme();
@@ -203,9 +205,9 @@ const ResultsWrapper = ({
         >
           {results && (
             <Results
+              active={active}
               onSelect={onSelect}
               results={results}
-              active={null}
               highlight={color}
               alignRight={alignRight}
             />
@@ -258,6 +260,7 @@ const StringFilter = React.memo(
       }: Props,
       ref
     ) => {
+      return null;
       const selected = useRecoilValue(selectedValuesAtom);
       const { count, results } = useRecoilValue(totalAtom);
       const hasNone = useRecoilValue(hasNoneAtom);
@@ -336,7 +339,10 @@ const StringFilter = React.memo(
                 <Input
                   key={"input"}
                   color={color}
-                  setter={(v) => setSearch(v)}
+                  setter={(v) => {
+                    setSearch(v);
+                    setActive(undefined);
+                  }}
                   value={search}
                   onKeyDown={(event) => {
                     if (searchResults === null) {
@@ -344,14 +350,23 @@ const StringFilter = React.memo(
                     } else if (event.key === "ArrowDown") {
                       if (active === undefined) {
                         setActive(searchResults[0]);
+                      } else {
+                        const index = searchResults.indexOf(active);
+                        if (index < searchResults.length - 1) {
+                          setActive(searchResults[index + 1]);
+                        }
                       }
                     } else if (event.key === "ArrowUp") {
                       const index = searchResults.indexOf(active);
-                      if (index < searchResults.length) {
+                      if (index > 0) {
+                        setActive(searchResults[index - 1]);
                       }
                     }
                   }}
                   onEnter={() => {
+                    if (active !== undefined) {
+                      onSelect(active);
+                    }
                     if (results && results.includes(search)) {
                       onSelect(search);
                     }
@@ -372,6 +387,7 @@ const StringFilter = React.memo(
                     setHovering(false);
                     setFocused(false);
                   }}
+                  active={active}
                   subCount={subCount}
                   alignRight={path === "filepath"}
                   onMouseEnter={() => setHovering(true)}
