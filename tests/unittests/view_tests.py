@@ -7,7 +7,9 @@ FiftyOne view-related unit tests.
 """
 from copy import deepcopy
 import math
+
 import unittest
+import numpy as np
 
 import fiftyone as fo
 from fiftyone import ViewField as F, VALUE
@@ -588,6 +590,251 @@ class SliceTests(unittest.TestCase):
 
         view = dataset[3:3]
         self.assertEqual(len(view), 0)
+
+
+class SetValuesTests(unittest.TestCase):
+    @drop_datasets
+    def setUp(self):
+        self.dataset = fo.Dataset()
+        self.dataset.add_samples(
+            [
+                fo.Sample(filepath="test1.png", int_field=1),
+                fo.Sample(filepath="test2.png", int_field=2),
+                fo.Sample(filepath="test3.png", int_field=3),
+                fo.Sample(filepath="test4.png", int_field=4),
+            ]
+        )
+
+    def test_set_values_dataset(self):
+        n = len(self.dataset)
+
+        int_values = [int(i) for i in range(n)]
+        float_values = [float(i) for i in range(n)]
+        str_values = [str(i) for i in range(n)]
+        classification_values = [
+            fo.Classification(label=str(i), custom=float(i)) for i in range(n)
+        ]
+        classifications_values = [
+            fo.Classifications(
+                classifications=[
+                    fo.Classification(
+                        label=str(j),
+                        logits=np.random.randn(5),
+                        custom=float(j),
+                    )
+                    for j in range(i)
+                ]
+            )
+            for i in range(n)
+        ]
+        detections_values = [
+            fo.Detections(
+                detections=[
+                    fo.Detection(
+                        label=str(j),
+                        bounding_box=list(np.random.rand(4)),
+                        custom=float(j),
+                    )
+                    for j in range(i)
+                ]
+            )
+            for i in range(n)
+        ]
+
+        # Set existing field
+        self.dataset.set_values("int_field", int_values)
+        _int_values = self.dataset.values("int_field")
+        self.assertListEqual(_int_values, int_values)
+
+        # Test no schema expanding
+        with self.assertRaises(ValueError):
+            self.dataset.set_values(
+                "float_field", float_values, expand_schema=False
+            )
+
+        # Set new primitive field
+        self.dataset.set_values("str_field", str_values)
+        schema = self.dataset.get_field_schema()
+        self.assertIn("str_field", schema)
+        _str_values = self.dataset.values("str_field")
+        self.assertListEqual(_str_values, str_values)
+
+        # Set new Classification field
+
+        self.dataset.set_values("classification_field", classification_values)
+
+        schema = self.dataset.get_field_schema()
+        self.assertIn("classification_field", schema)
+
+        _classification_values = self.dataset.values("classification_field")
+        self.assertListEqual(_classification_values, classification_values)
+
+        _label_values = self.dataset.values("classification_field.label")
+        self.assertEqual(type(_label_values), list)
+        self.assertEqual(type(_label_values[-1]), str)
+
+        _custom_values = self.dataset.values("classification_field.custom")
+        self.assertEqual(type(_custom_values), list)
+        self.assertEqual(type(_custom_values[-1]), float)
+
+        # Set new Classifications field
+
+        self.dataset.set_values(
+            "classifications_field", classifications_values
+        )
+
+        schema = self.dataset.get_field_schema()
+        self.assertIn("classifications_field", schema)
+
+        _classifications_values = self.dataset.values("classifications_field")
+        self.assertListEqual(_classifications_values, classifications_values)
+
+        _label_list_values = self.dataset.values(
+            "classifications_field.classifications"
+        )
+        self.assertEqual(type(_label_list_values), list)
+        self.assertEqual(type(_label_list_values[-1]), list)
+        self.assertEqual(type(_label_list_values[-1][0]), fo.Classification)
+
+        _label_values = self.dataset.values(
+            "classifications_field.classifications.label"
+        )
+        self.assertEqual(type(_label_values), list)
+        self.assertEqual(type(_label_values[-1]), list)
+        self.assertEqual(type(_label_values[-1][0]), str)
+
+        _logits_values = self.dataset.values(
+            "classifications_field.classifications.logits"
+        )
+        self.assertEqual(type(_logits_values), list)
+        self.assertEqual(type(_logits_values[-1]), list)
+        self.assertEqual(type(_logits_values[-1][0]), np.ndarray)
+
+        _custom_values = self.dataset.values(
+            "classifications_field.classifications.custom"
+        )
+        self.assertEqual(type(_custom_values), list)
+        self.assertEqual(type(_custom_values[-1]), list)
+        self.assertEqual(type(_custom_values[-1][0]), float)
+
+        # Set new Detections field
+
+        self.dataset.set_values("detections_field", detections_values)
+
+        schema = self.dataset.get_field_schema()
+        self.assertIn("detections_field", schema)
+
+        _detections_values = self.dataset.values("detections_field")
+        self.assertListEqual(_detections_values, detections_values)
+
+        _label_list_values = self.dataset.values("detections_field.detections")
+        self.assertEqual(type(_label_list_values), list)
+        self.assertEqual(type(_label_list_values[-1]), list)
+        self.assertEqual(type(_label_list_values[-1][0]), fo.Detection)
+
+        _label_values = self.dataset.values(
+            "detections_field.detections.label"
+        )
+        self.assertEqual(type(_label_values), list)
+        self.assertEqual(type(_label_values[-1]), list)
+        self.assertEqual(type(_label_values[-1][0]), str)
+
+        _bbox_values = self.dataset.values(
+            "detections_field.detections.bounding_box"
+        )
+        self.assertEqual(type(_bbox_values), list)
+        self.assertEqual(type(_bbox_values[-1]), list)
+        self.assertEqual(type(_bbox_values[-1][0]), list)
+
+        _custom_values = self.dataset.values(
+            "detections_field.detections.custom"
+        )
+        self.assertEqual(type(_custom_values), list)
+        self.assertEqual(type(_custom_values[-1]), list)
+        self.assertEqual(type(_custom_values[-1][0]), float)
+
+    def test_set_values_view(self):
+        n = len(self.dataset)
+
+        classification_values = [
+            fo.Classification(label=str(i)) for i in range(n)
+        ]
+        detections_values = [
+            fo.Detections(
+                detections=[
+                    fo.Detection(
+                        label=str(j), bounding_box=list(np.random.rand(4))
+                    )
+                    for j in range(i)
+                ]
+            )
+            for i in range(n)
+        ]
+
+        self.dataset.set_values("classification", classification_values)
+        self.dataset.set_values("detections", detections_values)
+
+        # Set existing field
+        view = self.dataset.skip(1).limit(2)
+        view.set_values("int_field", [0, 0])
+        _int_values = self.dataset.values("int_field")
+        self.assertListEqual(_int_values, [1, 0, 0, 4])
+
+        # Set new field
+        view = self.dataset.skip(1).limit(2)
+        view.set_values("str_field", ["hello", "world"])
+        _str_values = self.dataset.values("str_field")
+        self.assertListEqual(_str_values, [None, "hello", "world", None])
+
+        #
+        # Set filtered label field
+        #
+
+        view = self.dataset.filter_labels("classification", F("label") == "1")
+
+        # Primitive field
+        view.set_values("classification.custom", ["hello"])
+        _custom_values = self.dataset.values("classification.custom")
+        self.assertListEqual(_custom_values, [None, "hello", None, None])
+
+        # Label field
+
+        labels = view.values("classification")
+        for label in labels:
+            label.label = "ONE"
+
+        view.set_values("classification", labels)
+
+        _dataset_labels = self.dataset.values("classification.label")
+        self.assertListEqual(_dataset_labels, ["0", "ONE", "2", "3"])
+
+        #
+        # Set filtered label list fields
+        #
+
+        view = self.dataset.filter_labels("detections", F("label") == "1")
+
+        # Primitive field
+        view.set_values("detections.detections.custom", [["hello"], ["hello"]])
+        _custom_values = self.dataset.values("detections.detections.custom")
+        self.assertListEqual(
+            _custom_values,
+            [[], [None], [None, "hello"], [None, "hello", None]],
+        )
+
+        # Label list field
+
+        dets = view.values("detections.detections")
+        for _dets in dets:
+            for det in _dets:
+                det.label = "ONE"
+
+        view.set_values("detections.detections", dets)
+
+        _dataset_labels = self.dataset.values("detections.detections.label")
+        self.assertListEqual(
+            _dataset_labels, [[], ["0"], ["0", "ONE"], ["0", "ONE", "2"]],
+        )
 
 
 class ViewStageTests(unittest.TestCase):
