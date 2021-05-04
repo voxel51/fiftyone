@@ -1291,7 +1291,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         sample._set_backing_doc(doc, dataset=self)
 
         if self.media_type == fom.VIDEO:
-            sample.frames._insert()
+            sample.frames.save()
 
         return str(d["_id"])
 
@@ -1401,7 +1401,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             sample._set_backing_doc(doc, dataset=self)
 
             if self.media_type == fom.VIDEO:
-                sample.frames._insert()
+                sample.frames.save()
 
         return [str(d["_id"]) for d in dicts]
 
@@ -1571,16 +1571,19 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                     :class:`fiftyone.core.sample.SampleView` instances
         """
         sample_ids = _get_sample_ids(samples_or_ids)
+        _sample_ids = [ObjectId(_id) for _id in sample_ids]
 
-        self._sample_collection.delete_many(
-            {"_id": {"$in": [ObjectId(_id) for _id in sample_ids]}}
-        )
+        self._sample_collection.delete_many({"_id": {"$in": _sample_ids}})
 
         fos.Sample._reset_docs(
             self._sample_collection_name, sample_ids=sample_ids
         )
 
         if self.media_type == fom.VIDEO:
+            self._frame_collection.delete_many(
+                {"_sample_id": {"$in": _sample_ids}}
+            )
+
             # pylint: disable=unexpected-keyword-arg
             fofr.Frame._reset_docs(
                 self._frame_collection_name, sample_ids=sample_ids
@@ -3130,8 +3133,17 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 {
                     "$lookup": {
                         "from": self._frame_collection_name,
-                        "localField": "_id",
-                        "foreignField": "_sample_id",
+                        "let": {"sample_id": "$_id"},
+                        "pipeline": [
+                            {
+                                "$match": {
+                                    "$expr": {
+                                        "$eq": ["$$sample_id", "$_sample_id"]
+                                    }
+                                }
+                            },
+                            {"$sort": {"frame_number": 1}},
+                        ],
                         "as": "frames",
                     }
                 }
@@ -3406,9 +3418,7 @@ def _create_indexes(sample_collection_name, frame_collection_name):
     collection = conn[sample_collection_name]
     collection.create_index("filepath", unique=True)
     frame_collection = conn[frame_collection_name]
-    frame_collection.create_index(
-        [("sample_id", foo.ASC), ("frame_number", foo.ASC)]
-    )
+    frame_collection.create_index([("_sample_id", 1), ("frame_number", 1)])
 
 
 def _make_sample_collection_name():
@@ -3868,10 +3878,7 @@ def _merge_samples(
         _index_frames(src_collection, key_field, frame_key_field)
 
         # Must create unique indexes in order to use `$merge`
-        frame_index_spec = [
-            (frame_key_field, foo.ASC),
-            ("frame_number", foo.ASC),
-        ]
+        frame_index_spec = [(frame_key_field, 1), ("frame_number", 1)]
         dst_frame_index = dst_dataset._frame_collection.create_index(
             frame_index_spec, unique=True
         )

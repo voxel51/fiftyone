@@ -367,14 +367,14 @@ class Sample(_SampleMixin, Document, metaclass=SampleSingleton):
                 added to the dataset schema
         """
         if self.media_type == fomm.VIDEO:
-            self.frames._reload(hard=hard)
+            self.frames.reload(hard=hard)
 
         super().reload(hard=hard)
 
     def save(self):
         """Saves the contents of the sample to the database."""
         if self.media_type == fomm.VIDEO:
-            self.frames._save()
+            self.frames.save()
 
         super().save()
 
@@ -512,7 +512,7 @@ class SampleView(_SampleMixin, DocumentView):
         """Saves the contents of this sample view to the database."""
         if self.media_type == fomm.VIDEO:
             try:
-                self.frames._save()
+                self.frames.save()
             except AttributeError:
                 # frames is not selected, so we don't need to save it
                 pass

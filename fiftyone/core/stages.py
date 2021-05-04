@@ -14,7 +14,6 @@ import warnings
 
 from bson import ObjectId
 from deprecated import deprecated
-from pymongo import ASCENDING, DESCENDING
 
 import eta.core.utils as etau
 
@@ -2914,7 +2913,7 @@ class Select(ViewStage):
         return [
             {"$set": {"_select_order": {"$indexOfArray": [ids, "$_id"]}}},
             {"$match": {"_select_order": {"$gt": -1}}},
-            {"$sort": {"_select_order": ASCENDING}},
+            {"$sort": {"_select_order": 1}},
             {"$unset": "_select_order"},
         ]
 
@@ -3447,7 +3446,7 @@ class Shuffle(ViewStage):
         # @todo can we avoid creating a new field here?
         return [
             {"$set": {"_rand_shuffle": {"$mod": [self._randint, "$_rand"]}}},
-            {"$sort": {"_rand_shuffle": ASCENDING}},
+            {"$sort": {"_rand_shuffle": 1}},
             {"$unset": "_rand_shuffle"},
         ]
 
@@ -3584,7 +3583,7 @@ class SortBy(ViewStage):
         return self._reverse
 
     def to_mongo(self, _):
-        order = DESCENDING if self._reverse else ASCENDING
+        order = -1 if self._reverse else 1
 
         field_or_expr = self._get_mongo_field_or_expr()
 
@@ -3899,7 +3898,7 @@ class Take(ViewStage):
         # @todo avoid creating new field here?
         return [
             {"$set": {"_rand_take": {"$mod": [self._randint, "$_rand"]}}},
-            {"$sort": {"_rand_take": ASCENDING}},
+            {"$sort": {"_rand_take": 1}},
             {"$limit": self._size},
             {"$unset": "_rand_take"},
         ]

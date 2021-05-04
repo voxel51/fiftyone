@@ -132,6 +132,10 @@ class Frames(object):
         return self._sample._dataset._frame_collection
 
     @property
+    def _frame_collection_name(self):
+        return self._sample._dataset._frame_collection_name
+
+    @property
     def field_names(self):
         """An ordered tuple of the names of the fields on the frames."""
         return list(self._dataset.get_frame_field_schema().keys())
@@ -309,21 +313,30 @@ class Frames(object):
             return
 
         self._delete_all = True
+        self._delete_frames.clear()
 
-    def _save(self):
+    def save(self):
+        """Saves all frames to the database."""
         if not self._in_db:
             return
 
         self._save_deletions()
         self._save_replacements()
 
-    def _reload(self, hard=False):
+    def reload(self, hard=False):
+        """Reloads all frames for the sample from the database.
+
+        Args:
+            hard (False): whether to reload the frame schema in addition to the
+                field values for the frames. This is necessary if new fields
+                may have been added to the dataset's frame schema
+        """
         self._delete_all = False
         self._delete_frames.clear()
         self._replacements.clear()
 
         Frame._sync_docs_for_sample(
-            self._dataset._frame_collection_name,
+            self._frame_collection_name,
             self._sample.id,
             self._get_frame_numbers(),
             hard=hard,
@@ -420,7 +433,10 @@ class Frames(object):
                         break
 
     def _iter_frames_db(self):
-        pipeline = [{"$sort": {"frame_number": 1}}]
+        pipeline = [
+            {"$match": {"_sample_id": self._sample._id}},
+            {"$sort": {"frame_number": 1}},
+        ]
         return foo.aggregate(self._frame_collection, pipeline)
 
     def _make_frame(self, d):
@@ -436,33 +452,18 @@ class Frames(object):
     def _to_frames_dict(self):
         return {str(fn): frame.to_dict() for fn, frame in self.items()}
 
-    def _insert(self):
-        if not self._replacements:
-            return
-
-        frames = list(self._replacements.values())
-        dicts = [self._make_dict(frame) for frame in frames]
-
-        try:
-            # adds `_id` to each dict
-            self._frame_collection.insert_many(dicts)
-        except BulkWriteError as bwe:
-            msg = bwe.details["writeErrors"][0]["errmsg"]
-            raise ValueError(msg) from bwe
-
-        for frame, d in zip(frames, dicts):
-            doc = self._dataset._frame_dict_to_doc(d)
-            frame._set_backing_doc(doc, dataset=self._dataset)
-
-        self._replacements.clear()
-
     def _save_deletions(self):
         if self._delete_all:
-            self._delete_all = False
-            self._delete_frames.clear()
             self._frame_collection.delete_many(
                 {"_sample_id": self._sample._id}
             )
+
+            Frame._reset_docs(
+                self._frame_collection_name, sample_ids=[self._sample.id]
+            )
+
+            self._delete_all = False
+            self._delete_frames.clear()
 
         if self._delete_frames:
             ops = [
@@ -474,27 +475,88 @@ class Frames(object):
                 )
                 for frame_number in self._delete_frames
             ]
-            self._delete_frames.clear()
             self._frame_collection.bulk_write(ops, ordered=False)
 
-    def _save_replacements(self):
-        if not self._replacements:
-            return
-
-        ops = []
-        for frame_number, frame in self._replacements.items():
-            ops.append(
-                ReplaceOne(
-                    {
-                        "frame_number": frame_number,
-                        "_sample_id": self._sample._id,
-                    },
-                    self._make_dict(frame),
-                    upsert=True,
-                )
+            Frame._reset_docs_for_sample(
+                self._frame_collection_name,
+                self._sample.id,
+                self._delete_frames,
             )
 
-        self._frame_collection.bulk_write(ops, ordered=False)
+            self._delete_frames.clear()
+
+    def _save_replacements(self, include_singletons=True):
+        if include_singletons:
+            #
+            # Since frames are singletons, the user will expect changes to any
+            # in-memory frames to be saved, even if they aren't currently in
+            # `_replacements`. This can happen, if, for example, our
+            # replacements were flushed by a previous call to `sample.save()`
+            # but then an in-memory was modified without explicitly accessing
+            # it again via `sample.frames[]`
+            #
+            replacements = Frame._get_instances(
+                self._frame_collection_name, self._sample.id
+            )
+        else:
+            replacements = None
+
+        if replacements:
+            replacements.update(self._replacements)
+        else:
+            replacements = self._replacements
+
+        if not replacements:
+            return
+
+        #
+        # Insert new frames
+        #
+
+        new_frames = [
+            frame for frame in replacements.values() if not frame._in_db
+        ]
+
+        if new_frames:
+            dicts = [self._make_dict(frame) for frame in new_frames]
+
+            try:
+                # adds `_id` to each dict
+                self._frame_collection.insert_many(dicts)
+            except BulkWriteError as bwe:
+                msg = bwe.details["writeErrors"][0]["errmsg"]
+                raise ValueError(msg) from bwe
+
+            for frame, d in zip(new_frames, dicts):
+                if isinstance(frame._doc, foo.NoDatasetFrameSampleDocument):
+                    doc = self._dataset._frame_dict_to_doc(d)
+                    frame._set_backing_doc(doc, dataset=self._dataset)
+                else:
+                    frame._doc.id = d["_id"]
+
+            for frame in new_frames:
+                replacements.pop(frame.frame_number, None)
+
+        #
+        # Replace existing frames
+        #
+
+        if replacements:
+            ops = []
+            for frame_number, frame in replacements.items():
+                ops.append(
+                    ReplaceOne(
+                        {
+                            "frame_number": frame_number,
+                            "_sample_id": self._sample._id,
+                        },
+                        self._make_dict(frame),
+                        upsert=True,
+                    )
+                )
+
+            self._frame_collection.bulk_write(ops, ordered=False)
+
         self._replacements.clear()
 
 
@@ -572,6 +634,34 @@ class FramesView(Frames):
         frame_view.set_field("frame_number", frame_number)
         self._set_replacement(frame_view)
 
+    def reload(self):
+        """Reloads the view into the frames of the attached sample.
+
+        Calling this method has the following effects:
+
+        -   Clears the in-memory cache of :class:`FrameView` instances that you
+            have loaded via this object. Any frames that you subsequently
+            access will be loaded directly from the database
+
+        -   Any additions, modifications, or deletions to frame views that you
+            have loaded from this instance but not committed to the database by
+            calling :meth:`save` will be discarded
+
+        .. note::
+
+            :class:`FrameView` objects are not singletons, so calling this
+            method will not have any effect on :class:`FrameView` instances
+            that you have **previously** loaded via this object
+
+        Args:
+            hard (False): whether to reload the frame schema in addition to the
+                field values for the frames. This is necessary if new fields
+                may have been added to the dataset's frame schema
+        """
+        self._delete_all = False
+        self._delete_frames.clear()
+        self._replacements.clear()
+
     def _get_frame_numbers_db(self):
         if not self._needs_frames:
             return super()._get_frame_numbers_db()
@@ -635,7 +725,7 @@ class FramesView(Frames):
             return
 
         if self._contains_all_fields:
-            super()._save_replacements()
+            super()._save_replacements(include_singletons=False)
             return
 
         ops = []

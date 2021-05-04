@@ -253,6 +253,12 @@ class FrameSingleton(DocumentSingleton):
             obj._doc.collection_name, str(obj._sample_id), obj.frame_number
         )
 
+    def _get_instances(cls, collection_name, sample_id):
+        """Returns a frame number -> Frame dict containing all in-memory frame
+        instances for the specified sample.
+        """
+        return dict(cls._instances.get(collection_name, {}).get(sample_id, {}))
+
     def _rename_fields(cls, collection_name, field_names, new_field_names):
         """Renames the field on all in-memory frames in the collection."""
         if collection_name not in cls._instances:
@@ -394,3 +400,22 @@ class FrameSingleton(DocumentSingleton):
             for frames in samples.values():
                 for frame in frames.values():
                     frame._reset_backing_doc()
+
+    def _reset_docs_for_sample(cls, collection_name, sample_id, frame_numbers):
+        """Resets the backing documents for all in-memory frames with the given
+        frame numbers attached to the specified sample.
+        """
+        if collection_name not in cls._instances:
+            return
+
+        samples = cls._instances[collection_name]
+        frames = samples.get(sample_id, {})
+
+        reset_fns = set()
+        for frame_number, frame in frames.items():
+            if frame_number in frame_numbers:
+                reset_fns.add(frame_number)
+                frame._reset_backing_doc()
+
+        for frame_number in reset_fns:
+            frames.pop(frame_number)

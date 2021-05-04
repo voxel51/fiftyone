@@ -25,8 +25,6 @@ from .database import (
     import_collection,
     insert_documents,
     bulk_write,
-    ASC,
-    DESC,
 )
 from .dataset import (
     create_field,
