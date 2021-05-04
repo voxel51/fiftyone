@@ -260,7 +260,6 @@ const StringFilter = React.memo(
       }: Props,
       ref
     ) => {
-      return null;
       const selected = useRecoilValue(selectedValuesAtom);
       const { count, results } = useRecoilValue(totalAtom);
       const hasNone = useRecoilValue(hasNoneAtom);
