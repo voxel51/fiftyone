@@ -704,11 +704,7 @@ class FramesView(Frames):
         if not self._needs_frames:
             return super()._iter_frames_db()
 
-        pipeline = self._frames_view._pipeline(frames_only=True) + [
-            {"$sort": {"frame_number": 1}}
-        ]
-
-        return self._dataset._aggregate(pipeline)
+        return self._frames_view._aggregate(frames_only=True)
 
     def _make_frame(self, d):
         doc = self._dataset._frame_dict_to_doc(d)

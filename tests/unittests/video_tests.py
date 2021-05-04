@@ -83,7 +83,7 @@ class VideoTests(unittest.TestCase):
         self.assertTrue(frame_numbers, [1, 5])
 
     @drop_datasets
-    def test_video_frames_order(self):
+    def test_frames_order(self):
         dataset = fo.Dataset()
 
         sample1 = fo.Sample(filepath="video1.mp4")
@@ -344,6 +344,49 @@ class VideoTests(unittest.TestCase):
         self.assertEqual(frame_view.hello, "world")
         self.assertEqual(frame.hello, "world")
         self.assertEqual(view.first().frames.first().hello, "world")
+
+    @drop_datasets
+    def test_frames_view_order(self):
+        dataset = fo.Dataset()
+
+        sample1 = fo.Sample(filepath="video1.mp4")
+        sample1.frames[1] = fo.Frame(frame_number=1)
+        sample1.frames[5] = fo.Frame()
+        sample1.frames[3] = fo.Frame(hello="world")
+
+        sample2 = fo.Sample(filepath="video2.mp4")
+
+        dataset.add_samples([sample1, sample2])
+
+        sample2.frames[4]["hello"] = "there"
+        sample2.save()
+
+        sample2.frames[2]["hello"] = "world"
+        sample2.save()
+
+        view = dataset.select_fields("frames.hello")
+
+        values = view.values("frames.hello")
+        self.assertListEqual(
+            values, [[None, "world", None], ["world", "there"]]
+        )
+
+        sample_view1 = view.first()
+        sample_view2 = view.last()
+
+        frame_numbers1 = []
+        for frame_number, frame in sample_view1.frames.items():
+            frame_numbers1.append(frame_number)
+            self.assertEqual(frame_number, frame.frame_number)
+
+        self.assertListEqual(frame_numbers1, [1, 3, 5])
+
+        frame_numbers2 = []
+        for frame_number, frame in sample_view2.frames.items():
+            frame_numbers2.append(frame_number)
+            self.assertEqual(frame_number, frame.frame_number)
+
+        self.assertListEqual(frame_numbers2, [2, 4])
 
     @drop_datasets
     def test_video_dataset_view_simple(self):
