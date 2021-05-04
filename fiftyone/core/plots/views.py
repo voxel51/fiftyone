@@ -177,11 +177,15 @@ class CategoricalHistogram(PlotlyViewPlot):
     """A histogram of a categorial field.
 
     Args:
-        field: the name of the field or ``embedded.field.name`` to plot
+        field_or_expr: a field name, ``embedded.field.name``,
+            :class:`fiftyone.core.expressions.ViewExpression`, or
+            `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+            defining the field or expression to plot
         expr (None): an optional
             :class:`fiftyone.core.expressions.ViewExpression` or
             `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
-            to apply to the field before aggregating
+            to apply to ``field_or_expr`` (which must be a field) before
+            plotting
         order ("alphabetical"): the x-axis ordering strategy to use. Can be
             "alphabetical" to sort by field value, or "frequency" to sort in
             descending order of frequency, or a function suitable for
@@ -201,7 +205,7 @@ class CategoricalHistogram(PlotlyViewPlot):
 
     def __init__(
         self,
-        field,
+        field_or_expr,
         expr=None,
         order="alphabetical",
         xlabel=None,
@@ -212,7 +216,7 @@ class CategoricalHistogram(PlotlyViewPlot):
         init_view=None,
         **kwargs,
     ):
-        self.field = field
+        self.field_or_expr = field_or_expr
         self.expr = expr
         self.order = order
         self.xlabel = xlabel
@@ -234,7 +238,7 @@ class CategoricalHistogram(PlotlyViewPlot):
 
         self._figure = self._make_histogram()
 
-        self._aggregations = [foa.CountValues(field, expr=expr)]
+        self._aggregations = [foa.CountValues(field_or_expr, expr=expr)]
 
         widget = self._make_widget()
 
@@ -244,7 +248,10 @@ class CategoricalHistogram(PlotlyViewPlot):
         return go.FigureWidget(self._figure)
 
     def _make_histogram(self):
-        _field = self.field.rsplit(".", 1)[-1]
+        if etau.is_str(self.field_or_expr):
+            _field = self.field_or_expr.rsplit(".", 1)[-1]
+        else:
+            _field = "value"
 
         hover_lines = [
             "<b>%s: %%{x}</b>" % _field,
@@ -265,8 +272,10 @@ class CategoricalHistogram(PlotlyViewPlot):
 
         if self.xlabel is not None:
             xaxis_title = self.xlabel
+        elif etau.is_str(self.field_or_expr):
+            xaxis_title = self.field_or_expr
         else:
-            xaxis_title = self.field
+            xaxis_title = None
 
         layout = _DEFAULT_LAYOUT.copy()
 
@@ -315,11 +324,15 @@ class NumericalHistogram(PlotlyViewPlot):
     """A histogram of a numerical field.
 
     Args:
-        field: the name of the field or ``embedded.field.name`` to plot
+        field_or_expr: a field name, ``embedded.field.name``,
+            :class:`fiftyone.core.expressions.ViewExpression`, or
+            `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+            defining the field or expression to plot
         expr (None): an optional
             :class:`fiftyone.core.expressions.ViewExpression` or
             `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
-            to apply to the field before aggregating
+            to apply to ``field_or_expr`` (which must be a field) before
+            plotting
         bins (None): can be either an integer number of bins to generate or a
             monotonically increasing sequence specifying the bin edges to use.
             By default, 10 bins are created. If ``bins`` is an integer and no
@@ -341,7 +354,7 @@ class NumericalHistogram(PlotlyViewPlot):
 
     def __init__(
         self,
-        field,
+        field_or_expr,
         expr=None,
         bins=None,
         range=None,
@@ -352,7 +365,7 @@ class NumericalHistogram(PlotlyViewPlot):
         init_view=None,
         **kwargs,
     ):
-        self.field = field
+        self.field_or_expr = field_or_expr
         self.expr = expr
         self.bins = bins
         self.range = range
@@ -365,7 +378,9 @@ class NumericalHistogram(PlotlyViewPlot):
         self._figure = self._make_histogram()
 
         self._aggregations = [
-            foa.HistogramValues(field, expr=expr, bins=bins, range=range)
+            foa.HistogramValues(
+                field_or_expr, expr=expr, bins=bins, range=range
+            )
         ]
 
         widget = self._make_widget()
@@ -376,7 +391,10 @@ class NumericalHistogram(PlotlyViewPlot):
         return go.FigureWidget(self._figure)
 
     def _make_histogram(self):
-        _field = self.field.rsplit(".", 1)[-1]
+        if etau.is_str(self.field_or_expr):
+            _field = self.field_or_expr.rsplit(".", 1)[-1]
+        else:
+            _field = "value"
 
         hover_lines = [
             "<b>count: %{y}</b>",
@@ -398,8 +416,10 @@ class NumericalHistogram(PlotlyViewPlot):
 
         if self.xlabel is not None:
             xaxis_title = self.xlabel
+        elif etau.is_str(self.field_or_expr):
+            xaxis_title = self.field_or_expr
         else:
-            xaxis_title = self.field
+            xaxis_title = None
 
         layout = _DEFAULT_LAYOUT.copy()
 

@@ -186,6 +186,9 @@ class SerializableDocument(object):
         Returns:
             a JSON string
         """
+        if not pretty_print:
+            return json_util.dumps(self.to_dict())
+
         d = self.to_dict(extended=True)
         return etas.json_to_str(d, pretty_print=pretty_print)
 
@@ -297,10 +300,14 @@ class MongoEngineBaseDocument(SerializableDocument):
         return self._fields_ordered
 
     def to_dict(self, extended=False):
-        if extended:
-            return json.loads(self._to_json())
+        # pylint: disable=no-member
+        d = self.to_mongo(use_db_field=True)
 
-        return json_util.loads(self._to_json())
+        if not extended:
+            return d
+
+        # @todo is there a way to avoid bson -> str -> json dict?
+        return json.loads(json_util.dumps(d))
 
     @classmethod
     def from_dict(cls, d, extended=False):
@@ -314,14 +321,12 @@ class MongoEngineBaseDocument(SerializableDocument):
             except Exception:
                 pass
 
-        # pylint: disable=no-member
-        bson_data = json_util.loads(json_util.dumps(d))
-        return cls._from_son(bson_data)
+        # Construct any necessary extended JSON components like ObjectIds
+        # @todo is there a way to avoid json -> str -> bson?
+        d = json_util.loads(json_util.dumps(d))
 
-    def _to_json(self):
-        # @todo(Tyler) mongoengine snippet, to be replaced
         # pylint: disable=no-member
-        return json_util.dumps(self.to_mongo(use_db_field=True))
+        return cls._from_son(d)
 
 
 class BaseDocument(MongoEngineBaseDocument):
