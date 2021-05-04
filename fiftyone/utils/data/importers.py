@@ -1205,16 +1205,9 @@ def _import_evaluation_results(dataset, eval_dir, eval_keys=None):
 
     for eval_key in eval_keys:
         json_path = os.path.join(eval_dir, eval_key + ".json")
-        if not os.path.exists(json_path):
-            logger.warning(
-                "Evaluation results for eval_key='%s' not found at '%s'",
-                eval_key,
-                json_path,
-            )
-            continue
-
-        results = fors.RunResults.from_json(json_path, dataset)
-        foe.EvaluationMethod.save_run_results(dataset, eval_key, results)
+        if os.path.exists(json_path):
+            results = fors.RunResults.from_json(json_path, dataset)
+            foe.EvaluationMethod.save_run_results(dataset, eval_key, results)
 
 
 def _import_brain_results(dataset, brain_dir, brain_keys=None):
@@ -1225,16 +1218,9 @@ def _import_brain_results(dataset, brain_dir, brain_keys=None):
 
     for brain_key in brain_keys:
         json_path = os.path.join(brain_dir, brain_key + ".json")
-        if not os.path.exists(json_path):
-            logger.warning(
-                "Brain results for brain_key='%s' not found at '%s'",
-                brain_key,
-                json_path,
-            )
-            continue
-
-        results = fors.RunResults.from_json(json_path, dataset)
-        fob.BrainMethod.save_run_results(dataset, brain_key, results)
+        if os.path.exists(json_path):
+            results = fors.RunResults.from_json(json_path, dataset)
+            fob.BrainMethod.save_run_results(dataset, brain_key, results)
 
 
 class ImageDirectoryImporter(UnlabeledImageDatasetImporter):
