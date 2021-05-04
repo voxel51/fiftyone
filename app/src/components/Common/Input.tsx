@@ -41,6 +41,8 @@ interface InputProps {
   value: string;
   onEnter?: () => void;
   disabled?: boolean;
+  onFocus: () => void;
+  onBlur: () => void;
 }
 
 const Input = React.memo(
@@ -52,6 +54,8 @@ const Input = React.memo(
     value,
     disabled = false,
     onEnter,
+    onFocus,
+    onBlur,
   }: InputProps) => {
     const theme = useTheme();
     color = color ?? theme.brand;
@@ -71,6 +75,8 @@ const Input = React.memo(
           }}
           style={disabled ? { color: theme.fontDark } : {}}
           disabled={disabled}
+          onFocus={onFocus}
+          onBlur={onBlur}
         />
       </StyledInputContainer>
     );

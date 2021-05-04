@@ -27,7 +27,6 @@ const Body = styled.div`
     margin-top: 3px;
     margin-left: 0;
     margin-right: 0;
-    padding: 0 0.2em;
     border-radius: 2px;
   }
 
@@ -121,7 +120,9 @@ const Body = styled.div`
   }
 `;
 
-const CheckboxContainer = animated(styled.div``);
+const CheckboxContainer = animated(styled.div`
+  position: relative;
+`);
 
 export type Entry = {
   name: string;

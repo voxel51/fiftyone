@@ -9,13 +9,16 @@ export const ResultsContainer = styled.div`
   border-radius: 2px;
   box-shadow: 0 2px 20px ${({ theme }) => theme.backgroundDark};
   box-sizing: border-box;
-  margin-top: 2.5rem;
-  position: fixed;
+  margin-top: 0.5rem;
+  position: absolute;
   width: auto;
   z-index: 801;
   max-height: 328px;
   overflow-y: scroll;
   scrollbar-width: none;
+  padding: 0 0.5rem;
+  width: calc(100% - 12px);
+  left: 6px;
 
   &::-webkit-scrollbar {
     width: 0px;

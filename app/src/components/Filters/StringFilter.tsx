@@ -1,4 +1,5 @@
-import React, { Suspense, useLayoutEffect } from "react";
+import React, { Suspense, useLayoutEffect, useState } from "react";
+import ReactDOM from "react-dom";
 import {
   RecoilState,
   RecoilValueReadOnly,
@@ -11,7 +12,7 @@ import styled from "styled-components";
 
 import Checkbox from "../Common/Checkbox";
 import Input from "../Common/Input";
-import Results from "../Common/Results";
+import Results, { ResultsContainer } from "../Common/Results";
 import { Button } from "../FieldsSidebar";
 import { PopoutSectionTitle, TabOption } from "../utils";
 import * as selectors from "../../recoil/selectors";
@@ -163,29 +164,55 @@ const Wrapper = ({
   );
 };
 
+const useOnSelect = (selectedAtom: RecoilState<string[]>) => {
+  return useRecoilCallback(({ snapshot, set }) => async (value: string) => {
+    const selected = new Set(await snapshot.getPromise(selectedAtom));
+    selected.add(value);
+    set(selectedAtom, [...selected].sort());
+  });
+};
+
 interface ResultsWrapperProps {
   valuesAtom: RecoilValueReadOnly<{
     total: number;
     count: number;
     results: string[];
   }>;
+  color: string;
+  shown: boolean;
+  onSelect: (value: string) => void;
+  onMouseEnter: () => void;
+  onMouseLeave: () => void;
 }
 
-const useOnSelect = () => {
-  return useRecoilCallback(({ snapshot, set }) => async (value: string) => {});
-};
-
-const ResultsWrapper = ({ valuesAtom }: ResultsWrapperProps) => {
-  const onSelect = useOnSelect();
+const ResultsWrapper = ({
+  valuesAtom,
+  color,
+  shown,
+  onSelect,
+  onMouseEnter,
+  onMouseLeave,
+}: ResultsWrapperProps) => {
   const { results } = useRecoilValue(valuesAtom);
 
-  return ReactDOM.createPortal(
-    <ResultsContainer>
-      <Suspense fallback={"..."}>
-        <Results onSelect={onSelect} results={results} active={} />
-      </Suspense>
-    </ResultsContainer>,
-    document.body
+  return (
+    <>
+      {shown && (
+        <ResultsContainer
+          onMouseEnter={onMouseEnter}
+          onMouseLeave={onMouseLeave}
+        >
+          <Suspense fallback={"..."}>
+            <Results
+              onSelect={onSelect}
+              results={results}
+              active={null}
+              highlight={color}
+            />
+          </Suspense>
+        </ResultsContainer>
+      )}
+    </>
   );
 };
 
@@ -224,6 +251,10 @@ const StringFilter = React.memo(
       const view = useRecoilValue(selectors.view);
       const total = useRecoilValue(totalAtom);
       const datasetName = useRecoilValue(selectors.datasetName);
+      const [focused, setFocused] = useState(false);
+      const [hovering, setHovering] = useState(false);
+
+      const onSelect = useOnSelect(selectedValuesAtom);
 
       useLayoutEffect(() => {
         setSearch("");
@@ -238,6 +269,7 @@ const StringFilter = React.memo(
             {total > LIST_LIMIT && (
               <>
                 <Input
+                  key={"input"}
                   color={color}
                   setter={(value) => setSearch(value)}
                   value={search}
@@ -248,8 +280,18 @@ const StringFilter = React.memo(
                     setSearch("");
                   }}
                   placeholder={`+ filter by ${valueName}`}
+                  onFocus={() => setFocused(true)}
+                  onBlur={() => !hovering && setFocused(false)}
                 />
-                <ResultsWrapper />
+                <ResultsWrapper
+                  key={"results"}
+                  valuesAtom={valuesAtom}
+                  color={color}
+                  shown={focused || hovering}
+                  onSelect={onSelect}
+                  onMouseEnter={() => setHovering(true)}
+                  onMouseLeave={() => setHovering(false)}
+                />
               </>
             )}
             <Suspense fallback={"..."}>
