@@ -1,4 +1,4 @@
-import React, { Suspense, useLayoutEffect, useState } from "react";
+import React, { Suspense, useLayoutEffect, useRef, useState } from "react";
 import ReactDOM from "react-dom";
 import {
   RecoilState,
@@ -18,6 +18,8 @@ import { Button } from "../FieldsSidebar";
 import { PopoutSectionTitle, TabOption } from "../utils";
 import { LIST_LIMIT } from "./StringFieldFilter";
 import { ItemAction } from "../Actions/utils";
+import socket from "../../shared/connection";
+import { packageMessage } from "../../utils/socket";
 
 const StringFilterContainer = styled.div`
   background: ${({ theme }) => theme.backgroundDark};
@@ -192,15 +194,13 @@ const ResultsWrapper = ({
           onMouseEnter={onMouseEnter}
           onMouseLeave={onMouseLeave}
         >
-          {results ? (
+          {results && (
             <Results
               onSelect={onSelect}
               results={results}
               active={null}
               highlight={color}
             />
-          ) : (
-            <ItemAction style={{ cursor: "default" }}>Loading...</ItemAction>
           )}
         </ResultsContainer>
       )}
@@ -218,6 +218,7 @@ interface Props {
   name?: string;
   valueName: string;
   color: string;
+  path: string;
 }
 
 const StringFilter = React.memo(
@@ -230,6 +231,7 @@ const StringFilter = React.memo(
         selectedValuesAtom,
         excludeAtom,
         totalAtom,
+        path,
       }: Props,
       ref
     ) => {
@@ -237,13 +239,56 @@ const StringFilter = React.memo(
       const { count, results } = useRecoilValue(totalAtom);
       const [focused, setFocused] = useState(false);
       const [hovering, setHovering] = useState(false);
+      const [search, setSearch] = useState("");
+      const [active, setActive] = useState(null);
       const [searchResults, setSearchResults] = useState<string[]>(null);
+      const currentPromise = useRef<
+        Promise<{
+          count: number;
+          results: string[];
+        }>
+      >();
 
       const onSelect = useOnSelect(selectedValuesAtom);
 
       useLayoutEffect(() => {
-        // todo
-      }, []);
+        const id = uuid();
+
+        const clear = setTimeout(() => setSearchResults(null), 200);
+        const wrap = (handler) => ({ data }) => {
+          data = JSON.parse(data);
+          data.type === id && handler(data);
+        };
+        if (focused) {
+          const promise = new Promise<{
+            count: number;
+            results: string[];
+          }>((resolve) => {
+            const listener = wrap(({ count, results }) => {
+              socket.removeEventListener("message", listener);
+              resolve({ count, results });
+            });
+            socket.addEventListener("message", listener);
+            socket.send(
+              packageMessage("distinct", {
+                path,
+                search,
+                selected,
+                limit: 15,
+                uuid: id,
+              })
+            );
+          });
+          currentPromise.current = promise;
+          promise.then(({ count, results }) => {
+            clearTimeout(clear);
+            if (currentPromise.current !== promise) {
+              return;
+            }
+            setSearchResults(results);
+          });
+        }
+      }, [focused, search, selected]);
 
       return (
         <NamedStringFilterContainer ref={ref}>
@@ -256,10 +301,17 @@ const StringFilter = React.memo(
                 <Input
                   key={"input"}
                   color={color}
-                  setter={(v) => {}}
-                  value={""}
-                  onEnter={() => {}}
-                  placeholder={`+ filter by ${valueName}`}
+                  setter={(v) => setSearch(v)}
+                  value={search}
+                  onEnter={() => {
+                    if (results && results.includes(search)) {
+                      onSelect(search);
+                      setSearch("");
+                    }
+                  }}
+                  placeholder={
+                    results === null ? "Loading..." : `+ filter by ${valueName}`
+                  }
                   onFocus={() => setFocused(true)}
                   onBlur={() => !hovering && setFocused(false)}
                 />
@@ -268,7 +320,12 @@ const StringFilter = React.memo(
                   results={searchResults}
                   color={color}
                   shown={focused || hovering}
-                  onSelect={onSelect}
+                  onSelect={(value) => {
+                    onSelect(value);
+                    setHovering(false);
+                    setFocused(false);
+                    setSearch("");
+                  }}
                   onMouseEnter={() => setHovering(true)}
                   onMouseLeave={() => setHovering(false)}
                 />

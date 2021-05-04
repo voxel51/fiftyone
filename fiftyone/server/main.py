@@ -917,7 +917,9 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         _write_message(message, app=True, only=only)
 
     @classmethod
-    async def on_distinct(cls, self, path, uuid=None, search="", limit=10):
+    async def on_distinct(
+        cls, self, path, uuid=None, selected=[], search="", limit=10
+    ):
         state = fos.StateDescription.from_dict(StateHandler.state)
         results = None
         col = cls.sample_collection()
@@ -928,14 +930,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         else:
             results = []
 
-        search = _escape_regex_chars(search)
-
-        if search != "":
-            if "." in path:
-                field = path.split(".")[0]
-                view = view.filter_labels(field, F("label").re_match(search))
-            else:
-                view = view.match(F(path).re_match(search))
+        view = _get_search_view(view, path, search, selected)
 
         count, first = await view._async_aggregate(
             col, foa.Distinct(path, _first=limit)
@@ -1024,6 +1019,29 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         _write_message(
             {"type": "distributions", "results": results}, only=self
         )
+
+
+def _get_search_view(view, path, search, selected):
+    search = _escape_regex_chars(search)
+
+    if search != "":
+        if "." in path:
+            fields = path.split(".")
+            if view.media_type == fom.VIDEO and fields[0] == "frames":
+                field = ".".join(fields[:2])
+            else:
+                field = fields[0]
+
+            view = view.filter_labels(
+                field,
+                F("label").re_match(search) & ~F("label").is_in(selected),
+            )
+        else:
+            view = view.match(
+                F(path).re_match(search) & ~F(path).is_in(selected)
+            )
+
+    return view
 
 
 def _write_message(message, app=False, session=False, ignore=None, only=None):

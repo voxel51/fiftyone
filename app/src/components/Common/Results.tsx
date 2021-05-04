@@ -9,7 +9,7 @@ export const ResultsContainer = styled.div`
   border-radius: 2px;
   box-shadow: 0 2px 20px ${({ theme }) => theme.backgroundDark};
   box-sizing: border-box;
-  margin-top: 0.5rem;
+  margin-top: 0;
   position: absolute;
   width: auto;
   z-index: 801;
@@ -28,6 +28,12 @@ export const ResultsContainer = styled.div`
   &::-webkit-scrollbar-thumb {
     width: 0px;
     display: none;
+  }
+
+  & > {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 `;
 

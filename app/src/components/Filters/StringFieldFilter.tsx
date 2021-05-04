@@ -129,6 +129,7 @@ const StringFieldFilter = ({ expanded, entry }) => {
         selectedValuesAtom={selectedValuesAtom(entry.path)}
         excludeAtom={excludeAtom(entry.path)}
         totalAtom={totalAtom(entry.path)}
+        path={entry.path}
         ref={ref}
       />
     </animated.div>
