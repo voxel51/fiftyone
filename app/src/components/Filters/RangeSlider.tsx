@@ -10,6 +10,8 @@ import {
 import { Slider as SliderUnstyled } from "@material-ui/core";
 
 import Checkbox from "../Common/Checkbox";
+import { PopoutSectionTitle } from "../utils";
+import { Button } from "../FieldsSidebar";
 
 const SliderContainer = styled.div`
   font-weight: bold;
@@ -265,20 +267,7 @@ export const NamedRangeSlider = React.memo(
 
       return (
         <NamedRangeSliderContainer ref={ref}>
-          <NamedRangeSliderHeader>
-            {name}
-            {!hasDefaultRange || !includeNone ? (
-              <a
-                style={{ cursor: "pointer", textDecoration: "underline" }}
-                onClick={() => {
-                  setRange(bounds);
-                  setIncludeNone(true);
-                }}
-              >
-                reset
-              </a>
-            ) : null}
-          </NamedRangeSliderHeader>
+          {name && <NamedRangeSliderHeader>{name}</NamedRangeSliderHeader>}
           <RangeSliderContainer>
             {isSingleValue && (
               <span
@@ -297,6 +286,8 @@ export const NamedRangeSlider = React.memo(
             {hasBounds && !isSingleValue && (
               <RangeSlider {...rangeSliderProps} showBounds={false} />
             )}
+            {((hasNone && hasBounds && hasDefaultRange) ||
+              !hasDefaultRange) && <PopoutSectionTitle />}
             {hasNone && hasBounds && hasDefaultRange && (
               <Checkbox
                 color={rangeSliderProps.color}
@@ -304,6 +295,24 @@ export const NamedRangeSlider = React.memo(
                 value={includeNone}
                 setValue={setIncludeNone}
               />
+            )}
+            {!hasDefaultRange && (
+              <>
+                <Button
+                  text={"Reset"}
+                  color={rangeSliderProps.color}
+                  onClick={() => {
+                    setRange(bounds);
+                    setIncludeNone(true);
+                  }}
+                  style={{
+                    margin: "0.25rem -0.5rem",
+                    paddingLeft: "2.5rem",
+                    height: "2rem",
+                    borderRadius: 0,
+                  }}
+                ></Button>
+              </>
             )}
           </RangeSliderContainer>
         </NamedRangeSliderContainer>

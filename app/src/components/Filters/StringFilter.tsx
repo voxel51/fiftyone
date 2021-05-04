@@ -2,6 +2,7 @@ import React, { Suspense, useLayoutEffect } from "react";
 import {
   RecoilState,
   RecoilValueReadOnly,
+  useRecoilCallback,
   useRecoilState,
   useRecoilValue,
   useSetRecoilState,
@@ -10,10 +11,12 @@ import styled from "styled-components";
 
 import Checkbox from "../Common/Checkbox";
 import Input from "../Common/Input";
+import Results from "../Common/Results";
 import { Button } from "../FieldsSidebar";
 import { PopoutSectionTitle, TabOption } from "../utils";
 import * as selectors from "../../recoil/selectors";
 import { filterView } from "../../utils/view";
+import { LIST_LIMIT } from "./StringFieldFilter";
 
 const StringFilterContainer = styled.div`
   background: ${({ theme }) => theme.backgroundDark};
@@ -100,23 +103,23 @@ const Wrapper = ({
   color,
   valuesAtom,
   selectedValuesAtom,
-  searchAtom,
   excludeAtom,
   valueName,
 }: WrapperProps) => {
   const [selected, setSelected] = useRecoilState(selectedValuesAtom);
-  const { results } = useRecoilValue(valuesAtom);
-  const search = useRecoilValue(searchAtom);
+  const { total, results } = useRecoilValue(valuesAtom);
   const selectedSet = new Set(selected);
   const setExcluded = useSetRecoilState(excludeAtom);
 
-  const allValues = [...new Set([...results, ...selected])]
-    .sort()
-    .filter((v) => v && v.includes(search));
+  let allValues = selected;
+
+  if (total <= LIST_LIMIT) {
+    allValues = [...allValues, ...results];
+  }
 
   return (
     <>
-      {allValues.map((value) => (
+      {[...new Set(allValues)].sort().map((value) => (
         <Checkbox
           key={value}
           color={color}
@@ -157,6 +160,32 @@ const Wrapper = ({
         </>
       )}
     </>
+  );
+};
+
+interface ResultsWrapperProps {
+  valuesAtom: RecoilValueReadOnly<{
+    total: number;
+    count: number;
+    results: string[];
+  }>;
+}
+
+const useOnSelect = () => {
+  return useRecoilCallback(({ snapshot, set }) => async (value: string) => {});
+};
+
+const ResultsWrapper = ({ valuesAtom }: ResultsWrapperProps) => {
+  const onSelect = useOnSelect();
+  const { results } = useRecoilValue(valuesAtom);
+
+  return ReactDOM.createPortal(
+    <ResultsContainer>
+      <Suspense fallback={"..."}>
+        <Results onSelect={onSelect} results={results} active={} />
+      </Suspense>
+    </ResultsContainer>,
+    document.body
   );
 };
 
@@ -206,19 +235,22 @@ const StringFilter = React.memo(
             {name && <>{name}</>}
           </NamedStringFilterHeader>
           <StringFilterContainer>
-            {total > 15 && (
-              <Input
-                color={color}
-                setter={(value) => setSearch(value)}
-                value={search}
-                onEnter={() => {
-                  const newSelected = new Set([...selected]);
-                  newSelected.add(search);
-                  setSelected([...newSelected].sort());
-                  setSearch("");
-                }}
-                placeholder={`+ filter by ${valueName}`}
-              />
+            {total > LIST_LIMIT && (
+              <>
+                <Input
+                  color={color}
+                  setter={(value) => setSearch(value)}
+                  value={search}
+                  onEnter={() => {
+                    const newSelected = new Set([...selected]);
+                    newSelected.add(search);
+                    setSelected([...newSelected].sort());
+                    setSearch("");
+                  }}
+                  placeholder={`+ filter by ${valueName}`}
+                />
+                <ResultsWrapper />
+              </>
             )}
             <Suspense fallback={"..."}>
               <Wrapper

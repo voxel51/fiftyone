@@ -16,6 +16,8 @@ import { useExpand, hasNoneField } from "./utils";
 import socket from "../../shared/connection";
 import { packageMessage } from "../../utils/socket";
 
+export const LIST_LIMIT = 15;
+
 type StringFilter = {
   values: string[];
   exclude: boolean;
@@ -93,7 +95,7 @@ export const searchStringFields = selectorFamily<
   { path: string; limit?: number }
 >({
   key: "searchStringFields",
-  get: ({ path, limit = 15 }) => async ({ get }) => {
+  get: ({ path, limit = LIST_LIMIT }) => async ({ get }) => {
     const search = get(searchStringField(path));
     const id = uuid();
 
@@ -137,7 +139,7 @@ export const valuesAtom = selectorFamily<
   { path: string; limit?: number }
 >({
   key: "stringFieldValues",
-  get: ({ path, limit = 15 }) => ({ get }) => {
+  get: ({ path, limit = LIST_LIMIT }) => ({ get }) => {
     const values = {
       total: get(totalAtom(path)),
       ...get(searchStringFields({ path, limit })),

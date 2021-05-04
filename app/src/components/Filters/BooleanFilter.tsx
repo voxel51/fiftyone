@@ -8,6 +8,8 @@ import {
 import styled from "styled-components";
 
 import Checkbox from "../Common/Checkbox";
+import { Button } from "../FieldsSidebar";
+import { PopoutSectionTitle } from "../utils";
 
 const BooleanFilterContainer = styled.div`
   position: relative;
@@ -18,11 +20,6 @@ const NamedBooleanFilterContainer = styled.div`
   padding-bottom: 0.5rem;
   margin: 3px;
   font-weight: bold;
-`;
-
-const NamedBooleanFilterHeader = styled.div`
-  display: flex;
-  justify-content: space-between;
 `;
 
 const CheckboxContainer = styled.div`
@@ -50,7 +47,7 @@ type NamedProps = {
 const NamedBooleanFilter = React.memo(
   React.forwardRef(
     (
-      { color, name, hasNoneAtom, noneAtom, falseAtom, trueAtom }: NamedProps,
+      { color, hasNoneAtom, noneAtom, falseAtom, trueAtom }: NamedProps,
       ref
     ) => {
       const [none, setNone] = useRecoilState(noneAtom);
@@ -60,22 +57,6 @@ const NamedBooleanFilter = React.memo(
 
       return (
         <NamedBooleanFilterContainer ref={ref}>
-          <NamedBooleanFilterHeader>
-            {name}
-            {!isDefault(falseValue, trueValue, none) ? (
-              <a
-                style={{ cursor: "pointer", textDecoration: "underline" }}
-                onClick={() => {
-                  setTrue(false);
-                  setFalse(false);
-                  setNone(false);
-                }}
-              >
-                reset
-              </a>
-            ) : null}
-          </NamedBooleanFilterHeader>
-
           <BooleanFilterContainer>
             <CheckboxContainer>
               <Checkbox
@@ -97,6 +78,26 @@ const NamedBooleanFilter = React.memo(
                   value={none}
                   setValue={setNone}
                 />
+              )}
+              {!isDefault(falseValue, trueValue, none) && (
+                <>
+                  <PopoutSectionTitle />
+                  <Button
+                    text={"Reset"}
+                    color={color}
+                    onClick={() => {
+                      setNone(false);
+                      setTrue(false);
+                      setFalse(false);
+                    }}
+                    style={{
+                      margin: "0.25rem -0.5rem",
+                      paddingLeft: "2.5rem",
+                      height: "2rem",
+                      borderRadius: 0,
+                    }}
+                  ></Button>
+                </>
               )}
             </CheckboxContainer>
           </BooleanFilterContainer>

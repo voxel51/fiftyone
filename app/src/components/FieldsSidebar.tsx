@@ -503,7 +503,6 @@ const LabelsCell = ({ modal, frames }: LabelsCellProps) => {
       icon={
         frames ? <BurstMode /> : video ? <VideoLibrary /> : <PhotoLibrary />
       }
-      pills={<ResetFiltersPill />}
       entries={labels.map((name) => {
         const path = frames ? "frames." + name : name;
         return {
