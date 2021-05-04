@@ -68,6 +68,15 @@ class DocumentSingleton(type):
         """
         raise NotImplementedError("subclass must implement _get_instance()")
 
+    def _reload_instance(cls, obj):
+        """Reloads the backing document for the given instance (or view), if a
+        reference exists to it.
+
+        Args:
+            obj: a :class:`Document` or :class:`DocumentView`
+        """
+        raise NotImplementedError("subclass must implement _reload_instance()")
+
 
 class SampleSingleton(DocumentSingleton):
     """Singleton metaclass for :class:`fiftyone.core.sample.Sample`.
@@ -93,6 +102,10 @@ class SampleSingleton(DocumentSingleton):
             return cls._instances[doc.collection_name][str(doc.id)]
         except KeyError:
             return None
+
+    def _reload_instance(cls, obj):
+        # pylint: disable=no-value-for-parameter
+        cls._reload_doc(obj._doc.collection_name, obj.id)
 
     def _rename_fields(cls, collection_name, field_names, new_field_names):
         """Renames the field on all in-memory samples in the collection."""
@@ -233,6 +246,12 @@ class FrameSingleton(DocumentSingleton):
             ]
         except KeyError:
             return None
+
+    def _reload_instance(cls, obj):
+        # pylint: disable=no-value-for-parameter
+        cls._reload_doc(
+            obj._doc.collection_name, str(obj._sample_id), obj.frame_number
+        )
 
     def _rename_fields(cls, collection_name, field_names, new_field_names):
         """Renames the field on all in-memory frames in the collection."""

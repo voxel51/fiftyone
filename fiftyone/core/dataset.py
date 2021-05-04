@@ -1284,15 +1284,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self._validate_sample(sample)
 
         d = sample.to_mongo_dict()
-        d.pop("_id", None)  # remove the ID if in DB
         self._sample_collection.insert_one(d)  # adds `_id` to `d`
 
-        if not sample._in_db:
-            doc = self._sample_dict_to_doc(d)
-            sample._set_backing_doc(doc, dataset=self)
+        doc = self._sample_dict_to_doc(d)
+        sample._set_backing_doc(doc, dataset=self)
 
         if self.media_type == fom.VIDEO:
-            sample.frames._save(insert=True)
+            sample.frames._insert()
 
         return str(d["_id"])
 
@@ -1389,8 +1387,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             self._validate_sample(sample)
 
         dicts = [sample.to_mongo_dict() for sample in samples]
-        for d in dicts:
-            d.pop("_id", None)  # remove the ID if in DB
 
         try:
             # adds `_id` to each dict
@@ -1400,12 +1396,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             raise ValueError(msg) from bwe
 
         for sample, d in zip(samples, dicts):
-            if not sample._in_db:
-                doc = self._sample_dict_to_doc(d)
-                sample._set_backing_doc(doc, dataset=self)
+            doc = self._sample_dict_to_doc(d)
+            sample._set_backing_doc(doc, dataset=self)
 
             if self.media_type == fom.VIDEO:
-                sample.frames._save(insert=True)
+                sample.frames._insert()
 
         return [str(d["_id"]) for d in dicts]
 
@@ -3387,7 +3382,6 @@ def _create_dataset(name, persistent=False, media_type=None):
     frame_collection_name = "frames." + sample_collection_name
     frame_doc_cls = _create_frame_document_cls(frame_collection_name)
 
-    # @todo add `frame_collection_name` to dataset document too?
     dataset_doc = foo.DatasetDocument(
         media_type=media_type,
         name=name,

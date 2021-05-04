@@ -449,6 +449,8 @@ class SampleView(_SampleMixin, DocumentView):
             filtered in this sample view, if any
     """
 
+    _DOCUMENT_CLS = Sample
+
     def __init__(
         self,
         doc,
@@ -516,9 +518,6 @@ class SampleView(_SampleMixin, DocumentView):
                 pass
 
         super().save()
-
-        # Reload the parent sample of this view if it exists in memory
-        Sample._reload_doc(self._dataset._sample_collection_name, self.id)
 
 
 def _apply_confidence_thresh(label, confidence_thresh):

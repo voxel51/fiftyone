@@ -6,6 +6,7 @@ Video frames.
 |
 """
 from pymongo import ReplaceOne, UpdateOne, DeleteOne
+from pymongo.errors import BulkWriteError
 
 from fiftyone.core.document import Document, DocumentView
 import fiftyone.core.frame_utils as fofu
@@ -309,12 +310,12 @@ class Frames(object):
 
         self._delete_all = True
 
-    def _save(self, insert=False):
+    def _save(self):
         if not self._in_db:
             return
 
         self._save_deletions()
-        self._save_replacements(insert=insert)
+        self._save_replacements()
 
     def _reload(self, hard=False):
         self._delete_all = False
@@ -435,6 +436,26 @@ class Frames(object):
     def _to_frames_dict(self):
         return {str(fn): frame.to_dict() for fn, frame in self.items()}
 
+    def _insert(self):
+        if not self._replacements:
+            return
+
+        frames = list(self._replacements.values())
+        dicts = [self._make_dict(frame) for frame in frames]
+
+        try:
+            # adds `_id` to each dict
+            self._frame_collection.insert_many(dicts)
+        except BulkWriteError as bwe:
+            msg = bwe.details["writeErrors"][0]["errmsg"]
+            raise ValueError(msg) from bwe
+
+        for frame, d in zip(frames, dicts):
+            doc = self._dataset._frame_dict_to_doc(d)
+            frame._set_backing_doc(doc, dataset=self._dataset)
+
+        self._replacements.clear()
+
     def _save_deletions(self):
         if self._delete_all:
             self._delete_all = False
@@ -456,31 +477,24 @@ class Frames(object):
             self._delete_frames.clear()
             self._frame_collection.bulk_write(ops, ordered=False)
 
-    def _save_replacements(self, insert=False):
+    def _save_replacements(self):
         if not self._replacements:
             return
 
-        if insert:
-            docs = [
-                self._make_dict(frame) for frame in self._replacements.values()
-            ]
-            self._frame_collection.insert_many(docs)
-        else:
-            ops = []
-            for frame_number, frame in self._replacements.items():
-                ops.append(
-                    ReplaceOne(
-                        {
-                            "frame_number": frame_number,
-                            "_sample_id": self._sample._id,
-                        },
-                        self._make_dict(frame),
-                        upsert=True,
-                    )
+        ops = []
+        for frame_number, frame in self._replacements.items():
+            ops.append(
+                ReplaceOne(
+                    {
+                        "frame_number": frame_number,
+                        "_sample_id": self._sample._id,
+                    },
+                    self._make_dict(frame),
+                    upsert=True,
                 )
+            )
 
-            self._frame_collection.bulk_write(ops, ordered=False)
-
+        self._frame_collection.bulk_write(ops, ordered=False)
         self._replacements.clear()
 
 
@@ -616,12 +630,12 @@ class FramesView(Frames):
             filtered_fields=self._filtered_fields,
         )
 
-    def _save_replacements(self, insert=False):
+    def _save_replacements(self):
         if not self._replacements:
             return
 
-        if insert or self._contains_all_fields:
-            super()._save_replacements(insert=insert)
+        if self._contains_all_fields:
+            super()._save_replacements()
             return
 
         ops = []
@@ -726,13 +740,4 @@ class FrameView(DocumentView):
             filtered in this frame view, if any
     """
 
-    def save(self):
-        """Saves the contents of this frame view to the database."""
-        super().save()
-
-        # Reload the parent frame of this view if it exists in memory
-        Frame._reload_doc(
-            self._dataset._frame_collection_name,
-            str(self._sample_id),
-            self.frame_number,
-        )
+    _DOCUMENT_CLS = Frame

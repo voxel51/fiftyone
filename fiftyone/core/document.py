@@ -277,7 +277,7 @@ class _Document(object):
         Returns:
             a :class:`Document`
         """
-        return self.__class__(self._doc.copy(), dataset=self._dataset)
+        return self.__class__(self._doc.copy())
 
     def to_dict(self):
         """Serializes the document to a JSON dictionary.
@@ -494,6 +494,10 @@ class DocumentView(_Document):
             filtered in this document view, if any
     """
 
+    # The `Document` class associated with this `DocumentView` class
+    # Subclasses must define this
+    _DOCUMENT_CLS = Document
+
     def __init__(
         self,
         doc,
@@ -605,19 +609,19 @@ class DocumentView(_Document):
         return d
 
     def copy(self):
-        """Returns a deep copy of the document view.
+        """Returns a deep copy of the document view as a document that has not
+        been added to the database.
 
         Returns:
-            a :class:`DocumentView`
+            a :class:`Document`
         """
-        return self.__class__(
-            self._doc.copy(),
-            self._view,
-            selected_fields=self._selected_fields,
-            excluded_fields=self._excluded_fields,
-            filtered_fields=self._filtered_fields,
+        return self._DOCUMENT_CLS(
+            **{k: deepcopy(v) for k, v in self.iter_fields()}
         )
 
     def save(self):
         """Saves the contents of this sample view to the database."""
         self._doc.save(filtered_fields=self._filtered_fields)
+
+        if issubclass(type(self._DOCUMENT_CLS), DocumentSingleton):
+            self._DOCUMENT_CLS._reload_instance(self)
