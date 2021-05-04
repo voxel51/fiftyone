@@ -578,7 +578,7 @@ const ScalarsCell = ({ modal }: ScalarsCellProps) => {
         hasDropdown: !modal,
         selected: activeScalars.includes(name),
         color: colorByLabel ? theme.brand : colorMap[name],
-        title: name,
+        title: modal ? `${name}: ${stringify(count[name])}` : name,
         path: name,
         type: "values",
         data:
@@ -714,7 +714,7 @@ const FieldsSidebar = React.forwardRef(
   ({ modal, style }: FieldsSidebarProps, ref) => {
     const mediaType = useRecoilValue(selectors.mediaType);
     const isVideo = mediaType === "video";
-    const moreStyles = modal ? { height: "auto", overflow: "auto hidden" } : {};
+    const moreStyles = modal ? { height: "auto" } : {};
 
     return (
       <Container ref={ref} style={{ ...style, ...moreStyles }}>
