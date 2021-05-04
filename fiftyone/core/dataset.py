@@ -38,6 +38,7 @@ import fiftyone.core.media as fom
 import fiftyone.migrations as fomi
 import fiftyone.core.odm as foo
 import fiftyone.core.sample as fos
+import fiftyone.core.stages as fost
 from fiftyone.core.singletons import DatasetSingleton
 import fiftyone.core.view as fov
 import fiftyone.core.utils as fou
@@ -3833,7 +3834,7 @@ def _merge_samples(
 
         # Re-run creation in case existing index is not unique. If the index
         # is already unique, this is a no-op
-        src_collection.create_index(key_field, unique=True)
+        src_dataset.create_index(key_field, unique=True)
         dst_dataset.create_index(key_field, unique=True)
     else:
         new_src_index = False
@@ -3941,7 +3942,13 @@ def _merge_samples(
     #
 
     if is_video:
-        frame_pipeline = src_collection._pipeline(frames_only=True)
+        # @todo this there a cleaner way to avoid this? we have to be sure that
+        # `frame_key_field` is not excluded by a user's view here...
+        _src_collection = _always_select_field(
+            src_collection, "frames." + frame_key_field
+        )
+
+        frame_pipeline = _src_collection._pipeline(frames_only=True)
 
         frame_pipeline.extend([{"$unset": ["_id", "_sample_id"]}])
 
@@ -4013,6 +4020,21 @@ def _index_frames(sample_collection, key_field, frame_key_field):
         expand_schema=False,
         _allow_missing=True,
     )
+
+
+def _always_select_field(sample_collection, field):
+    if not isinstance(sample_collection, fov.DatasetView):
+        return sample_collection
+
+    # Manually insert `field` into all `SelectFields` stages
+    view = sample_collection._dataset.view()
+    for stage in sample_collection.stages:
+        if isinstance(stage, fost.SelectFields):
+            stage = fost.SelectFields(stage.field_names + [field])
+
+        view = view.add_stage(stage)
+
+    return view
 
 
 def _finalize_frames(sample_collection, key_field, frame_key_field):
