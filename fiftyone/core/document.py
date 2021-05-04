@@ -604,13 +604,11 @@ class DocumentView(_Document):
         else:
             super().set_field(field_name, value, create=True)
 
-            ef = self._excluded_fields
-            if ef is not None and field_name in ef:
-                self._excluded_fields = tuple(f for f in ef if f != field_name)
+            if self._excluded_fields is not None:
+                self._excluded_fields.discard(field_name)
 
-            sf = self._selected_fields
-            if sf is not None and field_name not in sf:
-                self._selected_fields += (field_name,)
+            if self._selected_fields is not None:
+                self._selected_fields.add(field_name)
 
     def clear_field(self, field_name):
         # Ensures field exists
