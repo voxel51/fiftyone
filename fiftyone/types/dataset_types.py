@@ -728,7 +728,7 @@ class KITTIDetectionDataset(ImageDetectionDataset):
         return fouk.KITTIDetectionDatasetExporter
 
 
-class OpenImagesDataset(ImageDetectionDataset):
+class OpenImagesV6Dataset(ImageDetectionDataset):
     """A labeled dataset consisting of images and their associated annotations
     saved in
     `Open Images Format <https://storage.googleapis.com/openimages/web/download.html>`_.
@@ -782,7 +782,7 @@ class OpenImagesDataset(ImageDetectionDataset):
     def get_dataset_importer_cls(self):
         import fiftyone.utils.openimages as fouo
 
-        return fouo.OpenImagesDatasetImporter
+        return fouo.OpenImagesV6DatasetImporter
 
 
 class YOLODataset(ImageDetectionDataset):

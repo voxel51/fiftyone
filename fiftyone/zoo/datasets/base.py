@@ -848,7 +848,7 @@ class LabeledFacesInTheWildDataset(FiftyOneDataset):
         return dataset_type, num_samples, classes
 
 
-class OpenImagesDataset(FiftyOneDataset):
+class OpenImagesV6Dataset(FiftyOneDataset):
     """Open Images is a dataset of totalling ~9 million images. Roughly 2
     million are annotated and available in this zoo. The dataset contains
     annotations for classification, detection, segmentation, and visual
@@ -928,8 +928,6 @@ class OpenImagesDataset(FiftyOneDataset):
         num_workers (None): the number of processes to use when downloading
             individual images. By default, ``multiprocessing.cpu_count()`` is
             used
-        version ("v6"): string indicating the version of Open Images to
-            download. Currently only Open Images V6 is supported.
     """
 
     def __init__(
@@ -943,7 +941,6 @@ class OpenImagesDataset(FiftyOneDataset):
         image_ids=None,
         image_ids_file=None,
         num_workers=None,
-        version="v6",
     ):
 
         self.label_types = label_types
@@ -955,11 +952,10 @@ class OpenImagesDataset(FiftyOneDataset):
         self.image_ids = image_ids
         self.image_ids_file = image_ids_file
         self.num_workers = num_workers
-        self.version = version
 
     @property
     def name(self):
-        return "open-images"
+        return "open-images-v6"
 
     @property
     def tags(self):
@@ -996,9 +992,9 @@ class OpenImagesDataset(FiftyOneDataset):
             self.image_ids,
             self.image_ids_file,
             self.num_workers,
-            self.version,
+            version="v6",
         )
-        dataset_type = fot.OpenImagesDataset()
+        dataset_type = fot.OpenImagesV6Dataset()
         logger.info("Found %d samples", num_samples)
 
         return dataset_type, num_samples, classes
@@ -1265,7 +1261,7 @@ AVAILABLE_DATASETS = {
     "imagenet-sample": ImageNetSampleDataset,
     "kitti": KITTIDataset,
     "lfw": LabeledFacesInTheWildDataset,
-    "open-images": OpenImagesDataset,
+    "open-images-v6": OpenImagesV6Dataset,
     "quickstart": QuickstartDataset,
     "quickstart-geo": QuickstartGeoDataset,
     "quickstart-video": QuickstartVideoDataset,

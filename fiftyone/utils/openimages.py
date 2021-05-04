@@ -376,6 +376,71 @@ class OpenImagesDatasetImporter(foud.LabeledImageDatasetImporter):
         return self._info
 
 
+class OpenImagesV6DatasetImporter(OpenImagesDatasetImporter):
+    """Importer subclass for Open Images V6
+
+    See :class:`fiftyone.types.dataset_types.OpenImagesV6Dataset` for format
+    details.
+
+    Args:
+        dataset_dir: the dataset directory
+        label_types (None): a list of types of labels to load. Values are
+            ``("detections", "classifications", "relationships", "segmentations")``.
+            By default, all labels are loaded but not every sample will include
+            each label type. If ``max_samples`` and ``label_types`` are both
+            specified, then every sample will include the specified label
+            types.
+        classes (None): a list of strings specifying required classes to load.
+            Only samples containing at least one instance of a specified
+            classes will be downloaded. Use :meth:`get_classes` to see the
+            available classes
+        attrs (None): a list of strings for relationship attributes to load
+        max_samples (None): a maximum number of samples to import. By
+            default, all samples are imported
+        seed (None): a random seed to use when shuffling
+        shuffle (False): whether to randomly shuffle the order in which the
+            samples are imported
+        skip_unlabeled (False): whether to skip unlabeled images when importing
+        image_ids (None): a list of specific image IDs to load. The IDs can be
+            specified either as ``<split>/<image-id>`` or ``<image-id>``
+        image_ids_file (None): the path to a newline separated text, JSON, or
+            CSV file containing a list of image IDs to load. The IDs can be
+            specified either as ``<split>/<image-id>`` or ``<image-id>``. If
+            ``image_ids`` is provided, this parameter is ignored
+        load_hierarchy (True): optionally load the classes hiearchy and add it
+            to the info of the dataset
+    """
+
+    def __init__(
+        self,
+        dataset_dir,
+        shuffle=False,
+        seed=None,
+        max_samples=None,
+        skip_unlabeled=False,
+        label_types=None,
+        classes=None,
+        attrs=None,
+        image_ids=None,
+        image_ids_file=None,
+        load_hierarchy=True,
+    ):
+        super().__init__(
+            dataset_dir,
+            shuffle=shuffle,
+            seed=seed,
+            max_samples=max_samples,
+            skip_unlabeled=skip_unlabeled,
+            label_types=label_types,
+            classes=classes,
+            attrs=attrs,
+            image_ids=image_ids,
+            image_ids_file=image_ids_file,
+            load_hierarchy=load_hierarchy,
+            version="v6",
+        )
+
+
 def download_open_images_split(
     dataset_dir=None,
     split=None,
