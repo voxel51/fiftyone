@@ -458,7 +458,7 @@ class OpenImagesDetectionResults(DetectionResults):
 
 
 _NO_MATCH_ID = ""
-_NO_MATCH_IOU = -1
+_NO_MATCH_IOU = None
 
 
 def _expand_label_hierarchy(labels, config, expand_child=False):
