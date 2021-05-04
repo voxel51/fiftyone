@@ -4,12 +4,14 @@ import {
   RecoilValueReadOnly,
   useRecoilState,
   useRecoilValue,
+  useSetRecoilState,
 } from "recoil";
 import styled from "styled-components";
 
 import Checkbox from "../Common/Checkbox";
 import Input from "../Common/Input";
-import { TabOption } from "../utils";
+import { Button } from "../FieldsSidebar";
+import { PopoutSectionTitle, TabOption } from "../utils";
 import * as selectors from "../../recoil/selectors";
 import { filterView } from "../../utils/view";
 
@@ -51,13 +53,19 @@ const Footer = styled.div`
 interface ExcludeOptionProps {
   excludeAtom: RecoilState<boolean>;
   valueName: string;
+  color: string;
 }
 
-const ExcludeOption = ({ excludeAtom, valueName }: ExcludeOptionProps) => {
+const ExcludeOption = ({
+  excludeAtom,
+  valueName,
+  color,
+}: ExcludeOptionProps) => {
   const [excluded, setExcluded] = useRecoilState(excludeAtom);
   return (
     <TabOption
       active={excluded ? "Exclude" : "Select"}
+      color={color}
       options={[
         {
           text: "Select",
@@ -100,6 +108,7 @@ const Wrapper = ({
   const { results } = useRecoilValue(valuesAtom);
   const search = useRecoilValue(searchAtom);
   const selectedSet = new Set(selected);
+  const setExcluded = useSetRecoilState(excludeAtom);
 
   const allValues = [...new Set([...results, ...selected])]
     .sort()
@@ -123,7 +132,30 @@ const Wrapper = ({
           }}
         />
       ))}
-      <ExcludeOption excludeAtom={excludeAtom} valueName={valueName} />
+      {Boolean(selectedSet.size) && (
+        <>
+          <PopoutSectionTitle />
+          <ExcludeOption
+            excludeAtom={excludeAtom}
+            valueName={valueName}
+            color={color}
+          />
+          <Button
+            text={"Reset"}
+            color={color}
+            onClick={() => {
+              setSelected([]);
+              setExcluded(false);
+            }}
+            style={{
+              margin: "0.25rem -0.5rem",
+              paddingLeft: "2.5rem",
+              height: "2rem",
+              borderRadius: 0,
+            }}
+          ></Button>
+        </>
+      )}
     </>
   );
 };
@@ -168,24 +200,10 @@ const StringFilter = React.memo(
         setSearch("");
       }, [filterView(view), datasetName]);
 
-      console.log(total);
       return (
         <NamedStringFilterContainer ref={ref}>
           <NamedStringFilterHeader>
             {name && <>{name}</>}
-            <div>
-              {selected.length > 0 ? (
-                <a
-                  style={{ cursor: "pointer", textDecoration: "underline" }}
-                  onClick={() => {
-                    setSelected([]);
-                    setSearch("");
-                  }}
-                >
-                  reset
-                </a>
-              ) : null}
-            </div>
           </NamedStringFilterHeader>
           <StringFilterContainer>
             {total > 15 && (

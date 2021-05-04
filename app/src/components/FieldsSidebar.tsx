@@ -673,11 +673,18 @@ export const OptionText = ({ style, children }) => {
   );
 };
 
-export const Button = ({ onClick, text, children = null, style }) => {
+export const Button = ({
+  onClick,
+  text,
+  children = null,
+  style,
+  color = null,
+}) => {
   const theme = useTheme();
   const [hover, setHover] = useState(false);
+  color = color ?? theme.brand;
   const props = useSpring({
-    backgroundColor: hover ? theme.brand : theme.background,
+    backgroundColor: hover ? color : theme.background,
     color: hover ? theme.font : theme.fontDark,
     config: {
       duration: 150,

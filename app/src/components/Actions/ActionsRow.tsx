@@ -7,13 +7,13 @@ import React, {
 } from "react";
 import { CircularProgress } from "@material-ui/core";
 import {
-  AspectRatio,
+  Bookmark,
   Check,
   FlipToBack,
   LocalOffer,
-  Code,
   Settings,
   VisibilityOff,
+  Wallpaper,
 } from "@material-ui/icons";
 import useMeasure from "react-use-measure";
 import { selectorFamily, useRecoilState, useRecoilValue } from "recoil";
@@ -47,7 +47,7 @@ const Patches = () => {
   return (
     <ActionDiv ref={ref}>
       <PillButton
-        icon={<AspectRatio />}
+        icon={<FlipToBack />}
         open={open}
         onClick={() => setOpen(!open)}
         highlight={open}
@@ -88,7 +88,7 @@ const Similarity = ({ modal }: { modal: boolean }) => {
   return (
     <ActionDiv ref={ref}>
       <PillButton
-        icon={<FlipToBack />}
+        icon={<Wallpaper />}
         open={open}
         onClick={() => setOpen(!open)}
         highlight={true}
@@ -262,7 +262,7 @@ const SaveFilters = () => {
     <PillButton
       open={false}
       highlight={true}
-      icon={<Code />}
+      icon={<Bookmark />}
       onClick={() => {
         setLoading(false);
         socket.send(packageMessage("save_filters", {}));
