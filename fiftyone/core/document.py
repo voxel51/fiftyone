@@ -290,6 +290,15 @@ class _Document(object):
         d = self._doc.to_dict(extended=True)
         return {k: v for k, v in d.items() if not k.startswith("_")}
 
+    def to_mongo_dict(self):
+        """Serializes the document to a BSON dictionary equivalent to the
+        representation that would be stored in the database.
+
+        Returns:
+            a BSON dict
+        """
+        return self._doc.to_dict()
+
     def to_json(self, pretty_print=False):
         """Serializes the document to a JSON string.
 
@@ -303,15 +312,6 @@ class _Document(object):
             a JSON string
         """
         return etas.json_to_str(self.to_dict(), pretty_print=pretty_print)
-
-    def to_mongo_dict(self):
-        """Serializes the document to a BSON dictionary equivalent to the
-        representation that would be stored in the database.
-
-        Returns:
-            a BSON dict
-        """
-        return self._doc.to_dict()
 
     def save(self):
         """Saves the document to the database."""
@@ -341,12 +341,6 @@ class Document(_Document):
         super().__init__(doc)
 
     def copy(self):
-        """Returns a deep copy of the document that has not been added to the
-        database.
-
-        Returns:
-            a :class:`Document`
-        """
         return self.__class__(
             **{k: deepcopy(v) for k, v in self.iter_fields()}
         )
@@ -529,33 +523,11 @@ class DocumentView(_Document):
             exclude_fields=self._excluded_fields,
         )
 
-    def __getattr__(self, name):
-        if not name.startswith("_"):
-            if (
-                self._selected_fields is not None
-                and name not in self._selected_fields
-            ):
-                raise AttributeError(
-                    "The '%s' field does not exist or has not been selected "
-                    "on this %s" % (name, self.__class__.__name__)
-                )
-
-            if (
-                self._excluded_fields is not None
-                and name in self._excluded_fields
-            ):
-                raise AttributeError(
-                    "Field '%s' is excluded from this %s"
-                    % (name, self.__class__.__name__)
-                )
-
-        return super().__getattr__(name)
-
     @property
     def field_names(self):
-        """An ordered tuple of field names of this document.
+        """An ordered tuple of field names of this document view.
 
-        This may be a subset of all fields of the dataset if fields have been
+        This may be a subset of all fields of the document if fields have been
         selected or excluded.
         """
         field_names = super().field_names
@@ -574,33 +546,79 @@ class DocumentView(_Document):
 
     @property
     def selected_field_names(self):
-        """The set of field names that were selected on this document view, or
-        ``None`` if no fields were explicitly selected.
+        """The set of field names that are selected on this document view, or
+        ``None`` if no fields are explicitly selected.
         """
         return self._selected_fields
 
     @property
     def excluded_field_names(self):
-        """The set of field names that were excluded on this document view, or
-        ``None`` if no fields were explicitly excluded.
+        """The set of field names that are excluded on this document view, or
+        ``None`` if no fields are explicitly excluded.
         """
         return self._excluded_fields
 
     @property
     def filtered_field_names(self):
         """The set of field names or ``embedded.field.names`` that have been
-        filtered on this document view, or ``None`` if no fields were filtered.
+        filtered on this document view, or ``None`` if no fields are filtered.
         """
         return self._filtered_fields
 
+    def has_field(self, field_name):
+        ef = self._excluded_fields
+        if ef is not None and field_name in ef:
+            return False
+
+        sf = self._selected_fields
+        if sf is not None and field_name not in sf:
+            return False
+
+        return super().has_field(field_name)
+
+    def get_field(self, field_name):
+        ef = self._excluded_fields
+        if ef is not None and field_name in ef:
+            raise AttributeError(
+                "Field '%s' is excluded from this %s"
+                % (field_name, self.__class__.__name__)
+            )
+
+        value = super().get_field(field_name)
+
+        sf = self._selected_fields
+        if sf is not None and field_name not in sf:
+            raise AttributeError(
+                "Field '%s' was not selected on this %s"
+                % (field_name, self.__class__.__name__)
+            )
+
+        return value
+
+    def set_field(self, field_name, value, create=True):
+        if not create:
+            # Ensures field exists
+            _ = self.get_field(field_name)
+
+            super().set_field(field_name, value, create=False)
+        else:
+            super().set_field(field_name, value, create=True)
+
+            ef = self._excluded_fields
+            if ef is not None and field_name in ef:
+                self._excluded_fields = tuple(f for f in ef if f != field_name)
+
+            sf = self._selected_fields
+            if sf is not None and field_name not in sf:
+                self._selected_fields += (field_name,)
+
+    def clear_field(self, field_name):
+        # Ensures field exists
+        _ = self.get_field(field_name)
+
+        super().clear_field(field_name)
+
     def to_dict(self):
-        """Serializes the document view to a JSON dictionary.
-
-        The document ID and private fields are excluded in this representation.
-
-        Returns:
-            a JSON dict
-        """
         d = super().to_dict()
 
         if self._selected_fields or self._excluded_fields:
@@ -608,19 +626,20 @@ class DocumentView(_Document):
 
         return d
 
-    def copy(self):
-        """Returns a deep copy of the document view as a document that has not
-        been added to the database.
+    def to_mongo_dict(self):
+        d = super().to_mongo_dict()
 
-        Returns:
-            a :class:`Document`
-        """
+        if self._selected_fields or self._excluded_fields:
+            d = {k: v for k, v in d.items() if k in self.field_names}
+
+        return d
+
+    def copy(self):
         return self._DOCUMENT_CLS(
             **{k: deepcopy(v) for k, v in self.iter_fields()}
         )
 
     def save(self):
-        """Saves the contents of this sample view to the database."""
         self._doc.save(filtered_fields=self._filtered_fields)
 
         if issubclass(type(self._DOCUMENT_CLS), DocumentSingleton):
