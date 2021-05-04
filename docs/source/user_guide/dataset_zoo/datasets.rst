@@ -1289,7 +1289,7 @@ Notes:
             -k max_samples=50 label_types=segmentations,classifications \
             classes=Fedora,Piano
 
-        fiftyone app launch open-images-v6-validation
+        fiftyone app launch open-images-v6-validation-50
 
 .. image:: ../../images/dataset_zoo/open-images-v6.png
    :alt: open-images-v6
