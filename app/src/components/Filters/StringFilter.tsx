@@ -277,6 +277,7 @@ const StringFilter = React.memo(
       const onSelect = useOnSelect(selectedValuesAtom, [
         () => setSearchResults(null),
         () => setSearch(""),
+        () => setActive(undefined),
       ]);
 
       useLayoutEffect(() => {
@@ -337,6 +338,19 @@ const StringFilter = React.memo(
                   color={color}
                   setter={(v) => setSearch(v)}
                   value={search}
+                  onKeyDown={(event) => {
+                    if (searchResults === null) {
+                      return;
+                    } else if (event.key === "ArrowDown") {
+                      if (active === undefined) {
+                        setActive(searchResults[0]);
+                      }
+                    } else if (event.key === "ArrowUp") {
+                      const index = searchResults.indexOf(active);
+                      if (index < searchResults.length) {
+                      }
+                    }
+                  }}
                   onEnter={() => {
                     if (results && results.includes(search)) {
                       onSelect(search);

@@ -43,6 +43,7 @@ interface InputProps {
   disabled?: boolean;
   onFocus: () => void;
   onBlur: () => void;
+  onKeyDown: (event: React.KeyboardEvent<HTMLInputElement>) => void;
 }
 
 const Input = React.memo(
@@ -56,6 +57,7 @@ const Input = React.memo(
     onEnter,
     onFocus,
     onBlur,
+    onKeyDown,
   }: InputProps) => {
     const theme = useTheme();
     color = color ?? theme.brand;
@@ -72,6 +74,9 @@ const Input = React.memo(
           }}
           onKeyPress={(e: React.KeyboardEvent<HTMLInputElement>) => {
             e.key === "Enter" && onEnter && onEnter();
+          }}
+          onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
+            onKeyDown && onKeyDown(e);
           }}
           style={disabled ? { color: theme.fontDark } : {}}
           disabled={disabled}

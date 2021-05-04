@@ -34,8 +34,8 @@ export const ResultsContainer = styled.div`
 const ResultDiv = styled(ItemAction)`
   white-space: nowrap;
   overflow: hidden;
-  text-overflow: ellipsis;
   display: block;
+  text-overflow: ellipsis;
 `;
 
 interface ResultProps {
@@ -46,22 +46,23 @@ interface ResultProps {
   onClick: () => void;
 }
 
-const Result = React.memo(
-  ({ highlight, result, onClick, alignRight }: ResultProps) => {
-    const props = useHighlightHover(
-      false,
-      null,
-      result === null ? highlight : null
-    );
-    const style = result === null ? { textAlign: "right" } : {};
+const Result = React.memo(({ highlight, result, onClick }: ResultProps) => {
+  const props = useHighlightHover(
+    false,
+    null,
+    result === null ? highlight : null
+  );
 
-    return (
-      <ResultDiv style={style} {...props} onClick={onClick}>
-        {result === null ? "None" : result}
-      </ResultDiv>
-    );
-  }
-);
+  return (
+    <ResultDiv
+      title={result === null ? "None" : result}
+      {...props}
+      onClick={onClick}
+    >
+      {result === null ? "None" : result}
+    </ResultDiv>
+  );
+});
 
 type ResultValue = string | null;
 

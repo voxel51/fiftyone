@@ -74,7 +74,7 @@ const NamedBooleanFilter = React.memo(
               {hasNone && (
                 <Checkbox
                   color={color}
-                  name={"None"}
+                  name={null}
                   value={none}
                   setValue={setNone}
                 />
