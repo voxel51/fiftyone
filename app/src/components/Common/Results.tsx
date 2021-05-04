@@ -43,3 +43,5 @@ const Results = React.memo(
     );
   }
 );
+
+export default Results;

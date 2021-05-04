@@ -48,23 +48,29 @@ const Footer = styled.div`
   }
 `;
 
-const format = (num) => {
-  return num.toLocaleString("en", { useGrouping: true });
-};
+interface ExcludeOptionProps {
+  excludeAtom: RecoilState<boolean>;
+  valueName: string;
+}
 
-const SelectionString = ({ selected, excludeAtom }) => {
-  const excluded = useRecoilValue(excludeAtom);
+const ExcludeOption = ({ excludeAtom, valueName }: ExcludeOptionProps) => {
+  const [excluded, setExcluded] = useRecoilState(excludeAtom);
   return (
-    <span>
-      {format(selected.size)}{" "}
-      {selected.size === 1
-        ? excluded
-          ? "exclusion"
-          : "selection"
-        : excluded
-        ? "exclusions"
-        : "selections"}
-    </span>
+    <TabOption
+      active={excluded ? "Exclude" : "Select"}
+      options={[
+        {
+          text: "Select",
+          title: `Select ${valueName}`,
+          onClick: () => excluded && setExcluded(false),
+        },
+        {
+          text: "Exclude",
+          title: `Exclude ${valueName}`,
+          onClick: () => !excluded && setExcluded(true),
+        },
+      ]}
+    />
   );
 };
 
@@ -78,6 +84,7 @@ interface WrapperProps {
   searchAtom: RecoilState<string>;
   excludeAtom: RecoilState<boolean>;
   name: string;
+  valueName: string;
   color: string;
 }
 
@@ -87,9 +94,10 @@ const Wrapper = ({
   selectedValuesAtom,
   searchAtom,
   excludeAtom,
+  valueName,
 }: WrapperProps) => {
   const [selected, setSelected] = useRecoilState(selectedValuesAtom);
-  const { count, total, results } = useRecoilValue(valuesAtom);
+  const { results } = useRecoilValue(valuesAtom);
   const search = useRecoilValue(searchAtom);
   const selectedSet = new Set(selected);
 
@@ -115,13 +123,7 @@ const Wrapper = ({
           }}
         />
       ))}
-      <Footer>
-        <SelectionString selected={selectedSet} excludeAtom={excludeAtom} />
-        <span>
-          {count !== total ? `${format(count)} of ` : null}
-          {format(total)}
-        </span>
-      </Footer>
+      <ExcludeOption excludeAtom={excludeAtom} valueName={valueName} />
     </>
   );
 };
@@ -135,6 +137,7 @@ interface Props {
   selectedValuesAtom: RecoilState<string[]>;
   searchAtom: RecoilState<string>;
   excludeAtom: RecoilState<boolean>;
+  totalAtom: RecoilValueReadOnly<number>;
   name?: string;
   valueName: string;
   color: string;
@@ -151,18 +154,21 @@ const StringFilter = React.memo(
         color,
         selectedValuesAtom,
         excludeAtom,
+        totalAtom,
       }: Props,
       ref
     ) => {
       const [search, setSearch] = useRecoilState(searchAtom);
       const [selected, setSelected] = useRecoilState(selectedValuesAtom);
       const view = useRecoilValue(selectors.view);
+      const total = useRecoilValue(totalAtom);
       const datasetName = useRecoilValue(selectors.datasetName);
 
       useLayoutEffect(() => {
         setSearch("");
       }, [filterView(view), datasetName]);
 
+      console.log(total);
       return (
         <NamedStringFilterContainer ref={ref}>
           <NamedStringFilterHeader>
@@ -182,18 +188,20 @@ const StringFilter = React.memo(
             </div>
           </NamedStringFilterHeader>
           <StringFilterContainer>
-            <Input
-              color={color}
-              setter={(value) => setSearch(value)}
-              value={search}
-              onEnter={() => {
-                const newSelected = new Set([...selected]);
-                newSelected.add(search);
-                setSelected([...newSelected].sort());
-                setSearch("");
-              }}
-              placeholder={`+ filter by ${valueName}`}
-            />
+            {total > 15 && (
+              <Input
+                color={color}
+                setter={(value) => setSearch(value)}
+                value={search}
+                onEnter={() => {
+                  const newSelected = new Set([...selected]);
+                  newSelected.add(search);
+                  setSelected([...newSelected].sort());
+                  setSearch("");
+                }}
+                placeholder={`+ filter by ${valueName}`}
+              />
+            )}
             <Suspense fallback={"..."}>
               <Wrapper
                 searchAtom={searchAtom}
@@ -202,6 +210,7 @@ const StringFilter = React.memo(
                 valuesAtom={valuesAtom}
                 selectedValuesAtom={selectedValuesAtom}
                 excludeAtom={excludeAtom}
+                valueName={valueName}
               />
             </Suspense>
           </StringFilterContainer>

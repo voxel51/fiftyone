@@ -90,10 +90,10 @@ export const searchStringField = atomFamily<string, string>({
 
 export const searchStringFields = selectorFamily<
   { count: number; results: string[] },
-  string
+  { path: string; limit?: number }
 >({
   key: "searchStringFields",
-  get: (path) => async ({ get }) => {
+  get: ({ path, limit = 15 }) => async ({ get }) => {
     const search = get(searchStringField(path));
     const id = uuid();
 
@@ -110,7 +110,7 @@ export const searchStringFields = selectorFamily<
         });
         socket.addEventListener("message", listener);
         socket.send(
-          packageMessage("distinct", { path, uuid: id, search, limit: 5 })
+          packageMessage("distinct", { path, uuid: id, search, limit })
         );
       }
     );
@@ -120,21 +120,27 @@ export const searchStringFields = selectorFamily<
   },
 });
 
-export const valuesAtom = selectorFamily<
-  { total: number; count: number; results: string[] },
-  string
->({
-  key: "stringFieldValues",
+export const totalAtom = selectorFamily<number, string>({
+  key: "stringFieldTotal",
   get: (path) => ({ get }) => {
-    let total = (get(selectors.datasetStats) ?? []).reduce((acc, cur) => {
+    return (get(selectors.datasetStats) ?? []).reduce((acc, cur) => {
       if (cur.name === path && cur._CLS === AGGS.DISTINCT_COUNT) {
         return cur.result;
       }
       return acc;
-    }, []);
+    }, null);
+  },
+});
+
+export const valuesAtom = selectorFamily<
+  { total: number; count: number; results: string[] },
+  { path: string; limit?: number }
+>({
+  key: "stringFieldValues",
+  get: ({ path, limit = 15 }) => ({ get }) => {
     const values = {
-      total,
-      ...get(searchStringFields(path)),
+      total: get(totalAtom(path)),
+      ...get(searchStringFields({ path, limit })),
     };
 
     if (get(hasNoneField(path))) {
@@ -164,10 +170,11 @@ const StringFieldFilter = ({ expanded, entry }) => {
       <StringFilter
         valueName={entry.path}
         color={entry.color}
-        valuesAtom={valuesAtom(entry.path)}
+        valuesAtom={valuesAtom({ path: entry.path })}
         selectedValuesAtom={selectedValuesAtom(entry.path)}
         excludeAtom={excludeAtom(entry.path)}
         searchAtom={searchStringField(entry.path)}
+        totalAtom={totalAtom(entry.path)}
         ref={ref}
       />
     </animated.div>

@@ -93,9 +93,10 @@ const LabelFilter = ({ expanded, entry, modal }: Props) => {
             color={entry.color}
             name={"Labels"}
             valueName={"label"}
-            valuesAtom={stringField.valuesAtom(lPath)}
+            valuesAtom={stringField.valuesAtom({ path: lPath })}
             selectedValuesAtom={selectedLabels(lPath)}
             searchAtom={stringField.searchStringField(lPath)}
+            totalAtom={stringField.totalAtom(lPath)}
             excludeAtom={exclude(lPath)}
           />
           {CONFIDENCE_LABELS.includes(entry.labelType) && (
