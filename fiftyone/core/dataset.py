@@ -252,6 +252,15 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         self._deleted = False
 
+    def __del__(self):
+        try:
+            # Patches datasets are automatically cleaned up when their dataset
+            # object is garbage collected
+            if not self.deleted and not self.persistent and self._is_patches:
+                self.delete()
+        except:
+            pass
+
     def __len__(self):
         return self.count()
 
@@ -312,6 +321,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     @property
     def _root_dataset(self):
         return self
+
+    @property
+    def _is_patches(self):
+        return self._sample_collection_name.startswith("patches.")
 
     @property
     def media_type(self):
