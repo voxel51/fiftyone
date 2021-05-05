@@ -17,7 +17,7 @@ from fiftyone import ViewField as F
 
 
 def test_patches():
-    dataset = foz.load_zoo_dataset("quickstart")
+    dataset = foz.load_zoo_dataset("quickstart").clone()
 
     view = dataset.to_patches("ground_truth")
 
@@ -84,7 +84,7 @@ def test_patches():
 
 
 def test_evaluation_patches():
-    dataset = foz.load_zoo_dataset("quickstart")
+    dataset = foz.load_zoo_dataset("quickstart").clone()
     dataset.evaluate_detections("predictions", eval_key="eval")
 
     view = dataset.to_evaluation_patches("eval")
