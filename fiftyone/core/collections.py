@@ -4882,50 +4882,121 @@ class SampleCollection(object):
         if not aggregations:
             return []
 
-        pipeline, scalar_result, big_result = self._build_aggregation(
-            aggregations
-        )
+        scalar_result = isinstance(aggregations, foa.Aggregation)
 
         if scalar_result:
-            attach_frames = aggregations._needs_frames(self)
-        else:
-            attach_frames = any(a._needs_frames(self) for a in aggregations)
+            aggregations = [aggregations]
 
-        result = self._aggregate(
-            pipeline=pipeline, attach_frames=attach_frames
-        )
+        # Partition into big and facet-able aggregations
+        big_aggs, facet_aggs = self._parse_aggregations(aggregations)
 
-        if not scalar_result:
+        # Placeholder to store results
+        results = [None] * len(aggregations)
+
+        # Run big aggregations
+        for idx, aggregation in big_aggs.items():
+            pipeline, attach_frames = self._build_pipeline(aggregation)
+
+            result = self._aggregate(
+                pipeline=pipeline, attach_frames=attach_frames
+            )
+
+            results[idx] = self._parse_big_results(aggregation, result)
+
+        # Run faceted aggregations
+        if facet_aggs:
+            pipeline, attach_frames = self._build_faceted_pipeline(facet_aggs)
+
+            result = self._aggregate(
+                pipeline=pipeline, attach_frames=attach_frames
+            )
             result = next(result)  # extract result of $facet
 
-        return self._process_aggregations(
-            aggregations, result, scalar_result, big_result
-        )
+            self._parse_faceted_results(facet_aggs, result, results)
+
+        return results[0] if scalar_result else results
 
     async def _async_aggregate(self, sample_collection, aggregations):
         if not aggregations:
             return []
 
-        pipeline, scalar_result, big_result = self._build_aggregation(
-            aggregations
-        )
+        scalar_result = isinstance(aggregations, foa.Aggregation)
 
         if scalar_result:
-            attach_frames = aggregations._needs_frames(self)
-        else:
-            attach_frames = any(a._needs_frames(self) for a in aggregations)
+            aggregations = [aggregations]
 
-        pipeline = self._pipeline(
-            pipeline=pipeline, attach_frames=attach_frames
-        )
+        # Partition into big and facet-able aggregations
+        big_aggs, facet_aggs = self._parse_aggregations(aggregations)
 
-        result = await foo.aggregate(sample_collection, pipeline)
-        if not scalar_result:
+        # Placeholder to store results
+        results = [None] * len(aggregations)
+
+        # Run big aggregations
+        for idx, aggregation in big_aggs.items():
+            pipeline, attach_frames = self._build_pipeline(aggregation)
+
+            pipeline = self._pipeline(
+                pipeline=pipeline, attach_frames=attach_frames
+            )
+            result = await foo.aggregate(sample_collection, pipeline)
+
+            results[idx] = self._parse_big_results(aggregation, result)
+
+        # Run faceted aggregations
+        if facet_aggs:
+            pipeline, attach_frames = self._build_faceted_pipeline(facet_aggs)
+
+            pipeline = self._pipeline(
+                pipeline=pipeline, attach_frames=attach_frames
+            )
+            result = await foo.aggregate(sample_collection, pipeline)
             result = result.to_list(1)[0]  # extract result of $facet
 
-        return self._process_aggregations(
-            aggregations, result, scalar_result, big_result
-        )
+            self._parse_faceted_results(facet_aggs, result, results)
+
+        return results[0] if scalar_result else results
+
+    def _parse_aggregations(self, aggregations):
+        big_aggs = {}
+        facet_aggs = {}
+        for idx, aggregation in enumerate(aggregations):
+            if aggregation._has_big_result:
+                big_aggs[idx] = aggregation
+            else:
+                facet_aggs[idx] = aggregation
+
+        return big_aggs, facet_aggs
+
+    def _build_pipeline(self, aggregation):
+        pipeline = aggregation.to_mongo(self)
+        attach_frames = aggregation._needs_frames(self)
+        return pipeline, attach_frames
+
+    def _parse_big_results(self, aggregation, result):
+        if result:
+            return aggregation.parse_result(result)
+
+        return aggregation.default_result()
+
+    def _build_faceted_pipeline(self, aggs_map):
+        facets = {}
+        attach_frames = False
+        for idx, aggregation in aggs_map.items():
+            pipeline = aggregation.to_mongo(self)
+            attach_frames |= aggregation._needs_frames(self)
+            facets[str(idx)] = pipeline
+
+        facet_pipeline = [{"$facet": facets}]
+
+        return facet_pipeline, attach_frames
+
+    def _parse_faceted_results(self, aggs_map, result, results):
+        for idx, aggregation in aggs_map.items():
+            resulti = result[str(idx)]
+            if resulti:
+                results[idx] = aggregation.parse_result(resulti[0])
+            else:
+                results[idx] = aggregation.default_result()
 
     def _pipeline(
         self,
@@ -4975,59 +5046,6 @@ class SampleCollection(object):
             the aggregation result dict
         """
         raise NotImplementedError("Subclass must implement _aggregate()")
-
-    def _build_aggregation(self, aggregations):
-        scalar_result = isinstance(aggregations, foa.Aggregation)
-
-        if scalar_result:
-            pipeline = aggregations.to_mongo(self)
-            big_result = aggregations.big_result
-        else:
-            facets = {}
-            for idx, agg in enumerate(aggregations):
-                if not isinstance(agg, foa.Aggregation):
-                    raise TypeError(
-                        "'%s' is not an %s" % (agg.__class__, foa.Aggregation)
-                    )
-
-                if agg.big_result:
-                    raise ValueError(
-                        "%s aggregation with big_result=True must be executed "
-                        "alone" % agg.__class__
-                    )
-
-                facets[str(idx)] = agg.to_mongo(self)
-
-            pipeline = [{"$facet": facets}]
-            big_result = False
-
-        return pipeline, scalar_result, big_result
-
-    def _process_aggregations(
-        self, aggregations, result, scalar_result, big_result
-    ):
-        if big_result:
-            if result:
-                # pass result iterable directly to aggregation
-                return aggregations.parse_result(result)
-            else:
-                return aggregations.default_result()
-
-        if scalar_result:
-            try:
-                return aggregations.parse_result(next(result))
-            except StopIteration:
-                return aggregations.default_result()
-
-        results = []
-        for idx, agg in enumerate(aggregations):
-            _result = result[str(idx)]
-            if _result:
-                results.append(agg.parse_result(_result[0]))
-            else:
-                results.append(agg.default_result())
-
-        return results
 
     def _serialize(self):
         # pylint: disable=no-member

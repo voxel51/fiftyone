@@ -50,13 +50,6 @@ class Aggregation(object):
         self._expr = expr
 
     @property
-    def big_result(self):
-        """Whether this aggregation has a big result that is returned across
-        multiple documents.
-        """
-        return False
-
-    @property
     def field_name(self):
         """The name of the field being computed on, if any."""
         return self._field_name
@@ -65,6 +58,13 @@ class Aggregation(object):
     def expr(self):
         """The expression being computed, if any."""
         return self._expr
+
+    @property
+    def _has_big_result(self):
+        """Whether the aggregation's result is returned across multiple
+        documents.
+        """
+        return False
 
     def to_mongo(self, sample_collection):
         """Returns the MongoDB aggregation pipeline for this aggregation.
@@ -1266,7 +1266,7 @@ class Values(Aggregation):
         missing_value=None,
         unwind=False,
         _allow_missing=False,
-        _big_result=False,
+        _big_result=True,
         _raw=False,
     ):
         field_or_expr, found_id_field = _handle_id_fields(field_or_expr)
@@ -1282,7 +1282,7 @@ class Values(Aggregation):
         self._num_list_fields = None
 
     @property
-    def big_result(self):
+    def _has_big_result(self):
         return self._big_result
 
     def default_result(self):
