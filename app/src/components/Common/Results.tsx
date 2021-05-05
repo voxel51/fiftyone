@@ -90,7 +90,7 @@ const Results = React.memo(
             highlight={highlight}
             onClick={() => onSelect(result)}
             active={active === result}
-            maxLen={36}
+            maxLen={34}
           />
         ))}
       </>

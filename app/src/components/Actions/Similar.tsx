@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useLayoutEffect } from "react";
 import {
   atom,
   selector,
@@ -175,6 +175,10 @@ const SortBySimilarity = React.memo(
     const type = useRecoilValue(sortType(modal));
     const theme = useTheme();
 
+    useLayoutEffect(() => {
+      choices.choices.length === 1 && setBrainKey(choices.choices[0]);
+    }, [choices]);
+
     return (
       <Popout modal={modal} bounds={bounds}>
         <PopoutSectionTitle>
@@ -214,6 +218,7 @@ const SortBySimilarity = React.memo(
               <>
                 <PopoutSectionTitle></PopoutSectionTitle>
                 <Button
+                  disabled={}
                   text={"Apply"}
                   title={`Sort by similarity to the selected ${type}`}
                   onClick={() => {
