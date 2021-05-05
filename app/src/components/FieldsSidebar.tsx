@@ -714,7 +714,7 @@ const FieldsSidebar = React.forwardRef(
   ({ modal, style }: FieldsSidebarProps, ref) => {
     const mediaType = useRecoilValue(selectors.mediaType);
     const isVideo = mediaType === "video";
-    const moreStyles = modal ? { height: "auto" } : {};
+    const moreStyles = modal ? { height: "auto", overflow: "unset" } : {};
 
     return (
       <Container ref={ref} style={{ ...style, ...moreStyles }}>
