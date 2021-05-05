@@ -4931,26 +4931,22 @@ class SampleCollection(object):
         # Placeholder to store results
         results = [None] * len(aggregations)
 
-        # Run big aggregations
-        for idx, aggregation in big_aggs.items():
-            pipeline, attach_frames = self._build_pipeline(aggregation)
-
-            pipeline = self._pipeline(
-                pipeline=pipeline, attach_frames=attach_frames
+        if big_aggs:
+            raise ValueError(
+                "This method does not support aggregations that return big "
+                "results"
             )
-            result = await foo.aggregate(sample_collection, pipeline)
 
-            results[idx] = self._parse_big_results(aggregation, result)
-
-        # Run faceted aggregations
         if facet_aggs:
             pipeline, attach_frames = self._build_faceted_pipeline(facet_aggs)
 
             pipeline = self._pipeline(
                 pipeline=pipeline, attach_frames=attach_frames
             )
-            result = await foo.aggregate(sample_collection, pipeline)
-            result = result.to_list(1)[0]  # extract result of $facet
+            result = await foo.aggregate(sample_collection, pipeline).to_list(
+                1
+            )
+            result = result[0]  # extract result of $facet
 
             self._parse_faceted_results(facet_aggs, result, results)
 
