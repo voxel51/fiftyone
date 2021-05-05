@@ -492,8 +492,8 @@ class Frames(object):
             # in-memory frames to be saved, even if they aren't currently in
             # `_replacements`. This can happen, if, for example, our
             # replacements were flushed by a previous call to `sample.save()`
-            # but then an in-memory was modified without explicitly accessing
-            # it again via `sample.frames[]`
+            # but then an in-memory frame was modified without explicitly
+            # accessing it via `sample.frames[]`
             #
             replacements = Frame._get_instances(
                 self._frame_collection_name, self._sample.id

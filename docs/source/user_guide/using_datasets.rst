@@ -1870,7 +1870,7 @@ __________________
 
 When you create a video sample, i.e., a |Sample| with `media_type == 'video'`,
 it is given a reserved `frames` attribute in which you can store frame-level
-labels and arbitrary for the video.
+labels and other custom annotations for the video.
 
 .. code-block:: python
     :linenos:
@@ -2021,7 +2021,7 @@ Notice that the dataset's summary indicates that the dataset has media type
 
 You can retrieve detailed information about the schema of the frames of a
 video |Dataset| using
-:meth:`dataset.get_frame_field_schema() <fiftyone.core.dataset.get_frame_field_schema>`.
+:meth:`dataset.get_frame_field_schema() <fiftyone.core.dataset.Dataset.get_frame_field_schema>`.
 
 The samples in video datasets can be accessed
 :ref:`like usual <accessing-samples-in-a-dataset>`, and the sample's frame

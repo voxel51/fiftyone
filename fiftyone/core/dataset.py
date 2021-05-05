@@ -1584,7 +1584,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 {"_sample_id": {"$in": _sample_ids}}
             )
 
-            # pylint: disable=unexpected-keyword-arg
             fofr.Frame._reset_docs(
                 self._frame_collection_name, sample_ids=sample_ids
             )
