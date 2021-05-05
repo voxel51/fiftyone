@@ -14,7 +14,6 @@ import warnings
 
 from bson import ObjectId
 from deprecated import deprecated
-from pymongo import ASCENDING, DESCENDING
 
 import eta.core.utils as etau
 
@@ -72,9 +71,16 @@ class ViewStage(object):
         """
         return False
 
-    def get_filtered_list_fields(self):
-        """Returns a list of names of fields or subfields that contain arrays
-        that may have been filtered by the stage, if any.
+    def get_filtered_fields(self, sample_collection, frames=False):
+        """Returns a list of names of fields or embedded fields that contain
+        **arrays** have been filtered by the stage, if any.
+
+        Args:
+            sample_collection: the
+                :class:`fiftyone.core.collections.SampleCollection` to which
+                the stage is being applied
+            frames (False): whether to return sample-level (False) or
+                frame-level (True) fields
 
         Returns:
             a list of fields, or ``None`` if no fields have been filtered
@@ -220,7 +226,7 @@ class ViewStage(object):
         raise NotImplementedError("subclasses must implement `_kwargs()`")
 
     @classmethod
-    def _params(self):
+    def _params(cls):
         """Returns a list of JSON dicts describing the stage's supported
         parameters.
 
@@ -456,7 +462,7 @@ class ExcludeFields(ViewStage):
         return [["field_names", self._field_names]]
 
     @classmethod
-    def _params(self):
+    def _params(cls):
         return [
             {
                 "name": "field_names",
@@ -636,7 +642,7 @@ class ExcludeLabels(ViewStage):
         ]
 
     @classmethod
-    def _params(self):
+    def _params(cls):
         return [
             {
                 "name": "labels",
@@ -990,7 +996,7 @@ class FilterField(ViewStage):
         ]
 
     @classmethod
-    def _params(self):
+    def _params(cls):
         return [
             {"name": "field", "type": "field|str"},
             {"name": "filter", "type": "json", "placeholder": ""},
@@ -1392,12 +1398,15 @@ class FilterLabels(FilterField):
         self._labels_field = None
         self._is_frame_field = None
         self._is_labels_list_field = None
-        self._is_frame_field = None
         self._validate_params()
 
-    def get_filtered_list_fields(self):
-        if self._is_labels_list_field:
-            return [self._labels_field]
+    def get_filtered_fields(self, sample_collection, frames=False):
+        labels_field, is_frame_field = sample_collection._handle_frame_field(
+            self._labels_field
+        )
+
+        if self._is_labels_list_field and (frames == is_frame_field):
+            return [labels_field]
 
         return None
 
@@ -1566,8 +1575,15 @@ class _FilterListField(FilterField):
     def _filter_field(self):
         raise NotImplementedError("subclasses must implement `_filter_field`")
 
-    def get_filtered_list_fields(self):
-        return [self._filter_field]
+    def get_filtered_fields(self, sample_collection, frames=False):
+        filter_field, is_frame_field = sample_collection._handle_frame_field(
+            self._filter_field
+        )
+
+        if frames == is_frame_field:
+            return [filter_field]
+
+        return None
 
     def to_mongo(self, sample_collection):
         filter_field, is_frame_field = sample_collection._handle_frame_field(
@@ -1906,7 +1922,7 @@ class GeoNear(_GeoStage):
         ]
 
     @classmethod
-    def _params(self):
+    def _params(cls):
         return [
             {"name": "point", "type": "json", "placeholder": ""},
             {
@@ -2018,7 +2034,7 @@ class GeoWithin(_GeoStage):
         ]
 
     @classmethod
-    def _params(self):
+    def _params(cls):
         return [
             {"name": "boundary", "type": "json", "placeholder": ""},
             {
@@ -2169,6 +2185,7 @@ class LimitLabels(ViewStage):
         self._field = field
         self._limit = limit
         self._labels_list_field = None
+        self._is_frame_field = None
 
     @property
     def field(self):
@@ -2177,25 +2194,27 @@ class LimitLabels(ViewStage):
 
     @property
     def limit(self):
-        """The maximum number of labels to return in each sample."""
+        """The maximum number of labels to allow in each labels list."""
         return self._limit
 
     def to_mongo(self, sample_collection):
-        self._labels_list_field = _get_labels_list_field(
-            sample_collection, self._field
-        )
+        if self._labels_list_field is None:
+            raise ValueError(
+                "`validate()` must be called before using a %s stage"
+                % self.__class__
+            )
 
         limit = max(self._limit, 0)
 
-        return [
-            {
-                "$set": {
-                    self._labels_list_field: {
-                        "$slice": ["$" + self._labels_list_field, limit]
-                    }
-                }
-            }
-        ]
+        expr = F()[:limit]
+        pipeline, _ = sample_collection._make_set_field_pipeline(
+            self._labels_list_field, expr
+        )
+
+        return pipeline
+
+    def _needs_frames(self, sample_collection):
+        return self._is_frame_field
 
     def _kwargs(self):
         return [
@@ -2204,14 +2223,14 @@ class LimitLabels(ViewStage):
         ]
 
     @classmethod
-    def _params(self):
+    def _params(cls):
         return [
             {"name": "field", "type": "field"},
             {"name": "limit", "type": "int", "placeholder": "int"},
         ]
 
     def validate(self, sample_collection):
-        self._labels_list_field = _get_labels_list_field(
+        self._labels_list_field, self._is_frame_field = _get_labels_list_field(
             sample_collection, self._field
         )
 
@@ -2328,6 +2347,9 @@ class MapLabels(ViewStage):
         )
         return pipeline
 
+    def _needs_frames(self, sample_collection):
+        return sample_collection._is_frame_field(self._field)
+
     def _kwargs(self):
         return [
             ["field", self._field],
@@ -2335,7 +2357,7 @@ class MapLabels(ViewStage):
         ]
 
     @classmethod
-    def _params(self):
+    def _params(cls):
         return [
             {"name": "field", "type": "field"},
             {"name": "map", "type": "dict", "placeholder": "map"},
@@ -2473,14 +2495,6 @@ class SetField(ViewStage):
         """The expression to apply."""
         return self._expr
 
-    def _needs_frames(self, sample_collection):
-        if sample_collection.media_type != fom.VIDEO:
-            return False
-
-        is_frame_field = sample_collection._is_frame_field(self._field)
-        is_frame_expr = _is_frames_expr(self._get_mongo_expr())
-        return is_frame_field or is_frame_expr
-
     def to_mongo(self, sample_collection):
         if self._pipeline is None:
             raise ValueError(
@@ -2490,6 +2504,14 @@ class SetField(ViewStage):
 
         return self._pipeline
 
+    def _needs_frames(self, sample_collection):
+        if sample_collection.media_type != fom.VIDEO:
+            return False
+
+        is_frame_field = sample_collection._is_frame_field(self._field)
+        is_frame_expr = _is_frames_expr(self._get_mongo_expr())
+        return is_frame_field or is_frame_expr
+
     def _kwargs(self):
         return [
             ["field", self._field],
@@ -2497,7 +2519,7 @@ class SetField(ViewStage):
         ]
 
     @classmethod
-    def _params(self):
+    def _params(cls):
         return [
             {"name": "field", "type": "field|str"},
             {"name": "expr", "type": "json", "placeholder": ""},
@@ -2649,6 +2671,12 @@ class Match(ViewStage):
 
     def to_mongo(self, _):
         return [{"$match": self._get_mongo_expr()}]
+
+    def _needs_frames(self, sample_collection):
+        if sample_collection.media_type != fom.VIDEO:
+            return False
+
+        return _is_frames_expr(self._get_mongo_expr())
 
     def _get_mongo_expr(self):
         if not isinstance(self._filter, foe.ViewExpression):
@@ -2851,11 +2879,15 @@ class Mongo(ViewStage):
     def to_mongo(self, _):
         return self._pipeline
 
+    def _needs_frames(self, sample_collection):
+        # The pipeline could be anything; always attach frames for videos
+        return sample_collection.media_type == fom.VIDEO
+
     def _kwargs(self):
         return [["pipeline", self._pipeline]]
 
     @classmethod
-    def _params(self):
+    def _params(cls):
         return [{"name": "pipeline", "type": "json", "placeholder": ""}]
 
 
@@ -2920,7 +2952,7 @@ class Select(ViewStage):
         return [
             {"$set": {"_select_order": {"$indexOfArray": [ids, "$_id"]}}},
             {"$match": {"_select_order": {"$gt": -1}}},
-            {"$sort": {"_select_order": ASCENDING}},
+            {"$sort": {"_select_order": 1}},
             {"$unset": "_select_order"},
         ]
 
@@ -3069,7 +3101,7 @@ class SelectFields(ViewStage):
         return [["field_names", self._field_names]]
 
     @classmethod
-    def _params(self):
+    def _params(cls):
         return [
             {
                 "name": "field_names",
@@ -3250,7 +3282,7 @@ class SelectLabels(ViewStage):
         ]
 
     @classmethod
-    def _params(self):
+    def _params(cls):
         return [
             {
                 "name": "labels",
@@ -3453,7 +3485,7 @@ class Shuffle(ViewStage):
         # @todo can we avoid creating a new field here?
         return [
             {"$set": {"_rand_shuffle": {"$mod": [self._randint, "$_rand"]}}},
-            {"$sort": {"_rand_shuffle": ASCENDING}},
+            {"$sort": {"_rand_shuffle": 1}},
             {"$unset": "_rand_shuffle"},
         ]
 
@@ -3461,7 +3493,7 @@ class Shuffle(ViewStage):
         return [["seed", self._seed], ["_randint", self._randint]]
 
     @classmethod
-    def _params(self):
+    def _params(cls):
         return [
             {
                 "name": "seed",
@@ -3590,7 +3622,7 @@ class SortBy(ViewStage):
         return self._reverse
 
     def to_mongo(self, _):
-        order = DESCENDING if self._reverse else ASCENDING
+        order = -1 if self._reverse else 1
 
         field_or_expr = self._get_mongo_field_or_expr()
 
@@ -3602,6 +3634,17 @@ class SortBy(ViewStage):
             {"$sort": {"_sort_field": order}},
             {"$unset": "_sort_field"},
         ]
+
+    def _needs_frames(self, sample_collection):
+        if sample_collection.media_type != fom.VIDEO:
+            return False
+
+        field_or_expr = self._get_mongo_field_or_expr()
+
+        if etau.is_str(field_or_expr):
+            return sample_collection._is_frame_field(field_or_expr)
+
+        return _is_frames_expr(field_or_expr)
 
     def _get_mongo_field_or_expr(self):
         if isinstance(self._field_or_expr, foe.ViewField):
@@ -3882,7 +3925,7 @@ class Take(ViewStage):
         # @todo can we avoid creating a new field here?
         return [
             {"$set": {"_rand_take": {"$mod": [self._randint, "$_rand"]}}},
-            {"$sort": {"_rand_take": ASCENDING}},
+            {"$sort": {"_rand_take": 1}},
             {"$limit": self._size},
             {"$unset": "_rand_take"},
         ]
@@ -4129,7 +4172,7 @@ def _get_labels_field(sample_collection, field_path):
 
     if isinstance(field, fof.EmbeddedDocumentField):
         document_type = field.document_type
-        is_list_field = issubclass(document_type, fol._HasLabelList)
+        is_list_field = issubclass(document_type, fol._LABEL_LIST_FIELDS)
         if is_list_field:
             path = field_path + "." + document_type._LABEL_LIST_FIELD
         elif issubclass(document_type, fol._SINGLE_LABEL_FIELDS):
@@ -4147,12 +4190,13 @@ def _get_labels_field(sample_collection, field_path):
 
 
 def _get_labels_list_field(sample_collection, field_path):
-    field, _ = _get_field(sample_collection, field_path)
+    field, is_frame_field = _get_field(sample_collection, field_path)
 
     if isinstance(field, fof.EmbeddedDocumentField):
         document_type = field.document_type
-        if issubclass(document_type, fol._HasLabelList):
-            return field_path + "." + document_type._LABEL_LIST_FIELD
+        if issubclass(document_type, fol._LABEL_LIST_FIELDS):
+            path = field_path + "." + document_type._LABEL_LIST_FIELD
+            return path, is_frame_field
 
     raise ValueError(
         "Field '%s' must be a labels list type %s; found '%s'"
@@ -4194,10 +4238,17 @@ def _is_frames_expr(val):
         return val == "$frames" or val.startswith("$frames.")
 
     if isinstance(val, dict):
-        return {_is_frames_expr(k): _is_frames_expr(v) for k, v in val.items()}
+        for k, v in val.items():
+            if _is_frames_expr(k):
+                return True
+
+            if _is_frames_expr(v):
+                return True
 
     if isinstance(val, (list, tuple)):
-        return [_is_frames_expr(v) for v in val]
+        for v in val:
+            if _is_frames_expr(v):
+                return True
 
     return False
 

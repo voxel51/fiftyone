@@ -17,7 +17,7 @@ class DatasetFrameSampleDocument(DatasetMixin, Document, SampleDocument):
 
     meta = {"abstract": True}
 
-    _sample_id = ObjectIdField(default=None, required=True)
+    _sample_id = ObjectIdField(required=True)
     frame_number = FrameNumberField(required=True)
 
     @classmethod
@@ -38,13 +38,7 @@ class NoDatasetFrameSampleDocument(NoDatasetMixin, SampleDocument):
     )
 
     def __init__(self, **kwargs):
-        self._data = OrderedDict()
-        for field_name in self.default_fields_ordered:
-            value = kwargs.pop(field_name, None)
-
-            if value is None and field_name != "_sample_id":
-                value = self._get_default(self.default_fields[field_name])
-
-            self._data[field_name] = value
-
+        self._data = OrderedDict(
+            [("_sample_id", None), ("frame_number", None)]
+        )
         self._data.update(kwargs)
