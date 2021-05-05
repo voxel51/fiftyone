@@ -81,6 +81,9 @@ export const useExpand = (
     from: {
       height: 0,
     },
+    config: {
+      duration: 0,
+    },
   });
   return [ref, { ...props, overflow: "hidden" }];
 };
