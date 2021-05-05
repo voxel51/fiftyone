@@ -31,10 +31,10 @@ class PatchesTests(unittest.TestCase):
             ),
             predictions=fo.Detections(
                 detections=[
-                    fo.Detection(label="cat", confidence=0.9),
-                    fo.Detection(label="dog", confidence=0.8),
-                    fo.Detection(label="rabbit", confidence=0.7),
-                    fo.Detection(label="squirrel", confidence=0.6),
+                    fo.Detection(label="cat"),
+                    fo.Detection(label="dog"),
+                    fo.Detection(label="rabbit"),
+                    fo.Detection(label="squirrel"),
                 ]
             ),
         )
@@ -50,8 +50,8 @@ class PatchesTests(unittest.TestCase):
             ),
             predictions=fo.Detections(
                 detections=[
-                    fo.Detection(label="cat", confidence=0.9),
-                    fo.Detection(label="dog", confidence=0.8),
+                    fo.Detection(label="cat"),
+                    fo.Detection(label="dog"),
                 ]
             ),
         )
@@ -145,6 +145,159 @@ class PatchesTests(unittest.TestCase):
 
         self.assertDictEqual(dataset.count_sample_tags(), {"sample2": 1})
         self.assertDictEqual(view.count_sample_tags(), {"sample2": 2})
+
+    @drop_datasets
+    def test_eval_patches(self):
+        dataset = fo.Dataset()
+
+        sample = fo.Sample(
+            filepath="image.png",
+            tags=["sample"],
+            ground_truth=fo.Detections(
+                detections=[
+                    fo.Detection(
+                        label="cat",
+                        bounding_box=[0.1, 0.1, 0.4, 0.4],
+                        iscrowd=True,
+                    ),
+                    fo.Detection(
+                        label="dog", bounding_box=[0.6, 0.6, 0.1, 0.1]
+                    ),
+                    fo.Detection(
+                        label="rabbit", bounding_box=[0.8, 0.8, 0.1, 0.1]
+                    ),
+                ]
+            ),
+            predictions=fo.Detections(
+                detections=[
+                    fo.Detection(
+                        label="cat", bounding_box=[0.1, 0.1, 0.1, 0.1]
+                    ),
+                    fo.Detection(
+                        label="cat", bounding_box=[0.2, 0.2, 0.1, 0.1]
+                    ),
+                    fo.Detection(
+                        label="dog", bounding_box=[0.6, 0.6, 0.1, 0.1]
+                    ),
+                    fo.Detection(
+                        label="rabbit", bounding_box=[0.9, 0.9, 0.1, 0.1]
+                    ),
+                ]
+            ),
+        )
+
+        dataset.add_sample(sample)
+
+        dataset.evaluate_detections("predictions", eval_key="eval")
+
+        view = dataset.to_evaluation_patches("eval")
+
+        self.assertSetEqual(
+            set(view.get_field_schema().keys()),
+            {
+                "filepath",
+                "metadata",
+                "tags",
+                "ground_truth",
+                "predictions",
+                "type",
+                "iou",
+                "crowd",
+                "sample_id",
+            },
+        )
+
+        self.assertEqual(dataset.count("ground_truth.detections"), 3)
+        self.assertEqual(dataset.count("predictions.detections"), 4)
+
+        self.assertEqual(view.count(), 4)
+        self.assertEqual(len(view), 4)
+
+        self.assertDictEqual(dataset.count_sample_tags(), {"sample": 1})
+        self.assertDictEqual(view.count_sample_tags(), {"sample": 4})
+
+        self.assertDictEqual(
+            view.count_values("type"), {"fp": 1, "tp": 2, "fn": 1}
+        )
+
+        self.assertEqual(view.count_values("crowd")[True], 1)
+
+        view.tag_samples("test")
+
+        self.assertEqual(view.count_sample_tags()["test"], 4)
+        self.assertNotIn("test", dataset.count_sample_tags())
+
+        view.untag_samples("test")
+
+        self.assertNotIn("test", view.count_sample_tags())
+        self.assertNotIn("test", dataset.count_sample_tags())
+
+        view.tag_labels("test")
+
+        self.assertDictEqual(view.count_label_tags(), {"test": 7})
+        self.assertDictEqual(
+            dataset.count_label_tags("ground_truth"), {"test": 3}
+        )
+        self.assertDictEqual(
+            dataset.count_label_tags("predictions"), {"test": 4}
+        )
+
+        view.untag_labels("test")
+
+        self.assertDictEqual(view.count_label_tags(), {})
+        self.assertDictEqual(dataset.count_label_tags("ground_truth"), {})
+        self.assertDictEqual(dataset.count_label_tags("predictions"), {})
+
+        view2 = view.match(F("crowd") == True).set_field(
+            "ground_truth.detections.label", F("label").upper()
+        )
+
+        self.assertEqual(view.count(), 4)
+        self.assertEqual(view2.count(), 1)
+        self.assertEqual(dataset.count("ground_truth.detections"), 3)
+        self.assertEqual(dataset.count("predictions.detections"), 4)
+        self.assertDictEqual(
+            view2.count_values("ground_truth.detections.label"), {"CAT": 1}
+        )
+        self.assertDictEqual(
+            view.count_values("ground_truth.detections.label"),
+            {"dog": 1, "cat": 1, "rabbit": 1},
+        )
+        self.assertDictEqual(
+            dataset.count_values("ground_truth.detections.label"),
+            {"dog": 1, "cat": 1, "rabbit": 1},
+        )
+
+        view2.save()
+
+        self.assertEqual(view.count(), 1)
+        self.assertEqual(dataset.count("ground_truth.detections"), 1)
+        self.assertDictEqual(
+            view.count_values("ground_truth.detections.label"), {"CAT": 1}
+        )
+        self.assertDictEqual(
+            dataset.count_values("ground_truth.detections.label"), {"CAT": 1}
+        )
+
+        sample = view.match(F("crowd") == True).first()
+
+        for det in sample.predictions.detections:
+            det.hello = "world"
+
+        sample.save()
+
+        self.assertDictEqual(
+            view.count_values("predictions.detections.hello"), {"world": 2}
+        )
+        self.assertDictEqual(
+            dataset.count_values("predictions.detections.hello"), {"world": 2}
+        )
+
+        dataset.untag_samples("sample")
+        view.reload()
+
+        self.assertDictEqual(dataset.count_sample_tags(), {})
+        self.assertDictEqual(view.count_sample_tags(), {})
 
 
 if __name__ == "__main__":
