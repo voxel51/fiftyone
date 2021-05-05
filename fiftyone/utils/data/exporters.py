@@ -996,14 +996,16 @@ def _export_evaluation_results(sample_collection, eval_dir):
     for eval_key in sample_collection.list_evaluations():
         results_path = os.path.join(eval_dir, eval_key + ".json")
         results = sample_collection.load_evaluation_results(eval_key)
-        etas.write_json(results, results_path)
+        if results is not None:
+            etas.write_json(results, results_path)
 
 
 def _export_brain_results(sample_collection, brain_dir):
     for brain_key in sample_collection.list_brain_runs():
         results_path = os.path.join(brain_dir, brain_key + ".json")
         results = sample_collection.load_brain_results(brain_key)
-        etas.write_json(results, results_path)
+        if results is not None:
+            etas.write_json(results, results_path)
 
 
 class ImageDirectoryExporter(UnlabeledImageDatasetExporter):

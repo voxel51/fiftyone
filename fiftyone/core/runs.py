@@ -513,6 +513,9 @@ class RunResults(etas.Serializable):
         Returns:
             a :class:`RunResults`
         """
+        if d is None:
+            return None
+
         run_results_cls = etau.get_class(d["cls"])
         return run_results_cls._from_dict(d, samples)
 
