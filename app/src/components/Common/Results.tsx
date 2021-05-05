@@ -1,5 +1,6 @@
 import React from "react";
 import styled from "styled-components";
+import { summarizeLongStr } from "../../utils/generic";
 
 import { ItemAction, useHighlightHover } from "../Actions/utils";
 
@@ -42,17 +43,19 @@ interface ResultProps {
   result: ResultValue;
   highlight: string;
   active: boolean;
-  alignRight: boolean;
   onClick: () => void;
+  maxLen?: number;
 }
 
 const Result = React.memo(
-  ({ active, highlight, result, onClick }: ResultProps) => {
+  ({ active, highlight, result, onClick, maxLen }: ResultProps) => {
     const props = useHighlightHover(
       false,
       active ? active : null,
       result === null ? highlight : null
     );
+
+    const text = result === null ? "None" : result;
 
     return (
       <ResultDiv
@@ -60,7 +63,7 @@ const Result = React.memo(
         {...props}
         onClick={onClick}
       >
-        {result === null ? "None" : result}
+        {maxLen ? summarizeLongStr(text, maxLen, "middle") : text}
       </ResultDiv>
     );
   }
@@ -77,13 +80,7 @@ interface ResultsProps {
 }
 
 const Results = React.memo(
-  ({
-    onSelect,
-    results,
-    highlight,
-    active = undefined,
-    alignRight,
-  }: ResultsProps) => {
+  ({ onSelect, results, highlight, active = undefined }: ResultsProps) => {
     return (
       <>
         {results.map((result) => (
@@ -93,7 +90,7 @@ const Results = React.memo(
             highlight={highlight}
             onClick={() => onSelect(result)}
             active={active === result}
-            alignRight={alignRight}
+            maxLen={36}
           />
         ))}
       </>

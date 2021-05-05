@@ -42,20 +42,7 @@ const NamedStringFilterHeader = styled.div`
   justify-content: space-between;
 `;
 
-const Footer = styled.div`
-  margin: 0 -0.5rem;
-  padding: 0.25rem 0.5rem;
-  font-weight: bold;
-  display: flex;
-  justify-content: space-between;
-  text-decoration: none;
-  color: ${({ theme }) => theme.font};
-
-  & > span {
-    display: flex;
-    justify-content: space-between;
-  }
-`;
+const CHECKBOX_LIMIT = 15;
 
 interface ExcludeOptionProps {
   excludeAtom: RecoilState<boolean>;
@@ -113,7 +100,7 @@ const Wrapper = ({
 
   let allValues = selected;
 
-  if (count <= LIST_LIMIT) {
+  if (count <= CHECKBOX_LIMIT) {
     allValues = [...allValues, ...results];
   }
 
@@ -125,6 +112,7 @@ const Wrapper = ({
           color={color}
           value={selectedSet.has(value)}
           name={value}
+          maxLen={31}
           setValue={(checked: boolean) => {
             if (checked) {
               selectedSet.add(value);
@@ -305,7 +293,7 @@ const StringFilter = React.memo(
                 path,
                 search,
                 selected,
-                limit: 15,
+                limit: LIST_LIMIT,
                 uuid: id,
               })
             );
@@ -333,7 +321,7 @@ const StringFilter = React.memo(
             {name && <>{name}</>}
           </NamedStringFilterHeader>
           <StringFilterContainer>
-            {count > LIST_LIMIT && (
+            {count > CHECKBOX_LIMIT && (
               <>
                 <Input
                   key={"input"}

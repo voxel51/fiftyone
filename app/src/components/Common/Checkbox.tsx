@@ -5,12 +5,14 @@ import styled from "styled-components";
 
 import { ItemAction, useHighlightHover } from "../Actions/utils";
 import { useTheme } from "../../utils/hooks";
+import { summarizeLongStr } from "../../utils/generic";
 
 interface CheckboxProps {
   color?: string;
   name: string;
   value: boolean;
   setValue: (value: boolean) => void;
+  maxLen?: number;
 }
 
 const StyledCheckboxContainer = styled.div`
@@ -35,10 +37,12 @@ const CheckboxName = styled.div`
 `;
 
 const Checkbox = React.memo(
-  ({ color, name, value, setValue }: CheckboxProps) => {
+  ({ color, name, value, setValue, maxLen = null }: CheckboxProps) => {
     const theme = useTheme();
     color = color ?? theme.brand;
     const props = useHighlightHover(false);
+
+    const text = name === null ? "None" : name;
 
     return (
       <StyledCheckboxContainer title={name}>
@@ -54,7 +58,7 @@ const Checkbox = React.memo(
             }}
           />
           <CheckboxName style={name === null ? { color: color } : {}}>
-            {name === null ? "None" : name}
+            {maxLen ? summarizeLongStr(text, maxLen, "middle") : text}
           </CheckboxName>
         </StyledCheckbox>
       </StyledCheckboxContainer>
