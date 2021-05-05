@@ -446,24 +446,22 @@ whenever accessing the sample from the |Dataset|:
 You can use :ref:`dataset views <using-views>` to perform more sophisticated
 operations on samples like searching, filtering, sorting, and slicing.
 
-Removing samples from a dataset
+Deleting samples from a dataset
 -------------------------------
 
 Samples can be removed from a |Dataset| through their ID, either one at a time
 or in batches via
-:meth:`remove_sample() <fiftyone.core.dataset.Dataset.remove_sample>` and
-:meth:`remove_samples() <fiftyone.core.dataset.Dataset.remove_samples>`,
-respectively:
+:meth:`delete_samples() <fiftyone.core.dataset.Dataset.delete_samples>`:
 
 .. code-block:: python
     :linenos:
 
-    dataset.remove_sample(sample_id)
+    dataset.delete_samples(sample_id)
 
     # equivalent to above
     del dataset[sample_id]
 
-    dataset.remove_samples([sample_id2, sample_id3])
+    dataset.delete_samples([sample_id2, sample_id3])
 
 Samples can also be removed from a |Dataset| by passing |Sample| instance(s)
 or |DatasetView| instances:
@@ -473,11 +471,11 @@ or |DatasetView| instances:
 
     # Remove a random sample
     sample = dataset.take(1).first()
-    dataset.remove_sample(sample)
+    dataset.delete_samples(sample)
 
     # Remove 10 random samples
     view = dataset.take(10)
-    dataset.remove_samples(view)
+    dataset.delete_samples(view)
 
 If a |Sample| object in memory is deleted from a dataset, it will revert to
 a |Sample| that has not been added to a |Dataset|:
@@ -646,8 +644,9 @@ updated to reflect the new field:
         metadata:      fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.Metadata)
         integer_field: fiftyone.core.fields.IntField
 
-A |Field| can be any primitive type: `bool`, `int`, `float`, `str`, `list`,
-`dict`, or more complex data structures like |Label|:
+A |Field| can be any primitive type, such as `bool`, `int`, `float`, `str`,
+`list`, `dict`, or more complex data structures
+:ref:`like label types <using-labels>`:
 
 .. code-block:: python
     :linenos:
@@ -670,9 +669,9 @@ Setting a field to an inappropriate type raises an error:
 
 .. note::
 
-    If a |Sample| is in a |Dataset|, then
-    :meth:`sample.save() <fiftyone.core.sample.Sample.save>` must be used
-    whenever the sample is updated.
+    You must call :meth:`sample.save() <fiftyone.core.sample.Sample.save>` in
+    order to persist changes to the database when editing samples that are in
+    datasets.
 
 Removing fields from a sample
 -----------------------------
@@ -683,11 +682,12 @@ A field can be deleted from a |Sample| using `del`:
     :linenos:
 
     del sample["integer_field"]
-    print(sample.integer_field)
-    # None
+
+If the |Sample| is not yet in a dataset, deleting a field will remove it from
+the sample. If the |Sample| is in a dataset, the field's value will be `None`.
 
 Fields can also be deleted at the |Dataset| level, in which case they are
-deleted from every |Sample| in the dataset:
+removed from every |Sample| in the dataset:
 
 .. code-block:: python
     :linenos:
@@ -762,9 +762,9 @@ The `tags` field can be treated like a standard Python `list`:
 
 .. note::
 
-    If a |Sample| is in a |Dataset|, then
-    :meth:`sample.save() <fiftyone.core.sample.Sample.save>` must be used
-    whenever the |Sample| is updated.
+    You must call :meth:`sample.save() <fiftyone.core.sample.Sample.save>` in
+    order to persist changes to the database when editing samples that are in
+    datasets.
 
 .. _using-metadata:
 
@@ -876,7 +876,7 @@ You can automically compute metadata for all samples in a dataset via
                     'duration': 2.268933,
                     'encoding_str': 'avc1',
                 }>,
-                'frames': { <0 frames> },
+                'frames': <Frames: 0>,
             }>
 
     .. group-tab:: Generic data
@@ -1866,11 +1866,11 @@ can easily retrieve the raw GeoJSON data for a slice of your dataset using the
 .. _video-frame-labels:
 
 Video frame labels
-------------------
+__________________
 
-When you create a video sample (i.e., a |Sample| with `media_type == 'video'`),
+When you create a video sample, i.e., a |Sample| with `media_type == 'video'`,
 it is given a reserved `frames` attribute in which you can store frame-level
-labels for the video.
+labels and other custom annotations for the video.
 
 .. code-block:: python
     :linenos:
@@ -1889,20 +1889,21 @@ labels for the video.
         'filepath': '/path/to/video.mp4',
         'tags': [],
         'metadata': None,
-        'frames': { <0 frames> },
+        'frames': <Frames: 0>,
     }>
 
 The `frames` attribute of a video sample is a dictionary whose keys are frame
 numbers and whose values are |Frame| instances that hold all of the |Label|
-instances for the frame.
+instances and other primitive-type fields for the frame.
 
 .. note::
 
     FiftyOne uses 1-based indexing for video frame numbers.
 
-You can add, modify, and delete :ref:`labels of any type <using-labels>` on the
-frames of the video using the same dynamic attribute syntax that you use to
-interact with |Sample| objects:
+You can add, modify, and delete :ref:`labels of any type <using-labels>` as
+well as primitive fields such as integers, strings, and booleans using the same
+dynamic attribute syntax that you use to
+:ref:`interact with samples <adding-sample-fields>`:
 
 .. code:: python
     :linenos:
@@ -1910,6 +1911,8 @@ interact with |Sample| objects:
     # Add labels to first frame of a video sample
 
     frame = sample.frames[1]
+
+    frame["quality"] = 97.12
 
     frame["weather"] = fo.Classification(label="sunny")
 
@@ -1930,7 +1933,7 @@ interact with |Sample| objects:
         'filepath': '/path/to/video.mp4',
         'tags': [],
         'metadata': None,
-        'frames': { <1 frame> },    <-- `frames` now contains 1 frame of labels
+        'frames': <Frames: 1>,    <-- `frames` now contains 1 frame of labels
     }>
 
 .. note::
@@ -1945,15 +1948,17 @@ You can iterate over the frames in a video sample using the expected syntax:
     :linenos:
 
     for frame_number, frame in sample.frames.items():
-        print(frame_number)
         print(frame)
 
 .. code-block:: text
 
     <Frame: {
         'id': None,
+        'frame_number': 1,
+        'quality': 97.12,
         'weather': <Classification: {
-            'id': '5f750a77f23c456448ebf700',
+            'id': '609078d54653b0094e9baa52',
+            'tags': BaseList([]),
             'label': 'sunny',
             'confidence': None,
             'logits': None,
@@ -1961,22 +1966,96 @@ You can iterate over the frames in a video sample using the expected syntax:
         'objects': <Detections: {
             'detections': BaseList([
                 <Detection: {
-                    'id': '5f750a77f23c456448ebf701',
+                    'id': '609078d54653b0094e9baa53',
+                    'attributes': BaseDict({}),
+                    'tags': BaseList([]),
                     'label': 'cat',
                     'bounding_box': BaseList([0.1, 0.1, 0.2, 0.2]),
+                    'mask': None,
                     'confidence': None,
-                    'attributes': BaseDict({}),
+                    'index': None,
                 }>,
                 <Detection: {
-                    'id': '5f750a77f23c456448ebf702',
+                    'id': '609078d54653b0094e9baa54',
+                    'attributes': BaseDict({}),
+                    'tags': BaseList([]),
                     'label': 'dog',
                     'bounding_box': BaseList([0.7, 0.7, 0.2, 0.2]),
+                    'mask': None,
                     'confidence': None,
-                    'attributes': BaseDict({}),
+                    'index': None,
                 }>,
             ]),
         }>,
     }>
+
+Video samples can be added to datasets just like image samples:
+
+.. code:: python
+    :linenos:
+
+    dataset = fo.Dataset()
+    dataset.add_sample(sample)
+
+    print(dataset)
+
+.. code-block:: text
+
+    Name:           2021.05.03.18.30.20
+    Media type:     video
+    Num samples:    1
+    Persistent:     False
+    Tags:           []
+    Sample fields:
+        filepath: fiftyone.core.fields.StringField
+        tags:     fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
+        metadata: fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.Metadata)
+    Frame fields:
+        frame_number: fiftyone.core.fields.FrameNumberField
+        quality:      fiftyone.core.fields.FloatField
+        weather:      fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Classification)
+        objects:      fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Detections)
+
+Notice that the dataset's summary indicates that the dataset has media type
+`video` and includes the schema of the frame fields.
+
+You can retrieve detailed information about the schema of the frames of a
+video |Dataset| using
+:meth:`dataset.get_frame_field_schema() <fiftyone.core.dataset.Dataset.get_frame_field_schema>`.
+
+The samples in video datasets can be accessed
+:ref:`like usual <accessing-samples-in-a-dataset>`, and the sample's frame
+labels can be modified by updating the `frames` attribute of a |Sample|:
+
+.. code:: python
+    :linenos:
+
+    sample = dataset.first()
+    for frame_number, frame in sample.frames.items():
+        frame["frame_str"] = str(frame_number)
+        del frame["weather"]
+        del frame["objects"]
+
+    sample.save()
+
+    print(sample.frames[1])
+
+.. code-block:: text
+
+    <Frame: {
+        'id': '6090797c4653b0094e9baa57',
+        'frame_number': 1,
+        'quality': 97.12,
+        'weather': None,
+        'objects': None,
+        'frame_str': '1',
+    }>
+
+.. note::
+
+    You must call :meth:`sample.save() <fiftyone.core.sample.Sample.save>` in
+    order to persist changes to the database when editing video samples and/or
+    their frames that are in datasets.
 
 :ref:`See this page <manually-building-datasets>` for more information about
 building labeled video samples.

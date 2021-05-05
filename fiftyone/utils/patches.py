@@ -50,7 +50,7 @@ def make_patches_dataset(
     else:
         field_type = _get_single_label_field_type(sample_collection, field)
 
-    dataset = fod.Dataset(name)
+    dataset = fod.Dataset(name, _patches=True)
     dataset.add_sample_field("sample_id", fof.StringField)
     dataset.add_sample_field(
         field, fof.EmbeddedDocumentField, embedded_doc_type=field_type
@@ -119,7 +119,7 @@ def make_evaluation_dataset(sample_collection, eval_key, name=None):
     gt_type = eval_collection._get_label_field_type(gt_field)
 
     # Setup dataset with correct schema
-    dataset = fod.Dataset(name)
+    dataset = fod.Dataset(name, _patches=True)
     dataset.add_sample_field(
         pred_field, fof.EmbeddedDocumentField, embedded_doc_type=pred_type
     )

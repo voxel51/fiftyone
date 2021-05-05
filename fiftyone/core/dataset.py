@@ -38,7 +38,8 @@ import fiftyone.core.media as fom
 import fiftyone.migrations as fomi
 import fiftyone.core.odm as foo
 import fiftyone.core.sample as fos
-from fiftyone.core.singleton import DatasetSingleton
+import fiftyone.core.stages as fost
+from fiftyone.core.singletons import DatasetSingleton
 import fiftyone.core.view as fov
 import fiftyone.core.utils as fou
 import fiftyone.types as fot
@@ -56,7 +57,11 @@ def list_datasets():
         a list of :class:`Dataset` names
     """
     # pylint: disable=no-member
-    return sorted(foo.DatasetDocument.objects.distinct("name"))
+    return sorted(
+        foo.DatasetDocument.objects.filter(
+            sample_collection_name__startswith="samples."
+        ).distinct("name")
+    )
 
 
 def dataset_exists(name):
@@ -224,6 +229,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         overwrite=False,
         _create=True,
         _migrate=True,
+        _patches=False,
     ):
         if name is None and _create:
             name = get_default_dataset_name()
@@ -236,7 +242,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 self._doc,
                 self._sample_doc_cls,
                 self._frame_doc_cls,
-            ) = _create_dataset(name, persistent=persistent)
+            ) = _create_dataset(name, persistent=persistent, patches=_patches)
         else:
             (
                 self._doc,
@@ -277,10 +283,15 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         doc = self._sample_dict_to_doc(d)
         return fos.Sample.from_doc(doc, dataset=self)
 
-    def __delitem__(self, sample_id):
-        self.remove_sample(sample_id)
+    def __delitem__(self, samples_or_ids):
+        self.delete_samples(samples_or_ids)
 
     def __getattribute__(self, name):
+        #
+        # The attributes necessary to determine a dataset's name and whether
+        # it is deleted are always available. If a dataset is deleted, no other
+        # methods are available
+        #
         if name.startswith("__") or name in (
             "name",
             "deleted",
@@ -516,10 +527,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             a string summary
         """
-        aggs = self.aggregate(
-            [foa.Count(), foa.Distinct("tags")], _attach_frames=False
-        )
-
+        aggs = self.aggregate([foa.Count(), foa.Distinct("tags")])
         elements = [
             ("Name:", self.name),
             ("Media type:", self.media_type),
@@ -1291,16 +1299,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self._validate_sample(sample)
 
         d = sample.to_mongo_dict()
-        d.pop("_id", None)  # remove the ID if in DB
         self._sample_collection.insert_one(d)  # adds `_id` to `d`
 
-        if not sample._in_db:
-            doc = self._sample_doc_cls.from_dict(d, extended=False)
-            sample._set_backing_doc(doc, dataset=self)
+        doc = self._sample_dict_to_doc(d)
+        sample._set_backing_doc(doc, dataset=self)
 
         if self.media_type == fom.VIDEO:
-            sample.frames._serve(sample)
-            sample.frames._save(insert=True)
+            sample.frames.save()
 
         return str(d["_id"])
 
@@ -1397,8 +1402,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             self._validate_sample(sample)
 
         dicts = [sample.to_mongo_dict() for sample in samples]
-        for d in dicts:
-            d.pop("_id", None)  # remove the ID if in DB
 
         try:
             # adds `_id` to each dict
@@ -1408,13 +1411,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             raise ValueError(msg) from bwe
 
         for sample, d in zip(samples, dicts):
-            if not sample._in_db:
-                doc = self._sample_doc_cls.from_dict(d, extended=False)
-                sample._set_backing_doc(doc, dataset=self)
+            doc = self._sample_dict_to_doc(d)
+            sample._set_backing_doc(doc, dataset=self)
 
             if self.media_type == fom.VIDEO:
-                sample.frames._serve(sample)
-                sample.frames._save(insert=True)
+                sample.frames.save()
 
         return [str(d["_id"]) for d in dicts]
 
@@ -1431,9 +1432,15 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         else:
             fos.Sample._reload_docs(self._sample_collection_name)
 
-    def _merge_doc(self, doc, merge_info=True, overwrite=False):
+    def _merge_doc(
+        self, doc, expand_schema=True, merge_info=True, overwrite_info=False
+    ):
         _merge_dataset_doc(
-            self, doc, merge_info=merge_info, overwrite=overwrite
+            self,
+            doc,
+            expand_schema=expand_schema,
+            merge_info=merge_info,
+            overwrite_info=overwrite_info,
         )
 
     def merge_samples(
@@ -1444,6 +1451,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         omit_none_fields=True,
         skip_existing=False,
         insert_new=True,
+        expand_schema=True,
         omit_default_fields=False,
         overwrite=True,
         include_info=True,
@@ -1473,6 +1481,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 merge them (False)
             insert_new (True): whether to insert new samples (True) or skip
                 them (False)
+            expand_schema (True): whether to dynamically add new fields
+                encountered to the dataset schema. If False, an error is raised
+                if a sample's schema is not a subset of the dataset schema
             omit_default_fields (False): whether to omit default sample fields
                 when merging. If ``True``, ``insert_new`` must be ``False``
             overwrite (True): whether to overwrite (True) or skip (False)
@@ -1499,6 +1510,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 omit_none_fields=omit_none_fields,
                 skip_existing=skip_existing,
                 insert_new=insert_new,
+                expand_schema=expand_schema,
                 omit_default_fields=omit_default_fields,
                 include_info=include_info,
                 overwrite_info=overwrite_info,
@@ -1519,8 +1531,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             _merge_dataset_doc(
                 self,
                 samples,
+                expand_schema=expand_schema,
                 merge_info=include_info,
-                overwrite=overwrite_info,
+                overwrite_info=overwrite_info,
             )
 
         if key_fcn is None:
@@ -1546,10 +1559,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                             omit_fields=omit_fields,
                             omit_none_fields=omit_none_fields,
                             overwrite=overwrite,
+                            expand_schema=expand_schema,
                         )
                         existing_sample.save()
                 elif insert_new:
-                    self.add_sample(sample)
+                    self.add_sample(sample, expand_schema=expand_schema)
 
     def delete_samples(self, samples_or_ids):
         """Deletes the given sample(s) from the dataset.
@@ -1571,16 +1585,19 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                     :class:`fiftyone.core.sample.SampleView` instances
         """
         sample_ids = _get_sample_ids(samples_or_ids)
+        _sample_ids = [ObjectId(_id) for _id in sample_ids]
 
-        self._sample_collection.delete_many(
-            {"_id": {"$in": [ObjectId(_id) for _id in sample_ids]}}
-        )
+        self._sample_collection.delete_many({"_id": {"$in": _sample_ids}})
 
         fos.Sample._reset_docs(
-            self._sample_collection_name, doc_ids=sample_ids
+            self._sample_collection_name, sample_ids=sample_ids
         )
 
         if self.media_type == fom.VIDEO:
+            self._frame_collection.delete_many(
+                {"_sample_id": {"$in": _sample_ids}}
+            )
+
             fofr.Frame._reset_docs(
                 self._frame_collection_name, sample_ids=sample_ids
             )
@@ -1842,12 +1859,15 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         if sample_ops:
             foo.bulk_write(sample_ops, self._sample_collection)
+
             fos.Sample._reload_docs(
-                self._sample_collection_name, doc_ids=sample_ids
+                self._sample_collection_name, sample_ids=sample_ids
             )
 
         if frame_ops:
             foo.bulk_write(frame_ops, self._frame_collection)
+
+            # pylint: disable=unexpected-keyword-arg
             fofr.Frame._reload_docs(
                 self._frame_collection_name, sample_ids=sample_ids
             )
@@ -3054,7 +3074,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
                 sample = fos.Sample.from_dict(sd)
 
-                sample._frames = fofr.Frames()  # @todo clean up this hack
                 for key, value in frames.items():
                     sample.frames[int(key)] = fofr.Frame.from_dict(value)
             else:
@@ -3107,7 +3126,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def _pipeline(
         self,
         pipeline=None,
-        attach_frames=True,
+        attach_frames=False,
         detach_frames=False,
         frames_only=False,
     ):
@@ -3127,8 +3146,17 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 {
                     "$lookup": {
                         "from": self._frame_collection_name,
-                        "localField": "_id",
-                        "foreignField": "_sample_id",
+                        "let": {"sample_id": "$_id"},
+                        "pipeline": [
+                            {
+                                "$match": {
+                                    "$expr": {
+                                        "$eq": ["$$sample_id", "$_sample_id"]
+                                    }
+                                }
+                            },
+                            {"$sort": {"frame_number": 1}},
+                        ],
                         "as": "frames",
                     }
                 }
@@ -3153,7 +3181,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def _aggregate(
         self,
         pipeline=None,
-        attach_frames=True,
+        attach_frames=False,
         detach_frames=False,
         frames_only=False,
     ):
@@ -3282,10 +3310,24 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             )
 
     def _sample_dict_to_doc(self, d):
-        return self._sample_doc_cls.from_dict(d, extended=False)
+        try:
+            return self._sample_doc_cls.from_dict(d, extended=False)
+        except:
+            # The dataset's schema may have been changed in another process;
+            # let's try reloading to see if that fixes things
+            self.reload()
+
+            return self._sample_doc_cls.from_dict(d, extended=False)
 
     def _frame_dict_to_doc(self, d):
-        return self._frame_doc_cls.from_dict(d, extended=False)
+        try:
+            return self._frame_doc_cls.from_dict(d, extended=False)
+        except:
+            # The dataset's schema may have been changed in another process;
+            # let's try reloading to see if that fixes things
+            self.reload()
+
+            return self._frame_doc_cls.from_dict(d, extended=False)
 
     def _validate_sample(self, sample):
         fields = self.get_field_schema(include_private=True)
@@ -3314,6 +3356,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
             field.validate(value)
 
+    def reload(self):
+        """Reloads the dataset and any in-memory samples from the database."""
+        self._reload(hard=True)
+        self._reload_docs(hard=True)
+
     def _reload(self, hard=False):
         if not hard:
             self._doc.reload()
@@ -3325,6 +3372,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             self._frame_doc_cls,
         ) = _load_dataset(self.name, migrate=False)
 
+    def _reload_docs(self, hard=False):
+        fos.Sample._reload_docs(self._sample_collection_name, hard=hard)
+
+        if self.media_type == fom.VIDEO:
+            fofr.Frame._reload_docs(self._frame_collection_name, hard=hard)
+
     def _serialize(self):
         return self._doc.to_dict(extended=True)
 
@@ -3335,7 +3388,7 @@ def _get_random_characters(n):
     )
 
 
-def _create_dataset(name, persistent=False, media_type=None):
+def _create_dataset(name, persistent=False, media_type=None, patches=False):
     if dataset_exists(name):
         raise ValueError(
             (
@@ -3345,13 +3398,12 @@ def _create_dataset(name, persistent=False, media_type=None):
             % name
         )
 
-    sample_collection_name = _make_sample_collection_name()
+    sample_collection_name = _make_sample_collection_name(patches)
     sample_doc_cls = _create_sample_document_cls(sample_collection_name)
 
     frame_collection_name = "frames." + sample_collection_name
     frame_doc_cls = _create_frame_document_cls(frame_collection_name)
 
-    # @todo add `frame_collection_name` to dataset document too?
     dataset_doc = foo.DatasetDocument(
         media_type=media_type,
         name=name,
@@ -3377,17 +3429,20 @@ def _create_indexes(sample_collection_name, frame_collection_name):
     collection.create_index("filepath")
 
     frame_collection = conn[frame_collection_name]
-    frame_collection.create_index(
-        [("sample_id", foo.ASC), ("frame_number", foo.ASC)]
-    )
+    frame_collection.create_index([("_sample_id", 1), ("frame_number", 1)])
 
 
-def _make_sample_collection_name():
+def _make_sample_collection_name(patches=False):
     conn = foo.get_db_conn()
     now = datetime.datetime.now()
-    name = "samples." + now.strftime("%Y.%m.%d.%H.%M.%S")
+
+    prefix = "patches" if patches else "samples"
+
+    create_name = lambda timestamp: ".".join([prefix, timestamp])
+
+    name = create_name(now.strftime("%Y.%m.%d.%H.%M.%S"))
     if name in conn.list_collection_names():
-        name = "samples." + now.strftime("%Y.%m.%d.%H.%M.%S.%f")
+        name = create_name(now.strftime("%Y.%m.%d.%H.%M.%S.%f"))
 
     return name
 
@@ -3517,7 +3572,7 @@ def _clone_dataset_or_view(dataset_or_view, name):
     # Clone samples
     #
 
-    pipeline = dataset_or_view._pipeline(attach_frames=False)
+    pipeline = dataset_or_view._pipeline(detach_frames=True)
     pipeline += [{"$out": sample_collection_name}]
     foo.aggregate(dataset._sample_collection, pipeline)
 
@@ -3570,7 +3625,7 @@ def _save_view(view, fields):
     # Save samples
     #
 
-    pipeline = view._pipeline(attach_frames=False)
+    pipeline = view._pipeline(detach_frames=True)
 
     if merge:
         if sample_fields:
@@ -3610,18 +3665,21 @@ def _save_view(view, fields):
     #
 
     # The samples now in the collection
-    doc_ids = dataset.values("id")
+    sample_ids = dataset.values("id")
 
     if dataset.media_type == fom.VIDEO:
-        fofr.Frame._reload_docs(
-            dataset._frame_collection_name, sample_ids=doc_ids
-        )
+        # pylint: disable=unexpected-keyword-arg
+        fofr.Frame._sync_docs(dataset._frame_collection_name, sample_ids)
 
-    fos.Sample._reload_docs(dataset._sample_collection_name, doc_ids=doc_ids)
+    fos.Sample._sync_docs(dataset._sample_collection_name, sample_ids)
 
 
 def _merge_dataset_doc(
-    dataset, collection_or_doc, merge_info=True, overwrite=False
+    dataset,
+    collection_or_doc,
+    expand_schema=True,
+    merge_info=True,
+    overwrite_info=False,
 ):
     curr_doc = dataset._doc
 
@@ -3657,9 +3715,13 @@ def _merge_dataset_doc(
         if is_video:
             frame_schema = {f.name: f.to_field() for f in doc.frame_fields}
 
-    dataset._sample_doc_cls.merge_field_schema(schema)
+    dataset._sample_doc_cls.merge_field_schema(
+        schema, expand_schema=expand_schema
+    )
     if is_video and frame_schema is not None:
-        dataset._frame_doc_cls.merge_field_schema(frame_schema)
+        dataset._frame_doc_cls.merge_field_schema(
+            frame_schema, expand_schema=expand_schema
+        )
 
     if not merge_info:
         curr_doc.reload()
@@ -3669,7 +3731,7 @@ def _merge_dataset_doc(
     # Merge info
     #
 
-    if overwrite:
+    if overwrite_info:
         curr_doc.info.update(doc.info)
         curr_doc.classes.update(doc.classes)
         curr_doc.mask_targets.update(doc.mask_targets)
@@ -3750,6 +3812,7 @@ def _merge_samples(
     omit_none_fields=True,
     skip_existing=False,
     insert_new=True,
+    expand_schema=True,
     omit_default_fields=False,
     include_info=True,
     overwrite_info=False,
@@ -3774,8 +3837,9 @@ def _merge_samples(
     _merge_dataset_doc(
         dst_dataset,
         src_collection,
+        expand_schema=expand_schema,
         merge_info=include_info,
-        overwrite=overwrite_info,
+        overwrite_info=overwrite_info,
     )
 
     #
@@ -3796,7 +3860,7 @@ def _merge_samples(
 
         # Re-run creation in case existing index is not unique. If the index
         # is already unique, this is a no-op
-        src_collection.create_index(key_field, unique=True)
+        src_dataset.create_index(key_field, unique=True)
         dst_dataset.create_index(key_field, unique=True)
     else:
         new_src_index = False
@@ -3830,10 +3894,7 @@ def _merge_samples(
         _index_frames(src_collection, key_field, frame_key_field)
 
         # Must create unique indexes in order to use `$merge`
-        frame_index_spec = [
-            (frame_key_field, foo.ASC),
-            ("frame_number", foo.ASC),
-        ]
+        frame_index_spec = [(frame_key_field, 1), ("frame_number", 1)]
         dst_frame_index = dst_dataset._frame_collection.create_index(
             frame_index_spec, unique=True
         )
@@ -3889,7 +3950,7 @@ def _merge_samples(
     )
 
     # Merge samples
-    src_dataset._aggregate(pipeline=sample_pipeline, attach_frames=False)
+    src_dataset._aggregate(pipeline=sample_pipeline)
 
     # Cleanup indexes
 
@@ -3904,7 +3965,13 @@ def _merge_samples(
     #
 
     if is_video:
-        frame_pipeline = src_collection._pipeline(frames_only=True)
+        # @todo this there a cleaner way to avoid this? we have to be sure that
+        # `frame_key_field` is not excluded by a user's view here...
+        _src_collection = _always_select_field(
+            src_collection, "frames." + frame_key_field
+        )
+
+        frame_pipeline = _src_collection._pipeline(frames_only=True)
 
         frame_pipeline.extend([{"$unset": ["_id", "_sample_id"]}])
 
@@ -3935,7 +4002,7 @@ def _merge_samples(
         )
 
         # Merge frames
-        src_dataset._aggregate(pipeline=frame_pipeline, attach_frames=False)
+        src_dataset._aggregate(pipeline=frame_pipeline)
 
         # Drop indexes
         dst_dataset._frame_collection.drop_index(dst_frame_index)
@@ -3976,6 +4043,21 @@ def _index_frames(sample_collection, key_field, frame_key_field):
         expand_schema=False,
         _allow_missing=True,
     )
+
+
+def _always_select_field(sample_collection, field):
+    if not isinstance(sample_collection, fov.DatasetView):
+        return sample_collection
+
+    # Manually insert `field` into all `SelectFields` stages
+    view = sample_collection._dataset.view()
+    for stage in sample_collection.stages:
+        if isinstance(stage, fost.SelectFields):
+            stage = fost.SelectFields(stage.field_names + [field])
+
+        view = view.add_stage(stage)
+
+    return view
 
 
 def _finalize_frames(sample_collection, key_field, frame_key_field):

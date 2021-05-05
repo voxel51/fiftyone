@@ -203,10 +203,7 @@ class DatasetView(foc.SampleCollection):
         Returns:
             a string summary
         """
-        aggs = self.aggregate(
-            [foa.Count(), foa.Distinct("tags")], _attach_frames=False
-        )
-
+        aggs = self.aggregate([foa.Count(), foa.Distinct("tags")])
         elements = [
             ("Dataset:", self.dataset_name),
             ("Media type:", self.media_type),
@@ -639,6 +636,15 @@ class DatasetView(foc.SampleCollection):
         """
         self._dataset.drop_index(field_name)
 
+    def reload(self):
+        """Reloads the underlying dataset from the database.
+
+        Note that :class:`fiftyone.core.sample.SampleView` instances are not
+        singletons, so any in-memory samples extracted from this view will not
+        be updated by calling this method.
+        """
+        self._dataset.reload()
+
     def to_dict(self, rel_dir=None, frame_labels_dir=None, pretty_print=False):
         """Returns a JSON dictionary representation of the view.
 
@@ -673,6 +679,9 @@ class DatasetView(foc.SampleCollection):
         return d
 
     def _needs_frames(self):
+        if self.media_type != fom.VIDEO:
+            return False
+
         for stage in self._stages:
             if stage._needs_frames(self):
                 return True
@@ -682,7 +691,7 @@ class DatasetView(foc.SampleCollection):
     def _pipeline(
         self,
         pipeline=None,
-        attach_frames=True,
+        attach_frames=False,
         detach_frames=False,
         frames_only=False,
     ):
@@ -695,8 +704,7 @@ class DatasetView(foc.SampleCollection):
         if pipeline is not None:
             _pipeline.extend(pipeline)
 
-        if not attach_frames:
-            attach_frames = self._needs_frames()
+        attach_frames |= self._needs_frames()
 
         return self._dataset._pipeline(
             pipeline=_pipeline,
@@ -708,7 +716,7 @@ class DatasetView(foc.SampleCollection):
     def _aggregate(
         self,
         pipeline=None,
-        attach_frames=True,
+        attach_frames=False,
         detach_frames=False,
         frames_only=False,
     ):
@@ -823,6 +831,15 @@ class DatasetView(foc.SampleCollection):
 
         return selected_fields, excluded_fields
 
+    def _get_filtered_fields(self, frames=False):
+        filtered_fields = set()
+        for stage in self._stages:
+            _filtered_fields = stage.get_filtered_fields(self, frames=frames)
+            if _filtered_fields:
+                filtered_fields.update(_filtered_fields)
+
+        return filtered_fields
+
     def _get_missing_fields(self, frames=False):
         if frames:
             dataset_schema = self._dataset.get_frame_field_schema()
@@ -833,11 +850,9 @@ class DatasetView(foc.SampleCollection):
 
         return set(dataset_schema.keys()) - set(view_schema.keys())
 
-    def _get_filtered_fields(self):
-        filtered_fields = set()
-        for stage in self._stages:
-            _filtered_fields = stage.get_filtered_list_fields()
-            if _filtered_fields:
-                filtered_fields.update(_filtered_fields)
-
-        return filtered_fields
+    def _contains_all_fields(self, frames=False):
+        selected_fields, excluded_fields = self._get_selected_excluded_fields(
+            frames=frames
+        )
+        filtered_fields = self._get_filtered_fields(frames=frames)
+        return not any((selected_fields, excluded_fields, filtered_fields))
