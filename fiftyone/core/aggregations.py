@@ -59,6 +59,13 @@ class Aggregation(object):
         """The expression being computed, if any."""
         return self._expr
 
+    @property
+    def _has_big_result(self):
+        """Whether the aggregation's result is returned across multiple
+        documents.
+        """
+        return False
+
     def to_mongo(self, sample_collection):
         """Returns the MongoDB aggregation pipeline for this aggregation.
 
@@ -1282,6 +1289,7 @@ class Values(Aggregation):
         missing_value=None,
         unwind=False,
         _allow_missing=False,
+        _big_result=True,
         _raw=False,
     ):
         field_or_expr, found_id_field = _handle_id_fields(field_or_expr)
@@ -1290,10 +1298,15 @@ class Values(Aggregation):
         self._missing_value = missing_value
         self._unwind = unwind
         self._allow_missing = _allow_missing
+        self._big_result = _big_result
         self._raw = _raw
         self._found_id_field = found_id_field
         self._field_type = None
         self._num_list_fields = None
+
+    @property
+    def _has_big_result(self):
+        return self._big_result
 
     def default_result(self):
         """Returns the default result for this aggregation.
@@ -1312,7 +1325,10 @@ class Values(Aggregation):
         Returns:
             the list of field values
         """
-        values = d["values"]
+        if self._big_result:
+            values = [di["value"] for di in d]
+        else:
+            values = d["values"]
 
         if self._raw:
             return values
@@ -1343,8 +1359,10 @@ class Values(Aggregation):
 
         self._num_list_fields = len(list_fields)
 
-        pipeline += _make_extract_values_pipeline(
-            path, list_fields, self._missing_value
+        pipeline.extend(
+            _make_extract_values_pipeline(
+                path, list_fields, self._missing_value, self._big_result
+            )
         )
 
         return pipeline
@@ -1375,7 +1393,9 @@ def _transform_values(values, fcn, level=1):
     return [_transform_values(v, fcn, level=level - 1) for v in values]
 
 
-def _make_extract_values_pipeline(path, list_fields, missing_value):
+def _make_extract_values_pipeline(
+    path, list_fields, missing_value, big_result
+):
     if not list_fields:
         root = path
     else:
@@ -1394,10 +1414,16 @@ def _make_extract_values_pipeline(path, list_fields, missing_value):
             inner_list_field = list_field2[len(list_field1) + 1 :]
             expr = _extract_list_values(inner_list_field, expr)
 
-    return [
-        {"$set": {root: expr.to_mongo(prefix="$" + root)}},
-        {"$group": {"_id": None, "values": {"$push": "$" + root}}},
-    ]
+    pipeline = [{"$set": {root: expr.to_mongo(prefix="$" + root)}}]
+
+    if big_result:
+        pipeline.append({"$project": {"value": "$" + root}})
+    else:
+        pipeline.append(
+            {"$group": {"_id": None, "values": {"$push": "$" + root}}}
+        )
+
+    return pipeline
 
 
 def _extract_list_values(subfield, expr):
