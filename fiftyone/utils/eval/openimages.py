@@ -721,7 +721,7 @@ def _compute_iou(preds, gts, iscrowd):
             pred_area = ph * pw
             inter = h * w
             union = pred_area if gt_crowd else pred_area + gt_area - inter
-            ious[i, j] = inter / union
+            ious[i, j] = min(1, inter / union)
 
     return ious
 
