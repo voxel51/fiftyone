@@ -14,7 +14,6 @@ import eta.core.utils as etau
 import fiftyone.core.expressions as foe
 from fiftyone.core.expressions import ViewField as F
 import fiftyone.core.media as fom
-import fiftyone.core.utils as fou
 
 
 class Aggregation(object):
@@ -98,6 +97,27 @@ class Aggregation(object):
             the aggregation result
         """
         raise NotImplementedError("subclasses must implement default_result()")
+
+    def _needs_frames(self, sample_collection):
+        """Whether the aggregation requires frame labels of video samples to be
+        attached.
+
+        Args:
+            sample_collection: the
+                :class:`fiftyone.core.collections.SampleCollection` to which
+                the aggregation is being applied
+
+        Returns:
+            True/False
+        """
+        if self._field_name is not None:
+            return sample_collection._is_frame_field(self._field_name)
+
+        if self._expr is not None:
+            field_name, _ = _extract_prefix_from_expr(self._expr)
+            return sample_collection._is_frame_field(field_name)
+
+        return False
 
     def _parse_field_and_expr(
         self,

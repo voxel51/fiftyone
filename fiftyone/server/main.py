@@ -1196,11 +1196,11 @@ async def _get_sample_data(col, view, page_length, page):
 
 async def _get_video_data(col, state, view, _ids):
     view = view.select(_ids)
-    pipeline = view._pipeline()
+    pipeline = view._pipeline(attach_frames=True)
     results = []
     async for sample in col.aggregate(pipeline):
         frames = sample["frames"]
-        if frames:
+        if frames and frames[0]["frame_number"] == 1:
             sample["frames"] = frames[0]
         else:
             sample["frames"] = None

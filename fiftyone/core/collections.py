@@ -1720,10 +1720,6 @@ class SampleCollection(object):
 
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
-
-        Raises:
-            :class:`fiftyone.core.stages.ViewStageError`: if the stage was not
-                a valid stage for this collection
         """
         return self._add_view_stage(stage)
 
@@ -4696,6 +4692,10 @@ class SampleCollection(object):
         """
         raise NotImplementedError("Subclass must implement drop_index()")
 
+    def reload(self):
+        """Reloads the collection from the database."""
+        raise NotImplementedError("Subclass must implement reload()")
+
     def to_dict(self, rel_dir=None, frame_labels_dir=None, pretty_print=False):
         """Returns a JSON dictionary representation of the collection.
 
@@ -4862,7 +4862,7 @@ class SampleCollection(object):
         """
         raise NotImplementedError("Subclass must implement _add_view_stage()")
 
-    def aggregate(self, aggregations, _attach_frames=True):
+    def aggregate(self, aggregations):
         """Aggregates one or more
         :class:`fiftyone.core.aggregations.Aggregation` instances.
 
@@ -4886,8 +4886,13 @@ class SampleCollection(object):
             aggregations
         )
 
+        if scalar_result:
+            attach_frames = aggregations._needs_frames(self)
+        else:
+            attach_frames = any(a._needs_frames(self) for a in aggregations)
+
         result = self._aggregate(
-            pipeline=pipeline, attach_frames=_attach_frames
+            pipeline=pipeline, attach_frames=attach_frames
         )
 
         if not scalar_result:
@@ -4905,7 +4910,14 @@ class SampleCollection(object):
             aggregations
         )
 
-        pipeline = self._pipeline(pipeline=pipeline)
+        if scalar_result:
+            attach_frames = aggregations._needs_frames(self)
+        else:
+            attach_frames = any(a._needs_frames(self) for a in aggregations)
+
+        pipeline = self._pipeline(
+            pipeline=pipeline, attach_frames=attach_frames
+        )
 
         result = await foo.aggregate(sample_collection, pipeline)
         if not scalar_result:
@@ -4918,7 +4930,7 @@ class SampleCollection(object):
     def _pipeline(
         self,
         pipeline=None,
-        attach_frames=True,
+        attach_frames=False,
         detach_frames=False,
         frames_only=False,
     ):
@@ -4927,11 +4939,10 @@ class SampleCollection(object):
         Args:
             pipeline (None): a MongoDB aggregation pipeline (list of dicts) to
                 append to the current pipeline
-            attach_frames (True): whether to attach the frame documents to the
-                result. Only applicable to video datasets
-            detach_frames (False): whether to detach the frame documents from
-                the result at the end of the pipeline. Only applicable to video
-                datasets
+            attach_frames (False): whether to attach the frame documents prior
+                to executing the pipeline. Only applicable to video datasets
+            detach_frames (False): whether to detach the frame documents at the
+                end of the pipeline. Only applicable to video datasets
             frames_only (False): whether to generate a pipeline that contains
                 *only* the frames in the collection
 
@@ -4943,7 +4954,7 @@ class SampleCollection(object):
     def _aggregate(
         self,
         pipeline=None,
-        attach_frames=True,
+        attach_frames=False,
         detach_frames=False,
         frames_only=False,
     ):
@@ -4953,11 +4964,10 @@ class SampleCollection(object):
         Args:
             pipeline (None): a MongoDB aggregation pipeline (list of dicts) to
                 append to the current pipeline
-            attach_frames (True): whether to attach the frame documents to the
-                result. Only applicable to video datasets
-            detach_frames (False): whether to detach the frame documents from
-                the result at the end of the pipeline. Only applicable to video
-                datasets
+            attach_frames (False): whether to attach the frame documents prior
+                to executing the pipeline. Only applicable to video datasets
+            detach_frames (False): whether to detach the frame documents at the
+                end of the pipeline. Only applicable to video datasets
             frames_only (False): whether to generate a pipeline that contains
                 *only* the frames in the collection
 
@@ -5468,13 +5478,9 @@ def _parse_field_name(
     field_name, is_frame_field = sample_collection._handle_frame_field(
         field_name
     )
-    if is_frame_field:
-        if not field_name:
-            return "frames", True, [], []
 
-        schema = sample_collection.get_frame_field_schema(include_private=True)
-    else:
-        schema = sample_collection.get_field_schema(include_private=True)
+    if is_frame_field and not field_name:
+        return "frames", True, [], []
 
     unwind_list_fields = set()
     other_list_fields = set()
@@ -5487,21 +5493,25 @@ def _parse_field_name(
     # Array references [] have been stripped
     field_name = "".join(chunks)
 
-    # Get root field type, if possible
-    root_field_name = field_name.split(".", 1)[0]
-    if root_field_name in ("id", "_id"):
-        root_field = None
-    elif root_field_name not in schema:
-        if not allow_missing:
-            ftype = "Frame field" if is_frame_field else "Field"
-            raise ValueError(
-                "%s '%s' does not exist on collection '%s'"
-                % (ftype, root_field_name, sample_collection.name)
-            )
+    # Validate root field, if requested
+    if not allow_missing:
+        root_field_name = field_name.split(".", 1)[0]
+        if root_field_name not in ("id", "_id"):
+            if is_frame_field:
+                schema = sample_collection.get_frame_field_schema(
+                    include_private=True
+                )
+            else:
+                schema = sample_collection.get_field_schema(
+                    include_private=True
+                )
 
-        root_field = None
-    else:
-        root_field = schema[root_field_name]
+            if root_field_name not in schema:
+                ftype = "Frame field" if is_frame_field else "Field"
+                raise ValueError(
+                    "%s '%s' does not exist on collection '%s'"
+                    % (ftype, root_field_name, sample_collection.name)
+                )
 
     # Detect list fields in schema
     path = None
