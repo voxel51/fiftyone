@@ -104,7 +104,7 @@ class SingleProcessSynchronizationTests(unittest.TestCase):
             getattr(sample, field_name)
 
     @drop_datasets
-    def test_dataset_remove_samples(self):
+    def test_dataset_delete_samples(self):
         """Tests that when a sample is deleted from a dataset, the sample is
         disconnected from the dataset.
         """
@@ -118,7 +118,7 @@ class SingleProcessSynchronizationTests(unittest.TestCase):
         self.assertIs(sample.dataset, dataset)
 
         # delete 1 sample
-        dataset.remove_sample(sample)
+        dataset.delete_samples(sample)
         self.assertFalse(sample.in_dataset)
         self.assertIsNone(sample.id)
         self.assertIsNone(sample.dataset)
@@ -138,7 +138,7 @@ class SingleProcessSynchronizationTests(unittest.TestCase):
 
         # delete some
         num_delete = 7
-        dataset.remove_samples([sample.id for sample in samples[:num_delete]])
+        dataset.delete_samples([sample.id for sample in samples[:num_delete]])
         for i, sample in enumerate(samples):
             if i < num_delete:
                 self.assertFalse(sample.in_dataset)
@@ -272,8 +272,8 @@ class ScopedObjectsSynchronizationTests(unittest.TestCase):
         check_delete_dataset()
 
     @drop_datasets
-    def test_add_remove_sample(self):
-        dataset_name = self.test_add_remove_sample.__name__
+    def test_add_delete_sample(self):
+        dataset_name = self.test_add_delete_sample.__name__
 
         def create_dataset():
             dataset = fo.Dataset(dataset_name)
@@ -302,19 +302,19 @@ class ScopedObjectsSynchronizationTests(unittest.TestCase):
 
         # remove sample
 
-        def remove_sample(sample_id):
+        def delete_sample(sample_id):
             dataset = fo.load_dataset(dataset_name)
             sample = dataset[sample_id]
-            dataset.remove_sample(sample)
+            dataset.delete_samples(sample)
 
-        def check_remove_sample(sample_id):
+        def check_delete_sample(sample_id):
             dataset = fo.load_dataset(dataset_name)
             self.assertEqual(len(dataset), 0)
             with self.assertRaises(KeyError):
                 dataset[sample_id]
 
-        remove_sample(sample_id)
-        check_remove_sample(sample_id)
+        delete_sample(sample_id)
+        check_delete_sample(sample_id)
 
         # add multiple samples
 
@@ -345,11 +345,11 @@ class ScopedObjectsSynchronizationTests(unittest.TestCase):
 
         num_delete = 7
 
-        def remove_samples(sample_ids):
+        def delete_samples(sample_ids):
             dataset = fo.load_dataset(dataset_name)
-            dataset.remove_samples(sample_ids[:num_delete])
+            dataset.delete_samples(sample_ids[:num_delete])
 
-        def check_remove_samples(sample_ids):
+        def check_delete_samples(sample_ids):
             dataset = fo.load_dataset(dataset_name)
             self.assertEqual(len(dataset), num_samples - num_delete)
 
@@ -363,8 +363,8 @@ class ScopedObjectsSynchronizationTests(unittest.TestCase):
                     self.assertIsNotNone(sample.id)
                     self.assertIs(sample.dataset, dataset)
 
-        remove_samples(sample_ids)
-        check_remove_samples(sample_ids)
+        delete_samples(sample_ids)
+        check_delete_samples(sample_ids)
 
         # clear dataset
 

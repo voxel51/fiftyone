@@ -959,7 +959,7 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
 
         logger.info("Exporting samples...")
         num_samples = sample_collection.count()
-        samples = list(sample_collection._aggregate(attach_frames=False))
+        samples = list(sample_collection._aggregate(detach_frames=True))
 
         for sample, filepath in zip(samples, _outpaths):
             sample["filepath"] = filepath

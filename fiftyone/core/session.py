@@ -942,10 +942,8 @@ class Session(foc.HasClient):
         if self.dataset is None:
             return
 
-        if self.dataset.media_type == fom.VIDEO:
-            fof.Frame._reload_docs(self.dataset._frame_collection_name)
-
-        fosa.Sample._reload_docs(self.dataset._sample_collection_name)
+        self.dataset._reload()
+        self.dataset._reload_docs()
 
     def _show(self, height=None):
         if self._context == focx._NONE or self._desktop:
