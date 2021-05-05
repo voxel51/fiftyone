@@ -4293,7 +4293,7 @@ class SampleCollection(object):
         missing_value=None,
         unwind=False,
         _allow_missing=False,
-        _big_result=False,
+        _big_result=True,
         _raw=False,
     ):
         """Extracts the values of a field from all samples in the collection.
