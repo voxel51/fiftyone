@@ -196,6 +196,20 @@ class _PatchesView(fov.DatasetView):
 
         self._sync_source_all(fields=fields)
 
+    def reload(self):
+        self._root_dataset.reload()
+
+        #
+        # Regenerate the patches dataset
+        #
+        # This assumes that calling `load_view()` when the current patches
+        # dataset has been deleted will cause a new one to be generated
+        #
+
+        self._patches_dataset.delete()
+        _view = self._patches_stage.load_view(self._source_collection)
+        self._patches_dataset = _view._patches_dataset
+
     def _sync_source_sample(self, sample):
         for field in self._label_fields:
             self._sync_source_sample_field(sample, field)
