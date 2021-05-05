@@ -4051,7 +4051,7 @@ def _always_select_field(sample_collection, field):
 
     # Manually insert `field` into all `SelectFields` stages
     view = sample_collection._dataset.view()
-    for stage in sample_collection.stages:
+    for stage in sample_collection._stages:
         if isinstance(stage, fost.SelectFields):
             stage = fost.SelectFields(stage.field_names + [field])
 
