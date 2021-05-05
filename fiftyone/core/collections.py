@@ -115,7 +115,7 @@ class SampleCollection(object):
         collection is derived.
 
         This is typically the same as :meth:`_dataset` but may differ in cases
-        such as collections of patches.
+        such as patches views.
         """
         raise NotImplementedError("Subclass must implement _root_dataset")
 
