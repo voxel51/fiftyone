@@ -790,7 +790,7 @@ dataset as follows:
     # Choose 10 samples at random
     unlucky_samples = dataset.take(10)
 
-    dataset.remove_samples(unlucky_samples)
+    dataset.delete_samples(unlucky_samples)
 
 Efficiently iterating samples
 -----------------------------
