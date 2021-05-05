@@ -1150,8 +1150,6 @@ class SampleCollection(object):
         label_type = self._get_label_field_type(field_name)
         field_name, is_frame_field = self._handle_frame_field(field_name)
 
-        # @todo use `set_values()` here
-        # https://github.com/voxel51/fiftyone/pull/983 is merged
         ops = []
         if issubclass(label_type, fol._LABEL_LIST_FIELDS):
             root = field_name + "." + label_type._LABEL_LIST_FIELD
@@ -1161,6 +1159,9 @@ class SampleCollection(object):
             for _id, _docs in zip(ids, docs):
                 if not _docs:
                     continue
+
+                if not isinstance(_docs, (list, tuple)):
+                    _docs = [_docs]
 
                 for doc in _docs:
                     ops.append(
