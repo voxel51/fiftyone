@@ -226,8 +226,15 @@ class _PatchesView(fov.DatasetView):
         #
         # Sync label updates
         #
+        # IMPORTANT: note that we sync the contents of `_patches_dataset`, not
+        # `self` because this method is called after `self.save()`, which
+        # updates the dataset's contents. Using `self` here would cause
+        # incorrect results because the view contents may be different now that
+        # the source dataset has changed (e.g., if a stage like `skip()` was
+        # involved
+        #
 
-        sample_ids, docs, label_ids = self.aggregate(
+        sample_ids, docs, label_ids = self._patches_dataset.aggregate(
             [
                 foa.Values("sample_id"),
                 foa.Values(label_path, _raw=True),
