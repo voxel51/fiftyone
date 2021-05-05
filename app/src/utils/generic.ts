@@ -43,7 +43,7 @@ export const prettify = (
   summarize: boolean = true
 ): string => {
   if (typeof v === "string") {
-    return summarize ? summarizeLongStr(v, 30) : v;
+    return summarize ? summarizeLongStr(v, 27) : v;
   } else if (typeof v === "number") {
     return Number(v.toFixed(3)).toLocaleString();
   } else if (v === true) {
