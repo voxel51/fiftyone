@@ -56,7 +56,11 @@ def list_datasets():
         a list of :class:`Dataset` names
     """
     # pylint: disable=no-member
-    return sorted(foo.DatasetDocument.objects.distinct("name"))
+    return sorted(
+        foo.DatasetDocument.objects.filter(
+            sample_collection_name__startswith="samples."
+        ).distinct("name")
+    )
 
 
 def dataset_exists(name):
@@ -224,6 +228,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         overwrite=False,
         _create=True,
         _migrate=True,
+        _patches=False,
     ):
         if name is None and _create:
             name = get_default_dataset_name()
@@ -236,7 +241,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 self._doc,
                 self._sample_doc_cls,
                 self._frame_doc_cls,
-            ) = _create_dataset(name, persistent=persistent)
+            ) = _create_dataset(name, persistent=persistent, patches=_patches)
         else:
             (
                 self._doc,
@@ -3335,7 +3340,7 @@ def _get_random_characters(n):
     )
 
 
-def _create_dataset(name, persistent=False, media_type=None):
+def _create_dataset(name, persistent=False, media_type=None, patches=False):
     if dataset_exists(name):
         raise ValueError(
             (
@@ -3345,7 +3350,7 @@ def _create_dataset(name, persistent=False, media_type=None):
             % name
         )
 
-    sample_collection_name = _make_sample_collection_name()
+    sample_collection_name = _make_sample_collection_name(patches)
     sample_doc_cls = _create_sample_document_cls(sample_collection_name)
 
     frame_collection_name = "frames." + sample_collection_name
@@ -3382,12 +3387,17 @@ def _create_indexes(sample_collection_name, frame_collection_name):
     )
 
 
-def _make_sample_collection_name():
+def _make_sample_collection_name(patches=False):
     conn = foo.get_db_conn()
     now = datetime.datetime.now()
-    name = "samples." + now.strftime("%Y.%m.%d.%H.%M.%S")
+
+    prefix = "patches" if patches else "samples"
+
+    create_name = lambda timestamp: ".".join([prefix, timestamp])
+
+    name = create_name(now.strftime("%Y.%m.%d.%H.%M.%S"))
     if name in conn.list_collection_names():
-        name = "samples." + now.strftime("%Y.%m.%d.%H.%M.%S.%f")
+        name = create_name(now.strftime("%Y.%m.%d.%H.%M.%S.%f"))
 
     return name
 
