@@ -16,19 +16,6 @@ import fiftyone.core.view as fov
 
 
 class _PatchView(fos.SampleView):
-    """Base class for patch views.
-
-    Args:
-        doc: a :class:`fiftyone.core.odm.DatasetSampleDocument`
-        view: the :class:`_PatchesView` that the patch belongs to
-        selected_fields (None): a set of field names that this view is
-            restricted to
-        excluded_fields (None): a set of field names that are excluded from
-            this view
-        filtered_fields (None): a set of field names of list fields that are
-            filtered in this view
-    """
-
     def save(self):
         super().save()
 
@@ -77,19 +64,6 @@ class EvaluationPatchView(_PatchView):
 
 
 class _PatchesView(fov.DatasetView):
-    """Base class for :class:`fiftyone.core.view.DatasetView` classes that
-    contain patches.
-
-    Args:
-        source_collection: the
-            :class:`fiftyone.core.collections.SampleCollection` from which this
-            view was created
-        patches_stage: the :class:`fiftyone.core.stages.ViewStage` stage that
-            defines how the patches were extracted
-        patches_dataset: the :class:`fiftyone.core.dataset.Dataset` that serves
-            the patches in this view
-    """
-
     def __init__(
         self, source_collection, patches_stage, patches_dataset, _stages=None
     ):
@@ -194,7 +168,7 @@ class _PatchesView(fov.DatasetView):
         else:
             fields = [l for l in fields if l in self._label_fields]
 
-        self._sync_source_all(fields=fields)
+        self._sync_source(fields=fields)
 
     def reload(self):
         self._root_dataset.reload()
@@ -215,20 +189,15 @@ class _PatchesView(fov.DatasetView):
             self._sync_source_sample_field(sample, field)
 
     def _sync_source_sample_field(self, sample, field):
-        # @todo precompute this for each field?
         label_type = self._patches_dataset._get_label_field_type(field)
         is_list_field = issubclass(label_type, fol._LABEL_LIST_FIELDS)
 
-        # The field in `_source_collection` is a label list field, so we must
-        # package up the docs appropriately
         doc = sample._doc.field_to_mongo(field)
         if is_list_field:
-            docs = doc[label_type._LABEL_LIST_FIELD]
-        else:
-            docs = [doc]
+            doc = doc[label_type._LABEL_LIST_FIELD]
 
         self._source_collection._set_labels_by_id(
-            field, [sample.sample_id], [docs]
+            field, [sample.sample_id], [doc]
         )
 
     def _sync_source_fcn(self, sync_fcn, fields):
@@ -243,18 +212,14 @@ class _PatchesView(fov.DatasetView):
             )
             sync_fcn(source_view, fields=field)
 
-    def _sync_source_all(self, fields):
+    def _sync_source(self, fields):
         if etau.is_str(fields):
             fields = [fields]
 
         for field in fields:
-            self._sync_source_all_field(field)
+            self._sync_source_field(field)
 
-    def _sync_source_all_field(self, field):
-        # @todo precompute this for each field?
-        label_type = self._patches_dataset._get_label_field_type(field)
-        is_list_field = issubclass(label_type, fol._LABEL_LIST_FIELDS)
-
+    def _sync_source_field(self, field):
         _, id_path = self._get_label_field_path(field, "id")
         label_path = id_path.rsplit(".", 1)[0]
 
@@ -265,15 +230,10 @@ class _PatchesView(fov.DatasetView):
         sample_ids, docs, label_ids = self.aggregate(
             [
                 foa.Values("sample_id"),
-                foa.Values(label_path),
+                foa.Values(label_path, _raw=True),
                 foa.Values(id_path, unwind=True),
             ]
         )
-
-        # The field in `_source_collection` is a label list field, so we must
-        # package up the docs appropriately
-        if not is_list_field:
-            docs = [[doc] for doc in docs]
 
         self._source_collection._set_labels_by_id(field, sample_ids, docs)
 
@@ -281,44 +241,16 @@ class _PatchesView(fov.DatasetView):
         # Sync label deletions
         #
 
-        _, id_path = self._source_collection._get_label_field_path(field, "id")
-        all_ids = self._source_collection.values(id_path, unwind=True)
-        delete_ids = set(all_ids) - set(label_ids)
+        _, src_id_path = self._source_collection._get_label_field_path(
+            field, "id"
+        )
+        src_ids = self._source_collection.values(src_id_path, unwind=True)
+        delete_ids = set(src_ids) - set(label_ids)
 
         if delete_ids:
-            # @todo optimize by using `labels` syntax?
             self._source_collection._dataset.delete_labels(
                 ids=delete_ids, fields=field
             )
-
-    def _get_ids_map(self, field):
-        # @todo precompute this for each field?
-        label_type = self._patches_dataset._get_label_field_type(field)
-        is_list_field = issubclass(label_type, fol._LABEL_LIST_FIELDS)
-
-        _, id_path = self._get_label_field_path(field, "id")
-
-        sample_ids, label_ids = self.aggregate(
-            [foa.Values("id"), foa.Values(id_path)]
-        )
-
-        ids_map = {}
-        if is_list_field:
-            for sample_id, _label_ids in zip(sample_ids, label_ids):
-                if not _label_ids:
-                    continue
-
-                for label_id in _label_ids:
-                    ids_map[label_id] = sample_id
-
-        else:
-            for sample_id, label_id in zip(sample_ids, label_ids):
-                if not label_id:
-                    continue
-
-                ids_map[label_id] = sample_id
-
-        return ids_map
 
 
 class PatchesView(_PatchesView):
