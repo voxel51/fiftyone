@@ -22,18 +22,36 @@ export const summarizeLongStr = (
   const modeLower = mode.toLowerCase();
 
   if (modeLower === "first") {
-    return "... " + s.slice(-(maxLen - 4));
+    return "..." + s.slice(-(maxLen - 3));
   }
 
   if (modeLower === "middle") {
-    const len1 = Math.ceil(0.5 * (maxLen - 5));
-    const len2 = Math.floor(0.5 * (maxLen - 5));
-    return s.slice(0, len1) + " ... " + s.slice(-len2);
+    const len1 = Math.ceil(0.5 * (maxLen - 3));
+    const len2 = Math.floor(0.5 * (maxLen - 3));
+    return s.slice(0, len1) + "..." + s.slice(-len2);
   }
 
   if (modeLower === "last") {
-    return s.slice(0, maxLen - 4) + " ...";
+    return s.slice(0, maxLen - 3) + "...";
   }
 
   throw new Error(`Unsupported mode '${mode}'`);
+};
+
+export const prettify = (
+  v: boolean | string | null | undefined | number,
+  summarize: boolean = true
+): string => {
+  if (typeof v === "string") {
+    return summarize ? summarizeLongStr(v, 30) : v;
+  } else if (typeof v === "number") {
+    return Number(v.toFixed(3)).toLocaleString();
+  } else if (v === true) {
+    return "True";
+  } else if (v === false) {
+    return "False";
+  } else if ([undefined, null].includes(v)) {
+    return "None";
+  }
+  return null;
 };

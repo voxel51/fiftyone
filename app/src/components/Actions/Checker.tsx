@@ -69,6 +69,7 @@ const Check = ({
       }
     >
       <Checkbox
+        disableRipple={true}
         ref={ref}
         indeterminate={checkmark === null}
         disabled={disabled}

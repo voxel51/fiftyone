@@ -18,6 +18,7 @@ import * as selectors from "../../recoil/selectors";
 import { PopoutSectionTitle } from "../utils";
 import Checkbox from "../Common/Checkbox";
 import RadioGroup from "../Common/RadioGroup";
+import { useTheme } from "../../utils/hooks";
 
 const getQueryIds = async (snapshot: Snapshot) => {
   const selectedLabels = await snapshot.getPromise(selectors.selectedLabelIds);
@@ -141,6 +142,20 @@ const sortBySimilarityParameters = selector<SortBySimilarityParameters>({
   },
 });
 
+const sortType = selectorFamily<string, boolean>({
+  key: "sortBySimilarityType",
+  get: (modal) => ({ get }) => {
+    const isRoot = get(selectors.isRootView);
+    if (modal) {
+      return "labels";
+    } else if (isRoot) {
+      return "images";
+    } else {
+      return "patches";
+    }
+  },
+});
+
 interface SortBySimilarityProps {
   modal: boolean;
   close: () => void;
@@ -157,11 +172,26 @@ const SortBySimilarity = React.memo(
     const sortBySimilarity = useSortBySimilarity();
     const [reverse, setReverse] = useRecoilState(reverseValue);
     const [k, setK] = useRecoilState(kValue);
+    const type = useRecoilValue(sortType(modal));
+    const theme = useTheme();
 
     return (
       <Popout modal={modal} bounds={bounds}>
-        <PopoutSectionTitle>Sort by similarity</PopoutSectionTitle>
-        {hasSimilarityKeys ? (
+        <PopoutSectionTitle>
+          <ActionOption
+            href={"https://fiftyone.ai"}
+            text={"Sort by similarity"}
+            title={"About sorting by similarity"}
+            style={{
+              background: "unset",
+              color: theme.font,
+              paddingTop: 0,
+              paddingBottom: 0,
+            }}
+            svgStyles={{ height: "1rem", marginTop: 7.5 }}
+          />
+        </PopoutSectionTitle>
+        {hasSimilarityKeys && (
           <>
             <Input
               placeholder={"k (default = None)"}
@@ -185,6 +215,7 @@ const SortBySimilarity = React.memo(
                 <PopoutSectionTitle></PopoutSectionTitle>
                 <Button
                   text={"Apply"}
+                  title={`Sort by similarity to the selected ${type}`}
                   onClick={() => {
                     close();
                     sortBySimilarity();
@@ -199,12 +230,6 @@ const SortBySimilarity = React.memo(
               </>
             )}
           </>
-        ) : (
-          <ActionOption
-            text={"No runs available"}
-            title={"No similarity runs are available"}
-            href={"https://fiftyone.ai"}
-          />
         )}
       </Popout>
     );

@@ -56,6 +56,7 @@ const Checkbox = React.memo(
               e.stopPropagation();
               setValue(!value);
             }}
+            disableRipple={true}
           />
           <CheckboxName style={name === null ? { color: color } : {}}>
             {maxLen ? summarizeLongStr(text, maxLen, "middle") : text}

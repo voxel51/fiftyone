@@ -10,7 +10,7 @@ import * as selectors from "../../recoil/selectors";
 import { PATCHES_FIELDS } from "../../utils/labels";
 import { useTheme } from "../../utils/hooks";
 
-const patchesFields = selector<string[]>({
+export const patchesFields = selector<string[]>({
   key: "parchesFields",
   get: ({ get }) => {
     const paths = get(selectors.labelPaths);
@@ -63,32 +63,28 @@ const LabelsPatches = ({ close }) => {
   const fields = useRecoilValue(patchesFields);
   const toPatches = useToPatches();
 
-  if (fields.length) {
-    return (
-      <>
-        {fields.map((field) => {
-          return (
-            <ActionOption
-              key={field}
-              text={field}
-              title={`Switch to ${field} patches view`}
-              onClick={() => {
-                close();
-                toPatches(field);
-              }}
-            />
-          );
-        })}
-      </>
-    );
-  }
-
   return (
-    <ActionOption
-      text={"No labels fields"}
-      title={"No labels fields"}
-      href={"https://fiftyone.ai"}
-    />
+    <>
+      {fields.map((field) => {
+        return (
+          <ActionOption
+            key={field}
+            text={field}
+            title={`Switch to patches view for the "${field}" field`}
+            onClick={() => {
+              close();
+              toPatches(field);
+            }}
+          />
+        );
+      })}
+      <ActionOption
+        key={0}
+        text={"About patch views"}
+        title={"About patch views"}
+        href={"https://fiftyone.ai"}
+      />
+    </>
   );
 };
 
@@ -96,31 +92,28 @@ const EvaluationPatches = ({ close }) => {
   const evaluations = useRecoilValue(evaluationKeys);
   const toEvaluationPatches = useToEvaluationPatches();
 
-  if (evaluations.length) {
-    return (
-      <>
-        {evaluations.map((evaluation) => {
-          return (
-            <ActionOption
-              key={evaluation}
-              text={evaluation}
-              title={`Switch to ${evaluation} evaluation patches view`}
-              onClick={() => {
-                close();
-                toEvaluationPatches(evaluation);
-              }}
-            />
-          );
-        })}
-      </>
-    );
-  }
   return (
-    <ActionOption
-      text={"No evaluations"}
-      title={"No evaluations"}
-      href={"https://fiftyone.ai"}
-    />
+    <>
+      {evaluations.map((evaluation) => {
+        return (
+          <ActionOption
+            key={evaluation}
+            text={evaluation}
+            title={`Switch to evaluation patches view for the "${evaluation}" evaluation`}
+            onClick={() => {
+              close();
+              toEvaluationPatches(evaluation);
+            }}
+          />
+        );
+      })}
+      <ActionOption
+        key={0}
+        text={"About evaluation views"}
+        title={"About evaluation views"}
+        href={"https://fiftyone.ai"}
+      />
+    </>
   );
 };
 

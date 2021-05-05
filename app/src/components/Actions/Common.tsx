@@ -11,6 +11,8 @@ type ActionOptionProps = {
   title?: string;
   hidden?: boolean;
   disabled?: boolean;
+  style?: React.CSSProperties;
+  svgStyles?: React.CSSProperties;
 };
 
 export const ActionOption = React.memo(
@@ -21,8 +23,10 @@ export const ActionOption = React.memo(
     title,
     disabled = false,
     hidden = false,
+    style,
+    svgStyles = { height: "1rem", marginTop: 4.5 },
   }: ActionOptionProps) => {
-    const props = useHighlightHover(disabled);
+    const { style: animationStyles, ...rest } = useHighlightHover(disabled);
     onClick = href ? useExternalLink(href) : onClick;
     if (hidden) {
       return null;
@@ -31,13 +35,14 @@ export const ActionOption = React.memo(
       <ItemAction
         title={title ? title : text}
         onClick={disabled ? null : onClick}
-        {...props}
+        {...rest}
+        style={style ?? animationStyles}
         href={href}
         target={href ? "_blank" : null}
       >
         <span style={href ? { textDecoration: "underline" } : {}}>
           {text}
-          {href && <Launch style={{ height: "1rem", marginTop: 4.5 }} />}
+          {href && <Launch style={svgStyles} />}
         </span>
       </ItemAction>
     );

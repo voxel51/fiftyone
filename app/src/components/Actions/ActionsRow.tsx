@@ -20,7 +20,7 @@ import { selectorFamily, useRecoilState, useRecoilValue } from "recoil";
 import styled from "styled-components";
 
 import Coloring from "./Options";
-import Patcher from "./Patcher";
+import Patcher, { patchesFields } from "./Patcher";
 import Selector from "./Selected";
 import Tagger from "./Tagger";
 import { PillButton } from "../utils";
@@ -39,6 +39,7 @@ const Patches = () => {
   const [open, setOpen] = useState(false);
   const ref = useRef();
   useOutsideClick(ref, () => open && setOpen(false));
+  const fields = useRecoilValue(patchesFields);
 
   useLayoutEffect(() => {
     close && setOpen(false);
@@ -50,7 +51,7 @@ const Patches = () => {
         icon={<FlipToBack />}
         open={open}
         onClick={() => setOpen(!open)}
-        highlight={open}
+        highlight={open || Boolean(fields.length)}
         title={"Patches"}
       />
       {open && <Patcher close={() => setOpen(false)} />}

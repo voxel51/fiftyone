@@ -231,6 +231,7 @@ const Entry = React.memo(({ entry, onCheck, modal }: EntryProps) => {
         }}
         control={
           <Checkbox
+            disableRipple={true}
             checked={selected}
             title={`Show ${name} ${type}`}
             onChange={() => onCheck({ ...entry, selected: !entry.selected })}

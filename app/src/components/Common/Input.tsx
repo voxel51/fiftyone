@@ -41,9 +41,9 @@ interface InputProps {
   value: string;
   onEnter?: () => void;
   disabled?: boolean;
-  onFocus: () => void;
-  onBlur: () => void;
-  onKeyDown: (event: React.KeyboardEvent<HTMLInputElement>) => void;
+  onFocus?: () => void;
+  onBlur?: () => void;
+  onKeyDown?: (event: React.KeyboardEvent<HTMLInputElement>) => void;
 }
 
 const Input = React.memo(

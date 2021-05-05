@@ -123,7 +123,7 @@ const Wrapper = ({
           }}
         />
       ))}
-      {Boolean(selectedSet.size) && (
+      {Boolean(selectedSet.size) && count > 3 && (
         <>
           <PopoutSectionTitle />
           <ExcludeOption
@@ -140,9 +140,9 @@ const Wrapper = ({
             }}
             style={{
               margin: "0.25rem -0.5rem",
-              paddingLeft: "2.5rem",
               height: "2rem",
               borderRadius: 0,
+              textAlign: "center",
             }}
           ></Button>
         </>

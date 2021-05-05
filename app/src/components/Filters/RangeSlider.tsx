@@ -261,7 +261,7 @@ export const NamedRangeSlider = React.memo(
       const hasBounds = bounds.every((b) => b !== null);
       const isSingleValue = hasBounds && bounds[0] === bounds[1];
 
-      if (!hasBounds) {
+      if (!hasBounds || (!hasNone && isSingleValue)) {
         return null;
       }
 
@@ -269,20 +269,6 @@ export const NamedRangeSlider = React.memo(
         <NamedRangeSliderContainer ref={ref}>
           {name && <NamedRangeSliderHeader>{name}</NamedRangeSliderHeader>}
           <RangeSliderContainer>
-            {isSingleValue && (
-              <span
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  padding: "0 6px",
-                }}
-              >
-                Only one non-none value exists:{" "}
-                <span style={{ color: theme.font }}>
-                  {bounds[0].toLocaleString()}
-                </span>
-              </span>
-            )}
             {hasBounds && !isSingleValue && (
               <RangeSlider {...rangeSliderProps} showBounds={false} />
             )}
@@ -307,9 +293,9 @@ export const NamedRangeSlider = React.memo(
                   }}
                   style={{
                     margin: "0.25rem -0.5rem",
-                    paddingLeft: "2.5rem",
                     height: "2rem",
                     borderRadius: 0,
+                    textAlign: "center",
                   }}
                 ></Button>
               </>

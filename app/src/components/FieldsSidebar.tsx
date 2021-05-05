@@ -6,7 +6,6 @@ import {
   BurstMode,
   Check,
   Close,
-  FilterList,
   Help,
   LocalOffer,
   Note,
@@ -29,6 +28,7 @@ import * as selectors from "../recoil/selectors";
 import { stringify, FILTERABLE_TYPES } from "../utils/labels";
 import { useTheme } from "../utils/hooks";
 import { PillButton } from "./utils";
+import { prettify } from "../utils/generic";
 
 const Container = styled.div`
   .MuiCheckbox-root {
@@ -61,27 +61,6 @@ const Container = styled.div`
     margin-right: 4px;
   }
 `;
-
-const ResetFiltersPill = () => {
-  const theme = useTheme();
-  return (
-    <PillButton
-      onClick={() => {}}
-      highlight={false}
-      open={false}
-      icon={<FilterList />}
-      title={"Reset filters"}
-      text={"1"}
-      style={{
-        marginLeft: "0.25rem",
-        height: "1.5rem",
-        fontSize: "0.8rem",
-        lineHeight: "1rem",
-        color: theme.font,
-      }}
-    />
-  );
-};
 
 type CellProps = {
   label: string;
@@ -571,27 +550,29 @@ const ScalarsCell = ({ modal }: ScalarsCellProps) => {
     <Cell
       label="Scalar fields"
       icon={<BarChart />}
-      entries={scalars.map((name) => ({
-        name,
-        disabled: false,
-        hideCheckbox: modal,
-        hasDropdown: !modal,
-        selected: activeScalars.includes(name),
-        color: colorByLabel ? theme.brand : colorMap[name],
-        title: modal ? `${name}: ${stringify(count[name])}` : name,
-        path: name,
-        type: "values",
-        data:
-          count && subCount && !modal
-            ? makeData(subCount[name], count[name])
-            : modal
-            ? stringify(count[name])
-            : null,
-        totalCount: !modal && count ? count[name] : null,
-        filteredCount: !modal && subCount ? subCount[name] : null,
-        modal,
-        canFilter: !modal,
-      }))}
+      entries={scalars.map((name) => {
+        return {
+          name,
+          disabled: false,
+          hideCheckbox: modal,
+          hasDropdown: !modal,
+          selected: activeScalars.includes(name),
+          color: colorByLabel ? theme.brand : colorMap[name],
+          title: modal ? `${name}: ${prettify(count[name], false)}` : name,
+          path: name,
+          type: "values",
+          data:
+            count && subCount && !modal
+              ? makeData(subCount[name], count[name])
+              : modal
+              ? prettify(count[name])
+              : null,
+          totalCount: !modal && count ? count[name] : null,
+          filteredCount: !modal && subCount ? subCount[name] : null,
+          modal,
+          canFilter: !modal,
+        };
+      })}
       onSelect={
         !modal
           ? ({ name, selected }) => {
@@ -678,6 +659,7 @@ export const Button = ({
   children = null,
   style,
   color = null,
+  title = null,
 }) => {
   const theme = useTheme();
   const [hover, setHover] = useState(false);
@@ -695,7 +677,7 @@ export const Button = ({
       onClick={onClick}
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
-      title={text}
+      title={title ?? text}
     >
       <OptionText style={{ fontWeight: "bold", width: "100%" }}>
         {text}
