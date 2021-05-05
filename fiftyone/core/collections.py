@@ -5268,21 +5268,6 @@ class SampleCollection(object):
         """
         raise NotImplementedError("Subclass must implement _aggregate()")
 
-    async def _async_aggregate(self, sample_collection, aggregations):
-        scalar_result, aggregations, facets = self._build_aggregation(
-            aggregations
-        )
-        if not aggregations:
-            return []
-
-        # pylint: disable=no-member
-        pipeline = self._pipeline(pipeline=facets)
-
-        result = await foo.aggregate(sample_collection, pipeline).to_list(1)
-        result = result[0]
-
-        return self._process_aggregations(aggregations, result, scalar_result)
-
     def _build_aggregation(self, aggregations):
         scalar_result = isinstance(aggregations, foa.Aggregation)
         if scalar_result:
