@@ -7,11 +7,14 @@ import {
   SetRecoilState,
 } from "recoil";
 import { animated } from "react-spring";
+import uuid from "uuid-v4";
 
 import * as selectors from "../../recoil/selectors";
-import { NamedStringFilter } from "./StringFilter";
+import StringFilter from "./StringFilter";
 import { AGGS } from "../../utils/labels";
 import { useExpand, hasNoneField } from "./utils";
+
+export const LIST_LIMIT = 5;
 
 type StringFilter = {
   values: string[];
@@ -80,19 +83,31 @@ export const excludeModalAtom = atomFamily<boolean, string>({
   default: false,
 });
 
-export const valuesAtom = selectorFamily<Value[], string>({
-  key: "stringFieldValues",
+export const totalAtom = selectorFamily<
+  { count: number; results: string[] },
+  string
+>({
+  key: "stringFieldTotal",
   get: (path) => ({ get }) => {
-    let i = (get(selectors.datasetStats) ?? []).reduce((acc, cur) => {
-      if (cur.name === path && cur._CLS === AGGS.DISTINCT) {
-        return cur.result;
-      }
-      return acc;
-    }, []);
-    if (get(hasNoneField(path))) {
-      return [null, ...i];
+    const hasNone = get(hasNoneField(path));
+    const data = (get(selectors.datasetStats) ?? []).reduce(
+      (acc, cur) => {
+        if (cur.name === path && cur._CLS === AGGS.DISTINCT) {
+          return {
+            count: cur.result[0],
+            results: cur.result[1],
+          };
+        }
+        return acc;
+      },
+      { count: 0, results: [] }
+    );
+
+    if (hasNone) {
+      data.count = data.count + 1;
+      data.results = [...data.results, null].sort();
     }
-    return i;
+    return data;
   },
 });
 
@@ -113,13 +128,14 @@ const StringFieldFilter = ({ expanded, entry }) => {
 
   return (
     <animated.div style={props}>
-      <NamedStringFilter
-        name={"Values"}
-        valueName={"value"}
+      <StringFilter
+        valueName={entry.path}
         color={entry.color}
-        valuesAtom={valuesAtom(entry.path)}
         selectedValuesAtom={selectedValuesAtom(entry.path)}
         excludeAtom={excludeAtom(entry.path)}
+        totalAtom={totalAtom(entry.path)}
+        hasNoneAtom={hasNoneField(entry.path)}
+        path={entry.path}
         ref={ref}
       />
     </animated.div>

@@ -1,27 +1,50 @@
 import React from "react";
-import { HoverItemDiv, useHighlightHover } from "./utils";
+import { Launch } from "@material-ui/icons";
+
+import { ItemAction, useHighlightHover } from "./utils";
+import { useExternalLink } from "../ExternalLink";
 
 type ActionOptionProps = {
-  onClick: () => void;
+  onClick?: (event?: Event) => void;
+  href?: string;
   text: string;
   title?: string;
+  hidden?: boolean;
   disabled?: boolean;
+  style?: React.CSSProperties;
+  svgStyles?: React.CSSProperties;
 };
 
 export const ActionOption = React.memo(
-  ({ onClick, text, title, disabled }: ActionOptionProps) => {
-    const props = useHighlightHover(disabled);
-    if (disabled) {
+  ({
+    onClick,
+    text,
+    href,
+    title,
+    disabled = false,
+    hidden = false,
+    style,
+    svgStyles = { height: "1rem", marginTop: 4.5 },
+  }: ActionOptionProps) => {
+    const { style: animationStyles, ...rest } = useHighlightHover(disabled);
+    onClick = href ? useExternalLink(href) : onClick;
+    if (hidden) {
       return null;
     }
     return (
-      <HoverItemDiv
+      <ItemAction
         title={title ? title : text}
         onClick={disabled ? null : onClick}
-        {...props}
+        {...rest}
+        style={style ?? animationStyles}
+        href={href}
+        target={href ? "_blank" : null}
       >
-        {text}
-      </HoverItemDiv>
+        <span style={href ? { textDecoration: "underline" } : {}}>
+          {text}
+          {href && <Launch style={svgStyles} />}
+        </span>
+      </ItemAction>
     );
   }
 );

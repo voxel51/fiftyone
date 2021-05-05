@@ -61,7 +61,7 @@ export const ModalFooter = styled.div`
   right: 0;
   bottom: 0;
   width: 100%;
-  height: 64.5px;
+  min-height: 64.5px;
 `;
 
 export const scrollbarStyles = ({ theme }) => `
@@ -234,9 +234,10 @@ type TabOption = {
 export type TabOptionProps = {
   active: string;
   options: TabOption[];
+  color?: string;
 };
 
-export const TabOption = ({ active, options }: TabOptionProps) => {
+export const TabOption = ({ active, options, color }: TabOptionProps) => {
   const theme = useTheme();
   const [hovering, setHovering] = useState(options.map((o) => false));
   const styles = useSprings(
@@ -244,7 +245,7 @@ export const TabOption = ({ active, options }: TabOptionProps) => {
     options.map((o, i) => ({
       backgroundColor:
         o.text === active
-          ? theme.brand
+          ? color || theme.brand
           : hovering[i]
           ? theme.background
           : theme.backgroundLight,

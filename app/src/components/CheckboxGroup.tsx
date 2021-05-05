@@ -27,7 +27,6 @@ const Body = styled.div`
     margin-top: 3px;
     margin-left: 0;
     margin-right: 0;
-    padding: 0 0.2em;
     border-radius: 2px;
   }
 
@@ -66,11 +65,16 @@ const Body = styled.div`
       color: unset;
       line-height: 29px;
       height: 29px;
+      justify-content; space-between;
+      max-width: 100%;
+
+      span {
+        white-space: nowrap;
+      }
 
       span.name {
         display: block;
         padding: 0 4px;
-        white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
         flex-grow: 1;
@@ -82,10 +86,12 @@ const Body = styled.div`
       }
       span.count {
         display: block;
-        white-space: nowrap;
         height: 29px;
         line-height: 29px;
         vertical-align: middle;
+        max-width: 100%;
+        text-overflow: ellipsis;
+        overflow: hidden;
       }
 
       span.data {
@@ -114,7 +120,9 @@ const Body = styled.div`
   }
 `;
 
-const CheckboxContainer = animated(styled.div``);
+const CheckboxContainer = animated(styled.div`
+  position: relative;
+`);
 
 export type Entry = {
   name: string;
@@ -137,7 +145,7 @@ export type Entry = {
 type EntryProps = {
   entry: Entry;
   modal: boolean;
-  onCheck: (entry: Entry) => void;
+  onCheck?: (entry: Entry) => void;
 };
 
 const Entry = React.memo(({ entry, onCheck, modal }: EntryProps) => {
@@ -165,11 +173,7 @@ const Entry = React.memo(({ entry, onCheck, modal }: EntryProps) => {
 
   const checkboxClass = hideCheckbox ? "no-checkbox" : "with-checkbox";
   const containerProps = useSpring({
-    backgroundColor: fieldFiltered
-      ? "#6C757D"
-      : hideCheckbox || selected
-      ? theme.backgroundLight
-      : theme.background,
+    backgroundColor: fieldFiltered ? "#6C757D" : theme.backgroundLight,
   });
   const ArrowType = expanded ? ArrowDropUp : ArrowDropDown;
   return (
@@ -183,7 +187,7 @@ const Entry = React.memo(({ entry, onCheck, modal }: EntryProps) => {
             </span>
             {typeof data === "string" ? (
               <>
-                <span className="count" title={title}>
+                <span className="count" title={data}>
                   {data}
                 </span>
                 {hasDropdown && (
@@ -227,6 +231,7 @@ const Entry = React.memo(({ entry, onCheck, modal }: EntryProps) => {
         }}
         control={
           <Checkbox
+            disableRipple={true}
             checked={selected}
             title={`Show ${name} ${type}`}
             onChange={() => onCheck({ ...entry, selected: !entry.selected })}
