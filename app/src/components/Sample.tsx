@@ -13,11 +13,8 @@ import * as selectors from "../recoil/selectors";
 import socket, { http } from "../shared/connection";
 import { packageMessage } from "../utils/socket";
 import { useVideoData, useTheme } from "../utils/hooks";
-import {
-  stringify,
-  VALID_CLASS_TYPES,
-  VALID_LIST_TYPES,
-} from "../utils/labels";
+import { VALID_CLASS_TYPES, VALID_LIST_TYPES } from "../utils/labels";
+import { prettify } from "../utils/generic";
 
 const SampleDiv = animated(styled.div`
   position: relative;
@@ -168,7 +165,7 @@ const SampleInfo = React.memo(({ id }) => {
       scalars.includes(cur) &&
       ![null, undefined].includes(sample[cur])
     ) {
-      const value = stringify(sample[cur]);
+      const value = sample[cur];
       acc = [
         ...acc,
         <Tag
@@ -192,12 +189,12 @@ const SampleInfo = React.memo(({ id }) => {
       acc = [
         ...acc,
         values
-          .map((v) => stringify(v.label))
+          .map((v) => prettify(v.label, false))
           .map((v) => (
             <Tag
               key={"scalar-" + cur + "" + v}
               title={`${cur}: ${v}`}
-              name={v}
+              name={[undefined, null].includes(v) ? "None" : v}
               color={colorByLabel ? colorMap[v] : colorMap[cur]}
               maxWidth={"calc(100% - 32px)"}
             />
@@ -302,6 +299,7 @@ const Selector = React.memo(({ id, spring }: { id: string; spring: any }) => {
         style={{
           color: theme.brand,
         }}
+        disableRipple={true}
         title={"Click to select sample, Ctrl+Click to select a range"}
       />
     </SelectorDiv>

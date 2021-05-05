@@ -109,6 +109,7 @@ const ImageContainerHeader = ({ showSidebar, onShowSidebar }: Props) => {
                 showBounds={false}
                 persistValue={false}
                 int={true}
+                style={{ padding: 0 }}
               />
             </div>
             <div

@@ -1,10 +1,5 @@
 import React, { useState } from "react";
-import {
-  selector,
-  snapshot_UNSTABLE,
-  useRecoilCallback,
-  useRecoilValue,
-} from "recoil";
+import { selector, useRecoilCallback, useRecoilValue } from "recoil";
 import { useSpring } from "react-spring";
 
 import Popout from "./Popout";
@@ -15,11 +10,7 @@ import * as selectors from "../../recoil/selectors";
 import { PATCHES_FIELDS } from "../../utils/labels";
 import { useTheme } from "../../utils/hooks";
 
-type PatcherProps = {
-  modal: boolean;
-};
-
-const patchesFields = selector<string[]>({
+export const patchesFields = selector<string[]>({
   key: "parchesFields",
   get: ({ get }) => {
     const paths = get(selectors.labelPaths);
@@ -35,7 +26,6 @@ const appendStage = (set, view, stage) => {
 const evaluationKeys = selector<string[]>({
   key: "evaluationKeys",
   get: ({ get }) => {
-    console.log(get(atoms.stateDescription).dataset);
     return Object.keys(get(atoms.stateDescription).dataset.evaluations || {});
   },
 });
@@ -47,7 +37,7 @@ const useToPatches = () => {
       appendStage(set, view, {
         _cls: "fiftyone.core.stages.ToPatches",
         kwargs: [
-          ["field", "ground_truth"],
+          ["field", field],
           ["_state", null],
         ],
       });
@@ -62,77 +52,76 @@ const useToEvaluationPatches = () => {
     appendStage(set, view, {
       _cls: "fiftyone.core.stages.ToEvaluationPatches",
       kwargs: [
-        ["field", "ground_truth"],
+        ["eval_key", evaluation],
         ["_state", null],
       ],
     });
   });
 };
 
-const LabelsPatches = () => {
+const LabelsPatches = ({ close }) => {
   const fields = useRecoilValue(patchesFields);
   const toPatches = useToPatches();
 
-  if (fields.length) {
-    return (
-      <>
-        {fields.map((field) => {
-          return (
-            <ActionOption
-              key={field}
-              text={field}
-              title={`Switch to ${field} patches view`}
-              disabled={false}
-              onClick={() => toPatches(field)}
-            />
-          );
-        })}
-      </>
-    );
-  }
-
   return (
-    <ActionOption
-      key={null}
-      text={"No valid labels fields"}
-      disabled={true}
-      onClick={() => {}}
-    />
+    <>
+      {fields.map((field) => {
+        return (
+          <ActionOption
+            key={field}
+            text={field}
+            title={`Switch to patches view for the "${field}" field`}
+            onClick={() => {
+              close();
+              toPatches(field);
+            }}
+          />
+        );
+      })}
+      <ActionOption
+        key={0}
+        text={"About patch views"}
+        title={"About patch views"}
+        href={"https://fiftyone.ai"}
+      />
+    </>
   );
 };
 
-const EvaluationPatches = () => {
+const EvaluationPatches = ({ close }) => {
   const evaluations = useRecoilValue(evaluationKeys);
   const toEvaluationPatches = useToEvaluationPatches();
 
-  if ([].length > 0) {
-    return (
-      <>
-        {evaluations.map((evaluation) => {
-          return (
-            <ActionOption
-              key={evaluation}
-              text={evaluation}
-              title={`Switch to ${evaluation} evaluation patches view`}
-              disabled={false}
-              onClick={() => toEvaluationPatches(evaluation)}
-            />
-          );
-        })}
-      </>
-    );
-  }
   return (
-    <ActionOption
-      key={null}
-      text={"No evaluations"}
-      disabled={true}
-      onClick={() => {}}
-    />
+    <>
+      {evaluations.map((evaluation) => {
+        return (
+          <ActionOption
+            key={evaluation}
+            text={evaluation}
+            title={`Switch to evaluation patches view for the "${evaluation}" evaluation`}
+            onClick={() => {
+              close();
+              toEvaluationPatches(evaluation);
+            }}
+          />
+        );
+      })}
+      <ActionOption
+        key={0}
+        text={"About evaluation views"}
+        title={"About evaluation views"}
+        href={"https://fiftyone.ai"}
+      />
+    </>
   );
 };
 
-const Patcher = ({ modal, bounds }: PatcherProps) => {
+type PatcherProps = {
+  close: () => void;
+};
+
+const Patcher = ({ bounds, close }: PatcherProps) => {
   const theme = useTheme();
   const [labels, setLabels] = useState(true);
 
@@ -145,7 +134,7 @@ const Patcher = ({ modal, bounds }: PatcherProps) => {
     cursor: labels ? "pointer" : "default",
   });
   return (
-    <Popout modal={modal} bounds={bounds}>
+    <Popout modal={false} bounds={bounds}>
       <SwitcherDiv>
         <SwitchDiv
           style={labelProps}
@@ -160,8 +149,8 @@ const Patcher = ({ modal, bounds }: PatcherProps) => {
           Evaluations
         </SwitchDiv>
       </SwitcherDiv>
-      {labels && <LabelsPatches />}
-      {!labels && <EvaluationPatches />}
+      {labels && <LabelsPatches close={close} />}
+      {!labels && <EvaluationPatches close={close} />}
     </Popout>
   );
 };

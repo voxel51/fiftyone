@@ -580,13 +580,20 @@ class Distinct(Aggregation):
             aggregating
     """
 
+    def __init__(self, field_or_expr, expr=None, _first=None):
+        super().__init__(field_or_expr, expr=expr)
+        self._first = _first
+
     def default_result(self):
         """Returns the default result for this aggregation.
 
         Returns:
             ``[]``
         """
-        return []
+        if self._first is None:
+            return []
+
+        return 0, []
 
     def parse_result(self, d):
         """Parses the output of :meth:`to_mongo`.
@@ -597,7 +604,10 @@ class Distinct(Aggregation):
         Returns:
             a sorted list of distinct values
         """
-        return sorted(d["values"])
+        if self._first is None:
+            return d["values"]
+
+        return d["count"], d["values"]
 
     def to_mongo(self, sample_collection):
         path, pipeline, _ = self._parse_field_and_expr(sample_collection)
@@ -605,7 +615,20 @@ class Distinct(Aggregation):
         pipeline += [
             {"$match": {"$expr": {"$gt": ["$" + path, None]}}},
             {"$group": {"_id": None, "values": {"$addToSet": "$" + path}}},
+            {"$unwind": "$values"},
+            {"$sort": {"values": 1}},
+            {"$group": {"_id": None, "values": {"$push": "$values"}}},
         ]
+
+        if self._first is not None:
+            pipeline += [
+                {
+                    "$set": {
+                        "count": {"$size": "$values"},
+                        "values": {"$slice": ["$values", self._first]},
+                    }
+                },
+            ]
 
         return pipeline
 

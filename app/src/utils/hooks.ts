@@ -1,10 +1,5 @@
 import { useCallback, useContext, useEffect, useRef, useState } from "react";
-import {
-  useRecoilCallback,
-  useRecoilState,
-  useSetRecoilState,
-  useRecoilValue,
-} from "recoil";
+import { useRecoilCallback, useRecoilValue } from "recoil";
 import ResizeObserver from "resize-observer-polyfill";
 import ReactGA from "react-ga";
 import { ThemeContext } from "styled-components";

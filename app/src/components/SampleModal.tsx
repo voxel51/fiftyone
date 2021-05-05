@@ -144,32 +144,29 @@ const Container = styled.div`
     position: relative;
     height: 100%;
     max-height: 100%;
-    overflow: hidden;
+    overflow-y: scroll;
+    height: 100%;
     border-left: 2px solid ${({ theme }) => theme.border};
+    scrollbar-width: none;
+    @-moz-document url-prefix() {
+      padding-right: 16px;
+    }
 
     .sidebar-content {
       padding-left: 1rem;
       padding-right: 1rem;
-      overflow-y: scroll;
       flex-grow: 1;
-      overflow-y: auto;
-      height: calc(100% - 64.5px);
-      max-height: calc(100% - 64.5px);
-      scrollbar-width: none;
-      @-moz-document url-prefix() {
-        padding-right: 16px;
-      }
     }
+  }
 
-    .sidebar-content::-webkit-scrollbar {
-      width: 0px;
-      background: transparent;
-      display: none;
-    }
-    .sidebar-content::-webkit-scrollbar-thumb {
-      width: 0px;
-      display: none;
-    }
+  .sidebar::-webkit-scrollbar {
+    width: 0px;
+    background: transparent;
+    display: none;
+  }
+  .sidebar::-webkit-scrollbar-thumb {
+    width: 0px;
+    display: none;
   }
 
   .row {
@@ -436,8 +433,7 @@ const SampleModal = ({ onClose }: Props, ref) => {
       <div className="sidebar">
         <ModalFooter
           style={{
-            overlflowX: "auto",
-            width: 296,
+            width: "100%",
             borderTop: "none",
             borderBottom: `2px solid ${theme.border}`,
             position: "relative",
@@ -455,7 +451,6 @@ const SampleModal = ({ onClose }: Props, ref) => {
             <span className="push-right" />
           </h2>
           <Row name="ID" value={sample._id} />
-          <Row name="Source" value={sample.filepath} />
           <Row name="Media type" value={sample._media_type} />
           {formatMetadata(sample.metadata).map(({ name, value }) => (
             <Row key={"metadata-" + name} name={name} value={value} />
@@ -472,13 +467,13 @@ const SampleModal = ({ onClose }: Props, ref) => {
               height: "auto",
             }}
           />
-          <TopRightNavButton
-            onClick={onClose}
-            title={"Close"}
-            icon={<Close />}
-            style={{ position: "absolute", top: 0, right: 0 }}
-          />
         </div>
+        <TopRightNavButton
+          onClick={onClose}
+          title={"Close"}
+          icon={<Close />}
+          style={{ position: "absolute", top: 0, right: 0 }}
+        />
       </div>
     </Container>
   );

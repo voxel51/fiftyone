@@ -7,19 +7,20 @@ import React, {
 } from "react";
 import { CircularProgress } from "@material-ui/core";
 import {
-  AspectRatio,
+  Bookmark,
   Check,
+  FlipToBack,
   LocalOffer,
-  Save,
   Settings,
   VisibilityOff,
+  Wallpaper,
 } from "@material-ui/icons";
 import useMeasure from "react-use-measure";
-import { useRecoilState, useRecoilValue } from "recoil";
+import { selectorFamily, useRecoilState, useRecoilValue } from "recoil";
 import styled from "styled-components";
 
 import Coloring from "./Options";
-import Patcher from "./Patcher";
+import Patcher, { patchesFields } from "./Patcher";
 import Selector from "./Selected";
 import Tagger from "./Tagger";
 import { PillButton } from "../utils";
@@ -28,6 +29,7 @@ import * as selectors from "../../recoil/selectors";
 import socket from "../../shared/connection";
 import { useOutsideClick, useTheme } from "../../utils/hooks";
 import { packageMessage } from "../../utils/socket";
+import Similar from "./Similar";
 
 const ActionDiv = styled.div`
   position: relative;
@@ -35,11 +37,9 @@ const ActionDiv = styled.div`
 
 const Patches = () => {
   const [open, setOpen] = useState(false);
-  const theme = useTheme();
   const ref = useRef();
   useOutsideClick(ref, () => open && setOpen(false));
-  const [mRef, bounds] = useMeasure();
-  const close = useRecoilValue(selectors.selectedLoading);
+  const fields = useRecoilValue(patchesFields);
 
   useLayoutEffect(() => {
     close && setOpen(false);
@@ -48,14 +48,57 @@ const Patches = () => {
   return (
     <ActionDiv ref={ref}>
       <PillButton
-        icon={<AspectRatio />}
+        icon={<FlipToBack />}
         open={open}
         onClick={() => setOpen(!open)}
-        highlight={open}
-        ref={mRef}
+        highlight={open || Boolean(fields.length)}
         title={"Patches"}
       />
-      {open && <Patcher />}
+      {open && <Patcher close={() => setOpen(false)} />}
+    </ActionDiv>
+  );
+};
+
+const hasSimilarityKeys = selectorFamily<boolean, boolean>({
+  key: "hasSimilarityKeys",
+  get: (modal) => ({ get }) => {
+    const isRoot = get(selectors.isRootView);
+    if (modal) {
+      return !isRoot || Boolean(get(selectors.selectedLabelIds).size);
+    }
+    return Boolean(get(atoms.selectedSamples).size);
+  },
+});
+
+const Similarity = ({ modal }: { modal: boolean }) => {
+  const [open, setOpen] = useState(false);
+  const ref = useRef();
+  useOutsideClick(ref, () => open && setOpen(false));
+  const hasSimilarity = useRecoilValue(hasSimilarityKeys(modal));
+  const [mRef, bounds] = useMeasure();
+  const close = useRecoilValue(selectors.selectedLoading);
+
+  useLayoutEffect(() => {
+    close && setOpen(false);
+  }, [close]);
+
+  if (!hasSimilarity) {
+    return null;
+  }
+
+  return (
+    <ActionDiv ref={ref}>
+      <PillButton
+        icon={<Wallpaper />}
+        open={open}
+        onClick={() => setOpen(!open)}
+        highlight={true}
+        ref={mRef}
+        title={"Sort by similarity"}
+      />
+      {open && (
+        <Similar modal={modal} close={() => setOpen(false)} bounds={bounds} />
+      )}
     </ActionDiv>
   );
 };
@@ -220,7 +263,7 @@ const SaveFilters = () => {
     <PillButton
       open={false}
       highlight={true}
-      icon={<Save />}
+      icon={<Bookmark />}
       onClick={() => {
         setLoading(false);
         socket.send(packageMessage("save_filters", {}));
@@ -234,49 +277,37 @@ const ActionsRowDiv = styled.div`
   display: flex;
   justify-content: ltr;
   margin-top: 2.5px;
-
-  scrollbar-width: none;
-  @-moz-document url-prefix() {
-    padding-right: 16px;
-  }
-
-  ::-webkit-scrollbar {
-    width: 0px;
-    background: transparent;
-    display: none;
-  }
-  ::-webkit-scrollbar-thumb {
-    width: 0px;
-    display: none;
-  }
-
-  & > div {
-    margin-right: 0.5rem;
-  }
+  row-gap: 0.5rem;
+  column-gap: 0.5rem;
 `;
 
 type ActionsRowProps = {
   modal: boolean;
   playerRef?: any;
-  frameNumberRef: MutableRefObject<number>;
+  frameNumberRef?: MutableRefObject<number>;
 };
 
 const ActionsRow = ({ modal, playerRef, frameNumberRef }: ActionsRowProps) => {
   const isRootView = useRecoilValue(selectors.isRootView);
+  const isVideo = useRecoilValue(selectors.isVideoDataset);
   const style = modal
     ? {
         overflowX: "auto",
         overflowY: "hidden",
         margin: "0 -1em",
         padding: "0 1em",
+        flexWrap: "wrap",
       }
-    : {};
+    : {
+        flexWrap: "no-wrap",
+      };
   return (
     <ActionsRowDiv style={style}>
       {modal && <ShowJSON />}
       <Options modal={modal} />
       <Tag modal={modal} />
-      {!modal && isRootView && <Patches modal={modal} />}
+      {!modal && isRootView && !isVideo && <Patches />}
+      {!isVideo && <Similarity modal={modal} />}
       {modal && <Hidden />}
       {!modal && <SaveFilters />}
       <Selected
