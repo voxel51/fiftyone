@@ -288,6 +288,7 @@ type ActionsRowProps = {
 
 const ActionsRow = ({ modal, playerRef, frameNumberRef }: ActionsRowProps) => {
   const isRootView = useRecoilValue(selectors.isRootView);
+  const isVideo = useRecoilValue(selectors.isVideoDataset);
   const style = modal
     ? {
         overflowX: "auto",
@@ -304,8 +305,8 @@ const ActionsRow = ({ modal, playerRef, frameNumberRef }: ActionsRowProps) => {
       {modal && <ShowJSON />}
       <Options modal={modal} />
       <Tag modal={modal} />
-      {!modal && isRootView && <Patches />}
-      <Similarity modal={modal} />
+      {!modal && isRootView && !isVideo && <Patches />}
+      {!isVideo && <Similarity modal={modal} />}
       {modal && <Hidden />}
       {!modal && <SaveFilters />}
       <Selected
