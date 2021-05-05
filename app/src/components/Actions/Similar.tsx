@@ -218,7 +218,6 @@ const SortBySimilarity = React.memo(
               <>
                 <PopoutSectionTitle></PopoutSectionTitle>
                 <Button
-                  disabled={}
                   text={"Apply"}
                   title={`Sort by similarity to the selected ${type}`}
                   onClick={() => {

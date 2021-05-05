@@ -25,7 +25,7 @@ import { labelModalTagCounts } from "./Actions/utils";
 import * as fieldAtoms from "./Filters/utils";
 import * as labelAtoms from "./Filters/LabelFieldFilters.state";
 import * as selectors from "../recoil/selectors";
-import { stringify, FILTERABLE_TYPES } from "../utils/labels";
+import { FILTERABLE_TYPES } from "../utils/labels";
 import { useTheme } from "../utils/hooks";
 import { PillButton } from "./utils";
 import { prettify } from "../utils/generic";

@@ -165,7 +165,7 @@ const SampleInfo = React.memo(({ id }) => {
       scalars.includes(cur) &&
       ![null, undefined].includes(sample[cur])
     ) {
-      const value = prettify(sample[cur]);
+      const value = sample[cur];
       acc = [
         ...acc,
         <Tag
@@ -189,7 +189,7 @@ const SampleInfo = React.memo(({ id }) => {
       acc = [
         ...acc,
         values
-          .map((v) => prettify(v.label))
+          .map((v) => prettify(v.label, false))
           .map((v) => (
             <Tag
               key={"scalar-" + cur + "" + v}
@@ -299,6 +299,7 @@ const Selector = React.memo(({ id, spring }: { id: string; spring: any }) => {
         style={{
           color: theme.brand,
         }}
+        disableRipple={true}
         title={"Click to select sample, Ctrl+Click to select a range"}
       />
     </SelectorDiv>

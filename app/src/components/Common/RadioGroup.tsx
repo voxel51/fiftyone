@@ -6,9 +6,7 @@ import styled from "styled-components";
 import { ItemAction, useHighlightHover } from "../Actions/utils";
 import { useTheme } from "../../utils/hooks";
 
-const StyledRadioContainer = styled.div`
-  margin: 0 -0.5rem 0.25rem -0.5rem;
-`;
+const StyledRadioContainer = styled.div``;
 
 const StyledRadio = animated(styled(ItemAction)`
   display: flex;
@@ -39,6 +37,7 @@ const Radio = React.memo(
           <MaterialRadio
             style={{ color, padding: "0 0.5rem 0 0" }}
             checked={value === currentValue}
+            disableRipple={true}
           />
           <RadioName>{value}</RadioName>
         </StyledRadio>
@@ -46,6 +45,23 @@ const Radio = React.memo(
     );
   }
 );
+
+const RadioGroupContainer = styled.div`
+  overflow: auto visible;
+  max-height: 165px;
+  margin: 0 -0.5rem;
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    width: 0px;
+    background: transparent;
+    display: none;
+  }
+  &::-webkit-scrollbar-thumb {
+    width: 0px;
+    display: none;
+  }
+`;
 
 interface RadioGroupProps {
   choices: string[];
@@ -68,7 +84,7 @@ const RadioGroup = React.memo(
     }
 
     return (
-      <div>
+      <RadioGroupContainer>
         {choices.map((choice) => (
           <Radio
             value={choice}
@@ -78,7 +94,7 @@ const RadioGroup = React.memo(
             key={choice}
           />
         ))}
-      </div>
+      </RadioGroupContainer>
     );
   }
 );

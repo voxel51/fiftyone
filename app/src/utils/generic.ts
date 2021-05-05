@@ -40,10 +40,11 @@ export const summarizeLongStr = (
 
 export const prettify = (
   v: boolean | string | null | undefined | number,
-  summarize: boolean = true
+  summarize: boolean = true,
+  maxStrLen: number = 27
 ): string => {
   if (typeof v === "string") {
-    return summarize ? summarizeLongStr(v, 27) : v;
+    return summarize ? summarizeLongStr(v, maxStrLen) : v;
   } else if (typeof v === "number") {
     return Number(v.toFixed(3)).toLocaleString();
   } else if (v === true) {
