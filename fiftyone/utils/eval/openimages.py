@@ -187,7 +187,7 @@ class OpenImagesEvaluation(DetectionEvaluation):
                 neg_labs = [c.label for c in neg_labs.classifications]
                 if self.config.expand_gt_hierarchy:
                     neg_labs = _expand_label_hierarchy(
-                        neg_labs, self.config, expand_child=True
+                        neg_labs, self.config, expand_child=False
                     )
 
         if eval_key is None:
@@ -461,7 +461,7 @@ _NO_MATCH_ID = ""
 _NO_MATCH_IOU = None
 
 
-def _expand_label_hierarchy(labels, config, expand_child=False):
+def _expand_label_hierarchy(labels, config, expand_child=True):
     keyed_nodes = config.hierarchy_keyed_parent
     if expand_child:
         keyed_nodes = config.hierarchy_keyed_child
