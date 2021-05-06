@@ -285,6 +285,7 @@ class Session(foc.HasClient):
         self._plots = None
         self._port = port
         self._remote = remote
+        self._wait_closed = False
 
         # Maintain a reference to prevent garbage collection
         self._get_time = time.perf_counter
@@ -845,20 +846,19 @@ class Session(foc.HasClient):
         return fou.SetAttributes(self, _auto=False)
 
     def wait(self):
-        """Blocks execution until the session is closed by the user.
+        """Blocks execution until the App is closed by the user.
 
-        For local sessions, this will wait until the App is closed by the user.
-
-        For remote sessions, this will wait until the server shuts down, which
-        typically requires interrupting the calling process with Ctrl-C.
+        Closing a desktop App will always exit the wait. For browser Apps, all
+        connected windows (tabs) must be closed.
         """
+        if self._context != focx._NONE:
+            raise RuntimeError("Notebook sessions cannot wait")
+
         try:
             if self._remote or not self._desktop:
-                try:
-                    _server_services[self._port].wait()
-                except:
-                    while True:
-                        time.sleep(1)
+                self._wait_closed = False
+                while not self._wait_closed:
+                    time.sleep(1)
             else:
                 self._app_service.wait()
         except KeyboardInterrupt:
@@ -912,6 +912,9 @@ class Session(foc.HasClient):
                     )
                 )
             )
+
+    def _close(self):
+        self._wait_closed = True
 
     def _base_url(self):
         if self._context == focx._COLAB:

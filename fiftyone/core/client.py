@@ -114,6 +114,9 @@ class HasClient(object):
                 if event == "reload":
                     self.on_reload()
 
+                if event == "close":
+                    self.on_close()
+
         def run_client():
             io_loop = IOLoop(make_current=True)
             io_loop.run_sync(connect)
@@ -168,6 +171,12 @@ class HasClient(object):
 
     def _capture(self, data):
         raise NotImplementedError("subclasses must implement _capture()")
+
+    def on_close(self):
+        self._close()
+
+    def _close(self):
+        raise NotImplementedError("subclasses must implement _close()")
 
     def on_reactivate(self, data):
         self._reactivate(data)
