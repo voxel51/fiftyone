@@ -17,6 +17,7 @@ def plot_confusion_matrix(
     confusion_matrix,
     labels,
     ids=None,
+    samples=None,
     gt_field=None,
     pred_field=None,
     backend="plotly",
@@ -37,6 +38,9 @@ def plot_confusion_matrix(
         ids (None): an optional array of same shape as ``confusion_matrix``
             containing lists of IDs corresponding to each cell. Only used by
             the "plotly" backend
+        samples (None): the :class:`fiftyone.core.collections.SampleCollection`
+            for which the confusion matrix was generated. Only used by the
+            "plotly" backend when ``ids`` are provided
         gt_field (None): the name of the ground truth field
         pred_field (None): the name of the predictions field
         backend ("plotly"): the plotting backend to use. Supported values are
@@ -63,7 +67,14 @@ def plot_confusion_matrix(
     else:
         from .plotly import plot_confusion_matrix as _plot_confusion_matrix
 
-        kwargs.update(dict(ids=ids, gt_field=gt_field, pred_field=pred_field))
+        kwargs.update(
+            dict(
+                ids=ids,
+                samples=samples,
+                gt_field=gt_field,
+                pred_field=pred_field,
+            )
+        )
 
     return _plot_confusion_matrix(confusion_matrix, labels, **kwargs)
 

@@ -289,6 +289,7 @@ class SimpleEvaluation(SegmentationEvaluation):
             gt_field=gt_field,
             pred_field=pred_field,
             missing=missing,
+            samples=samples,
         )
 
 
@@ -301,6 +302,8 @@ class SegmentationResults(ClassificationResults):
         gt_field (None): the name of the ground truth field
         pred_field (None): the name of the predictions field
         missing (None): a missing (background) class
+        samples (None): the :class:`fiftyone.core.collections.SampleCollection`
+            for which the results were computed
     """
 
     def __init__(
@@ -310,6 +313,7 @@ class SegmentationResults(ClassificationResults):
         gt_field=None,
         pred_field=None,
         missing=None,
+        samples=None,
     ):
         pixel_confusion_matrix = np.asarray(pixel_confusion_matrix)
         ytrue, ypred, weights = self._parse_confusion_matrix(
@@ -324,6 +328,7 @@ class SegmentationResults(ClassificationResults):
             pred_field=pred_field,
             classes=classes,
             missing=missing,
+            samples=samples,
         )
 
         self.pixel_confusion_matrix = pixel_confusion_matrix
@@ -346,6 +351,7 @@ class SegmentationResults(ClassificationResults):
             gt_field=d.get("gt_field", None),
             pred_field=d.get("pred_field", None),
             missing=d.get("missing", None),
+            samples=samples,
             **kwargs,
         )
 

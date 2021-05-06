@@ -171,6 +171,7 @@ class COCOEvaluation(DetectionEvaluation):
                 pred_field=pred_field,
                 classes=classes,
                 missing=missing,
+                samples=samples,
             )
 
         iter_samples = samples.select_fields([gt_field, pred_field])
@@ -279,6 +280,7 @@ class COCOEvaluation(DetectionEvaluation):
             gt_field=gt_field,
             pred_field=pred_field,
             missing=missing,
+            samples=samples,
         )
 
 
@@ -299,6 +301,8 @@ class COCODetectionResults(DetectionResults):
         pred_field (None): the name of the predictions field
         missing (None): a missing label string. Any unmatched objects are
             given this label for evaluation purposes
+        samples (None): the :class:`fiftyone.core.collections.SampleCollection`
+            for which the results were computed
     """
 
     def __init__(
@@ -311,6 +315,7 @@ class COCODetectionResults(DetectionResults):
         gt_field=None,
         pred_field=None,
         missing=None,
+        samples=None,
     ):
         super().__init__(
             matches,
@@ -318,6 +323,7 @@ class COCODetectionResults(DetectionResults):
             pred_field=pred_field,
             classes=classes,
             missing=missing,
+            samples=samples,
         )
         self.precision = np.asarray(precision)
         self.recall = np.asarray(recall)
