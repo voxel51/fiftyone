@@ -85,28 +85,31 @@ need to configure a :ref:`remote session <remote-data>` as follows.
 **On your local machine:**
 
 Forward the port used by the :ref:`FiftyOne App <fiftyone-app>`. By default it
-is `5151` but can be :ref:`set any value <remote-data>` not currently in use.
+is `5151` but can be :ref:`set to any value <remote-data>` not currently in use:
 
 .. code:: shell
 
     # On local machine
     ssh -N -L 5151:localhost:YYYY [<username>@]<hostname>
 
-**In the jupyter notebook***
+**In your Jupyter notebook:**
 
 Launch the :ref:`FiftyOne App <fiftyone-app>` in your notebook and either
-specify a port `YYYY` or let it default to `5151`. Note, you can also 
-:ref:`open the App in a dedicated tab <opening-the-app-in-a-dedicated-tab>`.
+specify a port `YYYY` or let it default to `5151`:
 
 .. code:: python
 
     # Launch the App in the notebook cell 
     session = fo.launch_app(dataset, port=YYYY)
 
+Note, you can also
+:ref:`open the App in a dedicated tab <opening-app-dedicated-tab>`:
+
+.. code:: python
+
     # Launch the App in a dedicated browser tab
     session = fo.launch_app(dataset, port=YYYY, auto=False)
-
-
+    session.open_tab()
 
 .. _faq-remote-server-data:
 
