@@ -197,6 +197,7 @@ class _SampleMixin(object):
                     },
                     expand_schema=expand_schema,
                 )
+
         elif isinstance(labels, dict):
             # Multiple sample-level fields
             self.update_fields(
