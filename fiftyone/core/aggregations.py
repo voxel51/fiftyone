@@ -5,13 +5,15 @@ Aggregations.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+from copy import deepcopy
+
 import numpy as np
 
 import eta.core.utils as etau
 
+import fiftyone.core.expressions as foe
 from fiftyone.core.expressions import ViewField as F
 import fiftyone.core.media as fom
-import fiftyone.core.utils as fou
 
 
 class Aggregation(object):
@@ -21,28 +23,48 @@ class Aggregation(object):
     of a :class:`fiftyone.core.collections.SampleCollection` instance.
 
     Args:
-        field_name: the name of the field to operate on
-        expr (None): an optional
-            :class:`fiftyone.core.expressions.ViewExpression` or
+        field_or_expr: a field name, ``embedded.field.name``,
+            :class:`fiftyone.core.expressions.ViewExpression`, or
             `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
-            to apply to the field before aggregating
+            defining the field or expression to aggregate
+        expr (None): a :class:`fiftyone.core.expressions.ViewExpression` or
+            `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+            to apply to ``field_or_expr`` (which must be a field) before
+            aggregating
     """
 
-    def __init__(self, field_name, expr=None):
+    def __init__(self, field_or_expr, expr=None):
+        if field_or_expr is not None and not etau.is_str(field_or_expr):
+            if expr is not None:
+                raise ValueError(
+                    "`field_or_expr` must be a field name when the `expr` "
+                    "argument is provided"
+                )
+
+            field_name = None
+            expr = field_or_expr
+        else:
+            field_name = field_or_expr
+
         self._field_name = field_name
         self._expr = expr
 
     @property
     def field_name(self):
-        """The field name being computed on."""
+        """The name of the field being computed on, if any."""
         return self._field_name
 
     @property
     def expr(self):
-        """The :class:`fiftyone.core.expressions.ViewExpression` or MongoDB
-        expression that will be applied to the field before aggregating, if any.
-        """
+        """The expression being computed, if any."""
         return self._expr
+
+    @property
+    def _has_big_result(self):
+        """Whether the aggregation's result is returned across multiple
+        documents.
+        """
+        return False
 
     def to_mongo(self, sample_collection):
         """Returns the MongoDB aggregation pipeline for this aggregation.
@@ -76,14 +98,40 @@ class Aggregation(object):
         """
         raise NotImplementedError("subclasses must implement default_result()")
 
+    def _needs_frames(self, sample_collection):
+        """Whether the aggregation requires frame labels of video samples to be
+        attached.
+
+        Args:
+            sample_collection: the
+                :class:`fiftyone.core.collections.SampleCollection` to which
+                the aggregation is being applied
+
+        Returns:
+            True/False
+        """
+        if self._field_name is not None:
+            return sample_collection._is_frame_field(self._field_name)
+
+        if self._expr is not None:
+            field_name, _ = _extract_prefix_from_expr(self._expr)
+            return sample_collection._is_frame_field(field_name)
+
+        return False
+
     def _parse_field_and_expr(
-        self, sample_collection, auto_unwind=True, allow_missing=False
+        self,
+        sample_collection,
+        auto_unwind=True,
+        omit_terminal_lists=False,
+        allow_missing=False,
     ):
         return _parse_field_and_expr(
             sample_collection,
             self._field_name,
             self._expr,
             auto_unwind,
+            omit_terminal_lists,
             allow_missing,
         )
 
@@ -151,16 +199,19 @@ class Bounds(Aggregation):
         # Compute the bounds of a transformation of a numeric field
         #
 
-        aggregation = fo.Bounds("numeric_field", expr=2 * (F() + 1))
+        aggregation = fo.Bounds(2 * (F("numeric_field") + 1))
         bounds = dataset.aggregate(aggregation)
         print(bounds)  # (min, max)
 
     Args:
-        field_name: the name of the field to operate on
-        expr (None): an optional
-            :class:`fiftyone.core.expressions.ViewExpression` or
+        field_or_expr: a field name, ``embedded.field.name``,
+            :class:`fiftyone.core.expressions.ViewExpression`, or
             `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
-            to apply to the field before aggregating
+            defining the field or expression to aggregate
+        expr (None): a :class:`fiftyone.core.expressions.ViewExpression` or
+            `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+            to apply to ``field_or_expr`` (which must be a field) before
+            aggregating
     """
 
     def default_result(self):
@@ -203,11 +254,12 @@ class Count(Aggregation):
 
     ``None``-valued fields are ignored.
 
-    If no field is provided, the samples themselves are counted.
+    If no field or expression is provided, the samples themselves are counted.
 
     Examples::
 
         import fiftyone as fo
+        from fiftyone import ViewField as F
 
         dataset = fo.Dataset()
         dataset.add_samples(
@@ -263,25 +315,32 @@ class Count(Aggregation):
         print(count)  # the count
 
         #
-        # Count the number of samples with more than 2 predictions
+        # Count the number of objects in samples with > 2 predictions
         #
 
-        expr = (F("detections").length() > 2).if_else(F("detections"), None)
-        aggregation = fo.Count("predictions", expr=expr)
+        aggregation = fo.Count(
+            (F("predictions.detections").length() > 2).if_else(
+                F("predictions.detections"), None
+            )
+        )
         count = dataset.aggregate(aggregation)
         print(count)  # the count
 
     Args:
-        field_name (None): the name of the field to operate on. If none is
-            provided, the samples themselves are counted
-        expr (None): an optional
-            :class:`fiftyone.core.expressions.ViewExpression` or
+        field_or_expr (None): a field name, ``embedded.field.name``,
+            :class:`fiftyone.core.expressions.ViewExpression`, or
             `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
-            to apply to the field before aggregating
+            defining the field or expression to aggregate. If neither
+            ``field_or_expr`` or ``expr`` is provided, the samples themselves
+            are counted
+        expr (None): a :class:`fiftyone.core.expressions.ViewExpression` or
+            `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+            to apply to ``field_or_expr`` (which must be a field) before
+            aggregating
     """
 
-    def __init__(self, field_name=None, expr=None):
-        super().__init__(field_name, expr=expr)
+    def __init__(self, field_or_expr=None, expr=None):
+        super().__init__(field_or_expr, expr=expr)
 
     def default_result(self):
         """Returns the default result for this aggregation.
@@ -303,7 +362,7 @@ class Count(Aggregation):
         return d["count"]
 
     def to_mongo(self, sample_collection):
-        if self._field_name is None:
+        if self._field_name is None and self._expr is None:
             return [{"$count": "count"}]
 
         path, pipeline, _ = self._parse_field_and_expr(sample_collection)
@@ -329,6 +388,7 @@ class CountValues(Aggregation):
     Examples::
 
         import fiftyone as fo
+        from fiftyone import ViewField as F
 
         dataset = fo.Dataset()
         dataset.add_samples(
@@ -380,17 +440,23 @@ class CountValues(Aggregation):
         # Compute the predicted label counts after some normalization
         #
 
-        expr = F().map_values({"cat": "pet", "dog": "pet"}).upper()
-        aggregation = fo.CountValues("predictions.detections.label", expr=expr)
+        aggregation = fo.CountValues(
+            F("predictions.detections.label").map_values(
+                {"cat": "pet", "dog": "pet"}
+            ).upper()
+        )
         counts = dataset.aggregate(aggregation)
         print(counts)  # dict mapping values to counts
 
     Args:
-        field_name: the name of the field to operate on
-        expr (None): an optional
-            :class:`fiftyone.core.expressions.ViewExpression` or
+        field_or_expr: a field name, ``embedded.field.name``,
+            :class:`fiftyone.core.expressions.ViewExpression`, or
             `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
-            to apply to the field before aggregating
+            defining the field or expression to aggregate
+        expr (None): a :class:`fiftyone.core.expressions.ViewExpression` or
+            `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+            to apply to ``field_or_expr`` (which must be a field) before
+            aggregating
     """
 
     def default_result(self):
@@ -443,6 +509,7 @@ class Distinct(Aggregation):
     Examples::
 
         import fiftyone as fo
+        from fiftyone import ViewField as F
 
         dataset = fo.Dataset()
         dataset.add_samples(
@@ -494,18 +561,28 @@ class Distinct(Aggregation):
         # Get the distinct predicted labels after some normalization
         #
 
-        expr = F().map_values({"cat": "pet", "dog": "pet"}).upper()
-        aggregation = fo.Distinct("predictions.detections.label", expr=expr)
+        aggregation = fo.Distinct(
+            F("predictions.detections.label").map_values(
+                {"cat": "pet", "dog": "pet"}
+            ).upper()
+        )
         values = dataset.aggregate(aggregation)
         print(values)  # list of distinct values
 
     Args:
-        field_name: the name of the field to operate on
-        expr (None): an optional
-            :class:`fiftyone.core.expressions.ViewExpression` or
+        field_or_expr: a field name, ``embedded.field.name``,
+            :class:`fiftyone.core.expressions.ViewExpression`, or
             `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
-            to apply to the field before aggregating
+            defining the field or expression to aggregate
+        expr (None): a :class:`fiftyone.core.expressions.ViewExpression` or
+            `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+            to apply to ``field_or_expr`` (which must be a field) before
+            aggregating
     """
+
+    def __init__(self, field_or_expr, expr=None, _first=None):
+        super().__init__(field_or_expr, expr=expr)
+        self._first = _first
 
     def default_result(self):
         """Returns the default result for this aggregation.
@@ -513,7 +590,10 @@ class Distinct(Aggregation):
         Returns:
             ``[]``
         """
-        return []
+        if self._first is None:
+            return []
+
+        return 0, []
 
     def parse_result(self, d):
         """Parses the output of :meth:`to_mongo`.
@@ -524,7 +604,10 @@ class Distinct(Aggregation):
         Returns:
             a sorted list of distinct values
         """
-        return sorted(d["values"])
+        if self._first is None:
+            return d["values"]
+
+        return d["count"], d["values"]
 
     def to_mongo(self, sample_collection):
         path, pipeline, _ = self._parse_field_and_expr(sample_collection)
@@ -532,7 +615,20 @@ class Distinct(Aggregation):
         pipeline += [
             {"$match": {"$expr": {"$gt": ["$" + path, None]}}},
             {"$group": {"_id": None, "values": {"$addToSet": "$" + path}}},
+            {"$unwind": "$values"},
+            {"$sort": {"values": 1}},
+            {"$group": {"_id": None, "values": {"$push": "$values"}}},
         ]
+
+        if self._first is not None:
+            pipeline += [
+                {
+                    "$set": {
+                        "count": {"$size": "$values"},
+                        "values": {"$slice": ["$values", self._first]},
+                    }
+                },
+            ]
 
         return pipeline
 
@@ -552,6 +648,7 @@ class HistogramValues(Aggregation):
         import matplotlib.pyplot as plt
 
         import fiftyone as fo
+        from fiftyone import ViewField as F
 
         samples = []
         for idx in range(100):
@@ -597,20 +694,21 @@ class HistogramValues(Aggregation):
         # Compute the histogram of a transformation of a numeric field
         #
 
-        aggregation = fo.HistogramValues(
-            "numeric_field", expr=2 * (F() + 1), bins=50
-        )
+        aggregation = fo.HistogramValues(2 * (F("numeric_field") + 1), bins=50)
         counts, edges, other = dataset.aggregate(aggregation)
 
         plot_hist(counts, edges)
         plt.show(block=False)
 
     Args:
-        field_name: the name of the field to operate on
-        expr (None): an optional
-            :class:`fiftyone.core.expressions.ViewExpression` or
+        field_or_expr: a field name, ``embedded.field.name``,
+            :class:`fiftyone.core.expressions.ViewExpression`, or
             `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
-            to apply to the field before aggregating
+            defining the field or expression to aggregate
+        expr (None): a :class:`fiftyone.core.expressions.ViewExpression` or
+            `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+            to apply to ``field_or_expr`` (which must be a field) before
+            aggregating
         bins (None): can be either an integer number of bins to generate or a
             monotonically increasing sequence specifying the bin edges to use.
             By default, 10 bins are created. If ``bins`` is an integer and no
@@ -626,9 +724,9 @@ class HistogramValues(Aggregation):
     """
 
     def __init__(
-        self, field_name, expr=None, bins=None, range=None, auto=False
+        self, field_or_expr, expr=None, bins=None, range=None, auto=False
     ):
-        super().__init__(field_name, expr=expr)
+        super().__init__(field_or_expr, expr=expr)
         self._bins = bins
         self._range = range
         self._auto = auto
@@ -784,6 +882,7 @@ class Mean(Aggregation):
     Examples::
 
         import fiftyone as fo
+        from fiftyone import ViewField as F
 
         dataset = fo.Dataset()
         dataset.add_samples(
@@ -826,16 +925,19 @@ class Mean(Aggregation):
         # Compute the mean of a transformation of a numeric field
         #
 
-        aggregation = fo.Mean("numeric_field", expr=2 * (F() + 1))
+        aggregation = fo.Mean(2 * (F("numeric_field") + 1))
         mean = dataset.aggregate(aggregation)
         print(mean)  # the mean
 
     Args:
-        field_name: the name of the field to operate on
-        expr (None): an optional
-            :class:`fiftyone.core.expressions.ViewExpression` or
+        field_or_expr: a field name, ``embedded.field.name``,
+            :class:`fiftyone.core.expressions.ViewExpression`, or
             `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
-            to apply to the field before aggregating
+            defining the field or expression to aggregate
+        expr (None): a :class:`fiftyone.core.expressions.ViewExpression` or
+            `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+            to apply to ``field_or_expr`` (which must be a field) before
+            aggregating
     """
 
     def default_result(self):
@@ -881,6 +983,7 @@ class Std(Aggregation):
     Examples::
 
         import fiftyone as fo
+        from fiftyone import ViewField as F
 
         dataset = fo.Dataset()
         dataset.add_samples(
@@ -923,22 +1026,25 @@ class Std(Aggregation):
         # Compute the standard deviation of a transformation of a numeric field
         #
 
-        aggregation = fo.Std("numeric_field", expr=2 * (F() + 1))
+        aggregation = fo.Std(2 * (F("numeric_field") + 1))
         std = dataset.aggregate(aggregation)
         print(std)  # the standard deviation
 
     Args:
-        field_name: the name of the field to operate on
-        expr (None): an optional
-            :class:`fiftyone.core.expressions.ViewExpression` or
+        field_or_expr: a field name, ``embedded.field.name``,
+            :class:`fiftyone.core.expressions.ViewExpression`, or
             `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
-            to apply to the field before aggregating
+            defining the field or expression to aggregate
+        expr (None): a :class:`fiftyone.core.expressions.ViewExpression` or
+            `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+            to apply to ``field_or_expr`` (which must be a field) before
+            aggregating
         sample (False): whether to compute the sample standard deviation rather
             than the population standard deviation
     """
 
-    def __init__(self, field_name, expr=None, sample=False):
-        super().__init__(field_name, expr=expr)
+    def __init__(self, field_or_expr, expr=None, sample=False):
+        super().__init__(field_or_expr, expr=expr)
         self._sample = sample
 
     def default_result(self):
@@ -983,6 +1089,7 @@ class Sum(Aggregation):
     Examples::
 
         import fiftyone as fo
+        from fiftyone import ViewField as F
 
         dataset = fo.Dataset()
         dataset.add_samples(
@@ -1025,16 +1132,19 @@ class Sum(Aggregation):
         # Compute the sum of a transformation of a numeric field
         #
 
-        aggregation = fo.Sum("numeric_field", expr=2 * (F() + 1))
+        aggregation = fo.Sum(2 * (F("numeric_field") + 1))
         total = dataset.aggregate(aggregation)
         print(total)  # the sum
 
     Args:
-        field_name: the name of the field to operate on
-        expr (None): an optional
-            :class:`fiftyone.core.expressions.ViewExpression` or
+        field_or_expr: a field name, ``embedded.field.name``,
+            :class:`fiftyone.core.expressions.ViewExpression`, or
             `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
-            to apply to the field before aggregating
+            defining the field or expression to aggregate
+        expr (None): a :class:`fiftyone.core.expressions.ViewExpression` or
+            `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+            to apply to ``field_or_expr`` (which must be a field) before
+            aggregating
     """
 
     def default_result(self):
@@ -1067,6 +1177,16 @@ class Sum(Aggregation):
 class Values(Aggregation):
     """Extracts the values of the field from all samples in a collection.
 
+    Values aggregations are useful for efficiently extracting a slice of field
+    or embedded field values across all samples in a collection. See the
+    examples below for more details.
+
+    The dual function of :class:`Values` is
+    :meth:`set_values() <fiftyone.core.collections.SampleCollection.set_values>`,
+    which can be used to efficiently set a field or embedded field of all
+    samples in a collection by providing lists of values of same structure
+    returned by this aggregation.
+
     .. note::
 
         Unlike other aggregations, :class:`Values` does not automatically
@@ -1081,6 +1201,7 @@ class Values(Aggregation):
     Examples::
 
         import fiftyone as fo
+        import fiftyone.zoo as foz
         from fiftyone import ViewField as F
 
         dataset = fo.Dataset()
@@ -1124,16 +1245,37 @@ class Values(Aggregation):
         # Get all values of transformed field
         #
 
-        aggregation = fo.Values("numeric_field", expr=2 * (F() + 1))
+        aggregation = fo.Values(2 * (F("numeric_field") + 1))
         values = dataset.aggregate(aggregation)
         print(values)  # [4.0, 10.0, None]
 
+        #
+        # Get values from a label list field
+        #
+
+        dataset = foz.load_zoo_dataset("quickstart")
+
+        # list of `Detections`
+        aggregation = fo.Values("ground_truth")
+        detections = dataset.aggregate(aggregation)
+
+        # list of lists of `Detection` instances
+        aggregation = fo.Values("ground_truth.detections")
+        detections = dataset.aggregate(aggregation)
+
+        # list of lists of detection labels
+        aggregation = fo.Values("ground_truth.detections.label")
+        labels = dataset.aggregate(aggregation)
+
     Args:
-        field_name: the name of the field to operate on
-        expr (None): an optional
-            :class:`fiftyone.core.expressions.ViewExpression` or
+        field_or_expr: a field name, ``embedded.field.name``,
+            :class:`fiftyone.core.expressions.ViewExpression`, or
             `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
-            to apply to the field before aggregating
+            defining the field or expression to aggregate
+        expr (None): a :class:`fiftyone.core.expressions.ViewExpression` or
+            `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+            to apply to ``field_or_expr`` (which must be a field) before
+            aggregating
         missing_value (None): a value to insert for missing or ``None``-valued
             fields
         unwind (False): whether to automatically unwind all recognized list
@@ -1142,21 +1284,29 @@ class Values(Aggregation):
 
     def __init__(
         self,
-        field_name,
+        field_or_expr,
         expr=None,
         missing_value=None,
         unwind=False,
         _allow_missing=False,
+        _big_result=True,
+        _raw=False,
     ):
-        field_name, found_id_field = _handle_id_fields(field_name)
-        super().__init__(field_name, expr=expr)
+        field_or_expr, found_id_field = _handle_id_fields(field_or_expr)
+        super().__init__(field_or_expr, expr=expr)
 
         self._missing_value = missing_value
         self._unwind = unwind
         self._allow_missing = _allow_missing
+        self._big_result = _big_result
+        self._raw = _raw
         self._found_id_field = found_id_field
-        self._found_array_field = None
+        self._field_type = None
         self._num_list_fields = None
+
+    @property
+    def _has_big_result(self):
+        return self._big_result
 
     def default_result(self):
         """Returns the default result for this aggregation.
@@ -1175,38 +1325,53 @@ class Values(Aggregation):
         Returns:
             the list of field values
         """
-        values = d["values"]
+        if self._big_result:
+            values = [di["value"] for di in d]
+        else:
+            values = d["values"]
+
+        if self._raw:
+            return values
 
         if self._found_id_field:
             level = 1 + self._num_list_fields
             return _transform_values(values, str, level=level)
 
-        if self._found_array_field:
-            fcn = fou.deserialize_numpy_array
+        if self._field_type is not None:
+            fcn = self._field_type.to_python
             level = 1 + self._num_list_fields
             return _transform_values(values, fcn, level=level)
 
         return values
 
     def to_mongo(self, sample_collection):
-        path, pipeline, other_list_fields = self._parse_field_and_expr(
+        path, pipeline, list_fields = self._parse_field_and_expr(
             sample_collection,
             auto_unwind=self._unwind,
+            omit_terminal_lists=not self._unwind,
             allow_missing=self._allow_missing,
         )
 
-        self._found_array_field = sample_collection._is_array_field(path)
-        self._num_list_fields = len(other_list_fields)
+        if self._expr is None:
+            self._field_type = sample_collection._get_field_type(
+                self._field_name, ignore_primitives=True
+            )
 
-        pipeline += _make_extract_values_pipeline(
-            path, other_list_fields, self._missing_value
+        self._num_list_fields = len(list_fields)
+
+        pipeline.extend(
+            _make_extract_values_pipeline(
+                path, list_fields, self._missing_value, self._big_result
+            )
         )
 
         return pipeline
 
 
 def _handle_id_fields(field_name):
-    if field_name == "id":
+    if not etau.is_str(field_name):
+        found_id_field = False
+    elif field_name == "id":
         field_name = "_id"
         found_id_field = True
     elif field_name.endswith(".id"):
@@ -1228,7 +1393,9 @@ def _transform_values(values, fcn, level=1):
     return [_transform_values(v, fcn, level=level - 1) for v in values]
 
 
-def _make_extract_values_pipeline(path, list_fields, missing_value):
+def _make_extract_values_pipeline(
+    path, list_fields, missing_value, big_result
+):
     if not list_fields:
         root = path
     else:
@@ -1247,10 +1414,16 @@ def _make_extract_values_pipeline(path, list_fields, missing_value):
             inner_list_field = list_field2[len(list_field1) + 1 :]
             expr = _extract_list_values(inner_list_field, expr)
 
-    return [
-        {"$set": {root: expr.to_mongo(prefix="$" + root)}},
-        {"$group": {"_id": None, "values": {"$push": "$" + root}}},
-    ]
+    pipeline = [{"$set": {root: expr.to_mongo(prefix="$" + root)}}]
+
+    if big_result:
+        pipeline.append({"$project": {"value": "$" + root}})
+    else:
+        pipeline.append(
+            {"$group": {"_id": None, "values": {"$push": "$" + root}}}
+        )
+
+    return pipeline
 
 
 def _extract_list_values(subfield, expr):
@@ -1263,11 +1436,36 @@ def _extract_list_values(subfield, expr):
 
 
 def _parse_field_and_expr(
-    sample_collection, field_name, expr, auto_unwind, allow_missing
+    sample_collection,
+    field_name,
+    expr,
+    auto_unwind,
+    omit_terminal_lists,
+    allow_missing,
 ):
+    if field_name is None and expr is None:
+        raise ValueError(
+            "You must provide a field or an expression in order to define an "
+            "aggregation"
+        )
+
+    if field_name is None:
+        field_name, expr = _extract_prefix_from_expr(expr)
+
     if expr is not None:
+        if field_name is None:
+            field_name = "value"
+            embedded_root = True
+            allow_missing = True
+        else:
+            embedded_root = False
+            allow_missing = False
+
         pipeline, _ = sample_collection._make_set_field_pipeline(
-            field_name, expr
+            field_name,
+            expr,
+            embedded_root=embedded_root,
+            allow_missing=allow_missing,
         )
     else:
         pipeline = []
@@ -1278,7 +1476,10 @@ def _parse_field_and_expr(
         unwind_list_fields,
         other_list_fields,
     ) = sample_collection._parse_field_name(
-        field_name, auto_unwind=auto_unwind, allow_missing=allow_missing
+        field_name,
+        auto_unwind=auto_unwind,
+        omit_terminal_lists=omit_terminal_lists,
+        allow_missing=allow_missing,
     )
 
     if is_frame_field and auto_unwind:
@@ -1290,18 +1491,85 @@ def _parse_field_and_expr(
         pipeline.append({"$unwind": "$" + list_field})
 
     if other_list_fields:
-        # Don't unroll terminal lists unless explicitly requested
-        other_list_fields = [
-            lf for lf in other_list_fields if lf != field_name
-        ]
-
-    if other_list_fields:
         root = other_list_fields[0]
-        leaf = path[len(root) + 1 :]
     else:
         root = path
-        leaf = None
 
     pipeline.append({"$project": {root: True}})
 
     return path, pipeline, other_list_fields
+
+
+def _extract_prefix_from_expr(expr):
+    prefixes = []
+    _find_prefixes(expr, prefixes)
+
+    common = _get_common_prefix(prefixes)
+    if common:
+        expr = deepcopy(expr)
+        _remove_prefix(expr, common)
+
+    return common, expr
+
+
+def _find_prefixes(expr, prefixes):
+    if isinstance(expr, foe.ViewExpression):
+        if expr.is_frozen:
+            return
+
+        if isinstance(expr, foe.ViewField):
+            prefixes.append(expr._expr)
+        else:
+            _find_prefixes(expr._expr, prefixes)
+
+    elif isinstance(expr, (list, tuple)):
+        for e in expr:
+            _find_prefixes(e, prefixes)
+
+    elif isinstance(expr, dict):
+        for e in expr.values():
+            _find_prefixes(e, prefixes)
+
+
+def _get_common_prefix(prefixes):
+    if not prefixes:
+        return None
+
+    chunks = [p.split(".") for p in prefixes]
+    min_chunks = min(len(c) for c in chunks)
+
+    common = None
+    idx = 0
+    pre = [c[0] for c in chunks]
+    while len(set(pre)) == 1:
+        common = pre[0]
+        idx += 1
+
+        if idx >= min_chunks:
+            break
+
+        pre = [common + "." + c[idx] for c in chunks]
+
+    return common
+
+
+def _remove_prefix(expr, prefix):
+    if isinstance(expr, foe.ViewExpression):
+        if expr.is_frozen:
+            return
+
+        if isinstance(expr, foe.ViewField):
+            if expr._expr == prefix:
+                expr._expr = ""
+            elif expr._expr.startswith(prefix + "."):
+                expr._expr = expr._expr[len(prefix) + 1 :]
+        else:
+            _remove_prefix(expr._expr, prefix)
+
+    elif isinstance(expr, (list, tuple)):
+        for e in expr:
+            _remove_prefix(e, prefix)
+
+    elif isinstance(expr, dict):
+        for e in expr.values():
+            _remove_prefix(e, prefix)

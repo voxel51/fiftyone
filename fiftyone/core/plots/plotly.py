@@ -20,6 +20,7 @@ import eta.core.utils as etau
 
 import fiftyone as fo
 import fiftyone.core.context as foc
+import fiftyone.core.expressions as foe
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.utils as fou
@@ -41,6 +42,7 @@ def plot_confusion_matrix(
     confusion_matrix,
     labels,
     ids=None,
+    samples=None,
     gt_field=None,
     pred_field=None,
     colorscale="oranges",
@@ -59,6 +61,9 @@ def plot_confusion_matrix(
         labels: a ``max(num_true, num_preds)`` array of class labels
         ids (None): an optional array of same shape as ``confusion_matrix``
             containing lists of IDs corresponding to each cell
+        samples (None): the :class:`fiftyone.core.collections.SampleCollection`
+            for which the confusion matrix was generated. Only used when
+            ``ids`` are also provided to update an attached session
         gt_field (None): the name of the ground truth field
         pred_field (None): the name of the predictions field
         colorscale ("oranges"): a plotly colorscale to use. See
@@ -83,6 +88,7 @@ def plot_confusion_matrix(
         confusion_matrix,
         labels,
         ids,
+        samples=samples,
         gt_field=gt_field,
         pred_field=pred_field,
         colorscale=colorscale,
@@ -153,6 +159,7 @@ def _plot_confusion_matrix_interactive(
     confusion_matrix,
     labels,
     ids,
+    samples=None,
     gt_field=None,
     pred_field=None,
     colorscale=None,
@@ -183,6 +190,7 @@ def _plot_confusion_matrix_interactive(
         ids,
         link_type="labels",
         label_fields=label_fields,
+        init_view=samples,
         xlabels=xlabels,
         ylabels=ylabels,
         zlim=zlim,
@@ -439,6 +447,9 @@ def scatterplot(
 
             -   the name of a sample field or ``embedded.field.name`` of
                 ``samples`` from which to extract numeric or string values
+            -   a :class:`fiftyone.core.expressions.ViewExpression` defining
+                numeric or string values to compute from ``samples`` via
+                :meth:`fiftyone.core.collections.SampleCollection.values`
             -   a list or array-like of numeric or string values
             -   a list of lists of numeric or string values, if ``link_field``
                 refers to a label list field like
@@ -449,6 +460,9 @@ def scatterplot(
 
             -   the name of a sample field or ``embedded.field.name`` of
                 ``samples`` from which to extract numeric values
+            -   a :class:`fiftyone.core.expressions.ViewExpression` defining
+                numeric values to compute from ``samples`` via
+                :meth:`fiftyone.core.collections.SampleCollection.values`
             -   a list or array-like of numeric values
             -   a list of lists of numeric or string values, if ``link_field``
                 refers to a label list field like
@@ -623,7 +637,7 @@ def _get_data_for_points(points, samples, values, parameter):
     if values is None:
         return None
 
-    if etau.is_str(values):
+    if etau.is_str(values) or isinstance(values, foe.ViewExpression):
         if samples is None:
             raise ValueError(
                 "You must provide `samples` in order to extract field values "
@@ -746,6 +760,9 @@ def location_scatterplot(
 
             -   the name of a sample field or ``embedded.field.name`` of
                 ``samples`` from which to extract numeric or string values
+            -   a :class:`fiftyone.core.expressions.ViewExpression` defining
+                numeric or string values to compute from ``samples`` via
+                :meth:`fiftyone.core.collections.SampleCollection.values`
             -   a list or array-like of numeric or string values
 
         sizes (None): data to use to scale the sizes of the points. Can be any
@@ -753,6 +770,9 @@ def location_scatterplot(
 
             -   the name of a sample field or ``embedded.field.name`` of
                 ``samples`` from which to extract numeric values
+            -   a :class:`fiftyone.core.expressions.ViewExpression` defining
+                numeric values to compute from ``samples`` via
+                :meth:`fiftyone.core.collections.SampleCollection.values`
             -   a list or array-like of numeric values
 
         classes (None): an optional list of classes whose points to plot.
@@ -1113,7 +1133,9 @@ class InteractiveScatter(PlotlyInteractivePlot):
             which points in this plot correspond. Only applicable when linked
             to labels
         init_view (None): a :class:`fiftyone.core.collections.SampleCollection`
-            to load when no points are selected in the plot
+            defining an initial view from which to derive selection views when
+            points are selected in the plot. This view will also be shown when
+            the plot is in its default state (no selection)
     """
 
     def __init__(
@@ -1378,7 +1400,9 @@ class InteractiveHeatmap(PlotlyInteractivePlot):
             which points in this plot correspond. Only applicable when linked
             to labels
         init_view (None): a :class:`fiftyone.core.collections.SampleCollection`
-            to load when no points are selected in the plot
+            defining an initial view from which to derive selection views when
+            cells are selected in the plot. This view will also be shown when
+            the plot is in its default state (no selection)
         xlabels (None): a ``num_rows`` array of x labels
         ylabels (None): a ``num_cols`` array of y labels
         zlim (None): a ``[zmin, zmax]`` limit to use for the colorbar

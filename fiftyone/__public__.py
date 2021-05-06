@@ -147,7 +147,10 @@ from .core.stages import (
     SetField,
     Skip,
     SortBy,
+    SortBySimilarity,
     Take,
+    ToPatches,
+    ToEvaluationPatches,
 )
 from .core.session import (
     close_app,

@@ -467,6 +467,496 @@ class DatasetTests(unittest.TestCase):
             )
 
 
+class DatasetDeletionTests(unittest.TestCase):
+    @drop_datasets
+    def setUp(self):
+        self.dataset = fo.Dataset()
+
+    def _setUp_classification(self):
+        sample1 = fo.Sample(
+            filepath="image1.png", ground_truth=fo.Classification(label="cat"),
+        )
+
+        sample2 = sample1.copy()
+        sample2.filepath = "image2.png"
+
+        sample3 = sample1.copy()
+        sample3.filepath = "image3.png"
+
+        self.dataset.add_samples([sample1, sample2, sample3])
+
+    def _setUp_video_classification(self):
+        sample1 = fo.Sample(filepath="video1.mp4")
+        sample1.frames[1] = fo.Frame(
+            frame_number=1, ground_truth=fo.Classification(label="cat")
+        )
+        sample1.frames[2] = fo.Frame(
+            frame_number=2, ground_truth=fo.Classification(label="dog")
+        )
+        sample1.frames[3] = fo.Frame(
+            frame_number=3, ground_truth=fo.Classification(label="rabbit")
+        )
+
+        sample2 = sample1.copy()
+        sample2.filepath = "video2.mp4"
+
+        self.dataset.add_samples([sample1, sample2])
+
+    def _setUp_detections(self):
+        sample1 = fo.Sample(
+            filepath="image1.png",
+            ground_truth=fo.Detections(
+                detections=[
+                    fo.Detection(label="cat", bounding_box=[0, 0, 0.5, 0.5],),
+                    fo.Detection(
+                        label="dog", bounding_box=[0.25, 0, 0.5, 0.1],
+                    ),
+                    fo.Detection(
+                        label="rabbit",
+                        confidence=0.1,
+                        bounding_box=[0, 0, 0.5, 0.5],
+                    ),
+                ]
+            ),
+        )
+
+        sample2 = sample1.copy()
+        sample2.filepath = "image2.png"
+
+        sample3 = sample1.copy()
+        sample3.filepath = "image3.png"
+
+        self.dataset.add_samples([sample1, sample2, sample3])
+
+    def _setUp_video_detections(self):
+        sample1 = fo.Sample(filepath="video1.mp4")
+
+        frame1 = fo.Frame(
+            frame_number=1,
+            ground_truth=fo.Detections(
+                detections=[
+                    fo.Detection(label="cat", bounding_box=[0, 0, 0.5, 0.5],),
+                    fo.Detection(
+                        label="dog", bounding_box=[0.25, 0, 0.5, 0.1],
+                    ),
+                    fo.Detection(
+                        label="rabbit",
+                        confidence=0.1,
+                        bounding_box=[0, 0, 0.5, 0.5],
+                    ),
+                ]
+            ),
+        )
+        sample1.frames[1] = frame1
+
+        frame2 = frame1.copy()
+        frame2.frame_number = 2
+        sample1.frames[2] = frame2
+
+        frame3 = frame1.copy()
+        frame3.frame_number = 3
+        sample1.frames[3] = frame3
+
+        sample2 = sample1.copy()
+        sample2.filepath = "video2.mp4"
+
+        self.dataset.add_samples([sample1, sample2])
+
+    def test_delete_samples_ids(self):
+        self._setUp_classification()
+
+        ids = [self.dataset.first(), self.dataset.last()]
+
+        num_samples = len(self.dataset)
+        num_ids = len(ids)
+
+        self.dataset.delete_samples(ids)
+
+        num_samples_after = len(self.dataset)
+
+        self.assertEqual(num_samples_after, num_samples - num_ids)
+
+    def test_delete_samples_view(self):
+        self._setUp_classification()
+
+        ids = [self.dataset.first(), self.dataset.last()]
+
+        view = self.dataset.select(ids)
+
+        num_samples = len(self.dataset)
+        num_view = len(view)
+
+        self.dataset.delete_samples(view)
+
+        num_samples_after = len(self.dataset)
+
+        self.assertEqual(num_samples_after, num_samples - num_view)
+
+    def test_delete_video_samples_ids(self):
+        self._setUp_video_classification()
+
+        ids = [self.dataset.first(), self.dataset.last()]
+
+        num_samples = len(self.dataset)
+        num_ids = len(ids)
+
+        self.dataset.delete_samples(ids)
+
+        num_samples_after = len(self.dataset)
+
+        self.assertEqual(num_samples_after, num_samples - num_ids)
+
+    def test_delete_video_samples_view(self):
+        self._setUp_video_classification()
+
+        ids = [self.dataset.first(), self.dataset.last()]
+
+        view = self.dataset.select(ids)
+
+        num_samples = len(self.dataset)
+        num_view = len(view)
+
+        self.dataset.delete_samples(view)
+
+        num_samples_after = len(self.dataset)
+
+        self.assertEqual(num_samples_after, num_samples - num_view)
+
+    def test_delete_classification_ids(self):
+        self._setUp_classification()
+
+        ids = [
+            self.dataset.first().ground_truth.id,
+            self.dataset.last().ground_truth.id,
+        ]
+
+        num_labels = self.dataset.count("ground_truth")
+        num_ids = len(ids)
+
+        self.dataset.delete_labels(ids=ids)
+
+        num_labels_after = self.dataset.count("ground_truth")
+
+        self.assertEqual(num_labels_after, num_labels - num_ids)
+
+    def test_delete_classification_tags(self):
+        self._setUp_classification()
+
+        ids = [
+            self.dataset.first().ground_truth.id,
+            self.dataset.last().ground_truth.id,
+        ]
+
+        self.dataset.select_labels(ids=ids).tag_labels("test")
+
+        num_labels = self.dataset.count("ground_truth")
+        num_tagged = self.dataset.count_label_tags()["test"]
+
+        self.dataset.delete_labels(tags="test")
+
+        num_labels_after = self.dataset.count("ground_truth")
+
+        self.assertEqual(num_labels_after, num_labels - num_tagged)
+
+    def test_delete_classification_view(self):
+        self._setUp_classification()
+
+        ids = [
+            self.dataset.first().ground_truth.id,
+            self.dataset.last().ground_truth.id,
+        ]
+
+        view = self.dataset.select_labels(ids=ids)
+
+        num_labels = self.dataset.count("ground_truth")
+        num_view = view.count("ground_truth")
+
+        self.dataset.delete_labels(view=view)
+
+        num_labels_after = self.dataset.count("ground_truth")
+
+        self.assertEqual(num_labels_after, num_labels - num_view)
+
+    def test_delete_classification_labels(self):
+        self._setUp_classification()
+
+        labels = [
+            {
+                "sample_id": self.dataset.first().id,
+                "field": "ground_truth",
+                "label_id": self.dataset.first().ground_truth.id,
+            },
+            {
+                "sample_id": self.dataset.last().id,
+                "field": "ground_truth",
+                "label_id": self.dataset.last().ground_truth.id,
+            },
+        ]
+
+        num_labels = self.dataset.count("ground_truth")
+        num_selected = len(labels)
+
+        self.dataset.delete_labels(labels=labels)
+
+        num_labels_after = self.dataset.count("ground_truth")
+
+        self.assertEqual(num_labels_after, num_labels - num_selected)
+
+    def test_delete_detections_ids(self):
+        self._setUp_detections()
+
+        ids = [
+            self.dataset.first().ground_truth.detections[0].id,
+            self.dataset.last().ground_truth.detections[-1].id,
+        ]
+
+        num_labels = self.dataset.count("ground_truth.detections")
+        num_ids = len(ids)
+
+        self.dataset.delete_labels(ids=ids)
+
+        num_labels_after = self.dataset.count("ground_truth.detections")
+
+        self.assertEqual(num_labels_after, num_labels - num_ids)
+
+    def test_delete_detections_tags(self):
+        self._setUp_detections()
+
+        ids = [
+            self.dataset.first().ground_truth.detections[0].id,
+            self.dataset.last().ground_truth.detections[-1].id,
+        ]
+
+        self.dataset.select_labels(ids=ids).tag_labels("test")
+
+        num_labels = self.dataset.count("ground_truth.detections")
+        num_tagged = self.dataset.count_label_tags()["test"]
+
+        self.dataset.delete_labels(tags="test")
+
+        num_labels_after = self.dataset.count("ground_truth.detections")
+
+        self.assertEqual(num_labels_after, num_labels - num_tagged)
+
+    def test_delete_detections_view(self):
+        self._setUp_detections()
+
+        ids = [
+            self.dataset.first().ground_truth.detections[0].id,
+            self.dataset.last().ground_truth.detections[-1].id,
+        ]
+
+        view = self.dataset.select_labels(ids=ids)
+
+        num_labels = self.dataset.count("ground_truth.detections")
+        num_view = view.count("ground_truth.detections")
+
+        self.dataset.delete_labels(view=view)
+
+        num_labels_after = self.dataset.count("ground_truth.detections")
+
+        self.assertEqual(num_labels_after, num_labels - num_view)
+
+    def test_delete_detections_labels(self):
+        self._setUp_detections()
+
+        labels = [
+            {
+                "sample_id": self.dataset.first().id,
+                "field": "ground_truth",
+                "label_id": self.dataset.first().ground_truth.detections[0].id,
+            },
+            {
+                "sample_id": self.dataset.last().id,
+                "field": "ground_truth",
+                "label_id": self.dataset.last().ground_truth.detections[-1].id,
+            },
+        ]
+
+        num_labels = self.dataset.count("ground_truth.detections")
+        num_selected = len(labels)
+
+        self.dataset.delete_labels(labels=labels)
+
+        num_labels_after = self.dataset.count("ground_truth.detections")
+
+        self.assertEqual(num_labels_after, num_labels - num_selected)
+
+    def test_delete_video_classification_ids(self):
+        self._setUp_video_classification()
+
+        ids = [
+            self.dataset.first().frames[1].ground_truth.id,
+            self.dataset.last().frames[3].ground_truth.id,
+        ]
+
+        num_labels = self.dataset.count("frames.ground_truth")
+        num_ids = len(ids)
+
+        self.dataset.delete_labels(ids=ids)
+
+        num_labels_after = self.dataset.count("frames.ground_truth")
+
+        self.assertEqual(num_labels_after, num_labels - num_ids)
+
+    def test_delete_video_classification_tags(self):
+        self._setUp_video_classification()
+
+        ids = [
+            self.dataset.first().frames[1].ground_truth.id,
+            self.dataset.last().frames[3].ground_truth.id,
+        ]
+
+        self.dataset.select_labels(ids=ids).tag_labels("test")
+
+        num_labels = self.dataset.count("frames.ground_truth")
+        num_tagged = self.dataset.count_label_tags()["test"]
+
+        self.dataset.delete_labels(tags="test")
+
+        num_labels_after = self.dataset.count("frames.ground_truth")
+
+        self.assertEqual(num_labels_after, num_labels - num_tagged)
+
+    def test_delete_video_classification_view(self):
+        self._setUp_video_classification()
+
+        ids = [
+            self.dataset.first().frames[1].ground_truth.id,
+            self.dataset.last().frames[3].ground_truth.id,
+        ]
+
+        view = self.dataset.select_labels(ids=ids)
+
+        num_labels = self.dataset.count("frames.ground_truth")
+        num_view = view.count("frames.ground_truth")
+
+        self.dataset.delete_labels(view=view)
+
+        num_labels_after = self.dataset.count("frames.ground_truth")
+
+        self.assertEqual(num_labels_after, num_labels - num_view)
+
+    def test_delete_video_classification_labels(self):
+        self._setUp_video_classification()
+
+        labels = [
+            {
+                "sample_id": self.dataset.first().id,
+                "field": "frames.ground_truth",
+                "frame_number": 1,
+                "label_id": self.dataset.first().frames[1].ground_truth.id,
+            },
+            {
+                "sample_id": self.dataset.last().id,
+                "field": "frames.ground_truth",
+                "frame_number": 3,
+                "label_id": self.dataset.last().frames[3].ground_truth.id,
+            },
+        ]
+
+        num_labels = self.dataset.count("frames.ground_truth")
+        num_selected = len(labels)
+
+        self.dataset.delete_labels(labels=labels)
+
+        num_labels_after = self.dataset.count("frames.ground_truth")
+
+        self.assertEqual(num_labels_after, num_labels - num_selected)
+
+    def test_delete_video_detections_ids(self):
+        self._setUp_video_detections()
+
+        ids = [
+            self.dataset.first().frames[1].ground_truth.detections[0].id,
+            self.dataset.last().frames[3].ground_truth.detections[-1].id,
+        ]
+
+        num_labels = self.dataset.count("frames.ground_truth.detections")
+        num_ids = len(ids)
+
+        self.dataset.delete_labels(ids=ids)
+
+        num_labels_after = self.dataset.count("frames.ground_truth.detections")
+
+        self.assertEqual(num_labels_after, num_labels - num_ids)
+
+    def test_delete_video_detections_tags(self):
+        self._setUp_video_detections()
+
+        ids = [
+            self.dataset.first().frames[1].ground_truth.detections[0].id,
+            self.dataset.last().frames[3].ground_truth.detections[-1].id,
+        ]
+
+        self.dataset.select_labels(ids=ids).tag_labels("test")
+
+        num_labels = self.dataset.count("frames.ground_truth.detections")
+        num_tagged = self.dataset.count_label_tags()["test"]
+
+        self.dataset.delete_labels(tags="test")
+
+        num_labels_after = self.dataset.count("frames.ground_truth.detections")
+
+        self.assertEqual(num_labels_after, num_labels - num_tagged)
+
+    def test_delete_video_detections_view(self):
+        self._setUp_video_detections()
+
+        ids = [
+            self.dataset.first().frames[1].ground_truth.detections[0].id,
+            self.dataset.last().frames[3].ground_truth.detections[-1].id,
+        ]
+
+        view = self.dataset.select_labels(ids=ids)
+
+        num_labels = self.dataset.count("frames.ground_truth.detections")
+        num_view = view.count("frames.ground_truth.detections")
+
+        self.dataset.delete_labels(view=view)
+
+        num_labels_after = self.dataset.count("frames.ground_truth.detections")
+
+        self.assertEqual(num_labels_after, num_labels - num_view)
+
+    def test_delete_video_detections_labels(self):
+        self._setUp_video_detections()
+
+        labels = [
+            {
+                "sample_id": self.dataset.first().id,
+                "field": "frames.ground_truth",
+                "frame_number": 1,
+                "label_id": (
+                    self.dataset.first()
+                    .frames[1]
+                    .ground_truth.detections[0]
+                    .id
+                ),
+            },
+            {
+                "sample_id": self.dataset.last().id,
+                "field": "frames.ground_truth",
+                "frame_number": 3,
+                "label_id": (
+                    self.dataset.last()
+                    .frames[3]
+                    .ground_truth.detections[-1]
+                    .id
+                ),
+            },
+        ]
+
+        num_labels = self.dataset.count("frames.ground_truth.detections")
+        num_selected = len(labels)
+
+        self.dataset.delete_labels(labels=labels)
+
+        num_labels_after = self.dataset.count("frames.ground_truth.detections")
+
+        self.assertEqual(num_labels_after, num_labels - num_selected)
+
+
 if __name__ == "__main__":
     fo.config.show_progress_bars = False
     unittest.main(verbosity=2)

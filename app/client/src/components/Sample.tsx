@@ -11,13 +11,10 @@ import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
 import socket from "../shared/connection";
 import { packageMessage } from "../utils/socket";
-import { useVideoData, useTheme } from "../utils/hooks";
-import {
-  stringify,
-  VALID_CLASS_TYPES,
-  VALID_LIST_TYPES,
-} from "../utils/labels";
+import { useTheme } from "../utils/hooks";
 import { useLoadModalSample } from "../recoil/utils";
+import { VALID_CLASS_TYPES, VALID_LIST_TYPES } from "../utils/labels";
+import { prettify } from "../utils/generic";
 
 const SampleDiv = animated(styled.div`
   position: relative;
@@ -138,7 +135,7 @@ const SampleInfo = React.memo(({ sampleId }: { sampleId: string }) => {
       scalars.includes(cur) &&
       ![null, undefined].includes(sample[cur])
     ) {
-      const value = stringify(sample[cur]);
+      const value = prettify(sample[cur], false);
       acc = [
         ...acc,
         <Tag
@@ -162,12 +159,12 @@ const SampleInfo = React.memo(({ sampleId }: { sampleId: string }) => {
       acc = [
         ...acc,
         values
-          .map((v) => stringify(v.label))
+          .map((v) => prettify(v.label, false))
           .map((v) => (
             <Tag
               key={"scalar-" + cur + "" + v}
               title={`${cur}: ${v}`}
-              name={v}
+              name={[undefined, null].includes(v) ? "None" : v}
               color={colorByLabel ? colorMap[v] : colorMap[cur]}
               maxWidth={"calc(100% - 32px)"}
             />

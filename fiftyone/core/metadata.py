@@ -203,6 +203,7 @@ def _compute_metadata(sample_collection, overwrite=False):
     if num_samples == 0:
         return
 
+    logger.info("Computing %s metadata...", sample_collection.media_type)
     with fou.ProgressBar(total=num_samples) as pb:
         for sample in pb(sample_collection.select_fields()):
             compute_sample_metadata(sample, skip_failures=True)
@@ -221,6 +222,7 @@ def _compute_metadata_multi(sample_collection, num_workers, overwrite=False):
     if num_samples == 0:
         return
 
+    logger.info("Computing %s metadata...", sample_collection.media_type)
     with fou.ProgressBar(total=num_samples) as pb:
         with multiprocessing.Pool(processes=num_workers) as pool:
             for sample_id, metadata in pb(

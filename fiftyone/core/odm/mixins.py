@@ -48,6 +48,133 @@ def get_default_fields(cls, include_private=False, include_id=False):
     return fields
 
 
+def validate_fields_match(
+    field_name, field_or_kwargs, existing_field_or_kwargs
+):
+    """Validates that a given field or field description matches the type of
+    the existing field.
+
+    Args:
+        field_name: the name of the field
+        field_or_kwargs: a :class:`fiftyone.core.fields.Field` instance or a
+            dict of keyword arguments describing it
+        existing_field_or_kwargs: a :class:`fiftyone.core.fields.Field` instance or
+            dict of keyword arguments defining the reference field type
+
+    Raises:
+        ValueError: if the proposed field does not match the reference field
+    """
+    if isinstance(field_or_kwargs, dict):
+        field = create_field(field_name, **field_or_kwargs)
+    else:
+        field = field_or_kwargs
+
+    if isinstance(existing_field_or_kwargs, dict):
+        existing_field = create_field(field_name, **existing_field_or_kwargs)
+    else:
+        existing_field = existing_field_or_kwargs
+
+    if type(field) is not type(existing_field):
+        raise ValueError(
+            "Field '%s' type %s does not match existing field "
+            "type %s" % (field_name, field, existing_field)
+        )
+
+    if isinstance(field, fof.EmbeddedDocumentField):
+        if not issubclass(field.document_type, existing_field.document_type):
+            raise ValueError(
+                "Embedded document field '%s' type %s does not match existing "
+                "field type %s"
+                % (
+                    field_name,
+                    field.document_type,
+                    existing_field.document_type,
+                )
+            )
+
+    if isinstance(field, (fof.ListField, fof.DictField)):
+        if (existing_field.field is not None) and not isinstance(
+            field.field, type(existing_field.field)
+        ):
+            raise ValueError(
+                "%s '%s' type %s does not match existing "
+                "field type %s"
+                % (
+                    field.__class__.__name__,
+                    field_name,
+                    field.field,
+                    existing_field.field,
+                )
+            )
+
+
+def get_field_kwargs(field):
+    """Constructs the field keyword arguments dictionary for the given
+    :class:`fiftyone.core.fields.Field` instance.
+
+    Args:
+        field: a :class:`fiftyone.core.fields.Field`
+
+    Returns:
+        a field specification dict
+    """
+    ftype = type(field)
+    kwargs = {"ftype": ftype}
+
+    if issubclass(ftype, fof.EmbeddedDocumentField):
+        kwargs["embedded_doc_type"] = field.document_type
+
+    if issubclass(ftype, (fof.ListField, fof.DictField)):
+        kwargs["subfield"] = field.field
+
+    return kwargs
+
+
+def get_implied_field_kwargs(value):
+    """Infers the field keyword arguments dictionary for a field that can hold
+    values of the given type.
+
+    Args:
+        value: a value
+
+    Returns:
+        a field specification dict
+    """
+    if isinstance(value, BaseEmbeddedDocument):
+        return {
+            "ftype": fof.EmbeddedDocumentField,
+            "embedded_doc_type": type(value),
+        }
+
+    if isinstance(value, bool):
+        return {"ftype": fof.BooleanField}
+
+    if isinstance(value, six.integer_types):
+        return {"ftype": fof.IntField}
+
+    if isinstance(value, numbers.Number):
+        return {"ftype": fof.FloatField}
+
+    if isinstance(value, six.string_types):
+        return {"ftype": fof.StringField}
+
+    if isinstance(value, (list, tuple)):
+        return {"ftype": fof.ListField}
+
+    if isinstance(value, np.ndarray):
+        if value.ndim == 1:
+            return {"ftype": fof.VectorField}
+
+        return {"ftype": fof.ArrayField}
+
+    if isinstance(value, dict):
+        return {"ftype": fof.DictField}
+
+    raise TypeError(
+        "Cannot infer an appropriate field type for value '%s'" % value
+    )
+
+
 class DatasetMixin(object):
     """Mixin for concrete :class:`fiftyone.core.odm.document.SampleDocument`
     subtypes that are backed by a dataset.
@@ -56,20 +183,7 @@ class DatasetMixin(object):
     _FRAME_COLLECTION_PREFIX = "frames."
 
     def __setattr__(self, name, value):
-        # pylint: disable=no-member
-        has_field = self.has_field(name)
-
-        if name.startswith("_") or (hasattr(self, name) and not has_field):
-            super().__setattr__(name, value)
-            return
-
-        if not has_field:
-            raise ValueError(
-                "Adding sample fields using the `sample.field = value` syntax "
-                "is not allowed; use `sample['field'] = value` instead"
-            )
-
-        if value is not None:
+        if name in self._fields and value is not None:
             self._fields[name].validate(value)
 
         super().__setattr__(name, value)
@@ -172,16 +286,18 @@ class DatasetMixin(object):
         return d
 
     @classmethod
-    def merge_field_schema(cls, schema):
+    def merge_field_schema(cls, schema, expand_schema=True):
         """Merges the field schema into this sample.
 
         Args:
             schema: a dictionary mapping field names to
                 :class:`fiftyone.core.fields.Field` instances
+            expand_schema (True): whether to add new fields to the schema
 
         Raises:
             ValueError: if a field in the schema is not compliant with an
-                existing field of the same name
+                existing field of the same name or a new field is found but
+                ``expand_schema == False``
         """
         _schema = cls.get_field_schema(include_private=True)
 
@@ -191,6 +307,10 @@ class DatasetMixin(object):
                 validate_fields_match(field_name, field, _schema[field_name])
             else:
                 add_fields.append(field_name)
+
+        if not expand_schema and add_fields:
+            dtype = "Sample" if not cls._is_frames_doc() else "Frame"
+            raise ValueError("%s fields %s do not exist" % (dtype, add_fields))
 
         for field_name in add_fields:
             field = schema[field_name]
@@ -202,7 +322,8 @@ class DatasetMixin(object):
 
     def get_field(self, field_name):
         if not self.has_field(field_name):
-            raise AttributeError("Sample has no field '%s'" % field_name)
+            dtype = "Sample" if not self._is_frames_doc() else "Frame"
+            raise AttributeError("%s has no field '%s'" % (dtype, field_name))
 
         return getattr(self, field_name)
 
@@ -261,16 +382,13 @@ class DatasetMixin(object):
             if create:
                 self.add_implied_field(field_name, value)
             else:
-                msg = "Sample does not have field '%s'." % field_name
-                if value is not None:
-                    msg += " Use `create=True` to create a new field"
-
-                raise ValueError(msg)
+                dtype = "Sample" if not self._is_frames_doc() else "Frame"
+                raise ValueError("%s has no field '%s'" % (dtype, field_name))
 
         self.__setattr__(field_name, value)
 
     def clear_field(self, field_name):
-        self.set_field(field_name, None, create=False)
+        self.set_field(field_name, None)
 
     @classmethod
     def _rename_fields(
@@ -778,7 +896,7 @@ class DatasetMixin(object):
                 filtered_field = "test_dets.detections"
 
             Output:
-                ObjectID("5f2062bf27c024654f5286a0")
+                ObjectId("5f2062bf27c024654f5286a0")
                 "test_dets.detections.$[element].label"
         """
         el = self
@@ -814,30 +932,20 @@ class NoDatasetMixin(object):
 
     def __getattr__(self, name):
         try:
-            return self._data[name]
-        except Exception:
+            return super().__getattribute__(name)
+        except AttributeError:
             pass
 
-        return super().__getattribute__(name)
+        try:
+            return self._data[name]
+        except KeyError as e:
+            raise AttributeError(e.args[0])
 
     def __setattr__(self, name, value):
         if name.startswith("_"):
             super().__setattr__(name, value)
-            return
-
-        has_field = self.has_field(name)
-
-        if hasattr(self, name) and not has_field:
-            super().__setattr__(name, value)
-            return
-
-        if not has_field:
-            raise ValueError(
-                "Adding sample fields using the `sample.field = value` syntax "
-                "is not allowed; use `sample['field'] = value` instead"
-            )
-
-        self._data[name] = value
+        else:
+            self._data[name] = value
 
     @property
     def id(self):
@@ -880,6 +988,10 @@ class NoDatasetMixin(object):
 
         raise ValueError("Field '%s' has no default" % field)
 
+    @classmethod
+    def _is_frames_doc(cls):
+        return "Frame" in cls.__name__
+
     def has_field(self, field_name):
         try:
             return field_name in self._data
@@ -889,7 +1001,8 @@ class NoDatasetMixin(object):
 
     def get_field(self, field_name):
         if not self.has_field(field_name):
-            raise AttributeError("Sample has no field '%s'" % field_name)
+            dtype = "Sample" if not self._is_frames_doc() else "Frame"
+            raise AttributeError("%s has no field '%s'" % (dtype, field_name))
 
         return getattr(self, field_name)
 
@@ -908,11 +1021,8 @@ class NoDatasetMixin(object):
                 # dummy value so that it is identified by __setattr__
                 self._data[field_name] = None
             else:
-                msg = "Sample does not have field '%s'." % field_name
-                if value is not None:
-                    msg += " Use `create=True` to create a new field"
-
-                raise ValueError(msg)
+                dtype = "Sample" if not self._is_frames_doc() else "Frame"
+                raise ValueError("%s has no field '%s'" % (dtype, field_name))
 
         self.__setattr__(field_name, value)
 
@@ -923,7 +1033,8 @@ class NoDatasetMixin(object):
             return
 
         if field_name not in self._data:
-            raise ValueError("Sample has no field '%s'" % field_name)
+            dtype = "Sample" if not self._is_frames_doc() else "Frame"
+            raise ValueError("%s has no field '%s'" % (dtype, field_name))
 
         self._data.pop(field_name)
 
@@ -971,114 +1082,13 @@ class NoDatasetMixin(object):
         return cls(**kwargs)
 
     def save(self):
-        """Saves the sample to the database.
-
-        Because the sample does not belong to a dataset, this method does
-        nothing.
-        """
         pass
 
     def reload(self):
-        """Reloads the sample from the database.
-
-        Because the sample does not belong to a dataset, this method does
-        nothing.
-        """
         pass
 
     def delete(self):
-        """Deletes the sample from the database.
-
-        Because the sample does not belong to a dataset, this method does
-        nothing.
-        """
         pass
-
-
-def validate_fields_match(field_name, field, ref_field):
-    if type(field) is not type(ref_field):
-        raise ValueError(
-            "Field '%s' type %s does not match existing field "
-            "type %s" % (field_name, field, ref_field)
-        )
-
-    if isinstance(field, fof.EmbeddedDocumentField):
-        if not issubclass(field.document_type, ref_field.document_type):
-            raise ValueError(
-                "Embedded document field '%s' type %s does not match existing "
-                "field type %s"
-                % (field_name, field.document_type, ref_field.document_type)
-            )
-
-    if isinstance(field, (fof.ListField, fof.DictField)):
-        if (ref_field.field is not None) and not isinstance(
-            field.field, type(ref_field.field)
-        ):
-            raise ValueError(
-                "%s '%s' type %s does not match existing "
-                "field type %s"
-                % (
-                    field.__class__.__name__,
-                    field_name,
-                    field.field,
-                    ref_field.field,
-                )
-            )
-
-
-def get_field_kwargs(field):
-    ftype = type(field)
-    kwargs = {"ftype": ftype}
-
-    if issubclass(ftype, fof.EmbeddedDocumentField):
-        kwargs["embedded_doc_type"] = field.document_type
-
-    if issubclass(ftype, (fof.ListField, fof.DictField)):
-        kwargs["subfield"] = field.field
-
-    return kwargs
-
-
-def get_implied_field_kwargs(value):
-    if isinstance(value, BaseEmbeddedDocument):
-        return {
-            "ftype": fof.EmbeddedDocumentField,
-            "embedded_doc_type": type(value),
-        }
-
-    ftype = _get_scalar_field_type(value)
-    if ftype is not None:
-        return {"ftype": ftype}
-
-    if isinstance(value, (list, tuple)):
-        return {"ftype": fof.ListField}
-
-    if isinstance(value, np.ndarray):
-        if value.ndim == 1:
-            return {"ftype": fof.VectorField}
-
-        return {"ftype": fof.ArrayField}
-
-    if isinstance(value, dict):
-        return {"ftype": fof.DictField}
-
-    raise TypeError("Unsupported field value '%s'" % type(value))
-
-
-def _get_scalar_field_type(value):
-    if isinstance(value, bool):
-        return fof.BooleanField
-
-    if isinstance(value, six.integer_types):
-        return fof.IntField
-
-    if isinstance(value, numbers.Number):
-        return fof.FloatField
-
-    if isinstance(value, six.string_types):
-        return fof.StringField
-
-    return None
 
 
 def _rename_field(field, new_field_name):

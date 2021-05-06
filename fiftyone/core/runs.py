@@ -7,7 +7,7 @@ Dataset runs framework.
 """
 from copy import copy
 import datetime
-import json
+from bson import json_util
 
 import numpy as np
 
@@ -269,7 +269,8 @@ class Run(Configurable):
         Returns:
             a list of run keys
         """
-        run_docs = getattr(samples._dataset._doc, cls._runs_field())
+        dataset_doc = samples._root_dataset._doc
+        run_docs = getattr(dataset_doc, cls._runs_field())
         return sorted(run_docs.keys())
 
     @classmethod
@@ -298,8 +299,9 @@ class Run(Configurable):
                 same key
         """
         key = run_info.key
-        view_stages = [json.dumps(s) for s in samples.view()._serialize()]
-        run_docs = getattr(samples._dataset._doc, cls._runs_field())
+        dataset_doc = samples._root_dataset._doc
+        view_stages = [json_util.dumps(s) for s in samples.view()._serialize()]
+        run_docs = getattr(dataset_doc, cls._runs_field())
 
         if key in run_docs:
             if overwrite:
@@ -317,7 +319,7 @@ class Run(Configurable):
             view_stages=view_stages,
             results=None,
         )
-        samples._dataset.save()
+        dataset_doc.save()
 
     @classmethod
     def save_run_results(cls, samples, key, run_results, overwrite=True):
@@ -333,7 +335,8 @@ class Run(Configurable):
         if key is None:
             return
 
-        run_docs = getattr(samples._dataset._doc, cls._runs_field())
+        dataset_doc = samples._root_dataset._doc
+        run_docs = getattr(dataset_doc, cls._runs_field())
         run_doc = run_docs[key]
 
         if run_doc.results:
@@ -353,7 +356,7 @@ class Run(Configurable):
             results_bytes = run_results.to_str().encode()
             run_doc.results.put(results_bytes, content_type="application/json")
 
-        samples._dataset.save()
+        dataset_doc.save()
 
     @classmethod
     def load_run_results(cls, samples, key):
@@ -394,8 +397,8 @@ class Run(Configurable):
         import fiftyone.core.view as fov
 
         run_doc = cls._get_run_doc(samples, key)
-        stage_dicts = [json.loads(s) for s in run_doc.view_stages]
-        view = fov.DatasetView._build(samples._dataset, stage_dicts)
+        stage_dicts = [json_util.loads(s) for s in run_doc.view_stages]
+        view = fov.DatasetView._build(samples._root_dataset, stage_dicts)
 
         if not select_fields:
             return view
@@ -446,14 +449,15 @@ class Run(Configurable):
         run.cleanup(samples, key)
 
         # Delete run from dataset
-        run_docs = getattr(samples._dataset._doc, cls._runs_field())
+        dataset_doc = samples._root_dataset._doc
+        run_docs = getattr(dataset_doc, cls._runs_field())
         run_doc = run_docs.pop(key, None)
 
         # Must manually delete run result, which is stored via GridFS
         if run_doc and run_doc.results:
             run_doc.results.delete()
 
-        samples._dataset.save()
+        dataset_doc.save()
 
     @classmethod
     def delete_runs(cls, samples):
@@ -467,12 +471,13 @@ class Run(Configurable):
 
     @classmethod
     def _get_run_doc(cls, samples, key):
-        run_docs = getattr(samples._dataset._doc, cls._runs_field())
+        dataset_doc = samples._root_dataset._doc
+        run_docs = getattr(dataset_doc, cls._runs_field())
         run_doc = run_docs.get(key, None)
         if run_doc is None:
             raise ValueError(
-                "%s key '%s' not found on collection '%s'"
-                % (cls._run_str().capitalize(), key, samples.name)
+                "%s key '%s' not found on dataset '%s'"
+                % (cls._run_str().capitalize(), key, samples._dataset.name)
             )
 
         return run_doc
@@ -513,6 +518,9 @@ class RunResults(etas.Serializable):
         Returns:
             a :class:`RunResults`
         """
+        if d is None:
+            return None
+
         run_results_cls = etau.get_class(d["cls"])
         return run_results_cls._from_dict(d, samples)
 

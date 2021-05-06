@@ -17,6 +17,7 @@ def plot_confusion_matrix(
     confusion_matrix,
     labels,
     ids=None,
+    samples=None,
     gt_field=None,
     pred_field=None,
     backend="plotly",
@@ -37,6 +38,9 @@ def plot_confusion_matrix(
         ids (None): an optional array of same shape as ``confusion_matrix``
             containing lists of IDs corresponding to each cell. Only used by
             the "plotly" backend
+        samples (None): the :class:`fiftyone.core.collections.SampleCollection`
+            for which the confusion matrix was generated. Only used by the
+            "plotly" backend when ``ids`` are provided
         gt_field (None): the name of the ground truth field
         pred_field (None): the name of the predictions field
         backend ("plotly"): the plotting backend to use. Supported values are
@@ -63,7 +67,14 @@ def plot_confusion_matrix(
     else:
         from .plotly import plot_confusion_matrix as _plot_confusion_matrix
 
-        kwargs.update(dict(ids=ids, gt_field=gt_field, pred_field=pred_field))
+        kwargs.update(
+            dict(
+                ids=ids,
+                samples=samples,
+                gt_field=gt_field,
+                pred_field=pred_field,
+            )
+        )
 
     return _plot_confusion_matrix(confusion_matrix, labels, **kwargs)
 
@@ -202,6 +213,9 @@ def scatterplot(
 
             -   the name of a sample field or ``embedded.field.name`` of
                 ``samples`` from which to extract numeric or string values
+            -   a :class:`fiftyone.core.expressions.ViewExpression` defining
+                numeric or string values to compute from ``samples`` via
+                :meth:`fiftyone.core.collections.SampleCollection.values`
             -   a list or array-like of numeric or string values
             -   a list of lists of numeric or string values, if ``link_field``
                 refers to a label list field like
@@ -212,6 +226,9 @@ def scatterplot(
 
             -   the name of a sample field or ``embedded.field.name`` of
                 ``samples`` from which to extract numeric values
+            -   a :class:`fiftyone.core.expressions.ViewExpression` defining
+                numeric values to compute from ``samples`` via
+                :meth:`fiftyone.core.collections.SampleCollection.values`
             -   a list or array-like of numeric values
             -   a list of lists of numeric or string values, if ``link_field``
                 refers to a label list field like
@@ -297,6 +314,9 @@ def location_scatterplot(
 
             -   the name of a sample field or ``embedded.field.name`` of
                 ``samples`` from which to extract numeric or string values
+            -   a :class:`fiftyone.core.expressions.ViewExpression` defining
+                numeric or string values to compute from ``samples`` via
+                :meth:`fiftyone.core.collections.SampleCollection.values`
             -   a list or array-like of numeric or string values
 
         sizes (None): data to use to scale the sizes of the points. Can be any
@@ -304,6 +324,9 @@ def location_scatterplot(
 
             -   the name of a sample field or ``embedded.field.name`` of
                 ``samples`` from which to extract numeric values
+            -   a :class:`fiftyone.core.expressions.ViewExpression` defining
+                numeric values to compute from ``samples`` via
+                :meth:`fiftyone.core.collections.SampleCollection.values`
             -   a list or array-like of numeric values
 
         classes (None): an optional list of classes whose points to plot.
@@ -574,7 +597,9 @@ class InteractivePlot(ResponsivePlot):
             which points in this plot correspond. Only applicable when linked
             to labels
         init_view (None): a :class:`fiftyone.core.collections.SampleCollection`
-            to load when no points are selected in the plot
+            defining an initial view from which to derive selection views when
+            points are selected in the plot. This view will also be shown when
+            the plot is in its default state (no selection)
     """
 
     def __init__(self, link_type="samples", label_fields=None, init_view=None):

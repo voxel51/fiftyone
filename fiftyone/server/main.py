@@ -29,7 +29,7 @@ os.environ["FIFTYONE_SERVER"] = "1"
 import fiftyone as fo
 import fiftyone.core.aggregations as foa
 import fiftyone.constants as foc
-from fiftyone.core.expressions import ViewField as F
+from fiftyone.core.expressions import ViewField as F, _escape_regex_chars
 import fiftyone.core.dataset as fod
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
@@ -360,7 +360,12 @@ class StateHandler(tornado.websocket.WebSocketHandler):
     def sample_collection():
         """Getter for the current sample collection."""
         state = fos.StateDescription.from_dict(StateHandler.state)
-        return db[state.dataset._sample_collection_name]
+        if state.view is not None:
+            dataset = state.view._dataset
+        else:
+            dataset = state.dataset
+
+        return db[dataset._sample_collection_name]
 
     def write_message(self, message):
         """Writes a message to the client.
@@ -455,8 +460,8 @@ class StateHandler(tornado.websocket.WebSocketHandler):
 
     @staticmethod
     async def on_filters_update(self, filters):
-        """Event for updating state filters. Sends an extended dataset statistics
-        message to active App clients.
+        """Event for updating state filters. Sends an extended dataset
+        statistics message to active App clients.
 
         Args:
             filters: a :class:`dict` mapping field path to a serialized
@@ -489,7 +494,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         if state.view is not None:
             view = state.view
         elif state.dataset is not None:
-            view = state.dataset.view()
+            view = state.dataset
         else:
             _write_message(
                 {"type": "page", "page": page, "results": [], "more": False},
@@ -650,7 +655,10 @@ class StateHandler(tornado.websocket.WebSocketHandler):
     @staticmethod
     async def on_all_tags(caller):
         state = fos.StateDescription.from_dict(StateHandler.state)
-        dataset = state.dataset
+        if state.view is not None:
+            dataset = state.view._dataset
+        else:
+            dataset = state.dataset
 
         if dataset is None:
             label = []
@@ -732,7 +740,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         view = get_extended_view(view, state.filters)
         view = view.select(state.selected).select_fields(active_labels)
 
-        (count_aggs, tag_aggs,) = fos.DatasetStatistics.get_label_aggregations(
+        count_aggs, tag_aggs = fos.DatasetStatistics.get_label_aggregations(
             view
         )
         results = await view._async_aggregate(
@@ -868,6 +876,33 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         _write_message(message, app=True, only=only)
 
     @classmethod
+    async def on_distinct(
+        cls, self, path, uuid=None, selected=[], search="", limit=10
+    ):
+        state = fos.StateDescription.from_dict(StateHandler.state)
+        results = None
+        col = cls.sample_collection()
+        if state.view is not None:
+            view = state.view
+        elif state.dataset is not None:
+            view = state.dataset
+        else:
+            results = []
+
+        view = _get_search_view(view, path, search, selected)
+
+        count, first = await view._async_aggregate(
+            col, foa.Distinct(path, _first=limit)
+        )
+
+        message = {
+            "type": uuid,
+            "count": count,
+            "results": first,
+        }
+        _write_message(message, app=True, only=self)
+
+    @classmethod
     async def on_distributions(cls, self, group):
         """Sends distribution data with respect to a group to the requesting
         client.
@@ -882,7 +917,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         if state.view is not None:
             view = state.view
         elif state.dataset is not None:
-            view = state.dataset.view()
+            view = state.dataset
         else:
             results = []
 
@@ -945,11 +980,39 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         )
 
 
+def _get_search_view(view, path, search, selected):
+    search = _escape_regex_chars(search)
+
+    if search == "" and not selected:
+        return view
+
+    if "." in path:
+        fields = path.split(".")
+        if view.media_type == fom.VIDEO and fields[0] == "frames":
+            field = ".".join(fields[:2])
+        else:
+            field = fields[0]
+
+        vf = F("label")
+        meth = lambda expr: view.filter_labels(field, expr)
+    else:
+        vf = F(path)
+        meth = view.match
+
+    if search != "" and selected:
+        expr = vf.re_match(search) & ~vf.is_in(selected)
+    elif search != "":
+        expr = vf.re_match(search)
+    elif selected:
+        expr = ~vf.is_in(selected)
+
+    return meth(expr)
+
+
 def _write_message(message, app=False, session=False, ignore=None, only=None):
     clients = StateHandler.app_clients if app else StateHandler.clients
     clients = _filter_deactivated_clients(clients)
 
-    print(only)
     if only:
         only.write_message(message)
         return
