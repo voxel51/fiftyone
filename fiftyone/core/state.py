@@ -273,7 +273,7 @@ class DatasetStatistics(object):
                 tags_path = "%s.tags" % path
                 aggregations.extend(
                     [
-                        foa.Distinct(label_path, _first=15),
+                        foa.Distinct(label_path, _first=200),
                         foa.Bounds(confidence_path),
                         foa.CountValues(tags_path),
                     ]

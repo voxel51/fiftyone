@@ -14,7 +14,7 @@ import StringFilter from "./StringFilter";
 import { AGGS } from "../../utils/labels";
 import { useExpand, hasNoneField } from "./utils";
 
-export const LIST_LIMIT = 5;
+export const LIST_LIMIT = 200;
 
 type StringFilter = {
   values: string[];
