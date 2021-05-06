@@ -85,6 +85,23 @@ export const datasetName = selector({
   },
 });
 
+export const viewCls = selector<string>({
+  key: "viewCls",
+  get: ({ get }) => {
+    const stateDescription = get(atoms.stateDescription);
+    return stateDescription.view_cls;
+  },
+});
+
+export const isRootView = selector<boolean>({
+  key: "isRootView",
+  get: ({ get }) => {
+    return [undefined, null, "fiftyone.core.view.DatasetView"].includes(
+      get(viewCls)
+    );
+  },
+});
+
 export const datasets = selector({
   key: "datasets",
   get: ({ get }) => {
@@ -443,11 +460,7 @@ const labelFilter = (f) => {
 };
 
 const scalarFilter = (f) => {
-  return (
-    VALID_SCALAR_TYPES.includes(f.ftype) &&
-    !f.name.startsWith("_") &&
-    f.name !== "filepath"
-  );
+  return VALID_SCALAR_TYPES.includes(f.ftype) && !f.name.startsWith("_");
 };
 
 const fields = selectorFamily<{ [key: string]: SerializableParam }, string>({
@@ -1028,5 +1041,70 @@ export const fieldType = selectorFamily<string, string>({
     return frame
       ? entry[path.slice("frames.".length)].ftype
       : entry[path].ftype;
+  },
+});
+
+export const itemNames = selector<{ plural: string; singular: string }>({
+  key: "itemNames",
+  get: ({ get }) => {
+    return get(isRootView)
+      ? {
+          plural: "samples",
+          singular: "samples",
+        }
+      : {
+          plural: "patches",
+          singular: "patch",
+        };
+  },
+});
+
+interface BrainMethod {
+  config: {
+    method: string;
+    patches_field: string;
+  };
+}
+
+interface BrainMethods {
+  [key: string]: BrainMethod;
+}
+
+export const similarityKeys = selector<{
+  patches: [string, string][];
+  samples: string[];
+}>({
+  key: "similarityKeys",
+  get: ({ get }) => {
+    const state = get(atoms.stateDescription);
+    const brainKeys = (state?.dataset?.brain_methods || {}) as BrainMethods;
+    return Object.entries(brainKeys)
+      .filter(
+        ([
+          _,
+          {
+            config: { method },
+          },
+        ]) => method === "similarity"
+      )
+      .reduce(
+        (
+          { patches, samples },
+          [
+            key,
+            {
+              config: { patches_field },
+            },
+          ]
+        ) => {
+          if (patches_field) {
+            patches.push([key, patches_field]);
+          } else {
+            samples.push(key);
+          }
+          return { patches, samples };
+        },
+        { patches: [], samples: [] }
+      );
   },
 });

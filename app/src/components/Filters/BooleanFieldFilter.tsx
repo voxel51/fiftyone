@@ -5,12 +5,11 @@ import {
   GetRecoilValue,
   selectorFamily,
   SetRecoilState,
-  useRecoilValue,
 } from "recoil";
 import { animated } from "react-spring";
 
 import * as selectors from "../../recoil/selectors";
-import { NamedBooleanFilter } from "./BooleanFilter";
+import BooleanFilter from "./BooleanFilter";
 import { hasNoneField, useExpand } from "./utils";
 
 type BooleanFilter = {
@@ -23,16 +22,16 @@ type BooleanFilter = {
 const getFilter = (get: GetRecoilValue, path: string): BooleanFilter => {
   return {
     ...{
-      true: true,
-      false: true,
-      none: true,
+      true: false,
+      false: false,
+      none: false,
     },
     ...get(selectors.filterStage(path)),
   };
 };
 
 const meetsDefault = (filter: BooleanFilter) =>
-  filter.true === true && filter.false === true && filter.none === true;
+  filter.true === false && filter.false === false && filter.none === false;
 
 const setFilter = (
   get: GetRecoilValue,
@@ -62,7 +61,7 @@ const trueAtom = selectorFamily<boolean, string>({
 
 export const trueModalAtom = atomFamily<boolean, string>({
   key: "modalFilterBooleanFieldTrue",
-  default: true,
+  default: false,
 });
 
 const falseAtom = selectorFamily<boolean, string>({
@@ -74,7 +73,7 @@ const falseAtom = selectorFamily<boolean, string>({
 
 export const falseModalAtom = atomFamily<boolean, string>({
   key: "modalFilterBooleanFieldFalse",
-  default: true,
+  default: false,
 });
 
 const noneAtom = selectorFamily<boolean, string>({
@@ -86,7 +85,7 @@ const noneAtom = selectorFamily<boolean, string>({
 
 const noneModalAtom = atomFamily<boolean, string>({
   key: "modalFilterBooleanFieldNone",
-  default: true,
+  default: false,
 });
 
 export const fieldIsFiltered = selectorFamily<
@@ -98,7 +97,7 @@ export const fieldIsFiltered = selectorFamily<
     const [none, trueValue, falseValue] = modal
       ? [noneModalAtom, trueModalAtom, falseModalAtom]
       : [noneAtom, trueAtom, falseAtom];
-    return !get(none(path)) || !get(trueValue(path)) || !get(falseValue(path));
+    return get(none(path)) || get(trueValue(path)) || get(falseValue(path));
   },
 });
 
@@ -107,7 +106,7 @@ const BooleanFieldFilter = ({ expanded, entry }) => {
 
   return (
     <animated.div style={props}>
-      <NamedBooleanFilter
+      <BooleanFilter
         name={"Boolean"}
         color={entry.color}
         hasNoneAtom={hasNoneField(entry.path)}

@@ -4,10 +4,10 @@ import { Checkbox } from "@material-ui/core";
 import numeral from "numeral";
 import styled from "styled-components";
 
-import { HoverItemDiv, useHighlightHover } from "./utils";
+import { ItemAction, useHighlightHover } from "./utils";
 import { useKeydownHandler, useTheme } from "../../utils/hooks";
 
-const CheckboxDiv = animated(styled(HoverItemDiv)`
+const CheckboxDiv = animated(styled(ItemAction)`
   display: flex;
   justify-content: space-between;
   flex-direction: row;
@@ -69,6 +69,7 @@ const Check = ({
       }
     >
       <Checkbox
+        disableRipple={true}
         ref={ref}
         indeterminate={checkmark === null}
         disabled={disabled}

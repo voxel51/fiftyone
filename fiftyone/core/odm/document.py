@@ -451,8 +451,10 @@ class Document(BaseDocument, mongoengine.Document):
                 updates, removals = self._delta()
 
                 update_doc = {}
+
                 if updates:
                     update_doc["$set"] = updates
+
                 if removals:
                     update_doc["$unset"] = removals
 
@@ -470,6 +472,7 @@ class Document(BaseDocument, mongoengine.Document):
         except pymongo.errors.DuplicateKeyError as err:
             message = "Tried to save duplicate unique keys (%s)"
             raise mongoengine.NotUniqueError(message % err)
+
         except pymongo.errors.OperationFailure as err:
             message = "Could not save document (%s)"
             if re.match("^E1100[01] duplicate key", str(err)):
@@ -477,6 +480,7 @@ class Document(BaseDocument, mongoengine.Document):
                 # E11001 - duplicate key on update
                 message = "Tried to save duplicate unique keys (%s)"
                 raise mongoengine.NotUniqueError(message % err)
+
             raise mongoengine.OperationError(message % err)
 
         # Make sure we store the PK on this document now that it's saved
