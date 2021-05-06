@@ -123,14 +123,16 @@ const Wrapper = ({
           }}
         />
       ))}
-      {Boolean(selectedSet.size) && count > 3 && (
+      {Boolean(selectedSet.size) && (
         <>
           <PopoutSectionTitle />
-          <ExcludeOption
-            excludeAtom={excludeAtom}
-            valueName={valueName}
-            color={color}
-          />
+          {count > 3 && (
+            <ExcludeOption
+              excludeAtom={excludeAtom}
+              valueName={valueName}
+              color={color}
+            />
+          )}
           <Button
             text={"Reset"}
             color={color}
@@ -209,7 +211,9 @@ const ResultsWrapper = ({
             }}
           >
             {results && subCount > results.length && (
-              <>{(subCount - results.length).toLocaleString()} more results</>
+              <>
+                {results.length} of {subCount.toLocaleString()} results
+              </>
             )}
             {results && results.length === 0 && <>No results</>}
           </ItemAction>

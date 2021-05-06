@@ -14,13 +14,23 @@ export const ResultsContainer = styled.div`
   position: absolute;
   width: auto;
   z-index: 801;
-  overflow-y: scroll;
-  scrollbar-width: none;
   padding: 0 0.5rem;
   width: calc(100% - 12px);
   left: 6px;
   margin-bottom: 1rem;
+`;
 
+const ResultDiv = styled(ItemAction)`
+  white-space: nowrap;
+  overflow: hidden;
+  display: block;
+  text-overflow: ellipsis;
+`;
+
+const ScrollResultsContainer = styled.div`
+  max-height: 330px;
+  overflow-y: scroll;
+  scrollbar-width: none;
   &::-webkit-scrollbar {
     width: 0px;
     background: transparent;
@@ -30,13 +40,6 @@ export const ResultsContainer = styled.div`
     width: 0px;
     display: none;
   }
-`;
-
-const ResultDiv = styled(ItemAction)`
-  white-space: nowrap;
-  overflow: hidden;
-  display: block;
-  text-overflow: ellipsis;
 `;
 
 interface ResultProps {
@@ -82,7 +85,7 @@ interface ResultsProps {
 const Results = React.memo(
   ({ onSelect, results, highlight, active = undefined }: ResultsProps) => {
     return (
-      <>
+      <ScrollResultsContainer>
         {results.map((result) => (
           <Result
             key={result}
@@ -93,7 +96,7 @@ const Results = React.memo(
             maxLen={34}
           />
         ))}
-      </>
+      </ScrollResultsContainer>
     );
   }
 );

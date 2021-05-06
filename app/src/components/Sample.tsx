@@ -165,7 +165,7 @@ const SampleInfo = React.memo(({ id }) => {
       scalars.includes(cur) &&
       ![null, undefined].includes(sample[cur])
     ) {
-      const value = sample[cur];
+      const value = prettify(sample[cur], false);
       acc = [
         ...acc,
         <Tag
