@@ -14,11 +14,250 @@ import eta.core.utils as etau
 import eta.core.video as etav
 
 import fiftyone as fo
+import fiftyone.core.aggregations as foa
+import fiftyone.core.dataset as fod
+import fiftyone.core.fields as fof
 import fiftyone.core.media as fom
+import fiftyone.core.odm as foo
 import fiftyone.core.utils as fou
 
 
 logger = logging.getLogger(__name__)
+
+
+def make_frames_dataset(
+    sample_collection,
+    sample_frames=True,
+    frames_patt=None,
+    size=None,
+    min_size=None,
+    max_size=None,
+    force_sample=False,
+    name=None,
+):
+    """Creates a dataset that contains one sample per video frame in the
+    collection.
+
+    When ``sample_frames`` is True (the default), this method samples each
+    video in the collection into a directory of per-frame images with the same
+    basename as the input video with frame numbers/format specified by
+    ``frames_patt``.
+
+    For example, if ``frames_patt = "%%06d.jpg"``, then videos with the
+    following paths::
+
+        /path/to/video1.mp4
+        /path/to/video2.mp4
+        ...
+
+    would be sampled as follows::
+
+        /path/to/video1/
+            000001.jpg
+            000002.jpg
+            ...
+        /path/to/video2/
+            000001.jpg
+            000002.jpg
+            ...
+
+    .. note::
+
+        The returned dataset is independent from the source collection;
+        modifying it will not affect the source collection.
+
+    Args:
+        sample_collection: a
+            :class:`fiftyone.core.collections.SampleCollection`
+        sample_frames (True): whether to sample the video frames. If False,
+            the dataset cannot currently be viewed in the App
+        frames_patt (None): a pattern specifying the filename/format to use to
+            store the sampled frames, e.g., ``"%%06d.jpg"``. The default value
+            is ``fiftyone.config.default_sequence_idx + fiftyone.config.default_image_ext``
+        size (None): an optional ``(width, height)`` for each frame. One
+            dimension can be -1, in which case the aspect ratio is preserved
+        min_size (None): an optional minimum ``(width, height)`` for each
+            frame. A dimension can be -1 if no constraint should be applied.
+            The frames are resized (aspect-preserving) if necessary to meet
+            this constraint
+        max_size (None): an optional maximum ``(width, height)`` for each
+            frame. A dimension can be -1 if no constraint should be applied.
+            The frames are resized (aspect-preserving) if necessary to meet
+            this constraint
+        force_sample (False): whether to resample videos whose sampled frames
+            already exist
+        name (None): a name for the returned dataset
+
+    Returns:
+        a :class:`fiftyone.core.dataset.Dataset`
+    """
+    if sample_collection.media_type != fom.VIDEO:
+        raise ValueError(
+            "'%s' is not a video collection" % sample_collection.name
+        )
+
+    # We need frame counts
+    sample_collection.compute_metadata()
+
+    if sample_frames:
+        if frames_patt is None:
+            frames_patt = (
+                fo.config.default_sequence_idx + fo.config.default_image_ext
+            )
+
+        images_patts, frame_counts, ids_to_sample = _parse_frames_collection(
+            sample_collection, frames_patt
+        )
+
+    #
+    # Create dataset with proper schema
+    #
+
+    dataset = fod.Dataset(name=name)
+    dataset.add_sample_field("sample_id", fof.StringField)
+    dataset.add_sample_field("frame_id", fof.StringField)
+
+    schema = sample_collection.get_field_schema()
+    dataset._sample_doc_cls.merge_field_schema(schema)
+
+    frame_schema = sample_collection.get_frame_field_schema()
+    dataset._sample_doc_cls.merge_field_schema(frame_schema)
+
+    #
+    # Convert videos to per-frame images, if requested and necessary
+    #
+
+    if sample_frames and ids_to_sample:
+        logger.info("Sampling video frames...")
+        sample_videos(
+            sample_collection.select(ids_to_sample),
+            frames_patt=frames_patt,
+            size=size,
+            min_size=min_size,
+            max_size=max_size,
+            force_sample=force_sample,
+        )
+
+    #
+    # Populate samples
+    #
+
+    # This is necessary as some frames may not have `Frame` docs
+    _initialize_frames(dataset, sample_collection, sample_frames)
+
+    _merge_frame_labels(dataset, sample_collection)
+
+    _finalize_frames(dataset)
+
+    if sample_frames:
+        _finalize_filepaths(dataset, images_patts, frame_counts)
+
+    return dataset
+
+
+def _parse_frames_collection(sample_collection, frames_patt):
+    sample_ids, video_paths, frame_counts = sample_collection.aggregate(
+        [
+            foa.Values("id"),
+            foa.Values("filepath"),
+            foa.Values("metadata.total_frame_count"),
+        ]
+    )
+
+    images_patts = []
+    ids_to_sample = []
+    for sample_id, video_path in zip(sample_ids, video_paths):
+        images_patt, found = _prep_for_sampling(video_path, frames_patt)
+        images_patts.append(images_patt)
+        if not found:
+            ids_to_sample.append(sample_id)
+
+    return images_patts, frame_counts, ids_to_sample
+
+
+def _initialize_frames(dataset, src_collection, sample_frames):
+    unset_fields = [
+        "_id",
+        "_rand",
+        "_media_type",
+        "metadata",
+        "frames",
+    ]
+
+    if sample_frames:
+        unset_fields.append("filepath")
+
+    pipeline = src_collection._pipeline(detach_frames=True)
+    pipeline.extend(
+        [
+            {
+                "$set": {
+                    "_sample_id": "$_id",
+                    "frame_number": {
+                        "$range": [
+                            1,
+                            {"$add": ["$metadata.total_frame_count", 1]},
+                        ]
+                    },
+                }
+            },
+            {"$unset": unset_fields},
+            {"$unwind": "$frame_number"},
+            {"$out": dataset._sample_collection_name},
+        ]
+    )
+
+    src_collection._dataset._aggregate(pipeline=pipeline, attach_frames=False)
+
+
+def _merge_frame_labels(dataset, src_collection):
+    # Must create unique indexes in order to use `$merge`
+    index_spec = [("_sample_id", 1), ("frame_number", 1)]
+    index = dataset._sample_collection.create_index(index_spec, unique=True)
+
+    pipeline = src_collection._pipeline(frames_only=True)
+    pipeline.extend(
+        [
+            {"$set": {"frame_id": {"$toString": "$_id"}}},
+            {"$unset": "_id"},
+            {
+                "$merge": {
+                    "into": dataset._sample_collection_name,
+                    "on": ["_sample_id", "frame_number"],
+                    "whenMatched": "merge",
+                    "whenNotMatched": "insert",
+                }
+            },
+        ]
+    )
+
+    src_collection._dataset._aggregate(pipeline=pipeline, attach_frames=False)
+
+    dataset._sample_collection.drop_index(index)
+
+
+def _finalize_frames(dataset):
+    dataset._sample_collection.update_many(
+        {},
+        [
+            {
+                "$set": {
+                    "sample_id": {"$toString": "$_sample_id"},
+                    "_media_type": "image",
+                    "_rand": {"$rand": {}},
+                }
+            },
+            {"$unset": "_sample_id"},
+        ],
+    )
+
+
+def _finalize_filepaths(dataset, images_patts, frame_counts):
+    filepaths = []
+    for images_patt, frame_count in zip(images_patts, frame_counts):
+        filepaths.extend(images_patt % fn for fn in range(1, frame_count + 1))
+
+    dataset.set_values("filepath", filepaths)
 
 
 def reencode_videos(
