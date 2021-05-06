@@ -42,7 +42,6 @@ foua = fou.lazy_import("fiftyone.utils.annotations")
 foud = fou.lazy_import("fiftyone.utils.data")
 foue = fou.lazy_import("fiftyone.utils.eval")
 foup = fou.lazy_import("fiftyone.utils.patches")
-fouv = fou.lazy_import("fiftyone.utils.video")
 
 
 logger = logging.getLogger(__name__)
