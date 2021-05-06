@@ -27,20 +27,21 @@ logger = logging.getLogger(__name__)
 
 def make_frames_dataset(
     sample_collection,
+    sample_frames=True,
     frames_patt=None,
     size=None,
     min_size=None,
     max_size=None,
-    sample_frames=True,
     force_sample=False,
     name=None,
 ):
     """Creates a dataset that contains one sample per video frame in the
     collection.
 
-    This method samples each video in the collection into a directory of
-    per-frame images with the same basename as the input video with frame
-    numbers/format specified by ``frames_patt``.
+    When ``sample_frames`` is True (the default), this method samples each
+    video in the collection into a directory of per-frame images with the same
+    basename as the input video with frame numbers/format specified by
+    ``frames_patt``.
 
     For example, if ``frames_patt = "%%06d.jpg"``, then videos with the
     following paths::
@@ -68,6 +69,8 @@ def make_frames_dataset(
     Args:
         sample_collection: a
             :class:`fiftyone.core.collections.SampleCollection`
+        sample_frames (True): whether to sample the video frames. If False,
+            the dataset cannot currently be viewed in the App
         frames_patt (None): a pattern specifying the filename/format to use to
             store the sampled frames, e.g., ``"%%06d.jpg"``. The default value
             is ``fiftyone.config.default_sequence_idx + fiftyone.config.default_image_ext``
@@ -81,9 +84,6 @@ def make_frames_dataset(
             frame. A dimension can be -1 if no constraint should be applied.
             The frames are resized (aspect-preserving) if necessary to meet
             this constraint
-        sample_frames (True): whether to sample the video frames. If False,
-            the ``filepath`` of the samples in the returned dataset will not
-            exist, so, e.g., the dataset cannot be view in the App
         force_sample (False): whether to resample videos whose sampled frames
             already exist
         name (None): a name for the returned dataset
@@ -96,14 +96,18 @@ def make_frames_dataset(
             "'%s' is not a video collection" % sample_collection.name
         )
 
-    if frames_patt is None:
-        frames_patt = (
-            fo.config.default_sequence_idx + fo.config.default_image_ext
-        )
+    # We need frame counts
+    sample_collection.compute_metadata()
 
-    images_patts, frame_counts, ids_to_sample = _parse_frames_collection(
-        sample_collection, frames_patt
-    )
+    if sample_frames:
+        if frames_patt is None:
+            frames_patt = (
+                fo.config.default_sequence_idx + fo.config.default_image_ext
+            )
+
+        images_patts, frame_counts, ids_to_sample = _parse_frames_collection(
+            sample_collection, frames_patt
+        )
 
     #
     # Create dataset with proper schema
@@ -120,7 +124,7 @@ def make_frames_dataset(
     dataset._sample_doc_cls.merge_field_schema(frame_schema)
 
     #
-    # Convert videos to per-frame images, if necessary/requested
+    # Convert videos to per-frame images, if requested and necessary
     #
 
     if sample_frames and ids_to_sample:
@@ -139,18 +143,19 @@ def make_frames_dataset(
     #
 
     # This is necessary as some frames may not have `Frame` docs
-    _initialize_frames(dataset, sample_collection)
+    _initialize_frames(dataset, sample_collection, sample_frames)
 
     _merge_frame_labels(dataset, sample_collection)
-    _finalize_frames(dataset, images_patts, frame_counts)
+
+    _finalize_frames(dataset)
+
+    if sample_frames:
+        _finalize_filepaths(dataset, images_patts, frame_counts)
 
     return dataset
 
 
 def _parse_frames_collection(sample_collection, frames_patt):
-    # We need frame counts
-    sample_collection.compute_metadata()
-
     sample_ids, video_paths, frame_counts = sample_collection.aggregate(
         [
             foa.Values("id"),
@@ -170,7 +175,18 @@ def _parse_frames_collection(sample_collection, frames_patt):
     return images_patts, frame_counts, ids_to_sample
 
 
-def _initialize_frames(dataset, src_collection):
+def _initialize_frames(dataset, src_collection, sample_frames):
+    unset_fields = [
+        "_id",
+        "_rand",
+        "_media_type",
+        "metadata",
+        "frames",
+    ]
+
+    if sample_frames:
+        unset_fields.append("filepath")
+
     pipeline = src_collection._pipeline(detach_frames=True)
     pipeline.extend(
         [
@@ -185,16 +201,7 @@ def _initialize_frames(dataset, src_collection):
                     },
                 }
             },
-            {
-                "$unset": [
-                    "_id",
-                    "_rand",
-                    "_media_type",
-                    "filepath",
-                    "metadata",
-                    "frames",
-                ]
-            },
+            {"$unset": unset_fields},
             {"$unwind": "$frame_number"},
             {"$out": dataset._sample_collection_name},
         ]
@@ -205,7 +212,7 @@ def _initialize_frames(dataset, src_collection):
 
 def _merge_frame_labels(dataset, src_collection):
     # Must create unique indexes in order to use `$merge`
-    index_spec = [("_sample_id", foo.ASC), ("frame_number", foo.ASC)]
+    index_spec = [("_sample_id", 1), ("frame_number", 1)]
     index = dataset._sample_collection.create_index(index_spec, unique=True)
 
     pipeline = src_collection._pipeline(frames_only=True)
@@ -229,7 +236,7 @@ def _merge_frame_labels(dataset, src_collection):
     dataset._sample_collection.drop_index(index)
 
 
-def _finalize_frames(dataset, images_patts, frame_counts):
+def _finalize_frames(dataset):
     dataset._sample_collection.update_many(
         {},
         [
@@ -244,6 +251,8 @@ def _finalize_frames(dataset, images_patts, frame_counts):
         ],
     )
 
+
+def _finalize_filepaths(dataset, images_patts, frame_counts):
     filepaths = []
     for images_patt, frame_count in zip(images_patts, frame_counts):
         filepaths.extend(images_patt % fn for fn in range(1, frame_count + 1))

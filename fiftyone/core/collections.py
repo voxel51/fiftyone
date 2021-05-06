@@ -1578,20 +1578,21 @@ class SampleCollection(object):
 
     def to_frames(
         self,
+        sample_frames=True,
         frames_patt=None,
         size=None,
         min_size=None,
         max_size=None,
-        sample_frames=True,
         force_sample=False,
         name=None,
     ):
         """Creates a dataset that contains one sample per video frame in the
         collection.
 
-        This method samples each video in the collection into a directory of
-        per-frame images with the same basename as the input video with frame
-        numbers/format specified by ``frames_patt``.
+        When ``sample_frames`` is True (the default), this method samples each
+        video in the collection into a directory of per-frame images with the
+        same basename as the input video with frame numbers/format specified by
+        ``frames_patt``.
 
         For example, if ``frames_patt = "%%06d.jpg"``, then videos with the
         following paths::
@@ -1619,6 +1620,8 @@ class SampleCollection(object):
         Args:
             sample_collection: a
                 :class:`fiftyone.core.collections.SampleCollection`
+            sample_frames (True): whether to sample the video frames. If False,
+                the dataset cannot currently be viewed in the App
             frames_patt (None): a pattern specifying the filename/format to use
                 to store the sampled frames, e.g., ``"%%06d.jpg"``. The default
                 value is
@@ -1634,9 +1637,6 @@ class SampleCollection(object):
                 frame. A dimension can be -1 if no constraint should be
                 applied. The frames are resized (aspect-preserving) if
                 necessary to meet this constraint
-            sample_frames (True): whether to sample the video frames. If False,
-                the ``filepath`` of the samples in the returned dataset will
-                not exist, so, e.g., the dataset cannot be view in the App
             force_sample (False): whether to resample videos whose sampled
                 frames already exist
             name (None): a name for the returned dataset
@@ -1646,11 +1646,11 @@ class SampleCollection(object):
         """
         return fouv.make_frames_dataset(
             self,
+            sample_frames=sample_frames,
             frames_patt=frames_patt,
             size=size,
             min_size=min_size,
             max_size=max_size,
-            sample_frames=sample_frames,
             force_sample=force_sample,
             name=name,
         )
