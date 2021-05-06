@@ -44,19 +44,25 @@ def _async_connect():
         )
 
 
-def aggregate(collection, pipeline):
+def aggregate(collection, pipeline, batch_size=None):
     """Executes an aggregation on a collection.
 
     Args:
         collection: a `pymongo.collection.Collection` or
             `motor.motor_tornado.MotorCollection`
         pipeline: a MongoDB aggregation pipeline
+        batch_size (None): an optional batch size
 
     Returns:
         a `pymongo.command_cursor.CommandCursor` or
         `motor.motor_tornado.MotorCommandCursor`
     """
-    return collection.aggregate(pipeline, allowDiskUse=True)
+    cursor = collection.aggregate(pipeline, allowDiskUse=True)
+
+    if batch_size:
+        cursor = cursor.batch_size(batch_size)
+
+    return cursor
 
 
 def set_default_port(port):

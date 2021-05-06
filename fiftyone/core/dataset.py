@@ -1240,13 +1240,15 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             self._frame_doc_cls._delete_embedded_fields(embedded_fields)
             fofr.Frame._reload_docs(self._frame_collection_name)
 
-    def iter_samples(self):
+    def iter_samples(self, batch_size=None):
         """Returns an iterator over the samples in the dataset.
+
+        batch_size (None): an optional batch size
 
         Returns:
             an iterator over :class:`fiftyone.core.sample.Sample` instances
         """
-        for d in self._aggregate(detach_frames=True):
+        for d in self._aggregate(detach_frames=True, batch_size=batch_size):
             doc = self._sample_dict_to_doc(d)
             sample = fos.Sample.from_doc(doc, dataset=self)
 
@@ -3170,6 +3172,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         attach_frames=False,
         detach_frames=False,
         frames_only=False,
+        batch_size=None,
     ):
         _pipeline = self._pipeline(
             pipeline=pipeline,
@@ -3178,7 +3181,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             frames_only=frames_only,
         )
 
-        return foo.aggregate(self._sample_collection, _pipeline)
+        return foo.aggregate(
+            self._sample_collection, _pipeline, batch_size=batch_size
+        )
 
     @property
     def _sample_collection_name(self):

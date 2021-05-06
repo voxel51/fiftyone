@@ -242,8 +242,10 @@ class DatasetView(foc.SampleCollection):
         """
         return copy(self)
 
-    def iter_samples(self):
+    def iter_samples(self, batch_size=None):
         """Returns an iterator over the samples in the view.
+
+        batch_size (None): an optional batch size
 
         Returns:
             an iterator over :class:`fiftyone.core.sample.SampleView` instances
@@ -251,7 +253,7 @@ class DatasetView(foc.SampleCollection):
         selected_fields, excluded_fields = self._get_selected_excluded_fields()
         filtered_fields = self._get_filtered_fields()
 
-        for d in self._aggregate(detach_frames=True):
+        for d in self._aggregate(detach_frames=True, batch_size=batch_size):
             try:
                 doc = self._dataset._sample_dict_to_doc(d)
                 sample = fos.SampleView(
@@ -708,6 +710,7 @@ class DatasetView(foc.SampleCollection):
         attach_frames=False,
         detach_frames=False,
         frames_only=False,
+        batch_size=None,
     ):
         _pipeline = self._pipeline(
             pipeline=pipeline,
@@ -715,7 +718,9 @@ class DatasetView(foc.SampleCollection):
             detach_frames=detach_frames,
             frames_only=frames_only,
         )
-        return foo.aggregate(self._dataset._sample_collection, _pipeline)
+        return foo.aggregate(
+            self._dataset._sample_collection, _pipeline, batch_size=batch_size
+        )
 
     @property
     def _doc(self):
