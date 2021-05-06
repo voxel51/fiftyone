@@ -1133,7 +1133,9 @@ class InteractiveScatter(PlotlyInteractivePlot):
             which points in this plot correspond. Only applicable when linked
             to labels
         init_view (None): a :class:`fiftyone.core.collections.SampleCollection`
-            to load when no points are selected in the plot
+            defining an initial view from which to derive selection views when
+            points are selected in the plot. This view will also be shown when
+            the plot is in its default state (no selection)
     """
 
     def __init__(
@@ -1398,7 +1400,9 @@ class InteractiveHeatmap(PlotlyInteractivePlot):
             which points in this plot correspond. Only applicable when linked
             to labels
         init_view (None): a :class:`fiftyone.core.collections.SampleCollection`
-            to load when no points are selected in the plot
+            defining an initial view from which to derive selection views when
+            cells are selected in the plot. This view will also be shown when
+            the plot is in its default state (no selection)
         xlabels (None): a ``num_rows`` array of x labels
         ylabels (None): a ``num_cols`` array of y labels
         zlim (None): a ``[zmin, zmax]`` limit to use for the colorbar

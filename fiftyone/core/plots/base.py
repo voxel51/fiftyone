@@ -597,7 +597,9 @@ class InteractivePlot(ResponsivePlot):
             which points in this plot correspond. Only applicable when linked
             to labels
         init_view (None): a :class:`fiftyone.core.collections.SampleCollection`
-            to load when no points are selected in the plot
+            defining an initial view from which to derive selection views when
+            points are selected in the plot. This view will also be shown when
+            the plot is in its default state (no selection)
     """
 
     def __init__(self, link_type="samples", label_fields=None, init_view=None):
