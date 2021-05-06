@@ -25,9 +25,12 @@ const ResultDiv = styled(ItemAction)`
   overflow: hidden;
   display: block;
   text-overflow: ellipsis;
+  margin: 0;
 `;
 
 const ScrollResultsContainer = styled.div`
+  margin-left: -0.5rem;
+  margin-right: -0.5rem;
   max-height: 330px;
   overflow-y: scroll;
   scrollbar-width: none;
