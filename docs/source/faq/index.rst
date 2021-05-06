@@ -80,7 +80,33 @@ a local port (we'll also use `XXXX` here, for consistency):
 Now open ``localhost:XXXX`` in your browser and you should find your notebook!
 
 If your notebook launches the :ref:`FiftyOne App <fiftyone-app>`, you will also
-need to configure a :ref:`remote session <remote-data>`.
+need to configure a :ref:`remote session <remote-data>` as follows.
+
+**On your local machine:**
+
+Forward the port used by the :ref:`FiftyOne App <fiftyone-app>`. By default it
+is `5151` but can be :ref:`set any value <remote-data>` not currently in use.
+
+.. code:: shell
+
+    # On local machine
+    ssh -N -L 5151:localhost:YYYY [<username>@]<hostname>
+
+**In the jupyter notebook***
+
+Launch the :ref:`FiftyOne App <fiftyone-app>` in your notebook and either
+specify a port `YYYY` or let it default to `5151`. Note, you can also 
+:ref:`open the App in a dedicated tab <opening-the-app-in-a-dedicated-tab>`.
+
+.. code:: python
+
+    # Launch the App in the notebook cell 
+    session = fo.launch_app(dataset, port=YYYY)
+
+    # Launch the App in a dedicated browser tab
+    session = fo.launch_app(dataset, port=YYYY, auto=False)
+
+
 
 .. _faq-remote-server-data:
 
