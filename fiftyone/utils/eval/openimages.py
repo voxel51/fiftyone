@@ -582,6 +582,9 @@ def _compute_matches(
 ):
     matches = []
 
+    # For efficient rounding
+    p_round = 10 ** 10
+
     # Match preds to GT, highest confidence first
     for cat, objects in cats.items():
         gt_map = {gt.id: gt for gt in objects["gts"]}
@@ -593,6 +596,7 @@ def _compute_matches(
                 best_match_iou = iou_thresh
                 highest_already_matched_iou = iou_thresh
                 for gt_id, iou in pred_ious[pred.id]:
+                    iou = int(iou * p_round + 0.5) / p_round
                     gt = gt_map[gt_id]
                     gt_iscrowd = iscrowd(gt)
 
@@ -600,6 +604,9 @@ def _compute_matches(
                     if gt[id_key] != _NO_MATCH_ID and not gt_iscrowd:
                         if iou > highest_already_matched_iou:
                             highest_already_matched_iou = iou
+                            if iou > best_match_iou:
+                                best_match = None
+                                best_match_iou = iou_thresh
                         continue
 
                     # If matching classwise=False
