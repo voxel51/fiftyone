@@ -56,12 +56,7 @@ def list_datasets():
     Returns:
         a list of :class:`Dataset` names
     """
-    # pylint: disable=no-member
-    return sorted(
-        foo.DatasetDocument.objects.filter(
-            sample_collection_name__startswith="samples."
-        ).distinct("name")
-    )
+    return _list_datasets()
 
 
 def dataset_exists(name):
@@ -84,11 +79,13 @@ def dataset_exists(name):
 def load_dataset(name):
     """Loads the FiftyOne dataset with the given name.
 
-    Note that :class:`Dataset` instances are singletons keyed by ``name``, so
-    all calls to this function with a given dataset ``name`` in a program will
-    return the same object.
-
     To create a new dataset, use the :class:`Dataset` constructor.
+
+    .. note::
+
+        :class:`Dataset` instances are singletons keyed by their name, so all
+        calls to this method with a given dataset ``name`` in a program will
+        return the same object.
 
     Args:
         name: the name of the dataset
@@ -110,7 +107,7 @@ def get_default_dataset_name():
     """
     now = datetime.datetime.now()
     name = now.strftime("%Y.%m.%d.%H.%M.%S")
-    if name in list_datasets():
+    if name in _list_datasets(include_private=True):
         name = now.strftime("%Y.%m.%d.%H.%M.%S.%f")
 
     return name
@@ -126,7 +123,7 @@ def make_unique_dataset_name(root):
         the dataset name
     """
     name = root
-    dataset_names = list_datasets()
+    dataset_names = _list_datasets(include_private=True)
 
     if name in dataset_names:
         name += "_" + _get_random_characters(6)
@@ -153,13 +150,6 @@ def get_default_dataset_dir(name):
 def delete_dataset(name, verbose=False):
     """Deletes the FiftyOne dataset with the given name.
 
-    If reference to the dataset exists in memory, only `Dataset.name` and
-    `Dataset.deleted` will be valid attributes. Accessing any other attributes
-    or methods will raise a :class:`DatasetError`
-
-    If reference to a sample exists in memory, the sample's dataset will be
-    "unset" such that `sample.in_dataset == False`
-
     Args:
         name: the name of the dataset
         verbose (False): whether to log the name of the deleted dataset
@@ -180,7 +170,7 @@ def delete_datasets(glob_patt, verbose=False):
         glob_patt: a glob pattern of datasets to delete
         verbose (False): whether to log the names of deleted datasets
     """
-    all_datasets = list_datasets()
+    all_datasets = _list_datasets()
     for name in fnmatch.filter(all_datasets, glob_patt):
         delete_dataset(name, verbose=verbose)
 
@@ -191,7 +181,7 @@ def delete_non_persistent_datasets(verbose=False):
     Args:
         verbose (False): whether to log the names of deleted datasets
     """
-    for name in list_datasets():
+    for name in _list_datasets(include_private=True):
         dataset = Dataset(name, _create=False, _migrate=False)
         if not dataset.persistent and not dataset.deleted:
             dataset.delete()
@@ -3389,6 +3379,21 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 def _get_random_characters(n):
     return "".join(
         random.choice(string.ascii_lowercase + string.digits) for _ in range(n)
+    )
+
+
+def _list_datasets(include_private=False):
+    if include_private:
+        # pylint: disable=no-member
+        return sorted(foo.DatasetDocument.objects.distinct("name"))
+
+    # Datasets whose sample collections don't start with `samples.` are private
+    # e.g., patches datasets
+    # pylint: disable=no-member
+    return sorted(
+        foo.DatasetDocument.objects.filter(
+            sample_collection_name__startswith="samples."
+        ).distinct("name")
     )
 
 
