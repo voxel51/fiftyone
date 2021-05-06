@@ -14,7 +14,6 @@ import eta.core.utils as etau
 import fiftyone.core.expressions as foe
 from fiftyone.core.expressions import ViewField as F
 import fiftyone.core.media as fom
-import fiftyone.core.utils as fou
 
 
 class Aggregation(object):
@@ -60,6 +59,13 @@ class Aggregation(object):
         """The expression being computed, if any."""
         return self._expr
 
+    @property
+    def _has_big_result(self):
+        """Whether the aggregation's result is returned across multiple
+        documents.
+        """
+        return False
+
     def to_mongo(self, sample_collection):
         """Returns the MongoDB aggregation pipeline for this aggregation.
 
@@ -91,6 +97,27 @@ class Aggregation(object):
             the aggregation result
         """
         raise NotImplementedError("subclasses must implement default_result()")
+
+    def _needs_frames(self, sample_collection):
+        """Whether the aggregation requires frame labels of video samples to be
+        attached.
+
+        Args:
+            sample_collection: the
+                :class:`fiftyone.core.collections.SampleCollection` to which
+                the aggregation is being applied
+
+        Returns:
+            True/False
+        """
+        if self._field_name is not None:
+            return sample_collection._is_frame_field(self._field_name)
+
+        if self._expr is not None:
+            field_name, _ = _extract_prefix_from_expr(self._expr)
+            return sample_collection._is_frame_field(field_name)
+
+        return False
 
     def _parse_field_and_expr(
         self,
@@ -553,13 +580,20 @@ class Distinct(Aggregation):
             aggregating
     """
 
+    def __init__(self, field_or_expr, expr=None, _first=None):
+        super().__init__(field_or_expr, expr=expr)
+        self._first = _first
+
     def default_result(self):
         """Returns the default result for this aggregation.
 
         Returns:
             ``[]``
         """
-        return []
+        if self._first is None:
+            return []
+
+        return 0, []
 
     def parse_result(self, d):
         """Parses the output of :meth:`to_mongo`.
@@ -570,7 +604,10 @@ class Distinct(Aggregation):
         Returns:
             a sorted list of distinct values
         """
-        return sorted(d["values"])
+        if self._first is None:
+            return d["values"]
+
+        return d["count"], d["values"]
 
     def to_mongo(self, sample_collection):
         path, pipeline, _ = self._parse_field_and_expr(sample_collection)
@@ -578,7 +615,20 @@ class Distinct(Aggregation):
         pipeline += [
             {"$match": {"$expr": {"$gt": ["$" + path, None]}}},
             {"$group": {"_id": None, "values": {"$addToSet": "$" + path}}},
+            {"$unwind": "$values"},
+            {"$sort": {"values": 1}},
+            {"$group": {"_id": None, "values": {"$push": "$values"}}},
         ]
+
+        if self._first is not None:
+            pipeline += [
+                {
+                    "$set": {
+                        "count": {"$size": "$values"},
+                        "values": {"$slice": ["$values", self._first]},
+                    }
+                },
+            ]
 
         return pipeline
 
@@ -1239,6 +1289,7 @@ class Values(Aggregation):
         missing_value=None,
         unwind=False,
         _allow_missing=False,
+        _big_result=True,
         _raw=False,
     ):
         field_or_expr, found_id_field = _handle_id_fields(field_or_expr)
@@ -1247,10 +1298,15 @@ class Values(Aggregation):
         self._missing_value = missing_value
         self._unwind = unwind
         self._allow_missing = _allow_missing
+        self._big_result = _big_result
         self._raw = _raw
         self._found_id_field = found_id_field
         self._field_type = None
         self._num_list_fields = None
+
+    @property
+    def _has_big_result(self):
+        return self._big_result
 
     def default_result(self):
         """Returns the default result for this aggregation.
@@ -1269,7 +1325,10 @@ class Values(Aggregation):
         Returns:
             the list of field values
         """
-        values = d["values"]
+        if self._big_result:
+            values = [di["value"] for di in d]
+        else:
+            values = d["values"]
 
         if self._raw:
             return values
@@ -1300,8 +1359,10 @@ class Values(Aggregation):
 
         self._num_list_fields = len(list_fields)
 
-        pipeline += _make_extract_values_pipeline(
-            path, list_fields, self._missing_value
+        pipeline.extend(
+            _make_extract_values_pipeline(
+                path, list_fields, self._missing_value, self._big_result
+            )
         )
 
         return pipeline
@@ -1332,7 +1393,9 @@ def _transform_values(values, fcn, level=1):
     return [_transform_values(v, fcn, level=level - 1) for v in values]
 
 
-def _make_extract_values_pipeline(path, list_fields, missing_value):
+def _make_extract_values_pipeline(
+    path, list_fields, missing_value, big_result
+):
     if not list_fields:
         root = path
     else:
@@ -1351,10 +1414,16 @@ def _make_extract_values_pipeline(path, list_fields, missing_value):
             inner_list_field = list_field2[len(list_field1) + 1 :]
             expr = _extract_list_values(inner_list_field, expr)
 
-    return [
-        {"$set": {root: expr.to_mongo(prefix="$" + root)}},
-        {"$group": {"_id": None, "values": {"$push": "$" + root}}},
-    ]
+    pipeline = [{"$set": {root: expr.to_mongo(prefix="$" + root)}}]
+
+    if big_result:
+        pipeline.append({"$project": {"value": "$" + root}})
+    else:
+        pipeline.append(
+            {"$group": {"_id": None, "values": {"$push": "$" + root}}}
+        )
+
+    return pipeline
 
 
 def _extract_list_values(subfield, expr):

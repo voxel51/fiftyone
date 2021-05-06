@@ -17,7 +17,6 @@ export const gridZoom = atom<number | null>({
 const gridRowAspectRatio = selector<number>({
   key: "gridRowAspectRatio",
   get: ({ get }) => {
-    console.log(get(gridZoom));
     return 11 - get(gridZoom);
   },
 });

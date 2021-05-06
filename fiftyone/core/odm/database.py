@@ -26,9 +26,6 @@ _default_port = 27017
 
 logger = logging.getLogger(__name__)
 
-ASC = pymongo.ASCENDING
-DESC = pymongo.DESCENDING
-
 _PERMANENT_COLLS = {"datasets", "fs.files", "fs.chunks"}
 
 

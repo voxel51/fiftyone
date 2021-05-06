@@ -316,7 +316,7 @@ class Session(foc.HasClient):
 
         if view is not None:
             state.view = view
-            state.dataset = view._dataset
+            state.dataset = view._root_dataset
         elif dataset is not None:
             state.dataset = dataset
 
@@ -487,9 +487,6 @@ class Session(foc.HasClient):
     def dataset(self):
         """The :class:`fiftyone.core.dataset.Dataset` connected to the session.
         """
-        if self.state.view is not None:
-            return self.state.view._dataset
-
         return self.state.dataset
 
     @dataset.setter
@@ -510,12 +507,11 @@ class Session(foc.HasClient):
         self.state.selected_labels = []
         self.state.filters = {}
 
-    @_update_state()
     def clear_dataset(self):
         """Clears the current :class:`fiftyone.core.dataset.Dataset` from the
         session, if any.
         """
-        self.state.dataset = None
+        self.dataset = None
 
     @property
     def view(self):
@@ -536,19 +532,18 @@ class Session(foc.HasClient):
         self.state.view = view
 
         if view is not None:
-            self.state.dataset = self.state.view._dataset
+            self.state.dataset = self.state.view._root_dataset
             self.state.dataset._reload()
 
         self.state.selected = []
         self.state.selected_labels = []
         self.state.filters = {}
 
-    @_update_state()
     def clear_view(self):
         """Clears the current :class:`fiftyone.core.view.DatasetView` from the
         session, if any.
         """
-        self.state.view = None
+        self.view = None
 
     @property
     def has_plots(self):
@@ -715,24 +710,16 @@ class Session(foc.HasClient):
             a string summary
         """
         if self.dataset:
-            dataset_name = self.dataset.name
-            media_type = self.dataset.media_type
+            etype = self._collection._elements_str
+            elements = [
+                ("Dataset:", self.dataset.name),
+                ("Media type:", self.dataset.media_type),
+                ("Num %s:" % etype, len(self._collection)),
+                ("Selected %s:" % etype, len(self.selected)),
+                ("Selected labels:", len(self.selected_labels)),
+            ]
         else:
-            dataset_name = None
-            media_type = "N/A"
-
-        elements = ["Dataset:          %s" % dataset_name]
-
-        if self.dataset:
-            num_samples = len(self.view) if self.view else len(self.dataset)
-            elements.extend(
-                [
-                    "Media type:       %s" % media_type,
-                    "Num samples:      %d" % num_samples,
-                    "Selected samples: %d" % len(self.selected),
-                    "Selected labels:  %d" % len(self.selected_labels),
-                ]
-            )
+            elements = [("Dataset:", "-")]
 
         if self._remote:
             type_ = "remote"
@@ -744,19 +731,20 @@ class Session(foc.HasClient):
             type_ = None
 
         if type_ is None:
-            elements.append("Session URL:      %s" % self.url)
+            elements.append(("Session URL:", self.url))
         else:
-            elements.append("Session type:     %s" % type_)
+            elements.append(("Session type:", type_))
+
+        elements = fou.justify_headings(elements)
+        lines = ["%s %s" % tuple(e) for e in elements]
 
         if self.view:
-            elements.extend(
-                ["View stages:", self.view._make_view_stages_str()]
-            )
+            lines.extend(["View stages:", self.view._make_view_stages_str()])
 
         if self.plots:
-            elements.append(self.plots.summary())
+            lines.append(self.plots.summary())
 
-        return "\n".join(elements)
+        return "\n".join(lines)
 
     def open(self):
         """Opens the App, if necessary.
@@ -942,10 +930,8 @@ class Session(foc.HasClient):
         if self.dataset is None:
             return
 
-        if self.dataset.media_type == fom.VIDEO:
-            fof.Frame._reload_docs(self.dataset._frame_collection_name)
-
-        fosa.Sample._reload_docs(self.dataset._sample_collection_name)
+        self.dataset._reload()
+        self.dataset._reload_docs()
 
     def _show(self, height=None):
         if self._context == focx._NONE or self._desktop:

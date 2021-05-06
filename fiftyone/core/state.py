@@ -8,6 +8,7 @@ Defines the shared state between the FiftyOne App and backend.
 import logging
 
 import eta.core.serial as etas
+import eta.core.utils as etau
 
 import fiftyone as fo
 import fiftyone.core.aggregations as foa
@@ -73,12 +74,29 @@ class StateDescription(etas.Serializable):
     def serialize(self, reflective=False):
         with fou.disable_progress_bars():
             d = super().serialize(reflective=reflective)
-            d["dataset"] = (
-                self.dataset._serialize() if self.dataset is not None else None
-            )
-            d["view"] = (
-                self.view._serialize() if self.view is not None else None
-            )
+
+            _dataset = None
+            _view = None
+            _view_cls = None
+
+            if self.dataset is not None:
+                _dataset = self.dataset._serialize()
+
+                if self.view is not None:
+                    _view = self.view._serialize()
+                    _view_cls = etau.get_class_name(self.view)
+
+                    # If the view uses a temporary dataset, we must use its
+                    # field schema
+                    if self.view._dataset != self.dataset:
+                        _tmp = self.view._dataset._serialize()
+                        _dataset["sample_fields"] = _tmp["sample_fields"]
+                        _dataset["frame_fields"] = _tmp["frame_fields"]
+
+            d["dataset"] = _dataset
+            d["view"] = _view
+            d["view_cls"] = _view_cls
+
             return d
 
     def attributes(self):
@@ -171,7 +189,7 @@ class DatasetStatistics(object):
 
         Args:
             collection: a :class:`fiftyone.core.collections.SampleCollection`
-        
+
         Returns:
             a ``list`` of (path, field) ``tuple``s
         """
@@ -189,7 +207,10 @@ class DatasetStatistics(object):
         result = []
         for prefix, schema in schemas:
             for field_name, field in schema.items():
-                if field_name in default_fields or (
+
+                if (
+                    field_name in default_fields and field_name != "filepath"
+                ) or (
                     prefix == collection._FRAMES_PREFIX
                     and field_name == "frame_number"
                 ):
@@ -252,7 +273,7 @@ class DatasetStatistics(object):
                 tags_path = "%s.tags" % path
                 aggregations.extend(
                     [
-                        foa.Distinct(label_path),
+                        foa.Distinct(label_path, _first=200),
                         foa.Bounds(confidence_path),
                         foa.CountValues(tags_path),
                     ]
@@ -272,7 +293,7 @@ class DatasetStatistics(object):
                 if _meets_type(field, (fof.IntField, fof.FloatField)):
                     aggregations.append(foa.Bounds(field_name))
                 elif _meets_type(field, fof.StringField):
-                    aggregations.append(foa.Distinct(field_name))
+                    aggregations.append(foa.Distinct(field_name, _first=15))
 
         return aggregations, exists_aggregations
 
