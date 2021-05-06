@@ -60,12 +60,14 @@ const SliderContainer = styled.div`
   margin: 0.25rem 0;
 `;
 
+const SAMPLE_ITEMS = [null, "fiftyone.core.view.DatasetView"];
+
 const ImageContainerHeader = ({ showSidebar, onShowSidebar }: Props) => {
   const totalCount = useRecoilValue(selectors.totalCount);
   const filteredCount = useRecoilValue(selectors.filteredCount);
   const resetGridZoom = useResetRecoilState(gridZoom);
+  const isRootView = useRecoilValue(selectors.isRootView);
   const theme = useTheme();
-
   let countStr = null;
   if (
     typeof filteredCount === "number" &&
@@ -90,7 +92,11 @@ const ImageContainerHeader = ({ showSidebar, onShowSidebar }: Props) => {
           {countStr !== null ? (
             <CountDiv>
               <div>
-                Viewing <strong>{countStr} samples</strong>
+                Viewing{" "}
+                <strong>
+                  {countStr} {isRootView ? "sample" : "patche"}
+                  {totalCount === 1 ? "" : "s"}
+                </strong>
               </div>
             </CountDiv>
           ) : null}
@@ -103,6 +109,7 @@ const ImageContainerHeader = ({ showSidebar, onShowSidebar }: Props) => {
                 showBounds={false}
                 persistValue={false}
                 int={true}
+                style={{ padding: 0 }}
               />
             </div>
             <div

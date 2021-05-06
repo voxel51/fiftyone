@@ -9,11 +9,16 @@ import {
   useRecoilValue,
 } from "recoil";
 import styled from "styled-components";
-import { animated, useSpring } from "react-spring";
+import { useSpring } from "react-spring";
 
 import Checker, { CheckState } from "./Checker";
 import Popout from "./Popout";
-import { tagStats, numLabelsInSelectedSamples } from "./utils";
+import {
+  tagStats,
+  numLabelsInSelectedSamples,
+  SwitchDiv,
+  SwitcherDiv,
+} from "./utils";
 import { Button } from "../FieldsSidebar";
 import * as labelAtoms from "../Filters/LabelFieldFilters.state";
 import * as fieldAtoms from "../Filters/utils";
@@ -104,6 +109,7 @@ const Section = ({
   labels,
 }: SectionProps) => {
   const items = useRecoilValue(itemsAtom);
+  const itemNames = useRecoilValue(selectors.itemNames);
   const [tagging, setTagging] = useRecoilState(taggingAtom);
   const [value, setValue] = useState("");
   const [count, placeholder] = countAndPlaceholder();
@@ -169,8 +175,14 @@ const Section = ({
           title={
             hasCreate
               ? `Enter to add "${value}" tag to ${count} ${
-                  labels ? "label" : "sample"
-                }${count > 1 ? "s" : ""}`
+                  labels && count > 1
+                    ? "labels"
+                    : labels
+                    ? "label"
+                    : count > 1
+                    ? itemNames.plural
+                    : itemNames.singular
+                }`
               : null
           }
           onKeyPress={(e) => {
@@ -213,7 +225,15 @@ const Section = ({
             <Button
               text={`Add "${value}" tag to ${
                 count > 1 ? numeral(count).format("0,0") + " " : ""
-              }${labels ? "label" : "sample"}${count > 1 ? "s" : ""}`}
+              }${
+                labels && count > 1
+                  ? "labels"
+                  : labels
+                  ? "label"
+                  : count > 1
+                  ? itemNames.plural
+                  : itemNames.singular
+              }`}
               onClick={() => {
                 setValue("");
                 setChanges({ ...changes, [value]: CheckState.ADD });
@@ -232,9 +252,9 @@ const Section = ({
               onClick={() => submitWrapper(changes)}
               style={{
                 margin: "0.25rem -0.5rem",
-                paddingLeft: "2.5rem",
                 height: "2rem",
                 borderRadius: 0,
+                textAlign: "center",
               }}
             ></Button>
           )}
@@ -244,28 +264,9 @@ const Section = ({
   );
 };
 
-const SwitcherDiv = styled.div`
-  border-bottom: 1px solid ${({ theme }) => theme.background};
-  display: flex;
-  margin: 0 -0.5rem;
-  padding: 0 0.5rem;
-`;
-
-const SwitchDiv = animated(styled.div`
-  flex-basis: 0;
-  flex-grow: 1;
-  font-size: 1rem;
-  padding-left: 0.4rem;
-  line-height: 2;
-  font-weight: bold;
-  border-bottom-color: ${({ theme }) => theme.brand};
-  border-bottom-style: solid;
-  border-bottom-width: 2px;
-`);
-
-const labelsPlaceholder = (selection, numLabels, numSamples) => {
+const labelsPlaceholder = (selection, numLabels, numSamples, itemNames) => {
   if (numSamples === 0) {
-    return "no samples";
+    return `no ${itemNames.plural}`;
   }
   const formatted = numeral(numLabels).format("0,0");
   if (numLabels === 0) {
@@ -295,26 +296,26 @@ const labelsModalPlaceholder = (selection, numLabels) => {
   }`;
 };
 
-const samplesPlaceholder = (selection, _, numSamples) => {
+const samplesPlaceholder = (selection, _, numSamples, itemNames) => {
   if (numSamples === 0) {
-    return "no samples";
+    return `no ${itemNames.plural}`;
   }
   if (selection) {
     numSamples = selection;
     const formatted = numeral(numSamples).format("0,0");
-    return `+ tag ${numSamples > 1 ? `${formatted} ` : ""}selected sample${
-      numSamples === 1 ? "" : "s"
+    return `+ tag ${numSamples > 1 ? `${formatted} ` : ""}selected ${
+      numSamples === 1 ? itemNames.singular : itemNames.plural
     }`;
   }
 
   const formatted = numeral(numSamples).format("0,0");
-  return `+ tag ${numSamples > 1 ? `${formatted} ` : ""}sample${
-    numSamples === 1 ? "" : "s"
+  return `+ tag ${numSamples > 1 ? `${formatted} ` : ""}${
+    numSamples === 1 ? itemNames.singular : itemNames.plural
   }`;
 };
 
-const samplePlaceholder = () => {
-  return "+ tag sample";
+const samplePlaceholder = (itemNames) => {
+  return `+ tag ${itemNames.singular}`;
 };
 
 const packageGrid = ({ targetLabels, activeLabels, changes }) =>
@@ -372,7 +373,8 @@ const Loader = () => {
 
 const usePlaceHolder = (
   modal: boolean,
-  labels: boolean
+  labels: boolean,
+  itemNames: { plural: string; singular: string }
 ): (() => [number, string]) => {
   return () => {
     const selection = useRecoilValue(
@@ -384,7 +386,7 @@ const usePlaceHolder = (
       labelCount = selection > 0 ? selection : labelCount;
       return [labelCount, labelsModalPlaceholder(selection, labelCount)];
     } else if (modal) {
-      return [1, samplePlaceholder()];
+      return [1, samplePlaceholder(itemNames)];
     } else {
       const totalSamples = useRecoilValue(selectors.totalCount);
       const filteredSamples = useRecoilValue(selectors.filteredCount);
@@ -392,11 +394,14 @@ const usePlaceHolder = (
       const selectedLabelCount = useRecoilValue(numLabelsInSelectedSamples);
       labelCount = selection ? selectedLabelCount : labelCount;
       if (labels) {
-        return [labelCount, labelsPlaceholder(selection, labelCount, count)];
+        return [
+          labelCount,
+          labelsPlaceholder(selection, labelCount, count, itemNames),
+        ];
       } else {
         return [
           selection > 0 ? selection : count,
-          samplesPlaceholder(selection, labelCount, count),
+          samplesPlaceholder(selection, labelCount, count, itemNames),
         ];
       }
     }
@@ -411,6 +416,7 @@ type TaggerProps = {
 
 const Tagger = ({ modal, bounds, close }: TaggerProps) => {
   const [labels, setLabels] = useState(modal);
+  const itemNames = useRecoilValue(selectors.itemNames);
   const theme = useTheme();
   const sampleProps = useSpring({
     borderBottomColor: labels ? theme.backgroundDark : theme.brand,
@@ -423,7 +429,7 @@ const Tagger = ({ modal, bounds, close }: TaggerProps) => {
   });
 
   const submit = useTagCallback(modal, labels);
-  const placeholder = usePlaceHolder(modal, labels);
+  const placeholder = usePlaceHolder(modal, labels, itemNames);
 
   return (
     <Popout style={{ width: "12rem" }} modal={modal} bounds={bounds}>
@@ -432,7 +438,7 @@ const Tagger = ({ modal, bounds, close }: TaggerProps) => {
           style={sampleProps}
           onClick={() => labels && setLabels(false)}
         >
-          Sample{modal ? "" : "s"}
+          {modal ? itemNames.singular : itemNames.plural}
         </SwitchDiv>
         <SwitchDiv
           style={labelProps}
@@ -454,7 +460,7 @@ const Tagger = ({ modal, bounds, close }: TaggerProps) => {
         </Suspense>
       )}
       {!labels && (
-        <Suspense fallback={<Loader />} key={"samples"}>
+        <Suspense fallback={<Loader />} key={itemNames.plural}>
           <Section
             countAndPlaceholder={placeholder}
             submit={submit}

@@ -28,7 +28,10 @@ from fiftyone.core.odm.document import MongoEngineBaseDocument
 import fiftyone.core.sample as fos
 import fiftyone.core.utils as fou
 
+fod = fou.lazy_import("fiftyone.core.dataset")
+fop = fou.lazy_import("fiftyone.core.patches")
 foug = fou.lazy_import("fiftyone.utils.geojson")
+foup = fou.lazy_import("fiftyone.utils.patches")
 
 
 class ViewStage(object):
@@ -59,6 +62,14 @@ class ViewStage(object):
 
         kwargs_str = ", ".join(kwargs_list)
         return "%s(%s)" % (self.__class__.__name__, kwargs_str)
+
+    @property
+    def has_view(self):
+        """Whether this stage's output view should be loaded via
+        :meth:`load_view` rather than appending stages to an aggregation
+        pipeline via :meth:`to_mongo`.
+        """
+        return False
 
     def get_filtered_fields(self, sample_collection, frames=False):
         """Returns a list of names of fields or embedded fields that contain
@@ -114,8 +125,31 @@ class ViewStage(object):
         """
         return None
 
+    def load_view(self, sample_collection):
+        """Loads the :class:`fiftyone.core.view.DatasetView` containing the
+        output of the stage.
+
+        Only usable if :meth:`has_view` is ``True``.
+
+        Args:
+            sample_collection: the
+                :class:`fiftyone.core.collections.SampleCollection` to which
+                the stage is being applied
+
+        Returns:
+            a :class:`fiftyone.core.view.DatasetView`
+        """
+        if not self.has_view:
+            raise ValueError(
+                "%s stages use `to_mongo()`, not `load_view()`" % type(self)
+            )
+
+        raise NotImplementedError("subclasses must implement `load_view()`")
+
     def to_mongo(self, sample_collection):
         """Returns the MongoDB aggregation pipeline for the stage.
+
+        Only usable if :meth:`has_view` is ``False``.
 
         Args:
             sample_collection: the
@@ -125,6 +159,11 @@ class ViewStage(object):
         Returns:
             a MongoDB aggregation pipeline (list of dicts)
         """
+        if not self.has_view:
+            raise ValueError(
+                "%s stages use `load_view()`, not `to_mongo()`" % type(self)
+            )
+
         raise NotImplementedError("subclasses must implement `to_mongo()`")
 
     def validate(self, sample_collection):
@@ -3686,8 +3725,8 @@ class SortBySimilarity(ViewStage):
         reverse (False): whether to sort by least similarity
         brain_key (None): the brain key of an existing
             :meth:`fiftyone.brain.compute_similarity` run on the dataset. If
-            not provided, the dataset must have exactly one similarity run,
-            which will be used
+            not specified, the dataset must have an applicable run, which will
+            be used by default
     """
 
     def __init__(
@@ -3776,8 +3815,7 @@ class SortBySimilarity(ViewStage):
 
     def validate(self, sample_collection):
         state = {
-            # @todo use `_root_dataset` when available
-            "dataset": sample_collection._dataset.name,
+            "dataset": sample_collection.dataset_name,
             "stages": sample_collection.view()._serialize(include_uuids=False),
             "query_ids": self._query_ids,
             "k": self._k,
@@ -3803,21 +3841,10 @@ class SortBySimilarity(ViewStage):
         if self._brain_key is not None:
             brain_key = self._brain_key
         else:
-            brain_keys = sample_collection._get_similarity_keys()
-            if not brain_keys:
-                raise ValueError(
-                    "Dataset '%s' has no similarity results. You must run "
-                    "`fiftyone.brain.compute_similarity()` in order to sort "
-                    "by similarity" % sample_collection._dataset.name
-                )
-
-            brain_key = brain_keys[0]
-
-            if len(brain_keys) > 1:
-                msg = "Multiple similarity runs found; using '%s'" % brain_key
-                warnings.warn(msg)
+            brain_key = _get_default_similarity_run(sample_collection)
 
         results = sample_collection.load_brain_results(brain_key)
+
         return results.sort_by_similarity(
             self._query_ids,
             k=self._k,
@@ -3895,7 +3922,7 @@ class Take(ViewStage):
         if self._size <= 0:
             return [{"$match": {"_id": None}}]
 
-        # @todo avoid creating new field here?
+        # @todo can we avoid creating a new field here?
         return [
             {"$set": {"_rand_take": {"$mod": [self._randint, "$_rand"]}}},
             {"$sort": {"_rand_take": 1}},
@@ -3924,8 +3951,193 @@ class Take(ViewStage):
         ]
 
 
+class ToPatches(ViewStage):
+    """Creates a view that contains one sample per object patch in the
+    specified field of a collection.
+
+    Fields other than ``field`` and the default sample fields will not be
+    included in the returned view. A ``sample_id`` field will be added that
+    records the sample ID from which each patch was taken.
+
+    Examples::
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("quickstart")
+
+        session = fo.launch_app(dataset)
+
+        #
+        # Create a view containing the ground truth patches
+        #
+
+        stage = fo.ToPatches("ground_truth")
+        view = dataset.add_stage(stage)
+        print(view)
+
+        session.view = view
+
+    Args:
+        field: the patches field, which must be of type
+            :class:`fiftyone.core.labels.Detections` or
+            :class:`fiftyone.core.labels.Polylines`
+    """
+
+    def __init__(self, field, _state=None):
+        self._field = field
+        self._state = _state
+
+    @property
+    def has_view(self):
+        return True
+
+    @property
+    def field(self):
+        """The patches field."""
+        return self._field
+
+    def load_view(self, sample_collection):
+        state = {
+            "dataset": sample_collection.dataset_name,
+            "stages": sample_collection.view()._serialize(include_uuids=False),
+            "field": self._field,
+        }
+
+        last_state = deepcopy(self._state)
+        if last_state is not None:
+            name = last_state.pop("name", None)
+        else:
+            name = None
+
+        if state != last_state or not fod.dataset_exists(name):
+            patches_dataset = foup.make_patches_dataset(
+                sample_collection, self._field
+            )
+
+            state["name"] = patches_dataset.name
+            self._state = state
+        else:
+            patches_dataset = fod.load_dataset(name)
+
+        return fop.PatchesView(sample_collection, self, patches_dataset)
+
+    def _kwargs(self):
+        return [
+            ["field", self._field],
+            ["_state", self._state],
+        ]
+
+    @classmethod
+    def _params(self):
+        return [
+            {"name": "field", "type": "field", "placeholder": "label field"},
+            {"name": "_state", "type": "NoneType|json", "default": "None"},
+        ]
+
+
+class ToEvaluationPatches(ViewStage):
+    """Creates a view based on the results of the evaluation with the given key
+    that contains one sample for each true positive, false positive, and false
+    negative example in the collection, respectively.
+
+    True positive examples will result in samples with both their ground truth
+    and predicted fields populated, while false positive/negative examples wilL
+    only have one of their corresponding predicted/ground truth fields
+    populated, respectively.
+
+    If multiple predictions are matched to a ground truth object (e.g., if the
+    evaluation protocol includes a crowd attribute), then all matched
+    predictions will be stored in the single sample along with the ground truth
+    object.
+
+    The returned dataset will also have top-level ``type`` and ``iou`` fields
+    populated based on the evaluation results for that example, as well as a
+    ``sample_id`` field recording the sample ID of the example, and a ``crowd``
+    field if the evaluation protocol defines a crowd attribute.
+
+    Examples::
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("quickstart")
+        dataset.evaluate_detections("predictions", eval_key="eval")
+
+        session = fo.launch_app(dataset)
+
+        #
+        # Create a patches view for the evaluation results
+        #
+
+        stage = fo.ToEvaluationPatches("eval")
+        view = dataset.add_stage(stage)
+        print(view)
+
+        session.view = view
+
+    Args:
+        eval_key: an evaluation key that corresponds to the evaluation of
+            ground truth/predicted fields that are of type
+            :class:`fiftyone.core.labels.Detections` or
+            :class:`fiftyone.core.labels.Polylines`
+    """
+
+    def __init__(self, eval_key, _state=None):
+        self._eval_key = eval_key
+        self._state = _state
+
+    @property
+    def has_view(self):
+        return True
+
+    @property
+    def eval_key(self):
+        """The evaluation key to extract patches for."""
+        return self._eval_key
+
+    def load_view(self, sample_collection):
+        state = {
+            "dataset": sample_collection.dataset_name,
+            "stages": sample_collection.view()._serialize(include_uuids=False),
+            "eval_key": self._eval_key,
+        }
+
+        last_state = deepcopy(self._state)
+        if last_state is not None:
+            name = last_state.pop("name", None)
+        else:
+            name = None
+
+        if state != last_state or not fod.dataset_exists(name):
+            eval_patches_dataset = foup.make_evaluation_dataset(
+                sample_collection, self._eval_key
+            )
+
+            state["name"] = eval_patches_dataset.name
+            self._state = state
+        else:
+            eval_patches_dataset = fod.load_dataset(name)
+
+        return fop.EvaluationPatchesView(
+            sample_collection, self, eval_patches_dataset
+        )
+
+    def _kwargs(self):
+        return [
+            ["eval_key", self._eval_key],
+            ["_state", self._state],
+        ]
+
+    @classmethod
+    def _params(self):
+        return [
+            {"name": "eval_key", "type": "str", "placeholder": "eval key"},
+            {"name": "_state", "type": "NoneType|json", "default": "None"},
+        ]
+
+
 def _get_sample_ids(samples_or_ids):
-    # avoid circular import...
     import fiftyone.core.collections as foc
 
     if etau.is_str(samples_or_ids):
@@ -4075,6 +4287,61 @@ def _make_omit_empty_pipeline(sample_collection, fields):
     return stage.to_mongo(sample_collection)
 
 
+def _get_default_similarity_run(sample_collection):
+    if isinstance(sample_collection, fop.PatchesView):
+        patches_field = sample_collection.patches_field
+        brain_keys = sample_collection._get_similarity_keys(
+            patches_field=patches_field
+        )
+
+        if not brain_keys:
+            raise ValueError(
+                "Dataset '%s' has no similarity results for field '%s'. You "
+                "must run "
+                "`fiftyone.brain.compute_similarity(..., patches_field='%s', ...)` "
+                "in order to sort the patches in this view by similarity"
+                % (
+                    sample_collection.dataset_name,
+                    patches_field,
+                    patches_field,
+                )
+            )
+
+    elif isinstance(sample_collection, fop.EvaluationPatchesView):
+        gt_field = sample_collection.gt_field
+        pred_field = sample_collection.pred_field
+
+        brain_keys = sample_collection._get_similarity_keys(
+            patches_field=gt_field
+        ) + sample_collection._get_similarity_keys(patches_field=pred_field)
+
+        if not brain_keys:
+            raise ValueError(
+                "Dataset '%s' has no similarity results for its '%s' or '%s' "
+                "fields. You must run "
+                "`fiftyone.brain.compute_similarity(..., patches_field=label_field, ...)` "
+                "in order to sort the patches in this view by similarity"
+                % (sample_collection.dataset_name, gt_field, pred_field)
+            )
+    else:
+        brain_keys = sample_collection._get_similarity_keys(patches_field=None)
+
+        if not brain_keys:
+            raise ValueError(
+                "Dataset '%s' has no similarity results for its samples. You "
+                "must run `fiftyone.brain.compute_similarity()` in order to "
+                "sort by similarity" % sample_collection.dataset_name
+            )
+
+    brain_key = brain_keys[0]
+
+    if len(brain_keys) > 1:
+        msg = "Multiple similarity runs found; using '%s'" % brain_key
+        warnings.warn(msg)
+
+    return brain_key
+
+
 class _ViewStageRepr(reprlib.Repr):
     def repr_ViewExpression(self, expr, level):
         return self.repr1(expr.to_mongo(), level=level - 1)
@@ -4119,4 +4386,6 @@ _STAGES = [
     SortBy,
     SortBySimilarity,
     Take,
+    ToPatches,
+    ToEvaluationPatches,
 ]

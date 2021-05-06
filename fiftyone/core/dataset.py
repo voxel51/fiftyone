@@ -56,8 +56,7 @@ def list_datasets():
     Returns:
         a list of :class:`Dataset` names
     """
-    # pylint: disable=no-member
-    return sorted(foo.DatasetDocument.objects.distinct("name"))
+    return _list_datasets()
 
 
 def dataset_exists(name):
@@ -80,11 +79,13 @@ def dataset_exists(name):
 def load_dataset(name):
     """Loads the FiftyOne dataset with the given name.
 
-    Note that :class:`Dataset` instances are singletons keyed by ``name``, so
-    all calls to this function with a given dataset ``name`` in a program will
-    return the same object.
-
     To create a new dataset, use the :class:`Dataset` constructor.
+
+    .. note::
+
+        :class:`Dataset` instances are singletons keyed by their name, so all
+        calls to this method with a given dataset ``name`` in a program will
+        return the same object.
 
     Args:
         name: the name of the dataset
@@ -106,7 +107,7 @@ def get_default_dataset_name():
     """
     now = datetime.datetime.now()
     name = now.strftime("%Y.%m.%d.%H.%M.%S")
-    if name in list_datasets():
+    if name in _list_datasets(include_private=True):
         name = now.strftime("%Y.%m.%d.%H.%M.%S.%f")
 
     return name
@@ -122,7 +123,7 @@ def make_unique_dataset_name(root):
         the dataset name
     """
     name = root
-    dataset_names = list_datasets()
+    dataset_names = _list_datasets(include_private=True)
 
     if name in dataset_names:
         name += "_" + _get_random_characters(6)
@@ -149,13 +150,6 @@ def get_default_dataset_dir(name):
 def delete_dataset(name, verbose=False):
     """Deletes the FiftyOne dataset with the given name.
 
-    If reference to the dataset exists in memory, only `Dataset.name` and
-    `Dataset.deleted` will be valid attributes. Accessing any other attributes
-    or methods will raise a :class:`DatasetError`
-
-    If reference to a sample exists in memory, the sample's dataset will be
-    "unset" such that `sample.in_dataset == False`
-
     Args:
         name: the name of the dataset
         verbose (False): whether to log the name of the deleted dataset
@@ -176,7 +170,7 @@ def delete_datasets(glob_patt, verbose=False):
         glob_patt: a glob pattern of datasets to delete
         verbose (False): whether to log the names of deleted datasets
     """
-    all_datasets = list_datasets()
+    all_datasets = _list_datasets()
     for name in fnmatch.filter(all_datasets, glob_patt):
         delete_dataset(name, verbose=verbose)
 
@@ -187,7 +181,7 @@ def delete_non_persistent_datasets(verbose=False):
     Args:
         verbose (False): whether to log the names of deleted datasets
     """
-    for name in list_datasets():
+    for name in _list_datasets(include_private=True):
         dataset = Dataset(name, _create=False, _migrate=False)
         if not dataset.persistent and not dataset.deleted:
             dataset.delete()
@@ -225,6 +219,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         overwrite=False,
         _create=True,
         _migrate=True,
+        _patches=False,
     ):
         if name is None and _create:
             name = get_default_dataset_name()
@@ -237,7 +232,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 self._doc,
                 self._sample_doc_cls,
                 self._frame_doc_cls,
-            ) = _create_dataset(name, persistent=persistent)
+            ) = _create_dataset(name, persistent=persistent, patches=_patches)
         else:
             (
                 self._doc,
@@ -303,6 +298,14 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     @property
     def _dataset(self):
         return self
+
+    @property
+    def _root_dataset(self):
+        return self
+
+    @property
+    def _is_patches(self):
+        return self._sample_collection_name.startswith("patches.")
 
     @property
     def media_type(self):
@@ -520,24 +523,29 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """
         aggs = self.aggregate([foa.Count(), foa.Distinct("tags")])
         elements = [
-            "Name:           %s" % self.name,
-            "Media type:     %s" % self.media_type,
-            "Num samples:    %d" % aggs[0],
-            "Persistent:     %s" % self.persistent,
-            "Tags:           %s" % aggs[1],
-            "Sample fields:",
-            self._to_fields_str(self.get_field_schema()),
+            ("Name:", self.name),
+            ("Media type:", self.media_type),
+            ("Num samples:", aggs[0]),
+            ("Persistent:", self.persistent),
+            ("Tags:", aggs[1]),
         ]
 
+        elements = fou.justify_headings(elements)
+        lines = ["%s %s" % tuple(e) for e in elements]
+
+        lines.extend(
+            ["Sample fields:", self._to_fields_str(self.get_field_schema())]
+        )
+
         if self.media_type == fom.VIDEO:
-            elements.extend(
+            lines.extend(
                 [
                     "Frame fields:",
                     self._to_fields_str(self.get_frame_field_schema()),
                 ]
             )
 
-        return "\n".join(elements)
+        return "\n".join(lines)
 
     def stats(self, include_media=False, compressed=False):
         """Returns stats about the dataset on disk.
@@ -3315,13 +3323,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
             return self._frame_doc_cls.from_dict(d, extended=False)
 
-    def _to_fields_str(self, field_schema):
-        max_len = max([len(field_name) for field_name in field_schema]) + 1
-        return "\n".join(
-            "    %s %s" % ((field_name + ":").ljust(max_len), str(field))
-            for field_name, field in field_schema.items()
-        )
-
     def _validate_sample(self, sample):
         fields = self.get_field_schema(include_private=True)
 
@@ -3371,6 +3372,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if self.media_type == fom.VIDEO:
             fofr.Frame._reload_docs(self._frame_collection_name, hard=hard)
 
+    def _serialize(self):
+        return self._doc.to_dict(extended=True)
+
 
 def _get_random_characters(n):
     return "".join(
@@ -3378,7 +3382,22 @@ def _get_random_characters(n):
     )
 
 
-def _create_dataset(name, persistent=False, media_type=None):
+def _list_datasets(include_private=False):
+    if include_private:
+        # pylint: disable=no-member
+        return sorted(foo.DatasetDocument.objects.distinct("name"))
+
+    # Datasets whose sample collections don't start with `samples.` are private
+    # e.g., patches datasets
+    # pylint: disable=no-member
+    return sorted(
+        foo.DatasetDocument.objects.filter(
+            sample_collection_name__startswith="samples."
+        ).distinct("name")
+    )
+
+
+def _create_dataset(name, persistent=False, media_type=None, patches=False):
     if dataset_exists(name):
         raise ValueError(
             (
@@ -3388,7 +3407,7 @@ def _create_dataset(name, persistent=False, media_type=None):
             % name
         )
 
-    sample_collection_name = _make_sample_collection_name()
+    sample_collection_name = _make_sample_collection_name(patches)
     sample_doc_cls = _create_sample_document_cls(sample_collection_name)
 
     frame_collection_name = "frames." + sample_collection_name
@@ -3414,18 +3433,25 @@ def _create_dataset(name, persistent=False, media_type=None):
 
 def _create_indexes(sample_collection_name, frame_collection_name):
     conn = foo.get_db_conn()
+
     collection = conn[sample_collection_name]
-    collection.create_index("filepath", unique=True)
+    collection.create_index("filepath")
+
     frame_collection = conn[frame_collection_name]
     frame_collection.create_index([("_sample_id", 1), ("frame_number", 1)])
 
 
-def _make_sample_collection_name():
+def _make_sample_collection_name(patches=False):
     conn = foo.get_db_conn()
     now = datetime.datetime.now()
-    name = "samples." + now.strftime("%Y.%m.%d.%H.%M.%S")
+
+    prefix = "patches" if patches else "samples"
+
+    create_name = lambda timestamp: ".".join([prefix, timestamp])
+
+    name = create_name(now.strftime("%Y.%m.%d.%H.%M.%S"))
     if name in conn.list_collection_names():
-        name = "samples." + now.strftime("%Y.%m.%d.%H.%M.%S.%f")
+        name = create_name(now.strftime("%Y.%m.%d.%H.%M.%S.%f"))
 
     return name
 
@@ -3832,7 +3858,7 @@ def _merge_samples(
     is_video = dst_dataset.media_type == fom.VIDEO
     src_dataset = src_collection._dataset
 
-    if key_field not in ("_id", "filepath"):
+    if key_field != "_id":
         # Must have unique indexes in order to use `$merge`
         new_src_index = key_field not in src_collection.list_indexes(
             include_private=True
@@ -4034,7 +4060,7 @@ def _always_select_field(sample_collection, field):
 
     # Manually insert `field` into all `SelectFields` stages
     view = sample_collection._dataset.view()
-    for stage in sample_collection.stages:
+    for stage in sample_collection._stages:
         if isinstance(stage, fost.SelectFields):
             stage = fost.SelectFields(stage.field_names + [field])
 

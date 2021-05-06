@@ -20,6 +20,7 @@ body {
   position: relative;
   height: 100vh;
   will-change: transform;
+  min-width: 512px;
 }
 
 body.noscroll {

@@ -8,42 +8,15 @@ import {
 } from "recoil";
 
 import Popout from "./Popout";
-import { HoverItemDiv, useHighlightHover } from "./utils";
+import { ActionOption } from "./Common";
 import * as atoms from "../../recoil/atoms";
 import * as selectors from "../../recoil/selectors";
 import * as labelAtoms from "../Filters/LabelFieldFilters.state";
 import socket from "../../shared/connection";
 import { packageMessage } from "../../utils/socket";
 
-type ActionOptionProps = {
-  onClick: () => void;
-  text: string;
-  title?: string;
-  disabled?: boolean;
-};
-
-const ActionOption = ({
-  onClick,
-  text,
-  title,
-  disabled,
-}: ActionOptionProps) => {
-  const props = useHighlightHover(disabled);
-  if (disabled) {
-    return null;
-  }
-  return (
-    <HoverItemDiv
-      title={title ? title : text}
-      onClick={disabled ? null : onClick}
-      {...props}
-    >
-      {text}
-    </HoverItemDiv>
-  );
-};
-
 const useGridActions = (close: () => void) => {
+  const itemNames = useRecoilValue(selectors.itemNames);
   const clearSelection = useRecoilCallback(
     ({ snapshot, set, reset }) => async () => {
       const [oldSelected, state] = await Promise.all([
@@ -78,18 +51,18 @@ const useGridActions = (close: () => void) => {
 
   return [
     {
-      text: "Clear selected samples",
-      title: "Deselect all selected samples",
+      text: `Clear selected ${itemNames.plural}`,
+      title: `Deselect all selected ${itemNames.plural}`,
       onClick: clearSelection,
     },
     {
-      text: "Only show selected samples",
-      title: "Hide all other samples",
+      text: `Only show selected ${itemNames.plural}`,
+      title: `Hide all other ${itemNames.plural}`,
       onClick: () => addStage("Select"),
     },
     {
-      text: "Hide selected samples",
-      title: "Show only unselected samples",
+      text: `Hide selected ${itemNames.plural}`,
+      title: `Show only unselected ${itemNames.plural}`,
       onClick: () => addStage("Exclude"),
     },
   ];
@@ -212,6 +185,7 @@ const useModalActions = (frameNumberRef, close) => {
       callback();
     }, []);
   };
+  const itemNames = useRecoilValue(selectors.itemNames);
 
   const hasVisibleUnselected = hasSetDiff(visibleSampleLabels, selectedLabels);
   const hasFrameVisibleUnselected = hasSetDiff(
@@ -222,25 +196,25 @@ const useModalActions = (frameNumberRef, close) => {
 
   return [
     {
-      text: "Select visible (current sample)",
-      disabled: !hasVisibleUnselected,
+      text: `Select visible (current ${itemNames.singular})`,
+      hidden: !hasVisibleUnselected,
       onClick: closeAndCall(useSelectVisible(visibleModalSampleLabels)),
     },
     {
-      text: "Unselect visible (current sample)",
-      disabled: !hasVisibleSelection,
+      text: `Unselect visible (current ${itemNames.singular})`,
+      hidden: !hasVisibleSelection,
       onClick: closeAndCall(useUnselectVisible(visibleModalSampleLabelIds)),
     },
     isVideo && {
       text: "Select visible (current frame)",
-      disabled: !hasFrameVisibleUnselected,
+      hidden: !hasFrameVisibleUnselected,
       onClick: closeAndCall(
         useSelectVisible(visibleModalCurrentFrameLabels(frameNumberRef.current))
       ),
     },
     isVideo && {
       text: "Unselect visible (current frame)",
-      disabled: !hasVisibleSelection,
+      hidden: !hasVisibleSelection,
       onClick: closeAndCall(
         useUnselectVisible(
           visibleModalCurrentFrameLabelIds(frameNumberRef.current)
@@ -249,22 +223,22 @@ const useModalActions = (frameNumberRef, close) => {
     },
     {
       text: "Clear selection",
-      disabled: !selectedLabels.size,
+      hidden: !selectedLabels.size,
       onClick: closeAndCall(useClearSelectedLabels()),
     },
     {
       text: "Hide selected",
-      disabled: !selectedLabels.size,
+      hidden: !selectedLabels.size,
       onClick: closeAndCall(useHideSelected()),
     },
     {
-      text: "Hide unselected (current sample)",
-      disabled: !hasVisibleUnselected,
+      text: `Hide unselected (current ${itemNames.singular})`,
+      hidden: !hasVisibleUnselected,
       onClick: closeAndCall(useHideOthers(visibleModalSampleLabels)),
     },
     isVideo && {
       text: "Hide unselected (current frame)",
-      disabled: !hasFrameVisibleUnselected,
+      hidden: !hasFrameVisibleUnselected,
       onClick: closeAndCall(
         useHideOthers(visibleModalCurrentFrameLabels(frameNumberRef.current))
       ),

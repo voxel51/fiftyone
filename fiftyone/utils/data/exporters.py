@@ -828,7 +828,13 @@ class LegacyFiftyOneDatasetExporter(GenericSampleDatasetExporter):
 
         self._metadata["info"] = info
 
-        dataset = sample_collection._dataset
+        # Exporting runs only makes sense if the entire dataset is being
+        # exported, otherwise the view for the run cannot be reconstructed
+        # based on the information encoded in the run's document
+
+        dataset = sample_collection._root_dataset
+        if sample_collection != dataset:
+            return
 
         if dataset.has_evaluations:
             d = dataset._doc.field_to_mongo("evaluations")
@@ -977,14 +983,25 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
             )
 
         conn = foo.get_db_conn()
-        name = sample_collection._dataset.name
-        dataset_dict = conn.datasets.find_one({"name": name})
+        dataset = sample_collection._dataset
+        dataset_dict = conn.datasets.find_one({"name": dataset.name})
+
+        # Exporting runs only makes sense if the entire dataset is being
+        # exported, otherwise the view for the run cannot be reconstructed
+        # based on the information encoded in the run's document
+
+        export_runs = sample_collection == sample_collection._root_dataset
+
+        if not export_runs:
+            dataset_dict["evaluations"] = {}
+            dataset_dict["brain_methods"] = {}
+
         foo.export_document(dataset_dict, self._metadata_path)
 
-        if sample_collection.has_evaluations:
+        if export_runs and sample_collection.has_evaluations:
             _export_evaluation_results(sample_collection, self._eval_dir)
 
-        if sample_collection.has_brain_runs:
+        if export_runs and sample_collection.has_brain_runs:
             _export_brain_results(sample_collection, self._brain_dir)
 
         if self.include_media:

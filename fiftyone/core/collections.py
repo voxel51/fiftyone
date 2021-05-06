@@ -14,6 +14,7 @@ import random
 import string
 import warnings
 
+from bson import ObjectId
 from deprecated import deprecated
 from pymongo import UpdateOne
 
@@ -40,6 +41,7 @@ fov = fou.lazy_import("fiftyone.core.view")
 foua = fou.lazy_import("fiftyone.utils.annotations")
 foud = fou.lazy_import("fiftyone.utils.data")
 foue = fou.lazy_import("fiftyone.utils.eval")
+foup = fou.lazy_import("fiftyone.utils.patches")
 
 
 logger = logging.getLogger(__name__)
@@ -101,10 +103,28 @@ class SampleCollection(object):
 
     @property
     def _dataset(self):
-        """The underlying :class:`fiftyone.core.dataset.Dataset` for the
-        collection.
+        """The :class:`fiftyone.core.dataset.Dataset` that serves the samples
+        in this collection.
         """
         raise NotImplementedError("Subclass must implement _dataset")
+
+    @property
+    def _root_dataset(self):
+        """The root :class:`fiftyone.core.dataset.Dataset` from which this
+        collection is derived.
+
+        This is typically the same as :meth:`_dataset` but may differ in cases
+        such as patches views.
+        """
+        raise NotImplementedError("Subclass must implement _root_dataset")
+
+    @property
+    def _element_str(self):
+        return "sample"
+
+    @property
+    def _elements_str(self):
+        return "samples"
 
     @property
     def name(self):
@@ -1124,6 +1144,43 @@ class SampleCollection(object):
                 )
 
         self._dataset._bulk_write(ops, frames=frames)
+
+    def _set_labels_by_id(self, field_name, ids, docs):
+        label_type = self._get_label_field_type(field_name)
+        field_name, is_frame_field = self._handle_frame_field(field_name)
+
+        ops = []
+        if issubclass(label_type, fol._LABEL_LIST_FIELDS):
+            root = field_name + "." + label_type._LABEL_LIST_FIELD
+            elem_id = root + "._id"
+            set_path = root + ".$"
+
+            for _id, _docs in zip(ids, docs):
+                if not _docs:
+                    continue
+
+                if not isinstance(_docs, (list, tuple)):
+                    _docs = [_docs]
+
+                for doc in _docs:
+                    ops.append(
+                        UpdateOne(
+                            {"_id": ObjectId(_id), elem_id: doc["_id"]},
+                            {"$set": {set_path: doc}},
+                        )
+                    )
+        else:
+            elem_id = field_name + "._id"
+
+            for _id, doc in zip(ids, docs):
+                ops.append(
+                    UpdateOne(
+                        {"_id": ObjectId(_id), elem_id: doc["_id"]},
+                        {"$set": {field_name: doc}},
+                    )
+                )
+
+        self._dataset._bulk_write(ops, frames=is_frame_field)
 
     def compute_metadata(
         self, overwrite=False, num_workers=None, skip_failures=True
@@ -3601,8 +3658,8 @@ class SampleCollection(object):
             reverse (False): whether to sort by least similarity
             brain_key (None): the brain key of an existing
                 :meth:`fiftyone.brain.compute_similarity` run on the dataset.
-                If not provided, the dataset must have exactly one similarity
-                run, which will be used
+                If not specified, the dataset must have an applicable run,
+                which will be used by default
 
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
@@ -3665,6 +3722,95 @@ class SampleCollection(object):
             a :class:`fiftyone.core.view.DatasetView`
         """
         return self._add_view_stage(fos.Take(size, seed=seed))
+
+    @view_stage
+    def to_patches(self, field):
+        """Creates a view that contains one sample per object patch in the
+        specified field of the collection.
+
+        Fields other than ``field`` and the default sample fields will not be
+        included in the returned view. A ``sample_id`` field will be added that
+        records the sample ID from which each patch was taken.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            session = fo.launch_app(dataset)
+
+            #
+            # Create a view containing the ground truth patches
+            #
+
+            view = dataset.to_patches("ground_truth")
+            print(view)
+
+            session.view = view
+
+        Args:
+            field: the patches field, which must be of type
+                :class:`fiftyone.core.labels.Detections` or
+                :class:`fiftyone.core.labels.Polylines`
+
+        Returns:
+            a :class:`fiftyone.core.patches.PatchesView`
+        """
+        return self._add_view_stage(fos.ToPatches(field))
+
+    @view_stage
+    def to_evaluation_patches(self, eval_key):
+        """Creates a view based on the results of the evaluation with the
+        given key that contains one sample for each true positive, false
+        positive, and false negative example in the collection, respectively.
+
+        True positive examples will result in samples with both their ground
+        truth and predicted fields populated, while false positive/negative
+        examples will only have one of their corresponding predicted/ground
+        truth fields populated, respectively.
+
+        If multiple predictions are matched to a ground truth object (e.g., if
+        the evaluation protocol includes a crowd attribute), then all matched
+        predictions will be stored in the single sample along with the ground
+        truth object.
+
+        The returned dataset will also have top-level ``type`` and ``iou``
+        fields populated based on the evaluation results for that example, as
+        well as a ``sample_id`` field recording the sample ID of the example,
+        and a ``crowd`` field if the evaluation protocol defines a crowd
+        attribute.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+
+            dataset = foz.load_zoo_dataset("quickstart")
+            dataset.evaluate_detections("predictions", eval_key="eval")
+
+            session = fo.launch_app(dataset)
+
+            #
+            # Create a patches view for the evaluation results
+            #
+
+            view = dataset.to_evaluation_patches("eval")
+            print(view)
+
+            session.view = view
+
+        Args:
+            eval_key: an evaluation key that corresponds to the evaluation of
+                ground truth/predicted fields that are of type
+                :class:`fiftyone.core.labels.Detections` or
+                :class:`fiftyone.core.labels.Polylines`
+
+        Returns:
+            a :class:`fiftyone.core.patches.EvaluationPatchesView`
+        """
+        return self._add_view_stage(fos.ToEvaluationPatches(eval_key))
 
     @classmethod
     def list_aggregations(cls):
@@ -5113,6 +5259,35 @@ class SampleCollection(object):
         """
         raise NotImplementedError("Subclass must implement _aggregate()")
 
+    def _build_aggregation(self, aggregations):
+        scalar_result = isinstance(aggregations, foa.Aggregation)
+        if scalar_result:
+            aggregations = [aggregations]
+        elif not aggregations:
+            return False, [], None
+
+        pipelines = {}
+        for idx, agg in enumerate(aggregations):
+            if not isinstance(agg, foa.Aggregation):
+                raise TypeError(
+                    "'%s' is not an %s" % (agg.__class__, foa.Aggregation)
+                )
+
+            pipelines[str(idx)] = agg.to_mongo(self)
+
+        return scalar_result, aggregations, [{"$facet": pipelines}]
+
+    def _process_aggregations(self, aggregations, result, scalar_result):
+        results = []
+        for idx, agg in enumerate(aggregations):
+            _result = result[str(idx)]
+            if _result:
+                results.append(agg.parse_result(_result[0]))
+            else:
+                results.append(agg.default_result())
+
+        return results[0] if scalar_result else results
+
     def _serialize(self):
         # pylint: disable=no-member
         return self._doc.to_dict(extended=True)
@@ -5127,23 +5302,32 @@ class SampleCollection(object):
         return {field_name: str(field) for field_name, field in schema.items()}
 
     def _serialize_mask_targets(self):
-        return self._dataset._doc.field_to_mongo("mask_targets")
+        return self._root_dataset._doc.field_to_mongo("mask_targets")
 
     def _serialize_default_mask_targets(self):
-        return self._dataset._doc.field_to_mongo("default_mask_targets")
+        return self._root_dataset._doc.field_to_mongo("default_mask_targets")
 
     def _parse_mask_targets(self, mask_targets):
         if not mask_targets:
             return mask_targets
 
-        return self._dataset._doc.field_to_python("mask_targets", mask_targets)
+        return self._root_dataset._doc.field_to_python(
+            "mask_targets", mask_targets
+        )
 
     def _parse_default_mask_targets(self, default_mask_targets):
         if not default_mask_targets:
             return default_mask_targets
 
-        return self._dataset._doc.field_to_python(
+        return self._root_dataset._doc.field_to_python(
             "default_mask_targets", default_mask_targets
+        )
+
+    def _to_fields_str(self, field_schema):
+        max_len = max([len(field_name) for field_name in field_schema]) + 1
+        return "\n".join(
+            "    %s %s" % ((field_name + ":").ljust(max_len), str(field))
+            for field_name, field in field_schema.items()
         )
 
     def _parse_field_name(
@@ -5241,7 +5425,11 @@ class SampleCollection(object):
         if issubclass(label_type, fol._LABEL_LIST_FIELDS):
             field_name += "." + label_type._LABEL_LIST_FIELD
 
-        field_path = field_name + "." + subfield
+        if subfield:
+            field_path = field_name + "." + subfield
+        else:
+            field_path = field_name
+
         return label_type, field_path
 
     def _get_geo_location_field(self):

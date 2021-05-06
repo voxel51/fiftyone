@@ -192,8 +192,6 @@ const NumericFieldFilter = ({ expanded, entry }) => {
     <animated.div style={props}>
       <NamedRangeSlider
         color={entry.color}
-        name={"Range"}
-        valueName={"value"}
         boundsAtom={boundsAtom({ path: entry.path })}
         hasNoneAtom={hasNoneField(entry.path)}
         valueAtom={rangeAtom({ path: entry.path })}
