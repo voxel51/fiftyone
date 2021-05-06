@@ -6,6 +6,8 @@ import { BaseElement, EventMap } from "./base";
 import { ICONS, makeCheckboxRow, makeWrapper } from "./util";
 
 export class PlayerBaseElement extends BaseElement {
+  private hideControlsTimeout?: ReturnType<typeof setTimeout>;
+
   events = {
     blur: ({ update }) => {
       update({ showOptions: false, showControls: false, focused: false });
@@ -26,6 +28,16 @@ export class PlayerBaseElement extends BaseElement {
         }));
       }
     },
+    mouseenter: ({ update, dispatchEvent, state }) => {
+      dispatchEvent("mouseenter");
+      update(({ config: { thumbnail } }) => {
+        return {
+          hovering: true,
+          showControls: !state.config.thumbnail,
+        };
+      });
+    },
+    mousemove: ({ update }) => {},
   };
 
   createHTMLElement() {
@@ -41,6 +53,8 @@ export class PlayerBaseElement extends BaseElement {
 }
 
 export class CanvasElement extends BaseElement {
+  private observer: ResizeObserver;
+
   events: EventMap = {
     click: ({ update }) => {
       update({ showOptions: false });
@@ -63,12 +77,20 @@ export class CanvasElement extends BaseElement {
     },
   };
 
-  createHTMLElement() {
+  createHTMLElement(update) {
     const element = document.createElement("div");
     element.className = "p51-canvas";
     const canvas = document.createElement("canvas");
     canvas.className = "p51-canvas";
     element.appendChild(canvas);
+
+    this.observer = new ResizeObserver((entries) => {
+      if (entries.length !== 1) {
+        throw new Error("Observing more than one canvas");
+      }
+      update({ canvasRect: entries[0].contentRect });
+    });
+    this.observer.observe(element);
     return element;
   }
 

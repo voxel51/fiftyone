@@ -46,6 +46,7 @@ export const makeCheckboxRow = function (
 interface ElementsTemplate {
   node: new (
     update: (state: any) => void,
+    dispatchEvent: (eventType: string, details?: any) => void,
     children?: BaseElement[]
   ) => BaseElement;
   children?: ElementsTemplate[];
@@ -53,14 +54,17 @@ interface ElementsTemplate {
 
 export function createElementsTree(
   root: ElementsTemplate,
-  update: (state: any) => void
+  update: (state: any) => void,
+  dispatchEvent: (eventType: string, details?: any) => void
 ) {
   let children = new Array<BaseElement>();
   children = root.children
-    ? root.children.map((child) => createElementsTree(child, update))
+    ? root.children.map((child) =>
+        createElementsTree(child, update, dispatchEvent)
+      )
     : children;
 
-  return new root.node(update, children);
+  return new root.node(update, dispatchEvent, children);
 }
 
 const secondsToHhmmss = function (number: number): string {

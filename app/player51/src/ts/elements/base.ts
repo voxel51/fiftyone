@@ -6,6 +6,7 @@ export interface EventMap {
   [key: string]: (args: {
     event: Event;
     update: (state: object) => void;
+    dispatchEvent: (eventType: string, details?: any) => void;
   }) => void;
 }
 
@@ -15,18 +16,22 @@ export abstract class BaseElement {
   events: EventMap = {};
   eventTarget?: Element;
 
-  constructor(update: (state: any) => void, children?: BaseElement[]) {
+  constructor(
+    update: (state: any) => void,
+    dispatchEvent: (eventType: string, details?: any) => void,
+    children?: BaseElement[]
+  ) {
     this.children = children;
-    this.element = this.createHTMLElement();
+    this.element = this.createHTMLElement(update);
     Object.entries(this.events).forEach(([eventType, callback]) => {
       const target = this.eventTarget ?? this.element;
       target.addEventListener(eventType, (event) =>
-        callback({ event, update })
+        callback({ event, update, dispatchEvent })
       );
     });
   }
 
-  abstract createHTMLElement(): HTMLElement;
+  abstract createHTMLElement(update: (state: any) => void): HTMLElement;
 
   isShown(state): boolean {
     return true;

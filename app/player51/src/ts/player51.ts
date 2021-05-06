@@ -1,11 +1,9 @@
 /**
  * Copyright 2017-2021, Voxel51, Inc.
  */
-import {} from "immutable";
+import { fromJS } from "immutable";
 import mime from "mime-types";
 
-import { asVideo } from "./video";
-import Renderer from "./renderers/baseRenderer";
 import OverlaysManager from "./overlaysManager";
 import { colorGenerator } from "./overlays";
 import { FrameState, ImageState, VideoState } from "./state";
@@ -37,13 +35,19 @@ export default class Player51 {
   options: typeof defaults = defaults;
   overlaysManager: OverlaysManager;
 
-  private renderTree: Renderer;
   private eventTarget: EventTarget;
   private state: FrameState | ImageState | VideoState;
 
-  constructor({ src, ...options }) {
+  constructor(config, options) {
     this.eventTarget = new EventTarget();
-    this.state;
+    this.state = fromJS({
+      config,
+      options,
+    });
+  }
+
+  private dispatchEvent(eventType: string, detail: any) {
+    this.eventTarget.dispatchEvent(new CustomEvent(eventType, { detail }));
   }
 
   addEventListener(eventType, handler, ...args) {
@@ -54,24 +58,12 @@ export default class Player51 {
     this.eventTarget.removeEventListener(eventType, handler, ...args);
   }
 
-  focus(): void {
-    focusedInstance = this;
-  }
+  destroy(): void {}
 
-  blur(): void {
-    focusedInstance === this && (focusedInstance = null);
-  }
-
-  destroy(): void {
-    instances = instances.filter((player) => player !== this);
-    if (focusedInstance === this) {
-      focusedInstance = null;
-    }
-    this.renderer.destroy();
-    delete this.renderer;
-  }
-
-  update({ sample, src, rest }) {
-    Object.assign(this.options, rest);
+  update(options) {
+    this.state = fromJS({
+      config: this.state.config,
+      options,
+    });
   }
 }

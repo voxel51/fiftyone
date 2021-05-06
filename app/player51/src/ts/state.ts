@@ -70,5 +70,5 @@ export interface ImageState extends BaseState {
 
 export interface VideoState extends BaseState {
   config: VideoConfig;
-  options: ImageOptions;
+  options: VideoOptions;
 }
