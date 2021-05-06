@@ -18,7 +18,6 @@ import fiftyone.core.aggregations as foa
 import fiftyone.core.dataset as fod
 import fiftyone.core.fields as fof
 import fiftyone.core.media as fom
-import fiftyone.core.odm as foo
 import fiftyone.core.utils as fou
 
 
