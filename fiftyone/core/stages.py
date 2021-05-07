@@ -4146,6 +4146,9 @@ class ToFrames(ViewStage):
          The first time this method is run on a collection, it will sample
          each video in the collection into a directory of per-frame images.
 
+         Videos that have previously been sampled will not be resampled, unless
+         you override this behavior via ``config``.
+
     Examples::
 
         import fiftyone as fo
@@ -4167,7 +4170,7 @@ class ToFrames(ViewStage):
 
     Args:
         config (None): an optional dict of keyword arguments for
-            :meth:`fiftyone.utils.video.make_frames_dataset` specifying how to
+            :meth:`fiftyone.core.video.make_frames_dataset` specifying how to
             perform the conversion
     """
 
