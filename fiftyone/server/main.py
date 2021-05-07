@@ -420,6 +420,8 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         """
         StateHandler.clients.remove(self)
         StateHandler.app_clients.discard(self)
+        if not StateHandler.app_clients:
+            _write_message({"type": "close"}, session=True)
 
     @_catch_errors
     async def on_message(self, message):
