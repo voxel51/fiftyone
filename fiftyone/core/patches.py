@@ -121,7 +121,8 @@ class _PatchesView(fov.DatasetView):
 
     def _edit_label_tags(self, edit_fcn, label_fields=None):
         # This covers the necessary overrides for both `tag_labels()` and
-        # `untag_labels()`
+        # `untag_labels()`. This is important because the App uses
+        # `_edit_label_tags()` rather than the public methods to update tags
 
         if etau.is_str(label_fields):
             label_fields = [label_fields]
