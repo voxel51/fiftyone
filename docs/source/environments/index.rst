@@ -236,6 +236,8 @@ it will stay in-sync with your session whenever it is active.
     App window, or by running the cell again. This will deactivate the
     previously active cell.
 
+.. _opening-app-dedicated-tab:
+
 Opening the App in a dedicated tab
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
