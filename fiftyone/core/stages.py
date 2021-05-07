@@ -32,8 +32,6 @@ fod = fou.lazy_import("fiftyone.core.dataset")
 fop = fou.lazy_import("fiftyone.core.patches")
 fov = fou.lazy_import("fiftyone.core.video")
 foug = fou.lazy_import("fiftyone.utils.geojson")
-foup = fou.lazy_import("fiftyone.utils.patches")
-fouv = fou.lazy_import("fiftyone.utils.video")
 
 
 class ViewStage(object):
@@ -4013,7 +4011,7 @@ class ToPatches(ViewStage):
             name = None
 
         if state != last_state or not fod.dataset_exists(name):
-            patches_dataset = foup.make_patches_dataset(
+            patches_dataset = fop.make_patches_dataset(
                 sample_collection, self._field
             )
 
@@ -4112,7 +4110,7 @@ class ToEvaluationPatches(ViewStage):
             name = None
 
         if state != last_state or not fod.dataset_exists(name):
-            eval_patches_dataset = foup.make_evaluation_dataset(
+            eval_patches_dataset = fop.make_evaluation_dataset(
                 sample_collection, self._eval_key
             )
 
@@ -4201,7 +4199,7 @@ class ToFrames(ViewStage):
 
         if state != last_state or not fod.dataset_exists(name):
             kwargs = self._config or {}
-            frames_dataset = fouv.make_frames_dataset(
+            frames_dataset = fov.make_frames_dataset(
                 sample_collection, **kwargs
             )
 
