@@ -1,10 +1,11 @@
-import { selectorFamily } from "recoil";
+import { selectorFamily, GetRecoilValue, SetRecoilState } from "recoil";
 
 import * as booleanFiltering from "./BooleanFieldFilter";
 import * as labelFiltering from "./LabelFieldFilters.state";
 import * as numericFiltering from "./NumericFieldFilter";
 import * as stringFiltering from "./StringFieldFilter";
 import { isBooleanField, isNumericField, isStringField } from "./utils";
+import * as atoms from "../../recoil/atoms";
 import * as selectors from "../../recoil/selectors";
 
 export const filteredScalars = selectorFamily<string[], boolean>({
@@ -104,11 +105,7 @@ export const filteredLabels = selectorFamily<string[], boolean>({
       paths = newValue;
     }
 
-    current.forEach((path) => {
-      if (paths.includes(path)) {
-        return;
-      }
-    });
+    clearLabelFilters({ get, set, modal, paths, current });
   },
 });
 
@@ -130,9 +127,75 @@ export const filteredFrameLabels = selectorFamily<string[], boolean>({
 
     return filtered;
   },
+  set: (modal) => ({ get, set }, newValue) => {
+    const current = get(filteredLabels(modal));
+
+    let paths = [];
+    if (Array.isArray(newValue)) {
+      paths = newValue;
+    }
+
+    clearLabelFilters({ get, set, modal, paths, current });
+  },
 });
 
 export const numFilteredFrameLabels = selectorFamily<number, boolean>({
   key: "numFilteredFrameLabels",
   get: (modal) => ({ get }) => get(filteredFrameLabels(modal)).length,
 });
+
+const clearLabelFilters = ({
+  get,
+  set,
+  paths,
+  current,
+  modal,
+}: {
+  get: GetRecoilValue;
+  set: SetRecoilState;
+  paths: string[];
+  current: string[];
+  modal: boolean;
+}) => {
+  current.forEach((path) => {
+    if (paths.includes(path)) {
+      return;
+    }
+    path = `${path}${labelFiltering.getPathExtension(
+      get(selectors.labelTypesMap)[path]
+    )}`;
+    const cPath = `${path}.confidence`;
+    const lPath = `${path}.label`;
+
+    if (modal) {
+      set(
+        atoms.hiddenLabels,
+        Object.fromEntries(
+          Object.entries(get(atoms.hiddenLabels)).filter(
+            ([_, label]) => label.field !== path
+          )
+        )
+      );
+    }
+
+    const [noneValue, rangeValue] = modal
+      ? [numericFiltering.noneModalAtom, numericFiltering.rangeModalAtom]
+      : [numericFiltering.noneAtom, numericFiltering.rangeAtom];
+
+    set(noneValue({ path: cPath }), true);
+    set(
+      rangeValue({ path: cPath }),
+      get(numericFiltering.boundsAtom({ path }))
+    );
+
+    const values = modal
+      ? stringFiltering.selectedValuesModalAtom
+      : stringFiltering.selectedValuesAtom;
+    const exclude = modal
+      ? stringFiltering.excludeModalAtom
+      : stringFiltering.excludeAtom;
+
+    set(values(lPath), []);
+    set(exclude(lPath), false);
+  });
+};

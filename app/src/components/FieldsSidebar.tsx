@@ -1,11 +1,18 @@
 import React, { useEffect, useState } from "react";
 import styled from "styled-components";
-import { useRecoilValue, useRecoilState, useRecoilCallback } from "recoil";
+import {
+  useRecoilValue,
+  useRecoilState,
+  useRecoilCallback,
+  RecoilState,
+  RecoilValueReadOnly,
+} from "recoil";
 import {
   BarChart,
   BurstMode,
   Check,
   Close,
+  FilterList,
   Help,
   LocalOffer,
   Note,
@@ -16,14 +23,8 @@ import {
 import { animated, useSpring } from "react-spring";
 import numeral from "numeral";
 
-import {
-  numFilteredFrameLabels,
-  numFilteredLabels,
-  numFilteredScalars,
-} from "./Filters/filtered";
-import CellHeader from "./CellHeader";
+import * as filtering from "./Filters/filtered";
 import CheckboxGrid from "./CheckboxGroup";
-import DropdownCell from "./DropdownCell";
 import { Entry } from "./CheckboxGroup";
 import * as atoms from "../recoil/atoms";
 import { labelModalTagCounts } from "./Actions/utils";
@@ -213,10 +214,6 @@ const makeClearMatchTags = (color, matchedTags, setMatchedTags) => {
         />,
       ]
     : [];
-};
-
-const makeClearFilters = (numFiltered) => {
-  nu;
 };
 
 const useSampleTags = (modal) => {
@@ -484,7 +481,6 @@ const LabelsCell = ({ modal, frames }: LabelsCellProps) => {
   const count = useRecoilValue(countAtom);
   const colorByLabel = useRecoilValue(atoms.colorByLabel(modal));
   const theme = useTheme();
-  const numFiltered = useRecoilValue(numFilteredLabels(modal));
 
   return (
     <Cell
@@ -492,6 +488,14 @@ const LabelsCell = ({ modal, frames }: LabelsCellProps) => {
       icon={
         frames ? <BurstMode /> : video ? <VideoLibrary /> : <PhotoLibrary />
       }
+      pills={useClearFiltersPill(
+        frames
+          ? filtering.numFilteredFrameLabels(modal)
+          : filtering.numFilteredLabels(modal),
+        frames
+          ? filtering.filteredFrameLabels(modal)
+          : filtering.filteredLabels(modal)
+      )}
       entries={labels.map((name) => {
         const path = frames ? "frames." + name : name;
         return {
@@ -533,11 +537,42 @@ const LabelsCell = ({ modal, frames }: LabelsCellProps) => {
   );
 };
 
-const useClearFilters = (modal) => {
-  return useRecoilCallback(
-    ({ snapshot, set }) => async (paths: string[]) => {},
-    [modal]
+const useClearFiltersPill = (
+  numFilteredAtom: RecoilValueReadOnly<number>,
+  filteredAtom: RecoilState<string[]>
+) => {
+  const clear = useRecoilCallback(
+    ({ set }) => async () => {
+      set(filteredAtom, []);
+    },
+    [filteredAtom]
   );
+
+  const numFiltered = useRecoilValue(numFilteredAtom);
+
+  return numFiltered > 0
+    ? [
+        <PillButton
+          key="clear-match"
+          highlight={false}
+          icon={<FilterList />}
+          text={numeral(numFiltered).format("0,0")}
+          onClick={(e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            clear();
+          }}
+          title={"Clear filters"}
+          open={false}
+          style={{
+            marginLeft: "0.25rem",
+            height: "1.5rem",
+            fontSize: "0.8rem",
+            lineHeight: "1rem",
+          }}
+        />,
+      ]
+    : null;
 };
 
 type ScalarsCellProps = {
@@ -567,6 +602,10 @@ const ScalarsCell = ({ modal }: ScalarsCellProps) => {
     <Cell
       label="Scalar fields"
       icon={<BarChart />}
+      pills={useClearFiltersPill(
+        filtering.numFilteredScalars(modal),
+        filtering.filteredScalars(modal)
+      )}
       entries={scalars.map((name) => {
         return {
           name,
