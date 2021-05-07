@@ -15,7 +15,6 @@ import eta.core.video as etav
 
 import fiftyone as fo
 import fiftyone.core.aggregations as foa
-from fiftyone.core.config import Config
 import fiftyone.core.dataset as fod
 import fiftyone.core.fields as fof
 import fiftyone.core.media as fom
