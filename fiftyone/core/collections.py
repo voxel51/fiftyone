@@ -119,6 +119,11 @@ class SampleCollection(object):
         raise NotImplementedError("Subclass must implement _root_dataset")
 
     @property
+    def _is_patches(self):
+        """Whether this collection contains patches."""
+        raise NotImplementedError("Subclass must implement _is_patches")
+
+    @property
     def _element_str(self):
         return "sample"
 
