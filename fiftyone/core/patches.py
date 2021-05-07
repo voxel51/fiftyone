@@ -528,7 +528,7 @@ def _make_patches_view(sample_collection, field, keep_label_lists=False):
     if sample_collection._is_frame_field(field):
         raise ValueError(
             "Frame label patches cannot be directly extracted; you must first "
-            "convert your video dataset into a frame dataset"
+            "convert your video dataset to frames via `to_frames()`"
         )
 
     label_type = sample_collection._get_label_field_type(field)
