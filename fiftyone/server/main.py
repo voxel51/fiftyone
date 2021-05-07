@@ -990,7 +990,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             aggs, fields = _count_values(filter, view)
             results = await _gather_results(col, aggs, fields, view)
 
-        elif group == "tags" and results is None:
+        elif group == "sample tags" and results is None:
             aggs = [foa.CountValues("tags")]
             try:
                 fields = [view.get_field_schema()["tags"]]
@@ -1168,10 +1168,12 @@ async def _gather_results(col, aggs, fields, view, ticks=None):
 
         name = agg.field_name
         if cls and issubclass(cls, fol.Label):
-            name = name[: -len(".label")]
-
-        if cls and issubclass(cls, fol._HasLabelList):
-            name = name[: -(len(cls._LABEL_LIST_FIELD) + 1)]
+            if view.media_type == fom.VIDEO and name.startswith(
+                view._FRAMES_PREFIX
+            ):
+                name = "".join(name.split(".")[:2])
+            else:
+                name = name.split(".")[0]
 
         data = sorters[type(agg)](result, field)
         result_ticks = 0

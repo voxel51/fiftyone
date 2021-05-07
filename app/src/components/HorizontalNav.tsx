@@ -1,6 +1,6 @@
-import React, { useContext, useState } from "react";
+import React, { useState } from "react";
 import { useRecoilState } from "recoil";
-import styled, { ThemeContext } from "styled-components";
+import styled from "styled-components";
 import {
   Assessment,
   DragHandle,
@@ -62,7 +62,6 @@ const PlotButton = styled.div`
   color: ${({ theme }) => theme.font};
   background-color: ${({ theme }) => theme.backgroundLight};
   text-decoration: none;
-  text-transform: capitalize;
   border-radius: 2px;
   font-weight: bold;
 
@@ -78,13 +77,21 @@ const ToggleMaximizeContainer = styled.div`
   margin: 0.25rem;
 `;
 
-const ToggleMaximize = React.memo(({ maximized, setMaximized }) => {
-  return (
-    <ToggleMaximizeContainer onClick={() => setMaximized(!maximized)}>
-      {maximized ? <FullscreenExit /> : <Fullscreen />}
-    </ToggleMaximizeContainer>
-  );
-});
+const ToggleMaximize = React.memo(
+  ({
+    maximized,
+    setMaximized,
+  }: {
+    maximized: boolean;
+    setMaximized: (value: boolean) => void;
+  }) => {
+    return (
+      <ToggleMaximizeContainer onClick={() => setMaximized(!maximized)}>
+        {maximized ? <FullscreenExit /> : <Fullscreen />}
+      </ToggleMaximizeContainer>
+    );
+  }
+);
 
 const HorizontalNav = ({ entries }: Props) => {
   const { height: windowHeight } = useWindowSize();

@@ -17,7 +17,7 @@ import {
 } from "../utils/hooks";
 import Loading from "../components/Loading";
 
-const PLOTS = ["tags", "label tags", "labels", "scalars"];
+const PLOTS = ["Sample tags", "Label tags", "Labels", "Scalars"];
 
 const Container = styled.div`
   height: calc(100% - 74px);
