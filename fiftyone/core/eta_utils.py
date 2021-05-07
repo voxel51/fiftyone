@@ -7,7 +7,6 @@ Utilities for interfacing with the
 |
 """
 from collections import defaultdict
-import itertools
 import warnings
 
 import numpy as np
@@ -24,6 +23,22 @@ import eta.core.video as etav
 
 import fiftyone.core.labels as fol
 import fiftyone.core.models as fom
+
+
+_IMAGE_MODELS = (
+    etal.ImageModel,
+    etal.ImageClassifier,
+    etal.ObjectDetector,
+    etal.ImageSemanticSegmenter,
+)
+
+_VIDEO_MODELS = (
+    etal.VideoModel,
+    etal.VideoClassifier,
+    etal.VideoObjectDetector,
+    etal.VideoEventDetector,
+    etal.VideoSemanticSegmenter,
+)
 
 
 class ETAModelConfig(fom.ModelConfig):
@@ -87,6 +102,16 @@ class ETAModel(fom.Model, fom.EmbeddingsMixin, fom.LogitsMixin):
 
     def __exit__(self, *args):
         self._model.__exit__(*args)
+
+    @property
+    def media_type(self):
+        if isinstance(self._model, _IMAGE_MODELS):
+            return "image"
+
+        if isinstance(self._model, _VIDEO_MODELS):
+            return "video"
+
+        return None
 
     @property
     def ragged_batches(self):

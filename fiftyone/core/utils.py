@@ -182,16 +182,41 @@ def fill_patterns(string):
     return etau.fill_patterns(string, available_patterns())
 
 
-def ensure_tf(error_msg=None):
+def ensure_tf(eager=False, error_msg=None):
     """Verifies that TensorFlow is installed and importable.
 
     Args:
+        eager (False): whether to require that TF is executing eagerly. If
+            True and TF is not currently executing eagerly, this method will
+            attempt to enable it
         error_msg (None): an optional custom error message to print
 
     Raises:
         ImportError: if ``tensorflow`` could not be imported
     """
     _ensure_import("tensorflow", error_msg=error_msg)
+
+    if not eager:
+        return
+
+    import tensorflow as tf
+
+    try:
+        if tf.executing_eagerly():
+            return
+
+        try:
+            # pylint: disable=no-member
+            tf.compat.v1.enable_eager_execution()
+        except AttributeError:
+            # pylint: disable=no-member
+            tf.enable_eager_execution()
+    except Exception as e:
+        raise ValueError(
+            "The requested operation requires that TensorFlow's eager "
+            "execution mode is activated. We tried to enable it but "
+            "encountered an error"
+        ) from e
 
 
 def ensure_tfds(error_msg=None):

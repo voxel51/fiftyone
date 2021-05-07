@@ -2117,10 +2117,7 @@ class ModelZooApplyCommand(Command):
         parser.add_argument(
             "label_field",
             metavar="LABEL_FIELD",
-            help=(
-                "the name (or prefix) of the field in which to store the "
-                "predictions"
-            ),
+            help="the name of the field in which to store the predictions",
         )
         parser.add_argument(
             "-b",

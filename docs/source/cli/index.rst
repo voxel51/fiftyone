@@ -1699,8 +1699,7 @@ Apply zoo models to datasets.
     positional arguments:
       MODEL_NAME            the name of the zoo model
       DATASET_NAME          the name of the FiftyOne dataset to process
-      LABEL_FIELD           the name (or prefix) of the field in which to store
-                            the predictions
+      LABEL_FIELD           the name of the field in which to store the predictions
 
     optional arguments:
       -h, --help            show this help message and exit
