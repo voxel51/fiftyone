@@ -230,7 +230,18 @@ def _make_eval_view(
 
     if skip_matched:
         view = view.mongo(
-            [{"$match": {"$expr": {"$eq": ["$" + eval_id, _NO_MATCH_ID]}}}]
+            [
+                {
+                    "$match": {
+                        "$expr": {
+                            "$or": [
+                                {"$eq": ["$" + eval_id, _NO_MATCH_ID]},
+                                {"$not": {"$gt": ["$" + eval_id, None]}},
+                            ]
+                        }
+                    }
+                }
+            ]
         )
 
     view = view.mongo(
