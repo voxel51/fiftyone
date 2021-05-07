@@ -16,16 +16,19 @@ import fiftyone.core.odm as foo
 import fiftyone.core.view as fov
 
 
-_DEFAULT_FIELDS = {
+_DEFAULT_FIELDS_NO_INDEX = [
     "_id",
     "_rand",
     "_media_type",
     "filepath",
     "metadata",
     "tags",
-    "frame_number",
     "frame_id",
-}
+]
+
+
+_DEFAULT_FIELDS = set(_DEFAULT_FIELDS_NO_INDEX)
+_DEFAULT_FIELDS.update({"_sample_id", "frame_number"})
 
 
 class FrameView(fos.SampleView):
@@ -158,6 +161,14 @@ class FramesView(fov.DatasetView):
 
         self._sync_source_fcn(sync_fcn, fields)
 
+    def set_values(self, field_name, *args, **kwargs):
+        super().set_values(field_name, *args, **kwargs)
+
+        # Update source collection
+
+        field = field_name.split(".", 1)[0]
+        self._sync_source(fields=[field])
+
     def save(self, fields=None):
         if etau.is_str(fields):
             fields = [fields]
@@ -166,7 +177,14 @@ class FramesView(fov.DatasetView):
 
         # Update source collection
 
-        self._sync_source_save(fields=fields)
+        #
+        # IMPORTANT: we sync the contents of `_frames_dataset`, not `self`
+        # here because the `save()` call above updated the dataset, which means
+        # this view may no longer have the same contents (e.g., if `skip()` is
+        # involved)
+        #
+
+        self._sync_source(fields=fields, root=True)
 
     def reload(self):
         self._root_dataset.reload()
@@ -205,15 +223,13 @@ class FramesView(fov.DatasetView):
             )
             sync_fcn(source_view, frame_field)
 
-    def _sync_source_save(self, fields=None):
+    def _sync_source(self, fields=None, root=False):
         self._sync_source_schema(fields=fields)
 
         pipeline = []
 
         if fields is None:
-            default_fields = _DEFAULT_FIELDS.copy()
-            default_fields.discard("frame_number")
-            pipeline.append({"$unset": list(default_fields)})
+            pipeline.append({"$unset": _DEFAULT_FIELDS_NO_INDEX})
         else:
             pipeline.append({"$project": {f: True for f in fields}})
 
@@ -228,7 +244,8 @@ class FramesView(fov.DatasetView):
             }
         )
 
-        self._aggregate(pipeline)
+        collection = self._frames_dataset if root else self
+        collection._aggregate(pipeline=pipeline)
 
     def _sync_source_schema(self, fields=None):
         schema = self.get_field_schema()
