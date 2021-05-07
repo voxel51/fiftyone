@@ -41,7 +41,6 @@ fov = fou.lazy_import("fiftyone.core.view")
 foua = fou.lazy_import("fiftyone.utils.annotations")
 foud = fou.lazy_import("fiftyone.utils.data")
 foue = fou.lazy_import("fiftyone.utils.eval")
-foup = fou.lazy_import("fiftyone.utils.patches")
 
 
 logger = logging.getLogger(__name__)
