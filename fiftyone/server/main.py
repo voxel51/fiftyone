@@ -964,20 +964,25 @@ class StateHandler(tornado.websocket.WebSocketHandler):
 
         view = get_extended_view(view, state.filters)
 
-        if group == "labels" and results is None:
+        if group == "label tags" and results is None:
 
             def filter(field):
-                path = None
-                if isinstance(field, fof.EmbeddedDocumentField) and issubclass(
-                    field.document_type, fol.Label
-                ):
-                    path = field.name
-                    if issubclass(field.document_type, fol._HasLabelList):
-                        path = "%s.%s" % (
-                            path,
-                            field.document_type._LABEL_LIST_FIELD,
-                        )
+                path = _label_filter(field)
 
+                if path is not None:
+                    path = "%s.tags" % path
+
+                return path
+
+            aggs, fields = _count_values(filter, view)
+            results = await _gather_results(col, aggs, fields, view)
+
+        elif group == "labels" and results is None:
+
+            def filter(field):
+                path = _label_filter(field)
+
+                if path is not None:
                     path = "%s.label" % path
 
                 return path
@@ -1019,6 +1024,18 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         _write_message(
             {"type": "distributions", "results": results}, only=self
         )
+
+
+def _label_filter(field):
+    path = None
+    if isinstance(field, fof.EmbeddedDocumentField) and issubclass(
+        field.document_type, fol.Label
+    ):
+        path = field.name
+        if issubclass(field.document_type, fol._HasLabelList):
+            path = "%s.%s" % (path, field.document_type._LABEL_LIST_FIELD,)
+
+    return path
 
 
 def _get_search_view(view, path, search, selected):

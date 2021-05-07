@@ -87,7 +87,6 @@ const ToggleMaximize = React.memo(({ maximized, setMaximized }) => {
 });
 
 const HorizontalNav = ({ entries }: Props) => {
-  const theme = useContext(ThemeContext);
   const { height: windowHeight } = useWindowSize();
   const [activePlot, setActivePlot] = useRecoilState(atoms.activePlot);
   const [expanded, setExpanded] = useState(false);
@@ -122,8 +121,12 @@ const HorizontalNav = ({ entries }: Props) => {
               key={e}
               className={e === activePlot && expanded ? "active" : ""}
               onClick={() => {
-                setExpanded(true);
-                setActivePlot(e);
+                if (expanded && activePlot === e) {
+                  setExpanded(false);
+                } else {
+                  setExpanded(true);
+                  setActivePlot(e);
+                }
               }}
             >
               {e}
