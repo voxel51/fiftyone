@@ -147,7 +147,7 @@ const DistributionsContainer = styled.div`
   ${scrollbarStyles}
 `;
 
-const Distributions = ({ group }) => {
+const Distributions = ({ group }: { group: string }) => {
   const view = useRecoilValue(selectors.view);
   const filters = useRecoilValue(selectors.filterStages);
   const datasetName = useRecoilValue(selectors.datasetName);
@@ -155,7 +155,7 @@ const Distributions = ({ group }) => {
   const refresh = useRecoilValue(selectors.refresh);
   const [data, setData] = useState([]);
 
-  useSendMessage("distributions", { group }, null, [
+  useSendMessage("distributions", { group: group.toLowerCase() }, null, [
     JSON.stringify(view),
     JSON.stringify(filters),
     datasetName,
@@ -170,7 +170,13 @@ const Distributions = ({ group }) => {
   useEffect(() => {
     setData([]);
     setLoading(true);
-  }, [JSON.stringify(view), JSON.stringify(filters), datasetName, refresh]);
+  }, [
+    JSON.stringify(view),
+    JSON.stringify(filters),
+    datasetName,
+    refresh,
+    group,
+  ]);
 
   if (loading) {
     return <Loading />;

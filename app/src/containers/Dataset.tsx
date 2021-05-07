@@ -1,10 +1,5 @@
 import React, { useEffect, useMemo, useRef } from "react";
-import {
-  useRecoilState,
-  useRecoilValue,
-  useSetRecoilState,
-  useResetRecoilState,
-} from "recoil";
+import { useRecoilState, useRecoilValue, useResetRecoilState } from "recoil";
 import styled from "styled-components";
 
 import SamplesContainer from "./SamplesContainer";
@@ -14,7 +9,6 @@ import { ModalWrapper } from "../components/utils";
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
 import {
-  useMessageHandler,
   useOutsideClick,
   useSendMessage,
   useScreenshot,
@@ -23,7 +17,7 @@ import {
 } from "../utils/hooks";
 import Loading from "../components/Loading";
 
-const PLOTS = ["labels", "scalars", "tags"];
+const PLOTS = ["Sample tags", "Label tags", "Labels", "Scalars"];
 
 const Container = styled.div`
   height: calc(100% - 74px);
