@@ -122,7 +122,7 @@ class DatasetView(foc.SampleCollection):
     @property
     def media_type(self):
         """The media type of the underlying dataset."""
-        return self._root_dataset.media_type
+        return self._dataset.media_type
 
     @property
     def name(self):

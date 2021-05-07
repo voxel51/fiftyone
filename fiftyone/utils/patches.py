@@ -8,6 +8,7 @@ Patch utilities.
 import fiftyone.core.dataset as fod
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
+import fiftyone.core.media as fom
 import fiftyone.core.utils as fou
 
 fouc = fou.lazy_import("fiftyone.utils.eval.coco")
@@ -51,6 +52,7 @@ def make_patches_dataset(
         field_type = _get_single_label_field_type(sample_collection, field)
 
     dataset = fod.Dataset(name, _patches=True)
+    dataset.media_type = fom.IMAGE
     dataset.add_sample_field("sample_id", fof.StringField)
     dataset.add_sample_field(
         field, fof.EmbeddedDocumentField, embedded_doc_type=field_type
@@ -120,6 +122,7 @@ def make_evaluation_dataset(sample_collection, eval_key, name=None):
 
     # Setup dataset with correct schema
     dataset = fod.Dataset(name, _patches=True)
+    dataset.media_type = fom.IMAGE
     dataset.add_sample_field(
         pred_field, fof.EmbeddedDocumentField, embedded_doc_type=pred_type
     )

@@ -132,10 +132,10 @@ class _PatchesView(fov.DatasetView):
         else:
             fields = [l for l in label_fields if l in self._label_fields]
 
-        def sync_fcn(view, fields=None):
-            view.tag_labels(tags, label_fields=fields)
+        def sync_fcn(view, field):
+            view.tag_labels(tags, label_fields=[field])
 
-        self._sync_source_fcn(sync_fcn, fields=fields)
+        self._sync_source_fcn(sync_fcn, fields)
 
     def untag_labels(self, tags, label_fields=None):
         if etau.is_str(label_fields):
@@ -150,10 +150,10 @@ class _PatchesView(fov.DatasetView):
         else:
             fields = [l for l in label_fields if l in self._label_fields]
 
-        def sync_fcn(view, fields=None):
-            view.untag_labels(tags, label_fields=fields)
+        def sync_fcn(view, field):
+            view.untag_labels(tags, label_fields=[field])
 
-        self._sync_source_fcn(sync_fcn, fields=fields)
+        self._sync_source_fcn(sync_fcn, fields)
 
     def save(self, fields=None):
         if etau.is_str(fields):
@@ -168,7 +168,7 @@ class _PatchesView(fov.DatasetView):
         else:
             fields = [l for l in fields if l in self._label_fields]
 
-        self._sync_source(fields=fields)
+        self._sync_source(fields)
 
     def reload(self):
         self._root_dataset.reload()
@@ -201,16 +201,13 @@ class _PatchesView(fov.DatasetView):
         )
 
     def _sync_source_fcn(self, sync_fcn, fields):
-        if etau.is_str(fields):
-            fields = [fields]
-
         for field in fields:
             _, id_path = self._get_label_field_path(field, "id")
             ids = self.values(id_path, unwind=True)
             source_view = self._source_collection.select_labels(
                 ids=ids, fields=field
             )
-            sync_fcn(source_view, fields=field)
+            sync_fcn(source_view, field)
 
     def _sync_source(self, fields):
         if etau.is_str(fields):
