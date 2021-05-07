@@ -4,8 +4,9 @@ import { Checkbox } from "@material-ui/core";
 import numeral from "numeral";
 import styled from "styled-components";
 
-import { ItemAction, useHighlightHover } from "./utils";
+import { useHighlightHover } from "./utils";
 import { useKeydownHandler, useTheme } from "../../utils/hooks";
+import { ItemAction } from "./ItemAction";
 
 const CheckboxDiv = animated(styled(ItemAction)`
   display: flex;

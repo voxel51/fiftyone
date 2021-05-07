@@ -23,6 +23,8 @@ import {
 import { animated, useSpring } from "react-spring";
 import numeral from "numeral";
 
+import CellHeader from "./CellHeader";
+import DropdownCell from "./DropdownCell";
 import * as filtering from "./Filters/filtered";
 import CheckboxGrid from "./CheckboxGroup";
 import { Entry } from "./CheckboxGroup";
@@ -484,7 +486,7 @@ const LabelsCell = ({ modal, frames }: LabelsCellProps) => {
 
   return (
     <Cell
-      label={frames ? "Frame label fields" : "Label fields"}
+      label={frames ? "Frame labels" : "Labels"}
       icon={
         frames ? <BurstMode /> : video ? <VideoLibrary /> : <PhotoLibrary />
       }
@@ -541,6 +543,7 @@ const useClearFiltersPill = (
   numFilteredAtom: RecoilValueReadOnly<number>,
   filteredAtom: RecoilState<string[]>
 ) => {
+  const theme = useTheme();
   const clear = useRecoilCallback(
     ({ set }) => async () => {
       set(filteredAtom, []);
@@ -569,6 +572,7 @@ const useClearFiltersPill = (
             height: "1.5rem",
             fontSize: "0.8rem",
             lineHeight: "1rem",
+            color: theme.font,
           }}
         />,
       ]
@@ -600,7 +604,7 @@ const ScalarsCell = ({ modal }: ScalarsCellProps) => {
 
   return (
     <Cell
-      label="Scalar fields"
+      label="Scalars"
       icon={<BarChart />}
       pills={useClearFiltersPill(
         filtering.numFilteredScalars(modal),
@@ -614,7 +618,7 @@ const ScalarsCell = ({ modal }: ScalarsCellProps) => {
           hasDropdown: !modal,
           selected: activeScalars.includes(name),
           color: colorByLabel ? theme.brand : colorMap[name],
-          title: modal ? `${name}: ${prettify(count[name], false)}` : name,
+          title: modal ? prettify(count[name], false) : name,
           path: name,
           type: "values",
           data:
@@ -658,7 +662,7 @@ const UnsupportedCell = ({ modal }: UnsupportedCellProps) => {
   const unsupported = useRecoilValue(fieldAtoms.unsupportedFields);
   return unsupported.length ? (
     <Cell
-      label={"Unsupported fields"}
+      label={"Unsupported"}
       icon={<Help />}
       entries={unsupported.map((e) => ({
         name: e,
@@ -669,7 +673,7 @@ const UnsupportedCell = ({ modal }: UnsupportedCellProps) => {
         hideCheckbox: true,
         selected: false,
       }))}
-      title={"Currently unsupported"}
+      title={"Currently unsupported fields"}
       modal={modal}
     />
   ) : null;
