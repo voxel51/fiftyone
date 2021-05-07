@@ -5457,7 +5457,7 @@ class SampleCollection(object):
 
         return field.document_type
 
-    def _get_label_field_path(self, field_name, subfield):
+    def _get_label_field_path(self, field_name, subfield=None):
         label_type = self._get_label_field_type(field_name)
 
         if issubclass(label_type, fol._LABEL_LIST_FIELDS):
