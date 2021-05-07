@@ -545,6 +545,7 @@ const ScalarsCell = ({ modal }: ScalarsCellProps) => {
   const count = useRecoilValue(countAtom);
   const colorByLabel = useRecoilValue(atoms.colorByLabel(modal));
   const theme = useTheme();
+  const numFilteredScalars = useRecoilValue(selectors.numF);
 
   return (
     <Cell
