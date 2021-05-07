@@ -79,6 +79,26 @@ const NamedBooleanFilter = React.memo(
                   setValue={setNone}
                 />
               )}
+              {!isDefault(falseValue, trueValue, none) && (
+                <>
+                  <PopoutSectionTitle />
+                  <Button
+                    text={"Reset"}
+                    color={color}
+                    onClick={() => {
+                      setFalse(false);
+                      setTrue(false);
+                      setNone(false);
+                    }}
+                    style={{
+                      margin: "0.25rem -0.5rem",
+                      height: "2rem",
+                      borderRadius: 0,
+                      textAlign: "center",
+                    }}
+                  ></Button>
+                </>
+              )}
             </CheckboxContainer>
           </BooleanFilterContainer>
         </NamedBooleanFilterContainer>
