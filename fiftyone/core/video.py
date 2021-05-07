@@ -125,11 +125,15 @@ class FramesView(fov.DatasetView):
     def name(self):
         return self.dataset_name + "-frames"
 
-    def tag_labels(self, tags, label_fields=None):
+    def _edit_label_tags(self, edit_fcn, label_fields=None):
+        # This covers the necessary overrides for both `tag_labels()` and
+        # `untag_labels()`. This is important because the App uses
+        # `_edit_label_tags()` rather than the public methods to update tags
+
         if etau.is_str(label_fields):
             label_fields = [label_fields]
 
-        super().tag_labels(tags, label_fields=label_fields)
+        super()._edit_label_tags(edit_fcn, label_fields=label_fields)
 
         # Update source collection
 
@@ -139,25 +143,7 @@ class FramesView(fov.DatasetView):
             fields = label_fields
 
         def sync_fcn(view, field):
-            view.tag_labels(tags, label_fields=[field])
-
-        self._sync_source_fcn(sync_fcn, fields)
-
-    def untag_labels(self, tags, label_fields=None):
-        if etau.is_str(label_fields):
-            label_fields = [label_fields]
-
-        super().untag_labels(tags, label_fields=label_fields)
-
-        # Update source collection
-
-        if label_fields is None:
-            fields = self._frames_dataset._get_label_fields()
-        else:
-            fields = label_fields
-
-        def sync_fcn(view, field):
-            view.untag_labels(tags, label_fields=[field])
+            view._edit_label_tags(edit_fcn, label_fields=[field])
 
         self._sync_source_fcn(sync_fcn, fields)
 
