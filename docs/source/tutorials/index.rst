@@ -77,6 +77,13 @@ your datasets and turn your good models into *great models*.
     :image: ../_static/images/tutorials/detection_mistakes.png
     :tags: Dataset-Evaluation,Brain
 
+.. customcarditem::
+    :header: Downloading and evaluating Open Images 
+    :description: Expand your data lake and evaluate your object detection models with Google's Open Images dataset and evaluation protocol.
+    :link: open_images.html
+    :image: ../_static/images/tutorials/open_images.png
+    :tags: Dataset-Evaluation,Model-Evaluation,Dataset-Zoo
+
 .. End of tutorial cards
 
 .. raw:: html
@@ -107,3 +114,4 @@ your datasets and turn your good models into *great models*.
    Exploring image uniqueness <uniqueness.ipynb>
    Finding class mistakes <classification_mistakes.ipynb>
    Finding detection mistakes <detection_mistakes.ipynb>
+   Downloading Open Images <open_images.ipynb> 

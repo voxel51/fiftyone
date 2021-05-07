@@ -760,15 +760,30 @@ class LegacyFiftyOneDatasetExporter(GenericSampleDatasetExporter):
 
     Args:
         export_dir: the directory to write the export
+        export_media (True): whether to export media files using the method
+            defined by ``move_media`` (True), or to export only labels and
+            metadata (False)
         move_media (False): whether to move (True) or copy (False) the source
-            media into its output destination
+            media into its output destination. Only applicable if
+            ``export_media`` is True
+        relative_filepaths (True): whether to store relative (True) or absolute
+            (False) filepaths to media files on disk in the output dataset
         pretty_print (False): whether to render the JSON in human readable
             format with newlines and indentations
     """
 
-    def __init__(self, export_dir, move_media=False, pretty_print=False):
+    def __init__(
+        self,
+        export_dir,
+        export_media=True,
+        move_media=False,
+        relative_filepaths=True,
+        pretty_print=False,
+    ):
         super().__init__(export_dir)
+        self.export_media = export_media
         self.move_media = move_media
+        self.relative_filepaths = relative_filepaths
         self.pretty_print = pretty_print
         self._data_dir = None
         self._eval_dir = None
@@ -849,14 +864,23 @@ class LegacyFiftyOneDatasetExporter(GenericSampleDatasetExporter):
             _export_brain_results(dataset, self._brain_dir)
 
     def export_sample(self, sample):
-        out_filepath = self._filename_maker.get_output_path(sample.filepath)
-        if self.move_media:
-            etau.move_file(sample.filepath, out_filepath)
-        else:
-            etau.copy_file(sample.filepath, out_filepath)
-
         sd = sample.to_dict()
-        sd["filepath"] = os.path.relpath(out_filepath, self.export_dir)
+
+        if self.export_media:
+            out_filepath = self._filename_maker.get_output_path(
+                sample.filepath
+            )
+            if self.move_media:
+                etau.move_file(sample.filepath, out_filepath)
+            else:
+                etau.copy_file(sample.filepath, out_filepath)
+            sd["filepath"] = out_filepath
+
+        else:
+            out_filepath = sample.filepath
+
+        if self.relative_filepaths:
+            sd["filepath"] = os.path.relpath(out_filepath, self.export_dir)
 
         if self._is_video_dataset:
             # Serialize frame labels separately

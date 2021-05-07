@@ -15,55 +15,57 @@ This page lists all of the datasets available in the Dataset Zoo.
 .. table::
     :widths: 40 60
 
-    +--------------------------------------------------------------------+---------------------------------------------+
-    | Dataset name                                                       | Tags                                        |
-    +====================================================================+=============================================+
-    | :ref:`BDD100K <dataset-zoo-bdd100k>`                               | image, multilabel, automotive, manual       |
-    +--------------------------------------------------------------------+---------------------------------------------+
-    | :ref:`Caltech-101 <dataset-zoo-caltech101>`                        | image, classification                       |
-    +--------------------------------------------------------------------+---------------------------------------------+
-    | :ref:`Caltech-256 <dataset-zoo-caltech256>`                        | image, classification                       |
-    +--------------------------------------------------------------------+---------------------------------------------+
-    | :ref:`CIFAR-10 <dataset-zoo-cifar10>`                              | image, classification                       |
-    +--------------------------------------------------------------------+---------------------------------------------+
-    | :ref:`CIFAR-100 <dataset-zoo-cifar100>`                            | image, classification                       |
-    +--------------------------------------------------------------------+---------------------------------------------+
-    | :ref:`Cityscapes <dataset-zoo-cityscapes>`                         | image, multilabel, automotive, manual       |
-    +--------------------------------------------------------------------+---------------------------------------------+
-    | :ref:`COCO-2014 <dataset-zoo-coco-2014>`                           | image, detection                            |
-    +--------------------------------------------------------------------+---------------------------------------------+
-    | :ref:`COCO-2014 Segmentation <dataset-zoo-coco-2014-segmentation>` | image, detection, segmentation              |
-    +--------------------------------------------------------------------+---------------------------------------------+
-    | :ref:`COCO-2017 <dataset-zoo-coco-2017>`                           | image, detection                            |
-    +--------------------------------------------------------------------+---------------------------------------------+
-    | :ref:`COCO-2017 Segmentation <dataset-zoo-coco-2017-segmentation>` | image, detection, segmentation              |
-    +--------------------------------------------------------------------+---------------------------------------------+
-    | :ref:`Fashion MNIST <dataset-zoo-fashion-mnist>`                   | image, classification                       |
-    +--------------------------------------------------------------------+---------------------------------------------+
-    | :ref:`HMDB51 <dataset-zoo-hmdb51>`                                 | video, action-recognition                   |
-    +--------------------------------------------------------------------+---------------------------------------------+
-    | :ref:`ImageNet 2012 <dataset-zoo-imagenet-2012>`                   | image, classification, manual               |
-    +--------------------------------------------------------------------+---------------------------------------------+
-    | :ref:`ImageNet Sample <dataset-zoo-imagenet-sample>`               | image, classification                       |
-    +--------------------------------------------------------------------+---------------------------------------------+
-    | :ref:`KITTI <dataset-zoo-kitti>`                                   | image, detection                            |
-    +--------------------------------------------------------------------+---------------------------------------------+
-    | :ref:`Labeled Faces in the Wild <dataset-zoo-lfw>`                 | image, classification, facial-recognition   |
-    +--------------------------------------------------------------------+---------------------------------------------+
-    | :ref:`MNIST <dataset-zoo-mnist>`                                   | image, classification                       |
-    +--------------------------------------------------------------------+---------------------------------------------+
-    | :ref:`Quickstart <dataset-zoo-quickstart>`                         | image, quickstart                           |
-    +--------------------------------------------------------------------+---------------------------------------------+
-    | :ref:`Quickstart Geo <dataset-zoo-quickstart-geo>`                 | image, location, quickstart                 |
-    +--------------------------------------------------------------------+---------------------------------------------+
-    | :ref:`Quickstart Video <dataset-zoo-quickstart-video>`             | video, quickstart                           |
-    +--------------------------------------------------------------------+---------------------------------------------+
-    | :ref:`UCF101 <dataset-zoo-ucf101>`                                 | video, action-recognition                   |
-    +--------------------------------------------------------------------+---------------------------------------------+
-    | :ref:`VOC-2007 <dataset-zoo-voc-2007>`                             | image, detection                            |
-    +--------------------------------------------------------------------+---------------------------------------------+
-    | :ref:`VOC-2012 <dataset-zoo-voc-2012>`                             | image, detection                            |
-    +--------------------------------------------------------------------+---------------------------------------------+
+    +--------------------------------------------------------------------+---------------------------------------------------------------------------+
+    | Dataset name                                                       | Tags                                                                      |
+    +====================================================================+===========================================================================+
+    | :ref:`BDD100K <dataset-zoo-bdd100k>`                               | image, multilabel, automotive, manual                                     |
+    +--------------------------------------------------------------------+---------------------------------------------------------------------------+
+    | :ref:`Caltech-101 <dataset-zoo-caltech101>`                        | image, classification                                                     |
+    +--------------------------------------------------------------------+---------------------------------------------------------------------------+
+    | :ref:`Caltech-256 <dataset-zoo-caltech256>`                        | image, classification                                                     |
+    +--------------------------------------------------------------------+---------------------------------------------------------------------------+
+    | :ref:`CIFAR-10 <dataset-zoo-cifar10>`                              | image, classification                                                     |
+    +--------------------------------------------------------------------+---------------------------------------------------------------------------+
+    | :ref:`CIFAR-100 <dataset-zoo-cifar100>`                            | image, classification                                                     |
+    +--------------------------------------------------------------------+---------------------------------------------------------------------------+
+    | :ref:`Cityscapes <dataset-zoo-cityscapes>`                         | image, multilabel, automotive, manual                                     |
+    +--------------------------------------------------------------------+---------------------------------------------------------------------------+
+    | :ref:`COCO-2014 <dataset-zoo-coco-2014>`                           | image, detection                                                          |
+    +--------------------------------------------------------------------+---------------------------------------------------------------------------+
+    | :ref:`COCO-2014 Segmentation <dataset-zoo-coco-2014-segmentation>` | image, detection, segmentation                                            |
+    +--------------------------------------------------------------------+---------------------------------------------------------------------------+
+    | :ref:`COCO-2017 <dataset-zoo-coco-2017>`                           | image, detection                                                          |
+    +--------------------------------------------------------------------+---------------------------------------------------------------------------+
+    | :ref:`COCO-2017 Segmentation <dataset-zoo-coco-2017-segmentation>` | image, detection, segmentation                                            |
+    +--------------------------------------------------------------------+---------------------------------------------------------------------------+
+    | :ref:`Fashion MNIST <dataset-zoo-fashion-mnist>`                   | image, classification                                                     |
+    +--------------------------------------------------------------------+---------------------------------------------------------------------------+
+    | :ref:`HMDB51 <dataset-zoo-hmdb51>`                                 | video, action-recognition                                                 |
+    +--------------------------------------------------------------------+---------------------------------------------------------------------------+
+    | :ref:`ImageNet 2012 <dataset-zoo-imagenet-2012>`                   | image, classification, manual                                             |
+    +--------------------------------------------------------------------+---------------------------------------------------------------------------+
+    | :ref:`ImageNet Sample <dataset-zoo-imagenet-sample>`               | image, classification                                                     |
+    +--------------------------------------------------------------------+---------------------------------------------------------------------------+
+    | :ref:`KITTI <dataset-zoo-kitti>`                                   | image, detection                                                          |
+    +--------------------------------------------------------------------+---------------------------------------------------------------------------+
+    | :ref:`Labeled Faces in the Wild <dataset-zoo-lfw>`                 | image, classification, facial-recognition                                 |
+    +--------------------------------------------------------------------+---------------------------------------------------------------------------+
+    | :ref:`MNIST <dataset-zoo-mnist>`                                   | image, classification                                                     |
+    +--------------------------------------------------------------------+---------------------------------------------------------------------------+
+    | :ref:`Open Images V6 <dataset-zoo-open-images>`                    | image, classification, detection, segmentation, visual-relationship       |
+    +--------------------------------------------------------------------+---------------------------------------------------------------------------+
+    | :ref:`Quickstart <dataset-zoo-quickstart>`                         | image, quickstart                                                         |
+    +--------------------------------------------------------------------+---------------------------------------------------------------------------+
+    | :ref:`Quickstart Geo <dataset-zoo-quickstart-geo>`                 | image, location, quickstart                                               |
+    +--------------------------------------------------------------------+---------------------------------------------------------------------------+
+    | :ref:`Quickstart Video <dataset-zoo-quickstart-video>`             | video, quickstart                                                         |
+    +--------------------------------------------------------------------+---------------------------------------------------------------------------+
+    | :ref:`UCF101 <dataset-zoo-ucf101>`                                 | video, action-recognition                                                 |
+    +--------------------------------------------------------------------+---------------------------------------------------------------------------+
+    | :ref:`VOC-2007 <dataset-zoo-voc-2007>`                             | image, detection                                                          |
+    +--------------------------------------------------------------------+---------------------------------------------------------------------------+
+    | :ref:`VOC-2012 <dataset-zoo-voc-2012>`                             | image, detection                                                          |
+    +--------------------------------------------------------------------+---------------------------------------------------------------------------+
 
 .. _dataset-zoo-bdd100k:
 
@@ -1166,6 +1168,131 @@ There are 60,000 training images and 10,000 test images.
 
 .. image:: ../../images/dataset_zoo/mnist-test.png
    :alt: mnist-test
+   :align: center
+
+.. _dataset-zoo-open-images:
+
+Open Images V6
+--------------
+
+Open Images is a dataset of totalling ~9 million images. Roughly 2 million are
+annotated and available in this zoo. The dataset contains annotations for
+classification, detection, segmentation, and visual relationship tasks across
+601 object classes.
+
+Partial downloads:
+
+Open Images is a large dataset, FiftyOne provides parameters that can be
+used to download specific subsets of the dataset to suit your needs. It will
+only download the data relevant to the specified subset. When additional
+subsets are specified, the zoo will attempt to use existing downloaded data first
+to meet your specifications. These parameters are:
+
+- ``label_types``: a list of types of labels to load. Values are
+  ``("detections", "classifications", "relationships", "segmentations")``.
+  By default, all labels are loaded but not every sample will include
+  each label type. If ``max_samples`` and ``label_types`` are both
+  specified, then every sample will include the specified label
+  types.
+
+
+- ``split`` and ``splits``: either a string or list of strings dictating the splits
+  to load. Available splits are ``("test", "train", "validation")``
+
+
+- ``classes``: a list of strings specifying required classes to load.
+  Only samples containing at least one instance of a specified
+  class will be downloaded. Use :meth:`fiftyone.utils.openimages.get_classes` to see the
+  available classes and :meth:`fiftyone.utils.openimages.get_segmentation_classes` to see
+  available segmentation classes
+ 
+
+- ``attrs``: a list of strings for relationship attributes to load. This
+  parameter is only useful if ``"relationships"`` is in ``label_types``. Use 
+  :meth:`fiftyone.utils.openimages.get_attributes` to see the
+  available attributes
+
+
+- ``max_samples``: a maximum number of samples to import. By
+  default, all samples are imported
+
+- ``shuffle``: boolean dictating whether to randomly shuffle the order in which the
+  samples are imported
+ 
+- ``seed``: a random seed to use when shuffling
+
+- ``image_ids``: a list of specific image IDs to load. The IDs can be
+  specified either as ``<split>/<image-id>`` or ``<image-id>``
+
+- ``image_ids_file``: the path to a newline separated ``.txt``, ``.json``, or ``.csv``
+  file containing a list of image IDs to load. The IDs can be
+  specified either as ``<split>/<image-id>`` or ``<image-id>``. If
+  ``image_ids`` is provided, this parameter is ignored
+
+
+Full split stats:
+
+-   Train split:  1,743,042 images (513 GB)
+-   Test split: 125,436 images (36 GB)
+-   Validation split: 41,620 images (12 GB)
+
+Notes:
+
+-   Currently, only Open Images V6 is supported
+-   Not all images contain all types of labels
+-   All images have been rescaled so that their largest side is at most
+    1024 pixels
+-   `Localized narratives <https://google.github.io/localized-narratives/>`_
+    are not included in this implementation
+
+**Details**
+
+-   Dataset name: ``open-images-v6``
+-   Dataset source: https://storage.googleapis.com/openimages/web/index.html
+-   Dataset size: 561 GB
+-   Tags: ``image, detection, segmentation, classification, visual-relationship``
+-   Supported splits: ``train, test, validation``
+-   ZooDataset class:
+    :class:`OpenImagesV6Dataset <fiftyone.zoo.datasets.base.OpenImagesV6Dataset>`
+
+**Example usage**
+
+.. tabs::
+
+  .. group-tab:: Python
+
+    .. code-block:: python
+        :linenos:
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("open-images-v6", split="validation", max_samples=50)
+
+        session = fo.launch_app(dataset)
+
+        subset = foz.load_zoo_dataset(
+            "open-images-v6",
+            split="validation",
+            label_types=["detections", "relationships"],
+            classes=["Fedora", "Piano"],
+            max_samples=50,
+        )
+
+        session.dataset = subset
+
+  .. group-tab:: CLI
+
+    .. code-block:: shell
+
+        fiftyone zoo datasets load open-images-v6 -s validation \
+            -k max_samples=50 label_types=segmentations,classifications \
+            classes=Fedora,Piano
+
+        fiftyone app launch open-images-v6-validation-50
+
+.. image:: ../../images/dataset_zoo/open-images-v6.png
+   :alt: open-images-v6
    :align: center
 
 .. _dataset-zoo-quickstart:
