@@ -25,10 +25,6 @@ const defaults = {
   colorGenerator,
 };
 
-interface Sample {
-  [key: string]: object;
-}
-
 export default class Player51 {
   src: string;
   mimeType?: string;

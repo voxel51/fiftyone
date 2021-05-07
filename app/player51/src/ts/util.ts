@@ -203,32 +203,6 @@ export interface Timeouts {
 }
 
 /**
- * Set a named timeout.
- */
-export const setNamedTimeout = function (
-  name: string,
-  callback: (...args: any[]) => any,
-  delay: number,
-  timeouts: Timeouts
-): void {
-  clearNamedTimeout(name, timeouts);
-  this._timeouts[name] = setTimeout(callback, delay);
-};
-
-/**
- * Clear a named timeout.
- */
-export const clearNamedTimeout = function (
-  name: string,
-  timeouts: Timeouts
-): void {
-  if (name in timeouts) {
-    clearTimeout(timeouts[name]);
-    delete timeouts[name];
-  }
-};
-
-/**
  * Return 10 if 0, else return value
  */
 export const checkFontHeight = (h: number): number => {
@@ -238,4 +212,17 @@ export const checkFontHeight = (h: number): number => {
     return 10;
   }
   return h;
+};
+
+/**
+ * Rescales coordinates
+ */ export const rescaleCoordates = (
+  [x, y]: [number, number],
+  fromDim: [number, number],
+  toDim: [number, number]
+): [number, number] => {
+  return [
+    Math.round(rescale(x, 0, fromDim[0], 0, toDim[0])),
+    Math.round(rescale(y, 0, fromDim[1], 0, toDim[1])),
+  ];
 };

@@ -28,16 +28,24 @@ export class PlayerBaseElement extends BaseElement {
         }));
       }
     },
-    mouseenter: ({ update, dispatchEvent, state }) => {
+    mouseenter: ({ update, dispatchEvent }) => {
       dispatchEvent("mouseenter");
       update(({ config: { thumbnail } }) => {
         return {
           hovering: true,
-          showControls: !state.config.thumbnail,
+          showControls: thumbnail,
         };
       });
+      this.hideControlsTimeout = setTimeout(() =>
+        update({ showControls: false })
+      );
     },
-    mousemove: ({ update }) => {},
+    mousemove: ({ update }) => {
+      if (this.hideControlsTimeout) {
+        clearTimeout(this.hideControlsTimeout);
+        this.hideControlsTimeout = null;
+      }
+    },
   };
 
   createHTMLElement() {
@@ -53,8 +61,6 @@ export class PlayerBaseElement extends BaseElement {
 }
 
 export class CanvasElement extends BaseElement {
-  private observer: ResizeObserver;
-
   events: EventMap = {
     click: ({ update }) => {
       update({ showOptions: false });
@@ -68,6 +74,7 @@ export class CanvasElement extends BaseElement {
       });
     },
     mousemove: ({ event, update }) => {
+      const canvasRect = this;
       update({
         cursorCoordinates: [
           (<MouseEvent>event).clientX,
@@ -77,20 +84,12 @@ export class CanvasElement extends BaseElement {
     },
   };
 
-  createHTMLElement(update) {
+  createHTMLElement() {
     const element = document.createElement("div");
     element.className = "p51-canvas";
     const canvas = document.createElement("canvas");
     canvas.className = "p51-canvas";
     element.appendChild(canvas);
-
-    this.observer = new ResizeObserver((entries) => {
-      if (entries.length !== 1) {
-        throw new Error("Observing more than one canvas");
-      }
-      update({ canvasRect: entries[0].contentRect });
-    });
-    this.observer.observe(element);
     return element;
   }
 
