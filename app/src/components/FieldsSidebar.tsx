@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import styled from "styled-components";
-import { useRecoilValue, useRecoilState } from "recoil";
+import { useRecoilValue, useRecoilState, useRecoilCallback } from "recoil";
 import {
   BarChart,
   BurstMode,
@@ -16,6 +16,11 @@ import {
 import { animated, useSpring } from "react-spring";
 import numeral from "numeral";
 
+import {
+  numFilteredFrameLabels,
+  numFilteredLabels,
+  numFilteredScalars,
+} from "./Filters/filtered";
 import CellHeader from "./CellHeader";
 import CheckboxGrid from "./CheckboxGroup";
 import DropdownCell from "./DropdownCell";
@@ -208,6 +213,10 @@ const makeClearMatchTags = (color, matchedTags, setMatchedTags) => {
         />,
       ]
     : [];
+};
+
+const makeClearFilters = (numFiltered) => {
+  nu;
 };
 
 const useSampleTags = (modal) => {
@@ -475,6 +484,7 @@ const LabelsCell = ({ modal, frames }: LabelsCellProps) => {
   const count = useRecoilValue(countAtom);
   const colorByLabel = useRecoilValue(atoms.colorByLabel(modal));
   const theme = useTheme();
+  const numFiltered = useRecoilValue(numFilteredLabels(modal));
 
   return (
     <Cell
@@ -523,6 +533,13 @@ const LabelsCell = ({ modal, frames }: LabelsCellProps) => {
   );
 };
 
+const useClearFilters = (modal) => {
+  return useRecoilCallback(
+    ({ snapshot, set }) => async (paths: string[]) => {},
+    [modal]
+  );
+};
+
 type ScalarsCellProps = {
   modal: boolean;
 };
@@ -545,7 +562,6 @@ const ScalarsCell = ({ modal }: ScalarsCellProps) => {
   const count = useRecoilValue(countAtom);
   const colorByLabel = useRecoilValue(atoms.colorByLabel(modal));
   const theme = useTheme();
-  const numFilteredScalars = useRecoilValue(selectors.numF);
 
   return (
     <Cell
