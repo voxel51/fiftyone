@@ -155,6 +155,15 @@ class _PatchesView(fov.DatasetView):
 
         self._sync_source_fcn(sync_fcn, fields)
 
+    def set_values(self, field_name, *args, **kwargs):
+        super().set_values(field_name, *args, **kwargs)
+
+        # Update source collection
+
+        field = field_name.split(".", 1)[0]
+        if field in self._label_fields:
+            self._sync_source_view_field(field)
+
     def save(self, fields=None):
         if etau.is_str(fields):
             fields = [fields]
@@ -168,7 +177,14 @@ class _PatchesView(fov.DatasetView):
         else:
             fields = [l for l in fields if l in self._label_fields]
 
-        self._sync_source(fields)
+        #
+        # IMPORTANT: we sync the contents of `_patches_dataset`, not `self`
+        # here because the `save()` call above updated the dataset, which means
+        # this view may no longer have the same contents (e.g., if `skip()` is
+        # involved)
+        #
+
+        self._sync_source_root(fields)
 
     def reload(self):
         self._root_dataset.reload()
@@ -209,23 +225,30 @@ class _PatchesView(fov.DatasetView):
             )
             sync_fcn(source_view, field)
 
-    def _sync_source(self, fields):
+    def _sync_source_root(self, fields):
         for field in fields:
-            self._sync_source_field(field)
+            self._sync_source_root_field(field)
 
-    def _sync_source_field(self, field):
+    def _sync_source_view_field(self, field):
+        _, id_path = self._get_label_field_path(field, "id")
+        label_path = id_path.rsplit(".", 1)[0]
+
+        sample_ids, docs, label_ids = self.aggregate(
+            [
+                foa.Values("sample_id"),
+                foa.Values(label_path, _raw=True),
+                foa.Values(id_path, unwind=True),
+            ]
+        )
+
+        self._source_collection._set_labels_by_id(field, sample_ids, docs)
+
+    def _sync_source_root_field(self, field):
         _, id_path = self._get_label_field_path(field, "id")
         label_path = id_path.rsplit(".", 1)[0]
 
         #
         # Sync label updates
-        #
-        # IMPORTANT: note that we sync the contents of `_patches_dataset`, not
-        # `self` because this method is called after `self.save()`, which
-        # updates the dataset's contents. Using `self` here would cause
-        # incorrect results because the view contents may be different now that
-        # the source dataset has changed (e.g., if a stage like `skip()` was
-        # involved
         #
 
         sample_ids, docs, label_ids = self._patches_dataset.aggregate(
