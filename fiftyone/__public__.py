@@ -151,6 +151,7 @@ from .core.stages import (
     Take,
     ToPatches,
     ToEvaluationPatches,
+    ToFrames,
 )
 from .core.session import (
     close_app,

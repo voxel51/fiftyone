@@ -42,7 +42,6 @@ foua = fou.lazy_import("fiftyone.utils.annotations")
 foud = fou.lazy_import("fiftyone.utils.data")
 foue = fou.lazy_import("fiftyone.utils.eval")
 foup = fou.lazy_import("fiftyone.utils.patches")
-fouv = fou.lazy_import("fiftyone.utils.video")
 
 
 logger = logging.getLogger(__name__)
@@ -1574,85 +1573,6 @@ class SampleCollection(object):
             method=method,
             config=config,
             **kwargs,
-        )
-
-    def to_frames(
-        self,
-        sample_frames=True,
-        frames_patt=None,
-        size=None,
-        min_size=None,
-        max_size=None,
-        force_sample=False,
-        name=None,
-    ):
-        """Creates a dataset that contains one sample per video frame in the
-        collection.
-
-        When ``sample_frames`` is True (the default), this method samples each
-        video in the collection into a directory of per-frame images with the
-        same basename as the input video with frame numbers/format specified by
-        ``frames_patt``.
-
-        For example, if ``frames_patt = "%%06d.jpg"``, then videos with the
-        following paths::
-
-            /path/to/video1.mp4
-            /path/to/video2.mp4
-            ...
-
-        would be sampled as follows::
-
-            /path/to/video1/
-                000001.jpg
-                000002.jpg
-                ...
-            /path/to/video2/
-                000001.jpg
-                000002.jpg
-                ...
-
-        .. note::
-
-            The returned dataset is independent from the source collection;
-            modifying it will not affect the source collection.
-
-        Args:
-            sample_collection: a
-                :class:`fiftyone.core.collections.SampleCollection`
-            sample_frames (True): whether to sample the video frames. If False,
-                the dataset cannot currently be viewed in the App
-            frames_patt (None): a pattern specifying the filename/format to use
-                to store the sampled frames, e.g., ``"%%06d.jpg"``. The default
-                value is
-                ``fiftyone.config.default_sequence_idx + fiftyone.config.default_image_ext``
-            size (None): an optional ``(width, height)`` for each frame. One
-                dimension can be -1, in which case the aspect ratio is
-                preserved
-            min_size (None): an optional minimum ``(width, height)`` for each
-                frame. A dimension can be -1 if no constraint should be
-                applied. The frames are resized (aspect-preserving) if
-                necessary to meet this constraint
-            max_size (None): an optional maximum ``(width, height)`` for each
-                frame. A dimension can be -1 if no constraint should be
-                applied. The frames are resized (aspect-preserving) if
-                necessary to meet this constraint
-            force_sample (False): whether to resample videos whose sampled
-                frames already exist
-            name (None): a name for the returned dataset
-
-        Returns:
-            a :class:`fiftyone.core.dataset.Dataset`
-        """
-        return fouv.make_frames_dataset(
-            self,
-            sample_frames=sample_frames,
-            frames_patt=frames_patt,
-            size=size,
-            min_size=min_size,
-            max_size=max_size,
-            force_sample=force_sample,
-            name=name,
         )
 
     @property
@@ -3821,6 +3741,44 @@ class SampleCollection(object):
             a :class:`fiftyone.core.patches.EvaluationPatchesView`
         """
         return self._add_view_stage(fos.ToEvaluationPatches(eval_key))
+
+    @view_stage
+    def to_frames(self, config=None):
+        """Creates a view that contains one sample per frame in the video
+        collection.
+
+        .. note::
+
+             The first time this method is run on a collection, it will sample
+             each video in the collection into a directory of per-frame images.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+
+            dataset = foz.load_zoo_dataset("quickstart-video")
+
+            session = fo.launch_app(dataset)
+
+            #
+            # Create a frames view
+            #
+
+            view = dataset.to_frames()
+            print(view)
+
+            session.view = view
+
+        Args:
+            config (None): an optional dict of keyword arguments for
+                :meth:`fiftyone.utils.video.make_frames_dataset` specifying how
+                to perform the conversion
+
+        Returns:
+            a :class:`fiftyone.core.video.FramesView`
+        """
+        return self._add_view_stage(fos.ToFrames(config=config))
 
     @classmethod
     def list_aggregations(cls):

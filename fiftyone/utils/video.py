@@ -15,6 +15,7 @@ import eta.core.video as etav
 
 import fiftyone as fo
 import fiftyone.core.aggregations as foa
+from fiftyone.core.config import Config
 import fiftyone.core.dataset as fod
 import fiftyone.core.fields as fof
 import fiftyone.core.media as fom
@@ -36,6 +37,10 @@ def make_frames_dataset(
 ):
     """Creates a dataset that contains one sample per video frame in the
     collection.
+
+    The returned dataset will contain all frame-level fields and the ``tags``
+    of each video as sample-level fields, as well as a ``frame_id`` field that
+    records the ID of the corresponding frame in the input collection.
 
     When ``sample_frames`` is True (the default), this method samples each
     video in the collection into a directory of per-frame images with the same
@@ -105,7 +110,7 @@ def make_frames_dataset(
             )
 
         images_patts, frame_counts, ids_to_sample = _parse_frames_collection(
-            sample_collection, frames_patt
+            sample_collection, frames_patt, force_sample
         )
 
     #
@@ -113,11 +118,9 @@ def make_frames_dataset(
     #
 
     dataset = fod.Dataset(name=name)
-    dataset.add_sample_field("sample_id", fof.StringField)
+    dataset.media_type = fom.IMAGE
+    dataset.add_sample_field("_sample_id", fof.ObjectIdField)
     dataset.add_sample_field("frame_id", fof.StringField)
-
-    schema = sample_collection.get_field_schema()
-    dataset._sample_doc_cls.merge_field_schema(schema)
 
     frame_schema = sample_collection.get_frame_field_schema()
     dataset._sample_doc_cls.merge_field_schema(frame_schema)
@@ -154,7 +157,7 @@ def make_frames_dataset(
     return dataset
 
 
-def _parse_frames_collection(sample_collection, frames_patt):
+def _parse_frames_collection(sample_collection, frames_patt, force_sample):
     sample_ids, video_paths, frame_counts = sample_collection.aggregate(
         [
             foa.Values("id"),
@@ -168,23 +171,16 @@ def _parse_frames_collection(sample_collection, frames_patt):
     for sample_id, video_path in zip(sample_ids, video_paths):
         images_patt, found = _prep_for_sampling(video_path, frames_patt)
         images_patts.append(images_patt)
-        if not found:
+        if not found or force_sample:
             ids_to_sample.append(sample_id)
 
     return images_patts, frame_counts, ids_to_sample
 
 
 def _initialize_frames(dataset, src_collection, sample_frames):
-    unset_fields = [
-        "_id",
-        "_rand",
-        "_media_type",
-        "metadata",
-        "frames",
-    ]
-
-    if sample_frames:
-        unset_fields.append("filepath")
+    project_fields = ["_sample_id", "frame_number", "tags"]
+    if not sample_frames:
+        project_fields.append("filepath")
 
     pipeline = src_collection._pipeline(detach_frames=True)
     pipeline.extend(
@@ -200,7 +196,8 @@ def _initialize_frames(dataset, src_collection, sample_frames):
                     },
                 }
             },
-            {"$unset": unset_fields},
+            {"$project": {f: True for f in project_fields}},
+            {"$unset": "_id"},
             {"$unwind": "$frame_number"},
             {"$out": dataset._sample_collection_name},
         ]
@@ -210,9 +207,10 @@ def _initialize_frames(dataset, src_collection, sample_frames):
 
 
 def _merge_frame_labels(dataset, src_collection):
-    # Must create unique indexes in order to use `$merge`
+    # We'll use this index to merge both now and in the opposite direction
+    # when syncing the source collection
     index_spec = [("_sample_id", 1), ("frame_number", 1)]
-    index = dataset._sample_collection.create_index(index_spec, unique=True)
+    dataset._sample_collection.create_index(index_spec, unique=True)
 
     pipeline = src_collection._pipeline(frames_only=True)
     pipeline.extend(
@@ -232,22 +230,10 @@ def _merge_frame_labels(dataset, src_collection):
 
     src_collection._dataset._aggregate(pipeline=pipeline, attach_frames=False)
 
-    dataset._sample_collection.drop_index(index)
-
 
 def _finalize_frames(dataset):
     dataset._sample_collection.update_many(
-        {},
-        [
-            {
-                "$set": {
-                    "sample_id": {"$toString": "$_sample_id"},
-                    "_media_type": "image",
-                    "_rand": {"$rand": {}},
-                }
-            },
-            {"$unset": "_sample_id"},
-        ],
+        {}, [{"$set": {"_media_type": "image", "_rand": {"$rand": {}}}}]
     )
 
 
