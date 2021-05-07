@@ -100,15 +100,42 @@ class PatchesTests(unittest.TestCase):
         self.assertDictEqual(dataset.count_label_tags("ground_truth"), {})
         self.assertDictEqual(dataset.count_label_tags("predictions"), {})
 
-        view2 = view.skip(4).set_field(
+        view2 = view.skip(4)
+
+        values = [l.upper() for l in view2.values("ground_truth.label")]
+        view2.set_values("ground_truth.label_upper", values)
+
+        self.assertEqual(dataset.count(), 2)
+        self.assertEqual(view.count(), 6)
+        self.assertEqual(view2.count(), 2)
+        self.assertEqual(dataset.count("ground_truth.detections"), 6)
+        self.assertEqual(view.count("ground_truth"), 6)
+        self.assertEqual(view2.count("ground_truth"), 2)
+        self.assertEqual(
+            dataset.count("ground_truth.detections.label_upper"), 2
+        )
+        self.assertEqual(view.count("ground_truth.label_upper"), 2)
+        self.assertEqual(view2.count("ground_truth.label_upper"), 2)
+        self.assertEqual(
+            view.count_values("ground_truth.label_upper")["CAT"], 1
+        )
+        self.assertEqual(
+            view2.count_values("ground_truth.label_upper")["CAT"], 1
+        )
+        self.assertEqual(
+            dataset.count_values("ground_truth.detections.label_upper")["CAT"],
+            1,
+        )
+
+        view3 = view.skip(4).set_field(
             "ground_truth.label", F("label").upper()
         )
 
         self.assertEqual(view.count(), 6)
-        self.assertEqual(view2.count(), 2)
+        self.assertEqual(view3.count(), 2)
         self.assertEqual(dataset.count("ground_truth.detections"), 6)
-        self.assertNotIn("cat", view2.count_values("ground_truth.label"))
-        self.assertEqual(view2.count_values("ground_truth.label")["CAT"], 1)
+        self.assertNotIn("cat", view3.count_values("ground_truth.label"))
+        self.assertEqual(view3.count_values("ground_truth.label")["CAT"], 1)
         self.assertEqual(view.count_values("ground_truth.label")["cat"], 2)
         self.assertEqual(
             dataset.count_values("ground_truth.detections.label")["cat"], 2
@@ -117,7 +144,7 @@ class PatchesTests(unittest.TestCase):
             "CAT", dataset.count_values("ground_truth.detections.label")
         )
 
-        view2.save()
+        view3.save()
 
         self.assertEqual(view.count(), 2)
         self.assertEqual(dataset.count("ground_truth.detections"), 2)
@@ -248,16 +275,46 @@ class PatchesTests(unittest.TestCase):
         self.assertDictEqual(dataset.count_label_tags("ground_truth"), {})
         self.assertDictEqual(dataset.count_label_tags("predictions"), {})
 
-        view2 = view.match(F("crowd") == True).set_field(
+        view2 = view.match(F("type") == "tp")
+
+        values = [
+            [l.upper() for l in _labels]
+            for _labels in view2.values("predictions.detections.label")
+        ]
+        view2.set_values("predictions.detections.label_upper", values)
+
+        self.assertEqual(dataset.count(), 1)
+        self.assertEqual(view.count(), 4)
+        self.assertEqual(view2.count(), 2)
+        self.assertEqual(dataset.count("predictions.detections"), 4)
+        self.assertEqual(view.count("predictions.detections"), 4)
+        self.assertEqual(view2.count("predictions.detections"), 3)
+        self.assertEqual(
+            dataset.count("predictions.detections.label_upper"), 3
+        )
+        self.assertEqual(view.count("predictions.detections.label_upper"), 3)
+        self.assertEqual(view2.count("predictions.detections.label_upper"), 3)
+        self.assertEqual(
+            view.count_values("predictions.detections.label_upper")["CAT"], 2
+        )
+        self.assertEqual(
+            view2.count_values("predictions.detections.label_upper")["CAT"], 2
+        )
+        self.assertEqual(
+            dataset.count_values("predictions.detections.label_upper")["CAT"],
+            2,
+        )
+
+        view3 = view.match(F("crowd") == True).set_field(
             "ground_truth.detections.label", F("label").upper()
         )
 
         self.assertEqual(view.count(), 4)
-        self.assertEqual(view2.count(), 1)
+        self.assertEqual(view3.count(), 1)
         self.assertEqual(dataset.count("ground_truth.detections"), 3)
         self.assertEqual(dataset.count("predictions.detections"), 4)
         self.assertDictEqual(
-            view2.count_values("ground_truth.detections.label"), {"CAT": 1}
+            view3.count_values("ground_truth.detections.label"), {"CAT": 1}
         )
         self.assertDictEqual(
             view.count_values("ground_truth.detections.label"),
@@ -268,7 +325,7 @@ class PatchesTests(unittest.TestCase):
             {"dog": 1, "cat": 1, "rabbit": 1},
         )
 
-        view2.save()
+        view3.save()
 
         self.assertEqual(view.count(), 1)
         self.assertEqual(dataset.count("ground_truth.detections"), 1)
