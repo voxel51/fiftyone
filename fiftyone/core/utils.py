@@ -138,6 +138,25 @@ def indent_lines(s, indent=4, skip=0):
     return s
 
 
+def justify_headings(elements, width=None):
+    """Justifies the headings in a list of ``(heading, content)`` string tuples
+    by appending whitespace as necessary to each ``heading``.
+
+    Args:
+        elements: a list of ``(heading, content)`` tuples
+        width (None): an optional justification width. By default, the maximum
+            heading length is used
+
+    Returns:
+        a list of justified ``(heading, content)`` tuples
+    """
+    if width is None:
+        width = max(len(e[0]) for e in elements)
+
+    fmt = "%%-%ds" % width
+    return [(fmt % e[0], e[1]) for e in elements]
+
+
 def available_patterns():
     """Returns the available patterns that can be used by
     :meth:`fill_patterns`.
@@ -175,16 +194,41 @@ def ensure_boto3(error_msg=None):
     _ensure_import("boto3", error_msg=error_msg)
 
 
-def ensure_tf(error_msg=None):
+def ensure_tf(eager=False, error_msg=None):
     """Verifies that TensorFlow is installed and importable.
 
     Args:
+        eager (False): whether to require that TF is executing eagerly. If
+            True and TF is not currently executing eagerly, this method will
+            attempt to enable it
         error_msg (None): an optional custom error message to print
 
     Raises:
         ImportError: if ``tensorflow`` could not be imported
     """
     _ensure_import("tensorflow", error_msg=error_msg)
+
+    if not eager:
+        return
+
+    import tensorflow as tf
+
+    try:
+        if tf.executing_eagerly():
+            return
+
+        try:
+            # pylint: disable=no-member
+            tf.compat.v1.enable_eager_execution()
+        except AttributeError:
+            # pylint: disable=no-member
+            tf.enable_eager_execution()
+    except Exception as e:
+        raise ValueError(
+            "The requested operation requires that TensorFlow's eager "
+            "execution mode is activated. We tried to enable it but "
+            "encountered an error"
+        ) from e
 
 
 def ensure_tfds(error_msg=None):

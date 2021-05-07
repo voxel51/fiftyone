@@ -843,7 +843,13 @@ class LegacyFiftyOneDatasetExporter(GenericSampleDatasetExporter):
 
         self._metadata["info"] = info
 
-        dataset = sample_collection._dataset
+        # Exporting runs only makes sense if the entire dataset is being
+        # exported, otherwise the view for the run cannot be reconstructed
+        # based on the information encoded in the run's document
+
+        dataset = sample_collection._root_dataset
+        if sample_collection != dataset:
+            return
 
         if dataset.has_evaluations:
             d = dataset._doc.field_to_mongo("evaluations")
@@ -983,7 +989,7 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
 
         logger.info("Exporting samples...")
         num_samples = sample_collection.count()
-        samples = list(sample_collection._aggregate(attach_frames=False))
+        samples = list(sample_collection._aggregate(detach_frames=True))
 
         for sample, filepath in zip(samples, _outpaths):
             sample["filepath"] = filepath
@@ -1001,14 +1007,25 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
             )
 
         conn = foo.get_db_conn()
-        name = sample_collection._dataset.name
-        dataset_dict = conn.datasets.find_one({"name": name})
+        dataset = sample_collection._dataset
+        dataset_dict = conn.datasets.find_one({"name": dataset.name})
+
+        # Exporting runs only makes sense if the entire dataset is being
+        # exported, otherwise the view for the run cannot be reconstructed
+        # based on the information encoded in the run's document
+
+        export_runs = sample_collection == sample_collection._root_dataset
+
+        if not export_runs:
+            dataset_dict["evaluations"] = {}
+            dataset_dict["brain_methods"] = {}
+
         foo.export_document(dataset_dict, self._metadata_path)
 
-        if sample_collection.has_evaluations:
+        if export_runs and sample_collection.has_evaluations:
             _export_evaluation_results(sample_collection, self._eval_dir)
 
-        if sample_collection.has_brain_runs:
+        if export_runs and sample_collection.has_brain_runs:
             _export_brain_results(sample_collection, self._brain_dir)
 
         if self.include_media:
@@ -1020,14 +1037,16 @@ def _export_evaluation_results(sample_collection, eval_dir):
     for eval_key in sample_collection.list_evaluations():
         results_path = os.path.join(eval_dir, eval_key + ".json")
         results = sample_collection.load_evaluation_results(eval_key)
-        etas.write_json(results, results_path)
+        if results is not None:
+            etas.write_json(results, results_path)
 
 
 def _export_brain_results(sample_collection, brain_dir):
     for brain_key in sample_collection.list_brain_runs():
         results_path = os.path.join(brain_dir, brain_key + ".json")
         results = sample_collection.load_brain_results(brain_key)
-        etas.write_json(results, results_path)
+        if results is not None:
+            etas.write_json(results, results_path)
 
 
 class ImageDirectoryExporter(UnlabeledImageDatasetExporter):

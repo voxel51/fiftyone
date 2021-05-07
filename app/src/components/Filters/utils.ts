@@ -6,9 +6,7 @@ import useMeasure from "react-use-measure";
 import * as selectors from "../../recoil/selectors";
 import {
   BOOLEAN_FIELD,
-  RESERVED_FIELDS,
   STRING_FIELD,
-  VALID_LIST_TYPES,
   VALID_NUMERIC_TYPES,
 } from "../../utils/labels";
 
@@ -57,7 +55,7 @@ export const unsupportedFields = selector<string[]>({
         !get(isNumericField(f)) &&
         !get(isStringField(f)) &&
         !get(isBooleanField(f)) &&
-        !["filepath", "metadata", "tags"].includes(f)
+        !["metadata", "tags"].includes(f)
     );
   },
 });
@@ -69,34 +67,25 @@ export const hasNoneField = selectorFamily<boolean, string>({
   },
 });
 
-type Overflow = "hidden" | "visible";
-
 type ExpandStyle = {
-  overflow: Overflow;
   height: number;
+  overflow: "hidden";
 };
 
 export const useExpand = (
   expanded: boolean
 ): [(element: HTMLElement | null) => void, ExpandStyle] => {
-  const [overflow, setOverflow] = useState<Overflow>("hidden");
-
   const [ref, { height }] = useMeasure();
   const props = useSpring({
     height: expanded ? height : 0,
     from: {
       height: 0,
     },
-    onStart: () => !expanded && setOverflow("hidden"),
-    onRest: () => expanded && setOverflow("visible"),
-  });
-  return [
-    ref,
-    {
-      overflow,
-      ...props,
+    config: {
+      duration: 0,
     },
-  ];
+  });
+  return [ref, { ...props, overflow: "hidden" }];
 };
 
 export const activeFields = atomFamily<string[], boolean>({
@@ -149,6 +138,9 @@ export const activeScalars = selectorFamily<string[], boolean>({
     return get(activeFields(modal)).filter((v) => scalars.includes(v));
   },
   set: (modal) => ({ get, set }, value) => {
+    if (modal) {
+      return [];
+    }
     if (Array.isArray(value)) {
       const scalars = get(selectors.scalarNames("sample"));
       const prevActiveScalars = get(activeScalars(modal));

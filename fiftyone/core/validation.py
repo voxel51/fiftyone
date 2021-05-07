@@ -142,36 +142,17 @@ def validate_collection_frame_label_fields(
     if etau.is_str(field_names):
         field_names = [field_names]
 
-    non_frame_fields = [
-        f
-        for f in field_names
-        if not f.startswith(sample_collection._FRAMES_PREFIX)
-    ]
-
-    if non_frame_fields:
-        raise ValueError(
-            "%s '%s' fields %s are not frame fields"
-            % (
-                sample_collection.__class__.__name__,
-                sample_collection.name,
-                non_frame_fields,
-            )
-        )
-
-    fields_map = {
-        f[len(sample_collection._FRAMES_PREFIX) :]: f for f in field_names
-    }
-
-    frames_schema = sample_collection.get_frame_field_schema(
+    schema = sample_collection.get_frame_field_schema(
         ftype=fof.EmbeddedDocumentField, embedded_doc_type=fol.Label
     )
 
     _validate_fields(
         sample_collection,
-        fields_map,
-        frames_schema,
+        field_names,
+        schema,
         allowed_label_types,
         same_type,
+        frames=True,
     )
 
 
@@ -197,54 +178,63 @@ def validate_collection_label_fields(
     if etau.is_str(field_names):
         field_names = [field_names]
 
-    fields_map = {f: f for f in field_names}
-
     schema = sample_collection.get_field_schema(
         ftype=fof.EmbeddedDocumentField, embedded_doc_type=fol.Label
     )
 
     _validate_fields(
-        sample_collection, fields_map, schema, allowed_label_types, same_type,
+        sample_collection, field_names, schema, allowed_label_types, same_type
     )
 
 
 def _validate_fields(
-    sample_collection, fields_map, schema, allowed_label_types, same_type
+    sample_collection,
+    field_names,
+    schema,
+    allowed_label_types,
+    same_type,
+    frames=False,
 ):
     label_types = {}
-    for field_name, full_name in fields_map.items():
+    for field_name in field_names:
         if field_name not in schema:
+            ftype = "frame field" if frames else "field"
             raise ValueError(
-                "%s '%s' has no label field '%s'"
+                "%s '%s' has no %s '%s'"
                 % (
                     sample_collection.__class__.__name__,
                     sample_collection.name,
-                    full_name,
+                    ftype,
+                    field_name,
                 )
             )
 
         label_type = schema[field_name].document_type
-        label_types[full_name] = label_type
+        label_types[field_name] = label_type
 
         if label_type not in allowed_label_types:
+            ftype = "frame field" if frames else "field"
             raise ValueError(
-                "%s '%s' field '%s' is not a %s instance; found %s"
+                "%s '%s' %s '%s' is not a %s instance; found %s"
                 % (
                     sample_collection.__class__.__name__,
                     sample_collection.name,
-                    full_name,
+                    ftype,
+                    field_name,
                     allowed_label_types,
                     label_type,
                 )
             )
 
     if same_type and len(set(label_types.values())) > 1:
+        ftype = "frame fields" if frames else "fields"
         raise ValueError(
-            "%s '%s' fields %s must have the same type; found %s"
+            "%s '%s' %s %s must have the same type; found %s"
             % (
                 sample_collection.__class__.__name__,
                 sample_collection.name,
-                fields_map.values(),
+                ftype,
+                field_names,
                 label_types,
             )
         )

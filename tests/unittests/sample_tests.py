@@ -14,7 +14,6 @@ from mongoengine.errors import (
     ValidationError,
 )
 import numpy as np
-from pymongo.errors import DuplicateKeyError
 
 import fiftyone as fo
 from fiftyone import ViewField as F
@@ -174,7 +173,7 @@ class SampleInDatasetTests(unittest.TestCase):
 
         # delete all samples
         num_delete = 7
-        dataset.remove_samples(ids[:num_delete])
+        dataset.delete_samples(ids[:num_delete])
         self.assertEqual(len(dataset), num_samples - num_delete)
 
     @drop_datasets
@@ -264,14 +263,6 @@ class SampleInDatasetTests(unittest.TestCase):
         filepath = "/path/to/image.jpg"
         sample = fo.Sample(filepath=filepath, tags=["tag1", "tag2"])
         dataset.add_sample(sample)
-
-        # add duplicate filepath
-        with self.assertRaises(DuplicateKeyError):
-            dataset.add_sample(fo.Sample(filepath=filepath))
-
-        # @todo(Tyler)
-        # with self.assertRaises(DuplicateKeyError):
-        #     dataset.add_samples([fo.Sample(filepath=filepath)])
 
         self.assertEqual(len(dataset), 1)
 
@@ -544,24 +535,28 @@ class VideoSampleTests(unittest.TestCase):
                 self.assertFalse(1 in s.frames)
 
     def test_copy(self):
-        s = fo.Sample("video.mp4")
-        s[1]["label"] = "label"
-        s_copy = s.copy()
-        self.assertEqual(s_copy[1]["label"], "label")
+        sample = fo.Sample("video.mp4")
+        sample.frames[1]["label"] = "label"
 
-        d = fo.Dataset()
-        d.add_sample(s)
-        s_copy = s.copy()
-        self.assertEqual(s_copy[1]["label"], "label")
+        sample_copy = sample.copy()
+
+        self.assertEqual(sample_copy.frames[1]["label"], "label")
+
+        dataset = fo.Dataset()
+        dataset.add_sample(sample)
+        sample_copy = sample.copy()
+
+        self.assertEqual(sample_copy.frames[1]["label"], "label")
 
     def test_frames_view(self):
         dataset = self._make_dataset()
 
         sample = dataset.first()
         sample.frames[1]["foo"] = fo.Detections(
-            detections=[fo.Detection(label="foo"), fo.Detection(label="bar"),]
+            detections=[fo.Detection(label="foo"), fo.Detection(label="bar")]
         )
         sample.save()
+
         view = dataset.filter_labels("frames.foo", F("label") == "bar")
 
         detections = dataset.first().frames.first().foo.detections
@@ -581,9 +576,10 @@ class VideoSampleTests(unittest.TestCase):
 
         sample = dataset.first()
         sample.frames[1]["foo"] = fo.Detections(
-            detections=[fo.Detection(label="foo"), fo.Detection(label="bar"),]
+            detections=[fo.Detection(label="foo"), fo.Detection(label="bar")]
         )
         sample.save()
+
         dataset.filter_labels("frames.foo", F("label") == "foo").save()
 
         self.assertEqual(len(sample.frames[1].foo.detections), 1)

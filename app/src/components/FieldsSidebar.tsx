@@ -25,9 +25,10 @@ import { labelModalTagCounts } from "./Actions/utils";
 import * as fieldAtoms from "./Filters/utils";
 import * as labelAtoms from "./Filters/LabelFieldFilters.state";
 import * as selectors from "../recoil/selectors";
-import { stringify, FILTERABLE_TYPES } from "../utils/labels";
+import { FILTERABLE_TYPES } from "../utils/labels";
 import { useTheme } from "../utils/hooks";
 import { PillButton } from "./utils";
+import { prettify } from "../utils/generic";
 
 const Container = styled.div`
   .MuiCheckbox-root {
@@ -39,17 +40,18 @@ const Container = styled.div`
     align-items: center;
     color: ${({ theme }) => theme.fontDark};
 
-    * {
-      display: flex;
+    span {
     }
 
     .label {
       text-transform: uppercase;
+      flex-grow: 1;
+      display: flex;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
-    .push {
-      margin-left: auto;
-    }
     .icon {
       margin-left: 2px;
     }
@@ -64,7 +66,7 @@ type CellProps = {
   label: string;
   title: string;
   modal: boolean;
-  onSelect: (entry: Entry) => void;
+  onSelect?: (entry: Entry) => void;
   handleClear: (event: Event) => void;
   entries: Entry[];
   icon: any;
@@ -94,7 +96,6 @@ const Cell = React.memo(
           <>
             {icon ? <span className="left-icon">{icon}</span> : null}
             <span className="label">{label}</span>
-            <span className="push" />
             {numSelected ? (
               <PillButton
                 onClick={handleClear}
@@ -246,14 +247,17 @@ const SampleTagsCell = ({ modal }: TagsCellProps) => {
     ? [null, selectors.tagSampleModalCounts]
     : [selectors.filteredTagSampleCounts, selectors.tagSampleCounts];
 
+  const isRootView = useRecoilValue(selectors.isRootView);
+
   const subCount = subCountAtom ? useRecoilValue(subCountAtom) : null;
   const count = useRecoilValue(countAtom);
   const colorByLabel = useRecoilValue(atoms.colorByLabel(modal));
   const theme = useTheme();
 
+  const element = isRootView ? "Sample" : "Patch";
   return (
     <Cell
-      label="Sample tags"
+      label={`${element} tags`}
       icon={<Note />}
       pills={makeClearMatchTags(theme.font, matchedTags, setMatchedTags)}
       entries={tags
@@ -316,7 +320,7 @@ const SampleTagsCell = ({ modal }: TagsCellProps) => {
         setActiveTags([]);
       }}
       modal={modal}
-      title={"Sample tags"}
+      title={`${element} tags`}
     />
   );
 };
@@ -546,34 +550,40 @@ const ScalarsCell = ({ modal }: ScalarsCellProps) => {
     <Cell
       label="Scalar fields"
       icon={<BarChart />}
-      entries={scalars.map((name) => ({
-        name,
-        disabled: false,
-        hideCheckbox: modal,
-        hasDropdown: !modal,
-        selected: activeScalars.includes(name),
-        color: colorByLabel ? theme.brand : colorMap[name],
-        title: name,
-        path: name,
-        type: "values",
-        data:
-          count && subCount && !modal
-            ? makeData(subCount[name], count[name])
-            : modal
-            ? stringify(count[name])
-            : null,
-        totalCount: !modal && count ? count[name] : null,
-        filteredCount: !modal && subCount ? subCount[name] : null,
-        modal,
-        canFilter: !modal,
-      }))}
-      onSelect={({ name, selected }) => {
-        setActiveScalars(
-          selected
-            ? [name, ...activeScalars]
-            : activeScalars.filter((t) => t !== name)
-        );
-      }}
+      entries={scalars.map((name) => {
+        return {
+          name,
+          disabled: false,
+          hideCheckbox: modal,
+          hasDropdown: !modal,
+          selected: activeScalars.includes(name),
+          color: colorByLabel ? theme.brand : colorMap[name],
+          title: modal ? `${name}: ${prettify(count[name], false)}` : name,
+          path: name,
+          type: "values",
+          data:
+            count && subCount && !modal
+              ? makeData(subCount[name], count[name])
+              : modal
+              ? prettify(count[name])
+              : null,
+          totalCount: !modal && count ? count[name] : null,
+          filteredCount: !modal && subCount ? subCount[name] : null,
+          modal,
+          canFilter: !modal,
+        };
+      })}
+      onSelect={
+        !modal
+          ? ({ name, selected }) => {
+              setActiveScalars(
+                selected
+                  ? [name, ...activeScalars]
+                  : activeScalars.filter((t) => t !== name)
+              );
+            }
+          : null
+      }
       handleClear={(e) => {
         e.stopPropagation();
         setActiveScalars([]);
@@ -643,11 +653,19 @@ export const OptionText = ({ style, children }) => {
   );
 };
 
-export const Button = ({ onClick, text, children, style }) => {
+export const Button = ({
+  onClick,
+  text,
+  children = null,
+  style,
+  color = null,
+  title = null,
+}) => {
   const theme = useTheme();
   const [hover, setHover] = useState(false);
+  color = color ?? theme.brand;
   const props = useSpring({
-    backgroundColor: hover ? theme.brand : theme.background,
+    backgroundColor: hover ? color : theme.background,
     color: hover ? theme.font : theme.fontDark,
     config: {
       duration: 150,
@@ -659,7 +677,7 @@ export const Button = ({ onClick, text, children, style }) => {
       onClick={onClick}
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
-      title={text}
+      title={title ?? text}
     >
       <OptionText style={{ fontWeight: "bold", width: "100%" }}>
         {text}
@@ -678,7 +696,7 @@ const FieldsSidebar = React.forwardRef(
   ({ modal, style }: FieldsSidebarProps, ref) => {
     const mediaType = useRecoilValue(selectors.mediaType);
     const isVideo = mediaType === "video";
-    const moreStyles = modal ? { height: "auto", overflow: "auto hidden" } : {};
+    const moreStyles = modal ? { height: "auto", overflow: "unset" } : {};
 
     return (
       <Container ref={ref} style={{ ...style, ...moreStyles }}>

@@ -19,7 +19,27 @@ import {
   LABEL_LIST,
 } from "../../utils/labels";
 
-export const HoverItemDiv = animated(styled.div`
+export const SwitcherDiv = styled.div`
+  border-bottom: 1px solid ${({ theme }) => theme.background};
+  display: flex;
+  margin: 0 -0.5rem;
+  padding: 0 0.5rem;
+`;
+
+export const SwitchDiv = animated(styled.div`
+  flex-basis: 0;
+  flex-grow: 1;
+  font-size: 1rem;
+  padding-left: 0.4rem;
+  line-height: 2;
+  font-weight: bold;
+  border-bottom-color: ${({ theme }) => theme.brand};
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  text-transform: capitalize;
+`);
+
+export const ItemAction = animated(styled.a`
   cursor: pointer;
   margin: 0 -0.5rem;
   padding: 0.25rem 0.5rem;
@@ -28,10 +48,16 @@ export const HoverItemDiv = animated(styled.div`
   justify-content: center;
   align-content: center;
   flex-direction: column;
+  text-decoration: none;
   color: ${({ theme }) => theme.fontDark};
+
+  & > span {
+    display: flex;
+    justify-content: space-between;
+  }
 `);
 
-export const useHighlightHover = (disabled, override = null) => {
+export const useHighlightHover = (disabled, override = null, color = null) => {
   const [hovering, setHovering] = useState(false);
   const theme = useTheme();
   const on =
@@ -42,9 +68,9 @@ export const useHighlightHover = (disabled, override = null) => {
     backgroundColor: on
       ? theme.backgroundLight
       : disabled
-      ? theme.backgroundDarker
+      ? theme.backgroundDark
       : theme.backgroundDark,
-    color: on ? theme.font : theme.fontDark,
+    color: color ? color : on ? theme.font : theme.fontDark,
   });
 
   const onMouseEnter = () => setHovering(true);
@@ -54,7 +80,7 @@ export const useHighlightHover = (disabled, override = null) => {
   return {
     style: {
       ...style,
-      cursor: disabled ? "disabled" : "pointer",
+      cursor: disabled ? "default" : "pointer",
     },
     onMouseEnter,
     onMouseLeave,
@@ -117,7 +143,10 @@ export const selectedSampleLabelStatistics = selector<{
       data.type === type && handler(data);
     };
 
-    const promise = new Promise((resolve) => {
+    const promise = new Promise<{
+      count: number;
+      tags: { [key: string]: number };
+    }>((resolve) => {
       const listener = wrap(({ count, tags }) => {
         socket.removeEventListener("message", listener);
         resolve({ count, tags });

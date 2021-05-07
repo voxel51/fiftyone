@@ -265,6 +265,7 @@ class DetectionEvaluation(foe.EvaluationMethod):
             pred_field=self.config.pred_field,
             classes=classes,
             missing=missing,
+            samples=samples,
         )
 
     def get_fields(self, samples, eval_key):
@@ -337,6 +338,8 @@ class DetectionResults(ClassificationResults):
             observed ground truth/predicted labels are used
         missing (None): a missing label string. Any unmatched objects are given
             this label for evaluation purposes
+        samples (None): the :class:`fiftyone.core.collections.SampleCollection`
+            for which the results were computed
     """
 
     def __init__(
@@ -346,6 +349,7 @@ class DetectionResults(ClassificationResults):
         pred_field=None,
         classes=None,
         missing=None,
+        samples=None,
     ):
         ytrue, ypred, ious, confs, ytrue_ids, ypred_ids = zip(*matches)
         super().__init__(
@@ -358,6 +362,7 @@ class DetectionResults(ClassificationResults):
             ypred_ids=ypred_ids,
             classes=classes,
             missing=missing,
+            samples=samples,
         )
         self.ious = np.array(ious)
 
@@ -391,6 +396,7 @@ class DetectionResults(ClassificationResults):
             pred_field=pred_field,
             classes=classes,
             missing=missing,
+            samples=samples,
             **kwargs,
         )
 

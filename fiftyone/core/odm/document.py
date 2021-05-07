@@ -262,13 +262,13 @@ class MongoEngineBaseDocument(SerializableDocument):
 
     def set_field(self, field_name, value, create=False):
         if not create and not self.has_field(field_name):
-            raise ValueError("Document has no field '%s'" % field_name)
+            raise AttributeError("Document has no field '%s'" % field_name)
 
         setattr(self, field_name, value)
 
     def clear_field(self, field_name):
         if not self.has_field(field_name):
-            raise ValueError("Document has no field '%s'" % field_name)
+            raise AttributeError("Document has no field '%s'" % field_name)
 
         super().__delattr__(field_name)
 
@@ -363,9 +363,7 @@ class BaseDocument(MongoEngineBaseDocument):
 
     @property
     def in_db(self):
-        """Whether the underlying :class:`fiftyone.core.odm.Document` has
-        been inserted into the database.
-        """
+        """Whether the document has been inserted into the database."""
         # pylint: disable=no-member
         return self.id is not None
 
@@ -453,8 +451,10 @@ class Document(BaseDocument, mongoengine.Document):
                 updates, removals = self._delta()
 
                 update_doc = {}
+
                 if updates:
                     update_doc["$set"] = updates
+
                 if removals:
                     update_doc["$unset"] = removals
 
@@ -472,6 +472,7 @@ class Document(BaseDocument, mongoengine.Document):
         except pymongo.errors.DuplicateKeyError as err:
             message = "Tried to save duplicate unique keys (%s)"
             raise mongoengine.NotUniqueError(message % err)
+
         except pymongo.errors.OperationFailure as err:
             message = "Could not save document (%s)"
             if re.match("^E1100[01] duplicate key", str(err)):
@@ -479,6 +480,7 @@ class Document(BaseDocument, mongoengine.Document):
                 # E11001 - duplicate key on update
                 message = "Tried to save duplicate unique keys (%s)"
                 raise mongoengine.NotUniqueError(message % err)
+
             raise mongoengine.OperationError(message % err)
 
         # Make sure we store the PK on this document now that it's saved

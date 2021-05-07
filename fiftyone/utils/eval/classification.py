@@ -217,6 +217,7 @@ class SimpleEvaluation(ClassificationEvaluation):
             ypred_ids=ypred_ids,
             classes=classes,
             missing=missing,
+            samples=samples,
         )
 
         if eval_key is None:
@@ -335,6 +336,7 @@ class TopKEvaluation(ClassificationEvaluation):
             ypred_ids=ypred_ids,
             classes=classes,
             missing=missing,
+            samples=samples,
         )
 
         if eval_key is None:
@@ -474,6 +476,7 @@ class BinaryEvaluation(ClassificationEvaluation):
             pred_field=pred_field,
             ytrue_ids=ytrue_ids,
             ypred_ids=ypred_ids,
+            samples=samples,
         )
 
         if eval_key is None:
@@ -539,6 +542,8 @@ class ClassificationResults(foe.EvaluationResults):
             observed ground truth/predicted labels are used
         missing (None): a missing label string. Any None-valued labels are
             given this label for evaluation purposes
+        samples (None): the :class:`fiftyone.core.collections.SampleCollection`
+            for which the results were computed
     """
 
     def __init__(
@@ -553,6 +558,7 @@ class ClassificationResults(foe.EvaluationResults):
         ypred_ids=None,
         classes=None,
         missing=None,
+        samples=None,
     ):
         if missing is None:
             missing = "(none)"
@@ -572,6 +578,7 @@ class ClassificationResults(foe.EvaluationResults):
         )
         self.classes = np.asarray(classes)
         self.missing = missing
+        self._samples = samples
 
     def _get_labels(self, classes, include_missing=False):
         if classes is not None:
@@ -806,6 +813,7 @@ class ClassificationResults(foe.EvaluationResults):
             confusion_matrix,
             labels,
             ids=ids,
+            samples=self._samples,
             gt_field=self.gt_field,
             pred_field=self.pred_field,
             backend=backend,
@@ -835,6 +843,7 @@ class ClassificationResults(foe.EvaluationResults):
             ypred_ids=ypred_ids,
             classes=classes,
             missing=missing,
+            samples=samples,
             **kwargs,
         )
 
@@ -855,6 +864,8 @@ class BinaryClassificationResults(ClassificationResults):
         pred_field (None): the name of the predictions field
         ytrue_ids (None): a list of IDs for the ground truth labels
         ypred_ids (None): a list of IDs for the predicted labels
+        samples (None): the :class:`fiftyone.core.collections.SampleCollection`
+            for which the results were computed
     """
 
     def __init__(
@@ -868,6 +879,7 @@ class BinaryClassificationResults(ClassificationResults):
         pred_field=None,
         ytrue_ids=None,
         ypred_ids=None,
+        samples=None,
     ):
         super().__init__(
             ytrue,
@@ -880,6 +892,7 @@ class BinaryClassificationResults(ClassificationResults):
             ypred_ids=ypred_ids,
             classes=classes,
             missing=classes[0],
+            samples=samples,
         )
 
         self._pos_label = classes[1]
@@ -998,6 +1011,7 @@ class BinaryClassificationResults(ClassificationResults):
             pred_field=pred_field,
             ytrue_ids=ytrue_ids,
             ypred_ids=ypred_ids,
+            samples=samples,
             **kwargs,
         )
 

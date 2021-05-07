@@ -7,14 +7,16 @@ import {
   useRecoilState,
   useRecoilValue,
 } from "recoil";
-import { Checkbox, FormControlLabel } from "@material-ui/core";
-
 import { Slider as SliderUnstyled } from "@material-ui/core";
+
+import Checkbox from "../Common/Checkbox";
+import { PopoutSectionTitle } from "../utils";
+import { Button } from "../FieldsSidebar";
 
 const SliderContainer = styled.div`
   font-weight: bold;
   display: flex;
-  padding: 1.5rem 0.5rem 0.5rem;
+  padding: 1.5rem 0 0.5rem;
   line-height: 1.9rem;
 `;
 
@@ -89,6 +91,7 @@ type BaseSliderProps = {
   persistValue?: boolean;
   showBounds?: boolean;
   int?: boolean;
+  style?: React.CSSProperties;
 };
 
 const BaseSlider = React.memo(
@@ -101,6 +104,7 @@ const BaseSlider = React.memo(
     persistValue = true,
     showBounds = true,
     value,
+    style,
   }: BaseSliderProps) => {
     const theme = useContext(ThemeContext);
     const bounds = useRecoilValue(boundsAtom);
@@ -119,7 +123,7 @@ const BaseSlider = React.memo(
     const formatter = formatNumeral(int);
 
     return (
-      <SliderContainer style={showBounds ? {} : { padding: 0 }}>
+      <SliderContainer style={style}>
         {showBounds && formatter(bounds[0])}
         <SliderStyled
           onMouseDown={() => setClicking(true)}
@@ -179,6 +183,7 @@ type RangeSliderProps = {
   valueAtom: RecoilState<Range>;
   boundsAtom: RecoilValueReadOnly<Range>;
   color: string;
+  showBounds?: boolean;
   int?: boolean;
 };
 
@@ -213,11 +218,11 @@ const NamedRangeSliderHeader = styled.div`
 
 const RangeSliderContainer = styled.div`
   background: ${({ theme }) => theme.backgroundDark};
-  box-shadow: 0 8px 15px 0 rgba(0, 0, 0, 0.43);
   border: 1px solid #191c1f;
   border-radius: 2px;
   color: ${({ theme }) => theme.fontDark};
   margin-top: 0.25rem;
+  padding: 0.25rem 0.5rem 0 0.5rem;
 `;
 
 type NamedProps = {
@@ -256,59 +261,44 @@ export const NamedRangeSlider = React.memo(
       const hasBounds = bounds.every((b) => b !== null);
       const isSingleValue = hasBounds && bounds[0] === bounds[1];
 
+      if (!hasBounds || (!hasNone && isSingleValue)) {
+        return null;
+      }
+
       return (
         <NamedRangeSliderContainer ref={ref}>
-          <NamedRangeSliderHeader>
-            {name}
-            {!hasDefaultRange || !includeNone ? (
-              <a
-                style={{ cursor: "pointer", textDecoration: "underline" }}
-                onClick={() => {
-                  setRange(bounds);
-                  setIncludeNone(true);
-                }}
-              >
-                reset
-              </a>
-            ) : null}
-          </NamedRangeSliderHeader>
+          {name && <NamedRangeSliderHeader>{name}</NamedRangeSliderHeader>}
           <RangeSliderContainer>
-            {isSingleValue && (
-              <span
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  padding: "0 6px",
-                }}
-              >
-                Only one non-none value exists:{" "}
-                <span style={{ color: theme.font }}>
-                  {bounds[0].toLocaleString()}
-                </span>
-              </span>
-            )}
             {hasBounds && !isSingleValue && (
-              <RangeSlider {...rangeSliderProps} />
+              <RangeSlider {...rangeSliderProps} showBounds={false} />
             )}
-            {hasNone && hasDefaultRange && (
-              <FormControlLabel
-                label={
-                  <div style={{ lineHeight: "20px", fontSize: 14 }}>
-                    Exclude{" "}
-                    <code style={{ color: rangeSliderProps.color }}>None</code>
-                  </div>
-                }
-                control={
-                  <Checkbox
-                    checked={!includeNone}
-                    onChange={() => setIncludeNone(!includeNone)}
-                    style={{
-                      padding: "0 5px",
-                      color: rangeSliderProps.color,
-                    }}
-                  />
-                }
+            {((hasNone && hasBounds && hasDefaultRange) ||
+              !hasDefaultRange) && <PopoutSectionTitle />}
+            {hasNone && hasBounds && hasDefaultRange && (
+              <Checkbox
+                color={rangeSliderProps.color}
+                name={"None"}
+                value={includeNone}
+                setValue={setIncludeNone}
               />
+            )}
+            {!hasDefaultRange && (
+              <>
+                <Button
+                  text={"Reset"}
+                  color={rangeSliderProps.color}
+                  onClick={() => {
+                    setRange(bounds);
+                    setIncludeNone(true);
+                  }}
+                  style={{
+                    margin: "0.25rem -0.5rem",
+                    height: "2rem",
+                    borderRadius: 0,
+                    textAlign: "center",
+                  }}
+                ></Button>
+              </>
             )}
           </RangeSliderContainer>
         </NamedRangeSliderContainer>
