@@ -226,22 +226,14 @@ class _PatchesView(fov.DatasetView):
             sync_fcn(source_view, field)
 
     def _sync_source_root(self, fields):
-        if etau.is_str(fields):
-            fields = [fields]
-
         for field in fields:
             self._sync_source_root_field(field)
 
     def _sync_source_view_field(self, field):
-        _, id_path = self._get_label_field_path(field, "id")
-        label_path = id_path.rsplit(".", 1)[0]
+        _, label_path = self._get_label_field_path(field)
 
-        sample_ids, docs, label_ids = self.aggregate(
-            [
-                foa.Values("sample_id"),
-                foa.Values(label_path, _raw=True),
-                foa.Values(id_path, unwind=True),
-            ]
+        sample_ids, docs = self.aggregate(
+            [foa.Values("sample_id"), foa.Values(label_path, _raw=True)]
         )
 
         self._source_collection._set_labels_by_id(field, sample_ids, docs)
