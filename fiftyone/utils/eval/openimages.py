@@ -39,21 +39,20 @@ class OpenImagesEvaluationConfig(DetectionEvaluationConfig):
             label (True) or allow matches between classes (False)
         iscrowd ("IsGroupOf"): the name of the crowd attribute
         max_preds (None): the maximum number of predicted objects to evaluate
-            when computing mAP and PR curves. 
-        hierarchy (None): a dict containing a hierachy of classes for
-            evaluation following the structure 
+            when computing mAP and PR curves
+        hierarchy (None): an optional dict containing a hierachy of classes for
+            evaluation following the structure
             ``{"LabelName": label, "Subcategory": [{...}, ...]}``
-        pos_label_field (None): the name of the field containing image-level 
-            :class:`fiftyone.core.labels.Classifications` that specify which 
+        pos_label_field (None): the name of a field containing image-level
+            :class:`fiftyone.core.labels.Classifications` that specify which
             classes should be evaluated in the image
-        neg_label_field (None): the name of the field containing image-level 
-            :class:`fiftyone.core.labels.Classifications` that specify which 
+        neg_label_field (None): the name of a field containing image-level
+            :class:`fiftyone.core.labels.Classifications` that specify which
             classes should not be evaluated in the image
-        expand_gt_hierarchy (True): bool indicating whether to expand ground truth
-            detections and labels according to the provided hierarchy
-        expand_pred_hierarchy (False): bool indicating whether to expand
-            predicted detections and labels according to the provided 
-            hierarchy
+        expand_gt_hierarchy (True): whether to expand ground truth detections
+            and labels according to the provided ``hierarchy``
+        expand_pred_hierarchy (False): whether to expand predicted detections
+            and labels according to the provided ``hierarchy``
     """
 
     def __init__(
@@ -88,7 +87,8 @@ class OpenImagesEvaluationConfig(DetectionEvaluationConfig):
         if expand_pred_hierarchy:
             if not hierarchy:
                 logger.warning(
-                    "No hierarchy provided, setting expand_pred_hierarchy to False"
+                    "No hierarchy provided, setting `expand_pred_hierarchy` "
+                    "to False"
                 )
                 self.expand_pred_hierarchy = False
 
@@ -97,7 +97,7 @@ class OpenImagesEvaluationConfig(DetectionEvaluationConfig):
 
         if expand_gt_hierarchy and not hierarchy:
             logger.warning(
-                "No hierarchy provided, setting expand_gt_hierarchy to False"
+                "No hierarchy provided, setting `expand_gt_hierarchy` to False"
             )
             self.expand_gt_hierarchy = False
 
@@ -160,7 +160,7 @@ class OpenImagesEvaluation(DetectionEvaluation):
             eval_key (None): the evaluation key for this evaluation
 
         Returns:
-            a list of matched 
+            a list of matched
             ``(gt_label, pred_label, iou, pred_confidence, gt_id, pred_id)``
             tuples
         """
@@ -205,7 +205,7 @@ class OpenImagesEvaluation(DetectionEvaluation):
     ):
         """Generates aggregate evaluation results for the samples.
 
-        This method performs Open Images-style evaluation as in 
+        This method performs Open Images-style evaluation as in
         :meth:`evaluate_image` to generate precision and recall curves for the
         given IoU in ``self.config.iou``. In this case, a
         :class:`OpenImagesDetectionResults` instance is returned that can
@@ -213,13 +213,13 @@ class OpenImagesEvaluation(DetectionEvaluation):
 
         Args:
             samples: a :class:`fiftyone.core.SamplesCollection`
-            matches: a list of 
+            matches: a list of
                 ``(gt_label, pred_label, iou, pred_confidence, gt_id, pred_id)``
                 matches. Either label can be ``None`` to indicate an unmatched
                 object
             eval_key (None): the evaluation key for this evaluation
-            classes (None): the list of classes to evaluate. If not provided, 
-                the observed ground truth/predicted labels are used for 
+            classes (None): the list of classes to evaluate. If not provided,
+                the observed ground truth/predicted labels are used for
                 results purposes
             missing (None): a missing label string. Any unmatched objects are
                 given this label for results purposes
@@ -304,6 +304,7 @@ class OpenImagesEvaluation(DetectionEvaluation):
             missing=missing,
             gt_field=gt_field,
             pred_field=pred_field,
+            samples=samples,
         )
 
 
@@ -311,15 +312,17 @@ class OpenImagesDetectionResults(DetectionResults):
     """Class that stores the results of a Open Images detection evaluation.
 
     Args:
-        matches: a list of 
+        matches: a list of
             ``(gt_label, pred_label, iou, pred_confidence, gt_id, pred_id)``
             matches. Either label can be ``None`` to indicate an unmatched
             object
         precision: a dict of precision values per class
-        recall: a dict of recall values per class 
+        recall: a dict of recall values per class
         classes: the list of possible classes
         missing (None): a missing label string. Any unmatched objects are
             given this label for evaluation purposes
+        samples (None): the :class:`fiftyone.core.collections.SampleCollection`
+            for which the results were computed
     """
 
     def __init__(
@@ -331,6 +334,7 @@ class OpenImagesDetectionResults(DetectionResults):
         gt_field=None,
         pred_field=None,
         missing=None,
+        samples=None,
     ):
         super().__init__(
             matches,
@@ -338,6 +342,7 @@ class OpenImagesDetectionResults(DetectionResults):
             pred_field=pred_field,
             classes=classes,
             missing=missing,
+            samples=samples,
         )
 
         self.precision = precision
@@ -381,7 +386,6 @@ class OpenImagesDetectionResults(DetectionResults):
                 you are working in a notebook context and the plotly backend is
                 used
             -   a plotly or matplotlib figure, otherwise
-
         """
         if not classes:
             c_ap = [(ap, c) for c, ap in self._classwise_AP.items()]
@@ -423,8 +427,8 @@ class OpenImagesDetectionResults(DetectionResults):
         return q, rec
 
     def mAP(self, classes=None):
-        """Computes Open Images-style mean average precision (mAP) for the specified
-        classes.
+        """Computes Open Images-style mean average precision (mAP) for the
+        specified classes.
 
         See `this page <https://storage.googleapis.com/openimages/web/evaluation.html>`_
         for more details about Open Images-style mAP.
@@ -767,7 +771,7 @@ def _build_plain_hierarchy(hierarchy, skip_root=False):
     """Expands tree hierarchy representation to parent-child dictionary.
 
     Args:
-        hierarchy: labels hierarchy 
+        hierarchy: labels hierarchy
         skip_root (False): if true skips root from the processing (done for the case when all
             classes under hierarchy are collected under virtual node)
 
