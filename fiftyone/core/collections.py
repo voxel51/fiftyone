@@ -3761,7 +3761,7 @@ class SampleCollection(object):
         return self._add_view_stage(fos.ToPatches(field))
 
     @view_stage
-    def to_evaluation_patches(self, eval_key):
+    def to_evaluation_patches(self, eval_key, use_eval_view=False):
         """Creates a view based on the results of the evaluation with the
         given key that contains one sample for each true positive, false
         positive, and false negative example in the collection, respectively.
@@ -3781,6 +3781,19 @@ class SampleCollection(object):
         well as a ``sample_id`` field recording the sample ID of the example,
         and a ``crowd`` field if the evaluation protocol defines a crowd
         attribute.
+
+        .. note::
+
+            By default, when ``use_eval_view`` is False, the returned view
+            will contain patches for the contents of this collection, which
+            may differ from the view on which the ``eval_key`` evaluation was
+            performed. This may exclude some labels that were evaluated and/or
+            include labels that were not evaluated.
+
+            Conversely, if you set ``use_eval_view`` to True, the returned view
+            will contain patches for the exact view on which the evaluation was
+            run, regardless of any view stages that this collection may
+            contain.
 
         Examples::
 
@@ -3806,11 +3819,15 @@ class SampleCollection(object):
                 ground truth/predicted fields that are of type
                 :class:`fiftyone.core.labels.Detections` or
                 :class:`fiftyone.core.labels.Polylines`
+            use_eval_view (False): whether to use the exact view on which the
+                ``eval_key`` evaluation was run to generate patches
 
         Returns:
             a :class:`fiftyone.core.patches.EvaluationPatchesView`
         """
-        return self._add_view_stage(fos.ToEvaluationPatches(eval_key))
+        return self._add_view_stage(
+            fos.ToEvaluationPatches(eval_key, use_eval_view=use_eval_view)
+        )
 
     @classmethod
     def list_aggregations(cls):

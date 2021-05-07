@@ -73,7 +73,9 @@ def _get_single_label_field_type(sample_collection, field):
     return _SINGLE_TYPES_MAP[label_type]
 
 
-def make_evaluation_dataset(sample_collection, eval_key, name=None):
+def make_evaluation_dataset(
+    sample_collection, eval_key, use_eval_view=False, name=None
+):
     """Creates a dataset based on the results of the evaluation with the given
     key that contains one sample for each true positive, false positive, and
     false negative example in the input collection, respectively.
@@ -93,6 +95,18 @@ def make_evaluation_dataset(sample_collection, eval_key, name=None):
     ``sample_id`` field recording the sample ID of the example, and a ``crowd``
     field if the evaluation protocol defines a crowd attribute.
 
+    .. note::
+
+        By default, when ``use_eval_view`` is False, the returned view will
+        contain patches for the contents of this collection, which may differ
+        from the view on which the ``eval_key`` evaluation was performed. This
+        may exclude some labels that were evaluated and/or include labels that
+        were not evaluated.
+
+        Conversely, if you set ``use_eval_view`` to True, the returned view
+        will contain patches for the exact view on which the evaluation was
+        run, regardless of any view stages that this collection may contain.
+
     Args:
         sample_collection: a
             :class:`fiftyone.core.collections.SampleCollection`
@@ -100,6 +114,9 @@ def make_evaluation_dataset(sample_collection, eval_key, name=None):
             ground truth/predicted fields that are of type
             :class:`fiftyone.core.labels.Detections` or
             :class:`fiftyone.core.labels.Polylines`
+        use_eval_view (False): whether to use the exact view on which the
+            ``eval_key`` evaluation was run rather than the provided
+            ``sample_collection`` in order to generate the patches
         name (None): a name for the returned dataset
 
     Returns:
@@ -107,13 +124,18 @@ def make_evaluation_dataset(sample_collection, eval_key, name=None):
     """
     # Parse evaluation info
     eval_info = sample_collection.get_evaluation_info(eval_key)
-    eval_collection = sample_collection.load_evaluation_view(eval_key)
     pred_field = eval_info.config.pred_field
     gt_field = eval_info.config.gt_field
+
     if isinstance(eval_info.config, fouc.COCOEvaluationConfig):
         crowd_attr = eval_info.config.iscrowd
     else:
         crowd_attr = None
+
+    if use_eval_view:
+        eval_collection = sample_collection.load_evaluation_view(eval_key)
+    else:
+        eval_collection = sample_collection
 
     pred_type = eval_collection._get_label_field_type(pred_field)
     gt_type = eval_collection._get_label_field_type(gt_field)

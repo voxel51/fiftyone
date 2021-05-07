@@ -4056,6 +4056,18 @@ class ToEvaluationPatches(ViewStage):
     ``sample_id`` field recording the sample ID of the example, and a ``crowd``
     field if the evaluation protocol defines a crowd attribute.
 
+    .. note::
+
+        By default, when ``use_eval_view`` is False, the returned view will
+        contain patches for the contents of this collection, which may differ
+        from the view on which the ``eval_key`` evaluation was performed. This
+        may exclude some labels that were evaluated and/or include labels that
+        were not evaluated.
+
+        Conversely, if you set ``use_eval_view`` to True, the returned view
+        will contain patches for the exact view on which the evaluation was
+        run, regardless of any view stages that this collection may contain.
+
     Examples::
 
         import fiftyone as fo
@@ -4081,10 +4093,13 @@ class ToEvaluationPatches(ViewStage):
             ground truth/predicted fields that are of type
             :class:`fiftyone.core.labels.Detections` or
             :class:`fiftyone.core.labels.Polylines`
+        use_eval_view (False): whether to use the exact view on which the
+            ``eval_key`` evaluation was run to generate patches
     """
 
-    def __init__(self, eval_key, _state=None):
+    def __init__(self, eval_key, use_eval_view=False, _state=None):
         self._eval_key = eval_key
+        self._use_eval_view = use_eval_view
         self._state = _state
 
     @property
@@ -4096,11 +4111,19 @@ class ToEvaluationPatches(ViewStage):
         """The evaluation key to extract patches for."""
         return self._eval_key
 
+    @property
+    def use_eval_view(self):
+        """Whether to use the exact view on which the ``eval_key`` evaluation
+        was run to generate patches.
+        """
+        return self._use_eval_view
+
     def load_view(self, sample_collection):
         state = {
             "dataset": sample_collection.dataset_name,
             "stages": sample_collection.view()._serialize(include_uuids=False),
             "eval_key": self._eval_key,
+            "use_eval_view": self._use_eval_view,
         }
 
         last_state = deepcopy(self._state)
@@ -4111,7 +4134,9 @@ class ToEvaluationPatches(ViewStage):
 
         if state != last_state or not fod.dataset_exists(name):
             eval_patches_dataset = foup.make_evaluation_dataset(
-                sample_collection, self._eval_key
+                sample_collection,
+                self._eval_key,
+                use_eval_view=self._use_eval_view,
             )
 
             state["name"] = eval_patches_dataset.name
@@ -4119,13 +4144,21 @@ class ToEvaluationPatches(ViewStage):
         else:
             eval_patches_dataset = fod.load_dataset(name)
 
+        if self._use_eval_view:
+            eval_collection = sample_collection.load_evaluation_view(
+                self._eval_key
+            )
+        else:
+            eval_collection = sample_collection
+
         return fop.EvaluationPatchesView(
-            sample_collection, self, eval_patches_dataset
+            eval_collection, self, eval_patches_dataset
         )
 
     def _kwargs(self):
         return [
             ["eval_key", self._eval_key],
+            ["use_eval_view", self._use_eval_view],
             ["_state", self._state],
         ]
 
@@ -4133,6 +4166,12 @@ class ToEvaluationPatches(ViewStage):
     def _params(self):
         return [
             {"name": "eval_key", "type": "str", "placeholder": "eval key"},
+            {
+                "name": "use_eval_view",
+                "type": "bool",
+                "default": "False",
+                "placeholder": "use eval view (default=False)",
+            },
             {"name": "_state", "type": "NoneType|json", "default": "None"},
         ]
 
