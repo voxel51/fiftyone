@@ -264,6 +264,7 @@ class DatasetView(foc.SampleCollection):
         filtered_fields = self._get_filtered_fields()
 
         index = 0
+
         try:
             for d in self._aggregate(detach_frames=True):
                 try:
@@ -280,12 +281,14 @@ class DatasetView(foc.SampleCollection):
 
                 except Exception as e:
                     raise ValueError(
-                        "Failed to load sample from the database. This is likely "
-                        "due to an invalid stage in the DatasetView"
+                        "Failed to load sample from the database. This is "
+                        "likely due to an invalid stage in the DatasetView"
                     ) from e
 
-        # the cursor has timed so we yield from a new one with the last offset
         except CursorNotFound:
+            # The cursor has timed out so we yield from a new one after
+            # skipping to the last offset
+
             view = self.skip(index)
             for sample in view.iter_samples():
                 yield sample
