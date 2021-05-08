@@ -1,6 +1,6 @@
 argcomplete==1.11.0
 Deprecated==1.2.11
-eventlet==0.25.2
+eventlet==0.31.0
 Flask==1.1.2
 httpx==0.7.7
 Jinja2==2.11.3
