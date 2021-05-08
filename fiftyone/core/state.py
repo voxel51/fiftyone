@@ -87,9 +87,10 @@ class StateDescription(etas.Serializable):
                     _view_cls = etau.get_class_name(self.view)
 
                     # If the view uses a temporary dataset, we must use its
-                    # field schema
+                    # media type and field schemas
                     if self.view._dataset != self.dataset:
                         _tmp = self.view._dataset._serialize()
+                        _dataset["media_type"] = _tmp["media_type"]
                         _dataset["sample_fields"] = _tmp["sample_fields"]
                         _dataset["frame_fields"] = _tmp["frame_fields"]
 

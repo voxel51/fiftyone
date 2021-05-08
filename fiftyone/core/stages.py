@@ -31,7 +31,6 @@ import fiftyone.core.utils as fou
 fod = fou.lazy_import("fiftyone.core.dataset")
 fop = fou.lazy_import("fiftyone.core.patches")
 foug = fou.lazy_import("fiftyone.utils.geojson")
-foup = fou.lazy_import("fiftyone.utils.patches")
 
 
 class ViewStage(object):
@@ -4011,7 +4010,7 @@ class ToPatches(ViewStage):
             name = None
 
         if state != last_state or not fod.dataset_exists(name):
-            patches_dataset = foup.make_patches_dataset(
+            patches_dataset = fop.make_patches_dataset(
                 sample_collection, self._field
             )
 
@@ -4110,7 +4109,7 @@ class ToEvaluationPatches(ViewStage):
             name = None
 
         if state != last_state or not fod.dataset_exists(name):
-            eval_patches_dataset = foup.make_evaluation_dataset(
+            eval_patches_dataset = fop.make_evaluation_dataset(
                 sample_collection, self._eval_key
             )
 

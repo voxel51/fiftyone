@@ -11,6 +11,7 @@ import mimetypes
 import os
 import io
 import struct
+import warnings
 
 import eta.core.video as etav
 import PIL.Image
@@ -33,9 +34,9 @@ def change_sample_tags(collection, changes):
 
     Args:
         collection: the :class:`fiftyone.core.collections.SampleCollection`
-        changes: a `dict` of tags as keys and `bool`s as values. A `True`
-            value adds the tag to all samples, if necessary. A `False`
-            value removes the tag from all samples, if necessary.
+        changes: a dict of tags as keys and bools as values. A ``True`` value
+            adds the tag to all samples, if necessary. A ``False`` value
+            removes the tag from all samples, if necessary
     """
     modifier = _get_tag_modifier(changes)
 
@@ -48,12 +49,12 @@ def change_label_tags(collection, changes, label_fields=None):
 
     Args:
         collection: the :class:`fiftyone.core.collections.SampleCollection`
-        changes: a `dict` of tags as keys and `bool`s as values. A `True`
-            value adds the tag to all samples, if necessary. A `False`
-            value removes the tag from all samples, if necessary.
+        changes: a dict of tags as keys and bools as values. A ``True`` value
+            adds the tag to all labels, if necessary. A ``False`` value removes
+            the tag from all labels, if necessary
         label_fields (None): an optional name or iterable of names of
-            :class:`fiftyone.core.labels.Label` fields. By default, all
-            label fields are used
+            :class:`fiftyone.core.labels.Label` fields. By default, all label
+            fields are used
     """
     modifier = _get_tag_modifier(changes)
 
@@ -326,9 +327,9 @@ def get_image_metadata_from_bytesio(input, size, file_path=None):
         num = input.read(2)
         num = struct.unpack("<H", num)[0]
         if num > 1:
-            import warnings
+            msg = "ICO File contains more than one image"
+            warnings.warn(msg)
 
-            warnings.warn("ICO File contains more than one image")
         # http://msdn.microsoft.com/en-us/library/ms997538.aspx
         w = input.read(1)
         h = input.read(1)

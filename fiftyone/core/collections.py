@@ -41,7 +41,6 @@ fov = fou.lazy_import("fiftyone.core.view")
 foua = fou.lazy_import("fiftyone.utils.annotations")
 foud = fou.lazy_import("fiftyone.utils.data")
 foue = fou.lazy_import("fiftyone.utils.eval")
-foup = fou.lazy_import("fiftyone.utils.patches")
 
 
 logger = logging.getLogger(__name__)
@@ -117,6 +116,11 @@ class SampleCollection(object):
         such as patches views.
         """
         raise NotImplementedError("Subclass must implement _root_dataset")
+
+    @property
+    def _is_patches(self):
+        """Whether this collection contains patches."""
+        raise NotImplementedError("Subclass must implement _is_patches")
 
     @property
     def _element_str(self):
@@ -5419,7 +5423,7 @@ class SampleCollection(object):
 
         return field.document_type
 
-    def _get_label_field_path(self, field_name, subfield):
+    def _get_label_field_path(self, field_name, subfield=None):
         label_type = self._get_label_field_type(field_name)
 
         if issubclass(label_type, fol._LABEL_LIST_FIELDS):
