@@ -32,8 +32,6 @@ _NO_MATCH_ID = ""
 class _PatchView(fos.SampleView):
     def save(self):
         super().save()
-
-        # Update source collection
         self._view._sync_source_sample(self)
 
 
@@ -141,10 +139,6 @@ class _PatchesView(fov.DatasetView):
         if etau.is_str(label_fields):
             label_fields = [label_fields]
 
-        super()._edit_label_tags(edit_fcn, label_fields=label_fields)
-
-        # Update source collection
-
         if label_fields is None:
             fields = self._label_fields
         else:
@@ -155,10 +149,14 @@ class _PatchesView(fov.DatasetView):
 
         self._sync_source_fcn(sync_fcn, fields)
 
-    def set_values(self, field_name, *args, **kwargs):
-        super().set_values(field_name, *args, **kwargs)
+        # Update the patches view second, because removing tags could affect
+        # the contents of this view!
+        super()._edit_label_tags(edit_fcn, label_fields=label_fields)
 
-        # Update source collection
+    def set_values(self, field_name, *args, **kwargs):
+        # @todo if this operation reduces the samples or labels in this view,
+        # the source collection won't be complete
+        super().set_values(field_name, *args, **kwargs)
 
         field = field_name.split(".", 1)[0]
         if field in self._label_fields:
@@ -169,8 +167,6 @@ class _PatchesView(fov.DatasetView):
             fields = [fields]
 
         super().save(fields=fields)
-
-        # Update source collection
 
         if fields is None:
             fields = self._label_fields
