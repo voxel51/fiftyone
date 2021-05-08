@@ -173,8 +173,23 @@ class PatchesTests(unittest.TestCase):
         self.assertDictEqual(dataset.count_sample_tags(), {"sample2": 1})
         self.assertDictEqual(view.count_sample_tags(), {"sample2": 2})
 
+        view.tag_labels("test")
+
+        self.assertDictEqual(
+            view.count_label_tags(), dataset.count_label_tags("ground_truth")
+        )
+
+        view4 = view.select_labels(tags="test")
+
+        view4.untag_labels("test")
+
+        self.assertDictEqual(view.count_values("ground_truth.tags"), {})
+        self.assertDictEqual(
+            dataset.count_values("ground_truth.detections.tags"), {}
+        )
+
     @drop_datasets
-    def test_eval_patches(self):
+    def test_evaluation_patches(self):
         dataset = fo.Dataset()
 
         sample = fo.Sample(
@@ -355,6 +370,24 @@ class PatchesTests(unittest.TestCase):
 
         self.assertDictEqual(dataset.count_sample_tags(), {})
         self.assertDictEqual(view.count_sample_tags(), {})
+
+        view.tag_labels("test", label_fields="ground_truth")
+
+        self.assertDictEqual(
+            view.count_label_tags("ground_truth"),
+            dataset.count_label_tags("ground_truth"),
+        )
+
+        view4 = view.select_labels(tags="test", fields="ground_truth")
+
+        view4.untag_labels("test", label_fields="ground_truth")
+
+        self.assertDictEqual(
+            view.count_values("ground_truth.detections.tags"), {}
+        )
+        self.assertDictEqual(
+            dataset.count_values("ground_truth.detections.tags"), {}
+        )
 
 
 if __name__ == "__main__":
