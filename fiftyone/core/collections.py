@@ -3816,6 +3816,47 @@ class SampleCollection(object):
         """
         return self._add_view_stage(fos.ToEvaluationPatches(eval_key))
 
+    @view_stage
+    def to_frames(self, config=None):
+        """Creates a view that contains one sample per frame in the video
+        collection.
+
+        .. note::
+
+             The first time this method is run on a collection, it will sample
+             each video in the collection into a directory of per-frame images.
+
+             Videos that have previously been sampled will not be resampled,
+             unless you override this behavior via ``config``.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+
+            dataset = foz.load_zoo_dataset("quickstart-video")
+
+            session = fo.launch_app(dataset)
+
+            #
+            # Create a frames view
+            #
+
+            view = dataset.to_frames()
+            print(view)
+
+            session.view = view
+
+        Args:
+            config (None): an optional dict of keyword arguments for
+                :meth:`fiftyone.core.video.make_frames_dataset` specifying how
+                to perform the conversion
+
+        Returns:
+            a :class:`fiftyone.core.video.FramesView`
+        """
+        return self._add_view_stage(fos.ToFrames(config=config))
+
     @classmethod
     def list_aggregations(cls):
         """Returns a list of all available methods on this collection that
