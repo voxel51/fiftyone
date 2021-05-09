@@ -220,6 +220,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         _create=True,
         _migrate=True,
         _patches=False,
+        _frames=False,
     ):
         if name is None and _create:
             name = get_default_dataset_name()
@@ -232,7 +233,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 self._doc,
                 self._sample_doc_cls,
                 self._frame_doc_cls,
-            ) = _create_dataset(name, persistent=persistent, patches=_patches)
+            ) = _create_dataset(
+                name, persistent=persistent, patches=_patches, frames=_frames
+            )
         else:
             (
                 self._doc,
@@ -306,6 +309,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     @property
     def _is_patches(self):
         return self._sample_collection_name.startswith("patches.")
+
+    @property
+    def _is_frames(self):
+        return self._sample_collection_name.startswith("frames.")
 
     @property
     def media_type(self):
@@ -3388,7 +3395,7 @@ def _list_datasets(include_private=False):
         return sorted(foo.DatasetDocument.objects.distinct("name"))
 
     # Datasets whose sample collections don't start with `samples.` are private
-    # e.g., patches datasets
+    # e.g., patches or frames datasets
     # pylint: disable=no-member
     return sorted(
         foo.DatasetDocument.objects.filter(
@@ -3397,7 +3404,9 @@ def _list_datasets(include_private=False):
     )
 
 
-def _create_dataset(name, persistent=False, media_type=None, patches=False):
+def _create_dataset(
+    name, persistent=False, media_type=None, patches=False, frames=False
+):
     if dataset_exists(name):
         raise ValueError(
             (
@@ -3407,7 +3416,9 @@ def _create_dataset(name, persistent=False, media_type=None, patches=False):
             % name
         )
 
-    sample_collection_name = _make_sample_collection_name(patches)
+    sample_collection_name = _make_sample_collection_name(
+        patches=patches, frames=frames
+    )
     sample_doc_cls = _create_sample_document_cls(sample_collection_name)
 
     frame_collection_name = "frames." + sample_collection_name
@@ -3438,14 +3449,21 @@ def _create_indexes(sample_collection_name, frame_collection_name):
     collection.create_index("filepath")
 
     frame_collection = conn[frame_collection_name]
-    frame_collection.create_index([("_sample_id", 1), ("frame_number", 1)])
+    frame_collection.create_index(
+        [("_sample_id", 1), ("frame_number", 1)], unique=True
+    )
 
 
-def _make_sample_collection_name(patches=False):
+def _make_sample_collection_name(patches=False, frames=False):
     conn = foo.get_db_conn()
     now = datetime.datetime.now()
 
-    prefix = "patches" if patches else "samples"
+    if patches:
+        prefix = "patches"
+    elif frames:
+        prefix = "frames"
+    else:
+        prefix = "samples"
 
     create_name = lambda timestamp: ".".join([prefix, timestamp])
 
@@ -3638,6 +3656,9 @@ def _save_view(view, fields):
 
     if merge:
         if sample_fields:
+            # @todo if `view` omits samples, shouldn't we set their field
+            # values to None here, for consistency with the fact that $out
+            # will delete samples that don't appear in `view`?
             pipeline.append({"$project": {f: True for f in sample_fields}})
             pipeline.append({"$merge": dataset._sample_collection_name})
             foo.aggregate(dataset._sample_collection, pipeline)
@@ -3659,6 +3680,9 @@ def _save_view(view, fields):
 
         if merge:
             if frame_fields:
+                # @todo if `view` omits samples, shouldn't we set their field
+                # values to None here, for consistency with the fact that $out
+                # will delete samples that don't appear in `view`?
                 pipeline.append({"$project": {f: True for f in frame_fields}})
                 pipeline.append({"$merge": dataset._frame_collection_name})
                 foo.aggregate(dataset._sample_collection, pipeline)

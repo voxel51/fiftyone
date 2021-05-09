@@ -123,6 +123,11 @@ class SampleCollection(object):
         raise NotImplementedError("Subclass must implement _is_patches")
 
     @property
+    def _is_frames(self):
+        """Whether this collection contains frames of a video dataset."""
+        raise NotImplementedError("Subclass must implement _is_frames")
+
+    @property
     def _element_str(self):
         return "sample"
 

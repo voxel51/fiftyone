@@ -136,6 +136,7 @@ class FramesView(fov.DatasetView):
     def name(self):
         return self.dataset_name + "-frames"
 
+    """
     def _edit_label_tags(self, edit_fcn, label_fields=None):
         # This covers the necessary overrides for both `tag_labels()` and
         # `untag_labels()`. This is important because the App uses
@@ -157,14 +158,20 @@ class FramesView(fov.DatasetView):
         # Update this view second, because removing tags could affect the
         # contents of this view!
         super()._edit_label_tags(edit_fcn, label_fields=label_fields)
+    """
 
     def set_values(self, field_name, *args, **kwargs):
-        # @todo if this operation reduces the samples or labels in this view,
-        # the source collection update won't be complete
+        # The `set_values()` operation could change the contents of this view,
+        # so we first record the sample IDs that need to be synced
+        if self._stages:
+            ids = self.values("_id")
+        else:
+            ids = None
+
         super().set_values(field_name, *args, **kwargs)
 
         field = field_name.split(".", 1)[0]
-        self._sync_source(fields=[field])
+        self._sync_source(fields=[field], ids=ids)
 
     def save(self, fields=None):
         if etau.is_str(fields):
@@ -172,14 +179,7 @@ class FramesView(fov.DatasetView):
 
         super().save(fields=fields)
 
-        #
-        # IMPORTANT: we sync the contents of `_frames_dataset`, not `self`
-        # here because the `save()` call above updated the dataset, which means
-        # this view may no longer have the same contents (e.g., if `skip()` is
-        # involved)
-        #
-
-        self._sync_source(fields=fields, root=True)
+        self._sync_source(fields=fields)
 
     def reload(self):
         self._root_dataset.reload()
@@ -196,7 +196,7 @@ class FramesView(fov.DatasetView):
         self._frames_dataset = _view._frames_dataset
 
     def _sync_source_sample(self, sample):
-        self._sync_source_schema()
+        self._sync_source_schema(delete=False)
 
         updates = {
             k: v
@@ -208,6 +208,7 @@ class FramesView(fov.DatasetView):
             {"_id": ObjectId(sample.frame_id)}, {"$set": updates}
         )
 
+    """
     def _sync_source_fcn(self, sync_fcn, fields):
         for field in fields:
             frame_field = self._FRAMES_PREFIX + field
@@ -217,32 +218,49 @@ class FramesView(fov.DatasetView):
                 ids=ids, fields=frame_field
             )
             sync_fcn(source_view, frame_field)
+    """
 
-    def _sync_source(self, fields=None, root=False):
-        self._sync_source_schema(fields=fields)
+    def _sync_source(self, fields=None, ids=None):
+        if fields is not None:
+            fields = [f for f in fields if f not in _DEFAULT_FIELDS]
+            if not fields:
+                return
+
+        self._sync_source_schema(fields=fields, delete=True)
 
         pipeline = []
+
+        if ids is not None:
+            pipeline.append({"$match": {"_id": {"$in": ids}}})
 
         if fields is None:
             pipeline.append({"$unset": _DEFAULT_FIELDS_NO_INDEX})
         else:
-            pipeline.append({"$project": {f: True for f in fields}})
+            project = {f: True for f in fields}
+            project["_id"] = False
+            project["_sample_id"] = True
+            project["frame_number"] = True
+            pipeline.append({"$project": project})
 
-        pipeline.append(
-            {
-                "$merge": {
-                    "into": self._source_collection._dataset._frame_collection_name,
-                    "on": ["_sample_id", "frame_number"],
-                    "whenMatched": "merge",
-                    "whenNotMatched": "discard",
+        dst_coll = self._source_collection._dataset._frame_collection_name
+
+        if fields is None and ids is None:
+            pipeline.append({"$out": dst_coll})
+        else:
+            pipeline.append(
+                {
+                    "$merge": {
+                        "into": dst_coll,
+                        "on": ["_sample_id", "frame_number"],
+                        "whenMatched": "merge",
+                        "whenNotMatched": "discard",
+                    }
                 }
-            }
-        )
+            )
 
-        collection = self._frames_dataset if root else self
-        collection._aggregate(pipeline=pipeline)
+        self._frames_dataset._aggregate(pipeline=pipeline)
 
-    def _sync_source_schema(self, fields=None):
+    def _sync_source_schema(self, fields=None, delete=False):
         schema = self.get_field_schema()
         src_schema = self._source_collection.get_frame_field_schema()
 
@@ -252,19 +270,26 @@ class FramesView(fov.DatasetView):
         if fields is not None:
             # We're syncing specific fields; if they are not present in source
             # collection, add them
+
             for field_name in fields:
                 if field_name not in src_schema:
                     add_fields.append(field_name)
         else:
             # We're syncing all fields; add any missing fields to source
-            # collection and delete any source fields that aren't in this view
+            # collection and, if requested, delete any source fields that
+            # aren't in this view
+
             for field_name in schema.keys():
-                if field_name not in src_schema:
+                if (
+                    field_name not in src_schema
+                    and field_name not in _DEFAULT_FIELDS
+                ):
                     add_fields.append(field_name)
 
-            for field_name in src_schema.keys():
-                if field_name not in schema:
-                    delete_fields.append(field_name)
+            if delete:
+                for field_name in src_schema.keys():
+                    if field_name not in schema:
+                        delete_fields.append(field_name)
 
         for field_name in add_fields:
             field_kwargs = foo.get_field_kwargs(schema[field_name])
@@ -272,8 +297,9 @@ class FramesView(fov.DatasetView):
                 field_name, **field_kwargs
             )
 
-        for field_name in delete_fields:
-            self._source_collection._dataset.delete_frame_field(field_name)
+        if delete:
+            for field_name in delete_fields:
+                self._source_collection._dataset.delete_frame_field(field_name)
 
 
 def make_frames_dataset(
@@ -368,7 +394,7 @@ def make_frames_dataset(
     # Create dataset with proper schema
     #
 
-    dataset = fod.Dataset(name=name)
+    dataset = fod.Dataset(name=name, _frames=True)
     dataset.media_type = fom.IMAGE
     dataset.add_sample_field("_sample_id", fof.ObjectIdField)
     dataset.add_sample_field("frame_id", fof.StringField)
@@ -460,8 +486,9 @@ def _initialize_frames(dataset, src_collection, sample_frames):
 def _merge_frame_labels(dataset, src_collection):
     # We'll use this index to merge both now and in the opposite direction
     # when syncing the source collection
-    index_spec = [("_sample_id", 1), ("frame_number", 1)]
-    dataset._sample_collection.create_index(index_spec, unique=True)
+    dataset._sample_collection.create_index(
+        [("_sample_id", 1), ("frame_number", 1)], unique=True
+    )
 
     pipeline = src_collection._pipeline(frames_only=True)
     pipeline.extend(
