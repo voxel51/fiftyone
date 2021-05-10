@@ -21,7 +21,6 @@ import fiftyone.core.expressions as foe
 from fiftyone.core.expressions import ViewField as F
 from fiftyone.core.expressions import VALUE
 import fiftyone.core.fields as fof
-import fiftyone.core.frame as fofr
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 from fiftyone.core.odm.document import MongoEngineBaseDocument
@@ -393,7 +392,7 @@ class ExcludeFields(ViewStage):
 
     def get_excluded_fields(self, sample_collection, frames=False):
         if frames:
-            default_fields = fofr.get_default_frame_fields(
+            default_fields = sample_collection._get_default_frame_fields(
                 include_private=True, include_id=True
             )
 
@@ -406,7 +405,7 @@ class ExcludeFields(ViewStage):
                 if is_frame_field:
                     excluded_fields.append(field_name)
         else:
-            default_fields = fos.get_default_sample_fields(
+            default_fields = sample_collection._get_default_sample_fields(
                 include_private=True, include_id=True
             )
             if sample_collection.media_type == fom.VIDEO:
@@ -3044,7 +3043,7 @@ class SelectFields(ViewStage):
 
     def get_selected_fields(self, sample_collection, frames=False):
         if frames:
-            default_fields = fofr.get_default_frame_fields(
+            default_fields = sample_collection._get_default_frame_fields(
                 include_private=True, include_id=True
             )
 
@@ -3057,7 +3056,7 @@ class SelectFields(ViewStage):
                 if is_frame_field:
                     selected_fields.append(field_name)
         else:
-            default_fields = fos.get_default_sample_fields(
+            default_fields = sample_collection._get_default_sample_fields(
                 include_private=True, include_id=True
             )
             if sample_collection.media_type == fom.VIDEO:

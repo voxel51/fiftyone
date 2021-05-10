@@ -131,6 +131,16 @@ class _PatchesView(fov.DatasetView):
     def name(self):
         return self.dataset_name + "-patches"
 
+    @classmethod
+    def _get_default_sample_fields(
+        cls, include_private=False, include_id=False
+    ):
+        fields = super()._get_default_sample_fields(
+            include_private=include_private, include_id=include_id
+        )
+
+        return fields + ("sample_id",)
+
     def _edit_label_tags(self, edit_fcn, label_fields=None):
         # This covers the necessary overrides for both `tag_labels()` and
         # `untag_labels()`. This is important because the App uses
@@ -149,13 +159,13 @@ class _PatchesView(fov.DatasetView):
 
         self._sync_source_fcn(sync_fcn, fields)
 
-        # Update the patches view second, because removing tags could affect
-        # the contents of this view!
+        # Update this view second, because removing tags could affect the
+        # contents of this view!
         super()._edit_label_tags(edit_fcn, label_fields=label_fields)
 
     def set_values(self, field_name, *args, **kwargs):
         # @todo if this operation reduces the samples or labels in this view,
-        # the source collection won't be complete
+        # the source collection update won't be complete
         super().set_values(field_name, *args, **kwargs)
 
         field = field_name.split(".", 1)[0]

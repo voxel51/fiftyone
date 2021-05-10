@@ -349,6 +349,22 @@ class SampleCollection(object):
         """
         raise NotImplementedError("Subclass must implement iter_samples()")
 
+    @classmethod
+    def _get_default_sample_fields(
+        cls, include_private=False, include_id=False
+    ):
+        return fosa.get_default_sample_fields(
+            include_private=include_private, include_id=include_id
+        )
+
+    @classmethod
+    def _get_default_frame_fields(
+        cls, include_private=False, include_id=False
+    ):
+        return fofr.get_default_frame_fields(
+            include_private=include_private, include_id=include_id
+        )
+
     def get_field_schema(
         self, ftype=None, embedded_doc_type=None, include_private=False
     ):
@@ -479,7 +495,7 @@ class SampleCollection(object):
             schema = self.get_field_schema(include_private=True)
 
             default_fields = set(
-                fosa.get_default_sample_fields(include_private=True)
+                self._get_default_sample_fields(include_private=True)
                 + ("id", "_id")
             )
 
@@ -500,7 +516,7 @@ class SampleCollection(object):
             frame_schema = self.get_frame_field_schema(include_private=True)
 
             default_frame_fields = set(
-                fofr.get_default_frame_fields(include_private=True)
+                self._get_default_frame_fields(include_private=True)
                 + ("id", "_id")
             )
 
