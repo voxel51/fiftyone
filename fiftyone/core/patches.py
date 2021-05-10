@@ -141,36 +141,21 @@ class _PatchesView(fov.DatasetView):
 
         return fields + ("sample_id",)
 
-    def _edit_label_tags(self, edit_fcn, label_fields=None):
-        # This covers the necessary overrides for both `tag_labels()` and
-        # `untag_labels()`. This is important because the App uses
-        # `_edit_label_tags()` rather than the public methods to update tags
-
-        if etau.is_str(label_fields):
-            label_fields = [label_fields]
-
-        if label_fields is None:
-            fields = self._label_fields
-        else:
-            fields = [l for l in label_fields if l in self._label_fields]
-
-        def sync_fcn(view, field):
-            view._edit_label_tags(edit_fcn, label_fields=[field])
-
-        self._sync_source_fcn(sync_fcn, fields)
-
-        # Update this view second, because removing tags could affect the
-        # contents of this view!
-        super()._edit_label_tags(edit_fcn, label_fields=label_fields)
-
     def set_values(self, field_name, *args, **kwargs):
-        # @todo if this operation reduces the samples or labels in this view,
-        # the source collection update won't be complete
+        field = field_name.split(".", 1)[0]
+        must_sync = field in self._label_fields
+
+        # The `set_values()` operation could change the contents of this view,
+        # so we first record the sample IDs that need to be synced
+        if must_sync and self._stages:
+            ids = self.values("_id")
+        else:
+            ids = None
+
         super().set_values(field_name, *args, **kwargs)
 
-        field = field_name.split(".", 1)[0]
-        if field in self._label_fields:
-            self._sync_source_view_field(field)
+        if must_sync:
+            self._sync_source_field(field, ids=ids)
 
     def save(self, fields=None):
         if etau.is_str(fields):
@@ -222,27 +207,25 @@ class _PatchesView(fov.DatasetView):
             field, [sample.sample_id], [doc]
         )
 
-    def _sync_source_fcn(self, sync_fcn, fields):
-        for field in fields:
-            _, id_path = self._get_label_field_path(field, "id")
-            ids = self.values(id_path, unwind=True)
-            source_view = self._source_collection.select_labels(
-                ids=ids, fields=field
+    def _sync_source_field(self, field, ids=None):
+        _, label_path = self._patches_dataset._get_label_field_path(field)
+
+        if ids is not None:
+            view = self._patches_dataset.mongo(
+                [{"$match": {"_id": {"$in": ids}}}]
             )
-            sync_fcn(source_view, field)
+        else:
+            view = self._patches_dataset
 
-    def _sync_source_root(self, fields):
-        for field in fields:
-            self._sync_source_root_field(field)
-
-    def _sync_source_view_field(self, field):
-        _, label_path = self._get_label_field_path(field)
-
-        sample_ids, docs = self.aggregate(
+        sample_ids, docs = view.aggregate(
             [foa.Values("sample_id"), foa.Values(label_path, _raw=True)]
         )
 
         self._source_collection._set_labels_by_id(field, sample_ids, docs)
+
+    def _sync_source_root(self, fields):
+        for field in fields:
+            self._sync_source_root_field(field)
 
     def _sync_source_root_field(self, field):
         _, id_path = self._get_label_field_path(field, "id")

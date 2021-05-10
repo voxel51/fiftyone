@@ -15,7 +15,7 @@ from decorators import drop_datasets
 
 class PatchesTests(unittest.TestCase):
     @drop_datasets
-    def test_object_patches(self):
+    def test_to_patches(self):
         dataset = fo.Dataset()
 
         sample1 = fo.Sample(
@@ -94,7 +94,10 @@ class PatchesTests(unittest.TestCase):
         )
         self.assertDictEqual(dataset.count_label_tags("predictions"), {})
 
-        view.untag_labels("test")
+        # Including `select_labels()` here tests an important property: if the
+        # contents of a `view` changes after a save operation occurs, the
+        # original view still needs to be synced with the source dataset
+        view.select_labels(tags="test").untag_labels("test")
 
         self.assertDictEqual(view.count_label_tags(), {})
         self.assertDictEqual(dataset.count_label_tags("ground_truth"), {})
@@ -179,9 +182,10 @@ class PatchesTests(unittest.TestCase):
             view.count_label_tags(), dataset.count_label_tags("ground_truth")
         )
 
-        view4 = view.select_labels(tags="test")
-
-        view4.untag_labels("test")
+        # Including `select_labels()` here tests an important property: if the
+        # contents of a `view` changes after a save operation occurs, the
+        # original view still needs to be synced with the source dataset
+        view.select_labels(tags="test").untag_labels("test")
 
         self.assertDictEqual(view.count_values("ground_truth.tags"), {})
         self.assertDictEqual(
@@ -189,7 +193,7 @@ class PatchesTests(unittest.TestCase):
         )
 
     @drop_datasets
-    def test_evaluation_patches(self):
+    def test_to_evaluation_patches(self):
         dataset = fo.Dataset()
 
         sample = fo.Sample(
@@ -284,7 +288,10 @@ class PatchesTests(unittest.TestCase):
             dataset.count_label_tags("predictions"), {"test": 4}
         )
 
-        view.untag_labels("test")
+        # Including `select_labels()` here tests an important property: if the
+        # contents of a `view` changes after a save operation occurs, the
+        # original view still needs to be synced with the source dataset
+        view.select_labels(tags="test").untag_labels("test")
 
         self.assertDictEqual(view.count_label_tags(), {})
         self.assertDictEqual(dataset.count_label_tags("ground_truth"), {})
@@ -378,9 +385,12 @@ class PatchesTests(unittest.TestCase):
             dataset.count_label_tags("ground_truth"),
         )
 
-        view4 = view.select_labels(tags="test", fields="ground_truth")
-
-        view4.untag_labels("test", label_fields="ground_truth")
+        # Including `select_labels()` here tests an important property: if the
+        # contents of a `view` changes after a save operation occurs, the
+        # original view still needs to be synced with the source dataset
+        view.select_labels(tags="test", fields="ground_truth").untag_labels(
+            "test"
+        )
 
         self.assertDictEqual(
             view.count_values("ground_truth.detections.tags"), {}
