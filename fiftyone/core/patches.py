@@ -464,7 +464,7 @@ def make_evaluation_dataset(sample_collection, eval_key, name=None):
 
         If you would like to see patches for the exact view on which an
         evaluation was performed, first call
-        :meth:`load_evaluation_view() <fiftyone.core.collections.SampleCollection.load_evaluation_view`
+        :meth:`load_evaluation_view() <fiftyone.core.collections.SampleCollection.load_evaluation_view>`
         to load the view and then convert to patches.
 
     Args:
