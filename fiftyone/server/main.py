@@ -718,14 +718,19 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         )
 
     @staticmethod
-    async def on_save_filters(caller):
+    async def on_save_filters(caller, add_stages=[]):
         state = fos.StateDescription.from_dict(StateHandler.state)
         if state.view is not None:
             view = state.view
         else:
             view = state.dataset
 
-        state.view = get_extended_view(view, state.filters)
+        view = get_extended_view(view, state.filters)
+        for d in add_stages:
+            stage = fosg.ViewStage._from_dict(d)
+            view = view.add_stage(stage)
+
+        state.view = view
         state.filters = {}
 
         await StateHandler.on_update(caller, state.serialize())
