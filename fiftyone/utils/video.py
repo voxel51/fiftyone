@@ -5,7 +5,6 @@ Video utilities.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-import logging
 import os
 
 import eta.core.image as etai
@@ -16,9 +15,6 @@ import eta.core.video as etav
 import fiftyone as fo
 import fiftyone.core.media as fom
 import fiftyone.core.utils as fou
-
-
-logger = logging.getLogger(__name__)
 
 
 def reencode_videos(

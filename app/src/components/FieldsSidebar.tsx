@@ -558,7 +558,7 @@ const ScalarsCell = ({ modal }: ScalarsCellProps) => {
           hasDropdown: !modal,
           selected: activeScalars.includes(name),
           color: colorByLabel ? theme.brand : colorMap[name],
-          title: modal ? `${name}: ${prettify(count[name], false)}` : name,
+          title: modal ? prettify(count[name], false) : name,
           path: name,
           type: "values",
           data:

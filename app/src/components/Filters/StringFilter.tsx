@@ -210,9 +210,10 @@ const ResultsWrapper = ({
               color: theme.font,
             }}
           >
-            {results && subCount > results.length && (
+            {results && subCount !== null && results.length > 0 && (
               <>
-                {results.length} of {subCount.toLocaleString()} results
+                {results.length !== subCount && <>{results.length} of</>}
+                {subCount.toLocaleString()} results
               </>
             )}
             {results && results.length === 0 && <>No results</>}
