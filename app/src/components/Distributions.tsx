@@ -8,10 +8,11 @@ import { scrollbarStyles } from "./utils";
 
 import Loading from "./Loading";
 import { ContentDiv, ContentHeader } from "./utils";
-import { isFloat } from "../utils/generic";
+import { isFloat, prettify } from "../utils/generic";
 import { useMessageHandler, useSendMessage } from "../utils/hooks";
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
+import { keys } from "xstate/lib/utils";
 
 const Container = styled.div`
   ${scrollbarStyles}
@@ -76,7 +77,12 @@ const Distribution = ({ distribution }) => {
           ticks,
         };
 
-  const map = data.reduce(
+  const strData = data.map(({ key, ...rest }) => ({
+    ...rest,
+    key: prettify(key, false),
+  }));
+
+  const map = strData.reduce(
     (acc, cur) => ({
       ...acc,
       [cur.key]: cur.edges,
@@ -92,7 +98,7 @@ const Distribution = ({ distribution }) => {
         height={height - 37}
         width={data.length * (barWidth + 4) + 50}
         barCategoryGap={"4px"}
-        data={data}
+        data={strData}
         margin={{ top: 0, left: 0, bottom: 5, right: 5 }}
       >
         <XAxis

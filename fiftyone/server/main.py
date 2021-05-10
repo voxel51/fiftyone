@@ -1188,9 +1188,15 @@ async def _gather_results(col, aggs, fields, view, ticks=None):
                 if result[2] > 0 and len(data) and data[-1]["key"] != "None":
                     result_ticks.append("None")
 
-        results.append(
-            {"data": data, "name": name, "ticks": result_ticks, "type": type_}
-        )
+        if data:
+            results.append(
+                {
+                    "data": data,
+                    "name": name,
+                    "ticks": result_ticks,
+                    "type": type_,
+                }
+            )
 
     return results
 
