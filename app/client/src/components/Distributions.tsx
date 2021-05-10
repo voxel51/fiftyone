@@ -8,9 +8,8 @@ import { scrollbarStyles } from "./utils";
 
 import Loading from "./Loading";
 import { ContentDiv, ContentHeader } from "./utils";
-import { isFloat } from "../utils/generic";
+import { isFloat, prettify } from "../utils/generic";
 import { useMessageHandler, useSendMessage } from "../utils/hooks";
-import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
 
 const Container = styled.div`
@@ -76,7 +75,12 @@ const Distribution = ({ distribution }) => {
           ticks,
         };
 
-  const map = data.reduce(
+  const strData = data.map(({ key, ...rest }) => ({
+    ...rest,
+    key: prettify(key, false),
+  }));
+
+  const map = strData.reduce(
     (acc, cur) => ({
       ...acc,
       [cur.key]: cur.edges,
@@ -92,7 +96,7 @@ const Distribution = ({ distribution }) => {
         height={height - 37}
         width={data.length * (barWidth + 4) + 50}
         barCategoryGap={"4px"}
-        data={data}
+        data={strData}
         margin={{ top: 0, left: 0, bottom: 5, right: 5 }}
       >
         <XAxis
@@ -147,7 +151,7 @@ const DistributionsContainer = styled.div`
   ${scrollbarStyles}
 `;
 
-const Distributions = ({ group }) => {
+const Distributions = ({ group }: { group: string }) => {
   const view = useRecoilValue(selectors.view);
   const filters = useRecoilValue(selectors.filterStages);
   const datasetName = useRecoilValue(selectors.datasetName);
@@ -155,7 +159,7 @@ const Distributions = ({ group }) => {
   const refresh = useRecoilValue(selectors.refresh);
   const [data, setData] = useState([]);
 
-  useSendMessage("distributions", { group }, null, [
+  useSendMessage("distributions", { group: group.toLowerCase() }, null, [
     JSON.stringify(view),
     JSON.stringify(filters),
     datasetName,
@@ -170,14 +174,20 @@ const Distributions = ({ group }) => {
   useEffect(() => {
     setData([]);
     setLoading(true);
-  }, [JSON.stringify(view), JSON.stringify(filters), datasetName, refresh]);
+  }, [
+    JSON.stringify(view),
+    JSON.stringify(filters),
+    datasetName,
+    refresh,
+    group,
+  ]);
 
   if (loading) {
     return <Loading />;
   }
 
   if (data.length === 0) {
-    return <Loading text={`No ${group}`} />;
+    return <Loading text={`No ${group.toLowerCase()}`} />;
   }
 
   return (
