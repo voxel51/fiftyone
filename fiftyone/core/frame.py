@@ -15,21 +15,17 @@ from fiftyone.core.singletons import FrameSingleton
 import fiftyone.core.utils as fou
 
 
-def get_default_frame_fields(include_private=False, include_id=False):
+def get_default_frame_fields(include_private=False):
     """Returns the default fields present on all frames.
 
     Args:
-        include_private (False): whether to include fields that start with
-            ``_``
-        include_id (False): whether to include ID fields
+        include_private (False): whether to include fields starting with ``_``
 
     Returns:
         a tuple of field names
     """
     return foo.get_default_fields(
-        foo.DatasetFrameSampleDocument,
-        include_private=include_private,
-        include_id=include_id,
+        foo.DatasetFrameSampleDocument, include_private=include_private
     )
 
 
@@ -445,7 +441,6 @@ class Frames(object):
 
     def _make_dict(self, frame):
         d = frame.to_mongo_dict()
-        d.pop("_id", None)
         d["_sample_id"] = self._sample._id
         return d
 

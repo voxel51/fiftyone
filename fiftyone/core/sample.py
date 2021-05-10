@@ -17,21 +17,17 @@ import fiftyone.core.odm as foo
 from fiftyone.core.singletons import SampleSingleton
 
 
-def get_default_sample_fields(include_private=False, include_id=False):
+def get_default_sample_fields(include_private=False):
     """Returns the default fields present on all samples.
 
     Args:
-        include_private (False): whether to include fields that start with
-            ``_``
-        include_id (False): whether to include ID fields
+        include_private (False): whether to include fields starting with ``_``
 
     Returns:
         a tuple of field names
     """
     return foo.get_default_fields(
-        foo.DatasetSampleDocument,
-        include_private=include_private,
-        include_id=include_id,
+        foo.DatasetSampleDocument, include_private=include_private
     )
 
 
@@ -391,7 +387,10 @@ class Sample(_SampleMixin, Document, metaclass=SampleSingleton):
         Returns:
             a :class:`Sample`
         """
-        return cls(filepath=filepath, **{k: v for k, v in frame.iter_fields()})
+        return cls(
+            filepath=filepath,
+            **{k: v for k, v in frame.iter_fields() if k != "id"},
+        )
 
     @classmethod
     def from_doc(cls, doc, dataset=None):

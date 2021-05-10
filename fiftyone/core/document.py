@@ -252,6 +252,8 @@ class _Document(object):
         else:
             omit_fields = set()
 
+        omit_fields.add("id")
+
         existing_field_names = self.field_names
 
         for field_name, value in document.iter_fields():
@@ -290,14 +292,21 @@ class _Document(object):
         d = self._doc.to_dict(extended=True)
         return {k: v for k, v in d.items() if not k.startswith("_")}
 
-    def to_mongo_dict(self):
+    def to_mongo_dict(self, include_id=False):
         """Serializes the document to a BSON dictionary equivalent to the
         representation that would be stored in the database.
+
+        Args:
+            include_id (False): whether to include the document ID
 
         Returns:
             a BSON dict
         """
-        return self._doc.to_dict()
+        d = self._doc.to_dict()
+        if not include_id:
+            d.pop("_id", None)
+
+        return d
 
     def to_json(self, pretty_print=False):
         """Serializes the document to a JSON string.
@@ -342,7 +351,7 @@ class Document(_Document):
 
     def copy(self):
         return self.__class__(
-            **{k: deepcopy(v) for k, v in self.iter_fields()}
+            **{k: deepcopy(v) for k, v in self.iter_fields() if k != "id"}
         )
 
     def reload(self, hard=False):
@@ -624,17 +633,21 @@ class DocumentView(_Document):
 
         return d
 
-    def to_mongo_dict(self):
-        d = super().to_mongo_dict()
+    def to_mongo_dict(self, include_id=False):
+        d = super().to_mongo_dict(include_id=include_id)
 
         if self._selected_fields or self._excluded_fields:
-            d = {k: v for k, v in d.items() if k in self.field_names}
+            d = {
+                k: v
+                for k, v in d.items()
+                if k in self.field_names or k == "_id"
+            }
 
         return d
 
     def copy(self):
         return self._DOCUMENT_CLS(
-            **{k: deepcopy(v) for k, v in self.iter_fields()}
+            **{k: deepcopy(v) for k, v in self.iter_fields() if k != "id"}
         )
 
     def save(self):

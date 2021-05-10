@@ -140,9 +140,7 @@ class SampleFieldDocument(EmbeddedDocument):
         Returns:
              a list of :class:`SampleFieldDocument` objects
         """
-        return [
-            cls.from_field(field) for field in d.values() if field.name != "id"
-        ]
+        return [cls.from_field(field) for field in d.values()]
 
     def matches_field(self, field):
         """Determines whether this sample field matches the given field.

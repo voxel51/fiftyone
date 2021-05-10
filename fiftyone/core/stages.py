@@ -393,7 +393,7 @@ class ExcludeFields(ViewStage):
     def get_excluded_fields(self, sample_collection, frames=False):
         if frames:
             default_fields = sample_collection._get_default_frame_fields(
-                include_private=True, include_id=True
+                include_private=True
             )
 
             excluded_fields = []
@@ -406,7 +406,7 @@ class ExcludeFields(ViewStage):
                     excluded_fields.append(field_name)
         else:
             default_fields = sample_collection._get_default_sample_fields(
-                include_private=True, include_id=True
+                include_private=True
             )
             if sample_collection.media_type == fom.VIDEO:
                 default_fields += ("frames",)
@@ -3044,7 +3044,7 @@ class SelectFields(ViewStage):
     def get_selected_fields(self, sample_collection, frames=False):
         if frames:
             default_fields = sample_collection._get_default_frame_fields(
-                include_private=True, include_id=True
+                include_private=True
             )
 
             selected_fields = []
@@ -3057,7 +3057,7 @@ class SelectFields(ViewStage):
                     selected_fields.append(field_name)
         else:
             default_fields = sample_collection._get_default_sample_fields(
-                include_private=True, include_id=True
+                include_private=True
             )
             if sample_collection.media_type == fom.VIDEO:
                 default_fields += ("frames",)
