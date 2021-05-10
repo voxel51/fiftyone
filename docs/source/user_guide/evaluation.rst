@@ -695,6 +695,44 @@ curves for your detections by passing the ``compute_mAP=True`` flag to
    :align: center
 
 
+:ref:`Confusion matrices <confusion-matrices>`
+can also be generated from the results of COCO-style
+detection evaluation. In order for the confusion matrix to contain interesting
+information, the parameter
+:class:`classwise <fiftyone.utils.eval.coco.COCOEvaluationConfig>`
+will need to be set to `False` during
+evaluation so that detections can be matched with ground truth objects of a
+different class.
+These confusion matrices are an example of
+:ref:`interactive plots <interactive-plots>`
+in FiftyOne.
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart")
+    print(dataset)
+
+    results = dataset.evaluate_detections(
+        "predictions",
+        gt_field="ground_truth",
+        eval_key="eval_coco_cm",
+        classwise=False,
+    )
+
+    plot = results.plot_confusion_matrix(
+        classes=["car", "truck", "motorcycle"]
+    )
+    plot.show()
+
+
+.. image:: ../images/evaluation/coco_confusion_matrix.png
+   :alt: coco-confusion-matrix
+   :align: center
+
 mAP protocol details
 ~~~~~~~~~~~~~~~~~~~~
 
@@ -784,24 +822,90 @@ Computing mAP:
 Open Images-style evaluation
 ----------------------------
 
-You can use 
-`Open Images-style evaluation <https://storage.googleapis.com/openimages/web/evaluation.html>`_ to
-analyze predictions by setting the ``method`` parameter to ``"open-images"`` 
+FiftyOne provides
+`Open Images-style evaluation <https://storage.googleapis.com/openimages/web/evaluation.html>`_
+for object detection models and datasets.
+You can use Open Images instead of COCO style evaluation by
+setting the ``method`` parameter to ``"open-images"``
 when calling
 :meth:`evaluate_detections() <fiftyone.core.collections.SampleCollection.evaluate_detections>`
-. This means that:
+.
 
--   Predicted and ground truth objects are matched using a specified IoU
-    threshold (default = 0.50). This threshold can be customized via the
-    ``iou`` parameter.
--   Predictions are matched in descending order of confidence.
--   By default, only objects with the same ``label`` will be matched. Classwise
-    matching can be disabled via the ``classwise`` parameter.
--   Ground truth objects can have an `IsGroupOf` attribute that indicates whether
-    the annotation contains a crowd of objects. Multiple predictions can be
-    matched to crowd ground truth objects. The name of this attribute can be
-    customized via the ``iscrowd`` attribute for consistency with COCO-style
-    evaluation.
+Open Images-style evaluation provides additional features not found in
+COCO-style evaluation that you may want to incorporate when
+evaluating your custom datasets. The two primary differences include:
+
+- Non-exhaustive image labeling: Positive and negative
+  sample-level classifications to indicate which object classes exist in the
+  sample. Detected object classes that are not included in the sample-level
+  labels for that sample are ignored when computing TP, FP, FN, and mAP.
+
+- Class hierarchy: If your dataset includes a
+  `class hierarchy <https://storage.googleapis.com/openimages/2018_04/bbox_labels_600_hierarchy_visualizer/circle.html>`_,
+  Open Images evaluation provides the option to
+  `automatically expand ground truth and predicted leaf classes
+  <https://storage.googleapis.com/openimages/web/evaluation.html>`_
+  so that all levels of the hierarchy can be correctly
+  evaluated.
+
+
+Open Images Challenge
+~~~~~~~~~~~~~~~~~~~~~
+
+FiftyOne perfectly matches the TensorFlow Object Detection API
+implementation of the mAP metric used in the
+`Open Images object detection challenges <https://storage.googleapis.com/openimages/web/evaluation.html>`_.
+The benefit of FiftyOne is that it also allows
+you to access, visualize, and evaluate sample- and label-level results instead
+of just looking at aggregate dataset-wide metrics.
+
+This section shows how to generate the official mAP on the Open Images dataset
+to compare your model to others evaluated on the dataset.
+This differs from evaluating on a custom dataset in that you are **required**
+to use the image-level ground truth labels and the Open Images class
+hierarchy to expand ground truth and predicted labels and detections.
+All of this is easy to do if you :ref:`load Open Images through the FiftyOne Dataset
+Zoo <dataset-zoo-open-images>` which provides the Open Images class hierarchy in
+:ref:`the dataset info property <storing-info>`.
+
+Below is an example of correctly running Open Images-style evaluation on Open
+Images. In practice, the `predictions` field will need to be the
+:ref:`detections from your model <../recipes/adding_detections.html>`:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset(
+        "open-images-v6",
+        "validation",
+        max_samples=100,
+        label_types=["detections", "classifications"],
+    )
+
+    dataset.clone_sample_field("detections", "predictions")
+
+    results = dataset.evaluate_detections(
+        pred_field="predictions",
+        gt_field="detections",
+        pos_label_field="positive_labels",
+        neg_label_field="negative_labels",
+        hierarchy = dataset.info["hierarchy"],
+        method = "open-images",
+    )
+
+    print(results.mAP())
+
+
+Note: Most models trained on Open Images return the predictions for every class in the
+hierarchy, however if your model does not, then you can set
+:class:`expand_pred_hierarchy=True <fiftyone.utils.eval.openimages.OpenImagesEvaluationConfig>`
+to automatically generate predictions for parent classes in the hierarchy.
+
+General Overview
+~~~~~~~~~~~~~~~~
 
 `Open Images-style evaluation <https://storage.googleapis.com/openimages/web/evaluation.html>`_
 provides a few features setting it apart from COCO-style evaluation. All
@@ -951,6 +1055,46 @@ due to not performing an IoU sweep.
    :alt: oi-pr-curve
    :align: center
 
+
+:ref:`Confusion matrices <confusion-matrices>`
+can also be generated from the results of Open Images-style
+detection evaluation. In order for the confusion matrix to contain interesting
+information, the parameter
+:class:`classwise <fiftyone.utils.eval.openimages.OpenImagesEvaluationConfig>`
+will need to be set to `False` during
+evaluation so that detections can be matched with ground truth objects of a
+different class.
+These confusion matrices are an example of
+:ref:`interactive plots <interactive-plots>`
+in FiftyOne.
+
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart")
+    print(dataset)
+
+    results = dataset.evaluate_detections(
+        "predictions",
+        gt_field="ground_truth",
+        method="open-images",
+        eval_key="eval_oi_cm",
+        classwise=False,
+    )
+
+    plot = results.plot_confusion_matrix(
+        classes=["car", "truck", "motorcycle"]
+    )
+    plot.show()
+
+
+.. image:: ../images/evaluation/oi_confusion_matrix.png
+   :alt: oi-confusion-matrix
+   :align: center
 
 mAP protocol details
 ~~~~~~~~~~~~~~~~~~~~
