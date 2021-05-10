@@ -1,6 +1,6 @@
-import React, { useContext, useState } from "react";
+import React, { useState } from "react";
 import { useRecoilState } from "recoil";
-import styled, { ThemeContext } from "styled-components";
+import styled from "styled-components";
 import {
   Assessment,
   DragHandle,
@@ -62,7 +62,6 @@ const PlotButton = styled.div`
   color: ${({ theme }) => theme.font};
   background-color: ${({ theme }) => theme.backgroundLight};
   text-decoration: none;
-  text-transform: capitalize;
   border-radius: 2px;
   font-weight: bold;
 
@@ -78,16 +77,23 @@ const ToggleMaximizeContainer = styled.div`
   margin: 0.25rem;
 `;
 
-const ToggleMaximize = React.memo(({ maximized, setMaximized }) => {
-  return (
-    <ToggleMaximizeContainer onClick={() => setMaximized(!maximized)}>
-      {maximized ? <FullscreenExit /> : <Fullscreen />}
-    </ToggleMaximizeContainer>
-  );
-});
+const ToggleMaximize = React.memo(
+  ({
+    maximized,
+    setMaximized,
+  }: {
+    maximized: boolean;
+    setMaximized: (value: boolean) => void;
+  }) => {
+    return (
+      <ToggleMaximizeContainer onClick={() => setMaximized(!maximized)}>
+        {maximized ? <FullscreenExit /> : <Fullscreen />}
+      </ToggleMaximizeContainer>
+    );
+  }
+);
 
 const HorizontalNav = ({ entries }: Props) => {
-  const theme = useContext(ThemeContext);
   const { height: windowHeight } = useWindowSize();
   const [activePlot, setActivePlot] = useRecoilState(atoms.activePlot);
   const [expanded, setExpanded] = useState(false);
@@ -122,8 +128,12 @@ const HorizontalNav = ({ entries }: Props) => {
               key={e}
               className={e === activePlot && expanded ? "active" : ""}
               onClick={() => {
-                setExpanded(true);
-                setActivePlot(e);
+                if (expanded && activePlot === e) {
+                  setExpanded(false);
+                } else {
+                  setExpanded(true);
+                  setActivePlot(e);
+                }
               }}
             >
               {e}
