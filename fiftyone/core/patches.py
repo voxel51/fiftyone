@@ -455,6 +455,18 @@ def make_evaluation_dataset(sample_collection, eval_key, name=None):
     ``sample_id`` field recording the sample ID of the example, and a ``crowd``
     field if the evaluation protocol defines a crowd attribute.
 
+    .. note::
+
+        The returned dataset will contain patches for the contents of the input
+        collection, which may differ from the view on which the ``eval_key``
+        evaluation was performed. This may exclude some labels that were
+        evaluated and/or include labels that were not evaluated.
+
+        If you would like to see patches for the exact view on which an
+        evaluation was performed, first call
+        :meth:`load_evaluation_view() <fiftyone.core.collections.SampleCollection.load_evaluation_view`
+        to load the view and then convert to patches.
+
     Args:
         sample_collection: a
             :class:`fiftyone.core.collections.SampleCollection`
@@ -469,7 +481,6 @@ def make_evaluation_dataset(sample_collection, eval_key, name=None):
     """
     # Parse evaluation info
     eval_info = sample_collection.get_evaluation_info(eval_key)
-    eval_collection = sample_collection.load_evaluation_view(eval_key)
     pred_field = eval_info.config.pred_field
     gt_field = eval_info.config.gt_field
     if isinstance(eval_info.config, fouc.COCOEvaluationConfig):
@@ -477,8 +488,8 @@ def make_evaluation_dataset(sample_collection, eval_key, name=None):
     else:
         crowd_attr = None
 
-    pred_type = eval_collection._get_label_field_type(pred_field)
-    gt_type = eval_collection._get_label_field_type(gt_field)
+    pred_type = sample_collection._get_label_field_type(pred_field)
+    gt_type = sample_collection._get_label_field_type(gt_field)
 
     # Setup dataset with correct schema
     dataset = fod.Dataset(name, _patches=True)
@@ -497,16 +508,16 @@ def make_evaluation_dataset(sample_collection, eval_key, name=None):
 
     # Add ground truth patches
     gt_view = _make_eval_view(
-        eval_collection, eval_key, gt_field, crowd_attr=crowd_attr
+        sample_collection, eval_key, gt_field, crowd_attr=crowd_attr
     )
     _write_samples(dataset, gt_view)
 
     # Merge matched predictions
-    _merge_matched_labels(dataset, eval_collection, eval_key, pred_field)
+    _merge_matched_labels(dataset, sample_collection, eval_key, pred_field)
 
     # Add unmatched predictions
     unmatched_pred_view = _make_eval_view(
-        eval_collection, eval_key, pred_field, skip_matched=True
+        sample_collection, eval_key, pred_field, skip_matched=True
     )
     _add_samples(dataset, unmatched_pred_view)
 
@@ -571,7 +582,18 @@ def _make_eval_view(
 
     if skip_matched:
         view = view.mongo(
-            [{"$match": {"$expr": {"$eq": ["$" + eval_id, _NO_MATCH_ID]}}}]
+            [
+                {
+                    "$match": {
+                        "$expr": {
+                            "$or": [
+                                {"$eq": ["$" + eval_id, _NO_MATCH_ID]},
+                                {"$not": {"$gt": ["$" + eval_id, None]}},
+                            ]
+                        }
+                    }
+                }
+            ]
         )
 
     view = view.mongo(
