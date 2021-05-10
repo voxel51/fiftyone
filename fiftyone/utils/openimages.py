@@ -1059,12 +1059,15 @@ def _get_label_data(
         del relevant_df
         return {}, relevant_ids
 
-    relevant_df.sort_values("ImageID", inplace=True)
+    sorted_df = relevant_df.sort_values("ImageID")
     label_id_data = {
         "all_ids": all_label_ids,
         "relevant_ids": relevant_ids,
-        "df": relevant_df,
+        "df": sorted_df,
     }
+
+    del df
+    del relevant_df
 
     return label_id_data, relevant_ids
 
@@ -1325,7 +1328,9 @@ def _create_labels(lab_id_data, image_id, classes_map):
         return None, None
 
     if image_id not in relevant_ids:
-        return [], []
+        pos_labels = fol.Classifications(classifications=[])
+        neg_labels = fol.Classifications(classifications=[])
+        return pos_labels, neg_labels
 
     def _generate_one_label(label, conf):
         # [ImageID,Source,LabelName,Confidence]
@@ -1362,7 +1367,7 @@ def _create_detections(det_id_data, image_id, classes_map):
         return None
 
     if image_id not in relevant_ids:
-        return []
+        return fol.Detections(detections=[])
 
     def _generate_one_label(row):
         # [ImageID,Source,LabelName,Confidence,XMin,XMax,YMin,YMax,IsOccluded,IsTruncated,IsGroupOf,IsDepiction,IsInside]
@@ -1400,7 +1405,7 @@ def _create_relationships(rel_id_data, image_id, classes_map, attrs_map):
         return None
 
     if image_id not in relevant_ids:
-        return []
+        return fol.Detections(detections=[])
 
     def _generate_one_label(row):
         # [ImageID,LabelName1,LabelName2,XMin1,XMax1,YMin1,YMax1,XMin2,XMax2,YMin2,YMax2,RelationshipLabel]
@@ -1467,7 +1472,7 @@ def _create_segmentations(seg_id_data, image_id, classes_map, dataset_dir):
         return None
 
     if image_id not in relevant_ids:
-        return []
+        return fol.Detections(detections=[])
 
     def _generate_one_label(row):
         # [MaskPath,ImageID,LabelName,BoxID,BoxXMin,BoxXMax,BoxYMin,BoxYMax,PredictedIoU,Clicks]
