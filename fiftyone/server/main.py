@@ -1017,9 +1017,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         elif results is None:
 
             def filter(field):
-                if field.name in {"filepath", "tags"} or field.name.startswith(
-                    "_"
-                ):
+                if field.name in {"tags"} or field.name.startswith("_"):
                     return None
 
                 if fos._meets_type(field, (fof.BooleanField, fof.StringField)):

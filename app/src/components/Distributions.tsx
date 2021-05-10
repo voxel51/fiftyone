@@ -1,6 +1,6 @@
 import React, { useState, useRef, PureComponent, useEffect } from "react";
 import { Bar, BarChart, XAxis, YAxis, Tooltip } from "recharts";
-import { useRecoilValue } from "recoil";
+import { selectorFamily, useRecoilValue } from "recoil";
 import styled from "styled-components";
 import useMeasure from "react-use-measure";
 import _ from "lodash";
@@ -90,7 +90,7 @@ const Distribution = ({ distribution }) => {
 
   return (
     <Container ref={ref}>
-      <Title>{`${name}`}</Title>
+      <Title>{name}</Title>
       <BarChart
         ref={container}
         height={height - 37}
@@ -143,6 +143,33 @@ const Distribution = ({ distribution }) => {
   );
 };
 
+const omitDistributions = selectorFamily<string[], string>({
+  key: "omitDistributions",
+  get: (group) => ({ get }) => {
+    if (group.toLowerCase() == "scalars") {
+      const scalars = get(selectors.scalarNames("sample"));
+      const stats =
+        get(selectors.extendedDatasetStats) || get(selectors.datasetStats);
+      if (!stats) {
+        return null;
+      }
+      const omit = [];
+      scalars.forEach((name) => {
+        stats.reduce((acc, cur) => {
+          if (
+            cur.name === name &&
+            cur._CLS === "Distinct" &&
+            cur.result[0] > 200
+          ) {
+          }
+        }, []);
+      });
+      return [];
+    }
+    return [];
+  },
+});
+
 const DistributionsContainer = styled.div`
   overflow-y: scroll;
   overflow-x: hidden;
@@ -158,6 +185,7 @@ const Distributions = ({ group }: { group: string }) => {
   const [loading, setLoading] = useState(true);
   const refresh = useRecoilValue(selectors.refresh);
   const [data, setData] = useState([]);
+  const omit = useRecoilValue(omitDistributions(group));
 
   useSendMessage("distributions", { group: group.toLowerCase() }, null, [
     JSON.stringify(view),
