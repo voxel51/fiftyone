@@ -10,9 +10,7 @@ import Loading from "./Loading";
 import { ContentDiv, ContentHeader } from "./utils";
 import { isFloat, prettify } from "../utils/generic";
 import { useMessageHandler, useSendMessage } from "../utils/hooks";
-import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
-import { keys } from "xstate/lib/utils";
 
 const Container = styled.div`
   ${scrollbarStyles}
@@ -189,7 +187,7 @@ const Distributions = ({ group }: { group: string }) => {
   }
 
   if (data.length === 0) {
-    return <Loading text={`No ${group}`} />;
+    return <Loading text={`No ${group.toLowerCase()}`} />;
   }
 
   return (
