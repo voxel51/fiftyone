@@ -19,6 +19,8 @@ import { PopoutSectionTitle } from "../utils";
 import Checkbox from "../Common/Checkbox";
 import RadioGroup from "../Common/RadioGroup";
 import { useTheme } from "../../utils/hooks";
+import socket from "../../shared/connection";
+import { packageMessage } from "../../utils/socket";
 
 const getQueryIds = async (snapshot: Snapshot) => {
   const selectedLabels = await snapshot.getPromise(selectors.selectedLabelIds);
@@ -30,26 +32,28 @@ const getQueryIds = async (snapshot: Snapshot) => {
   return [...selectedSamples];
 };
 
-const appendStage = (set, view, stage) => {
-  set(selectors.view, [...view, stage]);
-};
-
 const useSortBySimilarity = () => {
   return useRecoilCallback(
-    ({ snapshot, set }) => async () => {
-      const view = await snapshot.getPromise(selectors.view);
+    ({ snapshot }) => async () => {
       const params = await snapshot.getPromise(sortBySimilarityParameters);
       const queryIds = await getQueryIds(snapshot);
-      appendStage(set, view, {
-        _cls: "fiftyone.core.stages.SortBySimilarity",
-        kwargs: [
-          ["query_ids", queryIds],
-          ["k", params.k],
-          ["reverse", params.reverse],
-          ["brain_key", params.brainKey],
-          ["_state", null],
-        ],
-      });
+
+      socket.send(
+        packageMessage("save_filters", {
+          add_stages: [
+            {
+              _cls: "fiftyone.core.stages.SortBySimilarity",
+              kwargs: [
+                ["query_ids", queryIds],
+                ["k", params.k],
+                ["reverse", params.reverse],
+                ["brain_key", params.brainKey],
+                ["_state", null],
+              ],
+            },
+          ],
+        })
+      );
     },
     []
   );

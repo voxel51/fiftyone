@@ -20,7 +20,7 @@ from bson import ObjectId
 from deprecated import deprecated
 import mongoengine.errors as moe
 from pymongo import UpdateMany, UpdateOne
-from pymongo.errors import BulkWriteError
+from pymongo.errors import CursorNotFound, BulkWriteError
 
 import eta.core.serial as etas
 import eta.core.utils as etau
@@ -670,33 +670,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """
         return fov.DatasetView(self)
 
-    @classmethod
-    def get_default_sample_fields(cls, include_private=False):
-        """Gets the default fields present on all :class:`Dataset` instances.
-
-        Args:
-            include_private (False): whether or not to return fields prefixed
-                with a ``_``
-
-        Returns:
-            a tuple of field names
-        """
-        return fos.get_default_sample_fields(include_private=include_private)
-
-    @classmethod
-    def get_default_frame_fields(cls, include_private=False):
-        """Gets the default fields present on all
-        :class:`fiftyone.core.frame.Frame` instances.
-
-        Args:
-            include_private (False): whether or not to return fields prefixed
-                with a ``_``
-
-        Returns:
-            a tuple of field names
-        """
-        return fofr.get_default_frame_fields(include_private=include_private)
-
     def get_field_schema(
         self, ftype=None, embedded_doc_type=None, include_private=False
     ):
@@ -1254,11 +1227,28 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             an iterator over :class:`fiftyone.core.sample.Sample` instances
         """
-        for d in self._aggregate(detach_frames=True):
-            doc = self._sample_dict_to_doc(d)
-            sample = fos.Sample.from_doc(doc, dataset=self)
+        pipeline = self._pipeline(detach_frames=True)
 
+        for sample in self._iter_samples(pipeline):
             yield sample
+
+    def _iter_samples(self, pipeline):
+        index = 0
+
+        try:
+            for d in foo.aggregate(self._sample_collection, pipeline):
+                doc = self._sample_dict_to_doc(d)
+                sample = fos.Sample.from_doc(doc, dataset=self)
+                index += 1
+                yield sample
+
+        except CursorNotFound:
+            # The cursor has timed out so we yield from a new one after
+            # skipping to the last offset
+
+            pipeline.append({"$skip": index})
+            for sample in self._iter_samples(pipeline):
+                yield sample
 
     def add_sample(self, sample, expand_schema=True):
         """Adds the given sample to the dataset.
@@ -1517,7 +1507,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                     "Cannot omit default fields when `insert_new=True`"
                 )
 
-            omit_fields = fos.get_default_sample_fields()
+            omit_fields = self._get_default_sample_fields()
         else:
             omit_fields = None
 
@@ -3482,7 +3472,7 @@ def _load_dataset(name, migrate=True):
         "frames." + dataset_doc.sample_collection_name
     )
 
-    default_fields = Dataset.get_default_sample_fields(include_private=True)
+    default_fields = fos.get_default_sample_fields(include_private=True)
     for sample_field in dataset_doc.sample_fields:
         if sample_field.name in default_fields:
             continue
@@ -3917,7 +3907,7 @@ def _merge_samples(
 
     if omit_default_fields:
         omit_fields = list(
-            dst_dataset.get_default_sample_fields(include_private=True)
+            dst_dataset._get_default_sample_fields(include_private=True)
         )
     else:
         omit_fields = ["_id"]

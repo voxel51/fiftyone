@@ -10,6 +10,7 @@ from copy import copy, deepcopy
 import numbers
 
 from bson import ObjectId
+from pymongo.errors import CursorNotFound
 
 import eta.core.utils as etau
 
@@ -112,6 +113,10 @@ class DatasetView(foc.SampleCollection):
         return self.__dataset
 
     @property
+    def _is_patches(self):
+        return self._dataset._is_patches
+
+    @property
     def _stages(self):
         return self.__stages
 
@@ -122,7 +127,7 @@ class DatasetView(foc.SampleCollection):
     @property
     def media_type(self):
         """The media type of the underlying dataset."""
-        return self._root_dataset.media_type
+        return self._dataset.media_type
 
     @property
     def name(self):
@@ -262,23 +267,35 @@ class DatasetView(foc.SampleCollection):
         selected_fields, excluded_fields = self._get_selected_excluded_fields()
         filtered_fields = self._get_filtered_fields()
 
-        for d in self._aggregate(detach_frames=True):
-            try:
-                doc = self._dataset._sample_dict_to_doc(d)
-                sample = sample_cls(
-                    doc,
-                    self,
-                    selected_fields=selected_fields,
-                    excluded_fields=excluded_fields,
-                    filtered_fields=filtered_fields,
-                )
+        index = 0
 
+        try:
+            for d in self._aggregate(detach_frames=True):
+                try:
+                    doc = self._dataset._sample_dict_to_doc(d)
+                    sample = sample_cls(
+                        doc,
+                        self,
+                        selected_fields=selected_fields,
+                        excluded_fields=excluded_fields,
+                        filtered_fields=filtered_fields,
+                    )
+                    index += 1
+                    yield sample
+
+                except Exception as e:
+                    raise ValueError(
+                        "Failed to load sample from the database. This is "
+                        "likely due to an invalid stage in the DatasetView"
+                    ) from e
+
+        except CursorNotFound:
+            # The cursor has timed out so we yield from a new one after
+            # skipping to the last offset
+
+            view = self.skip(index)
+            for sample in view.iter_samples():
                 yield sample
-            except Exception as e:
-                raise ValueError(
-                    "Failed to load sample from the database. This is likely "
-                    "due to an invalid stage in the DatasetView"
-                ) from e
 
     def get_field_schema(
         self, ftype=None, embedded_doc_type=None, include_private=False
