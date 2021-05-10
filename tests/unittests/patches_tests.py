@@ -15,7 +15,7 @@ from decorators import drop_datasets
 
 class PatchesTests(unittest.TestCase):
     @drop_datasets
-    def test_object_patches(self):
+    def test_to_patches(self):
         dataset = fo.Dataset()
 
         sample1 = fo.Sample(
@@ -94,21 +94,51 @@ class PatchesTests(unittest.TestCase):
         )
         self.assertDictEqual(dataset.count_label_tags("predictions"), {})
 
-        view.untag_labels("test")
+        # Including `select_labels()` here tests an important property: if the
+        # contents of a `view` changes after a save operation occurs, the
+        # original view still needs to be synced with the source dataset
+        view.select_labels(tags="test").untag_labels("test")
 
         self.assertDictEqual(view.count_label_tags(), {})
         self.assertDictEqual(dataset.count_label_tags("ground_truth"), {})
         self.assertDictEqual(dataset.count_label_tags("predictions"), {})
 
-        view2 = view.skip(4).set_field(
+        view2 = view.skip(4)
+
+        values = [l.upper() for l in view2.values("ground_truth.label")]
+        view2.set_values("ground_truth.label_upper", values)
+
+        self.assertEqual(dataset.count(), 2)
+        self.assertEqual(view.count(), 6)
+        self.assertEqual(view2.count(), 2)
+        self.assertEqual(dataset.count("ground_truth.detections"), 6)
+        self.assertEqual(view.count("ground_truth"), 6)
+        self.assertEqual(view2.count("ground_truth"), 2)
+        self.assertEqual(
+            dataset.count("ground_truth.detections.label_upper"), 2
+        )
+        self.assertEqual(view.count("ground_truth.label_upper"), 2)
+        self.assertEqual(view2.count("ground_truth.label_upper"), 2)
+        self.assertEqual(
+            view.count_values("ground_truth.label_upper")["CAT"], 1
+        )
+        self.assertEqual(
+            view2.count_values("ground_truth.label_upper")["CAT"], 1
+        )
+        self.assertEqual(
+            dataset.count_values("ground_truth.detections.label_upper")["CAT"],
+            1,
+        )
+
+        view3 = view.skip(4).set_field(
             "ground_truth.label", F("label").upper()
         )
 
         self.assertEqual(view.count(), 6)
-        self.assertEqual(view2.count(), 2)
+        self.assertEqual(view3.count(), 2)
         self.assertEqual(dataset.count("ground_truth.detections"), 6)
-        self.assertNotIn("cat", view2.count_values("ground_truth.label"))
-        self.assertEqual(view2.count_values("ground_truth.label")["CAT"], 1)
+        self.assertNotIn("cat", view3.count_values("ground_truth.label"))
+        self.assertEqual(view3.count_values("ground_truth.label")["CAT"], 1)
         self.assertEqual(view.count_values("ground_truth.label")["cat"], 2)
         self.assertEqual(
             dataset.count_values("ground_truth.detections.label")["cat"], 2
@@ -117,7 +147,7 @@ class PatchesTests(unittest.TestCase):
             "CAT", dataset.count_values("ground_truth.detections.label")
         )
 
-        view2.save()
+        view3.save()
 
         self.assertEqual(view.count(), 2)
         self.assertEqual(dataset.count("ground_truth.detections"), 2)
@@ -146,8 +176,24 @@ class PatchesTests(unittest.TestCase):
         self.assertDictEqual(dataset.count_sample_tags(), {"sample2": 1})
         self.assertDictEqual(view.count_sample_tags(), {"sample2": 2})
 
+        view.tag_labels("test")
+
+        self.assertDictEqual(
+            view.count_label_tags(), dataset.count_label_tags("ground_truth")
+        )
+
+        # Including `select_labels()` here tests an important property: if the
+        # contents of a `view` changes after a save operation occurs, the
+        # original view still needs to be synced with the source dataset
+        view.select_labels(tags="test").untag_labels("test")
+
+        self.assertDictEqual(view.count_values("ground_truth.tags"), {})
+        self.assertDictEqual(
+            dataset.count_values("ground_truth.detections.tags"), {}
+        )
+
     @drop_datasets
-    def test_eval_patches(self):
+    def test_to_evaluation_patches(self):
         dataset = fo.Dataset()
 
         sample = fo.Sample(
@@ -242,22 +288,55 @@ class PatchesTests(unittest.TestCase):
             dataset.count_label_tags("predictions"), {"test": 4}
         )
 
-        view.untag_labels("test")
+        # Including `select_labels()` here tests an important property: if the
+        # contents of a `view` changes after a save operation occurs, the
+        # original view still needs to be synced with the source dataset
+        view.select_labels(tags="test").untag_labels("test")
 
         self.assertDictEqual(view.count_label_tags(), {})
         self.assertDictEqual(dataset.count_label_tags("ground_truth"), {})
         self.assertDictEqual(dataset.count_label_tags("predictions"), {})
 
-        view2 = view.match(F("crowd") == True).set_field(
+        view2 = view.match(F("type") == "tp")
+
+        values = [
+            [l.upper() for l in _labels]
+            for _labels in view2.values("predictions.detections.label")
+        ]
+        view2.set_values("predictions.detections.label_upper", values)
+
+        self.assertEqual(dataset.count(), 1)
+        self.assertEqual(view.count(), 4)
+        self.assertEqual(view2.count(), 2)
+        self.assertEqual(dataset.count("predictions.detections"), 4)
+        self.assertEqual(view.count("predictions.detections"), 4)
+        self.assertEqual(view2.count("predictions.detections"), 3)
+        self.assertEqual(
+            dataset.count("predictions.detections.label_upper"), 3
+        )
+        self.assertEqual(view.count("predictions.detections.label_upper"), 3)
+        self.assertEqual(view2.count("predictions.detections.label_upper"), 3)
+        self.assertEqual(
+            view.count_values("predictions.detections.label_upper")["CAT"], 2
+        )
+        self.assertEqual(
+            view2.count_values("predictions.detections.label_upper")["CAT"], 2
+        )
+        self.assertEqual(
+            dataset.count_values("predictions.detections.label_upper")["CAT"],
+            2,
+        )
+
+        view3 = view.match(F("crowd") == True).set_field(
             "ground_truth.detections.label", F("label").upper()
         )
 
         self.assertEqual(view.count(), 4)
-        self.assertEqual(view2.count(), 1)
+        self.assertEqual(view3.count(), 1)
         self.assertEqual(dataset.count("ground_truth.detections"), 3)
         self.assertEqual(dataset.count("predictions.detections"), 4)
         self.assertDictEqual(
-            view2.count_values("ground_truth.detections.label"), {"CAT": 1}
+            view3.count_values("ground_truth.detections.label"), {"CAT": 1}
         )
         self.assertDictEqual(
             view.count_values("ground_truth.detections.label"),
@@ -268,7 +347,7 @@ class PatchesTests(unittest.TestCase):
             {"dog": 1, "cat": 1, "rabbit": 1},
         )
 
-        view2.save()
+        view3.save()
 
         self.assertEqual(view.count(), 1)
         self.assertEqual(dataset.count("ground_truth.detections"), 1)
@@ -298,6 +377,27 @@ class PatchesTests(unittest.TestCase):
 
         self.assertDictEqual(dataset.count_sample_tags(), {})
         self.assertDictEqual(view.count_sample_tags(), {})
+
+        view.tag_labels("test", label_fields="ground_truth")
+
+        self.assertDictEqual(
+            view.count_label_tags("ground_truth"),
+            dataset.count_label_tags("ground_truth"),
+        )
+
+        # Including `select_labels()` here tests an important property: if the
+        # contents of a `view` changes after a save operation occurs, the
+        # original view still needs to be synced with the source dataset
+        view.select_labels(tags="test", fields="ground_truth").untag_labels(
+            "test"
+        )
+
+        self.assertDictEqual(
+            view.count_values("ground_truth.detections.tags"), {}
+        )
+        self.assertDictEqual(
+            dataset.count_values("ground_truth.detections.tags"), {}
+        )
 
 
 if __name__ == "__main__":

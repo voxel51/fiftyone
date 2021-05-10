@@ -90,8 +90,6 @@ const Body = styled.div`
         line-height: 29px;
         vertical-align: middle;
         max-width: 100%;
-        text-overflow: ellipsis;
-        overflow: hidden;
       }
 
       span.data {
