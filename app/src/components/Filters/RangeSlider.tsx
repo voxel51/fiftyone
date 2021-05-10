@@ -282,24 +282,25 @@ export const NamedRangeSlider = React.memo(
                 setValue={setIncludeNone}
               />
             )}
-            {!hasDefaultRange && (
-              <>
-                <Button
-                  text={"Reset"}
-                  color={rangeSliderProps.color}
-                  onClick={() => {
-                    setRange(bounds);
-                    setIncludeNone(true);
-                  }}
-                  style={{
-                    margin: "0.25rem -0.5rem",
-                    height: "2rem",
-                    borderRadius: 0,
-                    textAlign: "center",
-                  }}
-                ></Button>
-              </>
-            )}
+            {!hasDefaultRange ||
+              (!includeNone && (
+                <>
+                  <Button
+                    text={"Reset"}
+                    color={rangeSliderProps.color}
+                    onClick={() => {
+                      setRange(bounds);
+                      setIncludeNone(true);
+                    }}
+                    style={{
+                      margin: "0.25rem -0.5rem",
+                      height: "2rem",
+                      borderRadius: 0,
+                      textAlign: "center",
+                    }}
+                  ></Button>
+                </>
+              ))}
           </RangeSliderContainer>
         </NamedRangeSliderContainer>
       );

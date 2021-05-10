@@ -29,37 +29,45 @@ const Text = styled.div`
   }
 `;
 
-const Loading = React.memo(({ text = null, onClick = null }) => {
-  const [resetOrbit, setResetOrbit] = useState(false);
-  const props = useSpring({
-    from: { transform: "rotate(0deg)" },
-    transform: "rotate(360deg)",
-    onRest: () => setResetOrbit((state) => !state),
-    reset: resetOrbit,
-    config: {
-      duration: 3000,
-    },
-  });
-  const rest = onClick
-    ? {
-        onClick,
-      }
-    : {};
-  return (
-    <Container>
-      <div
-        style={{
-          margin: "auto",
-          width: "100%",
-          cursor: onClick ? "pointer" : "default",
-        }}
-        {...rest}
-      >
-        <LogoImg style={props} src={"./logo.png"} />
-        {text && <Text>{text}</Text>}
-      </div>
-    </Container>
-  );
-});
+const Loading = React.memo(
+  ({
+    text = null,
+    onClick = null,
+  }: {
+    text?: string;
+    onClick?: (e: MouseEvent) => void;
+  }) => {
+    const [resetOrbit, setResetOrbit] = useState(false);
+    const props = useSpring({
+      from: { transform: "rotate(0deg)" },
+      transform: "rotate(360deg)",
+      onRest: () => setResetOrbit((state) => !state),
+      reset: resetOrbit,
+      config: {
+        duration: 3000,
+      },
+    });
+    const rest = onClick
+      ? {
+          onClick,
+        }
+      : {};
+    return (
+      <Container>
+        <div
+          style={{
+            margin: "auto",
+            width: "100%",
+            cursor: onClick ? "pointer" : "default",
+          }}
+          {...rest}
+        >
+          <LogoImg style={props} src={"./logo.png"} />
+          {text && <Text>{text}</Text>}
+        </div>
+      </Container>
+    );
+  }
+);
 
 export default Loading;
