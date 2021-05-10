@@ -37,10 +37,23 @@ export class PlayerBaseElement extends BaseElement {
         };
       });
       this.hideControlsTimeout = setTimeout(() =>
-        update({ showControls: false })
+        update({ showControls: false, showOptions: false })
       );
     },
     mousemove: ({ update }) => {
+      if (this.hideControlsTimeout) {
+        clearTimeout(this.hideControlsTimeout);
+        this.hideControlsTimeout = null;
+      }
+    },
+    mouseleave: ({ update, dispatchEvent }) => {
+      dispatchEvent("mouseleave");
+      update({
+        hovering: false,
+        disableControls: false,
+        showControls: false,
+        showOptions: false,
+      });
       if (this.hideControlsTimeout) {
         clearTimeout(this.hideControlsTimeout);
         this.hideControlsTimeout = null;
@@ -74,7 +87,6 @@ export class CanvasElement extends BaseElement {
       });
     },
     mousemove: ({ event, update }) => {
-      const canvasRect = this;
       update({
         cursorCoordinates: [
           (<MouseEvent>event).clientX,
