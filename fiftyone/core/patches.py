@@ -141,30 +141,6 @@ class _PatchesView(fov.DatasetView):
 
         return fields + ("sample_id",)
 
-    """
-    def _edit_label_tags(self, edit_fcn, label_fields=None):
-        # This covers the necessary overrides for both `tag_labels()` and
-        # `untag_labels()`. This is important because the App uses
-        # `_edit_label_tags()` rather than the public methods to update tags
-
-        if etau.is_str(label_fields):
-            label_fields = [label_fields]
-
-        if label_fields is None:
-            fields = self._label_fields
-        else:
-            fields = [l for l in label_fields if l in self._label_fields]
-
-        def sync_fcn(view, field):
-            view._edit_label_tags(edit_fcn, label_fields=[field])
-
-        self._sync_source_fcn(sync_fcn, fields)
-
-        # Update this view second, because removing tags could affect the
-        # contents of this view!
-        super()._edit_label_tags(edit_fcn, label_fields=label_fields)
-    """
-
     def set_values(self, field_name, *args, **kwargs):
         field = field_name.split(".", 1)[0]
         must_sync = field in self._label_fields
@@ -230,17 +206,6 @@ class _PatchesView(fov.DatasetView):
         self._source_collection._set_labels_by_id(
             field, [sample.sample_id], [doc]
         )
-
-    """
-    def _sync_source_fcn(self, sync_fcn, fields):
-        for field in fields:
-            _, id_path = self._get_label_field_path(field, "id")
-            ids = self.values(id_path, unwind=True)
-            source_view = self._source_collection.select_labels(
-                ids=ids, fields=field
-            )
-            sync_fcn(source_view, field)
-    """
 
     def _sync_source_field(self, field, ids=None):
         _, label_path = self._patches_dataset._get_label_field_path(field)
