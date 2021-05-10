@@ -203,7 +203,7 @@ class DatasetStatistics(object):
                 )
             )
 
-        default_fields = fosa.get_default_sample_fields()
+        default_fields = collection._get_default_sample_fields()
 
         result = []
         for prefix, schema in schemas:

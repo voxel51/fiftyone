@@ -29,21 +29,6 @@ fouv = fou.lazy_import("fiftyone.utils.video")
 logger = logging.getLogger(__name__)
 
 
-_DEFAULT_FIELDS_NO_INDEX = [
-    "_id",
-    "_rand",
-    "_media_type",
-    "filepath",
-    "metadata",
-    "tags",
-    "frame_id",
-]
-
-
-_DEFAULT_FIELDS = set(_DEFAULT_FIELDS_NO_INDEX)
-_DEFAULT_FIELDS.update({"_sample_id", "frame_number"})
-
-
 class FrameView(fos.SampleView):
     """A frame in a :class:`FramesView`.
 
@@ -136,6 +121,21 @@ class FramesView(fov.DatasetView):
     def name(self):
         return self.dataset_name + "-frames"
 
+    @classmethod
+    def _get_default_sample_fields(
+        cls, include_private=False, include_id=False
+    ):
+        fields = super()._get_default_sample_fields(
+            include_private=include_private, include_id=include_id
+        )
+
+        extras = ["frame_id", "frame_number"]
+
+        if include_private:
+            extras.append("_sample_id")
+
+        return fields + tuple(extras)
+
     """
     def _edit_label_tags(self, edit_fcn, label_fields=None):
         # This covers the necessary overrides for both `tag_labels()` and
@@ -198,14 +198,29 @@ class FramesView(fov.DatasetView):
     def _sync_source_sample(self, sample):
         self._sync_source_schema(delete=False)
 
+        default_fields = set(
+            self._get_default_sample_fields(
+                include_private=True, include_id=True
+            )
+        )
+
         updates = {
             k: v
             for k, v in sample.to_mongo_dict().items()
-            if k not in _DEFAULT_FIELDS
+            if k not in default_fields
         }
 
+        if not updates:
+            return
+
+        match = {
+            "_sample_id": sample._sample_id,
+            "frame_number": sample.frame_number,
+        }
+        match = {"_id": ObjectId(sample.frame_id)}
+
         self._source_collection._dataset._frame_collection.update_one(
-            {"_id": ObjectId(sample.frame_id)}, {"$set": updates}
+            match, {"$set": updates}
         )
 
     """
@@ -221,32 +236,61 @@ class FramesView(fov.DatasetView):
     """
 
     def _sync_source(self, fields=None, ids=None):
+        default_fields = set(
+            self._get_default_sample_fields(
+                include_private=True, include_id=True
+            )
+        )
+
         if fields is not None:
-            fields = [f for f in fields if f not in _DEFAULT_FIELDS]
+            fields = [f for f in fields if f not in default_fields]
             if not fields:
                 return
 
         self._sync_source_schema(fields=fields, delete=True)
 
-        pipeline = []
-
-        if ids is not None:
-            pipeline.append({"$match": {"_id": {"$in": ids}}})
-
-        if fields is None:
-            pipeline.append({"$unset": _DEFAULT_FIELDS_NO_INDEX})
-        else:
-            project = {f: True for f in fields}
-            project["_id"] = False
-            project["_sample_id"] = True
-            project["frame_number"] = True
-            pipeline.append({"$project": project})
-
         dst_coll = self._source_collection._dataset._frame_collection_name
 
+        pipeline = []
+
         if fields is None and ids is None:
-            pipeline.append({"$out": dst_coll})
+            default_fields.discard("_id")
+            default_fields.discard("_sample_id")
+            default_fields.discard("frame_number")
+
+            pipeline.extend(
+                [
+                    {
+                        "$set": {
+                            "_id": {
+                                "$cond": {
+                                    "if": {"$gt": ["$frame_id", None]},
+                                    "then": {"$toObjectId": "$frame_id"},
+                                    "else": "$_id",
+                                }
+                            }
+                        }
+                    },
+                    {"$unset": list(default_fields)},
+                    {"$out": dst_coll},
+                ]
+            )
         else:
+            if ids is not None:
+                pipeline.append({"$match": {"_id": {"$in": ids}}})
+
+            if fields is None:
+                default_fields.discard("_sample_id")
+                default_fields.discard("frame_number")
+
+                pipeline.append({"$unset": list(default_fields)})
+            else:
+                project = {f: True for f in fields}
+                project["_id"] = False
+                project["_sample_id"] = True
+                project["frame_number"] = True
+                pipeline.append({"$project": project})
+
             pipeline.append(
                 {
                     "$merge": {
@@ -279,10 +323,16 @@ class FramesView(fov.DatasetView):
             # collection and, if requested, delete any source fields that
             # aren't in this view
 
+            default_fields = set(
+                self._get_default_sample_fields(
+                    include_private=True, include_id=True
+                )
+            )
+
             for field_name in schema.keys():
                 if (
                     field_name not in src_schema
-                    and field_name not in _DEFAULT_FIELDS
+                    and field_name not in default_fields
                 ):
                     add_fields.append(field_name)
 
@@ -394,7 +444,7 @@ def make_frames_dataset(
     # Create dataset with proper schema
     #
 
-    dataset = fod.Dataset(name=name, _frames=True)
+    dataset = fod.Dataset(name, _frames=True)
     dataset.media_type = fom.IMAGE
     dataset.add_sample_field("_sample_id", fof.ObjectIdField)
     dataset.add_sample_field("frame_id", fof.StringField)
@@ -420,6 +470,9 @@ def make_frames_dataset(
     #
     # Populate samples
     #
+
+    # @todo should we pre-populate frame docs for all samples in the source
+    # collection so that `frame_id` exists for all samples?
 
     # This is necessary as some frames may not have `Frame` docs
     _initialize_frames(dataset, sample_collection, sample_frames)
@@ -452,6 +505,38 @@ def _parse_frames_collection(sample_collection, frames_patt, force_sample):
             ids_to_sample.append(sample_id)
 
     return images_patts, frame_counts, ids_to_sample
+
+
+def _ensure_frames(sample_collection):
+    pipeline = sample_collection._pipeline(detach_frames=True)
+    pipeline.extend(
+        [
+            {
+                "$project": {
+                    "_sample_id": "$_id",
+                    "frame_number": {
+                        "$range": [
+                            1,
+                            {"$add": ["$metadata.total_frame_count", 1]},
+                        ]
+                    },
+                }
+            },
+            {"$unwind": "$frame_number"},
+            {
+                "$merge": {
+                    "into": sample_collection._dataset._frame_collection_name,
+                    "on": ["_sample_id", "frame_number"],
+                    "whenMatched": "keepExisting",
+                    "whenNotMatched": "insert",
+                }
+            },
+        ]
+    )
+
+    sample_collection._dataset._aggregate(
+        pipeline=pipeline, attach_frames=False
+    )
 
 
 def _initialize_frames(dataset, src_collection, sample_frames):

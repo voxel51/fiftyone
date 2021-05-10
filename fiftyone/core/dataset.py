@@ -677,33 +677,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """
         return fov.DatasetView(self)
 
-    @classmethod
-    def get_default_sample_fields(cls, include_private=False):
-        """Gets the default fields present on all :class:`Dataset` instances.
-
-        Args:
-            include_private (False): whether or not to return fields prefixed
-                with a ``_``
-
-        Returns:
-            a tuple of field names
-        """
-        return fos.get_default_sample_fields(include_private=include_private)
-
-    @classmethod
-    def get_default_frame_fields(cls, include_private=False):
-        """Gets the default fields present on all
-        :class:`fiftyone.core.frame.Frame` instances.
-
-        Args:
-            include_private (False): whether or not to return fields prefixed
-                with a ``_``
-
-        Returns:
-            a tuple of field names
-        """
-        return fofr.get_default_frame_fields(include_private=include_private)
-
     def get_field_schema(
         self, ftype=None, embedded_doc_type=None, include_private=False
     ):
@@ -1524,7 +1497,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                     "Cannot omit default fields when `insert_new=True`"
                 )
 
-            omit_fields = fos.get_default_sample_fields()
+            omit_fields = self._get_default_sample_fields()
         else:
             omit_fields = None
 
@@ -3500,7 +3473,7 @@ def _load_dataset(name, migrate=True):
         "frames." + dataset_doc.sample_collection_name
     )
 
-    default_fields = Dataset.get_default_sample_fields(include_private=True)
+    default_fields = fos.get_default_sample_fields(include_private=True)
     for sample_field in dataset_doc.sample_fields:
         if sample_field.name in default_fields:
             continue
@@ -3941,7 +3914,7 @@ def _merge_samples(
 
     if omit_default_fields:
         omit_fields = list(
-            dst_dataset.get_default_sample_fields(include_private=True)
+            dst_dataset._get_default_sample_fields(include_private=True)
         )
     else:
         omit_fields = ["_id"]
