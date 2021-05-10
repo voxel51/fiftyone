@@ -187,7 +187,7 @@ const Entry = React.memo(({ entry, onCheck, modal }: EntryProps) => {
             </span>
             {typeof data === "string" ? (
               <>
-                <span className="count" title={data}>
+                <span className="count" title={title || data}>
                   {data}
                 </span>
                 {hasDropdown && (

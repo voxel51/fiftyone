@@ -450,8 +450,9 @@ const SampleModal = ({ onClose }: Props, ref) => {
             Metadata
             <span className="push-right" />
           </h2>
-          <Row name="ID" value={sample._id} />
-          <Row name="Media type" value={sample._media_type} />
+          <Row name="id" value={sample._id} />
+          <Row name="filepath" value={sample.filepath} />
+          <Row name="media type" value={sample._media_type} />
           {formatMetadata(sample.metadata).map(({ name, value }) => (
             <Row key={"metadata-" + name} name={name} value={value} />
           ))}
