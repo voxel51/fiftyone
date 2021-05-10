@@ -41,6 +41,7 @@ const useToPatches = () => {
             ],
           },
         ],
+        with_selected: true,
       })
     );
   }, []);
@@ -59,6 +60,7 @@ const useToEvaluationPatches = () => {
             ],
           },
         ],
+        with_selected: true,
       })
     );
   }, []);
