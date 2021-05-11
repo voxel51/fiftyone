@@ -1,9 +1,8 @@
 import React, { useState, useRef, PureComponent, useEffect } from "react";
 import { Bar, BarChart, XAxis, YAxis, Tooltip } from "recharts";
-import { useRecoilValue } from "recoil";
+import { selectorFamily, useRecoilValue } from "recoil";
 import styled from "styled-components";
 import useMeasure from "react-use-measure";
-import _ from "lodash";
 import { scrollbarStyles } from "./utils";
 
 import Loading from "./Loading";
@@ -11,6 +10,7 @@ import { ContentDiv, ContentHeader } from "./utils";
 import { isFloat, prettify } from "../utils/generic";
 import { useMessageHandler, useSendMessage } from "../utils/hooks";
 import * as selectors from "../recoil/selectors";
+import { AGGS } from "../utils/labels";
 
 const Container = styled.div`
   ${scrollbarStyles}
@@ -90,7 +90,7 @@ const Distribution = ({ distribution }) => {
 
   return (
     <Container ref={ref}>
-      <Title>{`${name}`}</Title>
+      <Title>{name}</Title>
       <BarChart
         ref={container}
         height={height - 37}
@@ -143,6 +143,36 @@ const Distribution = ({ distribution }) => {
   );
 };
 
+const omitDistributions = selectorFamily<string[], string>({
+  key: "omitDistributions",
+  get: (group) => ({ get }) => {
+    if (group.toLowerCase() == "scalars") {
+      const scalars = get(selectors.scalarNames("sample"));
+      let stats = get(selectors.extendedDatasetStats);
+      if (!stats || stats.length === 0) {
+        stats = get(selectors.datasetStats);
+      }
+      if (!stats) {
+        return null;
+      }
+      const distinct = stats.reduce((acc, cur) => {
+        if (cur._CLS === AGGS.DISTINCT) {
+          acc[cur.name] = cur.result[0];
+        }
+        return acc;
+      }, {});
+      const omit = ["tags", "filepath", "sample_id"];
+      scalars.forEach((name) => {
+        if (distinct[name] && distinct[name] > 100) {
+          omit.push(name);
+        }
+      });
+      return [...new Set(omit)];
+    }
+    return [];
+  },
+});
+
 const DistributionsContainer = styled.div`
   overflow-y: scroll;
   overflow-x: hidden;
@@ -158,12 +188,14 @@ const Distributions = ({ group }: { group: string }) => {
   const [loading, setLoading] = useState(true);
   const refresh = useRecoilValue(selectors.refresh);
   const [data, setData] = useState([]);
+  const omit = useRecoilValue(omitDistributions(group));
 
-  useSendMessage("distributions", { group: group.toLowerCase() }, null, [
+  useSendMessage("distributions", { group: group.toLowerCase(), omit }, null, [
     JSON.stringify(view),
     JSON.stringify(filters),
     datasetName,
     refresh,
+    omit,
   ]);
 
   useMessageHandler("distributions", ({ results }) => {
@@ -180,6 +212,7 @@ const Distributions = ({ group }: { group: string }) => {
     datasetName,
     refresh,
     group,
+    omit,
   ]);
 
   if (loading) {

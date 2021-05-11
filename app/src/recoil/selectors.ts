@@ -460,7 +460,15 @@ const labelFilter = (f) => {
 };
 
 const scalarFilter = (f) => {
-  return VALID_SCALAR_TYPES.includes(f.ftype) && !f.name.startsWith("_");
+  if (f.name.startsWith("_") || f.name === "tags") {
+    return false;
+  }
+
+  if (VALID_SCALAR_TYPES.includes(f.ftype)) {
+    return true;
+  }
+
+  return false;
 };
 
 const fields = selectorFamily<{ [key: string]: SerializableParam }, string>({
