@@ -32,9 +32,9 @@ workflow:
 
 * :ref:`Visual similarity <brain-similarity>`: When constructing a dataset or
   training a model, have you ever wanted to find similar examples to an image
-  or object patch of interest? For example, you may have found a failure case
-  of your model and now want to search for similar scenarios in your evaluation
-  set to diagnose the issue, or you want to mine your data lake to augment your
+  or object of interest? For example, you may have found a failure case of your
+  model and now want to search for similar scenarios in your evaluation set to
+  diagnose the issue, or you want to mine your data lake to augment your
   training set to fix the issue. Use the FiftyOne Brain to index your data
   by *visual similarity* and you can easily query and sort your datasets to
   find similar examples, both programmatically and via point-and-click in the
@@ -260,16 +260,16 @@ Once you've indexed a dataset by similarity, you can use the
 :meth:`sort_by_similarity() <fiftyone.core.collections.SampleCollection.sort_by_similarity>`
 view stage to programmatically sort your dataset by visual similarity to any
 image(s) or object patch(es) of your choice in your dataset. In addition, the
-:ref:`FiftyOne App <app-similarity>` provides a convenient point-and-click
-interface for sorting by similarity with respect to an index you've computed
-whenever one or more images or labels are selected in the App.
+:ref:`FiftyOne App <fiftyone-app>` provides a convenient
+:ref:`point-and-click interface <app-similarity>` for sorting by similarity
+with respect to an index you've computed whenever one or more images or labels
+are selected in the App.
 
 Embedding methods
 -----------------
 
-Like :ref:`embeddings visualization <brain-embeddings-visualization>`, this
-method leverages deep embeddings to generate the visual similarity index for a
-dataset.
+Like :ref:`embeddings visualization <brain-embeddings-visualization>`, visual
+similarity leverages deep embeddings to generate a visual index for a dataset.
 
 The ``embeddings`` and ``model`` parameters of
 :meth:`compute_similarity() <fiftyone.brain.compute_similarity>` support a
@@ -301,10 +301,10 @@ name for the index via the ``brain_key`` argument.
 Next, load the dataset in the App and select some image(s). Whenever there is
 an active selection in the App, a similarity menu icon will appear above the
 grid, enabling you to sort by visual similarity to your current selection. The
-menu will list the ``brain_key`` for all applicable similarity indexes
-(if there are multiple) so you can choose which index to use to perform the
-search. You can also optionally specify a maximum number of matches to return
-(``k``) and whether to sort in order of least similarity (``reverse``):
+menu will list the ``brain_key`` for all applicable similarity indexes so you
+can choose which index to use to perform the search. You can also optionally
+specify a maximum number of matches to return (``k``) and whether to sort in
+order of least similarity (``reverse``):
 
 .. code-block:: python
     :linenos:
@@ -322,16 +322,16 @@ search. You can also optionally specify a maximum number of matches to return
     # Launch App
     session = fo.launch_app(dataset)
 
-    # In the App... select some image(s) and use the similarity menu to sort!
+    # In the App... select some image(s) and use the similarity menu to sort
 
-.. image:: ../images/brain/image-similarity.gif
+.. image:: ../images/brain/brain-image-similarity.gif
    :alt: image-similarity
    :align: center
 
-Alternatively, you can directly use
+Alternatively, you can use the
 :meth:`sort_by_similarity() <fiftyone.core.collections.SampleCollection.sort_by_similarity>`
-to programmatically :ref:`construct a view <using-views>` that contains the
-sorted results:
+view stage to programmatically :ref:`construct a view <using-views>` that
+contains the sorted results:
 
 .. code-block:: python
     :linenos:
@@ -347,8 +347,9 @@ sorted results:
 
 .. note::
 
-    Performing similarity search on a |DatasetView| will only return results
-    (that have been indexed) from the view.
+    Performing similarity search on a |DatasetView| will **only** return
+    results from the view (if the view contains samples that were not included
+    in the index, they will never be included in the result).
 
     This means that you can index an entire |Dataset| once and then perform
     searches on subsets of the dataset by
@@ -357,9 +358,9 @@ sorted results:
 
 .. note::
 
-    For large datasets, you may notice some additional overhead the first time
-    you use a similarity index in a session. Subsequent similarity searches
-    will use cached results and will be faster!
+    For large datasets, you may notice longer load times the first time you use
+    a similarity index in a session. Subsequent similarity searches will use
+    cached results and will be faster!
 
 .. _brain-object-similarity:
 
@@ -387,10 +388,9 @@ above the grid and choosing the label field of interest from the dropdown.
 Now, whenever you have selected one or more patches in the App, a similarity
 menu icon will appear above the grid, enabling you to sort by visual similarity
 to your current selection. The menu will list the ``brain_key`` for all
-applicable similarity indexes (if there are multiple) so you can choose which
-index to use to perform the search. You can also optionally specify a maximum
-number of matches to return (``k``) and whether to sort in order of least
-similarity (``reverse``):
+applicable similarity indexes so you can choose which index to use to perform
+the search. You can also optionally specify a maximum number of matches to
+return (``k``) and whether to sort in order of least similarity (``reverse``):
 
 .. code-block:: python
     :linenos:
@@ -413,14 +413,14 @@ similarity (``reverse``):
     # In the App... convert to ground truth patches view, select some patch(es),
     # and use the similarity menu to sort!
 
-.. image:: ../images/brain/object-similarity.gif
+.. image:: ../images/brain/brain-object-similarity.gif
    :alt: object-similarity
    :align: center
 
-Alternatively, you can directly use
+Alternatively, you can directly use the
 :meth:`sort_by_similarity() <fiftyone.core.collections.SampleCollection.sort_by_similarity>`
-to programmatically :ref:`construct a view <using-views>` that contains the
-sorted results:
+view stage to programmatically :ref:`construct a view <using-views>` that
+contains the sorted results:
 
 .. code-block:: python
     :linenos:
@@ -439,19 +439,20 @@ sorted results:
 
 .. note::
 
-    Performing similarity search on a |DatasetView| will only return results
-    (that have been indexed) from the view.
+    Performing similarity search on a |DatasetView| will **only** return
+    results from the view (if the view contains objects that were not included
+    in the index, they will never be included in the result).
 
     This means that you can index an entire |Dataset| once and then perform
     searches on subsets of the dataset by
-    :ref:`constructing views <using-views>` that contain the images of
+    :ref:`constructing views <using-views>` that contain the objects of
     interest.
 
 .. note::
 
-    For large datasets, you may notice some additional overhead the first time
-    you use a similarity index in a session. Subsequent similarity searches
-    will use cached results and will be faster!
+    For large datasets, you may notice longer load times the first time you use
+    a similarity index in a session. Subsequent similarity searches will use
+    cached results and will be faster!
 
 Applications
 ------------

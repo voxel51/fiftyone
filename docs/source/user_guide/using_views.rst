@@ -597,7 +597,10 @@ contains patches for a filtered set of predictions:
     # Now extract patches for confident person predictions
     person_patches = (
         dataset
-        .filter_labels("predictions", (F("label") == "person") & (F("confidence") > 0.9))
+        .filter_labels(
+            "predictions",
+            (F("label") == "person") & (F("confidence") > 0.9)
+        )
         .to_patches("predictions")
     )
     print(person_patches)
@@ -613,8 +616,7 @@ contains patches for a filtered set of predictions:
 Object patches views are just like any other :ref:`dataset view <using-views>`
 in the following ways:
 
--   You can filter and transform object patches views by appending view stages
-    via the :ref:`App view bar <app-create-view>` or
+-   You can append view stages via the :ref:`App view bar <app-create-view>` or
     :ref:`views API <using-views>`
 -   Any modifications to label tags that you make via the App's
     :ref:`tagging menu <app-tagging>` or via API methods like
@@ -625,14 +627,14 @@ in the following ways:
     by iterating over the contents of the view or calling
     :meth:`set_values() <fiftyone.core.collections.SampleCollection.set_values>`
     will be reflected on the source dataset
--   Calling :meth:`save() <fiftyone.core.patches.PatchesView.save()> on an
+-   Calling :meth:`save() <fiftyone.core.patches.PatchesView.save>` on an
     object patches view (typically one that contains additional view stages
     that filter or modify its contents) will sync any |Label| edits or
     deletions with the source dataset
 
-Note that, since object patches views only contain a subset of the contents of
-a |Sample| from the source dataset, there are some differences with regular
-views:
+Because object patches views only contain a subset of the contents of a
+|Sample| from the source dataset, there are some differences compared to
+non-patch views:
 
 -   Tagging or untagging patches (as opposed to their labels) will not affect
     the tags of the underlying |Sample|
@@ -647,8 +649,8 @@ __________________
 If you have :ref:`run evaluation <evaluating-detections>` on predictions from
 an object detection model, then you can use
 :meth:`to_evaluation_patches() <fiftyone.core.collections.SampleCollection.to_evaluation_patches>`
-to transform a collection into a view that contains one sample for each true
-positive, false positive, and false negative example.
+to transform the dataset (or a view into it) into a new view that contains one
+sample for each true positive, false positive, and false negative example.
 
 True positive examples will result in samples with both their ground truth and
 predicted fields populated, while false positive/negative examples will only
@@ -691,8 +693,7 @@ respectively.
 Evaluation patches views are just like any other
 :ref:`dataset view <using-views>` in the following ways:
 
--   You can filter and transform evaluation patches views by appending view
-    stages via the :ref:`App view bar <app-create-view>` or
+-   You can append view stages via the :ref:`App view bar <app-create-view>` or
     :ref:`views API <using-views>`
 -   Any modifications to ground truth or predicted label tags that you make via
     the App's :ref:`tagging menu <app-tagging>` or via API methods like
@@ -704,14 +705,14 @@ Evaluation patches views are just like any other
     calling
     :meth:`set_values() <fiftyone.core.collections.SampleCollection.set_values>`
     will be reflected on the source dataset
--   Calling :meth:`save() <fiftyone.core.patches.EvaluationPatchesView.save()>
+-   Calling :meth:`save() <fiftyone.core.patches.EvaluationPatchesView.save>`
     on an evaluation patches view (typically one that contains additional view
     stages that filter or modify its contents) will sync any |Label| edits or
     deletions with the source dataset
 
-Note that, since evaluation patches views only contain a subset of the contents
-of a |Sample| from the source dataset, there are some differences with regular
-views:
+Because evaluation patches views only contain a subset of the contents of a
+|Sample| from the source dataset, there are some differences compared to
+non-patch views:
 
 -   Tagging or untagging patches themselves (as opposed to their labels) will
     not affect the tags of the underlying |Sample|
@@ -773,7 +774,7 @@ to sort the dataset by visual similarity to a chosen image:
 .. _object-similarity-views:
 
 Object similarity
-----------------
+-----------------
 
 The example below indexes the objects in a |Detections| field of a dataset by
 similarity using
@@ -799,7 +800,7 @@ to retrieve the 15 most visually similar objects to a chosen object:
     patches = dataset.to_patches("ground_truth")
 
     # View patches in the App
-    session.view = patches
+    session = fo.launch_app(view=patches)
 
     # Select a random query object
     query_id = patches.take(1).first().id

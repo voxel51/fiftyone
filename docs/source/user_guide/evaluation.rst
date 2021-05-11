@@ -343,7 +343,7 @@ fake predictions added to it to demonstrate the workflow:
 .. note::
 
     Did you know? You can
-    :ref:`attach confusion matrices to the App <confusion-matrices>` and
+    :ref:`attach confusion matrices to the App <confusion-matrix-plots>` and
     interactively explore them by clicking on their cells and/or modifying your
     view in the App.
 
@@ -551,15 +551,15 @@ samples.
 
 .. _evaluation-patches:
 
-Evaluation patches
-------------------
+Evaluation patche views
+-----------------------
 
 Once you have run
 :meth:`evaluate_detections() <fiftyone.core.collections.SampleCollection.evaluate_detections>`
 on a dataset, you can use
 :meth:`to_evaluation_patches() <fiftyone.core.collections.SampleCollection.to_evaluation_patches>`
-to transform a collection into a view that contains one sample for each true
-positive, false positive, and false negative example.
+to transform the dataset (or a view into it) into a new view that contains one
+sample for each true positive, false positive, and false negative example.
 
 True positive examples will result in samples with both their ground truth and
 predicted fields populated, while false positive/negative examples will only
@@ -577,10 +577,10 @@ field if the evaluation protocol defines a crowd attribute.
 
 .. note::
 
-    An evaluation patches view will only contain patches for the contents of
-    the input collection, which may differ from the view on which the
-    ``eval_key`` evaluation was performed. This may exclude some labels that
-    were evaluated and/or include labels that were not evaluated.
+    Evaluation patches views generate patches for **only** the contents of the
+    current view, which may differ from the view on which the ``eval_key``
+    evaluation was performed. This may exclude some labels that were evaluated
+    and/or include labels that were not evaluated.
 
     If you would like to see patches for the exact view on which an
     evaluation was performed, first call
@@ -613,20 +613,38 @@ results of an evaluation on the
     # View patches in the App
     session.view = eval_patches
 
+.. code-block:: text
+
+    Dataset:     quickstart
+    Media type:  image
+    Num patches: 5363
+    Tags:        ['validation']
+    Patch fields:
+        filepath:     fiftyone.core.fields.StringField
+        tags:         fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
+        metadata:     fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.Metadata)
+        predictions:  fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Detections)
+        ground_truth: fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Detections)
+        sample_id:    fiftyone.core.fields.StringField
+        type:         fiftyone.core.fields.StringField
+        iou:          fiftyone.core.fields.FloatField
+        crowd:        fiftyone.core.fields.BooleanField
+    View stages:
+        1. ToEvaluationPatches(eval_key='eval')
+
 .. note::
 
     Did you know? You can convert to evaluation patches view directly
     :ref:`from the App <app-evaluation-patches>`!
 
-.. image:: ../images/app/object-patches.gif
-    :alt: object-patches
+.. image:: ../images/evaluation/evaluation_patches.gif
+    :alt: evaluation-patches
     :align: center
 
 Evaluation patches views are just like any other
 :ref:`dataset view <using-views>` in the following ways:
 
--   You can filter and transform evaluation patches views by appending view
-    stages via the :ref:`App view bar <app-create-view>` or
+-   You can append view stages via the :ref:`App view bar <app-create-view>` or
     :ref:`views API <using-views>`
 -   Any modifications to ground truth or predicted label tags that you make via
     the App's :ref:`tagging menu <app-tagging>` or via API methods like
@@ -638,14 +656,14 @@ Evaluation patches views are just like any other
     calling
     :meth:`set_values() <fiftyone.core.collections.SampleCollection.set_values>`
     will be reflected on the source dataset
--   Calling :meth:`save() <fiftyone.core.patches.EvaluationPatchesView.save()>
+-   Calling :meth:`save() <fiftyone.core.patches.EvaluationPatchesView.save>`
     on an evaluation patches view (typically one that contains additional view
     stages that filter or modify its contents) will sync any |Label| edits or
     deletions with the source dataset
 
-Note that, since evaluation patches views only contain a subset of the contents
-of a |Sample| from the source dataset, there are some differences with regular
-views:
+Because evaluation patches views only contain a subset of the contents of a
+|Sample| from the source dataset, there are some differences in behavior
+compared to non-patch views:
 
 -   Tagging or untagging patches themselves (as opposed to their labels) will
     not affect the tags of the underlying |Sample|
