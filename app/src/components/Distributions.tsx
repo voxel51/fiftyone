@@ -11,6 +11,8 @@ import { ContentDiv, ContentHeader } from "./utils";
 import { isFloat, prettify } from "../utils/generic";
 import { useMessageHandler, useSendMessage } from "../utils/hooks";
 import * as selectors from "../recoil/selectors";
+import { stat } from "fs";
+import { AGGS } from "../utils/labels";
 
 const Container = styled.div`
   ${scrollbarStyles}
@@ -148,23 +150,26 @@ const omitDistributions = selectorFamily<string[], string>({
   get: (group) => ({ get }) => {
     if (group.toLowerCase() == "scalars") {
       const scalars = get(selectors.scalarNames("sample"));
-      const stats =
-        get(selectors.extendedDatasetStats) || get(selectors.datasetStats);
+      let stats = get(selectors.extendedDatasetStats);
+      if (!stats || stats.length === 0) {
+        stats = get(selectors.datasetStats);
+      }
       if (!stats) {
         return null;
       }
-      const omit = [];
+      const distinct = stats.reduce((acc, cur) => {
+        if (cur._CLS === AGGS.DISTINCT) {
+          acc[cur.name] = cur.result[0];
+        }
+        return acc;
+      }, {});
+      const omit = ["tags"];
       scalars.forEach((name) => {
-        stats.reduce((acc, cur) => {
-          if (
-            cur.name === name &&
-            cur._CLS === "Distinct" &&
-            cur.result[0] > 200
-          ) {
-          }
-        }, []);
+        if (distinct[name] && distinct[name] > 100) {
+          omit.push(name);
+        }
       });
-      return [];
+      return omit;
     }
     return [];
   },
@@ -187,11 +192,12 @@ const Distributions = ({ group }: { group: string }) => {
   const [data, setData] = useState([]);
   const omit = useRecoilValue(omitDistributions(group));
 
-  useSendMessage("distributions", { group: group.toLowerCase() }, null, [
+  useSendMessage("distributions", { group: group.toLowerCase(), omit }, null, [
     JSON.stringify(view),
     JSON.stringify(filters),
     datasetName,
     refresh,
+    omit,
   ]);
 
   useMessageHandler("distributions", ({ results }) => {
@@ -208,6 +214,7 @@ const Distributions = ({ group }: { group: string }) => {
     datasetName,
     refresh,
     group,
+    omit,
   ]);
 
   if (loading) {
