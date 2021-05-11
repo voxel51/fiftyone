@@ -94,8 +94,8 @@ const ImageContainerHeader = ({ showSidebar, onShowSidebar }: Props) => {
               <div>
                 Viewing{" "}
                 <strong>
-                  {countStr} {isRootView ? "sample" : "patche"}
-                  {totalCount === 1 ? "" : "s"}
+                  {countStr} {isRootView ? "sample" : "patch"}
+                  {totalCount === 1 ? "" : isRootView ? "s" : "es"}
                 </strong>
               </div>
             </CountDiv>
