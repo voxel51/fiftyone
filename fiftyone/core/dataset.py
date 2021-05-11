@@ -20,7 +20,7 @@ from bson import ObjectId
 from deprecated import deprecated
 import mongoengine.errors as moe
 from pymongo import UpdateMany, UpdateOne
-from pymongo.errors import BulkWriteError
+from pymongo.errors import CursorNotFound, BulkWriteError
 
 import eta.core.serial as etas
 import eta.core.utils as etau
@@ -1234,11 +1234,28 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             an iterator over :class:`fiftyone.core.sample.Sample` instances
         """
-        for d in self._aggregate(detach_frames=True):
-            doc = self._sample_dict_to_doc(d)
-            sample = fos.Sample.from_doc(doc, dataset=self)
+        pipeline = self._pipeline(detach_frames=True)
 
+        for sample in self._iter_samples(pipeline):
             yield sample
+
+    def _iter_samples(self, pipeline):
+        index = 0
+
+        try:
+            for d in foo.aggregate(self._sample_collection, pipeline):
+                doc = self._sample_dict_to_doc(d)
+                sample = fos.Sample.from_doc(doc, dataset=self)
+                index += 1
+                yield sample
+
+        except CursorNotFound:
+            # The cursor has timed out so we yield from a new one after
+            # skipping to the last offset
+
+            pipeline.append({"$skip": index})
+            for sample in self._iter_samples(pipeline):
+                yield sample
 
     def add_sample(self, sample, expand_schema=True):
         """Adds the given sample to the dataset.

@@ -718,14 +718,28 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         )
 
     @staticmethod
-    async def on_save_filters(caller):
+    async def on_save_filters(caller, add_stages=[], with_selected=False):
         state = fos.StateDescription.from_dict(StateHandler.state)
         if state.view is not None:
             view = state.view
         else:
             view = state.dataset
 
-        state.view = get_extended_view(view, state.filters)
+        view = get_extended_view(view, state.filters)
+
+        if with_selected:
+            if state.selected:
+                view = view.select(state.selected)
+            elif state.selected_labels:
+                view = view.select_labels(state.selected_labels)
+
+        for d in add_stages:
+            stage = fosg.ViewStage._from_dict(d)
+            view = view.add_stage(stage)
+
+        state.selected = []
+        state.selected_labels = []
+        state.view = view
         state.filters = {}
 
         await StateHandler.on_update(caller, state.serialize())
@@ -966,20 +980,25 @@ class StateHandler(tornado.websocket.WebSocketHandler):
 
         view = get_extended_view(view, state.filters)
 
-        if group == "labels" and results is None:
+        if group == "label tags" and results is None:
 
             def filter(field):
-                path = None
-                if isinstance(field, fof.EmbeddedDocumentField) and issubclass(
-                    field.document_type, fol.Label
-                ):
-                    path = field.name
-                    if issubclass(field.document_type, fol._HasLabelList):
-                        path = "%s.%s" % (
-                            path,
-                            field.document_type._LABEL_LIST_FIELD,
-                        )
+                path = _label_filter(field)
 
+                if path is not None:
+                    path = "%s.tags" % path
+
+                return path
+
+            aggs, fields = _count_values(filter, view)
+            results = await _gather_results(col, aggs, fields, view)
+
+        elif group == "labels" and results is None:
+
+            def filter(field):
+                path = _label_filter(field)
+
+                if path is not None:
                     path = "%s.label" % path
 
                 return path
@@ -987,7 +1006,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             aggs, fields = _count_values(filter, view)
             results = await _gather_results(col, aggs, fields, view)
 
-        elif group == "tags" and results is None:
+        elif group == "sample tags" and results is None:
             aggs = [foa.CountValues("tags")]
             try:
                 fields = [view.get_field_schema()["tags"]]
@@ -1021,6 +1040,18 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         _write_message(
             {"type": "distributions", "results": results}, only=self
         )
+
+
+def _label_filter(field):
+    path = None
+    if isinstance(field, fof.EmbeddedDocumentField) and issubclass(
+        field.document_type, fol.Label
+    ):
+        path = field.name
+        if issubclass(field.document_type, fol._HasLabelList):
+            path = "%s.%s" % (path, field.document_type._LABEL_LIST_FIELD,)
+
+    return path
 
 
 def _get_search_view(view, path, search, selected):
@@ -1153,10 +1184,12 @@ async def _gather_results(col, aggs, fields, view, ticks=None):
 
         name = agg.field_name
         if cls and issubclass(cls, fol.Label):
-            name = name[: -len(".label")]
-
-        if cls and issubclass(cls, fol._HasLabelList):
-            name = name[: -(len(cls._LABEL_LIST_FIELD) + 1)]
+            if view.media_type == fom.VIDEO and name.startswith(
+                view._FRAMES_PREFIX
+            ):
+                name = "".join(name.split(".")[:2])
+            else:
+                name = name.split(".")[0]
 
         data = sorters[type(agg)](result, field)
         result_ticks = 0
@@ -1171,9 +1204,15 @@ async def _gather_results(col, aggs, fields, view, ticks=None):
                 if result[2] > 0 and len(data) and data[-1]["key"] != "None":
                     result_ticks.append("None")
 
-        results.append(
-            {"data": data, "name": name, "ticks": result_ticks, "type": type_}
-        )
+        if data:
+            results.append(
+                {
+                    "data": data,
+                    "name": name,
+                    "ticks": result_ticks,
+                    "type": type_,
+                }
+            )
 
     return results
 

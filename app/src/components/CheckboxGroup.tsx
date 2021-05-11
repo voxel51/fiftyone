@@ -90,8 +90,6 @@ const Body = styled.div`
         line-height: 29px;
         vertical-align: middle;
         max-width: 100%;
-        text-overflow: ellipsis;
-        overflow: hidden;
       }
 
       span.data {
@@ -187,7 +185,7 @@ const Entry = React.memo(({ entry, onCheck, modal }: EntryProps) => {
             </span>
             {typeof data === "string" ? (
               <>
-                <span className="count" title={data}>
+                <span className="count" title={title || data}>
                   {data}
                 </span>
                 {hasDropdown && (
