@@ -3,6 +3,52 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+.. _release-notes-v0.8.1:
+
+FiftyOne 0.8.0
+--------------
+*Released May 11, 2021*
+
+App
+^^^
+- Added the ability to clear filters by field groups, e.g. `LABELS` and
+  `SCALARS` in the Filters Sidebar
+- Added `filepath` to the `Scalars` group in the sample grid's Filters Sidebar
+- Refreshed numeric, string, and boolean filter styles with improved
+  functionality and interaction
+- Added a grid zooming slider in the top right of the sample grid
+- Add `Patches`, and `Sort by similarity` actions to the actions row
+  quick additions of their respective view stages in the App
+- 
+
+Brain
+^^^^^
+- Adds a :meth:`compute_similarity <fiftyone.brain.compute_similarity>`
+  for sorting samples by visual similarity that optionally takes custom
+  embeddings. Supports both images and patches
+
+Core
+^^^^
+- Adds an optional `omit_empty` flag to
+  :meth:`select_labels() <fiftyone.core.collections.SampleCollection.select_labels>`
+  and 
+  :meth:`exclude_labels() <fiftyone.core.collections.SampleCollection.exclude_labels>` 
+  that controls whether samples with no labels are omitted when filtering
+- Added the
+  :meth:`to_patches() <fiftyone.core.collections.SampleCollection.to_patches>`
+  and
+  :meth:`to_evaluation_patches() <fiftyone.core.collections.SampleCollection.to_evaluation_patches>`
+  for flattening views with respect to labels and evaluations
+- Added a
+  :meth:`delete_labels() <fiftyone.core.dataset.Dataset.delete_labels>`
+  for efficiently deleting labels via a variety of natural syntaxes, e.g. a
+  descendent :class:`DatasetView <fiftyone.core.view.DatasetView>`
+- Deprecated
+  :meth:`remove_samples()` to `delete_samples() <fiftyone.core.Dataset.delete_samples()>`
+
+Docs
+^^^^
+
 .. _release-notes-v0.8.0:
 
 FiftyOne 0.8.0
