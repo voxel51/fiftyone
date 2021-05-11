@@ -728,6 +728,63 @@ class KITTIDetectionDataset(ImageDetectionDataset):
         return fouk.KITTIDetectionDatasetExporter
 
 
+class OpenImagesV6Dataset(ImageDetectionDataset):
+    """A labeled dataset consisting of images and their associated annotations
+    saved in
+    `Open Images Format <https://storage.googleapis.com/openimages/web/download.html>`_.
+
+    Datasets of this type are read/written in the following format::
+
+        <dataset_dir>/
+            data/
+                <filename0>.<ext>
+                <filename1>.<ext>
+                ...
+            labels/
+                classifications.csv
+                detections.csv
+                relationships.csv
+                segmentations.csv
+                masks/
+                    <starting-char1>/
+                        <mask_filename0>.<ext>
+                        <mask_filename1>.<ext>
+                        ...
+                    ...
+            metadata/
+                attributes.csv
+                classes.csv
+                segmentation_classes.csv
+                hierarchy.json
+
+    Not all labels and metadata are required if you specify certain
+    ``label_types``. All label types require the ``data`` directory and
+    ``metadata/classes.csv``.
+
+    -   Classifications: ``labels/classifications.csv``
+
+    -   Detections: ``labels/detections.csv``
+
+    -   Relationships: ``labels/relationships.csv``, ``metadata/attributes.csv``
+
+    -   Segmentations: ``labels/segmentations.csv``, ``labels/masks/``,
+            ``metadata/segmentation_classes.csv``
+
+    The ``hierarchy.json`` is optional and can be ignored if
+    ``load_hierarchy=False``. It is only used for Open Images-style detection
+    evaluation.
+
+    See 
+    `this page <https://storage.googleapis.com/openimages/web/download.html>`_ 
+    for a full specification of all of these files.
+    """
+
+    def get_dataset_importer_cls(self):
+        import fiftyone.utils.openimages as fouo
+
+        return fouo.OpenImagesV6DatasetImporter
+
+
 class YOLODataset(ImageDetectionDataset):
     """A labeled dataset consisting of images and their associated object
     detections saved in `YOLO format <https://github.com/AlexeyAB/darknet>`_.

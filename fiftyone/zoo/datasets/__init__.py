@@ -99,8 +99,8 @@ def download_zoo_dataset(
             By default, it is downloaded to a subdirectory of
             ``fiftyone.config.dataset_zoo_dir``
         overwrite (False): whether to overwrite any existing files
-        cleanup (True): whether to cleanup any temporary files generated during
-            download
+        cleanup (True): whether to cleanup any temporary files generated
+            during download 
         **kwargs: optional arguments for the :class:`ZooDataset` constructor
 
     Returns:
@@ -142,6 +142,8 @@ def load_zoo_dataset(
     dataset_dir=None,
     download_if_necessary=True,
     drop_existing_dataset=False,
+    overwrite=False,
+    cleanup=None,
     **kwargs
 ):
     """Loads the dataset of the given name from the FiftyOne Dataset Zoo as
@@ -177,6 +179,10 @@ def load_zoo_dataset(
             not found in the specified dataset directory
         drop_existing_dataset (False): whether to drop an existing dataset
             with the same name if it exists
+        overwrite (False): whether to overwrite any existing files if the
+            dataset is to be downloaded
+        cleanup (None): whether to cleanup any temporary files generated
+            during download 
         **kwargs: optional arguments to pass to the
             :class:`fiftyone.utils.data.importers.DatasetImporter` constructor.
             If ``download_if_necessary == True``, then ``kwargs`` can also
@@ -189,17 +195,24 @@ def load_zoo_dataset(
 
     if download_if_necessary:
         zoo_dataset_cls = _get_zoo_dataset_cls(name)
-        download_kwargs, kwargs = _extract_kwargs_for_class(
-            zoo_dataset_cls, kwargs
-        )
+        download_kwargs, _ = _extract_kwargs_for_class(zoo_dataset_cls, kwargs)
 
         info, dataset_dir = download_zoo_dataset(
-            name, splits=splits, dataset_dir=dataset_dir, **download_kwargs
+            name,
+            splits=splits,
+            dataset_dir=dataset_dir,
+            overwrite=overwrite,
+            cleanup=cleanup,
+            **download_kwargs
         )
         zoo_dataset = info.get_zoo_dataset()
     else:
         zoo_dataset, dataset_dir = _parse_dataset_details(name, dataset_dir)
         info = zoo_dataset.load_info(dataset_dir)
+
+    dataset_type = info.get_dataset_type()
+    dataset_importer = dataset_type.get_dataset_importer_cls()
+    importer_kwargs, _ = _extract_kwargs_for_class(dataset_importer, kwargs)
 
     if dataset_name is None:
         dataset_name = zoo_dataset.name
@@ -226,7 +239,7 @@ def load_zoo_dataset(
         splits = zoo_dataset.supported_splits
 
     dataset = fo.Dataset(dataset_name)
-    dataset_type = info.get_dataset_type()
+    label_field = zoo_dataset.default_label_field
 
     if splits:
         for split in splits:
@@ -234,10 +247,21 @@ def load_zoo_dataset(
             tags = [split]
 
             logger.info("Loading '%s' split '%s'", zoo_dataset.name, split)
-            dataset.add_dir(split_dir, dataset_type, tags=tags, **kwargs)
+            dataset.add_dir(
+                split_dir,
+                dataset_type,
+                tags=tags,
+                label_field=label_field,
+                **importer_kwargs
+            )
     else:
         logger.info("Loading '%s'", zoo_dataset.name)
-        dataset.add_dir(dataset_dir, dataset_type, **kwargs)
+        dataset.add_dir(
+            dataset_dir,
+            dataset_type,
+            label_field=label_field,
+            **importer_kwargs
+        )
 
     if info.classes is not None:
         dataset.default_classes = info.classes
@@ -749,10 +773,24 @@ class ZooDataset(object):
         return self.supported_splits is not None
 
     @property
+    def supports_partial_download(self):
+        """Whether the dataset supports downloading specified subsets of data
+        and/or labels.
+        """
+        return False
+
+    @property
     def requires_manual_download(self):
         """Whether this dataset requires some files to be manually downloaded.
         """
         return False
+
+    @property
+    def default_label_field(self):
+        """The default name or root name for label fields generated when 
+        loading this Zoo Dataset
+        """
+        return "ground_truth"
 
     def has_tag(self, tag):
         """Whether the dataset has the given tag.
@@ -889,16 +927,17 @@ class ZooDataset(object):
                             )
                             etau.delete_dir(split_dir)
                         elif split in info.downloaded_splits:
-                            if self.requires_manual_download:
-                                logger.info(
-                                    "Split '%s' already prepared", split
-                                )
-                            else:
-                                logger.info(
-                                    "Split '%s' already downloaded", split
-                                )
+                            if not self.supports_partial_download:
+                                if self.requires_manual_download:
+                                    logger.info(
+                                        "Split '%s' already prepared", split
+                                    )
+                                else:
+                                    logger.info(
+                                        "Split '%s' already downloaded", split
+                                    )
 
-                            continue
+                                continue
 
                     _splits.append(split)
 

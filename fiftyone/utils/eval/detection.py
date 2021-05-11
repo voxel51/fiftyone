@@ -79,7 +79,7 @@ def evaluate_detections(
         missing (None): a missing label string. Any unmatched objects are given
             this label for results purposes
         method ("coco"): a string specifying the evaluation method to use.
-            Supported values are ``("coco")``
+            Supported values are ``("coco", "open-images")``
         iou (0.50): the IoU threshold to use to determine matches
         classwise (True): whether to only match objects with the same class
             label (True) or allow matches between classes (False)
@@ -116,7 +116,10 @@ def evaluate_detections(
 
     processing_frames = samples._is_frame_field(pred_field)
 
-    iter_samples = samples.select_fields([gt_field, pred_field])
+    if not config.requires_additional_fields:
+        iter_samples = samples.select_fields([gt_field, pred_field])
+    else:
+        iter_samples = samples
 
     matches = []
     logger.info("Evaluating detections...")
@@ -180,6 +183,14 @@ class DetectionEvaluationConfig(foe.EvaluationMethodConfig):
         self.gt_field = gt_field
         self.iou = iou
         self.classwise = classwise
+
+    @property
+    def requires_additional_fields(self):
+        """Whether more fields than pred and gt are required. If these are the
+        only required fields then they can be selected prior to evaluation for
+        efficiency.
+        """
+        return False
 
 
 class DetectionEvaluation(foe.EvaluationMethod):
@@ -402,6 +413,11 @@ def _parse_config(config, pred_field, gt_field, method, **kwargs):
 
         return COCOEvaluationConfig(pred_field, gt_field, **kwargs)
 
+    elif method == "open-images":
+        from .openimages import OpenImagesEvaluationConfig
+
+        return OpenImagesEvaluationConfig(pred_field, gt_field, **kwargs)
+
     raise ValueError("Unsupported evaluation method '%s'" % method)
 
 
@@ -416,6 +432,8 @@ def _tally_matches(matches):
             fp += 1
         elif pred_label is None:
             fn += 1
+        elif gt_label != pred_label:
+            fp += 1
         else:
             tp += 1
 

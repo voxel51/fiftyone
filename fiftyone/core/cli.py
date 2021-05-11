@@ -2691,6 +2691,12 @@ def _parse_value(val):
     except ValueError:
         pass
 
+    if "," in val:
+        # Parse list
+        val = val.split(",")
+        for i, v in enumerate(val):
+            val[i] = _parse_value(v)
+
     return val
 
 

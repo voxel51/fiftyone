@@ -21,7 +21,6 @@ import fiftyone.core.expressions as foe
 from fiftyone.core.expressions import ViewField as F
 from fiftyone.core.expressions import VALUE
 import fiftyone.core.fields as fof
-import fiftyone.core.frame as fofr
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 from fiftyone.core.odm.document import MongoEngineBaseDocument
@@ -31,7 +30,6 @@ import fiftyone.core.utils as fou
 fod = fou.lazy_import("fiftyone.core.dataset")
 fop = fou.lazy_import("fiftyone.core.patches")
 foug = fou.lazy_import("fiftyone.utils.geojson")
-foup = fou.lazy_import("fiftyone.utils.patches")
 
 
 class ViewStage(object):
@@ -394,7 +392,7 @@ class ExcludeFields(ViewStage):
 
     def get_excluded_fields(self, sample_collection, frames=False):
         if frames:
-            default_fields = fofr.get_default_frame_fields(
+            default_fields = sample_collection._get_default_frame_fields(
                 include_private=True, include_id=True
             )
 
@@ -407,7 +405,7 @@ class ExcludeFields(ViewStage):
                 if is_frame_field:
                     excluded_fields.append(field_name)
         else:
-            default_fields = fos.get_default_sample_fields(
+            default_fields = sample_collection._get_default_sample_fields(
                 include_private=True, include_id=True
             )
             if sample_collection.media_type == fom.VIDEO:
@@ -3045,7 +3043,7 @@ class SelectFields(ViewStage):
 
     def get_selected_fields(self, sample_collection, frames=False):
         if frames:
-            default_fields = fofr.get_default_frame_fields(
+            default_fields = sample_collection._get_default_frame_fields(
                 include_private=True, include_id=True
             )
 
@@ -3058,7 +3056,7 @@ class SelectFields(ViewStage):
                 if is_frame_field:
                     selected_fields.append(field_name)
         else:
-            default_fields = fos.get_default_sample_fields(
+            default_fields = sample_collection._get_default_sample_fields(
                 include_private=True, include_id=True
             )
             if sample_collection.media_type == fom.VIDEO:
@@ -4011,7 +4009,7 @@ class ToPatches(ViewStage):
             name = None
 
         if state != last_state or not fod.dataset_exists(name):
-            patches_dataset = foup.make_patches_dataset(
+            patches_dataset = fop.make_patches_dataset(
                 sample_collection, self._field
             )
 
@@ -4110,7 +4108,7 @@ class ToEvaluationPatches(ViewStage):
             name = None
 
         if state != last_state or not fod.dataset_exists(name):
-            eval_patches_dataset = foup.make_evaluation_dataset(
+            eval_patches_dataset = fop.make_evaluation_dataset(
                 sample_collection, self._eval_key
             )
 
