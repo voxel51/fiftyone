@@ -22,6 +22,11 @@ import { useTheme } from "../../utils/hooks";
 import socket from "../../shared/connection";
 import { packageMessage } from "../../utils/socket";
 
+export const similaritySorting = atom<boolean>({
+  key: "similaritySorting",
+  default: false,
+});
+
 const getQueryIds = async (snapshot: Snapshot) => {
   const selectedLabels = await snapshot.getPromise(selectors.selectedLabelIds);
   if (selectedLabels.size) {
@@ -34,9 +39,10 @@ const getQueryIds = async (snapshot: Snapshot) => {
 
 const useSortBySimilarity = () => {
   return useRecoilCallback(
-    ({ snapshot }) => async () => {
+    ({ snapshot, set }) => async () => {
       const params = await snapshot.getPromise(sortBySimilarityParameters);
       const queryIds = await getQueryIds(snapshot);
+      set(similaritySorting, true);
 
       socket.send(
         packageMessage("save_filters", {

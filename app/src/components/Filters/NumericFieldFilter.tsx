@@ -27,6 +27,7 @@ const getFilter = (
 ): NumericFilter => {
   const bounds = get(boundsAtom({ path, defaultRange }));
   const result = {
+    _CLS: "numeric",
     ...{
       range: bounds,
       none: true,
@@ -67,7 +68,7 @@ const setFilter = (
   if (meetsDefault(check, bounds)) {
     set(selectors.filterStage(path), null);
   } else {
-    set(selectors.filterStage(path), filter);
+    set(selectors.filterStage(path), { ...filter, none: false });
   }
 };
 
