@@ -3,7 +3,6 @@ import { Bar, BarChart, XAxis, YAxis, Tooltip } from "recharts";
 import { selectorFamily, useRecoilValue } from "recoil";
 import styled from "styled-components";
 import useMeasure from "react-use-measure";
-import _ from "lodash";
 import { scrollbarStyles } from "./utils";
 
 import Loading from "./Loading";
@@ -11,7 +10,6 @@ import { ContentDiv, ContentHeader } from "./utils";
 import { isFloat, prettify } from "../utils/generic";
 import { useMessageHandler, useSendMessage } from "../utils/hooks";
 import * as selectors from "../recoil/selectors";
-import { stat } from "fs";
 import { AGGS } from "../utils/labels";
 
 const Container = styled.div`
@@ -163,13 +161,13 @@ const omitDistributions = selectorFamily<string[], string>({
         }
         return acc;
       }, {});
-      const omit = ["tags"];
+      const omit = ["tags", "filepath", "sample_id"];
       scalars.forEach((name) => {
         if (distinct[name] && distinct[name] > 100) {
           omit.push(name);
         }
       });
-      return omit;
+      return [...new Set(omit)];
     }
     return [];
   },
