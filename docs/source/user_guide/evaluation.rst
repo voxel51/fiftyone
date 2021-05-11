@@ -819,6 +819,8 @@ Computing mAP:
   object, compute the AP by averaging the precision values over all 10 IoU
   thresholds. Then take the mean of AP values of all classes to get mAP. 
 
+.. _evaluating-models-open-images:
+
 Open Images-style evaluation
 ----------------------------
 
