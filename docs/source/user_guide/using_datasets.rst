@@ -516,21 +516,24 @@ By default, all |Sample| instances have the following fields:
 .. table::
     :widths: 18 18 18 46
 
-    +--------------+------------------------------------+--------------+---------------------------------------------------+
-    | Field        | Type                               | Default      | Description                                       |
-    +==============+====================================+==============+===================================================+
-    | `filepath`   | string                             | `(required)` |  The path to the source data on disk              |
-    +--------------+------------------------------------+--------------+---------------------------------------------------+
-    | `media_type` | string                             | `-`          | The media type of the sample                      |
-    +--------------+------------------------------------+--------------+---------------------------------------------------+
-    | `id`         | string                             | `None`       | The ID of the sample in its parent dataset, or    |
-    |              |                                    |              | `None` if the sample does not belong to a dataset |
-    +--------------+------------------------------------+--------------+---------------------------------------------------+
-    | `metadata`   | :class:`Metadata                   | `None`       | Type-specific metadata about the source data      |
-    |              | <fiftyone.core.metadata.Metadata>` |              |                                                   |
-    +--------------+------------------------------------+--------------+---------------------------------------------------+
-    | `tags`       | list                               | `[]`         | A list of string tags for the sample              |
-    +--------------+------------------------------------+--------------+---------------------------------------------------+
+    +--------------+------------------------------------+---------------+---------------------------------------------------+
+    | Field        | Type                               | Default       | Description                                       |
+    +==============+====================================+===============+===================================================+
+    | `filepath`   | string                             | **REQUIRED**  | The path to the source data on disk               |
+    +--------------+------------------------------------+---------------+---------------------------------------------------+
+    | `media_type` | string                             | N/A           | The media type of the sample. Computed            |
+    |              |                                    |               | automatically from the provided `filepath`        |
+    +--------------+------------------------------------+---------------+---------------------------------------------------+
+    | `id`         | string                             | `None`        | The ID of the sample in its parent dataset, which |
+    |              |                                    |               | is generated automatically when the sample is     |
+    |              |                                    |               | added to a dataset, or `None` if the sample does  |
+    |              |                                    |               | not belong to a dataset                           |
+    +--------------+------------------------------------+---------------+---------------------------------------------------+
+    | `metadata`   | :class:`Metadata                   | `None`        | Type-specific metadata about the source data      |
+    |              | <fiftyone.core.metadata.Metadata>` |               |                                                   |
+    +--------------+------------------------------------+---------------+---------------------------------------------------+
+    | `tags`       | list                               | `[]`          | A list of string tags for the sample              |
+    +--------------+------------------------------------+---------------+---------------------------------------------------+
 
 .. code-block:: python
     :linenos:

@@ -138,6 +138,15 @@ class Run(Configurable):
         """A string to use when referring to these runs in log messages."""
         raise NotImplementedError("subclass must implement _run_str()")
 
+    @classmethod
+    def _results_cache_field(cls):
+        """The :class:`fiftyone.core.dataset.Dataset` field that stores the
+        results cache for these runs.
+        """
+        raise NotImplementedError(
+            "subclass must implement _results_cache_field()"
+        )
+
     def get_fields(self, samples, key):
         """Gets the fields that were involved and populated by the given run.
 
@@ -335,8 +344,8 @@ class Run(Configurable):
         if key is None:
             return
 
-        dataset_doc = samples._root_dataset._doc
-        run_docs = getattr(dataset_doc, cls._runs_field())
+        dataset = samples._root_dataset
+        run_docs = getattr(dataset._doc, cls._runs_field())
         run_doc = run_docs[key]
 
         if run_doc.results:
@@ -356,7 +365,11 @@ class Run(Configurable):
             results_bytes = run_results.to_str().encode()
             run_doc.results.put(results_bytes, content_type="application/json")
 
-        dataset_doc.save()
+        # Cache the results for future use in this session
+        results_cache = getattr(dataset, cls._results_cache_field())
+        results_cache[key] = run_results
+
+        dataset._doc.save()
 
     @classmethod
     def load_run_results(cls, samples, key):
@@ -369,6 +382,14 @@ class Run(Configurable):
         Returns:
             a :class:`RunResults`, or None if the run did not save results
         """
+        dataset = samples._root_dataset
+
+        results_cache = getattr(dataset, cls._results_cache_field())
+
+        # Returned cached results if available
+        if key in results_cache:
+            return results_cache[key]
+
         run_doc = cls._get_run_doc(samples, key)
 
         if not run_doc.results:
@@ -378,7 +399,12 @@ class Run(Configurable):
         view = cls.load_run_view(samples, key)
         run_doc.results.seek(0)
         results_str = run_doc.results.read().decode()
-        return RunResults.from_str(results_str, view)
+        run_results = RunResults.from_str(results_str, view)
+
+        # Cache the results for future use in this session
+        results_cache[key] = run_results
+
+        return run_results
 
     @classmethod
     def load_run_view(cls, samples, key, select_fields=False):
@@ -448,16 +474,19 @@ class Run(Configurable):
         run = run_info.config.build()
         run.cleanup(samples, key)
 
+        dataset = samples._root_dataset
+
         # Delete run from dataset
-        dataset_doc = samples._root_dataset._doc
-        run_docs = getattr(dataset_doc, cls._runs_field())
+        run_docs = getattr(dataset._doc, cls._runs_field())
         run_doc = run_docs.pop(key, None)
+        results_cache = getattr(dataset, cls._results_cache_field())
+        results_cache.pop(key, None)
 
         # Must manually delete run result, which is stored via GridFS
         if run_doc and run_doc.results:
             run_doc.results.delete()
 
-        dataset_doc.save()
+        dataset._doc.save()
 
     @classmethod
     def delete_runs(cls, samples):

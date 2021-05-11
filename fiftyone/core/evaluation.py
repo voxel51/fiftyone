@@ -55,6 +55,10 @@ class EvaluationMethod(Run):
     def _run_str(cls):
         return "evaluation"
 
+    @classmethod
+    def _results_cache_field(cls):
+        return "_evaluation_cache"
+
 
 class EvaluationResults(RunResults):
     """Base class for evaluation results."""
