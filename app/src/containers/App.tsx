@@ -24,6 +24,7 @@ import Error from "./Error";
 import Setup from "./Setup";
 import "player51/src/css/player51.css";
 import "../app.global.css";
+import { patching } from "../components/Actions/Patcher";
 
 const useStateUpdate = () => {
   return useRecoilCallback(({ snapshot, set, reset }) => async ({ state }) => {
@@ -41,6 +42,7 @@ const useStateUpdate = () => {
     set(atoms.selectedSamples, newSamples);
     set(atoms.stateDescription, state);
     set(selectors.anyTagging, false);
+    set(patching, false);
     const colorPool = await snapshot.getPromise(atoms.colorPool);
     if (JSON.stringify(state.config.color_pool) !== JSON.stringify(colorPool)) {
       set(atoms.colorPool, state.config.color_pool);
