@@ -7,7 +7,6 @@ import {
   SetRecoilState,
 } from "recoil";
 import { animated } from "react-spring";
-import uuid from "uuid-v4";
 
 import * as selectors from "../../recoil/selectors";
 import StringFilter from "./StringFilter";

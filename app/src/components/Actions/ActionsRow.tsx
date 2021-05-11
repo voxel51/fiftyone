@@ -20,7 +20,7 @@ import { selectorFamily, useRecoilState, useRecoilValue } from "recoil";
 import styled from "styled-components";
 
 import Coloring from "./Options";
-import Patcher, { patchesFields } from "./Patcher";
+import Patcher, { patchesFields, patching } from "./Patcher";
 import Selector from "./Selected";
 import Tagger from "./Tagger";
 import { PillButton } from "../utils";
@@ -29,7 +29,16 @@ import * as selectors from "../../recoil/selectors";
 import socket from "../../shared/connection";
 import { useOutsideClick, useTheme } from "../../utils/hooks";
 import { packageMessage } from "../../utils/socket";
-import Similar from "./Similar";
+import Similar, { similaritySorting } from "./Similar";
+
+const Loading = () => {
+  const theme = useTheme();
+  return (
+    <CircularProgress
+      style={{ padding: 2, height: 22, width: 22, color: theme.font }}
+    />
+  );
+};
 
 const ActionDiv = styled.div`
   position: relative;
@@ -37,6 +46,7 @@ const ActionDiv = styled.div`
 
 const Patches = () => {
   const [open, setOpen] = useState(false);
+  const loading = useRecoilValue(patching);
   const ref = useRef();
   useOutsideClick(ref, () => open && setOpen(false));
   const fields = useRecoilValue(patchesFields);
@@ -48,11 +58,12 @@ const Patches = () => {
   return (
     <ActionDiv ref={ref}>
       <PillButton
-        icon={<FlipToBack />}
+        icon={loading ? <Loading /> : <FlipToBack />}
         open={open}
-        onClick={() => setOpen(!open)}
+        onClick={() => !loading && setOpen(!open)}
         highlight={open || Boolean(fields.length)}
         title={"Patches"}
+        style={{ cursor: loading ? "default" : "pointer" }}
       />
       {open && <Patcher close={() => setOpen(false)} />}
     </ActionDiv>
@@ -73,6 +84,7 @@ const hasSimilarityKeys = selectorFamily<boolean, boolean>({
 const Similarity = ({ modal }: { modal: boolean }) => {
   const [open, setOpen] = useState(false);
   const ref = useRef();
+  const loading = useRecoilValue(similaritySorting);
   useOutsideClick(ref, () => open && setOpen(false));
   const hasSimilarity = useRecoilValue(hasSimilarityKeys(modal));
   const [mRef, bounds] = useMeasure();
@@ -89,12 +101,13 @@ const Similarity = ({ modal }: { modal: boolean }) => {
   return (
     <ActionDiv ref={ref}>
       <PillButton
-        icon={<Wallpaper />}
+        icon={loading ? <Loading /> : <Wallpaper />}
         open={open}
-        onClick={() => setOpen(!open)}
+        onClick={() => !loading && setOpen(!open)}
         highlight={true}
         ref={mRef}
         title={"Sort by similarity"}
+        style={{ cursor: loading ? "default" : "pointer" }}
       />
       {open && (
         <Similar modal={modal} close={() => setOpen(false)} bounds={bounds} />
@@ -125,15 +138,7 @@ const Tag = ({ modal }) => {
     <ActionDiv ref={ref}>
       <PillButton
         style={{ cursor: disabled ? "default" : "pointer" }}
-        icon={
-          disabled ? (
-            <CircularProgress
-              style={{ padding: 2, height: 22, width: 22, color: theme.font }}
-            />
-          ) : (
-            <LocalOffer />
-          )
-        }
+        icon={disabled ? <Loading /> : <LocalOffer />}
         open={open}
         onClick={() => !disabled && setOpen(!open)}
         highlight={Boolean(selected.size) || open}

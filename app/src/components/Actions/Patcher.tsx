@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from "react";
-import { selector, useRecoilCallback, useRecoilValue } from "recoil";
+import { atom, selector, useRecoilValue, useSetRecoilState } from "recoil";
 import { useSpring } from "react-spring";
 
 import Popout from "./Popout";
@@ -11,6 +11,11 @@ import { PATCHES_FIELDS } from "../../utils/labels";
 import { useTheme } from "../../utils/hooks";
 import socket from "../../shared/connection";
 import { packageMessage } from "../../utils/socket";
+
+export const patching = atom<boolean>({
+  key: "patching",
+  default: false,
+});
 
 export const patchesFields = selector<string[]>({
   key: "parchesFields",
@@ -29,7 +34,9 @@ const evaluationKeys = selector<string[]>({
 });
 
 const useToPatches = () => {
+  const setPatching = useSetRecoilState(patching);
   return useCallback((field) => {
+    setPatching(true);
     socket.send(
       packageMessage("save_filters", {
         add_stages: [
@@ -48,7 +55,9 @@ const useToPatches = () => {
 };
 
 const useToEvaluationPatches = () => {
+  const setPatching = useSetRecoilState(patching);
   return useCallback((evaluation) => {
+    setPatching(true);
     socket.send(
       packageMessage("save_filters", {
         add_stages: [
