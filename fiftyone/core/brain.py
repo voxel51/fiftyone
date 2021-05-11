@@ -52,6 +52,10 @@ class BrainMethod(Run):
     def _run_str(cls):
         return "brain method run"
 
+    @classmethod
+    def _results_cache_field(cls):
+        return "_brain_cache"
+
 
 class BrainResults(RunResults):
     """Base class for brain method results."""
