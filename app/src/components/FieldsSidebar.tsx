@@ -550,29 +550,31 @@ const ScalarsCell = ({ modal }: ScalarsCellProps) => {
     <Cell
       label="Scalar fields"
       icon={<BarChart />}
-      entries={scalars.map((name) => {
-        return {
-          name,
-          disabled: false,
-          hideCheckbox: modal,
-          hasDropdown: !modal,
-          selected: activeScalars.includes(name),
-          color: colorByLabel ? theme.brand : colorMap[name],
-          title: modal ? prettify(count[name], false) : name,
-          path: name,
-          type: "values",
-          data:
-            count && subCount && !modal
-              ? makeData(subCount[name], count[name])
-              : modal
-              ? prettify(count[name])
-              : null,
-          totalCount: !modal && count ? count[name] : null,
-          filteredCount: !modal && subCount ? subCount[name] : null,
-          modal,
-          canFilter: !modal,
-        };
-      })}
+      entries={scalars
+        .filter((name) => !(name === "filepath" && modal))
+        .map((name) => {
+          return {
+            name,
+            disabled: false,
+            hideCheckbox: modal,
+            hasDropdown: !modal,
+            selected: activeScalars.includes(name),
+            color: colorByLabel ? theme.brand : colorMap[name],
+            title: modal ? prettify(count[name], false) : name,
+            path: name,
+            type: "values",
+            data:
+              count && subCount && !modal
+                ? makeData(subCount[name], count[name])
+                : modal
+                ? prettify(count[name])
+                : null,
+            totalCount: !modal && count ? count[name] : null,
+            filteredCount: !modal && subCount ? subCount[name] : null,
+            modal,
+            canFilter: !modal,
+          };
+        })}
       onSelect={
         !modal
           ? ({ name, selected }) => {
