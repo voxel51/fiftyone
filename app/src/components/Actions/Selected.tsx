@@ -33,7 +33,7 @@ const useGridActions = (close: () => void) => {
     },
     [close]
   );
-  const addStage = useRecoilCallback(({ snapshot, set }) => async (name) => {
+  const addStage = useRecoilCallback(({ snapshot }) => async (name) => {
     close();
     const state = await snapshot.getPromise(atoms.stateDescription);
     const newState = JSON.parse(JSON.stringify(state));
@@ -46,7 +46,6 @@ const useGridActions = (close: () => void) => {
     newState.view = newView;
     newState.selected = [];
     socket.send(packageMessage("update", { state: newState }));
-    set(atoms.stateDescription, newState);
   });
 
   return [

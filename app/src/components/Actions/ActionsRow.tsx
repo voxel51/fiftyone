@@ -268,7 +268,7 @@ const SaveFilters = () => {
         setLoading(false);
         socket.send(packageMessage("save_filters", {}));
       }}
-      title={"Save current field filters as view stages"}
+      title={"Convert current field filters to view stages"}
     />
   ) : null;
 };
