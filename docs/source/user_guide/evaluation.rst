@@ -551,8 +551,8 @@ samples.
 
 .. _evaluation-patches:
 
-Evaluation patche views
------------------------
+Evaluation patches views
+------------------------
 
 Once you have run
 :meth:`evaluate_detections() <fiftyone.core.collections.SampleCollection.evaluate_detections>`
