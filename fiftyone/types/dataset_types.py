@@ -19,7 +19,7 @@ class Dataset(object):
             a :class:`fiftyone.utils.data.importers.DatasetImporter` class
         """
         raise TypeError(
-            "Dataset type '%s' does not provide a default DatasetImporter"
+            "Dataset type '%s' does not support imports"
             % etau.get_class_name(self)
         )
 
@@ -31,7 +31,7 @@ class Dataset(object):
             a :class:`fiftyone.utils.data.exporters.DatasetExporter` class
         """
         raise TypeError(
-            "Dataset type '%s' does not provide a default DatasetExporter"
+            "Dataset type '%s' does not support exports"
             % etau.get_class_name(self)
         )
 
@@ -57,9 +57,7 @@ class UnlabeledImageDataset(UnlabeledDataset):
             a :class:`fiftyone.utils.data.importers.UnlabeledImageDatasetImporter`
             class
         """
-        raise NotImplementedError(
-            "subclass must implement get_dataset_importer_cls()"
-        )
+        return super().get_dataset_importer_cls()
 
     def get_dataset_exporter_cls(self):
         """Returns the
@@ -70,9 +68,7 @@ class UnlabeledImageDataset(UnlabeledDataset):
             a :class:`fiftyone.utils.data.exporters.UnlabeledImageDatasetExporter`
             class
         """
-        raise NotImplementedError(
-            "subclass must implement get_dataset_exporter_cls()"
-        )
+        return super().get_dataset_exporter_cls()
 
 
 class UnlabeledVideoDataset(UnlabeledDataset):
@@ -88,9 +84,7 @@ class UnlabeledVideoDataset(UnlabeledDataset):
             a :class:`fiftyone.utils.data.importers.UnlabeledVideoDatasetImporter`
             class
         """
-        raise NotImplementedError(
-            "subclass must implement get_dataset_importer_cls()"
-        )
+        return super().get_dataset_importer_cls()
 
     def get_dataset_exporter_cls(self):
         """Returns the
@@ -101,9 +95,7 @@ class UnlabeledVideoDataset(UnlabeledDataset):
             a :class:`fiftyone.utils.data.exporters.UnlabeledVideoDatasetExporter`
             class
         """
-        raise NotImplementedError(
-            "subclass must implement get_dataset_exporter_cls()"
-        )
+        return super().get_dataset_exporter_cls()
 
 
 class LabeledDataset(Dataset):
@@ -128,9 +120,7 @@ class LabeledImageDataset(LabeledDataset):
             a :class:`fiftyone.utils.data.importers.LabeledImageDatasetImporter`
             class
         """
-        raise NotImplementedError(
-            "subclass must implement get_dataset_importer_cls()"
-        )
+        return super().get_dataset_importer_cls()
 
     def get_dataset_exporter_cls(self):
         """Returns the
@@ -141,9 +131,7 @@ class LabeledImageDataset(LabeledDataset):
             a :class:`fiftyone.utils.data.exporters.LabeledImageDatasetExporter`
             class
         """
-        raise NotImplementedError(
-            "subclass must implement get_dataset_exporter_cls()"
-        )
+        return super().get_dataset_exporter_cls()
 
 
 class LabeledVideoDataset(LabeledDataset):
@@ -160,9 +148,7 @@ class LabeledVideoDataset(LabeledDataset):
             a :class:`fiftyone.utils.data.importers.LabeledVideoDatasetImporter`
             class
         """
-        raise NotImplementedError(
-            "subclass must implement get_dataset_importer_cls()"
-        )
+        return super().get_dataset_importer_cls()
 
     def get_dataset_exporter_cls(self):
         """Returns the
@@ -173,9 +159,7 @@ class LabeledVideoDataset(LabeledDataset):
             a :class:`fiftyone.utils.data.exporters.LabeledVideoDatasetExporter`
             class
         """
-        raise NotImplementedError(
-            "subclass must implement get_dataset_exporter_cls()"
-        )
+        return super().get_dataset_exporter_cls()
 
 
 class ImageClassificationDataset(LabeledImageDataset):
@@ -731,7 +715,7 @@ class KITTIDetectionDataset(ImageDetectionDataset):
 class OpenImagesV6Dataset(ImageDetectionDataset):
     """A labeled dataset consisting of images and their associated annotations
     saved in
-    `Open Images Format <https://storage.googleapis.com/openimages/web/download.html>`_.
+    `Open Images format <https://storage.googleapis.com/openimages/web/download.html>`_.
 
     Datasets of this type are read/written in the following format::
 
@@ -757,9 +741,9 @@ class OpenImagesV6Dataset(ImageDetectionDataset):
                 segmentation_classes.csv
                 hierarchy.json
 
-    Not all labels and metadata are required if you specify certain
-    ``label_types``. All label types require the ``data`` directory and
-    ``metadata/classes.csv``.
+    The ``data`` directory and ``metadata/classes.csv`` files are always
+    required. Other labels and metadata files are only required if you wish to
+    load the corresponding label types:
 
     -   Classifications: ``labels/classifications.csv``
 
@@ -767,16 +751,15 @@ class OpenImagesV6Dataset(ImageDetectionDataset):
 
     -   Relationships: ``labels/relationships.csv``, ``metadata/attributes.csv``
 
-    -   Segmentations: ``labels/segmentations.csv``, ``labels/masks/``,
-            ``metadata/segmentation_classes.csv``
+    -   Segmentations: ``labels/segmentations.csv``, ``labels/masks/``, and
+        ``metadata/segmentation_classes.csv``
 
-    The ``hierarchy.json`` is optional and can be ignored if
-    ``load_hierarchy=False``. It is only used for Open Images-style detection
-    evaluation.
+    The ``hierarchy.json`` file is only used when performing Open Images-style
+    detection evaluation.
 
-    See 
-    `this page <https://storage.googleapis.com/openimages/web/download.html>`_ 
-    for a full specification of all of these files.
+    See
+    `this page <https://storage.googleapis.com/openimages/web/download.html>`_
+    for a full specification of this dataset format.
     """
 
     def get_dataset_importer_cls(self):

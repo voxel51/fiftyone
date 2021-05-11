@@ -99,8 +99,8 @@ def download_zoo_dataset(
             By default, it is downloaded to a subdirectory of
             ``fiftyone.config.dataset_zoo_dir``
         overwrite (False): whether to overwrite any existing files
-        cleanup (True): whether to cleanup any temporary files generated
-            during download 
+        cleanup (True): whether to cleanup any temporary files generated during
+            download
         **kwargs: optional arguments for the :class:`ZooDataset` constructor
 
     Returns:
@@ -181,8 +181,8 @@ def load_zoo_dataset(
             with the same name if it exists
         overwrite (False): whether to overwrite any existing files if the
             dataset is to be downloaded
-        cleanup (None): whether to cleanup any temporary files generated
-            during download 
+        cleanup (None): whether to cleanup any temporary files generated during
+            download
         **kwargs: optional arguments to pass to the
             :class:`fiftyone.utils.data.importers.DatasetImporter` constructor.
             If ``download_if_necessary == True``, then ``kwargs`` can also
@@ -781,14 +781,15 @@ class ZooDataset(object):
 
     @property
     def requires_manual_download(self):
-        """Whether this dataset requires some files to be manually downloaded.
+        """Whether this dataset requires some files to be manually downloaded
+        by the user before the dataset can be loaded.
         """
         return False
 
     @property
     def default_label_field(self):
-        """The default name or root name for label fields generated when 
-        loading this Zoo Dataset
+        """The default name (or root name in the case of multiple label fields)
+        to use for label field(s) populated when loading this dataset.
         """
         return "ground_truth"
 

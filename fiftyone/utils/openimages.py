@@ -13,7 +13,6 @@ import multiprocessing
 import os
 import random
 
-import cv2
 import pandas as pd
 
 import eta.core.image as etai
@@ -22,12 +21,8 @@ import eta.core.utils as etau
 import eta.core.web as etaw
 
 import fiftyone as fo
-import fiftyone.core.dataset as fod
-import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
-import fiftyone.core.sample as fos
 import fiftyone.core.utils as fou
-import fiftyone.types as fot
 import fiftyone.utils.data as foud
 
 boto3 = fou.lazy_import("boto3", callback=fou.ensure_boto3)
@@ -38,10 +33,7 @@ logger = logging.getLogger(__name__)
 
 
 class OpenImagesDatasetImporter(foud.LabeledImageDatasetImporter):
-    """Importer for Open Images datasets stored on disk.
-
-    See :class:`fiftyone.types.dataset_types.OpenImagesDataset` for format
-    details.
+    """Base class for importing datasets in Open Images format.
 
     Args:
         dataset_dir: the dataset directory
@@ -50,37 +42,33 @@ class OpenImagesDatasetImporter(foud.LabeledImageDatasetImporter):
             By default, all labels are loaded but not every sample will include
             each label type. If ``max_samples`` and ``label_types`` are both
             specified, then every sample will include the specified label
-            types.
+            types
         classes (None): a list of strings specifying required classes to load.
             Only samples containing at least one instance of a specified
             classes will be downloaded. Use :meth:`get_classes` to see the
             available classes
         attrs (None): a list of strings for relationship attributes to load
-        max_samples (None): a maximum number of samples to import. By
-            default, all samples are imported
-        seed (None): a random seed to use when shuffling
-        shuffle (False): whether to randomly shuffle the order in which the
-            samples are imported
-        skip_unlabeled (False): whether to skip unlabeled images when importing
         image_ids (None): a list of specific image IDs to load. The IDs can be
             specified either as ``<split>/<image-id>`` or ``<image-id>``
         image_ids_file (None): the path to a newline separated text, JSON, or
             CSV file containing a list of image IDs to load. The IDs can be
             specified either as ``<split>/<image-id>`` or ``<image-id>``. If
             ``image_ids`` is provided, this parameter is ignored
-        load_hierarchy (True): optionally load the classes hiearchy and add it
-            to the info of the dataset
-        version ("v6"): string indicating the version of Open Images to
-            download. Currently only Open Images V6 is supported.
+        load_hierarchy (True): whether to load the classes hiearchy and add it
+            to the dataset's ``info`` dictionary
+        version ("v6"): the Open Images dataset format version being used.
+            Supported values are ``("v6")``
+        skip_unlabeled (False): whether to skip unlabeled images when importing
+        shuffle (False): whether to randomly shuffle the order in which the
+            samples are imported
+        seed (None): a random seed to use when shuffling
+        max_samples (None): a maximum number of samples to import. By
+            default, all samples are imported
     """
 
     def __init__(
         self,
         dataset_dir,
-        shuffle=False,
-        seed=None,
-        max_samples=None,
-        skip_unlabeled=False,
         label_types=None,
         classes=None,
         attrs=None,
@@ -88,6 +76,10 @@ class OpenImagesDatasetImporter(foud.LabeledImageDatasetImporter):
         image_ids_file=None,
         load_hierarchy=True,
         version="v6",
+        skip_unlabeled=False,
+        shuffle=False,
+        seed=None,
+        max_samples=None,
     ):
         super().__init__(
             dataset_dir,
@@ -178,41 +170,17 @@ class OpenImagesDatasetImporter(foud.LabeledImageDatasetImporter):
 
     @property
     def label_cls(self):
-        _label_cls = {
+        return {
             "classifications": fol.Classifications,
             "detections": fol.Detections,
             "segmentations": fol.Detections,
             "relationships": fol.Detections,
             "open_images_id": str,
         }
-        return _label_cls
 
     def setup(self):
-        """Find downloaded data and load all relevant labels into memory as
-            specified by the given parameters.
-
-            This method will create:
-            self._data_dir: directory containing downloaded images
-            self._filenames: specific subset of filenames to be downloaded
-
-            self._lab_id_data: dict containing classification annotations for
-                relevant files (if classifications are specified in
-                ``label_types``)
-            self._det_id_data: dict containing detection annotations for
-                relevant files (if detections are specified in
-                ``label_types``)
-
-            self._rel_id_data: dict containing relationship annotations for
-                relevant files (if relationships are specified in
-                ``label_types``)
-            self._rel_id_data: dict containing segmentation annotations for
-                relevant files (if segmentations are specified in
-                ``label_types``)
-
-            self._info: dict containing metadata like ``classes`` that will be
-                added to ``dataset.info``
-        """
         self._data_dir = os.path.join(self.dataset_dir, "data")
+
         dataset_dir = self.dataset_dir
         seed = self.seed
         shuffle = self.shuffle
@@ -231,12 +199,12 @@ class OpenImagesDatasetImporter(foud.LabeledImageDatasetImporter):
         if downloaded_ids:
             ext = os.path.splitext(downloaded_ids[0])[1]
         else:
-            logger.warning("No images found in %s" % self._data_dir)
+            logger.warning("No images found in %s", self._data_dir)
             self._filenames = []
             return
 
-        # No matter what classes or attributes you specify, they will not be loaded
-        # if you do not want to load labels
+        # No matter what classes or attributes you specify, they will not be
+        # loaded if you do not want to load labels
         if label_types == []:
             classes = []
             attrs = []
@@ -248,8 +216,8 @@ class OpenImagesDatasetImporter(foud.LabeledImageDatasetImporter):
                 # Load all image IDs
                 specified_image_ids = downloaded_ids
             else:
-                # No specific image IDs were given, load all relevant images from
-                # the given labels later
+                # No specific image IDs were given, load all relevant images
+                # from the given labels later
                 specified_image_ids = None
         else:
             specified_image_ids = _parse_image_ids(
@@ -314,11 +282,11 @@ class OpenImagesDatasetImporter(foud.LabeledImageDatasetImporter):
 
             # No IDs specified, load all IDs relevant to given classes
             if guarantee_all_types:
-                # When providing specific labels to load and max_samples, only load
-                # samples that include all labels
+                # When providing specific labels to load and max_samples, only
+                # load samples that include all labels
                 if max_samples and len(ids_all_labels) < max_samples:
-                    # prioritize samples with all labels but also add samples with
-                    # any to reach max_samples
+                    # Prioritize samples with all labels but also add samples
+                    # with any to reach max_samples
                     ids_not_all = ids_any_labels - ids_all_labels
                     ids_all_labels = sorted(list(ids_all_labels))
                     ids_not_all = sorted(list(ids_not_all))
@@ -377,7 +345,7 @@ class OpenImagesDatasetImporter(foud.LabeledImageDatasetImporter):
 
 
 class OpenImagesV6DatasetImporter(OpenImagesDatasetImporter):
-    """Importer subclass for Open Images V6
+    """Importer for datasets in Open Images V6 format.
 
     See :class:`fiftyone.types.dataset_types.OpenImagesV6Dataset` for format
     details.
@@ -395,12 +363,6 @@ class OpenImagesV6DatasetImporter(OpenImagesDatasetImporter):
             classes will be downloaded. Use :meth:`get_classes` to see the
             available classes
         attrs (None): a list of strings for relationship attributes to load
-        max_samples (None): a maximum number of samples to import. By
-            default, all samples are imported
-        seed (None): a random seed to use when shuffling
-        shuffle (False): whether to randomly shuffle the order in which the
-            samples are imported
-        skip_unlabeled (False): whether to skip unlabeled images when importing
         image_ids (None): a list of specific image IDs to load. The IDs can be
             specified either as ``<split>/<image-id>`` or ``<image-id>``
         image_ids_file (None): the path to a newline separated text, JSON, or
@@ -409,28 +371,30 @@ class OpenImagesV6DatasetImporter(OpenImagesDatasetImporter):
             ``image_ids`` is provided, this parameter is ignored
         load_hierarchy (True): optionally load the classes hiearchy and add it
             to the info of the dataset
+        skip_unlabeled (False): whether to skip unlabeled images when importing
+        shuffle (False): whether to randomly shuffle the order in which the
+            samples are imported
+        seed (None): a random seed to use when shuffling
+        max_samples (None): a maximum number of samples to import. By default,
+            all samples are imported
     """
 
     def __init__(
         self,
         dataset_dir,
-        shuffle=False,
-        seed=None,
-        max_samples=None,
-        skip_unlabeled=False,
         label_types=None,
         classes=None,
         attrs=None,
         image_ids=None,
         image_ids_file=None,
         load_hierarchy=True,
+        skip_unlabeled=False,
+        shuffle=False,
+        seed=None,
+        max_samples=None,
     ):
         super().__init__(
             dataset_dir,
-            shuffle=shuffle,
-            seed=seed,
-            max_samples=max_samples,
-            skip_unlabeled=skip_unlabeled,
             label_types=label_types,
             classes=classes,
             attrs=attrs,
@@ -438,6 +402,10 @@ class OpenImagesV6DatasetImporter(OpenImagesDatasetImporter):
             image_ids_file=image_ids_file,
             load_hierarchy=load_hierarchy,
             version="v6",
+            skip_unlabeled=skip_unlabeled,
+            shuffle=shuffle,
+            seed=seed,
+            max_samples=max_samples,
         )
 
 
@@ -447,17 +415,17 @@ def download_open_images_split(
     label_types=None,
     classes=None,
     attrs=None,
-    max_samples=None,
-    seed=None,
-    shuffle=None,
     image_ids=None,
     image_ids_file=None,
     num_workers=None,
     version="v6",
+    shuffle=None,
+    seed=None,
+    max_samples=None,
 ):
     """Utility to download the
     `Open Images dataset <https://storage.googleapis.com/openimages/web/index.html>`_
-    and store it in the :class:`FiftyOneDataset` format on disk. 
+    and store it in the :class:`FiftyOneDataset` format on disk.
 
     This specifically downloads the subsets of annotations corresponding to the
     600 boxable classes of Open Images.
@@ -470,23 +438,18 @@ def download_open_images_split(
             downloaded
         split (None) a split to download, if applicable. Values are
             ``("train", "validation", "test")``. If neither ``split`` nor
-            ``splits`` are provided, all available splits are downloaded.
+            ``splits`` are provided, all available splits are downloaded
         label_types (None): a list of types of labels to load. Values are
             ``("detections", "classifications", "relationships", "segmentations")``.
             By default, all labels are loaded but not every sample will include
             each label type. If ``max_samples`` and ``label_types`` are both
             specified, then every sample will include the specified label
-            types.
+            types
         classes (None): a list of strings specifying required classes to load.
             Only samples containing at least one instance of a specified
             classes will be downloaded. Use :meth:`get_classes` to see the
             available classes
         attrs (None): a list of strings for relationship attributes to load
-        max_samples (None): a maximum number of samples to import per split. By
-            default, all samples are imported
-        seed (None): a random seed to use when shuffling
-        shuffle (False): whether to randomly shuffle the order in which the
-            samples are imported
         image_ids (None): a list of specific image IDs to load. The IDs can be
             specified either as ``<split>/<image-id>`` or ``<image-id>``
         image_ids_file (None): the path to a newline separated text, JSON, or
@@ -496,8 +459,13 @@ def download_open_images_split(
         num_workers (None): the number of processes to use when downloading
             individual images. By default, ``multiprocessing.cpu_count()`` is
             used
-        version ("v6"): string indicating the version of Open Images to
-            download. Currently only Open Images V6 is supported.
+        version ("v6"): the version of the Open Images dataset to download.
+            Supported values are ``("v6")``
+        shuffle (False): whether to randomly shuffle the order in which the
+            samples are imported
+        seed (None): a random seed to use when shuffling
+        max_samples (None): a maximum number of samples to import per split. By
+            default, all samples are imported
     """
     _verify_version(version)
 
@@ -653,7 +621,8 @@ def _setup(
                 logger.warning(
                     "The following are not available attributes: %s\n\nYou "
                     "can view the available attributes via "
-                    "`get_attributes()`\n" % ",".join(missing_attrs)
+                    "`get_attributes()`\n",
+                    ",".join(missing_attrs),
                 )
     else:
         attrs = []
@@ -682,14 +651,14 @@ def _setup(
 
 def get_attributes(dataset_dir=None, version="v6"):
     """Gets the list of relationship attributes in the Open Images V6 dataset.
-    This method can be called in isolation without having the dataset
-    downloaded.
+
+    This method can be called in isolation without downloading the dataset.
 
     Args:
         dataset_dir (None): the root directory the in which the dataset is
             downloaded
-        version ("v6"): string indicating the version of Open Images to
-            download. Currently only Open Images V6 is supported.
+        version ("v6"): the version of the Open Images dataset to download.
+            Supported values are ``("v6")``
 
     Returns:
         a sorted list of attribute names
@@ -710,14 +679,14 @@ def get_attributes(dataset_dir=None, version="v6"):
 def get_classes(dataset_dir=None, version="v6"):
     """Gets the 601 boxable classes that exist in classifications, detections,
     and relationships in the Open Images V6 dataset.
-    This method can be called in isolation without having the dataset
-    downloaded.
+
+    This method can be called in isolation without downloading the dataset.
 
     Args:
         dataset_dir (None): the root directory the in which the dataset is
             downloaded and ``info.json`` is stored
-        version ("v6"): string indicating the version of Open Images to
-            download. Currently only Open Images V6 is supported.
+        version ("v6"): the version of the Open Images dataset to download.
+            Supported values are ``("v6")``
 
     Returns:
         a sorted list of class name strings
@@ -737,14 +706,14 @@ def get_classes(dataset_dir=None, version="v6"):
 def get_segmentation_classes(dataset_dir=None, version="v6"):
     """Gets the list of classes (350) that are labeled with segmentations in
     the Open Images V6 dataset.
-    This method can be called in isolation without having the dataset
-    downloaded.
+
+    This method can be called in isolation without downloading the dataset.
 
     Args:
         dataset_dir (None): the root directory the in which the dataset is
             downloaded and ``info.json`` is stored
-        version ("v6"): string indicating the version of Open Images to
-            download. Currently only Open Images V6 is supported.
+        version ("v6"): the version of the Open Images dataset to download.
+            Supported values are ``("v6")``
 
     Returns:
         a sorted list of segmentation class name strings
@@ -963,12 +932,11 @@ def _parse_label_types(label_types):
     for l in label_types:
         if l not in _DEFAULT_LABEL_TYPES:
             raise ValueError(
-                "Label type %s is not supported. Options are "
-                "('detections', 'classifications', 'relationships', 'segmentations')"
-                % l
+                "Unrecognized label type '%s'. Supported values are %s"
+                % (l, _DEFAULT_LABEL_TYPES)
             )
-        else:
-            _label_types.append(l)
+
+        _label_types.append(l)
 
     return _label_types
 
@@ -1002,8 +970,9 @@ def _verify_image_ids(
     incorrect_split_ids = ssid_set - verified_split_ids
     if incorrect_split_ids:
         logger.info(
-            "The following image IDs do not exist in split %s: %s"
-            % (split, ",".join(list(incorrect_split_ids)))
+            "The following image IDs do not exist in split %s: %s",
+            split,
+            ",".join(list(incorrect_split_ids)),
         )
 
     # Find any unspecified IDs in this split and add them
@@ -1169,8 +1138,8 @@ def _get_all_label_data(
             logger.warning(
                 "No segmentations exist for classes: %s\n\nYou can view the "
                 "available segmentation classes via "
-                "`get_segmentation_classes()`\n"
-                % ",".join(list(non_seg_classes))
+                "`get_segmentation_classes()`\n",
+                ",".join(list(non_seg_classes)),
             )
 
         annot_link = None
@@ -1370,7 +1339,7 @@ def _create_detections(det_id_data, image_id, classes_map):
         return fol.Detections(detections=[])
 
     def _generate_one_label(row):
-        # [ImageID,Source,LabelName,Confidence,XMin,XMax,YMin,YMax,IsOccluded,IsTruncated,IsGroupOf,IsDepiction,IsInside]
+        # ImageID,Source,LabelName,Confidence,XMin,XMax,YMin,YMax,IsOccluded,IsTruncated,IsGroupOf,IsDepiction,IsInside
         label = classes_map[row["LabelName"]]
         xmin = float(row["XMin"])
         xmax = float(row["XMax"])
@@ -1408,7 +1377,7 @@ def _create_relationships(rel_id_data, image_id, classes_map, attrs_map):
         return fol.Detections(detections=[])
 
     def _generate_one_label(row):
-        # [ImageID,LabelName1,LabelName2,XMin1,XMax1,YMin1,YMax1,XMin2,XMax2,YMin2,YMax2,RelationshipLabel]
+        # ImageID,LabelName1,LabelName2,XMin1,XMax1,YMin1,YMax1,XMin2,XMax2,YMin2,YMax2,RelationshipLabel
         oi_label1 = row["LabelName1"]
         xmin1 = float(row["XMin1"])
         xmax1 = float(row["XMax1"])
@@ -1421,18 +1390,15 @@ def _create_relationships(rel_id_data, image_id, classes_map, attrs_map):
         ymin2 = float(row["YMin2"])
         ymax2 = float(row["YMax2"])
 
-        attribute = False
         if oi_label1 in classes_map:
             label1 = classes_map[oi_label1]
         else:
             label1 = attrs_map[oi_label1]
-            attribute = True
 
         if oi_label2 in classes_map:
             label2 = classes_map[oi_label2]
         else:
             label2 = attrs_map[oi_label2]
-            attribute = True
 
         label_rel = row["RelationshipLabel"]
 
@@ -1475,8 +1441,7 @@ def _create_segmentations(seg_id_data, image_id, classes_map, dataset_dir):
         return fol.Detections(detections=[])
 
     def _generate_one_label(row):
-        # [MaskPath,ImageID,LabelName,BoxID,BoxXMin,BoxXMax,BoxYMin,BoxYMax,PredictedIoU,Clicks]
-
+        # MaskPath,ImageID,LabelName,BoxID,BoxXMin,BoxXMax,BoxYMin,BoxYMax,PredictedIoU,Clicks
         mask_path = row["MaskPath"]
         label = classes_map[row["LabelName"]]
         xmin = float(row["BoxXMin"])
@@ -1492,8 +1457,9 @@ def _create_segmentations(seg_id_data, image_id, classes_map, dataset_dir):
             dataset_dir, "labels", "masks", image_id[0].upper(), mask_path,
         )
         if not os.path.isfile(mask_path):
-            logger.info("Segmentation %s does not exists" % mask_path)
+            logger.warning("Segmentation file %s does not exist", mask_path)
             return
+
         rgb_mask = etai.read(mask_path)
         mask = etai.rgb_to_gray(rgb_mask) > 122
         h, w = mask.shape
@@ -1525,7 +1491,8 @@ def _download_if_necessary(filename, source, is_zip=False, quiet=-1):
 
     if not os.path.isfile(filename):
         if quiet < 1:
-            logger.info("Downloading %s to %s" % (source, filename))
+            logger.info("Downloading %s to %s", source, filename)
+
         etau.ensure_basedir(filename)
         q = False if quiet == -1 else True
         etaw.download_file(source, path=filename, quiet=q)
@@ -1541,6 +1508,7 @@ def _load_all_image_ids(download_dir, split=None, download=False):
         annot_link = _ANNOTATION_DOWNLOAD_LINKS[split]["image_ids"]
         quiet = -1 if split == "train" else 0
         _download_if_necessary(csv_filepath, annot_link, quiet=quiet)
+
     csv_data = _parse_csv(csv_filepath)
     split_ids = [i[0].rstrip() for i in csv_data[1:]]
     return split_ids
@@ -1567,7 +1535,7 @@ def _download_segmentation_masks(valid_ids, seg_ids, dataset_dir, split):
 def _download_specific_images(
     valid_ids, split, dataset_dir, num_workers, ext=".jpg"
 ):
-    logger.info("Downloading %s samples" % split)
+    logger.info("Downloading %s samples", split)
     etau.ensure_dir(os.path.join(dataset_dir, "data"))
 
     inputs = []
@@ -1586,8 +1554,9 @@ def _download_specific_images(
 
     if existing > 0:
         logger.info(
-            "%d samples found, downloading the remaining %d"
-            % (existing, len(inputs))
+            "%d samples found, downloading the remaining %d",
+            existing,
+            len(inputs),
         )
 
     global s3_client

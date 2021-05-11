@@ -638,10 +638,11 @@ class COCOObject(object):
 
         if detection.has_attribute("iscrowd"):
             iscrowd = int(detection.get_attribute_value("iscrowd"))
-        try:
-            iscrowd = detection["iscrowd"]
-        except KeyError:
-            iscrowd = None
+        else:
+            try:
+                iscrowd = detection["iscrowd"]
+            except KeyError:
+                iscrowd = None
 
         frame_size = (width, height)
         segmentation = _make_coco_segmentation(
