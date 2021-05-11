@@ -19,7 +19,7 @@ App
   functionality and interaction
 - Added a grid zooming slider in the top right of the sample grid
 - Added `Patches`, and `Sort by similarity` actions to the actions row
-  quick additions of their respective view stages in the App
+  for quick additions of their respective view stages
 - Added support for :meth:`Session.wait <fiftyone.core.session.Session.wait>`
   in browser contexts
 - Added a `Label tags` graphs tab
@@ -52,11 +52,11 @@ Core
   for efficiently deleting labels via a variety of natural syntaxes, e.g. a
   descendent :class:`DatasetView <fiftyone.core.view.DatasetView>`
 - Deprecated
-  :meth:`rDataset.emove_sample() <fiftyone.core.dataset.Dataset.remove_sample`
+  :meth:`Dataset.remove_sample() <fiftyone.core.dataset.Dataset.remove_sample>`
   and
-  :meth:`Dataset.remove_samples() <fiftyone.core.Dataset.remove_samples>`
+  :meth:`Dataset.remove_samples() <fiftyone.core.dataset.Dataset.remove_samples>`
   in favor of a single
-  :meth:`Dataset.delete_samples() <fiftyone.core.Dataset.delete_samples>` method
+  :meth:`Dataset.delete_samples() <fiftyone.core.dataset.Dataset.delete_samples>` method
 - Added full support for embedded documents, e.g. `Labels` in 
   :meth:`SampleCollection.values() <fiftyone.core.collections.SampleCollection.values>`
   and
@@ -77,7 +77,7 @@ Zoo
 
 Docs
 ^^^^
-- Added a :doc:`Downloading and evaluating Open Images </tutorials/open_images>` tuorial
+- Added a :doc:`Downloading and evaluating Open Images </tutorials/open_images>` tutorial
 - Added examples of :meth:`SampleCollection.to_patches() <fiftyone.core.collections.SampleCollection.to_patches>`
   and
   :meth:`SampleCollection.to_evaluation_patches() <fiftyone.core.collections.SampleCollection.to_evaluation_patches>`
