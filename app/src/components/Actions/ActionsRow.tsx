@@ -263,7 +263,6 @@ export const savingFilters = atom<boolean>({
 const SaveFilters = () => {
   const hasFilters = useRecoilValue(selectors.hasFilters);
   const [loading, setLoading] = useRecoilState(savingFilters);
-  const filters = useRecoilValue(selectors.filterStages);
 
   return hasFilters ? (
     <PillButton

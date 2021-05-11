@@ -1,5 +1,11 @@
 import React, { useCallback, useState } from "react";
-import { atom, selector, useRecoilValue, useSetRecoilState } from "recoil";
+import {
+  atom,
+  selector,
+  useRecoilCallback,
+  useRecoilValue,
+  useSetRecoilState,
+} from "recoil";
 import { useSpring } from "react-spring";
 
 import Popout from "./Popout";
@@ -34,45 +40,49 @@ const evaluationKeys = selector<string[]>({
 });
 
 const useToPatches = () => {
-  const setPatching = useSetRecoilState(patching);
-  return useCallback((field) => {
-    setPatching(true);
-    socket.send(
-      packageMessage("save_filters", {
-        add_stages: [
-          {
-            _cls: "fiftyone.core.stages.ToPatches",
-            kwargs: [
-              ["field", field],
-              ["_state", null],
-            ],
-          },
-        ],
-        with_selected: true,
-      })
-    );
-  }, []);
+  return useRecoilCallback(
+    ({ set }) => async (field) => {
+      set(patching, true);
+      socket.send(
+        packageMessage("save_filters", {
+          add_stages: [
+            {
+              _cls: "fiftyone.core.stages.ToPatches",
+              kwargs: [
+                ["field", field],
+                ["_state", null],
+              ],
+            },
+          ],
+          with_selected: true,
+        })
+      );
+    },
+    []
+  );
 };
 
 const useToEvaluationPatches = () => {
-  const setPatching = useSetRecoilState(patching);
-  return useCallback((evaluation) => {
-    setPatching(true);
-    socket.send(
-      packageMessage("save_filters", {
-        add_stages: [
-          {
-            _cls: "fiftyone.core.stages.ToEvaluationPatches",
-            kwargs: [
-              ["eval_key", evaluation],
-              ["_state", null],
-            ],
-          },
-        ],
-        with_selected: true,
-      })
-    );
-  }, []);
+  return useRecoilCallback(
+    ({ set }) => async (evaluation) => {
+      set(patching, true);
+      socket.send(
+        packageMessage("save_filters", {
+          add_stages: [
+            {
+              _cls: "fiftyone.core.stages.ToEvaluationPatches",
+              kwargs: [
+                ["eval_key", evaluation],
+                ["_state", null],
+              ],
+            },
+          ],
+          with_selected: true,
+        })
+      );
+    },
+    []
+  );
 };
 
 const LabelsPatches = ({ close }) => {
