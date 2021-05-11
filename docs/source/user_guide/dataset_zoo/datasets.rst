@@ -1181,6 +1181,30 @@ are annotated and available via this zoo dataset.
 The dataset contains annotations for classification, detection, segmentation,
 and visual relationship tasks across 601 object classes.
 
+**Details**
+
+-   Dataset name: ``open-images-v6``
+-   Dataset source: https://storage.googleapis.com/openimages/web/index.html
+-   Dataset size: 561 GB
+-   Tags: ``image, detection, segmentation, classification``
+-   Supported splits: ``train, test, validation``
+-   ZooDataset class:
+    :class:`OpenImagesV6Dataset <fiftyone.zoo.datasets.base.OpenImagesV6Dataset>`
+
+**Notes**
+
+-   Not all images contain all types of labels
+-   All images have been rescaled so that their largest side is at most
+    1024 pixels
+-   `Localized narratives <https://google.github.io/localized-narratives/>`_
+    are not included in this version of the dataset
+
+**Full split stats**
+
+-   Train split: 1,743,042 images (513 GB)
+-   Test split: 125,436 images (36 GB)
+-   Validation split: 41,620 images (12 GB)
+
 **Partial downloads**
 
 Open Images is a massive dataset, so FiftyOne provides parameters that can be
@@ -1189,17 +1213,19 @@ needs. When new subsets are specified, FiftyOne will use existing downloaded
 data first if possible before resorting to downloading additional data from the
 web.
 
-The following optional parameters are provided to configure a partial download
-of Open Images V6:
+The following parameters are available to configure a partial download of Open
+Images V6 by passing them to
+:func:`load_zoo_dataset() <fiftyone.zoo.datasets.load_zoo_dataset>`:
+
+-   ``split`` and ``splits``: a string or list of strings, respectively,
+    specifying the splits to load. Supported values are
+    ``("test", "train", "validation")``
 
 -   ``label_types``: a list of types of labels to load. Supported values are
     ``("detections", "classifications", "relationships", "segmentations")``.
     By default, all labels are loaded but not every sample will include each
     label type. If ``max_samples`` and ``label_types`` are both specified, then
     every sample will include the specified label types
-
--   ``split`` and ``splits``: either a string or list of strings dictating the
-    splits to load. Supported values are ``("test", "train", "validation")``
 
 -   ``classes``: a list of strings specifying required classes to load. Only
     samples containing at least one instance of a specified class will be
@@ -1227,30 +1253,6 @@ of Open Images V6:
 -   ``seed``: a random seed to use when shuffling
 
 -   ``max_samples``: a maximum number of samples to import
-
-**Full split stats**
-
--   Train split: 1,743,042 images (513 GB)
--   Test split: 125,436 images (36 GB)
--   Validation split: 41,620 images (12 GB)
-
-**Notes**
-
--   Not all images contain all types of labels
--   All images have been rescaled so that their largest side is at most
-    1024 pixels
--   `Localized narratives <https://google.github.io/localized-narratives/>`_
-    are not included in this version of the dataset
-
-**Details**
-
--   Dataset name: ``open-images-v6``
--   Dataset source: https://storage.googleapis.com/openimages/web/index.html
--   Dataset size: 561 GB
--   Tags: ``image, detection, segmentation, classification``
--   Supported splits: ``train, test, validation``
--   ZooDataset class:
-    :class:`OpenImagesV6Dataset <fiftyone.zoo.datasets.base.OpenImagesV6Dataset>`
 
 **Example usage**
 
