@@ -3,9 +3,9 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
-.. _release-notes-v0.8.1:
+.. _release-notes-v0.9.0:
 
-FiftyOne 0.8.0
+FiftyOne 0.9.0
 --------------
 *Released May 11, 2021*
 
