@@ -3802,6 +3802,17 @@ class SampleCollection(object):
         and a ``crowd`` field if the evaluation protocol defines a crowd
         attribute.
 
+        .. note::
+
+            The returned view will contain patches for the contents of this
+            collection, which may differ from the view on which the
+            ``eval_key`` evaluation was performed. This may exclude some labels
+            that were evaluated and/or include labels that were not evaluated.
+
+            If you would like to see patches for the exact view on which an
+            evaluation was performed, first call :meth:`load_evaluation_view`
+            to load the view and then convert to patches.
+
         Examples::
 
             import fiftyone as fo
