@@ -849,45 +849,48 @@ class LabeledFacesInTheWildDataset(FiftyOneDataset):
 
 
 class OpenImagesV6Dataset(FiftyOneDataset):
-    """Open Images is a dataset of totalling ~9 million images. Roughly 2
-    million are annotated and available in this zoo. The dataset contains
-    annotations for classification, detection, segmentation, and visual
-    relationship tasks across 601 object classes.
+    """Open Images V6 is a dataset of ~9 million images, roughly 2 million of
+    which are annotated and available via this zoo dataset.
 
-    Partial downloads:
+    The dataset contains annotations for classification, detection,
+    segmentation, and visual relationship tasks across 601 object classes.
 
-    -   You can specify subsets of data to download with the ``classes``,
+    This dataset supports partial downloads:
+
+    -   You can specify subsets of data to download via the ``classes``,
         ``attributes``, ``label_types``, and ``max_samples`` parameters
     -   You can specify specific images to load by their ID using ``image_ids``
         or ``image_ids_file`` parameters
 
     Full split stats:
 
-    -   Train split:  1,743,042 images (513 GB)
+    -   Train split: 1,743,042 images (513 GB)
     -   Test split: 125,436 images (36 GB)
     -   Validation split: 41,620 images (12 GB)
 
     Notes:
 
     -   Not all images contain all types of labels
-    -   All images have been rescaled so that their largest side is at most
-        1024 pixels
+    -   All images have been rescaled so that their largest dimension is at
+        most 1024 pixels
     -   `Localized narratives <https://google.github.io/localized-narratives/>`_
-        are not included in this implementation
+        are not included in this version of the dataset
 
-    Example usage
+    Example usage::
 
         import fiftyone as fo
         import fiftyone.zoo as foz
 
+        # Load 50 samples from the validation split
         dataset = foz.load_zoo_dataset(
-            "open-images", split="validation", max_samples=50
+            "open-images-v6", split="validation", max_samples=50
         )
 
         session = fo.launch_app(dataset)
 
+        # Load 50 samples for specific label types and classes of interest
         subset = foz.load_zoo_dataset(
-            "open-images",
+            "open-images-v6",
             split="validation",
             label_types=["detections", "relationships"],
             classes=["Fedora", "Piano"],
@@ -911,14 +914,9 @@ class OpenImagesV6Dataset(FiftyOneDataset):
             the specified label types
         classes (None): a list of strings specifying required classes to load.
             Only samples containing at least one instance of a specified
-            classes will be downloaded. See available classes with
-            :meth:`fiftyone.utils.openimages.get_classes()`
+            classes will be downloaded. You can retrieve the available classes
+            via :meth:`fiftyone.utils.openimages.get_classes`
         attrs (None): a list of strings for relationship attributes to load
-        max_samples (None): a maximum number of samples to import per split. By
-            default, all samples are imported
-        seed (None): a random seed to use when shuffling
-        shuffle (False): whether to randomly shuffle the order in which the
-            samples are imported
         image_ids (None): a list of specific image IDs to load. The IDs can be
             specified either as ``<split>/<image-id>`` or ``<image-id>``
         image_ids_file (None): the path to a newline separated text, JSON, or
@@ -928,6 +926,11 @@ class OpenImagesV6Dataset(FiftyOneDataset):
         num_workers (None): the number of processes to use when downloading
             individual images. By default, ``multiprocessing.cpu_count()`` is
             used
+        max_samples (None): a maximum number of samples to download and import
+            per split. By default, all samples are imported
+        seed (None): a random seed to use when shuffling
+        shuffle (False): whether to randomly shuffle the order in which the
+            samples are imported
     """
 
     def __init__(
@@ -935,23 +938,22 @@ class OpenImagesV6Dataset(FiftyOneDataset):
         label_types=None,
         classes=None,
         attrs=None,
-        max_samples=None,
-        seed=None,
-        shuffle=None,
         image_ids=None,
         image_ids_file=None,
         num_workers=None,
+        max_samples=None,
+        seed=None,
+        shuffle=None,
     ):
-
         self.label_types = label_types
         self.classes = classes
         self.attrs = attrs
-        self.max_samples = max_samples
-        self.seed = seed
-        self.shuffle = shuffle
         self.image_ids = image_ids
         self.image_ids_file = image_ids_file
         self.num_workers = num_workers
+        self.max_samples = max_samples
+        self.seed = seed
+        self.shuffle = shuffle
 
     @property
     def name(self):

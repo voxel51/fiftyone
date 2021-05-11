@@ -186,9 +186,12 @@ class DetectionEvaluationConfig(foe.EvaluationMethodConfig):
 
     @property
     def requires_additional_fields(self):
-        """Whether more fields than pred and gt are required. If these are the
-        only required fields then they can be selected prior to evaluation for
-        efficiency.
+        """Whether fields besides ``pred_field`` and ``gt_field`` are required
+        in order to perform evaluation.
+
+        If True then the entire samples will be loaded rather than using
+        :meth:`select_fields() <fiftyone.core.collections.SampleCollection.select_fields>`
+        to optimize.
         """
         return False
 

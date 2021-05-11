@@ -2692,10 +2692,7 @@ def _parse_value(val):
         pass
 
     if "," in val:
-        # Parse list
-        val = val.split(",")
-        for i, v in enumerate(val):
-            val[i] = _parse_value(v)
+        return [_parse_value(v) for v in val.split(",")]
 
     return val
 
