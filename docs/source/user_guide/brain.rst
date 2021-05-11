@@ -23,24 +23,31 @@ workflow:
 * :ref:`Visualizing embeddings <brain-embeddings-visualization>`:
   Tired of combing through individual images/videos
   and staring at aggregate performance metrics trying to figure out how to
-  improve the performance of your model? Visualizing your dataset in a
-  low-dimensional embedding space reveal patterns and clusters in your data
-  that can help you answer many important questions about your data, from
-  identifying the most critical failure modes of your model, to isolating
-  examples of critical scenarios, to recommending new samples to add to your
-  training dataset, and more! The FiftyOne Brain provides a powerful
-  :meth:`compute_visualization() <fiftyone.brain.compute_visualization>` method
-  that you can use to generate out-of-the-box or highly customized
-  visualizations of your samples and labels.
+  improve the performance of your model? Using FiftyOne to visualize your
+  dataset in a *low-dimensional embedding space* can reveal patterns and
+  clusters in your data that can help you answer many important questions about
+  your data, from identifying the most critical failure modes of your model, to
+  isolating examples of critical scenarios, to recommending new samples to add
+  to your training dataset, and more!
+
+* :ref:`Visual similarity <brain-similarity>`: When constructing a dataset or
+  training a model, have you ever wanted to find similar examples to an image
+  or object patch of interest? For example, you may have found a failure case
+  of your model and now want to search for similar scenarios in your evaluation
+  set to diagnose the issue, or you want to mine your data lake to augment your
+  training set to fix the issue. Use the FiftyOne Brain to index your data
+  by *visual similarity* and you can easily query and sort your datasets to
+  find similar examples, both programmatically and via point-and-click in the
+  App.
 
 * :ref:`Uniqueness <brain-image-uniqueness>`:
   During the training loop for a model, the best results will
   be seen when training on unique data. The FiftyOne Brain provides a
   *uniqueness measure* for images that compare the content of every image in a
-  :ref:`dataset <using-datasets>` with all other images. Uniqueness operates on
-  raw images and does not require any prior annotation on the data. It is hence
-  very useful in the early stages of the machine learning workflow when you are
-  likely asking "What data should I select to annotate?"
+  dataset with all other images. Uniqueness operates on raw images and does not
+  require any prior annotation on the data. It is hence very useful in the
+  early stages of the machine learning workflow when you are likely asking
+  "What data should I select to annotate?"
 
 * :ref:`Mistakenness <brain-label-mistakes>`:
   Annotations mistakes create an artificial ceiling on the performance of your
@@ -239,6 +246,237 @@ protocol:
     remaining ``night`` points reveals that the ``night`` points have incorrect
     labels
 
+.. _brain-similarity:
+
+Visual similarity
+_________________
+
+The FiftyOne Brain provides a
+:meth:`compute_similarity() <fiftyone.brain.compute_similarity>` method
+that you can use to index the images or object patches in a dataset by visual
+similarity.
+
+Once you've indexed a dataset by similarity, you can use the
+:meth:`sort_by_similarity() <fiftyone.core.collections.SampleCollection.sort_by_similarity>`
+view stage to programmatically sort your dataset by visual similarity to any
+image(s) or object patch(es) of your choice in your dataset. In addition, the
+:ref:`FiftyOne App <app-similarity>` provides a convenient point-and-click
+interface for sorting by similarity with respect to an index you've computed
+whenever one or more images or labels are selected in the App.
+
+Embedding methods
+-----------------
+
+Like :ref:`embeddings visualization <brain-embeddings-visualization>`, this
+method leverages deep embeddings to generate the visual similarity index for a
+dataset.
+
+The ``embeddings`` and ``model`` parameters of
+:meth:`compute_similarity() <fiftyone.brain.compute_similarity>` support a
+variety of ways to generate embeddings for your data:
+
+-   Provide nothing, in which case a default general purpose model is used to
+    index your data
+-   Provide a |Model| instance or the name of any model from the
+    :ref:`model zoo <model-zoo>` that supports embeddings
+-   Compute your own embeddings and provide them in array form
+-   Provide the name of a |VectorField| or |ArrayField| of your dataset in
+    which your embeddings are stored
+
+.. _brain-image-similarity:
+
+Image similarity
+----------------
+
+This section demonstrates the basic workflow of indexing an image dataset by
+visual similarity and then using the :ref:`FiftyOne App <app-image-similarity>`
+and the
+:meth:`sort_by_similarity() <fiftyone.core.collections.SampleCollection.sort_by_similarity>`
+view stage to query the index.
+
+To index by images, simply pass the |Dataset| or |DatasetView| of interest to
+:meth:`compute_similarity() <fiftyone.brain.compute_similarity>` and provide a
+name for the index via the ``brain_key`` argument.
+
+Next, load the dataset in the App and select some image(s). Whenever there is
+an active selection in the App, a similarity menu icon will appear above the
+grid, enabling you to sort by visual similarity to your current selection. The
+menu will list the ``brain_key`` for all applicable similarity indexes
+(if there are multiple) so you can choose which index to use to perform the
+search. You can also optionally specify a maximum number of matches to return
+(``k``) and whether to sort in order of least similarity (``reverse``):
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.brain as fob
+    import fiftyone.zoo as foz
+
+    # Load dataset
+    dataset = foz.load_zoo_dataset("quickstart")
+
+    # Index images by similarity
+    fob.compute_similarity(dataset, brain_key="image_sim")
+
+    # Launch App
+    session = fo.launch_app(dataset)
+
+    # In the App... select some image(s) and use the similarity menu to sort!
+
+.. image:: ../images/brain/image-similarity.gif
+   :alt: image-similarity
+   :align: center
+
+Alternatively, you can directly use
+:meth:`sort_by_similarity() <fiftyone.core.collections.SampleCollection.sort_by_similarity>`
+to programmatically :ref:`construct a view <using-views>` that contains the
+sorted results:
+
+.. code-block:: python
+    :linenos:
+
+    # Choose a random image from the dataset
+    query_id = dataset.take(1).first().id
+
+    # Programmatically construct a view containing the 15 most similar images
+    view = dataset.sort_by_similarity(query_id, k=15, brain_key="image_sim")
+
+    # View results in App
+    session.view = view
+
+.. note::
+
+    Performing similarity search on a |DatasetView| will only return results
+    (that have been indexed) from the view.
+
+    This means that you can index an entire |Dataset| once and then perform
+    searches on subsets of the dataset by
+    :ref:`constructing views <using-views>` that contain the images of
+    interest.
+
+.. note::
+
+    For large datasets, you may notice some additional overhead the first time
+    you use a similarity index in a session. Subsequent similarity searches
+    will use cached results and will be faster!
+
+.. _brain-object-similarity:
+
+Object similarity
+-----------------
+
+This section demonstrates the basic workflow of indexing a dataset of objects
+by visual similarity and then using the
+:ref:`FiftyOne App <app-object-similarity>` and the
+:meth:`sort_by_similarity() <fiftyone.core.collections.SampleCollection.sort_by_similarity>`
+view stage to query the index.
+
+You can index any objects stored on datasets in |Detection|, |Detections|,
+|Polyline|, or |Polylines| format. See :ref:`this section <using-labels>` for
+more information about adding labels to your datasets.
+
+To index by object patches, simply pass the |Dataset| or |DatasetView| of
+interest to :meth:`compute_similarity() <fiftyone.brain.compute_similarity>`
+along with the name of the patches field and a name for the index via the
+``brain_key`` argument.
+
+Next, load the dataset in the App and switch to
+:ref:`object patches view <app-object-patches>` by clicking the patches icon
+above the grid and choosing the label field of interest from the dropdown.
+Now, whenever you have selected one or more patches in the App, a similarity
+menu icon will appear above the grid, enabling you to sort by visual similarity
+to your current selection. The menu will list the ``brain_key`` for all
+applicable similarity indexes (if there are multiple) so you can choose which
+index to use to perform the search. You can also optionally specify a maximum
+number of matches to return (``k``) and whether to sort in order of least
+similarity (``reverse``):
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.brain as fob
+    import fiftyone.zoo as foz
+
+    # Load dataset
+    dataset = foz.load_zoo_dataset("quickstart")
+
+    # Index ground truth objects by similarity
+    fob.compute_similarity(
+      dataset, patches_field="ground_truth", brain_key="gt_sim"
+    )
+
+    # Launch App
+    session = fo.launch_app(dataset)
+
+    # In the App... convert to ground truth patches view, select some patch(es),
+    # and use the similarity menu to sort!
+
+.. image:: ../images/brain/object-similarity.gif
+   :alt: object-similarity
+   :align: center
+
+Alternatively, you can directly use
+:meth:`sort_by_similarity() <fiftyone.core.collections.SampleCollection.sort_by_similarity>`
+to programmatically :ref:`construct a view <using-views>` that contains the
+sorted results:
+
+.. code-block:: python
+    :linenos:
+
+    # Convert to patches view
+    patches = dataset.to_patches("ground_truth")
+
+    # Choose a random patch object from the dataset
+    query_id = patches.take(1).first().id
+
+    # Programmatically construct a view containing the 15 most similar objects
+    view = patches.sort_by_similarity(query_id, k=15, brain_key="gt_sim")
+
+    # View results in App
+    session.view = view
+
+.. note::
+
+    Performing similarity search on a |DatasetView| will only return results
+    (that have been indexed) from the view.
+
+    This means that you can index an entire |Dataset| once and then perform
+    searches on subsets of the dataset by
+    :ref:`constructing views <using-views>` that contain the images of
+    interest.
+
+.. note::
+
+    For large datasets, you may notice some additional overhead the first time
+    you use a similarity index in a session. Subsequent similarity searches
+    will use cached results and will be faster!
+
+Applications
+------------
+
+How can visual simiarlity be used in practice? A common pattern is to mine your
+dataset for similar examples to certain images or object patches of interest,
+e.g., those that represent failure modes of a model that need to be studied in
+more detail or underrepresented classes that need more examples.
+
+Here are a few of the many possible applications:
+
+-   Identifying failure patterns of a model
+-   Finding examples of target scenarios in your data lake
+-   Mining hard examples for your evaluation pipeline
+-   Recommending samples from your data lake for classes that need additional
+    training data
+-   Pruning near-duplicate images from your training dataset
+
+.. note::
+
+    Check out the
+    :doc:`image uniqueness tutorial <../tutorials/uniqueness>` to see example
+    uses of the Brain's visual similarity methods to identify near-duplicate
+    images and mine target scenarios in a dataset.
+
 .. _brain-image-uniqueness:
 
 Image uniqueness
@@ -275,7 +513,7 @@ structures like `COCO <https://cocodataset.org/#home>`_.
     Did you know? Instead of using FiftyOne's default model to generate
     embeddings, you can provide your own embeddings or specify a model from the
     :ref:`Model Zoo <model-zoo>` to use to generate embeddings via the optional
-    ``embeddings`` argument to
+    ``embeddings`` and ``model`` argument to
     :meth:`compute_uniqueness() <fiftyone.brain.compute_uniqueness>`.
 
 **Output**: A scalar-valued ``uniqueness`` field is populated on each sample
@@ -518,8 +756,15 @@ Brain method runs can be accessed later by their `brain_key`:
 
         The
         :meth:`compute_visualization() <fiftyone.brain.compute_visualization>`
+        method accepts a ``brain_key`` parameter that specifies the brain key
+        under which to store the results of the visualization.
+
+    .. tab:: Similarity
+
+        The
+        :meth:`compute_similarity() <fiftyone.brain.compute_similarity>`
         method accepts an optional ``brain_key`` parameter that specifies the
-        brain key under which to store the results of the visualization.
+        brain key under which to store the similarity index.
 
     .. tab:: Uniqueness
 

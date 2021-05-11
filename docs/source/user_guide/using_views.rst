@@ -556,6 +556,267 @@ stage to filter the contents of arbitrarily-typed fields:
             # are deleted
             sample.save()
 
+.. _object-patches-views:
+
+Object patches
+______________
+
+If your dataset contains label list fields like |Detections| or |Polylines|,
+then you can use
+:meth:`to_patches() <fiftyone.core.collections.SampleCollection.to_patches>` to
+create views that contain one sample per object patch in a specified label
+field of your dataset.
+
+For example, you can extract patches for all ground truth objects in a
+detection dataset:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+    from fiftyone import ViewField as F
+
+    dataset = foz.load_zoo_dataset("quickstart")
+
+    session = fo.launch_app(dataset)
+
+    # Convert to ground truth patches
+    gt_patches = dataset.to_patches("ground_truth")
+    print(gt_patches)
+
+    # View patches in the App
+    session.view = gt_patches
+
+Or, you could :ref:`chain view stages <chaining-views>` to create a view that
+contains patches for a filtered set of predictions:
+
+.. code-block:: python
+    :linenos:
+
+    # Now extract patches for confident person predictions
+    person_patches = (
+        dataset
+        .filter_labels("predictions", (F("label") == "person") & (F("confidence") > 0.9))
+        .to_patches("predictions")
+    )
+    print(person_patches)
+
+    # View patches in the App
+    session.view = person_patches
+
+.. note::
+
+    Did you know? You can convert to object patches view directly
+    :ref:`from the App <app-object-patches>`!
+
+Object patches views are just like any other :ref:`dataset view <using-views>`
+in the following ways:
+
+-   You can filter and transform object patches views by appending view stages
+    via the :ref:`App view bar <app-create-view>` or
+    :ref:`views API <using-views>`
+-   Any modifications to label tags that you make via the App's
+    :ref:`tagging menu <app-tagging>` or via API methods like
+    :meth:`tag_labels() <fiftyone.core.collections.SampleCollection.tag_labels>`
+    and :meth:`untag_labels() <fiftyone.core.collections.SampleCollection.untag_labels>`
+    will be reflected on the source dataset
+-   Any modifications to the |Label| elements in the patches view that you make
+    by iterating over the contents of the view or calling
+    :meth:`set_values() <fiftyone.core.collections.SampleCollection.set_values>`
+    will be reflected on the source dataset
+-   Calling :meth:`save() <fiftyone.core.patches.PatchesView.save()> on an
+    object patches view (typically one that contains additional view stages
+    that filter or modify its contents) will sync any |Label| edits or
+    deletions with the source dataset
+
+Note that, since object patches views only contain a subset of the contents of
+a |Sample| from the source dataset, there are some differences with regular
+views:
+
+-   Tagging or untagging patches (as opposed to their labels) will not affect
+    the tags of the underlying |Sample|
+-   Any new fields that you add to an object patches view will not be added to
+    the source dataset
+
+.. _eval-patches-views:
+
+Evaluation patches
+__________________
+
+If you have :ref:`run evaluation <evaluating-detections>` on predictions from
+an object detection model, then you can use
+:meth:`to_evaluation_patches() <fiftyone.core.collections.SampleCollection.to_evaluation_patches>`
+to transform a collection into a view that contains one sample for each true
+positive, false positive, and false negative example.
+
+True positive examples will result in samples with both their ground truth and
+predicted fields populated, while false positive/negative examples will only
+have one of their corresponding predicted/ground truth fields populated,
+respectively.
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart")
+
+    # Evaluate `predictions` w.r.t. labels in `ground_truth` field
+    dataset.evaluate_detections(
+        "predictions", gt_field="ground_truth", eval_key="eval"
+    )
+
+    session = fo.launch_app(dataset)
+
+    # Convert to evaluation patches
+    eval_patches = dataset.to_evaluation_patches("eval")
+    print(eval_patches)
+
+    # View patches in the App
+    session.view = eval_patches
+
+.. note::
+
+    Did you know? You can convert to evaluation patches view directly
+    :ref:`from the App <app-evaluation-patches>`!
+
+.. note::
+
+    Refer to the :ref:`evaluation guide <evaluating-detections>` guide for more
+    information about running evaluations and using evaluation patches views
+    to analyze object detection models.
+
+Evaluation patches views are just like any other
+:ref:`dataset view <using-views>` in the following ways:
+
+-   You can filter and transform evaluation patches views by appending view
+    stages via the :ref:`App view bar <app-create-view>` or
+    :ref:`views API <using-views>`
+-   Any modifications to ground truth or predicted label tags that you make via
+    the App's :ref:`tagging menu <app-tagging>` or via API methods like
+    :meth:`tag_labels() <fiftyone.core.collections.SampleCollection.tag_labels>`
+    and :meth:`untag_labels() <fiftyone.core.collections.SampleCollection.untag_labels>`
+    will be reflected on the source dataset
+-   Any modifications to the predicted or ground truth |Label| elements in the
+    patches view that you make by iterating over the contents of the view or
+    calling
+    :meth:`set_values() <fiftyone.core.collections.SampleCollection.set_values>`
+    will be reflected on the source dataset
+-   Calling :meth:`save() <fiftyone.core.patches.EvaluationPatchesView.save()>
+    on an evaluation patches view (typically one that contains additional view
+    stages that filter or modify its contents) will sync any |Label| edits or
+    deletions with the source dataset
+
+Note that, since evaluation patches views only contain a subset of the contents
+of a |Sample| from the source dataset, there are some differences with regular
+views:
+
+-   Tagging or untagging patches themselves (as opposed to their labels) will
+    not affect the tags of the underlying |Sample|
+-   Any new fields that you add to an evaluation patches view will not be added
+    to the source dataset
+
+.. _similarity-views:
+
+Visual similarity
+_________________
+
+If you have indexed your dataset by
+:ref:`visual similarity <brain-similarity>`, then you can use the
+:meth:`sort_by_similarity() <fiftyone.core.collections.SampleCollection.sort_by_similarity>`
+stage to programmatically query your data by visual similarity to image(s) or
+object patch(es) of interest.
+
+.. _image-similarity-views:
+
+Image similarity
+----------------
+
+The example below indexes a dataset by image similarity using
+:meth:`compute_similarity() <fiftyone.brain.compute_similarity>` and then uses
+:meth:`sort_by_similarity() <fiftyone.core.collections.SampleCollection.sort_by_similarity>`
+to sort the dataset by visual similarity to a chosen image:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.brain as fob
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart")
+
+    # Index the dataset by image similarity
+    fob.compute_similarity(dataset, brain_key="image_sim")
+
+    session = fo.launch_app(dataset)
+
+    # Select a random query image
+    query_id = dataset.take(1).first().id
+
+    # Sort the samples by visual similarity to the query image
+    view = dataset.sort_by_similarity(query_id, brain_key="image_sim")
+    print(view)
+
+    # View results in the App
+    session.view = view
+
+.. note::
+
+    Refer to the :ref:`Brain guide <brain-similarity>` for more information
+    about generating similarity indexes, and check out the
+    :ref:`App guide <app-image-similarity>` to see how to sort images by visual
+    similarity via point-and-click in the App!
+
+.. _object-similarity-views:
+
+Object similarity
+----------------
+
+The example below indexes the objects in a |Detections| field of a dataset by
+similarity using
+:meth:`compute_similarity() <fiftyone.brain.compute_similarity>` and then uses
+:meth:`sort_by_similarity() <fiftyone.core.collections.SampleCollection.sort_by_similarity>`
+to retrieve the 15 most visually similar objects to a chosen object:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.brain as fob
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart")
+
+    # Index the dataset by `ground_truth` object similarity
+    fob.compute_similarity(
+        dataset, patches_field="ground_truth", brain_key="gt_sim"
+    )
+
+    # Convert to ground truth patches view
+    patches = dataset.to_patches("ground_truth")
+
+    # View patches in the App
+    session.view = patches
+
+    # Select a random query object
+    query_id = patches.take(1).first().id
+
+    # Retrieve the 15 most visually similar objects
+    similar_objects = patches.sort_by_similarity(query_id, k=15, brain_key="gt_sim")
+
+    # View results in the App
+    session.view = similar_objects
+
+.. note::
+
+    Refer to the :ref:`Brain guide <brain-similarity>` for more information
+    about generating similarity indexes, and check out the
+    :ref:`App guide <app-object-similarity>` to see how to sort objects by
+    visual similarity via point-and-click in the App!
+
 .. _geolocation-views:
 
 Geolocation
@@ -717,6 +978,8 @@ of a |DatasetView| using
 Tips & Tricks
 _____________
 
+.. _chaining-views:
+
 Chaining view stages
 --------------------
 
@@ -737,6 +1000,8 @@ View stages can be chained together to perform complex operations:
         .sort_by("filepath")
         .limit(5)
     )
+
+.. _bbox-area-views:
 
 Filtering detections by area
 ----------------------------

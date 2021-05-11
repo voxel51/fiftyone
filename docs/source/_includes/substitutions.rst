@@ -5,6 +5,10 @@
 .. |DatasetView| replace:: :class:`DatasetView <fiftyone.core.view.DatasetView>`
 .. |ViewStage| replace:: :class:`ViewStage <fiftyone.core.stages.ViewStage>`
 
+.. |ToPatches| replace:: :class:`ToPatches <fiftyone.core.stages.ToPatches>`
+.. |ToEvaluationPatches| replace:: :class:`ToEvaluationPatches <fiftyone.core.stages.ToEvaluationPatches>`
+.. |SortBySimilarity| replace:: :class:`SortBySimilarity <fiftyone.core.stages.SortBySimilarity>`
+
 .. |Sample| replace:: :class:`Sample <fiftyone.core.sample.Sample>`
 .. |SampleView| replace:: :class:`SampleView <fiftyone.core.sample.SampleView>`
 
