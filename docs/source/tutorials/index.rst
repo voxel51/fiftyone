@@ -78,8 +78,8 @@ your datasets and turn your good models into *great models*.
     :tags: Dataset-Evaluation,Brain
 
 .. customcarditem::
-    :header: Downloading and evaluating Open Images 
-    :description: Expand your data lake and evaluate your object detection models with Google's Open Images dataset and evaluation protocol.
+    :header: Downloading and evaluating Open Images
+    :description: Expand your data lake and evaluate your object detection models with Google's Open Images dataset and evaluation protocol, all natively within FiftyOne.
     :link: open_images.html
     :image: ../_static/images/tutorials/open_images.png
     :tags: Dataset-Evaluation,Model-Evaluation,Dataset-Zoo
@@ -114,4 +114,4 @@ your datasets and turn your good models into *great models*.
    Exploring image uniqueness <uniqueness.ipynb>
    Finding class mistakes <classification_mistakes.ipynb>
    Finding detection mistakes <detection_mistakes.ipynb>
-   Using Open Images <open_images.ipynb>
+   Working with Open Images <open_images.ipynb>

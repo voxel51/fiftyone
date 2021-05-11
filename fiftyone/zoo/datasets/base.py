@@ -888,7 +888,7 @@ class OpenImagesV6Dataset(FiftyOneDataset):
 
         session = fo.launch_app(dataset)
 
-        # Load 50 samples for specific label types and classes of interest
+        # Load samples from specific label types and classes of interest
         subset = foz.load_zoo_dataset(
             "open-images-v6",
             split="validation",
@@ -966,7 +966,6 @@ class OpenImagesV6Dataset(FiftyOneDataset):
             "detection",
             "segmentation",
             "classification",
-            "visual-relationship",
         )
 
     @property
@@ -983,18 +982,18 @@ class OpenImagesV6Dataset(FiftyOneDataset):
 
     def _download_and_prepare(self, dataset_dir, scratch_dir, split):
         num_samples, classes = fouo.download_open_images_split(
-            dataset_dir,
-            split,
-            self.label_types,
-            self.classes,
-            self.attrs,
-            self.max_samples,
-            self.seed,
-            self.shuffle,
-            self.image_ids,
-            self.image_ids_file,
-            self.num_workers,
+            dataset_dir=dataset_dir,
+            split=split,
+            label_types=self.label_types,
+            classes=self.classes,
+            attrs=self.attrs,
+            image_ids=self.image_ids,
+            image_ids_file=self.image_ids_file,
+            num_workers=self.num_workers,
             version="v6",
+            shuffle=self.shuffle,
+            seed=self.seed,
+            max_samples=self.max_samples,
         )
         dataset_type = fot.OpenImagesV6Dataset()
         logger.info("Found %d samples", num_samples)
