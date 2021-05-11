@@ -11,6 +11,7 @@ import { PATCHES_FIELDS } from "../../utils/labels";
 import { useTheme } from "../../utils/hooks";
 import socket from "../../shared/connection";
 import { packageMessage } from "../../utils/socket";
+import { OBJECT_PATCHES, EVALUATION_PATCHES } from "../../utils/links";
 
 export const patching = atom<boolean>({
   key: "patching",
@@ -98,7 +99,7 @@ const LabelsPatches = ({ close }) => {
         key={0}
         text={"About patch views"}
         title={"About patch views"}
-        href={"https://fiftyone.ai"}
+        href={OBJECT_PATCHES}
       />
     </>
   );
@@ -127,7 +128,7 @@ const EvaluationPatches = ({ close }) => {
         key={0}
         text={"About evaluation views"}
         title={"About evaluation views"}
-        href={"https://fiftyone.ai"}
+        href={EVALUATION_PATCHES}
       />
     </>
   );

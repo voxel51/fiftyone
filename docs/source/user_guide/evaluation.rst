@@ -343,7 +343,7 @@ fake predictions added to it to demonstrate the workflow:
 .. note::
 
     Did you know? You can
-    :ref:`attach confusion matrices to the App <confusion-matrices>` and
+    :ref:`attach confusion matrices to the App <confusion-matrix-plots>` and
     interactively explore them by clicking on their cells and/or modifying your
     view in the App.
 
@@ -544,27 +544,167 @@ objects that you can leverage via the :ref:`FiftyOne App <fiftyone-app>` to
 interactively explore the strengths and weaknesses of your model on individual
 samples.
 
+.. note::
+
+    By default, FiftyOne uses the
+    :ref:`COCO-style <evaluating-detections-coco>` evaluation, but
+    :ref:`Open Images-style <evaluating-detections-open-images>` evaluation is
+    also natively supported.
+
+.. _evaluation-patches:
+
+Evaluation patches views
+------------------------
+
+Once you have run
+:meth:`evaluate_detections() <fiftyone.core.collections.SampleCollection.evaluate_detections>`
+on a dataset, you can use
+:meth:`to_evaluation_patches() <fiftyone.core.collections.SampleCollection.to_evaluation_patches>`
+to transform the dataset (or a view into it) into a new view that contains one
+sample for each true positive, false positive, and false negative example.
+
+True positive examples will result in samples with both their ground truth and
+predicted fields populated, while false positive/negative examples will only
+have one of their corresponding predicted/ground truth fields populated,
+respectively.
+
+If multiple predictions are matched to a ground truth object (e.g., if the
+evaluation protocol includes a crowd attribute), then all matched predictions
+will be stored in the single sample along with the ground truth object.
+
+Evaluation patches views also have top-level ``type`` and ``iou`` fields
+populated based on the evaluation results for that example, as well as a
+``sample_id`` field recording the sample ID of the example, and a ``crowd``
+field if the evaluation protocol defines a crowd attribute.
+
+.. note::
+
+    Evaluation patches views generate patches for **only** the contents of the
+    current view, which may differ from the view on which the ``eval_key``
+    evaluation was performed. This may exclude some labels that were evaluated
+    and/or include labels that were not evaluated.
+
+    If you would like to see patches for the exact view on which an
+    evaluation was performed, first call
+    :meth:`load_evaluation_view() <fiftyone.core.collections.SampleCollection.load_evaluation_view>`
+    to load the view and then convert to patches.
+
+The example below demonstrates loading an evaluation patches view for the
+results of an evaluation on the
+:ref:`quickstart dataset <dataset-zoo-quickstart>` from the Dataset Zoo:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart")
+
+    # Evaluate `predictions` w.r.t. labels in `ground_truth` field
+    dataset.evaluate_detections(
+        "predictions", gt_field="ground_truth", eval_key="eval"
+    )
+
+    session = fo.launch_app(dataset)
+
+    # Convert to evaluation patches
+    eval_patches = dataset.to_evaluation_patches("eval")
+    print(eval_patches)
+
+    # View patches in the App
+    session.view = eval_patches
+
+.. code-block:: text
+
+    Dataset:     quickstart
+    Media type:  image
+    Num patches: 5363
+    Tags:        ['validation']
+    Patch fields:
+        filepath:     fiftyone.core.fields.StringField
+        tags:         fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
+        metadata:     fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.Metadata)
+        predictions:  fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Detections)
+        ground_truth: fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Detections)
+        sample_id:    fiftyone.core.fields.StringField
+        type:         fiftyone.core.fields.StringField
+        iou:          fiftyone.core.fields.FloatField
+        crowd:        fiftyone.core.fields.BooleanField
+    View stages:
+        1. ToEvaluationPatches(eval_key='eval')
+
+.. note::
+
+    Did you know? You can convert to evaluation patches view directly
+    :ref:`from the App <app-evaluation-patches>`!
+
+.. image:: ../images/evaluation/evaluation_patches.gif
+    :alt: evaluation-patches
+    :align: center
+
+Evaluation patches views are just like any other
+:ref:`dataset view <using-views>` in the sense that:
+
+-   You can append view stages via the :ref:`App view bar <app-create-view>` or
+    :ref:`views API <using-views>`
+-   Any modifications to ground truth or predicted label tags that you make via
+    the App's :ref:`tagging menu <app-tagging>` or via API methods like
+    :meth:`tag_labels() <fiftyone.core.collections.SampleCollection.tag_labels>`
+    and :meth:`untag_labels() <fiftyone.core.collections.SampleCollection.untag_labels>`
+    will be reflected on the source dataset
+-   Any modifications to the predicted or ground truth |Label| elements in the
+    patches view that you make by iterating over the contents of the view or
+    calling
+    :meth:`set_values() <fiftyone.core.collections.SampleCollection.set_values>`
+    will be reflected on the source dataset
+-   Calling :meth:`save() <fiftyone.core.patches.EvaluationPatchesView.save>`
+    on an evaluation patches view (typically one that contains additional view
+    stages that filter or modify its contents) will sync any |Label| edits or
+    deletions with the source dataset
+
+However, because evaluation patches views only contain a subset of the contents
+of a |Sample| from the source dataset, there are some differences in behavior
+compared to non-patch views:
+
+-   Tagging or untagging patches themselves (as opposed to their labels) will
+    not affect the tags of the underlying |Sample|
+-   Any new fields that you add to an evaluation patches view will not be added
+    to the source dataset
+
+.. _evaluating-detections-coco:
+
 COCO-style evaluation (default)
 -------------------------------
 
 By default,
 :meth:`evaluate_detections() <fiftyone.core.collections.SampleCollection.evaluate_detections>`
 will use `COCO-style evaluation <https://cocodataset.org/#detection-eval>`_ to
-analyze predictions. This means that:
+analyze predictions.
+
+You can also explicitly request that COCO-style evaluation be used by setting
+the ``method`` parameter to ``"coco"``.
+
+.. note::
+
+    FiftyOne's implementation of COCO-style evaluation matches the reference
+    implementation available via :ref:`pycocotools <https://github.com/cocodataset/cocoapi>`_.
+
+Overview
+~~~~~~~~
+
+When running COCO-style evaluation using
+:meth:`evaluate_detections() <fiftyone.core.collections.SampleCollection.evaluate_detections>`:
 
 -   Predicted and ground truth objects are matched using a specified IoU
     threshold (default = 0.50). This threshold can be customized via the
-    ``iou`` parameter.
--   Predictions are matched in descending order of confidence.
+    ``iou`` parameter
 -   By default, only objects with the same ``label`` will be matched. Classwise
-    matching can be disabled via the ``classwise`` parameter.
--   Ground truth objects can have an `iscrowd` attribute that indicates whether
-    the annotation contains a crowd of objects. Multiple predictions can be
-    matched to crowd ground truth objects. The name of this attribute can be
-    customized via the ``iscrowd`` attribute.
-
-You can explicitly request that COCO-style evaluation be used by setting the
-``method`` parameter to ``"coco"``.
+    matching can be disabled via the ``classwise`` parameter
+-   Ground truth objects can have an ``iscrowd`` attribute that indicates
+    whether the annotation contains a crowd of objects. Multiple predictions
+    can be matched to crowd ground truth objects. The name of this attribute
+    can be customized via the ``iscrowd`` attribute
 
 When you specify an ``eval_key`` parameter, a number of helpful fields will be
 populated on each sample and its predicted/ground truth objects:
@@ -654,8 +794,8 @@ The example below demonstrates COCO-style detection evaluation on the
 Computing mAP and PR curves
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-You can also compute mean average precision (mAP) and precision-recall (PR)
-curves for your detections by passing the ``compute_mAP=True`` flag to
+You can compute mean average precision (mAP) and precision-recall (PR) curves
+for your detections by passing the ``compute_mAP=True`` flag to
 :meth:`evaluate_detections() <fiftyone.core.collections.SampleCollection.evaluate_detections>`:
 
 .. note::
@@ -694,19 +834,19 @@ curves for your detections by passing the ``compute_mAP=True`` flag to
    :alt: coco-pr-curves
    :align: center
 
+Confusion matrices
+~~~~~~~~~~~~~~~~~~
 
-:ref:`Confusion matrices <confusion-matrices>`
-can also be generated from the results of COCO-style
-detection evaluation. In order for the confusion matrix to contain interesting
-information, the parameter
-:class:`classwise <fiftyone.utils.eval.coco.COCOEvaluationConfig>`
-will need to be set to `False` during
-evaluation so that detections can be matched with ground truth objects of a
-different class.
-These confusion matrices are an example of
-:ref:`interactive plots <interactive-plots>`
-in FiftyOne.
+You can also easily generate confusion matrices for the results of COCO-style
+evaluations.
 
+In order for the confusion matrix to capture anything other than false
+positive/negative counts, you will likely want to set the
+:class:`classwise <fiftyone.utils.eval.coco.COCOEvaluationConfig>` parameter
+to ``False`` during evaluation so that detections can be matched with ground
+truth objects of different classes.
+
+The example below dem
 .. code-block:: python
     :linenos:
 
@@ -714,42 +854,49 @@ in FiftyOne.
     import fiftyone.zoo as foz
 
     dataset = foz.load_zoo_dataset("quickstart")
-    print(dataset)
 
+    # Perform evaluation, allowing objects to be matched between classes
     results = dataset.evaluate_detections(
-        "predictions",
-        gt_field="ground_truth",
-        eval_key="eval_coco_cm",
-        classwise=False,
+        "predictions", gt_field="ground_truth", classwise=False
     )
 
-    plot = results.plot_confusion_matrix(
-        classes=["car", "truck", "motorcycle"]
-    )
+    # Generate a confusion matrix for the specified classes
+    plot = results.plot_confusion_matrix(classes=["car", "truck", "motorcycle"])
     plot.show()
 
+.. note::
+
+    Did you know? :ref:`Confusion matrices <confusion-matrices>` can be
+    attached to your |Session| object and dynamically explored using FiftyOne's
+    :ref:`interactive plotting features <interactive-plots>`!
 
 .. image:: ../images/evaluation/coco_confusion_matrix.png
    :alt: coco-confusion-matrix
    :align: center
 
-mAP protocol details
-~~~~~~~~~~~~~~~~~~~~
+mAP protocol
+~~~~~~~~~~~~
 
-The protocol to compute mean average precision (mAP) often varies based on the
-implementation an dataset on which it is performed. The COCO mAP protocol is
-often considered the de-facto method, succeeding the 
-`PASCAL VOC-style calculation of mAP
-<https://jonathan-hui.medium.com/map-mean-average-precision-for-object-detection-45c121a31173>`_.
+This section describes the mAP computation specified by the
+`COCO evaluation protocol <https://cocodataset.org/#detection-eval>`_, which is
+currently the de-facto evaluation protocol for most work in the computer vision
+community.
 
-COCO-style mAP calculation primarily adds the ability to evaluate `iscrowd`
-objects and evaluate a sweep of IoU values.
+.. note::
+
+    FiftyOne's implementation of COCO-style evaluation matches the reference
+    implementation available via :ref:`pycocotools <https://github.com/cocodataset/cocoapi>`_.
+
+COCO-style mAP is derived from
+`VOC-style evaluation <http://host.robots.ox.ac.uk/pascal/VOC/voc2010/devkit_doc_08-May-2010.pdf>`_
+with the addition of a crowd attribute and an IoU sweep.
 
 The steps to compute COCO-style mAP are detailed below.
 
-Preprocessing:
+**Preprocessing**
 
-- Filter ground truth and predicted objects by class (unless `classwise=False`)
+- Filter ground truth and predicted objects by class
+  (unless ``classwise=False``)
 
 - Sort predicted objects by confidence score so high confidence objects are
   matched first. Only the top 100 predictions are factored into evaluation
@@ -757,69 +904,65 @@ Preprocessing:
 
 - Sort ground truth objects so `iscrowd` objects are matched last
 
-- Compute IoU between every ground truth and predicted object within the same 
+- Compute IoU between every ground truth and predicted object within the same
   class (and between classes if `classwise=False`) in each image.
 
 - IoU between predictions and crowd objects is calculated as the intersection
   of both boxes divided by the area of the prediction only. A prediction fully
   inside the crowd box has an IoU of 1.
 
-
-
-Matching:
+**Matching**
 
 Once IoUs have been computed, predictions and ground truth objects need to be
 matched to compute true positives, false positives, and false negatives.
 
-- For each class, start with the highest confidence prediction, match it to
-  the ground truth object that it overlaps with the highest IoU. A prediction
-  only matches if the IoU is above the specified IoU threshold.
+-   For each class, start with the highest confidence prediction, match it to
+    the ground truth object that it overlaps with the highest IoU. A prediction
+    only matches if the IoU is above the specified IoU threshold
 
-- If a prediction matched to a non-crowd object, it will not match to a crowd
-  even if the IoU is higher.
+-   If a prediction matched to a non-crowd object, it will not match to a crowd
+    even if the IoU is higher
 
-- Multiple predictions can match to the same crowd ground truth object, each
-  counting as a true positive.
+-   Multiple predictions can match to the same crowd ground truth object, each
+    counting as a true positive
 
-- If a prediction maximally overlaps with a ground truth object that has
-  already been matched (by a higher confidence prediction), the prediction is
-  matched with the next highest IoU ground truth object.
+-   If a prediction maximally overlaps with a ground truth object that has
+    already been matched (by a higher confidence prediction), the prediction is
+    matched with the next highest IoU ground truth object
 
-- (Only relevant if `classwise=False`) predictions can only match to crowds if they are
-  of the same class.
+-   (Only relevant if ``classwise=False``) predictions can only match to crowds
+    if they are of the same class
 
+**Computing mAP**
 
-Computing mAP:
+-   Compute matches for 10 IoU thresholds from 0.5 to 0.95 in increments of
+    0.05
 
-- Compute matches for 10 IoU thresholds from 0.5 to 0.95 in increments of
-  0.05.
+-   The next 6 steps are computed separately for each
+    class and IoU threshold:
 
-- The next 6 steps are computed separately for each
-  class and IoU threshold:
+-   1. Construct a boolean array of true positives and false positives, sorted
+    (`via mergesort <https://github.com/cocodataset/cocoapi/blob/8c9bcc3cf640524c4c20a9c40e89cb6a2f2fa0e9/PythonAPI/pycocotools/cocoeval.py#L366>`_)
+    by confidence
 
-- Construct a boolean array of true positives and false positives, sorted by
-  confidence. The 
-  `pycocotools documentation <https://github.com/cocodataset/cocoapi/blob/8c9bcc3cf640524c4c20a9c40e89cb6a2f2fa0e9/PythonAPI/pycocotools/cocoeval.py#L366>`_ 
-  states that it is crucial to use mergesort here.
+-   2. Compute the cumlative sum of the true positive and false positive array
 
-- Compute the cumlative sum of the true positive and false positive array.
+-   3. Precision is initially computed as the tp fp sum array where each
+    element is divided by the total number of predictions up to that point
 
-- Precision is initially computed as the tp fp sum array where each element is
-  divided by the total number of predictions up to that point.
- 
-- Recall is initially computed as the tp fp sum array divided 
-  by the scalar number of ground truth objects for the class.
+-   4. Recall is initially computed as the TP-FP sum array divided by the
+    scalar number of ground truth objects for the class
 
-- Ensure that precision is a non-increasing array.
+-   5. Ensure that precision is a non-increasing array
 
-- Interpolate precision values so that they can be plotted with an array of
-  101 evenly spaced recall values.
+-   6. Interpolate precision values so that they can be plotted with an array
+    of 101 evenly spaced recall values
 
-- Computing mAP: For every class that contains at least one ground truth
-  object, compute the AP by averaging the precision values over all 10 IoU
-  thresholds. Then take the mean of AP values of all classes to get mAP. 
+-   For every class that contains at least one ground truth object, compute the
+    AP by averaging the precision values over all 10 IoU thresholds. Then
+    compute mAP by averaging the per-class AP values over all classes
 
-.. _evaluating-models-open-images:
+.. _evaluating-detections-open-images:
 
 Open Images-style evaluation
 ----------------------------
@@ -827,6 +970,7 @@ Open Images-style evaluation
 FiftyOne provides
 `Open Images-style evaluation <https://storage.googleapis.com/openimages/web/evaluation.html>`_
 for object detection models and datasets.
+
 You can use Open Images instead of COCO style evaluation by
 setting the ``method`` parameter to ``"open-images"``
 when calling
@@ -849,7 +993,6 @@ evaluating your custom datasets. The two primary differences include:
   <https://storage.googleapis.com/openimages/web/evaluation.html>`_
   so that all levels of the hierarchy can be correctly
   evaluated.
-
 
 Open Images Challenge
 ~~~~~~~~~~~~~~~~~~~~~
@@ -900,7 +1043,6 @@ Images. In practice, the `predictions` field will need to be the
 
     print(results.mAP())
 
-
 Note: Most models trained on Open Images return the predictions for every class in the
 hierarchy, however if your model does not, then you can set
 :class:`expand_pred_hierarchy=True <fiftyone.utils.eval.openimages.OpenImagesEvaluationConfig>`
@@ -911,21 +1053,21 @@ General Overview
 
 `Open Images-style evaluation <https://storage.googleapis.com/openimages/web/evaluation.html>`_
 provides a few features setting it apart from COCO-style evaluation. All
-parameters unique to Open Images evaluation are defined in the 
+parameters unique to Open Images evaluation are defined in the
 :class:`OpenImagesEvaluationConfig <fiftyone.utils.eval.openimages.OpenImagesEvaluationConfig>`:
 
--   Open Images has positive and negative image-level labels indicating which 
-    classes of detections to evaluate. Other classes are ignored. These labels 
+-   Open Images has positive and negative image-level labels indicating which
+    classes of detections to evaluate. Other classes are ignored. These labels
     can be specified with the parameters ``pos_label_field`` and ``neg_label_field``.
 
--   Open Images evaluation incorporates a label hierarchy that can be provided 
-    with the ``hierarchy`` parameter. By default, if you provide a hierarchy then 
+-   Open Images evaluation incorporates a label hierarchy that can be provided
+    with the ``hierarchy`` parameter. By default, if you provide a hierarchy then
     image-level label fields and ground truth detections will be expanded to
-    incorporate parent classes (child classes for negative image-level labels). 
+    incorporate parent classes (child classes for negative image-level labels).
     The expansion only copies labels and detections temporarily to compute mAP,
     they are not saved in your dataset. You
     can turn this feature off by setting the ``expand_gt_hierarchy`` parameter to
-    ``False``. Alternatively, you can expand predictions with the ``expand_pred_hierarchy`` 
+    ``False``. Alternatively, you can expand predictions with the ``expand_pred_hierarchy``
     parameter.
 
 -   Following Pascal VOC 2010 evaluation protocol, only one IoU (default 0.5) is
@@ -1001,7 +1143,7 @@ The example below demonstrates Open Images-style detection evaluation on the
 .. code-block:: text
 
                    precision    recall  f1-score   support
-    
+
            person       0.25      0.86      0.39       378
              kite       0.27      0.75      0.40        75
               car       0.18      0.80      0.29        61
@@ -1012,7 +1154,7 @@ The example below demonstrates Open Images-style detection evaluation on the
          airplane       0.36      0.83      0.50        24
     traffic light       0.32      0.79      0.45        24
           giraffe       0.36      0.91      0.52        23
-    
+
         micro avg       0.21      0.79      0.34       750
         macro avg       0.23      0.74      0.34       750
      weighted avg       0.23      0.79      0.36       750
@@ -1026,7 +1168,7 @@ Computing mAP and PR curves
 
 Unlike COCO-style evaluation, mean average precision (mAP) and precision-recall (PR)
 curves can be computed by default when performing
-Open Images-style evaluation since it is lighter weight 
+Open Images-style evaluation since it is lighter weight
 due to not performing an IoU sweep.
 
 .. code-block:: python
@@ -1103,11 +1245,11 @@ mAP protocol details
 
 Open Images is a more recent dataset than COCO and has taken slightly different
 approaches to computing mAP. Open Images mAP
-calculation is also based off of 
-`PASCAL VOC-style mAP. 
+calculation is also based off of
+`PASCAL VOC-style mAP.
 <https://jonathan-hui.medium.com/map-mean-average-precision-for-object-detection-45c121a31173>`_.
 
-The primary differences between Open Images and COCO come in the way that 
+The primary differences between Open Images and COCO come in the way that
 objects are matched to crowds. Additionaly, Open Images includes image-level
 labels and class hierarchies in evaluation, unlike COCO.
 
@@ -1121,7 +1263,7 @@ Preprocessing:
   duplicating every object and positive image-level label and modifying the class
   to include all parent classes in the class hierarchy. Negative image-level labels
   are expanded to include all child classes in the hierarchy for every label in
-  the image. 
+  the image.
 
 - Sort predicted objects by confidence score so high confidence objects are
   matched first.
@@ -1129,7 +1271,7 @@ Preprocessing:
 - Sort ground truth objects so `IsGroupOf` objects (the name of crowd objects in Open
   Images) are matched last
 
-- Compute IoU between every ground truth and predicted object within the same 
+- Compute IoU between every ground truth and predicted object within the same
   class (and between classes if `classwise=False`) in each image.
 
 - IoU between predictions and crowd objects is calculated as the intersection
@@ -1150,11 +1292,11 @@ matched to compute true positives, false positives, and false negatives.
   even if the IoU is higher.
 
 - Multiple predictions can match to the same crowd ground truth object, but
-  only one counts as a true positive, the others are ignored (unlike COCO). 
+  only one counts as a true positive, the others are ignored (unlike COCO).
   If the crowd is not matched by any prediction, it is a false negative.
 
-- (Unlike COCO) If a prediction maximally overlaps with a non-crowd ground 
-  truth object that has already been matched (by a higher confidence 
+- (Unlike COCO) If a prediction maximally overlaps with a non-crowd ground
+  truth object that has already been matched (by a higher confidence
   prediction), the prediction is marked as a false positive.
 
 - (Only relevant if `classwise=False`) predictions can only match to crowds if they are
@@ -1163,37 +1305,36 @@ matched to compute true positives, false positives, and false negatives.
 
 Computing mAP:
 
-- (Unlike COCO) Only one IoU threshold (=0.5) is used to compute mAP 
+- (Unlike COCO) Only one IoU threshold (=0.5) is used to compute mAP
 
 - The next 6 steps are computed separately for each
   class:
 
 - Construct an array of true positives and false positives, sorted by
-  confidence. 
+  confidence.
 
-- Compute the 
-  `cumlative sum <https://numpy.org/doc/stable/reference/generated/numpy.cumsum.html>`_ 
+- Compute the
+  `cumlative sum <https://numpy.org/doc/stable/reference/generated/numpy.cumsum.html>`_
   of this true and false positive array.
 
 - Precision is an array equal to the the tp fp sum array with each element
   divided by the total number of predictions (count of tp and fp) up to that point.
- 
-- Recall is an array equal to the tp fp sum array with every element divided 
+
+- Recall is an array equal to the tp fp sum array with every element divided
   by the same scalar number of ground truth objects for the class.
 
 - Ensure that precision is a non-increasing array.
 
 - Add values `0` and `1` to precision and recall arrays.
 
-- (Unlike COCO) Precision values are not interpolated and all recall values 
+- (Unlike COCO) Precision values are not interpolated and all recall values
   are used to compute AP. This means that every class will produce a different
   number of precision and recall values depending on the number of true and
   false positives existing for that class.
 
 - Computing mAP: For every class that contains at least one ground truth
-  object, compute the AP by averaging the precision values. 
-  Then take the mean of AP values of all of these classes to get mAP. 
-
+  object, compute the AP by averaging the precision values.
+  Then take the mean of AP values of all of these classes to get mAP.
 
 .. _evaluating-segmentations:
 

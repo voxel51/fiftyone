@@ -504,6 +504,192 @@ excluded.
     will convert your filters to an equivalent set of stage(s) in the
     :ref:`view bar <app-create-view>`!
 
+.. _app-object-patches:
+
+Viewing object patches
+______________________
+
+Whenever you load a |Dataset| in the App that contains label list fields in
+|Detections| or |Polylines| format, you can use the patches menu to create a
+view into your data that contains one sample per object patch in a specified
+label field of your dataset.
+
+To switch to patches view, simply click the patches icon above the sample grid
+in the App, toggle to the ``Labels`` submenu, and then choose the field whose
+object patches you want to view.
+
+After you make a selection, a new |ToPatches| view stage will be appended to the
+view bar and your view will be updated to show the patches.
+
+.. note::
+
+    Switching to patches view will create patches for **only** the contents of
+    your current view.
+
+.. image:: ../images/app/app-object-patches.gif
+    :alt: object-patches
+    :align: center
+
+You can interact with object patches views in the App just like you would with
+any other view, including:
+
+-   You can filter and transform objects patches views using the filter
+    sidebar or the view bar
+-   Any modifications to patch label tags that you make via the
+    :ref:`tagging menu <app-tagging>` will be reflected on the source dataset
+
+One notable exception is that tagging or untagging patches themselves (as
+opposed to their labels) will not affect the sample tags of the underlying
+|Sample|.
+
+.. note::
+
+    Did you know? You can construct object patches views programmatically
+    via :ref:`dataset views <object-patches-views>`!
+
+.. _app-evaluation-patches:
+
+Viewing evaluation patches
+__________________________
+
+Whenever you load a |Dataset| in the App that contains object detections on
+which you have :ref:`run evaluation <evaluating-detections>`, you can use the
+patches menu to create a view into your data that contains one sample for each
+true positive, false positive, and false negative example.
+
+To switch to evaluation patches view, simply click the patches icon above the
+sample grid in the App, toggle to the ``Evaluations`` submenu, and then choose
+the ``eval_key`` under which you saved the evaluation results that you want
+view.
+
+After you make a selection, a new |ToEvaluationPatches| view stage will be
+appended to the view bar and your view will be updated to show the evaluation
+patches!
+
+.. note::
+
+    Refer to the :ref:`evaluation guide <evaluating-detections>` guide for more
+    information about running evaluations and using evaluation patches views
+    to analyze object detection models.
+
+.. image:: ../images/app/app-evaluation-patches.gif
+    :alt: evaluation-patches
+    :align: center
+
+You can interact with evaluation patches views in the App just like you would
+with any other view, including:
+
+-   You can filter and transform evaluation patches views using the filter
+    sidebar or the view bar
+-   Any modifications to the tags of the ground truth or predicted labels that
+    you make via the :ref:`tagging menu <app-tagging>` will be reflected on the
+    source dataset
+
+One notable exception is that tagging or untagging patches themselves (as
+opposed to their labels) will not affect the sample tags of the underlying
+|Sample|.
+
+.. note::
+
+    Switching to evaluation patches view will generate patches for **only**
+    the contents of the current view, which may differ from the view on which
+    the ``eval_key`` evaluation was performed. This may exclude some labels
+    that were evaluated and/or include labels that were not evaluated.
+
+    If you would like to see patches for the exact view on which an
+    evaluation was performed, first call
+    :meth:`load_evaluation_view() <fiftyone.core.collections.SampleCollection.load_evaluation_view>`
+    to load the view and then convert to patches.
+
+.. _app-similarity:
+
+Sorting by visual similarity
+____________________________
+
+Whenever you select samples, patches, or labels in the App in a |Dataset| that
+has been indexed by :ref:`visual similarity <brain-similarity>`, you can use
+the similarity menu in the App to sort or filter your current view based on
+visual similarity to the chosen image or object.
+
+.. note::
+
+    Refer to the :ref:`Brain guide <brain-similarity>` for more information
+    about indexing datasets by image/object similarity for use with this
+    feature.
+
+.. _app-image-similarity:
+
+Image similarity
+----------------
+
+Whenever one or more images are selected in the App, the similarity menu icon
+appears above the grid. If you have indexed the dataset by
+:ref:`image similarity <brain-image-similarity>`, then you will see the
+``brain_key`` (or multiple keys to choose from) for the applicable indexes in
+this menu.
+
+Choose the ``brain_key`` of interest and click apply, and a new
+|SortBySimilarity| view stage will be appended to the view bar and your view
+will be updated to show the results of the query.
+
+In the menu, you can optionally specify a maximum number of matches to return
+(``k``) and whether to sort in order of least similarity rather than most
+similarity (``reverse``).
+
+.. image:: ../images/brain/brain-image-similarity.gif
+    :alt: image-similarity
+    :align: center
+
+.. note::
+
+    For large datasets, you may notice longer load times the first time you use
+    a similarity index in a session. Subsequent similarity searches will use
+    cached results and will be faster!
+
+.. _app-object-similarity:
+
+Object similarity
+-----------------
+
+Whenever one or more labels or patches are selected in the App, the similarity
+menu icon appears above the sample grid. If you have indexed the dataset by
+:ref:`object similarity <brain-object-similarity>`, then you will see the
+``brain_key`` (or multiple keys to choose from) for the applicable indexes in
+this menu.
+
+The typical workflow for object similarity is to first switch to
+:ref:`object patches view <app-object-patches>` for the label field of
+interest. In this view, the similarity menu icon will appear whenever you have
+selected one or more patches from the grid, and the resulting view will sort
+the patches according to the similarity of their objects with respect to the
+objects in the query patches.
+
+Choose the ``brain_key`` of interest and click apply, and a new
+|SortBySimilarity| view stage will be appended to the view bar and your view
+will be updated to show the results of the query.
+
+In the menu, you can optionally specify a maximum number of matches to return
+(``k``) and whether to sort in order of least similarity rather than most
+similarity (``reverse``).
+
+.. image:: ../images/brain/brain-object-similarity.gif
+    :alt: object-similarity
+    :align: center
+
+You can also sort by visual similarity to an object from the expanded sample
+modal in the App by selecting an object and then using the similarity menu that
+appears in the upper-right corner of the modal:
+
+.. image:: ../images/brain/brain-object-similarity-modal.gif
+    :alt: object-similarity-modal
+    :align: center
+
+.. note::
+
+    For large datasets, you may notice longer load times the first time you use
+    a similarity index in a session. Subsequent similarity searches will use
+    cached results and will be faster!
+
 .. _app-config:
 
 Configuring the App
