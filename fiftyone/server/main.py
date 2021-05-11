@@ -960,7 +960,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         _write_message(message, app=True, only=self)
 
     @classmethod
-    async def on_distributions(cls, self, group):
+    async def on_distributions(cls, self, group, omit=[]):
         """Sends distribution data with respect to a group to the requesting
         client.
 
@@ -1017,8 +1017,10 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         elif results is None:
 
             def filter(field):
-                if field.name in {"filepath", "tags"} or field.name.startswith(
-                    "_"
+                if (
+                    field.name in {"tags"}
+                    or field.name in omit
+                    or field.name.startswith("_")
                 ):
                     return None
 
