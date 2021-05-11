@@ -77,6 +77,8 @@ Zoo
 
 Docs
 ^^^^
+- Added an :ref:`Open Images-style evaluation <evaluating-models-open-images>`
+  section to :ref:`Evaluating models <evaluating-models>` user guide
 - Added a :doc:`Downloading and evaluating Open Images </tutorials/open_images>` tutorial
 - Added examples of :meth:`SampleCollection.to_patches() <fiftyone.core.collections.SampleCollection.to_patches>`
   and
