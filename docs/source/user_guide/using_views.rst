@@ -614,7 +614,7 @@ contains patches for a filtered set of predictions:
     :ref:`from the App <app-object-patches>`!
 
 Object patches views are just like any other :ref:`dataset view <using-views>`
-in the following ways:
+in the sense that:
 
 -   You can append view stages via the :ref:`App view bar <app-create-view>` or
     :ref:`views API <using-views>`
@@ -632,8 +632,8 @@ in the following ways:
     that filter or modify its contents) will sync any |Label| edits or
     deletions with the source dataset
 
-Because object patches views only contain a subset of the contents of a
-|Sample| from the source dataset, there are some differences compared to
+However, because object patches views only contain a subset of the contents of
+a |Sample| from the source dataset, there are some differences compared to
 non-patch views:
 
 -   Tagging or untagging patches (as opposed to their labels) will not affect
@@ -691,7 +691,7 @@ respectively.
     to analyze object detection models.
 
 Evaluation patches views are just like any other
-:ref:`dataset view <using-views>` in the following ways:
+:ref:`dataset view <using-views>` in the sense that:
 
 -   You can append view stages via the :ref:`App view bar <app-create-view>` or
     :ref:`views API <using-views>`
@@ -710,8 +710,8 @@ Evaluation patches views are just like any other
     stages that filter or modify its contents) will sync any |Label| edits or
     deletions with the source dataset
 
-Because evaluation patches views only contain a subset of the contents of a
-|Sample| from the source dataset, there are some differences compared to
+However, because evaluation patches views only contain a subset of the contents
+of a |Sample| from the source dataset, there are some differences compared to
 non-patch views:
 
 -   Tagging or untagging patches themselves (as opposed to their labels) will

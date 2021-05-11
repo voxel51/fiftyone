@@ -642,7 +642,7 @@ results of an evaluation on the
     :align: center
 
 Evaluation patches views are just like any other
-:ref:`dataset view <using-views>` in the following ways:
+:ref:`dataset view <using-views>` in the sense that:
 
 -   You can append view stages via the :ref:`App view bar <app-create-view>` or
     :ref:`views API <using-views>`
@@ -661,8 +661,8 @@ Evaluation patches views are just like any other
     stages that filter or modify its contents) will sync any |Label| edits or
     deletions with the source dataset
 
-Because evaluation patches views only contain a subset of the contents of a
-|Sample| from the source dataset, there are some differences in behavior
+However, because evaluation patches views only contain a subset of the contents
+of a |Sample| from the source dataset, there are some differences in behavior
 compared to non-patch views:
 
 -   Tagging or untagging patches themselves (as opposed to their labels) will
