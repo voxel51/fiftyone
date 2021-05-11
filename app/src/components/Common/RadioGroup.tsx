@@ -3,8 +3,9 @@ import { Radio as MaterialRadio } from "@material-ui/core";
 import { animated } from "react-spring";
 import styled from "styled-components";
 
-import { ItemAction, useHighlightHover } from "../Actions/utils";
+import { useHighlightHover } from "../Actions/utils";
 import { useTheme } from "../../utils/hooks";
+import { ItemAction } from "../Actions/ItemAction";
 
 const StyledRadioContainer = styled.div``;
 

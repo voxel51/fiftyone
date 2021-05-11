@@ -872,7 +872,7 @@ Zoo <dataset-zoo-open-images>` which provides the Open Images class hierarchy in
 
 Below is an example of correctly running Open Images-style evaluation on Open
 Images. In practice, the `predictions` field will need to be the
-:ref:`detections from your model <../recipes/adding_detections.html>`:
+`detections from your model <../recipes/adding_detections.html>`_:
 
 .. code-block:: python
     :linenos:
