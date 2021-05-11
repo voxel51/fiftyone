@@ -7,17 +7,17 @@
 
 {% block custom_header %}
 <div class="container-fluid header-holder tutorials-header" id="header-holder">
-  {% if banner_link %}
-  <a href="{{ banner_link }}" style="color:white">
-  {% endif %}
-  {% if banner_message %}
-    <div class="banner show">
-      {{ banner_message }}
+  <a class="banner" href="https://voxel51.com/docs/fiftyone/tutorials/open_images.html">
+    <div>
+      <span>
+        We are collaborating with&nbsp;<b class="google-gray">Google</b>&nbsp;to
+        support the Open Images dataset and evaluation in&nbsp;<span
+          ><b style="color: var(--gray-dark3)">Fifty</b
+          ><b style="color: var(--color-primary)">One</b></span
+        >!
+      </span>
     </div>
-  {% endif %}
-  {% if banner_link %}
   </a>
-  {% endif %}
 
   <nav id="nav__main" class="nav__main">
     <div class="nav__main__logo">

@@ -40,16 +40,6 @@ article.pytorch-article .wy-table-responsive table thead th {
   height: auto;
 }
 
-.banner {
-  font-size: 18px;
-  padding: 25px;
-}
-
-a:hover .banner,
-.banner a:hover {
-  text-decoration: underline;
-}
-
 .pytorch-page-level-bar {
   z-index: 500;
 }

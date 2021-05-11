@@ -45,22 +45,48 @@
   --padding-y: 10rem;
 }
 
-.banner.show {
-  opacity: 1;
-  transition-delay: 0s;
-  margin-top: 0;
-  border-bottom: 1px;
+.banner {
+  background-color: var(--bg-light-secondary);
+  color: var(--text-primary-on-light);
+  min-height: 90px;
+  justify-content: space-between;
+  padding: 1em 30px;
+  display: flex;
+  width: 100%;
+  text-decoration-color: var(--text-primary-on-light) !important;
 }
 
-.banner {
-  background: var(--color-secondary);
-  color: var(--text-primary-on-dark);
-  padding: 2.5rem 2.5rem;
-  opacity: 0;
-  display: block;
-  position: center;
-  text-align: center;
-  line-height: 120%;
+.banner:hover {
+  text-decoration: underline;
+}
+
+.banner > div {
+  font-size: 20px;
+  line-height: 25px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.banner > div > span {
+  color: var(--text-primary-on-light);
+}
+
+.google-gray {
+  color: var(--gray-dark1);
+}
+
+.meet-google {
+  display: flex;
+  justify-content: ltr;
+  white-space: nowrap;
+}
+
+@media screen and (max-device-width: 850px) {
+  .banner > div > span {
+    font-size: 15px;
+    line-height: 18px;
+  }
 }
 
 /*  NAV  */
