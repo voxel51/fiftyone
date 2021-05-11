@@ -150,7 +150,7 @@ export const view = selector<[]>({
   },
 });
 
-export const filterStages = selector({
+export const filterStages = selector<object>({
   key: "filterStages",
   get: ({ get }) => {
     return get(atoms.stateDescription).filters;
@@ -175,7 +175,7 @@ export const hasFilters = selector<boolean>({
   get: ({ get }) => Object.keys(get(filterStages)).length > 0,
 });
 
-export const filterStage = selectorFamily<any, string>({
+export const filterStage = selectorFamily<object, string>({
   key: "filterStage",
   get: (path) => ({ get }) => {
     return get(filterStages)?.[path] ?? {};
