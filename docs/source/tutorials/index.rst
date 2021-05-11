@@ -57,6 +57,13 @@ your datasets and turn your good models into *great models*.
     :tags: Visualization,Brain
 
 .. customcarditem::
+    :header: Downloading and evaluating Open Images
+    :description: Expand your data lake and evaluate your object detection models with Google's Open Images dataset and evaluation protocol, all natively within FiftyOne.
+    :link: open_images.html
+    :image: ../_static/images/tutorials/open_images.png
+    :tags: Dataset-Evaluation,Model-Evaluation,Dataset-Zoo
+
+.. customcarditem::
     :header: Exploring image uniqueness
     :description: Your models need diverse data. This tutorial shows how FiftyOne can remove near-duplicate images and recommend unique samples for model training.
     :link: uniqueness.html
@@ -76,13 +83,6 @@ your datasets and turn your good models into *great models*.
     :link: detection_mistakes.html
     :image: ../_static/images/tutorials/detection_mistakes.png
     :tags: Dataset-Evaluation,Brain
-
-.. customcarditem::
-    :header: Downloading and evaluating Open Images
-    :description: Expand your data lake and evaluate your object detection models with Google's Open Images dataset and evaluation protocol, all natively within FiftyOne.
-    :link: open_images.html
-    :image: ../_static/images/tutorials/open_images.png
-    :tags: Dataset-Evaluation,Model-Evaluation,Dataset-Zoo
 
 .. End of tutorial cards
 
@@ -111,7 +111,7 @@ your datasets and turn your good models into *great models*.
    Evaluating object detections <evaluate_detections.ipynb>
    Evaluating a classifier <evaluate_classifications.ipynb>
    Using image embeddings <image_embeddings.ipynb>
+   Working with Open Images <open_images.ipynb>
    Exploring image uniqueness <uniqueness.ipynb>
    Finding class mistakes <classification_mistakes.ipynb>
    Finding detection mistakes <detection_mistakes.ipynb>
-   Working with Open Images <open_images.ipynb>
