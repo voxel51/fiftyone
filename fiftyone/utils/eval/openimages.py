@@ -9,12 +9,9 @@ from collections import defaultdict
 import copy
 import logging
 
-import matplotlib.pyplot as plt
 import numpy as np
-import sklearn.metrics as skm
 
 import fiftyone.core.plots as fop
-import fiftyone.core.utils as fou
 
 from .detection import (
     DetectionEvaluation,
@@ -68,8 +65,6 @@ class OpenImagesEvaluationConfig(DetectionEvaluationConfig):
         neg_label_field=None,
         expand_gt_hierarchy=True,
         expand_pred_hierarchy=False,
-        hierarchy_keyed_parent=None,
-        hierarchy_keyed_child=None,
         **kwargs
     ):
         super().__init__(
@@ -103,8 +98,8 @@ class OpenImagesEvaluationConfig(DetectionEvaluationConfig):
 
         if self.expand_gt_hierarchy or self.expand_pred_hierarchy:
             (
-                self.hierarchy_keyed_parent,
-                self.hierarchy_keyed_child,
+                self._hierarchy_keyed_parent,
+                self._hierarchy_keyed_child,
                 _,
             ) = _build_plain_hierarchy(self.hierarchy, skip_root=True)
 
@@ -205,14 +200,11 @@ class OpenImagesEvaluation(DetectionEvaluation):
     ):
         """Generates aggregate evaluation results for the samples.
 
-        This method performs Open Images-style evaluation as in
-        :meth:`evaluate_image` to generate precision and recall curves for the
-        given IoU in ``self.config.iou``. In this case, a
-        :class:`OpenImagesDetectionResults` instance is returned that can
-        provide the mAP and PR curves.
+        This method generates precision and recall curves for the configured
+        IoU at ``self.config.iou``.
 
         Args:
-            samples: a :class:`fiftyone.core.SamplesCollection`
+            samples: a :class:`fiftyone.core.collections.SampleCollection`
             matches: a list of
                 ``(gt_label, pred_label, iou, pred_confidence, gt_id, pred_id)``
                 matches. Either label can be ``None`` to indicate an unmatched
@@ -225,7 +217,7 @@ class OpenImagesEvaluation(DetectionEvaluation):
                 given this label for results purposes
 
         Returns:
-            a :class:`DetectionResults`
+            a :class:`OpenImagesDetectionResults`
         """
         pred_field = self.config.pred_field
         gt_field = self.config.gt_field
@@ -309,7 +301,7 @@ class OpenImagesEvaluation(DetectionEvaluation):
 
 
 class OpenImagesDetectionResults(DetectionResults):
-    """Class that stores the results of a Open Images detection evaluation.
+    """Class that stores the results of an Open Images detection evaluation.
 
     Args:
         matches: a list of
@@ -466,9 +458,9 @@ _NO_MATCH_IOU = None
 
 
 def _expand_label_hierarchy(labels, config, expand_child=True):
-    keyed_nodes = config.hierarchy_keyed_parent
+    keyed_nodes = config._hierarchy_keyed_parent
     if expand_child:
-        keyed_nodes = config.hierarchy_keyed_child
+        keyed_nodes = config._hierarchy_keyed_child
     additional_labs = []
     for lab in labels:
         if lab in keyed_nodes:
@@ -476,8 +468,8 @@ def _expand_label_hierarchy(labels, config, expand_child=True):
     return list(set(labels + additional_labs))
 
 
-def _expand_det_hierarchy(cats, det, config, label_type):
-    keyed_children = config.hierarchy_keyed_child
+def _expand_detection_hierarchy(cats, det, config, label_type):
+    keyed_children = config._hierarchy_keyed_child
     for parent in keyed_children[det.label]:
         new_det = det.copy()
         new_det.label = parent
@@ -541,7 +533,7 @@ def _open_images_evaluation_setup(
             cats[label]["preds"].append(det)
 
             if config.expand_pred_hierarchy and label != "all":
-                cats = _expand_det_hierarchy(cats, det, config, "preds")
+                cats = _expand_detection_hierarchy(cats, det, config, "preds")
 
     for det in gts.detections:
         if relevant_labs is None or det.label in relevant_labs:
@@ -552,7 +544,7 @@ def _open_images_evaluation_setup(
             cats[label]["gts"].append(det)
 
             if config.expand_gt_hierarchy and label != "all":
-                cats = _expand_det_hierarchy(cats, det, config, "gts")
+                cats = _expand_detection_hierarchy(cats, det, config, "gts")
 
     # Compute IoUs within each category
     pred_ious = {}
@@ -644,9 +636,10 @@ def _compute_matches(
                     if best_match is not None and not iscrowd(
                         gt_map[best_match]
                     ):
-                        # Note: This differs from COCO in that Open Images detections are only
-                        # matched with the highest IoU gt or a crowd. A detection will not be
-                        # matched with a secondary highest IoU gt if the highest IoU gt was
+                        # Note: This differs from COCO in that Open Images
+                        # detections are only matched with the highest IoU gt
+                        # or a crowd. A detection will not be matched with a
+                        # secondary highest IoU gt if the highest IoU gt was
                         # already matched with a different detection.
 
                         best_match = None
@@ -759,7 +752,6 @@ def _update_dict(initial_dict, update):
         initial_dict: initial dictionary
         update: updated dictionary
     """
-
     for key, value_list in update.items():
         if key in initial_dict:
             initial_dict[key].update(value_list)
@@ -776,20 +768,22 @@ def _build_plain_hierarchy(hierarchy, skip_root=False):
             classes under hierarchy are collected under virtual node)
 
     Returns:
-        keyed_parent: dictionary of parent - all its children nodes
-        keyed_child: dictionary of children - all its parent node
-        children: all children of the current node
+        a tuple of:
+
+        -   ``keyed_parent``: dictionary of parent - all its children nodes
+        -   ``keyed_child``: dictionary of children - all its parent node
+        -   ``children``: all children of the current node
     """
     all_children = set([])
     all_keyed_parent = {}
     all_keyed_child = {}
+
     if "Subcategory" in hierarchy:
         for node in hierarchy["Subcategory"]:
-            (keyed_parent, keyed_child, children,) = _build_plain_hierarchy(
-                node
-            )
-            # Update is not done through dict.update() since some children have multi-
-            # ple parents in the hiearchy.
+            keyed_parent, keyed_child, children = _build_plain_hierarchy(node)
+
+            # Update is not done through dict.update() since some children have
+            # multiple parents in the hiearchy
             _update_dict(all_keyed_parent, keyed_parent)
             _update_dict(all_keyed_child, keyed_child)
             all_children.update(children)
@@ -799,6 +793,7 @@ def _build_plain_hierarchy(hierarchy, skip_root=False):
         all_children.add(hierarchy["LabelName"])
         for child, _ in all_keyed_child.items():
             all_keyed_child[child].add(hierarchy["LabelName"])
+
         all_keyed_child[hierarchy["LabelName"]] = set([])
 
     return all_keyed_parent, all_keyed_child, all_children
