@@ -1256,7 +1256,7 @@ Images V6 by passing them to
 .. note::
 
     See
-    :class:`OpenImagesV6DatasetImporter <fiftyone.utils.openimages.OpenImagesV6DatasetImporter>`
+    :class:`OpenImagesV6Dataset <fiftyone.zoo.datasets.base.OpenImagesV6Dataset>`
     for complete descriptions of the optional keyword arguments that you can
     pass to :func:`load_zoo_dataset() <fiftyone.zoo.datasets.load_zoo_dataset>`
 
