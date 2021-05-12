@@ -141,7 +141,7 @@ const SampleInfo = React.memo(({ id }) => {
         <Tag
           key={cur}
           name={tag}
-          color={colorMap[cur]}
+          color={colorMap(cur)}
           title={tag}
           maxWidth={"calc(100% - 32px)"}
         />,
@@ -155,7 +155,7 @@ const SampleInfo = React.memo(({ id }) => {
           <Tag
             key={cur}
             name={`${tag}: ${count}`}
-            color={colorMap[cur]}
+            color={colorMap(cur)}
             title={`${tag}: ${count}`}
             maxWidth={"calc(100% - 32px)"}
           />,
@@ -172,7 +172,7 @@ const SampleInfo = React.memo(({ id }) => {
           key={"scalar-" + cur + "" + value}
           title={`${cur}: ${value}`}
           name={value}
-          color={colorByLabel ? colorMap[value] : colorMap[cur]}
+          color={colorByLabel ? colorMap(value) : colorMap(cur)}
           maxWidth={"calc(100% - 32px)"}
         />,
       ];
@@ -195,7 +195,7 @@ const SampleInfo = React.memo(({ id }) => {
               key={"scalar-" + cur + "" + v}
               title={`${cur}: ${v}`}
               name={[undefined, null].includes(v) ? "None" : v}
-              color={colorByLabel ? colorMap[v] : colorMap[cur]}
+              color={colorByLabel ? colorMap(v) : colorMap(cur)}
               maxWidth={"calc(100% - 32px)"}
             />
           )),

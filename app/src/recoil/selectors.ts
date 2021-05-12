@@ -694,7 +694,7 @@ export const appConfig = selector({
   },
 });
 
-export const colorMap = selectorFamily<{ [key: string]: string }, boolean>({
+export const colorMap = selectorFamily<(val) => string, boolean>({
   key: "colorMap",
   get: (modal) => ({ get }) => {
     const colorByLabel = get(atoms.colorByLabel(modal));
@@ -715,7 +715,7 @@ export const colorMap = selectorFamily<{ [key: string]: string }, boolean>({
         }
       });
       values = [...tags, ...values];
-      return generateColorMap(pool, Array.from(new Set(values)), seed, false);
+      return generateColorMap(pool, [], seed, false);
     } else {
       const colorLabelNames = get(labelTuples("sample"))
         .filter(([name, type]) => labelTypeHasColor(type))
