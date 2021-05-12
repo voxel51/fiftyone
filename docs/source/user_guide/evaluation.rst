@@ -1228,6 +1228,8 @@ official Open Images evaluation protocol on some mock model predictions:
 .. code-block:: python
     :linenos:
 
+    import random
+
     import fiftyone as fo
     import fiftyone.zoo as foz
 
@@ -1239,8 +1241,14 @@ official Open Images evaluation protocol on some mock model predictions:
         label_types=["detections", "classifications"],
     )
 
-    # Generate some fake predictions by cloning the ground truth field
-    dataset.clone_sample_field("detections", "predictions")
+    # Generate some fake predictions
+    for sample in dataset:
+        predictions = sample["detections"].copy()
+        for detection in predictions.detections:
+            detection.confidence = random.random()
+
+        sample["predictions"] = predictions
+        sample.save()
 
     # Evaluate your predictions via the official Open Images protocol
     results = dataset.evaluate_detections(
