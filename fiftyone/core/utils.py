@@ -182,6 +182,18 @@ def fill_patterns(string):
     return etau.fill_patterns(string, available_patterns())
 
 
+def ensure_boto3(error_msg=None):
+    """Verifies that boto3 is installed and importable.
+
+    Args:
+        error_msg (None): an optional custom error message to print
+
+    Raises:
+        ImportError: if ``boto3`` could not be imported
+    """
+    _ensure_import("boto3", error_msg=error_msg)
+
+
 def ensure_tf(eager=False, error_msg=None):
     """Verifies that TensorFlow is installed and importable.
 

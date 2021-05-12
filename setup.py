@@ -68,6 +68,7 @@ setup(
     install_requires=[
         # third-party packages
         "argcomplete",
+        "boto3",
         "Deprecated",
         "eventlet",
         "future",

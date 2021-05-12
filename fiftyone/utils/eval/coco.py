@@ -119,7 +119,8 @@ class COCOEvaluation(DetectionEvaluation):
             eval_key (None): the evaluation key for this evaluation
 
         Returns:
-            a list of matched ``(gt_label, pred_label, iou, pred_confidence)``
+            a list of matched 
+            ``(gt_label, pred_label, iou, pred_confidence, gt_id, pred_id)``
             tuples
         """
         gts = sample_or_frame[self.gt_field]

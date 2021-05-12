@@ -2691,6 +2691,9 @@ def _parse_value(val):
     except ValueError:
         pass
 
+    if "," in val:
+        return [_parse_value(v) for v in val.split(",")]
+
     return val
 
 

@@ -98,6 +98,7 @@
 .. |DetectionResults| replace:: :class:`DetectionResults <fiftyone.utils.eval.detection.DetectionResults>`
 .. |SegmentationResults| replace:: :class:`SegmentationResults <fiftyone.utils.eval.segmentation.SegmentationResults>`
 .. |COCOEvaluationConfig| replace:: :class:`COCOEvaluationConfig <fiftyone.utils.eval.coco.COCOEvaluationConfig>`
+.. |OpenImagesEvaluationConfig| replace:: :class:`OpenImagesEvaluationConfig <fiftyone.utils.eval.openimages.OpenImagesEvaluationConfig>`
 
 .. |Plot| replace:: :class:`Plot <fiftyone.core.plots.base.Plot>`
 .. |ResponsivePlot| replace:: :class:`ResponsivePlot <fiftyone.core.plots.base.ResponsivePlot>`
