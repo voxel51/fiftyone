@@ -1217,7 +1217,7 @@
             "date_added": "2020-12-11 13:45:51"
         },
         {
-            "base_name": "vgg16-imagenet-tf",
+            "base_name": "vgg16-imagenet-tf1",
             "base_filename": "vgg16-imagenet.npz",
             "version": null,
             "description": "VGG-16 model from `Very Deep Convolutional Networks for Large-Scale Image Recognition <https://arxiv.org/abs/1409.1556>`_ trained on ImageNet",
@@ -1243,11 +1243,11 @@
             "requirements": {
                 "cpu": {
                     "support": true,
-                    "packages": ["tensorflow"]
+                    "packages": ["tensorflow<2"]
                 },
                 "gpu": {
                     "support": true,
-                    "packages": ["tensorflow-gpu|tensorflow>=2"]
+                    "packages": ["tensorflow-gpu<2"]
                 }
             },
             "tags": [
@@ -1255,7 +1255,7 @@
                 "embeddings",
                 "logits",
                 "imagenet",
-                "tf"
+                "tf1"
             ],
             "date_added": "2020-12-11 13:45:51"
         },

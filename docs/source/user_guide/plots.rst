@@ -85,7 +85,7 @@ of the current view is automatically selected in the plot.
 Examples of |InteractivePlot| types include
 :ref:`scatterplots <embeddings-plots>`,
 :ref:`location scatterplots <geolocation-plots>`, and
-:ref:`interactive heatmaps <confusion-matrices>`.
+:ref:`interactive heatmaps <confusion-matrix-plots>`.
 
 .. image:: ../images/plots/mnist-interactive1.gif
    :alt: interactive-plots
@@ -476,7 +476,7 @@ notebook:
    :alt: location-scatterplot-interactive
    :align: center
 
-.. _confusion-matrices:
+.. _confusion-matrix-plots:
 
 Confusion matrices
 __________________

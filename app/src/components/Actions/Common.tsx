@@ -1,8 +1,9 @@
 import React from "react";
 import { Launch } from "@material-ui/icons";
 
-import { ItemAction, useHighlightHover } from "./utils";
+import { useHighlightHover } from "./utils";
 import { useExternalLink } from "../ExternalLink";
+import { ItemAction } from "./ItemAction";
 
 type ActionOptionProps = {
   onClick?: (event?: Event) => void;

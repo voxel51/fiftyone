@@ -156,6 +156,21 @@ class _PatchesView(fov.DatasetView):
             self._sync_source_field(field, ids=ids)
 
     def save(self, fields=None):
+        """Overwrites the object patches in the source dataset with the
+        contents of the view.
+
+        If this view contains any additional fields that were not extracted
+        from the source dataset, these fields are not saved.
+
+        .. warning::
+
+            This will permanently delete any omitted, filtered, or otherwise
+            modified patches from the source dataset.
+
+        Args:
+            fields (None): an optional field or list of fields to save. If
+                specified, only these fields are overwritten
+        """
         if etau.is_str(fields):
             fields = [fields]
 
