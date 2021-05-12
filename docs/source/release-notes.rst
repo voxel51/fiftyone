@@ -11,22 +11,21 @@ FiftyOne 0.9.0
 
 App
 ^^^
-- Added the ability to clear filters for entire field groups, e.g. `Labels` and
-  `Labels`, in the Filters Sidebar
-- Added `filepath` to the `Scalars` group in the Filters Sidebar
-- Refreshed numeric, string, and boolean filter styles with improved
-  functionality and interaction
+- Added a `Patches` action for easy switching to object/evaluation patches
+  views. See :ref:`this page <app-object-patches>` for usage details
+- Added a `Sort by similarity` action that enables sorting by visual similarity
+  to the selected samples/patches. See
+  :ref:`this page <app-similarity>` for usage details
 - Added a zoom slider in the top right of the sample grid that adjusts the tile
   size of the sample grid
-- Added a `Patches` action to the actions row for easy switching to
-  object/evaluation patches views. See :ref:`this page <app-object-patches>`
-  for usage details
-- Added a `Sort by similarity` action to the actions row that enables sorting
-  by visual similarity to the selected samples/patches. See
-  :ref:`this page <app-similarity>` for usage details
+- Added the ability to clear filters for entire field groups, e.g. `Labels` and
+  `Scalars`, in the Filters Sidebar
+- Added `filepath` to the `Scalars` group in the Filters Sidebar
+- Added a `Label tags` graphs tab
+- Refreshed numeric, string, and boolean filter styles with improved
+  functionality and interaction
 - Added support for :meth:`Session.wait() <fiftyone.core.session.Session.wait>`
   in browser contexts
-- Added a `Label tags` graphs tab
 
 Brain
 ^^^^^
