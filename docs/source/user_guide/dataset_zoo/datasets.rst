@@ -1244,9 +1244,7 @@ Images V6 by passing them to
     specified either as ``<split>/<image-id>`` or ``<image-id>``
 
 -   ``image_ids_file``: the path to a newline separated ``.txt``, ``.json``,
-    or ``.csv`` file containing a list of image IDs to load. The IDs can be
-    specified either as ``<split>/<image-id>`` or ``<image-id>``. If
-    ``image_ids`` is provided, this parameter is ignored
+    or ``.csv`` file containing a list of image IDs to load
 
 -   ``shuffle``: boolean dictating whether to randomly shuffle the order in
     which the samples are imported
@@ -1254,6 +1252,13 @@ Images V6 by passing them to
 -   ``seed``: a random seed to use when shuffling
 
 -   ``max_samples``: a maximum number of samples to import
+
+.. note::
+
+    See
+    :class:`OpenImagesV6DatasetImporter <fiftyone.utils.openimages.OpenImagesV6DatasetImporter>`
+    for complete descriptions of the optional keyword arguments that you can
+    pass to :func:`load_zoo_dataset() <fiftyone.zoo.datasets.load_zoo_dataset>`
 
 **Example usage**
 

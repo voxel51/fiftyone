@@ -46,16 +46,15 @@ Core
   labels and evaluations, respectively.
   See :ref:`this page <object-patches-views>` for usage details
 - Added support for applying image models to the frames of video datasets
-  to
+  when using
   :meth:`apply_model() <fiftyone.core.collections.SampleCollection.apply_model>`,
   :meth:`compute_embeddings() <fiftyone.core.collections.SampleCollection.compute_embeddings>`, and
   :meth:`compute_patch_embeddings() <fiftyone.core.collections.SampleCollection.compute_patch_embeddings>`
-- Added full support for embedded documents, e.g. labels, in
+- Added full support for embedded documents (e.g. labels) in
   :meth:`values() <fiftyone.core.collections.SampleCollection.values>` and
   :meth:`set_values() <fiftyone.core.collections.SampleCollection.set_values>`
 - Added support for passing expressions directly to
-  :ref:`aggregations <using-aggregations>`, e.g.
-  `dataset.bounds(F("ground_truth.detections").length())`
+  :ref:`aggregations <using-aggregations>`
 - Added an optional `omit_empty` flag to
   :meth:`select_labels() <fiftyone.core.collections.SampleCollection.select_labels>`
   and
