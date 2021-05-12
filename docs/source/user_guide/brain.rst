@@ -404,7 +404,7 @@ return (``k``) and whether to sort in order of least similarity (``reverse``):
 
     # Index ground truth objects by similarity
     fob.compute_similarity(
-      dataset, patches_field="ground_truth", brain_key="gt_sim"
+        dataset, patches_field="ground_truth", brain_key="gt_sim"
     )
 
     # Launch App
@@ -460,7 +460,7 @@ Applications
 How can visual simiarlity be used in practice? A common pattern is to mine your
 dataset for similar examples to certain images or object patches of interest,
 e.g., those that represent failure modes of a model that need to be studied in
-more detail or underrepresented classes that need more examples.
+more detail or underrepresented classes that need more training examples.
 
 Here are a few of the many possible applications:
 

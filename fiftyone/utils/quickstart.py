@@ -73,7 +73,7 @@ has a `uniqueness` field that indexes the dataset by visual uniqueness.
 Here are some things you can do to explore the dataset:
 
 
-(a) Double-click on an image to explore its labels in more detail
+(a) Click on an image to explore its labels in more detail
 
 
 (b) Sort the dataset by uniqueness:
@@ -90,7 +90,7 @@ Here are some things you can do to explore the dataset:
 
     The predictions field is noisy, but you can use FiftyOne to filter them!
 
-    In the display options menu on the left, click on the `v` caret to the
+    In the filters menu on the left, click on the `v` caret to the
     right of the `predictions` field to open a label filter. Drag the
     confidence slider to only include predictions with confidence at least 0.8!
 
@@ -134,9 +134,9 @@ Here are some things you can do to explore the dataset:
 
 (a) Hover over the videos in the grid view to play their contents
 
-(b) Use the display options menu to toggle and filter detections
+(b) Use the filters menu to toggle and filter detections
 
-(c) Double-click on a video to open the expanded view, and use the video player
+(c) Click on a video to open the expanded view, and use the video player
     to scrub through the frames
 
 

@@ -261,6 +261,7 @@ class PollingHandler(tornado.web.RequestHandler):
                     message = {"state": StateHandler.state}
 
             if event in {
+                "distinct",
                 "distributions",
                 "page",
                 "get_video_data",

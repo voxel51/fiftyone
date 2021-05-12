@@ -16,7 +16,7 @@ import {
   Wallpaper,
 } from "@material-ui/icons";
 import useMeasure from "react-use-measure";
-import { selectorFamily, useRecoilState, useRecoilValue } from "recoil";
+import { atom, selectorFamily, useRecoilState, useRecoilValue } from "recoil";
 import styled from "styled-components";
 
 import Coloring from "./Options";
@@ -255,22 +255,26 @@ const Hidden = () => {
   );
 };
 
+export const savingFilters = atom<boolean>({
+  key: "savingFilters",
+  default: false,
+});
+
 const SaveFilters = () => {
   const hasFilters = useRecoilValue(selectors.hasFilters);
-  const [loading, setLoading] = useState(false);
-  const filters = useRecoilValue(selectors.filterStages);
-
-  useEffect(() => {
-    loading && setLoading(false);
-  }, [loading, filters]);
+  const [loading, setLoading] = useRecoilState(savingFilters);
 
   return hasFilters ? (
     <PillButton
       open={false}
       highlight={true}
-      icon={<Bookmark />}
+      icon={loading ? <Loading /> : <Bookmark />}
+      style={{ cursor: loading ? "default" : "pointer" }}
       onClick={() => {
-        setLoading(false);
+        if (loading) {
+          return;
+        }
+        setLoading(true);
         socket.send(packageMessage("save_filters", {}));
       }}
       title={"Convert current field filters to view stages"}

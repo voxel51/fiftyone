@@ -271,7 +271,7 @@ const SampleTagsCell = ({ modal }: TagsCellProps) => {
       entries={tags
         .filter((t) => count[t])
         .map((name) => {
-          const color = colorByLabel ? theme.brand : colorMap["tags." + name];
+          const color = colorByLabel ? theme.brand : colorMap("tags." + name);
           return {
             name,
             disabled: false,
@@ -395,7 +395,7 @@ const LabelTagsCell = ({ modal }: TagsCellProps) => {
       entries={tags.map((name) => {
         const color = colorByLabel
           ? theme.brand
-          : colorMap["_label_tags." + name];
+          : colorMap("_label_tags." + name);
         const total = count && count[name] ? count[name] : 0;
         return {
           canFilter: true,
@@ -506,7 +506,7 @@ const LabelsCell = ({ modal, frames }: LabelsCellProps) => {
           hideCheckbox: false,
           hasDropdown: FILTERABLE_TYPES.includes(types[path]),
           selected: activeLabels.includes(path),
-          color: colorByLabel ? theme.brand : colorMap[path],
+          color: colorByLabel ? theme.brand : colorMap(path),
           title: name,
           path,
           type: "labels",
@@ -619,7 +619,7 @@ const ScalarsCell = ({ modal }: ScalarsCellProps) => {
             hideCheckbox: modal,
             hasDropdown: !modal,
             selected: activeScalars.includes(name),
-            color: colorByLabel ? theme.brand : colorMap[name],
+            color: colorByLabel ? theme.brand : colorMap(name),
             title: modal ? prettify(count[name], false) : name,
             path: name,
             type: "values",

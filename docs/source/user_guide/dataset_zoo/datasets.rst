@@ -1235,17 +1235,16 @@ Images V6 by passing them to
     to see the available segmentation classes
 
 -   ``attrs``: a list of strings for relationship attributes to load. This
-    parameter is only useful if ``"relationships"`` is in ``label_types``. You
-    can use :func:`get_attributes() <fiftyone.utils.openimages.get_attributes>`
+    parameter is only applicable if ``"relationships"`` is in ``label_types``.
+    You can use
+    :func:`get_attributes() <fiftyone.utils.openimages.get_attributes>`
     to see the available attributes
 
 -   ``image_ids``: a list of specific image IDs to load. The IDs can be
     specified either as ``<split>/<image-id>`` or ``<image-id>``
 
 -   ``image_ids_file``: the path to a newline separated ``.txt``, ``.json``,
-    or ``.csv`` file containing a list of image IDs to load. The IDs can be
-    specified either as ``<split>/<image-id>`` or ``<image-id>``. If
-    ``image_ids`` is provided, this parameter is ignored
+    or ``.csv`` file containing a list of image IDs to load
 
 -   ``shuffle``: boolean dictating whether to randomly shuffle the order in
     which the samples are imported
@@ -1253,6 +1252,13 @@ Images V6 by passing them to
 -   ``seed``: a random seed to use when shuffling
 
 -   ``max_samples``: a maximum number of samples to import
+
+.. note::
+
+    See
+    :class:`OpenImagesV6Dataset <fiftyone.zoo.datasets.base.OpenImagesV6Dataset>`
+    for complete descriptions of the optional keyword arguments that you can
+    pass to :func:`load_zoo_dataset() <fiftyone.zoo.datasets.load_zoo_dataset>`
 
 **Example usage**
 

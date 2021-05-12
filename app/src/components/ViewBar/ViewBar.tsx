@@ -176,7 +176,7 @@ const ViewBar = React.memo(() => {
             cursor: "pointer",
           }}
         />
-        <ExternalLink href="https://voxel51.com/docs/fiftyone/user_guide/app.html">
+        <ExternalLink href="https://voxel51.com/docs/fiftyone/user_guide/app.html#using-the-view-bar">
           <Help />
         </ExternalLink>
       </IconsContainer>
