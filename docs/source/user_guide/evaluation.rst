@@ -845,8 +845,8 @@ for your detections by passing the ``compute_mAP=True`` flag to
 Confusion matrices
 ~~~~~~~~~~~~~~~~~~
 
-You can also easily generate confusion matrices for the results of COCO-style
-evaluations.
+You can also easily generate :ref:`confusion matrices <confusion-matrices>` for
+the results of COCO-style evaluations.
 
 In order for the confusion matrix to capture anything other than false
 positive/negative counts, you will likely want to set the
@@ -908,25 +908,25 @@ The steps to compute COCO-style mAP are detailed below.
 
 - Sort predicted objects by confidence score so high confidence objects are
   matched first. Only the top 100 predictions are factored into evaluation
-  (configurable with `max_preds`).
+  (configurable with `max_preds`)
 
 - Sort ground truth objects so `iscrowd` objects are matched last
 
 - Compute IoU between every ground truth and predicted object within the same
-  class (and between classes if `classwise=False`) in each image.
+  class (and between classes if `classwise=False`) in each image
 
 - IoU between predictions and crowd objects is calculated as the intersection
   of both boxes divided by the area of the prediction only. A prediction fully
-  inside the crowd box has an IoU of 1.
+  inside the crowd box has an IoU of 1
 
 **Matching**
 
-Once IoUs have been computed, predictions and ground truth objects need to be
-matched to compute true positives, false positives, and false negatives.
+Once IoUs have been computed, predictions and ground truth objects are matched
+to compute true positives, false positives, and false negatives:
 
 -   For each class, start with the highest confidence prediction, match it to
     the ground truth object that it overlaps with the highest IoU. A prediction
-    only matches if the IoU is above the specified IoU threshold
+    only matches if the IoU is above the specified ``iou`` threshold
 
 -   If a prediction matched to a non-crowd object, it will not match to a crowd
     even if the IoU is higher
@@ -949,22 +949,22 @@ matched to compute true positives, false positives, and false negatives.
 -   The next 6 steps are computed separately for each
     class and IoU threshold:
 
--   1. Construct a boolean array of true positives and false positives, sorted
+-   Construct a boolean array of true positives and false positives, sorted
     (`via mergesort <https://github.com/cocodataset/cocoapi/blob/8c9bcc3cf640524c4c20a9c40e89cb6a2f2fa0e9/PythonAPI/pycocotools/cocoeval.py#L366>`_)
     by confidence
 
--   2. Compute the cumlative sum of the true positive and false positive array
+-   Compute the cumlative sum of the true positive and false positive array
 
--   3. Precision is initially computed as the tp fp sum array where each
-    element is divided by the total number of predictions up to that point
+-   Compute precision by elementwise dividing the TP-FP-sum array by the total
+    number of predictions up to that point
 
--   4. Recall is initially computed as the TP-FP sum array divided by the
-    scalar number of ground truth objects for the class
+-   Compute recall by elementwise dividing TP-FP-sum array by the number of
+    ground truth objects for the class
 
--   5. Ensure that precision is a non-increasing array
+-   Ensure that precision is a non-increasing array
 
--   6. Interpolate precision values so that they can be plotted with an array
-    of 101 evenly spaced recall values
+-   Interpolate precision values so that they can be plotted with an array of
+    101 evenly spaced recall values
 
 -   For every class that contains at least one ground truth object, compute the
     average precision (AP) by averaging the precision values over all 10 IoU
@@ -1009,8 +1009,8 @@ The two primary differences are:
     `class hierarchy <https://storage.googleapis.com/openimages/2018_04/bbox_labels_600_hierarchy_visualizer/circle.html>`_,
     you can configure this evaluation protocol to automatically expand ground
     truth and/or predicted leaf classes so that all levels of the hierarchy can
-    be `correctly evaluated <https://storage.googleapis.com/openimages/web/evaluation.html>`.
-    You can provide a label hierarchyvia the ``hierarchy`` parameter. By
+    be `correctly evaluated <https://storage.googleapis.com/openimages/web/evaluation.html>`_.
+    You can provide a label hierarchy via the ``hierarchy`` parameter. By
     default, if you provide a hierarchy, then image-level label fields and
     ground truth detections will be expanded to incorporate parent classes
     (child classes for negative image-level labels). You can disable this
@@ -1163,8 +1163,8 @@ curves using the results object returned by
 Confusion matrices
 ~~~~~~~~~~~~~~~~~~
 
-You can also easily generate confusion matrices for the results of Open
-Images-style evaluations.
+You can also easily generate :ref:`confusion matrices <confusion-matrices>` for
+the results of Open Images-style evaluations.
 
 In order for the confusion matrix to capture anything other than false
 positive/negative counts, you will likely want to set the
@@ -1268,7 +1268,7 @@ Most models trained on Open Images return the predictions for every class in
 the hierarchy. However, if your model does not, then you can set the
 :class:`expand_pred_hierarchy <fiftyone.utils.eval.openimages.OpenImagesEvaluationConfig>`
 parameter to ``False`` to automatically generate predictions for parent classes
-in the hierarchy.
+in the hierarchy for evaluation purposes.
 
 .. note::
 
@@ -1298,8 +1298,9 @@ The steps to compute Open Images-style mAP are detailed below.
 -   Sort predicted objects by confidence so that high confidence objects are
     matched first
 
--   Sort ground truth objects so ``IsGroupOf`` objects (the default name of
-    crowd objects in Open Images) are matched last
+-   Sort ground truth objects so that objects with ``IsGroupOf=True`` (the name
+    of this attribute can be customized via the ``iscrowd`` parameter) are
+    matched last
 
 -   Compute IoU between every ground truth and predicted object within the same
     class (and between classes if ``classwise=False``) in each image
@@ -1310,13 +1311,13 @@ The steps to compute Open Images-style mAP are detailed below.
 
 **Matching**
 
-Once IoUs have been computed, predictions and ground truth objects need to be
-matched to compute true positives, false positives, and false negatives:
+Once IoUs have been computed, predictions and ground truth objects are matched
+to compute true positives, false positives, and false negatives:
 
 -   For each class, start with the highest confidence prediction, match it to
     the ground truth object that it overlaps with the highest IoU. A prediction
-    only matches if the IoU is above the specified IoU threshold
-    (0.5 by default)
+    only matches if the IoU is above the specified ``iou`` threshold
+    (default = 0.5)
 
 -   If a prediction matched to a non-crowd gt object, it will not match to a
     crowd even if the IoU is higher
@@ -1326,41 +1327,41 @@ matched to compute true positives, false positives, and false negatives:
     If the crowd is not matched by any prediction, it is a false negative
 
 -   (Unlike COCO) If a prediction maximally overlaps with a non-crowd ground
-    truth object that has already been matched (by a higher confidence
-    prediction), the prediction is marked as a false positive
+    truth object that has already been matched with a higher confidence
+    prediction, the prediction is marked as a false positive
 
--   (Only relevant if ``classwise=False``) predictions can only match to crowds
-    if they are of the same class
+-   If ``classwise=False``, predictions can only match to crowds if they are of
+    the same class
 
 **Computing mAP**
 
--   (Unlike COCO) Only one IoU threshold (=0.5) is used to compute mAP
+-   (Unlike COCO) Only one IoU threshold (default = 0.5) is used to compute mAP
 
 -   The next 6 steps are computed separately for each class:
 
--   1. Construct an array of true positives and false positives, sorted by
+-   Construct an array of true positives and false positives, sorted by
     confidence
 
--   2. Compute the cumlative sum of this TP FP array
+-   Compute the cumlative sum of this TP FP array
 
--   3. Compute precision as an array equal to the elementwise division of the
-    TP FP sum array with the total number of predictions up to that point
+-   Compute precision array by elementwise dividing the TP-FP-sum array by
+    the total number of predictions up to that point
 
--   4. Compute recall as an array equal to the elementwise division of the
-    TP FP sum array with the total number of ground truth objects for the class
+-   Compute recall array by elementwise dividing the TP-FP-sum array with the
+    total number of ground truth objects for the class
 
--   5. Ensure that precision is a non-increasing array
+-   Ensure that precision is a non-increasing array
 
--   6. Add values ``0`` and ``1`` to precision and recall arrays
+-   Add values ``0`` and ``1`` to precision and recall arrays
 
-- (Unlike COCO) Precision values are not interpolated and all recall values
-  are used to compute AP. This means that every class will produce a different
-  number of precision and recall values depending on the number of true and
-  false positives existing for that class
+-   (Unlike COCO) Precision values are not interpolated and all recall values
+    are used to compute AP. This means that every class will produce a
+    different number of precision and recall values depending on the number of
+    true and false positives existing for that class
 
-- Computing mAP: For every class that contains at least one ground truth
-  object, compute the AP by averaging the precision values.
-  Then take the mean of AP values of all of these classes to get mAP.
+-   For every class that contains at least one ground truth object, compute the
+    AP by averaging the precision values. Then compute mAP by averaging the AP
+    values for each class
 
 .. _evaluating-segmentations:
 

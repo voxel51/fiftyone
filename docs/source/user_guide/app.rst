@@ -268,9 +268,9 @@ only those samples and/or labels that match the filter.
 
 .. note::
 
-    Did you know? When you have applied filter(s) in the App, a save icon
-    appears in the top-left corner of the sample grid. Clicking this button
-    will convert your filters to an equivalent set of stage(s) in the
+    Did you know? When you have applied filter(s) in the App, a bookmark icon
+    appears in the top-left corner of the sample grid. Click this button to
+    convert your filters to an equivalent set of stage(s) in the
     :ref:`view bar <app-create-view>`!
 
 .. image:: ../images/app/app-filters.gif
@@ -302,8 +302,8 @@ the App.
 Statistics tabs
 _______________
 
-The `Labels`, `Scalars`, and `Tags` tabs in the App let you visualize different
-statistics about your dataset.
+The `Sample tags`, `Label tags`, `Labels`, and `Scalars` tabs in the App let
+you visualize different statistics about your dataset.
 
 .. note::
 
@@ -311,7 +311,10 @@ statistics about your dataset.
     :ref:`view <using-views>` that you have loaded in the App, or the entire
     :ref:`dataset <using-datasets>` if no view is loaded.
 
-The `Labels` tab shows distributions of the `label` values for each
+The `Sample tags` and `Label tags` tabs show the distribution of any
+:ref:`tags <app-tagging>` that you've added to your dataset.
+
+The `Labels` tab shows the class distributions for each
 :ref:`labels field <using-labels>` that you've added to your dataset. For
 example, you may have histograms of ground truth labels and one more sets of
 model predictions.
@@ -321,9 +324,6 @@ categorical (e.g., string) :ref:`primitive fields <adding-sample-fields>` that
 you've added to your dataset. For example, if you computed
 :ref:`uniqueness <brain-image-uniqueness>` on your dataset, a histogram of
 uniqueness values will be displayed under the `Scalars` tab.
-
-The `Tags` tab shows the distribution of any :ref:`tags <using-tags>` that
-you've added to your dataset.
 
 .. image:: ../images/app/app-stats.gif
     :alt: app-stats

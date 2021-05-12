@@ -1235,8 +1235,9 @@ Images V6 by passing them to
     to see the available segmentation classes
 
 -   ``attrs``: a list of strings for relationship attributes to load. This
-    parameter is only useful if ``"relationships"`` is in ``label_types``. You
-    can use :func:`get_attributes() <fiftyone.utils.openimages.get_attributes>`
+    parameter is only applicable if ``"relationships"`` is in ``label_types``.
+    You can use
+    :func:`get_attributes() <fiftyone.utils.openimages.get_attributes>`
     to see the available attributes
 
 -   ``image_ids``: a list of specific image IDs to load. The IDs can be
