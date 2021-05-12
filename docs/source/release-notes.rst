@@ -77,8 +77,17 @@ Zoo
 
 Docs
 ^^^^
-- Added an :ref:`Open Images-style evaluation <evaluating-models-open-images>`
-  section to :ref:`Evaluating models <evaluating-models>` user guide
+- Added :ref:`object patches <app-object-patches>` and
+  :ref:`evaluation patches <app-evaluation-patches>` sections to the
+  :ref:`Using the App <fiftyone-app>` user guide
+- Added a :ref:`similarity <brain-similarity>` section to the
+  :ref:`FiftyOne Brain <fiftyone-brain>` user guide
+- Added :ref:`Open Images <evaluating-models-open-images>` and
+  :ref:`patches <evaluation-patches>` sections to the
+  :ref:`Evaluating models <evaluating-models>` user guide
+- Added :ref:`object patches <object-patches-views>` and
+  :ref:`evaluation patches <eval-patches-views>` sections to the
+  :ref:`Dataset views <using-views>` user guide
 - Added a :doc:`Downloading and evaluating Open Images </tutorials/open_images>` tutorial
 - Added examples of :meth:`SampleCollection.to_patches() <fiftyone.core.collections.SampleCollection.to_patches>`
   and
