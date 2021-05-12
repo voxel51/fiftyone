@@ -546,8 +546,8 @@ samples.
 
 .. note::
 
-    By default, FiftyOne uses the
-    :ref:`COCO-style <evaluating-detections-coco>` evaluation, but
+    FiftyOne uses the :ref:`COCO-style <evaluating-detections-coco>` evaluation
+    by default, but
     :ref:`Open Images-style <evaluating-detections-open-images>` evaluation is
     also natively supported.
 
@@ -688,7 +688,8 @@ the ``method`` parameter to ``"coco"``.
 .. note::
 
     FiftyOne's implementation of COCO-style evaluation matches the reference
-    implementation available via :ref:`pycocotools <https://github.com/cocodataset/cocoapi>`_.
+    implementation available via
+    `pycocotools <https://github.com/cocodataset/cocoapi>`_.
 
 Overview
 ~~~~~~~~
@@ -726,15 +727,18 @@ populated on each sample and its predicted/ground truth objects:
               ID: detection.<eval_key>_id
              IoU: detection.<eval_key>_iou
 
-The example below demonstrates COCO-style detection evaluation on the
-:ref:`quickstart dataset <dataset-zoo-quickstart>` from the Dataset Zoo:
-
 .. note::
 
     See |COCOEvaluationConfig| for complete descriptions of the optional
     keyword arguments that you can pass to
     :meth:`evaluate_detections() <fiftyone.core.collections.SampleCollection.evaluate_detections>`
     when running COCO-style evaluation.
+
+Example evaluation
+~~~~~~~~~~~~~~~~~~
+
+The example below demonstrates COCO-style detection evaluation on the
+:ref:`quickstart dataset <dataset-zoo-quickstart>` from the Dataset Zoo:
 
 .. code-block:: python
     :linenos:
@@ -812,10 +816,6 @@ for your detections by passing the ``compute_mAP=True`` flag to
     All mAP calculations are performed according to the
     `COCO evaluation protocol <https://cocodataset.org/#detection-eval>`_.
 
-    You can customize this behavior by passing additional keyword arguments for
-    |COCOEvaluationConfig| to
-    :meth:`evaluate_detections() <fiftyone.core.collections.SampleCollection.evaluate_detections>`.
-
 .. code-block:: python
     :linenos:
 
@@ -871,15 +871,15 @@ truth objects of different classes.
     plot = results.plot_confusion_matrix(classes=["car", "truck", "motorcycle"])
     plot.show()
 
+.. image:: ../images/evaluation/coco_confusion_matrix.png
+   :alt: coco-confusion-matrix
+   :align: center
+
 .. note::
 
     Did you know? :ref:`Confusion matrices <confusion-matrices>` can be
     attached to your |Session| object and dynamically explored using FiftyOne's
     :ref:`interactive plotting features <interactive-plots>`!
-
-.. image:: ../images/evaluation/coco_confusion_matrix.png
-   :alt: coco-confusion-matrix
-   :align: center
 
 mAP protocol
 ~~~~~~~~~~~~
@@ -892,7 +892,8 @@ community.
 .. note::
 
     FiftyOne's implementation of COCO-style evaluation matches the reference
-    implementation available via :ref:`pycocotools <https://github.com/cocodataset/cocoapi>`_.
+    implementation available via
+    `pycocotools <https://github.com/cocodataset/cocoapi>`_.
 
 COCO-style mAP is derived from
 `VOC-style evaluation <http://host.robots.ox.ac.uk/pascal/VOC/voc2010/devkit_doc_08-May-2010.pdf>`_
@@ -1008,7 +1009,7 @@ The two primary differences are:
     `class hierarchy <https://storage.googleapis.com/openimages/2018_04/bbox_labels_600_hierarchy_visualizer/circle.html>`_,
     you can configure this evaluation protocol to automatically expand ground
     truth and/or predicted leaf classes so that all levels of the hierarchy can
-    be :ref:`correctly evaluated <https://storage.googleapis.com/openimages/web/evaluation.html>`.
+    be `correctly evaluated <https://storage.googleapis.com/openimages/web/evaluation.html>`.
     You can provide a label hierarchyvia the ``hierarchy`` parameter. By
     default, if you provide a hierarchy, then image-level label fields and
     ground truth detections will be expanded to incorporate parent classes
@@ -1020,7 +1021,8 @@ The two primary differences are:
 In addition, note that:
 
 -   Like `VOC-style evaluation <http://host.robots.ox.ac.uk/pascal/VOC/voc2010/devkit_doc_08-May-2010.pdf>`_,
-    only one IoU (default 0.5) is used to calculate mAP
+    only one IoU (default = 0.5) is used to calculate mAP. You can customize
+    this value via the ``iou`` parameter
 
 -   When dealing with crowd objects, Open Images-style evaluation dictates that
     if a crowd is matched with multiple predictions, each counts as one true
@@ -1044,15 +1046,18 @@ populated on each sample and its predicted/ground truth objects:
               ID: detection.<eval_key>_id
              IoU: detection.<eval_key>_iou
 
-The example below demonstrates Open Images-style detection evaluation on the
-:ref:`quickstart dataset <dataset-zoo-quickstart>` from the Dataset Zoo:
-
 .. note::
 
     See |OpenImagesEvaluationConfig| for complete descriptions of the optional
     keyword arguments that you can pass to
     :meth:`evaluate_detections() <fiftyone.core.collections.SampleCollection.evaluate_detections>`
     when running Open Images-style evaluation.
+
+Example evaluation
+~~~~~~~~~~~~~~~~~~
+
+The example below demonstrates Open Images-style detection evaluation on the
+:ref:`quickstart dataset <dataset-zoo-quickstart>` from the Dataset Zoo:
 
 .. code-block:: python
     :linenos:
@@ -1187,15 +1192,15 @@ ground truth objects of different classes.
     plot = results.plot_confusion_matrix(classes=["car", "truck", "motorcycle"])
     plot.show()
 
+.. image:: ../images/evaluation/oi_confusion_matrix.png
+   :alt: oi-confusion-matrix
+   :align: center
+
 .. note::
 
     Did you know? :ref:`Confusion matrices <confusion-matrices>` can be
     attached to your |Session| object and dynamically explored using FiftyOne's
     :ref:`interactive plotting features <interactive-plots>`!
-
-.. image:: ../images/evaluation/oi_confusion_matrix.png
-   :alt: oi-confusion-matrix
-   :align: center
 
 Open Images Challenge
 ~~~~~~~~~~~~~~~~~~~~~
@@ -1208,7 +1213,7 @@ used in the
 you can use it to compute the official mAP for your model while also enjoying
 the benefits of working in the FiftyOne ecosystem, including
 :ref:`using views <using-views>` to manipulate your dataset and visually
-exploring your model's predictions in the :ref`FiftyOne App <fiftyone-app>`!
+exploring your model's predictions in the :ref:`FiftyOne App <fiftyone-app>`!
 
 In order to compute the official Open Images mAP for a model, your dataset
 **must** include the appropriate positive and negative sample-level labels, and
@@ -1251,16 +1256,16 @@ official Open Images evaluation protocol on some mock model predictions:
     # The official mAP for the results
     print(results.mAP())
 
-.. note::
-
-    Check out :ref:`this recipe <../recipes/adding_detections.html>` to learn
-    how to add your model's predictions to a FiftyOne Dataset.
-
 Most models trained on Open Images return the predictions for every class in
 the hierarchy. However, if your model does not, then you can set the
 :class:`expand_pred_hierarchy <fiftyone.utils.eval.openimages.OpenImagesEvaluationConfig>`
 parameter to ``False`` to automatically generate predictions for parent classes
 in the hierarchy.
+
+.. note::
+
+    Check out :doc:`this recipe </recipes/adding_detections>` to learn how to
+    add your model's predictions to a FiftyOne Dataset.
 
 mAP protocol
 ~~~~~~~~~~~~
