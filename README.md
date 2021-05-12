@@ -29,7 +29,7 @@ models**
 [![Mailing list](http://bit.ly/2Md9rxM)](https://share.hsforms.com/1zpJ60ggaQtOoVeBqIZdaaA2ykyk)
 [![Twitter](https://img.shields.io/twitter/follow/Voxel51?style=social)](https://twitter.com/voxel51)
 
-[![FiftyOne](https://voxel51.com/images/fiftyone_poster.png)](http://fiftyone.ai)
+[![FiftyOne](https://voxel51.com/images/fiftyone_poster.png)](https://fiftyone.ai)
 
 </p>
 </div>
@@ -40,7 +40,7 @@ Nothing hinders the success of machine learning systems more than poor quality
 data. And without the right tools, improving a model can be time-consuming and
 inefficient.
 
-[FiftyOne](http://fiftyone.ai) supercharges your machine learning workflows by
+[FiftyOne](https://fiftyone.ai) supercharges your machine learning workflows by
 enabling you to visualize datasets and interpret models faster and more
 effectively.
 
@@ -92,9 +92,8 @@ to see some common workflows on the quickstart dataset.
 
 ## Documentation
 
-Full documentation for FiftyOne is
-[available online](https://voxel51.com/docs/fiftyone). In particular, see these
-resources:
+Full documentation for FiftyOne is available at
+[fiftyone.ai](https://fiftyone.ai). In particular, see these resources:
 
 -   [Tutorials](https://voxel51.com/docs/fiftyone/tutorials/index.html)
 -   [Recipes](https://voxel51.com/docs/fiftyone/recipes/index.html)
