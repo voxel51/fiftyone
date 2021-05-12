@@ -433,7 +433,7 @@ Binary evaluation
 
 If your classifier is binary, set the ``method`` parameter of
 :meth:`evaluate_classifications() <fiftyone.core.collections.SampleCollection.evaluate_classifications>`
-to ``binary`` in order to access binary-specific evaluation information such
+to ``"binary"`` in order to access binary-specific evaluation information such
 as precision-recall curves for your model.
 
 When you specify an ``eval_key`` parameter, a string ``eval_key`` field will
@@ -699,8 +699,10 @@ When running COCO-style evaluation using
 -   Predicted and ground truth objects are matched using a specified IoU
     threshold (default = 0.50). This threshold can be customized via the
     ``iou`` parameter
+
 -   By default, only objects with the same ``label`` will be matched. Classwise
     matching can be disabled via the ``classwise`` parameter
+
 -   Ground truth objects can have an ``iscrowd`` attribute that indicates
     whether the annotation contains a crowd of objects. Multiple predictions
     can be matched to crowd ground truth objects. The name of this attribute
@@ -726,6 +728,13 @@ populated on each sample and its predicted/ground truth objects:
 
 The example below demonstrates COCO-style detection evaluation on the
 :ref:`quickstart dataset <dataset-zoo-quickstart>` from the Dataset Zoo:
+
+.. note::
+
+    See |COCOEvaluationConfig| for complete descriptions of the optional
+    keyword arguments that you can pass to
+    :meth:`evaluate_detections() <fiftyone.core.collections.SampleCollection.evaluate_detections>`
+    when running COCO-style evaluation.
 
 .. code-block:: python
     :linenos:
@@ -791,8 +800,8 @@ The example below demonstrates COCO-style detection evaluation on the
    :alt: quickstart-evaluate-detections
    :align: center
 
-Computing mAP and PR curves
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
+mAP and PR curves
+~~~~~~~~~~~~~~~~~
 
 You can compute mean average precision (mAP) and precision-recall (PR) curves
 for your detections by passing the ``compute_mAP=True`` flag to
@@ -801,8 +810,7 @@ for your detections by passing the ``compute_mAP=True`` flag to
 .. note::
 
     All mAP calculations are performed according to the
-    `COCO evaluation protocol <https://cocodataset.org/#detection-eval>`_
-    (same IoU thesholds, PR samplings, and so on).
+    `COCO evaluation protocol <https://cocodataset.org/#detection-eval>`_.
 
     You can customize this behavior by passing additional keyword arguments for
     |COCOEvaluationConfig| to
@@ -846,7 +854,6 @@ positive/negative counts, you will likely want to set the
 to ``False`` during evaluation so that detections can be matched with ground
 truth objects of different classes.
 
-The example below dem
 .. code-block:: python
     :linenos:
 
@@ -959,123 +966,65 @@ matched to compute true positives, false positives, and false negatives.
     of 101 evenly spaced recall values
 
 -   For every class that contains at least one ground truth object, compute the
-    AP by averaging the precision values over all 10 IoU thresholds. Then
-    compute mAP by averaging the per-class AP values over all classes
+    average precision (AP) by averaging the precision values over all 10 IoU
+    thresholds. Then compute mAP by averaging the per-class AP values over all
+    classes
 
 .. _evaluating-detections-open-images:
 
 Open Images-style evaluation
 ----------------------------
 
-FiftyOne provides
-`Open Images-style evaluation <https://storage.googleapis.com/openimages/web/evaluation.html>`_
-for object detection models and datasets.
+The :meth:`evaluate_detections() <fiftyone.core.collections.SampleCollection.evaluate_detections>`
+method also supports
+`Open Images-style evaluation <https://storage.googleapis.com/openimages/web/evaluation.html>`_.
 
-You can use Open Images instead of COCO style evaluation by
-setting the ``method`` parameter to ``"open-images"``
-when calling
-:meth:`evaluate_detections() <fiftyone.core.collections.SampleCollection.evaluate_detections>`
-.
+In order to run Open Images-style evaluation, simply set the ``method``
+parameter to ``"open-images"``.
+
+.. note::
+
+    FiftyOne's implementation of Open Images-style evaluation matches the
+    reference implementation available via the
+    `TF Object Detection API <https://github.com/tensorflow/models/tree/master/research/object_detection>`_.
+
+Overview
+~~~~~~~~
 
 Open Images-style evaluation provides additional features not found in
-COCO-style evaluation that you may want to incorporate when
-evaluating your custom datasets. The two primary differences include:
+:ref:`COCO-style evaluation <evaluating-detections-coco>` that you may find
+useful when evaluating your custom datasets.
 
-- Non-exhaustive image labeling: Positive and negative
-  sample-level classifications to indicate which object classes exist in the
-  sample. Detected object classes that are not included in the sample-level
-  labels for that sample are ignored when computing TP, FP, FN, and mAP.
+The two primary differences are:
 
-- Class hierarchy: If your dataset includes a
-  `class hierarchy <https://storage.googleapis.com/openimages/2018_04/bbox_labels_600_hierarchy_visualizer/circle.html>`_,
-  Open Images evaluation provides the option to
-  `automatically expand ground truth and predicted leaf classes
-  <https://storage.googleapis.com/openimages/web/evaluation.html>`_
-  so that all levels of the hierarchy can be correctly
-  evaluated.
+-   **Non-exhaustive image labeling:** positive and negative sample-level
+    |Classifications| fields can be provided to indicate which object classes
+    were considered when annotating the image. Predicted objects whose classes
+    are not included in the sample-level labels for a sample are ignored.
+    The names of these fields can be specified via the ``pos_label_field`` and
+    ``neg_label_field`` parameters
 
-Open Images Challenge
-~~~~~~~~~~~~~~~~~~~~~
+-   **Class hierarchies:** If your dataset includes a
+    `class hierarchy <https://storage.googleapis.com/openimages/2018_04/bbox_labels_600_hierarchy_visualizer/circle.html>`_,
+    you can configure this evaluation protocol to automatically expand ground
+    truth and/or predicted leaf classes so that all levels of the hierarchy can
+    be :ref:`correctly evaluated <https://storage.googleapis.com/openimages/web/evaluation.html>`.
+    You can provide a label hierarchyvia the ``hierarchy`` parameter. By
+    default, if you provide a hierarchy, then image-level label fields and
+    ground truth detections will be expanded to incorporate parent classes
+    (child classes for negative image-level labels). You can disable this
+    feature by setting the ``expand_gt_hierarchy`` parameter to ``False``.
+    Alternatively, you can expand predictions by setting the
+    ``expand_pred_hierarchy`` parameter to ``True``
 
-FiftyOne perfectly matches the TensorFlow Object Detection API
-implementation of the mAP metric used in the
-`Open Images object detection challenges <https://storage.googleapis.com/openimages/web/evaluation.html>`_.
-The benefit of FiftyOne is that it also allows
-you to access, visualize, and evaluate sample- and label-level results instead
-of just looking at aggregate dataset-wide metrics.
+In addition, note that:
 
-This section shows how to generate the official mAP on the Open Images dataset
-to compare your model to others evaluated on the dataset.
-This differs from evaluating on a custom dataset in that you are **required**
-to use the image-level ground truth labels and the Open Images class
-hierarchy to expand ground truth and predicted labels and detections.
-All of this is easy to do if you :ref:`load Open Images through the FiftyOne Dataset
-Zoo <dataset-zoo-open-images>` which provides the Open Images class hierarchy in
-:ref:`the dataset info property <storing-info>`.
+-   Like `VOC-style evaluation <http://host.robots.ox.ac.uk/pascal/VOC/voc2010/devkit_doc_08-May-2010.pdf>`_,
+    only one IoU (default 0.5) is used to calculate mAP
 
-Below is an example of correctly running Open Images-style evaluation on Open
-Images. In practice, the `predictions` field will need to be the
-`detections from your model <../recipes/adding_detections.html>`_:
-
-.. code-block:: python
-    :linenos:
-
-    import fiftyone as fo
-    import fiftyone.zoo as foz
-
-    dataset = foz.load_zoo_dataset(
-        "open-images-v6",
-        "validation",
-        max_samples=100,
-        label_types=["detections", "classifications"],
-    )
-
-    dataset.clone_sample_field("detections", "predictions")
-
-    results = dataset.evaluate_detections(
-        pred_field="predictions",
-        gt_field="detections",
-        pos_label_field="positive_labels",
-        neg_label_field="negative_labels",
-        hierarchy = dataset.info["hierarchy"],
-        method = "open-images",
-    )
-
-    print(results.mAP())
-
-Note: Most models trained on Open Images return the predictions for every class in the
-hierarchy, however if your model does not, then you can set
-:class:`expand_pred_hierarchy=True <fiftyone.utils.eval.openimages.OpenImagesEvaluationConfig>`
-to automatically generate predictions for parent classes in the hierarchy.
-
-General Overview
-~~~~~~~~~~~~~~~~
-
-`Open Images-style evaluation <https://storage.googleapis.com/openimages/web/evaluation.html>`_
-provides a few features setting it apart from COCO-style evaluation. All
-parameters unique to Open Images evaluation are defined in the
-:class:`OpenImagesEvaluationConfig <fiftyone.utils.eval.openimages.OpenImagesEvaluationConfig>`:
-
--   Open Images has positive and negative image-level labels indicating which
-    classes of detections to evaluate. Other classes are ignored. These labels
-    can be specified with the parameters ``pos_label_field`` and ``neg_label_field``.
-
--   Open Images evaluation incorporates a label hierarchy that can be provided
-    with the ``hierarchy`` parameter. By default, if you provide a hierarchy then
-    image-level label fields and ground truth detections will be expanded to
-    incorporate parent classes (child classes for negative image-level labels).
-    The expansion only copies labels and detections temporarily to compute mAP,
-    they are not saved in your dataset. You
-    can turn this feature off by setting the ``expand_gt_hierarchy`` parameter to
-    ``False``. Alternatively, you can expand predictions with the ``expand_pred_hierarchy``
-    parameter.
-
--   Following Pascal VOC 2010 evaluation protocol, only one IoU (default 0.5) is
-    used to calculate mAP.
-
--   When dealing with crowd objects, Open Images evaluation dictates that if a
-    crowd is matched with multiple predictions, they all count as one true
-    positive when calculating mAP.
+-   When dealing with crowd objects, Open Images-style evaluation dictates that
+    if a crowd is matched with multiple predictions, each counts as one true
+    positive when computing mAP
 
 When you specify an ``eval_key`` parameter, a number of helpful fields will be
 populated on each sample and its predicted/ground truth objects:
@@ -1097,6 +1046,13 @@ populated on each sample and its predicted/ground truth objects:
 
 The example below demonstrates Open Images-style detection evaluation on the
 :ref:`quickstart dataset <dataset-zoo-quickstart>` from the Dataset Zoo:
+
+.. note::
+
+    See |OpenImagesEvaluationConfig| for complete descriptions of the optional
+    keyword arguments that you can pass to
+    :meth:`evaluate_detections() <fiftyone.core.collections.SampleCollection.evaluate_detections>`
+    when running Open Images-style evaluation.
 
 .. code-block:: python
     :linenos:
@@ -1163,13 +1119,18 @@ The example below demonstrates Open Images-style detection evaluation on the
    :alt: quickstart-evaluate-detections-oi
    :align: center
 
-Computing mAP and PR curves
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
+mAP and PR curves
+~~~~~~~~~~~~~~~~~
 
-Unlike COCO-style evaluation, mean average precision (mAP) and precision-recall (PR)
-curves can be computed by default when performing
-Open Images-style evaluation since it is lighter weight
-due to not performing an IoU sweep.
+You can easily compute mean average precision (mAP) and precision-recall (PR)
+curves using the results object returned by
+:meth:`evaluate_detections() <fiftyone.core.collections.SampleCollection.evaluate_detections>`:
+
+.. note::
+
+    FiftyOne's implementation of Open Images-style evaluation matches the
+    reference implementation available via the
+    `TF Object Detection API <https://github.com/tensorflow/models/tree/master/research/object_detection>`_.
 
 .. code-block:: python
     :linenos:
@@ -1180,12 +1141,8 @@ due to not performing an IoU sweep.
     dataset = foz.load_zoo_dataset("quickstart")
     print(dataset)
 
-    # Performs an IoU sweep so that mAP and PR curves can be computed
     results = dataset.evaluate_detections(
-        "predictions",
-        gt_field="ground_truth",
-        method="open-images",
-        eval_key="eval_oi",
+        "predictions", gt_field="ground_truth", method="open-images"
     )
 
     print(results.mAP())
@@ -1194,24 +1151,21 @@ due to not performing an IoU sweep.
     plot = results.plot_pr_curves(classes=["person", "dog", "car"])
     plot.show()
 
-
 .. image:: ../images/evaluation/oi_pr_curve.png
    :alt: oi-pr-curve
    :align: center
 
+Confusion matrices
+~~~~~~~~~~~~~~~~~~
 
-:ref:`Confusion matrices <confusion-matrices>`
-can also be generated from the results of Open Images-style
-detection evaluation. In order for the confusion matrix to contain interesting
-information, the parameter
+You can also easily generate confusion matrices for the results of Open
+Images-style evaluations.
+
+In order for the confusion matrix to capture anything other than false
+positive/negative counts, you will likely want to set the
 :class:`classwise <fiftyone.utils.eval.openimages.OpenImagesEvaluationConfig>`
-will need to be set to `False` during
-evaluation so that detections can be matched with ground truth objects of a
-different class.
-These confusion matrices are an example of
-:ref:`interactive plots <interactive-plots>`
-in FiftyOne.
-
+parameter to ``False`` during evaluation so that detections can be matched with
+ground truth objects of different classes.
 
 .. code-block:: python
     :linenos:
@@ -1220,117 +1174,176 @@ in FiftyOne.
     import fiftyone.zoo as foz
 
     dataset = foz.load_zoo_dataset("quickstart")
-    print(dataset)
 
+    # Perform evaluation, allowing objects to be matched between classes
     results = dataset.evaluate_detections(
         "predictions",
         gt_field="ground_truth",
         method="open-images",
-        eval_key="eval_oi_cm",
         classwise=False,
     )
 
-    plot = results.plot_confusion_matrix(
-        classes=["car", "truck", "motorcycle"]
-    )
+    # Generate a confusion matrix for the specified classes
+    plot = results.plot_confusion_matrix(classes=["car", "truck", "motorcycle"])
     plot.show()
 
+.. note::
+
+    Did you know? :ref:`Confusion matrices <confusion-matrices>` can be
+    attached to your |Session| object and dynamically explored using FiftyOne's
+    :ref:`interactive plotting features <interactive-plots>`!
 
 .. image:: ../images/evaluation/oi_confusion_matrix.png
    :alt: oi-confusion-matrix
    :align: center
 
-mAP protocol details
-~~~~~~~~~~~~~~~~~~~~
+Open Images Challenge
+~~~~~~~~~~~~~~~~~~~~~
 
-Open Images is a more recent dataset than COCO and has taken slightly different
-approaches to computing mAP. Open Images mAP
-calculation is also based off of
-`PASCAL VOC-style mAP.
-<https://jonathan-hui.medium.com/map-mean-average-precision-for-object-detection-45c121a31173>`_.
+Since FiftyOne's implementation of Open Images-style evaluation matches the
+reference implementation from the
+`TF Object Detection API <https://github.com/tensorflow/models/tree/master/research/object_detection>`_
+used in the
+`Open Images detection challenges <https://storage.googleapis.com/openimages/web/evaluation.html>`_.
+you can use it to compute the official mAP for your model while also enjoying
+the benefits of working in the FiftyOne ecosystem, including
+:ref:`using views <using-views>` to manipulate your dataset and visually
+exploring your model's predictions in the :ref`FiftyOne App <fiftyone-app>`!
 
-The primary differences between Open Images and COCO come in the way that
-objects are matched to crowds. Additionaly, Open Images includes image-level
-labels and class hierarchies in evaluation, unlike COCO.
+In order to compute the official Open Images mAP for a model, your dataset
+**must** include the appropriate positive and negative sample-level labels, and
+you must provide the class hierarchy. Fortunately, when you load the Open
+Images dataset via the
+:ref:`Fiftyone Dataset Zoo <dataset-zoo-open-images-v6>`, all of the necessary
+information is automatically loaded for you!
+
+The example snippet below loads the Open Images V6 dataset and runs the
+official Open Images evaluation protocol on some mock model predictions:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    # Load some samples from the Open Images V6 dataset from the zoo
+    dataset = foz.load_zoo_dataset(
+        "open-images-v6",
+        "validation",
+        max_samples=100,
+        label_types=["detections", "classifications"],
+    )
+
+    # Generate some fake predictions by cloning the ground truth field
+    dataset.clone_sample_field("detections", "predictions")
+
+    # Evaluate your predictions via the official Open Images protocol
+    results = dataset.evaluate_detections(
+        "predictions",
+        gt_field="detections",
+        method="open-images",
+        pos_label_field="positive_labels",
+        neg_label_field="negative_labels",
+        hierarchy=dataset.info["hierarchy"],
+
+    )
+
+    # The official mAP for the results
+    print(results.mAP())
+
+.. note::
+
+    Check out :ref:`this recipe <../recipes/adding_detections.html>` to learn
+    how to add your model's predictions to a FiftyOne Dataset.
+
+Most models trained on Open Images return the predictions for every class in
+the hierarchy. However, if your model does not, then you can set the
+:class:`expand_pred_hierarchy <fiftyone.utils.eval.openimages.OpenImagesEvaluationConfig>`
+parameter to ``False`` to automatically generate predictions for parent classes
+in the hierarchy.
+
+mAP protocol
+~~~~~~~~~~~~
+
+The Open Images mAP protocol is similar to
+`COCO-style evaluation <https://cocodataset.org/#detection-eval>`_, with the
+primary differences being support for image-level labels, class hierarchies,
+and differences in the way that objects are matched to crowds.
 
 The steps to compute Open Images-style mAP are detailed below.
 
-Preprocessing:
+**Preprocessing**
 
-- Filter ground truth and predicted objects by class (unless `classwise=False`)
+-   Filter ground truth and predicted objects by class
+    (unless ``classwise=False``)
 
-- Expand the ground truth classes (or predictions if using FiftyOne) by
-  duplicating every object and positive image-level label and modifying the class
-  to include all parent classes in the class hierarchy. Negative image-level labels
-  are expanded to include all child classes in the hierarchy for every label in
-  the image.
+-   Expand the ground truth predictions by duplicating every object and
+    positive image-level label and modifying the class to include all parent
+    classes in the class hierarchy. Negative image-level labels are expanded to
+    include all child classes in the hierarchy for every label in the image
 
-- Sort predicted objects by confidence score so high confidence objects are
-  matched first.
+-   Sort predicted objects by confidence so that high confidence objects are
+    matched first
 
-- Sort ground truth objects so `IsGroupOf` objects (the name of crowd objects in Open
-  Images) are matched last
+-   Sort ground truth objects so ``IsGroupOf`` objects (the default name of
+    crowd objects in Open Images) are matched last
 
-- Compute IoU between every ground truth and predicted object within the same
-  class (and between classes if `classwise=False`) in each image.
+-   Compute IoU between every ground truth and predicted object within the same
+    class (and between classes if ``classwise=False``) in each image
 
-- IoU between predictions and crowd objects is calculated as the intersection
-  of both boxes divided by the area of the prediction only. A prediction fully
-  inside the crowd box has an IoU of 1.
+-   Compute IoU between predictions and crowd objects as the intersection of
+    both boxes divided by the area of the prediction only. A prediction fully
+    inside the crowd box has an IoU of 1
 
-
-Matching:
+**Matching**
 
 Once IoUs have been computed, predictions and ground truth objects need to be
-matched to compute true positives, false positives, and false negatives.
+matched to compute true positives, false positives, and false negatives:
 
-- For each class, start with the highest confidence prediction, match it to
-  the ground truth object that it overlaps with the highest IoU. A prediction
-  only matches if the IoU is above the specified IoU threshold (=0.5 by default).
+-   For each class, start with the highest confidence prediction, match it to
+    the ground truth object that it overlaps with the highest IoU. A prediction
+    only matches if the IoU is above the specified IoU threshold
+    (0.5 by default)
 
-- If a prediction matched to a non-crowd gt object, it will not match to a crowd
-  even if the IoU is higher.
+-   If a prediction matched to a non-crowd gt object, it will not match to a
+    crowd even if the IoU is higher
 
-- Multiple predictions can match to the same crowd ground truth object, but
-  only one counts as a true positive, the others are ignored (unlike COCO).
-  If the crowd is not matched by any prediction, it is a false negative.
+-   Multiple predictions can match to the same crowd ground truth object, but
+    only one counts as a true positive, the others are ignored (unlike COCO).
+    If the crowd is not matched by any prediction, it is a false negative
 
-- (Unlike COCO) If a prediction maximally overlaps with a non-crowd ground
-  truth object that has already been matched (by a higher confidence
-  prediction), the prediction is marked as a false positive.
+-   (Unlike COCO) If a prediction maximally overlaps with a non-crowd ground
+    truth object that has already been matched (by a higher confidence
+    prediction), the prediction is marked as a false positive
 
-- (Only relevant if `classwise=False`) predictions can only match to crowds if they are
-  of the same class.
+-   (Only relevant if ``classwise=False``) predictions can only match to crowds
+    if they are of the same class
 
+**Computing mAP**
 
-Computing mAP:
+-   (Unlike COCO) Only one IoU threshold (=0.5) is used to compute mAP
 
-- (Unlike COCO) Only one IoU threshold (=0.5) is used to compute mAP
+-   The next 6 steps are computed separately for each class:
 
-- The next 6 steps are computed separately for each
-  class:
+-   1. Construct an array of true positives and false positives, sorted by
+    confidence
 
-- Construct an array of true positives and false positives, sorted by
-  confidence.
+-   2. Compute the cumlative sum of this TP FP array
 
-- Compute the
-  `cumlative sum <https://numpy.org/doc/stable/reference/generated/numpy.cumsum.html>`_
-  of this true and false positive array.
+-   3. Compute precision as an array equal to the elementwise division of the
+    TP FP sum array with the total number of predictions up to that point
 
-- Precision is an array equal to the the tp fp sum array with each element
-  divided by the total number of predictions (count of tp and fp) up to that point.
+-   4. Compute recall as an array equal to the elementwise division of the
+    TP FP sum array with the total number of ground truth objects for the class
 
-- Recall is an array equal to the tp fp sum array with every element divided
-  by the same scalar number of ground truth objects for the class.
+-   5. Ensure that precision is a non-increasing array
 
-- Ensure that precision is a non-increasing array.
-
-- Add values `0` and `1` to precision and recall arrays.
+-   6. Add values ``0`` and ``1`` to precision and recall arrays
 
 - (Unlike COCO) Precision values are not interpolated and all recall values
   are used to compute AP. This means that every class will produce a different
   number of precision and recall values depending on the number of true and
-  false positives existing for that class.
+  false positives existing for that class
 
 - Computing mAP: For every class that contains at least one ground truth
   object, compute the AP by averaging the precision values.
