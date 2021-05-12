@@ -1,10 +1,5 @@
 import React, { useState, useRef, Suspense } from "react";
-import {
-  useRecoilState,
-  useSetRecoilState,
-  useRecoilValue,
-  useRecoilCallback,
-} from "recoil";
+import { useRecoilValue, useRecoilCallback } from "recoil";
 import { ErrorBoundary } from "react-error-boundary";
 import NotificationHub from "../components/NotificationHub";
 
@@ -24,6 +19,9 @@ import Error from "./Error";
 import Setup from "./Setup";
 import "player51/src/css/player51.css";
 import "../app.global.css";
+import { patching } from "../components/Actions/Patcher";
+import { similaritySorting } from "../components/Actions/Similar";
+import { savingFilters } from "../components/Actions/ActionsRow";
 
 const useStateUpdate = () => {
   return useRecoilCallback(({ snapshot, set, reset }) => async ({ state }) => {
@@ -41,6 +39,9 @@ const useStateUpdate = () => {
     set(atoms.selectedSamples, newSamples);
     set(atoms.stateDescription, state);
     set(selectors.anyTagging, false);
+    set(patching, false);
+    set(similaritySorting, false);
+    set(savingFilters, false);
     const colorPool = await snapshot.getPromise(atoms.colorPool);
     if (JSON.stringify(state.config.color_pool) !== JSON.stringify(colorPool)) {
       set(atoms.colorPool, state.config.color_pool);

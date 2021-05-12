@@ -10,6 +10,7 @@ from socket import gaierror
 import threading
 import uuid
 
+from httpx import HTTPError
 import universal_analytics as ua
 
 import fiftyone as fo
@@ -83,7 +84,7 @@ def log_import_if_allowed(test=False):
 
             global _import_logged
             _import_logged = True
-        except gaierror as e:
+        except (gaierror, HTTPError) as e:
             pass
 
     th = threading.Thread(target=send_import_event)

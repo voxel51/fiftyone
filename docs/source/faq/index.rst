@@ -80,12 +80,9 @@ a local port (we'll also use `XXXX` here, for consistency):
 Now open ``localhost:XXXX`` in your browser and you should find your notebook!
 
 If your notebook launches the :ref:`FiftyOne App <fiftyone-app>`, you will also
-need to configure a :ref:`remote session <remote-data>` as follows.
-
-**On your local machine:**
-
-Forward the port used by the :ref:`FiftyOne App <fiftyone-app>`. By default it
-is `5151` but can be :ref:`set to any value <remote-data>` not currently in use:
+need to forward the port used by the App to your local machine. By default,
+the App uses port `5151`, but you can :ref:`specify any port <remote-data>`,
+say `YYYY`, not currently in use on your remote machine:
 
 .. code:: shell
 
@@ -94,21 +91,24 @@ is `5151` but can be :ref:`set to any value <remote-data>` not currently in use:
 
 **In your Jupyter notebook:**
 
-Launch the :ref:`FiftyOne App <fiftyone-app>` in your notebook and either
-specify a port `YYYY` or let it default to `5151`:
+When you launch the :ref:`FiftyOne App <fiftyone-app>` in your notebook, you
+should now see the App as expected!
 
 .. code:: python
 
-    # Launch the App in the notebook cell 
-    session = fo.launch_app(dataset, port=YYYY)
+    # Launch the App in a notebook cell
+    session = fo.launch_app(dataset)  # port=YYYY
 
-Note, you can also
-:ref:`open the App in a dedicated tab <opening-app-dedicated-tab>`:
+If you chose a port `YYYY` other than the default `5151`, you will need to
+specify it when launching App instances per the commented argument above.
+
+Note that you can also open the App
+:ref:`in a dedicated tab <opening-app-dedicated-tab>`:
 
 .. code:: python
 
     # Launch the App in a dedicated browser tab
-    session = fo.launch_app(dataset, port=YYYY, auto=False)
+    session = fo.launch_app(dataset, auto=False)  # port=YYYY
     session.open_tab()
 
 .. _faq-remote-server-data:

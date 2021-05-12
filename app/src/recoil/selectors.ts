@@ -150,7 +150,7 @@ export const view = selector<[]>({
   },
 });
 
-export const filterStages = selector({
+export const filterStages = selector<object>({
   key: "filterStages",
   get: ({ get }) => {
     return get(atoms.stateDescription).filters;
@@ -175,7 +175,7 @@ export const hasFilters = selector<boolean>({
   get: ({ get }) => Object.keys(get(filterStages)).length > 0,
 });
 
-export const filterStage = selectorFamily<any, string>({
+export const filterStage = selectorFamily<object, string>({
   key: "filterStage",
   get: (path) => ({ get }) => {
     return get(filterStages)?.[path] ?? {};
@@ -460,7 +460,15 @@ const labelFilter = (f) => {
 };
 
 const scalarFilter = (f) => {
-  return VALID_SCALAR_TYPES.includes(f.ftype) && !f.name.startsWith("_");
+  if (f.name.startsWith("_") || f.name === "tags") {
+    return false;
+  }
+
+  if (VALID_SCALAR_TYPES.includes(f.ftype)) {
+    return true;
+  }
+
+  return false;
 };
 
 const fields = selectorFamily<{ [key: string]: SerializableParam }, string>({
@@ -686,7 +694,7 @@ export const appConfig = selector({
   },
 });
 
-export const colorMap = selectorFamily<{ [key: string]: string }, boolean>({
+export const colorMap = selectorFamily<(val) => string, boolean>({
   key: "colorMap",
   get: (modal) => ({ get }) => {
     const colorByLabel = get(atoms.colorByLabel(modal));
@@ -707,7 +715,7 @@ export const colorMap = selectorFamily<{ [key: string]: string }, boolean>({
         }
       });
       values = [...tags, ...values];
-      return generateColorMap(pool, Array.from(new Set(values)), seed, false);
+      return generateColorMap(pool, [], seed, false);
     } else {
       const colorLabelNames = get(labelTuples("sample"))
         .filter(([name, type]) => labelTypeHasColor(type))

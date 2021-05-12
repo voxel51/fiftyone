@@ -3,6 +3,104 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+.. _release-notes-v0.9.0:
+
+FiftyOne 0.9.0
+--------------
+*Released May 12, 2021*
+
+App
+^^^
+- Added a `Patches` action for easy switching to object/evaluation patches
+  views. See :ref:`this page <app-object-patches>` for usage details
+- Added a `Sort by similarity` action that enables sorting by visual similarity
+  to the selected samples/patches. See
+  :ref:`this page <app-similarity>` for usage details
+- Added a zoom slider in the top right of the sample grid that adjusts the tile
+  size of the sample grid
+- Added the ability to clear filters for entire field groups, e.g. `Labels` and
+  `Scalars`, in the Filters Sidebar
+- Added `filepath` to the `Scalars` group in the Filters Sidebar
+- Added a `Label tags` graphs tab
+- Refreshed numeric, string, and boolean filter styles with improved
+  functionality and interaction
+- Added support for :meth:`Session.wait() <fiftyone.core.session.Session.wait>`
+  in browser contexts
+
+Brain
+^^^^^
+- Added a :meth:`compute_similarity() <fiftyone.brain.compute_similarity>`
+  method for indexing samples and object patches by visual similarity. See
+  :ref:`this page <brain-similarity>` for usage details
+
+Core
+^^^^
+- Added support for Open Images-style detection evaluation when using
+  :meth:`evaluate_detections() <fiftyone.core.collections.SampleCollection.evaluate_detections>`.
+  See :ref:`this page <evaluating-detections-open-images>` for usage details
+- Added the
+  :meth:`to_patches() <fiftyone.core.collections.SampleCollection.to_patches>`
+  and
+  :meth:`to_evaluation_patches() <fiftyone.core.collections.SampleCollection.to_evaluation_patches>`
+  view stages for transforming collections into flattened views with respect to
+  labels and evaluations, respectively.
+  See :ref:`this page <object-patches-views>` for usage details
+- Added support for applying image models to the frames of video datasets
+  when using
+  :meth:`apply_model() <fiftyone.core.collections.SampleCollection.apply_model>`,
+  :meth:`compute_embeddings() <fiftyone.core.collections.SampleCollection.compute_embeddings>`, and
+  :meth:`compute_patch_embeddings() <fiftyone.core.collections.SampleCollection.compute_patch_embeddings>`
+- Added full support for embedded documents (e.g. labels) in
+  :meth:`values() <fiftyone.core.collections.SampleCollection.values>` and
+  :meth:`set_values() <fiftyone.core.collections.SampleCollection.set_values>`
+- Added support for passing expressions directly to
+  :ref:`aggregations <using-aggregations>`
+- Added an optional `omit_empty` flag to
+  :meth:`select_labels() <fiftyone.core.collections.SampleCollection.select_labels>`
+  and
+  :meth:`exclude_labels() <fiftyone.core.collections.SampleCollection.exclude_labels>`
+  that controls whether samples with no labels are omitted when filtering
+- Added a
+  :meth:`Dataset.delete_labels() <fiftyone.core.dataset.Dataset.delete_labels>`
+  method for efficiently deleting labels via a variety of natural syntaxes
+- Deprecated
+  :meth:`Dataset.remove_sample() <fiftyone.core.dataset.Dataset.remove_sample>`
+  and
+  :meth:`Dataset.remove_samples() <fiftyone.core.dataset.Dataset.remove_samples>`
+  in favor of a single
+  :meth:`Dataset.delete_samples() <fiftyone.core.dataset.Dataset.delete_samples>`
+  method
+
+Zoo
+^^^
+- Added :ref:`Open Images V6 <dataset-zoo-open-images-v6>` to the dataset zoo!
+
+Docs
+^^^^
+- Added a new :doc:`Open Images tutorial </tutorials/open_images>`
+- Added :ref:`object patches <app-object-patches>` and
+  :ref:`evaluation patches <app-evaluation-patches>` sections to the
+  :ref:`App guide <fiftyone-app>`
+- Added a :ref:`similarity <brain-similarity>` section to the
+  :ref:`Brain guide <fiftyone-brain>`
+- Added :ref:`Open Images evaluation <evaluating-detections-open-images>` and
+  :ref:`evaluation patches <evaluation-patches>` sections to the
+  :ref:`evaluation guide <evaluating-models>`
+- Added :ref:`object patches <object-patches-views>` and
+  :ref:`evaluation patches <eval-patches-views>` sections to the
+  :ref:`views guide <using-views>`
+- Added example uses of
+  :meth:`to_patches() <fiftyone.core.collections.SampleCollection.to_patches>`
+  and
+  :meth:`to_evaluation_patches() <fiftyone.core.collections.SampleCollection.to_evaluation_patches>`
+  to the :doc:`object detection tutorial </tutorials/evaluate_detections>`
+- Added example use of
+  :meth:`to_patches() <fiftyone.core.collections.SampleCollection.to_patches>`
+  to the :doc:`detection mistakes tutorial </tutorials/detection_mistakes>`
+- Added example use of
+  :meth:`to_patches() <fiftyone.core.collections.SampleCollection.to_patches>`
+  to the :doc:`adding detections recipe </recipes/adding_detections>`
+
 .. _release-notes-v0.8.0:
 
 FiftyOne 0.8.0

@@ -37,7 +37,7 @@ export function generateColorMap(
   keys: string[],
   seed: number,
   colorByLabel = false
-): ColorMap {
+): (value) => string {
   if (
     JSON.stringify(poolCache) !== JSON.stringify(colorPool) ||
     colorByLabelCache !== colorByLabel
@@ -68,5 +68,14 @@ export function generateColorMap(
   });
 
   mapCache = newMap;
-  return newMap;
+  let i = 0;
+  return (val) => {
+    if (val in newMap) {
+      return newMap[val];
+    }
+    offset = Object.keys(newMap).length;
+    newMap[val] = colors[i % colors.length];
+    i++;
+    return newMap[val];
+  };
 }

@@ -2,7 +2,8 @@ import React from "react";
 import styled from "styled-components";
 import { summarizeLongStr } from "../../utils/generic";
 
-import { ItemAction, useHighlightHover } from "../Actions/utils";
+import { useHighlightHover } from "../Actions/utils";
+import { ItemAction } from "../Actions/ItemAction";
 
 export const ResultsContainer = styled.div`
   background-color: ${({ theme }) => theme.backgroundDark};

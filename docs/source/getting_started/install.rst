@@ -67,13 +67,18 @@ A successful installation of FiftyOne should result in no output when
 Quickstart
 ----------
 
-Dive right into FiftyOne by running the command below. It will download a
-:ref:`small dataset <dataset-zoo-quickstart>`, launch the App, and print some
-suggestions for exploring the dataset!
+Dive right into FiftyOne by launching Python and running the snippet below,
+which downloads a :ref:`small dataset <dataset-zoo-quickstart>` and launches
+the :ref:`FiftyOne App <fiftyone-app>` so you can explore it!
 
-.. code-block:: shell
+.. code-block:: python
+    :linenos:
 
-    fiftyone quickstart
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart")
+    session = fo.launch_app(dataset)
 
 .. _installing-fiftyone-desktop:
 

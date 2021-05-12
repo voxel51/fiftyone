@@ -5,6 +5,10 @@
 .. |DatasetView| replace:: :class:`DatasetView <fiftyone.core.view.DatasetView>`
 .. |ViewStage| replace:: :class:`ViewStage <fiftyone.core.stages.ViewStage>`
 
+.. |ToPatches| replace:: :class:`ToPatches <fiftyone.core.stages.ToPatches>`
+.. |ToEvaluationPatches| replace:: :class:`ToEvaluationPatches <fiftyone.core.stages.ToEvaluationPatches>`
+.. |SortBySimilarity| replace:: :class:`SortBySimilarity <fiftyone.core.stages.SortBySimilarity>`
+
 .. |Sample| replace:: :class:`Sample <fiftyone.core.sample.Sample>`
 .. |SampleView| replace:: :class:`SampleView <fiftyone.core.sample.SampleView>`
 
@@ -94,6 +98,7 @@
 .. |DetectionResults| replace:: :class:`DetectionResults <fiftyone.utils.eval.detection.DetectionResults>`
 .. |SegmentationResults| replace:: :class:`SegmentationResults <fiftyone.utils.eval.segmentation.SegmentationResults>`
 .. |COCOEvaluationConfig| replace:: :class:`COCOEvaluationConfig <fiftyone.utils.eval.coco.COCOEvaluationConfig>`
+.. |OpenImagesEvaluationConfig| replace:: :class:`OpenImagesEvaluationConfig <fiftyone.utils.eval.openimages.OpenImagesEvaluationConfig>`
 
 .. |Plot| replace:: :class:`Plot <fiftyone.core.plots.base.Plot>`
 .. |ResponsivePlot| replace:: :class:`ResponsivePlot <fiftyone.core.plots.base.ResponsivePlot>`
