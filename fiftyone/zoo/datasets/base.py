@@ -20,6 +20,7 @@ import fiftyone.utils.data as foud
 import fiftyone.utils.hmdb51 as fouh
 import fiftyone.utils.kitti as fouk
 import fiftyone.utils.lfw as foul
+import fiftyone.utils.openimages as fouo
 import fiftyone.utils.ucf101 as fouu
 import fiftyone.zoo.datasets as fozd
 
@@ -847,6 +848,159 @@ class LabeledFacesInTheWildDataset(FiftyOneDataset):
         return dataset_type, num_samples, classes
 
 
+class OpenImagesV6Dataset(FiftyOneDataset):
+    """Open Images V6 is a dataset of ~9 million images, roughly 2 million of
+    which are annotated and available via this zoo dataset.
+
+    The dataset contains annotations for classification, detection,
+    segmentation, and visual relationship tasks across 601 object classes.
+
+    This dataset supports partial downloads:
+
+    -   You can specify subsets of data to download via the ``classes``,
+        ``attributes``, ``label_types``, and ``max_samples`` parameters
+    -   You can specify specific images to load by their ID using ``image_ids``
+        or ``image_ids_file`` parameters
+
+    Full split stats:
+
+    -   Train split: 1,743,042 images (513 GB)
+    -   Test split: 125,436 images (36 GB)
+    -   Validation split: 41,620 images (12 GB)
+
+    Notes:
+
+    -   Not all images contain all types of labels
+    -   All images have been rescaled so that their largest dimension is at
+        most 1024 pixels
+    -   `Localized narratives <https://google.github.io/localized-narratives/>`_
+        are not included in this version of the dataset
+
+    Example usage::
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        # Load 50 samples from the validation split
+        dataset = foz.load_zoo_dataset(
+            "open-images-v6", split="validation", max_samples=50
+        )
+
+        session = fo.launch_app(dataset)
+
+        # Load samples from specific label types and classes of interest
+        subset = foz.load_zoo_dataset(
+            "open-images-v6",
+            split="validation",
+            label_types=["detections", "relationships"],
+            classes=["Fedora", "Piano"],
+            max_samples=50,
+        )
+
+        session.dataset = subset
+
+    Dataset size
+        561 GB
+
+    Source
+        https://storage.googleapis.com/openimages/web/index.html
+
+    Args:
+        label_types (None): a list of label types to load. Supported values are
+            ``("detections", "classifications", "relationships", "segmentations")``.
+            By default, all label types are loaded. Note that not every sample
+            will include each label type. If ``max_samples`` and
+            ``label_types`` are both specified, then every sample will include
+            the specified label types
+        classes (None): a list of strings specifying required classes to load.
+            Only samples containing at least one instance of a specified
+            classes will be downloaded. You can retrieve the available classes
+            via :meth:`fiftyone.utils.openimages.get_classes`
+        attrs (None): a list of strings for relationship attributes to load
+        image_ids (None): a list of specific image IDs to load. The IDs can be
+            specified either as ``<split>/<image-id>`` or ``<image-id>``
+        image_ids_file (None): the path to a newline separated text, JSON, or
+            CSV file containing a list of image IDs to load. The IDs can be
+            specified either as ``<split>/<image-id>`` or ``<image-id>``. If
+            ``image_ids`` is provided, this parameter is ignored
+        num_workers (None): the number of processes to use when downloading
+            individual images. By default, ``multiprocessing.cpu_count()`` is
+            used
+        max_samples (None): a maximum number of samples to download and import
+            per split. By default, all samples are imported
+        seed (None): a random seed to use when shuffling
+        shuffle (False): whether to randomly shuffle the order in which the
+            samples are imported
+    """
+
+    def __init__(
+        self,
+        label_types=None,
+        classes=None,
+        attrs=None,
+        image_ids=None,
+        image_ids_file=None,
+        num_workers=None,
+        max_samples=None,
+        seed=None,
+        shuffle=None,
+    ):
+        self.label_types = label_types
+        self.classes = classes
+        self.attrs = attrs
+        self.image_ids = image_ids
+        self.image_ids_file = image_ids_file
+        self.num_workers = num_workers
+        self.max_samples = max_samples
+        self.seed = seed
+        self.shuffle = shuffle
+
+    @property
+    def name(self):
+        return "open-images-v6"
+
+    @property
+    def tags(self):
+        return (
+            "image",
+            "detection",
+            "segmentation",
+            "classification",
+        )
+
+    @property
+    def supported_splits(self):
+        return ("train", "test", "validation")
+
+    @property
+    def supports_partial_download(self):
+        return True
+
+    @property
+    def default_label_field(self):
+        return ""
+
+    def _download_and_prepare(self, dataset_dir, scratch_dir, split):
+        num_samples, classes = fouo.download_open_images_split(
+            dataset_dir=dataset_dir,
+            split=split,
+            label_types=self.label_types,
+            classes=self.classes,
+            attrs=self.attrs,
+            image_ids=self.image_ids,
+            image_ids_file=self.image_ids_file,
+            num_workers=self.num_workers,
+            version="v6",
+            shuffle=self.shuffle,
+            seed=self.seed,
+            max_samples=self.max_samples,
+        )
+        dataset_type = fot.OpenImagesV6Dataset()
+        logger.info("Found %d samples", num_samples)
+
+        return dataset_type, num_samples, classes
+
+
 class QuickstartDataset(FiftyOneDataset):
     """A small dataset with ground truth bounding boxes and predictions.
 
@@ -1108,6 +1262,7 @@ AVAILABLE_DATASETS = {
     "imagenet-sample": ImageNetSampleDataset,
     "kitti": KITTIDataset,
     "lfw": LabeledFacesInTheWildDataset,
+    "open-images-v6": OpenImagesV6Dataset,
     "quickstart": QuickstartDataset,
     "quickstart-geo": QuickstartGeoDataset,
     "quickstart-video": QuickstartVideoDataset,

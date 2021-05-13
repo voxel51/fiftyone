@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useRecoilState } from "recoil";
+import { useRecoilState, useRecoilValue } from "recoil";
 import styled from "styled-components";
 import {
   Assessment,
@@ -12,6 +12,7 @@ import { PillButton } from "./utils";
 import Distributions from "./Distributions";
 import { useWindowSize } from "../utils/hooks";
 import * as atoms from "../recoil/atoms";
+import * as selectors from "../recoil/selectors";
 import { Resizable } from "re-resizable";
 
 export type Props = {
@@ -99,6 +100,7 @@ const HorizontalNav = ({ entries }: Props) => {
   const [expanded, setExpanded] = useState(false);
   const [openedHeight, setOpenedHeight] = useState(392);
   const [maximized, setMaximized] = useState(false);
+  const isRoot = useRecoilValue(selectors.isRootView);
   const closedHeight = 64;
 
   const height = expanded ? openedHeight : closedHeight;
@@ -136,7 +138,7 @@ const HorizontalNav = ({ entries }: Props) => {
                 }
               }}
             >
-              {e}
+              {isRoot ? e : e === "Sample tags" ? "Patch tags" : e}
             </PlotButton>
           ))}
         </PlotsButtons>

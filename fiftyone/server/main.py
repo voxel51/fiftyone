@@ -261,6 +261,7 @@ class PollingHandler(tornado.web.RequestHandler):
                     message = {"state": StateHandler.state}
 
             if event in {
+                "distinct",
                 "distributions",
                 "page",
                 "get_video_data",
@@ -684,14 +685,28 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         )
 
     @staticmethod
-    async def on_save_filters(caller):
+    async def on_save_filters(caller, add_stages=[], with_selected=False):
         state = fos.StateDescription.from_dict(StateHandler.state)
         if state.view is not None:
             view = state.view
         else:
             view = state.dataset
 
-        state.view = get_extended_view(view, state.filters)
+        view = get_extended_view(view, state.filters)
+
+        if with_selected:
+            if state.selected:
+                view = view.select(state.selected)
+            elif state.selected_labels:
+                view = view.select_labels(state.selected_labels)
+
+        for d in add_stages:
+            stage = fosg.ViewStage._from_dict(d)
+            view = view.add_stage(stage)
+
+        state.selected = []
+        state.selected_labels = []
+        state.view = view
         state.filters = {}
 
         await StateHandler.on_update(caller, state.serialize())
@@ -905,7 +920,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         _write_message(message, app=True, only=self)
 
     @classmethod
-    async def on_distributions(cls, self, group):
+    async def on_distributions(cls, self, group, omit=[]):
         """Sends distribution data with respect to a group to the requesting
         client.
 
@@ -962,8 +977,10 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         elif results is None:
 
             def filter(field):
-                if field.name in {"filepath", "tags"} or field.name.startswith(
-                    "_"
+                if (
+                    field.name in {"tags"}
+                    or field.name in omit
+                    or field.name.startswith("_")
                 ):
                     return None
 

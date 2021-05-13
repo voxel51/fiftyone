@@ -19,6 +19,14 @@ import { PopoutSectionTitle } from "../utils";
 import Checkbox from "../Common/Checkbox";
 import RadioGroup from "../Common/RadioGroup";
 import { useTheme } from "../../utils/hooks";
+import socket from "../../shared/connection";
+import { packageMessage } from "../../utils/socket";
+import { SORT_BY_SIMILARITY } from "../../utils/links";
+
+export const similaritySorting = atom<boolean>({
+  key: "similaritySorting",
+  default: false,
+});
 
 const getQueryIds = async (snapshot: Snapshot) => {
   const selectedLabels = await snapshot.getPromise(selectors.selectedLabelIds);
@@ -30,26 +38,29 @@ const getQueryIds = async (snapshot: Snapshot) => {
   return [...selectedSamples];
 };
 
-const appendStage = (set, view, stage) => {
-  set(selectors.view, [...view, stage]);
-};
-
 const useSortBySimilarity = () => {
   return useRecoilCallback(
     ({ snapshot, set }) => async () => {
-      const view = await snapshot.getPromise(selectors.view);
       const params = await snapshot.getPromise(sortBySimilarityParameters);
       const queryIds = await getQueryIds(snapshot);
-      appendStage(set, view, {
-        _cls: "fiftyone.core.stages.SortBySimilarity",
-        kwargs: [
-          ["query_ids", queryIds],
-          ["k", params.k],
-          ["reverse", params.reverse],
-          ["brain_key", params.brainKey],
-          ["_state", null],
-        ],
-      });
+      set(similaritySorting, true);
+
+      socket.send(
+        packageMessage("save_filters", {
+          add_stages: [
+            {
+              _cls: "fiftyone.core.stages.SortBySimilarity",
+              kwargs: [
+                ["query_ids", queryIds],
+                ["k", params.k],
+                ["reverse", params.reverse],
+                ["brain_key", params.brainKey],
+                ["_state", null],
+              ],
+            },
+          ],
+        })
+      );
     },
     []
   );
@@ -183,7 +194,7 @@ const SortBySimilarity = React.memo(
       <Popout modal={modal} bounds={bounds}>
         <PopoutSectionTitle>
           <ActionOption
-            href={"https://fiftyone.ai"}
+            href={SORT_BY_SIMILARITY}
             text={"Sort by similarity"}
             title={"About sorting by similarity"}
             style={{

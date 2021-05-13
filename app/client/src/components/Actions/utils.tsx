@@ -39,24 +39,6 @@ export const SwitchDiv = animated(styled.div`
   text-transform: capitalize;
 `);
 
-export const ItemAction = animated(styled.a`
-  cursor: pointer;
-  margin: 0 -0.5rem;
-  padding: 0.25rem 0.5rem;
-  font-weight: bold;
-  display: flex;
-  justify-content: center;
-  align-content: center;
-  flex-direction: column;
-  text-decoration: none;
-  color: ${({ theme }) => theme.fontDark};
-
-  & > span {
-    display: flex;
-    justify-content: space-between;
-  }
-`);
-
 export const useHighlightHover = (disabled, override = null, color = null) => {
   const [hovering, setHovering] = useState(false);
   const theme = useTheme();

@@ -1,11 +1,18 @@
 import React, { useEffect, useState } from "react";
 import styled from "styled-components";
-import { useRecoilValue, useRecoilState } from "recoil";
+import {
+  useRecoilValue,
+  useRecoilState,
+  useRecoilCallback,
+  RecoilState,
+  RecoilValueReadOnly,
+} from "recoil";
 import {
   BarChart,
   BurstMode,
   Check,
   Close,
+  FilterList,
   Help,
   LocalOffer,
   Note,
@@ -17,8 +24,9 @@ import { animated, useSpring } from "react-spring";
 import numeral from "numeral";
 
 import CellHeader from "./CellHeader";
-import CheckboxGrid from "./CheckboxGroup";
 import DropdownCell from "./DropdownCell";
+import * as filtering from "./Filters/filtered";
+import CheckboxGrid from "./CheckboxGroup";
 import { Entry } from "./CheckboxGroup";
 import * as atoms from "../recoil/atoms";
 import { labelModalTagCounts } from "./Actions/utils";
@@ -263,7 +271,7 @@ const SampleTagsCell = ({ modal }: TagsCellProps) => {
       entries={tags
         .filter((t) => count[t])
         .map((name) => {
-          const color = colorByLabel ? theme.brand : colorMap["tags." + name];
+          const color = colorByLabel ? theme.brand : colorMap("tags." + name);
           return {
             name,
             disabled: false,
@@ -387,7 +395,7 @@ const LabelTagsCell = ({ modal }: TagsCellProps) => {
       entries={tags.map((name) => {
         const color = colorByLabel
           ? theme.brand
-          : colorMap["_label_tags." + name];
+          : colorMap("_label_tags." + name);
         const total = count && count[name] ? count[name] : 0;
         return {
           canFilter: true,
@@ -478,10 +486,18 @@ const LabelsCell = ({ modal, frames }: LabelsCellProps) => {
 
   return (
     <Cell
-      label={frames ? "Frame label fields" : "Label fields"}
+      label={frames ? "Frame labels" : "Labels"}
       icon={
         frames ? <BurstMode /> : video ? <VideoLibrary /> : <PhotoLibrary />
       }
+      pills={useClearFiltersPill(
+        frames
+          ? filtering.numFilteredFrameLabels(modal)
+          : filtering.numFilteredLabels(modal),
+        frames
+          ? filtering.filteredFrameLabels(modal)
+          : filtering.filteredLabels(modal)
+      )}
       entries={labels.map((name) => {
         const path = frames ? "frames." + name : name;
         return {
@@ -490,7 +506,7 @@ const LabelsCell = ({ modal, frames }: LabelsCellProps) => {
           hideCheckbox: false,
           hasDropdown: FILTERABLE_TYPES.includes(types[path]),
           selected: activeLabels.includes(path),
-          color: colorByLabel ? theme.brand : colorMap[path],
+          color: colorByLabel ? theme.brand : colorMap(path),
           title: name,
           path,
           type: "labels",
@@ -523,6 +539,46 @@ const LabelsCell = ({ modal, frames }: LabelsCellProps) => {
   );
 };
 
+const useClearFiltersPill = (
+  numFilteredAtom: RecoilValueReadOnly<number>,
+  filteredAtom: RecoilState<string[]>
+) => {
+  const theme = useTheme();
+  const clear = useRecoilCallback(
+    ({ set }) => async () => {
+      set(filteredAtom, []);
+    },
+    [filteredAtom]
+  );
+
+  const numFiltered = useRecoilValue(numFilteredAtom);
+
+  return numFiltered > 0
+    ? [
+        <PillButton
+          key="clear-match"
+          highlight={false}
+          icon={<FilterList />}
+          text={numeral(numFiltered).format("0,0")}
+          onClick={(e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            clear();
+          }}
+          title={"Clear filters"}
+          open={false}
+          style={{
+            marginLeft: "0.25rem",
+            height: "1.5rem",
+            fontSize: "0.8rem",
+            lineHeight: "1rem",
+            color: theme.font,
+          }}
+        />,
+      ]
+    : null;
+};
+
 type ScalarsCellProps = {
   modal: boolean;
 };
@@ -548,31 +604,37 @@ const ScalarsCell = ({ modal }: ScalarsCellProps) => {
 
   return (
     <Cell
-      label="Scalar fields"
+      label="Scalars"
       icon={<BarChart />}
-      entries={scalars.map((name) => {
-        return {
-          name,
-          disabled: false,
-          hideCheckbox: modal,
-          hasDropdown: !modal,
-          selected: activeScalars.includes(name),
-          color: colorByLabel ? theme.brand : colorMap[name],
-          title: modal ? `${name}: ${prettify(count[name], false)}` : name,
-          path: name,
-          type: "values",
-          data:
-            count && subCount && !modal
-              ? makeData(subCount[name], count[name])
-              : modal
-              ? prettify(count[name])
-              : null,
-          totalCount: !modal && count ? count[name] : null,
-          filteredCount: !modal && subCount ? subCount[name] : null,
-          modal,
-          canFilter: !modal,
-        };
-      })}
+      pills={useClearFiltersPill(
+        filtering.numFilteredScalars(modal),
+        filtering.filteredScalars(modal)
+      )}
+      entries={scalars
+        .filter((name) => !(name === "filepath" && modal))
+        .map((name) => {
+          return {
+            name,
+            disabled: false,
+            hideCheckbox: modal,
+            hasDropdown: !modal,
+            selected: activeScalars.includes(name),
+            color: colorByLabel ? theme.brand : colorMap(name),
+            title: modal ? prettify(count[name], false) : name,
+            path: name,
+            type: "values",
+            data:
+              count && subCount && !modal
+                ? makeData(subCount[name], count[name])
+                : modal
+                ? prettify(count[name])
+                : null,
+            totalCount: !modal && count ? count[name] : null,
+            filteredCount: !modal && subCount ? subCount[name] : null,
+            modal,
+            canFilter: !modal,
+          };
+        })}
       onSelect={
         !modal
           ? ({ name, selected }) => {
@@ -602,7 +664,7 @@ const UnsupportedCell = ({ modal }: UnsupportedCellProps) => {
   const unsupported = useRecoilValue(fieldAtoms.unsupportedFields);
   return unsupported.length ? (
     <Cell
-      label={"Unsupported fields"}
+      label={"Unsupported"}
       icon={<Help />}
       entries={unsupported.map((e) => ({
         name: e,
@@ -613,7 +675,7 @@ const UnsupportedCell = ({ modal }: UnsupportedCellProps) => {
         hideCheckbox: true,
         selected: false,
       }))}
-      title={"Currently unsupported"}
+      title={"Currently unsupported fields"}
       modal={modal}
     />
   ) : null;

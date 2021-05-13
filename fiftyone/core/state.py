@@ -87,9 +87,10 @@ class StateDescription(etas.Serializable):
                     _view_cls = etau.get_class_name(self.view)
 
                     # If the view uses a temporary dataset, we must use its
-                    # field schema
+                    # media type and field schemas
                     if self.view._dataset != self.dataset:
                         _tmp = self.view._dataset._serialize()
+                        _dataset["media_type"] = _tmp["media_type"]
                         _dataset["sample_fields"] = _tmp["sample_fields"]
                         _dataset["frame_fields"] = _tmp["frame_fields"]
 
@@ -202,15 +203,13 @@ class DatasetStatistics(object):
                 )
             )
 
-        default_fields = fosa.get_default_sample_fields()
+        default_fields = collection._get_default_sample_fields()
 
         result = []
         for prefix, schema in schemas:
             for field_name, field in schema.items():
 
-                if (
-                    field_name in default_fields and field_name != "filepath"
-                ) or (
+                if (field_name.startswith("_") or field_name == "tags") or (
                     prefix == collection._FRAMES_PREFIX
                     and field_name == "frame_number"
                 ):

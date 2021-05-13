@@ -1,5 +1,11 @@
-import React, { useState } from "react";
-import { selector, useRecoilCallback, useRecoilValue } from "recoil";
+import React, { useCallback, useState } from "react";
+import {
+  atom,
+  selector,
+  useRecoilCallback,
+  useRecoilValue,
+  useSetRecoilState,
+} from "recoil";
 import { useSpring } from "react-spring";
 
 import Popout from "./Popout";
@@ -9,6 +15,14 @@ import * as atoms from "../../recoil/atoms";
 import * as selectors from "../../recoil/selectors";
 import { PATCHES_FIELDS } from "../../utils/labels";
 import { useTheme } from "../../utils/hooks";
+import socket from "../../shared/connection";
+import { packageMessage } from "../../utils/socket";
+import { OBJECT_PATCHES, EVALUATION_PATCHES } from "../../utils/links";
+
+export const patching = atom<boolean>({
+  key: "patching",
+  default: false,
+});
 
 export const patchesFields = selector<string[]>({
   key: "parchesFields",
@@ -19,10 +33,6 @@ export const patchesFields = selector<string[]>({
   },
 });
 
-const appendStage = (set, view, stage) => {
-  set(selectors.view, [...view, stage]);
-};
-
 const evaluationKeys = selector<string[]>({
   key: "evaluationKeys",
   get: ({ get }) => {
@@ -32,31 +42,48 @@ const evaluationKeys = selector<string[]>({
 
 const useToPatches = () => {
   return useRecoilCallback(
-    ({ snapshot, set }) => async (field) => {
-      const view = await snapshot.getPromise(selectors.view);
-      appendStage(set, view, {
-        _cls: "fiftyone.core.stages.ToPatches",
-        kwargs: [
-          ["field", field],
-          ["_state", null],
-        ],
-      });
+    ({ set }) => async (field) => {
+      set(patching, true);
+      socket.send(
+        packageMessage("save_filters", {
+          add_stages: [
+            {
+              _cls: "fiftyone.core.stages.ToPatches",
+              kwargs: [
+                ["field", field],
+                ["_state", null],
+              ],
+            },
+          ],
+          with_selected: true,
+        })
+      );
     },
     []
   );
 };
 
 const useToEvaluationPatches = () => {
-  return useRecoilCallback(({ snapshot, set }) => async (evaluation) => {
-    const view = await snapshot.getPromise(selectors.view);
-    appendStage(set, view, {
-      _cls: "fiftyone.core.stages.ToEvaluationPatches",
-      kwargs: [
-        ["eval_key", evaluation],
-        ["_state", null],
-      ],
-    });
-  });
+  return useRecoilCallback(
+    ({ set }) => async (evaluation) => {
+      set(patching, true);
+      socket.send(
+        packageMessage("save_filters", {
+          add_stages: [
+            {
+              _cls: "fiftyone.core.stages.ToEvaluationPatches",
+              kwargs: [
+                ["eval_key", evaluation],
+                ["_state", null],
+              ],
+            },
+          ],
+          with_selected: true,
+        })
+      );
+    },
+    []
+  );
 };
 
 const LabelsPatches = ({ close }) => {
@@ -82,7 +109,7 @@ const LabelsPatches = ({ close }) => {
         key={0}
         text={"About patch views"}
         title={"About patch views"}
-        href={"https://fiftyone.ai"}
+        href={OBJECT_PATCHES}
       />
     </>
   );
@@ -111,7 +138,7 @@ const EvaluationPatches = ({ close }) => {
         key={0}
         text={"About evaluation views"}
         title={"About evaluation views"}
-        href={"https://fiftyone.ai"}
+        href={EVALUATION_PATCHES}
       />
     </>
   );

@@ -1,7 +1,7 @@
 # FiftyOne Documentation Guide
 
 Instructions for contributing to the FiftyOne Documentation, available publicly
-at [fiftyone.ai](http://fiftyone.ai).
+at [fiftyone.ai](https://fiftyone.ai).
 
 ## Building
 

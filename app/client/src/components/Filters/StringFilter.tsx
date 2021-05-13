@@ -17,7 +17,7 @@ import Results, { ResultsContainer } from "../Common/Results";
 import { Button } from "../FieldsSidebar";
 import { PopoutSectionTitle, TabOption } from "../utils";
 import { LIST_LIMIT } from "./StringFieldFilter";
-import { ItemAction } from "../Actions/utils";
+import { ItemAction } from "../Actions/ItemAction";
 import socket from "../../shared/connection";
 import { packageMessage } from "../../utils/socket";
 import { useTheme } from "../../utils/hooks";
@@ -28,7 +28,7 @@ const StringFilterContainer = styled.div`
   border-radius: 2px;
   color: ${({ theme }) => theme.fontDark};
   margin-top: 0.25rem;
-  padding: 0.25rem 0.5rem 0 0.5rem;
+  padding: 0.25rem 0.5rem;
 `;
 
 const NamedStringFilterContainer = styled.div`
@@ -210,9 +210,10 @@ const ResultsWrapper = ({
               color: theme.font,
             }}
           >
-            {results && subCount > results.length && (
+            {results && subCount !== null && results.length > 0 && (
               <>
-                {results.length} of {subCount.toLocaleString()} results
+                {results.length !== subCount && <>{results.length} of</>}
+                {subCount.toLocaleString()} results
               </>
             )}
             {results && results.length === 0 && <>No results</>}

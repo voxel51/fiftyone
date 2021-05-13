@@ -3,7 +3,8 @@ import { Checkbox as MaterialCheckbox } from "@material-ui/core";
 import { animated } from "react-spring";
 import styled from "styled-components";
 
-import { ItemAction, useHighlightHover } from "../Actions/utils";
+import { useHighlightHover } from "../Actions/utils";
+import { ItemAction } from "../Actions/ItemAction";
 import { useTheme } from "../../utils/hooks";
 import { summarizeLongStr } from "../../utils/generic";
 

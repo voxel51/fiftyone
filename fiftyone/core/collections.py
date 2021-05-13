@@ -41,7 +41,6 @@ fov = fou.lazy_import("fiftyone.core.view")
 foua = fou.lazy_import("fiftyone.utils.annotations")
 foud = fou.lazy_import("fiftyone.utils.data")
 foue = fou.lazy_import("fiftyone.utils.eval")
-foup = fou.lazy_import("fiftyone.utils.patches")
 
 
 logger = logging.getLogger(__name__)
@@ -117,6 +116,11 @@ class SampleCollection(object):
         such as patches views.
         """
         raise NotImplementedError("Subclass must implement _root_dataset")
+
+    @property
+    def _is_patches(self):
+        """Whether this collection contains patches."""
+        raise NotImplementedError("Subclass must implement _is_patches")
 
     @property
     def _element_str(self):
@@ -345,6 +349,22 @@ class SampleCollection(object):
         """
         raise NotImplementedError("Subclass must implement iter_samples()")
 
+    @classmethod
+    def _get_default_sample_fields(
+        cls, include_private=False, include_id=False
+    ):
+        return fosa.get_default_sample_fields(
+            include_private=include_private, include_id=include_id
+        )
+
+    @classmethod
+    def _get_default_frame_fields(
+        cls, include_private=False, include_id=False
+    ):
+        return fofr.get_default_frame_fields(
+            include_private=include_private, include_id=include_id
+        )
+
     def get_field_schema(
         self, ftype=None, embedded_doc_type=None, include_private=False
     ):
@@ -475,7 +495,7 @@ class SampleCollection(object):
             schema = self.get_field_schema(include_private=True)
 
             default_fields = set(
-                fosa.get_default_sample_fields(include_private=True)
+                self._get_default_sample_fields(include_private=True)
                 + ("id", "_id")
             )
 
@@ -496,7 +516,7 @@ class SampleCollection(object):
             frame_schema = self.get_frame_field_schema(include_private=True)
 
             default_frame_fields = set(
-                fofr.get_default_frame_fields(include_private=True)
+                self._get_default_frame_fields(include_private=True)
                 + ("id", "_id")
             )
 
@@ -3782,6 +3802,17 @@ class SampleCollection(object):
         and a ``crowd`` field if the evaluation protocol defines a crowd
         attribute.
 
+        .. note::
+
+            The returned view will contain patches for the contents of this
+            collection, which may differ from the view on which the
+            ``eval_key`` evaluation was performed. This may exclude some labels
+            that were evaluated and/or include labels that were not evaluated.
+
+            If you would like to see patches for the exact view on which an
+            evaluation was performed, first call :meth:`load_evaluation_view`
+            to load the view and then convert to patches.
+
         Examples::
 
             import fiftyone as fo
@@ -5419,7 +5450,7 @@ class SampleCollection(object):
 
         return field.document_type
 
-    def _get_label_field_path(self, field_name, subfield):
+    def _get_label_field_path(self, field_name, subfield=None):
         label_type = self._get_label_field_type(field_name)
 
         if issubclass(label_type, fol._LABEL_LIST_FIELDS):
