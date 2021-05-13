@@ -107,100 +107,6 @@ export function asVideoRenderer(options) {
         }
       });
 
-      // Update the seek bar as the video plays
-      this.eleVideo.addEventListener("timeupdate", function () {
-        // Calculate the slider value
-        const value =
-          (self.seekBarMax / self.eleVideo.duration) *
-          self.eleVideo.currentTime;
-        // Update the slider value
-        self.eleSeekBar.value = value;
-        self.dispatchEvent("timeupdate", {
-          data: {
-            frame_number: self.computeFrameNumber(),
-          },
-        });
-      });
-
-      this.eleVideo.addEventListener(
-        "play",
-        function () {
-          self.timerCallback();
-        },
-        false
-      );
-
-      this.eleVideo.addEventListener("seeked", function () {
-        self.updateStateFromTimeChange();
-      });
-
-      this.eleVideo.addEventListener("error", function () {
-        if (self.player._boolNotFound) {
-          self.eleVideo.setAttribute("poster", self.player._notFoundPosterURL);
-        } else {
-          self.eleVideo.remove();
-        }
-        self.dispatchEvent("error");
-      });
-
-      // Event listener for the play/pause button
-      this.elePlayPauseButton.addEventListener("click", function (e) {
-        e.stopPropagation();
-        self._boolPlaying = !self._boolPlaying;
-        self.updateFromDynamicState();
-      });
-
-      // Event listener for the seek bar
-      this.eleSeekBar.addEventListener("change", function () {
-        // Calculate the new time
-        const time =
-          self.eleVideo.duration *
-          (self.eleSeekBar.valueAsNumber / self.seekBarMax);
-        // Update the video time
-        self.eleVideo.currentTime = self.clampTimeToFrameStart(time);
-        // Unlock the fragment so the user can browse the whole video
-        self._lockToMF = false;
-        self._boolSingleFrame = false;
-        self.updateStateFromTimeChange();
-      });
-
-      // Pause the video when the seek handle is being dragged
-      this.eleSeekBar.addEventListener("mousedown", function () {
-        if (!self.player.options.thumbnail) {
-          self._boolManualSeek = true;
-          // Unlock the fragment so the user can browse the whole video
-          self._lockToMF = false;
-          // We need to manually control the video-play state
-          // And turn it back on as needed.
-          self.eleVideo.pause();
-        }
-      });
-
-      // Play the video when the seek handle is dropped
-      this.eleSeekBar.addEventListener("mouseup", function (e) {
-        self._boolManualSeek = false;
-        if (self._boolPlaying && self.eleVideo.paused) {
-          // Calculate the new time
-          const seekRect = self.eleSeekBar.getBoundingClientRect();
-          const time =
-            self.eleVideo.duration *
-            ((e.clientX - seekRect.left) / seekRect.width);
-          // Update the video time
-          self.eleVideo.currentTime = self.clampTimeToFrameStart(time);
-          self.eleSeekBar.value =
-            (time / self.eleVideo.duration) * self.seekBarMax;
-          self.eleVideo.play();
-        }
-      });
-
-      const hideControls = function () {
-        if (self._boolShowVideoOptions) {
-          return;
-        }
-        self._boolShowControls = false;
-        self.updateFromDynamicState();
-      };
-
       this.parent.addEventListener("mouseenter", function () {
         // Two different behaviors.
         // 1.
@@ -342,26 +248,6 @@ export function asVideoRenderer(options) {
       } else {
         /* eslint-disable-next-line no-console */
         console.log("NOT SETTING TIME CALLBACK");
-      }
-    },
-
-    setMediaFragment() {
-      // when we have a media fragment passed in, by
-      // default, we force the player to stay within that fragment.  If the video is
-      // looping, for example, then it will always go to the beginning of the
-      // fragment.  However, as soon as the user scrubs the video, we turn off the
-      // importance of the fragment so that the user can watch the whole video.
-      const mfResult = parseMediaFragmentsUri(this.media.src);
-      if (typeof mfResult.length) {
-        this._mfBeginT = mfResult[0].startNormalized;
-        this._mfEndT = mfResult[0].endNormalized;
-        this._mfBeginF = this.computeFrameNumber(this._mfBeginT);
-        this._mfEndF = this.computeFrameNumber(this._mfEndT);
-        this._hasMediaFragment = true;
-        this._lockToMF = true;
-        if (this._mfBeginF === this._mfEndF) {
-          this._boolSingleFrame = true;
-        }
       }
     },
 

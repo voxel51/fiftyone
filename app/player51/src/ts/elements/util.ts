@@ -93,6 +93,22 @@ export const getFrameNumber = (
   return Math.floor(time * frameRate + FRAME_ZERO_OFFSET);
 };
 
+export const getClampedTime = (
+  currentTime: number,
+  duration: number,
+  frameRate: number
+) => {
+  return getTime(getFrameNumber(currentTime, duration, frameRate), frameRate);
+};
+
+export const getTime = (frameNumber: number, frameRate: number): number => {
+  frameNumber -= 1;
+
+  // offset by 1/100 of a frame to avoid browser issues where being *exactly*
+  // on a frame boundary sometimes renders the previous frame
+  return (frameNumber + 0.01) * (1 / frameRate);
+};
+
 export const getFrameString = (
   currentTime: number,
   duration: number,
@@ -124,3 +140,5 @@ export const getTimeString = (
   }
   return mmss;
 };
+
+export const getFragment = () => {};

@@ -4,8 +4,6 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 
-export { parseMediaFragmentsUri };
-
 // '&' is the only primary separator for key-value pairs
 let SEPARATOR = "&";
 
@@ -172,3 +170,20 @@ function parseMediaFragmentsUri(opt_uri: string): FrameValue[] {
   let hashValues = splitKeyValuePairs(hash);
   return hashValues;
 }
+
+interface MediaFragment {
+  startTime: number;
+  endTime: number;
+}
+
+export const getMediaFragment = (src: string): MediaFragment | null => {
+  const mfResult = parseMediaFragmentsUri(src);
+
+  if (typeof mfResult.length) {
+    return {
+      startTime: mfResult[0].startNormalized,
+      endTime: mfResult[0].endNormalized,
+    };
+  }
+  return null;
+};
