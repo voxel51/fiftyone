@@ -54,31 +54,6 @@ export function asVideoRenderer(options) {
 
   const renderer = Object.assign(this, {
     initPlayerControls() {
-      if (this.player._boolHasPoster) {
-        this.eleVideo.setAttribute("poster", this.player._loadingPosterURL);
-        if (this.player._boolForcedSize) {
-          const sizeStyleString =
-            "width:" +
-            this.player._forcedWidth +
-            "px; height:" +
-            this.player._forcedHeight +
-            "px;";
-          this.eleVideo.setAttribute("style", sizeStyleString);
-          this.eleDivVideo.setAttribute("style", sizeStyleString);
-          this.parent.setAttribute("style", sizeStyleString);
-        }
-      }
-
-      // after the DOM elements are created then we initialize other variables that
-      // will be needed during playback
-      const self = this;
-
-      this.eleVideo.addEventListener("loadedmetadata", function () {
-        self._isVideoMetadataLoaded = true;
-        self.setupCanvasContext();
-        self.updateFromLoadingState();
-      });
-
       this.eleVideo.addEventListener("loadeddata", function () {
         self._isDataLoaded = true;
 
@@ -355,55 +330,6 @@ export function asVideoRenderer(options) {
       }
     },
 
-    customDraw(context) {
-      // @todo double-buffering
-      // @todo give a css class to the frame number so its positioning and format
-      // can be controlled easily from the css
-      if (this.player.boolDrawFrameNumber) {
-        context.fillText(this._frameNumber || 0, 15, 30, 70);
-      }
-
-      let hhmmss;
-
-      if (this.overlayOptions.showFrameCount) {
-        const frame = this.currentFrameStamp();
-        const total = this.totalFrameStamp();
-        this.updateTimeStamp(`${frame} / ${total}`);
-      } else {
-        hhmmss = this.currentTimestamp();
-        const duration = this.durationStamp();
-        this.updateTimeStamp(`${hhmmss} / ${duration}`);
-      }
-
-      if (this.player.boolDrawTimestamp) {
-        // @todo better handling of the context paintbrush styles
-        // working on a new way of forcing certain font sizes
-        let fontheight = 24;
-        const fhInWindow = fontheight / this.canvasMultiplier;
-        if (fhInWindow < 12) {
-          fontheight = 8 * this.canvasMultiplier;
-        }
-        fontheight = checkFontHeight(fontheight);
-        context.font = `${fontheight}px Arial, sans-serif`;
-        if (hhmmss === undefined) {
-          hhmmss = this.currentTimestamp();
-        }
-        const tw = context.measureText(hhmmss).width;
-        const pad = 4;
-        const pad2 = 2; // pad divided by 2
-        const w = tw + pad + pad;
-        const h = fontheight + pad + pad;
-        const x = 10;
-        const y = this.canvasHeight - 10 - pad - pad - fontheight;
-
-        context.fillStyle = this.metadataOverlayBGColor;
-        context.fillRect(x, y, w, h);
-
-        context.fillStyle = this.colorGenerator.white;
-        context.fillText(hhmmss, x + pad, y + pad + fontheight - pad2, tw + 8);
-      }
-    },
-
     timerCallback() {
       if (this.eleVideo.paused || this.eleVideo.ended) {
         this._updateFrame();
@@ -454,97 +380,6 @@ export function asVideoRenderer(options) {
       }
 
       return fn;
-    },
-
-    computeFrameNumber(time) {
-      if (typeof time === "undefined") {
-        time = this.eleVideo.currentTime;
-      }
-      // account for exact end of video
-      if (this.eleVideo && time === this.eleVideo.duration) {
-        time -= this.frameDuration / 2;
-      }
-      const frameNumber = time * this.frameRate + 1;
-      return Math.floor(frameNumber);
-    },
-
-    computeFrameTime(frameNumber) {
-      if (typeof frameNumber === "undefined") {
-        frameNumber = this.computeFrameNumber();
-      }
-      frameNumber -= 1;
-      // offset by 1/100 of a frame to avoid browser issues where being *exactly*
-      // on a frame boundary sometimes renders the previous frame
-      return (frameNumber + 0.01) * this.frameDuration;
-    },
-
-    clampTimeToFrameStart(time) {
-      if (typeof time === "undefined") {
-        time = this.eleVideo.currentTime;
-      }
-      if (!isFinite(this.frameRate)) {
-        return time;
-      }
-      return this.computeFrameTime(this.computeFrameNumber(time));
-    },
-
-    currentFrameStamp() {
-      return this._renderFrameCount(this.computeFrameNumber());
-    },
-
-    totalFrameStamp() {
-      return this._renderFrameCount(this.getTotalFrameCount());
-    },
-
-    getTotalFrameCount() {
-      if (this.totalFrameCount === undefined) {
-        this.totalFrameCount = this.computeFrameNumber(this.eleVideo.duration);
-      }
-      return this.totalFrameCount;
-    },
-
-    _renderFrameCount(numFrames) {
-      if (this._totalFramesLen === undefined) {
-        this._totalFramesLen = this.getTotalFrameCount().toString().length;
-      }
-      let frameStr = numFrames.toString();
-      while (frameStr.length < this._totalFramesLen) {
-        frameStr = "0" + frameStr;
-      }
-      return frameStr;
-    },
-
-    durationStamp() {
-      return renderTime({
-        numSeconds: this.eleVideo.duration,
-        duration: this.eleVideo.duration,
-      });
-    },
-
-    currentTimestamp() {
-      return this._renderTime({
-        numSeconds: this.eleVideo.currentTime,
-        duration: this.eleVideo.duration,
-      });
-    },
-
-    updateTimeStamp(timeStr) {
-      if (!this.eleTimeStamp) {
-        return;
-      }
-      this.eleTimeStamp.innerHTML = timeStr;
-    },
-
-    updatePlayButton(playing) {
-      if (this.elePlayPauseButton) {
-        if (playing) {
-          this.elePlayPauseButton.src = ICONS.pause;
-          this.elePlayPauseButton.title = "Pause (space)";
-        } else {
-          this.elePlayPauseButton.src = ICONS.play;
-          this.elePlayPauseButton.title = "Play (space)";
-        }
-      }
     },
   });
 }

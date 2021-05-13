@@ -98,6 +98,29 @@ export class VideoElement extends BaseElement {
     error: ({ event, update }) => {
       update({ errors: event.error });
     },
+    loadedmetadata: ({ update }) => {
+      update({ loadedMetadata: true });
+    },
+    loadeddata: ({ update, dispatchEvent }) => {
+      update(({ playing, options: { autoplay } }) => ({
+        loaded: true,
+        playing: autoplay || playing,
+      }));
+      dispatchEvent("load");
+    },
+    pause: ({ update }) => {
+      this.eleVideo.addEventListener("pause", function () {
+        self.checkForFragmentReset(self.computeFrameNumber());
+        if (
+          self._boolPlaying &&
+          !self._lockToMF &&
+          !self._boolManualSeek &&
+          !self.eleVideo.ended
+        ) {
+          self.eleVideo.play();
+        }
+      });
+    },
   };
 
   createHTMLElement() {

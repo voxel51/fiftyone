@@ -18,6 +18,8 @@ export interface ImageOptions extends BaseOptions {}
 
 export interface VideoOptions extends BaseOptions {
   useFrameNumber: boolean;
+  autoplay: boolean;
+  loop: boolean;
 }
 
 interface BaseConfig {

@@ -21,86 +21,75 @@ const DASH_LENGTH = 10;
 const DASH_COLOR = "#ffffff";
 const _rawColorCache = {};
 
-/**
- * A Class to encapsulate the creation of suitable colors for drawing the
- * overlays and maintaining their identity over the entire video.
- */
-function ColorGenerator(seed = null) {
-  // member will store all colors created
-  this.colors = {};
-  this._rawColors = {};
+class ColorGenerator {
+  private static colorS: string = "70%";
+  private static colorL: string = "40%";
+  private static colorA: string = "0.875";
 
-  // standard colors
-  this.white = "#ffffff";
-  this.black = "#000000";
+  private colors = {};
+  private colorSet: string[];
+  private rawColors: { [key: number]: number } = {};
+  private rawMaskColors: Uint32Array;
+  private rawMaskColorsSelected: Uint32Array;
+  private seed: number;
+  private;
 
-  this._colorSet = undefined;
-  this._colorS = "70%";
-  this._colorL = "40%";
-  this._colorA = "0.875";
-  this._seed = (seed % 32) / 32;
+  constructor(seed: number = null) {
+    this.seed = (seed % 32) / 32;
 
-  const maskOffset = Math.floor(this._seed * 256);
-  this.rawMaskColors = new Uint32Array(256);
-  this.rawMaskColorsSelected = new Uint32Array(256);
-  for (let i = 0; i < this.rawMaskColors.length; i++) {
-    this.rawMaskColors[i] = this.rawColor((i + maskOffset) % 256);
-    this.rawMaskColorsSelected[i] = this.rawMaskColors[i];
+    const maskOffset = Math.floor(this.seed * 256);
+    this.rawMaskColors = new Uint32Array(256);
+    this.rawMaskColorsSelected = new Uint32Array(256);
+    for (let i = 0; i < this.rawMaskColors.length; i++) {
+      this.rawMaskColors[i] = this.rawColor((i + maskOffset) % 256);
+      this.rawMaskColorsSelected[i] = this.rawMaskColors[i];
+    }
+    // reduce alpha of masks
+    const rawMaskColorComponents = new Uint8Array(this.rawMaskColors.buffer);
+    for (let i = 3; i < rawMaskColorComponents.length; i += 4) {
+      rawMaskColorComponents[i] = Math.floor(255 * MASK_ALPHA);
+    }
   }
-  // reduce alpha of masks
-  const rawMaskColorComponents = new Uint8Array(this.rawMaskColors.buffer);
-  for (let i = 3; i < rawMaskColorComponents.length; i += 4) {
-    rawMaskColorComponents[i] = Math.floor(255 * MASK_ALPHA);
+
+  private generateColorSet(n: number = 36) {
+    const canvas = document.createElement("canvas");
+    canvas.width = 1;
+    canvas.height = 1;
+    const context = canvas.getContext("2d");
+    const delta = 360 / n;
+    this.colorSet = new Array(n);
+    for (let i = 0; i < n; i++) {
+      this.colorSet[i] = `hsla(${i * delta}, ${ColorGenerator.colorS}, ${
+        ColorGenerator.colorL
+      }, ${ColorGenerator.colorA})`;
+      context.fillStyle = this.colorSet[i];
+      context.clearRect(0, 0, 1, 1);
+      context.fillRect(0, 0, 1, 1);
+      this.rawColors[i] = new Uint32Array(
+        context.getImageData(0, 0, 1, 1).data.buffer
+      )[0];
+    }
+  }
+
+  color(index: number): string {
+    if (!(index in this.colors)) {
+      if (typeof this.colorSet === "undefined") {
+        this.generateColorSet();
+      }
+      const rawIndex = Math.floor(this.seed * this.colorSet.length);
+      this.colors[index] = this.colorSet[rawIndex];
+      this.rawColors[index] = this.rawColors[rawIndex];
+    }
+    return this.colors[index];
+  }
+
+  rawColor(index: number): number {
+    if (!(index in this.rawColors)) {
+      this.color(index);
+    }
+    return this.rawColors[index];
   }
 }
-
-/**
- * Provide a color based on an index.
- */
-ColorGenerator.prototype.color = function (index: number): string {
-  if (!(index in this.colors)) {
-    if (typeof this._colorSet === "undefined") {
-      this._generateColorSet();
-    }
-    const rawIndex = Math.floor(this._seed * this._colorSet.length);
-    this.colors[index] = this._colorSet[rawIndex];
-    this._rawColors[index] = this._rawColors[rawIndex];
-  }
-  return this.colors[index];
-};
-
-/**
- * Provide raw RGBA values for a color based on an index.
- */
-ColorGenerator.prototype.rawColor = function (index: number): number {
-  if (!(index in this._rawColors)) {
-    this.color(index);
-  }
-  return this._rawColors[index];
-};
-
-/**
- * Generates the entire dictionary of colors.
- */
-ColorGenerator.prototype._generateColorSet = function (n = 36): void {
-  const canvas = document.createElement("canvas");
-  canvas.width = 1;
-  canvas.height = 1;
-  const context = canvas.getContext("2d");
-  const delta = 360 / n;
-  this._colorSet = new Array(n);
-  for (let i = 0; i < n; i++) {
-    this._colorSet[i] = `hsla(${i * delta}, ${this._colorS}, ${this._colorL}, ${
-      this._colorA
-    })`;
-    context.fillStyle = this._colorSet[i];
-    context.clearRect(0, 0, 1, 1);
-    context.fillRect(0, 0, 1, 1);
-    this._rawColors[i] = new Uint32Array(
-      context.getImageData(0, 0, 1, 1).data.buffer
-    )[0];
-  }
-};
 
 // Instantiate one colorGenerator for global use
 const colorGenerator = new ColorGenerator();
