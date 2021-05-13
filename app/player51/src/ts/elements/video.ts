@@ -143,6 +143,67 @@ export class TimeElement extends BaseElement {
 
 export class VideoElement extends BaseElement {
   events = {
+    keydown: ({ event, update }) => {
+      if (event.keyCode === 32) {
+        update(({ playing }) => {
+          return {
+            playing: !playing,
+          };
+        });
+      }
+
+      if (event.keyCode === 37) {
+        // left arrow
+        update(({ frameNumber, locked, fragment, playing }) => {
+          if (!playing) {
+            return;
+          }
+          const limit = locked && fragment ? fragment[0] : 1;
+          return { frameNumber: Math.max(limit, frameNumber - 1) };
+        });
+      }
+
+      if (event.keyCode === 39) {
+        // right arrow
+        update(
+          ({
+            frameNumber,
+            duration,
+            locked,
+            fragment,
+            playing,
+            config: { frameRate },
+          }) => {
+            if (!playing) {
+              return;
+            }
+            const limit =
+              locked && fragment
+                ? fragment[1]
+                : getFrameNumber(duration, duration, frameRate);
+            return { frameNumber: Math.max(limit, frameNumber + 1) };
+          }
+        );
+      }
+    },
+    mouseenter: ({ update }) => {
+      update(({ loaded, config: { thumbnail } }) => {
+        if (thumbnail && loaded) {
+          return {
+            playing: true,
+          };
+        }
+      });
+    },
+    mouseleave: ({ update }) => {
+      update(({ loaded, config: { thumbnail } }) => {
+        if (thumbnail && loaded) {
+          return {
+            playing: false,
+          };
+        }
+      });
+    },
     error: ({ event, update, dispatchEvent }) => {
       update({ errors: event.error });
 
@@ -160,19 +221,32 @@ export class VideoElement extends BaseElement {
     },
     play: ({ event, update }) => {
       const callback = () => {
-        update(({ seeking, config: { frameRate } }) => {
-          if (!seeking) {
-            window.requestAnimationFrame(callback);
-          }
-
-          return {
-            frameNumber: getFrameNumber(
+        update(
+          ({
+            seeking,
+            locked,
+            fragment,
+            config: { frameRate },
+            options: { loop },
+          }) => {
+            if (!seeking) {
+              window.requestAnimationFrame(callback);
+            }
+            const newFrameNumber = getFrameNumber(
               event.target.currentTime,
               event.target.duration,
               frameRate
-            ),
-          };
-        });
+            );
+
+            const useFragment =
+              locked && fragment && newFrameNumber > fragment[1];
+
+            return {
+              frameNumber: useFragment ? fragment[0] : newFrameNumber,
+              playing: !(useFragment && !loop),
+            };
+          }
+        );
       };
     },
     pause: ({ event, update }) => {
@@ -202,6 +276,20 @@ export class VideoElement extends BaseElement {
             frameRate
           ),
         });
+      });
+    },
+    ended: ({ update }) => {
+      update(({ locked, fragment, options: { loop } }) => {
+        if (loop) {
+          return {
+            frameNumber: locked && fragment ? fragment[0] : 1,
+            playing: true,
+          };
+        } else {
+          return {
+            playing: false,
+          };
+        }
       });
     },
   };

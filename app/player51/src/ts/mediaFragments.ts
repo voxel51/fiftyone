@@ -161,7 +161,7 @@ let splitKeyValuePairs = function (octetString: string): FrameValue[] {
   return results;
 };
 
-function parseMediaFragmentsUri(opt_uri: string): FrameValue[] {
+export function parseMediaFragmentsUri(opt_uri: string): FrameValue[] {
   let uri = opt_uri ? opt_uri : window.location.href;
   // retrieve the query part of the URI
   let indexOfHash = uri.indexOf("#");
@@ -170,20 +170,3 @@ function parseMediaFragmentsUri(opt_uri: string): FrameValue[] {
   let hashValues = splitKeyValuePairs(hash);
   return hashValues;
 }
-
-interface MediaFragment {
-  startTime: number;
-  endTime: number;
-}
-
-export const getMediaFragment = (src: string): MediaFragment | null => {
-  const mfResult = parseMediaFragmentsUri(src);
-
-  if (typeof mfResult.length) {
-    return {
-      startTime: mfResult[0].startNormalized,
-      endTime: mfResult[0].endNormalized,
-    };
-  }
-  return null;
-};
