@@ -44,17 +44,17 @@ export const makeCheckboxRow = function (
   return [label, checkbox];
 };
 
-interface ElementsTemplate {
+interface ElementsTemplate<T extends BaseElement> {
   node: new (
     update: (state: any) => void,
     dispatchEvent: (eventType: string, details?: any) => void,
     children?: BaseElement[]
-  ) => BaseElement;
-  children?: ElementsTemplate[];
+  ) => T;
+  children?: ElementsTemplate<BaseElement>[];
 }
 
-export function createElementsTree(
-  root: ElementsTemplate,
+export function createElementsTree<T extends BaseElement>(
+  root: ElementsTemplate<T>,
   update: (state: any) => void,
   dispatchEvent: (eventType: string, details?: any) => void
 ) {

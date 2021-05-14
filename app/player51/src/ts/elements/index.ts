@@ -5,12 +5,16 @@
 import * as common from "./common";
 import * as frame from "./frame";
 import * as image from "./image";
+import { Kind } from "../state";
 import { createElementsTree } from "./util";
 import * as video from "./video";
 
-export const getFrameElements = (update: (state: any) => void) => {
+const getFrameElements = (
+  update: (state: any) => void,
+  dispatchEvent: (eventType: string, details?: any) => void
+): common.LookerElement => {
   const elements = {
-    node: common.PlayerBaseElement,
+    node: common.LookerElement,
     children: [
       { node: frame.FrameElement },
       {
@@ -33,12 +37,15 @@ export const getFrameElements = (update: (state: any) => void) => {
     ],
   };
 
-  return createElementsTree(elements, update);
+  return createElementsTree(elements, update, dispatchEvent);
 };
 
-export const getImageElements = (update: (state: any) => void) => {
+const getImageElements = (
+  update: (state: any) => void,
+  dispatchEvent: (eventType: string, details?: any) => void
+): common.LookerElement => {
   const elements = {
-    node: common.PlayerBaseElement,
+    node: common.LookerElement,
     children: [
       { node: image.ImageElement },
       {
@@ -58,12 +65,15 @@ export const getImageElements = (update: (state: any) => void) => {
     ],
   };
 
-  return createElementsTree(elements, update);
+  return createElementsTree(elements, update, dispatchEvent);
 };
 
-export const getVideoElements = (update: (state: any) => void) => {
+const getVideoElements = (
+  update: (state: any) => void,
+  dispatchEvent: (eventType: string, details?: any) => void
+): common.LookerElement => {
   const elements = {
-    node: common.PlayerBaseElement,
+    node: common.LookerElement,
     children: [
       { node: video.VideoElement },
       {
@@ -89,5 +99,26 @@ export const getVideoElements = (update: (state: any) => void) => {
     ],
   };
 
-  return createElementsTree(elements, update);
+  return createElementsTree(elements, update, dispatchEvent);
+};
+
+export const getElements = (
+  kind: Kind,
+  update: (state: any) => void,
+  dispatchEvent: (eventType: string, details?: any) => void
+): common.LookerElement => {
+  switch (kind) {
+    case Kind.Frame: {
+      return getFrameElements(update, dispatchEvent);
+    }
+    case Kind.Image: {
+      return getImageElements(update, dispatchEvent);
+    }
+    case Kind.Video: {
+      return getVideoElements(update, dispatchEvent);
+    }
+    default: {
+      throw new Error(`No elements tree found for kind: ${kind}`);
+    }
+  }
 };

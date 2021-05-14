@@ -48,39 +48,26 @@ export class PlayButtonElement extends BaseElement {
 
 export class SeekBarElement extends BaseElement {
   events = {
-    change: ({ event, update }) => {
+    input: ({ event, update }) => {
+      const progress = event.target.valueAsNumber / 100;
       update(({ duration, config: { frameRate } }) => {
-        const progress = event.target.valueAsNumber / 100;
         return {
-          locked: false,
           frameNumber: getFrameNumber(duration * progress, duration, frameRate),
         };
       });
     },
     mousedown: ({ update }) =>
       update({
-        seeking: true,
         locked: false,
+        seeking: true,
       }),
 
-    mouseup: ({ event }) => {
+    mouseup: ({ event, update }) => {
       const progress = event.target.valueAsNumber / 100;
-
-      // Play the video when the seek handle is dropped
-      this.eleSeekBar.addEventListener("mouseup", function (e) {
-        self._boolManualSeek = false;
-        if (self._boolPlaying && self.eleVideo.paused) {
-          // Calculate the new time
-          const seekRect = self.eleSeekBar.getBoundingClientRect();
-          const time =
-            self.eleVideo.duration *
-            ((e.clientX - seekRect.left) / seekRect.width);
-          // Update the video time
-          self.eleVideo.currentTime = self.clampTimeToFrameStart(time);
-          self.eleSeekBar.value =
-            (time / self.eleVideo.duration) * self.seekBarMax;
-          self.eleVideo.play();
-        }
+      update(({ duration, config: { frameRate } }) => {
+        return {
+          frameNumber: getFrameNumber(duration * progress, duration, frameRate),
+        };
       });
     },
   };

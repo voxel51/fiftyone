@@ -5,7 +5,7 @@
 import { BaseElement, EventMap } from "./base";
 import { ICONS, makeCheckboxRow, makeWrapper } from "./util";
 
-export class PlayerBaseElement extends BaseElement {
+export class LookerElement extends BaseElement {
   private hideControlsTimeout?: ReturnType<typeof setTimeout>;
 
   events = {

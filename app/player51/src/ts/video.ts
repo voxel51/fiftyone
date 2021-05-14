@@ -4,16 +4,6 @@
 
 export function asVideo() {
   return Object.assign(this, {
-    boolDrawFrameNumber: false,
-    boolDrawTimestamp: false,
-
-    /**
-     * Loop the video when playing
-     */
-    loop(boolLoop: boolean = true): void {
-      this.renderer._boolLoop = boolLoop;
-    },
-
     /**
      * Play the video
      */
@@ -27,18 +17,6 @@ export function asVideo() {
      */
     pause(): void {
       this.renderer._boolPlaying = false;
-      this.renderer.updateFromDynamicState();
-    },
-
-    /**
-     * Play the video on load
-     */
-    autoplay(boolAutoplay: boolean = true): void {
-      if (this.renderer._boolSingleFrame && boolAutoplay) {
-        boolAutoplay = false;
-        this.renderer._boolPlaying = true;
-      }
-      this.renderer._boolAutoplay = boolAutoplay;
       this.renderer.updateFromDynamicState();
     },
 

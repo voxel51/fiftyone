@@ -23,24 +23,22 @@ class OverlaysManager {
   constructor() {}
 
   getOverlays(
-    key,
-    sourceResolver,
-    canvas: HTMLCanvasElement,
+    sample,
+    context: CanvasRenderingContext2D,
     width: number,
     height: number
   ) {
     const classifications = [];
-    for (const field in this.sample) {
-      const label = this.sample[field];
+    let overlays = [];
+    for (const field in sample) {
+      const label = sample[field];
       if (!label) {
         continue;
       }
       if (label._cls in FROM_FO) {
-        const overlays = FROM_FO[label._cls](field, label, this);
-        overlays.forEach((o) =>
-          o.setup(context, this.canvasWidth, this.canvasHeight)
-        );
-        this._overlays = [...this._overlays, ...overlays];
+        const labelOverlays = FROM_FO[label._cls](field, label, this);
+        overlays.forEach((o) => o.setup(context, width, height));
+        overlays = [...overlays, ...labelOverlays];
       } else if (label._cls === "Classification") {
         classifications.push([field, [null, [label]]]);
       } else if (label._cls === "Classifications") {
@@ -50,17 +48,12 @@ class OverlaysManager {
 
     if (classifications.length > 0) {
       const overlay = new ClassificationsOverlay(classifications, this);
-      overlay.setup(context, this.canvasWidth, this.canvasHeight);
-      this._overlays.push(overlay);
+      overlay.setup(context, width, height);
+      overlays.push(overlay);
     }
-    this._updateOverlayOptionVisibility();
-    this._reBindMouseHandler();
-
-    this.updateFromLoadingState();
-    this.updateFromDynamicState();
   }
 
-  setTopOverlays({ x, y }, overlays) {
+  setTopOverlays({ curs }, overlays) {
     if (
       this.player.options.thumbnail ||
       [-1, null].includes(x) ||

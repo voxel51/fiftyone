@@ -41,16 +41,7 @@ export default abstract class Renderer {
 
   abstract customDraw(): void;
 
-  dispatchEvent(eventType: string, { data, ...args }): boolean {
-    const e = new Event(eventType, args);
-    e.data = data;
-    return this.eventTarget.dispatchEvent(e);
-  }
-
   private processFrame() {
-    if (!this._isReadyProcessFrames) {
-      return;
-    }
     clearCanvas(this.eleCanvas, this.canvasWidth, this.canvasHeight);
     const context = this.setupCanvasContext();
     this.customDraw(context);

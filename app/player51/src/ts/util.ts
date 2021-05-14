@@ -216,7 +216,8 @@ export const checkFontHeight = (h: number): number => {
 
 /**
  * Rescales coordinates
- */ export const rescaleCoordates = (
+ */
+export const rescaleCoordates = (
   [x, y]: [number, number],
   fromDim: [number, number],
   toDim: [number, number]
@@ -225,4 +226,11 @@ export const checkFontHeight = (h: number): number => {
     Math.round(rescale(x, 0, fromDim[0], 0, toDim[0])),
     Math.round(rescale(y, 0, fromDim[1], 0, toDim[1])),
   ];
+};
+
+/**
+ * Checks if the supplied is a function
+ */
+export const isFunction = (obj: any): boolean => {
+  return !!(obj && obj.constructor && obj.call && obj.apply);
 };

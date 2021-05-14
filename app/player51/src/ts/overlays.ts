@@ -19,9 +19,10 @@ const LINE_WIDTH = 6;
 const POINT_RADIUS = 6;
 const DASH_LENGTH = 10;
 const DASH_COLOR = "#ffffff";
-const _rawColorCache = {};
 
 class ColorGenerator {
+  static white = "#ffffff";
+
   private static colorS: string = "70%";
   private static colorL: string = "40%";
   private static colorA: string = "0.875";
@@ -911,6 +912,7 @@ function DetectionOverlay(field, label, renderer, frameNumber = null) {
   this.attrHeight = 0;
 }
 DetectionOverlay._tempMaskCanvas = null;
+DetectionOverlay._rawColorCache = {};
 DetectionOverlay.prototype = Object.create(Overlay.prototype);
 DetectionOverlay.prototype.constructor = DetectionOverlay;
 
@@ -1103,14 +1105,16 @@ DetectionOverlay.prototype.draw = function (
   }
 
   if (this.mask) {
-    if (_rawColorCache[color] === undefined) {
+    if (DetectionOverlay._rawColorCache[color] === undefined) {
       const rawMaskColorComponents = new Uint8Array(
         context.getImageData(this.x, this.y, 1, 1).data.buffer
       );
       rawMaskColorComponents[3] = 255 * MASK_ALPHA;
-      _rawColorCache[color] = new Uint32Array(rawMaskColorComponents.buffer)[0];
+      DetectionOverlay._rawColorCache[color] = new Uint32Array(
+        rawMaskColorComponents.buffer
+      )[0];
     }
-    const rawMaskColor = _rawColorCache[color];
+    const rawMaskColor = DetectionOverlay._rawColorCache[color];
 
     const [maskHeight, maskWidth] = this.mask.shape;
     ensureCanvasSize(DetectionOverlay._tempMaskCanvas, {
