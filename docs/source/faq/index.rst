@@ -5,22 +5,6 @@ Frequently Asked Questions
 
 .. default-role:: code
 
-.. _faq-desktop-app-support:
-
-Can I run the FiftyOne App as a desktop application?
-----------------------------------------------------
-
-Yes! Simply :ref:`install the Desktop App <installing-fiftyone-desktop>`.
-
-Commands like :func:`launch_app() <fiftyone.core.session.launch_app>` provide
-an optional ``desktop`` flag that let you control whether to launch the App in
-your browser or as a desktop App. You can also set the ``desktop_app`` flag of
-your :ref:`FiftyOne config <configuring-fiftyone>` to use the desktop App by
-default.
-
-Check out the :ref:`enviornments guide <environments>` to see how to use
-FiftyOne in all common local, remote, cloud, and notebook environments.
-
 .. _faq-browser-support:
 
 Can I open the FiftyOne App in a browser?
@@ -33,6 +17,22 @@ web browser whenever you call
 
 You can also run FiftyOne
 :ref:`as a desktop application <faq-desktop-app-support>` if you prefer.
+
+Check out the :ref:`enviornments guide <environments>` to see how to use
+FiftyOne in all common local, remote, cloud, and notebook environments.
+
+.. _faq-desktop-app-support:
+
+Can I run the FiftyOne App as a desktop application?
+----------------------------------------------------
+
+Yes! Simply :ref:`install the Desktop App <installing-fiftyone-desktop>`.
+
+Commands like :func:`launch_app() <fiftyone.core.session.launch_app>` provide
+an optional ``desktop`` flag that let you control whether to launch the App in
+your browser or as a desktop App. You can also set the ``desktop_app`` flag of
+your :ref:`FiftyOne config <configuring-fiftyone>` to use the desktop App by
+default.
 
 Check out the :ref:`enviornments guide <environments>` to see how to use
 FiftyOne in all common local, remote, cloud, and notebook environments.
@@ -215,6 +215,7 @@ and video datasets:
 - :ref:`Polylines and polygons <polylines>`
 - :ref:`Keypoints <keypoints>`
 - :ref:`Semantic segmentations <semantic-segmentation>`
+- :ref:`Geolocation data <geolocation>`
 
 Check out :ref:`this guide <manually-building-datasets>` for simple recipes to
 load labels in each of these formats.
@@ -256,18 +257,21 @@ persistence.
 Why didn't changes to my dataset save?
 --------------------------------------
 
-Remember that any edits that you make to a |Sample| or its
-:meth:`frame labels <video-frame-labels>` will not be committed to the database
-until you call :meth:`sample.save() <fiftyone.core.sample.Sample.save>`!
+Although **adding** samples to datasets immediately writes them to the
+database, remember that any **edits** that you make to a
+:ref:`sample <adding-sample-fields>` or its
+:ref:`frame labels <video-frame-labels>` will not be written to the database
+until you call :meth:`sample.save() <fiftyone.core.sample.Sample.save>`.
 
-A general rule of thumb is that **adding** data to a dataset is immediately
+Similarly, **setting** the properties of a |Dataset| object will be immediately
 saved, but you must call
-:meth:`dataset.save()` <fiftyone.core.dataset.Dataset.save>` or
-:meth:`sample.save() <fiftyone.core.sample.Sample.save>` whenever you **edit**
-a |Dataset| or |Sample| objects' fields, respectively.
+:meth:`dataset.save() <fiftyone.core.dataset.Dataset.save>` whenever you
+**edit** fields such as :meth:`info <fiftyone.core.dataset.Dataset.info>` or
+:meth:`classes <fiftyone.core.dataset.Dataset.classes>` in-place.
 
-See :ref:`this page <adding-sample-fields>` for more details about modifying
-samples.
+Refer to :ref:`this section <adding-sample-fields>` for more details about
+modifying samples and :ref:`this section <storing-info>` for more details about
+storing dataset-level information.
 
 .. code-block:: python
     :linenos:
@@ -277,15 +281,18 @@ samples.
     dataset = fo.Dataset(...)
     new_samples = [...]
 
+    # Setting a property is automatically saved
+    dataset.persistent = True
+
     dataset.info["hello"] = "world"
     dataset.save()  # don't forget this!
 
-    # Adding samples will
+    # Added samples are automatically saved
     dataset.add_samples(new_samples)
 
     for sample in dataset:
         sample["field"] = 51
-        sample.save()   # don't forget this!
+        sample.save()  # don't forget this!
 
 .. _faq-share-dataset-export:
 
@@ -317,15 +324,15 @@ launch :ref:`multiple App instances <faq-multiple-apps>`.
 
 Working with the same dataset in multiple shells simultaneously is generally
 seamless, even if you are editing the dataset, as the |Dataset| class does not
-store its |Sample| objects in-memory, it loads them from the database each time
-you request them. Therefore, if you add or modify a |Sample| in one shell, you
-will immediately have access to the updates the next time you request that
+store its |Sample| objects in-memory, it loads them from the database only when
+they are requested. Therefore, if you add or modify a |Sample| in one shell,
+you will immediately have access to the updates the next time you request that
 |Sample| in other shells.
 
 The one exception to this rule is that |Dataset| and |Sample| objects
-themselves are singletons, so if you hold their instances in-memory, they will
-not be immediately updated by re-accessing them, since the existing instance
-will be returned back to you.
+themselves are singletons, so if you hold references to these objects
+in-memory, they will not be automatically updated by re-accessing them, since
+the existing instances will be returned back to you.
 
 If a dataset may have been changed by another process, you can always manually
 call :meth:`Dataset.reload() <fiftyone.core.dataset.Dataset.reload>` to reload
@@ -597,14 +604,15 @@ forwarding and open the App in your browser as follows:
 
 .. _faq-too-many-files-open:
 
-How do I resolve this too many files open error?
-------------------------------------------------
+Too many open files in system?
+------------------------------
 
-If you are a MacOS user and see a "Too many open files in system" error when
+If you are a MacOS user and see a "too many open files in system" error when
 performing import/export operations with FiftyOne, then you likely need to
-increase the open file limits on your OS.
-:ref:`This helpful post <https://superuser.com/a/443168>` should help you
-resolve the issue.
+increase the open files limit for your OS.
+
+Following the instructions in `this post <https://superuser.com/a/443168>`_
+should resolve the issue for you.
 
 .. _faq-downgrade:
 
@@ -618,10 +626,10 @@ Certainly, refer to :ref:`these instructions <downgrading-fiftyone>`.
 Are the Brain methods open source?
 ----------------------------------
 
-Not currently. Although the
-`core library <https://github.com/voxel51/fiftyone>`_ is open source and the
-:ref:`Brain methods <fiftyone-brain>` are freely available for use for any
-commerical or non-commerical purposes, the Brain methods are closed source.
+Although the `core library <https://github.com/voxel51/fiftyone>`_ is open
+source and the :ref:`Brain methods <fiftyone-brain>` are freely available for
+use for any commerical or non-commerical purposes, the Brain methods are closed
+source.
 
 Check out the :ref:`Brain documentation <fiftyone-brain>` for detailed
 instructions on using the various Brain methods.
