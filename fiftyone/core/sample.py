@@ -216,6 +216,7 @@ class _SampleMixin(object):
         omit_fields=None,
         omit_frame_fields=None,
         omit_none_fields=True,
+        merge_lists=False,
         overwrite=True,
         expand_schema=True,
     ):
@@ -227,6 +228,9 @@ class _SampleMixin(object):
             omit_frame_fields (None): an optional lits of frame fields to omit
             omit_none_fields (True): whether to omit ``None``-valued fields of
                 the provided sample
+            merge_lists (False): whether to merge top-level list fields and the
+                elements of label list fields. If ``True``, this parameter
+                supercedes the ``overwrite`` parameter for list fields
             overwrite (True): whether to overwrite existing fields. Note that
                 existing fields whose values are ``None`` are always
                 overwritten
@@ -244,6 +248,7 @@ class _SampleMixin(object):
             sample,
             omit_fields=omit_fields,
             omit_none_fields=omit_none_fields,
+            merge_lists=merge_lists,
             overwrite=overwrite,
             expand_schema=expand_schema,
         )
@@ -253,6 +258,7 @@ class _SampleMixin(object):
                 sample.frames,
                 omit_fields=omit_frame_fields,
                 omit_none_fields=omit_none_fields,
+                merge_lists=merge_lists,
                 overwrite=overwrite,
                 expand_schema=expand_schema,
             )

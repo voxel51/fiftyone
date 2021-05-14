@@ -9,6 +9,7 @@ from copy import deepcopy
 
 import eta.core.serial as etas
 
+import fiftyone.core.labels as fol
 from fiftyone.core.singletons import DocumentSingleton
 
 
@@ -226,6 +227,7 @@ class _Document(object):
         document,
         omit_fields=None,
         omit_none_fields=True,
+        merge_lists=False,
         overwrite=True,
         expand_schema=True,
     ):
@@ -236,6 +238,9 @@ class _Document(object):
             omit_fields (None): an optional list of fields to omit
             omit_none_fields (True): whether to omit ``None``-valued fields of
                 the provided document
+            merge_lists (False): whether to merge top-level list fields and the
+                elements of label list fields. If ``True``, this parameter
+                supercedes the ``overwrite`` parameter for list fields
             overwrite (True): whether to overwrite existing fields. Note that
                 existing fields whose values are ``None`` are always
                 overwritten
@@ -252,7 +257,7 @@ class _Document(object):
         else:
             omit_fields = set()
 
-        existing_field_names = self.field_names
+        existing_field_names = set(self.field_names)
 
         for field_name, value in document.iter_fields():
             if field_name in omit_fields:
@@ -261,10 +266,31 @@ class _Document(object):
             if omit_none_fields and value is None:
                 continue
 
+            try:
+                curr_value = self[field_name]
+            except KeyError:
+                curr_value = None
+
+            if merge_lists:
+                field_type = type(curr_value)
+
+                if issubclass(field_type, list):
+                    if value is not None:
+                        curr_value.extend(value)
+
+                    continue
+
+                if field_type in fol._LABEL_LIST_FIELDS:
+                    if value is not None:
+                        list_field = field_type._LABEL_LIST_FIELD
+                        curr_value[list_field].extend(value[list_field])
+
+                    continue
+
             if (
                 not overwrite
-                and (field_name in existing_field_names)
-                and (self[field_name] is not None)
+                and field_name in existing_field_names
+                and curr_value is not None
             ):
                 continue
 

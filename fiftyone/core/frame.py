@@ -265,6 +265,7 @@ class Frames(object):
         frames,
         omit_fields=None,
         omit_none_fields=True,
+        merge_lists=False,
         overwrite=True,
         expand_schema=True,
     ):
@@ -283,6 +284,9 @@ class Frames(object):
             omit_fields (None): an optional list of fields to omit
             omit_none_fields (True): whether to omit ``None``-valued fields of
                 the provided frames
+            merge_lists (False): whether to merge top-level list fields and the
+                elements of label list fields. If ``True``, this parameter
+                supercedes the ``overwrite`` parameter for list fields
             overwrite (True): whether to overwrite existing fields
             expand_schema (True): whether to dynamically add new frame fields
                 encountered to the dataset schema. If False, an error is raised
@@ -297,6 +301,7 @@ class Frames(object):
                     frame,
                     omit_fields=omit_fields,
                     omit_none_fields=omit_none_fields,
+                    merge_lists=merge_lists,
                     overwrite=overwrite,
                     expand_schema=expand_schema,
                 )

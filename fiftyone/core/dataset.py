@@ -1439,6 +1439,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         insert_new=True,
         expand_schema=True,
         omit_default_fields=False,
+        merge_lists=False,
         overwrite=True,
         include_info=True,
         overwrite_info=False,
@@ -1472,8 +1473,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 if a sample's schema is not a subset of the dataset schema
             omit_default_fields (False): whether to omit default sample fields
                 when merging. If ``True``, ``insert_new`` must be ``False``
+            merge_lists (False): whether to merge top-level list fields and the
+                elements of label list fields. If ``True``, this parameter
+                supercedes the ``overwrite`` parameter for list fields
             overwrite (True): whether to overwrite (True) or skip (False)
-                existing sample fields
+                existing fields
             include_info (True): whether to merge dataset-level information
                 such as ``info`` and ``classes``. Only applicable when
                 ``samples`` is a
@@ -1488,6 +1492,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             isinstance(samples, foc.SampleCollection)
             and key_fcn is None
             and overwrite
+            and not merge_lists
         ):
             _merge_samples(
                 samples,
@@ -1498,6 +1503,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 insert_new=insert_new,
                 expand_schema=expand_schema,
                 omit_default_fields=omit_default_fields,
+                merge_lists=merge_lists,
                 include_info=include_info,
                 overwrite_info=overwrite_info,
             )
@@ -1544,6 +1550,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                             sample,
                             omit_fields=omit_fields,
                             omit_none_fields=omit_none_fields,
+                            merge_lists=merge_lists,
                             overwrite=overwrite,
                             expand_schema=expand_schema,
                         )
@@ -3817,6 +3824,7 @@ def _merge_samples(
     insert_new=True,
     expand_schema=True,
     omit_default_fields=False,
+    merge_lists=False,
     include_info=True,
     overwrite_info=False,
 ):
@@ -3940,6 +3948,8 @@ def _merge_samples(
                 }
             }
         )
+
+    # @todo support `overwrite=False` and `merge_lists=True`
 
     sample_pipeline.append(
         {
