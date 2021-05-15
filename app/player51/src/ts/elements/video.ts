@@ -2,6 +2,7 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 
+import { VideoState } from "../state";
 import { BaseElement } from "./base";
 import {
   getFrameNumber,
@@ -13,7 +14,7 @@ import {
   makeWrapper,
 } from "./util";
 
-export class PlayButtonElement extends BaseElement {
+export class PlayButtonElement extends BaseElement<VideoState> {
   element: HTMLImageElement;
   private playing: boolean = false;
 
@@ -46,7 +47,7 @@ export class PlayButtonElement extends BaseElement {
   }
 }
 
-export class SeekBarElement extends BaseElement {
+export class SeekBarElement extends BaseElement<VideoState> {
   events = {
     input: ({ event, update }) => {
       const progress = event.target.valueAsNumber / 100;
@@ -91,7 +92,7 @@ export class SeekBarElement extends BaseElement {
   }
 }
 
-export class UseFrameNumberOptionElement extends BaseElement {
+export class UseFrameNumberOptionElement extends BaseElement<VideoState> {
   checkbox: HTMLInputElement;
   label: HTMLLabelElement;
 
@@ -106,7 +107,7 @@ export class UseFrameNumberOptionElement extends BaseElement {
   }
 }
 
-export class TimeElement extends BaseElement {
+export class TimeElement extends BaseElement<VideoState> {
   createHTMLElement() {
     const element = document.createElement("div");
     element.className = "p51-time";
@@ -115,20 +116,20 @@ export class TimeElement extends BaseElement {
   }
 
   renderSelf({
-    currentTime,
+    frameNumber,
     duration,
-    frameRate,
+    config: { frameRate },
     options: { useFrameNumber },
   }) {
     const timestamp = useFrameNumber
-      ? getFrameString(currentTime, duration, frameRate)
-      : getTimeString(currentTime, duration);
+      ? getFrameString(frameNumber, duration, frameRate)
+      : getTimeString(frameNumber, frameRate, duration);
     this.element.innerHTML = timestamp;
     return this.element;
   }
 }
 
-export class VideoElement extends BaseElement {
+export class VideoElement extends BaseElement<VideoState> {
   events = {
     keydown: ({ event, update }) => {
       if (event.keyCode === 32) {

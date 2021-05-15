@@ -2,24 +2,26 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 
-export interface EventMap {
-  [key: string]: (args: {
-    event: Event;
-    update: (state: object) => void;
+import { BaseState, StateUpdate } from "../state";
+
+export type Events<State extends BaseState> = {
+  [K in keyof HTMLElementEventMap]?: (args: {
+    event: HTMLElementEventMap[K];
+    update: StateUpdate<State>;
     dispatchEvent: (eventType: string, details?: any) => void;
   }) => void;
-}
+};
 
-export abstract class BaseElement {
-  readonly children: BaseElement[] = [];
+export abstract class BaseElement<State extends BaseState> {
+  readonly children: BaseElement<State>[] = [];
   readonly element: HTMLElement;
-  events: EventMap = {};
-  eventTarget?: Element;
+  events: Events<State>;
+  eventTarget?: HTMLElement;
 
   constructor(
-    update: (state: any) => void,
+    update: StateUpdate<State>,
     dispatchEvent: (eventType: string, details?: any) => void,
-    children?: BaseElement[]
+    children?: BaseElement<State>[]
   ) {
     this.children = children;
     this.element = this.createHTMLElement(update);
@@ -31,13 +33,13 @@ export abstract class BaseElement {
     });
   }
 
-  abstract createHTMLElement(update: (state: any) => void): HTMLElement;
+  abstract createHTMLElement(update: StateUpdate<State>): HTMLElement;
 
-  isShown(state): boolean {
+  isShown(state: Readonly<State>): boolean {
     return true;
   }
 
-  render(state): Element {
+  render(state: Readonly<State>): Element {
     const self = this.renderSelf(state);
     const children = this.renderChildren(state);
 
@@ -54,9 +56,9 @@ export abstract class BaseElement {
     return self;
   }
 
-  renderChildren(state): Element[] {
+  renderChildren(state: Readonly<State>): Element[] {
     return this.children.map((child) => child.renderSelf(state));
   }
 
-  abstract renderSelf(state): Element;
+  abstract renderSelf(state: Readonly<State>): Element;
 }

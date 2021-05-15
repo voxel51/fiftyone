@@ -2,13 +2,14 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 
-import { BaseElement, EventMap } from "./base";
+import { BaseState, Optional } from "../state";
+import { BaseElement, Events } from "./base";
 import { ICONS, makeCheckboxRow, makeWrapper } from "./util";
 
-export class LookerElement extends BaseElement {
+export class LookerElement extends BaseElement<BaseState> {
   private hideControlsTimeout?: ReturnType<typeof setTimeout>;
 
-  events = {
+  events: Events<BaseState> = {
     blur: ({ update }) => {
       update({ showOptions: false, showControls: false, focused: false });
     },
@@ -17,7 +18,8 @@ export class LookerElement extends BaseElement {
     },
     keydown: ({ event, update }) => {
       // esc: hide settings
-      if (event.keyCode === 27) {
+      const e = event as KeyboardEvent;
+      if (e.keyCode === 27) {
         update({ showControls: false, showOptions: false });
       }
       // s: toggle settings
@@ -73,12 +75,12 @@ export class LookerElement extends BaseElement {
   }
 }
 
-export class CanvasElement extends BaseElement {
-  events: EventMap = {
+export class CanvasElement extends BaseElement<BaseState> {
+  events: Events<BaseState> = {
     click: ({ update }) => {
       update({ showOptions: false });
     },
-    mousenter: ({ update }) => {},
+    mouseenter: ({ update }) => {},
     mouseleave: ({ update }) => {
       update({
         tooltipOverlay: null,
@@ -110,9 +112,9 @@ export class CanvasElement extends BaseElement {
   }
 }
 
-export class ControlsElement extends BaseElement {
+export class ControlsElement extends BaseElement<BaseState> {
   private showControls: boolean;
-  events: EventMap = {
+  events: Events<BaseState> = {
     click: ({ update }) => {
       update({
         showControls: false,
@@ -121,7 +123,7 @@ export class ControlsElement extends BaseElement {
       });
     },
     mouseenter: ({ update }) => {
-      update({ tooltipOverlay: null, hoveringControls: true, canFocus: false });
+      update({ tooltipOverlay: null, hoveringControls: true });
     },
     mouseleave: ({ update }) => {
       update({ hoveringControls: false });
@@ -154,7 +156,7 @@ export class ControlsElement extends BaseElement {
   }
 }
 
-export class OptionsButtonElement extends BaseElement {
+export class OptionsButtonElement extends BaseElement<BaseState> {
   private showControls: boolean;
 
   events = {
@@ -189,10 +191,10 @@ export class OptionsButtonElement extends BaseElement {
   }
 }
 
-export class OptionsPanelElement extends BaseElement {
+export class OptionsPanelElement extends BaseElement<BaseState> {
   private showOptions: boolean;
 
-  events = {
+  events: Events<BaseState> = {
     mouseenter: ({ update }) => {
       update({ tooltipOverlay: null, hoveringControls: true });
     },
@@ -227,7 +229,9 @@ export class OptionsPanelElement extends BaseElement {
   }
 }
 
-export class OnlyShowHoveredOnLabelOptionElement extends BaseElement {
+export class OnlyShowHoveredOnLabelOptionElement extends BaseElement<
+  BaseState
+> {
   checkbox: HTMLInputElement;
   label: HTMLLabelElement;
 
@@ -239,17 +243,13 @@ export class OnlyShowHoveredOnLabelOptionElement extends BaseElement {
     return makeWrapper([this.label]);
   }
 
-  renderSelf({
-    options: {
-      overlay: { onlyShowHoveredLabel },
-    },
-  }) {
+  renderSelf({ options: { onlyShowHoveredLabel } }) {
     this.checkbox.checked = onlyShowHoveredLabel;
     return this.element;
   }
 }
 
-export class ShowAttributesOptionElement extends BaseElement {
+export class ShowAttributesOptionElement extends BaseElement<BaseState> {
   checkbox: HTMLInputElement;
   label: HTMLLabelElement;
 
@@ -258,17 +258,13 @@ export class ShowAttributesOptionElement extends BaseElement {
     return makeWrapper([this.label]);
   }
 
-  renderSelf({
-    options: {
-      overlay: { showAttrs },
-    },
-  }) {
+  renderSelf({ options: { showAttrs } }) {
     this.checkbox.checked = showAttrs;
     return this.element;
   }
 }
 
-export class ShowConfidenceOptionElement extends BaseElement {
+export class ShowConfidenceOptionElement extends BaseElement<BaseState> {
   checkbox: HTMLInputElement;
   label: HTMLLabelElement;
 
@@ -284,17 +280,13 @@ export class ShowConfidenceOptionElement extends BaseElement {
     return makeWrapper([this.label]);
   }
 
-  renderSelf({
-    options: {
-      overlay: { showConfidence },
-    },
-  }) {
+  renderSelf({ options: { showConfidence } }) {
     this.checkbox.checked = showConfidence;
     return this.element;
   }
 }
 
-export class ShowTooltipOptionElement extends BaseElement {
+export class ShowTooltipOptionElement extends BaseElement<BaseState> {
   checkbox: HTMLInputElement;
   label: HTMLLabelElement;
 
@@ -310,11 +302,7 @@ export class ShowTooltipOptionElement extends BaseElement {
     return makeWrapper([this.label]);
   }
 
-  renderSelf({
-    options: {
-      overlay: { showTooltip },
-    },
-  }) {
+  renderSelf({ options: { showTooltip } }) {
     this.checkbox.checked = showTooltip;
     return this.element;
   }

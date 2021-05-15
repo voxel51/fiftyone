@@ -2,9 +2,13 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 
+import { ImageState } from "../state";
 import { BaseElement } from "./base";
 
-export class ImageElement extends BaseElement {
+export class ImageElement extends BaseElement<ImageState> {
+  private src: string;
+  private mimeType: string;
+
   events = {
     load: ({ update }) => {
       update({ isDataLoaded: true });

@@ -2,6 +2,8 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 
+import { Kind } from "./state";
+
 /**
  * Shallow data-object comparison for equality
  */
@@ -228,9 +230,14 @@ export const rescaleCoordates = (
   ];
 };
 
-/**
- * Checks if the supplied is a function
- */
-export const isFunction = (obj: any): boolean => {
-  return !!(obj && obj.constructor && obj.call && obj.apply);
+export const getMimeType = (src: string): string => {
+  return mime;
+};
+
+export const getKind = (mimeType: string): Kind => {
+  // @todo: Kind.Frame
+  if (mimeType.startsWith("video/")) {
+    return Kind.Video;
+  }
+  return Kind.Image;
 };

@@ -3,6 +3,7 @@
  */
 
 import { parseMediaFragmentsUri } from "../mediaFragments";
+import { ReadOnlyState, StateUpdate } from "../state";
 import { BaseElement } from "./base";
 
 export const FRAME_ZERO_OFFSET = 1;
@@ -44,21 +45,23 @@ export const makeCheckboxRow = function (
   return [label, checkbox];
 };
 
-interface ElementsTemplate<T extends BaseElement> {
+interface ElementsTemplate<T extends BaseElement<ReadOnlyState, StateUpdate>> {
   node: new (
     update: (state: any) => void,
     dispatchEvent: (eventType: string, details?: any) => void,
-    children?: BaseElement[]
+    children?: BaseElement<ReadOnlyState, StateUpdate>[]
   ) => T;
-  children?: ElementsTemplate<BaseElement>[];
+  children?: ElementsTemplate<BaseElement<ReadOnlyState, StateUpdate>>[];
 }
 
-export function createElementsTree<T extends BaseElement>(
+export function createElementsTree<
+  T extends BaseElement<ReadOnlyState, StateUpdate>
+>(
   root: ElementsTemplate<T>,
   update: (state: any) => void,
   dispatchEvent: (eventType: string, details?: any) => void
 ) {
-  let children = new Array<BaseElement>();
+  let children = new Array<BaseElement<ReadOnlyState, StateUpdate>>();
   children = root.children
     ? root.children.map((child) =>
         createElementsTree(child, update, dispatchEvent)
@@ -111,27 +114,28 @@ export const getTime = (frameNumber: number, frameRate: number): number => {
 };
 
 export const getFrameString = (
-  currentTime: number,
+  frameNumber: number,
   duration: number,
   frameRate: number
 ) => {
-  const current = getFrameNumber(currentTime, duration, frameRate);
   const total = getFrameNumber(duration, duration, frameRate);
-  return `${current} / ${total}`;
+  return `${frameNumber} / ${total}`;
 };
 
 export const getTimeString = (
-  currentTime: number,
+  frameNumber: number,
+  frameRate: number,
   duration: number
 ): string => {
   const renderHours = Math.floor(duration / 3600) > 0;
   let hours = 0;
+  let time = getTime(frameNumber, frameRate);
   if (renderHours) {
-    hours = Math.floor(currentTime / 3600);
+    hours = Math.floor(time / 3600);
   }
-  currentTime = currentTime % 3600;
-  const minutes = Math.floor(currentTime / 60);
-  const seconds = currentTime % 60;
+  time = time % 3600;
+  const minutes = Math.floor(time / 60);
+  const seconds = time % 60;
 
   const mmss =
     secondsToHhmmss(minutes) + ":" + secondsToHhmmss(+seconds.toFixed(2));

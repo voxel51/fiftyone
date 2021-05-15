@@ -2,10 +2,11 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 
+import { FrameState } from "../state";
 import { BaseElement } from "./base";
 import { getFrameString, getTimeString } from "./util";
 
-export class FrameNumberElement extends BaseElement {
+export class FrameNumberElement extends BaseElement<FrameState> {
   createHTMLElement() {
     const element = document.createElement("div");
     element.className = "p51-time";
@@ -14,22 +15,20 @@ export class FrameNumberElement extends BaseElement {
   }
 
   renderSelf({
-    currentTime,
+    frameNumber,
     duration,
-    frameRate,
+    config: { frameRate },
     options: { useFrameNumber },
   }) {
     const timestamp = useFrameNumber
-      ? getFrameString(currentTime, duration, frameRate)
-      : getTimeString(currentTime, duration);
+      ? getFrameString(frameNumber, duration, frameRate)
+      : getTimeString(frameNumber, frameRate, duration);
     this.element.innerHTML = timestamp;
     return this.element;
   }
 }
 
-export class FrameElement extends BaseElement {
-  private src: string;
-
+export class FrameElement extends BaseElement<FrameState> {
   createHTMLElement() {
     const element = document.createElement("video");
     element.className = "p51-video";

@@ -10,10 +10,17 @@ interface BaseOptions {
   showAttrs: boolean;
   showConfidence: boolean;
   showTooltip: boolean;
+  onlyShowHoveredLabel: boolean;
   zoomOn: string[] | [];
 }
 
-export interface FrameOptions extends BaseOptions {}
+export type Coordinates = [number, number];
+
+export type Dimensions = [number, number];
+
+export interface FrameOptions extends BaseOptions {
+  useFrameNumber: boolean;
+}
 
 export interface ImageOptions extends BaseOptions {}
 
@@ -38,10 +45,24 @@ interface VideoConfig extends BaseConfig {
   frameRate: number;
 }
 
+export interface TooltipOverlay {
+  color: string;
+  field: string;
+  frameNumber?: number;
+  label: object;
+  target?: number;
+  type:
+    | "Classification"
+    | "Detection"
+    | "Keypoint"
+    | "Polyline"
+    | "Segmentation";
+}
+
 export interface BaseState {
-  cursorCoordinates?: [number, number];
-  dimentions: [number, number];
-  canvasDimenstions: [number, number];
+  cursorCoordinates: Coordinates;
+  dimensions: Dimensions;
+  canvasDimenstions: Dimensions;
   disableControls: boolean;
   focused: boolean;
   loaded: boolean;
@@ -49,24 +70,16 @@ export interface BaseState {
   hoveringControls: boolean;
   showControls: boolean;
   showOptions: boolean;
-  tooltipOverlay?: {
-    color: string;
-    field: string;
-    frameNumber?: number;
-    label: object;
-    target?: number;
-    type:
-      | "Classification"
-      | "Detection"
-      | "Keypoint"
-      | "Polyline"
-      | "Segmentation";
-  };
+  tooltipOverlay?: TooltipOverlay;
+  config: BaseConfig;
+  options: BaseOptions;
 }
 
 export interface FrameState extends BaseState {
   config: FrameConfig;
   options: FrameOptions;
+  frameNumber: number;
+  duration: number;
 }
 
 export interface ImageState extends BaseState {
@@ -80,6 +93,8 @@ export interface VideoState extends BaseState {
   seeking: boolean;
   playing: boolean;
   locked: boolean;
+  frameNumber: number;
+  duration: number;
   fragment?: [number, number];
 }
 
@@ -87,22 +102,14 @@ export type Optional<T> = {
   [P in keyof T]?: Optional<T[P]>;
 };
 
-export type ImageStateUpdate = Optional<ImageState>;
-
-export type FrameStateUpdate = Optional<FrameState>;
-
-export type VideoStateUpdate = Optional<VideoState>;
-
 export enum Kind {
   Frame = "FRAME",
   Image = "Image",
   Video = "Video",
 }
 
-export const getKind = (mimeType: string): Kind => {
-  // @todo: Kind.Frame
-  if (mimeType.startsWith("video/")) {
-    return Kind.Video;
-  }
-  return Kind.Image;
-};
+export type StateUpdate<State extends BaseState> = (
+  stateOrUpdater:
+    | Optional<State>
+    | ((state: Readonly<State>) => Optional<State>)
+) => void;

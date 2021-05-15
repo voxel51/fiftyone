@@ -2,40 +2,14 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 import { fromJS, mergeDeep } from "immutable";
-import mime from "mime-types";
 
 import OverlaysManager from "./overlaysManager";
 import { colorGenerator } from "./overlays";
-import {
-  Kind,
-  getKind,
-  FrameState,
-  FrameStateUpdate,
-  ImageState,
-  ImageStateUpdate,
-  VideoState,
-  VideoStateUpdate,
-} from "./state";
+import { Kind, getKind, FrameState, ImageState, VideoState } from "./state";
 import { getElements } from "./elements";
-import { isFunction } from "./util";
 import { LookerElement } from "./elements/common";
 
 export { ColorGenerator } from "./overlays";
-
-const defaults = {
-  colorMap: {},
-  colorByLabel: {},
-  activeFields: {},
-  filter: {},
-  enableOverlayOptions: {},
-  overlayOptions: {
-    showAttrs: false,
-    showTooltip: true,
-    showConfidence: true,
-  },
-  selectedLabels: [],
-  colorGenerator,
-};
 
 export default class Looker {
   src: string;
@@ -47,51 +21,66 @@ export default class Looker {
   private eventTarget: EventTarget;
   private state: FrameState | ImageState | VideoState;
   private lookerElement: LookerElement;
+  private canvas: HTMLCanvasElement;
 
   constructor(sample: any, config, options) {
     this.eventTarget = new EventTarget();
+    this.kind = getKind(sample.metadata.mime_type);
     this.state = fromJS({
       config,
       options,
     });
 
-    this.kind = getKind(sample.metadata.mime_type);
     const update = this.makeUpdater(this.kind);
     this.lookerElement = getElements(this.kind, update, this.dispatchEvent);
+    this.canvas = this.lookerElement.element.querySelector("canvas");
   }
 
   private makeUpdater(kind) {
+    const makeUpdate = function <State>(
+      state: State
+    ): (
+      stateOrUpdate: Readonly<State> | ((state: Readonly<State>) => State)
+    ) => void {
+      return (stateOrUpdater: SU | ((state: SR) => SU)) => {
+        const updates =
+          stateOrUpdater instanceof Function
+            ? stateOrUpdater(this.state)
+            : stateOrUpdater;
+        this.state = mergeDeep<S>(this.state as S, updates);
+        this.lookerElement.render(this.state as SR);
+      };
+    };
     switch (kind) {
       case Kind.Frame: {
         return (
           stateOrUpdater:
             | FrameStateUpdate
-            | ((state: FrameState) => FrameStateUpdate)
+            | ((state: FrameStateReadOnly) => FrameStateUpdate)
         ) => {
           const updates =
             stateOrUpdater instanceof Function
-              ? stateOrUpdater(this.state)
+              ? stateOrUpdater(this.state as FrameStateReadOnly)
               : stateOrUpdater;
           this.state = mergeDeep<FrameState>(this.state, updates);
-          this.lookerElement.render<FrameState>(this.state);
+          this.lookerElement.render(this.state);
         };
       }
       case Kind.Image: {
         return (
           stateOrUpdater:
             | ImageStateUpdate
-            | ((state: ImageState) => ImageStateUpdate)
+            | ((state: ImageStateReadOnly) => ImageStateUpdate)
         ) => {
           const updates =
             stateOrUpdater instanceof Function
               ? stateOrUpdater(this.state)
               : stateOrUpdater;
-          this.state = mergeDeep<ImageState>(this.state, updates);
-          this.lookerElement.render<ImageState>(this.state);
+          this.state = mergeDeep<ImageState>(this.state as ImageState, updates);
+          this.lookerElement.render(this.state as ImageStateReadOnly);
         };
       }
       case Kind.Video: {
-        return getVideoElements(update, dispatchEvent);
       }
       default: {
         throw new Error(`No elements tree found for kind: ${kind}`);

@@ -5,12 +5,25 @@
 import * as common from "./common";
 import * as frame from "./frame";
 import * as image from "./image";
-import { Kind } from "../state";
+import {
+  FrameStateReadOnly,
+  FrameStateUpdate,
+  ImageStateReadOnly,
+  ImageStateUpdate,
+  Kind,
+  StateUpdate,
+  VideoStateReadOnly,
+  VideoStateUpdate,
+} from "../state";
 import { createElementsTree } from "./util";
 import * as video from "./video";
 
 const getFrameElements = (
-  update: (state: any) => void,
+  update: (
+    stateOrUpdate:
+      | FrameStateUpdate
+      | ((state: FrameStateReadOnly) => FrameStateUpdate)
+  ) => void,
   dispatchEvent: (eventType: string, details?: any) => void
 ): common.LookerElement => {
   const elements = {
@@ -41,7 +54,11 @@ const getFrameElements = (
 };
 
 const getImageElements = (
-  update: (state: any) => void,
+  update: (
+    stateOrUpdate:
+      | ImageStateUpdate
+      | ((state: ImageStateReadOnly) => ImageStateUpdate)
+  ) => void,
   dispatchEvent: (eventType: string, details?: any) => void
 ): common.LookerElement => {
   const elements = {
@@ -69,7 +86,11 @@ const getImageElements = (
 };
 
 const getVideoElements = (
-  update: (state: any) => void,
+  update: (
+    stateOrUpdate:
+      | VideoStateUpdate
+      | ((state: VideoStateReadOnly) => VideoStateUpdate)
+  ) => void,
   dispatchEvent: (eventType: string, details?: any) => void
 ): common.LookerElement => {
   const elements = {
@@ -104,7 +125,7 @@ const getVideoElements = (
 
 export const getElements = (
   kind: Kind,
-  update: (state: any) => void,
+  update: StateUpdate,
   dispatchEvent: (eventType: string, details?: any) => void
 ): common.LookerElement => {
   switch (kind) {
