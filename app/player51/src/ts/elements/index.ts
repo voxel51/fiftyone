@@ -6,26 +6,24 @@ import * as common from "./common";
 import * as frame from "./frame";
 import * as image from "./image";
 import {
-  FrameStateReadOnly,
-  FrameStateUpdate,
-  ImageStateReadOnly,
-  ImageStateUpdate,
-  Kind,
+  BaseState,
+  FrameState,
+  ImageState,
   StateUpdate,
-  VideoStateReadOnly,
-  VideoStateUpdate,
+  VideoState,
 } from "../state";
 import { createElementsTree } from "./util";
 import * as video from "./video";
 
-const getFrameElements = (
-  update: (
-    stateOrUpdate:
-      | FrameStateUpdate
-      | ((state: FrameStateReadOnly) => FrameStateUpdate)
-  ) => void,
+export type GetElements<State extends BaseState> = (
+  update: StateUpdate<State>,
   dispatchEvent: (eventType: string, details?: any) => void
-): common.LookerElement => {
+) => common.LookerElement<State>;
+
+export const getFrameElements: GetElements<FrameState> = (
+  update,
+  dispatchEvent
+) => {
   const elements = {
     node: common.LookerElement,
     children: [
@@ -50,17 +48,17 @@ const getFrameElements = (
     ],
   };
 
-  return createElementsTree(elements, update, dispatchEvent);
+  return createElementsTree<FrameState, common.LookerElement<FrameState>>(
+    elements,
+    update,
+    dispatchEvent
+  );
 };
 
-const getImageElements = (
-  update: (
-    stateOrUpdate:
-      | ImageStateUpdate
-      | ((state: ImageStateReadOnly) => ImageStateUpdate)
-  ) => void,
-  dispatchEvent: (eventType: string, details?: any) => void
-): common.LookerElement => {
+export const getImageElements: GetElements<ImageState> = (
+  update,
+  dispatchEvent
+) => {
   const elements = {
     node: common.LookerElement,
     children: [
@@ -82,17 +80,17 @@ const getImageElements = (
     ],
   };
 
-  return createElementsTree(elements, update, dispatchEvent);
+  return createElementsTree<ImageState, common.LookerElement<ImageState>>(
+    elements,
+    update,
+    dispatchEvent
+  );
 };
 
-const getVideoElements = (
-  update: (
-    stateOrUpdate:
-      | VideoStateUpdate
-      | ((state: VideoStateReadOnly) => VideoStateUpdate)
-  ) => void,
-  dispatchEvent: (eventType: string, details?: any) => void
-): common.LookerElement => {
+export const getVideoElements: GetElements<VideoState> = (
+  update,
+  dispatchEvent
+) => {
   const elements = {
     node: common.LookerElement,
     children: [
@@ -120,26 +118,9 @@ const getVideoElements = (
     ],
   };
 
-  return createElementsTree(elements, update, dispatchEvent);
-};
-
-export const getElements = (
-  kind: Kind,
-  update: StateUpdate,
-  dispatchEvent: (eventType: string, details?: any) => void
-): common.LookerElement => {
-  switch (kind) {
-    case Kind.Frame: {
-      return getFrameElements(update, dispatchEvent);
-    }
-    case Kind.Image: {
-      return getImageElements(update, dispatchEvent);
-    }
-    case Kind.Video: {
-      return getVideoElements(update, dispatchEvent);
-    }
-    default: {
-      throw new Error(`No elements tree found for kind: ${kind}`);
-    }
-  }
+  return createElementsTree<VideoState, common.LookerElement<VideoState>>(
+    elements,
+    update,
+    dispatchEvent
+  );
 };

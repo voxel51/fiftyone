@@ -3,93 +3,70 @@
  */
 import { fromJS, mergeDeep } from "immutable";
 
-import OverlaysManager from "./overlaysManager";
-import { colorGenerator } from "./overlays";
-import { Kind, getKind, FrameState, ImageState, VideoState } from "./state";
-import { getElements } from "./elements";
+import {
+  FrameLookerProps,
+  FrameState,
+  ImageLookerProps,
+  ImageState,
+  VideoLookerProps,
+  VideoState,
+  StateUpdate,
+  BaseState,
+  Optional,
+  LookerProps,
+} from "./state";
+import {
+  GetElements,
+  getFrameElements,
+  getImageElements,
+  getVideoElements,
+} from "./elements";
 import { LookerElement } from "./elements/common";
 
 export { ColorGenerator } from "./overlays";
 
-export default class Looker {
-  src: string;
-  mimeType?: string;
-  kind: Kind;
-  options: typeof defaults = defaults;
-  overlaysManager: OverlaysManager;
+type Sample = any;
 
+abstract class Looker<Props extends LookerProps, State extends BaseState> {
   private eventTarget: EventTarget;
-  private state: FrameState | ImageState | VideoState;
-  private lookerElement: LookerElement;
-  private canvas: HTMLCanvasElement;
+  private state: State;
+  private lookerElement: LookerElement<State>;
+  protected readonly updater: StateUpdate<State>;
+  protected readonly getElements: GetElements<State>;
+  private readonly canvas: HTMLCanvasElement;
+  private sample: Sample;
 
-  constructor(sample: any, config, options) {
+  constructor({ sample, config, options }: Props) {
     this.eventTarget = new EventTarget();
-    this.kind = getKind(sample.metadata.mime_type);
     this.state = fromJS({
       config,
       options,
     });
 
-    const update = this.makeUpdater(this.kind);
-    this.lookerElement = getElements(this.kind, update, this.dispatchEvent);
+    this.sample = sample;
+
+    this.lookerElement = this.getElements(this.updater, this.dispatchEvent);
     this.canvas = this.lookerElement.element.querySelector("canvas");
+    this.update = this.makeUpdate();
   }
 
-  private makeUpdater(kind) {
-    const makeUpdate = function <State>(
-      state: State
-    ): (
-      stateOrUpdate: Readonly<State> | ((state: Readonly<State>) => State)
-    ) => void {
-      return (stateOrUpdater: SU | ((state: SR) => SU)) => {
-        const updates =
-          stateOrUpdater instanceof Function
-            ? stateOrUpdater(this.state)
-            : stateOrUpdater;
-        this.state = mergeDeep<S>(this.state as S, updates);
-        this.lookerElement.render(this.state as SR);
-      };
-    };
-    switch (kind) {
-      case Kind.Frame: {
-        return (
-          stateOrUpdater:
-            | FrameStateUpdate
-            | ((state: FrameStateReadOnly) => FrameStateUpdate)
-        ) => {
-          const updates =
-            stateOrUpdater instanceof Function
-              ? stateOrUpdater(this.state as FrameStateReadOnly)
-              : stateOrUpdater;
-          this.state = mergeDeep<FrameState>(this.state, updates);
-          this.lookerElement.render(this.state);
-        };
-      }
-      case Kind.Image: {
-        return (
-          stateOrUpdater:
-            | ImageStateUpdate
-            | ((state: ImageStateReadOnly) => ImageStateUpdate)
-        ) => {
-          const updates =
-            stateOrUpdater instanceof Function
-              ? stateOrUpdater(this.state)
-              : stateOrUpdater;
-          this.state = mergeDeep<ImageState>(this.state as ImageState, updates);
-          this.lookerElement.render(this.state as ImageStateReadOnly);
-        };
-      }
-      case Kind.Video: {
-      }
-      default: {
-        throw new Error(`No elements tree found for kind: ${kind}`);
-      }
-    }
-  }
-
-  private dispatchEvent(eventType: string, detail: any) {
+  protected dispatchEvent(eventType: string, detail: any) {
     this.eventTarget.dispatchEvent(new CustomEvent(eventType, { detail }));
+  }
+
+  private makeUpdate() {
+    return (
+      stateOrUpdater:
+        | Optional<State>
+        | ((state: Readonly<State>) => Optional<State>)
+    ) => {
+      const updates =
+        stateOrUpdater instanceof Function
+          ? stateOrUpdater(this.state)
+          : stateOrUpdater;
+      this.state = mergeDeep<State>(this.state, updates);
+      this.lookerElement.render(this.state as Readonly<State>);
+    };
   }
 
   addEventListener(eventType, handler, ...args) {
@@ -102,12 +79,61 @@ export default class Looker {
 
   destroy(): void {}
 
-  update(sample, options) {
-    this.state = fromJS({
-      ...this.state,
-      sample,
-      config: this.state.config,
-      options,
+  update(sample: Sample, options: State["options"]) {
+    this.sample = sample;
+    this.updater({ options });
+  }
+}
+
+export class FrameLooker extends Looker<FrameLookerProps, FrameState> {
+  protected readonly getElements = getFrameElements;
+
+  constructor(props: FrameLookerProps) {
+    super(props);
+  }
+}
+
+export class ImageLooker extends Looker<ImageLookerProps, ImageState> {
+  protected readonly getElements = getImageElements;
+
+  constructor(props: ImageLookerProps) {
+    super(props);
+  }
+}
+
+export class VideoLooker extends Looker<VideoLookerProps, VideoState> {
+  protected readonly getElements = getVideoElements;
+
+  constructor(props: VideoLookerProps) {
+    super(props);
+  }
+
+  play(): void {
+    this.updater(({ playing }) => {
+      if (!playing) {
+        return { playing: true };
+      }
+      return {};
+    });
+  }
+
+  pause(): void {
+    this.updater(({ playing }) => {
+      if (playing) {
+        return { playing: false };
+      }
+      return {};
+    });
+  }
+
+  resetToFragment(): void {
+    this.updater(({ fragment }) => {
+      if (!fragment) {
+        this.dispatchEvent("error", new Error("No fragment set"));
+        return {};
+      } else {
+        return { locked: true, frameNumber: fragment[0] };
+      }
     });
   }
 }

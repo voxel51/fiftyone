@@ -3,7 +3,7 @@
  */
 
 import { VideoState } from "../state";
-import { BaseElement } from "./base";
+import { BaseElement, Events } from "./base";
 import {
   getFrameNumber,
   getFrameString,
@@ -18,7 +18,7 @@ export class PlayButtonElement extends BaseElement<VideoState> {
   element: HTMLImageElement;
   private playing: boolean = false;
 
-  events = {
+  events: Events<VideoState> = {
     change: ({ event, update }) => {
       event.stopPropagation();
       update(({ playing }) => ({ playing: !playing }));
@@ -48,7 +48,7 @@ export class PlayButtonElement extends BaseElement<VideoState> {
 }
 
 export class SeekBarElement extends BaseElement<VideoState> {
-  events = {
+  events: Events<VideoState> = {
     input: ({ event, update }) => {
       const progress = event.target.valueAsNumber / 100;
       update(({ duration, config: { frameRate } }) => {
@@ -130,7 +130,7 @@ export class TimeElement extends BaseElement<VideoState> {
 }
 
 export class VideoElement extends BaseElement<VideoState> {
-  events = {
+  events: Events<VideoState> = {
     keydown: ({ event, update }) => {
       if (event.keyCode === 32) {
         update(({ playing }) => {
@@ -192,13 +192,11 @@ export class VideoElement extends BaseElement<VideoState> {
         }
       });
     },
-    error: ({ event, update, dispatchEvent }) => {
-      update({ errors: event.error });
-
-      dispatchEvent("error");
+    error: ({ event, dispatchEvent }) => {
+      dispatchEvent("error", { event });
     },
     loadedmetadata: ({ update }) => {
-      update({ loadedMetadata: true });
+      update({ loaded: true });
     },
     loadeddata: ({ update, dispatchEvent }) => {
       update(({ playing, options: { autoplay } }) => ({

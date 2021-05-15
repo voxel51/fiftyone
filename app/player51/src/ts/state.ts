@@ -35,13 +35,13 @@ interface BaseConfig {
   src: string;
 }
 
-interface FrameConfig extends BaseConfig {
+export interface FrameConfig extends BaseConfig {
   frameRate: number;
 }
 
-interface ImageConfig extends BaseConfig {}
+export interface ImageConfig extends BaseConfig {}
 
-interface VideoConfig extends BaseConfig {
+export interface VideoConfig extends BaseConfig {
   frameRate: number;
 }
 
@@ -113,3 +113,24 @@ export type StateUpdate<State extends BaseState> = (
     | Optional<State>
     | ((state: Readonly<State>) => Optional<State>)
 ) => void;
+
+export interface LookerProps {
+  sample: any;
+  config: BaseConfig;
+  options?: Optional<BaseOptions>;
+}
+
+export interface FrameLookerProps extends LookerProps {
+  config: FrameConfig;
+  options?: Optional<FrameOptions>;
+}
+
+export interface ImageLookerProps extends LookerProps {
+  config: ImageConfig;
+  options: Optional<ImageOptions>;
+}
+
+export interface VideoLookerProps extends LookerProps {
+  config: VideoConfig;
+  options?: Optional<VideoOptions>;
+}

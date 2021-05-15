@@ -28,6 +28,7 @@ export abstract class BaseElement<State extends BaseState> {
     Object.entries(this.events).forEach(([eventType, callback]) => {
       const target = this.eventTarget ?? this.element;
       target.addEventListener(eventType, (event) =>
+        // @ts-ignore
         callback({ event, update, dispatchEvent })
       );
     });

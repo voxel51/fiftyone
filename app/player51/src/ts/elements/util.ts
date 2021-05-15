@@ -3,7 +3,7 @@
  */
 
 import { parseMediaFragmentsUri } from "../mediaFragments";
-import { ReadOnlyState, StateUpdate } from "../state";
+import { BaseState, ReadOnlyState, StateUpdate } from "../state";
 import { BaseElement } from "./base";
 
 export const FRAME_ZERO_OFFSET = 1;
@@ -45,26 +45,30 @@ export const makeCheckboxRow = function (
   return [label, checkbox];
 };
 
-interface ElementsTemplate<T extends BaseElement<ReadOnlyState, StateUpdate>> {
+interface ElementsTemplate<
+  State extends BaseState,
+  Element extends BaseElement<State> = BaseElement<State>
+> {
   node: new (
-    update: (state: any) => void,
+    update: StateUpdate<State>,
     dispatchEvent: (eventType: string, details?: any) => void,
-    children?: BaseElement<ReadOnlyState, StateUpdate>[]
-  ) => T;
-  children?: ElementsTemplate<BaseElement<ReadOnlyState, StateUpdate>>[];
+    children?: BaseElement<State>[]
+  ) => Element;
+  children?: ElementsTemplate<State>[];
 }
 
 export function createElementsTree<
-  T extends BaseElement<ReadOnlyState, StateUpdate>
+  State extends BaseState,
+  Element extends BaseElement<State> = BaseElement<State>
 >(
-  root: ElementsTemplate<T>,
-  update: (state: any) => void,
+  root: ElementsTemplate<State, Element>,
+  update: StateUpdate<State>,
   dispatchEvent: (eventType: string, details?: any) => void
-) {
-  let children = new Array<BaseElement<ReadOnlyState, StateUpdate>>();
+): Element {
+  let children = new Array<BaseElement<State>>();
   children = root.children
     ? root.children.map((child) =>
-        createElementsTree(child, update, dispatchEvent)
+        createElementsTree<State>(child, update, dispatchEvent)
       )
     : children;
 

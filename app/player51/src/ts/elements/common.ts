@@ -2,14 +2,14 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 
-import { BaseState, Optional } from "../state";
+import { BaseState } from "../state";
 import { BaseElement, Events } from "./base";
 import { ICONS, makeCheckboxRow, makeWrapper } from "./util";
 
-export class LookerElement extends BaseElement<BaseState> {
+export class LookerElement<State extends BaseState> extends BaseElement<State> {
   private hideControlsTimeout?: ReturnType<typeof setTimeout>;
 
-  events: Events<BaseState> = {
+  events: Events<State> = {
     blur: ({ update }) => {
       update({ showOptions: false, showControls: false, focused: false });
     },
@@ -75,8 +75,8 @@ export class LookerElement extends BaseElement<BaseState> {
   }
 }
 
-export class CanvasElement extends BaseElement<BaseState> {
-  events: Events<BaseState> = {
+export class CanvasElement<State extends BaseState> extends BaseElement<State> {
+  events: Events<State> = {
     click: ({ update }) => {
       update({ showOptions: false });
     },
@@ -112,9 +112,11 @@ export class CanvasElement extends BaseElement<BaseState> {
   }
 }
 
-export class ControlsElement extends BaseElement<BaseState> {
+export class ControlsElement<State extends BaseState> extends BaseElement<
+  State
+> {
   private showControls: boolean;
-  events: Events<BaseState> = {
+  events: Events<State> = {
     click: ({ update }) => {
       update({
         showControls: false,
@@ -156,10 +158,12 @@ export class ControlsElement extends BaseElement<BaseState> {
   }
 }
 
-export class OptionsButtonElement extends BaseElement<BaseState> {
+export class OptionsButtonElement<State extends BaseState> extends BaseElement<
+  State
+> {
   private showControls: boolean;
 
-  events = {
+  events: Events<State> = {
     click: ({ event, update }) => {
       event.stopPropagation();
       update((state) => ({ showOptions: !state.showOptions }));
@@ -191,10 +195,12 @@ export class OptionsButtonElement extends BaseElement<BaseState> {
   }
 }
 
-export class OptionsPanelElement extends BaseElement<BaseState> {
+export class OptionsPanelElement<State extends BaseState> extends BaseElement<
+  State
+> {
   private showOptions: boolean;
 
-  events: Events<BaseState> = {
+  events: Events<State> = {
     mouseenter: ({ update }) => {
       update({ tooltipOverlay: null, hoveringControls: true });
     },
@@ -229,9 +235,9 @@ export class OptionsPanelElement extends BaseElement<BaseState> {
   }
 }
 
-export class OnlyShowHoveredOnLabelOptionElement extends BaseElement<
-  BaseState
-> {
+export class OnlyShowHoveredOnLabelOptionElement<
+  State extends BaseState
+> extends BaseElement<State> {
   checkbox: HTMLInputElement;
   label: HTMLLabelElement;
 
@@ -249,7 +255,9 @@ export class OnlyShowHoveredOnLabelOptionElement extends BaseElement<
   }
 }
 
-export class ShowAttributesOptionElement extends BaseElement<BaseState> {
+export class ShowAttributesOptionElement<
+  State extends BaseState
+> extends BaseElement<State> {
   checkbox: HTMLInputElement;
   label: HTMLLabelElement;
 
@@ -264,13 +272,15 @@ export class ShowAttributesOptionElement extends BaseElement<BaseState> {
   }
 }
 
-export class ShowConfidenceOptionElement extends BaseElement<BaseState> {
+export class ShowConfidenceOptionElement<
+  State extends BaseState
+> extends BaseElement<State> {
   checkbox: HTMLInputElement;
   label: HTMLLabelElement;
 
-  events = {
+  events: Events<State> = {
     change: ({ update }) => {
-      update({ showConfidence: this.checkbox.checked });
+      update({ options: { showConfidence: this.checkbox.checked } });
     },
   };
 
@@ -286,13 +296,15 @@ export class ShowConfidenceOptionElement extends BaseElement<BaseState> {
   }
 }
 
-export class ShowTooltipOptionElement extends BaseElement<BaseState> {
+export class ShowTooltipOptionElement<
+  State extends BaseState
+> extends BaseElement<State> {
   checkbox: HTMLInputElement;
   label: HTMLLabelElement;
 
-  events = {
+  events: Events<State> = {
     change: ({ update }) => {
-      update({ showTooltip: this.checkbox.checked });
+      update({ options: { showTooltip: this.checkbox.checked } });
     },
   };
 

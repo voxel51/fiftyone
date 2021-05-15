@@ -3,18 +3,18 @@
  */
 
 import { ImageState } from "../state";
-import { BaseElement } from "./base";
+import { BaseElement, Events } from "./base";
 
 export class ImageElement extends BaseElement<ImageState> {
   private src: string;
   private mimeType: string;
 
-  events = {
+  events: Events<ImageState> = {
     load: ({ update }) => {
-      update({ isDataLoaded: true });
+      update({ loaded: true });
     },
-    error: ({ event, update }) => {
-      update({ errors: event.error });
+    error: ({ event, dispatchEvent }) => {
+      dispatchEvent("error", { event });
     },
   };
 
