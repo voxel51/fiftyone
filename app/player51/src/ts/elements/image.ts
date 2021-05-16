@@ -7,7 +7,6 @@ import { BaseElement, Events } from "./base";
 
 export class ImageElement extends BaseElement<ImageState> {
   private src: string;
-  private mimeType: string;
 
   events: Events<ImageState> = {
     load: ({ update }) => {
@@ -25,9 +24,8 @@ export class ImageElement extends BaseElement<ImageState> {
     return element;
   }
 
-  renderSelf({ config: { src, mimeType } }) {
+  renderSelf({ config: { src } }) {
     this.element.setAttribute("src", src);
-    this.element.setAttribute("type", mimeType);
     return this.element;
   }
 }

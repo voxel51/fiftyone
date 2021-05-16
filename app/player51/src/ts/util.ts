@@ -229,28 +229,3 @@ export const rescaleCoordates = (
     Math.round(rescale(y, 0, fromDim[1], 0, toDim[1])),
   ];
 };
-
-export const getMimeType = (src: string): string => {
-  return mime;
-};
-
-export const getKind = (mimeType: string): Kind => {
-  // @todo: Kind.Frame
-  if (mimeType.startsWith("video/")) {
-    return Kind.Video;
-  }
-  return Kind.Image;
-};
-
-export const applyMixins = (derivedCtor: any, constructors: any[]) => {
-  constructors.forEach((baseCtor) => {
-    Object.getOwnPropertyNames(baseCtor.prototype).forEach((name) => {
-      Object.defineProperty(
-        derivedCtor.prototype,
-        name,
-        Object.getOwnPropertyDescriptor(baseCtor.prototype, name) ||
-          Object.create(null)
-      );
-    });
-  });
-};

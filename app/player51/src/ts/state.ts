@@ -11,24 +11,12 @@ interface BaseOptions {
   showConfidence: boolean;
   showTooltip: boolean;
   onlyShowHoveredLabel: boolean;
-  zoomOn: string[] | [];
+  zoom: boolean;
 }
 
 export type Coordinates = [number, number];
 
 export type Dimensions = [number, number];
-
-export interface FrameOptions extends BaseOptions {
-  useFrameNumber: boolean;
-}
-
-export interface ImageOptions extends BaseOptions {}
-
-export interface VideoOptions extends BaseOptions {
-  useFrameNumber: boolean;
-  autoplay: boolean;
-  loop: boolean;
-}
 
 interface BaseConfig {
   thumbnail: boolean;
@@ -43,6 +31,18 @@ export interface ImageConfig extends BaseConfig {}
 
 export interface VideoConfig extends BaseConfig {
   frameRate: number;
+}
+
+export interface FrameOptions extends BaseOptions {
+  useFrameNumber: boolean;
+}
+
+export interface ImageOptions extends BaseOptions {}
+
+export interface VideoOptions extends BaseOptions {
+  useFrameNumber: boolean;
+  autoplay: boolean;
+  loop: boolean;
 }
 
 export interface TooltipOverlay {
@@ -101,12 +101,6 @@ export interface VideoState extends BaseState {
 export type Optional<T> = {
   [P in keyof T]?: Optional<T[P]>;
 };
-
-export enum Kind {
-  Frame = "FRAME",
-  Image = "Image",
-  Video = "Video",
-}
 
 export type StateUpdate<State extends BaseState> = (
   stateOrUpdater:

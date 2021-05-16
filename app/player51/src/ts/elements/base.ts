@@ -12,11 +12,14 @@ export type Events<State extends BaseState> = {
   }) => void;
 };
 
-export abstract class BaseElement<State extends BaseState> {
+export abstract class BaseElement<
+  State extends BaseState,
+  Element extends HTMLElement = HTMLElement
+> {
   readonly children: BaseElement<State>[] = [];
-  readonly element: HTMLElement;
+  readonly element: Element;
   events: Events<State>;
-  eventTarget?: HTMLElement;
+  eventTarget?: Element | HTMLElement;
 
   constructor(
     update: StateUpdate<State>,
@@ -34,7 +37,7 @@ export abstract class BaseElement<State extends BaseState> {
     });
   }
 
-  abstract createHTMLElement(update: StateUpdate<State>): HTMLElement;
+  abstract createHTMLElement(update: StateUpdate<State>): Element;
 
   isShown(state: Readonly<State>): boolean {
     return true;
@@ -57,7 +60,7 @@ export abstract class BaseElement<State extends BaseState> {
     return self;
   }
 
-  renderChildren(state: Readonly<State>): Element[] {
+  renderChildren(state: Readonly<State>): HTMLElement[] {
     return this.children.map((child) => child.renderSelf(state));
   }
 

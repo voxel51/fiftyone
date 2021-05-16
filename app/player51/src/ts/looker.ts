@@ -54,12 +54,8 @@ abstract class Looker<Props extends LookerProps, State extends BaseState> {
     this.eventTarget.dispatchEvent(new CustomEvent(eventType, { detail }));
   }
 
-  private makeUpdate() {
-    return (
-      stateOrUpdater:
-        | Optional<State>
-        | ((state: Readonly<State>) => Optional<State>)
-    ) => {
+  private makeUpdate(): StateUpdate<State> {
+    return (stateOrUpdater) => {
       const updates =
         stateOrUpdater instanceof Function
           ? stateOrUpdater(this.state)

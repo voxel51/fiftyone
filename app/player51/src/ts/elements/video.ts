@@ -236,10 +236,11 @@ export class VideoElement extends BaseElement<VideoState> {
       };
     },
     pause: ({ event, update }) => {
-      update(({ playing, seeking, slice }) => {
-        if (playing && !seeking && !Boolean(slice) && !event.target.ended) {
+      update(({ playing, seeking, fragment }) => {
+        if (playing && !seeking && !Boolean(fragment) && !event.target.ended) {
           event.target.play();
         }
+        return {};
       });
     },
     seeked: ({ event, update }) => {
@@ -262,6 +263,8 @@ export class VideoElement extends BaseElement<VideoState> {
             frameRate
           ),
         });
+
+        return {};
       });
     },
     ended: ({ update }) => {
