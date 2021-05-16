@@ -7,6 +7,8 @@ Dataset samples.
 """
 import os
 
+import eta.core.utils as etau
+
 from fiftyone.core.document import Document, DocumentView
 import fiftyone.core.frame as fofr
 import fiftyone.core.frame_utils as fofu
@@ -14,6 +16,7 @@ import fiftyone.core.labels as fol
 import fiftyone.core.metadata as fom
 import fiftyone.core.media as fomm
 import fiftyone.core.odm as foo
+import fiftyone.core.utils as fou
 from fiftyone.core.singletons import SampleSingleton
 
 
@@ -213,8 +216,8 @@ class _SampleMixin(object):
     def merge(
         self,
         sample,
+        fields=None,
         omit_fields=None,
-        omit_frame_fields=None,
         omit_none_fields=True,
         merge_lists=False,
         overwrite=True,
@@ -224,13 +227,21 @@ class _SampleMixin(object):
 
         Args:
             sample: a :class:`fiftyone.core.sample.Sample`
-            omit_fields (None): an optional list of fields to omit
-            omit_frame_fields (None): an optional lits of frame fields to omit
+            fields (None): an optional field or iterable of fields to which to
+                restrict the merge. May contain frame fields for video samples
+            omit_fields (None): an optional field or iterable of fields to
+                exclude from the merge. May contain frame fields for video
+                samples
             omit_none_fields (True): whether to omit ``None``-valued fields of
                 the provided sample
             merge_lists (False): whether to merge top-level list fields and the
                 elements of label list fields. If ``True``, this parameter
-                supercedes the ``overwrite`` parameter for list fields
+                supercedes the ``overwrite`` parameter for list fields, and,
+                for label lists fields, existing
+                :class:`fiftyone.core.label.Label` elements are either replaced
+                (when ``overwrite`` is True) or kept (when ``overwrite`` is
+                False) when their ``id`` matches a
+                :class:`fiftyone.core.label.Label` from the provided document
             overwrite (True): whether to overwrite existing fields. Note that
                 existing fields whose values are ``None`` are always
                 overwritten
@@ -244,8 +255,18 @@ class _SampleMixin(object):
                 "media type '%s'" % (sample.media_type, self.media_type)
             )
 
+        if self.media_type == fomm.VIDEO:
+            if fields is not None:
+                fields, frame_fields = fou.split_frame_fields(fields)
+
+            if omit_fields is not None:
+                omit_fields, omit_frame_fields = fou.split_frame_fields(
+                    omit_fields
+                )
+
         super().merge(
             sample,
+            fields=fields,
             omit_fields=omit_fields,
             omit_none_fields=omit_none_fields,
             merge_lists=merge_lists,
@@ -256,6 +277,7 @@ class _SampleMixin(object):
         if self.media_type == fomm.VIDEO:
             self.frames.merge(
                 sample.frames,
+                fields=frame_fields,
                 omit_fields=omit_frame_fields,
                 omit_none_fields=omit_none_fields,
                 merge_lists=merge_lists,

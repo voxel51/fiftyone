@@ -1475,7 +1475,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 when merging. If ``True``, ``insert_new`` must be ``False``
             merge_lists (False): whether to merge top-level list fields and the
                 elements of label list fields. If ``True``, this parameter
-                supercedes the ``overwrite`` parameter for list fields
+                supercedes the ``overwrite`` parameter for list fields, and,
+                for label lists fields, existing
+                :class:`fiftyone.core.label.Label` elements are either replaced
+                (when ``overwrite`` is True) or kept (when ``overwrite`` is
+                False) when their ``id`` matches a
+                :class:`fiftyone.core.label.Label` from the provided document
             overwrite (True): whether to overwrite (True) or skip (False)
                 existing fields
             include_info (True): whether to merge dataset-level information
@@ -1488,12 +1493,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 ``include_info`` is True
         """
         # Use efficient implementation when possible
-        if (
-            isinstance(samples, foc.SampleCollection)
-            and key_fcn is None
-            and overwrite
-            and not merge_lists
-        ):
+        if isinstance(samples, foc.SampleCollection) and key_fcn is None:
             _merge_samples(
                 samples,
                 self,
@@ -1504,6 +1504,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 expand_schema=expand_schema,
                 omit_default_fields=omit_default_fields,
                 merge_lists=merge_lists,
+                overwrite=overwrite,
                 include_info=include_info,
                 overwrite_info=overwrite_info,
             )
@@ -3825,6 +3826,7 @@ def _merge_samples(
     expand_schema=True,
     omit_default_fields=False,
     merge_lists=False,
+    overwrite=False,
     include_info=True,
     overwrite_info=False,
 ):
@@ -3836,8 +3838,12 @@ def _merge_samples(
 
     if skip_existing:
         when_matched = "keepExisting"
-    else:
+    elif overwrite:
         when_matched = "merge"
+    else:
+        when_matched = [
+            {"$replaceWith": {"$mergeObjects": ["$$new", "$$ROOT"]}}
+        ]
 
     if insert_new:
         when_not_matched = "insert"
@@ -3935,21 +3941,19 @@ def _merge_samples(
         sample_pipeline.append({"$unset": omit_fields})
 
     if omit_none_fields:
-        sample_pipeline.append(
-            {
-                "$replaceWith": {
-                    "$arrayToObject": {
-                        "$filter": {
-                            "input": {"$objectToArray": "$$ROOT"},
-                            "as": "item",
-                            "cond": {"$ne": ["$$item.v", None]},
-                        }
+        omit_none_stage = {
+            "$replaceWith": {
+                "$arrayToObject": {
+                    "$filter": {
+                        "input": {"$objectToArray": "$$ROOT"},
+                        "as": "item",
+                        "cond": {"$ne": ["$$item.v", None]},
                     }
                 }
             }
-        )
+        }
 
-    # @todo support `overwrite=False` and `merge_lists=True`
+        sample_pipeline.append(omit_none_stage)
 
     sample_pipeline.append(
         {
@@ -3989,19 +3993,7 @@ def _merge_samples(
         frame_pipeline.extend([{"$unset": ["_id", "_sample_id"]}])
 
         if omit_none_fields:
-            frame_pipeline.append(
-                {
-                    "$replaceWith": {
-                        "$arrayToObject": {
-                            "$filter": {
-                                "input": {"$objectToArray": "$$ROOT"},
-                                "as": "item",
-                                "cond": {"$ne": ["$$item.v", None]},
-                            }
-                        }
-                    }
-                }
-            )
+            frame_pipeline.append(omit_none_stage)
 
         frame_pipeline.append(
             {

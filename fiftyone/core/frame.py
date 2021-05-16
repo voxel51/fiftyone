@@ -8,6 +8,8 @@ Video frames.
 from pymongo import ReplaceOne, UpdateOne, DeleteOne
 from pymongo.errors import BulkWriteError
 
+import eta.core.utils as etau
+
 from fiftyone.core.document import Document, DocumentView
 import fiftyone.core.frame_utils as fofu
 import fiftyone.core.odm as foo
@@ -188,7 +190,14 @@ class Frames(object):
         for frame in self._iter_frames():
             yield frame
 
-    def add_frame(self, frame_number, frame, expand_schema=True):
+    def add_frame(
+        self,
+        frame_number,
+        frame,
+        fields=None,
+        omit_fields=None,
+        expand_schema=True,
+    ):
         """Adds the frame to this instance.
 
         If an existing frame with the same frame number exists, it is
@@ -201,6 +210,10 @@ class Frames(object):
         Args:
             frame_number: the frame number
             frame: a :class:`Frame` or :class:`FrameView`
+            fields (None): an optional field or iterable of fields to keep.
+                If provided, other fields are deleted from the frame
+            omit_fields (None): an optional field or iterable of fields to
+                delete
             expand_schema (True): whether to dynamically add new frame fields
                 encountered to the dataset schema. If False, an error is raised
                 if the frame's schema is not a subset of the dataset schema
@@ -213,6 +226,21 @@ class Frames(object):
                 % (Frame, FrameView, type(frame))
             )
 
+        select_fields = fields is not None or omit_fields is not None
+
+        if fields is None:
+            fields = frame.field_names
+        elif etau.is_str(fields):
+            fields = [fields]
+
+        if omit_fields is not None:
+            if etau.is_str(omit_fields):
+                omit_fields = {omit_fields}
+            else:
+                omit_fields = set(omit_fields)
+
+            fields = [f for f in fields if f not in omit_fields]
+
         if self._in_db:
             _frame = frame
             if frame._in_db:
@@ -220,13 +248,21 @@ class Frames(object):
 
             d = {"_sample_id": self._sample._id}
             doc = self._dataset._frame_dict_to_doc(d)
-            for field, value in _frame.iter_fields():
-                doc.set_field(field, value, create=expand_schema)
+            for field in fields:
+                doc.set_field(field, _frame[field], create=expand_schema)
 
             doc.set_field("frame_number", frame_number)
             frame._set_backing_doc(doc, dataset=self._dataset)
         else:
-            if frame._in_db:
+            if select_fields:
+                if frame._in_db:
+                    frame = Frame(**{field: frame[field] for field in fields})
+                else:
+                    delete_fields = set(frame.field_names) - set(fields)
+                    for field in delete_fields:
+                        del frame[field]
+
+            elif frame._in_db:
                 frame = frame.copy()
 
             frame.set_field("frame_number", frame_number)
@@ -263,6 +299,7 @@ class Frames(object):
     def merge(
         self,
         frames,
+        fields=None,
         omit_fields=None,
         omit_none_fields=True,
         merge_lists=False,
@@ -281,12 +318,20 @@ class Frames(object):
                     label fields to :class:`fiftyone.core.labels.Label`
                     instances
 
-            omit_fields (None): an optional list of fields to omit
+            fields (None): an optional field or iterable of fields to which to
+                restrict the merge
+            omit_fields (None): an optional field or iterable of fields to
+                exclude from the merge
             omit_none_fields (True): whether to omit ``None``-valued fields of
                 the provided frames
             merge_lists (False): whether to merge top-level list fields and the
                 elements of label list fields. If ``True``, this parameter
-                supercedes the ``overwrite`` parameter for list fields
+                supercedes the ``overwrite`` parameter for list fields, and,
+                for label lists fields, existing
+                :class:`fiftyone.core.label.Label` elements are either replaced
+                (when ``overwrite`` is True) or kept (when ``overwrite`` is
+                False) when their ``id`` matches a
+                :class:`fiftyone.core.label.Label` from the provided document
             overwrite (True): whether to overwrite existing fields
             expand_schema (True): whether to dynamically add new frame fields
                 encountered to the dataset schema. If False, an error is raised
@@ -299,6 +344,7 @@ class Frames(object):
             if frame_number in self:
                 self[frame_number].merge(
                     frame,
+                    fields=fields,
                     omit_fields=omit_fields,
                     omit_none_fields=omit_none_fields,
                     merge_lists=merge_lists,
@@ -307,7 +353,11 @@ class Frames(object):
                 )
             else:
                 self.add_frame(
-                    frame_number, frame, expand_schema=expand_schema
+                    frame_number,
+                    frame,
+                    fields=fields,
+                    omit_fields=omit_fields,
+                    expand_schema=expand_schema,
                 )
 
     def clear(self):
@@ -606,7 +656,14 @@ class FramesView(Frames):
     def _frames_view(self):
         return self._view.select(self._sample.id)
 
-    def add_frame(self, frame_number, frame, expand_schema=True):
+    def add_frame(
+        self,
+        frame_number,
+        frame,
+        fields=None,
+        omit_fields=None,
+        expand_schema=True,
+    ):
         """Adds the frame to this instance.
 
         If an existing frame with the same frame number exists, it is
@@ -619,6 +676,10 @@ class FramesView(Frames):
         Args:
             frame_number: the frame number
             frame: a :class:`Frame` or :class:`FrameView`
+            fields (None): an optional field or iterable of fields to keep.
+                If provided, other fields are deleted from the frame
+            omit_fields (None): an optional field or iterable of fields to
+                delete
             expand_schema (True): whether to dynamically add new frame fields
                 encountered to the dataset schema. If False, an error is raised
                 if the frame's schema is not a subset of the dataset schema
@@ -631,10 +692,23 @@ class FramesView(Frames):
                 % (Frame, FrameView, type(frame))
             )
 
+        if fields is None:
+            fields = frame.field_names
+        elif etau.is_str(fields):
+            fields = [fields]
+
+        if omit_fields is not None:
+            if etau.is_str(omit_fields):
+                omit_fields = {omit_fields}
+            else:
+                omit_fields = set(omit_fields)
+
+            fields = [f for f in fields if f not in omit_fields]
+
         frame_view = self._make_frame({"_sample_id": self._sample._id})
 
-        for field, value in frame.iter_fields():
-            frame_view.set_field(field, value, create=expand_schema)
+        for field in fields:
+            frame_view.set_field(field, frame[field], create=expand_schema)
 
         frame_view.set_field("frame_number", frame_number)
         self._set_replacement(frame_view)

@@ -74,6 +74,38 @@ def pformat(obj, indent=4, width=80, depth=None):
     return _pprint.pformat(obj, indent=indent, width=width, depth=depth)
 
 
+def split_frame_fields(fields):
+    """Splits the given fields into sample and frame fields.
+
+    Frame fields are those prefixed by ``"frames."``, and this prefix is
+    removed from the returned frame fields.
+
+    Args:
+        fields: a field or iterable of fields
+
+    Returns:
+        a tuple of:
+
+        -   a list of sample fields
+        -   a list of frame fields
+    """
+    if etau.is_str(fields):
+        fields = [fields]
+
+    frames_prefix = "frames."
+    n = len(frames_prefix)
+
+    sample_fields = []
+    frame_fields = []
+    for field in fields:
+        if field.startswith(frames_prefix):
+            frame_fields.append(field[n:])
+        else:
+            sample_fields.append(field)
+
+    return sample_fields, frame_fields
+
+
 def stream_objects(objects):
     """Streams the iterable of objects to stdout via ``less``.
 

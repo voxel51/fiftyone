@@ -8,6 +8,7 @@ Base classes for objects that are backed by database documents.
 from copy import deepcopy
 
 import eta.core.serial as etas
+import eta.core.utils as etau
 
 import fiftyone.core.labels as fol
 from fiftyone.core.singletons import DocumentSingleton
@@ -225,6 +226,7 @@ class _Document(object):
     def merge(
         self,
         document,
+        fields=None,
         omit_fields=None,
         omit_none_fields=True,
         merge_lists=False,
@@ -235,12 +237,20 @@ class _Document(object):
 
         Args:
             document: a :class:`Document` of the same type
-            omit_fields (None): an optional list of fields to omit
+            fields (None): an optional field or iterable of fields to which to
+                restrict the merge
+            omit_fields (None): an optional field or iterable of fields to
+                exclude from the merge
             omit_none_fields (True): whether to omit ``None``-valued fields of
                 the provided document
             merge_lists (False): whether to merge top-level list fields and the
                 elements of label list fields. If ``True``, this parameter
-                supercedes the ``overwrite`` parameter for list fields
+                supercedes the ``overwrite`` parameter for list fields, and,
+                for label lists fields, existing
+                :class:`fiftyone.core.label.Label` elements are either replaced
+                (when ``overwrite`` is True) or kept (when ``overwrite`` is
+                False) when their ``id`` matches a
+                :class:`fiftyone.core.label.Label` from the provided document
             overwrite (True): whether to overwrite existing fields. Note that
                 existing fields whose values are ``None`` are always
                 overwritten
@@ -252,16 +262,24 @@ class _Document(object):
             AttributeError: if ``expand_schema == False`` and a field does not
                 exist
         """
+        if fields is None:
+            fields = document.field_names
+        elif etau.is_str(fields):
+            fields = (fields,)
+
         if omit_fields is not None:
-            omit_fields = set(omit_fields)
-        else:
-            omit_fields = set()
+            if etau.is_str(omit_fields):
+                omit_fields = {omit_fields}
+            else:
+                omit_fields = set(omit_fields)
 
-        existing_field_names = set(self.field_names)
+            fields = [f for f in fields if f not in omit_fields]
 
-        for field_name, value in document.iter_fields():
-            if field_name in omit_fields:
-                continue
+        if not overwrite:
+            existing_field_names = set(self.field_names)
+
+        for field_name in fields:
+            value = document[field_name]
 
             if omit_none_fields and value is None:
                 continue
@@ -276,14 +294,20 @@ class _Document(object):
 
                 if issubclass(field_type, list):
                     if value is not None:
-                        curr_value.extend(value)
+                        curr_value.extend(
+                            v for v in value if v not in curr_value
+                        )
 
                     continue
 
                 if field_type in fol._LABEL_LIST_FIELDS:
                     if value is not None:
                         list_field = field_type._LABEL_LIST_FIELD
-                        curr_value[list_field].extend(value[list_field])
+                        _merge_labels(
+                            curr_value[list_field],
+                            value[list_field],
+                            overwrite=overwrite,
+                        )
 
                     continue
 
@@ -668,3 +692,17 @@ class DocumentView(_Document):
 
         if issubclass(type(self._DOCUMENT_CLS), DocumentSingleton):
             self._DOCUMENT_CLS._reload_instance(self)
+
+
+def _merge_labels(labels, new_labels, overwrite=True):
+    if overwrite:
+        existing_ids = {l.id: idx for idx, l in enumerate(labels)}
+        for l in new_labels:
+            idx = existing_ids.get(l.id, None)
+            if idx is not None:
+                labels[idx] = l
+            else:
+                labels.append(l)
+    else:
+        existing_ids = set(l.id for l in labels)
+        labels.extend(l for l in new_labels if l.id not in existing_ids)
