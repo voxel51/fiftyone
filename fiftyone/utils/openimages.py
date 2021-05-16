@@ -1575,8 +1575,6 @@ def _initialize_worker():
 
 def _do_s3_download(args):
     filepath, filepath_download = args
-
-    global s3_client
     s3_client.download_file(_BUCKET_NAME, filepath_download, filepath)
 
 
