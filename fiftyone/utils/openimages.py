@@ -1559,27 +1559,24 @@ def _download_specific_images(
             len(inputs),
         )
 
-    global s3_client
-    s3_client = None
-
     with fou.ProgressBar(total=len(inputs)) as pb:
         with multiprocessing.Pool(num_workers) as pool:
             for _ in pool.imap_unordered(_do_s3_download, inputs):
                 pb.update()
 
 
-def _initialize_pool():
+def _initialize_worker_if_necessary():
     global s3_client
-    if s3_client:
-        return
-    s3_client = boto3.client(
-        "s3",
-        config=botocore.config.Config(signature_version=botocore.UNSIGNED),
-    )
+
+    if "s3_client" not in globals():
+        s3_client = boto3.client(
+            "s3",
+            config=botocore.config.Config(signature_version=botocore.UNSIGNED),
+        )
 
 
 def _do_s3_download(args):
-    _initialize_pool()
+    _initialize_worker_if_necessary()
     filepath, filepath_download = args
     s3_client.download_file(_BUCKET_NAME, filepath_download, filepath)
 
