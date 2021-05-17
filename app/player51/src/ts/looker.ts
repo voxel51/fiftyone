@@ -22,8 +22,8 @@ import {
   getVideoElements,
 } from "./elements";
 import { LookerElement } from "./elements/common";
-
 export { ColorGenerator } from "./overlays";
+import { ClassificationsOverlay, FROM_FO } from "./overlays";
 
 type Sample = any;
 
@@ -44,10 +44,12 @@ abstract class Looker<Props extends LookerProps, State extends BaseState> {
     });
 
     this.sample = sample;
-
+    this.update = this.makeUpdate();
     this.lookerElement = this.getElements(this.updater, this.dispatchEvent);
     this.canvas = this.lookerElement.element.querySelector("canvas");
-    this.update = this.makeUpdate();
+    const context = this.canvas.getContext("2d");
+    resetCanvas(context);
+    this.overlays = loadOverlays(sample);
   }
 
   protected dispatchEvent(eventType: string, detail: any) {
@@ -132,4 +134,50 @@ export class VideoLooker extends Looker<VideoLookerProps, VideoState> {
       }
     });
   }
+}
+
+function loadOverlays(
+  sample,
+  context: CanvasRenderingContext2D,
+  width: number,
+  height: number
+) {
+  const classifications = [];
+  let overlays = [];
+  for (const field in sample) {
+    const label = sample[field];
+    if (!label) {
+      continue;
+    }
+    if (label._cls in FROM_FO) {
+      const labelOverlays = FROM_FO[label._cls](field, label, this);
+      overlays.forEach((o) => o.setup(context, width, height));
+      overlays = [...overlays, ...labelOverlays];
+    } else if (label._cls === "Classification") {
+      classifications.push([field, [null, [label]]]);
+    } else if (label._cls === "Classifications") {
+      classifications.push([field, [null, label.classifications]]);
+    }
+  }
+
+  if (classifications.length > 0) {
+    const overlay = new ClassificationsOverlay(classifications, this);
+    overlay.setup(context, width, height);
+    overlays.push(overlay);
+  }
+}
+
+function resetCanvas(
+  context: CanvasRenderingContext2D,
+  width: number,
+  height: number
+): void {
+  context.clearRect(0, 0, width, height);
+  context.strokeStyle = "#fff";
+  context.fillStyle = "#fff";
+  context.lineWidth = 3;
+  context.font = "14px sans-serif";
+  // easier for setting offsets
+  context.textBaseline = "bottom";
+  context;
 }

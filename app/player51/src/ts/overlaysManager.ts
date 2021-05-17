@@ -2,56 +2,8 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 
-import { ClassificationsOverlay, FROM_FO } from "./overlays";
-
-function resetCanvas(
-  context: CanvasRenderingContext2D,
-  width: number,
-  height: number
-): void {
-  context.clearRect(0, 0, width, height);
-  context.strokeStyle = "#fff";
-  context.fillStyle = "#fff";
-  context.lineWidth = 3;
-  context.font = "14px sans-serif";
-  // easier for setting offsets
-  context.textBaseline = "bottom";
-  context;
-}
-
-class OverlaysManager {
+export default class OverlaysManager {
   constructor() {}
-
-  getOverlays(
-    sample,
-    context: CanvasRenderingContext2D,
-    width: number,
-    height: number
-  ) {
-    const classifications = [];
-    let overlays = [];
-    for (const field in sample) {
-      const label = sample[field];
-      if (!label) {
-        continue;
-      }
-      if (label._cls in FROM_FO) {
-        const labelOverlays = FROM_FO[label._cls](field, label, this);
-        overlays.forEach((o) => o.setup(context, width, height));
-        overlays = [...overlays, ...labelOverlays];
-      } else if (label._cls === "Classification") {
-        classifications.push([field, [null, [label]]]);
-      } else if (label._cls === "Classifications") {
-        classifications.push([field, [null, label.classifications]]);
-      }
-    }
-
-    if (classifications.length > 0) {
-      const overlay = new ClassificationsOverlay(classifications, this);
-      overlay.setup(context, width, height);
-      overlays.push(overlay);
-    }
-  }
 
   setTopOverlays({ curs }, overlays) {
     if (

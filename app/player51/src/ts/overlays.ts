@@ -11,6 +11,7 @@ import {
   inRect,
 } from "./util.js";
 import { deserialize } from "./numpy.js";
+import { BaseState } from "./state.js";
 
 export { colorGenerator, ColorGenerator, ClassificationsOverlay, FROM_FO };
 
@@ -95,69 +96,51 @@ class ColorGenerator {
 // Instantiate one colorGenerator for global use
 const colorGenerator = new ColorGenerator();
 
-/**
- * Checks whether an overlay be shown.
- */
-function _isOverlayShown(filter: any, field: string, label: object): boolean {
-  return filter && filter[field] && filter[field].call
-    ? filter[field](label)
-    : true;
+interface BaseLabel {
+  label?: string;
+  confidence?: number;
 }
 
-/**
- * A generic interface for how to render label overlays
- *
- * Each sub-class must overload the setup and the draw functions.
- *
- * @param {Renderer} renderer Associated renderer
- */
-function Overlay(refs) {
-  this.refs = refs;
+const CONTAINS_NONE = 0;
+const CONTAINS_CONTENT = 1;
+const CONTAINS_BORDER = 2;
+
+abstract class Overlay<State extends BaseState, Label extends BaseLabel> {
+  protected readonly field: string;
+  protected readonly label: Label;
+
+  abstract draw(context: CanvasRenderingContext2D): void;
+
+  abstract setup(context: CanvasRenderingContext2D): void;
+
+  isShown({ options: { activeLabels, filter } }: Readonly<State>): boolean {
+    if (activeLabels && activeLabels.includes(this.field)) {
+      return false;
+    }
+
+    if (filter && filter[this.field].call) {
+      return filter[this.field](this.label);
+    }
+
+    return true;
+  }
+
+  getColor({ options }: Readonly<State>): string {
+    const key = options.colorByLabel ? this.label : this.field;
+    const hasColor = options.colorMap && options.colorMap[key];
+    if (hasColor) {
+      return options.colorMap[key];
+    } else {
+      return options.colorGenerator.color(this.label);
+    }
+    // @todo: resurrect me
+    return options.colorGenerator.color(index);
+  }
+
+  containsPoint() {}
 }
-Overlay.prototype.draw = function (context, canvasWidth, canvasHeight) {
-  /* eslint-disable-next-line no-console */
-  console.log("ERROR: draw called on abstract type");
-};
-Overlay.prototype.setup = function (context, canvasWidth, canvasHeight) {
-  /* eslint-disable-next-line no-console */
-  console.log("ERROR: setup called on abstract type");
-};
-
-Overlay.prototype._isShown = function () {
-  if (
-    this.refs.state.options.activeLabels &&
-    !this.refs.state.options.activeLabels.includes(this.field)
-  ) {
-    return false;
-  }
-  if (
-    !_isOverlayShown(this.refs.state.options.filter, this.field, this.label)
-  ) {
-    return false;
-  }
-  return true;
-};
-Overlay.prototype._getColor = function (field, { index, label }) {
-  const options = this.refs.state.options;
-  const key = options.colorByLabel ? label : field;
-  const hasColor = options.colorMap && options.colorMap[key];
-  if (hasColor) {
-    return options.colorMap[key];
-  } else {
-    return this.refs.state.options.colorGenerator.color(label);
-  }
-  // @todo: resurrect me
-  return this.refs.state.options.colorGenerator.color(index);
-};
-
-Overlay.prototype.hasFocus = function () {
-  return this.refs.focusedOverlay === this;
-};
 
 // in numerical order (CONTAINS_BORDER takes precedence over CONTAINS_CONTENT)
-Overlay.CONTAINS_NONE = 0;
-Overlay.CONTAINS_CONTENT = 1;
-Overlay.CONTAINS_BORDER = 2;
 
 /**
  * Checks whether the given point (in canvas coordinates) is contained by the
@@ -202,7 +185,7 @@ Overlay.prototype.getSelectData = function (x, y) {
  * @param {Renderer} renderer the associated renderer
  *
  */
-function ClassificationsOverlay(labels, refs) {
+function ClassificationsOverlay(labels) {
   Overlay.call(this, refs);
 
   this.name = null;

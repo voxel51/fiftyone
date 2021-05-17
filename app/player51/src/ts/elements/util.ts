@@ -3,7 +3,7 @@
  */
 
 import { parseMediaFragmentsUri } from "../mediaFragments";
-import { BaseState, ReadOnlyState, StateUpdate } from "../state";
+import { BaseState, StateUpdate } from "../state";
 import { BaseElement } from "./base";
 
 export const FRAME_ZERO_OFFSET = 1;
