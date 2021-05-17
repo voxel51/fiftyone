@@ -11,7 +11,7 @@ import {
   inRect,
 } from "./util.js";
 import { deserialize } from "./numpy.js";
-import { BaseState } from "./state.js";
+import { BaseState, Coordinates } from "./state.js";
 
 export { colorGenerator, ColorGenerator, ClassificationsOverlay, FROM_FO };
 
@@ -97,17 +97,46 @@ class ColorGenerator {
 const colorGenerator = new ColorGenerator();
 
 interface BaseLabel {
+  _id: string;
   label?: string;
   confidence?: number;
+  frame_number?: number;
 }
 
-const CONTAINS_NONE = 0;
-const CONTAINS_CONTENT = 1;
-const CONTAINS_BORDER = 2;
+interface SelectData {
+  id: string;
+  field: string;
+  frameNumber?: number;
+}
 
-abstract class Overlay<State extends BaseState, Label extends BaseLabel> {
+interface Overlay<State extends BaseState> {
+  draw(context: CanvasRenderingContext2D): void;
+  setup(context: CanvasRenderingContext2D): void;
+  isShown(state: Readonly<State>): boolean;
+  getColor(state: Readonly<State>): string;
+  containsPoint(coordinates: Coordinates): CONTAINS;
+  getMouseDistance(coordinates: Coordinates): number;
+  getPointInfo(coordinates: Coordinates): any;
+  isSelectable(coordinates: Coordinates): boolean;
+  getSelectData(coordinates: Coordinates): SelectData;
+}
+
+// in numerical order (CONTAINS_BORDER takes precedence over CONTAINS_CONTENT)
+
+enum CONTAINS {
+  NONE = 0,
+  CONTENT = 1,
+  BORDER = 2,
+}
+
+abstract class NormalOverlay<
+  State extends BaseState,
+  Label extends BaseLabel = BaseLabel
+> implements Overlay<State> {
   protected readonly field: string;
   protected readonly label: Label;
+
+  abstract constructor(field: string, label: Label);
 
   abstract draw(context: CanvasRenderingContext2D): void;
 
@@ -126,57 +155,30 @@ abstract class Overlay<State extends BaseState, Label extends BaseLabel> {
   }
 
   getColor({ options }: Readonly<State>): string {
-    const key = options.colorByLabel ? this.label : this.field;
-    const hasColor = options.colorMap && options.colorMap[key];
-    if (hasColor) {
-      return options.colorMap[key];
-    } else {
-      return options.colorGenerator.color(this.label);
-    }
-    // @todo: resurrect me
-    return options.colorGenerator.color(index);
+    const key = options.colorByLabel ? this.label.label : this.field;
+    return options.colorMap(key);
   }
 
-  containsPoint() {}
+  containsPoint([x, y]: Coordinates) {
+    return CONTAINS.NONE;
+  }
+
+  abstract getMouseDistance([x, y]: Coordinates);
+
+  abstract getPointInfo([x, y]: Coordinates);
+
+  isSelectable([x, y]: Coordinates): boolean {
+    return Boolean(this.containsPoint([x, y]) && this.getSelectData([x, y]));
+  }
+
+  getSelectData([x, y]: Coordinates) {
+    return {
+      id: this.label._id,
+      field: this.field,
+      frameNumber: this.label.frame_number,
+    };
+  }
 }
-
-// in numerical order (CONTAINS_BORDER takes precedence over CONTAINS_CONTENT)
-
-/**
- * Checks whether the given point (in canvas coordinates) is contained by the
- * overlay, and if so, what part of the overlay contains it.
- *
- * @param {number} x canvas x coordinate
- * @param {number} y canvas y coordinate
- * @return {number} an Overlay.CONTAINS_* constant
- */
-Overlay.prototype.containsPoint = function (x, y) {
-  return Overlay.CONTAINS_NONE;
-};
-
-Overlay.prototype.getMouseDistance = function (x, y) {
-  throw new Error("Method getMouseDistance() must be implemented.");
-};
-
-Overlay.prototype.getPointInfo = function (x, y) {
-  throw new Error("Method getPointInfo() must be implemented.");
-};
-
-Overlay.prototype.isSelectable = function (x, y) {
-  return this.containsPoint(x, y) && this.getSelectData(x, y);
-};
-
-Overlay.prototype.isSelected = function () {
-  return this.refs.state.options.selectedLabels.includes(this.label._id);
-};
-
-Overlay.prototype.getSelectData = function (x, y) {
-  return {
-    id: this.label._id,
-    field: this.field,
-    frameNumber: this.label.frame_number,
-  };
-};
 
 /**
  * An overlay that renders serialized fo Classifications
@@ -185,58 +187,48 @@ Overlay.prototype.getSelectData = function (x, y) {
  * @param {Renderer} renderer the associated renderer
  *
  */
-function ClassificationsOverlay(labels) {
-  Overlay.call(this, refs);
+class ClassificationsOverlay<State extends BaseState>
+  implements Overlay<State> {
+  labels: BaseLabel[];
+  textLines: string[];
+  font: string;
 
-  this.name = null;
-  this.labels = labels;
-  this.textLines = [];
+  constructor(context, labels) {
+    this.labels = labels;
+    this.textLines = [];
+    this.font = `${this.fontHeight}px Arial, sans-serif`;
 
-  this.fontHeight = null;
-  this.maxTextWidth = -1;
-  this.font = null;
+    this.fontHeight = null;
+    this.maxTextWidth = -1;
+    this.font = null;
 
-  // Location and Size to draw these
-  this.x = null;
-  this.y = null;
-  this.w = null;
-  this.h = null;
-  this.textPadder = null;
+    // Location and Size to draw these
+    this.x = null;
+    this.y = null;
+    this.w = null;
+    this.h = null;
+    this.textPadder = null;
+  }
+
+  setup(context) {
+    if (typeof this.labels !== undefined) {
+      this._updateTextLines();
+    }
+    this.textPadder = (3 / this.refs.height) * canvasHeight;
+    if (this.x === null || this.y === null) {
+      this.x = this.textPadder;
+      this.y = this.textPadder;
+    }
+
+    this.fontHeight = Math.min(20, 0.09 * canvasHeight);
+    this.fontHeight = this.renderer.checkFontHeight(this.fontHeight);
+
+    if (typeof context === "undefined") {
+      return;
+    }
+    context.font = this.font;
+  }
 }
-ClassificationsOverlay.prototype = Object.create(Overlay.prototype);
-ClassificationsOverlay.prototype.constructor = ClassificationsOverlay;
-
-/**
- * Second half of constructor that should be called after the ClassificationsOverlay exists.
- *
- * @method setup
- * @constructor
- * @param {context} context
- * @param {int} canvasWidth
- * @param {int} canvasHeight
- */
-ClassificationsOverlay.prototype.setup = function (
-  context,
-  canvasWidth,
-  canvasHeight
-) {
-  if (typeof this.labels !== undefined) {
-    this._updateTextLines();
-  }
-  this.textPadder = (3 / this.refs.height) * canvasHeight;
-  if (this.x === null || this.y === null) {
-    this.x = this.textPadder;
-    this.y = this.textPadder;
-  }
-
-  this.fontHeight = Math.min(20, 0.09 * canvasHeight);
-  this.fontHeight = this.renderer.checkFontHeight(this.fontHeight);
-  this.font = `${this.fontHeight}px Arial, sans-serif`;
-  if (typeof context === "undefined") {
-    return;
-  }
-  context.font = this.font;
-};
 
 ClassificationsOverlay.prototype._isShown = function () {
   return this._getFilteredClassifications().length > 0;
