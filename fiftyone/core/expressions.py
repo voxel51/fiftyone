@@ -2175,9 +2175,9 @@ class ViewExpression(object):
         """
         return ViewExpression({"$size": {"$ifNull": [self, []]}})
 
-    def contains(self, value_or_values):
-        """Checks whether the given value (or any of the given values) is in
-        this expression, which must resolve to an array.
+    def contains(self, values):
+        """Checks whether any of the given value(s) are in this expression,
+        which must resolve to an array.
 
         Examples::
 
@@ -2204,15 +2204,16 @@ class ViewExpression(object):
             print(view.count())
 
         Args:
-            value_or_values: a value or iterable of values
+            values: a value or iterable of values, which may be
+                :class:`ViewExpression` instances
 
         Returns:
             a :class:`ViewExpression`
         """
-        if etau.is_container(value_or_values):
-            values = list(value_or_values)
+        if isinstance(values, ViewExpression) or not etau.is_container(values):
+            values = [values]
         else:
-            values = [value_or_values]
+            values = list(values)
 
         expr = ViewExpression.any(
             [ViewExpression({"$in": [value, self]}) for value in values]
@@ -3528,10 +3529,10 @@ class ViewExpression(object):
         Returns:
             a :class:`ViewExpression`
         """
-        if etau.is_container(exprs):
-            exprs = list(exprs)
-        else:
+        if isinstance(exprs, ViewExpression) or not etau.is_container(exprs):
             exprs = [exprs]
+        else:
+            exprs = list(exprs)
 
         num_exprs = len(exprs)
 
@@ -3576,10 +3577,10 @@ class ViewExpression(object):
         Returns:
             a :class:`ViewExpression`
         """
-        if etau.is_container(exprs):
-            exprs = list(exprs)
-        else:
+        if isinstance(exprs, ViewExpression) or not etau.is_container(exprs):
             exprs = [exprs]
+        else:
+            exprs = list(exprs)
 
         num_exprs = len(exprs)
 

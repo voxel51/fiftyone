@@ -256,13 +256,14 @@ class _SampleMixin(object):
             )
 
         if self.media_type == fomm.VIDEO:
-            if fields is not None:
-                fields, frame_fields = fou.split_frame_fields(fields)
-
-            if omit_fields is not None:
-                omit_fields, omit_frame_fields = fou.split_frame_fields(
-                    omit_fields
-                )
+            (
+                fields,
+                frame_fields,
+                omit_fields,
+                omit_frame_fields,
+            ) = self._parse_fields_video(
+                fields=fields, omit_fields=omit_fields
+            )
 
         super().merge(
             sample,
@@ -321,6 +322,21 @@ class _SampleMixin(object):
                 % (self.media_type, new_media_type)
             )
 
+    def _parse_fields_video(self, fields=None, omit_fields=None):
+        if fields is not None:
+            fields, frame_fields = fou.split_frame_fields(fields)
+        else:
+            frame_fields = None
+
+        if omit_fields is not None:
+            omit_fields, omit_frame_fields = fou.split_frame_fields(
+                omit_fields
+            )
+        else:
+            omit_frame_fields = None
+
+        return fields, frame_fields, omit_fields, omit_frame_fields
+
 
 class Sample(_SampleMixin, Document, metaclass=SampleSingleton):
     """A sample in a :class:`fiftyone.core.dataset.Dataset`.
@@ -373,17 +389,40 @@ class Sample(_SampleMixin, Document, metaclass=SampleSingleton):
         d = self._dataset._sample_collection.find_one({"_id": self._id})
         self._doc = self._dataset._sample_dict_to_doc(d)
 
-    def copy(self):
+    def copy(self, fields=None, omit_fields=None):
         """Returns a deep copy of the sample that has not been added to the
         database.
+
+        Args:
+            fields (None): an optional field or iterable of fields to which to
+                restrict the copy
+            omit_fields (None): an optional field or iterable of fields to
+                exclude from the copy
 
         Returns:
             a :class:`Sample`
         """
-        sample = super().copy()
+        if self.media_type == fomm.VIDEO:
+            (
+                fields,
+                frame_fields,
+                omit_fields,
+                omit_frame_fields,
+            ) = self._parse_fields_video(
+                fields=fields, omit_fields=omit_fields
+            )
+
+        sample = super().copy(fields=fields, omit_fields=omit_fields)
 
         if self.media_type == fomm.VIDEO:
-            sample.frames.update({k: v.copy() for k, v in self.frames.items()})
+            sample.frames.update(
+                {
+                    frame_number: frame.copy(
+                        fields=frame_fields, omit_fields=omit_frame_fields
+                    )
+                    for frame_number, frame in self.frames.items()
+                }
+            )
 
         return sample
 

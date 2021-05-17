@@ -236,7 +236,8 @@ class _Document(object):
         """Merges the fields of the document into this document.
 
         Args:
-            document: a :class:`Document` of the same type
+            document: a :class:`Document` or :class:`DocumentView` the same
+                type
             fields (None): an optional field or iterable of fields to which to
                 restrict the merge
             omit_fields (None): an optional field or iterable of fields to
@@ -262,21 +263,10 @@ class _Document(object):
             AttributeError: if ``expand_schema == False`` and a field does not
                 exist
         """
-        if fields is None:
-            fields = document.field_names
-        elif etau.is_str(fields):
-            fields = (fields,)
-
-        if omit_fields is not None:
-            if etau.is_str(omit_fields):
-                omit_fields = {omit_fields}
-            else:
-                omit_fields = set(omit_fields)
-
-            fields = [f for f in fields if f not in omit_fields]
-
         if not overwrite:
             existing_field_names = set(self.field_names)
+
+        fields = self._parse_fields(fields=fields, omit_fields=omit_fields)
 
         for field_name in fields:
             value = document[field_name]
@@ -320,14 +310,20 @@ class _Document(object):
 
             self.set_field(field_name, value, create=expand_schema)
 
-    def copy(self):
+    def copy(self, fields=None, omit_fields=None):
         """Returns a deep copy of the document that has not been added to the
         database.
+
+        Args:
+            fields (None): an optional field or iterable of fields to which to
+                restrict the copy
+            omit_fields (None): an optional field or iterable of fields to
+                exclude from the copy
 
         Returns:
             a :class:`Document`
         """
-        return self.__class__(self._doc.copy())
+        raise NotImplementedError("subclass must implement copy()")
 
     def to_dict(self):
         """Serializes the document to a JSON dictionary.
@@ -367,6 +363,22 @@ class _Document(object):
         """Saves the document to the database."""
         self._doc.save()
 
+    def _parse_fields(self, fields=None, omit_fields=None):
+        if fields is None:
+            fields = self.field_names
+        elif etau.is_str(fields):
+            fields = [fields]
+
+        if omit_fields is not None:
+            if etau.is_str(omit_fields):
+                omit_fields = {omit_fields}
+            else:
+                omit_fields = set(omit_fields)
+
+            fields = [f for f in fields if f not in omit_fields]
+
+        return fields
+
 
 class Document(_Document):
     """Abstract base class for objects that are associated with
@@ -390,9 +402,10 @@ class Document(_Document):
         doc = self._NO_DATASET_DOC_CLS(**kwargs)
         super().__init__(doc)
 
-    def copy(self):
+    def copy(self, fields=None, omit_fields=None):
+        fields = self._parse_fields(fields=fields, omit_fields=omit_fields)
         return self.__class__(
-            **{k: deepcopy(v) for k, v in self.iter_fields()}
+            **{field: deepcopy(self[field]) for field in fields}
         )
 
     def reload(self, hard=False):
@@ -682,9 +695,10 @@ class DocumentView(_Document):
 
         return d
 
-    def copy(self):
+    def copy(self, fields=None, omit_fields=None):
+        fields = self._parse_fields(fields=fields, omit_fields=omit_fields)
         return self._DOCUMENT_CLS(
-            **{k: deepcopy(v) for k, v in self.iter_fields()}
+            **{field: deepcopy(self[field]) for field in fields}
         )
 
     def save(self):

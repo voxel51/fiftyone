@@ -190,14 +190,7 @@ class Frames(object):
         for frame in self._iter_frames():
             yield frame
 
-    def add_frame(
-        self,
-        frame_number,
-        frame,
-        fields=None,
-        omit_fields=None,
-        expand_schema=True,
-    ):
+    def add_frame(self, frame_number, frame, expand_schema=True):
         """Adds the frame to this instance.
 
         If an existing frame with the same frame number exists, it is
@@ -210,10 +203,6 @@ class Frames(object):
         Args:
             frame_number: the frame number
             frame: a :class:`Frame` or :class:`FrameView`
-            fields (None): an optional field or iterable of fields to keep.
-                If provided, other fields are deleted from the frame
-            omit_fields (None): an optional field or iterable of fields to
-                delete
             expand_schema (True): whether to dynamically add new frame fields
                 encountered to the dataset schema. If False, an error is raised
                 if the frame's schema is not a subset of the dataset schema
@@ -226,21 +215,6 @@ class Frames(object):
                 % (Frame, FrameView, type(frame))
             )
 
-        select_fields = fields is not None or omit_fields is not None
-
-        if fields is None:
-            fields = frame.field_names
-        elif etau.is_str(fields):
-            fields = [fields]
-
-        if omit_fields is not None:
-            if etau.is_str(omit_fields):
-                omit_fields = {omit_fields}
-            else:
-                omit_fields = set(omit_fields)
-
-            fields = [f for f in fields if f not in omit_fields]
-
         if self._in_db:
             _frame = frame
             if frame._in_db:
@@ -248,21 +222,14 @@ class Frames(object):
 
             d = {"_sample_id": self._sample._id}
             doc = self._dataset._frame_dict_to_doc(d)
-            for field in fields:
-                doc.set_field(field, _frame[field], create=expand_schema)
+
+            for field, value in _frame.iter_fields():
+                doc.set_field(field, value, create=expand_schema)
 
             doc.set_field("frame_number", frame_number)
             frame._set_backing_doc(doc, dataset=self._dataset)
         else:
-            if select_fields:
-                if frame._in_db:
-                    frame = Frame(**{field: frame[field] for field in fields})
-                else:
-                    delete_fields = set(frame.field_names) - set(fields)
-                    for field in delete_fields:
-                        del frame[field]
-
-            elif frame._in_db:
+            if frame._in_db:
                 frame = frame.copy()
 
             frame.set_field("frame_number", frame_number)
@@ -352,12 +319,11 @@ class Frames(object):
                     expand_schema=expand_schema,
                 )
             else:
+                if fields is not None or omit_fields is not None:
+                    frame = frame.copy(fields=fields, omit_fields=omit_fields)
+
                 self.add_frame(
-                    frame_number,
-                    frame,
-                    fields=fields,
-                    omit_fields=omit_fields,
-                    expand_schema=expand_schema,
+                    frame_number, frame, expand_schema=expand_schema
                 )
 
     def clear(self):
@@ -656,14 +622,7 @@ class FramesView(Frames):
     def _frames_view(self):
         return self._view.select(self._sample.id)
 
-    def add_frame(
-        self,
-        frame_number,
-        frame,
-        fields=None,
-        omit_fields=None,
-        expand_schema=True,
-    ):
+    def add_frame(self, frame_number, frame, expand_schema=True):
         """Adds the frame to this instance.
 
         If an existing frame with the same frame number exists, it is
@@ -676,10 +635,6 @@ class FramesView(Frames):
         Args:
             frame_number: the frame number
             frame: a :class:`Frame` or :class:`FrameView`
-            fields (None): an optional field or iterable of fields to keep.
-                If provided, other fields are deleted from the frame
-            omit_fields (None): an optional field or iterable of fields to
-                delete
             expand_schema (True): whether to dynamically add new frame fields
                 encountered to the dataset schema. If False, an error is raised
                 if the frame's schema is not a subset of the dataset schema
@@ -692,23 +647,10 @@ class FramesView(Frames):
                 % (Frame, FrameView, type(frame))
             )
 
-        if fields is None:
-            fields = frame.field_names
-        elif etau.is_str(fields):
-            fields = [fields]
-
-        if omit_fields is not None:
-            if etau.is_str(omit_fields):
-                omit_fields = {omit_fields}
-            else:
-                omit_fields = set(omit_fields)
-
-            fields = [f for f in fields if f not in omit_fields]
-
         frame_view = self._make_frame({"_sample_id": self._sample._id})
 
-        for field in fields:
-            frame_view.set_field(field, frame[field], create=expand_schema)
+        for field, value in frame.iter_fields():
+            frame_view.set_field(field, value, create=expand_schema)
 
         frame_view.set_field("frame_number", frame_number)
         self._set_replacement(frame_view)

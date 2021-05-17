@@ -1434,11 +1434,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         samples,
         key_field="filepath",
         key_fcn=None,
-        omit_none_fields=True,
         skip_existing=False,
         insert_new=True,
         expand_schema=True,
-        omit_default_fields=False,
+        fields=None,
+        omit_fields=None,
+        omit_none_fields=True,
         merge_lists=False,
         overwrite=True,
         include_info=True,
@@ -1462,8 +1463,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 :class:`fiftyone.core.sample.Sample` instance and computes a
                 key to decide if two samples should be merged. If a ``key_fcn``
                 is provided, ``key_field`` is ignored
-            omit_none_fields (True): whether to omit ``None``-valued fields of
-                the provided samples when merging their fields
             skip_existing (False): whether to skip existing samples (True) or
                 merge them (False)
             insert_new (True): whether to insert new samples (True) or skip
@@ -1471,8 +1470,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             expand_schema (True): whether to dynamically add new fields
                 encountered to the dataset schema. If False, an error is raised
                 if a sample's schema is not a subset of the dataset schema
-            omit_default_fields (False): whether to omit default sample fields
-                when merging. If ``True``, ``insert_new`` must be ``False``
+            fields (None): an optional field or iterable of fields to which to
+                restrict the merge
+            omit_fields (None): an optional field or iterable of fields to
+                exclude from the merge
+            omit_none_fields (True): whether to omit ``None``-valued fields of
+                the provided samples when merging their fields
             merge_lists (False): whether to merge top-level list fields and the
                 elements of label list fields. If ``True``, this parameter
                 supercedes the ``overwrite`` parameter for list fields, and,
@@ -1498,27 +1501,18 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 samples,
                 self,
                 key_field,
-                omit_none_fields=omit_none_fields,
                 skip_existing=skip_existing,
                 insert_new=insert_new,
                 expand_schema=expand_schema,
-                omit_default_fields=omit_default_fields,
+                fields=fields,
+                omit_fields=omit_fields,
+                omit_none_fields=omit_none_fields,
                 merge_lists=merge_lists,
                 overwrite=overwrite,
                 include_info=include_info,
                 overwrite_info=overwrite_info,
             )
             return
-
-        if omit_default_fields:
-            if insert_new:
-                raise ValueError(
-                    "Cannot omit default fields when `insert_new=True`"
-                )
-
-            omit_fields = self._get_default_sample_fields()
-        else:
-            omit_fields = None
 
         if isinstance(samples, foc.SampleCollection):
             _merge_dataset_doc(
@@ -1549,6 +1543,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                         existing_sample = self[id_map[key]]
                         existing_sample.merge(
                             sample,
+                            fields=fields,
                             omit_fields=omit_fields,
                             omit_none_fields=omit_none_fields,
                             merge_lists=merge_lists,
@@ -1556,7 +1551,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                             expand_schema=expand_schema,
                         )
                         existing_sample.save()
+
                 elif insert_new:
+                    if fields is not None or omit_fields is not None:
+                        sample = sample.copy(
+                            fields=fields, omit_fields=omit_fields
+                        )
+
                     self.add_sample(sample, expand_schema=expand_schema)
 
     def delete_samples(self, samples_or_ids):
@@ -3816,23 +3817,23 @@ def _clone_runs(dst_dataset, src_doc):
     dst_doc.save()
 
 
+# @todo support `merge_lists`
+# @todo does `fields` properly handle default fields?
 def _merge_samples(
     src_collection,
     dst_dataset,
     key_field,
-    omit_none_fields=True,
     skip_existing=False,
     insert_new=True,
     expand_schema=True,
-    omit_default_fields=False,
+    fields=None,
+    omit_fields=None,
+    omit_none_fields=True,
     merge_lists=False,
     overwrite=False,
     include_info=True,
     overwrite_info=False,
 ):
-    if omit_default_fields and insert_new:
-        raise ValueError("Cannot omit default fields when `insert_new=True`")
-
     if key_field == "id":
         key_field = "_id"
 
@@ -3883,6 +3884,36 @@ def _merge_samples(
         new_src_index = False
         new_dst_index = False
 
+    if is_video:
+        frame_fields = None
+        omit_frame_fields = None
+
+    if fields is not None:
+        if etau.is_str(fields):
+            fields = [fields]
+
+        if is_video:
+            fields, frame_fields = fou.split_frame_fields(fields)
+
+    if omit_fields is not None:
+        if etau.is_str(omit_fields):
+            omit_fields = [omit_fields]
+
+        if is_video:
+            omit_fields, omit_frame_fields = fou.split_frame_fields(
+                omit_fields
+            )
+
+        if fields is not None:
+            fields = [f for f in fields if f not in omit_fields]
+            omit_fields = None
+
+        if is_video and frame_fields is not None:
+            frame_fields = [
+                f for f in frame_fields if f not in omit_frame_fields
+            ]
+            omit_frame_fields = None
+
     #
     # The implementation of merging video frames is currently a bit complex.
     # It may be possible to simplify this...
@@ -3923,22 +3954,25 @@ def _merge_samples(
     # Merge samples
     #
 
-    if omit_default_fields:
-        omit_fields = list(
-            dst_dataset._get_default_sample_fields(include_private=True)
-        )
-    else:
-        omit_fields = ["_id"]
-
-    try:
-        omit_fields.remove(key_field)
-    except ValueError:
-        pass
-
     sample_pipeline = src_collection._pipeline(detach_frames=True)
 
+    if fields is not None:
+        project = {f: True for f in fields}
+        project["filepath"] = True
+        project["_rand"] = True
+        project["_media_type"] = True
+        sample_pipeline.append({"$project": project})
+
+    if omit_fields is not None:
+        omit_fields = set(omit_fields)
+    else:
+        omit_fields = set()
+
+    omit_fields.add("_id")
+    omit_fields.discard(key_field)
+
     if omit_fields:
-        sample_pipeline.append({"$unset": omit_fields})
+        sample_pipeline.append({"$unset": list(omit_fields)})
 
     if omit_none_fields:
         omit_none_stage = {
@@ -3990,7 +4024,23 @@ def _merge_samples(
 
         frame_pipeline = _src_collection._pipeline(frames_only=True)
 
-        frame_pipeline.extend([{"$unset": ["_id", "_sample_id"]}])
+        if frame_fields is not None:
+            project = {f: True for f in frame_fields}
+            project[frame_key_field] = True
+            project["frame_number"] = True
+            frame_pipeline.append({"$project": project})
+
+        if omit_frame_fields is not None:
+            omit_frame_fields = set(omit_frame_fields)
+        else:
+            omit_frame_fields = set()
+
+        omit_frame_fields.update(["_id", "_sample_id"])
+        omit_frame_fields.discard(frame_key_field)
+        omit_frame_fields.discard("frame_number")
+
+        if omit_frame_fields:
+            frame_pipeline.append({"$unset": list(omit_frame_fields)})
 
         if omit_none_fields:
             frame_pipeline.append(omit_none_stage)
