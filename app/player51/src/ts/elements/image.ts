@@ -5,7 +5,7 @@
 import { ImageState } from "../state";
 import { BaseElement, Events } from "./base";
 
-export class ImageElement extends BaseElement<ImageState> {
+export class ImageElement extends BaseElement<ImageState, HTMLImageElement> {
   private src: string;
 
   events: Events<ImageState> = {
@@ -24,7 +24,7 @@ export class ImageElement extends BaseElement<ImageState> {
     return element;
   }
 
-  renderSelf({ config: { src } }) {
+  renderSelf(s) {
     this.element.setAttribute("src", src);
     return this.element;
   }

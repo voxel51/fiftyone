@@ -6,6 +6,7 @@ interface BaseOptions {
   activeLabels: string[];
   colorByLabel: boolean;
   filter: (label: { label?: string; confidence?: number }) => boolean;
+  colorMap: (key: string | number | null) => string;
   selectedLabels: string[];
   showAttrs: boolean;
   showConfidence: boolean;
@@ -73,6 +74,8 @@ export interface BaseState {
   tooltipOverlay?: TooltipOverlay;
   config: BaseConfig;
   options: BaseOptions;
+  scale: number;
+  pan: Coordinates;
 }
 
 export interface FrameState extends BaseState {

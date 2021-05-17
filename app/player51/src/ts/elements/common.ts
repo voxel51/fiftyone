@@ -2,7 +2,7 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 
-import { BaseState } from "../state";
+import { BaseState, Coordinates } from "../state";
 import { BaseElement, Events } from "./base";
 import { ICONS, makeCheckboxRow, makeWrapper } from "./util";
 
@@ -316,6 +316,57 @@ export class ShowTooltipOptionElement<
 
   renderSelf({ options: { showTooltip } }) {
     this.checkbox.checked = showTooltip;
+    return this.element;
+  }
+}
+
+export class WindowElement<State extends BaseState> extends BaseElement<State> {
+  private window: HTMLDivElement;
+  private start: Coordinates = [0, 0];
+
+  events: Events<State> = {
+    dragstart: ({ event, update }) => {
+      event.preventDefault();
+      update(({ pan: [x, y] }) => {
+        this.start = [event.clientX - x, event.clientY - y];
+        return {};
+      });
+    },
+    drag: ({ event, update }) => {
+      event.preventDefault();
+      const [x, y] = this.start;
+      update({ pan: [event.clientX - x, event.clientY - y] });
+    },
+    wheel: ({ event, update }) => {
+      event.preventDefault();
+      update(({ pan: [x, y], scale }) => {
+        const xs = (event.clientX - x) / scale,
+          ys = (event.clientY - y) / scale,
+          delta = -event.deltaY;
+
+        delta > 0 ? (scale *= 1.2) : (scale /= 1.2);
+
+        return {
+          pan: [event.clientX - xs * scale, event.clientY - ys * scale],
+          scale,
+        };
+      });
+    },
+  };
+
+  createHTMLElement() {
+    const element = document.createElement("div");
+    element.className = "p51-window-container";
+    const child = document.createElement("div");
+    child.className = "p51-window";
+    element.appendChild(child);
+    this.eventTarget = child;
+    return element;
+  }
+
+  renderSelf({ pan: [x, y], scale }) {
+    this.window.style.transform =
+      "translate(" + x + "px, " + y + "px) scale(" + scale + ")";
     return this.element;
   }
 }
