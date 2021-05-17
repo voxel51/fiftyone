@@ -5,8 +5,8 @@
 interface BaseOptions {
   activeLabels: string[];
   colorByLabel: boolean;
-  filter: (label: { label?: string; confidence?: number }) => boolean;
-  colorMap: (key: string | number | null) => string;
+  filter: ((label: { label?: string; confidence?: number }) => boolean) | null;
+  colorMap: ((key: string | number | null | undefined) => string) | null;
   selectedLabels: string[];
   showAttrs: boolean;
   showConfidence: boolean;
@@ -15,6 +15,8 @@ interface BaseOptions {
   zoom: boolean;
 }
 
+export type BoundingBox = [number, number, number, number];
+
 export type Coordinates = [number, number];
 
 export type Dimensions = [number, number];
@@ -22,10 +24,12 @@ export type Dimensions = [number, number];
 interface BaseConfig {
   thumbnail: boolean;
   src: string;
+  dimensions: Dimensions;
 }
 
 export interface FrameConfig extends BaseConfig {
   frameRate: number;
+  frameNumber: number;
 }
 
 export interface ImageConfig extends BaseConfig {}
@@ -62,8 +66,7 @@ export interface TooltipOverlay {
 
 export interface BaseState {
   cursorCoordinates: Coordinates;
-  dimensions: Dimensions;
-  canvasDimenstions: Dimensions;
+  playerBox: BoundingBox;
   disableControls: boolean;
   focused: boolean;
   loaded: boolean;
@@ -71,7 +74,7 @@ export interface BaseState {
   hoveringControls: boolean;
   showControls: boolean;
   showOptions: boolean;
-  tooltipOverlay?: TooltipOverlay;
+  tooltipOverlay: TooltipOverlay | null;
   config: BaseConfig;
   options: BaseOptions;
   scale: number;
@@ -81,8 +84,7 @@ export interface BaseState {
 export interface FrameState extends BaseState {
   config: FrameConfig;
   options: FrameOptions;
-  frameNumber: number;
-  duration: number;
+  duration: number | null;
 }
 
 export interface ImageState extends BaseState {
@@ -113,6 +115,7 @@ export type StateUpdate<State extends BaseState> = (
 
 export interface LookerProps {
   sample: any;
+  element: HTMLElement;
   config: BaseConfig;
   options?: Optional<BaseOptions>;
 }
@@ -131,3 +134,34 @@ export interface VideoLookerProps extends LookerProps {
   config: VideoConfig;
   options?: Optional<VideoOptions>;
 }
+
+const DEFAULT_BASE_OPTIONS = {
+  activeLabels: [],
+  colorByLabel: false,
+  selectedLabels: [],
+  showAttrs: false,
+  showConfidence: false,
+  showTooltip: false,
+  onlyShowHoveredLabel: false,
+  zoom: false,
+  filter: null,
+  colorMap: null,
+};
+
+export const DEFAULT_FRAME_OPTIONS = {
+  ...DEFAULT_BASE_OPTIONS,
+  useFrameNumber: true,
+};
+
+export const DEFAULT_IMAGE_OPTIONS = {
+  ...DEFAULT_BASE_OPTIONS,
+};
+
+export const DEFAULT_VIDEO_OPTIONS = {
+  ...DEFAULT_BASE_OPTIONS,
+  useFrameNumber: false,
+  autoplay: false,
+  loop: false,
+};
+
+type Keys = keyof BaseState;

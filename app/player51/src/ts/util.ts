@@ -2,7 +2,7 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 
-import { Kind } from "./state";
+import { BoundingBox, Coordinates, Kind } from "./state";
 
 /**
  * Shallow data-object comparison for equality
@@ -228,4 +228,14 @@ export const rescaleCoordates = (
     Math.round(rescale(x, 0, fromDim[0], 0, toDim[0])),
     Math.round(rescale(y, 0, fromDim[1], 0, toDim[1])),
   ];
+};
+/**
+ * Get the smallest box that contains all points
+ */
+export const getContainingBox = (points: Coordinates[]): BoundingBox => {
+  const tlx = Math.min(...points.map(([x]) => x));
+  const tly = Math.min(...points.map(([_, y]) => y));
+  const w = Math.max(...points.map(([x]) => x)) - tlx;
+  const h = Math.max(...points.map(([_, y]) => y)) - tly;
+  return [tlx, tly, w, h];
 };

@@ -12,8 +12,13 @@ import {
   VideoState,
   StateUpdate,
   BaseState,
-  Optional,
   LookerProps,
+  Optional,
+  DEFAULT_FRAME_OPTIONS,
+  DEFAULT_IMAGE_OPTIONS,
+  DEFAULT_VIDEO_OPTIONS,
+  BoundingBox,
+  Coordinates,
 } from "./state";
 import {
   GetElements,
@@ -36,7 +41,7 @@ abstract class Looker<Props extends LookerProps, State extends BaseState> {
   private readonly canvas: HTMLCanvasElement;
   private sample: Sample;
 
-  constructor({ sample, config, options }: Props) {
+  constructor({ sample, element, config, options }: Props) {
     this.eventTarget = new EventTarget();
     this.state = fromJS({
       config,
@@ -46,6 +51,7 @@ abstract class Looker<Props extends LookerProps, State extends BaseState> {
     this.sample = sample;
     this.update = this.makeUpdate();
     this.lookerElement = this.getElements(this.updater, this.dispatchEvent);
+    element.appendChild(this.lookerElement.element);
     this.canvas = this.lookerElement.element.querySelector("canvas");
     const context = this.canvas.getContext("2d");
     resetCanvas(context);
@@ -77,9 +83,36 @@ abstract class Looker<Props extends LookerProps, State extends BaseState> {
 
   destroy(): void {}
 
-  update(sample: Sample, options: State["options"]) {
+  update(sample: Sample, options: Props["options"]) {
     this.sample = sample;
     this.updater({ options });
+  }
+
+  protected abstract getDefaultOptions(): State["options"];
+
+  protected abstract getInitialState(
+    parentElement: HTMLElement,
+    props: Props
+  ): State;
+
+  protected getInitialBaseState(
+    parentElement: HTMLElement
+  ): Omit<BaseState, "config" | "options"> {
+    const rect = parentElement.getBoundingClientRect();
+    return {
+      cursorCoordinates: null,
+      playerBox: <BoundingBox>[rect.top, rect.left, rect.width, rect.height],
+      disableControls: false,
+      focused: false,
+      hovering: false,
+      hoveringControls: false,
+      showControls: false,
+      showOptions: false,
+      tooltipOverlay: null,
+      loaded: false,
+      scale: 1,
+      pan: <Coordinates>[0, 0],
+    };
   }
 }
 
@@ -89,6 +122,22 @@ export class FrameLooker extends Looker<FrameLookerProps, FrameState> {
   constructor(props: FrameLookerProps) {
     super(props);
   }
+
+  getInitialState(parentElement, props) {
+    return {
+      duration: null,
+      ...this.getInitialBaseState(parentElement),
+      config: { ...props.config },
+      options: {
+        ...this.getDefaultOptions(),
+        ...props.options,
+      },
+    };
+  }
+
+  getDefaultOptions() {
+    return DEFAULT_FRAME_OPTIONS;
+  }
 }
 
 export class ImageLooker extends Looker<ImageLookerProps, ImageState> {
@@ -97,6 +146,21 @@ export class ImageLooker extends Looker<ImageLookerProps, ImageState> {
   constructor(props: ImageLookerProps) {
     super(props);
   }
+
+  getInitialState(parentElement, props) {
+    return {
+      ...this.getInitialBaseState(parentElement),
+      config: { ...props.config },
+      options: {
+        ...this.getDefaultOptions(),
+        ...props.options,
+      },
+    };
+  }
+
+  getDefaultOptions() {
+    return DEFAULT_IMAGE_OPTIONS;
+  }
 }
 
 export class VideoLooker extends Looker<VideoLookerProps, VideoState> {
@@ -104,6 +168,27 @@ export class VideoLooker extends Looker<VideoLookerProps, VideoState> {
 
   constructor(props: VideoLookerProps) {
     super(props);
+  }
+
+  getInitialState(parentElement, props) {
+    return {
+      duration: null,
+      seeking: false,
+      locked: false,
+      fragment: null,
+      playing: false,
+      frameNumber: 1,
+      ...this.getInitialBaseState(parentElement),
+      config: { ...props.config },
+      options: {
+        ...this.getDefaultOptions(),
+        ...props.options,
+      },
+    };
+  }
+
+  getDefaultOptions() {
+    return DEFAULT_VIDEO_OPTIONS;
   }
 
   play(): void {
