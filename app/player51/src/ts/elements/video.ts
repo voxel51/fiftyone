@@ -129,7 +129,10 @@ export class TimeElement extends BaseElement<VideoState> {
   }
 }
 
-export class VideoElement extends BaseElement<VideoState> {
+export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
+  private src: string;
+  private frameNumber: number;
+
   events: Events<VideoState> = {
     keydown: ({ event, update }) => {
       if (event.keyCode === 32) {
@@ -209,6 +212,7 @@ export class VideoElement extends BaseElement<VideoState> {
       const callback = () => {
         update(
           ({
+            duration,
             seeking,
             locked,
             fragment,
@@ -218,22 +222,29 @@ export class VideoElement extends BaseElement<VideoState> {
             if (!seeking) {
               window.requestAnimationFrame(callback);
             }
-            const newFrameNumber = getFrameNumber(
+            let newFrameNumber = getFrameNumber(
               event.target.currentTime,
-              event.target.duration,
+              duration,
               frameRate
             );
 
-            const useFragment =
+            const resetToFragment =
               locked && fragment && newFrameNumber > fragment[1];
+            if (!resetToFragment) {
+              this.frameNumber = newFrameNumber;
+            } else {
+              newFrameNumber = fragment[0];
+            }
 
             return {
-              frameNumber: useFragment ? fragment[0] : newFrameNumber,
-              playing: !(useFragment && !loop),
+              frameNumber: newFrameNumber,
+              playing: !(resetToFragment && !loop),
             };
           }
         );
       };
+
+      requestAnimationFrame(callback);
     },
     pause: ({ event, update }) => {
       update(({ playing, seeking, fragment }) => {
@@ -255,11 +266,11 @@ export class VideoElement extends BaseElement<VideoState> {
       });
     },
     timeupdate: ({ event, dispatchEvent, update }) => {
-      update(({ config: { frameRate } }) => {
+      update(({ duration, config: { frameRate } }) => {
         dispatchEvent("timeupdate", {
           frameNumber: getFrameNumber(
             event.target.currentTime,
-            event.target.duration,
+            duration,
             frameRate
           ),
         });
@@ -291,8 +302,14 @@ export class VideoElement extends BaseElement<VideoState> {
     return element;
   }
 
-  renderSelf({ config: { src } }) {
-    this.element.setAttribute("src", src);
-    return this.element;
+  renderSelf({ config: { src }, frameNumber, seeking }) {
+    if (this.src !== src) {
+      this.src = src;
+      this.element.setAttribute("src", src);
+    }
+    if (this.frameNumber !== frameNumber) {
+      this.element.currentTime = frameNumber;
+    }
+    if (seeking && this.element.playin) return this.element;
   }
 }

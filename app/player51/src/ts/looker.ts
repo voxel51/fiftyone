@@ -13,7 +13,6 @@ import {
   StateUpdate,
   BaseState,
   LookerProps,
-  Optional,
   DEFAULT_FRAME_OPTIONS,
   DEFAULT_IMAGE_OPTIONS,
   DEFAULT_VIDEO_OPTIONS,

@@ -24,8 +24,11 @@ export class ImageElement extends BaseElement<ImageState, HTMLImageElement> {
     return element;
   }
 
-  renderSelf(s) {
-    this.element.setAttribute("src", src);
+  renderSelf({ config: { src } }) {
+    if (this.src !== src) {
+      this.src = src;
+      this.element.setAttribute("src", src);
+    }
     return this.element;
   }
 }

@@ -15,20 +15,23 @@ export class FrameNumberElement extends BaseElement<FrameState> {
   }
 
   renderSelf({
-    frameNumber,
     duration,
-    config: { frameRate },
+    config: { frameRate, frameNumber },
     options: { useFrameNumber },
   }) {
-    const timestamp = useFrameNumber
-      ? getFrameString(frameNumber, duration, frameRate)
-      : getTimeString(frameNumber, frameRate, duration);
-    this.element.innerHTML = timestamp;
+    if (duration) {
+      const timestamp = useFrameNumber
+        ? getFrameString(frameNumber, duration, frameRate)
+        : getTimeString(frameNumber, frameRate, duration);
+      this.element.innerHTML = timestamp;
+    }
     return this.element;
   }
 }
 
 export class FrameElement extends BaseElement<FrameState> {
+  private src: string;
+
   createHTMLElement() {
     const element = document.createElement("video");
     element.className = "p51-video";
@@ -38,7 +41,10 @@ export class FrameElement extends BaseElement<FrameState> {
   }
 
   renderSelf({ config: { src } }) {
-    this.element.setAttribute("src", src);
+    if (this.src !== src) {
+      this.src = src;
+      this.element.setAttribute("src", src);
+    }
     return this.element;
   }
 }
