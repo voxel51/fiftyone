@@ -257,8 +257,12 @@ export class VideoLooker extends Looker<
     );
   }
 
-  pluckOverlays(state) {
+  pluckOverlays({ frameNumber }) {
     const overlays = this.sampleOverlays;
+    if (frameNumber in this.frameOverlays) {
+      return [...overlays, ...this.frameOverlays[frameNumber]];
+    }
+    return overlays;
   }
 
   getDefaultOptions() {
@@ -295,9 +299,9 @@ export class VideoLooker extends Looker<
   }
 }
 
-function loadOverlays<State extends BaseState>(
-  sample: BaseSample
-): Overlay<State>[] {
+function loadOverlays<State extends BaseState>(sample: {
+  [key: string]: any;
+}): Overlay<State>[] {
   const classifications = <ClassificationLabels>[];
   let overlays = [];
   for (const field in sample) {

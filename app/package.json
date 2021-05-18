@@ -3,7 +3,7 @@
     "name": "fiftyone-packages",
     "workspaces": [
         "client",
-        "player51"
+        "looker"
     ],
     "scripts": {}
 }

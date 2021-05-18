@@ -2,33 +2,24 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 
-export default class OverlaysManager {
-  constructor() {}
+import { Overlay } from "./overlays/base";
+import { BaseState } from "./state";
 
-  setTopOverlays({ curs }, overlays) {
-    if (
-      this.player.options.thumbnail ||
-      [-1, null].includes(x) ||
-      [-1, null].includes(y)
-    ) {
-      return overlays;
-    }
+type OverlaySorter<State extends BaseState> = (
+  context: CanvasRenderingContext2D,
+  state: State,
+  overlays: Overlay<State>[]
+) => Overlay<State>[];
 
-    if (!overlays || !overlays.length) {
-      return overlays;
-    }
-
-    const contained = overlays
-      .filter((o) => o.containsPoint(x, y) > 0)
-      .sort((a, b) => a.getMouseDistance(x, y) - b.getMouseDistance(x, y));
-    const outside = overlays.filter(
-      (o) => o instanceof ClassificationsOverlay || o.containsPoint(x, y) === 0
-    );
-
-    return [...contained, ...outside];
-  }
-
-  getOrderedOverlays(coords) {
+export const getOverlaySorter = <State extends BaseState>(): OverlaySorter<
+  State
+> => {
+  let cache = null;
+  return (
+    context: CanvasRenderingContext2D,
+    state: State,
+    overlays: Overlay<State>[]
+  ): Overlay<State>[] => {
     if (this._orderedOverlayCache) {
       return this._orderedOverlayCache;
     }
@@ -61,26 +52,23 @@ export default class OverlaysManager {
     }
 
     return this._setTopOverlays(coords, ordered);
-  }
 
-  setFocus(overlayObj, position = undefined) {
-    if (!this._canFocus) {
-      overlayObj = position = undefined;
+    let sortedOverlays = [];
+
+    if (overlays.length < 1) {
+      return sortedOverlays;
     }
-    if (position) {
-      this._focusPos = position;
+
+    if (state.config.thumbnail || !state.cursorCoordinates) {
+      return sortedOverlays;
     }
-    if (this._focusedObject !== overlayObj) {
-      this._focusedObject = overlayObj;
-      if (overlayObj === undefined) {
-        this._focusedObject = undefined;
-        this._focusIndex = -1;
-      } else {
-        this._focusIndex =
-          overlayObj.index !== undefined ? overlayObj.index : -1;
-      }
-      return true;
-    }
-    return false;
-  }
-}
+
+    const contained = overlays
+      .filter((o) => o.containsPoint(x, y) > 0)
+      .sort((a, b) => a.getMouseDistance(x, y) - b.getMouseDistance(x, y));
+    const outside = overlays.filter(
+      (o) => o instanceof ClassificationsOverlay || o.containsPoint(x, y) === 0
+    );
+    return [...contained, ...outside];
+  };
+};

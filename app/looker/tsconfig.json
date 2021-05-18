@@ -1,22 +1,22 @@
 {
-    "include": ["src", "types"],
+    "include": ["./src"],
+    "outDir": "./build",
+    "rootDir": "./src",
     "compilerOptions": {
-        "module": "esnext",
-        "lib": ["dom", "esnext"],
+        "composite": true,
+        "module": "commonjs",
+        "lib": ["es2020", "dom"],
         "importHelpers": true,
         "declaration": true,
         "sourceMap": true,
         "rootDir": "./src",
-        "allowJs": true,
-        "downlevelIteration": true,
-        "noImplicitReturns": false,
-        "noFallthroughCasesInSwitch": false,
-        "noUnusedLocals": false,
+        "noImplicitReturns": true,
+        "noFallthroughCasesInSwitch": true,
+        "noUnusedLocals": true,
         "noUnusedParameters": false,
         "moduleResolution": "node",
         "esModuleInterop": true,
-        "skipLibCheck": true,
-        "forceConsistentCasingInFileNames": false,
-        "noEmit": true
+        "skipLibCheck": false,
+        "forceConsistentCasingInFileNames": true
     }
 }

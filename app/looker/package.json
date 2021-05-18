@@ -10,10 +10,6 @@
     "scripts": {
         "build": "rm -rf dist && tsc --build tsconfig.build.json"
     },
-    "repository": {
-        "type": "git",
-        "url": "git+ssh://git@github.com/voxel51/player51.git"
-    },
     "author": "Voxel51, Inc.",
     "license": "Apache-2.0",
     "bugs": {
