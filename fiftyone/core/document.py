@@ -236,7 +236,7 @@ class _Document(object):
         """Merges the fields of the document into this document.
 
         Args:
-            document: a :class:`Document` or :class:`DocumentView` the same
+            document: a :class:`Document` or :class:`DocumentView` of the same
                 type
             fields (None): an optional field or iterable of fields to which to
                 restrict the merge

@@ -7,8 +7,6 @@ Dataset samples.
 """
 import os
 
-import eta.core.utils as etau
-
 from fiftyone.core.document import Document, DocumentView
 import fiftyone.core.frame as fofr
 import fiftyone.core.frame_utils as fofu

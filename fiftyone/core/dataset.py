@@ -1495,6 +1495,18 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 :class:`fiftyone.core.collections.SampleCollection` and
                 ``include_info`` is True
         """
+        if fields is not None:
+            if etau.is_str(fields):
+                fields = [fields]
+            else:
+                fields = list(fields)
+
+        if omit_fields is not None:
+            if etau.is_str(omit_fields):
+                omit_fields = [omit_fields]
+            else:
+                omit_fields = list(omit_fields)
+
         # Use efficient implementation when possible
         if isinstance(samples, foc.SampleCollection) and key_fcn is None:
             _merge_samples(
@@ -1534,6 +1546,18 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 for sample in pb(self):
                     id_map[key_fcn(sample)] = sample.id
 
+        if insert_new:
+            insert_fields = fields
+            if insert_fields is not None:
+                if "filepath" not in insert_fields:
+                    insert_fields = ["filepath"] + insert_fields
+
+            insert_omit_fields = omit_fields
+            if insert_omit_fields is not None:
+                insert_omit_fields = [
+                    f for f in insert_omit_fields if f != "filepath"
+                ]
+
         logger.info("Merging samples...")
         with fou.ProgressBar() as pb:
             for sample in pb(samples):
@@ -1553,9 +1577,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                         existing_sample.save()
 
                 elif insert_new:
-                    if fields is not None or omit_fields is not None:
+                    if (
+                        insert_fields is not None
+                        or insert_omit_fields is not None
+                    ):
                         sample = sample.copy(
-                            fields=fields, omit_fields=omit_fields
+                            fields=insert_fields,
+                            omit_fields=insert_omit_fields,
                         )
 
                     self.add_sample(sample, expand_schema=expand_schema)
@@ -3817,8 +3845,6 @@ def _clone_runs(dst_dataset, src_doc):
     dst_doc.save()
 
 
-# @todo support `merge_lists`
-# @todo does `fields` properly handle default fields?
 def _merge_samples(
     src_collection,
     dst_dataset,
@@ -3836,15 +3862,6 @@ def _merge_samples(
 ):
     if key_field == "id":
         key_field = "_id"
-
-    if skip_existing:
-        when_matched = "keepExisting"
-    elif overwrite:
-        when_matched = "merge"
-    else:
-        when_matched = [
-            {"$replaceWith": {"$mergeObjects": ["$$new", "$$ROOT"]}}
-        ]
 
     if insert_new:
         when_not_matched = "insert"
@@ -3888,17 +3905,10 @@ def _merge_samples(
         frame_fields = None
         omit_frame_fields = None
 
-    if fields is not None:
-        if etau.is_str(fields):
-            fields = [fields]
-
-        if is_video:
-            fields, frame_fields = fou.split_frame_fields(fields)
+    if fields is not None and is_video:
+        fields, frame_fields = fou.split_frame_fields(fields)
 
     if omit_fields is not None:
-        if etau.is_str(omit_fields):
-            omit_fields = [omit_fields]
-
         if is_video:
             omit_fields, omit_frame_fields = fou.split_frame_fields(
                 omit_fields
@@ -3958,21 +3968,26 @@ def _merge_samples(
 
     if fields is not None:
         project = {f: True for f in fields}
-        project["filepath"] = True
-        project["_rand"] = True
-        project["_media_type"] = True
+
+        if insert_new:
+            # Always retain these fields because they are necessary if new
+            # samples are inserted
+            project["filepath"] = True
+            project["_rand"] = True
+            project["_media_type"] = True
+
         sample_pipeline.append({"$project": project})
 
     if omit_fields is not None:
-        omit_fields = set(omit_fields)
+        _omit_fields = set(omit_fields)
     else:
-        omit_fields = set()
+        _omit_fields = set()
 
-    omit_fields.add("_id")
-    omit_fields.discard(key_field)
+    _omit_fields.add("_id")
+    _omit_fields.discard(key_field)
 
-    if omit_fields:
-        sample_pipeline.append({"$unset": list(omit_fields)})
+    if _omit_fields:
+        sample_pipeline.append({"$unset": list(_omit_fields)})
 
     if omit_none_fields:
         omit_none_stage = {
@@ -3988,6 +4003,32 @@ def _merge_samples(
         }
 
         sample_pipeline.append(omit_none_stage)
+
+    if skip_existing:
+        when_matched = "keepExisting"
+    else:
+        if fields is not None and insert_new:
+            # The user did not specify that these fields should be included in
+            # the merge, but we had to keep them in the input pipeline because
+            # they are necessary when new samples are inserted. So, now we
+            # exclude them
+            delete_fields = [
+                f
+                for f in ("filepath", "_rand", "_media_type")
+                if f not in fields
+            ]
+        else:
+            delete_fields = None
+
+        when_matched = _merge_docs(
+            src_collection,
+            merge_lists=merge_lists,
+            fields=fields,
+            omit_fields=omit_fields,
+            delete_fields=delete_fields,
+            overwrite=overwrite,
+            frames=False,
+        )
 
     sample_pipeline.append(
         {
@@ -4031,26 +4072,36 @@ def _merge_samples(
             frame_pipeline.append({"$project": project})
 
         if omit_frame_fields is not None:
-            omit_frame_fields = set(omit_frame_fields)
+            _omit_frame_fields = set(omit_frame_fields)
         else:
-            omit_frame_fields = set()
+            _omit_frame_fields = set()
 
-        omit_frame_fields.update(["_id", "_sample_id"])
-        omit_frame_fields.discard(frame_key_field)
-        omit_frame_fields.discard("frame_number")
-
-        if omit_frame_fields:
-            frame_pipeline.append({"$unset": list(omit_frame_fields)})
+        _omit_frame_fields.update(["_id", "_sample_id"])
+        _omit_frame_fields.discard(frame_key_field)
+        _omit_frame_fields.discard("frame_number")
+        frame_pipeline.append({"$unset": list(_omit_frame_fields)})
 
         if omit_none_fields:
             frame_pipeline.append(omit_none_stage)
+
+        if skip_existing:
+            when_frame_matched = "keepExisting"
+        else:
+            when_frame_matched = _merge_docs(
+                src_collection,
+                merge_lists=merge_lists,
+                fields=frame_fields,
+                omit_fields=omit_frame_fields,
+                overwrite=overwrite,
+                frames=True,
+            )
 
         frame_pipeline.append(
             {
                 "$merge": {
                     "into": dst_dataset._frame_collection_name,
                     "on": [frame_key_field, "frame_number"],
-                    "whenMatched": when_matched,
+                    "whenMatched": when_frame_matched,
                     "whenNotMatched": "insert",
                 }
             }
@@ -4075,6 +4126,205 @@ def _merge_samples(
     fos.Sample._reload_docs(dst_dataset._sample_collection_name)
     if is_video:
         fofr.Frame._reload_docs(dst_dataset._frame_collection_name)
+
+
+def _merge_docs(
+    sample_collection,
+    merge_lists=False,
+    fields=None,
+    omit_fields=None,
+    delete_fields=None,
+    overwrite=False,
+    frames=False,
+):
+    if delete_fields is None:
+        delete_fields = []
+
+    if frames:
+        schema = sample_collection.get_frame_field_schema()
+    else:
+        schema = sample_collection.get_field_schema()
+
+    if merge_lists:
+        list_fields = []
+        label_list_fields = []
+        elem_fields = []
+        for field, field_type in schema.items():
+            if fields is not None and field not in fields:
+                continue
+
+            if omit_fields is not None and field in omit_fields:
+                continue
+
+            if isinstance(field_type, fof.ListField):
+                list_fields.append(field)
+            elif isinstance(field_type, fol._LABEL_LIST_FIELDS):
+                label_list_fields.append(field)
+                elem_fields.append(field + "." + field_type._LABEL_LIST_FIELD)
+
+        delete_fields.extend(list_fields)
+        delete_fields.extend(label_list_fields)
+    else:
+        list_fields = None
+        elem_fields = None
+
+    if delete_fields:
+        new_doc = {
+            "$arrayToObject": {
+                "$filter": {
+                    "input": {"$objectToArray": "$$new"},
+                    "as": "item",
+                    "cond": {"$not": {"$in": ["$$item.k", delete_fields]}},
+                }
+            }
+        }
+    else:
+        new_doc = "$$new"
+
+    if overwrite:
+        docs = ["$$ROOT", new_doc]
+    else:
+        docs = [new_doc, "$$ROOT"]
+
+    if list_fields or elem_fields:
+        doc = {}
+
+        if list_fields:
+            for list_field in list_fields:
+                _merge_list_field(doc, list_field)
+
+        if elem_fields:
+            for elem_field in elem_fields:
+                _merge_label_list_field(doc, elem_field, overwrite=overwrite)
+
+        docs.append(doc)
+
+    return [{"$replaceWith": {"$mergeObjects": docs}}]
+
+
+def _merge_list_field(doc, list_field):
+    doc[list_field] = {
+        "$switch": {
+            "branches": [
+                {
+                    "case": {"$not": {"$gt": ["$" + list_field, None]}},
+                    "then": "$$new." + list_field,
+                },
+                {
+                    "case": {"$not": {"$gt": ["$$new." + list_field, None]}},
+                    "then": "$" + list_field,
+                },
+            ],
+            "default": {
+                "$concatArrays": [
+                    "$" + list_field,
+                    {
+                        "$filter": {
+                            "input": "$$new." + list_field,
+                            "as": "this",
+                            "cond": {"$in": ["$$this", "$" + list_field]},
+                        }
+                    },
+                ]
+            },
+        }
+    }
+
+
+def _merge_label_list_field(doc, elem_field, overwrite=False):
+    field, leaf = elem_field.split(".")
+
+    if overwrite:
+        root = "$$new." + field
+        elements = {
+            "$reverseArray": {
+                "$let": {
+                    "vars": {
+                        "new_ids": {
+                            "$map": {
+                                "input": "$$new." + elem_field,
+                                "as": "this",
+                                "in": "$$this._id",
+                            },
+                        },
+                    },
+                    "in": {
+                        "$reduce": {
+                            "input": {"$reverseArray": "$" + elem_field},
+                            "initialValue": {
+                                "$reverseArray": "$$new." + elem_field
+                            },
+                            "in": {
+                                "cond": {
+                                    "if": {
+                                        "$not": {
+                                            "$in": ["$$this._id", "$$new_ids"]
+                                        }
+                                    },
+                                    "then": {
+                                        "$concatArrays": [
+                                            "$$value",
+                                            ["$$this"],
+                                        ]
+                                    },
+                                    "else": "$$value",
+                                }
+                            },
+                        }
+                    },
+                }
+            }
+        }
+    else:
+        root = "$" + field
+        elements = {
+            "$let": {
+                "vars": {
+                    "existing_ids": {
+                        "$map": {
+                            "input": "$" + elem_field,
+                            "as": "this",
+                            "in": "$$this._id",
+                        },
+                    },
+                },
+                "in": {
+                    "$reduce": {
+                        "input": "$$new." + elem_field,
+                        "initialValue": "$" + elem_field,
+                        "in": {
+                            "cond": {
+                                "if": {
+                                    "$not": {
+                                        "$in": ["$$this._id", "$$existing_ids"]
+                                    }
+                                },
+                                "then": {
+                                    "$concatArrays": ["$$value", ["$$this"]]
+                                },
+                                "else": "$$value",
+                            }
+                        },
+                    }
+                },
+            }
+        }
+
+    doc[field] = {
+        "$switch": {
+            "branches": [
+                {
+                    "case": {"$not": {"$gt": ["$" + field, None]}},
+                    "then": "$$new." + field,
+                },
+                {
+                    "case": {"$not": {"$gt": ["$$new." + field, None]}},
+                    "then": "$" + field,
+                },
+            ],
+            "default": {"$mergeObjects": [root, {leaf: elements}]},
+        }
+    }
 
 
 def _index_frames(sample_collection, key_field, frame_key_field):

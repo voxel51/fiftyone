@@ -8,8 +8,6 @@ Video frames.
 from pymongo import ReplaceOne, UpdateOne, DeleteOne
 from pymongo.errors import BulkWriteError
 
-import eta.core.utils as etau
-
 from fiftyone.core.document import Document, DocumentView
 import fiftyone.core.frame_utils as fofu
 import fiftyone.core.odm as foo
