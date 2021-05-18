@@ -33,14 +33,14 @@ def _handle_numpy_array(raw, key=None):
     )
 
 
-def convert(d):
+def convert(d, skip_bytes=False):
     if isinstance(d, (dict, OrderedDict)):
         for k, v in d.items():
             if isinstance(v, ObjectId):
                 d[k] = str(v)
             elif isinstance(v, (dict, OrderedDict, list)):
                 convert(v)
-            elif isinstance(v, bytes):
+            elif isinstance(v, bytes) and not skip_bytes:
                 d[k] = _handle_numpy_array(v, k)
     if isinstance(d, list):
         for idx, i in enumerate(d):
@@ -48,7 +48,7 @@ def convert(d):
                 convert(i)
             elif isinstance(i, ObjectId):
                 d[idx] = str(i)
-            elif isinstance(i, bytes):
+            elif isinstance(i, bytes) and not skip_bytes:
                 d[idx] = _handle_numpy_array(i)
 
 
