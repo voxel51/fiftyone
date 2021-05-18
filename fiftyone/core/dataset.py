@@ -4181,7 +4181,6 @@ def _merge_docs(
 
     if merge_lists:
         list_fields = []
-        label_list_fields = []
         elem_fields = []
         for field, field_type in schema.items():
             if fields is not None and field not in fields:
@@ -4195,7 +4194,6 @@ def _merge_docs(
             elif isinstance(
                 field_type, fof.EmbeddedDocumentField
             ) and issubclass(field_type.document_type, fol._LABEL_LIST_FIELDS):
-                label_list_fields.append(field)
                 elem_fields.append(
                     field + "." + field_type.document_type._LABEL_LIST_FIELD
                 )
@@ -4292,7 +4290,7 @@ def _merge_label_list_field(doc, elem_field, overwrite=False):
                                 "$reverseArray": "$$new." + elem_field
                             },
                             "in": {
-                                "cond": {
+                                "$cond": {
                                     "if": {
                                         "$not": {
                                             "$in": ["$$this._id", "$$new_ids"]
@@ -4330,7 +4328,7 @@ def _merge_label_list_field(doc, elem_field, overwrite=False):
                         "input": "$$new." + elem_field,
                         "initialValue": "$" + elem_field,
                         "in": {
-                            "cond": {
+                            "$cond": {
                                 "if": {
                                     "$not": {
                                         "$in": ["$$this._id", "$$existing_ids"]
