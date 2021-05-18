@@ -1474,9 +1474,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         samples with the same base filename.
 
         Args:
-            samples: an iterable of :class:`fiftyone.core.sample.Sample`
-                instances or a
-                :class:`fiftyone.core.collections.SampleCollection`
+            samples: a :class:`fiftyone.core.collections.SampleCollection` or
+                iterable of :class:`fiftyone.core.sample.Sample` instances
             key_field ("filepath"): the sample field to use to decide whether
                 to join with an existing sample
             key_fcn (None): a function that accepts a
@@ -4007,11 +4006,16 @@ def _merge_samples(
         project = {f: True for f in fields}
 
         if insert_new:
-            # Always retain these fields because they are necessary if new
-            # samples are inserted
+            # If new samples may be inserted, we must include sensible values
+            # for all default fields even if the user didn't request that they
+            # be included when merging. Any extra fields added here are omitted
+            # in the `when_matched` pipeline
             project["filepath"] = True
             project["_rand"] = True
             project["_media_type"] = True
+
+            if "tags" not in project:
+                project["tags"] = []
 
         sample_pipeline.append({"$project": project})
 
@@ -4045,15 +4049,11 @@ def _merge_samples(
         when_matched = "keepExisting"
     else:
         if fields is not None and insert_new:
-            # The user did not specify that these fields should be included in
-            # the merge, but we had to keep them in the input pipeline because
-            # they are necessary when new samples are inserted. So, now we
-            # exclude them
-            delete_fields = [
-                f
-                for f in ("filepath", "_rand", "_media_type")
-                if f not in fields
-            ]
+            # We had to include all default fields since they are required if
+            # new samples are inserted, but, when merging, the user may have
+            # wanted them excluded
+            delete_fields = ["filepath", "tags", "_rand", "_media_type"]
+            delete_fields = [f for f in delete_fields if f not in fields]
         else:
             delete_fields = None
 

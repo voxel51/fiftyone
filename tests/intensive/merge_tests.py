@@ -78,6 +78,44 @@ def test_merge_samples_image(basedir):
     assert dataset_counts[label] == view2_counts[label]
 
 
+def test_merge_samples_and_labels_image():
+    dataset = foz.load_zoo_dataset("quickstart")
+
+    dataset1 = dataset[:150].clone()
+
+    dataset2 = dataset[50:].clone()
+    dataset2.set_field(
+        "ground_truth.detections.label",
+        (F("label") == "airplane").if_else(F("label").upper(), F("label")),
+    ).save()
+
+    d1 = dataset1.clone()
+    d1.merge_samples(dataset2, merge_lists=True, overwrite=True)
+
+    num_objects1 = d1.count("ground_truth.detections")
+    num_objects1_ref = dataset.count("ground_truth.detections")
+    assert num_objects1 == num_objects1_ref
+
+    counts1 = d1.count_values("ground_truth.detections.label")
+    counts1_ref1 = dataset1[:50].count_values("ground_truth.detections.label")
+    counts1_ref2 = dataset2.count_values("ground_truth.detections.label")
+    assert counts1["airplane"] == counts1_ref1["airplane"]
+    assert counts1["AIRPLANE"] == counts1_ref2["AIRPLANE"]
+
+    d2 = dataset1.clone()
+    d2.merge_samples(dataset2, merge_lists=True, overwrite=False)
+
+    num_objects2 = d2.count("ground_truth.detections")
+    num_objects2_ref = dataset.count("ground_truth.detections")
+    assert num_objects2 == num_objects2_ref
+
+    counts2 = d2.count_values("ground_truth.detections.label")
+    counts2_ref1 = dataset1.count_values("ground_truth.detections.label")
+    counts2_ref2 = dataset2[100:].count_values("ground_truth.detections.label")
+    assert counts2["airplane"] == counts2_ref1["airplane"]
+    assert counts2["AIRPLANE"] == counts2_ref2["AIRPLANE"]
+
+
 def test_merge_samples_video(basedir):
     videos_dir = os.path.join(basedir, "merge_samples_video")
     label = "vehicle"
@@ -136,6 +174,53 @@ def test_merge_samples_video(basedir):
     view2_counts = view2.count_values("frames.gt.detections.label")
 
     assert dataset_counts[label] == view2_counts[label]
+
+
+def test_merge_samples_and_labels_video():
+    dataset = foz.load_zoo_dataset("quickstart-video").limit(3).clone()
+    dataset.rename_frame_field("ground_truth_detections", "ground_truth")
+
+    dataset1 = dataset[:2].clone()
+
+    dataset2 = dataset[1:].clone()
+    dataset2.set_field(
+        "frames.ground_truth.detections.label",
+        (F("label") == "vehicle").if_else(F("label").upper(), F("label")),
+    ).save()
+
+    d1 = dataset1.clone()
+    d1.merge_samples(dataset2, merge_lists=True, overwrite=True)
+
+    num_objects1 = d1.count("frames.ground_truth.detections")
+    num_objects1_ref = dataset.count("frames.ground_truth.detections")
+    assert num_objects1 == num_objects1_ref
+
+    counts1 = d1.count_values("frames.ground_truth.detections.label")
+    counts1_ref1 = dataset1[:1].count_values(
+        "frames.ground_truth.detections.label"
+    )
+    counts1_ref2 = dataset2.count_values(
+        "frames.ground_truth.detections.label"
+    )
+    assert counts1["vehicle"] == counts1_ref1["vehicle"]
+    assert counts1["VEHICLE"] == counts1_ref2["VEHICLE"]
+
+    d2 = dataset1.clone()
+    d2.merge_samples(dataset2, merge_lists=True, overwrite=False)
+
+    num_objects2 = d2.count("frames.ground_truth.detections")
+    num_objects2_ref = dataset.count("frames.ground_truth.detections")
+    assert num_objects2 == num_objects2_ref
+
+    counts2 = d2.count_values("frames.ground_truth.detections.label")
+    counts2_ref1 = dataset1.count_values(
+        "frames.ground_truth.detections.label"
+    )
+    counts2_ref2 = dataset2[1:].count_values(
+        "frames.ground_truth.detections.label"
+    )
+    assert counts2["vehicle"] == counts2_ref1["vehicle"]
+    assert counts2["VEHICLE"] == counts2_ref2["VEHICLE"]
 
 
 if __name__ == "__main__":
