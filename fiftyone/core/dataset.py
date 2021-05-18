@@ -1419,11 +1419,31 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             fos.Sample._reload_docs(self._sample_collection_name)
 
     def _merge_doc(
-        self, doc, expand_schema=True, merge_info=True, overwrite_info=False
+        self,
+        doc,
+        fields=None,
+        omit_fields=None,
+        expand_schema=True,
+        merge_info=True,
+        overwrite_info=False,
     ):
+        if fields is not None:
+            if etau.is_str(fields):
+                fields = [fields]
+            else:
+                fields = list(fields)
+
+        if omit_fields is not None:
+            if etau.is_str(omit_fields):
+                omit_fields = [omit_fields]
+            else:
+                omit_fields = list(omit_fields)
+
         _merge_dataset_doc(
             self,
             doc,
+            fields=fields,
+            omit_fields=omit_fields,
             expand_schema=expand_schema,
             merge_info=merge_info,
             overwrite_info=overwrite_info,
@@ -1507,6 +1527,17 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             else:
                 omit_fields = list(omit_fields)
 
+        if isinstance(samples, foc.SampleCollection):
+            _merge_dataset_doc(
+                self,
+                samples,
+                fields=fields,
+                omit_fields=omit_fields,
+                expand_schema=expand_schema,
+                merge_info=include_info,
+                overwrite_info=overwrite_info,
+            )
+
         # Use efficient implementation when possible
         if isinstance(samples, foc.SampleCollection) and key_fcn is None:
             _merge_samples(
@@ -1525,15 +1556,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 overwrite_info=overwrite_info,
             )
             return
-
-        if isinstance(samples, foc.SampleCollection):
-            _merge_dataset_doc(
-                self,
-                samples,
-                expand_schema=expand_schema,
-                merge_info=include_info,
-                overwrite_info=overwrite_info,
-            )
 
         if key_fcn is None:
             aggs = [foa.Values(key_field), foa.Values("id")]
@@ -3717,6 +3739,8 @@ def _save_view(view, fields):
 def _merge_dataset_doc(
     dataset,
     collection_or_doc,
+    fields=None,
+    omit_fields=None,
     expand_schema=True,
     merge_info=True,
     overwrite_info=False,
@@ -3754,6 +3778,28 @@ def _merge_dataset_doc(
         schema = {f.name: f.to_field() for f in doc.sample_fields}
         if is_video:
             frame_schema = {f.name: f.to_field() for f in doc.frame_fields}
+
+    if fields is not None:
+        if is_video:
+            fields, frame_fields = fou.split_frame_fields(fields)
+            frame_schema = {
+                k: v for k, v in frame_schema.items() if k in frame_fields
+            }
+
+        schema = {k: v for k, v in schema.items() if k in fields}
+
+    if omit_fields is not None:
+        if is_video:
+            omit_fields, omit_frame_fields = fou.split_frame_fields(
+                omit_fields
+            )
+            frame_schema = {
+                k: v
+                for k, v in frame_schema.items()
+                if k not in omit_frame_fields
+            }
+
+        schema = {k: v for k, v in schema.items() if k not in omit_fields}
 
     dataset._sample_doc_cls.merge_field_schema(
         schema, expand_schema=expand_schema
@@ -3856,7 +3902,7 @@ def _merge_samples(
     omit_fields=None,
     omit_none_fields=True,
     merge_lists=False,
-    overwrite=False,
+    overwrite=True,
     include_info=True,
     overwrite_info=False,
 ):
@@ -3867,15 +3913,6 @@ def _merge_samples(
         when_not_matched = "insert"
     else:
         when_not_matched = "discard"
-
-    # Merge dataset metadata
-    _merge_dataset_doc(
-        dst_dataset,
-        src_collection,
-        expand_schema=expand_schema,
-        merge_info=include_info,
-        overwrite_info=overwrite_info,
-    )
 
     #
     # Prepare for merge
@@ -4137,9 +4174,6 @@ def _merge_docs(
     overwrite=False,
     frames=False,
 ):
-    if delete_fields is None:
-        delete_fields = []
-
     if frames:
         schema = sample_collection.get_frame_field_schema()
     else:
@@ -4158,12 +4192,13 @@ def _merge_docs(
 
             if isinstance(field_type, fof.ListField):
                 list_fields.append(field)
-            elif isinstance(field_type, fol._LABEL_LIST_FIELDS):
+            elif isinstance(
+                field_type, fof.EmbeddedDocumentField
+            ) and issubclass(field_type.document_type, fol._LABEL_LIST_FIELDS):
                 label_list_fields.append(field)
-                elem_fields.append(field + "." + field_type._LABEL_LIST_FIELD)
-
-        delete_fields.extend(list_fields)
-        delete_fields.extend(label_list_fields)
+                elem_fields.append(
+                    field + "." + field_type.document_type._LABEL_LIST_FIELD
+                )
     else:
         list_fields = None
         elem_fields = None
@@ -4222,7 +4257,9 @@ def _merge_list_field(doc, list_field):
                         "$filter": {
                             "input": "$$new." + list_field,
                             "as": "this",
-                            "cond": {"$in": ["$$this", "$" + list_field]},
+                            "cond": {
+                                "$not": {"$in": ["$$this", "$" + list_field]}
+                            },
                         }
                     },
                 ]
