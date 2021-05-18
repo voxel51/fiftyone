@@ -52,10 +52,9 @@ const getLabelHeight = (canvasHeight: number): number => {
   return Math.min(20, 0.09 * canvasHeight);
 };
 
-class DetectionOverlay<State extends BaseState> extends CoordinateOverlay<
-  State,
-  DetectionLabel
-> {
+export default class DetectionOverlay<
+  State extends BaseState
+> extends CoordinateOverlay<State, DetectionLabel> {
   private static readonly intermediateCanvas: HTMLCanvasElement = document.createElement(
     "canvas"
   );

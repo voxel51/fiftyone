@@ -1,7 +1,7 @@
 {
-    "name": "player51",
-    "version": "0.5.1",
-    "description": "Javascript media player that can render metadata overlays.",
+    "name": "looker",
+    "version": "0.1.0",
+    "description": "Javascript media viewer that can render label overlays.",
     "main": "dist/index.js",
     "files": [
         "dist",
@@ -17,9 +17,9 @@
     "author": "Voxel51, Inc.",
     "license": "Apache-2.0",
     "bugs": {
-        "url": "https://github.com/voxel51/player51/issues"
+        "url": "https://github.com/voxel51/fiftyone/app/looker"
     },
-    "homepage": "https://github.com/voxel51/player51#readme",
+    "homepage": "https://github.com/voxel51/fiftyone/app/looker#readme",
     "dependencies": {
         "@ungap/event-target": "^0.2.2",
         "immutable": "^4.0.0-rc.12",

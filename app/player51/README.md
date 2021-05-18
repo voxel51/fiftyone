@@ -1,4 +1,3 @@
-# Player51
+# Looker
 
-Player51 is a client-side JavaScript media player that can render metadata
-overlays on images and video.
+Looker is a client-side JavaScript media viewer that can render label overlays

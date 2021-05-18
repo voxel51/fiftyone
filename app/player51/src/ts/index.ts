@@ -28,22 +28,28 @@ import {
 import { LookerElement } from "./elements/common";
 import { ClassificationsOverlay, FROM_FO } from "./overlays";
 import { ClassificationLabels } from "./overlays/classifications";
+import { Overlay } from "./overlays/base";
 
-interface Sample {
+interface BaseSample {
   metadata: {
     width: number;
     height: number;
   };
 }
 
-abstract class Looker<Props extends LookerProps, State extends BaseState> {
+abstract class Looker<
+  Props extends LookerProps,
+  State extends BaseState,
+  Sample extends BaseSample = BaseSample
+> {
   private eventTarget: EventTarget;
   private state: State;
   private lookerElement: LookerElement<State>;
+  private readonly canvas: HTMLCanvasElement;
+
   protected readonly updater: StateUpdate<State>;
   protected readonly getElements: GetElements<State>;
-  private readonly canvas: HTMLCanvasElement;
-  private sample: Sample;
+  protected sample: Sample;
 
   constructor({ sample, element, config, options }: Props) {
     this.eventTarget = new EventTarget();
@@ -59,7 +65,6 @@ abstract class Looker<Props extends LookerProps, State extends BaseState> {
     this.canvas = this.lookerElement.element.querySelector("canvas");
     const context = this.canvas.getContext("2d");
     clearCanvas(context);
-    this.overlays = loadOverlays(sample);
   }
 
   protected dispatchEvent(eventType: string, detail: any) {
@@ -97,6 +102,10 @@ abstract class Looker<Props extends LookerProps, State extends BaseState> {
     this.updater({ options });
   }
 
+  protected abstract loadOverlays();
+
+  protected abstract pluckOverlays(state: Readonly<State>): Overlay<State>[];
+
   protected abstract getDefaultOptions(): State["options"];
 
   protected abstract getInitialState(
@@ -127,6 +136,7 @@ abstract class Looker<Props extends LookerProps, State extends BaseState> {
 
 export class FrameLooker extends Looker<FrameLookerProps, FrameState> {
   protected readonly getElements = getFrameElements;
+  private overlays: Overlay<FrameState>[];
 
   constructor(props: FrameLookerProps) {
     super(props);
@@ -147,10 +157,19 @@ export class FrameLooker extends Looker<FrameLookerProps, FrameState> {
   getDefaultOptions() {
     return DEFAULT_FRAME_OPTIONS;
   }
+
+  loadOverlays() {
+    this.overlays = loadOverlays(this.sample);
+  }
+
+  pluckOverlays() {
+    return this.overlays;
+  }
 }
 
 export class ImageLooker extends Looker<ImageLookerProps, ImageState> {
-  protected readonly getElements = getImageElements;
+  getElements = getImageElements;
+  private overlays: Overlay<ImageState>[];
 
   constructor(props: ImageLookerProps) {
     super(props);
@@ -170,10 +189,28 @@ export class ImageLooker extends Looker<ImageLookerProps, ImageState> {
   getDefaultOptions() {
     return DEFAULT_IMAGE_OPTIONS;
   }
+
+  loadOverlays() {
+    this.overlays = loadOverlays(this.sample);
+  }
+
+  pluckOverlays() {
+    return this.overlays;
+  }
 }
 
-export class VideoLooker extends Looker<VideoLookerProps, VideoState> {
-  protected readonly getElements = getVideoElements;
+interface VideoSample extends BaseSample {
+  frames: { [frameNumber: number]: BaseSample };
+}
+
+export class VideoLooker extends Looker<
+  VideoLookerProps,
+  VideoState,
+  VideoSample
+> {
+  getElements = getVideoElements;
+  private sampleOverlays: Overlay<VideoState>[];
+  private frameOverlays: { [frameNumber: number]: Overlay<VideoState>[] };
 
   constructor(props: VideoLookerProps) {
     super(props);
@@ -194,6 +231,34 @@ export class VideoLooker extends Looker<VideoLookerProps, VideoState> {
         ...props.options,
       },
     };
+  }
+
+  loadOverlays() {
+    this.sampleOverlays = loadOverlays(
+      Object.fromEntries(
+        Object.entries(this.sample).filter(
+          ([fieldName]) => fieldName !== "frames."
+        )
+      )
+    );
+    this.frameOverlays = Object.fromEntries(
+      Object.entries(this.sample.frames).map(([frameNumber, frameSample]) => {
+        return [
+          Number(frameNumber),
+          loadOverlays(
+            Object.fromEntries(
+              Object.entries(frameSample).map(([fieldName, field]) => {
+                return [`frames.${fieldName}`, field];
+              })
+            )
+          ),
+        ];
+      })
+    );
+  }
+
+  pluckOverlays(state) {
+    const overlays = this.sampleOverlays;
   }
 
   getDefaultOptions() {
@@ -230,7 +295,9 @@ export class VideoLooker extends Looker<VideoLookerProps, VideoState> {
   }
 }
 
-function loadOverlays(sample: Sample, context: CanvasRenderingContext2D): void {
+function loadOverlays<State extends BaseState>(
+  sample: BaseSample
+): Overlay<State>[] {
   const classifications = <ClassificationLabels>[];
   let overlays = [];
   for (const field in sample) {
@@ -252,6 +319,8 @@ function loadOverlays(sample: Sample, context: CanvasRenderingContext2D): void {
     const overlay = new ClassificationsOverlay(classifications);
     overlays.push(overlay);
   }
+
+  return overlays;
 }
 
 function clearCanvas(context: CanvasRenderingContext2D): void {

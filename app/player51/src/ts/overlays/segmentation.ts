@@ -6,7 +6,7 @@ import { ColorGenerator } from "../color";
 import { deserialize, NumpyResult } from "../numpy";
 import { BaseState, Coordinates } from "../state";
 import { ensureCanvasSize } from "../util";
-import { BaseLabel, CONTAINS, isShown, Overlay } from "./base";
+import { BaseLabel, CONTAINS, Overlay } from "./base";
 
 interface SegmentationLabel extends BaseLabel {
   mask: string;
