@@ -2,9 +2,12 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 
+import { colorGenerator, ColorGenerator } from "./color";
+
 interface BaseOptions {
   activeLabels: string[];
   colorByLabel: boolean;
+  colorGenerator: ColorGenerator;
   filter: ((label: { label?: string; confidence?: number }) => boolean) | null;
   colorMap: ((key: string | number | null | undefined) => string) | null;
   selectedLabels: string[];
@@ -13,6 +16,7 @@ interface BaseOptions {
   showTooltip: boolean;
   onlyShowHoveredLabel: boolean;
   zoom: boolean;
+  smoothMasks: boolean;
 }
 
 export type BoundingBox = [number, number, number, number];
@@ -146,6 +150,8 @@ const DEFAULT_BASE_OPTIONS = {
   zoom: false,
   filter: null,
   colorMap: null,
+  colorGenerator: colorGenerator,
+  smoothMasks: true,
 };
 
 export const DEFAULT_FRAME_OPTIONS = {

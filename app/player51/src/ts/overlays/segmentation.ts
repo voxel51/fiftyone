@@ -6,13 +6,14 @@ import { ColorGenerator } from "../color";
 import { deserialize, NumpyResult } from "../numpy";
 import { BaseState, Coordinates } from "../state";
 import { ensureCanvasSize } from "../util";
-import { BaseLabel, CONTAINS, Overlay } from "./base";
+import { BaseLabel, CONTAINS, isShown, Overlay } from "./base";
 
 interface SegmentationLabel extends BaseLabel {
   mask: string;
 }
 
-class SegmentationOverlay<State extends BaseState> implements Overlay<State> {
+export default class SegmentationOverlay<State extends BaseState>
+  implements Overlay<State> {
   private readonly intermediateCanvas: HTMLCanvasElement = document.createElement(
     "canvas"
   );
@@ -49,7 +50,7 @@ class SegmentationOverlay<State extends BaseState> implements Overlay<State> {
       imageColors.set(this.imageColors);
     } else {
       this.generator = state.options.colorGenerator;
-      const maskColors = this.isSelected()
+      const maskColors = this.isSelected(state)
         ? this.generator.rawMaskColorsSelected
         : this.generator.rawMaskColors;
 
@@ -78,9 +79,9 @@ class SegmentationOverlay<State extends BaseState> implements Overlay<State> {
   }
 
   getPointInfo(context, state, [x, y]) {
-    const target = this.getTarget(state, [x, y]);
+    const target = this.getTarget([x, y]);
     return {
-      color: this.getRGBAColor(target),
+      color: this.getRGBAColor(state, target),
       field: this.field,
       label: this.label,
       target,
@@ -88,15 +89,33 @@ class SegmentationOverlay<State extends BaseState> implements Overlay<State> {
     };
   }
 
-  private getIndex(x, y) {
-    const [sx, sy] = this.getMaskCoordinates(x, y);
+  getSelectData() {
+    return {
+      id: this.label._id,
+      field: this.field,
+    };
+  }
+
+  isSelected(state: Readonly<State>): boolean {
+    return state.options.selectedLabels.includes(this.label._id);
+  }
+
+  isShown(state: Readonly<State>): boolean {
+    return state.options.activeLabels.includes(this.field);
+  }
+
+  private getIndex(context: CanvasRenderingContext2D, [x, y]) {
+    const [sx, sy] = this.getMaskCoordinates(context, [x, y]);
     return this.mask.shape[1] * sy + sx;
   }
 
-  private getMaskCoordinates([x, y]: Coordinates) {
+  private getMaskCoordinates(
+    context: CanvasRenderingContext2D,
+    [x, y]: Coordinates
+  ) {
     const [h, w] = this.mask.shape;
-    const sx = Math.floor(x * (w / this.w));
-    const sy = Math.floor(y * (h / this.h));
+    const sx = Math.floor(x * (w / context.canvas.width));
+    const sy = Math.floor(y * (h / context.canvas.height));
     return [sx, sy];
   }
 

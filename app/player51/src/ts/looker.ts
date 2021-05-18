@@ -26,8 +26,8 @@ import {
   getVideoElements,
 } from "./elements";
 import { LookerElement } from "./elements/common";
-export { ColorGenerator } from "./overlays";
 import { ClassificationsOverlay, FROM_FO } from "./overlays";
+import { ClassificationLabels } from "./overlays/classifications";
 
 interface Sample {
   metadata: {
@@ -231,7 +231,7 @@ export class VideoLooker extends Looker<VideoLookerProps, VideoState> {
 }
 
 function loadOverlays(sample: Sample, context: CanvasRenderingContext2D): void {
-  const classifications = [];
+  const classifications = <ClassificationLabels>[];
   let overlays = [];
   for (const field in sample) {
     const label = sample[field];
@@ -242,14 +242,14 @@ function loadOverlays(sample: Sample, context: CanvasRenderingContext2D): void {
       const labelOverlays = FROM_FO[label._cls](field, label, this);
       overlays = [...overlays, ...labelOverlays];
     } else if (label._cls === "Classification") {
-      classifications.push([field, [null, [label]]]);
+      classifications.push([field, label]);
     } else if (label._cls === "Classifications") {
-      classifications.push([field, [null, label.classifications]]);
+      classifications.push([field, label.classifications]);
     }
   }
 
   if (classifications.length > 0) {
-    const overlay = new ClassificationsOverlay(context, classifications);
+    const overlay = new ClassificationsOverlay(classifications);
     overlays.push(overlay);
   }
 }

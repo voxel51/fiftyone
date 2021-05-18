@@ -2,16 +2,15 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 
-import { colorGenerator } from "../color";
+import { ColorGenerator } from "../color";
 import { DASH_COLOR, DASH_LENGTH } from "../constants";
-import { ColorGenerator } from "../looker";
-import { BaseState, Coordinates } from "../state";
+import { BaseState } from "../state";
 import { computeBBoxForTextOverlay } from "../util";
-import { CONTAINS, isShown, Overlay, RegularLabel, SelectData } from "./base";
+import { CONTAINS, isShown, Overlay, RegularLabel } from "./base";
 
 interface ClassificationLabel extends RegularLabel {}
 
-type ClassificationLabels = [string, ClassificationLabel[]][];
+export type ClassificationLabels = [string, ClassificationLabel[]][];
 
 const PADDING = 8;
 const OVERLAY_BG_COLOR = "hsla(210, 20%, 10%, 0.8)";
@@ -84,7 +83,7 @@ export default class ClassificationsOverlay<State extends BaseState>
     });
   }
 
-  getSelectData(state: Readonly<State>, coordinates: Coordinates): SelectData {
+  getSelectData(context, state, coordinates) {
     const {
       label: { _id: id },
       field,

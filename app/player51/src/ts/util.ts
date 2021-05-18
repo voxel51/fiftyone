@@ -2,7 +2,7 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 
-import { BoundingBox, Coordinates, Dimensions, Kind } from "./state";
+import { BoundingBox, Coordinates, Dimensions } from "./state";
 
 /**
  * Shallow data-object comparison for equality
@@ -43,12 +43,9 @@ export function rescale(
 export function inRect(
   x: number,
   y: number,
-  rectX: number,
-  rectY: number,
-  rectW: number,
-  rectH: number
+  [rx, ry, rw, rh]: BoundingBox
 ): boolean {
-  return x >= rectX && x <= rectX + rectW && y >= rectY && y <= rectY + rectH;
+  return x >= rx && x <= rx + rw && y >= ry && y <= ry + rh;
 }
 
 /**

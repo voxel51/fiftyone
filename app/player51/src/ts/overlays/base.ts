@@ -15,6 +15,7 @@ export interface BaseLabel {
   _id: string;
   frame_number?: number;
   tags: string[];
+  index?: number;
 }
 
 export interface RegularLabel extends BaseLabel {

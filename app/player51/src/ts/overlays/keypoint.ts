@@ -18,10 +18,14 @@ export default class KeypointOverlay<
     super(field, label);
   }
 
-  private getDistanceAndPoint = function ([x, y]: Coordinates) {
+  private getDistanceAndPoint(
+    context: CanvasRenderingContext2D,
+    [x, y]: Coordinates
+  ) {
+    const [w, h] = [context.canvas.width, context.canvas.height];
     const distances = [];
-    for (const point of this.points) {
-      const d = distance(x, y, point[0] * this.w, point[1] * this.h);
+    for (const point of this.label.points) {
+      const d = distance(x, y, point[0] * w, point[1] * h);
       if (d <= POINT_RADIUS) {
         distances.push([0, point]);
       } else {
@@ -30,10 +34,10 @@ export default class KeypointOverlay<
     }
 
     return distances.sort((a, b) => a[0] - b[0])[0];
-  };
+  }
 
   containsPoint(context, state, [x, y]) {
-    if (this.getDistanceAndPoint([x, y])[0] <= 2 * POINT_RADIUS) {
+    if (this.getDistanceAndPoint(context, [x, y])[0] <= 2 * POINT_RADIUS) {
       return CONTAINS.BORDER;
     }
     return CONTAINS.NONE;
@@ -77,7 +81,7 @@ export default class KeypointOverlay<
   }
 
   getMouseDistance(context, state, [x, y]) {
-    return this.getDistanceAndPoint([x, y])[0];
+    return this.getDistanceAndPoint(context, [x, y])[0];
   }
 
   getPointInfo(context, state, [x, y]) {
@@ -85,7 +89,7 @@ export default class KeypointOverlay<
       color: this.getColor(state),
       field: this.field,
       label: this.label,
-      point: this.getDistanceAndPoint([x, y])[1],
+      point: this.getDistanceAndPoint(context, [x, y])[1],
       type: "Keypoint",
     };
   }
