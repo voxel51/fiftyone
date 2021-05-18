@@ -14,7 +14,7 @@ type TypedArray =
   | Uint32Array
   | Int32Array;
 
-interface NumpyResult {
+export interface NumpyResult {
   data: TypedArray;
   shape: [number, number];
 }

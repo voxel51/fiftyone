@@ -2,7 +2,7 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 
-import { BoundingBox, Coordinates, Kind } from "./state";
+import { BoundingBox, Coordinates, Dimensions, Kind } from "./state";
 
 /**
  * Shallow data-object comparison for equality
@@ -229,6 +229,19 @@ export const rescaleCoordates = (
     Math.round(rescale(y, 0, fromDim[1], 0, toDim[1])),
   ];
 };
+
+export const ensureCanvasSize = (
+  canvas: HTMLCanvasElement,
+  dimensions: Dimensions
+): void => {
+  if (canvas.width < dimensions[0]) {
+    canvas.width = dimensions[0];
+  }
+  if (canvas.height < dimensions[1]) {
+    canvas.height = dimensions[1];
+  }
+};
+
 /**
  * Get the smallest box that contains all points
  */

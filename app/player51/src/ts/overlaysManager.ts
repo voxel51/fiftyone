@@ -63,13 +63,6 @@ export default class OverlaysManager {
     return this._setTopOverlays(coords, ordered);
   }
 
-  isFocus(overlayObj) {
-    return (
-      this._focusedObject === overlayObj ||
-      overlayObj.index === this._focusIndex
-    );
-  }
-
   setFocus(overlayObj, position = undefined) {
     if (!this._canFocus) {
       overlayObj = position = undefined;

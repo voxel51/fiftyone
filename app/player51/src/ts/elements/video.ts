@@ -255,11 +255,11 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
       });
     },
     seeked: ({ event, update }) => {
-      update(({ config: { frameRate } }) => {
+      update(({ duration, config: { frameRate } }) => {
         return {
           frameNumber: getFrameNumber(
             event.target.currentTime,
-            event.target.duration,
+            duration,
             frameRate
           ),
         };
@@ -310,6 +310,9 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
     if (this.frameNumber !== frameNumber) {
       this.element.currentTime = frameNumber;
     }
-    if (seeking && this.element.playin) return this.element;
+    if (seeking && !this.element.paused) {
+      this.element.pause();
+    }
+    return this.element;
   }
 }

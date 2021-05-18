@@ -163,5 +163,3 @@ export const DEFAULT_VIDEO_OPTIONS = {
   autoplay: false,
   loop: false,
 };
-
-type Keys = keyof BaseState;

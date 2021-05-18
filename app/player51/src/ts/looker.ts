@@ -29,7 +29,12 @@ import { LookerElement } from "./elements/common";
 export { ColorGenerator } from "./overlays";
 import { ClassificationsOverlay, FROM_FO } from "./overlays";
 
-type Sample = any;
+interface Sample {
+  metadata: {
+    width: number;
+    height: number;
+  };
+}
 
 abstract class Looker<Props extends LookerProps, State extends BaseState> {
   private eventTarget: EventTarget;
@@ -48,12 +53,12 @@ abstract class Looker<Props extends LookerProps, State extends BaseState> {
     });
 
     this.sample = sample;
-    this.update = this.makeUpdate();
+    this.updater = this.makeUpdate();
     this.lookerElement = this.getElements(this.updater, this.dispatchEvent);
     element.appendChild(this.lookerElement.element);
     this.canvas = this.lookerElement.element.querySelector("canvas");
     const context = this.canvas.getContext("2d");
-    resetCanvas(context);
+    clearCanvas(context);
     this.overlays = loadOverlays(sample);
   }
 
@@ -80,7 +85,12 @@ abstract class Looker<Props extends LookerProps, State extends BaseState> {
     this.eventTarget.removeEventListener(eventType, handler, ...args);
   }
 
-  destroy(): void {}
+  destroy(): void {
+    this.lookerElement.element.parentElement.removeChild(
+      this.lookerElement.element
+    );
+    delete this.eventTarget;
+  }
 
   update(sample: Sample, options: Props["options"]) {
     this.sample = sample;
@@ -220,12 +230,7 @@ export class VideoLooker extends Looker<VideoLookerProps, VideoState> {
   }
 }
 
-function loadOverlays(
-  sample,
-  context: CanvasRenderingContext2D,
-  width: number,
-  height: number
-) {
+function loadOverlays(sample: Sample, context: CanvasRenderingContext2D): void {
   const classifications = [];
   let overlays = [];
   for (const field in sample) {
@@ -235,7 +240,6 @@ function loadOverlays(
     }
     if (label._cls in FROM_FO) {
       const labelOverlays = FROM_FO[label._cls](field, label, this);
-      overlays.forEach((o) => o.setup(context, width, height));
       overlays = [...overlays, ...labelOverlays];
     } else if (label._cls === "Classification") {
       classifications.push([field, [null, [label]]]);
@@ -245,18 +249,13 @@ function loadOverlays(
   }
 
   if (classifications.length > 0) {
-    const overlay = new ClassificationsOverlay(classifications, this);
-    overlay.setup(context, width, height);
+    const overlay = new ClassificationsOverlay(context, classifications);
     overlays.push(overlay);
   }
 }
 
-function resetCanvas(
-  context: CanvasRenderingContext2D,
-  width: number,
-  height: number
-): void {
-  context.clearRect(0, 0, width, height);
+function clearCanvas(context: CanvasRenderingContext2D): void {
+  context.clearRect(0, 0, context.canvas.width, context.canvas.height);
   context.strokeStyle = "#fff";
   context.fillStyle = "#fff";
   context.lineWidth = 3;

@@ -33,14 +33,6 @@ export default abstract class Renderer {
     this._handleMouseEvent = this._handleMouseEvent.bind(this);
   }
 
-  destroy() {
-    Object.entries(this.parent.children).forEach(([_, child]) => {
-      this.parent.removeChild(child);
-    });
-  }
-
-  abstract customDraw(): void;
-
   private processFrame() {
     clearCanvas(this.eleCanvas, this.canvasWidth, this.canvasHeight);
     const context = this.setupCanvasContext();

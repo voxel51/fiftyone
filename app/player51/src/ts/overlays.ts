@@ -8,10 +8,11 @@ import {
   computeBBoxForTextOverlay,
   distance,
   distanceFromLineSegment,
+  ensureCanvasSize,
   inRect,
 } from "./util.js";
-import { deserialize } from "./numpy.js";
-import { BaseState, Coordinates } from "./state.js";
+import { deserialize, NumpyResult } from "./numpy.js";
+import { BaseState, BoundingBox, Coordinates, Dimensions } from "./state.js";
 
 export { colorGenerator, ColorGenerator, ClassificationsOverlay, FROM_FO };
 
@@ -98,9 +99,13 @@ const colorGenerator = new ColorGenerator();
 
 interface BaseLabel {
   _id: string;
+  frame_number?: number;
+  tags: string[];
+}
+
+interface RegularLabel extends BaseLabel {
   label?: string;
   confidence?: number;
-  frame_number?: number;
 }
 
 interface SelectData {
@@ -110,37 +115,44 @@ interface SelectData {
 }
 
 interface Overlay<State extends BaseState> {
-  draw(context: CanvasRenderingContext2D): void;
-  setup(context: CanvasRenderingContext2D): void;
+  draw(context: CanvasRenderingContext2D, state: State): void;
   isShown(state: Readonly<State>): boolean;
   getColor(state: Readonly<State>): string;
-  containsPoint(coordinates: Coordinates): CONTAINS;
-  getMouseDistance(coordinates: Coordinates): number;
-  getPointInfo(coordinates: Coordinates): any;
-  isSelectable(coordinates: Coordinates): boolean;
+  containsPoint(
+    context: CanvasRenderingContext2D,
+    coordinates: Coordinates
+  ): CONTAINS;
+  getMouseDistance(
+    context: CanvasRenderingContext2D,
+    coordinates: Coordinates
+  ): number;
+  getPointInfo(coordinates: CanvasRenderingContext2D, Coordinates): any;
   getSelectData(coordinates: Coordinates): SelectData;
 }
 
 // in numerical order (CONTAINS_BORDER takes precedence over CONTAINS_CONTENT)
-
 enum CONTAINS {
   NONE = 0,
   CONTENT = 1,
   BORDER = 2,
 }
 
-abstract class NormalOverlay<
+abstract class CoordinateOverlay<
   State extends BaseState,
-  Label extends BaseLabel = BaseLabel
+  Label extends RegularLabel
 > implements Overlay<State> {
   protected readonly field: string;
   protected readonly label: Label;
 
-  abstract constructor(field: string, label: Label);
+  constructor(context: CanvasRenderingContext2D, field: string, label: Label) {
+    this.field = field;
+    this.label = label;
+  }
 
-  abstract draw(context: CanvasRenderingContext2D): void;
-
-  abstract setup(context: CanvasRenderingContext2D): void;
+  abstract draw(
+    context: CanvasRenderingContext2D,
+    state: Readonly<State>
+  ): void;
 
   isShown({ options: { activeLabels, filter } }: Readonly<State>): boolean {
     if (activeLabels && activeLabels.includes(this.field)) {
@@ -154,22 +166,26 @@ abstract class NormalOverlay<
     return true;
   }
 
+  isSelected(state: Readonly<State>) {
+    return state.options.selectedLabels.includes(this.label._id);
+  }
+
   getColor({ options }: Readonly<State>): string {
     const key = options.colorByLabel ? this.label.label : this.field;
     return options.colorMap(key);
   }
 
-  containsPoint([x, y]: Coordinates) {
-    return CONTAINS.NONE;
-  }
+  abstract containsPoint(
+    context: CanvasRenderingContext2D,
+    [x, y]: Coordinates
+  );
 
-  abstract getMouseDistance([x, y]: Coordinates);
+  abstract getMouseDistance(
+    context: CanvasRenderingContext2D,
+    [x, y]: Coordinates
+  );
 
-  abstract getPointInfo([x, y]: Coordinates);
-
-  isSelectable([x, y]: Coordinates): boolean {
-    return Boolean(this.containsPoint([x, y]) && this.getSelectData([x, y]));
-  }
+  abstract getPointInfo(context: CanvasRenderingContext2D, [x, y]: Coordinates);
 
   getSelectData([x, y]: Coordinates) {
     return {
@@ -180,20 +196,14 @@ abstract class NormalOverlay<
   }
 }
 
-/**
- * An overlay that renders serialized fo Classifications
- *
- * @param {array} labels [string, Array<[number|null, object]>] (field, (frameNumber, labels)) tuples
- * @param {Renderer} renderer the associated renderer
- *
- */
 class ClassificationsOverlay<State extends BaseState>
   implements Overlay<State> {
-  labels: BaseLabel[];
-  textLines: string[];
-  font: string;
+  private readonly labels: BaseLabel[];
+  private readonly font: string;
+  private lines: string[];
+  private readonly topLeft: Coordinates = [8, 8];
 
-  constructor(context, labels) {
+  constructor(context: CanvasRenderingContext2D, labels: RegularLabel[]) {
     this.labels = labels;
     this.textLines = [];
     this.font = `${this.fontHeight}px Arial, sans-serif`;
@@ -203,321 +213,231 @@ class ClassificationsOverlay<State extends BaseState>
     this.font = null;
 
     // Location and Size to draw these
-    this.x = null;
-    this.y = null;
-    this.w = null;
-    this.h = null;
+    this.topLeft = [null, null];
     this.textPadder = null;
+  }
+
+  isShown() {
+    return this.getFiltered().length > 0;
+  }
+
+  private getFiltered() {
+    return this.labels.map(([field, labels]) => [
+      field,
+      labels.filter(([_, label]) =>
+        _isOverlayShown(this.refs.state.options.filter, field, label)
+      ),
+    ]);
+  }
+
+  private getFilteredAndFlat() {
+    return this._getFiltered()
+      .map(([field, labels]) =>
+        labels.map(([frameNumber, label]) => ({ frameNumber, field, label }))
+      )
+      .flat();
+  }
+
+  private updateLines() {
+    this.textLines = [];
+    const strLimit = 24;
+    this._getFiltered().forEach(([field, labels]) => {
+      const name =
+        field.length > strLimit ? field.slice(0, strLimit) + "..." : field;
+
+      this.text = [
+        ...this.text,
+        ...labels[field].map(([_, { confidence, label }]) => {
+          label =
+            typeof label === "string" && label.length > strLimit
+              ? label.slice(0, strLimit) + "..."
+              : label;
+
+          let s = `${name}: ${label}`;
+          if (this.refs.state.options.showConfidence && !isNaN(confidence)) {
+            s += ` (${Number(confidence).toFixed(2)})`;
+          }
+
+          return s;
+        }),
+      ];
+    });
   }
 
   setup(context) {
     if (typeof this.labels !== undefined) {
       this._updateTextLines();
     }
-    this.textPadder = (3 / this.refs.height) * canvasHeight;
-    if (this.x === null || this.y === null) {
-      this.x = this.textPadder;
-      this.y = this.textPadder;
-    }
 
     this.fontHeight = Math.min(20, 0.09 * canvasHeight);
     this.fontHeight = this.renderer.checkFontHeight(this.fontHeight);
 
-    if (typeof context === "undefined") {
+    context.font = this.font;
+  }
+
+  getSelectData([x, y]) {
+    const { id, field, frameNumber } = this.getPointInfo(x, y)[0];
+    return { id, field, frameNumber };
+  }
+
+  getMouseDistance([x, y]) {
+    if (this.containsPoint([x, y])) {
+      return 0;
+    }
+    return Infinity;
+  }
+  containsPoint([x, y]) {
+    const xAxis = x > this.x && x < this.w + this.x;
+    return (
+      xAxis &&
+      this.getYIntervals().some(
+        ({ y: top, height }) => y > top && y < top + height
+      )
+    );
+  }
+
+  getPointInfo() {
+    const yIntervals = this.getYIntervals();
+    const { frameNumber, field, label } = this.getFilteredAndFlat().filter(
+      (_, i) => {
+        const { y: top, height } = yIntervals[i];
+        return y > top && y < top + height;
+      }
+    )[0];
+
+    return [
+      {
+        color: this.getColor(field, label),
+        field,
+        frameNumber,
+        label,
+        type: "Classification",
+      },
+    ];
+  }
+
+  private getYIntervals() {
+    return this.getFilteredAndFlat().map((_, i) => ({
+      y: this.y + i * (this.labelHeight + this.textPadder),
+      height: this.attrHeight,
+    }));
+  }
+
+  draw(context, state) {
+    if (this.w === null) {
+      this.setup(context, canvasWidth, canvasHeight);
+    }
+
+    if (this.refs.state.config.thumbnail) {
+      return;
+    }
+
+    this._updateTextLines();
+    if (!this.textLines.length) {
       return;
     }
     context.font = this.font;
-  }
-}
 
-ClassificationsOverlay.prototype._isShown = function () {
-  return this._getFilteredClassifications().length > 0;
-};
-
-ClassificationsOverlay.prototype.getSelectData = function (x, y) {
-  const { id, field, frameNumber } = this.getPointInfo(x, y)[0];
-  return { id, field, frameNumber };
-};
-
-ClassificationsOverlay.prototype._getFilteredClassifications = function () {
-  return this.labels.map(([field, labels]) => [
-    field,
-    labels.filter(([_, label]) =>
-      _isOverlayShown(this.refs.state.options.filter, field, label)
-    ),
-  ]);
-};
-
-ClassificationsOverlay.prototype._updateClassifications = function () {
-  this.textLines = [];
-  const strLimit = 24;
-  this._getFilteredClassifications().forEach(([field, labels]) => {
-    const name =
-      field.length > strLimit ? field.slice(0, strLimit) + "..." : field;
-
-    this.text = [
-      ...this.text,
-      ...labels[field].map(([_, { confidence, label }]) => {
-        label =
-          typeof label === "string" && label.length > strLimit
-            ? label.slice(0, strLimit) + "..."
-            : label;
-
-        let s = `${name}: ${label}`;
-        if (this.refs.state.options.showConfidence && !isNaN(confidence)) {
-          s += ` (${Number(confidence).toFixed(2)})`;
-        }
-
-        return s;
-      }),
-    ];
-  });
-};
-
-/**
- * Basic rendering function for drawing the classification overlay instance.
- *
- * @method draw
- * @param {context} context
- * @param {int} canvasWidth
- * @param {int} canvasHeight
- */
-ClassificationsOverlay.prototype.draw = function (
-  context,
-  canvasWidth,
-  canvasHeight
-) {
-  if (typeof context === "undefined") {
-    return;
-  }
-  if (this.w === null) {
-    this.setup(context, canvasWidth, canvasHeight);
-  }
-
-  if (this.refs.state.config.thumbnail) {
-    return;
-  }
-
-  this._updateTextLines();
-  if (!this.textLines.length) {
-    return;
-  }
-  context.font = this.font;
-
-  let y = this.y;
-  const bboxes = this.textLines.map((label) =>
-    computeBBoxForTextOverlay(
-      context,
-      [label],
-      this.fontHeight,
-      this.textPadder
-    )
-  );
-  this.labelHeight = bboxes[0].height;
-  this.w = Math.max(...bboxes.map((b) => b.width));
-
-  const labels = this._getFilteredAndFlatLabels();
-
-  for (let l = 0; l < this.text.length; l++) {
-    context.fillStyle = this.renderer.metadataOverlayBGColor;
-    context.fillRect(this.x, y, this.w, this.labelHeight);
-
-    // Rendering y is at the baseline of the text
-    context.fillStyle = colorGenerator.white;
-    context.fillText(
-      this.text[l],
-      this.x + this.textPadder,
-      y + this.fontHeight + this.textPadder
+    let y = this.y;
+    const bboxes = this.textLines.map((label) =>
+      computeBBoxForTextOverlay(
+        context,
+        [label],
+        this.fontHeight,
+        this.textPadder
+      )
     );
-    const { field, label } = labels[l];
-    if (this.refs.state.options.selectedLabels.includes(label._id)) {
-      context.lineWidth = this.textPadder / 2;
-      context.strokeRect(this.x, y, this.w, this.labelHeight);
-      context.strokeStyle = this._getColor(field, label);
-      context.strokeRect(this.x, y, this.w, this.attrHeight);
-      context.strokeStyle = DASH_COLOR;
-      context.setLineDash([DASH_LENGTH]);
-      context.strokeRect(this.x, y, this.w, this.attrHeight);
-      context.setLineDash([]);
-    }
-    y += this.textPadder + this.labelHeight;
-  }
-};
+    this.labelHeight = bboxes[0].height;
+    this.w = Math.max(...bboxes.map((b) => b.width));
 
-ClassificationsOverlay.prototype._getFilteredAndFlatClassifications = function () {
-  return this._getFilteredClassifications()
-    .map(([field, labels]) =>
-      labels.map(([frameNumber, label]) => ({ frameNumber, field, label }))
-    )
-    .flat();
-};
+    const labels = this._getFilteredAndFlat();
 
-ClassificationsOverlay.prototype.getMouseDistance = function (x, y) {
-  if (this.containsPoint(x, y)) {
-    return 0;
-  }
-  return Infinity;
-};
+    for (let l = 0; l < this.text.length; l++) {
+      context.fillStyle = this.renderer.metadataOverlayBGColor;
+      context.fillRect(this.x, y, this.w, this.labelHeight);
 
-ClassificationsOverlay.prototype.getYIntervals = function () {
-  return this._getFilteredAndFlatClassifications().map((_, i) => ({
-    y: this.y + i * (this.labelHeight + this.textPadder),
-    height: this.attrHeight,
-  }));
-};
-
-ClassificationsOverlay.prototype.containsPoint = function (x, y) {
-  const xAxis = x > this.x && x < this.w + this.x;
-  return (
-    xAxis &&
-    this.getYIntervals().some(
-      ({ y: top, height }) => y > top && y < top + height
-    )
-  );
-};
-
-ClassificationsOverlay.prototype.getPointInfo = function (x, y) {
-  const yIntervals = this.getYIntervals();
-  const {
-    frameNumber,
-    field,
-    label,
-  } = this._getFilteredAndFlatClassifications().filter((_, i) => {
-    const { y: top, height } = yIntervals[i];
-    return y > top && y < top + height;
-  })[0];
-
-  return [
-    {
-      color: this._getColor(field, label),
-      field,
-      frameNumber,
-      label,
-      type: "Classification",
-    },
-  ];
-};
-
-/**
- * An overlay that renders a fo Segmentation
- *
- * @param {string} field the field name
- * @param {object} label a serialized fo Segmentation label
- * @param {Renderer} renderer the associated renderer
- * @param {number} frameNumber an optional frame number, only applicable to video
- */
-function SegmentationOverlay(field, label, refs, frameNumber = null) {
-  if (!SegmentationOverlay._tempMaskCanvas) {
-    SegmentationOverlay._tempMaskCanvas = document.createElement("canvas");
-  }
-
-  Overlay.call(this, refs);
-
-  this.field = field;
-  this.label = label;
-  this.frameNumber = frameNumber;
-
-  this.x = null;
-  this.y = null;
-  this.w = null;
-  this.h = null;
-  this._selectedCache = null;
-}
-SegmentationOverlay._tempMaskCanvas = null;
-SegmentationOverlay.prototype = Object.create(Overlay.prototype);
-SegmentationOverlay.prototype.constructor = SegmentationOverlay;
-
-/**
- * Second half of constructor that should be called after the segmentation overlay exists.
- *
- * @method setup
- * @constructor
- * @param {context} context
- * @param {int} canvasWidth
- * @param {int} canvasHeight
- */
-SegmentationOverlay.prototype.setup = function (
-  context,
-  canvasWidth,
-  canvasHeight
-) {
-  this.x = 0;
-  this.y = 0;
-  this.w = canvasWidth;
-  this.h = canvasHeight;
-  this.mask = deserialize(this.label.mask);
-  this.imageColors = new Uint32Array(this.mask.data);
-  this.targets = new Uint32Array(this.mask.data);
-};
-
-/**
- * Basic rendering function for drawing the segmentation overlay instance.
- *
- * @method draw
- * @param {context} context
- * @param {int} canvasWidth
- * @param {int} canvasHeight
- */
-SegmentationOverlay.prototype.draw = function (
-  context,
-  canvasWidth,
-  canvasHeight
-) {
-  if (this.field && !this._isShown()) {
-    return;
-  }
-
-  const [maskHeight, maskWidth] = this.mask.shape;
-  ensureCanvasSize(SegmentationOverlay._tempMaskCanvas, {
-    width: maskWidth,
-    height: maskHeight,
-  });
-  const maskContext = SegmentationOverlay._tempMaskCanvas.getContext("2d");
-  const maskImage = maskContext.createImageData(maskWidth, maskHeight);
-  const imageColors = new Uint32Array(maskImage.data.buffer);
-  if (
-    this.mask.rendered &&
-    this._generator === this.refs.state.options.colorGenerator
-  ) {
-    imageColors.set(this.imageColors);
-  } else {
-    this._generator = this.refs.state.options.colorGenerator;
-    const maskColors = this.isSelected()
-      ? this._generator.rawMaskColorsSelected
-      : this._generator.rawMaskColors;
-    const index = this.renderer.frameMaskIndex;
-    if (index) {
-      for (let i = 0; i < this.mask.data.length; i++) {
-        if (index[this.mask.data[i]]) {
-          imageColors[i] = maskColors[this.mask.data[i]];
-        }
+      // Rendering y is at the baseline of the text
+      context.fillStyle = colorGenerator.white;
+      context.fillText(
+        this.text[l],
+        this.x + this.textPadder,
+        y + this.fontHeight + this.textPadder
+      );
+      const { field, label } = labels[l];
+      if (this.refs.state.options.selectedLabels.includes(label._id)) {
+        context.lineWidth = this.textPadder / 2;
+        context.strokeRect(this.x, y, this.w, this.labelHeight);
+        context.strokeStyle = this._getColor(field, label);
+        context.strokeRect(this.x, y, this.w, this.attrHeight);
+        context.strokeStyle = DASH_COLOR;
+        context.setLineDash([DASH_LENGTH]);
+        context.strokeRect(this.x, y, this.w, this.attrHeight);
+        context.setLineDash([]);
       }
+      y += this.textPadder + this.labelHeight;
+    }
+  }
+}
+
+interface SegmentationLabel extends BaseLabel {
+  mask: string;
+}
+
+class SegmentationOverlay<State extends BaseState> implements Overlay<State> {
+  private readonly intermediateCanvas: HTMLCanvasElement = document.createElement(
+    "canvas"
+  );
+  private readonly field: string;
+  private readonly label: SegmentationLabel;
+  private readonly mask: NumpyResult;
+  private generator: ColorGenerator;
+  private imageColors: Uint32Array;
+  private targets: Uint32Array;
+  private rendered: boolean = false;
+
+  constructor(
+    context: CanvasRenderingContext2D,
+    field: string,
+    label: SegmentationLabel
+  ) {
+    this.field = field;
+    this.label = label;
+    this.mask = deserialize(this.label.mask);
+    this.imageColors = new Uint32Array(this.mask.data);
+    this.targets = new Uint32Array(this.mask.data);
+  }
+
+  draw(context, state) {
+    ensureCanvasSize(this.intermediateCanvas, this.mask.shape);
+    const maskContext = this.intermediateCanvas.getContext("2d");
+    const maskImage = maskContext.createImageData(...this.mask.shape);
+    const imageColors = new Uint32Array(maskImage.data.buffer);
+    const canvasShape = [context.canvas.width, context.canvas.height];
+    if (this.rendered && this.generator === state.options.colorGenerator) {
+      imageColors.set(this.imageColors);
     } else {
+      this.generator = state.options.colorGenerator;
+      const maskColors = this.isSelected()
+        ? this.generator.rawMaskColorsSelected
+        : this.generator.rawMaskColors;
+
       for (let i = 0; i < this.mask.data.length; i++) {
         if (this.mask.data[i]) {
           imageColors[i] = maskColors[this.mask.data[i]];
         }
       }
+
+      this.imageColors = imageColors;
+      this.rendered = true;
     }
-    this.imageColors = imageColors;
-    this.mask.rendered = true;
+    maskContext.putImageData(maskImage, 0, 0);
+    context.imageSmoothingEnabled = state.options.smoothMasks;
+    context.drawImage(
+      this.intermediateCanvas,
+      ...[0, 0, ...this.mask.shape, 0, 0, canvasShape]
+    );
   }
-  maskContext.putImageData(maskImage, 0, 0);
-  context.imageSmoothingEnabled = this.renderer.overlayOptions.smoothMasks;
-  context.drawImage(
-    SegmentationOverlay._tempMaskCanvas,
-    0,
-    0,
-    maskWidth,
-    maskHeight,
-    0,
-    0,
-    canvasWidth,
-    canvasHeight
-  );
-  this.h = canvasHeight;
-  this.w = canvasWidth;
-};
+}
 
 SegmentationOverlay.prototype.getMaskCoordinates = function (x, y) {
   const [h, w] = this.mask.shape;
@@ -571,14 +491,12 @@ SegmentationOverlay.prototype.getPointInfo = function (x, y) {
   };
 };
 
-/**
- * An overlay that renders a fo Keypoint
- *
- * @param {string} field the field name
- * @param {array} label a serialized fo Keypoint
- * @param {Renderer} renderer the associated renderer
- * @param {number} frameNumber an optional frame number, only applicable to video
- */
+class KeypointOverlay {
+  constructor(context, field, label) {
+    s;
+  }
+}
+
 function KeypointOverlay(field, label, renderer, frameNumber = null) {
   Overlay.call(this, renderer);
 
@@ -586,18 +504,7 @@ function KeypointOverlay(field, label, renderer, frameNumber = null) {
   this.label = label;
   this.frameNumber = frameNumber;
 }
-KeypointOverlay.prototype = Object.create(Overlay.prototype);
-KeypointOverlay.prototype.constructor = KeypointOverlay;
 
-/**
- * Second half of constructor that should be called after the keypoint overlay exists.
- *
- * @method setup
- * @constructor
- * @param {context} context
- * @param {int} canvasWidth
- * @param {int} canvasHeight
- */
 KeypointOverlay.prototype.setup = function (
   context,
   canvasWidth,
@@ -609,14 +516,6 @@ KeypointOverlay.prototype.setup = function (
   this.h = canvasHeight;
 };
 
-/**
- * Basic rendering function for drawing the overlay instance.
- *
- * @method draw
- * @param {context} context
- * @param {int} canvasWidth
- * @param {int} canvasHeight
- */
 KeypointOverlay.prototype.draw = function (context, canvasWidth, canvasHeight) {
   if (!this._isShown()) {
     return;
@@ -691,171 +590,137 @@ KeypointOverlay.prototype.containsPoint = function (x, y) {
   return Overlay.CONTAINS_NONE;
 };
 
-/**
- * An overlay that renders a fo Polyline
- *
- * @param {string} field the field name
- * @param {array} label a serialized fo Polyline
- * @param {Renderer} renderer the associated renderer
- * @param {number} frameNumber an optional frame number, only applicable to video
- */
-function PolylineOverlay(field, label, renderer, frameNumber = null) {
-  Overlay.call(this, renderer);
-
-  this.field = field;
-  this.label = label;
-  this.frameNumber = frameNumber;
+interface PolylineLabel extends RegularLabel {
+  points: Coordinates[][];
+  closed: boolean;
+  filled: boolean;
 }
-PolylineOverlay.prototype = Object.create(Overlay.prototype);
-PolylineOverlay.prototype.constructor = PolylineOverlay;
 
-/**
- * Second half of constructor that should be called after the polyline overlay exists.
- *
- * @method setup
- * @constructor
- * @param {context} context
- * @param {int} canvasWidth
- * @param {int} canvasHeight
- */
-PolylineOverlay.prototype.setup = function (
-  context,
-  canvasWidth,
-  canvasHeight
-) {
-  this.x = 0;
-  this.y = 0;
-  this.w = canvasWidth;
-  this.h = canvasHeight;
+class PolylineOverlay<State extends BaseState> extends CoordinateOverlay<
+  State,
+  PolylineLabel
+> {
+  private readonly path: Path2D;
 
-  this._context = context;
+  constructor(
+    context: CanvasRenderingContext2D,
+    field: string,
+    label: PolylineLabel
+  ) {
+    super(context, field, label);
+    this.path = new Path2D();
+    const [width, height] = [context.canvas.width, context.canvas.height];
+    for (const shape of this.label.points) {
+      const shapePath = new Path2D();
+      for (const [pidx, point] of Object.entries(shape)) {
+        if (Number(pidx) > 0) {
+          shapePath.lineTo(height * point[0], height * point[1]);
+        } else {
+          shapePath.moveTo(width * point[0], height * point[1]);
+        }
+      }
+      if (this.label.closed) {
+        shapePath.closePath();
+      }
+      this.path.addPath(shapePath);
+    }
+  }
 
-  this.path = new Path2D();
-  for (const shape of this.label.points) {
-    const shapePath = new Path2D();
-    for (const [pidx, point] of Object.entries(shape)) {
-      if (Number(pidx) > 0) {
-        shapePath.lineTo(canvasWidth * point[0], canvasHeight * point[1]);
-      } else {
-        shapePath.moveTo(canvasWidth * point[0], canvasHeight * point[1]);
+  containsPoint(context, [x, y]) {
+    const tolerance = LINE_WIDTH * 1.5;
+    const minDistance = this.getMouseDistance(x, y);
+    if (minDistance <= tolerance) {
+      return CONTAINS.BORDER;
+    }
+
+    if (this.label.closed || this.label.filled) {
+      return context.isPointInPath(this.path, x, y)
+        ? CONTAINS.CONTENT
+        : CONTAINS.NONE;
+    }
+    return CONTAINS.NONE;
+  }
+
+  draw(context, state) {
+    const color = this.getColor(state);
+    context.fillStyle = color;
+    context.strokeStyle = color;
+    context.lineWidth = LINE_WIDTH;
+    context.stroke(this.path);
+    if (this.isSelected(state)) {
+      context.strokeStyle = DASH_COLOR;
+      context.setLineDash([DASH_LENGTH]);
+      context.stroke(this.path);
+      context.strokeStyle = color;
+      context.setLineDash([]);
+    }
+    if (this.label.filled) {
+      context.globalAlpha = MASK_ALPHA;
+      context.fill(this.path);
+      context.globalAlpha = 1;
+    }
+  }
+
+  getMouseDistance(context, [x, y]) {
+    const distances = [];
+    const [w, h] = [context.canvas.width, context.canvas.height];
+    for (const shape of this.label.points) {
+      for (let i = 0; i < shape.length - 1; i++) {
+        distances.push(
+          distanceFromLineSegment(
+            x,
+            y,
+            w * shape[i][0],
+            h * shape[i][1],
+            w * shape[i + 1][0],
+            h * shape[i + 1][1]
+          )
+        );
+      }
+      // acheck final line segment if closed
+      if (this.label.closed) {
+        distances.push(
+          distanceFromLineSegment(
+            x,
+            y,
+            w * shape[0][0],
+            h * shape[0][1],
+            w * shape[shape.length - 1][0],
+            h * shape[shape.length - 1][1]
+          )
+        );
       }
     }
-    if (this.label.closed) {
-      shapePath.closePath();
-    }
-    this.path.addPath(shapePath);
-  }
-};
-
-/**
- * Basic rendering function for drawing the overlay instance.
- *
- * @method draw
- * @param {context} context
- * @param {int} canvasWidth
- * @param {int} canvasHeight
- */
-PolylineOverlay.prototype.draw = function (context, canvasWidth, canvasHeight) {
-  if (!this._isShown()) {
-    return;
-  }
-  const color = this._getColor(this.name, this.label);
-  context.fillStyle = color;
-  context.strokeStyle = color;
-  context.lineWidth = LINE_WIDTH;
-  context.stroke(this.path);
-  if (this.isSelected()) {
-    context.strokeStyle = DASH_COLOR;
-    context.setLineDash([DASH_LENGTH]);
-    context.stroke(this.path);
-    context.strokeStyle = color;
-    context.setLineDash([]);
-  }
-  if (this.filled) {
-    context.globalAlpha = MASK_ALPHA;
-    context.fill(this.path);
-    context.globalAlpha = 1;
-  }
-};
-
-PolylineOverlay.prototype.getPointInfo = function (x, y) {
-  return {
-    field: this.field,
-    frameNumber: this.frameNumber,
-    label: this.label,
-    type: "Polyline",
-  };
-};
-
-PolylineOverlay.prototype.getMouseDistance = function (x, y) {
-  const distances = [];
-  for (const shape of this.label.points) {
-    for (let i = 0; i < shape.length - 1; i++) {
-      distances.push(
-        distanceFromLineSegment(
-          x,
-          y,
-          this.w * shape[i][0],
-          this.h * shape[i][1],
-          this.w * shape[i + 1][0],
-          this.h * shape[i + 1][1]
-        )
-      );
-    }
-    // acheck final line segment if closed
-    if (this.label.closed) {
-      distances.push(
-        distanceFromLineSegment(
-          x,
-          y,
-          this.w * shape[0][0],
-          this.h * shape[0][1],
-          this.w * shape[shape.length - 1][0],
-          this.h * shape[shape.length - 1][1]
-        )
-      );
-    }
-  }
-  return Math.min(...distances);
-};
-
-PolylineOverlay.prototype.containsPoint = function (x, y) {
-  if (!this._isShown()) {
-    return Overlay.CONTAINS_NONE;
-  }
-  const tolerance = LINE_WIDTH * 1.5;
-  const minDistance = this.getMouseDistance(x, y);
-  if (minDistance <= tolerance) {
-    return Overlay.CONTAINS_BORDER;
+    return Math.min(...distances);
   }
 
-  if (this.label.closed || this.label.filled) {
-    return this._context.isPointInPath(this.path, x, y)
-      ? Overlay.CONTAINS_CONTENT
-      : Overlay.CONTAINS_NONE;
+  getPointInfo() {
+    return {
+      field: this.field,
+      label: this.label,
+      type: "Polyline",
+    };
   }
-  return Overlay.CONTAINS_NONE;
-};
+}
 
-/**
- * An overlay that renders a fo Detection
- *
- * @param {string} field the field name
- * @param {array} label a serialized fo Detection
- * @param {Renderer} renderer the associated renderer
- * @param {number} frameNumber an optional frame number, only applicable to video
- */
+interface DetectionLabel extends RegularLabel {
+  mask?: string;
+  bounding_box: BoundingBox;
+}
+
+class DetectionOverlay<State extends BaseState> extends CoordinateOverlay<
+  State
+> {
+  private readonly intermediateCanvas: HTMLCanvasElement = document.createElement(
+    "canvas"
+  );
+
+  constructor(context, field, label) {
+    super(context, field, label);
+  }
+}
+
 function DetectionOverlay(field, label, renderer, frameNumber = null) {
-  if (!DetectionOverlay._tempMaskCanvas) {
-    DetectionOverlay._tempMaskCanvas = document.createElement("canvas");
-  }
-  Overlay.call(this, renderer);
-
-  this._cache_options = Object.assign({}, this.options);
-  this.label = label;
-  this.field = field;
-  this.frameNumber = frameNumber;
-
   this._setupLabel();
   this.indexStr = "";
   if (this.label.index != null) {
@@ -891,15 +756,6 @@ DetectionOverlay._rawColorCache = {};
 DetectionOverlay.prototype = Object.create(Overlay.prototype);
 DetectionOverlay.prototype.constructor = DetectionOverlay;
 
-/**
- * Second half of constructor that should be called after the detection overlay exists.
- *
- * @method setup
- * @constructor
- * @param {context} context
- * @param {int} canvasWidth
- * @param {int} canvasHeight
- */
 DetectionOverlay.prototype.setup = function (
   context,
   canvasWidth,
@@ -926,10 +782,6 @@ DetectionOverlay.prototype.setup = function (
   this._setupFontWidths(context, canvasWidth, canvasHeight);
 };
 
-/**
- * Checks whether the object has attributes
- * @return {boolean}
- */
 DetectionOverlay.prototype.hasAttrs = function () {
   // @todo: update
   return this._attrs !== undefined;
@@ -987,13 +839,6 @@ DetectionOverlay.prototype._setupLabel = function () {
   }
 };
 
-/**
- * Private method to parse the attributes objects provided at creation and set
- * them up as a renderable string for the overlay.
- *
- * @method _parseAttrs
- * @param {attrs} attrs
- */
 DetectionOverlay.prototype._parseAttrs = function (attrs) {
   if (this.attrText === null) {
     this.attrText = "";
@@ -1032,27 +877,11 @@ DetectionOverlay.prototype._parseAttrs = function (attrs) {
   }
 };
 
-/**
- * Basic rendering function for drawing the detection overlay instance.
- *
- * @method draw
- * @param {context} context
- * @param {int} canvasWidth
- * @param {int} canvasHeight
- */
 DetectionOverlay.prototype.draw = function (
   context,
   canvasWidth,
   canvasHeight
 ) {
-  if (typeof context === "undefined") {
-    return;
-  }
-
-  if (!this._isShown()) {
-    return;
-  }
-
   let optionsUpdated = false;
   if (!compareData(this._cache_options, this.options)) {
     this._cache_options = Object.assign({}, this.options);
@@ -1236,41 +1065,25 @@ DetectionOverlay.prototype.getMouseDistance = function (x, y) {
 
 DetectionOverlay.prototype.containsPoint = function (x, y) {
   if (!this._isShown()) {
-    return Overlay.CONTAINS_NONE;
+    return CONTAINS.NONE;
   }
   // the header takes up an extra LINE_WIDTH / 2 on each side due to its border
   if (this._inHeader(x, y)) {
-    return Overlay.CONTAINS_BORDER;
+    return CONTAINS.BORDER;
   }
   // the distance from the box contents to the edge of the line segment is
   // LINE_WIDTH / 2, so this gives a tolerance of an extra LINE_WIDTH on either
   // side of the border
   const tolerance = LINE_WIDTH * 1.5;
   if (this.getMouseDistance(x, y) <= tolerance) {
-    return Overlay.CONTAINS_BORDER;
+    return CONTAINS.BORDER;
   }
   if (inRect(x, y, this.x, this.y, this.w, this.h)) {
-    return Overlay.CONTAINS_CONTENT;
+    return CONTAINS.CONTENT;
   }
 
-  return Overlay.CONTAINS_NONE;
+  return CONTAINS.NONE;
 };
-
-/**
- * Resizes a canvas so it is at least the specified size.
- *
- * @param {Canvas} canvas
- * @param {number} width
- * @param {number} height
- */
-function ensureCanvasSize(canvas, { width, height }) {
-  if (canvas.width < width) {
-    canvas.width = width;
-  }
-  if (canvas.height < height) {
-    canvas.height = height;
-  }
-}
 
 const fromLabel = (overlayType) => (
   field,
