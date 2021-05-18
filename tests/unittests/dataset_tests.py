@@ -226,6 +226,243 @@ class DatasetTests(unittest.TestCase):
         self.assertIsNotNone(sample12.new_gt)
 
     @drop_datasets
+    def test_merge_samples_and_labels(self):
+        sample11 = fo.Sample(filepath="image1.png")
+
+        sample12 = fo.Sample(
+            filepath="image2.png",
+            tags=["hello"],
+            ground_truth=fo.Detections(
+                detections=[
+                    fo.Detection(label="hello"),
+                    fo.Detection(label="world"),
+                ]
+            ),
+            predictions1=fo.Detections(
+                detections=[
+                    fo.Detection(label="hello", confidence=0.99),
+                    fo.Detection(label="world", confidence=0.99),
+                ]
+            ),
+            hello="world",
+        )
+
+        sample13 = fo.Sample(
+            filepath="image3.png",
+            tags=["world"],
+            ground_truth=fo.Detections(
+                detections=[
+                    fo.Detection(label="hello"),
+                    fo.Detection(label="world"),
+                    fo.Detection(label="common"),
+                ]
+            ),
+            predictions1=fo.Detections(
+                detections=[
+                    fo.Detection(label="hello", confidence=0.99),
+                    fo.Detection(label="world", confidence=0.99),
+                ]
+            ),
+            hello="world",
+        )
+
+        dataset1 = fo.Dataset()
+        dataset1.add_samples([sample11, sample12, sample13])
+
+        common = sample13.ground_truth.detections[2].copy()
+        common.label = "COMMON"
+
+        sample22 = fo.Sample(filepath="image2.png")
+
+        sample23 = fo.Sample(
+            filepath="image3.png",
+            tags=["foo"],
+            ground_truth=fo.Detections(
+                detections=[
+                    common,
+                    fo.Detection(label="foo"),
+                    fo.Detection(label="bar"),
+                ]
+            ),
+            predictions2=fo.Detections(
+                detections=[
+                    fo.Detection(label="foo", confidence=0.99),
+                    fo.Detection(label="bar", confidence=0.99),
+                ]
+            ),
+            hello="bar",
+        )
+
+        sample24 = fo.Sample(
+            filepath="image4.png",
+            tags=["bar"],
+            ground_truth=fo.Detections(
+                detections=[
+                    fo.Detection(label="foo"),
+                    fo.Detection(label="bar"),
+                ]
+            ),
+            predictions2=fo.Detections(
+                detections=[
+                    fo.Detection(label="foo", confidence=0.99),
+                    fo.Detection(label="bar", confidence=0.99),
+                ]
+            ),
+            hello="bar",
+        )
+
+        sample25 = fo.Sample(filepath="image5.png")
+
+        dataset2 = fo.Dataset()
+        dataset2.add_samples([sample22, sample23, sample24, sample25])
+
+        # Ensure field is None, not just
+        sample = dataset2.first()
+        sample.hello = None
+        sample.save()
+
+        d1 = dataset1.clone()
+        d1.merge_samples(dataset2, skip_existing=True)
+
+        fields1 = set(dataset1.get_field_schema().keys())
+        fields2 = set(d1.get_field_schema().keys())
+        new_fields = fields2 - fields1
+
+        self.assertEqual(len(d1), 5)
+        for s1, s2 in zip(dataset1, d1):
+            for field in fields1:
+                self.assertEqual(s1[field], s2[field])
+
+            for field in fields2:
+                self.assertIsNone(s2[field])
+
+        d2 = dataset1.clone()
+        d2.merge_samples(dataset2, insert_new=False)
+
+        self.assertEqual(len(d2), len(dataset1))
+
+        with self.assertRaises(ValueError):
+            d3 = dataset1.clone()
+            d3.merge_samples(dataset2, expand_schema=False)
+
+        d3 = dataset1.clone()
+        d3.merge_samples(dataset2, merge_lists=False, overwrite=True)
+
+        self.assertListEqual(
+            d3.values("hello"), [None, "world", "bar", "bar", None],
+        )
+        self.assertListEqual(
+            d3.values("tags"), [[], [], ["foo"], ["bar"], []],
+        )
+        self.assertListEqual(
+            d3.values("ground_truth.detections.label"),
+            [
+                None,
+                ["hello", "world"],
+                ["COMMON", "foo", "bar"],
+                ["foo", "bar"],
+                None,
+            ],
+        )
+        self.assertListEqual(
+            d3.values("predictions1.detections.label"),
+            [None, ["hello", "world"], ["hello", "world"], None, None],
+        )
+        self.assertListEqual(
+            d3.values("predictions2.detections.label"),
+            [None, None, ["foo", "bar"], ["foo", "bar"], None],
+        )
+
+        d4 = dataset1.clone()
+        d4.merge_samples(dataset2, merge_lists=False, overwrite=False)
+
+        self.assertListEqual(
+            d4.values("hello"), [None, "world", "world", "bar", None],
+        )
+        self.assertListEqual(
+            d4.values("tags"), [[], ["hello"], ["world"], ["bar"], []],
+        )
+        self.assertListEqual(
+            d4.values("ground_truth.detections.label"),
+            [
+                None,
+                ["hello", "world"],
+                ["hello", "world", "common"],
+                ["foo", "bar"],
+                None,
+            ],
+        )
+        self.assertListEqual(
+            d4.values("predictions1.detections.label"),
+            [None, ["hello", "world"], ["hello", "world"], None, None],
+        )
+        self.assertListEqual(
+            d4.values("predictions2.detections.label"),
+            [None, None, ["foo", "bar"], ["foo", "bar"], None],
+        )
+
+        d5 = dataset1.clone()
+        d5.merge_samples(dataset2, fields="hello")
+
+        for sample in d5:
+            self.assertIsNotNone(sample.id)  # ensures documents are valid
+
+        self.assertNotIn("predictions2", d5.get_field_schema())
+        self.assertListEqual(
+            d5.values("hello"), [None, "world", "bar", "bar", None],
+        )
+        self.assertListEqual(
+            d5.values("tags"), [[], ["hello"], ["world"], [], []],
+        )
+        self.assertListEqual(
+            d5.values("ground_truth.detections.label"),
+            [
+                None,
+                ["hello", "world"],
+                ["hello", "world", "common"],
+                None,
+                None,
+            ],
+        )
+
+        d6 = dataset1.clone()
+        d6.merge_samples(
+            dataset2, omit_fields=["tags", "ground_truth", "predictions2"]
+        )
+
+        for sample in d6:
+            self.assertIsNotNone(sample.id)  # ensures documents are valid
+
+        self.assertNotIn("predictions2", d6.get_field_schema())
+        self.assertListEqual(
+            d6.values("hello"), [None, "world", "bar", "bar", None],
+        )
+        self.assertListEqual(
+            d6.values("tags"), [[], ["hello"], ["world"], [], []],
+        )
+        self.assertListEqual(
+            d6.values("ground_truth.detections.label"),
+            [
+                None,
+                ["hello", "world"],
+                ["hello", "world", "common"],
+                None,
+                None,
+            ],
+        )
+
+        # @todo complete this
+
+        d7 = dataset1.clone()
+        d7.merge_samples(dataset2, omit_none_fields=False)
+
+        d8 = dataset1.clone()
+        d8.merge_samples(dataset2)
+
+        d9 = dataset1.clone()
+        d9.merge_samples(dataset2, overwrite=False)
+
+    @drop_datasets
     def test_rename_fields(self):
         dataset = fo.Dataset()
         sample = fo.Sample(filepath="/path/to/image.jpg", field=1)

@@ -90,7 +90,7 @@ def test_merge_samples_and_labels_image():
     ).save()
 
     d1 = dataset1.clone()
-    d1.merge_samples(dataset2, merge_lists=True, overwrite=True)
+    d1.merge_samples(dataset2)
 
     num_objects1 = d1.count("ground_truth.detections")
     num_objects1_ref = dataset.count("ground_truth.detections")
@@ -103,7 +103,7 @@ def test_merge_samples_and_labels_image():
     assert counts1["AIRPLANE"] == counts1_ref2["AIRPLANE"]
 
     d2 = dataset1.clone()
-    d2.merge_samples(dataset2, merge_lists=True, overwrite=False)
+    d2.merge_samples(dataset2, overwrite=False)
 
     num_objects2 = d2.count("ground_truth.detections")
     num_objects2_ref = dataset.count("ground_truth.detections")
@@ -189,7 +189,7 @@ def test_merge_samples_and_labels_video():
     ).save()
 
     d1 = dataset1.clone()
-    d1.merge_samples(dataset2, merge_lists=True, overwrite=True)
+    d1.merge_samples(dataset2)
 
     num_objects1 = d1.count("frames.ground_truth.detections")
     num_objects1_ref = dataset.count("frames.ground_truth.detections")
@@ -206,7 +206,7 @@ def test_merge_samples_and_labels_video():
     assert counts1["VEHICLE"] == counts1_ref2["VEHICLE"]
 
     d2 = dataset1.clone()
-    d2.merge_samples(dataset2, merge_lists=True, overwrite=False)
+    d2.merge_samples(dataset2, overwrite=False)
 
     num_objects2 = d2.count("frames.ground_truth.detections")
     num_objects2_ref = dataset.count("frames.ground_truth.detections")

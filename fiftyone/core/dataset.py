@@ -691,16 +691,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
              an ``OrderedDict`` mapping field names to field types
         """
-        d = self._sample_doc_cls.get_field_schema(
+        return self._sample_doc_cls.get_field_schema(
             ftype=ftype,
             embedded_doc_type=embedded_doc_type,
             include_private=include_private,
         )
-
-        if not include_private and (self.media_type == fom.VIDEO):
-            d.pop("frames", None)
-
-        return d
 
     def get_frame_field_schema(
         self, ftype=None, embedded_doc_type=None, include_private=False
@@ -1252,7 +1247,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             for sample in self._iter_samples(pipeline):
                 yield sample
 
-    def add_sample(self, sample, expand_schema=True):
+    def add_sample(self, sample, expand_schema=True, validate=True):
         """Adds the given sample to the dataset.
 
         If the sample instance does not belong to a dataset, it is updated
@@ -1264,38 +1259,23 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             expand_schema (True): whether to dynamically add new sample fields
                 encountered to the dataset schema. If False, an error is raised
                 if the sample's schema is not a subset of the dataset schema
+            validate (True): whether to validate that the fields of the sample
+                are compliant with the dataset schema before adding it
 
         Returns:
             the ID of the sample in the dataset
 
         Raises:
-            ``mongoengine.errors.ValidationError``: if a field of the sample
-                has a type that is inconsistent with the dataset schema, or if
-                ``expand_schema == False`` and a new field is encountered
+            ValueError: if ``expand_schema`` is False and a new field is
+                encountered
+            ``mongoengine.errors.ValidationError``: if a sample field has a
+                type that is inconsistent with the dataset schema
         """
-        if sample._in_db:
-            sample = sample.copy()
+        return self._add_samples_batch([sample], expand_schema, validate)[0]
 
-        if self.media_type is None:
-            self.media_type = sample.media_type
-
-        if expand_schema:
-            self._expand_schema([sample])
-
-        self._validate_sample(sample)
-
-        d = sample.to_mongo_dict()
-        self._sample_collection.insert_one(d)  # adds `_id` to `d`
-
-        doc = self._sample_dict_to_doc(d)
-        sample._set_backing_doc(doc, dataset=self)
-
-        if self.media_type == fom.VIDEO:
-            sample.frames.save()
-
-        return str(d["_id"])
-
-    def add_samples(self, samples, expand_schema=True, num_samples=None):
+    def add_samples(
+        self, samples, expand_schema=True, validate=True, num_samples=None
+    ):
         """Adds the given samples to the dataset.
 
         Any sample instances that do not belong to a dataset are updated
@@ -1309,18 +1289,20 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             expand_schema (True): whether to dynamically add new sample fields
                 encountered to the dataset schema. If False, an error is raised
                 if a sample's schema is not a subset of the dataset schema
+            validate (True): whether to validate that the fields of each sample
+                are compliant with the dataset schema before adding it
             num_samples (None): the number of samples in ``samples``. If not
                 provided, this is computed via ``len(samples)``, if possible.
-                This value is optional and is used only for optimization and
-                progress tracking
+                This value is optional and is used only for progress tracking
 
         Returns:
             a list of IDs of the samples in the dataset
 
         Raises:
-            ``mongoengine.errors.ValidationError``: if a field of a sample has
-                a type that is inconsistent with the dataset schema, or if
-                ``expand_schema == False`` and a new field is encountered
+            ValueError: if ``expand_schema`` is False and a new field is
+                encountered
+            ``mongoengine.errors.ValidationError``: if a sample field has a
+                type that is inconsistent with the dataset schema
         """
         if num_samples is None:
             try:
@@ -1328,14 +1310,18 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             except:
                 pass
 
-        # @todo optimize adjust dynamically based on sample save time
-        batch_size = 128 if self.media_type == fom.IMAGE else 1
+        # Dynamically size batches so that they are as large as possible while
+        # still achieving a nice frame rate on the progress bar
+        target_latency = 0.2  # in seconds
+        batcher = fou.DynamicBatcher(
+            samples, target_latency, init_batch_size=1, max_batch_beta=2.0
+        )
 
         sample_ids = []
         with fou.ProgressBar(total=num_samples) as pb:
-            for batch in fou.iter_batches(samples, batch_size):
+            for batch in batcher:
                 sample_ids.extend(
-                    self._add_samples_batch(batch, expand_schema)
+                    self._add_samples_batch(batch, expand_schema, validate)
                 )
                 pb.update(count=len(batch))
 
@@ -1375,7 +1361,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         )
         return self.skip(num_samples).values("id")
 
-    def _add_samples_batch(self, samples, expand_schema):
+    def _add_samples_batch(self, samples, expand_schema, validate):
         samples = [s.copy() if s._in_db else s for s in samples]
 
         if self.media_type is None and samples:
@@ -1384,8 +1370,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if expand_schema:
             self._expand_schema(samples)
 
-        for sample in samples:
-            self._validate_sample(sample)
+        if validate:
+            self._validate_samples(samples)
 
         dicts = [sample.to_mongo_dict() for sample in samples]
 
@@ -1456,22 +1442,43 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         key_fcn=None,
         skip_existing=False,
         insert_new=True,
-        expand_schema=True,
         fields=None,
         omit_fields=None,
         omit_none_fields=True,
-        merge_lists=False,
+        merge_lists=True,
         overwrite=True,
+        expand_schema=True,
         include_info=True,
         overwrite_info=False,
     ):
         """Merges the given samples into this dataset.
 
-        By default, samples with the same absolute ``filepath`` are merged.
-        You can customize this behavior via the ``key_field`` and ``key_fcn``
+        By default, samples with the same absolute ``filepath`` are merged, but
+        can customize this behavior via the ``key_field`` and ``key_fcn``
         parameters. For example, you could set
         ``key_fcn = lambda sample: os.path.basename(sample.filepath)`` to merge
         samples with the same base filename.
+
+        The behavior of this method is highly customizable. By default, all
+        top-level fields from the provided samples are merged in, overwriting
+        any existing values for those fields, with the exception of list fields
+        (e.g., ``tags``) and label list fields (e.g.,
+        :class:`fiftyone.core.labels.Detections` fields), in which case the
+        elements of the lists themselves are merged. In the case of label list
+        fields, labels with the same ``id`` in both collections are updated
+        rather than duplicated.
+
+        This method can be configured in numerous ways, including:
+
+        -   Whether existing samples should be modified or skipped
+        -   Whether new samples should be added or omitted
+        -   Whether new fields can be added to the dataset's schema
+        -   Whether list fields should be treated as ordinary fields and merged
+            as a whole rather than merging their elements
+        -   Whether to merge (a) only specific fields or (b) all but certain
+            fields
+        -   Whether to treat ``None``-valued fields as missing data that should
+            not be merged
 
         Args:
             samples: a :class:`fiftyone.core.collections.SampleCollection` or
@@ -1486,25 +1493,33 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 merge them (False)
             insert_new (True): whether to insert new samples (True) or skip
                 them (False)
+            fields (None): an optional field or iterable of fields to which to
+                restrict the merge. If provided, fields other than these are
+                omitted from ``samples`` when merging or adding samples. One
+                exception is that ``filepath`` is always included when adding
+                new samples, since the field is required
+            omit_fields (None): an optional field or iterable of fields to
+                exclude from the merge. If provided, these fields are omitted
+                from ``samples``, if present, when merging or adding samples.
+                One exception is that ``filepath`` is always included when
+                adding new samples, since the field is required
+            omit_none_fields (True): whether to omit ``None``-valued fields of
+                ``samples`` when merging their fields
+            merge_lists (True): whether to merge the elements of list fields
+                (e.g., ``tags``) and label list fields (e.g.,
+                :class:`fiftyone.core.labels.Detections` fields) rather than
+                merging the entire top-level field like other field types.
+                For label lists fields, existing
+                :class:`fiftyone.core.label.Label` elements are either replaced
+                (when ``overwrite`` is True) or kept (when ``overwrite`` is
+                False) when their ``id`` matches a label from the provided
+                samples
+            overwrite (True): whether to overwrite (True) or skip (False)
+                existing fields. Note that fields whose values are ``None`` or
+                missing are always overwritten
             expand_schema (True): whether to dynamically add new fields
                 encountered to the dataset schema. If False, an error is raised
                 if a sample's schema is not a subset of the dataset schema
-            fields (None): an optional field or iterable of fields to which to
-                restrict the merge
-            omit_fields (None): an optional field or iterable of fields to
-                exclude from the merge
-            omit_none_fields (True): whether to omit ``None``-valued fields of
-                the provided samples when merging their fields
-            merge_lists (False): whether to merge top-level list fields and the
-                elements of label list fields. If ``True``, this parameter
-                supercedes the ``overwrite`` parameter for list fields, and,
-                for label lists fields, existing
-                :class:`fiftyone.core.label.Label` elements are either replaced
-                (when ``overwrite`` is True) or kept (when ``overwrite`` is
-                False) when their ``id`` matches a
-                :class:`fiftyone.core.label.Label` from the provided document
-            overwrite (True): whether to overwrite (True) or skip (False)
-                existing fields
             include_info (True): whether to merge dataset-level information
                 such as ``info`` and ``classes``. Only applicable when
                 ``samples`` is a
@@ -1545,12 +1560,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 key_field,
                 skip_existing=skip_existing,
                 insert_new=insert_new,
-                expand_schema=expand_schema,
                 fields=fields,
                 omit_fields=omit_fields,
                 omit_none_fields=omit_none_fields,
                 merge_lists=merge_lists,
                 overwrite=overwrite,
+                expand_schema=expand_schema,
                 include_info=include_info,
                 overwrite_info=overwrite_info,
             )
@@ -3301,12 +3316,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             )
 
     def _expand_schema(self, samples):
+        expanded = False
         fields = self.get_field_schema(include_private=True)
         for sample in samples:
             self._validate_media_type(sample)
 
             if self.media_type == fom.VIDEO:
-                self._expand_frame_schema(sample.frames)
+                expanded |= self._expand_frame_schema(sample.frames)
 
             for field_name in sample._get_field_names(include_private=True):
                 if field_name == "_id":
@@ -3315,19 +3331,19 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 if field_name in fields:
                     continue
 
-                if field_name == "frames" and self.media_type == fom.VIDEO:
-                    continue
-
                 value = sample[field_name]
                 if value is None:
                     continue
 
                 self._sample_doc_cls.add_implied_field(field_name, value)
                 fields = self.get_field_schema(include_private=True)
+                expanded = True
 
-        self._reload()
+        if expanded:
+            self._reload()
 
     def _expand_frame_schema(self, frames):
+        expanded = False
         fields = self.get_frame_field_schema(include_private=True)
         for frame in frames.values():
             for field_name in frame._get_field_names(include_private=True):
@@ -3343,8 +3359,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
                 self._frame_doc_cls.add_implied_field(field_name, value)
                 fields = self.get_frame_field_schema(include_private=True)
+                expanded = True
 
-        return fields
+        return expanded
 
     def _validate_media_type(self, sample):
         if self.media_type != sample.media_type:
@@ -3373,32 +3390,25 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
             return self._frame_doc_cls.from_dict(d, extended=False)
 
-    def _validate_sample(self, sample):
+    def _validate_samples(self, samples):
         fields = self.get_field_schema(include_private=True)
+        for sample in samples:
+            non_existent_fields = set()
 
-        non_existent_fields = {
-            fn for fn in sample.field_names if fn not in fields
-        }
+            for field_name, value in sample.iter_fields():
+                field = fields.get(field_name, None)
+                if field is None:
+                    if value is not None:
+                        non_existent_fields.add(field_name)
+                else:
+                    if value is not None or not field.null:
+                        field.validate(value)
 
-        if self.media_type == fom.VIDEO:
-            non_existent_fields.discard("frames")
-
-        if non_existent_fields:
-            msg = "The fields %s do not exist on the dataset '%s'" % (
-                non_existent_fields,
-                self.name,
-            )
-            raise moe.FieldDoesNotExist(msg)
-
-        for field_name, value in sample.iter_fields():
-            field = fields[field_name]
-            if field_name == "frames" and self.media_type == fom.VIDEO:
-                continue
-
-            if value is None and field.null:
-                continue
-
-            field.validate(value)
+            if non_existent_fields:
+                raise ValueError(
+                    "Fields %s do not exist on dataset '%s'"
+                    % (non_existent_fields, self.name)
+                )
 
     def reload(self):
         """Reloads the dataset and any in-memory samples from the database."""
@@ -3896,12 +3906,12 @@ def _merge_samples(
     key_field,
     skip_existing=False,
     insert_new=True,
-    expand_schema=True,
     fields=None,
     omit_fields=None,
     omit_none_fields=True,
-    merge_lists=False,
+    merge_lists=True,
     overwrite=True,
+    expand_schema=True,
     include_info=True,
     overwrite_info=False,
 ):
@@ -4167,7 +4177,7 @@ def _merge_samples(
 
 def _merge_docs(
     sample_collection,
-    merge_lists=False,
+    merge_lists=True,
     fields=None,
     omit_fields=None,
     delete_fields=None,

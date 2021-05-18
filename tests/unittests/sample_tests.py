@@ -9,10 +9,7 @@ import datetime
 import os
 import unittest
 
-from mongoengine.errors import (
-    FieldDoesNotExist,
-    ValidationError,
-)
+from mongoengine.errors import ValidationError
 import numpy as np
 
 import fiftyone as fo
@@ -226,7 +223,7 @@ class SampleInDatasetTests(unittest.TestCase):
 
         sample[field_name] = value
 
-        with self.assertRaises(FieldDoesNotExist):
+        with self.assertRaises(ValueError):
             dataset.add_sample(sample, expand_schema=False)
 
         # ensure sample was not inserted
@@ -248,7 +245,7 @@ class SampleInDatasetTests(unittest.TestCase):
 
         sample[field_name] = value
 
-        with self.assertRaises(FieldDoesNotExist):
+        with self.assertRaises(ValueError):
             dataset.add_samples([sample], expand_schema=False)
 
         dataset.add_samples([sample])

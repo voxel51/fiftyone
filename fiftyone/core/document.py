@@ -229,7 +229,7 @@ class _Document(object):
         fields=None,
         omit_fields=None,
         omit_none_fields=True,
-        merge_lists=False,
+        merge_lists=True,
         overwrite=True,
         expand_schema=True,
     ):
@@ -244,17 +244,18 @@ class _Document(object):
                 exclude from the merge
             omit_none_fields (True): whether to omit ``None``-valued fields of
                 the provided document
-            merge_lists (False): whether to merge top-level list fields and the
-                elements of label list fields. If ``True``, this parameter
-                supercedes the ``overwrite`` parameter for list fields, and,
-                for label lists fields, existing
+            merge_lists (True): whether to merge the elements of top-level list
+                fields (e.g., ``tags``) and label list fields (e.g.,
+                :class:`fiftyone.core.labels.Detections` fields) rather than
+                merging the entire top-level field like other field types.
+                For label lists fields, existing
                 :class:`fiftyone.core.label.Label` elements are either replaced
                 (when ``overwrite`` is True) or kept (when ``overwrite`` is
-                False) when their ``id`` matches a
-                :class:`fiftyone.core.label.Label` from the provided document
-            overwrite (True): whether to overwrite existing fields. Note that
-                existing fields whose values are ``None`` are always
-                overwritten
+                False) when their ``id`` matches a label from the provided
+                document
+            overwrite (True): whether to overwrite (True) or skip (False)
+                existing fields. Note that fields whose values are ``None`` or
+                missing are always overwritten
             expand_schema (True): whether to dynamically add new fields
                 encountered to the document schema. If False, an error is
                 raised if any fields are not in the document schema
