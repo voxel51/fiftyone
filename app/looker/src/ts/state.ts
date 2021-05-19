@@ -3,6 +3,7 @@
  */
 
 import { colorGenerator, ColorGenerator } from "./color";
+import { Overlay } from "./overlays/base";
 
 interface BaseOptions {
   activeLabels: string[];
@@ -78,7 +79,6 @@ export interface BaseState {
   hoveringControls: boolean;
   showControls: boolean;
   showOptions: boolean;
-  tooltipOverlay: TooltipOverlay | null;
   config: BaseConfig;
   options: BaseOptions;
   scale: number;
@@ -115,7 +115,10 @@ export type Optional<T> = {
 export type StateUpdate<State extends BaseState> = (
   stateOrUpdater:
     | Optional<State>
-    | ((state: Readonly<State>) => Optional<State>)
+    | ((
+        state: Readonly<State>,
+        overlays: Readonly<Overlay<State>[]>
+      ) => Optional<State>)
 ) => void;
 
 export interface LookerProps {

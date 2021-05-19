@@ -1,7 +1,7 @@
 /**
  * Copyright 2017-2021, Voxel51, Inc.
  */
-import { fromJS, mergeDeep } from "immutable";
+import { mergeDeep } from "immutable";
 
 import {
   FrameLookerProps,
@@ -29,6 +29,7 @@ import { LookerElement } from "./elements/common";
 import { ClassificationsOverlay, FROM_FO } from "./overlays";
 import { ClassificationLabels } from "./overlays/classifications";
 import { Overlay } from "./overlays/base";
+import processOverlays from "./processOverlays";
 
 interface BaseSample {
   metadata: {
@@ -47,6 +48,7 @@ abstract class Looker<
   private lookerElement: LookerElement<State>;
   private readonly canvas: HTMLCanvasElement;
   private parentObserver: ResizeObserver;
+  private currentOverlays: Overlay<State>[];
 
   protected readonly updater: StateUpdate<State>;
   protected readonly getElements: GetElements<State>;
@@ -89,10 +91,22 @@ abstract class Looker<
     return (stateOrUpdater) => {
       const updates =
         stateOrUpdater instanceof Function
-          ? stateOrUpdater(this.state)
+          ? stateOrUpdater(this.state, this.currentOverlays)
           : stateOrUpdater;
       this.state = mergeDeep<State>(this.state, updates);
       this.lookerElement.render(this.state as Readonly<State>);
+      const context = this.canvas.getContext("2d");
+      this.currentOverlays = processOverlays(
+        context,
+        this.state,
+        this.pluckOverlays(this.state)
+      );
+      clearCanvas(context);
+
+      const numOverlays = this.currentOverlays.length;
+      for (let index = numOverlays - 1; index > 0; index--) {
+        this.currentOverlays[index].draw(context, this.state);
+      }
     };
   }
 
@@ -141,7 +155,6 @@ abstract class Looker<
       hoveringControls: false,
       showControls: false,
       showOptions: false,
-      tooltipOverlay: null,
       loaded: false,
       scale: 1,
       pan: <Coordinates>[0, 0],

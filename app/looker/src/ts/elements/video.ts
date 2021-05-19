@@ -135,7 +135,7 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
 
   events: Events<VideoState> = {
     keydown: ({ event, update }) => {
-      if (event.keyCode === 32) {
+      if (event.key === "Space") {
         update(({ playing }) => {
           return {
             playing: !playing,
@@ -143,19 +143,17 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
         });
       }
 
-      if (event.keyCode === 37) {
-        // left arrow
+      if (event.key === "ArrowLeft") {
         update(({ frameNumber, locked, fragment, playing }) => {
           if (!playing) {
-            return;
+            return {};
           }
           const limit = locked && fragment ? fragment[0] : 1;
           return { frameNumber: Math.max(limit, frameNumber - 1) };
         });
       }
 
-      if (event.keyCode === 39) {
-        // right arrow
+      if (event.key === "ArrowRight") {
         update(
           ({
             frameNumber,
@@ -166,7 +164,7 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
             config: { frameRate },
           }) => {
             if (!playing) {
-              return;
+              return {};
             }
             const limit =
               locked && fragment
@@ -184,6 +182,7 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
             playing: true,
           };
         }
+        return {};
       });
     },
     mouseleave: ({ update }) => {
@@ -193,6 +192,7 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
             playing: false,
           };
         }
+        return {};
       });
     },
     error: ({ event, dispatchEvent }) => {
