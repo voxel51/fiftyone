@@ -50,7 +50,7 @@ export abstract class BaseElement<
     children.forEach((child, i) => {
       const isShown = this.children[i].isShown(state);
       if (child.parentNode === this.element) {
-        if (isShown) {
+        if (!isShown) {
           this.element.removeChild(child);
         }
         return;

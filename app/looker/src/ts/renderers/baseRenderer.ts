@@ -35,42 +35,6 @@ function handleMouseEvent(e) {
 
   const notThumbnail = !this.player.options.thumbnail;
 
-  let rotation = false;
-  let fm = this._getOrderedOverlays({ x, y });
-  const mousemove = eventType === "mousemove";
-  if (pausedOrImage && notThumbnail) {
-    let down = null;
-    let up = null;
-    if (eventType === "keydown" && this._canFocus) {
-      if (e.key === "ArrowDown") {
-        down = true;
-      } else if (e.key === "ArrowUp") {
-        up = true;
-      }
-    }
-    if (down || up) {
-      rotation = true;
-      e.stopPropagation();
-      e.preventDefault();
-      const contained = fm.filter((o) => o.containsPoint(x, y) > 0).length;
-      if (up && contained > 1 && this._rotateIndex > 0) {
-        fm = [
-          fm[contained - 1],
-          ...fm.slice(0, contained - 1),
-          ...fm.slice(contained),
-        ];
-        this._rotateIndex -= 1;
-      } else if (down && contained > 1 && this._rotateIndex < contained - 1) {
-        fm = [...fm.slice(1, contained), fm[0], ...fm.slice(contained)];
-        this._rotateIndex += 1;
-      }
-      this._orderedOverlayCache = fm;
-    } else if (mousemove) {
-      this._orderedOverlayCache = null;
-      this._rotateIndex = 0;
-    }
-  }
-
   const topObj = fm && fm[0] && fm[0].containsPoint(x, y) > 0 ? fm[0] : null;
   if (eventType === "click" && topObj && topObj.isSelectable(x, y)) {
     this.dispatchEvent("select", {

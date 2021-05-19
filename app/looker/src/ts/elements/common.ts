@@ -6,7 +6,10 @@ import { BaseState, Coordinates } from "../state";
 import { BaseElement, Events } from "./base";
 import { ICONS, makeCheckboxRow, makeWrapper } from "./util";
 
-export class LookerElement<State extends BaseState> extends BaseElement<State> {
+export class LookerElement<State extends BaseState> extends BaseElement<
+  State,
+  HTMLDivElement
+> {
   private hideControlsTimeout?: ReturnType<typeof setTimeout>;
 
   events: Events<State> = {
@@ -19,15 +22,22 @@ export class LookerElement<State extends BaseState> extends BaseElement<State> {
     keydown: ({ event, update }) => {
       // esc: hide settings
       const e = event as KeyboardEvent;
-      if (e.keyCode === 27) {
-        update({ showControls: false, showOptions: false });
-      }
-      // s: toggle settings
-      else if (event.key === "s") {
-        update((state) => ({
-          showOptions: state.showOptions,
-          showControls: state.showControls,
-        }));
+      switch (e.key) {
+        case "ArrowDown":
+          update(({ rotate }) => ({ rotate: rotate - 1 }));
+          return;
+        case "ArrowUp":
+          update(({ rotate }) => ({ rotate: Math.min(rotate + 1, 0) }));
+          return;
+        case "Escape":
+          update({ showControls: false, showOptions: false });
+          return;
+        case "s":
+          update((state) => ({
+            showOptions: state.showOptions,
+            showControls: state.showControls,
+          }));
+          return;
       }
     },
     mouseenter: ({ update, dispatchEvent }) => {
@@ -47,6 +57,7 @@ export class LookerElement<State extends BaseState> extends BaseElement<State> {
         clearTimeout(this.hideControlsTimeout);
         this.hideControlsTimeout = null;
       }
+      update({ rotate: 0 });
     },
     mouseleave: ({ update, dispatchEvent }) => {
       dispatchEvent("mouseleave");
@@ -66,7 +77,7 @@ export class LookerElement<State extends BaseState> extends BaseElement<State> {
   createHTMLElement() {
     const element = document.createElement("div");
     element.className = "p51";
-    element.tabIndex = 0;
+    element.tabIndex = -1;
     return element;
   }
 
