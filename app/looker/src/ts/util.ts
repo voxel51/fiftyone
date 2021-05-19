@@ -249,3 +249,41 @@ export const getContainingBox = (points: Coordinates[]): BoundingBox => {
   const h = Math.max(...points.map(([_, y]) => y)) - tly;
   return [tlx, tly, w, h];
 };
+
+/**
+ *
+ */
+export const getCanvasCoordinates = function (
+  [x, y]: Coordinates,
+  [px, py]: Coordinates,
+  scale: number,
+  [tlx, tly, w, h]: BoundingBox,
+  [cw, ch]: Dimensions
+): Coordinates {
+  tlx += px;
+  tly += py;
+  w *= scale;
+  h *= scale;
+
+  x -= tlx;
+  y -= tly;
+
+  return [
+    Math.round(rescale(x, 0, w, 0, cw)),
+    Math.round(rescale(y, 0, h, 0, ch)),
+  ];
+};
+
+/**
+ * Rotates items in an array.
+ */
+export const rotate = (array: any[], rotation: number): any[] => {
+  const len = array.length >>> 0; // convert to uint
+
+  // convert count to value in range [0, len)
+  const count = ((rotation % len) + len) % len;
+
+  const result = [...array];
+  result.push(array.splice(0, count));
+  return result;
+};

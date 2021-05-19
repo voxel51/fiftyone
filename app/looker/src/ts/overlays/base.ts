@@ -49,6 +49,7 @@ export const isShown = <State extends BaseState, Label extends BaseLabel>(
 
 export interface Overlay<State extends BaseState> {
   draw(context: CanvasRenderingContext2D, state: State): void;
+  field: string;
   isShown(state: Readonly<State>): boolean;
   containsPoint(
     context: CanvasRenderingContext2D,
@@ -76,7 +77,7 @@ export abstract class CoordinateOverlay<
   State extends BaseState,
   Label extends RegularLabel
 > implements Overlay<State> {
-  protected readonly field: string;
+  readonly field: string;
   protected readonly label: Label;
 
   constructor(field: string, label: Label) {

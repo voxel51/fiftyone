@@ -46,25 +46,39 @@ abstract class Looker<
   private state: State;
   private lookerElement: LookerElement<State>;
   private readonly canvas: HTMLCanvasElement;
+  private parentObserver: ResizeObserver;
 
   protected readonly updater: StateUpdate<State>;
   protected readonly getElements: GetElements<State>;
   protected sample: Sample;
 
-  constructor({ sample, element, config, options }: Props) {
+  constructor(props: Props) {
     this.eventTarget = new EventTarget();
-    this.state = fromJS({
-      config,
-      options,
-    });
+    this.state = this.getInitialState(props.element, props);
 
-    this.sample = sample;
+    this.sample = props.sample;
     this.updater = this.makeUpdate();
+    this.observeParent(props.element);
     this.lookerElement = this.getElements(this.updater, this.dispatchEvent);
-    element.appendChild(this.lookerElement.element);
+    props.element.appendChild(this.lookerElement.element);
+
     this.canvas = this.lookerElement.element.querySelector("canvas");
     const context = this.canvas.getContext("2d");
     clearCanvas(context);
+  }
+
+  private observeParent(parentElement: HTMLElement) {
+    this.parentObserver = new ResizeObserver(([{ contentRect }]) => {
+      this.updater({
+        box: <BoundingBox>[
+          contentRect.top,
+          contentRect.left,
+          contentRect.width,
+          contentRect.height,
+        ],
+      });
+    });
+    this.parentObserver.observe(parentElement);
   }
 
   protected dispatchEvent(eventType: string, detail: any) {
@@ -95,6 +109,7 @@ abstract class Looker<
       this.lookerElement.element
     );
     delete this.eventTarget;
+    delete this.parentObserver;
   }
 
   update(sample: Sample, options: Props["options"]) {
@@ -119,7 +134,7 @@ abstract class Looker<
     const rect = parentElement.getBoundingClientRect();
     return {
       cursorCoordinates: null,
-      playerBox: <BoundingBox>[rect.top, rect.left, rect.width, rect.height],
+      box: <BoundingBox>[rect.top, rect.left, rect.width, rect.height],
       disableControls: false,
       focused: false,
       hovering: false,
@@ -130,6 +145,7 @@ abstract class Looker<
       loaded: false,
       scale: 1,
       pan: <Coordinates>[0, 0],
+      rotate: 0,
     };
   }
 }

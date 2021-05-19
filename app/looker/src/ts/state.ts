@@ -70,7 +70,7 @@ export interface TooltipOverlay {
 
 export interface BaseState {
   cursorCoordinates: Coordinates;
-  playerBox: BoundingBox;
+  box: BoundingBox;
   disableControls: boolean;
   focused: boolean;
   loaded: boolean;
@@ -83,6 +83,7 @@ export interface BaseState {
   options: BaseOptions;
   scale: number;
   pan: Coordinates;
+  rotate: number;
 }
 
 export interface FrameState extends BaseState {
