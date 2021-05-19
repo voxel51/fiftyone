@@ -3,6 +3,7 @@
  */
 
 import { BaseState, Coordinates } from "../state";
+import { getCanvasCoordinates } from "../util";
 import { BaseElement, Events } from "./base";
 import { ICONS, makeCheckboxRow, makeWrapper } from "./util";
 
@@ -88,24 +89,59 @@ export class LookerElement<State extends BaseState> extends BaseElement<
 
 export class CanvasElement<State extends BaseState> extends BaseElement<State> {
   events: Events<State> = {
-    click: ({ update }) => {
-      update({ showOptions: false });
+    click: ({ update, dispatchEvent }) => {
+      update({ showOptions: false }, (context, state, overlays) => {
+        if (overlays.length) {
+          dispatchEvent(
+            "select",
+            overlays[0].getSelectData(
+              context,
+              state,
+              getCanvasCoordinates(
+                state.cursorCoordinates,
+                state.pan,
+                state.scale,
+                state.box,
+                [context.canvas.width, context.canvas.height]
+              )
+            )
+          );
+        }
+      });
     },
-    mouseenter: ({ update }) => {},
     mouseleave: ({ update }) => {
       update({
-        tooltipOverlay: null,
         cursorCoordinates: null,
         disableControls: false,
       });
     },
-    mousemove: ({ event, update }) => {
-      update({
-        cursorCoordinates: [
-          (<MouseEvent>event).clientX,
-          (<MouseEvent>event).clientY,
-        ],
-      });
+    mousemove: ({ event, update, dispatchEvent }) => {
+      update(
+        {
+          cursorCoordinates: [
+            (<MouseEvent>event).clientX,
+            (<MouseEvent>event).clientY,
+          ],
+        },
+        (context, state, overlays) => {
+          if (overlays.length) {
+            dispatchEvent(
+              "tooltip",
+              overlays[0].getPointInfo(
+                context,
+                state,
+                getCanvasCoordinates(
+                  state.cursorCoordinates,
+                  state.pan,
+                  state.scale,
+                  state.box,
+                  [context.canvas.width, context.canvas.height]
+                )
+              )
+            );
+          }
+        }
+      );
     },
   };
 
@@ -136,7 +172,7 @@ export class ControlsElement<State extends BaseState> extends BaseElement<
       });
     },
     mouseenter: ({ update }) => {
-      update({ tooltipOverlay: null, hoveringControls: true });
+      update({ hoveringControls: true });
     },
     mouseleave: ({ update }) => {
       update({ hoveringControls: false });
@@ -213,7 +249,7 @@ export class OptionsPanelElement<State extends BaseState> extends BaseElement<
 
   events: Events<State> = {
     mouseenter: ({ update }) => {
-      update({ tooltipOverlay: null, hoveringControls: true });
+      update({ hoveringControls: true });
     },
     mouseleave: ({ update }) => {
       update({ hoveringControls: false });

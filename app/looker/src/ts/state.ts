@@ -115,10 +115,12 @@ export type Optional<T> = {
 export type StateUpdate<State extends BaseState> = (
   stateOrUpdater:
     | Optional<State>
-    | ((
-        state: Readonly<State>,
-        overlays: Readonly<Overlay<State>[]>
-      ) => Optional<State>)
+    | ((state: Readonly<State>) => Optional<State>),
+  postUpdate?: (
+    context: CanvasRenderingContext2D,
+    state: Readonly<State>,
+    overlays: Readonly<Overlay<State>[]>
+  ) => void
 ) => void;
 
 export interface LookerProps {
