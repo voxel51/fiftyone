@@ -1,5 +1,6 @@
 /** @type {import("snowpack").SnowpackUserConfig } */
 module.exports = {
+  workspaceRoot: "../",
   optimize: {
     bundle: true,
     minify: true,
@@ -35,6 +36,6 @@ module.exports = {
   buildOptions: {
     baseUrl: "",
     clean: true,
-    out: "../fiftyone/server/static",
+    out: "../../fiftyone/server/static",
   },
 };

@@ -259,7 +259,9 @@ const onSelectLabel = (frameNumberRef) => {
   return useRecoilCallback(
     ({ snapshot, set }) => async ({ data: { id, field } }: SelectEvent) => {
       const { sample_id } = await snapshot.getPromise(atoms.modal);
-      let labels = { ...(await snapshot.getPromise(selectors.selectedLabels)) };
+      let labels = {
+        ...(await snapshot.getPromise(selectors.selectedLabels)),
+      };
       if (labels[id]) {
         delete labels[id];
       } else {
@@ -281,49 +283,9 @@ const SampleModal = ({ onClose }: Props, ref) => {
   const [index, setIndex] = useRecoilState(modalIndex);
   const numSamples = useRecoilValue(selectors.currentSamplesSize);
   const playerContainerRef = useRef();
-  const [playerStyle, setPlayerStyle] = useState({
-    height: "100%",
-    width: "100%",
-  });
   const showJSON = useRecoilValue(atoms.showModalJSON);
   const [enableJSONFilter, setEnableJSONFilter] = useState(true);
   const [fullscreen, setFullscreen] = useState(false);
-
-  // save overlay options when navigating - these are restored by passing them
-  // in defaultOverlayOptions when the new player is created
-  const playerRef = useRef();
-
-  const handleResize = () => {
-    if (!playerRef.current || !playerContainerRef.current || showJSON) {
-      return;
-    }
-    const container = playerContainerRef.current;
-    const containerRatio = container.clientWidth / container.clientHeight;
-    const contentDimensions = playerRef.current.getContentDimensions();
-    if (
-      !contentDimensions ||
-      contentDimensions.width === 0 ||
-      contentDimensions.height === 0
-    ) {
-      // content may not have loaded yet
-      return;
-    }
-    const contentRatio = contentDimensions.width / contentDimensions.height;
-    if (containerRatio < contentRatio) {
-      setPlayerStyle({
-        width: container.clientWidth,
-        height: container.clientWidth / contentRatio,
-      });
-    } else {
-      setPlayerStyle({
-        height: container.clientHeight,
-        width: container.clientHeight * contentRatio,
-      });
-    }
-  };
-
-  useResizeHandler(handleResize);
-  useEffect(handleResize, [sampleUrl, showJSON, fullscreen]);
 
   useKeydownHandler((e) => {
     if (
@@ -346,10 +308,6 @@ const SampleModal = ({ onClose }: Props, ref) => {
     }
   });
   const theme = useTheme();
-  const frameNumberRef = useRef(null);
-  useEventHandler(playerRef.current, "timeupdate", (e) => {
-    frameNumberRef.current = e.data.frame_number;
-  });
 
   return (
     <Container
@@ -360,7 +318,6 @@ const SampleModal = ({ onClose }: Props, ref) => {
       <div className="player" ref={playerContainerRef}>
         {showJSON ? (
           <JSONView
-            currentFrame={frameNumberRef.current}
             filterJSON={enableJSONFilter}
             enableFilter={setEnableJSONFilter}
           />
@@ -369,10 +326,6 @@ const SampleModal = ({ onClose }: Props, ref) => {
             key={sampleSrc} // force re-render when this changes
             sampleId={sample._id}
             thumbnail={false}
-            style={{
-              position: "relative",
-              ...playerStyle,
-            }}
           />
         )}
         {index > 0 ? (

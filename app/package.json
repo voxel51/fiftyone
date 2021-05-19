@@ -5,5 +5,8 @@
         "client",
         "looker"
     ],
-    "scripts": {}
+    "scripts": {},
+    "devDependencies": {
+        "patch-package": "^6.4.7"
+    }
 }

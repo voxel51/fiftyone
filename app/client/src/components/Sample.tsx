@@ -5,7 +5,7 @@ import { animated, useSpring, useTransition } from "react-spring";
 import { Checkbox } from "@material-ui/core";
 
 import * as labelAtoms from "./Filters/utils";
-import Player51 from "./Looker";
+import Looker from "./Looker";
 import Tag from "./Tags/Tag";
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
@@ -314,7 +314,7 @@ const Sample = ({ sampleId }: { sampleId: string }) => {
       >
         <Selector key={sampleId} sampleId={sampleId} spring={selectorSpring} />
         <SampleInfo sampleId={sampleId} />
-        <Player51
+        <Looker
           onClick={onClick}
           style={{
             height: "100%",

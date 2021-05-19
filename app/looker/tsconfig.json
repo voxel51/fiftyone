@@ -13,7 +13,7 @@
         "outDir": "dist",
         "rootDir": "src",
         "target": "es5",
-        "module": "commonjs",
+        "module": "es2015",
         "lib": ["esnext", "dom"],
         "moduleResolution": "node",
         "esModuleInterop": true,
