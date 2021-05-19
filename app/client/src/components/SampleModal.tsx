@@ -13,7 +13,7 @@ import FieldsSidebar from "./FieldsSidebar";
 import * as labelAtoms from "./Filters/utils";
 import { labelFilters } from "./Filters/LabelFieldFilters.state";
 import JSONView from "./JSONView";
-import Player51 from "./Player51";
+import Player51 from "./Looker";
 import { ModalFooter } from "./utils";
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";

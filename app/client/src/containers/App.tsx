@@ -17,7 +17,7 @@ import socket, { handleId, isNotebook } from "../shared/connection";
 
 import Error from "./Error";
 import Setup from "./Setup";
-import "player51/src/css/player51.css";
+import "looker/src/style.css";
 import "../app.global.css";
 import { patching } from "../components/Actions/Patcher";
 import { similaritySorting } from "../components/Actions/Similar";

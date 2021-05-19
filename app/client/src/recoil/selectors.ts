@@ -2,7 +2,7 @@ import mime from "mime-types";
 import { selector, selectorFamily, SerializableParam } from "recoil";
 
 import * as atoms from "./atoms";
-import { ColorGenerator } from "player51";
+import { ColorGenerator } from "looker";
 import { generateColorMap } from "../utils/colors";
 import {
   RESERVED_FIELDS,

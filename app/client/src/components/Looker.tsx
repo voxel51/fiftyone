@@ -1,14 +1,10 @@
-import mime from "mime-types";
 import React, { useState, useEffect, useRef, MutableRefObject } from "react";
 import ReactDOM from "react-dom";
 import styled from "styled-components";
 import {
-  RecoilState,
-  RecoilValueReadOnly,
   SerializableParam,
   selectorFamily,
   useRecoilValue,
-  useSetRecoilState,
   useRecoilCallback,
 } from "recoil";
 import { Warning } from "@material-ui/icons";
@@ -16,8 +12,7 @@ import { animated, useSpring } from "react-spring";
 
 import { ContentDiv, ContentHeader } from "./utils";
 import ExternalLink from "./ExternalLink";
-import { LabelFilters } from "./Filters/LabelFieldFilters.state";
-import Player51 from "player51";
+import { FrameLooker, ImageLooker, VideoLooker } from "looker";
 import { useEventHandler } from "../utils/hooks";
 import { useMove } from "react-use-gesture";
 
@@ -432,7 +427,7 @@ const player51Options = selectorFamily<
   },
 });
 
-interface PlayerProps {
+interface LookerProps {
   onClick?: React.MouseEventHandler<HTMLDivElement>;
   onLoad?: EventCallback;
   onSelect?: EventCallback;
@@ -442,7 +437,7 @@ interface PlayerProps {
   thumbnail: boolean;
 }
 
-const Player = ({
+const Looker = ({
   onClick,
   onLoad,
   onSelect,
@@ -450,7 +445,7 @@ const Player = ({
   sampleId,
   style,
   thumbnail,
-}: PlayerProps) => {
+}: LookProps) => {
   const playerOptions = useRecoilValue(
     player51Options({ sampleId, thumbnail })
   );
@@ -458,7 +453,6 @@ const Player = ({
   const id = `${thumbnail ? "thumbnail" : ""}-${sampleId}`;
   playerRef = playerRef ? playerRef : useRef();
 
-  console.log(playerOptions);
   useEffect(() => {
     if (playerRef && playerRef.current) {
       try {
@@ -468,8 +462,7 @@ const Player = ({
       }
     } else {
       try {
-        playerRef.current = new Player51(playerOptions);
-        playerRef.current.render(id);
+        playerRef.current = new ImageLooker();
       } catch {
         setError(`This file is not supported.`);
       }
@@ -489,7 +482,7 @@ const Player = ({
   const bindMove = useMove((s) => ref.current && ref.current(s));
 
   return (
-    <animated.div id={id} style={style} onClick={onClick} {...bindMove()}>
+    <animated.div ref={ref} style={style} onClick={onClick} {...bindMove()}>
       {error && (
         <InfoWrapper>
           <Warning classes={{ root: "error" }} />
