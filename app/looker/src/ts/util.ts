@@ -168,9 +168,6 @@ export function getMaxWidthByLine(
   let maxWidth = 0;
   for (const line of lines) {
     const lineWidth = context.measureText(line).width;
-    if (lineWidth === 0) {
-      return;
-    }
     if (lineWidth > maxWidth) {
       maxWidth = lineWidth;
     }

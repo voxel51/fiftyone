@@ -3,6 +3,7 @@
  */
 import { mergeDeep } from "immutable";
 
+export { ColorGenerator } from "./color";
 import {
   FrameLookerProps,
   FrameState,
@@ -88,11 +89,12 @@ abstract class Looker<
   }
 
   private makeUpdate(): StateUpdate<State> {
-    return (stateOrUpdater) => {
+    return (stateOrUpdater, postUpdate) => {
       const updates =
         stateOrUpdater instanceof Function
-          ? stateOrUpdater(this.state, this.currentOverlays)
+          ? stateOrUpdater(this.state)
           : stateOrUpdater;
+
       this.state = mergeDeep<State>(this.state, updates);
       this.lookerElement.render(this.state as Readonly<State>);
       const context = this.canvas.getContext("2d");
@@ -101,6 +103,9 @@ abstract class Looker<
         this.state,
         this.pluckOverlays(this.state)
       );
+      if (postUpdate) {
+        postUpdate(context, this.state, this.currentOverlays);
+      }
       clearCanvas(context);
 
       const numOverlays = this.currentOverlays.length;

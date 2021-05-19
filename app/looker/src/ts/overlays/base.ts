@@ -49,8 +49,8 @@ export const isShown = <State extends BaseState, Label extends BaseLabel>(
 
 export interface Overlay<State extends BaseState> {
   draw(context: CanvasRenderingContext2D, state: State): void;
-  field: string;
   isShown(state: Readonly<State>): boolean;
+  field?: string;
   containsPoint(
     context: CanvasRenderingContext2D,
     state: Readonly<State>,

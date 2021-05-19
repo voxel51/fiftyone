@@ -17,7 +17,7 @@ export default class SegmentationOverlay<State extends BaseState>
   private readonly intermediateCanvas: HTMLCanvasElement = document.createElement(
     "canvas"
   );
-  private readonly field: string;
+  readonly field: string;
   private readonly label: SegmentationLabel;
   private readonly mask: NumpyResult;
   private generator: ColorGenerator;
