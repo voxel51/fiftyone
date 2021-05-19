@@ -266,10 +266,29 @@ class DatasetTests(unittest.TestCase):
             hello="world",
         )
 
-        dataset1 = fo.Dataset()
-        dataset1.add_samples([sample11, sample12, sample13])
+        sample14 = fo.Sample(
+            filepath="image4.png",
+            ground_truth=fo.Detections(
+                detections=[
+                    fo.Detection(label="hi"),
+                    fo.Detection(label="there"),
+                ]
+            ),
+            hello="world",
+        )
 
-        common = sample13.ground_truth.detections[2].copy()
+        sample15 = fo.Sample(
+            filepath="image5.png", ground_truth=None, hello=None,
+        )
+
+        dataset1 = fo.Dataset()
+        dataset1.add_samples(
+            [sample11, sample12, sample13, sample14, sample15]
+        )
+
+        ref = sample13.ground_truth.detections[2]
+        common = ref.copy()
+        common._id = ref._id
         common.label = "COMMON"
 
         sample22 = fo.Sample(filepath="image2.png")
@@ -294,7 +313,11 @@ class DatasetTests(unittest.TestCase):
         )
 
         sample24 = fo.Sample(
-            filepath="image4.png",
+            filepath="image4.png", ground_truth=None, hello=None,
+        )
+
+        sample25 = fo.Sample(
+            filepath="image5.png",
             tags=["bar"],
             ground_truth=fo.Detections(
                 detections=[
@@ -311,15 +334,12 @@ class DatasetTests(unittest.TestCase):
             hello="bar",
         )
 
-        sample25 = fo.Sample(filepath="image5.png")
+        sample26 = fo.Sample(filepath="image6.png")
 
         dataset2 = fo.Dataset()
-        dataset2.add_samples([sample22, sample23, sample24, sample25])
-
-        # Ensure field is None, not just
-        sample = dataset2.first()
-        sample.hello = None
-        sample.save()
+        dataset2.add_samples(
+            [sample22, sample23, sample24, sample25, sample26]
+        )
 
         d1 = dataset1.clone()
         d1.merge_samples(dataset2, skip_existing=True)
@@ -328,12 +348,12 @@ class DatasetTests(unittest.TestCase):
         fields2 = set(d1.get_field_schema().keys())
         new_fields = fields2 - fields1
 
-        self.assertEqual(len(d1), 5)
+        self.assertEqual(len(d1), 6)
         for s1, s2 in zip(dataset1, d1):
             for field in fields1:
                 self.assertEqual(s1[field], s2[field])
 
-            for field in fields2:
+            for field in new_fields:
                 self.assertIsNone(s2[field])
 
         d2 = dataset1.clone()
@@ -349,10 +369,10 @@ class DatasetTests(unittest.TestCase):
         d3.merge_samples(dataset2, merge_lists=False, overwrite=True)
 
         self.assertListEqual(
-            d3.values("hello"), [None, "world", "bar", "bar", None],
+            d3.values("hello"), [None, "world", "bar", "world", "bar", None],
         )
         self.assertListEqual(
-            d3.values("tags"), [[], [], ["foo"], ["bar"], []],
+            d3.values("tags"), [[], [], ["foo"], [], ["bar"], []],
         )
         self.assertListEqual(
             d3.values("ground_truth.detections.label"),
@@ -360,27 +380,28 @@ class DatasetTests(unittest.TestCase):
                 None,
                 ["hello", "world"],
                 ["COMMON", "foo", "bar"],
+                ["hi", "there"],
                 ["foo", "bar"],
                 None,
             ],
         )
         self.assertListEqual(
             d3.values("predictions1.detections.label"),
-            [None, ["hello", "world"], ["hello", "world"], None, None],
+            [None, ["hello", "world"], ["hello", "world"], None, None, None],
         )
         self.assertListEqual(
             d3.values("predictions2.detections.label"),
-            [None, None, ["foo", "bar"], ["foo", "bar"], None],
+            [None, None, ["foo", "bar"], None, ["foo", "bar"], None],
         )
 
         d4 = dataset1.clone()
         d4.merge_samples(dataset2, merge_lists=False, overwrite=False)
 
         self.assertListEqual(
-            d4.values("hello"), [None, "world", "world", "bar", None],
+            d4.values("hello"), [None, "world", "world", "world", None, None],
         )
         self.assertListEqual(
-            d4.values("tags"), [[], ["hello"], ["world"], ["bar"], []],
+            d4.values("tags"), [[], ["hello"], ["world"], [], [], []],
         )
         self.assertListEqual(
             d4.values("ground_truth.detections.label"),
@@ -388,17 +409,18 @@ class DatasetTests(unittest.TestCase):
                 None,
                 ["hello", "world"],
                 ["hello", "world", "common"],
-                ["foo", "bar"],
+                ["hi", "there"],
+                None,
                 None,
             ],
         )
         self.assertListEqual(
             d4.values("predictions1.detections.label"),
-            [None, ["hello", "world"], ["hello", "world"], None, None],
+            [None, ["hello", "world"], ["hello", "world"], None, None, None],
         )
         self.assertListEqual(
             d4.values("predictions2.detections.label"),
-            [None, None, ["foo", "bar"], ["foo", "bar"], None],
+            [None, None, ["foo", "bar"], None, ["foo", "bar"], None],
         )
 
         d5 = dataset1.clone()
@@ -409,10 +431,10 @@ class DatasetTests(unittest.TestCase):
 
         self.assertNotIn("predictions2", d5.get_field_schema())
         self.assertListEqual(
-            d5.values("hello"), [None, "world", "bar", "bar", None],
+            d5.values("hello"), [None, "world", "bar", "world", "bar", None],
         )
         self.assertListEqual(
-            d5.values("tags"), [[], ["hello"], ["world"], [], []],
+            d5.values("tags"), [[], ["hello"], ["world"], [], [], []],
         )
         self.assertListEqual(
             d5.values("ground_truth.detections.label"),
@@ -420,6 +442,7 @@ class DatasetTests(unittest.TestCase):
                 None,
                 ["hello", "world"],
                 ["hello", "world", "common"],
+                ["hi", "there"],
                 None,
                 None,
             ],
@@ -435,10 +458,10 @@ class DatasetTests(unittest.TestCase):
 
         self.assertNotIn("predictions2", d6.get_field_schema())
         self.assertListEqual(
-            d6.values("hello"), [None, "world", "bar", "bar", None],
+            d6.values("hello"), [None, "world", "bar", "world", "bar", None],
         )
         self.assertListEqual(
-            d6.values("tags"), [[], ["hello"], ["world"], [], []],
+            d6.values("tags"), [[], ["hello"], ["world"], [], [], []],
         )
         self.assertListEqual(
             d6.values("ground_truth.detections.label"),
@@ -446,21 +469,94 @@ class DatasetTests(unittest.TestCase):
                 None,
                 ["hello", "world"],
                 ["hello", "world", "common"],
+                ["hi", "there"],
                 None,
                 None,
             ],
         )
 
-        # @todo complete this
-
         d7 = dataset1.clone()
-        d7.merge_samples(dataset2, omit_none_fields=False)
+        d7.merge_samples(
+            dataset2,
+            omit_none_fields=False,
+            merge_lists=False,
+            overwrite=True,
+        )
+
+        self.assertListEqual(
+            d7.values("hello"), [None, "world", "bar", None, "bar", None]
+        )
+        self.assertListEqual(
+            d7.values("ground_truth.detections.label"),
+            [
+                None,
+                ["hello", "world"],
+                ["COMMON", "foo", "bar"],
+                None,
+                ["foo", "bar"],
+                None,
+            ],
+        )
 
         d8 = dataset1.clone()
         d8.merge_samples(dataset2)
 
+        self.assertListEqual(
+            d8.values("hello"), [None, "world", "bar", "world", "bar", None],
+        )
+        self.assertListEqual(
+            d8.values("tags"),
+            [[], ["hello"], ["world", "foo"], [], ["bar"], []],
+        )
+        self.assertListEqual(
+            d8.values("ground_truth.detections.label"),
+            [
+                None,
+                ["hello", "world"],
+                ["hello", "world", "COMMON", "foo", "bar"],
+                ["hi", "there"],
+                ["foo", "bar"],
+                None,
+            ],
+        )
+        self.assertListEqual(
+            d8.values("predictions1.detections.label"),
+            [None, ["hello", "world"], ["hello", "world"], None, None, None],
+        )
+        self.assertListEqual(
+            d8.values("predictions2.detections.label"),
+            [None, None, ["foo", "bar"], None, ["foo", "bar"], None],
+        )
+
         d9 = dataset1.clone()
         d9.merge_samples(dataset2, overwrite=False)
+
+        self.assertListEqual(
+            d9.values("hello"), [None, "world", "world", "world", None, None],
+        )
+        self.assertListEqual(
+            d9.values("tags"),
+            [[], ["hello"], ["world", "foo"], [], ["bar"], []],
+        )
+        self.assertListEqual(
+            d9.values("ground_truth.detections.label"),
+            [
+                None,
+                ["hello", "world"],
+                ["hello", "world", "common", "foo", "bar"],
+                ["hi", "there"],
+                ["foo", "bar"],
+                None,
+            ],
+        )
+        self.assertListEqual(
+            d9.values("predictions1.detections.label"),
+            [None, ["hello", "world"], ["hello", "world"], None, None, None],
+        )
+        self.assertListEqual(
+            d9.values("predictions2.detections.label"),
+            [None, None, ["foo", "bar"], None, ["foo", "bar"], None],
+        )
 
     @drop_datasets
     def test_rename_fields(self):

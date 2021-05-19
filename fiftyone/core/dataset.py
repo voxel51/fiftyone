@@ -4010,16 +4010,16 @@ def _merge_samples(
     # Merge samples
     #
 
+    default_fields = {"filepath", "tags", "metadata", "_rand", "_media_type"}
+
     sample_pipeline = src_collection._pipeline(detach_frames=True)
 
     if fields is not None:
         project = {f: True for f in fields}
 
         if insert_new:
-            # If new samples may be inserted, we must include sensible values
-            # for all default fields even if the user didn't request that they
-            # be included when merging. Any extra fields added here are omitted
-            # in the `when_matched` pipeline
+            # Must include default fields when new samples may be inserted.
+            # Any extra fields here are omitted in `when_matched` pipeline
             project["filepath"] = True
             project["_rand"] = True
             project["_media_type"] = True
@@ -4036,6 +4036,11 @@ def _merge_samples(
 
     _omit_fields.add("_id")
     _omit_fields.discard(key_field)
+
+    if insert_new:
+        # Can't omit default fields here when new samples may be inserted.
+        # Any extra fields here are omitted in `when_matched` pipeline
+        _omit_fields -= default_fields
 
     if _omit_fields:
         sample_pipeline.append({"$unset": list(_omit_fields)})
@@ -4058,14 +4063,20 @@ def _merge_samples(
     if skip_existing:
         when_matched = "keepExisting"
     else:
-        if fields is not None and insert_new:
-            # We had to include all default fields since they are required if
-            # new samples are inserted, but, when merging, the user may have
-            # wanted them excluded
-            delete_fields = ["filepath", "tags", "_rand", "_media_type"]
-            delete_fields = [f for f in delete_fields if f not in fields]
-        else:
-            delete_fields = None
+        # We had to include all default fields since they are required if new
+        # samples are inserted, but, when merging, the user may have wanted
+        # them excluded
+        delete_fields = set()
+        if insert_new:
+            if fields is not None:
+                delete_fields.update(
+                    f for f in default_fields if f not in fields
+                )
+
+            if omit_fields is not None:
+                delete_fields.update(
+                    f for f in default_fields if f in omit_fields
+                )
 
         when_matched = _merge_docs(
             src_collection,
@@ -4217,7 +4228,9 @@ def _merge_docs(
                 "$filter": {
                     "input": {"$objectToArray": "$$new"},
                     "as": "item",
-                    "cond": {"$not": {"$in": ["$$item.k", delete_fields]}},
+                    "cond": {
+                        "$not": {"$in": ["$$item.k", list(delete_fields)]}
+                    },
                 }
             }
         }
