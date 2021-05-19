@@ -1,10 +1,6 @@
-import _ from "lodash";
-
-import { RESERVED_FIELDS } from "./labels";
-
 let seedCache = 0;
 let mapCache = {};
-let poolCache = null;
+let poolCache: string[] = null;
 let colorByLabelCache = false;
 
 function shuffle(array: string[], seed: number) {
@@ -29,10 +25,8 @@ function random(seed: number) {
   return x - Math.floor(x);
 }
 
-type Color = string;
-
 export function generateColorMap(
-  colorPool: Color[],
+  colorPool: string[],
   seed: number,
   colorByLabel = false
 ): (value) => string {
