@@ -50,7 +50,8 @@ export class PlayButtonElement extends BaseElement<VideoState> {
 export class SeekBarElement extends BaseElement<VideoState> {
   events: Events<VideoState> = {
     input: ({ event, update }) => {
-      const progress = event.target.valueAsNumber / 100;
+      const target = event.target as HTMLInputElement;
+      const progress = target.valueAsNumber / 100;
       update(({ duration, config: { frameRate } }) => {
         return {
           frameNumber: getFrameNumber(duration * progress, duration, frameRate),
@@ -64,7 +65,8 @@ export class SeekBarElement extends BaseElement<VideoState> {
       }),
 
     mouseup: ({ event, update }) => {
-      const progress = event.target.valueAsNumber / 100;
+      const target = event.target as HTMLInputElement;
+      const progress = target.valueAsNumber / 100;
       update(({ duration, config: { frameRate } }) => {
         return {
           frameNumber: getFrameNumber(duration * progress, duration, frameRate),
@@ -209,6 +211,7 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
       dispatchEvent("load");
     },
     play: ({ event, update }) => {
+      const target = event.target as HTMLVideoElement;
       const callback = () => {
         update(
           ({
@@ -223,7 +226,7 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
               window.requestAnimationFrame(callback);
             }
             let newFrameNumber = getFrameNumber(
-              event.target.currentTime,
+              target.currentTime,
               duration,
               frameRate
             );
@@ -247,32 +250,27 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
       requestAnimationFrame(callback);
     },
     pause: ({ event, update }) => {
+      const target = event.target as HTMLVideoElement;
       update(({ playing, seeking, fragment }) => {
-        if (playing && !seeking && !Boolean(fragment) && !event.target.ended) {
-          event.target.play();
+        if (playing && !seeking && !Boolean(fragment) && !target.ended) {
+          target.play();
         }
         return {};
       });
     },
     seeked: ({ event, update }) => {
+      const target = event.target as HTMLVideoElement;
       update(({ duration, config: { frameRate } }) => {
         return {
-          frameNumber: getFrameNumber(
-            event.target.currentTime,
-            duration,
-            frameRate
-          ),
+          frameNumber: getFrameNumber(target.currentTime, duration, frameRate),
         };
       });
     },
     timeupdate: ({ event, dispatchEvent, update }) => {
+      const target = event.target as HTMLVideoElement;
       update(({ duration, config: { frameRate } }) => {
         dispatchEvent("timeupdate", {
-          frameNumber: getFrameNumber(
-            event.target.currentTime,
-            duration,
-            frameRate
-          ),
+          frameNumber: getFrameNumber(target.currentTime, duration, frameRate),
         });
 
         return {};

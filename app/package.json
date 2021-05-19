@@ -1,6 +1,6 @@
 {
     "private": true,
-    "name": "fiftyone-packages",
+    "name": "app",
     "workspaces": [
         "client",
         "looker"

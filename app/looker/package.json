@@ -20,7 +20,8 @@
         "@ungap/event-target": "^0.2.2",
         "immutable": "^4.0.0-rc.12",
         "mime-types": "^2.1.30",
-        "pako": "^2.0.3"
+        "pako": "^2.0.3",
+        "resize-observer-polyfill": "^1.5.1"
     },
     "devDependencies": {
         "tslib": "^2.2.0"

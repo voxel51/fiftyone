@@ -34,7 +34,7 @@ export default class SegmentationOverlay<State extends BaseState>
   }
 
   containsPoint(context, state, [x, y]) {
-    if (this.getTarget([x, y])) {
+    if (this.getTarget(context, [x, y])) {
       return CONTAINS.CONTENT;
     }
     return CONTAINS.NONE;
@@ -79,7 +79,7 @@ export default class SegmentationOverlay<State extends BaseState>
   }
 
   getPointInfo(context, state, [x, y]) {
-    const target = this.getTarget([x, y]);
+    const target = this.getTarget(context, [x, y]);
     return {
       color: this.getRGBAColor(state, target),
       field: this.field,
@@ -125,8 +125,8 @@ export default class SegmentationOverlay<State extends BaseState>
     return `rgba(${r},${g},${b},${a / 255})`;
   }
 
-  private getTarget([x, y]: Coordinates) {
-    const index = this.getIndex(x, y);
+  private getTarget(context: CanvasRenderingContext2D, [x, y]: Coordinates) {
+    const index = this.getIndex(context, [x, y]);
     return this.targets[index];
   }
 }

@@ -20,7 +20,7 @@
         "build-storybook": "build-storybook",
         "build-storybook-docs": "build-storybook -s public --docs",
         "chromatic": "npx chromatic --exit-zero-on-changes",
-        "postinstall": "electron-builder install-app-deps && patch-package"
+        "postinstall": "patch-package"
     },
     "build": {
         "productName": "FiftyOne",
@@ -227,9 +227,9 @@
         "copy-to-clipboard": "^3.3.1",
         "html2canvas": "^1.0.0-rc.7",
         "lodash": "^4.17.20",
+        "looker": "*",
         "mime-types": "^2.1.27",
         "numeral": "^2.0.6",
-        "looker": "*",
         "prop-types": "^15.7.2",
         "re-resizable": "^6.8.0",
         "react": "17.0.0",

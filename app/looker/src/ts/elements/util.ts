@@ -2,7 +2,6 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 
-import { parseMediaFragmentsUri } from "../mediaFragments";
 import { BaseState, StateUpdate } from "../state";
 import { BaseElement } from "./base";
 
@@ -148,23 +147,4 @@ export const getTimeString = (
     return secondsToHhmmss(hours) + ":" + mmss;
   }
   return mmss;
-};
-
-type MediaFragment = [number, number];
-
-export const getMediaFragment = (
-  src: string,
-  duration: number,
-  frameRate: number
-): MediaFragment | null => {
-  const mfResult = parseMediaFragmentsUri(src);
-
-  if (typeof mfResult.length) {
-    const frames = [
-      mfResult[0].startNormalized,
-      mfResult[0].endNormalized,
-    ].map((time) => getFrameNumber(time, duration, frameRate));
-    return [frames[0], frames[1]];
-  }
-  return null;
 };

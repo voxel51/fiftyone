@@ -2,6 +2,7 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 import { mergeDeep } from "immutable";
+import ResizeObserver from "resize-observer-polyfill";
 
 export { ColorGenerator } from "./color";
 import {
