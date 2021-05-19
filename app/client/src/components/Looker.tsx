@@ -282,7 +282,7 @@ const TagInfo = ({ field, id, frameNumber }) => {
   );
 };
 
-const TooltipInfo = ({ playerRef, moveRef }) => {
+const TooltipInfo = ({ lookerRef, moveRef }) => {
   const [display, setDisplay] = useState(false);
   const [coords, setCoords] = useState({
     top: -1000,
@@ -302,17 +302,11 @@ const TooltipInfo = ({ playerRef, moveRef }) => {
   const [overlay, setOverlay] = useState(null);
   const ref = useRef<HTMLDivElement>(null);
 
-  useEventHandler(playerRef.current, "tooltipinfo", (e) => {
-    setOverlay(e.data.overlays.length ? e.data.overlays[0] : null);
+  useEventHandler(lookerRef.current, "tooltipinfo", (e) => {
+    setOverlay(e.detail ? e.data.overlays[0] : null);
   });
-  useEventHandler(playerRef.current, "mouseenter", () => setDisplay(true));
-  useEventHandler(playerRef.current, "mouseleave", () => setDisplay(false));
-
-  useEffect(() => {
-    moveRef.current = ({ values }) => {
-      setCoords(computeCoordinates(values, ref));
-    };
-  });
+  useEventHandler(lookerRef.current, "mouseenter", () => setDisplay(true));
+  useEventHandler(lookerRef.current, "mouseleave", () => setDisplay(false));
 
   const showProps = useSpring({
     display: display ? "block" : "none",
@@ -429,9 +423,7 @@ const player51Options = selectorFamily<
 
 interface LookerProps {
   onClick?: React.MouseEventHandler<HTMLDivElement>;
-  onLoad?: EventCallback;
   onSelect?: EventCallback;
-  playerRef?: MutableRefObject<any>;
   sampleId: string;
   style: React.CSSProperties;
   thumbnail: boolean;
@@ -439,59 +431,22 @@ interface LookerProps {
 
 const Looker = ({
   onClick,
-  onLoad,
   onSelect,
-  playerRef,
   sampleId,
   style,
   thumbnail,
-}: LookProps) => {
-  const playerOptions = useRecoilValue(
-    player51Options({ sampleId, thumbnail })
-  );
-  const [error, setError] = useState(null);
-  const id = `${thumbnail ? "thumbnail" : ""}-${sampleId}`;
-  playerRef = playerRef ? playerRef : useRef();
-
-  useEffect(() => {
-    if (playerRef && playerRef.current) {
-      try {
-        playerRef.current.update(playerOptions);
-      } catch {
-        setError(`An error occurred.`);
-      }
-    } else {
-      try {
-        playerRef.current = new ImageLooker();
-      } catch {
-        setError(`This file is not supported.`);
-      }
-    }
-  }, [playerOptions]);
-
-  useEffect(() => {
-    return () => !thumbnail && playerRef.current && playerRef.current.destroy();
-  }, [playerRef.current]);
-
-  usePlayer51Error(playerRef, sampleId, setError);
-  usePlayer51OptionsUpdate(playerRef);
-
-  onLoad && useEventHandler(playerRef.current, "load", onLoad);
-  onSelect && useEventHandler(playerRef.current, "select", onSelect);
-  const ref = useRef(null);
-  const bindMove = useMove((s) => ref.current && ref.current(s));
-
+}: LookerProps) => {
   return (
-    <animated.div ref={ref} style={style} onClick={onClick} {...bindMove()}>
-      {error && (
-        <InfoWrapper>
-          <Warning classes={{ root: "error" }} />
-          {thumbnail ? null : <div>{error}</div>}{" "}
-        </InfoWrapper>
-      )}
-      <TooltipInfo playerRef={playerRef} moveRef={ref} />
-    </animated.div>
+    <div
+      ref={(node) => {
+        if (node) {
+          new ImageLooker({});
+        }
+      }}
+      style={style}
+      onClick={onClick}
+    ></div>
   );
 };
 
-export default React.memo(Player);
+export default React.memo(Looker);
