@@ -30,11 +30,9 @@ function random(seed: number) {
 }
 
 type Color = string;
-type ColorMap = { [name: string]: Color };
 
 export function generateColorMap(
   colorPool: Color[],
-  keys: string[],
   seed: number,
   colorByLabel = false
 ): (value) => string {
@@ -45,28 +43,14 @@ export function generateColorMap(
     poolCache = colorPool;
     mapCache = {};
   }
-  const newMap = seed == seedCache ? Object.assign({}, mapCache) : {};
+  const newMap = seed === seedCache ? Object.assign({}, mapCache) : {};
   seedCache = seed;
   let colors = Array.from(poolCache);
-
-  keys = keys.filter((k) => !RESERVED_FIELDS.includes(k));
-
   if (seed > 0) {
     colors = shuffle(colors, seed);
   }
-  let idx = 0;
-  let offset = Object.keys(newMap).length;
-  [...keys, undefined, null].sort().forEach((key) => {
-    if (!newMap[key]) {
-      let color = (offset + idx) % colors.length;
-      if (isNaN(color)) {
-        color = 0;
-      }
-      newMap[key] = colors[color];
-      idx++;
-    }
-  });
 
+  let offset = Object.keys(newMap).length;
   mapCache = newMap;
   let i = 0;
   return (val) => {
