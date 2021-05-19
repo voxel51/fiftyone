@@ -1,24 +1,24 @@
 {
-    "include": ["./src"],
-    "rootDir": "./src",
     "compilerOptions": {
-        "outFile": "./build/looker.js",
-        "declaration": true,
-        "declarationMap": true,
-        "composite": true,
-        "module": "amd",
         "downlevelIteration": true,
-        "lib": ["es2020", "dom"],
         "importHelpers": true,
-        "sourceMap": true,
-        "rootDir": "./src",
         "noImplicitReturns": true,
         "noFallthroughCasesInSwitch": true,
         "noUnusedLocals": true,
         "noUnusedParameters": false,
+        "declaration": true,
+        "declarationMap": true,
+        "sourceMap": true,
+        "composite": true,
+        "outDir": "dist",
+        "rootDir": "src",
+        "target": "es5",
+        "module": "commonjs",
+        "lib": ["esnext", "dom"],
         "moduleResolution": "node",
         "esModuleInterop": true,
-        "skipLibCheck": true,
-        "forceConsistentCasingInFileNames": true
-    }
+        "forceConsistentCasingInFileNames": true,
+        "skipLibCheck": true
+    },
+    "include": ["src"]
 }

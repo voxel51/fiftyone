@@ -227,7 +227,7 @@
         "copy-to-clipboard": "^3.3.1",
         "html2canvas": "^1.0.0-rc.7",
         "lodash": "^4.17.20",
-        "looker": "*",
+        "looker": "0.1.0",
         "mime-types": "^2.1.27",
         "numeral": "^2.0.6",
         "prop-types": "^15.7.2",

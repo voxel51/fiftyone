@@ -1,8 +1,9 @@
 {
     "name": "looker",
     "version": "0.1.0",
-    "description": "Javascript media viewer that can render label overlays.",
+    "description": "Media viewer that can render label overlays.",
     "main": "dist/index.js",
+    "types": "dist/index.d.ts",
     "files": [
         "dist",
         "src"
