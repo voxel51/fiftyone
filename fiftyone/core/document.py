@@ -267,7 +267,7 @@ class _Document(object):
         if not overwrite:
             existing_field_names = set(self.field_names)
 
-        fields = self._parse_fields(fields=fields, omit_fields=omit_fields)
+        fields = document._parse_fields(fields=fields, omit_fields=omit_fields)
 
         for field_name in fields:
             value = document[field_name]

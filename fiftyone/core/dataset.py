@@ -1582,6 +1582,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 for sample in pb(self):
                     id_map[key_fcn(sample)] = sample.id
 
+        # When inserting new samples, `filepath` cannot be excluded
         if insert_new:
             insert_fields = fields
             if insert_fields is not None:
@@ -3011,7 +3012,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         regardless of the ``unique`` value you specify.
 
         If the given field already has a non-unique index but you requested a
-        unique index, the existing index will be dropped.
+        unique index, the existing index will be replaced with a unique index.
 
         Indexes enable efficient sorting, merging, and other such operations.
 
@@ -3900,6 +3901,35 @@ def _clone_runs(dst_dataset, src_doc):
     dst_doc.save()
 
 
+def _ensure_index(dataset, field, unique=False):
+    coll = dataset._sample_collection
+
+    index_info = coll.index_information()
+
+    # field -> (name, unique)
+    index_map = {
+        v["key"][0][0]: (k, v.get("unique", False))
+        for k, v in index_info.items()
+    }
+
+    new = False
+    dropped = False
+
+    if field in index_map:
+        name, current_unique = index_map[field]
+        if current_unique or (current_unique == unique):
+            # Satisfactory index already exists
+            return new, dropped
+
+        coll.drop_index(name)
+        dropped = True
+
+    coll.create_index(field, unique=True)
+    new = True
+
+    return new, dropped
+
+
 def _merge_samples(
     src_collection,
     dst_dataset,
@@ -3915,37 +3945,26 @@ def _merge_samples(
     include_info=True,
     overwrite_info=False,
 ):
-    if key_field == "id":
-        key_field = "_id"
-
-    if insert_new:
-        when_not_matched = "insert"
-    else:
-        when_not_matched = "discard"
-
     #
     # Prepare for merge
     #
+
+    if key_field == "id":
+        key_field = "_id"
 
     is_video = dst_dataset.media_type == fom.VIDEO
     src_dataset = src_collection._dataset
 
     if key_field != "_id":
-        # Must have unique indexes in order to use `$merge`
-        new_src_index = key_field not in src_collection.list_indexes(
-            include_private=True
+        new_src_index, dropped_src_index = _ensure_index(
+            src_dataset, key_field, unique=True
         )
-        new_dst_index = key_field not in dst_dataset.list_indexes(
-            include_private=True
+        new_dst_index, dropped_dst_index = _ensure_index(
+            dst_dataset, key_field, unique=True
         )
-
-        # Re-run creation in case existing index is not unique. If the index
-        # is already unique, this is a no-op
-        src_dataset.create_index(key_field, unique=True)
-        dst_dataset.create_index(key_field, unique=True)
     else:
-        new_src_index = False
-        new_dst_index = False
+        new_src_index, dropped_src_index = False, False
+        new_dst_index, dropped_dst_index = False, False
 
     if is_video:
         frame_fields = None
@@ -4010,7 +4029,9 @@ def _merge_samples(
     # Merge samples
     #
 
-    default_fields = {"filepath", "tags", "metadata", "_rand", "_media_type"}
+    default_fields = src_collection._get_default_sample_fields(
+        include_private=True
+    )
 
     sample_pipeline = src_collection._pipeline(detach_frames=True)
 
@@ -4040,7 +4061,7 @@ def _merge_samples(
     if insert_new:
         # Can't omit default fields here when new samples may be inserted.
         # Any extra fields here are omitted in `when_matched` pipeline
-        _omit_fields -= default_fields
+        _omit_fields -= set(default_fields)
 
     if _omit_fields:
         sample_pipeline.append({"$unset": list(_omit_fields)})
@@ -4088,6 +4109,11 @@ def _merge_samples(
             frames=False,
         )
 
+    if insert_new:
+        when_not_matched = "insert"
+    else:
+        when_not_matched = "discard"
+
     sample_pipeline.append(
         {
             "$merge": {
@@ -4107,8 +4133,14 @@ def _merge_samples(
     if new_src_index:
         src_collection.drop_index(key_field)
 
+    if dropped_src_index:
+        src_collection.create_index(key_field)
+
     if new_dst_index:
         dst_dataset.drop_index(key_field)
+
+    if dropped_dst_index:
+        dst_dataset.create_index(key_field)
 
     #
     # Merge frames
