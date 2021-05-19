@@ -2,7 +2,7 @@ module.exports = {
   optimize: {
     bundle: true,
     minify: true,
-    target: "es2018",
+    target: "commonjs",
   },
   mount: {
     src: "/_dist_",

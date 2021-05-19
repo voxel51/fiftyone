@@ -6,5 +6,6 @@
         "outDir": "dist"
     },
     "lib": ["es2020"],
-    "exclude": ["src", "node_modules/**/*", "dist"]
+    "exclude": ["src", "node_modules/**/*", "dist"],
+    "references": [{ "path": "../looker" }]
 }

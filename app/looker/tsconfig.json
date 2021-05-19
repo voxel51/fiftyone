@@ -1,13 +1,14 @@
 {
     "include": ["./src"],
-    "outDir": "./build",
     "rootDir": "./src",
     "compilerOptions": {
+        "outFile": "./build/looker.js",
+        "declaration": true,
+        "declarationMap": true,
         "composite": true,
         "module": "commonjs",
         "lib": ["es2020", "dom"],
         "importHelpers": true,
-        "declaration": true,
         "sourceMap": true,
         "rootDir": "./src",
         "noImplicitReturns": true,
