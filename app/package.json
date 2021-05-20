@@ -226,7 +226,6 @@
         "classnames": "^2.2.6",
         "copy-to-clipboard": "^3.3.1",
         "html2canvas": "^1.0.0-rc.7",
-        "lodash": "^4.17.20",
         "mime-types": "^2.1.27",
         "numeral": "^2.0.6",
         "player51": "./player51",
