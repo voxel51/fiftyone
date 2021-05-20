@@ -13,7 +13,6 @@ const processOverlays = <State extends BaseState>(
   overlays: Overlay<State>[]
 ): Overlay<State>[] => {
   const activeLabels = state.options.activeLabels;
-
   const bins = Object.fromEntries(activeLabels.map((l) => [l, []]));
   let classifications = null;
 

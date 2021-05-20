@@ -4,8 +4,6 @@
 import { mergeDeep } from "immutable";
 import ResizeObserver from "resize-observer-polyfill";
 
-import "./style.css";
-
 export { ColorGenerator } from "./color";
 import {
   FrameState,
@@ -63,11 +61,11 @@ abstract class Looker<
     options: State["options"]
   ) {
     this.sample = sample;
+    this.loadOverlays();
     this.observeParent(element);
     this.state = this.getInitialState(element, config, options);
     this.lookerElement = this.getElements();
-    element.appendChild(this.lookerElement.element);
-    console.log(element.children);
+    element.appendChild(this.lookerElement.render(this.state));
     this.canvas = this.lookerElement.element.querySelector("canvas");
     const context = this.canvas.getContext("2d");
     clearCanvas(context);

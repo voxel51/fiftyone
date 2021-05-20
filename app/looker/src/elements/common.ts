@@ -383,7 +383,6 @@ export class ShowTooltipOptionElement<
 }
 
 export class WindowElement<State extends BaseState> extends BaseElement<State> {
-  private window: HTMLDivElement;
   private start: Coordinates = [0, 0];
 
   getEvents(): Events<State> {
@@ -420,16 +419,12 @@ export class WindowElement<State extends BaseState> extends BaseElement<State> {
 
   createHTMLElement() {
     const element = document.createElement("div");
-    element.className = "p51-window-container";
-    const child = document.createElement("div");
-    child.className = "p51-window";
-    element.appendChild(child);
-    this.eventTarget = child;
+    element.className = "p51-window";
     return element;
   }
 
   renderSelf({ pan: [x, y], scale }) {
-    this.window.style.transform =
+    this.element.style.transform =
       "translate(" + x + "px, " + y + "px) scale(" + scale + ")";
     return this.element;
   }
