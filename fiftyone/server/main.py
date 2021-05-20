@@ -631,6 +631,15 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         await self.on_update(self, StateHandler.state)
 
     @staticmethod
+    async def on_get_video_data(self, _id):
+        """Gets the frame labels for video samples.
+
+        Args:
+            _id: a sample _id
+        """
+        pass
+
+    @staticmethod
     async def on_tag(
         caller, changes, target_labels=False, active_labels=None,
     ):
