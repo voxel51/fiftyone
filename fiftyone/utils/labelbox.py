@@ -62,6 +62,7 @@ def import_from_labelbox(
         [
             {
                 "ID": <labelbox-id>,
+                "DataRow ID": <datarow-id>,
                 "Labeled Data": <url-or-None>,
                 "Label": {...}
             }
@@ -128,7 +129,7 @@ def import_from_labelbox(
     # ref: https://github.com/Labelbox/labelbox/blob/7c79b76310fa867dd38077e83a0852a259564da1/exporters/coco-exporter/coco_exporter.py#L33
     with fou.ProgressBar() as pb:
         for d in pb(d_list):
-            labelbox_id = d["ID"]
+            labelbox_id = d["DataRow ID"]
 
             if labelbox_id in id_map:
                 # Get existing sample
