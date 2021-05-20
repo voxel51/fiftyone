@@ -9,7 +9,8 @@
         "src"
     ],
     "scripts": {
-        "build": "rm -rf dist && tsc --build tsconfig.build.json"
+        "start": "snowpack dev",
+        "build": "snowpack build"
     },
     "author": "Voxel51, Inc.",
     "license": "Apache-2.0",
@@ -25,6 +26,8 @@
         "resize-observer-polyfill": "^1.5.1"
     },
     "devDependencies": {
+        "@snowpack/plugin-typescript": "^1.2.1",
+        "snowpack": "3.0.13",
         "tslib": "^2.2.0"
     }
 }

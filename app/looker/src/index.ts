@@ -65,6 +65,7 @@ abstract class Looker<
     this.state = this.getInitialState(element, config, options);
     this.lookerElement = this.getElements();
     element.appendChild(this.lookerElement.element);
+    console.log(element.children);
     this.canvas = this.lookerElement.element.querySelector("canvas");
     const context = this.canvas.getContext("2d");
     clearCanvas(context);

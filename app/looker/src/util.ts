@@ -199,18 +199,6 @@ export interface Timeouts {
 }
 
 /**
- * Return 10 if 0, else return value
- */
-export const checkFontHeight = (h: number): number => {
-  if (h == 0) {
-    /* eslint-disable-next-line no-console */
-    console.log("PLAYER51 WARN: fontheight 0");
-    return 10;
-  }
-  return h;
-};
-
-/**
  * Rescales coordinates
  */
 export const rescaleCoordates = (

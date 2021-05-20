@@ -12,13 +12,19 @@
         "composite": true,
         "outDir": "dist",
         "rootDir": "src",
-        "target": "es5",
-        "module": "es2015",
         "lib": ["esnext", "dom"],
         "moduleResolution": "node",
         "esModuleInterop": true,
         "forceConsistentCasingInFileNames": true,
-        "skipLibCheck": true
+        "skipLibCheck": true,
+        "module": "esnext",
+        "target": "esnext",
+        "jsx": "preserve",
+        "typeRoots": ["node_modules/@types"],
+        "resolveJsonModule": true,
+        "allowSyntheticDefaultImports": true,
+        "incremental": true,
+        "tsBuildInfoFile": "dist/tsconfig.tsbuildinfo"
     },
     "include": ["src"]
 }

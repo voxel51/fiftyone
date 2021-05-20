@@ -429,18 +429,15 @@ interface LookerProps {
   thumbnail: boolean;
 }
 
-const Looker = ({
-  onClick,
-  onSelect,
-  sampleId,
-  style,
-  thumbnail,
-}: LookerProps) => {
+const Looker = ({ onClick, sampleId, style, thumbnail }: LookerProps) => {
+  const sample = useRecoilValue(atoms.sample(sampleId));
+  const sampleSrc = useRecoilValue(selectors.sampleSrc(sampleId));
   return (
     <div
       ref={(node) => {
         if (node) {
-          new ImageLooker({});
+          const looker = new ImageLooker();
+          looker.render(node, sample, { src: sampleSrc, thumbnail }, {});
         }
       }}
       style={style}

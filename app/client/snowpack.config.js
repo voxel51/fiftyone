@@ -9,6 +9,7 @@ module.exports = {
   mount: {
     src: "/_dist_",
     public: "/",
+    "../looker": "/looker",
   },
   plugins: [
     "@snowpack/plugin-react-refresh",
@@ -37,5 +38,8 @@ module.exports = {
     baseUrl: "",
     clean: true,
     out: "../../fiftyone/server/static",
+  },
+  alias: {
+    looker: "looker",
   },
 };
