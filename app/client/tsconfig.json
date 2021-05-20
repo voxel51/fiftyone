@@ -3,7 +3,8 @@
         "module": "commonjs",
         "noImplicitAny": false,
         "sourceMap": true,
-        "outDir": "dist"
+        "outDir": "dist",
+        "jsx": "react"
     },
     "lib": ["es2020"],
     "exclude": ["src", "node_modules/**/*", "dist"],

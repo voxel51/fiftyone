@@ -4,6 +4,8 @@
 import { mergeDeep } from "immutable";
 import ResizeObserver from "resize-observer-polyfill";
 
+import "./style.css";
+
 export { ColorGenerator } from "./color";
 import {
   FrameState,

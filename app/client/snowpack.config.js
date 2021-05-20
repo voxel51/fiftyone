@@ -9,23 +9,8 @@ module.exports = {
   mount: {
     src: "/_dist_",
     public: "/",
-    "../looker": "/looker",
   },
-  plugins: [
-    "@snowpack/plugin-react-refresh",
-    "@snowpack/plugin-dotenv",
-    [
-      "snowpack-plugin-replace",
-      {
-        list: [
-          {
-            from: "process.env",
-            to: "import.meta.env",
-          },
-        ],
-      },
-    ],
-  ],
+  plugins: ["@snowpack/plugin-react-refresh", "@snowpack/plugin-dotenv"],
   exclude: ["**/*.@(test|stories).@(ts|tsx)"],
   packageOptions: {
     polyfillNode: true,
@@ -38,8 +23,5 @@ module.exports = {
     baseUrl: "",
     clean: true,
     out: "../../fiftyone/server/static",
-  },
-  alias: {
-    looker: "looker",
   },
 };

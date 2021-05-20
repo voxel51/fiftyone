@@ -27,7 +27,7 @@
     },
     "devDependencies": {
         "@snowpack/plugin-typescript": "^1.2.1",
-        "snowpack": "3.0.13",
+        "snowpack": "^3.3.7",
         "tslib": "^2.2.0"
     }
 }

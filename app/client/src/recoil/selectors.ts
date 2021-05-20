@@ -44,13 +44,12 @@ export const fiftyone = selector({
     let response = null;
     do {
       try {
-        response = await fetch(`${http}/fiftyone`);
+        response = await (await fetch(`${http}/fiftyone`)).json();
       } catch {}
       if (response) break;
       await new Promise((r) => setTimeout(r, 2000));
     } while (response === null);
-    const data = await response.json();
-    return data;
+    return response;
   },
 });
 
