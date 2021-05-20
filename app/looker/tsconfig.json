@@ -9,7 +9,6 @@
         "declaration": true,
         "declarationMap": true,
         "sourceMap": true,
-        "composite": true,
         "outDir": "dist",
         "rootDir": "src",
         "lib": ["esnext", "dom"],
@@ -22,9 +21,7 @@
         "jsx": "preserve",
         "typeRoots": ["node_modules/@types"],
         "resolveJsonModule": true,
-        "allowSyntheticDefaultImports": true,
-        "incremental": true,
-        "tsBuildInfoFile": "dist/tsconfig.tsbuildinfo"
+        "allowSyntheticDefaultImports": true
     },
     "include": ["src"]
 }

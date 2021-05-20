@@ -106,7 +106,7 @@
         "@mdx-js/react": "^1.6.21",
         "@snowpack/plugin-babel": "^2.1.4",
         "@snowpack/plugin-dotenv": "^2.0.4",
-        "@snowpack/plugin-react-refresh": "^2.3.7",
+        "@snowpack/plugin-react-refresh": "^2.5.0",
         "@types/enzyme-adapter-react-16": "^1.0.6",
         "@types/history": "^4.7.5",
         "@types/jest": "^24.9.1",
