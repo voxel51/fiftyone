@@ -8,5 +8,4 @@ node_modules
 build
 dist
 .yarnrc
-.yarnrc.yml
 yarn-error.log
