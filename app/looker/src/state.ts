@@ -29,7 +29,6 @@ export type Dimensions = [number, number];
 interface BaseConfig {
   thumbnail: boolean;
   src: string;
-  dimensions: Dimensions;
 }
 
 export interface FrameConfig extends BaseConfig {
@@ -122,28 +121,6 @@ export type StateUpdate<State extends BaseState> = (
     overlays: Readonly<Overlay<State>[]>
   ) => void
 ) => void;
-
-export interface LookerProps {
-  sample: any;
-  element: HTMLElement;
-  config: BaseConfig;
-  options?: Optional<BaseOptions>;
-}
-
-export interface FrameLookerProps extends LookerProps {
-  config: FrameConfig;
-  options?: Optional<FrameOptions>;
-}
-
-export interface ImageLookerProps extends LookerProps {
-  config: ImageConfig;
-  options: Optional<ImageOptions>;
-}
-
-export interface VideoLookerProps extends LookerProps {
-  config: VideoConfig;
-  options?: Optional<VideoOptions>;
-}
 
 const DEFAULT_BASE_OPTIONS = {
   activeLabels: [],

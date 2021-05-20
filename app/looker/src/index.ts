@@ -6,15 +6,11 @@ import ResizeObserver from "resize-observer-polyfill";
 
 export { ColorGenerator } from "./color";
 import {
-  FrameLookerProps,
   FrameState,
-  ImageLookerProps,
   ImageState,
-  VideoLookerProps,
   VideoState,
   StateUpdate,
   BaseState,
-  LookerProps,
   DEFAULT_FRAME_OPTIONS,
   DEFAULT_IMAGE_OPTIONS,
   DEFAULT_VIDEO_OPTIONS,
@@ -22,7 +18,6 @@ import {
   Coordinates,
 } from "./state";
 import {
-  GetElements,
   getFrameElements,
   getImageElements,
   getVideoElements,
@@ -41,38 +36,43 @@ interface BaseSample {
 }
 
 abstract class Looker<
-  Props extends LookerProps,
   State extends BaseState,
   Sample extends BaseSample = BaseSample
 > {
   private eventTarget: EventTarget;
   private state: State;
   private lookerElement: LookerElement<State>;
-  private readonly canvas: HTMLCanvasElement;
+  private canvas: HTMLCanvasElement;
   private parentObserver: ResizeObserver;
   private currentOverlays: Overlay<State>[];
 
   protected readonly updater: StateUpdate<State>;
-  protected readonly getElements: GetElements<State>;
   protected sample: Sample;
 
-  constructor(props: Props) {
+  constructor() {
     this.eventTarget = new EventTarget();
-    this.state = this.getInitialState(props.element, props);
-
-    this.sample = props.sample;
     this.updater = this.makeUpdate();
-    this.observeParent(props.element);
-    this.lookerElement = this.getElements(this.updater, this.dispatchEvent);
-    props.element.appendChild(this.lookerElement.element);
+  }
 
+  render(
+    element: HTMLElement,
+    sample: Sample,
+    config: State["config"],
+    options: State["options"]
+  ) {
+    this.sample = sample;
+    this.observeParent(element);
+    this.state = this.getInitialState(element, config, options);
+    this.lookerElement = this.getElements();
+    element.appendChild(this.lookerElement.element);
     this.canvas = this.lookerElement.element.querySelector("canvas");
     const context = this.canvas.getContext("2d");
     clearCanvas(context);
   }
 
   private observeParent(parentElement: HTMLElement) {
-    this.parentObserver = new ResizeObserver(([{ contentRect }]) => {
+    this.parentObserver = new ResizeObserver((e) => {
+      const [{ contentRect }] = e;
       this.updater({
         box: <BoundingBox>[
           contentRect.top,
@@ -132,10 +132,12 @@ abstract class Looker<
     delete this.parentObserver;
   }
 
-  update(sample: Sample, options: Props["options"]) {
+  update(sample: Sample, options: State["options"]) {
     this.sample = sample;
     this.updater({ options });
   }
+
+  protected abstract getElements(): LookerElement<State>;
 
   protected abstract loadOverlays();
 
@@ -145,7 +147,8 @@ abstract class Looker<
 
   protected abstract getInitialState(
     parentElement: HTMLElement,
-    props: Props
+    config: State["config"],
+    options: State["options"]
   ): State;
 
   protected getInitialBaseState(
@@ -169,22 +172,21 @@ abstract class Looker<
   }
 }
 
-export class FrameLooker extends Looker<FrameLookerProps, FrameState> {
-  protected readonly getElements = getFrameElements;
+export class FrameLooker extends Looker<FrameState> {
   private overlays: Overlay<FrameState>[];
 
-  constructor(props: FrameLookerProps) {
-    super(props);
+  getElements() {
+    return getFrameElements(this.updater, this.dispatchEvent);
   }
 
-  getInitialState(parentElement, props) {
+  getInitialState(parentElement, config, options) {
     return {
       duration: null,
       ...this.getInitialBaseState(parentElement),
-      config: { ...props.config },
+      config: { ...config },
       options: {
         ...this.getDefaultOptions(),
-        ...props.options,
+        ...options,
       },
     };
   }
@@ -202,12 +204,11 @@ export class FrameLooker extends Looker<FrameLookerProps, FrameState> {
   }
 }
 
-export class ImageLooker extends Looker<ImageLookerProps, ImageState> {
-  getElements = getImageElements;
+export class ImageLooker extends Looker<ImageState> {
   private overlays: Overlay<ImageState>[];
 
-  constructor(props: ImageLookerProps) {
-    super(props);
+  getElements() {
+    return getImageElements(this.updater, this.dispatchEvent);
   }
 
   getInitialState(parentElement, props) {
@@ -238,17 +239,12 @@ interface VideoSample extends BaseSample {
   frames: { [frameNumber: number]: BaseSample };
 }
 
-export class VideoLooker extends Looker<
-  VideoLookerProps,
-  VideoState,
-  VideoSample
-> {
-  getElements = getVideoElements;
+export class VideoLooker extends Looker<VideoState, VideoSample> {
   private sampleOverlays: Overlay<VideoState>[];
   private frameOverlays: { [frameNumber: number]: Overlay<VideoState>[] };
 
-  constructor(props: VideoLookerProps) {
-    super(props);
+  getElements() {
+    return getVideoElements(this.updater, this.dispatchEvent);
   }
 
   getInitialState(parentElement, props) {
