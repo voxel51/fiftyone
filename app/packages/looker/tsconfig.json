@@ -1,11 +1,5 @@
 {
     "compilerOptions": {
-        "downlevelIteration": true,
-        "importHelpers": true,
-        "noImplicitReturns": true,
-        "noFallthroughCasesInSwitch": true,
-        "noUnusedLocals": true,
-        "noUnusedParameters": false,
         "declaration": true,
         "declarationMap": true,
         "sourceMap": true,
@@ -18,10 +12,7 @@
         "skipLibCheck": true,
         "module": "esnext",
         "target": "esnext",
-        "jsx": "preserve",
-        "typeRoots": ["node_modules/@types"],
-        "resolveJsonModule": true,
-        "allowSyntheticDefaultImports": true
+        "jsx": "preserve"
     },
     "include": ["src"]
 }

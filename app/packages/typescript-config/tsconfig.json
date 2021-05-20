@@ -4,7 +4,6 @@
         "target": "esnext",
         "moduleResolution": "node",
         "esModuleInterop": true,
-        "jsx": "preserve",
         "noEmit": true,
         "skipLibCheck": true,
         "typeRoots": ["node_modules/@types"],
@@ -13,6 +12,12 @@
         "allowSyntheticDefaultImports": true,
         "incremental": true,
         "outDir": "dist",
-        "tsBuildInfoFile": "dist/tsconfig.tsbuildinfo"
+        "tsBuildInfoFile": "dist/tsconfig.tsbuildinfo",
+        "noFallthroughCasesInSwitch": true,
+        "downlevelIteration": true,
+        "importHelpers": true,
+        "noImplicitReturns": true,
+        "noUnusedLocals": true,
+        "noUnusedParameters": false
     }
 }

@@ -2,11 +2,6 @@
     "name": "@fiftyone/fiftyone",
     "version": "0.1.0",
     "main": "index.js",
-    "author": {
-        "name": "Voxel51",
-        "email": "support@voxel51.com",
-        "url": "https://voxel51.com/fiftyone"
-    },
     "license": "Apache-2.0",
     "private": true,
     "scripts": {
