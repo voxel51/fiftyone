@@ -13,67 +13,69 @@ export class LookerElement<State extends BaseState> extends BaseElement<
 > {
   private hideControlsTimeout?: ReturnType<typeof setTimeout>;
 
-  events: Events<State> = {
-    blur: ({ update }) => {
-      update({ showOptions: false, showControls: false, focused: false });
-    },
-    focus: ({ update }) => {
-      update({ focused: true });
-    },
-    keydown: ({ event, update }) => {
-      // esc: hide settings
-      const e = event as KeyboardEvent;
-      switch (e.key) {
-        case "ArrowDown":
-          update(({ rotate }) => ({ rotate: rotate - 1 }));
-          return;
-        case "ArrowUp":
-          update(({ rotate }) => ({ rotate: Math.min(rotate + 1, 0) }));
-          return;
-        case "Escape":
-          update({ showControls: false, showOptions: false });
-          return;
-        case "s":
-          update((state) => ({
-            showOptions: state.showOptions,
-            showControls: state.showControls,
-          }));
-          return;
-      }
-    },
-    mouseenter: ({ update, dispatchEvent }) => {
-      dispatchEvent("mouseenter");
-      update(({ config: { thumbnail } }) => {
-        return {
-          hovering: true,
-          showControls: thumbnail,
-        };
-      });
-      this.hideControlsTimeout = setTimeout(() =>
-        update({ showControls: false, showOptions: false })
-      );
-    },
-    mousemove: ({ update }) => {
-      if (this.hideControlsTimeout) {
-        clearTimeout(this.hideControlsTimeout);
-        this.hideControlsTimeout = null;
-      }
-      update({ rotate: 0 });
-    },
-    mouseleave: ({ update, dispatchEvent }) => {
-      dispatchEvent("mouseleave");
-      update({
-        hovering: false,
-        disableControls: false,
-        showControls: false,
-        showOptions: false,
-      });
-      if (this.hideControlsTimeout) {
-        clearTimeout(this.hideControlsTimeout);
-        this.hideControlsTimeout = null;
-      }
-    },
-  };
+  getEvents(): Events<State> {
+    return {
+      blur: ({ update }) => {
+        update({ showOptions: false, showControls: false, focused: false });
+      },
+      focus: ({ update }) => {
+        update({ focused: true });
+      },
+      keydown: ({ event, update }) => {
+        // esc: hide settings
+        const e = event as KeyboardEvent;
+        switch (e.key) {
+          case "ArrowDown":
+            update(({ rotate }) => ({ rotate: rotate - 1 }));
+            return;
+          case "ArrowUp":
+            update(({ rotate }) => ({ rotate: Math.min(rotate + 1, 0) }));
+            return;
+          case "Escape":
+            update({ showControls: false, showOptions: false });
+            return;
+          case "s":
+            update((state) => ({
+              showOptions: state.showOptions,
+              showControls: state.showControls,
+            }));
+            return;
+        }
+      },
+      mouseenter: ({ update, dispatchEvent }) => {
+        dispatchEvent("mouseenter");
+        update(({ config: { thumbnail } }) => {
+          return {
+            hovering: true,
+            showControls: thumbnail,
+          };
+        });
+        this.hideControlsTimeout = setTimeout(() =>
+          update({ showControls: false, showOptions: false })
+        );
+      },
+      mousemove: ({ update }) => {
+        if (this.hideControlsTimeout) {
+          clearTimeout(this.hideControlsTimeout);
+          this.hideControlsTimeout = null;
+        }
+        update({ rotate: 0 });
+      },
+      mouseleave: ({ update, dispatchEvent }) => {
+        dispatchEvent("mouseleave");
+        update({
+          hovering: false,
+          disableControls: false,
+          showControls: false,
+          showOptions: false,
+        });
+        if (this.hideControlsTimeout) {
+          clearTimeout(this.hideControlsTimeout);
+          this.hideControlsTimeout = null;
+        }
+      },
+    };
+  }
 
   createHTMLElement() {
     const element = document.createElement("div");
@@ -88,46 +90,14 @@ export class LookerElement<State extends BaseState> extends BaseElement<
 }
 
 export class CanvasElement<State extends BaseState> extends BaseElement<State> {
-  events: Events<State> = {
-    click: ({ update, dispatchEvent }) => {
-      update({ showOptions: false }, (context, state, overlays) => {
-        if (overlays.length) {
-          dispatchEvent(
-            "select",
-            overlays[0].getSelectData(
-              context,
-              state,
-              getCanvasCoordinates(
-                state.cursorCoordinates,
-                state.pan,
-                state.scale,
-                state.box,
-                [context.canvas.width, context.canvas.height]
-              )
-            )
-          );
-        }
-      });
-    },
-    mouseleave: ({ update }) => {
-      update({
-        cursorCoordinates: null,
-        disableControls: false,
-      });
-    },
-    mousemove: ({ event, update, dispatchEvent }) => {
-      update(
-        {
-          cursorCoordinates: [
-            (<MouseEvent>event).clientX,
-            (<MouseEvent>event).clientY,
-          ],
-        },
-        (context, state, overlays) => {
+  getEvents(): Events<State> {
+    return {
+      click: ({ update, dispatchEvent }) => {
+        update({ showOptions: false }, (context, state, overlays) => {
           if (overlays.length) {
             dispatchEvent(
-              "tooltip",
-              overlays[0].getPointInfo(
+              "select",
+              overlays[0].getSelectData(
                 context,
                 state,
                 getCanvasCoordinates(
@@ -140,10 +110,44 @@ export class CanvasElement<State extends BaseState> extends BaseElement<State> {
               )
             );
           }
-        }
-      );
-    },
-  };
+        });
+      },
+      mouseleave: ({ update }) => {
+        update({
+          cursorCoordinates: null,
+          disableControls: false,
+        });
+      },
+      mousemove: ({ event, update, dispatchEvent }) => {
+        update(
+          {
+            cursorCoordinates: [
+              (<MouseEvent>event).clientX,
+              (<MouseEvent>event).clientY,
+            ],
+          },
+          (context, state, overlays) => {
+            if (overlays.length) {
+              dispatchEvent(
+                "tooltip",
+                overlays[0].getPointInfo(
+                  context,
+                  state,
+                  getCanvasCoordinates(
+                    state.cursorCoordinates,
+                    state.pan,
+                    state.scale,
+                    state.box,
+                    [context.canvas.width, context.canvas.height]
+                  )
+                )
+              );
+            }
+          }
+        );
+      },
+    };
+  }
 
   createHTMLElement() {
     const element = document.createElement("div");
@@ -163,21 +167,24 @@ export class ControlsElement<State extends BaseState> extends BaseElement<
   State
 > {
   private showControls: boolean;
-  events: Events<State> = {
-    click: ({ update }) => {
-      update({
-        showControls: false,
-        disableControls: true,
-        showOptions: false,
-      });
-    },
-    mouseenter: ({ update }) => {
-      update({ hoveringControls: true });
-    },
-    mouseleave: ({ update }) => {
-      update({ hoveringControls: false });
-    },
-  };
+
+  getEvents(): Events<State> {
+    return {
+      click: ({ update }) => {
+        update({
+          showControls: false,
+          disableControls: true,
+          showOptions: false,
+        });
+      },
+      mouseenter: ({ update }) => {
+        update({ hoveringControls: true });
+      },
+      mouseleave: ({ update }) => {
+        update({ hoveringControls: false });
+      },
+    };
+  }
 
   createHTMLElement() {
     const element = document.createElement("div");
@@ -210,12 +217,14 @@ export class OptionsButtonElement<State extends BaseState> extends BaseElement<
 > {
   private showControls: boolean;
 
-  events: Events<State> = {
-    click: ({ event, update }) => {
-      event.stopPropagation();
-      update((state) => ({ showOptions: !state.showOptions }));
-    },
-  };
+  getEvents(): Events<State> {
+    return {
+      click: ({ event, update }) => {
+        event.stopPropagation();
+        update((state) => ({ showOptions: !state.showOptions }));
+      },
+    };
+  }
 
   createHTMLElement() {
     const element = document.createElement("img");
@@ -247,14 +256,16 @@ export class OptionsPanelElement<State extends BaseState> extends BaseElement<
 > {
   private showOptions: boolean;
 
-  events: Events<State> = {
-    mouseenter: ({ update }) => {
-      update({ hoveringControls: true });
-    },
-    mouseleave: ({ update }) => {
-      update({ hoveringControls: false });
-    },
-  };
+  getEvents(): Events<State> {
+    return {
+      mouseenter: ({ update }) => {
+        update({ hoveringControls: true });
+      },
+      mouseleave: ({ update }) => {
+        update({ hoveringControls: false });
+      },
+    };
+  }
 
   createHTMLElement() {
     const element = document.createElement("div");
@@ -325,11 +336,13 @@ export class ShowConfidenceOptionElement<
   checkbox: HTMLInputElement;
   label: HTMLLabelElement;
 
-  events: Events<State> = {
-    change: ({ update }) => {
-      update({ options: { showConfidence: this.checkbox.checked } });
-    },
-  };
+  getEvents(): Events<State> {
+    return {
+      change: ({ update }) => {
+        update({ options: { showConfidence: this.checkbox.checked } });
+      },
+    };
+  }
 
   createHTMLElement() {
     this.eventTarget = this.checkbox;
@@ -349,11 +362,13 @@ export class ShowTooltipOptionElement<
   checkbox: HTMLInputElement;
   label: HTMLLabelElement;
 
-  events: Events<State> = {
-    change: ({ update }) => {
-      update({ options: { showTooltip: this.checkbox.checked } });
-    },
-  };
+  getEvents(): Events<State> {
+    return {
+      change: ({ update }) => {
+        update({ options: { showTooltip: this.checkbox.checked } });
+      },
+    };
+  }
 
   createHTMLElement() {
     this.eventTarget = this.checkbox;
@@ -371,35 +386,37 @@ export class WindowElement<State extends BaseState> extends BaseElement<State> {
   private window: HTMLDivElement;
   private start: Coordinates = [0, 0];
 
-  events: Events<State> = {
-    dragstart: ({ event, update }) => {
-      event.preventDefault();
-      update(({ pan: [x, y] }) => {
-        this.start = [event.clientX - x, event.clientY - y];
-        return {};
-      });
-    },
-    drag: ({ event, update }) => {
-      event.preventDefault();
-      const [x, y] = this.start;
-      update({ pan: [event.clientX - x, event.clientY - y] });
-    },
-    wheel: ({ event, update }) => {
-      event.preventDefault();
-      update(({ pan: [x, y], scale }) => {
-        const xs = (event.clientX - x) / scale,
-          ys = (event.clientY - y) / scale,
-          delta = -event.deltaY;
+  getEvents(): Events<State> {
+    return {
+      dragstart: ({ event, update }) => {
+        event.preventDefault();
+        update(({ pan: [x, y] }) => {
+          this.start = [event.clientX - x, event.clientY - y];
+          return {};
+        });
+      },
+      drag: ({ event, update }) => {
+        event.preventDefault();
+        const [x, y] = this.start;
+        update({ pan: [event.clientX - x, event.clientY - y] });
+      },
+      wheel: ({ event, update }) => {
+        event.preventDefault();
+        update(({ pan: [x, y], scale }) => {
+          const xs = (event.clientX - x) / scale,
+            ys = (event.clientY - y) / scale,
+            delta = -event.deltaY;
 
-        delta > 0 ? (scale *= 1.2) : (scale /= 1.2);
+          delta > 0 ? (scale *= 1.2) : (scale /= 1.2);
 
-        return {
-          pan: [event.clientX - xs * scale, event.clientY - ys * scale],
-          scale,
-        };
-      });
-    },
-  };
+          return {
+            pan: [event.clientX - xs * scale, event.clientY - ys * scale],
+            scale,
+          };
+        });
+      },
+    };
+  }
 
   createHTMLElement() {
     const element = document.createElement("div");

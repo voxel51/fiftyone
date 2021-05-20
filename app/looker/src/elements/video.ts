@@ -18,12 +18,14 @@ export class PlayButtonElement extends BaseElement<VideoState> {
   element: HTMLImageElement;
   private playing: boolean = false;
 
-  events: Events<VideoState> = {
-    change: ({ event, update }) => {
-      event.stopPropagation();
-      update(({ playing }) => ({ playing: !playing }));
-    },
-  };
+  getEvents(): Events<VideoState> {
+    return {
+      change: ({ event, update }) => {
+        event.stopPropagation();
+        update(({ playing }) => ({ playing: !playing }));
+      },
+    };
+  }
 
   createHTMLElement() {
     const element = document.createElement("img");
@@ -48,32 +50,42 @@ export class PlayButtonElement extends BaseElement<VideoState> {
 }
 
 export class SeekBarElement extends BaseElement<VideoState> {
-  events: Events<VideoState> = {
-    input: ({ event, update }) => {
-      const target = event.target as HTMLInputElement;
-      const progress = target.valueAsNumber / 100;
-      update(({ duration, config: { frameRate } }) => {
-        return {
-          frameNumber: getFrameNumber(duration * progress, duration, frameRate),
-        };
-      });
-    },
-    mousedown: ({ update }) =>
-      update({
-        locked: false,
-        seeking: true,
-      }),
+  getEvents(): Events<VideoState> {
+    return {
+      input: ({ event, update }) => {
+        const target = event.target as HTMLInputElement;
+        const progress = target.valueAsNumber / 100;
+        update(({ duration, config: { frameRate } }) => {
+          return {
+            frameNumber: getFrameNumber(
+              duration * progress,
+              duration,
+              frameRate
+            ),
+          };
+        });
+      },
+      mousedown: ({ update }) =>
+        update({
+          locked: false,
+          seeking: true,
+        }),
 
-    mouseup: ({ event, update }) => {
-      const target = event.target as HTMLInputElement;
-      const progress = target.valueAsNumber / 100;
-      update(({ duration, config: { frameRate } }) => {
-        return {
-          frameNumber: getFrameNumber(duration * progress, duration, frameRate),
-        };
-      });
-    },
-  };
+      mouseup: ({ event, update }) => {
+        const target = event.target as HTMLInputElement;
+        const progress = target.valueAsNumber / 100;
+        update(({ duration, config: { frameRate } }) => {
+          return {
+            frameNumber: getFrameNumber(
+              duration * progress,
+              duration,
+              frameRate
+            ),
+          };
+        });
+      },
+    };
+  }
 
   createHTMLElement() {
     const element = document.createElement("input");
@@ -135,162 +147,172 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
   private src: string;
   private frameNumber: number;
 
-  events: Events<VideoState> = {
-    keydown: ({ event, update }) => {
-      if (event.key === "Space") {
-        update(({ playing }) => {
-          return {
-            playing: !playing,
-          };
-        });
-      }
+  getEvents(): Events<VideoState> {
+    return {
+      keydown: ({ event, update }) => {
+        if (event.key === "Space") {
+          update(({ playing }) => {
+            return {
+              playing: !playing,
+            };
+          });
+        }
 
-      if (event.key === "ArrowLeft") {
-        update(({ frameNumber, locked, fragment, playing }) => {
-          if (!playing) {
-            return {};
-          }
-          const limit = locked && fragment ? fragment[0] : 1;
-          return { frameNumber: Math.max(limit, frameNumber - 1) };
-        });
-      }
-
-      if (event.key === "ArrowRight") {
-        update(
-          ({
-            frameNumber,
-            duration,
-            locked,
-            fragment,
-            playing,
-            config: { frameRate },
-          }) => {
+        if (event.key === "ArrowLeft") {
+          update(({ frameNumber, locked, fragment, playing }) => {
             if (!playing) {
               return {};
             }
-            const limit =
-              locked && fragment
-                ? fragment[1]
-                : getFrameNumber(duration, duration, frameRate);
-            return { frameNumber: Math.max(limit, frameNumber + 1) };
-          }
-        );
-      }
-    },
-    mouseenter: ({ update }) => {
-      update(({ loaded, config: { thumbnail } }) => {
-        if (thumbnail && loaded) {
-          return {
-            playing: true,
-          };
+            const limit = locked && fragment ? fragment[0] : 1;
+            return { frameNumber: Math.max(limit, frameNumber - 1) };
+          });
         }
-        return {};
-      });
-    },
-    mouseleave: ({ update }) => {
-      update(({ loaded, config: { thumbnail } }) => {
-        if (thumbnail && loaded) {
-          return {
-            playing: false,
-          };
-        }
-        return {};
-      });
-    },
-    error: ({ event, dispatchEvent }) => {
-      dispatchEvent("error", { event });
-    },
-    loadedmetadata: ({ update }) => {
-      update({ loaded: true });
-    },
-    loadeddata: ({ update, dispatchEvent }) => {
-      update(({ playing, options: { autoplay } }) => ({
-        loaded: true,
-        playing: autoplay || playing,
-      }));
-      dispatchEvent("load");
-    },
-    play: ({ event, update }) => {
-      const target = event.target as HTMLVideoElement;
-      const callback = () => {
-        update(
-          ({
-            duration,
-            seeking,
-            locked,
-            fragment,
-            config: { frameRate },
-            options: { loop },
-          }) => {
-            if (!seeking) {
-              window.requestAnimationFrame(callback);
+
+        if (event.key === "ArrowRight") {
+          update(
+            ({
+              frameNumber,
+              duration,
+              locked,
+              fragment,
+              playing,
+              config: { frameRate },
+            }) => {
+              if (!playing) {
+                return {};
+              }
+              const limit =
+                locked && fragment
+                  ? fragment[1]
+                  : getFrameNumber(duration, duration, frameRate);
+              return { frameNumber: Math.max(limit, frameNumber + 1) };
             }
-            let newFrameNumber = getFrameNumber(
+          );
+        }
+      },
+      mouseenter: ({ update }) => {
+        update(({ loaded, config: { thumbnail } }) => {
+          if (thumbnail && loaded) {
+            return {
+              playing: true,
+            };
+          }
+          return {};
+        });
+      },
+      mouseleave: ({ update }) => {
+        update(({ loaded, config: { thumbnail } }) => {
+          if (thumbnail && loaded) {
+            return {
+              playing: false,
+            };
+          }
+          return {};
+        });
+      },
+      error: ({ event, dispatchEvent }) => {
+        dispatchEvent("error", { event });
+      },
+      loadedmetadata: ({ update }) => {
+        update({ loaded: true });
+      },
+      loadeddata: ({ update, dispatchEvent }) => {
+        update(({ playing, options: { autoplay } }) => ({
+          loaded: true,
+          playing: autoplay || playing,
+        }));
+        dispatchEvent("load");
+      },
+      play: ({ event, update }) => {
+        const target = event.target as HTMLVideoElement;
+        const callback = () => {
+          update(
+            ({
+              duration,
+              seeking,
+              locked,
+              fragment,
+              config: { frameRate },
+              options: { loop },
+            }) => {
+              if (!seeking) {
+                window.requestAnimationFrame(callback);
+              }
+              let newFrameNumber = getFrameNumber(
+                target.currentTime,
+                duration,
+                frameRate
+              );
+
+              const resetToFragment =
+                locked && fragment && newFrameNumber > fragment[1];
+              if (!resetToFragment) {
+                this.frameNumber = newFrameNumber;
+              } else {
+                newFrameNumber = fragment[0];
+              }
+
+              return {
+                frameNumber: newFrameNumber,
+                playing: !(resetToFragment && !loop),
+              };
+            }
+          );
+        };
+
+        requestAnimationFrame(callback);
+      },
+      pause: ({ event, update }) => {
+        const target = event.target as HTMLVideoElement;
+        update(({ playing, seeking, fragment }) => {
+          if (playing && !seeking && !Boolean(fragment) && !target.ended) {
+            target.play();
+          }
+          return {};
+        });
+      },
+      seeked: ({ event, update }) => {
+        const target = event.target as HTMLVideoElement;
+        update(({ duration, config: { frameRate } }) => {
+          return {
+            frameNumber: getFrameNumber(
               target.currentTime,
               duration,
               frameRate
-            );
+            ),
+          };
+        });
+      },
+      timeupdate: ({ event, dispatchEvent, update }) => {
+        const target = event.target as HTMLVideoElement;
+        update(({ duration, config: { frameRate } }) => {
+          dispatchEvent("timeupdate", {
+            frameNumber: getFrameNumber(
+              target.currentTime,
+              duration,
+              frameRate
+            ),
+          });
 
-            const resetToFragment =
-              locked && fragment && newFrameNumber > fragment[1];
-            if (!resetToFragment) {
-              this.frameNumber = newFrameNumber;
-            } else {
-              newFrameNumber = fragment[0];
-            }
-
+          return {};
+        });
+      },
+      ended: ({ update }) => {
+        update(({ locked, fragment, options: { loop } }) => {
+          if (loop) {
             return {
-              frameNumber: newFrameNumber,
-              playing: !(resetToFragment && !loop),
+              frameNumber: locked && fragment ? fragment[0] : 1,
+              playing: true,
+            };
+          } else {
+            return {
+              playing: false,
             };
           }
-        );
-      };
-
-      requestAnimationFrame(callback);
-    },
-    pause: ({ event, update }) => {
-      const target = event.target as HTMLVideoElement;
-      update(({ playing, seeking, fragment }) => {
-        if (playing && !seeking && !Boolean(fragment) && !target.ended) {
-          target.play();
-        }
-        return {};
-      });
-    },
-    seeked: ({ event, update }) => {
-      const target = event.target as HTMLVideoElement;
-      update(({ duration, config: { frameRate } }) => {
-        return {
-          frameNumber: getFrameNumber(target.currentTime, duration, frameRate),
-        };
-      });
-    },
-    timeupdate: ({ event, dispatchEvent, update }) => {
-      const target = event.target as HTMLVideoElement;
-      update(({ duration, config: { frameRate } }) => {
-        dispatchEvent("timeupdate", {
-          frameNumber: getFrameNumber(target.currentTime, duration, frameRate),
         });
-
-        return {};
-      });
-    },
-    ended: ({ update }) => {
-      update(({ locked, fragment, options: { loop } }) => {
-        if (loop) {
-          return {
-            frameNumber: locked && fragment ? fragment[0] : 1,
-            playing: true,
-          };
-        } else {
-          return {
-            playing: false,
-          };
-        }
-      });
-    },
-  };
+      },
+    };
+  }
 
   createHTMLElement() {
     const element = document.createElement("video");
