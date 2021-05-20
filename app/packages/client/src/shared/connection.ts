@@ -103,8 +103,6 @@ const host =
     ? "localhost:5151"
     : window.location.host;
 
-console.log(host);
-
 export const port = isElectron()
   ? parseInt(process.env.FIFTYONE_SERVER_PORT) || 5151
   : parseInt(window.location.port);

@@ -1,12 +1,23 @@
 {
+    "name": "@fiftyone/fiftyone",
+    "version": "0.1.0",
+    "main": "index.js",
+    "author": {
+        "name": "Voxel51",
+        "email": "support@voxel51.com",
+        "url": "https://voxel51.com/fiftyone"
+    },
+    "license": "Apache-2.0",
     "private": true,
-    "name": "app",
-    "workspaces": [
-        "client",
-        "looker"
-    ],
-    "scripts": {},
+    "scripts": {
+        "start": "yarn workspace @fiftyone/app start",
+        "build": "yarn workspace @fiftyone/app build",
+        "postinstall": "patch-package"
+    },
     "devDependencies": {
         "patch-package": "^6.4.7"
-    }
+    },
+    "workspaces": [
+        "packages/*"
+    ]
 }

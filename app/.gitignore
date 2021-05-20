@@ -3,9 +3,10 @@
 !.yarn/plugins
 !.yarn/sdks
 !.yarn/versions
-
 node_modules
-
+.snowpack
+build
+dist
+.yarnrc
+.yarnrc.yml
 yarn-error.log
-
-*.tsbuildinfo

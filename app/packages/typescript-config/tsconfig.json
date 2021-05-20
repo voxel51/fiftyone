@@ -1,0 +1,18 @@
+{
+    "compilerOptions": {
+        "module": "esnext",
+        "target": "esnext",
+        "moduleResolution": "node",
+        "esModuleInterop": true,
+        "jsx": "preserve",
+        "noEmit": true,
+        "skipLibCheck": true,
+        "typeRoots": ["node_modules/@types"],
+        "forceConsistentCasingInFileNames": true,
+        "resolveJsonModule": true,
+        "allowSyntheticDefaultImports": true,
+        "incremental": true,
+        "outDir": "dist",
+        "tsBuildInfoFile": "dist/tsconfig.tsbuildinfo"
+    }
+}

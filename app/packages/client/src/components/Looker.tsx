@@ -432,12 +432,23 @@ interface LookerProps {
 const Looker = ({ onClick, sampleId, style, thumbnail }: LookerProps) => {
   const sample = useRecoilValue(atoms.sample(sampleId));
   const sampleSrc = useRecoilValue(selectors.sampleSrc(sampleId));
+  const colorGenerator = useRecoilValue(selectors.colorGenerator(!thumbnail));
+  const colorMap = useRecoilValue(selectors.colorMap(!thumbnail));
+
   return (
     <div
       ref={(node) => {
         if (node) {
           const looker = new ImageLooker();
-          looker.render(node, sample, { src: sampleSrc, thumbnail }, {});
+          looker.render(
+            node,
+            sample,
+            { src: sampleSrc, thumbnail },
+            {
+              colorGenerator,
+              colorMap,
+            }
+          );
         }
       }}
       style={style}

@@ -2,4 +2,7 @@
 module.exports = {
   workspaceRoot: "../",
   plugins: ["@snowpack/plugin-typescript"],
+  buildOptions: {
+    out: "dist",
+  },
 };

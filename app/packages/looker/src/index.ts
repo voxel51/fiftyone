@@ -4,6 +4,7 @@
 import { mergeDeep } from "immutable";
 import ResizeObserver from "resize-observer-polyfill";
 
+import "./style.css";
 export { ColorGenerator } from "./color";
 import {
   FrameState,
@@ -86,8 +87,14 @@ abstract class Looker<
     this.parentObserver.observe(parentElement);
   }
 
-  protected dispatchEvent(eventType: string, detail: any) {
+  protected dispatchEvent(eventType: string, detail: any): void {
     this.eventTarget.dispatchEvent(new CustomEvent(eventType, { detail }));
+  }
+
+  protected getDispatchEvent(): (eventType: string, detail: any) => void {
+    return (eventType: string, detail: any) => {
+      this.dispatchEvent(eventType, detail);
+    };
   }
 
   private makeUpdate(): StateUpdate<State> {
@@ -177,7 +184,7 @@ export class FrameLooker extends Looker<FrameState> {
   private overlays: Overlay<FrameState>[];
 
   getElements() {
-    return getFrameElements(this.updater, this.dispatchEvent);
+    return getFrameElements(this.updater, this.getDispatchEvent());
   }
 
   getInitialState(parentElement, config, options) {
@@ -209,16 +216,16 @@ export class ImageLooker extends Looker<ImageState> {
   private overlays: Overlay<ImageState>[];
 
   getElements() {
-    return getImageElements(this.updater, this.dispatchEvent);
+    return getImageElements(this.updater, this.getDispatchEvent());
   }
 
-  getInitialState(parentElement, props) {
+  getInitialState(parentElement, config, options) {
     return {
       ...this.getInitialBaseState(parentElement),
-      config: { ...props.config },
+      config: { ...config },
       options: {
         ...this.getDefaultOptions(),
-        ...props.options,
+        ...options,
       },
     };
   }
@@ -245,10 +252,10 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
   private frameOverlays: { [frameNumber: number]: Overlay<VideoState>[] };
 
   getElements() {
-    return getVideoElements(this.updater, this.dispatchEvent);
+    return getVideoElements(this.updater, this.getDispatchEvent());
   }
 
-  getInitialState(parentElement, props) {
+  getInitialState(parentElement, config, options) {
     return {
       duration: null,
       seeking: false,
@@ -257,10 +264,10 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
       playing: false,
       frameNumber: 1,
       ...this.getInitialBaseState(parentElement),
-      config: { ...props.config },
+      config: { ...config },
       options: {
         ...this.getDefaultOptions(),
-        ...props.options,
+        ...options,
       },
     };
   }

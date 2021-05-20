@@ -1,0 +1,63 @@
+{
+    "name": "@fiftyone/desktop",
+    "version": "0.13.1",
+    "main": "index.js",
+    "license": "Apache-2.0",
+    "private": true,
+    "scripts": {
+        "build": "tsc-silent --suppress 2717,2300@node_modules/ -p tsconfig.json",
+        "start": "yarn build-app && cross-env DEBUG_APP=true electron ./dist/main.js",
+        "package-mac": "yarn build && electron-builder build --mac",
+        "package-linux": "yarn build && electron-builder build --linux",
+        "package-win": "yarn build && electron-builder build --win --x64"
+    },
+    "build": {
+        "productName": "FiftyOne",
+        "appId": "com.voxel51.FiftyOne",
+        "files": [
+            "dist/",
+            "package.json"
+        ],
+        "dmg": {
+            "contents": [
+                {
+                    "x": 130,
+                    "y": 220
+                },
+                {
+                    "x": 410,
+                    "y": 220,
+                    "type": "link",
+                    "path": "/Applications"
+                }
+            ]
+        },
+        "mac": {
+            "target": [
+                "dir"
+            ]
+        },
+        "win": {
+            "target": [
+                "portable"
+            ]
+        },
+        "linux": {
+            "target": [
+                "AppImage"
+            ],
+            "category": "Tool"
+        },
+        "directories": {
+            "buildResources": "public",
+            "output": "release"
+        },
+        "publish": {
+            "provider": "github",
+            "owner": "voxel51",
+            "repo": "fiftyone",
+            "private": true
+        }
+    },
+    "devDependencies": {}
+}

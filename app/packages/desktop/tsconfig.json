@@ -1,0 +1,5 @@
+{
+    "extends": "@fiftyone/typescript-config",
+    "compilerOptions": {},
+    "include": ["src"]
+}

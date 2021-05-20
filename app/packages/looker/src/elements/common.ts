@@ -388,8 +388,11 @@ export class WindowElement<State extends BaseState> extends BaseElement<State> {
   getEvents(): Events<State> {
     return {
       dragstart: ({ event, update }) => {
-        event.preventDefault();
-        update(({ pan: [x, y] }) => {
+        update(({ config: { thumbnail }, pan: [x, y] }) => {
+          if (thumbnail) {
+            return {};
+          }
+          event.preventDefault();
           this.start = [event.clientX - x, event.clientY - y];
           return {};
         });
@@ -397,11 +400,19 @@ export class WindowElement<State extends BaseState> extends BaseElement<State> {
       drag: ({ event, update }) => {
         event.preventDefault();
         const [x, y] = this.start;
-        update({ pan: [event.clientX - x, event.clientY - y] });
+        update(({ config: { thumbnail } }) => {
+          if (thumbnail) {
+            return {};
+          }
+          return { pan: [event.clientX - x, event.clientY - y] };
+        });
       },
       wheel: ({ event, update }) => {
         event.preventDefault();
-        update(({ pan: [x, y], scale }) => {
+        update(({ config: { thumbnail }, pan: [x, y], scale }) => {
+          if (thumbnail) {
+            return {};
+          }
           const xs = (event.clientX - x) / scale,
             ys = (event.clientY - y) / scale,
             delta = -event.deltaY;
