@@ -58,6 +58,5 @@
             "repo": "fiftyone",
             "private": true
         }
-    },
-    "devDependencies": {}
+    }
 }

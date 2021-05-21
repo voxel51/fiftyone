@@ -12,7 +12,6 @@
         "allowSyntheticDefaultImports": true,
         "incremental": true,
         "outDir": "dist",
-        "tsBuildInfoFile": "dist/tsconfig.tsbuildinfo",
         "noFallthroughCasesInSwitch": true,
         "downlevelIteration": true,
         "importHelpers": true,

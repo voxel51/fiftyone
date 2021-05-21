@@ -10,8 +10,7 @@ module.exports = {
     src: "/_dist_",
     public: "/",
   },
-  plugins: ["@snowpack/plugin-react-refresh", "@snowpack/plugin-dotenv"],
-  exclude: ["**/*.@(test|stories).@(ts|tsx)"],
+  plugins: ["@snowpack/plugin-react-refresh"],
   packageOptions: {
     polyfillNode: true,
   },

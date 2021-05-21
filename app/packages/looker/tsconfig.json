@@ -1,18 +1,19 @@
 {
-    "compilerOptions": {
-        "declaration": true,
-        "declarationMap": true,
-        "sourceMap": true,
-        "outDir": "dist",
-        "rootDir": "src",
-        "lib": ["esnext", "dom"],
-        "moduleResolution": "node",
-        "esModuleInterop": true,
-        "forceConsistentCasingInFileNames": true,
-        "skipLibCheck": true,
-        "module": "esnext",
-        "target": "esnext",
-        "jsx": "preserve"
-    },
-    "include": ["src"]
+  "extends": "@fiftyone/typescript-config",
+  "compilerOptions": {
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "outDir": "dist",
+    "rootDir": "src",
+    "lib": ["esnext", "dom"],
+    "moduleResolution": "node",
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "skipLibCheck": true,
+    "module": "esnext",
+    "target": "esnext",
+    "jsx": "preserve"
+  },
+  "include": ["src"]
 }
