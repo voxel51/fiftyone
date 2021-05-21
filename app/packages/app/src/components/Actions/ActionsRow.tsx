@@ -30,6 +30,7 @@ import socket from "../../shared/connection";
 import { useOutsideClick, useTheme } from "../../utils/hooks";
 import { packageMessage } from "../../utils/socket";
 import Similar, { similaritySorting } from "./Similar";
+import { VideoLooker } from "@fiftyone/looker";
 
 const Loading = () => {
   const theme = useTheme();
@@ -122,7 +123,6 @@ const Tag = ({ modal }) => {
     modal ? selectors.selectedLabelIds : atoms.selectedSamples
   );
   const tagging = useRecoilValue(selectors.anyTagging);
-  const theme = useTheme();
   const ref = useRef();
   useOutsideClick(ref, () => open && setOpen(false));
   const [mRef, bounds] = useMeasure();
@@ -154,12 +154,10 @@ const Tag = ({ modal }) => {
 
 const Selected = ({
   modal,
-  playerRef,
-  frameNumberRef,
+  lookerRef,
 }: {
   modal: boolean;
-  playerRef?: any;
-  frameNumberRef?: MutableRefObject<number>;
+  lookerRef?: MutableRefObject<VideoLooker>;
 }) => {
   const [open, setOpen] = useState(false);
   const selectedSamples = useRecoilValue(atoms.selectedSamples);
@@ -192,8 +190,7 @@ const Selected = ({
         <Selector
           modal={modal}
           close={() => setOpen(false)}
-          playerRef={playerRef}
-          frameNumberRef={frameNumberRef}
+          lookerRef={lookerRef}
           bounds={bounds}
         />
       )}
@@ -292,11 +289,10 @@ const ActionsRowDiv = styled.div`
 
 type ActionsRowProps = {
   modal: boolean;
-  playerRef?: any;
-  frameNumberRef?: MutableRefObject<number>;
+  lookerRef?: MutableRefObject<VideoLooker>;
 };
 
-const ActionsRow = ({ modal, playerRef, frameNumberRef }: ActionsRowProps) => {
+const ActionsRow = ({ modal, lookerRef }: ActionsRowProps) => {
   const isRootView = useRecoilValue(selectors.isRootView);
   const isVideo = useRecoilValue(selectors.isVideoDataset);
   const style = modal
@@ -319,11 +315,7 @@ const ActionsRow = ({ modal, playerRef, frameNumberRef }: ActionsRowProps) => {
       {!isVideo && <Similarity modal={modal} />}
       {modal && <Hidden />}
       {!modal && <SaveFilters />}
-      <Selected
-        modal={modal}
-        playerRef={playerRef}
-        frameNumberRef={frameNumberRef}
-      />
+      <Selected modal={modal} lookerRef={lookerRef} />
     </ActionsRowDiv>
   );
 };

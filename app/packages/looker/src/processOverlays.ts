@@ -35,14 +35,12 @@ const processOverlays = <State extends BaseState>(
     ordered = [classifications, ...ordered];
   }
 
-  let sortedOverlays = [];
-
   if (overlays.length < 1) {
-    return sortedOverlays;
+    return ordered;
   }
 
   if (state.config.thumbnail || !state.cursorCoordinates) {
-    return sortedOverlays;
+    return ordered;
   }
 
   const [x, y] = getCanvasCoordinates(

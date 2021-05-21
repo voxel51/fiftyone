@@ -13,7 +13,7 @@ import FieldsSidebar from "./FieldsSidebar";
 import * as labelAtoms from "./Filters/utils";
 import { labelFilters } from "./Filters/LabelFieldFilters.state";
 import JSONView from "./JSONView";
-import Player51 from "./Looker";
+import Looker from "./Looker";
 import { ModalFooter } from "./utils";
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
@@ -93,7 +93,7 @@ const Container = styled.div`
     background-color: ${({ theme }) => theme.backgroundTransparent};
   }
 
-  .player {
+  .looker {
     position: relative;
     display: flex;
     align-items: center;
@@ -315,14 +315,14 @@ const SampleModal = ({ onClose }: Props, ref) => {
       className={fullscreen ? "fullscreen" : ""}
       ref={ref}
     >
-      <div className="player" ref={playerContainerRef}>
+      <div className="looker" ref={playerContainerRef}>
         {showJSON ? (
           <JSONView
             filterJSON={enableJSONFilter}
             enableFilter={setEnableJSONFilter}
           />
         ) : (
-          <Player51
+          <Looker
             key={sampleSrc} // force re-render when this changes
             sampleId={sample._id}
             thumbnail={false}

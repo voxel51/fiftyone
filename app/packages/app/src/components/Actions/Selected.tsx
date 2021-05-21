@@ -1,4 +1,4 @@
-import React, { MutableRefObject } from "react";
+import React, { MutableRefObject, useLayoutEffect } from "react";
 import {
   RecoilValueReadOnly,
   selector,
@@ -14,6 +14,7 @@ import * as selectors from "../../recoil/selectors";
 import * as labelAtoms from "../Filters/LabelFieldFilters.state";
 import socket from "../../shared/connection";
 import { packageMessage } from "../../utils/socket";
+import { VideoLooker } from "@fiftyone/looker";
 
 const useGridActions = (close: () => void) => {
   const itemNames = useRecoilValue(selectors.itemNames);
@@ -171,11 +172,11 @@ const hasSetDiff = <T extends unknown>(a: Set<T>, b: Set<T>): boolean =>
 const hasSetInt = <T extends unknown>(a: Set<T>, b: Set<T>): boolean =>
   new Set([...a].filter((e) => b.has(e))).size > 0;
 
-const useModalActions = (frameNumberRef, close) => {
+const useModalActions = (frameNumber, close) => {
   const selectedLabels = useRecoilValue(selectors.selectedLabelIds);
   const visibleSampleLabels = useRecoilValue(visibleModalSampleLabelIds);
   const visibleFrameLabels = useRecoilValue(
-    visibleModalCurrentFrameLabelIds(frameNumberRef.current)
+    visibleModalCurrentFrameLabelIds(frameNumber)
   );
   const isVideo = useRecoilValue(selectors.isVideoDataset);
   const closeAndCall = (callback) => {
@@ -208,16 +209,14 @@ const useModalActions = (frameNumberRef, close) => {
       text: "Select visible (current frame)",
       hidden: !hasFrameVisibleUnselected,
       onClick: closeAndCall(
-        useSelectVisible(visibleModalCurrentFrameLabels(frameNumberRef.current))
+        useSelectVisible(visibleModalCurrentFrameLabels(frameNumber))
       ),
     },
     isVideo && {
       text: "Unselect visible (current frame)",
       hidden: !hasVisibleSelection,
       onClick: closeAndCall(
-        useUnselectVisible(
-          visibleModalCurrentFrameLabelIds(frameNumberRef.current)
-        )
+        useUnselectVisible(visibleModalCurrentFrameLabelIds(frameNumber))
       ),
     },
     {
@@ -239,7 +238,7 @@ const useModalActions = (frameNumberRef, close) => {
       text: "Hide unselected (current frame)",
       hidden: !hasFrameVisibleUnselected,
       onClick: closeAndCall(
-        useHideOthers(visibleModalCurrentFrameLabels(frameNumberRef.current))
+        useHideOthers(visibleModalCurrentFrameLabels(frameNumber))
       ),
     },
   ].filter(Boolean);
@@ -248,21 +247,21 @@ const useModalActions = (frameNumberRef, close) => {
 interface SelectionActionsProps {
   modal: boolean;
   close: () => void;
-  playerRef?: any;
-  frameNumberRef: MutableRefObject<number>;
+  lookerRef: MutableRefObject<VideoLooker>;
   bounds: any;
 }
 
 const SelectionActions = ({
   modal,
   close,
-  playerRef,
-  frameNumberRef,
+  lookerRef,
   bounds,
 }: SelectionActionsProps) => {
-  playerRef?.current?.pause && playerRef.current.pause();
+  useLayoutEffect(() => {
+    lookerRef.current && lookerRef.current.pause();
+  });
   const actions = modal
-    ? useModalActions(frameNumberRef, close)
+    ? useModalActions(lookerRef, close)
     : useGridActions(close);
 
   return (
