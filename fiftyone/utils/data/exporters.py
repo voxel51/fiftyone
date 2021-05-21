@@ -84,7 +84,7 @@ def export_samples(
             constructor via ``DatasetExporter(export_dir, **kwargs)``
         """
     dataset_exporter = _get_dataset_exporter(
-        export_dir, dataset_type, dataset_exporter, **kwargs
+        export_dir, export_media, dataset_type, dataset_exporter, **kwargs
     )
 
     if isinstance(dataset_exporter, BatchDatasetExporter):
@@ -131,6 +131,7 @@ def write_dataset(
     dataset_type=None,
     dataset_exporter=None,
     num_samples=None,
+    export_media=True,
     **kwargs
 ):
     """Writes the samples to disk as a dataset in the specified format.
@@ -151,11 +152,14 @@ def write_dataset(
             write the dataset
         num_samples (None): the number of samples in ``samples``. If omitted,
             this is computed (if possible) via ``len(samples)``
+        export_media (True): whether to export media files or to export only 
+            labels and metadata. This argument only applies to certain dataset
+            types
         **kwargs: optional keyword arguments to pass to
             ``dataset_type.get_dataset_exporter_cls(dataset_dir, **kwargs)``
     """
     dataset_exporter = _get_dataset_exporter(
-        dataset_dir, dataset_type, dataset_exporter, **kwargs
+        dataset_dir, export_media, dataset_type, dataset_exporter, **kwargs
     )
 
     if num_samples is None:
@@ -187,7 +191,7 @@ def write_dataset(
 
 
 def _get_dataset_exporter(
-    export_dir, dataset_type, dataset_exporter, **kwargs
+    export_dir, export_media, dataset_type, dataset_exporter, **kwargs
 ):
     if dataset_type is not None:
         if inspect.isclass(dataset_type):
@@ -208,7 +212,13 @@ def _get_dataset_exporter(
 
     if dataset_exporter is None:
         dataset_exporter_cls = dataset_type.get_dataset_exporter_cls()
-        dataset_exporter = dataset_exporter_cls(export_dir, **kwargs)
+        exporter_args = inspect.getfullargspec(dataset_exporter_cls).args
+        if "export_media" in exporter_args:
+            dataset_exporter = dataset_exporter_cls(
+                export_dir, export_media=export_media, **kwargs
+            )
+        else:
+            dataset_exporter = dataset_exporter_cls(export_dir, **kwargs)
 
     return dataset_exporter
 
