@@ -1966,7 +1966,13 @@ class SampleCollection(object):
 
     @view_stage
     def exclude_labels(
-        self, labels=None, ids=None, tags=None, fields=None, omit_empty=True
+        self,
+        labels=None,
+        ids=None,
+        tags=None,
+        fields=None,
+        omit_empty=True,
+        only_samples=False,
     ):
         """Excludes the specified labels from the collection.
 
@@ -2052,6 +2058,9 @@ class SampleCollection(object):
             fields (None): a field or iterable of fields from which to exclude
             omit_empty (True): whether to omit samples that have no labels
                 after filtering
+            only_samples (False): whether to omit samples that contain at least
+                one matching label rather than filtering only the excluded
+                labels from them
 
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
@@ -2063,6 +2072,7 @@ class SampleCollection(object):
                 tags=tags,
                 fields=fields,
                 omit_empty=omit_empty,
+                only_samples=only_samples,
             )
         )
 
@@ -3411,7 +3421,13 @@ class SampleCollection(object):
 
     @view_stage
     def select_labels(
-        self, labels=None, ids=None, tags=None, fields=None, omit_empty=True
+        self,
+        labels=None,
+        ids=None,
+        tags=None,
+        fields=None,
+        omit_empty=True,
+        only_samples=False,
     ):
         """Selects only the specified labels from the collection.
 
@@ -3490,6 +3506,9 @@ class SampleCollection(object):
             fields (None): a field or iterable of fields from which to select
             omit_empty (True): whether to omit samples that have no labels
                 after filtering
+            only_samples (False): whether to select samples that contain at
+                least one matching label without filtering the non-matching
+                labels in those samples
 
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
@@ -3501,6 +3520,7 @@ class SampleCollection(object):
                 tags=tags,
                 fields=fields,
                 omit_empty=omit_empty,
+                only_samples=only_samples,
             )
         )
 
