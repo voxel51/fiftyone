@@ -228,12 +228,32 @@ class _Document(object):
         document,
         fields=None,
         omit_fields=None,
-        omit_none_fields=True,
         merge_lists=True,
         overwrite=True,
         expand_schema=True,
     ):
         """Merges the fields of the document into this document.
+
+        The behavior of this method is highly customizable. By default, all
+        top-level fields from the provided document are merged in, overwriting
+        any existing values for those fields, with the exception of list fields
+        (e.g., ``tags``) and label list fields (e.g.,
+        :class:`fiftyone.core.labels.Detections` fields), in which case the
+        elements of the lists themselves are merged. In the case of label list
+        fields, labels with the same ``id`` in both documents are updated
+        rather than duplicated.
+
+        To avoid confusion between missing fields and fields whose value is
+        ``None``, ``None``-valued fields are always treated as missing while
+        merging.
+
+        This method can be configured in numerous ways, including:
+
+        -   Whether new fields can be added to the document schema
+        -   Whether list fields should be treated as ordinary fields and merged
+            as a whole rather than merging their elements
+        -   Whether to merge (a) only specific fields or (b) all but certain
+            fields
 
         Args:
             document: a :class:`Document` or :class:`DocumentView` of the same
@@ -242,8 +262,6 @@ class _Document(object):
                 restrict the merge
             omit_fields (None): an optional field or iterable of fields to
                 exclude from the merge
-            omit_none_fields (True): whether to omit ``None``-valued fields of
-                the provided document
             merge_lists (True): whether to merge the elements of top-level list
                 fields (e.g., ``tags``) and label list fields (e.g.,
                 :class:`fiftyone.core.labels.Detections` fields) rather than
@@ -254,8 +272,7 @@ class _Document(object):
                 False) when their ``id`` matches a label from the provided
                 document
             overwrite (True): whether to overwrite (True) or skip (False)
-                existing fields. Note that fields whose values are ``None`` or
-                missing are always overwritten
+                existing fields and label elements
             expand_schema (True): whether to dynamically add new fields
                 encountered to the document schema. If False, an error is
                 raised if any fields are not in the document schema
@@ -272,7 +289,7 @@ class _Document(object):
         for field_name in fields:
             value = document[field_name]
 
-            if omit_none_fields and value is None:
+            if value is None:
                 continue
 
             try:

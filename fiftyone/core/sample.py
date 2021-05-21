@@ -216,12 +216,32 @@ class _SampleMixin(object):
         sample,
         fields=None,
         omit_fields=None,
-        omit_none_fields=True,
         merge_lists=True,
         overwrite=True,
         expand_schema=True,
     ):
-        """Merges the fields of the sample into this sample.
+        """Merges the fields of the given sample into this sample.
+
+        The behavior of this method is highly customizable. By default, all
+        top-level fields from the provided sample are merged in, overwriting
+        any existing values for those fields, with the exception of list fields
+        (e.g., ``tags``) and label list fields (e.g.,
+        :class:`fiftyone.core.labels.Detections` fields), in which case the
+        elements of the lists themselves are merged. In the case of label list
+        fields, labels with the same ``id`` in both samples are updated rather
+        than duplicated.
+
+        To avoid confusion between missing fields and fields whose value is
+        ``None``, ``None``-valued fields are always treated as missing while
+        merging.
+
+        This method can be configured in numerous ways, including:
+
+        -   Whether new fields can be added to the dataset schema
+        -   Whether list fields should be treated as ordinary fields and merged
+            as a whole rather than merging their elements
+        -   Whether to merge (a) only specific fields or (b) all but certain
+            fields
 
         Args:
             sample: a :class:`fiftyone.core.sample.Sample`
@@ -230,8 +250,6 @@ class _SampleMixin(object):
             omit_fields (None): an optional field or iterable of fields to
                 exclude from the merge. May contain frame fields for video
                 samples
-            omit_none_fields (True): whether to omit ``None``-valued fields of
-                the provided sample
             merge_lists (True): whether to merge the elements of list fields
                 (e.g., ``tags``) and label list fields (e.g.,
                 :class:`fiftyone.core.labels.Detections` fields) rather than
@@ -242,8 +260,7 @@ class _SampleMixin(object):
                 False) when their ``id`` matches a label from the provided
                 sample
             overwrite (True): whether to overwrite (True) or skip (False)
-                existing fields. Note that fields whose values are ``None`` or
-                missing are always overwritten
+                existing fields and label elements
             expand_schema (True): whether to dynamically add new fields
                 encountered to the dataset schema. If False, an error is raised
                 if any fields are not in the dataset schema
@@ -268,7 +285,6 @@ class _SampleMixin(object):
             sample,
             fields=fields,
             omit_fields=omit_fields,
-            omit_none_fields=omit_none_fields,
             merge_lists=merge_lists,
             overwrite=overwrite,
             expand_schema=expand_schema,
@@ -279,7 +295,6 @@ class _SampleMixin(object):
                 sample.frames,
                 fields=frame_fields,
                 omit_fields=omit_frame_fields,
-                omit_none_fields=omit_none_fields,
                 merge_lists=merge_lists,
                 overwrite=overwrite,
                 expand_schema=expand_schema,

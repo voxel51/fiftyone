@@ -1353,7 +1353,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self.merge_samples(
             sample_collection,
             key_field="id",
-            omit_none_fields=False,
             skip_existing=True,
             insert_new=True,
             include_info=include_info,
@@ -1444,7 +1443,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         insert_new=True,
         fields=None,
         omit_fields=None,
-        omit_none_fields=True,
         merge_lists=True,
         overwrite=True,
         expand_schema=True,
@@ -1468,17 +1466,19 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         fields, labels with the same ``id`` in both collections are updated
         rather than duplicated.
 
+        To avoid confusion between missing fields and fields whose value is
+        ``None``, ``None``-valued fields are always treated as missing while
+        merging.
+
         This method can be configured in numerous ways, including:
 
         -   Whether existing samples should be modified or skipped
         -   Whether new samples should be added or omitted
-        -   Whether new fields can be added to the dataset's schema
+        -   Whether new fields can be added to the dataset schema
         -   Whether list fields should be treated as ordinary fields and merged
             as a whole rather than merging their elements
         -   Whether to merge (a) only specific fields or (b) all but certain
             fields
-        -   Whether to treat ``None``-valued fields as missing data that should
-            not be merged
 
         Args:
             samples: a :class:`fiftyone.core.collections.SampleCollection` or
@@ -1503,8 +1503,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 from ``samples``, if present, when merging or adding samples.
                 One exception is that ``filepath`` is always included when
                 adding new samples, since the field is required
-            omit_none_fields (True): whether to omit ``None``-valued fields of
-                ``samples`` when merging their fields
             merge_lists (True): whether to merge the elements of list fields
                 (e.g., ``tags``) and label list fields (e.g.,
                 :class:`fiftyone.core.labels.Detections` fields) rather than
@@ -1515,8 +1513,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 False) when their ``id`` matches a label from the provided
                 samples
             overwrite (True): whether to overwrite (True) or skip (False)
-                existing fields. Note that fields whose values are ``None`` or
-                missing are always overwritten
+                existing fields and label elements
             expand_schema (True): whether to dynamically add new fields
                 encountered to the dataset schema. If False, an error is raised
                 if a sample's schema is not a subset of the dataset schema
@@ -1562,7 +1559,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 insert_new=insert_new,
                 fields=fields,
                 omit_fields=omit_fields,
-                omit_none_fields=omit_none_fields,
                 merge_lists=merge_lists,
                 overwrite=overwrite,
                 expand_schema=expand_schema,
@@ -1606,7 +1602,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                             sample,
                             fields=fields,
                             omit_fields=omit_fields,
-                            omit_none_fields=omit_none_fields,
                             merge_lists=merge_lists,
                             overwrite=overwrite,
                             expand_schema=expand_schema,
@@ -3938,7 +3933,6 @@ def _merge_samples(
     insert_new=True,
     fields=None,
     omit_fields=None,
-    omit_none_fields=True,
     merge_lists=True,
     overwrite=True,
     expand_schema=True,
@@ -4066,21 +4060,6 @@ def _merge_samples(
     if _omit_fields:
         sample_pipeline.append({"$unset": list(_omit_fields)})
 
-    if omit_none_fields:
-        omit_none_stage = {
-            "$replaceWith": {
-                "$arrayToObject": {
-                    "$filter": {
-                        "input": {"$objectToArray": "$$ROOT"},
-                        "as": "item",
-                        "cond": {"$ne": ["$$item.v", None]},
-                    }
-                }
-            }
-        }
-
-        sample_pipeline.append(omit_none_stage)
-
     if skip_existing:
         when_matched = "keepExisting"
     else:
@@ -4171,9 +4150,6 @@ def _merge_samples(
         _omit_frame_fields.discard("frame_number")
         frame_pipeline.append({"$unset": list(_omit_frame_fields)})
 
-        if omit_none_fields:
-            frame_pipeline.append(omit_none_stage)
-
         if skip_existing:
             when_frame_matched = "keepExisting"
         else:
@@ -4254,25 +4230,57 @@ def _merge_docs(
         list_fields = None
         elem_fields = None
 
-    if delete_fields:
+    if overwrite:
+        root_doc = "$$ROOT"
+
+        if delete_fields:
+            cond = {
+                "$and": [
+                    {"$ne": ["$$item.v", None]},
+                    {"$not": {"$in": ["$$item.k", list(delete_fields)]}},
+                ]
+            }
+        else:
+            cond = {"$ne": ["$$item.v", None]}
+
         new_doc = {
             "$arrayToObject": {
                 "$filter": {
                     "input": {"$objectToArray": "$$new"},
                     "as": "item",
-                    "cond": {
-                        "$not": {"$in": ["$$item.k", list(delete_fields)]}
-                    },
+                    "cond": cond,
                 }
             }
         }
-    else:
-        new_doc = "$$new"
 
-    if overwrite:
-        docs = ["$$ROOT", new_doc]
+        docs = [root_doc, new_doc]
     else:
-        docs = [new_doc, "$$ROOT"]
+        if delete_fields:
+            new_doc = {
+                "$arrayToObject": {
+                    "$filter": {
+                        "input": {"$objectToArray": "$$new"},
+                        "as": "item",
+                        "cond": {
+                            "$not": {"$in": ["$$item.k", list(delete_fields)]}
+                        },
+                    }
+                }
+            }
+        else:
+            new_doc = "$$new"
+
+        root_doc = {
+            "$arrayToObject": {
+                "$filter": {
+                    "input": {"$objectToArray": "$$ROOT"},
+                    "as": "item",
+                    "cond": {"$ne": ["$$item.v", None]},
+                }
+            }
+        }
+
+        docs = [new_doc, root_doc]
 
     if list_fields or elem_fields:
         doc = {}
