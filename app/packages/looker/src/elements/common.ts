@@ -150,11 +150,8 @@ export class CanvasElement<State extends BaseState> extends BaseElement<State> {
   }
 
   createHTMLElement() {
-    const element = document.createElement("div");
+    const element = document.createElement("canvas");
     element.className = "looker-canvas";
-    const canvas = document.createElement("canvas");
-    canvas.className = "looker-canvas";
-    element.appendChild(canvas);
     return element;
   }
 

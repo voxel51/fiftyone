@@ -35,7 +35,7 @@ export const isShown = <State extends BaseState, Label extends BaseLabel>(
 ) => {
   if (
     state.options.activeLabels &&
-    state.options.activeLabels.includes(field)
+    !state.options.activeLabels.includes(field)
   ) {
     return false;
   }

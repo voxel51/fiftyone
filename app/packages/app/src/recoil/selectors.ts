@@ -524,30 +524,6 @@ export const defaultGridZoom = selector<number | null>({
   },
 });
 
-export const defaultPlayerOverlayOptions = selector({
-  key: "defaultPlayerOverlayOptions",
-  get: ({ get }) => {
-    const showAttrs = get(appConfig).show_attributes;
-    const showConfidence = get(appConfig).show_confidence;
-    const showTooltip = get(appConfig).show_tooltip;
-    return {
-      showAttrs,
-      showConfidence,
-      showTooltip,
-    };
-  },
-});
-
-export const playerOverlayOptions = selector({
-  key: "playerOverlayOptions",
-  get: ({ get }) => {
-    return {
-      ...get(defaultPlayerOverlayOptions),
-      ...get(atoms.savedPlayerOverlayOptions),
-    };
-  },
-});
-
 export const fieldPaths = selector({
   key: "fieldPaths",
   get: ({ get }) => {

@@ -115,7 +115,6 @@ abstract class Looker<
       if (postUpdate) {
         postUpdate(context, this.state, this.currentOverlays);
       }
-      console.log(this.currentOverlays);
 
       const numOverlays = this.currentOverlays.length;
       for (let index = numOverlays - 1; index > 0; index--) {

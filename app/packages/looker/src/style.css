@@ -285,16 +285,11 @@
   object-fit: contain;
 }
 
-div.looker-canvas {
-  position: absolute;
-  height: 100%;
-  width: 100%;
-  top: 0;
-}
-
 canvas.looker-canvas {
+  position: absolute;
   width: 100%;
   height: 100%;
+  top: 0;
 }
 
 img.looker-image {

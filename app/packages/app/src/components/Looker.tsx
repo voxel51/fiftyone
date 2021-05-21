@@ -6,16 +6,24 @@ import {
   selectorFamily,
   useRecoilValue,
   useRecoilCallback,
+  selector,
 } from "recoil";
 import { animated, useSpring } from "react-spring";
 
-import { ContentDiv, ContentHeader } from "./utils";
+import * as labelAtoms from "./Filters/utils";
 import ExternalLink from "./ExternalLink";
+import { ContentDiv, ContentHeader } from "./utils";
 import { ImageLooker } from "@fiftyone/looker";
 import { useEventHandler } from "../utils/hooks";
 
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
+import { labelFilters } from "./Filters/LabelFieldFilters.state";
+import {
+  FrameOptions,
+  ImageOptions,
+  VideoOptions,
+} from "@fiftyone/looker/src/state";
 
 const InfoWrapper = styled.div`
   display: flex;
@@ -419,19 +427,49 @@ const player51Options = selectorFamily<
   },
 });
 
+export const defaultLookerOptions = selector({
+  key: "defaultLookerOptions",
+  get: ({ get }) => {
+    const showAttrs = get(selectors.appConfig).show_attributes;
+    const showConfidence = get(selectors.appConfig).show_confidence;
+    const showTooltip = get(selectors.appConfig).show_tooltip;
+    return {
+      showAttrs,
+      showConfidence,
+      showTooltip,
+    };
+  },
+});
+
+export const lookerOptions = selectorFamily<
+  Partial<FrameOptions | ImageOptions | VideoOptions>,
+  boolean
+>({
+  key: "lookerOptions",
+  get: (modal) => ({ get }) => {
+    return {
+      ...get(defaultLookerOptions),
+      ...get(atoms.savedPlayerOverlayOptions),
+      activeLabels: get(labelAtoms.activeFields(modal)),
+      colorGenerator: get(selectors.colorGenerator(modal)),
+      colorMap: get(selectors.colorMap(modal)),
+      filter: get(labelFilters(modal)),
+    };
+  },
+});
+
 interface LookerProps {
   onClick?: React.MouseEventHandler<HTMLDivElement>;
   onSelect?: EventCallback;
   sampleId: string;
   style: React.CSSProperties;
-  thumbnail: boolean;
+  modal: boolean;
 }
 
-const Looker = ({ onClick, sampleId, style, thumbnail }: LookerProps) => {
+const Looker = ({ onClick, sampleId, style, modal }: LookerProps) => {
   const sample = useRecoilValue(atoms.sample(sampleId));
   const sampleSrc = useRecoilValue(selectors.sampleSrc(sampleId));
-  const colorGenerator = useRecoilValue(selectors.colorGenerator(!thumbnail));
-  const colorMap = useRecoilValue(selectors.colorMap(!thumbnail));
+  const options = useRecoilValue(lookerOptions(modal));
 
   return (
     <div
@@ -441,11 +479,8 @@ const Looker = ({ onClick, sampleId, style, thumbnail }: LookerProps) => {
           looker.render(
             node,
             sample,
-            { src: sampleSrc, thumbnail },
-            {
-              colorGenerator,
-              colorMap,
-            }
+            { src: sampleSrc, thumbnail: !modal },
+            options
           );
         }
       }}
