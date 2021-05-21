@@ -61,8 +61,7 @@ def import_from_labelbox(
 
         [
             {
-                "ID": <labelbox-id>,
-                "DataRow ID": <datarow-id>,
+                "DataRow ID": <labelbox-id>,
                 "Labeled Data": <url-or-None>,
                 "Label": {...}
             }
@@ -483,7 +482,7 @@ def convert_labelbox_export_to_import(inpath, outpath=None, video_outdir=None):
             )
 
             dout_map[uuid] = {
-                "ID": uuid,
+                "DataRow ID": uuid,
                 "Labeled Data": None,
                 "Label": {"frames": frames_outpath},
             }
@@ -491,7 +490,7 @@ def convert_labelbox_export_to_import(inpath, outpath=None, video_outdir=None):
 
         if uuid not in dout_map:
             dout_map[uuid] = {
-                "ID": uuid,
+                "DataRow ID": uuid,
                 "Labeled Data": None,
                 "Label": {"objects": [], "classifications": []},
             }
