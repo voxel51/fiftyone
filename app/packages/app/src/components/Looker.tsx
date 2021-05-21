@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, MutableRefObject } from "react";
+import React, { useState, useRef } from "react";
 import ReactDOM from "react-dom";
 import styled from "styled-components";
 import {
@@ -7,14 +7,12 @@ import {
   useRecoilValue,
   useRecoilCallback,
 } from "recoil";
-import { Warning } from "@material-ui/icons";
 import { animated, useSpring } from "react-spring";
 
 import { ContentDiv, ContentHeader } from "./utils";
 import ExternalLink from "./ExternalLink";
-import { FrameLooker, ImageLooker, VideoLooker } from "looker";
+import { ImageLooker } from "@fiftyone/looker";
 import { useEventHandler } from "../utils/hooks";
-import { useMove } from "react-use-gesture";
 
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";

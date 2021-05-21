@@ -1,12 +1,13 @@
 {
-    "compilerOptions": {
-        "module": "es2020",
-        "noImplicitAny": false,
-        "sourceMap": true,
-        "outDir": "dist",
-        "jsx": "react"
-    },
-    "lib": ["es2020"],
-    "exclude": ["src", "node_modules/**/*", "dist"],
-    "references": [{ "path": "../looker" }]
+  "extends": "@fiftyone/typescript-config",
+  "compilerOptions": {
+    "module": "es2020",
+    "noImplicitAny": false,
+    "sourceMap": true,
+    "outDir": "dist",
+    "jsx": "preserve"
+  },
+  "lib": ["es2020"],
+  "include": ["src"],
+  "references": [{ "path": "../looker" }]
 }
