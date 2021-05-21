@@ -314,6 +314,8 @@ class COCODetectionDatasetExporter(foud.LabeledImageDatasetExporter):
             is used
         tolerance (None): a tolerance, in pixels, when generating approximate
             polylines for instance masks. Typical values are 1-3 pixels
+        export_media (True): whether to export media files or to export only 
+            labels and metadata
     """
 
     def __init__(
@@ -323,11 +325,12 @@ class COCODetectionDatasetExporter(foud.LabeledImageDatasetExporter):
         info=None,
         image_format=None,
         tolerance=None,
+        export_media=True,
     ):
         if image_format is None:
             image_format = fo.config.default_image_ext
 
-        super().__init__(export_dir)
+        super().__init__(export_dir, export_media=export_media)
         self.classes = classes
         self.info = info
         self.image_format = image_format
@@ -340,7 +343,6 @@ class COCODetectionDatasetExporter(foud.LabeledImageDatasetExporter):
         self._images = None
         self._annotations = None
         self._classes = None
-        self._filename_maker = None
         self._has_labels = None
 
     @property
@@ -359,7 +361,7 @@ class COCODetectionDatasetExporter(foud.LabeledImageDatasetExporter):
         self._images = []
         self._annotations = []
         self._classes = set()
-        self._filename_maker = fou.UniqueFilenameMaker(
+        self._setup_filename_maker(
             output_dir=self._data_dir, default_ext=self.image_format
         )
         self._has_labels = False
@@ -381,9 +383,7 @@ class COCODetectionDatasetExporter(foud.LabeledImageDatasetExporter):
             self.info = sample_collection.info
 
     def export_sample(self, image_or_path, detections, metadata=None):
-        out_image_path = self._export_image_or_path(
-            image_or_path, self._filename_maker
-        )
+        out_image_path = self._export_image_or_path(image_or_path)
 
         if metadata is None:
             metadata = fom.ImageMetadata.build_for(out_image_path)

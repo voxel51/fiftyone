@@ -4730,6 +4730,7 @@ class SampleCollection(object):
         frame_labels_prefix=None,
         frame_labels_dict=None,
         overwrite=False,
+        export_media=True,
         **kwargs,
     ):
         """Exports the samples in the collection to disk.
@@ -4796,6 +4797,9 @@ class SampleCollection(object):
                 exporter can handle dictionaries of frame-level labels
             overwrite (False): when an ``export_dir`` is provided, whether to
                 delete the existing directory before performing the export
+            export_media (True): whether to export media files or to export only 
+                labels and metadata. This applies to most labeled dataset
+                exporters
             **kwargs: optional keyword arguments to pass to the dataset
                 exporter's constructor via
                 ``DatasetExporter(export_dir, **kwargs)``
@@ -4830,7 +4834,18 @@ class SampleCollection(object):
             dataset_exporter_cls = dataset_type.get_dataset_exporter_cls()
 
             try:
-                dataset_exporter = dataset_exporter_cls(export_dir, **kwargs)
+                exporter_args = inspect.getfullargspec(
+                    dataset_exporter_cls
+                ).args
+                if "export_media" in exporter_args:
+                    dataset_exporter = dataset_exporter_cls(
+                        export_dir, export_media=export_media, **kwargs
+                    )
+                else:
+                    dataset_exporter = dataset_exporter_cls(
+                        export_dir, **kwargs
+                    )
+
             except Exception as e:
                 exporter_name = dataset_exporter_cls.__name__
                 raise ValueError(

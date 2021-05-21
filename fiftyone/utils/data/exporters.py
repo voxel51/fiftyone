@@ -47,6 +47,7 @@ def export_samples(
     label_field_or_dict=None,
     frame_labels_field_or_dict=None,
     num_samples=None,
+    export_media=True,
     **kwargs
 ):
     """Exports the given samples to disk as a dataset in the specified format.
@@ -76,6 +77,9 @@ def export_samples(
             ``dataset_exporter`` is a :class:`LabeledVideoDatasetExporter`
         num_samples (None): the number of samples in ``samples``. If omitted,
             this is computed (if possible) via ``len(samples)``
+        export_media (True): whether to export media files or to export only 
+            labels and metadata. This argument only applies to certain dataset
+            types
         **kwargs: optional keyword arguments to pass to the dataset exporter's
             constructor via ``DatasetExporter(export_dir, **kwargs)``
         """
@@ -474,7 +478,16 @@ class BatchDatasetExporter(DatasetExporter):
 
 
 class ExportsImages(object):
-    """Mixin for :class:`DatasetExporter` classes that export images."""
+    """Mixin for :class:`DatasetExporter` classes that export images.
+    Args:
+        export_media (True): whether to export media files or to export only 
+            labels and metadata
+    """
+
+    def __init__(self, *args, export_media=True, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._export_media = export_media
+        self._filename_maker = None
 
     @staticmethod
     def _is_image_path(image_or_path):
@@ -488,50 +501,102 @@ class ExportsImages(object):
         """
         return etau.is_str(image_or_path)
 
-    @staticmethod
-    def _export_image_or_path(image_or_path, filename_maker):
-        """Exports the image, using the given
-        :class:`fiftyone.core.utils.UniqueFilenameMaker` to generate the output
-        path for the image.
+    def _setup_filename_maker(
+        self, output_dir="", default_ext="", ignore_exts=False
+    ):
+        """
+        Sets up a :class:`fiftyone.core.utils.UniqueFilenameMaker`
+        to use to generate the output image path
+
+        Args:
+            output_dir (""): the directory in which to generate output paths
+            default_ext (""): the file extension to use when generating default
+                output paths
+            ignore_exts (False): whether to omit file extensions when checking for
+                duplicate filenames
+        """
+        self._filename_maker = fou.UniqueFilenameMaker(
+            output_dir=output_dir,
+            default_ext=default_ext,
+            ignore_exts=ignore_exts,
+        )
+
+    def _export_image_or_path(self, image_or_path):
+        """Generates the output path to the image and optionally exports the 
+        image.
 
         Args:
             image_or_path: an image or the path to the image on disk
-            filename_maker: a :class:`fiftyone.core.utils.UniqueFilenameMaker`
-                to use to generate the output image path
 
         Returns:
             the path to the exported image
         """
+        if not self._export_media:
+            if ExportsImages._is_image_path(image_or_path):
+                image_path = image_or_path
+            else:
+                image_path = self._filename_maker.get_output_path()
+
+            return image_path
+
         if ExportsImages._is_image_path(image_or_path):
             image_path = image_or_path
-            out_image_path = filename_maker.get_output_path(image_path)
+            out_image_path = self._filename_maker.get_output_path(image_path)
             etau.copy_file(image_path, out_image_path)
         else:
             img = image_or_path
-            out_image_path = filename_maker.get_output_path()
+            out_image_path = self._filename_maker.get_output_path()
             etai.write(img, out_image_path)
 
         return out_image_path
 
 
 class ExportsVideos(object):
-    """Mixin for :class:`DatasetExporter` classes that export videos."""
+    """Mixin for :class:`DatasetExporter` classes that export videos.
+    Args:
+    export_media (True): whether to export media files or to export only 
+        labels and metadata
+    """
 
-    @staticmethod
-    def _export_video(video_path, filename_maker):
-        """Exports the video, using the given
-        :class:`fiftyone.core.utils.UniqueFilenameMaker` to generate the output
-        path for the video.
+    def __init__(self, *args, export_media=True, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._export_media = export_media
+        self._filename_maker = None
+
+    def _setup_filename_maker(
+        self, output_dir="", default_ext="", ignore_exts=False
+    ):
+        """
+        Sets up a :class:`fiftyone.core.utils.UniqueFilenameMaker`
+        to use to generate the output video path
+
+        Args:
+            output_dir (""): the directory in which to generate output paths
+            default_ext (""): the file extension to use when generating default
+                output paths
+            ignore_exts (False): whether to omit file extensions when checking for
+                duplicate filenames
+        """
+        self._filename_maker = fou.UniqueFilenameMaker(
+            output_dir=output_dir,
+            default_ext=default_ext,
+            ignore_exts=ignore_exts,
+        )
+
+    def _export_video(self, video_path):
+        """Generates the output path to the video and optionally exports the 
+        video.
 
         Args:
             video_path: the path to a video on disk
-            filename_maker: a :class:`fiftyone.core.utils.UniqueFilenameMaker`
-                to use to generate the output video path
 
         Returns:
             the path to the exported video
         """
-        out_video_path = filename_maker.get_output_path(video_path)
+        if self._export_media:
+            return video_path
+
+        out_video_path = self._filename_maker.get_output_path(video_path)
         etau.copy_file(video_path, out_video_path)
 
         return out_video_path
@@ -557,7 +622,7 @@ class GenericSampleDatasetExporter(DatasetExporter):
         raise NotImplementedError("subclass must implement export_sample()")
 
 
-class UnlabeledImageDatasetExporter(DatasetExporter, ExportsImages):
+class UnlabeledImageDatasetExporter(ExportsImages, DatasetExporter):
     """Interface for exporting datasets of unlabeled image samples.
 
     See `this page <https://voxel51.com/docs/fiftyone/user_guide/export_datasets.html#writing-a-custom-datasetexporter>`_
@@ -589,7 +654,7 @@ class UnlabeledImageDatasetExporter(DatasetExporter, ExportsImages):
         raise NotImplementedError("subclass must implement export_sample()")
 
 
-class UnlabeledVideoDatasetExporter(DatasetExporter, ExportsVideos):
+class UnlabeledVideoDatasetExporter(ExportsVideos, DatasetExporter):
     """Interface for exporting datasets of unlabeled video samples.
 
     See `this page <https://voxel51.com/docs/fiftyone/user_guide/export_datasets.html#writing-a-custom-datasetexporter>`_
@@ -621,7 +686,7 @@ class UnlabeledVideoDatasetExporter(DatasetExporter, ExportsVideos):
         raise NotImplementedError("subclass must implement export_sample()")
 
 
-class LabeledImageDatasetExporter(DatasetExporter, ExportsImages):
+class LabeledImageDatasetExporter(ExportsImages, DatasetExporter):
     """Interface for exporting datasets of labeled image samples.
 
     See `this page <https://voxel51.com/docs/fiftyone/user_guide/export_datasets.html#writing-a-custom-datasetexporter>`_
@@ -629,6 +694,8 @@ class LabeledImageDatasetExporter(DatasetExporter, ExportsImages):
 
     Args:
         export_dir: the directory to write the export
+        export_media (True): whether to export media files or to export only 
+            labels and metadata
     """
 
     @property
@@ -674,7 +741,7 @@ class LabeledImageDatasetExporter(DatasetExporter, ExportsImages):
         raise NotImplementedError("subclass must implement export_sample()")
 
 
-class LabeledVideoDatasetExporter(DatasetExporter, ExportsVideos):
+class LabeledVideoDatasetExporter(ExportsVideos, DatasetExporter):
     """Interface for exporting datasets of labeled video samples.
 
     See `this page <https://voxel51.com/docs/fiftyone/user_guide/export_datasets.html#writing-a-custom-datasetexporter>`_
@@ -682,6 +749,8 @@ class LabeledVideoDatasetExporter(DatasetExporter, ExportsVideos):
 
     Args:
         export_dir: the directory to write the export
+        export_media (True): whether to export media files or to export only 
+            labels and metadata
     """
 
     @property
@@ -916,23 +985,25 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
 
     Args:
         export_dir: the directory to write the export
-        include_media (True): whether to include the source media in the export
+        export_media (True): whether to export media files using the method
+            defined by ``move_media`` (True), or to export only labels and
+            metadata (False)
         move_media (False): whether to move (True) or copy (False) the source
-            media into its output destination
+            media into its output destination if ``export_media`` is True
         rel_dir (None): a relative directory to remove from the ``filepath`` of
             each sample, if possible. The path is converted to an absolute path
             (if necessary) via ``os.path.abspath(os.path.expanduser(rel_dir))``.
             The typical use case for this argument is that your source data
             lives in a single directory and you wish to serialize relative,
             rather than absolute, paths to the data within that directory.
-            Only applicable when ``include_media`` is False
+            Only applicable when ``export_media`` is False
     """
 
     def __init__(
-        self, export_dir, include_media=True, move_media=False, rel_dir=None
+        self, export_dir, export_media=True, move_media=False, rel_dir=None
     ):
         super().__init__(export_dir)
-        self.include_media = include_media
+        self.export_media = export_media
         self.move_media = move_media
         self.rel_dir = rel_dir
         self._data_dir = None
@@ -950,7 +1021,7 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
         self._metadata_path = os.path.join(self.export_dir, "metadata.json")
         self._samples_path = os.path.join(self.export_dir, "samples.json")
         self._frames_path = os.path.join(self.export_dir, "frames.json")
-        if self.include_media:
+        if self.export_media:
             self._filename_maker = fou.UniqueFilenameMaker(
                 output_dir=self._data_dir
             )
@@ -960,10 +1031,10 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
 
         inpaths = sample_collection.values("filepath")
 
-        if self.include_media:
+        if self.export_media:
             if self.rel_dir is not None:
                 logger.warning(
-                    "Ignoring `rel_dir` since `include_media` is True"
+                    "Ignoring `rel_dir` since `export_media` is True"
                 )
 
             outpaths = [
@@ -1028,7 +1099,7 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
         if export_runs and sample_collection.has_brain_runs:
             _export_brain_results(sample_collection, self._brain_dir)
 
-        if self.include_media:
+        if self.export_media:
             logger.info("Exporting media...")
             fomm.export_media(inpaths, outpaths, move_media=self.move_media)
 
@@ -1073,19 +1144,18 @@ class ImageDirectoryExporter(UnlabeledImageDatasetExporter):
 
         super().__init__(export_dir)
         self.image_format = image_format
-        self._filename_maker = None
 
     @property
     def requires_image_metadata(self):
         return False
 
     def setup(self):
-        self._filename_maker = fou.UniqueFilenameMaker(
+        self._setup_filename_maker(
             output_dir=self.export_dir, default_ext=self.image_format
         )
 
     def export_sample(self, image_or_path, metadata=None):
-        self._export_image_or_path(image_or_path, self._filename_maker)
+        self._export_image_or_path(image_or_path)
 
 
 class VideoDirectoryExporter(UnlabeledVideoDatasetExporter):
@@ -1105,19 +1175,16 @@ class VideoDirectoryExporter(UnlabeledVideoDatasetExporter):
 
     def __init__(self, export_dir):
         super().__init__(export_dir)
-        self._filename_maker = None
 
     @property
     def requires_video_metadata(self):
         return False
 
     def setup(self):
-        self._filename_maker = fou.UniqueFilenameMaker(
-            output_dir=self.export_dir
-        )
+        self._setup_filename_maker(output_dir=self.export_dir)
 
     def export_sample(self, video_path, metadata=None):
-        self._export_video(video_path, self._filename_maker)
+        self._export_video(video_path)
 
 
 class FiftyOneImageClassificationDatasetExporter(LabeledImageDatasetExporter):
@@ -1140,17 +1207,24 @@ class FiftyOneImageClassificationDatasetExporter(LabeledImageDatasetExporter):
         image_format (None): the image format to use when writing in-memory
             images to disk. By default, ``fiftyone.config.default_image_ext``
             is used
+        export_media (True): whether to export media files or to export only 
+            labels and metadata
         pretty_print (False): whether to render the JSON in human readable
             format with newlines and indentations
     """
 
     def __init__(
-        self, export_dir, classes=None, image_format=None, pretty_print=False
+        self,
+        export_dir,
+        classes=None,
+        image_format=None,
+        export_media=True,
+        pretty_print=False,
     ):
         if image_format is None:
             image_format = fo.config.default_image_ext
 
-        super().__init__(export_dir)
+        super().__init__(export_dir, export_media=export_media)
         self.classes = classes
         self.image_format = image_format
         self.pretty_print = pretty_print
@@ -1158,7 +1232,6 @@ class FiftyOneImageClassificationDatasetExporter(LabeledImageDatasetExporter):
         self._labels_path = None
         self._labels_dict = None
         self._labels_map_rev = None
-        self._filename_maker = None
 
     @property
     def requires_image_metadata(self):
@@ -1172,7 +1245,7 @@ class FiftyOneImageClassificationDatasetExporter(LabeledImageDatasetExporter):
         self._data_dir = os.path.join(self.export_dir, "data")
         self._labels_path = os.path.join(self.export_dir, "labels.json")
         self._labels_dict = {}
-        self._filename_maker = fou.UniqueFilenameMaker(
+        self._setup_filename_maker(
             output_dir=self._data_dir,
             default_ext=self.image_format,
             ignore_exts=True,
@@ -1192,9 +1265,7 @@ class FiftyOneImageClassificationDatasetExporter(LabeledImageDatasetExporter):
                 self._parse_classes()
 
     def export_sample(self, image_or_path, classification, metadata=None):
-        out_image_path = self._export_image_or_path(
-            image_or_path, self._filename_maker
-        )
+        out_image_path = self._export_image_or_path(image_or_path)
         name = os.path.splitext(os.path.basename(out_image_path))[0]
         self._labels_dict[name] = _parse_classification(
             classification, labels_map_rev=self._labels_map_rev
@@ -1369,17 +1440,24 @@ class FiftyOneImageDetectionDatasetExporter(LabeledImageDatasetExporter):
         image_format (None): the image format to use when writing in-memory
             images to disk. By default, ``fiftyone.config.default_image_ext``
             is used
+        export_media (True): whether to export media files or to export only 
+            labels and metadata
         pretty_print (False): whether to render the JSON in human readable
             format with newlines and indentations
     """
 
     def __init__(
-        self, export_dir, classes=None, image_format=None, pretty_print=False
+        self,
+        export_dir,
+        classes=None,
+        image_format=None,
+        export_media=True,
+        pretty_print=False,
     ):
         if image_format is None:
             image_format = fo.config.default_image_ext
 
-        super().__init__(export_dir)
+        super().__init__(export_dir, export_media=export_media)
         self.classes = classes
         self.image_format = image_format
         self.pretty_print = pretty_print
@@ -1387,7 +1465,6 @@ class FiftyOneImageDetectionDatasetExporter(LabeledImageDatasetExporter):
         self._labels_path = None
         self._labels_dict = None
         self._labels_map_rev = None
-        self._filename_maker = None
 
     @property
     def requires_image_metadata(self):
@@ -1401,7 +1478,7 @@ class FiftyOneImageDetectionDatasetExporter(LabeledImageDatasetExporter):
         self._data_dir = os.path.join(self.export_dir, "data")
         self._labels_path = os.path.join(self.export_dir, "labels.json")
         self._labels_dict = {}
-        self._filename_maker = fou.UniqueFilenameMaker(
+        self._setup_filename_maker(
             output_dir=self._data_dir,
             default_ext=self.image_format,
             ignore_exts=True,
@@ -1421,9 +1498,7 @@ class FiftyOneImageDetectionDatasetExporter(LabeledImageDatasetExporter):
                 self._parse_classes()
 
     def export_sample(self, image_or_path, detections, metadata=None):
-        out_image_path = self._export_image_or_path(
-            image_or_path, self._filename_maker
-        )
+        out_image_path = self._export_image_or_path(image_or_path)
         name = os.path.splitext(os.path.basename(out_image_path))[0]
         self._labels_dict[name] = _parse_detections(
             detections, labels_map_rev=self._labels_map_rev
@@ -1468,13 +1543,12 @@ class FiftyOneImageLabelsDatasetExporter(LabeledImageDatasetExporter):
         if image_format is None:
             image_format = fo.config.default_image_ext
 
-        super().__init__(export_dir)
+        super().__init__(export_dir, export_media=False)
         self.image_format = image_format
         self.pretty_print = pretty_print
         self._labeled_dataset = None
         self._data_dir = None
         self._labels_dir = None
-        self._filename_maker = None
         self._description = None
 
     @property
@@ -1496,7 +1570,7 @@ class FiftyOneImageLabelsDatasetExporter(LabeledImageDatasetExporter):
         )
         self._data_dir = self._labeled_dataset.data_dir
         self._labels_dir = self._labeled_dataset.labels_dir
-        self._filename_maker = fou.UniqueFilenameMaker(
+        self._setup_filename_maker(
             output_dir=self._data_dir,
             default_ext=self.image_format,
             ignore_exts=True,
@@ -1506,14 +1580,7 @@ class FiftyOneImageLabelsDatasetExporter(LabeledImageDatasetExporter):
         self._description = sample_collection.info.get("description", None)
 
     def export_sample(self, image_or_path, labels, metadata=None):
-        is_image_path = self._is_image_path(image_or_path)
-
-        if is_image_path:
-            image_path = image_or_path
-            out_image_path = self._filename_maker.get_output_path(image_path)
-        else:
-            img = image_or_path
-            out_image_path = self._filename_maker.get_output_path()
+        out_image_path = self._export_image_or_path(image_or_path)
 
         name, ext = os.path.splitext(os.path.basename(out_image_path))
         new_image_filename = name + ext
@@ -1530,14 +1597,17 @@ class FiftyOneImageLabelsDatasetExporter(LabeledImageDatasetExporter):
             )
 
             self._labeled_dataset.add_file(
-                image_path,
+                image_or_path,
                 image_labels_path,
                 new_data_filename=new_image_filename,
                 new_labels_filename=new_labels_filename,
             )
         else:
             self._labeled_dataset.add_data(
-                img, _image_labels, new_image_filename, new_labels_filename,
+                image_or_path,
+                _image_labels,
+                new_image_filename,
+                new_labels_filename,
             )
 
     def close(self, *args):
@@ -1564,12 +1634,11 @@ class FiftyOneVideoLabelsDatasetExporter(LabeledVideoDatasetExporter):
     """
 
     def __init__(self, export_dir, pretty_print=False):
-        super().__init__(export_dir)
+        super().__init__(export_dir, export_media=False)
         self.pretty_print = pretty_print
         self._labeled_dataset = None
         self._data_dir = None
         self._labels_dir = None
-        self._filename_maker = None
         self._description = None
 
     @property
@@ -1595,7 +1664,7 @@ class FiftyOneVideoLabelsDatasetExporter(LabeledVideoDatasetExporter):
         )
         self._data_dir = self._labeled_dataset.data_dir
         self._labels_dir = self._labeled_dataset.labels_dir
-        self._filename_maker = fou.UniqueFilenameMaker(
+        self._setup_filename_maker(
             output_dir=self._data_dir, ignore_exts=True,
         )
 
@@ -1603,7 +1672,7 @@ class FiftyOneVideoLabelsDatasetExporter(LabeledVideoDatasetExporter):
         self._description = sample_collection.info.get("description", None)
 
     def export_sample(self, video_path, _, frames, metadata=None):
-        out_video_path = self._filename_maker.get_output_path(video_path)
+        out_video_path = self._export_video(video_path)
 
         name, ext = os.path.splitext(os.path.basename(out_video_path))
         new_image_filename = name + ext

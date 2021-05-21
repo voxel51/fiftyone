@@ -189,13 +189,17 @@ class YOLODatasetExporter(foud.LabeledImageDatasetExporter):
         image_format (None): the image format to use when writing in-memory
             images to disk. By default, ``fiftyone.config.default_image_ext``
             is used
+        export_media (True): whether to export media files or to export only 
+            labels and metadata
     """
 
-    def __init__(self, export_dir, classes=None, image_format=None):
+    def __init__(
+        self, export_dir, classes=None, image_format=None, export_media=True,
+    ):
         if image_format is None:
             image_format = fo.config.default_image_ext
 
-        super().__init__(export_dir)
+        super().__init__(export_dir, export_media=export_media)
         self.classes = classes
         self.image_format = image_format
 
@@ -206,7 +210,6 @@ class YOLODatasetExporter(foud.LabeledImageDatasetExporter):
         self._images_path = None
         self._data_dir = None
         self._images = None
-        self._filename_maker = None
         self._writer = None
 
     @property
@@ -226,7 +229,7 @@ class YOLODatasetExporter(foud.LabeledImageDatasetExporter):
         self._labels_map_rev = {}
         self._images = []
 
-        self._filename_maker = fou.UniqueFilenameMaker(
+        self._setup_filename_maker(
             output_dir=self._data_dir,
             default_ext=self.image_format,
             ignore_exts=True,
@@ -252,9 +255,7 @@ class YOLODatasetExporter(foud.LabeledImageDatasetExporter):
                 self._dynamic_classes = False
 
     def export_sample(self, image_or_path, detections, metadata=None):
-        out_image_path = self._export_image_or_path(
-            image_or_path, self._filename_maker
-        )
+        out_image_path = self._export_image_or_path(image_or_path)
 
         if detections is None:
             return
