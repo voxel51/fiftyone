@@ -14,8 +14,10 @@ import {
   makeWrapper,
 } from "./util";
 
-export class PlayButtonElement extends BaseElement<VideoState> {
-  element: HTMLImageElement;
+export class PlayButtonElement extends BaseElement<
+  VideoState,
+  HTMLImageElement
+> {
   private playing: boolean = false;
 
   getEvents(): Events<VideoState> {
@@ -29,7 +31,7 @@ export class PlayButtonElement extends BaseElement<VideoState> {
 
   createHTMLElement() {
     const element = document.createElement("img");
-    element.className = "p51-clickable";
+    element.className = "looker-clickable";
     element.style.gridArea = "2 / 2 / 2 / 2";
     return element;
   }
@@ -92,7 +94,7 @@ export class SeekBarElement extends BaseElement<VideoState> {
     element.setAttribute("type", "range");
     element.setAttribute("min", "0");
     element.setAttribute("max", "100");
-    element.className = "p51-seek-bar";
+    element.className = "looker-seek-bar";
     element.style.gridArea = "1 / 2 / 1 / 6";
     return element;
   }
@@ -124,7 +126,7 @@ export class UseFrameNumberOptionElement extends BaseElement<VideoState> {
 export class TimeElement extends BaseElement<VideoState> {
   createHTMLElement() {
     const element = document.createElement("div");
-    element.className = "p51-time";
+    element.className = "looker-time";
     element.style.gridArea = "2 / 3 / 2 / 3";
     return element;
   }
@@ -316,7 +318,7 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
 
   createHTMLElement() {
     const element = document.createElement("video");
-    element.className = "p51-video";
+    element.className = "looker-video";
     element.setAttribute("preload", "metadata");
     element.muted = true; // this works whereas .setAttribute does not
     return element;

@@ -79,7 +79,7 @@ export class LookerElement<State extends BaseState> extends BaseElement<
 
   createHTMLElement() {
     const element = document.createElement("div");
-    element.className = "p51";
+    element.className = "looker";
     element.tabIndex = -1;
     return element;
   }
@@ -151,9 +151,9 @@ export class CanvasElement<State extends BaseState> extends BaseElement<State> {
 
   createHTMLElement() {
     const element = document.createElement("div");
-    element.className = "p51-canvas";
+    element.className = "looker-canvas";
     const canvas = document.createElement("canvas");
-    canvas.className = "p51-canvas";
+    canvas.className = "looker-canvas";
     element.appendChild(canvas);
     return element;
   }
@@ -188,7 +188,7 @@ export class ControlsElement<State extends BaseState> extends BaseElement<
 
   createHTMLElement() {
     const element = document.createElement("div");
-    element.className = "p51-controls";
+    element.className = "looker-controls";
     return element;
   }
 
@@ -228,7 +228,7 @@ export class OptionsButtonElement<State extends BaseState> extends BaseElement<
 
   createHTMLElement() {
     const element = document.createElement("img");
-    element.className = "p51-clickable";
+    element.className = "looker-clickable";
     element.src = ICONS.options;
     element.title = "Settings (s)";
     element.style.gridArea = "2 / 5 / 2 / 5";
@@ -269,7 +269,7 @@ export class OptionsPanelElement<State extends BaseState> extends BaseElement<
 
   createHTMLElement() {
     const element = document.createElement("div");
-    element.className = "p51-options-panel";
+    element.className = "looker-options-panel";
     return element;
   }
 
@@ -283,10 +283,10 @@ export class OptionsPanelElement<State extends BaseState> extends BaseElement<
     }
     if (showOptions && !disableControls) {
       this.element.style.opacity = "0.9";
-      this.element.classList.remove("p51-display-none");
+      this.element.classList.remove("looker-display-none");
     } else {
       this.element.style.opacity = "0.0";
-      this.element.classList.add("p51-display-none");
+      this.element.classList.add("looker-display-none");
     }
     this.showOptions = showOptions && !disableControls;
     return this.element;
@@ -408,11 +408,11 @@ export class WindowElement<State extends BaseState> extends BaseElement<State> {
         });
       },
       wheel: ({ event, update }) => {
-        event.preventDefault();
         update(({ config: { thumbnail }, pan: [x, y], scale }) => {
           if (thumbnail) {
             return {};
           }
+          event.preventDefault();
           const xs = (event.clientX - x) / scale,
             ys = (event.clientY - y) / scale,
             delta = -event.deltaY;
@@ -430,7 +430,7 @@ export class WindowElement<State extends BaseState> extends BaseElement<State> {
 
   createHTMLElement() {
     const element = document.createElement("div");
-    element.className = "p51-window";
+    element.className = "looker-window";
     return element;
   }
 

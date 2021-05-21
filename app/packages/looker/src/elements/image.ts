@@ -21,7 +21,7 @@ export class ImageElement extends BaseElement<ImageState, HTMLImageElement> {
 
   createHTMLElement() {
     const element = document.createElement("img");
-    element.className = "p51-image";
+    element.className = "looker-image";
     element.setAttribute("loading", "lazy");
     return element;
   }

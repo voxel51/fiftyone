@@ -5,7 +5,7 @@
   "prettier": "@fiftyone/prettier-config",
   "private": true,
   "scripts": {
-    "build": "snowpack build && cp -r ../../fiftyone/server/static/* ./dist/",
+    "build": "snowpack build && cp -r ../../../fiftyone/server/static/* ./dist/",
     "start": "snowpack dev"
   },
   "dependencies": {

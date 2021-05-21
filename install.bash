@@ -113,7 +113,7 @@ if [ ${BUILD_APP} = true ]; then
     cd app
     echo "Building the App. This will take a minute or two..."
     yarn install > /dev/null 2>&1
-    yarn build-web
+    yarn build
     cd ..
 fi
 
