@@ -3019,7 +3019,7 @@ class MatchLabels(ViewStage):
         for field in fields:
             if sample_collection._is_frame_field(field):
                 frames, leaf = field.split(".", 1)
-                new_field = frames + "__" + leaf
+                new_field = frames + ".__" + leaf
             else:
                 new_field = "__" + field
 
@@ -4734,11 +4734,12 @@ def _get_label_field_only_matches_expr(
     sample_collection, field, prefix="", new_field=None
 ):
     label_type = sample_collection._get_label_field_type(field)
-    field, is_frame_field = sample_collection._handle_frame_field(field)
     is_label_list_field = issubclass(label_type, fol._LABEL_LIST_FIELDS)
 
     if new_field is not None:
         field = new_field
+
+    field, is_frame_field = sample_collection._handle_frame_field(field)
 
     if is_label_list_field:
         field += "." + label_type._LABEL_LIST_FIELD
