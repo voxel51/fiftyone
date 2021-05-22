@@ -480,14 +480,20 @@ class ExcludeLabels(ViewStage):
     The returned view will omit samples, sample fields, and individual labels
     that do not match the specified selection criteria.
 
-    You can perform an exclusion via one of the following methods:
-
-    -   Provide one or both of the ``ids`` and ``tags`` arguments, and
-        optionally the ``fields`` argument
+    You can perform an exclusion via one or more of the following methods:
 
     -   Provide the ``labels`` argument, which should contain a list of dicts
         in the format returned by
-        :meth:`fiftyone.core.session.Session.selected_labels`
+        :meth:`fiftyone.core.session.Session.selected_labels`, to exclude
+        specific labels
+
+    -   Provide the ``ids`` argument to exclude labels with specific IDs
+
+    -   Provide the ``tags`` argument to exclude labels with specific tags
+
+    By default, the exclusion is applied to all
+    :class:`fiftyone.core.labels.Label` fields, but you can provide the
+    ``fields`` argument to explicitly define the field(s) in which to exclude.
 
     Examples::
 
@@ -537,14 +543,14 @@ class ExcludeLabels(ViewStage):
         ]
 
         # Give the labels a "test" tag
-        dataset = dataset.clone()  # create a copy since we're modifying data
+        dataset = dataset.clone()  # create copy since we're modifying data
         dataset.select_labels(ids=ids).tag_labels("test")
 
         print(dataset.count_values("ground_truth.detections.tags"))
         print(dataset.count_values("predictions.detections.tags"))
 
         # Exclude the labels via their tag
-        stage = fo.ExcludeLabels(tags=["test"])
+        stage = fo.ExcludeLabels(tags="test")
         view = dataset.add_stage(stage)
 
         print(dataset.count("ground_truth.detections"))
@@ -562,19 +568,10 @@ class ExcludeLabels(ViewStage):
         fields (None): a field or iterable of fields from which to exclude
         omit_empty (True): whether to omit samples that have no labels after
             filtering
-        only_samples (False): whether to omit samples that contain at least
-            one matching label rather than filtering only the excluded labels
-            from them
     """
 
     def __init__(
-        self,
-        labels=None,
-        ids=None,
-        tags=None,
-        fields=None,
-        omit_empty=True,
-        only_samples=False,
+        self, labels=None, ids=None, tags=None, fields=None, omit_empty=True
     ):
         if labels is not None:
             sample_ids, labels_map = _parse_labels(labels)
@@ -601,7 +598,6 @@ class ExcludeLabels(ViewStage):
         self._tags = tags
         self._fields = fields
         self._omit_empty = omit_empty
-        self._only_samples = only_samples
         self._sample_ids = sample_ids
         self._labels_map = labels_map
         self._pipeline = None
@@ -631,13 +627,6 @@ class ExcludeLabels(ViewStage):
         """Whether to omit samples that have no labels after filtering."""
         return self._omit_empty
 
-    @property
-    def only_samples(self):
-        """Whether to omit samples that contain at least one matching label
-        rather than filtering only the excluded labels from them.
-        """
-        return self._only_samples
-
     def to_mongo(self, _):
         if self._pipeline is None:
             raise ValueError(
@@ -654,7 +643,6 @@ class ExcludeLabels(ViewStage):
             ["tags", self._tags],
             ["fields", self._fields],
             ["omit_empty", self._omit_empty],
-            ["only_samples", self._only_samples],
         ]
 
     @classmethod
@@ -690,12 +678,6 @@ class ExcludeLabels(ViewStage):
                 "default": "True",
                 "placeholder": "omit empty (default=True)",
             },
-            {
-                "name": "only_samples",
-                "type": "bool",
-                "default": "False",
-                "placeholder": "only samples (default=False)",
-            },
         ]
 
     def _needs_frames(self, sample_collection):
@@ -711,40 +693,25 @@ class ExcludeLabels(ViewStage):
     def _make_labels_pipeline(self, sample_collection):
         pipeline = []
 
-        if self._only_samples:
-            # Filter entire samples with excluded labels
-            stage = Exclude(self._sample_ids)
+        # Exclude specified labels
+        for field, labels_map in self._labels_map.items():
+            label_filter = ~F("_id").is_in(
+                [foe.ObjectId(_id) for _id in labels_map]
+            )
+            stage = FilterLabels(field, label_filter, only_matches=False)
             stage.validate(sample_collection)
             pipeline.extend(stage.to_mongo(sample_collection))
-        else:
-            # Exclude specified labels
-            for field, labels_map in self._labels_map.items():
-                label_filter = ~F("_id").is_in(
-                    [foe.ObjectId(_id) for _id in labels_map]
-                )
-                stage = FilterLabels(field, label_filter, only_matches=False)
-                stage.validate(sample_collection)
-                pipeline.extend(stage.to_mongo(sample_collection))
 
-            # Filter samples with no labels, if requested
-            if self._omit_empty:
-                fields = sample_collection._get_label_fields()
-                pipeline.extend(
-                    _make_omit_empty_labels_pipeline(sample_collection, fields)
-                )
+        # Filter samples with no labels, if requested
+        if self._omit_empty:
+            fields = sample_collection._get_label_fields()
+            pipeline.extend(
+                _make_omit_empty_labels_pipeline(sample_collection, fields)
+            )
 
         return pipeline
 
     def _make_pipeline(self, sample_collection):
-        if self._only_samples:
-            return _make_select_samples_with_labels_pipeline(
-                sample_collection,
-                ids=self._ids,
-                tags=self._tags,
-                fields=self._fields,
-                match_empty=True,
-            )
-
         pipeline = []
 
         if self._fields is not None:
@@ -1445,7 +1412,7 @@ class FilterLabels(FilterField):
         return None
 
     def to_mongo(self, sample_collection):
-        self._get_labels_field(sample_collection)
+        self._parse_labels_field(sample_collection)
 
         labels_field, is_frame_field = sample_collection._handle_frame_field(
             self._labels_field
@@ -1457,6 +1424,7 @@ class FilterLabels(FilterField):
                 _make_pipeline = _get_filter_frames_list_field_pipeline
             else:
                 _make_pipeline = _get_filter_frames_field_pipeline
+
         elif self._is_labels_list_field:
             _make_pipeline = _get_filter_list_field_pipeline
         else:
@@ -1485,8 +1453,8 @@ class FilterLabels(FilterField):
 
         return _get_field_mongo_filter(self._filter, prefix=self._field)
 
-    def _get_labels_field(self, sample_collection):
-        field_name, is_list_field, is_frame_field = _get_labels_field(
+    def _parse_labels_field(self, sample_collection):
+        field_name, is_list_field, is_frame_field = _parse_labels_field(
             sample_collection, self._field
         )
         self._is_frame_field = is_frame_field
@@ -1504,7 +1472,7 @@ class FilterLabels(FilterField):
         return new_field
 
     def validate(self, sample_collection):
-        self._get_labels_field(sample_collection)
+        self._parse_labels_field(sample_collection)
 
 
 def _get_filter_list_field_pipeline(
@@ -2231,6 +2199,12 @@ class LimitLabels(ViewStage):
         """The maximum number of labels to allow in each labels list."""
         return self._limit
 
+    def get_filtered_fields(self, sample_collection, frames=False):
+        if frames == self._is_frame_field:
+            return [self._labels_list_field]
+
+        return None
+
     def to_mongo(self, sample_collection):
         if self._labels_list_field is None:
             raise ValueError(
@@ -2264,9 +2238,11 @@ class LimitLabels(ViewStage):
         ]
 
     def validate(self, sample_collection):
-        self._labels_list_field, self._is_frame_field = _get_labels_list_field(
+        list_field, is_frame_field = _parse_labels_list_field(
             sample_collection, self._field
         )
+        self._labels_list_field = list_field
+        self._is_frame_field = is_frame_field
 
 
 class MapLabels(ViewStage):
@@ -2370,10 +2346,7 @@ class MapLabels(ViewStage):
         return self._map
 
     def to_mongo(self, sample_collection):
-        labels_field, _, is_frame_field = _get_labels_field(
-            sample_collection, self._field
-        )
-
+        labels_field = _parse_labels_field(sample_collection, self._field)[0]
         label_path = labels_field + ".label"
         expr = F().map_values(self._map)
         pipeline, _ = sample_collection._make_set_field_pipeline(
@@ -2398,7 +2371,7 @@ class MapLabels(ViewStage):
         ]
 
     def validate(self, sample_collection):
-        _get_labels_field(sample_collection, self._field)
+        _parse_labels_field(sample_collection, self._field)
 
 
 class SetField(ViewStage):
@@ -2733,9 +2706,378 @@ class Match(ViewStage):
         return [{"name": "filter", "type": "json", "placeholder": ""}]
 
 
+class MatchLabels(ViewStage):
+    """Selects the samples from a collection that contain the specified labels.
+
+    The returned view will only contain samples that have at least one label
+    that matches the specified selection criteria.
+
+    Note that, unlike :class:`SelectLabels` and :class:`FilterLabels`, this
+    stage will not filter the labels themselves; it only selects the
+    corresponding samples.
+
+    You can perform a selection via one or more of the following methods:
+
+    -   Provide the ``labels`` argument, which should contain a list of dicts
+        in the format returned by
+        :meth:`fiftyone.core.session.Session.selected_labels`, to match
+        specific labels
+
+    -   Provide the ``ids`` argument to match labels with specific IDs
+
+    -   Provide the ``tags`` argument to match labels with specific tags
+
+    -   Provide the ``filter`` argument to match labels based on a boolean
+        :class:`fiftyone.core.expressions.ViewExpression` that is applied to
+        each individual :class:`fiftyone.core.labels.Label` element
+
+    By default, the selection is applied to all
+    :class:`fiftyone.core.labels.Label` fields, but you can provide the
+    ``fields`` argument to explicitly define the field(s) in which to search.
+
+    Examples::
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+        from fiftyone import ViewField as F
+
+        dataset = foz.load_zoo_dataset("quickstart")
+
+        #
+        # Only show samples whose labels are currently selected in the App
+        #
+
+        session = fo.launch_app(dataset)
+
+        # Select some labels in the App...
+
+        stage = fo.MatchLabels(labels=session.selected_labels)
+        view = dataset.add_stage(stage)
+
+        #
+        # Only include samples that contain labels with the specified IDs
+        #
+
+        # Grab some label IDs
+        ids = [
+            dataset.first().ground_truth.detections[0].id,
+            dataset.last().predictions.detections[0].id,
+        ]
+
+        stage = fo.MatchLabels(ids=ids)
+        view = dataset.add_stage(stage)
+
+        print(len(view))
+        print(view.count("ground_truth.detections"))
+        print(view.count("predictions.detections"))
+
+        #
+        # Only include samples that contain labels with the specified tags
+        #
+
+        # Grab some label IDs
+        ids = [
+            dataset.first().ground_truth.detections[0].id,
+            dataset.last().predictions.detections[0].id,
+        ]
+
+        # Give the labels a "test" tag
+        dataset = dataset.clone()  # create copy since we're modifying data
+        dataset.select_labels(ids=ids).tag_labels("test")
+
+        print(dataset.count_values("ground_truth.detections.tags"))
+        print(dataset.count_values("predictions.detections.tags"))
+
+        # Retrieve the labels via their tag
+        stage = fo.MatchLabels(tags="test")
+        view = dataset.add_stage(stage)
+
+        print(len(view))
+        print(view.count("ground_truth.detections"))
+        print(view.count("predictions.detections"))
+
+        #
+        # Only include samples that contain labels matching a filter
+        #
+
+        filter = F("confidence") > 0.99
+        stage = fo.MatchLabels(filter=filter, fields="predictions")
+        view = dataset.add_stage(stage)
+
+        print(len(view))
+        print(view.count("ground_truth.detections"))
+        print(view.count("predictions.detections"))
+
+    Args:
+        labels (None): a list of dicts specifying the labels to select in the
+            format returned by
+            :meth:`fiftyone.core.session.Session.selected_labels`
+        ids (None): an ID or iterable of IDs of the labels to select
+        tags (None): a tag or iterable of tags of labels to select
+        filter (None): a :class:`fiftyone.core.expressions.ViewExpression` or
+            `MongoDB aggregation expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+            that returns a boolean describing whether to select a given label.
+            In the case of list fields like
+            :class:`fiftyone.core.labels.Detections`, the filter is applied to
+            the list elements, not the root field
+        fields (None): a field or iterable of fields from which to select
+    """
+
+    _FILTER_PREFIX = "$$FIELD"
+
+    def __init__(
+        self, labels=None, ids=None, tags=None, filter=None, fields=None,
+    ):
+        if labels is not None:
+            sample_ids, labels_map = _parse_labels(labels)
+        else:
+            sample_ids, labels_map = None, None
+
+        if etau.is_str(ids):
+            ids = [ids]
+        elif ids is not None:
+            ids = list(ids)
+
+        if etau.is_str(tags):
+            tags = [tags]
+        elif tags is not None:
+            tags = list(tags)
+
+        if etau.is_str(fields):
+            fields = [fields]
+        elif fields is not None:
+            fields = list(fields)
+
+        self._labels = labels
+        self._ids = ids
+        self._tags = tags
+        self._filter = filter
+        self._fields = fields
+        self._sample_ids = sample_ids
+        self._labels_map = labels_map
+        self._pipeline = None
+
+    @property
+    def labels(self):
+        """A list of dicts specifying the labels to match."""
+        return self._labels
+
+    @property
+    def ids(self):
+        """A list of IDs of labels to match."""
+        return self._ids
+
+    @property
+    def tags(self):
+        """A list of tags of labels to match."""
+        return self._tags
+
+    @property
+    def filter(self):
+        """A filter expression that defines the labels to match."""
+        return self._filter
+
+    @property
+    def fields(self):
+        """A list of fields from which labels are being matched."""
+        return self._fields
+
+    def to_mongo(self, _):
+        if self._pipeline is None:
+            raise ValueError(
+                "`validate()` must be called before using a %s stage"
+                % self.__class__
+            )
+
+        return self._pipeline
+
+    def _kwargs(self):
+        return [
+            ["labels", self._labels],
+            ["ids", self._ids],
+            ["tags", self._tags],
+            ["filter", self._get_mongo_filter()],
+            ["fields", self._fields],
+        ]
+
+    @classmethod
+    def _params(cls):
+        return [
+            {
+                "name": "labels",
+                "type": "NoneType|json",
+                "placeholder": "[{...}]",
+                "default": "None",
+            },
+            {
+                "name": "ids",
+                "type": "NoneType|list<id>|id",
+                "placeholder": "ids",
+                "default": "None",
+            },
+            {
+                "name": "tags",
+                "type": "NoneType|list<str>|str",
+                "placeholder": "tags",
+                "default": "None",
+            },
+            {
+                "name": "filter",
+                "type": "NoneType|json",
+                "placeholder": "filter",
+                "default": "None",
+            },
+            {
+                "name": "fields",
+                "type": "NoneType|list<field>|field|list<str>|str",
+                "placeholder": "fields",
+                "default": "None",
+            },
+        ]
+
+    def _get_mongo_filter(self):
+        if isinstance(self._filter, foe.ViewExpression):
+            return self._filter.to_mongo(prefix=self._FILTER_PREFIX)
+
+        return self._filter
+
+    def _needs_frames(self, sample_collection):
+        if self._labels is not None:
+            fields = self._labels_map.keys()
+        elif self._fields is not None:
+            fields = self._fields
+        else:
+            fields = sample_collection._get_label_fields()
+
+        return any(sample_collection._is_frame_field(f) for f in fields)
+
+    def _make_labels_pipeline(self, sample_collection):
+        stage = Select(self._sample_ids)
+        stage.validate(sample_collection)
+        return stage.to_mongo(sample_collection)
+
+    def _make_pipeline(self, sample_collection):
+        if self._ids is None and self._tags is None and self._filter is None:
+            return [{"$match": {"$expr": False}}]
+
+        if self._fields is not None:
+            fields = self._fields
+        else:
+            fields = sample_collection._get_label_fields()
+
+        id_tag_expr = None
+
+        if self._ids is not None:
+            id_tag_expr = F("_id").is_in([ObjectId(_id) for _id in self._ids])
+
+        if self._tags is not None:
+            tag_expr = (F("tags") != None).if_else(
+                F("tags").contains(self._tags), False
+            )
+            if id_tag_expr is None:
+                id_tag_expr = tag_expr
+            else:
+                id_tag_expr &= tag_expr
+
+        pipeline = []
+
+        # Create temporary fields containing only the selected labels
+        fields_map = {}
+        for field in fields:
+            if sample_collection._is_frame_field(field):
+                frames, leaf = field.split(".", 1)
+                new_field = frames + "__" + leaf
+            else:
+                new_field = "__" + field
+
+            fields_map[field] = new_field
+
+            filter_expr = _render_filter(
+                sample_collection,
+                id_tag_expr,
+                self._filter,
+                field,
+                self._FILTER_PREFIX,
+            )
+
+            stage = FilterLabels(
+                field, filter_expr, only_matches=False, _new_field=new_field
+            )
+            stage.validate(sample_collection)
+            pipeline.extend(stage.to_mongo(sample_collection))
+
+        # Select samples that have selected labels
+        pipeline.extend(
+            _make_match_empty_labels_pipeline(sample_collection, fields_map)
+        )
+
+        # Delete temporary fields
+        if fields_map:
+            pipeline.append({"$unset": list(fields_map.values())})
+
+        return pipeline
+
+    def validate(self, sample_collection):
+        if self._labels is not None:
+            self._pipeline = self._make_labels_pipeline(sample_collection)
+        else:
+            self._pipeline = self._make_pipeline(sample_collection)
+
+
+def _render_filter(
+    sample_collection, id_tag_expr, filter_expr_or_dict, field, var_prefix
+):
+    if filter_expr_or_dict is None:
+        return id_tag_expr
+
+    if isinstance(filter_expr_or_dict, foe.ViewExpression):
+        if id_tag_expr is not None:
+            return id_tag_expr & filter_expr_or_dict
+
+        return filter_expr_or_dict
+
+    _, is_list_field, is_frame_field = _parse_labels_field(
+        sample_collection, field
+    )
+
+    if is_list_field:
+        prefix = "$$this"
+    elif is_frame_field:
+        prefix = "$frame." + field.split(".", 1)[1]
+    else:
+        prefix = "$" + field
+
+    filter_dict = _replace_prefix(filter_expr_or_dict, var_prefix, prefix)
+
+    if id_tag_expr is not None:
+        return {"$and": [id_tag_expr.to_mongo(prefix=prefix), filter_dict]}
+
+    return filter_dict
+
+
+def _replace_prefix(val, old, new):
+    if isinstance(val, dict):
+        return {
+            _replace_prefix(k, old, new): _replace_prefix(v, old, new)
+            for k, v in val.items()
+        }
+
+    if isinstance(val, list):
+        return [_replace_prefix(v, old, new) for v in val]
+
+    if etau.is_str(val):
+        if val == old:
+            return new
+
+        if val.startswith(old + "."):
+            return new + val[len(old) :]
+
+    return val
+
+
 class MatchTags(ViewStage):
-    """Returns a view containing the samples in the collection that have any of
-    the given tag(s).
+    """Returns a view containing the samples in the collection that have (or do
+    not have) any of the given tag(s).
 
     To match samples that must contain multiple tags, chain multiple
     :class:`MatchTags` stages together.
@@ -2778,28 +3120,48 @@ class MatchTags(ViewStage):
         stage = fo.MatchTags(["test", "train"])
         view = dataset.add_stage(stage)
 
+        #
+        # Only include samples that do not have the "train" tag
+        #
+
+        stage = fo.MatchTags("train", bool=False)
+        view = dataset.add_stage(stage)
+
     Args:
         tags: the tag or iterable of tags to match
+        bool (True): whether to match samples that have (True) or do not have
+            (False) the given tags
     """
 
-    def __init__(self, tags):
+    def __init__(self, tags, bool=True):
         if etau.is_str(tags):
             tags = [tags]
         else:
             tags = list(tags)
 
         self._tags = tags
+        self._bool = bool
 
     @property
     def tags(self):
         """The list of tags to match."""
         return self._tags
 
+    @property
+    def bool(self):
+        """Whether to match samples that have (True) or do not have (False) any
+        of the given tags.
+        """
+        return self._bool
+
     def to_mongo(self, _):
-        return [{"$match": {"tags": {"$in": self._tags}}}]
+        if self._bool:
+            [{"$match": {"tags": {"$in": self._tags}}}]
+
+        return [{"$match": {"tags": {"$nin": self._tags}}}]
 
     def _kwargs(self):
-        return [["tags", self._tags]]
+        return [["tags", self._tags], ["bool", self._bool]]
 
     @classmethod
     def _params(cls):
@@ -2808,7 +3170,13 @@ class MatchTags(ViewStage):
                 "name": "tags",
                 "type": "list<str>|str",
                 "placeholder": "list,of,tags",
-            }
+            },
+            {
+                "name": "bool",
+                "type": "bool",
+                "default": "True",
+                "placeholder": "bool (default=True)",
+            },
         ]
 
 
@@ -3162,14 +3530,20 @@ class SelectLabels(ViewStage):
     The returned view will omit samples, sample fields, and individual labels
     that do not match the specified selection criteria.
 
-    You can perform a selection via one of the following methods:
-
-    -   Provide one or both of the ``ids`` and ``tags`` arguments, and
-        optionally the ``fields`` argument
+    You can perform a selection via one or more of the following methods:
 
     -   Provide the ``labels`` argument, which should contain a list of dicts
         in the format returned by
-        :meth:`fiftyone.core.session.Session.selected_labels`
+        :meth:`fiftyone.core.session.Session.selected_labels`, to select
+        specific labels
+
+    -   Provide the ``ids`` argument to select labels with specific IDs
+
+    -   Provide the ``tags`` argument to select labels with specific tags
+
+    By default, the selection is applied to all
+    :class:`fiftyone.core.labels.Label` fields, but you can provide the
+    ``fields`` argument to explicitly define the field(s) in which to select.
 
     Examples::
 
@@ -3216,14 +3590,14 @@ class SelectLabels(ViewStage):
         ]
 
         # Give the labels a "test" tag
-        dataset = dataset.clone()  # create a copy since we're modifying data
+        dataset = dataset.clone()  # create copy since we're modifying data
         dataset.select_labels(ids=ids).tag_labels("test")
 
         print(dataset.count_values("ground_truth.detections.tags"))
         print(dataset.count_values("predictions.detections.tags"))
 
         # Retrieve the labels via their tag
-        stage = fo.SelectLabels(tags=["test"])
+        stage = fo.SelectLabels(tags="test")
         view = dataset.add_stage(stage)
 
         print(view.count("ground_truth.detections"))
@@ -3238,19 +3612,10 @@ class SelectLabels(ViewStage):
         fields (None): a field or iterable of fields from which to select
         omit_empty (True): whether to omit samples that have no labels after
             filtering
-        only_samples (False): whether to select samples that contain at least
-            one matching label without filtering the non-matching labels in
-            those samples
     """
 
     def __init__(
-        self,
-        labels=None,
-        ids=None,
-        tags=None,
-        fields=None,
-        omit_empty=True,
-        only_samples=False,
+        self, labels=None, ids=None, tags=None, fields=None, omit_empty=True
     ):
         if labels is not None:
             sample_ids, labels_map = _parse_labels(labels)
@@ -3277,7 +3642,6 @@ class SelectLabels(ViewStage):
         self._tags = tags
         self._fields = fields
         self._omit_empty = omit_empty
-        self._only_samples = only_samples
         self._sample_ids = sample_ids
         self._labels_map = labels_map
         self._pipeline = None
@@ -3307,12 +3671,24 @@ class SelectLabels(ViewStage):
         """Whether to omit samples that have no labels after filtering."""
         return self._omit_empty
 
-    @property
-    def only_samples(self):
-        """Whether to select samples that contain at least one matching label
-        without filtering the non-matching labels in those samples.
-        """
-        return self._only_samples
+    def get_filtered_fields(self, sample_collection, frames=False):
+        if self._labels is not None:
+            fields = self._labels_map.keys()
+        elif self._fields is not None:
+            fields = self._fields
+        else:
+            fields = sample_collection._get_label_fields()
+
+        filtered_fields = []
+
+        for field in fields:
+            path, is_list_field, is_frame_field = _parse_labels_field(
+                sample_collection, field
+            )
+            if is_list_field and frames == is_frame_field:
+                filtered_fields.append(path)
+
+        return filtered_fields
 
     def to_mongo(self, _):
         if self._pipeline is None:
@@ -3330,7 +3706,6 @@ class SelectLabels(ViewStage):
             ["tags", self._tags],
             ["fields", self._fields],
             ["omit_empty", self._omit_empty],
-            ["only_samples", self._only_samples],
         ]
 
     @classmethod
@@ -3366,12 +3741,6 @@ class SelectLabels(ViewStage):
                 "default": "True",
                 "placeholder": "omit empty (default=True)",
             },
-            {
-                "name": "only_samples",
-                "type": "bool",
-                "default": "False",
-                "placeholder": "only samples (default=False)",
-            },
         ]
 
     def _needs_frames(self, sample_collection):
@@ -3387,14 +3756,11 @@ class SelectLabels(ViewStage):
     def _make_labels_pipeline(self, sample_collection):
         pipeline = []
 
-        if self._omit_empty or self._only_samples:
+        if self._omit_empty:
             # Filter samples with no selected labels
             stage = Select(self._sample_ids)
             stage.validate(sample_collection)
             pipeline.extend(stage.to_mongo(sample_collection))
-
-        if self._only_samples:
-            return pipeline
 
         #
         # We know that only fields in `_labels_map` will have matches, so
@@ -3426,14 +3792,6 @@ class SelectLabels(ViewStage):
         return pipeline
 
     def _make_pipeline(self, sample_collection):
-        if self._only_samples:
-            return _make_select_samples_with_labels_pipeline(
-                sample_collection,
-                ids=self._ids,
-                tags=self._tags,
-                fields=self._fields,
-            )
-
         if self._fields is not None:
             fields = self._fields
         else:
@@ -4249,7 +4607,7 @@ def _get_rng(seed):
     return _random
 
 
-def _get_labels_field(sample_collection, field_path):
+def _parse_labels_field(sample_collection, field_path):
     field, is_frame_field = _get_field(sample_collection, field_path)
 
     if isinstance(field, fof.EmbeddedDocumentField):
@@ -4271,7 +4629,7 @@ def _get_labels_field(sample_collection, field_path):
     )
 
 
-def _get_labels_list_field(sample_collection, field_path):
+def _parse_labels_list_field(sample_collection, field_path):
     field, is_frame_field = _get_field(sample_collection, field_path)
 
     if isinstance(field, fof.EmbeddedDocumentField):
@@ -4395,59 +4753,6 @@ def _make_match_empty_labels_pipeline(
     return stage.to_mongo(sample_collection)
 
 
-def _make_select_samples_with_labels_pipeline(
-    sample_collection, ids=None, tags=None, fields=None, match_empty=False
-):
-    if fields is None:
-        fields = sample_collection._get_label_fields()
-
-    if ids is None and tags is None:
-        return []
-
-    pipeline = []
-    filter_expr = None
-
-    if ids is not None:
-        filter_expr = F("_id").is_in([ObjectId(_id) for _id in ids])
-
-    if tags is not None:
-        tag_expr = (F("tags") != None).if_else(F("tags").contains(tags), False)
-        if filter_expr is not None:
-            filter_expr &= tag_expr
-        else:
-            filter_expr = tag_expr
-
-    # Create temporary fields containing only the selected labels
-    fields_map = {}
-    for field in fields:
-        if sample_collection._is_frame_field(field):
-            frames, leaf = field.split(".", 1)
-            new_field = frames + "__" + leaf
-        else:
-            new_field = "__" + field
-
-        fields_map[field] = new_field
-
-        stage = FilterLabels(
-            field, filter_expr, only_matches=False, _new_field=new_field
-        )
-        stage.validate(sample_collection)
-        pipeline.extend(stage.to_mongo(sample_collection))
-
-    # Select samples that have/don't have any selected labels
-    pipeline.extend(
-        _make_match_empty_labels_pipeline(
-            sample_collection, fields_map, match_empty=match_empty
-        )
-    )
-
-    # Delete temporary fields
-    if fields_map:
-        pipeline.append({"$unset": list(fields_map.values())})
-
-    return pipeline
-
-
 def _get_default_similarity_run(sample_collection):
     if isinstance(sample_collection, fop.PatchesView):
         patches_field = sample_collection.patches_field
@@ -4536,6 +4841,7 @@ _STAGES = [
     LimitLabels,
     MapLabels,
     Match,
+    MatchLabels,
     MatchTags,
     Mongo,
     Shuffle,
