@@ -73,6 +73,13 @@ class ViewStage(object):
         """Returns a list of names of fields or embedded fields that contain
         **arrays** have been filtered by the stage, if any.
 
+        For example, if a stage filters a
+        :class:`fiftyone.core.labels.Detections` field called
+        ``"predictions"``, it should include ``"predictions.detections"`` in
+        the returned list.
+
+        The ``"frames."`` prefix should be omitted when ``frames`` is True.
+
         Args:
             sample_collection: the
                 :class:`fiftyone.core.collections.SampleCollection` to which
@@ -626,6 +633,29 @@ class ExcludeLabels(ViewStage):
     def omit_empty(self):
         """Whether to omit samples that have no labels after filtering."""
         return self._omit_empty
+
+    def get_filtered_fields(self, sample_collection, frames=False):
+        if self._labels is not None:
+            fields = self._labels_map.keys()
+        elif self._fields is not None:
+            fields = self._fields
+        else:
+            fields = sample_collection._get_label_fields()
+
+        filtered_fields = []
+
+        for field in fields:
+            path, is_list_field, is_frame_field = _parse_labels_field(
+                sample_collection, field
+            )
+            if is_list_field and frames == is_frame_field:
+                path, _ = sample_collection._handle_frame_field(path)
+                filtered_fields.append(path)
+
+        if filtered_fields:
+            return filtered_fields
+
+        return None
 
     def to_mongo(self, _):
         if self._pipeline is None:
@@ -1402,17 +1432,20 @@ class FilterLabels(FilterField):
         self._validate_params()
 
     def get_filtered_fields(self, sample_collection, frames=False):
-        labels_field, is_frame_field = sample_collection._handle_frame_field(
-            self._labels_field
-        )
-
-        if self._is_labels_list_field and (frames == is_frame_field):
-            return [labels_field]
+        if self._is_labels_list_field and (frames == self._is_frame_field):
+            list_path, _ = sample_collection._handle_frame_field(
+                self._labels_field
+            )
+            return [list_path]
 
         return None
 
     def to_mongo(self, sample_collection):
-        self._parse_labels_field(sample_collection)
+        if self._labels_field is None:
+            raise ValueError(
+                "`validate()` must be called before using a %s stage"
+                % self.__class__
+            )
 
         labels_field, is_frame_field = sample_collection._handle_frame_field(
             self._labels_field
@@ -1578,12 +1611,12 @@ class _FilterListField(FilterField):
         raise NotImplementedError("subclasses must implement `_filter_field`")
 
     def get_filtered_fields(self, sample_collection, frames=False):
-        filter_field, is_frame_field = sample_collection._handle_frame_field(
+        list_path, is_frame_field = sample_collection._handle_frame_field(
             self._filter_field
         )
 
         if frames == is_frame_field:
-            return [filter_field]
+            return [list_path]
 
         return None
 
@@ -3682,13 +3715,17 @@ class SelectLabels(ViewStage):
         filtered_fields = []
 
         for field in fields:
-            path, is_list_field, is_frame_field = _parse_labels_field(
+            list_path, is_list_field, is_frame_field = _parse_labels_field(
                 sample_collection, field
             )
             if is_list_field and frames == is_frame_field:
-                filtered_fields.append(path)
+                list_path, _ = sample_collection._handle_frame_field(list_path)
+                filtered_fields.append(list_path)
 
-        return filtered_fields
+        if filtered_fields:
+            return filtered_fields
+
+        return None
 
     def to_mongo(self, _):
         if self._pipeline is None:
@@ -4608,7 +4645,7 @@ def _get_rng(seed):
 
 
 def _parse_labels_field(sample_collection, field_path):
-    field, is_frame_field = _get_field(sample_collection, field_path)
+    field, is_frame_field = _parse_field(sample_collection, field_path)
 
     if isinstance(field, fof.EmbeddedDocumentField):
         document_type = field.document_type
@@ -4630,7 +4667,7 @@ def _parse_labels_field(sample_collection, field_path):
 
 
 def _parse_labels_list_field(sample_collection, field_path):
-    field, is_frame_field = _get_field(sample_collection, field_path)
+    field, is_frame_field = _parse_field(sample_collection, field_path)
 
     if isinstance(field, fof.EmbeddedDocumentField):
         document_type = field.document_type
@@ -4644,7 +4681,7 @@ def _parse_labels_list_field(sample_collection, field_path):
     )
 
 
-def _get_field(sample_collection, field_path):
+def _parse_field(sample_collection, field_path):
     field_name, is_frame_field = sample_collection._handle_frame_field(
         field_path
     )
