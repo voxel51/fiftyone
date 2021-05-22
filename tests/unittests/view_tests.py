@@ -1010,10 +1010,41 @@ class ViewStageTests(unittest.TestCase):
         self.assertIs(len(result), 1)
 
     def test_limit_labels(self):
-        self._setUp_classifications()
+        sample1 = fo.Sample(
+            filepath="image1.png",
+            test_clfs=fo.Classifications(
+                classifications=[
+                    fo.Classification(label="friend", confidence=0.9),
+                    fo.Classification(label="friend", confidence=0.3),
+                    fo.Classification(label="stopper", confidence=0.1),
+                    fo.Classification(label="big bro", confidence=0.6),
+                ]
+            ),
+        )
 
-        result = list(self.dataset.limit_labels("test_clfs", 1))
-        self.assertIs(len(result[0]["test_clfs"].classifications), 1)
+        sample2 = fo.Sample(
+            filepath="image2.png",
+            test_clfs=fo.Classifications(
+                classifications=[
+                    fo.Classification(label="friend", confidence=0.99),
+                    fo.Classification(label="tricam", confidence=0.2),
+                    fo.Classification(label="hex", confidence=0.8),
+                ]
+            ),
+        )
+
+        sample3 = fo.Sample(filepath="image3.png")
+
+        dataset = fo.Dataset()
+        dataset.add_samples([sample1, sample2, sample3])
+
+        view = dataset.limit_labels("test_clfs", 1)
+
+        values = view.values(F("test_clfs.classifications").length())
+
+        self.assertListEqual(values, [1, 1, 0])
+        self.assertIs(len(view.first()["test_clfs"].classifications), 1)
+        self.assertIsNone(view.last()["test_clfs"])
 
     def test_map_labels(self):
         self._setUp_classification()
@@ -1177,6 +1208,107 @@ class ViewStageTests(unittest.TestCase):
         result = list(self.dataset.match({"value": "value"}))
         self.assertIs(len(result), 1)
         self.assertEqual(result[0].id, self.sample1.id)
+
+    def test_match_labels(self):
+        sample1 = fo.Sample(
+            filepath="image1.png",
+            test_clfs=fo.Classifications(
+                classifications=[
+                    fo.Classification(
+                        label="friend", confidence=0.9, tags=["good"],
+                    ),
+                    fo.Classification(
+                        label="big bro", confidence=0.6, tags=["bad"],
+                    ),
+                ]
+            ),
+        )
+
+        sample2 = fo.Sample(
+            filepath="image2.png",
+            test_clfs=fo.Classifications(
+                classifications=[
+                    fo.Classification(
+                        label="tricam", confidence=0.99, tags=["good"],
+                    )
+                ]
+            ),
+        )
+
+        sample3 = fo.Sample(filepath="image3.png")
+
+        dataset = fo.Dataset()
+        dataset.add_samples([sample1, sample2, sample3])
+
+        view = dataset.match_labels(tags="good")
+        self.assertEqual(len(view), 2)
+
+        view = dataset.match_labels(tags="bad")
+        self.assertEqual(len(view), 1)
+
+        view = dataset.match_labels(filter=F("confidence") > 0.8)
+        self.assertEqual(len(view), 2)
+
+        view = dataset.match_labels(tags="good", filter=F("confidence") < 0.95)
+        self.assertEqual(len(view), 1)
+
+    def test_match_labels_video(self):
+        sample1 = fo.Sample(filepath="video1.mp4")
+        sample1.frames[1] = fo.Frame(
+            test_clfs=fo.Classifications(
+                classifications=[
+                    fo.Classification(
+                        label="friend", confidence=0.9, tags=["good"],
+                    ),
+                    fo.Classification(
+                        label="big bro", confidence=0.6, tags=["bad"],
+                    ),
+                ]
+            )
+        )
+        sample1.frames[2] = fo.Frame(
+            test_clfs=fo.Classifications(
+                classifications=[
+                    fo.Classification(
+                        label="tricam", confidence=0.99, tags=["good"],
+                    )
+                ]
+            )
+        )
+
+        sample2 = fo.Sample(filepath="video2.mp4")
+        sample2.frames[2] = fo.Frame(
+            test_clfs=fo.Classifications(
+                classifications=[
+                    fo.Classification(
+                        label="big bro", confidence=0.4, tags=["bad"],
+                    )
+                ]
+            )
+        )
+
+        sample3 = fo.Sample(filepath="video3.mp4")
+
+        dataset = fo.Dataset()
+        dataset.add_samples([sample1, sample2, sample3])
+
+        view = dataset.match_labels(tags="good")
+        self.assertEqual(len(view), 1)
+
+        view = dataset.match_labels(tags="bad")
+        self.assertEqual(len(view), 2)
+
+        view = dataset.match_labels(tags=["good", "bad"])
+        self.assertEqual(len(view), 2)
+
+        view = dataset.match_labels(filter=F("label") == "friend")
+        self.assertEqual(len(view), 1)
+
+        view = dataset.match_labels(filter=F("label") == "big bro")
+        self.assertEqual(len(view), 2)
+
+        view = dataset.match_labels(tags="bad", filter=F("confidence") < 0.5)
+        self.assertEqual(len(view), 1)
 
     def test_match_tags(self):
         self.sample1.tags.append("test")

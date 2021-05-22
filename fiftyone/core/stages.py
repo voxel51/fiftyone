@@ -498,6 +498,9 @@ class ExcludeLabels(ViewStage):
 
     -   Provide the ``tags`` argument to exclude labels with specific tags
 
+    If multiple criteria are specified, labels must match all of them in order
+    to be excluded.
+
     By default, the exclusion is applied to all
     :class:`fiftyone.core.labels.Label` fields, but you can provide the
     ``fields`` argument to explicitly define the field(s) in which to exclude.
@@ -645,12 +648,12 @@ class ExcludeLabels(ViewStage):
         filtered_fields = []
 
         for field in fields:
-            path, is_list_field, is_frame_field = _parse_labels_field(
+            list_path, is_list_field, is_frame_field = _parse_labels_field(
                 sample_collection, field
             )
             if is_list_field and frames == is_frame_field:
-                path, _ = sample_collection._handle_frame_field(path)
-                filtered_fields.append(path)
+                list_path, _ = sample_collection._handle_frame_field(list_path)
+                filtered_fields.append(list_path)
 
         if filtered_fields:
             return filtered_fields
@@ -2234,7 +2237,10 @@ class LimitLabels(ViewStage):
 
     def get_filtered_fields(self, sample_collection, frames=False):
         if frames == self._is_frame_field:
-            return [self._labels_list_field]
+            list_path, _ = sample_collection._handle_frame_field(
+                self._labels_list_field
+            )
+            return [list_path]
 
         return None
 
@@ -2246,11 +2252,12 @@ class LimitLabels(ViewStage):
             )
 
         limit = max(self._limit, 0)
+        root, leaf = self._labels_list_field.rsplit(".", 1)
 
-        expr = F()[:limit]
-        pipeline, _ = sample_collection._make_set_field_pipeline(
-            self._labels_list_field, expr
+        expr = (F() != None).if_else(
+            F().set_field(leaf, F(leaf)[:limit]), None,
         )
+        pipeline, _ = sample_collection._make_set_field_pipeline(root, expr)
 
         return pipeline
 
@@ -2763,6 +2770,9 @@ class MatchLabels(ViewStage):
     -   Provide the ``filter`` argument to match labels based on a boolean
         :class:`fiftyone.core.expressions.ViewExpression` that is applied to
         each individual :class:`fiftyone.core.labels.Label` element
+
+    If multiple criteria are specified, labels must match all of them in order
+    to trigger a sample match.
 
     By default, the selection is applied to all
     :class:`fiftyone.core.labels.Label` fields, but you can provide the
@@ -3573,6 +3583,9 @@ class SelectLabels(ViewStage):
     -   Provide the ``ids`` argument to select labels with specific IDs
 
     -   Provide the ``tags`` argument to select labels with specific tags
+
+    If multiple criteria are specified, labels must match all of them in order
+    to be selected.
 
     By default, the selection is applied to all
     :class:`fiftyone.core.labels.Label` fields, but you can provide the
@@ -4693,7 +4706,7 @@ def _parse_field(sample_collection, field_path):
 
     if field_name not in schema:
         ftype = "Frame field" if is_frame_field else "Field"
-        raise ValueError("%s '%s' does not exist" % (ftype, field_path))
+        raise ValueError("%s '%s' does not exist" % (ftype, field_name))
 
     field = schema[field_name]
 

@@ -1984,6 +1984,9 @@ class SampleCollection(object):
 
         -   Provide the ``tags`` argument to exclude labels with specific tags
 
+        If multiple criteria are specified, labels must match all of them in
+        order to be excluded.
+
         By default, the exclusion is applied to all
         :class:`fiftyone.core.labels.Label` fields, but you can provide the
         ``fields`` argument to explicitly define the field(s) in which to
@@ -3205,6 +3208,9 @@ class SampleCollection(object):
             :class:`fiftyone.core.expressions.ViewExpression` that is applied
             to each individual :class:`fiftyone.core.labels.Label` element
 
+        If multiple criteria are specified, labels must match all of them in
+        order to trigger a sample match.
+
         By default, the selection is applied to all
         :class:`fiftyone.core.labels.Label` fields, but you can provide the
         ``fields`` argument to explicitly define the field(s) in which to
@@ -3569,6 +3575,9 @@ class SampleCollection(object):
         -   Provide the ``ids`` argument to select labels with specific IDs
 
         -   Provide the ``tags`` argument to select labels with specific tags
+
+        If multiple criteria are specified, labels must match all of them in
+        order to be selected.
 
         By default, the selection is applied to all
         :class:`fiftyone.core.labels.Label` fields, but you can provide the
