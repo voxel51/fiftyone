@@ -262,7 +262,9 @@ class YOLODatasetExporter(foud.LabeledImageDatasetExporter):
 
         self._images.append(os.path.relpath(out_image_path, self.export_dir))
 
-        out_labels_path = os.path.splitext(out_image_path)[0] + ".txt"
+        image_filename = os.path.basename(out_image_path)
+        labels_filename = os.path.splitext(image_filename)[0] + ".txt"
+        out_labels_path = os.path.join(self._data_dir, labels_filename)
 
         self._writer.write(
             detections,

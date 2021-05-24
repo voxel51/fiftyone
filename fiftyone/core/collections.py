@@ -4797,9 +4797,24 @@ class SampleCollection(object):
                 exporter can handle dictionaries of frame-level labels
             overwrite (False): when an ``export_dir`` is provided, whether to
                 delete the existing directory before performing the export
-            export_media (True): whether to export media files or to export only 
-                labels and metadata. This applies to most labeled dataset
-                exporters
+            export_media (True): defines how to export the raw media contained 
+                in the dataset. Options for this argument include:
+
+                * ``True``: copy all media files to ``export_dir/data/`` 
+                * ``False``: create a ``data.json`` file containing a mapping of unqiue filename to filepath for every sample. Labels are exported as normal using the unique sample filename 
+                * ``"move"``: move media files to ``export_dir/data/`` instead of copying
+                * ``"symlink"``: create a symbolic link in ``export_dir/data/`` to every media file
+
+                This argument is not available for the following dataset
+                types as they are required to write media to disk:
+                    
+                 :class:`ImageDirectory <fiftyone.types.dataset_types.ImageDirectory>`, 
+                 :class:`VideoDirectory <fiftyone.types.dataset_types.VideoDirectory>`, 
+                 :class:`ImageClassificationDirectoryTree <fiftyone.types.dataset_types.ImageClassificationDirectoryTree>`,
+                 :class:`VideoClassificationDirectoryTree <fiftyone.types.dataset_types.VideoClassificationDirectoryTree>`,
+                 :class:`TFObjectDetectionDataset <fiftyone.types.dataset_types.TFObjectDetectionDataset>`,
+                 :class:`TFImageClassificationDataset <fiftyone.types.dataset_types.TFImageClassificationDataset>`
+
             **kwargs: optional keyword arguments to pass to the dataset
                 exporter's constructor via
                 ``DatasetExporter(export_dir, **kwargs)``
