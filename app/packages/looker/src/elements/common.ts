@@ -79,17 +79,23 @@ export class LookerElement<State extends BaseState> extends BaseElement<
 
   createHTMLElement() {
     const element = document.createElement("div");
-    element.className = "looker";
+    element.className = "looker loading";
     element.tabIndex = -1;
     return element;
   }
 
-  renderSelf() {
+  renderSelf({ loaded }) {
+    if (loaded && this.element.classList.contains("loading")) {
+      this.element.classList.remove("loading");
+    }
     return this.element;
   }
 }
 
-export class CanvasElement<State extends BaseState> extends BaseElement<State> {
+export class CanvasElement<State extends BaseState> extends BaseElement<
+  State,
+  HTMLCanvasElement
+> {
   getEvents(): Events<State> {
     return {
       click: ({ update, dispatchEvent }) => {
@@ -104,8 +110,7 @@ export class CanvasElement<State extends BaseState> extends BaseElement<State> {
                   state.cursorCoordinates,
                   state.pan,
                   state.scale,
-                  state.box,
-                  [context.canvas.width, context.canvas.height]
+                  context.canvas
                 )
               )
             );
@@ -137,8 +142,7 @@ export class CanvasElement<State extends BaseState> extends BaseElement<State> {
                     state.cursorCoordinates,
                     state.pan,
                     state.scale,
-                    state.box,
-                    [context.canvas.width, context.canvas.height]
+                    context.canvas
                   )
                 )
               );
@@ -155,7 +159,12 @@ export class CanvasElement<State extends BaseState> extends BaseElement<State> {
     return element;
   }
 
-  renderSelf() {
+  renderSelf({ config: { dimensions } }) {
+    if (this.element.width !== 1280) {
+      const aspectRatio = dimensions[0] / dimensions[1];
+      this.element.width = 1280;
+      this.element.height = 1280 / aspectRatio;
+    }
     return this.element;
   }
 }

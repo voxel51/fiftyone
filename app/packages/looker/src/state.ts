@@ -29,6 +29,7 @@ export type Dimensions = [number, number];
 interface BaseConfig {
   thumbnail: boolean;
   src: string;
+  dimensions: Dimensions;
 }
 
 export interface FrameConfig extends BaseConfig {
@@ -70,7 +71,6 @@ export interface TooltipOverlay {
 
 export interface BaseState {
   cursorCoordinates: Coordinates;
-  box: BoundingBox;
   disableControls: boolean;
   focused: boolean;
   loaded: boolean;

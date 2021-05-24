@@ -2,6 +2,23 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 
+@keyframes shine {
+  to {
+    background-position-x: -150%;
+  }
+}
+
+.looker.loading {
+  background: linear-gradient(
+    110deg,
+    rgba(0, 0, 0, 0) 8%,
+    hsl(210, 11%, 11%) 18%,
+    rgba(0, 0, 0, 0) 33%
+  );
+  background-size: 300% 300%;
+  animation: 1.5s shine linear infinite;
+}
+
 .looker-controls {
   font-family: Arial, sans-serif;
   position: absolute;
@@ -284,7 +301,6 @@
   width: 100%;
   object-fit: contain;
 }
-
 canvas.looker-canvas {
   position: absolute;
   width: 100%;
@@ -322,4 +338,16 @@ div.looker-image {
 
 .looker-clickable {
   cursor: pointer;
+}
+
+.looker-window {
+  opacity: 1;
+  -webkit-transition: opacity 1s ease-in-out;
+  -moz-transition: opacity 1s ease-in-out;
+  -o-transition: opacity 1s ease-in-out;
+  transition: opacity 1s ease-in-out;
+}
+
+div.looker.loading .looker-window {
+  opacity: 0;
 }

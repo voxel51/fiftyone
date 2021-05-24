@@ -277,6 +277,16 @@ const onSelectLabel = (frameNumberRef) => {
   );
 };
 
+const useLoadModalSample = () => {
+  return useRecoilCallback(
+    ({ set }) => async (sampleId: string) => {
+      const { sample } = await request("sample", { sample_id: sampleId });
+      set(atoms.sampleModal(sampleId), sample);
+    },
+    []
+  );
+};
+
 const SampleModal = ({ onClose }: Props, ref) => {
   const sample = useRecoilValue(selectors.modalSample);
   const sampleSrc = useRecoilValue(modalSrc);
@@ -308,6 +318,7 @@ const SampleModal = ({ onClose }: Props, ref) => {
     }
   });
   const theme = useTheme();
+  console.log(sample);
 
   return (
     <Container
@@ -325,7 +336,7 @@ const SampleModal = ({ onClose }: Props, ref) => {
           <Looker
             key={sampleSrc} // force re-render when this changes
             sampleId={sample._id}
-            thumbnail={false}
+            modal={true}
           />
         )}
         {index > 0 ? (

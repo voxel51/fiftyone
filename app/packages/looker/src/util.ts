@@ -242,9 +242,14 @@ export const getCanvasCoordinates = function (
   [x, y]: Coordinates,
   [px, py]: Coordinates,
   scale: number,
-  [tlx, tly, w, h]: BoundingBox,
-  [cw, ch]: Dimensions
+  canvas: HTMLCanvasElement
 ): Coordinates {
+  let {
+    top: tly,
+    left: tlx,
+    width: w,
+    height: h,
+  } = canvas.getBoundingClientRect();
   tlx += px;
   tly += py;
   w *= scale;
@@ -254,8 +259,8 @@ export const getCanvasCoordinates = function (
   y -= tly;
 
   return [
-    Math.round(rescale(x, 0, w, 0, cw)),
-    Math.round(rescale(y, 0, h, 0, ch)),
+    Math.round(rescale(x, 0, w, 0, canvas.width)),
+    Math.round(rescale(y, 0, h, 0, canvas.height)),
   ];
 };
 

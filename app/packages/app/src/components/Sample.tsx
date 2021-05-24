@@ -12,19 +12,19 @@ import * as selectors from "../recoil/selectors";
 import socket from "../shared/connection";
 import { packageMessage } from "../utils/socket";
 import { useTheme } from "../utils/hooks";
-import { useLoadModalSample } from "../recoil/utils";
+import { useLoadModal } from "../recoil/utils";
 import { VALID_CLASS_TYPES, VALID_LIST_TYPES } from "../utils/labels";
 import { prettify } from "../utils/generic";
 
-const SampleDiv = animated(styled.div`
+const SampleDiv = styled.div`
   position: relative;
   overflow: hidden;
   box-shadow: 0 2px 10px ${({ theme }) => theme.backgroundDark};
   background-color: ${({ theme }) => theme.backgroundDark};
   width: 100%;
-`);
+`;
 
-const SampleInfoDiv = animated(styled.div`
+const SampleInfoDiv = styled.div`
   position: absolute;
   bottom: 0;
   padding: 0.5rem;
@@ -43,7 +43,7 @@ const SampleInfoDiv = animated(styled.div`
   width: 100%;
   z-index: 498;
   pointer-events: none;
-`);
+`;
 
 const LoadingBar = animated(styled.div`
   position: absolute;
@@ -80,15 +80,6 @@ const useHoverLoad = (socket, id) => {
   });
 
   return [bar, onMouseEnter, onMouseLeave];
-};
-
-const revealSample = () => {
-  return useSpring({
-    from: {
-      opacity: 0,
-    },
-    opacity: 1,
-  });
 };
 
 const SampleInfo = React.memo(({ sampleId }: { sampleId: string }) => {
@@ -286,7 +277,7 @@ const Sample = ({ sampleId }: { sampleId: string }) => {
   });
 
   const selectSample = useSelect(sampleId);
-  const loadModal = useLoadModalSample();
+  const loadModal = useLoadModal();
 
   const onClick = useRecoilCallback(
     ({ snapshot }) => async (event: React.MouseEvent) => {
@@ -302,7 +293,7 @@ const Sample = ({ sampleId }: { sampleId: string }) => {
   );
 
   return (
-    <SampleDiv className="sample" style={revealSample()}>
+    <SampleDiv className="sample">
       <div
         style={{
           position: "relative",
@@ -323,7 +314,7 @@ const Sample = ({ sampleId }: { sampleId: string }) => {
             cursor: "pointer",
           }}
           sampleId={sampleId}
-          thumbnail={true}
+          modal={false}
         />
         {false &&
           bar.map(({ key, props }) => <LoadingBar key={key} style={props} />)}

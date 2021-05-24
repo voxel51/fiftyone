@@ -125,11 +125,6 @@ export const sample = atomFamily<SerializableParam, string>({
   default: null,
 });
 
-export const sampleModal = atomFamily<SerializableParam, string>({
-  key: "sampleModal",
-  default: null,
-});
-
 export const sampleDimensions = atomFamily<
   { width: number | null; height: number | null },
   string

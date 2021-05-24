@@ -101,7 +101,7 @@ export default class DetectionOverlay<
     const color = this.getColor(state);
     context.strokeStyle = color;
     context.fillStyle = color;
-    context.lineWidth = LINE_WIDTH;
+    context.lineWidth = (LINE_WIDTH / state.config.dimensions[0]) * 1280;
     const [cw, ch] = [context.canvas.width, context.canvas.height];
     const [bx, by, bw, bh] = getCanvasBBox(this.label.bounding_box, [cw, ch]);
     context.strokeRect(bx, by, bw, bh);

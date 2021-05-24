@@ -24,6 +24,7 @@ import {
   ImageOptions,
   VideoOptions,
 } from "@fiftyone/looker/src/state";
+import { useLayoutEffect } from "react";
 
 const InfoWrapper = styled.div`
   display: flex;
@@ -470,23 +471,30 @@ const Looker = ({ onClick, sampleId, style, modal }: LookerProps) => {
   const sample = useRecoilValue(atoms.sample(sampleId));
   const sampleSrc = useRecoilValue(selectors.sampleSrc(sampleId));
   const options = useRecoilValue(lookerOptions(modal));
+  const dimensions = useRecoilValue(atoms.sampleDimensions(sampleId));
+  const [looker] = useState<ImageLooker>(
+    () =>
+      new ImageLooker(
+        sample,
+        {
+          src: sampleSrc,
+          thumbnail: !modal,
+          dimensions: [dimensions.width, dimensions.height],
+        },
+        options
+      )
+  );
+
+  useLayoutEffect(() => {
+    looker.update(sample, options);
+  }, [looker, sample, options]);
 
   return (
     <div
-      ref={(node) => {
-        if (node) {
-          const looker = new ImageLooker();
-          looker.render(
-            node,
-            sample,
-            { src: sampleSrc, thumbnail: !modal },
-            options
-          );
-        }
-      }}
+      ref={(node) => (node ? looker.attach(node) : looker.detach())}
       style={style}
       onClick={onClick}
-    ></div>
+    />
   );
 };
 

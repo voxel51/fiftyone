@@ -22,21 +22,9 @@ const loadedModalSamples = atom({
   default: new Set<string>(),
 });
 
-export const useLoadModalSample = () => {
-  return useRecoilCallback(
-    ({ set }) => async (sampleId: string) => {
-      const { sample } = await request("get_sample", { sample_id, sampleId });
-      set(atoms.sampleModal(sampleId), sample);
-    },
-    []
-  );
-};
-
 export const useLoadModal = () => {
   const loadSample = useLoadModalSample();
   return useRecoilCallback(({ set }) => async (sampleId: string) => {
-    loadSample(sampleId);
-    document.body.classList.toggle("noscroll", true);
     set(atoms.modal, { visible: true, sample_id: sampleId });
   });
 };

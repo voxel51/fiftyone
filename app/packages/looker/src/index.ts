@@ -1,8 +1,7 @@
 /**
  * Copyright 2017-2021, Voxel51, Inc.
  */
-import { mergeDeep } from "immutable";
-import ResizeObserver from "resize-observer-polyfill";
+import { mergeWith } from "immutable";
 
 import "./style.css";
 export { ColorGenerator } from "./color";
@@ -15,7 +14,6 @@ import {
   DEFAULT_FRAME_OPTIONS,
   DEFAULT_IMAGE_OPTIONS,
   DEFAULT_VIDEO_OPTIONS,
-  BoundingBox,
   Coordinates,
 } from "./state";
 import {
@@ -28,6 +26,7 @@ import { ClassificationsOverlay, FROM_FO } from "./overlays";
 import { ClassificationLabels } from "./overlays/classifications";
 import { Overlay } from "./overlays/base";
 import processOverlays from "./processOverlays";
+import { ColorGenerator } from "./color";
 
 interface BaseSample {
   metadata: {
@@ -44,47 +43,23 @@ abstract class Looker<
   private state: State;
   private lookerElement: LookerElement<State>;
   private canvas: HTMLCanvasElement;
-  private parentObserver: ResizeObserver;
   private currentOverlays: Overlay<State>[];
 
   protected readonly updater: StateUpdate<State>;
   protected sample: Sample;
 
-  constructor() {
-    this.eventTarget = new EventTarget();
-    this.updater = this.makeUpdate();
-  }
-
-  render(
-    element: HTMLElement,
+  constructor(
     sample: Sample,
     config: State["config"],
     options: State["options"]
   ) {
     this.sample = sample;
     this.loadOverlays();
-    this.observeParent(element);
-    this.state = this.getInitialState(element, config, options);
+    this.eventTarget = new EventTarget();
+    this.updater = this.makeUpdate();
+    this.state = this.getInitialState(config, options);
     this.lookerElement = this.getElements();
-    element.appendChild(this.lookerElement.render(this.state));
-    this.canvas = this.lookerElement.element.querySelector("canvas");
-    const context = this.canvas.getContext("2d");
-    clearCanvas(context);
-  }
-
-  private observeParent(parentElement: HTMLElement) {
-    this.parentObserver = new ResizeObserver((e) => {
-      const [{ contentRect }] = e;
-      this.updater({
-        box: <BoundingBox>[
-          contentRect.top,
-          contentRect.left,
-          contentRect.width,
-          contentRect.height,
-        ],
-      });
-    });
-    this.parentObserver.observe(parentElement);
+    this.canvas = this.lookerElement.render(this.state).querySelector("canvas");
   }
 
   protected dispatchEvent(eventType: string, detail: any): void {
@@ -104,7 +79,22 @@ abstract class Looker<
           ? stateOrUpdater(this.state)
           : stateOrUpdater;
 
-      this.state = mergeDeep<State>(this.state, updates);
+      const merger = (o, n, k) => {
+        if (Array.isArray(n)) {
+          return n;
+        }
+        if (n instanceof Function || n instanceof ColorGenerator) {
+          return n;
+        }
+        if (typeof n !== "object") {
+          return n || o;
+        }
+        if (n === null) {
+          return n;
+        }
+        return mergeWith(merger, o, n);
+      };
+      this.state = mergeWith<State>(merger, this.state, updates);
       this.lookerElement.render(this.state as Readonly<State>);
       const context = this.canvas.getContext("2d");
       this.currentOverlays = processOverlays(
@@ -115,7 +105,7 @@ abstract class Looker<
       if (postUpdate) {
         postUpdate(context, this.state, this.currentOverlays);
       }
-
+      clearCanvas(context);
       const numOverlays = this.currentOverlays.length;
       for (let index = numOverlays - 1; index > 0; index--) {
         this.currentOverlays[index].draw(context, this.state);
@@ -131,16 +121,24 @@ abstract class Looker<
     this.eventTarget.removeEventListener(eventType, handler, ...args);
   }
 
-  destroy(): void {
-    this.lookerElement.element.parentElement.removeChild(
+  attach(element: HTMLElement): void {
+    element.appendChild(this.lookerElement.render(this.state));
+  }
+
+  detach(): void {
+    this.lookerElement.element.parentNode.removeChild(
       this.lookerElement.element
     );
-    delete this.eventTarget;
-    delete this.parentObserver;
+  }
+
+  destroy(): void {
+    this.detach();
+    delete this.lookerElement;
   }
 
   update(sample: Sample, options: State["options"]) {
     this.sample = sample;
+    this.loadOverlays();
     this.updater({ options });
   }
 
@@ -153,18 +151,13 @@ abstract class Looker<
   protected abstract getDefaultOptions(): State["options"];
 
   protected abstract getInitialState(
-    parentElement: HTMLElement,
     config: State["config"],
     options: State["options"]
   ): State;
 
-  protected getInitialBaseState(
-    parentElement: HTMLElement
-  ): Omit<BaseState, "config" | "options"> {
-    const rect = parentElement.getBoundingClientRect();
+  protected getInitialBaseState(): Omit<BaseState, "config" | "options"> {
     return {
       cursorCoordinates: null,
-      box: <BoundingBox>[rect.top, rect.left, rect.width, rect.height],
       disableControls: false,
       focused: false,
       hovering: false,
@@ -186,10 +179,10 @@ export class FrameLooker extends Looker<FrameState> {
     return getFrameElements(this.updater, this.getDispatchEvent());
   }
 
-  getInitialState(parentElement, config, options) {
+  getInitialState(config, options) {
     return {
       duration: null,
-      ...this.getInitialBaseState(parentElement),
+      ...this.getInitialBaseState(),
       config: { ...config },
       options: {
         ...this.getDefaultOptions(),
@@ -218,9 +211,9 @@ export class ImageLooker extends Looker<ImageState> {
     return getImageElements(this.updater, this.getDispatchEvent());
   }
 
-  getInitialState(parentElement, config, options) {
+  getInitialState(config, options) {
     return {
-      ...this.getInitialBaseState(parentElement),
+      ...this.getInitialBaseState(),
       config: { ...config },
       options: {
         ...this.getDefaultOptions(),
@@ -254,7 +247,7 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
     return getVideoElements(this.updater, this.getDispatchEvent());
   }
 
-  getInitialState(parentElement, config, options) {
+  getInitialState(config, options) {
     return {
       duration: null,
       seeking: false,
@@ -262,7 +255,7 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
       fragment: null,
       playing: false,
       frameNumber: 1,
-      ...this.getInitialBaseState(parentElement),
+      ...this.getInitialBaseState(),
       config: { ...config },
       options: {
         ...this.getDefaultOptions(),
@@ -373,5 +366,4 @@ function clearCanvas(context: CanvasRenderingContext2D): void {
   context.font = "14px sans-serif";
   // easier for setting offsets
   context.textBaseline = "bottom";
-  context;
 }

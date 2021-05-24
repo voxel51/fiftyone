@@ -26,7 +26,7 @@ export abstract class BaseElement<
     children?: BaseElement<State>[]
   ) {
     this.children = children;
-    this.element = this.createHTMLElement(update);
+    this.element = this.createHTMLElement();
     Object.entries(this.getEvents()).forEach(([eventType, callback]) => {
       const target = this.eventTarget ?? this.element;
       target.addEventListener(eventType, (event) =>
@@ -40,7 +40,7 @@ export abstract class BaseElement<
     return {};
   }
 
-  abstract createHTMLElement(update: StateUpdate<State>): Element;
+  abstract createHTMLElement(): Element;
 
   isShown(state: Readonly<State>): boolean {
     return true;

@@ -15,7 +15,7 @@ module.exports = {
     polyfillNode: true,
   },
   devOptions: {
-    hmrErrorOverlay: true,
+    hmrErrorOverlay: false,
     open: "none",
   },
   buildOptions: {

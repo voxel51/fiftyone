@@ -47,8 +47,7 @@ const processOverlays = <State extends BaseState>(
     state.cursorCoordinates,
     state.pan,
     state.scale,
-    state.box,
-    [context.canvas.width, context.canvas.height]
+    context.canvas
   );
 
   let contained = overlays
