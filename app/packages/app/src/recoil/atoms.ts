@@ -4,13 +4,8 @@ export const modal = atom({
   key: "modal",
   default: {
     visible: false,
-    sample_id: null,
+    sampleId: null,
   },
-});
-
-export const showModalJSON = atom({
-  key: "showModalJSON",
-  default: false,
 });
 
 export const connected = atom({

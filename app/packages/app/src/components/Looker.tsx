@@ -463,11 +463,11 @@ interface LookerProps {
   onClick?: React.MouseEventHandler<HTMLDivElement>;
   onSelect?: EventCallback;
   sampleId: string;
-  style: React.CSSProperties;
+  style?: React.CSSProperties;
   modal: boolean;
 }
 
-const Looker = ({ onClick, sampleId, style, modal }: LookerProps) => {
+const Looker = ({ onClick, sampleId, style = {}, modal }: LookerProps) => {
   const sample = useRecoilValue(atoms.sample(sampleId));
   const sampleSrc = useRecoilValue(selectors.sampleSrc(sampleId));
   const options = useRecoilValue(lookerOptions(modal));

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { Suspense, useState, useEffect, useRef } from "react";
 import styled from "styled-components";
 import { Close, Fullscreen, FullscreenExit } from "@material-ui/icons";
 import {
@@ -24,17 +24,19 @@ import {
   useTheme,
 } from "../utils/hooks";
 import { formatMetadata } from "../utils/labels";
+import { showModalJSON } from "../recoil/utils";
+import Loading from "./Common/Loading";
 
 const modalSrc = selector<string | null>({
   key: "modalSrc",
-  get: ({ get }) => get(selectors.sampleSrc(get(atoms.modal).sample_id)),
+  get: ({ get }) => get(selectors.sampleSrc(get(atoms.modal).sampleId)),
 });
 
 const modalIndex = selector<number>({
   key: "modalIndex",
   get: ({ get }) => {
-    const { sample_id } = get(atoms.modal);
-    return get(selectors.sampleIndices)[sample_id];
+    const { sampleId } = get(atoms.modal);
+    return get(selectors.sampleIndices)[sampleId];
   },
   set: ({ get, set }, value) => {
     if (typeof value !== "number") {
@@ -42,7 +44,7 @@ const modalIndex = selector<number>({
     }
     set(atoms.modal, {
       visible: true,
-      sample_id: get(selectors.sampleIds)[value],
+      sampleId: get(selectors.sampleIds)[value],
     });
   },
 });
@@ -246,6 +248,7 @@ const Row = ({ name, value, children, ...rest }: RowProps) => (
 
 type Props = {
   onClose: () => void;
+  sampleId: string;
 };
 
 interface SelectEvent {
@@ -277,23 +280,15 @@ const onSelectLabel = (frameNumberRef) => {
   );
 };
 
-const useLoadModalSample = () => {
-  return useRecoilCallback(
-    ({ set }) => async (sampleId: string) => {
-      const { sample } = await request("sample", { sample_id: sampleId });
-      set(atoms.sampleModal(sampleId), sample);
-    },
-    []
+const SampleModal = ({ onClose, sampleId }: Props, ref) => {
+  const { filepath, _media_type, metadata, _id } = useRecoilValue(
+    atoms.sample(sampleId)
   );
-};
-
-const SampleModal = ({ onClose }: Props, ref) => {
-  const sample = useRecoilValue(selectors.modalSample);
   const sampleSrc = useRecoilValue(modalSrc);
   const [index, setIndex] = useRecoilState(modalIndex);
   const numSamples = useRecoilValue(selectors.currentSamplesSize);
   const playerContainerRef = useRef();
-  const showJSON = useRecoilValue(atoms.showModalJSON);
+  const showJSON = useRecoilValue(showModalJSON);
   const [enableJSONFilter, setEnableJSONFilter] = useState(true);
   const [fullscreen, setFullscreen] = useState(false);
 
@@ -318,7 +313,6 @@ const SampleModal = ({ onClose }: Props, ref) => {
     }
   });
   const theme = useTheme();
-  console.log(sample);
 
   return (
     <Container
@@ -333,11 +327,13 @@ const SampleModal = ({ onClose }: Props, ref) => {
             enableFilter={setEnableJSONFilter}
           />
         ) : (
-          <Looker
-            key={sampleSrc} // force re-render when this changes
-            sampleId={sample._id}
-            modal={true}
-          />
+          <Suspense fallback={<Loading />}>
+            <Looker
+              key={sampleSrc} // force re-render when this changes
+              sampleId={_id}
+              modal={true}
+            />
+          </Suspense>
         )}
         {index > 0 ? (
           <div
@@ -373,36 +369,32 @@ const SampleModal = ({ onClose }: Props, ref) => {
             borderBottom: `2px solid ${theme.border}`,
             position: "relative",
           }}
-        >
-          <Actions
-            modal={true}
-            playerRef={playerRef}
-            frameNumberRef={frameNumberRef}
-          />
-        </ModalFooter>
+        ></ModalFooter>
         <div className="sidebar-content">
           <h2>
             Metadata
             <span className="push-right" />
           </h2>
-          <Row name="id" value={sample._id} />
-          <Row name="filepath" value={sample.filepath} />
-          <Row name="media type" value={sample._media_type} />
-          {formatMetadata(sample.metadata).map(({ name, value }) => (
+          <Row name="id" value={_id} />
+          <Row name="filepath" value={filepath} />
+          <Row name="media type" value={_media_type} />
+          {formatMetadata(metadata).map(({ name, value }) => (
             <Row key={"metadata-" + name} name={name} value={value} />
           ))}
           <h2>
             Fields
             <span className="push-right" />
           </h2>
-          <FieldsSidebar
-            modal={true}
-            style={{
-              overflowY: "auto",
-              overflowX: "hidden",
-              height: "auto",
-            }}
-          />
+          <Suspense fallback={Loading}>
+            <FieldsSidebar
+              modal={true}
+              style={{
+                overflowY: "auto",
+                overflowX: "hidden",
+                height: "auto",
+              }}
+            />
+          </Suspense>
         </div>
         <TopRightNavButton
           onClick={onClose}

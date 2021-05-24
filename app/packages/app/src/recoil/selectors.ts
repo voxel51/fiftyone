@@ -13,7 +13,7 @@ import {
   HIDDEN_LABEL_ATTRS,
   LABEL_LIST,
 } from "../utils/labels";
-import { packageMessage } from "../utils/socket";
+import { packageMessage, request } from "../utils/socket";
 import { viewsAreEqual } from "../utils/view";
 import { darkTheme } from "../shared/colors";
 import socket, { handleId, isNotebook, http } from "../shared/connection";
@@ -730,9 +730,11 @@ export const getTarget = selector({
 
 export const modalSample = selector({
   key: "modalSample",
-  get: ({ get }) => {
-    const id = get(atoms.modal).sample_id;
-    return get(atoms.sampleModal(id));
+  get: async ({ get }) => {
+    const sample = await request("sample", {
+      sample_id: get(atoms.modal).sampleId,
+    });
+    return sample;
   },
 });
 
@@ -934,13 +936,13 @@ export const hiddenFieldLabels = selectorFamily<string[], string>({
   key: "hiddenFieldLabels",
   get: (fieldName) => ({ get }) => {
     const labels = get(atoms.hiddenLabels);
-    const { sample_id } = get(atoms.modal);
+    const { sampleId } = get(atoms.modal);
 
-    if (sample_id) {
+    if (sampleId) {
       return Object.entries(labels)
         .filter(
           ([_, { sample_id: id, field }]) =>
-            sample_id === id && field === fieldName
+            sampleId === id && field === fieldName
         )
         .map(([label_id]) => label_id);
     }
@@ -999,6 +1001,7 @@ export const sampleMimeType = selectorFamily<string, string>({
   key: "sampleMimeType",
   get: (id) => ({ get }) => {
     const sample = get(atoms.sample(id));
+    console.log(sample);
     return (
       (sample.metadata && sample.metadata.mime_type) ||
       mime.lookup(sample.filepath) ||

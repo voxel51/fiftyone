@@ -1,11 +1,10 @@
-import { atom, useRecoilCallback } from "recoil";
+import { atom, selector, useRecoilCallback } from "recoil";
 
 import * as atoms from "./atoms";
 import * as selectors from "./selectors";
 import * as labelAtoms from "./../components/Filters/LabelFieldFilters.state";
 
 import socket from "../shared/connection";
-import { request } from "../utils/socket";
 
 export const messageListener = (type, handler) => {
   const wrapper = ({ data }) => {
@@ -17,29 +16,25 @@ export const messageListener = (type, handler) => {
   return () => socket.removeEventListener("message", wrapper);
 };
 
-const loadedModalSamples = atom({
-  key: "loadedModalSamples",
-  default: new Set<string>(),
+export const showModalJSON = atom({
+  key: "showModalJSON",
+  default: false,
 });
 
-export const useLoadModal = () => {
-  const loadSample = useLoadModalSample();
+export const useSetModal = () => {
   return useRecoilCallback(({ set }) => async (sampleId: string) => {
-    set(atoms.modal, { visible: true, sample_id: sampleId });
+    set(atoms.modal, { visible: true, sampleId: sampleId });
   });
 };
 
 export const useClearModal = () => {
   return useRecoilCallback(
-    ({ snapshot, reset }) => async () => {
-      const loaded = await snapshot.getPromise(loadedModalSamples);
-      loaded.forEach((id) => reset(atoms.sampleModal(id)));
+    ({ reset }) => async () => {
       reset(atoms.modal);
       reset(selectors.selectedLabels);
       reset(atoms.hiddenLabels);
       reset(labelAtoms.labelFilters(true));
-      reset(atoms.showModalJSON);
-      document.body.classList.toggle("noscroll", false);
+      reset(showModalJSON);
     },
     []
   );

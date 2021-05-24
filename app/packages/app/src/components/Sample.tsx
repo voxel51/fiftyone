@@ -12,7 +12,7 @@ import * as selectors from "../recoil/selectors";
 import socket from "../shared/connection";
 import { packageMessage } from "../utils/socket";
 import { useTheme } from "../utils/hooks";
-import { useLoadModal } from "../recoil/utils";
+import { useSetModal } from "../recoil/utils";
 import { VALID_CLASS_TYPES, VALID_LIST_TYPES } from "../utils/labels";
 import { prettify } from "../utils/generic";
 
@@ -277,7 +277,7 @@ const Sample = ({ sampleId }: { sampleId: string }) => {
   });
 
   const selectSample = useSelect(sampleId);
-  const loadModal = useLoadModal();
+  const setModal = useSetModal();
 
   const onClick = useRecoilCallback(
     ({ snapshot }) => async (event: React.MouseEvent) => {
@@ -286,7 +286,7 @@ const Sample = ({ sampleId }: { sampleId: string }) => {
       if (hasSelected) {
         selectSample(event);
       } else {
-        loadModal(sampleId);
+        setModal(sampleId);
       }
     },
     [sampleId]

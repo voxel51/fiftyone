@@ -505,7 +505,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             )
             return
 
-        view = get_extended_view(view, state.filters)
+        view = get_extended_view(view, state.filters, count_label_tags=True)
         view = view.skip((page - 1) * page_length)
 
         if view.media_type == fom.VIDEO:
