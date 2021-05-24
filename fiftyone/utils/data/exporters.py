@@ -134,6 +134,7 @@ def export_samples(
                 **patches_kwargs,
             )
             sample_parser = ImageSampleParser()
+            num_samples = len(samples)
         else:
             sample_parser = FiftyOneUnlabeledImageSampleParser(
                 compute_metadata=True
@@ -152,6 +153,7 @@ def export_samples(
                 **patches_kwargs,
             )
             sample_parser = ImageClassificationSampleParser()
+            num_samples = len(samples)
         else:
             sample_parser = FiftyOneLabeledImageSampleParser(
                 label_field_or_dict, compute_metadata=True
@@ -437,33 +439,36 @@ def _check_for_patches_export(
     if isinstance(
         dataset_exporter, UnlabeledImageDatasetExporter
     ) and etau.is_str(label_field_or_dict):
-        field_type = samples._get_field_type(label_field_or_dict)
-        if issubclass(field_type, fol._PATCHES_FIELDS):
-            found_patches = True
-            patches_kwargs, kwargs = fou.extract_kwargs_for_class(
-                foup.ImagePatchesExtractor, kwargs
-            )
+        try:
+            label_type = samples._get_label_field_type(label_field_or_dict)
+            found_patches = issubclass(label_type, fol._PATCHES_FIELDS)
+        except:
+            pass
 
+        if found_patches:
             msg = (
                 "Detected an unlabeled image exporter and a label field '%s' "
-                "with patches type %s. Exporting image patches..."
-                % (label_field_or_dict, field_type)
+                "of type %s. Exporting image patches..."
+                % (label_field_or_dict, label_type)
             )
             warnings.warn(msg)
 
-    if (
+    elif (
         isinstance(dataset_exporter, LabeledImageDatasetExporter)
         and dataset_exporter.label_cls is fol.Classification
         and etau.is_str(label_field_or_dict)
     ):
-        field_type = samples._get_field_type(label_field_or_dict)
-        if issubclass(field_type, fol._PATCHES_FIELDS):
-            found_patches = True
+        try:
+            label_type = samples._get_label_field_type(label_field_or_dict)
+            found_patches = issubclass(label_type, fol._PATCHES_FIELDS)
+        except:
+            pass
 
+        if found_patches:
             msg = (
                 "Detected an image classification exporter and a label field "
-                "'%s' with patches type %s. Exporting image patches..."
-                % (label_field_or_dict, field_type)
+                "'%s' of type %s. Exporting image patches..."
+                % (label_field_or_dict, label_type)
             )
             warnings.warn(msg)
 

@@ -58,7 +58,7 @@ class ImagePatchesExtractor(object):
         self.alpha = alpha
 
     def __len__(self):
-        label_path = self.samples._get_label_field_path(self.patches_field)
+        _, label_path = self.samples._get_label_field_path(self.patches_field)
         return self.samples.count(label_path)
 
     def __iter__(self):

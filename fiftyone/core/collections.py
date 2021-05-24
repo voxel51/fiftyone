@@ -4885,8 +4885,8 @@ class SampleCollection(object):
                 )
         else:
             # Other (unlabeled, entire samples, etc)
-            label_field_or_dict = None
-            frame_labels_field_or_dict = None
+            label_field_or_dict = label_field
+            frame_labels_field_or_dict = frame_labels_field
 
         # Export the dataset
         foud.export_samples(
