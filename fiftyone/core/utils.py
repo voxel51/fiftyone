@@ -44,6 +44,32 @@ import fiftyone.core.context as foc
 logger = logging.getLogger(__name__)
 
 
+def extract_kwargs_for_class(cls, kwargs):
+    """Extracts the keyword arguments for the given class from the given
+    dictionary.
+
+    Args:
+        cls: a class
+        kwargs: a dictionary of keyword arguments
+
+    Returns:
+        a tuple of:
+
+        -   ``class_kwargs``: a dictionary of keyword arguments for ``cls``
+        -   ``other_kwargs``: a dictionary containing the remaining ``kwargs``
+    """
+    class_kwargs = {}
+    other_kwargs = {}
+    spec = inspect.getfullargspec(cls)
+    for k, v in kwargs.items():
+        if k in spec.args:
+            class_kwargs[k] = v
+        else:
+            other_kwargs[k] = v
+
+    return class_kwargs, other_kwargs
+
+
 def pprint(obj, stream=None, indent=4, width=80, depth=None):
     """Pretty-prints the Python object.
 

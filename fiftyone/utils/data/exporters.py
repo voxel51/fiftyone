@@ -26,6 +26,7 @@ import fiftyone.core.metadata as fom
 import fiftyone.core.media as fomm
 import fiftyone.core.odm as foo
 import fiftyone.core.utils as fou
+import fiftyone.utils.patches as foup
 import fiftyone.types as fot
 
 from .parsers import (
@@ -33,6 +34,8 @@ from .parsers import (
     FiftyOneUnlabeledImageSampleParser,
     FiftyOneLabeledVideoSampleParser,
     FiftyOneUnlabeledVideoSampleParser,
+    ImageSampleParser,
+    ImageClassificationSampleParser,
 )
 
 
@@ -54,10 +57,34 @@ def export_samples(
     Provide either ``export_dir`` and ``dataset_type`` or ``dataset_exporter``
     to perform the export.
 
+    This method will automatically coerce the provided data in the following
+    cases:
+
+    -   When exporting in either an unlabeled image or image classification
+        format, if ``label_field_or_dict`` is a spatial field
+        (:class:`fiftyone.core.labels.Detection`,
+        :class:`fiftyone.core.labels.Detections`,
+        :class:`fiftyone.core.labels.Polyline`, or
+        :class:`fiftyone.core.labels.Polylines`), then the **image patches** of
+        the provided samples will be exported
+
+    -   When exporting in labeled image dataset formats that expect list-type
+        labels (:class:`fiftyone.core.labels.Classifications`,
+        :class:`fiftyone.core.labels.Detections`,
+        :class:`fiftyone.core.labels.Keypoints`, or
+        :class:`fiftyone.core.labels.Polylines`), if ``label_field_or_dict``
+        contains labels in non-list format
+        (e.g., :class:`fiftyone.core.labels.Classification`), the labels will
+        be automatically upgraded to single-label lists
+
+    -   When exporting in labeled image dataset formats that expect
+        :class:`fiftyone.core.labels.Detections` labels, if
+        ``label_field_or_dict`` refers to a
+        :class:`fiftyone.core.labels.Classification` field, the labels will be
+        automatically upgraded to detections that span the entire images
+
     Args:
-        samples: an iterable of :class:`fiftyone.core.sample.Sample` instances.
-            For example, this may be a :class:`fiftyone.core.dataset.Dataset`
-            or a :class:`fifyone.core.view.DatasetView`
+        samples: a :class:`fiftyone.core.collections.SampleCollection`
         export_dir (None): the directory to which to export the samples in
             format ``dataset_type``
         dataset_type (None): the :class:`fiftyone.types.dataset_types.Dataset`
@@ -69,7 +96,8 @@ def export_samples(
             a dictionary mapping field names to output keys describing the
             label fields to export. Only applicable if ``dataset_exporter`` is
             a :class:`LabeledImageDatasetExporter` or
-            :class:`LabeledVideoDatasetExporter`
+            :class:`LabeledVideoDatasetExporter`, or if you are exporting image
+            patches
         frame_labels_field_or_dict (None): the name of the frame label field to
             export, or a dictionary mapping field names to output keys
             describing the frame label fields to export. Only applicable if
@@ -77,8 +105,15 @@ def export_samples(
         num_samples (None): the number of samples in ``samples``. If omitted,
             this is computed (if possible) via ``len(samples)``
         **kwargs: optional keyword arguments to pass to the dataset exporter's
-            constructor via ``DatasetExporter(export_dir, **kwargs)``
-        """
+            constructor via ``DatasetExporter(export_dir, **kwargs)``. If you
+            are exporting image patches, this can also contain keyword
+            arguments for :class:`fiftyone.utils.patches.ImagePatchesExtractor`
+    """
+    found_patches, patches_kwargs, kwargs = _check_for_patches_export(
+        samples, dataset_exporter, label_field_or_dict, kwargs
+    )
+
+    sample_collection = samples
     dataset_exporter = _get_dataset_exporter(
         export_dir, dataset_type, dataset_exporter, **kwargs
     )
@@ -90,17 +125,37 @@ def export_samples(
     if isinstance(dataset_exporter, GenericSampleDatasetExporter):
         sample_parser = None
     elif isinstance(dataset_exporter, UnlabeledImageDatasetExporter):
-        sample_parser = FiftyOneUnlabeledImageSampleParser(
-            compute_metadata=True
-        )
+        if found_patches:
+            # Export unlabeled image patches
+            samples = foup.ImagePatchesExtractor(
+                samples,
+                label_field_or_dict,
+                include_labels=False,
+                **patches_kwargs,
+            )
+            sample_parser = ImageSampleParser()
+        else:
+            sample_parser = FiftyOneUnlabeledImageSampleParser(
+                compute_metadata=True
+            )
     elif isinstance(dataset_exporter, UnlabeledVideoDatasetExporter):
         sample_parser = FiftyOneUnlabeledVideoSampleParser(
             compute_metadata=True
         )
     elif isinstance(dataset_exporter, LabeledImageDatasetExporter):
-        sample_parser = FiftyOneLabeledImageSampleParser(
-            label_field_or_dict, compute_metadata=True
-        )
+        if found_patches:
+            # Export labeled image patches
+            samples = foup.ImagePatchesExtractor(
+                samples,
+                label_field_or_dict,
+                include_labels=True,
+                **patches_kwargs,
+            )
+            sample_parser = ImageClassificationSampleParser()
+        else:
+            sample_parser = FiftyOneLabeledImageSampleParser(
+                label_field_or_dict, compute_metadata=True
+            )
     elif isinstance(dataset_exporter, LabeledVideoDatasetExporter):
         sample_parser = FiftyOneLabeledVideoSampleParser(
             label_field_or_dict=label_field_or_dict,
@@ -117,6 +172,7 @@ def export_samples(
         sample_parser,
         dataset_exporter=dataset_exporter,
         num_samples=num_samples,
+        sample_collection=sample_collection,
     )
 
 
@@ -127,6 +183,7 @@ def write_dataset(
     dataset_type=None,
     dataset_exporter=None,
     num_samples=None,
+    sample_collection=None,
     **kwargs
 ):
     """Writes the samples to disk as a dataset in the specified format.
@@ -135,7 +192,7 @@ def write_dataset(
     to perform the write.
 
     Args:
-        samples: an iterable of samples
+        samples: an iterable of samples that can be parsed by ``sample_parser``
         sample_parser: a :class:`fiftyone.utils.data.parsers.SampleParser` to
             use to parse the samples
         dataset_dir (None): the directory to which to write the dataset in
@@ -147,6 +204,12 @@ def write_dataset(
             write the dataset
         num_samples (None): the number of samples in ``samples``. If omitted,
             this is computed (if possible) via ``len(samples)``
+        sample_collection (None): the
+            :class:`fiftyone.core.collections.SampleCollection` from which
+            ``samples`` were extracted. If ``samples`` is itself a
+            :class:`fiftyone.core.collections.SampleCollection`, this parameter
+            defaults to ``samples``. This parameter is optional and is only
+            passed to :meth:`DatasetExporter.log_collection`
         **kwargs: optional keyword arguments to pass to
             ``dataset_type.get_dataset_exporter_cls(dataset_dir, **kwargs)``
     """
@@ -160,21 +223,37 @@ def write_dataset(
         except:
             pass
 
+    if sample_collection is None and isinstance(samples, foc.SampleCollection):
+        sample_collection = samples
+
     if isinstance(dataset_exporter, GenericSampleDatasetExporter):
-        _write_generic_sample_dataset(dataset_exporter, samples, num_samples)
+        _write_generic_sample_dataset(
+            dataset_exporter,
+            samples,
+            num_samples=num_samples,
+            sample_collection=sample_collection,
+        )
     elif isinstance(
         dataset_exporter,
         (UnlabeledImageDatasetExporter, LabeledImageDatasetExporter),
     ):
         _write_image_dataset(
-            dataset_exporter, samples, sample_parser, num_samples
+            dataset_exporter,
+            samples,
+            sample_parser,
+            num_samples=num_samples,
+            sample_collection=sample_collection,
         )
     elif isinstance(
         dataset_exporter,
         (UnlabeledVideoDatasetExporter, LabeledVideoDatasetExporter),
     ):
         _write_video_dataset(
-            dataset_exporter, samples, sample_parser, num_samples
+            dataset_exporter,
+            samples,
+            sample_parser,
+            num_samples=num_samples,
+            sample_collection=sample_collection,
         )
     else:
         raise ValueError(
@@ -220,25 +299,31 @@ def _write_batch_dataset(dataset_exporter, samples):
         dataset_exporter.export_samples(samples)
 
 
-def _write_generic_sample_dataset(dataset_exporter, samples, num_samples):
+def _write_generic_sample_dataset(
+    dataset_exporter, samples, num_samples=None, sample_collection=None,
+):
     with fou.ProgressBar(total=num_samples) as pb:
         with dataset_exporter:
-            if isinstance(samples, foc.SampleCollection):
-                dataset_exporter.log_collection(samples)
+            if sample_collection is not None:
+                dataset_exporter.log_collection(sample_collection)
 
             for sample in pb(samples):
                 dataset_exporter.export_sample(sample)
 
 
 def _write_image_dataset(
-    dataset_exporter, samples, sample_parser, num_samples
+    dataset_exporter,
+    samples,
+    sample_parser,
+    num_samples=None,
+    sample_collection=None,
 ):
     labeled_images = isinstance(dataset_exporter, LabeledImageDatasetExporter)
 
     with fou.ProgressBar(total=num_samples) as pb:
         with dataset_exporter:
-            if isinstance(samples, foc.SampleCollection):
-                dataset_exporter.log_collection(samples)
+            if sample_collection is not None:
+                dataset_exporter.log_collection(sample_collection)
 
             for sample in pb(samples):
                 sample_parser.with_sample(sample)
@@ -268,12 +353,10 @@ def _write_image_dataset(
                     # Parse label
                     label = sample_parser.get_label()
 
-                    #
-                    # SPECIAL CASE
-                    #
-                    # Convert `Classification` labels to `Detections` format,
-                    # if necessary
-                    #
+                    # Handle JIT conversions
+                    label = _check_single_label_to_list(
+                        dataset_exporter, label
+                    )
                     label = _check_classification_to_detections(
                         dataset_exporter, label
                     )
@@ -290,14 +373,18 @@ def _write_image_dataset(
 
 
 def _write_video_dataset(
-    dataset_exporter, samples, sample_parser, num_samples
+    dataset_exporter,
+    samples,
+    sample_parser,
+    num_samples=None,
+    sample_collection=None,
 ):
     labeled_videos = isinstance(dataset_exporter, LabeledVideoDatasetExporter)
 
     with fou.ProgressBar(total=num_samples) as pb:
         with dataset_exporter:
-            if isinstance(samples, foc.SampleCollection):
-                dataset_exporter.log_collection(samples)
+            if sample_collection is not None:
+                dataset_exporter.log_collection(sample_collection)
 
             for sample in pb(samples):
                 sample_parser.with_sample(sample)
@@ -321,12 +408,10 @@ def _write_video_dataset(
                     # Parse labels
                     label = sample_parser.get_label()
 
-                    #
-                    # SPECIAL CASE
-                    #
-                    # Convert `Classification` labels to `Detections` format,
-                    # if necessary
-                    #
+                    # Handle JIT conversions
+                    label = _check_single_label_to_list(
+                        dataset_exporter, label
+                    )
                     label = _check_classification_to_detections(
                         dataset_exporter, label
                     )
@@ -344,6 +429,73 @@ def _write_video_dataset(
                     )
 
 
+def _check_for_patches_export(
+    samples, dataset_exporter, label_field_or_dict, kwargs
+):
+    found_patches = False
+
+    if isinstance(
+        dataset_exporter, UnlabeledImageDatasetExporter
+    ) and etau.is_str(label_field_or_dict):
+        field_type = samples._get_field_type(label_field_or_dict)
+        if issubclass(field_type, fol._PATCHES_FIELDS):
+            found_patches = True
+            patches_kwargs, kwargs = fou.extract_kwargs_for_class(
+                foup.ImagePatchesExtractor, kwargs
+            )
+
+            msg = (
+                "Detected an unlabeled image exporter and a label field '%s' "
+                "with patches type %s. Exporting image patches..."
+                % (label_field_or_dict, field_type)
+            )
+            warnings.warn(msg)
+
+    if (
+        isinstance(dataset_exporter, LabeledImageDatasetExporter)
+        and dataset_exporter.label_cls is fol.Classification
+        and etau.is_str(label_field_or_dict)
+    ):
+        field_type = samples._get_field_type(label_field_or_dict)
+        if issubclass(field_type, fol._PATCHES_FIELDS):
+            found_patches = True
+
+            msg = (
+                "Detected an image classification exporter and a label field "
+                "'%s' with patches type %s. Exporting image patches..."
+                % (label_field_or_dict, field_type)
+            )
+            warnings.warn(msg)
+
+    if found_patches:
+        patches_kwargs, kwargs = fou.extract_kwargs_for_class(
+            foup.ImagePatchesExtractor, kwargs
+        )
+    else:
+        patches_kwargs = {}
+
+    return found_patches, patches_kwargs, kwargs
+
+
+def _check_single_label_to_list(dataset_exporter, label):
+    label_cls = dataset_exporter.label_cls
+    single_label_cls = fol._LABEL_LIST_TO_SINGLE_MAP.get(label_cls, None)
+
+    if single_label_cls is None:
+        return label
+
+    if not isinstance(label, single_label_cls):
+        return label
+
+    msg = (
+        "Dataset exporter expects labels in %s format, but found %s. Wrapping "
+        "as single-label lists..." % (label_cls, single_label_cls)
+    )
+    warnings.warn(msg)
+
+    return label_cls(**{label_cls._LABEL_LIST_FIELD: [label]})
+
+
 def _check_classification_to_detections(dataset_exporter, label):
     if dataset_exporter.label_cls is not fol.Detections:
         return label
@@ -354,7 +506,7 @@ def _check_classification_to_detections(dataset_exporter, label):
     msg = (
         "Dataset exporter expects labels in %s format, but found %s. "
         "Converting labels to detections whose bounding boxes span the entire "
-        "image" % (fol.Detections, label.__class__)
+        "image..." % (fol.Detections, label.__class__)
     )
     warnings.warn(msg)
 

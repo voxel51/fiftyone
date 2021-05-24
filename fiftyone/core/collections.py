@@ -4800,6 +4800,12 @@ class SampleCollection(object):
                 exporter's constructor via
                 ``DatasetExporter(export_dir, **kwargs)``
         """
+        if export_dir is not None and etau.is_archive(export_dir):
+            archive_path = export_dir
+            export_dir = etau.split_archive(archive_path)[0]
+        else:
+            archive_path = None
+
         if dataset_type is None and dataset_exporter is None:
             raise ValueError(
                 "Either `dataset_type` or `dataset_exporter` must be provided"
@@ -4807,12 +4813,6 @@ class SampleCollection(object):
 
         if dataset_type is not None and inspect.isclass(dataset_type):
             dataset_type = dataset_type()
-
-        if export_dir is not None and etau.is_archive(export_dir):
-            archive_path = export_dir
-            export_dir = etau.split_archive(archive_path)[0]
-        else:
-            archive_path = None
 
         # If no dataset exporter was provided, construct one based on the
         # dataset type
@@ -5695,6 +5695,31 @@ def _get_default_label_fields_for_exporter(
 
     if label_field_or_dict is not None:
         return label_field_or_dict
+
+    #
+    # SPECIAL CASE
+    #
+    # The export routine can extract image patches when exporting in image
+    # dataset formats
+    #
+
+    if label_cls is fol.Classification:
+        for field, field_type in label_fields.items():
+            if issubclass(field_type.document_type, fol._PATCHES_FIELDS):
+                return field
+
+    #
+    #
+    # SPECIAL CASE
+    #
+    # The export routine can wrap single label fields as list fields
+    #
+
+    _label_cls = fol._LABEL_LIST_TO_SINGLE_MAP.get(label_cls, None)
+    if _label_cls is not None:
+        label_field = _get_fields_with_types(label_fields, _label_cls)
+        if label_field is not None:
+            return label_field
 
     #
     # SPECIAL CASE

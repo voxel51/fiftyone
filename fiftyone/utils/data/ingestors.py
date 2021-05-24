@@ -98,7 +98,7 @@ class UnlabeledImageDatasetIngestor(
 
     Args:
         dataset_dir: the directory where input images will be ingested into
-        samples: an iterable of samples
+        samples: an iterable of samples that can be parsed by ``sample_parser``
         sample_parser: an
             :class:`fiftyone.utils.data.parsers.UnlabeledImageSampleParser` to
             use to parse the samples
@@ -206,7 +206,7 @@ class LabeledImageDatasetIngestor(LabeledImageDatasetImporter, ImageIngestor):
 
     Args:
         dataset_dir: the directory where input images will be ingested into
-        samples: an iterable of samples
+        samples: an iterable of samples that can be parsed by ``sample_parser``
         sample_parser: an
             :class:`fiftyone.utils.data.parsers.LabeledImageSampleParser` to
             use to parse the samples
@@ -351,7 +351,7 @@ class UnlabeledVideoDatasetIngestor(
 
     Args:
         dataset_dir: the directory where input videos will be ingested into
-        samples: an iterable of samples
+        samples: an iterable of samples that can be parsed by ``sample_parser``
         sample_parser: an
             :class:`fiftyone.utils.data.parsers.UnlabeledVideoSampleParser` to
             use to parse the samples
@@ -440,7 +440,7 @@ class LabeledVideoDatasetIngestor(LabeledVideoDatasetImporter, VideoIngestor):
 
     Args:
         dataset_dir: the directory where input videos will be ingested into
-        samples: an iterable of samples
+        samples: an iterable of samples that can be parsed by ``sample_parser``
         sample_parser: an
             :class:`fiftyone.utils.data.parsers.LabeledVideoSampleParser` to
             use to parse the samples

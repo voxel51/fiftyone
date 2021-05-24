@@ -30,7 +30,7 @@ def add_images(dataset, samples, sample_parser, tags=None):
 
     Args:
         dataset: a :class:`fiftyone.core.dataset.Dataset`
-        samples: an iterable of samples
+        samples: an iterable of samples that can be parsed by ``sample_parser``
         sample_parser: a
             :class:`fiftyone.utils.data.parsers.UnlabeledImageSampleParser`
             instance to use to parse the samples
@@ -103,7 +103,7 @@ def add_labeled_images(
 
     Args:
         dataset: a :class:`fiftyone.core.dataset.Dataset`
-        samples: an iterable of samples
+        samples: an iterable of samples that can be parsed by ``sample_parser``
         sample_parser: a
             :class:`fiftyone.utils.data.parsers.LabeledImageSampleParser`
             instance to use to parse the samples
@@ -202,7 +202,7 @@ def add_videos(dataset, samples, sample_parser, tags=None):
 
     Args:
         dataset: a :class:`fiftyone.core.dataset.Dataset`
-        samples: an iterable of samples
+        samples: an iterable of samples that can be parsed by ``sample_parser``
         sample_parser: a
             :class:`fiftyone.utils.data.parsers.UnlabeledVideoSampleParser`
             instance to use to parse the samples
@@ -270,7 +270,7 @@ def add_labeled_videos(
 
     Args:
         dataset: a :class:`fiftyone.core.dataset.Dataset`
-        samples: an iterable of samples
+        samples: an iterable of samples that can be parsed by ``sample_parser``
         sample_parser: a
             :class:`fiftyone.utils.data.parsers.LabeledVideoSampleParser`
             instance to use to parse the samples
