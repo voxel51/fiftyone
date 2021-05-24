@@ -550,16 +550,6 @@ class ExportsImages(object):
         Returns:
             the path to the exported image
         """
-        if not self._export_media:
-            if ExportsImages._is_image_path(image_or_path):
-                image_path = image_or_path
-                filename = os.path.basename(image_path)
-                self._filepath_mapping[filename] = image_or_path
-            else:
-                image_path = self._filename_maker.get_output_path()
-
-            return image_path
-
         if ExportsImages._is_image_path(image_or_path):
             image_path = image_or_path
             out_image_path = self._filename_maker.get_output_path(image_path)
@@ -568,7 +558,8 @@ class ExportsImages(object):
             elif self._export_media == "symlink":
                 etau.symlink_file(image_path, out_image_path)
             elif not self._export_media:
-                self._filepath_mapping[out_image_path] = image_path
+                filename = os.path.basename(out_image_path)
+                self._filepath_mapping[filename] = image_path
             elif self._export_media is True:
                 etau.copy_file(image_path, out_image_path)
             else:
@@ -581,7 +572,8 @@ class ExportsImages(object):
         else:
             img = image_or_path
             out_image_path = self._filename_maker.get_output_path()
-            etai.write(img, out_image_path)
+            if self._export_media:
+                etai.write(img, out_image_path)
 
         return out_image_path
 
@@ -946,6 +938,7 @@ class LegacyFiftyOneDatasetExporter(GenericSampleDatasetExporter):
         self._metadata = None
         self._samples = None
         self._filename_maker = None
+        self._filepath_mapping = {}
         self._is_video_dataset = False
 
     def setup(self):
@@ -953,13 +946,16 @@ class LegacyFiftyOneDatasetExporter(GenericSampleDatasetExporter):
         self._eval_dir = os.path.join(self.export_dir, "evaluations")
         self._brain_dir = os.path.join(self.export_dir, "brain")
         self._frame_labels_dir = os.path.join(self.export_dir, "frames")
+        self._data_json_path = os.path.join(self.export_dir, "data.json")
         self._metadata_path = os.path.join(self.export_dir, "metadata.json")
         self._samples_path = os.path.join(self.export_dir, "samples.json")
         self._metadata = {}
         self._samples = []
-        self._filename_maker = fou.UniqueFilenameMaker(
-            output_dir=self._data_dir
-        )
+        if not self.export_media:
+            output_dir = ""
+        else:
+            output_dir = self._data_dir
+        self._filename_maker = fou.UniqueFilenameMaker(output_dir=output_dir)
 
     def log_collection(self, sample_collection):
         self._is_video_dataset = sample_collection.media_type == fomm.VIDEO
@@ -1018,18 +1014,17 @@ class LegacyFiftyOneDatasetExporter(GenericSampleDatasetExporter):
     def export_sample(self, sample):
         sd = sample.to_dict()
 
-        if self.export_media:
-            out_filepath = self._filename_maker.get_output_path(
-                sample.filepath
-            )
-            if self.move_media:
-                etau.move_file(sample.filepath, out_filepath)
-            else:
-                etau.copy_file(sample.filepath, out_filepath)
-            sd["filepath"] = out_filepath
+        out_filepath = self._filename_maker.get_output_path(sample.filepath)
+        if self.export_media is True:
+            etau.copy_file(sample.filepath, out_filepath)
+        elif self.export_media == "move":
+            etau.move_file(sample.filepath, out_filepath)
+        elif self.export_media == "symlink":
+            etau.symlink_file(sample.filepath, out_filepath)
+        elif not self.export_media:
+            self._filepath_mapping[out_filepath] = sample.filepath
 
-        else:
-            out_filepath = sample.filepath
+        sd["filepath"] = out_filepath
 
         if self.relative_filepaths:
             sd["filepath"] = os.path.relpath(out_filepath, self.export_dir)
@@ -1050,6 +1045,9 @@ class LegacyFiftyOneDatasetExporter(GenericSampleDatasetExporter):
         etas.write_json(
             samples, self._samples_path, pretty_print=self.pretty_print
         )
+
+        if not self.export_media:
+            etas.write_json(self._filepath_mapping, self._data_json_path)
 
     def _export_frame_labels(self, sample, uuid):
         frames_dict = {"frames": sample.frames._to_frames_dict()}
