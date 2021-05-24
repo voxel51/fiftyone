@@ -18,7 +18,7 @@ export const ICONS = Object.freeze({
 
 export const makeWrapper = function (children) {
   const wrapper = document.createElement("div");
-  wrapper.className = "p51-opt-input";
+  wrapper.className = "looker-opt-input";
   for (const child of children) {
     wrapper.appendChild(child);
   }
@@ -30,14 +30,14 @@ export const makeCheckboxRow = function (
   checked
 ): [HTMLLabelElement, HTMLInputElement] {
   const label = document.createElement("label");
-  label.className = "p51-label";
+  label.className = "looker-label";
   label.innerHTML = text;
 
   const checkbox = document.createElement("input");
   checkbox.setAttribute("type", "checkbox");
   checkbox.checked = checked;
   const span = document.createElement("span");
-  span.className = "p51-checkbox";
+  span.className = "looker-checkbox";
   label.appendChild(checkbox);
   label.appendChild(span);
 

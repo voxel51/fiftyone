@@ -2,8 +2,9 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 
-import { BaseState, Coordinates } from "../state";
-import { getCanvasCoordinates } from "../util";
+import { update } from "immutable";
+import { BaseState, BoundingBox, Coordinates, Dimensions } from "../state";
+import { getCanvasCoordinates, getFitCanvasBBox } from "../util";
 import { BaseElement, Events } from "./base";
 import { ICONS, makeCheckboxRow, makeWrapper } from "./util";
 
@@ -12,11 +13,12 @@ export class LookerElement<State extends BaseState> extends BaseElement<
   HTMLDivElement
 > {
   private hideControlsTimeout?: ReturnType<typeof setTimeout>;
+  private start: Coordinates = [0, 0];
 
   getEvents(): Events<State> {
     return {
       blur: ({ update }) => {
-        update({ showOptions: false, showControls: false, focused: false });
+        update({ focused: false });
       },
       focus: ({ update }) => {
         update({ focused: true });
@@ -45,34 +47,111 @@ export class LookerElement<State extends BaseState> extends BaseElement<
       mouseenter: ({ update, dispatchEvent }) => {
         dispatchEvent("mouseenter");
         update(({ config: { thumbnail } }) => {
+          if (thumbnail) {
+            return { hovering: true };
+          }
           return {
             hovering: true,
-            showControls: thumbnail,
+            showControls: true,
           };
         });
-        this.hideControlsTimeout = setTimeout(() =>
-          update({ showControls: false, showOptions: false })
-        );
-      },
-      mousemove: ({ update }) => {
-        if (this.hideControlsTimeout) {
-          clearTimeout(this.hideControlsTimeout);
-          this.hideControlsTimeout = null;
-        }
-        update({ rotate: 0 });
       },
       mouseleave: ({ update, dispatchEvent }) => {
         dispatchEvent("mouseleave");
         update({
           hovering: false,
           disableControls: false,
-          showControls: false,
-          showOptions: false,
         });
+      },
+      mousedown: ({ event, update }) => {
+        update(({ config: { thumbnail }, pan: [x, y] }) => {
+          if (thumbnail) {
+            return {};
+          }
+          event.preventDefault();
+          this.start = [event.clientX - x, event.clientY - y];
+          return { panning: true };
+        });
+      },
+      mouseup: ({ event, update }) => {
+        update(({ config: { thumbnail } }) => {
+          if (thumbnail) {
+            return {};
+          }
+          event.preventDefault();
+          const [x, y] = this.start;
+          return {
+            panning: false,
+            pan: [event.clientX - x, event.clientY - y],
+          };
+        });
+      },
+      mousemove: ({ event, update }) => {
         if (this.hideControlsTimeout) {
           clearTimeout(this.hideControlsTimeout);
-          this.hideControlsTimeout = null;
         }
+        this.hideControlsTimeout = setTimeout(
+          () =>
+            update(({ showOptions }) => {
+              if (!showOptions) {
+                return { showControls: false };
+              }
+              return {};
+            }),
+          2500
+        );
+        update(({ config: { thumbnail }, panning }) => {
+          if (thumbnail || !panning) {
+            return { rotate: 0 };
+          }
+          return {
+            rotate: 0,
+            pan: [event.x - this.start[0], event.y - this.start[1]],
+          };
+        });
+      },
+      dblclick: ({ update }) => {
+        update(({ config: { thumbnail } }) => {
+          return thumbnail ? {} : { scale: 1, pan: [0, 0] };
+        });
+      },
+      wheel: ({ event, update }) => {
+        update(
+          ({
+            config: {
+              thumbnail,
+              dimensions: [mw, mh],
+            },
+            pan: [px, py],
+            scale,
+          }) => {
+            if (thumbnail) {
+              return {};
+            }
+            event.preventDefault();
+            let {
+              x: tlx,
+              y: tly,
+              width: w,
+              height: h,
+            } = this.element.parentElement.getBoundingClientRect();
+
+            const x = event.x - tlx;
+            const y = event.y - tly;
+
+            const xs = (x - px) / scale;
+            const ys = (y - py) / scale;
+            scale = Math.max(
+              Math.min(event.deltaY < 0 ? scale * 1.2 : scale / 1.2, 6),
+              1 / 6
+            );
+
+            return {
+              pan: [x - xs * scale, y - ys * scale],
+              scale,
+            };
+          }
+        );
       },
     };
   }
@@ -100,7 +179,7 @@ export class CanvasElement<State extends BaseState> extends BaseElement<
     return {
       click: ({ update, dispatchEvent }) => {
         update({ showOptions: false }, (context, state, overlays) => {
-          if (overlays.length) {
+          if (!state.config.thumbnail && overlays.length) {
             dispatchEvent(
               "select",
               overlays[0].getSelectData(
@@ -108,6 +187,7 @@ export class CanvasElement<State extends BaseState> extends BaseElement<
                 state,
                 getCanvasCoordinates(
                   state.cursorCoordinates,
+                  state.config.dimensions,
                   state.pan,
                   state.scale,
                   context.canvas
@@ -140,6 +220,7 @@ export class CanvasElement<State extends BaseState> extends BaseElement<
                   state,
                   getCanvasCoordinates(
                     state.cursorCoordinates,
+                    state.config.dimensions,
                     state.pan,
                     state.scale,
                     context.canvas
@@ -202,7 +283,10 @@ export class ControlsElement<State extends BaseState> extends BaseElement<
     return !thumbnail;
   }
 
-  renderSelf({ showControls, disableControls }) {
+  renderSelf({ showControls, disableControls, config: { thumbnail } }) {
+    if (thumbnail) {
+      return this.element;
+    }
     if (this.showControls === (showControls && !disableControls)) {
       this.element;
     }
@@ -389,58 +473,21 @@ export class ShowTooltipOptionElement<
 }
 
 export class WindowElement<State extends BaseState> extends BaseElement<State> {
-  private start: Coordinates = [0, 0];
-
-  getEvents(): Events<State> {
-    return {
-      dragstart: ({ event, update }) => {
-        update(({ config: { thumbnail }, pan: [x, y] }) => {
-          if (thumbnail) {
-            return {};
-          }
-          event.preventDefault();
-          this.start = [event.clientX - x, event.clientY - y];
-          return {};
-        });
-      },
-      drag: ({ event, update }) => {
-        event.preventDefault();
-        const [x, y] = this.start;
-        update(({ config: { thumbnail } }) => {
-          if (thumbnail) {
-            return {};
-          }
-          return { pan: [event.clientX - x, event.clientY - y] };
-        });
-      },
-      wheel: ({ event, update }) => {
-        update(({ config: { thumbnail }, pan: [x, y], scale }) => {
-          if (thumbnail) {
-            return {};
-          }
-          event.preventDefault();
-          const xs = (event.clientX - x) / scale,
-            ys = (event.clientY - y) / scale,
-            delta = -event.deltaY;
-
-          delta > 0 ? (scale *= 1.2) : (scale /= 1.2);
-
-          return {
-            pan: [event.clientX - xs * scale, event.clientY - ys * scale],
-            scale,
-          };
-        });
-      },
-    };
-  }
-
   createHTMLElement() {
     const element = document.createElement("div");
     element.className = "looker-window";
     return element;
   }
 
-  renderSelf({ pan: [x, y], scale }) {
+  renderSelf({ panning, pan: [x, y], scale, config: { thumbnail } }) {
+    if (thumbnail) {
+      return this.element;
+    }
+    if (panning && this.element.style.cursor !== "grab") {
+      this.element.style.cursor = "grab";
+    } else if (!panning && this.element.style.cursor !== "default") {
+      this.element.style.cursor = "default";
+    }
     this.element.style.transform =
       "translate(" + x + "px, " + y + "px) scale(" + scale + ")";
     return this.element;

@@ -82,6 +82,7 @@ export interface BaseState {
   options: BaseOptions;
   scale: number;
   pan: Coordinates;
+  panning: boolean;
   rotate: number;
 }
 

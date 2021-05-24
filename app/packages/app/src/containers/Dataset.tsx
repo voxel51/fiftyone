@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef } from "react";
-import { useRecoilState, useRecoilValue, useResetRecoilState } from "recoil";
+import { useRecoilState, useRecoilValue } from "recoil";
 import styled from "styled-components";
 
 import SamplesContainer from "./SamplesContainer";
@@ -16,6 +16,7 @@ import {
   useGA,
 } from "../utils/hooks";
 import Loading from "../components/Loading";
+import { useClearModal } from "../recoil/utils";
 
 const PLOTS = ["Sample tags", "Label tags", "Labels", "Scalars"];
 
@@ -38,20 +39,9 @@ function Dataset() {
   const [modal, setModal] = useRecoilState(atoms.modal);
   const hasDataset = useRecoilValue(selectors.hasDataset);
   const currentSamples = useRecoilValue(selectors.currentSamples);
+  const clearModal = useClearModal();
   useGA();
   useSampleUpdate();
-
-  // reset selected/hidden objects when the modal closes (subject to change) -
-  // the socket update is needed here because SampleModal and SelectObjectsMenu
-  // are destroyed before they can handle it
-  const resetSelectedObjects = useResetRecoilState(selectors.selectedLabels);
-  const resetHiddenObjects = useResetRecoilState(atoms.hiddenLabels);
-  const handleHideModal = () => {
-    setModal({ visible: false, sample_id: null });
-    resetSelectedObjects();
-    resetHiddenObjects();
-  };
-
   useScreenshot();
 
   useEffect(() => {
@@ -59,17 +49,15 @@ function Dataset() {
   }, [modal.visible]);
 
   const hideModal = useMemo(() => {
-    return (
-      modal.visible && !currentSamples.some((id) => id === modal.sample_id)
-    );
+    return modal.visible && !currentSamples.some((id) => id === modal.sampleId);
   }, [currentSamples]);
 
   useEffect(() => {
-    hideModal && handleHideModal();
+    hideModal && clearModal();
     if (!hideModal && modal.visible) {
       setModal({
         ...modal,
-        sample_id: currentSamples.filter((id) => id === modal.sample_id)[0],
+        sampleId: currentSamples.filter((id) => id === modal.sampleId)[0],
       });
     }
   }, [hideModal]);
@@ -77,12 +65,16 @@ function Dataset() {
   useSendMessage("set_selected_labels", { selected_labels: [] }, !hideModal);
   const ref = useRef();
 
-  useOutsideClick(ref, handleHideModal);
+  useOutsideClick(ref, clearModal);
   return (
     <>
       {modal.visible ? (
         <ModalWrapper key={0}>
-          <SampleModal onClose={handleHideModal} ref={ref} />
+          <SampleModal
+            onClose={clearModal}
+            ref={ref}
+            sampleId={modal.sampleId}
+          />
         </ModalWrapper>
       ) : null}
       <Container key={1}>

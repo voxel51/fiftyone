@@ -79,7 +79,7 @@ abstract class Looker<
           ? stateOrUpdater(this.state)
           : stateOrUpdater;
 
-      const merger = (o, n, k) => {
+      const merger = (o, n) => {
         if (Array.isArray(n)) {
           return n;
         }
@@ -87,7 +87,7 @@ abstract class Looker<
           return n;
         }
         if (typeof n !== "object") {
-          return n || o;
+          return n === undefined ? o : n;
         }
         if (n === null) {
           return n;
@@ -107,7 +107,7 @@ abstract class Looker<
       }
       clearCanvas(context);
       const numOverlays = this.currentOverlays.length;
-      for (let index = numOverlays - 1; index > 0; index--) {
+      for (let index = numOverlays - 1; index >= 0; index--) {
         this.currentOverlays[index].draw(context, this.state);
       }
     };

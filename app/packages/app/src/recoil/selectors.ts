@@ -731,9 +731,14 @@ export const getTarget = selector({
 export const modalSample = selector({
   key: "modalSample",
   get: async ({ get }) => {
-    const sample = await request("sample", {
-      sample_id: get(atoms.modal).sampleId,
-    });
+    const { sampleId } = get(atoms.modal);
+    const { sample } = await request(
+      "sample",
+      {
+        sample_id: get(atoms.modal).sampleId,
+      },
+      sampleId
+    );
     return sample;
   },
 });

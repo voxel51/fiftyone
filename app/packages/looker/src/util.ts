@@ -235,11 +235,29 @@ export const getContainingBox = (points: Coordinates[]): BoundingBox => {
   return [tlx, tly, w, h];
 };
 
+export const getFitCanvasBBox = (
+  [mw, mh]: Dimensions,
+  [tlx, tly, w, h]: BoundingBox
+) => {
+  if (mw / mh > w / h) {
+    const fitHeight = (w * mh) / mw;
+    tly += (h - fitHeight) / 2;
+    h += fitHeight - h;
+  } else {
+    const fitWidth = (h * mw) / mh;
+    tlx += (w - fitWidth) / 2;
+    w += fitWidth - w;
+  }
+
+  return [tlx, tly, w, h];
+};
+
 /**
  *
  */
 export const getCanvasCoordinates = function (
   [x, y]: Coordinates,
+  mediaDimensions: Dimensions,
   [px, py]: Coordinates,
   scale: number,
   canvas: HTMLCanvasElement
@@ -250,6 +268,8 @@ export const getCanvasCoordinates = function (
     width: w,
     height: h,
   } = canvas.getBoundingClientRect();
+  [tlx, tly, w, h] = getFitCanvasBBox(mediaDimensions, [tlx, tly, w, h]);
+
   tlx += px;
   tly += py;
   w *= scale;

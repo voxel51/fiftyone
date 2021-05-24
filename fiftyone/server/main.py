@@ -535,8 +535,9 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         view = view.select(sample_id)
 
         results, more = await _get_samples(cls.sample_collection(), view, 1, 0)
+        message = {"type": sample_id, "sample": results[0]}
 
-        message = {"type": "sample", "sample": results[0]}
+        _write_message(message, app=True, only=self)
 
     @staticmethod
     async def on_update(caller, state, ignore_polling_client=None):

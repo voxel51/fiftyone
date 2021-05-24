@@ -308,8 +308,6 @@ const Sample = ({ sampleId }: { sampleId: string }) => {
         <Looker
           onClick={onClick}
           style={{
-            height: "100%",
-            width: "100%",
             position: "absolute",
             cursor: "pointer",
           }}

@@ -23,9 +23,9 @@ const requestWrapper = (type, handler) => ({ data }) => {
   data.type === type && handler(data);
 };
 
-export const request = (type, args) => {
+export const request = (type, args, responseType = null) => {
   const promise = new Promise((resolve) => {
-    const listener = requestWrapper(type, (data) => {
+    const listener = requestWrapper(responseType || type, (data) => {
       socket.removeEventListener("message", listener);
       resolve(data);
     });

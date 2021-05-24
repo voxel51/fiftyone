@@ -468,7 +468,9 @@ interface LookerProps {
 }
 
 const Looker = ({ onClick, sampleId, style = {}, modal }: LookerProps) => {
-  const sample = useRecoilValue(atoms.sample(sampleId));
+  const sample = useRecoilValue(
+    modal ? selectors.modalSample : atoms.sample(sampleId)
+  );
   const sampleSrc = useRecoilValue(selectors.sampleSrc(sampleId));
   const options = useRecoilValue(lookerOptions(modal));
   const dimensions = useRecoilValue(atoms.sampleDimensions(sampleId));
@@ -492,7 +494,7 @@ const Looker = ({ onClick, sampleId, style = {}, modal }: LookerProps) => {
   return (
     <div
       ref={(node) => (node ? looker.attach(node) : looker.detach())}
-      style={style}
+      style={{ width: "100%", height: "100%", ...style }}
       onClick={onClick}
     />
   );

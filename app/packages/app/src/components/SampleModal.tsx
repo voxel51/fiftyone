@@ -55,6 +55,7 @@ const Container = styled.div`
   grid-template-columns: auto 296px;
   width: 90vw;
   height: 80vh;
+  max-height: 80vh;
   background-color: ${({ theme }) => theme.background};
 
   &.fullscreen {
@@ -95,14 +96,15 @@ const Container = styled.div`
     background-color: ${({ theme }) => theme.backgroundTransparent};
   }
 
-  .looker {
+  .looker-element {
     position: relative;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    width: 100%;
+    height: 100%;
+    max-height: 100%;
+    max-width: 100%;
     overflow: hidden;
 
-    .p51-video-options-panel {
+    .looker-options-panel {
       z-index: 1500;
     }
   }
@@ -320,21 +322,21 @@ const SampleModal = ({ onClose, sampleId }: Props, ref) => {
       className={fullscreen ? "fullscreen" : ""}
       ref={ref}
     >
-      <div className="looker" ref={playerContainerRef}>
-        {showJSON ? (
-          <JSONView
-            filterJSON={enableJSONFilter}
-            enableFilter={setEnableJSONFilter}
-          />
-        ) : (
-          <Suspense fallback={<Loading />}>
+      <div className="looker-element" ref={playerContainerRef}>
+        <Suspense fallback={<Loading />}>
+          {showJSON ? (
+            <JSONView
+              filterJSON={enableJSONFilter}
+              enableFilter={setEnableJSONFilter}
+            />
+          ) : (
             <Looker
               key={sampleSrc} // force re-render when this changes
               sampleId={_id}
               modal={true}
             />
-          </Suspense>
-        )}
+          )}
+        </Suspense>
         {index > 0 ? (
           <div
             className="nav-button left"
@@ -385,7 +387,7 @@ const SampleModal = ({ onClose, sampleId }: Props, ref) => {
             Fields
             <span className="push-right" />
           </h2>
-          <Suspense fallback={Loading}>
+          <Suspense fallback={<Loading />}>
             <FieldsSidebar
               modal={true}
               style={{

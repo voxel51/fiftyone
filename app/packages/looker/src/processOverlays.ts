@@ -2,7 +2,7 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 
-import { Overlay } from "./overlays/base";
+import { CONTAINS, Overlay } from "./overlays/base";
 import ClassificationsOverlay from "./overlays/classifications";
 import { BaseState } from "./state";
 import { getCanvasCoordinates, rotate } from "./util";
@@ -45,13 +45,14 @@ const processOverlays = <State extends BaseState>(
 
   const [x, y] = getCanvasCoordinates(
     state.cursorCoordinates,
+    state.config.dimensions,
     state.pan,
     state.scale,
     context.canvas
   );
 
   let contained = overlays
-    .filter((o) => o.containsPoint(context, state, [x, y]) > 0)
+    .filter((o) => o.containsPoint(context, state, [x, y]) > CONTAINS.NONE)
     .sort(
       (a, b) =>
         a.getMouseDistance(context, state, [x, y]) -
@@ -60,7 +61,7 @@ const processOverlays = <State extends BaseState>(
   const outside = overlays.filter(
     (o) =>
       o instanceof ClassificationsOverlay ||
-      o.containsPoint(context, state, [x, y]) === 0
+      o.containsPoint(context, state, [x, y]) === CONTAINS.NONE
   );
 
   if (state.rotate !== 0) {

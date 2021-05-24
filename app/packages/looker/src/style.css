@@ -2,6 +2,11 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 
+.looker {
+  width: 100%;
+  height: 100%;
+}
+
 @keyframes shine {
   to {
     background-position-x: -150%;
@@ -306,12 +311,14 @@ canvas.looker-canvas {
   width: 100%;
   height: 100%;
   top: 0;
+  object-fit: contain;
 }
 
 img.looker-image {
   display: block;
   width: 100%;
   height: 100%;
+  object-fit: contain;
 
   image-rendering: optimizeSpeed; /* STOP SMOOTHING, GIVE ME SPEED  */
   image-rendering: -moz-crisp-edges; /* Firefox                        */
@@ -341,7 +348,10 @@ div.looker-image {
 }
 
 .looker-window {
-  opacity: 1;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  transform-origin: 0px 0px;
   -webkit-transition: opacity 1s ease-in-out;
   -moz-transition: opacity 1s ease-in-out;
   -o-transition: opacity 1s ease-in-out;
