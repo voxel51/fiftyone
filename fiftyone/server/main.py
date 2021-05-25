@@ -1269,10 +1269,13 @@ async def _get_sample_data(col, view, page_length, page):
     samples, more = await _get_samples(col, view, page_length, page)
 
     results = [{"sample": s} for s in samples]
+    if view.media_type == fom.VIDEO:
+        get_metadata = fosu.get_video_metadata
+    else:
+        get_metadata = fosu.get_image_metadata
     for r in results:
-        w, h = fosu.get_file_dimensions(r["sample"]["filepath"])
-        r["width"] = w
-        r["height"] = h
+        for k, v in get_metadata(r["sample"]["filepath"]):
+            r[k] = v
 
     return results, more
 
