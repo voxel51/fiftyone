@@ -5728,12 +5728,12 @@ def _get_default_label_fields_for_exporter(
 
         return None
 
-    label_fields = sample_collection.get_field_schema(
+    label_schema = sample_collection.get_field_schema(
         ftype=fof.EmbeddedDocumentField, embedded_doc_type=fol.Label
     )
 
     label_field_or_dict = _get_fields_with_types(
-        label_fields, label_cls, allow_coersion=allow_coersion
+        label_schema, label_cls, allow_coersion=allow_coersion
     )
 
     if label_field_or_dict is not None:
@@ -5759,12 +5759,12 @@ def _get_default_frame_label_fields_for_exporter(
 
         return None
 
-    frame_labels_fields = sample_collection.get_frame_field_schema(
+    frame_label_schema = sample_collection.get_frame_field_schema(
         ftype=fof.EmbeddedDocumentField, embedded_doc_type=fol.Label
     )
 
     frame_labels_field_or_dict = _get_fields_with_types(
-        frame_labels_fields, frame_labels_cls, allow_coersion=allow_coersion
+        frame_label_schema, frame_labels_cls, allow_coersion=allow_coersion
     )
 
     if frame_labels_field_or_dict is not None:
@@ -5778,16 +5778,16 @@ def _get_default_frame_label_fields_for_exporter(
     return None
 
 
-def _get_fields_with_types(label_fields, label_cls, allow_coersion=False):
+def _get_fields_with_types(label_schema, label_cls, allow_coersion=False):
     if not isinstance(label_cls, dict):
         return _get_field_with_type(
-            label_fields, label_cls, allow_coersion=allow_coersion
+            label_schema, label_cls, allow_coersion=allow_coersion
         )
 
     labels_dict = {}
     for name, _label_cls in label_cls.items():
         field = _get_field_with_type(
-            label_fields, _label_cls, allow_coersion=allow_coersion
+            label_schema, _label_cls, allow_coersion=allow_coersion
         )
         if field is not None:
             labels_dict[field] = name
@@ -5795,10 +5795,10 @@ def _get_fields_with_types(label_fields, label_cls, allow_coersion=False):
     return labels_dict if labels_dict else None
 
 
-def _get_field_with_type(label_fields, label_cls, allow_coersion=False):
-    for field, field_type in label_fields.items():
-        if issubclass(field_type.document_type, label_cls):
-            return field
+def _get_field_with_type(label_schema, label_cls, allow_coersion=False):
+    field = _get_matching_label_field(label_schema, label_cls)
+    if field is not None:
+        return field
 
     if not allow_coersion:
         return None
@@ -5806,26 +5806,46 @@ def _get_field_with_type(label_fields, label_cls, allow_coersion=False):
     # Allow for extraction of image patches when exporting image classification
     # datasets
     if label_cls is fol.Classification:
-        for field, field_type in label_fields.items():
-            if issubclass(field_type.document_type, fol._PATCHES_FIELDS):
-                return field
+        field = _get_matching_label_field(label_schema, fol._PATCHES_FIELDS)
+        if field is not None:
+            return field
 
     # Wrap single label fields as list fields
     _label_cls = fol._LABEL_LIST_TO_SINGLE_MAP.get(label_cls, None)
     if _label_cls is not None:
-        label_field = _get_fields_with_types(
-            label_fields, _label_cls, allow_coersion=False
+        field = _get_fields_with_types(
+            label_schema, _label_cls, allow_coersion=False
         )
-        if label_field is not None:
-            return label_field
+        if field is not None:
+            return field
 
     # Allow for conversion of `Classification` labels to `Detections` format
     if label_cls is fol.Detections:
-        for field, field_type in label_fields.items():
-            if issubclass(field_type.document_type, fol.Classification):
-                return field
+        field = _get_matching_label_field(label_schema, fol.Classification)
+        if field is not None:
+            return field
 
     return None
+
+
+def _get_matching_label_field(label_schema, label_type_or_types):
+    valid_fields = []
+    for field, field_type in label_schema.items():
+        if issubclass(field_type.document_type, label_type_or_types):
+            valid_fields.append(field)
+
+    if not valid_fields:
+        return None
+
+    if len(valid_fields) > 1:
+        logger.info(
+            "Found multiple fields %s with compatible type %s; exporting '%s'",
+            valid_fields,
+            label_type_or_types,
+            valid_fields[0],
+        )
+
+    return valid_fields[0]
 
 
 def _parse_field_name(
