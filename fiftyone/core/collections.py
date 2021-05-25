@@ -4739,13 +4739,13 @@ class SampleCollection(object):
 
         See :ref:`this guide <custom-dataset-exporter>` for more details about
         exporting datasets in custom formats by defining your own
-        :class:`DatasetExporter <fiftyone.utils.data.exporters.DatasetExporter>`.
+        :class:`fiftyone.utils.data.exporters.DatasetExporter`.
 
         This method will automatically coerce the data to match the requested
         export in the following cases:
 
         -   When exporting in either an unlabeled image or image classification
-            format, if ``label_field_or_dict`` is a spatial field
+            format, if a spatial label field is provided
             (:class:`fiftyone.core.labels.Detection`,
             :class:`fiftyone.core.labels.Detections`,
             :class:`fiftyone.core.labels.Polyline`, or
@@ -4756,16 +4756,16 @@ class SampleCollection(object):
             list-type labels (:class:`fiftyone.core.labels.Classifications`,
             :class:`fiftyone.core.labels.Detections`,
             :class:`fiftyone.core.labels.Keypoints`, or
-            :class:`fiftyone.core.labels.Polylines`), if
-            ``label_field_or_dict`` contains labels in non-list format
+            :class:`fiftyone.core.labels.Polylines`), if a label field contains
+            labels in non-list format
             (e.g., :class:`fiftyone.core.labels.Classification`), the labels
             will be automatically upgraded to single-label lists
 
         -   When exporting in labeled image dataset formats that expect
-            :class:`fiftyone.core.labels.Detections` labels, if
-            ``label_field_or_dict`` is a
-            :class:`fiftyone.core.labels.Classification` field, the labels will
-            be automatically upgraded to detections that span the entire images
+            :class:`fiftyone.core.labels.Detections` labels, if a
+            :class:`fiftyone.core.labels.Classification` field is provided, the
+            labels will be automatically upgraded to detections that span the
+            entire images
 
         Args:
             export_dir (None): the directory to which to export the samples in
@@ -5148,7 +5148,7 @@ class SampleCollection(object):
 
         Args:
             aggregations: an :class:`fiftyone.core.aggregations.Aggregation` or
-                iterable of :class:`<fiftyone.core.aggregations.Aggregation>`
+                iterable of :class:`fiftyone.core.aggregations.Aggregation`
                 instances
 
         Returns:
