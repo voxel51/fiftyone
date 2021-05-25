@@ -1,6 +1,6 @@
 import { atom, atomFamily, SerializableParam } from "recoil";
 
-export const modal = atom({
+export const modal = atom<{ visible: boolean; sampleId: string }>({
   key: "modal",
   default: {
     visible: false,

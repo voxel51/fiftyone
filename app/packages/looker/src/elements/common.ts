@@ -3,7 +3,7 @@
  */
 
 import { BaseState, Coordinates } from "../state";
-import { getCanvasCoordinates } from "../util";
+import { getCanvasCoordinates, getFitCanvasBBox } from "../util";
 import { BaseElement, Events } from "./base";
 import { ICONS, makeCheckboxRow, makeWrapper } from "./util";
 
@@ -60,6 +60,7 @@ export class LookerElement<State extends BaseState> extends BaseElement<
         update({
           hovering: false,
           disableControls: false,
+          panning: false,
         });
       },
       mousedown: ({ event, update }) => {
@@ -73,15 +74,14 @@ export class LookerElement<State extends BaseState> extends BaseElement<
         });
       },
       mouseup: ({ event, update }) => {
-        update(({ config: { thumbnail } }) => {
-          if (thumbnail) {
+        update((state) => {
+          if (state.config.thumbnail || !state.panning) {
             return {};
           }
           event.preventDefault();
-          const [x, y] = this.start;
           return {
             panning: false,
-            pan: [event.clientX - x, event.clientY - y],
+            pan: this.getPan([event.clientX, event.clientY], state),
           };
         });
       },
@@ -99,13 +99,13 @@ export class LookerElement<State extends BaseState> extends BaseElement<
             }),
           2500
         );
-        update(({ config: { thumbnail }, panning }) => {
-          if (thumbnail || !panning) {
+        update((state) => {
+          if (state.config.thumbnail || !state.panning) {
             return { rotate: 0 };
           }
           return {
             rotate: 0,
-            pan: [event.x - this.start[0], event.y - this.start[1]],
+            pan: this.getPan([event.clientX, event.clientY], state),
           };
         });
       },
@@ -115,42 +115,28 @@ export class LookerElement<State extends BaseState> extends BaseElement<
         });
       },
       wheel: ({ event, update }) => {
-        update(
-          ({
-            config: {
-              thumbnail,
-              dimensions: [mw, mh],
-            },
-            pan: [px, py],
-            scale,
-          }) => {
-            if (thumbnail) {
-              return {};
-            }
-            event.preventDefault();
-            let {
-              x: tlx,
-              y: tly,
-              width: w,
-              height: h,
-            } = this.element.getBoundingClientRect();
-
-            const x = event.x - tlx;
-            const y = event.y - tly;
-
-            const xs = (x - px) / scale;
-            const ys = (y - py) / scale;
-            scale = Math.max(
-              Math.min(event.deltaY < 0 ? scale * 1.2 : scale / 1.2, 6),
-              1 / 6
-            );
-
-            return {
-              pan: [x - xs * scale, y - ys * scale],
-              scale,
-            };
+        update(({ config: { thumbnail }, pan: [px, py], scale }) => {
+          if (thumbnail) {
+            return {};
           }
-        );
+          event.preventDefault();
+          let { x: tlx, y: tly } = this.element.getBoundingClientRect();
+
+          const x = event.x - tlx;
+          const y = event.y - tly;
+
+          const xs = (x - px) / scale;
+          const ys = (y - py) / scale;
+          scale = Math.max(
+            Math.min(event.deltaY < 0 ? scale * 1.2 : scale / 1.2, 6),
+            1
+          );
+
+          return {
+            pan: [x - xs * scale, y - ys * scale],
+            scale,
+          };
+        });
       },
     };
   }
@@ -167,6 +153,21 @@ export class LookerElement<State extends BaseState> extends BaseElement<
       this.element.classList.remove("loading");
     }
     return this.element;
+  }
+
+  private getPan(
+    [x, y]: Coordinates,
+    { scale, config: { dimensions } }: Readonly<State>
+  ): Coordinates {
+    const [sx, sy] = this.start;
+    const { width, height } = this.element.getBoundingClientRect();
+    const [tlx, tly, w, h] = getFitCanvasBBox(dimensions, [
+      0,
+      0,
+      width,
+      height,
+    ]);
+    return [x - sx, y - sy];
   }
 }
 
@@ -209,22 +210,45 @@ export class CanvasElement<State extends BaseState> extends BaseElement<
             ],
           },
           (context, state, overlays) => {
-            if (overlays.length) {
-              dispatchEvent(
-                "tooltip",
-                overlays[0].getPointInfo(
-                  context,
-                  state,
-                  getCanvasCoordinates(
-                    state.cursorCoordinates,
-                    state.config.dimensions,
-                    state.pan,
-                    state.scale,
-                    context.canvas
-                  )
-                )
-              );
+            // @ts-ignore
+            if (state.playing && state.config.thumbnail) {
+              return {};
             }
+            let detail =
+              overlays.length &&
+              overlays[0].containsPoint(
+                context,
+                state,
+                getCanvasCoordinates(
+                  state.cursorCoordinates,
+                  state.config.dimensions,
+                  context.canvas
+                )
+              )
+                ? overlays[0].getPointInfo(
+                    context,
+                    state,
+                    getCanvasCoordinates(
+                      state.cursorCoordinates,
+                      state.config.dimensions,
+                      context.canvas
+                    )
+                  )
+                : null;
+            // @ts-ignore
+            if (state.frameNumber && detail) {
+              // @ts-ignore
+              detail.frameNumber = state.frameNumber;
+            }
+            dispatchEvent(
+              "tooltip",
+              detail
+                ? {
+                    ...detail,
+                    coordinates: state.cursorCoordinates,
+                  }
+                : null
+            );
           }
         );
       },

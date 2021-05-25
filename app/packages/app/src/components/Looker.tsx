@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, MutableRefObject } from "react";
 import ReactDOM from "react-dom";
 import styled from "styled-components";
 import {
@@ -13,7 +13,7 @@ import { animated, useSpring } from "react-spring";
 import * as labelAtoms from "./Filters/utils";
 import ExternalLink from "./ExternalLink";
 import { ContentDiv, ContentHeader } from "./utils";
-import { ImageLooker } from "@fiftyone/looker";
+import { ImageLooker, Looker as LookerType } from "@fiftyone/looker";
 import { useEventHandler } from "../utils/hooks";
 
 import * as atoms from "../recoil/atoms";
@@ -25,6 +25,8 @@ import {
   VideoOptions,
 } from "@fiftyone/looker/src/state";
 import { useLayoutEffect } from "react";
+import { LookerElement } from "@fiftyone/looker/src/elements/common";
+import { useMove } from "react-use-gesture";
 
 const InfoWrapper = styled.div`
   display: flex;
@@ -77,19 +79,16 @@ const TooltipDiv = animated(styled(ContentDiv)`
   pointer-events: none;
 `);
 
-const computeCoordinates = (
-  [x, y]: [number, number],
-  ref: { current: HTMLElement | null }
-): { bottom?: string | number; top?: string | number; left?: number } => {
-  if (!ref.current) {
-    return {};
-  }
-  x +=
-    x < window.innerWidth / 2
-      ? 24
-      : -24 - ref.current.getBoundingClientRect().width;
-  let top: string | number = y,
-    bottom: string | number = "unset";
+type placement = number | "unset";
+
+const computeCoordinates = ([x, y]: [number, number]): {
+  bottom?: placement;
+  top?: placement;
+  left?: placement;
+  right?: placement;
+} => {
+  let top: placement = y,
+    bottom: placement = "unset";
   if (y > window.innerHeight / 2) {
     bottom = window.innerHeight - y;
     top = "unset";
@@ -98,7 +97,8 @@ const computeCoordinates = (
   return {
     bottom,
     top,
-    left: x,
+    left: x <= window.innerWidth / 2 ? x + 24 : "unset",
+    right: x > window.innerWidth / 2 ? window.innerWidth - x + 24 : "unset",
   };
 };
 
@@ -193,7 +193,7 @@ const ClassificationInfo = ({ info }) => {
     <AttrBlock style={{ borderColor: info.color }}>
       <AttrInfo
         field={info.field}
-        id={info.id}
+        id={info.label._id}
         frameNumber={info.frameNumber}
       />
     </AttrBlock>
@@ -205,7 +205,7 @@ const DetectionInfo = ({ info }) => {
     <AttrBlock style={{ borderColor: info.color }}>
       <AttrInfo
         field={info.field}
-        id={info.id}
+        id={info.label._id}
         frameNumber={info.frameNumber}
       />
     </AttrBlock>
@@ -215,7 +215,11 @@ const DetectionInfo = ({ info }) => {
 const KeypointInfo = ({ info }) => {
   return (
     <AttrBlock style={{ borderColor: info.color }}>
-      <AttrInfo field={info.field} id={info.id} frameNumber={info.frameNumber}>
+      <AttrInfo
+        field={info.field}
+        id={info.label._id}
+        frameNumber={info.frameNumber}
+      >
         <ContentItem
           key={"# keypoints"}
           name={"# keypoints"}
@@ -234,7 +238,7 @@ const SegmentationInfo = ({ info }) => {
       <ContentItem key={"target-value"} name={"label"} value={targetValue} />
       <AttrInfo
         field={info.field}
-        id={info.id}
+        id={info.label._id}
         frameNumber={info.frameNumber}
       />
     </AttrBlock>
@@ -244,7 +248,11 @@ const SegmentationInfo = ({ info }) => {
 const PolylineInfo = ({ info }) => {
   return (
     <AttrBlock style={{ borderColor: info.color }}>
-      <AttrInfo field={info.field} id={info.id} frameNumber={info.frameNumber}>
+      <AttrInfo
+        field={info.field}
+        id={info.label._id}
+        frameNumber={info.frameNumber}
+      >
         <ContentItem key={"# points"} name={"# points"} value={info.points} />
       </AttrInfo>
     </AttrBlock>
@@ -289,60 +297,64 @@ const TagInfo = ({ field, id, frameNumber }) => {
   );
 };
 
-const TooltipInfo = ({ lookerRef, moveRef }) => {
-  const [display, setDisplay] = useState(false);
-  const [coords, setCoords] = useState({
-    top: -1000,
-    left: -1000,
-    bottom: "unset",
-  });
-  const position = display
-    ? coords
-    : { top: -1000, left: -1000, bottom: "unset" };
+const TooltipInfo = React.memo(
+  ({ looker }: { looker: any; moveRef: MutableRefObject<HTMLDivElement> }) => {
+    const [detail, setDetail] = useState(null);
+    const [coords, setCoords] = useState<{
+      top?: placement;
+      bottom?: placement;
+      left?: placement;
+    }>({
+      top: -1000,
+      left: -1000,
+      bottom: "unset",
+    });
+    const position = detail
+      ? coords
+      : { top: -1000, left: -1000, bottom: "unset" };
 
-  const coordsProps = useSpring({
-    ...position,
-    config: {
-      duration: 0,
-    },
-  });
-  const [overlay, setOverlay] = useState(null);
-  const ref = useRef<HTMLDivElement>(null);
+    const coordsProps = useSpring({
+      ...position,
+      config: {
+        duration: 0,
+      },
+    });
+    const ref = useRef<HTMLDivElement>(null);
 
-  useEventHandler(lookerRef.current, "tooltipinfo", (e) => {
-    setOverlay(e.detail ? e.data.overlays[0] : null);
-  });
-  useEventHandler(lookerRef.current, "mouseenter", () => setDisplay(true));
-  useEventHandler(lookerRef.current, "mouseleave", () => setDisplay(false));
+    useEventHandler(looker, "tooltip", (e) => {
+      setDetail(e.detail ? e.detail : null);
+      setCoords(computeCoordinates(e.detail.coordinates));
+    });
 
-  const showProps = useSpring({
-    display: display ? "block" : "none",
-    opacity: display && overlay ? 1 : 0,
-  });
-  const Component = overlay ? OVERLAY_INFO[overlay.type] : null;
+    const showProps = useSpring({
+      display: detail ? "block" : "none",
+      opacity: detail ? 1 : 0,
+    });
+    const Component = detail ? OVERLAY_INFO[detail.type] : null;
 
-  return Component
-    ? ReactDOM.createPortal(
-        <TooltipDiv
-          style={{ ...coordsProps, ...showProps, position: "fixed" }}
-          ref={ref}
-        >
-          <ContentHeader key="header">{overlay.field}</ContentHeader>
-          <Border color={overlay.color} id={overlay.id} />
-          <TagInfo
-            key={"tags"}
-            field={overlay.field}
-            id={overlay.id}
-            frameNumber={overlay.frameNumber}
-          />
-          <Component key={"attrs"} info={overlay} />
-        </TooltipDiv>,
-        document.body
-      )
-    : null;
-};
+    return Component
+      ? ReactDOM.createPortal(
+          <TooltipDiv
+            style={{ ...coordsProps, ...showProps, position: "fixed" }}
+            ref={ref}
+          >
+            <ContentHeader key="header">{detail.field}</ContentHeader>
+            <Border color={detail.color} id={detail.label._id} />
+            <TagInfo
+              key={"tags"}
+              field={detail.field}
+              id={detail.label._id}
+              frameNumber={detail.frameNumber}
+            />
+            <Component key={"attrs"} info={detail} />
+          </TooltipDiv>,
+          document.body
+        )
+      : null;
+  }
+);
 
-const usePlayer51Error = (playerRef, sampleId, setError) => {
+const useLookerError = (looker, sampleId, setError) => {
   const handler = useRecoilCallback(
     ({ snapshot }) => async () => {
       const isVideo = await snapshot.getPromise(selectors.isVideoDataset);
@@ -374,10 +386,10 @@ const usePlayer51Error = (playerRef, sampleId, setError) => {
     },
     [sampleId]
   );
-  useEventHandler(playerRef.current, "error", handler);
+  useEventHandler(looker, "error", handler);
 };
 
-const usePlayer51OptionsUpdate = (playerRef) => {
+const useLookerOptionsUpdate = (looker) => {
   const handler = useRecoilCallback(
     ({ set }) => async ({
       data: { showAttrs, showConfidence, showTooltip },
@@ -391,42 +403,10 @@ const usePlayer51OptionsUpdate = (playerRef) => {
     []
   );
 
-  useEventHandler(playerRef.current, "options", handler);
+  useEventHandler(looker, "options", handler);
 };
 
 type EventCallback = (event: Event) => void;
-
-interface Player51Options {
-  activeFields: string[];
-  sample: { [key: string]: SerializableParam };
-  thumbnail: boolean;
-}
-
-const player51Options = selectorFamily<
-  Player51Options,
-  { sampleId: string; thumbnail: boolean }
->({
-  key: "playerOptions",
-  get: ({ sampleId, thumbnail }) => ({ get }) => {
-    const modal = !thumbnail;
-    return {
-      colorMap: get(selectors.colorMap(modal)),
-      enableOverlayOPtions: {
-        attrRenderMode: false,
-        attrsOnlyOnClick: false,
-        attrRenderBox: false,
-      },
-      defaultOverlayOptions: {
-        action: "hover",
-        attrRenderMode: "attr-value",
-        smoothMasks: false,
-      },
-      sample: get(modal ? atoms.sampleModal(sampleId) : atoms.sample(sampleId)),
-      src: get(selectors.sampleSrc(sampleId)),
-      thumbnail,
-    };
-  },
-});
 
 export const defaultLookerOptions = selector({
   key: "defaultLookerOptions",
@@ -467,13 +447,21 @@ interface LookerProps {
   modal: boolean;
 }
 
-const Looker = ({ onClick, sampleId, style = {}, modal }: LookerProps) => {
+const Looker = ({
+  onClick,
+  sampleId,
+  style = {},
+  modal,
+  onSelect,
+}: LookerProps) => {
   const sample = useRecoilValue(
     modal ? selectors.modalSample : atoms.sample(sampleId)
   );
   const sampleSrc = useRecoilValue(selectors.sampleSrc(sampleId));
   const options = useRecoilValue(lookerOptions(modal));
   const dimensions = useRecoilValue(atoms.sampleDimensions(sampleId));
+  const ref = useRef<any>();
+  const bindMove = useMove((s) => ref.current && ref.current(s));
   const [looker] = useState<ImageLooker>(
     () =>
       new ImageLooker(
@@ -491,12 +479,26 @@ const Looker = ({ onClick, sampleId, style = {}, modal }: LookerProps) => {
     looker.update(sample, options);
   }, [looker, sample, options]);
 
+  useEventHandler(looker, "select", (e) => {
+    const _id = e.detail.label._id;
+    const name = e.data?.name;
+    if (_id && onSelect) {
+      onSelect({ id: _id, name });
+    }
+  });
+
   return (
-    <div
-      ref={(node) => (node ? looker.attach(node) : looker.detach())}
-      style={{ width: "100%", height: "100%", ...style }}
-      onClick={onClick}
-    />
+    <>
+      <div
+        ref={(node) => {
+          node ? looker.attach(node) : looker.detach();
+        }}
+        style={{ width: "100%", height: "100%", ...style }}
+        onClick={onClick}
+        {...bindMove()}
+      />
+      {modal && <TooltipInfo looker={looker} moveRef={ref} />}
+    </>
   );
 };
 

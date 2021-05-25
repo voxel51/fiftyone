@@ -258,13 +258,16 @@ interface SelectEvent {
   data: {
     id: string;
     field: string;
+    frameNumber?: number;
   };
 }
 
-const onSelectLabel = (frameNumberRef) => {
+const onSelectLabel = () => {
   return useRecoilCallback(
-    ({ snapshot, set }) => async ({ data: { id, field } }: SelectEvent) => {
-      const { sample_id } = await snapshot.getPromise(atoms.modal);
+    ({ snapshot, set }) => async ({
+      data: { id, field, frameNumber },
+    }: SelectEvent) => {
+      const { sampleId } = await snapshot.getPromise(atoms.modal);
       let labels = {
         ...(await snapshot.getPromise(selectors.selectedLabels)),
       };
@@ -273,13 +276,13 @@ const onSelectLabel = (frameNumberRef) => {
       } else {
         labels[id] = {
           field,
-          sample_id,
-          frame_number: frameNumberRef.current,
+          sample_id: sampleId,
+          frame_number: frameNumber,
         };
       }
       set(selectors.selectedLabels, labels);
     },
-    [frameNumberRef]
+    []
   );
 };
 
@@ -332,7 +335,7 @@ const SampleModal = ({ onClose, sampleId }: Props, ref) => {
             />
           ) : (
             <Looker
-              key={sampleSrc} // force re-render when this changes
+              key={`modal-${sampleSrc}`} // force re-render when this changes
               sampleId={_id}
               modal={true}
             />

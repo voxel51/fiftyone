@@ -252,6 +252,15 @@ export const getFitCanvasBBox = (
   return [tlx, tly, w, h];
 };
 
+export const getZoom = (
+  bbox: BoundingBox
+): { scale: number; pan: Coordinates } => {
+  return {
+    scale: 2,
+    pan: [100, 100],
+  };
+};
+
 /**
  *
  */

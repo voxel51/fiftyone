@@ -15,6 +15,7 @@ import {
   DEFAULT_IMAGE_OPTIONS,
   DEFAULT_VIDEO_OPTIONS,
   Coordinates,
+  Optional,
 } from "./state";
 import {
   getFrameElements,
@@ -27,6 +28,7 @@ import { ClassificationLabels } from "./overlays/classifications";
 import { Overlay } from "./overlays/base";
 import processOverlays from "./processOverlays";
 import { ColorGenerator } from "./color";
+import { getContainingBox } from "./util";
 
 interface BaseSample {
   metadata: {
@@ -35,8 +37,8 @@ interface BaseSample {
   };
 }
 
-abstract class Looker<
-  State extends BaseState,
+export abstract class Looker<
+  State extends BaseState = BaseState,
   Sample extends BaseSample = BaseSample
 > {
   private eventTarget: EventTarget;
@@ -51,7 +53,7 @@ abstract class Looker<
   constructor(
     sample: Sample,
     config: State["config"],
-    options: State["options"]
+    options: Optional<State["options"]>
   ) {
     this.sample = sample;
     this.loadOverlays();
@@ -95,13 +97,19 @@ abstract class Looker<
         return mergeWith(merger, o, n);
       };
       this.state = mergeWith<State>(merger, this.state, updates);
-      this.lookerElement.render(this.state as Readonly<State>);
       const context = this.canvas.getContext("2d");
       this.currentOverlays = processOverlays(
         context,
         this.state,
         this.pluckOverlays(this.state)
       );
+      if (this.state.options.zoom) {
+        const points = this.currentOverlays.map((o) => o.getPoints()).flat();
+        const zoomBBox = getContainingBox(points);
+
+        this.state.pan;
+      }
+      this.lookerElement.render(this.state as Readonly<State>);
       if (postUpdate) {
         postUpdate(context, this.state, this.currentOverlays);
       }
@@ -136,7 +144,7 @@ abstract class Looker<
     delete this.lookerElement;
   }
 
-  update(sample: Sample, options: State["options"]) {
+  update(sample: Sample, options: Optional<State["options"]>) {
     this.sample = sample;
     this.loadOverlays();
     this.updater({ options });
@@ -152,7 +160,7 @@ abstract class Looker<
 
   protected abstract getInitialState(
     config: State["config"],
-    options: State["options"]
+    options: Optional<State["options"]>
   ): State;
 
   protected getInitialBaseState(): Omit<BaseState, "config" | "options"> {
@@ -168,6 +176,7 @@ abstract class Looker<
       scale: 1,
       pan: <Coordinates>[0, 0],
       rotate: 0,
+      panning: false,
     };
   }
 }

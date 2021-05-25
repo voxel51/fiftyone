@@ -212,6 +212,16 @@ export default class DetectionOverlay<
     };
   }
 
+  getPoints() {
+    const [tlx, tly, w, h] = this.label.bounding_box;
+    return [
+      [tlx, tly],
+      [tlx + w, tly],
+      [tlx + w, tly + h],
+      [tlx, tly + h],
+    ];
+  }
+
   private inHeader(
     context: CanvasRenderingContext2D,
     state: Readonly<State>,

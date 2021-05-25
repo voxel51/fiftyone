@@ -71,6 +71,7 @@ export interface Overlay<State extends BaseState> {
     state: Readonly<State>,
     coordinates: Coordinates
   ): SelectData;
+  getPoints(): Coordinates[];
 }
 
 export abstract class CoordinateOverlay<
@@ -120,6 +121,8 @@ export abstract class CoordinateOverlay<
     state: Readonly<State>,
     [x, y]: Coordinates
   );
+
+  abstract getPoints(): Coordinates[];
 
   getSelectData(
     context: CanvasRenderingContext2D,
