@@ -4741,6 +4741,32 @@ class SampleCollection(object):
         exporting datasets in custom formats by defining your own
         :class:`DatasetExporter <fiftyone.utils.data.exporters.DatasetExporter>`.
 
+        This method will automatically coerce the data to match the requested
+        export in the following cases:
+
+        -   When exporting in either an unlabeled image or image classification
+            format, if ``label_field_or_dict`` is a spatial field
+            (:class:`fiftyone.core.labels.Detection`,
+            :class:`fiftyone.core.labels.Detections`,
+            :class:`fiftyone.core.labels.Polyline`, or
+            :class:`fiftyone.core.labels.Polylines`), then the
+            **image patches** of the provided samples will be exported
+
+        -   When exporting in labeled image dataset formats that expect
+            list-type labels (:class:`fiftyone.core.labels.Classifications`,
+            :class:`fiftyone.core.labels.Detections`,
+            :class:`fiftyone.core.labels.Keypoints`, or
+            :class:`fiftyone.core.labels.Polylines`), if
+            ``label_field_or_dict`` contains labels in non-list format
+            (e.g., :class:`fiftyone.core.labels.Classification`), the labels
+            will be automatically upgraded to single-label lists
+
+        -   When exporting in labeled image dataset formats that expect
+            :class:`fiftyone.core.labels.Detections` labels, if
+            ``label_field_or_dict`` is a
+            :class:`fiftyone.core.labels.Classification` field, the labels will
+            be automatically upgraded to detections that span the entire images
+
         Args:
             export_dir (None): the directory to which to export the samples in
                 format ``dataset_type``. This can also be an archive path with
@@ -4853,6 +4879,7 @@ class SampleCollection(object):
                 label_prefix=label_prefix,
                 labels_dict=labels_dict,
                 dataset_exporter=dataset_exporter,
+                allow_coersion=True,
                 required=True,
             )
             frame_labels_field_or_dict = None
@@ -4864,6 +4891,7 @@ class SampleCollection(object):
                 label_prefix=label_prefix,
                 labels_dict=labels_dict,
                 dataset_exporter=dataset_exporter,
+                allow_coersion=True,
                 required=False,
             )
             frame_labels_field_or_dict = get_frame_labels_fields(
@@ -4872,6 +4900,7 @@ class SampleCollection(object):
                 frame_labels_prefix=frame_labels_prefix,
                 frame_labels_dict=frame_labels_dict,
                 dataset_exporter=dataset_exporter,
+                allow_coersion=True,
                 required=False,
             )
 
@@ -5517,8 +5546,9 @@ def get_label_fields(
     label_prefix=None,
     labels_dict=None,
     dataset_exporter=None,
-    required=False,
+    allow_coersion=False,
     force_dict=False,
+    required=False,
 ):
     """Gets the label field(s) of the sample collection matching the specified
     arguments.
@@ -5535,9 +5565,11 @@ def get_label_fields(
         dataset_exporter (None): a
             :class:`fiftyone.utils.data.exporters.DatasetExporter` to use to
             choose appropriate label field(s)
-        required (False): whether at least one matching field must be found
+        allow_coersion (False): whether to allow label fields to be coerced to
+            match the dataset exporter's needs, if possible
         force_dict (False): whether to always return a labels dict rather than
             an individual label field
+        required (False): whether at least one matching field must be found
 
     Returns:
         a label field or dict mapping label fields to keys
@@ -5552,7 +5584,10 @@ def get_label_fields(
 
     if label_field is None and dataset_exporter is not None:
         label_field = _get_default_label_fields_for_exporter(
-            sample_collection, dataset_exporter, required=required
+            sample_collection,
+            dataset_exporter,
+            allow_coersion=allow_coersion,
+            required=required,
         )
 
     if label_field is None and required:
@@ -5576,8 +5611,9 @@ def get_frame_labels_fields(
     frame_labels_prefix=None,
     frame_labels_dict=None,
     dataset_exporter=None,
-    required=False,
+    allow_coersion=False,
     force_dict=False,
+    required=False,
 ):
     """Gets the frame label field(s) of the sample collection matching the
     specified arguments.
@@ -5597,10 +5633,12 @@ def get_frame_labels_fields(
         dataset_exporter (None): a
             :class:`fiftyone.utils.data.exporters.DatasetExporter` to use to
             choose appropriate frame label field(s)
-        required (False): whether at least one matching frame field must be
-            found
+        allow_coersion (False): whether to allow label fields to be coerced to
+            match the dataset exporter's needs, if possible
         force_dict (False): whether to always return a labels dict rather than
             an individual label field
+        required (False): whether at least one matching frame field must be
+            found
 
     Returns:
         a frame label field or dict mapping frame label fields to keys
@@ -5615,7 +5653,10 @@ def get_frame_labels_fields(
 
     if frame_labels_field is None and dataset_exporter is not None:
         frame_labels_field = _get_default_frame_label_fields_for_exporter(
-            sample_collection, dataset_exporter, required=required
+            sample_collection,
+            dataset_exporter,
+            allow_coersion=allow_coersion,
+            required=required,
         )
 
     if frame_labels_field is None and required:
@@ -5674,7 +5715,7 @@ def _make_labels_dict_for_prefix(label_fields, label_prefix):
 
 
 def _get_default_label_fields_for_exporter(
-    sample_collection, dataset_exporter, required=True
+    sample_collection, dataset_exporter, allow_coersion=True, required=True
 ):
     label_cls = dataset_exporter.label_cls
 
@@ -5691,48 +5732,12 @@ def _get_default_label_fields_for_exporter(
         ftype=fof.EmbeddedDocumentField, embedded_doc_type=fol.Label
     )
 
-    label_field_or_dict = _get_fields_with_types(label_fields, label_cls)
+    label_field_or_dict = _get_fields_with_types(
+        label_fields, label_cls, allow_coersion=allow_coersion
+    )
 
     if label_field_or_dict is not None:
         return label_field_or_dict
-
-    #
-    # SPECIAL CASE
-    #
-    # The export routine can extract image patches when exporting in image
-    # dataset formats
-    #
-
-    if label_cls is fol.Classification:
-        for field, field_type in label_fields.items():
-            if issubclass(field_type.document_type, fol._PATCHES_FIELDS):
-                return field
-
-    #
-    #
-    # SPECIAL CASE
-    #
-    # The export routine can wrap single label fields as list fields
-    #
-
-    _label_cls = fol._LABEL_LIST_TO_SINGLE_MAP.get(label_cls, None)
-    if _label_cls is not None:
-        label_field = _get_fields_with_types(label_fields, _label_cls)
-        if label_field is not None:
-            return label_field
-
-    #
-    # SPECIAL CASE
-    #
-    # The export routine can convert `Classification` labels to Detections`
-    # format just-in-time, if necessary. So, allow a `Classification` field
-    # to be returned here
-    #
-
-    if label_cls is fol.Detections:
-        for field, field_type in label_fields.items():
-            if issubclass(field_type.document_type, fol.Classification):
-                return field
 
     if required:
         raise ValueError("No compatible field(s) of type %s found" % label_cls)
@@ -5741,7 +5746,7 @@ def _get_default_label_fields_for_exporter(
 
 
 def _get_default_frame_label_fields_for_exporter(
-    sample_collection, dataset_exporter, required=True
+    sample_collection, dataset_exporter, allow_coersion=True, required=True
 ):
     frame_labels_cls = dataset_exporter.frame_labels_cls
 
@@ -5759,7 +5764,7 @@ def _get_default_frame_label_fields_for_exporter(
     )
 
     frame_labels_field_or_dict = _get_fields_with_types(
-        frame_labels_fields, frame_labels_cls
+        frame_labels_fields, frame_labels_cls, allow_coersion=allow_coersion
     )
 
     if frame_labels_field_or_dict is not None:
@@ -5773,25 +5778,52 @@ def _get_default_frame_label_fields_for_exporter(
     return None
 
 
-def _get_fields_with_types(label_fields, label_cls):
-    if isinstance(label_cls, dict):
-        # Return first matching field for all dict keys
-        labels_dict = {}
-        for name, _label_cls in label_cls.items():
-            field = _get_field_with_type(label_fields, _label_cls)
-            if field is not None:
-                labels_dict[field] = name
+def _get_fields_with_types(label_fields, label_cls, allow_coersion=False):
+    if not isinstance(label_cls, dict):
+        return _get_field_with_type(
+            label_fields, label_cls, allow_coersion=allow_coersion
+        )
 
-        return labels_dict if labels_dict else None
+    labels_dict = {}
+    for name, _label_cls in label_cls.items():
+        field = _get_field_with_type(
+            label_fields, _label_cls, allow_coersion=allow_coersion
+        )
+        if field is not None:
+            labels_dict[field] = name
 
-    # Return first matching field, if any
-    return _get_field_with_type(label_fields, label_cls)
+    return labels_dict if labels_dict else None
 
 
-def _get_field_with_type(label_fields, label_cls):
+def _get_field_with_type(label_fields, label_cls, allow_coersion=False):
     for field, field_type in label_fields.items():
         if issubclass(field_type.document_type, label_cls):
             return field
+
+    if not allow_coersion:
+        return None
+
+    # Allow for extraction of image patches when exporting image classification
+    # datasets
+    if label_cls is fol.Classification:
+        for field, field_type in label_fields.items():
+            if issubclass(field_type.document_type, fol._PATCHES_FIELDS):
+                return field
+
+    # Wrap single label fields as list fields
+    _label_cls = fol._LABEL_LIST_TO_SINGLE_MAP.get(label_cls, None)
+    if _label_cls is not None:
+        label_field = _get_fields_with_types(
+            label_fields, _label_cls, allow_coersion=False
+        )
+        if label_field is not None:
+            return label_field
+
+    # Allow for conversion of `Classification` labels to `Detections` format
+    if label_cls is fol.Detections:
+        for field, field_type in label_fields.items():
+            if issubclass(field_type.document_type, fol.Classification):
+                return field
 
     return None
 

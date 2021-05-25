@@ -255,8 +255,9 @@ def export_to_labelbox(
         label_field=label_field,
         label_prefix=label_prefix,
         labels_dict=labels_dict,
-        required=False,
+        allow_coersion=False,
         force_dict=True,
+        required=False,
     )
 
     # Get frame label fields to export
@@ -266,8 +267,9 @@ def export_to_labelbox(
             frame_labels_field=frame_labels_field,
             frame_labels_prefix=frame_labels_prefix,
             frame_labels_dict=frame_labels_dict,
-            required=False,
+            allow_coersion=False,
             force_dict=True,
+            required=False,
         )
 
         if frame_label_fields and video_labels_dir is None:

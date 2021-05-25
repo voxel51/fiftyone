@@ -9,7 +9,6 @@ from collections import defaultdict
 import inspect
 import logging
 import os
-import warnings
 
 from bson import json_util
 
@@ -57,8 +56,8 @@ def export_samples(
     Provide either ``export_dir`` and ``dataset_type`` or ``dataset_exporter``
     to perform the export.
 
-    This method will automatically coerce the provided data in the following
-    cases:
+    This method will automatically coerce the data to match the requested
+    export in the following cases:
 
     -   When exporting in either an unlabeled image or image classification
         format, if ``label_field_or_dict`` is a spatial field
@@ -79,7 +78,7 @@ def export_samples(
 
     -   When exporting in labeled image dataset formats that expect
         :class:`fiftyone.core.labels.Detections` labels, if
-        ``label_field_or_dict`` refers to a
+        ``label_field_or_dict`` is a
         :class:`fiftyone.core.labels.Classification` field, the labels will be
         automatically upgraded to detections that span the entire images
 
@@ -139,10 +138,12 @@ def export_samples(
             sample_parser = FiftyOneUnlabeledImageSampleParser(
                 compute_metadata=True
             )
+
     elif isinstance(dataset_exporter, UnlabeledVideoDatasetExporter):
         sample_parser = FiftyOneUnlabeledVideoSampleParser(
             compute_metadata=True
         )
+
     elif isinstance(dataset_exporter, LabeledImageDatasetExporter):
         if found_patches:
             # Export labeled image patches
@@ -155,15 +156,33 @@ def export_samples(
             sample_parser = ImageClassificationSampleParser()
             num_samples = len(samples)
         else:
-            sample_parser = FiftyOneLabeledImageSampleParser(
-                label_field_or_dict, compute_metadata=True
+            label_fcn_or_dict = _make_label_coersion_functions(
+                label_field_or_dict, sample_collection, dataset_exporter
             )
+            sample_parser = FiftyOneLabeledImageSampleParser(
+                label_field_or_dict,
+                label_fcn_or_dict=label_fcn_or_dict,
+                compute_metadata=True,
+            )
+
     elif isinstance(dataset_exporter, LabeledVideoDatasetExporter):
+        label_fcn_or_dict = _make_label_coersion_functions(
+            label_field_or_dict, sample_collection, dataset_exporter
+        )
+        frame_labels_fcn_or_dict = _make_label_coersion_functions(
+            frame_labels_field_or_dict,
+            sample_collection,
+            dataset_exporter,
+            frames=True,
+        )
         sample_parser = FiftyOneLabeledVideoSampleParser(
             label_field_or_dict=label_field_or_dict,
             frame_labels_field_or_dict=frame_labels_field_or_dict,
+            label_fcn_or_dict=label_fcn_or_dict,
+            frame_labels_fcn_or_dict=frame_labels_fcn_or_dict,
             compute_metadata=True,
         )
+
     else:
         raise ValueError(
             "Unsupported DatasetExporter %s" % type(dataset_exporter)
@@ -263,6 +282,181 @@ def write_dataset(
         )
 
 
+def _check_for_patches_export(
+    samples, dataset_exporter, label_field_or_dict, kwargs
+):
+    if isinstance(label_field_or_dict, dict):
+        if len(label_field_or_dict) == 1:
+            label_field = next(iter(label_field_or_dict.keys()))
+        else:
+            label_field = None
+    else:
+        label_field = label_field_or_dict
+
+    if label_field is None:
+        return False, {}, kwargs
+
+    found_patches = False
+
+    if isinstance(dataset_exporter, UnlabeledImageDatasetExporter):
+        try:
+            label_type = samples._get_label_field_type(label_field)
+            found_patches = issubclass(label_type, fol._PATCHES_FIELDS)
+        except:
+            pass
+
+        if found_patches:
+            logger.info(
+                "Detected an unlabeled image exporter and a label field '%s' "
+                "of type %s. Exporting image patches...",
+                label_field,
+                label_type,
+            )
+
+    elif (
+        isinstance(dataset_exporter, LabeledImageDatasetExporter)
+        and dataset_exporter.label_cls is fol.Classification
+    ):
+        try:
+            label_type = samples._get_label_field_type(label_field)
+            found_patches = issubclass(label_type, fol._PATCHES_FIELDS)
+        except:
+            pass
+
+        if found_patches:
+            logger.info(
+                "Detected an image classification exporter and a label field "
+                "'%s' of type %s. Exporting image patches...",
+                label_field,
+                label_type,
+            )
+
+    if found_patches:
+        patches_kwargs, kwargs = fou.extract_kwargs_for_class(
+            foup.ImagePatchesExtractor, kwargs
+        )
+    else:
+        patches_kwargs = {}
+
+    return found_patches, patches_kwargs, kwargs
+
+
+def _make_label_coersion_functions(
+    label_field_or_dict, sample_collection, dataset_exporter, frames=False
+):
+    if frames:
+        label_cls = dataset_exporter.frame_labels_cls
+    else:
+        label_cls = dataset_exporter.label_cls
+
+    if label_cls is None:
+        return None
+
+    return_dict = isinstance(label_field_or_dict, dict)
+
+    if return_dict:
+        label_fields = list(label_field_or_dict.keys())
+    else:
+        label_fields = [label_field_or_dict]
+
+    if isinstance(label_cls, dict):
+        export_types = list(label_cls.values())
+    else:
+        export_types = [label_cls]
+
+    coerce_fcn_dict = {}
+    for label_field in label_fields:
+        if frames:
+            field = sample_collection._FRAMES_PREFIX + label_field
+        else:
+            field = label_field
+
+        try:
+            label_type = sample_collection._get_label_field_type(field)
+        except:
+            continue
+
+        if any(issubclass(label_type, t) for t in export_types):
+            continue
+
+        #
+        # Single label -> list coersion
+        #
+
+        for export_type in export_types:
+            single_label_type = fol._LABEL_LIST_TO_SINGLE_MAP.get(
+                export_type, None
+            )
+            if issubclass(label_type, single_label_type):
+                logger.info(
+                    "Dataset exporter expects labels in %s format, but found "
+                    "%s. Wrapping field '%s' as single-label lists...",
+                    export_type,
+                    label_type,
+                    label_field,
+                )
+
+                coerce_fcn_dict[label_field] = _make_single_label_to_list_fcn(
+                    export_type
+                )
+                break
+
+        if label_field in coerce_fcn_dict:
+            continue
+
+        #
+        # `Classification` -> `Detections` coersion
+        #
+
+        if (
+            issubclass(label_type, fol.Classification)
+            and fol.Detections in export_types
+        ):
+            logger.info(
+                "Dataset exporter expects labels in %s format, but found %s. "
+                "Converting field '%s' to detections whose bounding boxes "
+                "span the entire image...",
+                fol.Detections,
+                label_type,
+                label_field,
+            )
+
+            coerce_fcn_dict[label_field] = _classification_to_detections
+
+    if not coerce_fcn_dict:
+        return None
+
+    if not return_dict:
+        return next(iter(coerce_fcn_dict.values()))
+
+    return coerce_fcn_dict
+
+
+def _make_single_label_to_list_fcn(label_cls):
+    def single_label_to_list(label):
+        if label is None:
+            return label
+
+        return label_cls(**{label_cls._LABEL_LIST_FIELD: [label]})
+
+    return single_label_to_list
+
+
+def _classification_to_detections(label):
+    if label is None:
+        return label
+
+    return fol.Detections(
+        detections=[
+            fol.Detection(
+                label=label.label,
+                bounding_box=[0, 0, 1, 1],
+                confidence=label.confidence,
+            )
+        ]
+    )
+
+
 def _get_dataset_exporter(
     export_dir, dataset_type, dataset_exporter, **kwargs
 ):
@@ -355,14 +549,6 @@ def _write_image_dataset(
                     # Parse label
                     label = sample_parser.get_label()
 
-                    # Handle JIT conversions
-                    label = _check_single_label_to_list(
-                        dataset_exporter, label
-                    )
-                    label = _check_classification_to_detections(
-                        dataset_exporter, label
-                    )
-
                     # Export sample
                     dataset_exporter.export_sample(
                         image_or_path, label, metadata=metadata
@@ -409,15 +595,6 @@ def _write_video_dataset(
                 if labeled_videos:
                     # Parse labels
                     label = sample_parser.get_label()
-
-                    # Handle JIT conversions
-                    label = _check_single_label_to_list(
-                        dataset_exporter, label
-                    )
-                    label = _check_classification_to_detections(
-                        dataset_exporter, label
-                    )
-
                     frames = sample_parser.get_frame_labels()
 
                     # Export sample
@@ -429,101 +606,6 @@ def _write_video_dataset(
                     dataset_exporter.export_sample(
                         video_path, metadata=metadata
                     )
-
-
-def _check_for_patches_export(
-    samples, dataset_exporter, label_field_or_dict, kwargs
-):
-    found_patches = False
-
-    if isinstance(
-        dataset_exporter, UnlabeledImageDatasetExporter
-    ) and etau.is_str(label_field_or_dict):
-        try:
-            label_type = samples._get_label_field_type(label_field_or_dict)
-            found_patches = issubclass(label_type, fol._PATCHES_FIELDS)
-        except:
-            pass
-
-        if found_patches:
-            msg = (
-                "Detected an unlabeled image exporter and a label field '%s' "
-                "of type %s. Exporting image patches..."
-                % (label_field_or_dict, label_type)
-            )
-            warnings.warn(msg)
-
-    elif (
-        isinstance(dataset_exporter, LabeledImageDatasetExporter)
-        and dataset_exporter.label_cls is fol.Classification
-        and etau.is_str(label_field_or_dict)
-    ):
-        try:
-            label_type = samples._get_label_field_type(label_field_or_dict)
-            found_patches = issubclass(label_type, fol._PATCHES_FIELDS)
-        except:
-            pass
-
-        if found_patches:
-            msg = (
-                "Detected an image classification exporter and a label field "
-                "'%s' of type %s. Exporting image patches..."
-                % (label_field_or_dict, label_type)
-            )
-            warnings.warn(msg)
-
-    if found_patches:
-        patches_kwargs, kwargs = fou.extract_kwargs_for_class(
-            foup.ImagePatchesExtractor, kwargs
-        )
-    else:
-        patches_kwargs = {}
-
-    return found_patches, patches_kwargs, kwargs
-
-
-def _check_single_label_to_list(dataset_exporter, label):
-    label_cls = dataset_exporter.label_cls
-    single_label_cls = fol._LABEL_LIST_TO_SINGLE_MAP.get(label_cls, None)
-
-    if single_label_cls is None:
-        return label
-
-    if not isinstance(label, single_label_cls):
-        return label
-
-    msg = (
-        "Dataset exporter expects labels in %s format, but found %s. Wrapping "
-        "as single-label lists..." % (label_cls, single_label_cls)
-    )
-    warnings.warn(msg)
-
-    return label_cls(**{label_cls._LABEL_LIST_FIELD: [label]})
-
-
-def _check_classification_to_detections(dataset_exporter, label):
-    if dataset_exporter.label_cls is not fol.Detections:
-        return label
-
-    if not isinstance(label, fol.Classification):
-        return label
-
-    msg = (
-        "Dataset exporter expects labels in %s format, but found %s. "
-        "Converting labels to detections whose bounding boxes span the entire "
-        "image..." % (fol.Detections, label.__class__)
-    )
-    warnings.warn(msg)
-
-    return fol.Detections(
-        detections=[
-            fol.Detection(
-                label=label.label,
-                bounding_box=[0, 0, 1, 1],  # entire image
-                confidence=label.confidence,
-            )
-        ]
-    )
 
 
 class DatasetExporter(object):

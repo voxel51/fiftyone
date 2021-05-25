@@ -45,8 +45,8 @@ logger = logging.getLogger(__name__)
 
 
 def extract_kwargs_for_class(cls, kwargs):
-    """Extracts the keyword arguments for the given class from the given
-    dictionary.
+    """Extracts keyword arguments for a class from the given dictionary of
+    arguments.
 
     Args:
         cls: a class
