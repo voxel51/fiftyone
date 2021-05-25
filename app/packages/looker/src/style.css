@@ -21,7 +21,7 @@
     rgba(0, 0, 0, 0) 33%
   );
   background-size: 300% 300%;
-  animation: 1.5s shine linear infinite;
+  animation: 0.5s shine linear infinite;
 }
 
 .looker-controls {
@@ -352,10 +352,10 @@ div.looker-image {
   height: 100%;
   overflow: visible;
   transform-origin: 0px 0px;
-  -webkit-transition: opacity 1s ease-in-out;
-  -moz-transition: opacity 1s ease-in-out;
-  -o-transition: opacity 1s ease-in-out;
-  transition: opacity 1s ease-in-out;
+  -webkit-transition: opacity 0.5s ease-in-out;
+  -moz-transition: opacity 0.5s ease-in-out;
+  -o-transition: opacity 0.5s ease-in-out;
+  transition: opacity 0.5s ease-in-out;
 }
 
 div.looker.loading .looker-window {

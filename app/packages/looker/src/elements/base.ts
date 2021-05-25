@@ -18,7 +18,6 @@ export abstract class BaseElement<
 > {
   readonly children: BaseElement<State>[] = [];
   readonly element: Element;
-  eventTarget?: Element | HTMLElement;
 
   constructor(
     update: StateUpdate<State>,
@@ -28,8 +27,7 @@ export abstract class BaseElement<
     this.children = children;
     this.element = this.createHTMLElement();
     Object.entries(this.getEvents()).forEach(([eventType, callback]) => {
-      const target = this.eventTarget ?? this.element;
-      target.addEventListener(eventType, (event) =>
+      this.element.addEventListener(eventType, (event) =>
         // @ts-ignore
         callback({ event, update, dispatchEvent })
       );

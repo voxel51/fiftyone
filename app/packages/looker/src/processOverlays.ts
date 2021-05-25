@@ -46,23 +46,25 @@ const processOverlays = <State extends BaseState>(
   const [x, y] = getCanvasCoordinates(
     state.cursorCoordinates,
     state.config.dimensions,
-    state.pan,
-    state.scale,
     context.canvas
   );
 
-  let contained = overlays
+  let contained = ordered
     .filter((o) => o.containsPoint(context, state, [x, y]) > CONTAINS.NONE)
     .sort(
       (a, b) =>
         a.getMouseDistance(context, state, [x, y]) -
         b.getMouseDistance(context, state, [x, y])
     );
-  const outside = overlays.filter(
+  const outside = ordered.filter(
     (o) =>
       o instanceof ClassificationsOverlay ||
       o.containsPoint(context, state, [x, y]) === CONTAINS.NONE
   );
+
+  if (state.options.onlyShowHoveredLabel) {
+    return contained.length ? contained[0] : [];
+  }
 
   if (state.rotate !== 0) {
     contained = rotate(contained, state.rotate);

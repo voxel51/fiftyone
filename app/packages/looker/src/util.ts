@@ -258,8 +258,6 @@ export const getFitCanvasBBox = (
 export const getCanvasCoordinates = function (
   [x, y]: Coordinates,
   mediaDimensions: Dimensions,
-  [px, py]: Coordinates,
-  scale: number,
   canvas: HTMLCanvasElement
 ): Coordinates {
   let {
@@ -269,11 +267,6 @@ export const getCanvasCoordinates = function (
     height: h,
   } = canvas.getBoundingClientRect();
   [tlx, tly, w, h] = getFitCanvasBBox(mediaDimensions, [tlx, tly, w, h]);
-
-  tlx += px;
-  tly += py;
-  w *= scale;
-  h *= scale;
 
   x -= tlx;
   y -= tly;

@@ -61,6 +61,7 @@ const Container = styled.div`
   &.fullscreen {
     width: 100vw;
     height: 100vh;
+    max-height: 100vh;
     grid-template-columns: auto;
     .sidebar {
       display: none;

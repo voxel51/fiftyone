@@ -2,9 +2,8 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 
-import { update } from "immutable";
-import { BaseState, BoundingBox, Coordinates, Dimensions } from "../state";
-import { getCanvasCoordinates, getFitCanvasBBox } from "../util";
+import { BaseState, Coordinates } from "../state";
+import { getCanvasCoordinates } from "../util";
 import { BaseElement, Events } from "./base";
 import { ICONS, makeCheckboxRow, makeWrapper } from "./util";
 
@@ -134,7 +133,7 @@ export class LookerElement<State extends BaseState> extends BaseElement<
               y: tly,
               width: w,
               height: h,
-            } = this.element.parentElement.getBoundingClientRect();
+            } = this.element.getBoundingClientRect();
 
             const x = event.x - tlx;
             const y = event.y - tly;
@@ -188,8 +187,6 @@ export class CanvasElement<State extends BaseState> extends BaseElement<
                 getCanvasCoordinates(
                   state.cursorCoordinates,
                   state.config.dimensions,
-                  state.pan,
-                  state.scale,
                   context.canvas
                 )
               )
@@ -257,7 +254,8 @@ export class ControlsElement<State extends BaseState> extends BaseElement<
 
   getEvents(): Events<State> {
     return {
-      click: ({ update }) => {
+      click: ({ event, update }) => {
+        event.stopPropagation();
         update({
           showControls: false,
           disableControls: true,
@@ -269,6 +267,18 @@ export class ControlsElement<State extends BaseState> extends BaseElement<
       },
       mouseleave: ({ update }) => {
         update({ hoveringControls: false });
+      },
+      wheel: ({ event }) => {
+        event.stopPropagation();
+      },
+      dblclick: ({ event }) => {
+        event.stopPropagation();
+      },
+      mousedown: ({ event }) => {
+        event.stopPropagation();
+      },
+      mouseup: ({ event }) => {
+        event.stopPropagation();
       },
     };
   }
@@ -389,6 +399,17 @@ export class OnlyShowHoveredOnLabelOptionElement<
   checkbox: HTMLInputElement;
   label: HTMLLabelElement;
 
+  getEvents(): Events<State> {
+    return {
+      click: ({ event, update }) => {
+        event.stopPropagation();
+        update(({ options: { onlyShowHoveredLabel } }) => ({
+          options: { onlyShowHoveredLabel: !onlyShowHoveredLabel },
+        }));
+      },
+    };
+  }
+
   createHTMLElement() {
     [this.label, this.checkbox] = makeCheckboxRow(
       "Only show hovered label",
@@ -409,6 +430,17 @@ export class ShowAttributesOptionElement<
   checkbox: HTMLInputElement;
   label: HTMLLabelElement;
 
+  getEvents(): Events<State> {
+    return {
+      click: ({ event, update }) => {
+        event.stopPropagation();
+        update(({ options: { showAttrs } }) => ({
+          options: { showAttrs: !showAttrs },
+        }));
+      },
+    };
+  }
+
   createHTMLElement() {
     [this.label, this.checkbox] = makeCheckboxRow("Show attributes", false);
     return makeWrapper([this.label]);
@@ -428,14 +460,16 @@ export class ShowConfidenceOptionElement<
 
   getEvents(): Events<State> {
     return {
-      change: ({ update }) => {
-        update({ options: { showConfidence: this.checkbox.checked } });
+      click: ({ event, update }) => {
+        event.stopPropagation();
+        update(({ options: { showConfidence } }) => ({
+          options: { showConfidence: !showConfidence },
+        }));
       },
     };
   }
 
   createHTMLElement() {
-    this.eventTarget = this.checkbox;
     [this.label, this.checkbox] = makeCheckboxRow("Show confidence", false);
     return makeWrapper([this.label]);
   }
@@ -454,14 +488,16 @@ export class ShowTooltipOptionElement<
 
   getEvents(): Events<State> {
     return {
-      change: ({ update }) => {
-        update({ options: { showTooltip: this.checkbox.checked } });
+      click: ({ event, update }) => {
+        event.stopPropagation();
+        update(({ options: { showTooltip } }) => ({
+          options: { showTooltip: !showTooltip },
+        }));
       },
     };
   }
 
   createHTMLElement() {
-    this.eventTarget = this.checkbox;
     [this.label, this.checkbox] = makeCheckboxRow("Show tooltip", false);
     return makeWrapper([this.label]);
   }
