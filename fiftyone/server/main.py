@@ -512,7 +512,11 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             view = view.set_field("frames", F("frames")[0])
 
         results, more = await _get_sample_data(
-            cls.sample_collection(), view, page_length, page
+            cls.sample_collection(),
+            view,
+            page_length,
+            page,
+            detach_frames=False,
         )
 
         message = {
@@ -1251,8 +1255,8 @@ async def _numeric_histograms(coll, view, schema, prefix=""):
     return aggregations, fields, ticks
 
 
-async def _get_samples(col, view, page_length, page):
-    pipeline = view._pipeline(detach_frames=True)
+async def _get_samples(col, view, page_length, page, detach_frames=True):
+    pipeline = view._pipeline(detach_frames=detach_frames)
 
     samples = await foo.aggregate(col, pipeline).to_list(page_length + 1)
 
@@ -1265,8 +1269,10 @@ async def _get_samples(col, view, page_length, page):
     return samples, more
 
 
-async def _get_sample_data(col, view, page_length, page):
-    samples, more = await _get_samples(col, view, page_length, page)
+async def _get_sample_data(col, view, page_length, page, detach_frames=True):
+    samples, more = await _get_samples(
+        col, view, page_length, page, detach_frames=detach_frames
+    )
 
     results = [{"sample": s} for s in samples]
     if view.media_type == fom.VIDEO:
@@ -1274,7 +1280,7 @@ async def _get_sample_data(col, view, page_length, page):
     else:
         get_metadata = fosu.get_image_metadata
     for r in results:
-        for k, v in get_metadata(r["sample"]["filepath"]):
+        for k, v in get_metadata(r["sample"]["filepath"]).items():
             r[k] = v
 
     return results, more

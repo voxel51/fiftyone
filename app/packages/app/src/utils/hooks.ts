@@ -141,7 +141,6 @@ export const useVideoData = (socket, id, callback = null) => {
       const handler = ({ labels, frames, fps }) => {
         set(atoms.sampleVideoLabels(id), labels);
         set(atoms.sampleFrameData(id), frames);
-        set(atoms.sampleFrameRate(id), fps);
         callback && callback({ labels, frames, counter }, ...args);
       };
       attachDisposableHandler(event, handler);

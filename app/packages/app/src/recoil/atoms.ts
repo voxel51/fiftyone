@@ -120,14 +120,15 @@ export const sample = atomFamily<SerializableParam, string>({
   default: null,
 });
 
-export const sampleDimensions = atomFamily<
-  { width: number | null; height: number | null },
+export const sampleMetadata = atomFamily<
+  { width: number | null; height: number; frameRate?: number },
   string
 >({
-  key: "sampleDimensions",
+  key: "sampleMetadata",
   default: {
     width: null,
     height: null,
+    frameRate: null,
   },
 });
 
@@ -138,11 +139,6 @@ export const sampleVideoLabels = atomFamily({
 
 export const sampleFrameData = atomFamily({
   key: "sampleFrameData",
-  default: null,
-});
-
-export const sampleFrameRate = atomFamily({
-  key: "sampleFrameRate",
   default: null,
 });
 

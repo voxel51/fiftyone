@@ -55,9 +55,13 @@ export default (): [State, (state: State) => void] => {
       const rows = await snapshot.getPromise(atoms.gridRows);
       const ratio = await snapshot.getPromise(gridRowAspectRatio);
       const [newState, newRows] = tile(results, more, state, rows, ratio);
-      results.forEach(({ sample, width, height }) => {
+      results.forEach(({ sample, width, height, frame_rate }) => {
         set(atoms.sample(sample._id), sample);
-        set(atoms.sampleDimensions(sample._id), { width, height });
+        set(atoms.sampleMetadata(sample._id), {
+          width,
+          height,
+          frameRate: frame_rate,
+        });
       });
       setState({ ...newState, pageToLoad: state.pageToLoad + 1 });
       set(atoms.gridRows, newRows);
@@ -77,9 +81,8 @@ export default (): [State, (state: State) => void] => {
       });
       const clearSample = (id) => {
         reset(atoms.sample(id));
-        reset(atoms.sampleDimensions(id));
+        reset(atoms.sampleMetadata(id));
         reset(atoms.sampleFrameData(id));
-        reset(atoms.sampleFrameRate(id));
         reset(atoms.sampleVideoLabels(id));
         reset(atoms.sampleVideoDataRequested(id));
       };

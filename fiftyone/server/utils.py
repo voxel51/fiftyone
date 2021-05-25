@@ -72,7 +72,7 @@ def get_image_metadata(filepath):
         dict
     """
     try:
-        width, height = get_image_size(file_path)
+        width, height = get_image_size(filepath)
         return {"width": width, "height": height}
     except:
         return {

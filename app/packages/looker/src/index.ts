@@ -109,6 +109,7 @@ export abstract class Looker<
 
         this.state.pan;
       }
+      console.log(this.state);
       this.lookerElement.render(this.state as Readonly<State>);
       if (postUpdate) {
         postUpdate(context, this.state, this.currentOverlays);

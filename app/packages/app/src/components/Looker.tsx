@@ -13,7 +13,11 @@ import { animated, useSpring } from "react-spring";
 import * as labelAtoms from "./Filters/utils";
 import ExternalLink from "./ExternalLink";
 import { ContentDiv, ContentHeader } from "./utils";
-import { ImageLooker, Looker as LookerType } from "@fiftyone/looker";
+import {
+  ImageLooker,
+  Looker as LookerType,
+  VideoLooker,
+} from "@fiftyone/looker";
 import { useEventHandler } from "../utils/hooks";
 
 import * as atoms from "../recoil/atoms";
@@ -459,17 +463,21 @@ const Looker = ({
   );
   const sampleSrc = useRecoilValue(selectors.sampleSrc(sampleId));
   const options = useRecoilValue(lookerOptions(modal));
-  const dimensions = useRecoilValue(atoms.sampleDimensions(sampleId));
+  const metadata = useRecoilValue(atoms.sampleMetadata(sampleId));
   const ref = useRef<any>();
   const bindMove = useMove((s) => ref.current && ref.current(s));
-  const [looker] = useState<ImageLooker>(
+  const LookerType = useRecoilValue(selectors.isVideoDataset)
+    ? VideoLooker
+    : ImageLooker;
+  const [looker] = useState(
     () =>
-      new ImageLooker(
+      new LookerType(
         sample,
         {
           src: sampleSrc,
           thumbnail: !modal,
-          dimensions: [dimensions.width, dimensions.height],
+          dimensions: [metadata.width, metadata.height],
+          frameRate: metadata.frameRate,
         },
         options
       )
@@ -478,14 +486,6 @@ const Looker = ({
   useLayoutEffect(() => {
     looker.update(sample, options);
   }, [looker, sample, options]);
-
-  useEventHandler(looker, "select", (e) => {
-    const _id = e.detail.label._id;
-    const name = e.data?.name;
-    if (_id && onSelect) {
-      onSelect({ id: _id, name });
-    }
-  });
 
   return (
     <>
