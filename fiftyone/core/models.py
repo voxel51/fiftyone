@@ -31,6 +31,8 @@ tud = fou.lazy_import("torch.utils.data")
 foe = fou.lazy_import("fiftyone.core.eta_utils")
 fout = fou.lazy_import("fiftyone.utils.torch")
 
+flashm = fou.lazy_import("flash.core.model")
+flashd = fou.lazy_import("flash.core.data.data_source")
 
 logger = logging.getLogger(__name__)
 
@@ -78,6 +80,14 @@ def apply_model(
         skip_failures (True): whether to gracefully continue without raising an
             error if predictions cannot be generated for a sample
     """
+    if isinstance(model, flashm.Task):
+        with fou.ProgressBar() as pb:
+            for sample in pb(samples):
+                preds = model.predict(sample.filepath)
+                sample[label_field] = fo.Classification(label=preds[0])
+                sample.save()
+        return
+
     if not isinstance(model, Model):
         raise ValueError(
             "Model must be a %s instance; found %s" % (Model, type(model))
