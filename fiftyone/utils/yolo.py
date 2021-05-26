@@ -54,7 +54,9 @@ class YOLOSampleParser(foud.ImageDetectionSampleParser):
         return load_yolo_annotations(target, self.classes)
 
 
-class YOLODatasetImporter(foud.LabeledImageDatasetImporter):
+class YOLODatasetImporter(
+    foud.ImportsDataJson, foud.LabeledImageDatasetImporter
+):
     """Importer for YOLO datasets stored on disk.
 
     See :class:`fiftyone.types.dataset_types.YOLODataset` for format details.
@@ -67,6 +69,9 @@ class YOLODatasetImporter(foud.LabeledImageDatasetImporter):
         seed (None): a random seed to use when shuffling
         max_samples (None): a maximum number of samples to import. By default,
             all samples are imported
+        data_json (False): whether to load media from the location(s)
+            defined by the ``dataset_type`` or to use media locations
+            stored in a ``data.json`` file 
     """
 
     def __init__(
@@ -76,6 +81,7 @@ class YOLODatasetImporter(foud.LabeledImageDatasetImporter):
         shuffle=False,
         seed=None,
         max_samples=None,
+        data_json=False,
     ):
         super().__init__(
             dataset_dir,
@@ -83,6 +89,7 @@ class YOLODatasetImporter(foud.LabeledImageDatasetImporter):
             shuffle=shuffle,
             seed=seed,
             max_samples=max_samples,
+            data_json=data_json,
         )
         self._classes = None
         self._info = None
@@ -147,13 +154,10 @@ class YOLODatasetImporter(foud.LabeledImageDatasetImporter):
             images = []
 
         uuids = []
-        uuids_to_image_paths = {}
         uuids_to_labels_paths = {}
         for image in images:
             uuid = os.path.splitext(os.path.basename(image))[0]
             uuids.append(uuid)
-
-            uuids_to_image_paths[uuid] = os.path.join(self.dataset_dir, image)
 
             labels_path = os.path.join(
                 self.dataset_dir, os.path.splitext(image)[0] + ".txt"
@@ -164,6 +168,10 @@ class YOLODatasetImporter(foud.LabeledImageDatasetImporter):
 
         if self.skip_unlabeled:
             uuids = list(uuids_to_labels_paths.keys())
+
+        uuids_to_image_paths = self.get_uuids_to_filepaths(
+            self.dataset_dir, uuids_list=uuids,
+        )
 
         self._classes = classes
         self._info = info

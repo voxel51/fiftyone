@@ -504,6 +504,7 @@ class ExportsImages(object):
         self._export_media = export_media
         self._filename_maker = None
         self._filepath_mapping = {}
+        self._write_data_json = True
 
     @staticmethod
     def _is_image_path(image_or_path):
@@ -516,6 +517,9 @@ class ExportsImages(object):
             True/False
         """
         return etau.is_str(image_or_path)
+
+    def _disable_data_json(self):
+        self._write_data_json = False
 
     def _setup_filename_maker(
         self, output_dir="", default_ext="", ignore_exts=False
@@ -565,7 +569,7 @@ class ExportsImages(object):
             else:
                 raise ValueError(
                     "Options for the export_media argument include (True, "
-                    "False, 'move', 'symlink'. Got %s"
+                    "False, 'move', 'symlink'). Got %s"
                     % str(self._export_media)
                 )
 
@@ -587,7 +591,7 @@ class ExportsImages(object):
         Returns:
             json_path: the complete filepath to the .json file that was written
         """
-        if not self._export_media:
+        if not self._export_media and self._write_data_json:
             if os.path.splitext(json_path)[1] is not ".json":
                 json_path = os.path.join(json_path, "data.json")
 
@@ -653,7 +657,7 @@ class ExportsVideos(object):
         else:
             raise ValueError(
                 "Options for the export_media argument include (True, "
-                "False, 'move', 'symlink'. Got %s" % str(self._export_media)
+                "False, 'move', 'symlink'). Got %s" % str(self._export_media)
             )
 
         return out_video_path

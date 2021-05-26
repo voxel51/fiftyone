@@ -16,8 +16,7 @@ import fiftyone.core.labels as fol
 import fiftyone.core.sample as fos
 import fiftyone.core.utils as fou
 import fiftyone.core.validation as fov
-from fiftyone.utils.data.exporters import GenericSampleDatasetExporter
-from fiftyone.utils.data.importers import GenericSampleDatasetImporter
+import fiftyone.utils.data as foud
 
 
 logger = logging.getLogger(__name__)
@@ -294,7 +293,7 @@ def extract_coordinates(d):
     return _parse_geometries(geometries)
 
 
-class GeoJSONImageDatasetImporter(GenericSampleDatasetImporter):
+class GeoJSONImageDatasetImporter(foud.GenericSampleDatasetImporter):
     """Importer for image datasets whose labels and location data are stored in
     GeoJSON format.
 
@@ -336,7 +335,7 @@ class GeoJSONImageDatasetImporter(GenericSampleDatasetImporter):
         max_samples=None,
     ):
         super().__init__(
-            dataset_dir, shuffle=shuffle, seed=seed, max_samples=max_samples
+            dataset_dir, shuffle=shuffle, seed=seed, max_samples=max_samples,
         )
         self.location_field = location_field
         self.multi_location = multi_location
@@ -424,7 +423,9 @@ class GeoJSONImageDatasetImporter(GenericSampleDatasetImporter):
         self._num_samples = len(self._filepaths)
 
 
-class GeoJSONImageDatasetExporter(GenericSampleDatasetExporter):
+class GeoJSONImageDatasetExporter(
+    foud.ExportsImages, foud.GenericSampleDatasetExporter
+):
     """Exporter for image datasets whose labels and location data are stored in
     GeoJSON format.
 
@@ -448,11 +449,11 @@ class GeoJSONImageDatasetExporter(GenericSampleDatasetExporter):
             the sample. By default, no properties are written
         omit_none_fields (True): whether to omit ``None``-valued Sample fields
             from the output properties
-        copy_media (True): whether to copy the source media into the export
-            directory (True) or simply embed the input filepaths in the output
-            JSON (False)
         pretty_print (False): whether to render the JSON in human readable
             format with newlines and indentations
+        export_media (True): whether to export media files or to export only 
+            labels and metadata. False will additionally embed the input
+            filepaths in the output labels JSON
     """
 
     def __init__(
@@ -461,27 +462,24 @@ class GeoJSONImageDatasetExporter(GenericSampleDatasetExporter):
         location_field=None,
         property_makers=None,
         omit_none_fields=True,
-        copy_media=True,
         pretty_print=False,
+        export_media=True,
     ):
         super().__init__(export_dir)
         self.location_field = location_field
         self.property_makers = property_makers
         self.omit_none_fields = omit_none_fields
-        self.copy_media = copy_media
         self.pretty_print = pretty_print
         self._data_dir = None
         self._labels_path = None
         self._features = []
         self._location_field = None
-        self._filename_maker = None
 
     def setup(self):
         self._data_dir = os.path.join(self.export_dir, "data")
         self._labels_path = os.path.join(self.export_dir, "labels.json")
-        self._filename_maker = fou.UniqueFilenameMaker(
-            output_dir=self._data_dir
-        )
+        self._setup_filename_maker(output_dir=self._data_dir)
+        self._disable_data_json()
 
     def log_collection(self, sample_collection):
         if self.location_field is None:
@@ -496,14 +494,11 @@ class GeoJSONImageDatasetExporter(GenericSampleDatasetExporter):
                 if value is not None or not self.omit_none_fields:
                     properties[key] = fn(value)
 
-        if self.copy_media:
-            out_filepath = self._filename_maker.get_output_path(
-                sample.filepath
-            )
-            etau.copy_file(sample.filepath, out_filepath)
-            properties["filename"] = os.path.basename(out_filepath)
-        else:
+        out_filepath = self._export_image_or_path(sample.filepath)
+        if self._export_media is False:
             properties["filepath"] = sample.filepath
+        else:
+            properties["filename"] = os.path.basename(out_filepath)
 
         location = sample[self.location_field]
         if location is not None:

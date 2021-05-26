@@ -471,6 +471,96 @@ class BatchDatasetImporter(DatasetImporter):
         raise NotImplementedError("subclass must implement import_samples()")
 
 
+class ImportsDataJson(object):
+    """Mixin for :class:`DatasetImporter` classes that provides the option to 
+    imports media samples from filepaths stored in a ``data.json`` file.
+
+    Args:
+        data_json (False): whether to load media from the location(s)
+            defined by the ``dataset_type`` or to use media locations
+            stored in a ``data.json`` file created by a 
+            ::class`DatasetExporter <fiftyone.utils.data.exporters.DatasetExporter>`.
+
+            This argument is not available for the following dataset
+            types as they are required to store media on disk or store
+            filepaths internally:
+                
+            :class:`ImageDirectory <fiftyone.types.dataset_types.ImageDirectory>`, 
+            :class:`VideoDirectory <fiftyone.types.dataset_types.VideoDirectory>`, 
+            :class:`ImageClassificationDirectoryTree <fiftyone.types.dataset_types.ImageClassificationDirectoryTree>`,
+            :class:`VideoClassificationDirectoryTree <fiftyone.types.dataset_types.VideoClassificationDirectoryTree>`,
+            :class:`GeoJSONImageDataset <fiftyone.types.dataset_types.GeoJSONImageDataset>`,
+            :class:`TFObjectDetectionDataset <fiftyone.types.dataset_types.TFObjectDetectionDataset>`,
+            :class:`TFImageClassificationDataset <fiftyone.types.dataset_types.TFImageClassificationDataset>`
+    """
+
+    def __init__(self, *args, data_json=False, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._data_json = data_json
+
+    def get_uuids_to_filepaths(
+        self, dataset_dir, file_or_dir_name="data", uuids_list=None,
+    ):
+        """Loads the uuid to filepath mapping from the ``data.json`` in the
+        dataset directory or directly from the directory containing the media
+        data.
+        
+        Args:
+            dataset_dir: the dataset directory
+            file_or_dir_name: name of the json file containing uuid to filepath
+                mappings or of the directory containing media data
+        
+        Returns:
+            uuids_to_filepaths: a dict mapping unqiue filenames to filepaths
+        """
+        if self._data_json:
+            data_json_path = os.path.join(
+                dataset_dir, "%s.json" % file_or_dir_name
+            )
+
+            if not os.path.exists(data_json_path):
+                raise FileNotFoundError(
+                    "Attemping to load media filepaths from json file but "
+                    "the following file does not exist: %s" % data_json_path
+                )
+
+            uuids_to_filepaths = etas.load_json(data_json_path)
+
+        else:
+            to_uuid = lambda p: os.path.splitext(os.path.basename(p))[0]
+
+            data_dir = os.path.join(dataset_dir, file_or_dir_name)
+            if os.path.isdir(data_dir):
+                uuids_to_filepaths = {
+                    to_uuid(p): p
+                    for p in etau.list_files(data_dir, abs_paths=True)
+                }
+            else:
+                uuids_to_filepaths = {}
+
+        if uuids_list is not None:
+            uuids_to_remove = set(uuids_to_filepaths.keys()) - set(uuids_list)
+            for uuid in uuids_to_remove:
+                del uuids_to_filepaths[uuid]
+
+        return uuids_to_filepaths
+
+    @staticmethod
+    def get_num_samples(dataset_dir, data_json=False):
+        num_samples = 0
+        if data_json:
+            data_json_path = os.path.join(dataset_dir, "data.json")
+            if os.path.exists(data_json_path):
+                num_samples = len(etas.load_json(data_json_path))
+
+        else:
+            data_dir = os.path.join(dataset_dir, "data")
+            if os.path.isdir(data_dir):
+                num_samples = len(etau.list_files(data_dir))
+
+        return num_samples
+
+
 class GenericSampleDatasetImporter(DatasetImporter):
     """Interface for importing datasets that contain arbitrary
     :class:`fiftyone.core.sample.Sample` instances.

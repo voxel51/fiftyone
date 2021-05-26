@@ -90,7 +90,9 @@ class VOCDetectionSampleParser(foud.ImageDetectionSampleParser):
         return annotation.to_detections()
 
 
-class VOCDetectionDatasetImporter(foud.LabeledImageDatasetImporter):
+class VOCDetectionDatasetImporter(
+    foud.ImportsDataJson, foud.LabeledImageDatasetImporter
+):
     """Importer for VOC detection datasets stored on disk.
 
     See :class:`fiftyone.types.dataset_types.VOCDetectionDataset` for format
@@ -104,6 +106,9 @@ class VOCDetectionDatasetImporter(foud.LabeledImageDatasetImporter):
         seed (None): a random seed to use when shuffling
         max_samples (None): a maximum number of samples to import. By default,
             all samples are imported
+        data_json (False): whether to load media from the location(s)
+            defined by the ``dataset_type`` or to use media locations
+            stored in a ``data.json`` file 
     """
 
     def __init__(
@@ -113,6 +118,7 @@ class VOCDetectionDatasetImporter(foud.LabeledImageDatasetImporter):
         shuffle=False,
         seed=None,
         max_samples=None,
+        data_json=False,
     ):
         super().__init__(
             dataset_dir,
@@ -120,6 +126,7 @@ class VOCDetectionDatasetImporter(foud.LabeledImageDatasetImporter):
             shuffle=shuffle,
             seed=seed,
             max_samples=max_samples,
+            data_json=data_json,
         )
         self._uuids_to_image_paths = None
         self._uuids_to_labels_paths = None
@@ -188,14 +195,9 @@ class VOCDetectionDatasetImporter(foud.LabeledImageDatasetImporter):
     def setup(self):
         to_uuid = lambda p: os.path.splitext(os.path.basename(p))[0]
 
-        data_dir = os.path.join(self.dataset_dir, "data")
-        if os.path.isdir(data_dir):
-            self._uuids_to_image_paths = {
-                to_uuid(p): p
-                for p in etau.list_files(data_dir, abs_paths=True)
-            }
-        else:
-            self._uuids_to_image_paths = {}
+        self._uuids_to_image_paths = self.get_uuids_to_filepaths(
+            self.dataset_dir,
+        )
 
         labels_dir = os.path.join(self.dataset_dir, "labels")
         if os.path.isdir(labels_dir):
@@ -263,10 +265,12 @@ class VOCDetectionDatasetExporter(foud.LabeledImageDatasetExporter):
         )
         self._writer = VOCAnnotationWriter()
 
-        etau.ensure_dir(self._data_dir)
         etau.ensure_dir(self._labels_dir)
 
     def export_sample(self, image_or_path, detections, metadata=None):
+        if metadata is None and detections is not None:
+            metadata = fom.ImageMetadata.build_for(image_or_path)
+
         out_image_path = self._export_image_or_path(image_or_path)
 
         if detections is None:
@@ -274,9 +278,6 @@ class VOCDetectionDatasetExporter(foud.LabeledImageDatasetExporter):
 
         name = os.path.splitext(os.path.basename(out_image_path))[0]
         out_anno_path = os.path.join(self._labels_dir, name + ".xml")
-
-        if metadata is None:
-            metadata = fom.ImageMetadata.build_for(out_image_path)
 
         annotation = VOCAnnotation.from_labeled_image(
             out_image_path, metadata, detections

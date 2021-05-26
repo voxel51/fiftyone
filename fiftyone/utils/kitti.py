@@ -59,7 +59,9 @@ class KITTIDetectionSampleParser(foud.ImageDetectionSampleParser):
         return load_kitti_detection_annotations(target, frame_size)
 
 
-class KITTIDetectionDatasetImporter(foud.LabeledImageDatasetImporter):
+class KITTIDetectionDatasetImporter(
+    foud.ImportsDataJson, foud.LabeledImageDatasetImporter
+):
     """Importer for KITTI detection datasets stored on disk.
 
     See :class:`fiftyone.types.dataset_types.KITTIDetectionDataset` for format
@@ -73,6 +75,9 @@ class KITTIDetectionDatasetImporter(foud.LabeledImageDatasetImporter):
         seed (None): a random seed to use when shuffling
         max_samples (None): a maximum number of samples to import. By default,
             all samples are imported
+        data_json (False): whether to load media from the location(s)
+            defined by the ``dataset_type`` or to use media locations
+            stored in a ``data.json`` file 
     """
 
     def __init__(
@@ -82,6 +87,7 @@ class KITTIDetectionDatasetImporter(foud.LabeledImageDatasetImporter):
         shuffle=False,
         seed=None,
         max_samples=None,
+        data_json=False,
     ):
         super().__init__(
             dataset_dir,
@@ -89,6 +95,7 @@ class KITTIDetectionDatasetImporter(foud.LabeledImageDatasetImporter):
             shuffle=shuffle,
             seed=seed,
             max_samples=max_samples,
+            data_json=data_json,
         )
         self._uuids_to_image_paths = None
         self._uuids_to_labels_paths = None
@@ -141,14 +148,9 @@ class KITTIDetectionDatasetImporter(foud.LabeledImageDatasetImporter):
     def setup(self):
         to_uuid = lambda p: os.path.splitext(os.path.basename(p))[0]
 
-        data_dir = os.path.join(self.dataset_dir, "data")
-        if os.path.isdir(data_dir):
-            self._uuids_to_image_paths = {
-                to_uuid(p): p
-                for p in etau.list_files(data_dir, abs_paths=True)
-            }
-        else:
-            self._uuids_to_image_paths = {}
+        self._uuids_to_image_paths = self.get_uuids_to_filepaths(
+            self.dataset_dir
+        )
 
         labels_dir = os.path.join(self.dataset_dir, "labels")
         if os.path.isdir(labels_dir):

@@ -139,7 +139,9 @@ class COCODetectionSampleParser(foud.LabeledImageTupleSampleParser):
         )
 
 
-class COCODetectionDatasetImporter(foud.LabeledImageDatasetImporter):
+class COCODetectionDatasetImporter(
+    foud.ImportsDataJson, foud.LabeledImageDatasetImporter
+):
     """Importer for COCO detection datasets stored on disk.
 
     See :class:`fiftyone.types.dataset_types.COCODetectionDataset` for format
@@ -160,6 +162,9 @@ class COCODetectionDatasetImporter(foud.LabeledImageDatasetImporter):
         seed (None): a random seed to use when shuffling
         max_samples (None): a maximum number of samples to import. By default,
             all samples are imported
+        data_json (False): whether to load media from the location(s)
+            defined by the ``dataset_type`` or to use media locations
+            stored in a ``data.json`` file 
     """
 
     def __init__(
@@ -172,6 +177,7 @@ class COCODetectionDatasetImporter(foud.LabeledImageDatasetImporter):
         shuffle=False,
         seed=None,
         max_samples=None,
+        data_json=False,
     ):
         super().__init__(
             dataset_dir,
@@ -179,11 +185,11 @@ class COCODetectionDatasetImporter(foud.LabeledImageDatasetImporter):
             shuffle=shuffle,
             seed=seed,
             max_samples=max_samples,
+            data_json=data_json,
         )
         self.load_segmentations = load_segmentations
         self.return_polylines = return_polylines
         self.tolerance = tolerance
-        self._data_dir = None
         self._info = None
         self._classes = None
         self._supercategory_map = None
@@ -202,7 +208,7 @@ class COCODetectionDatasetImporter(foud.LabeledImageDatasetImporter):
     def __next__(self):
         filename = next(self._iter_filenames)
 
-        image_path = os.path.join(self._data_dir, filename)
+        image_path = self._uuids_to_image_paths[filename]
 
         image_dict = self._images_map.get(filename, None)
         if image_dict is None:
@@ -256,8 +262,6 @@ class COCODetectionDatasetImporter(foud.LabeledImageDatasetImporter):
         return fol.Detections
 
     def setup(self):
-        self._data_dir = os.path.join(self.dataset_dir, "data")
-
         labels_path = os.path.join(self.dataset_dir, "labels.json")
         if os.path.isfile(labels_path):
             (
@@ -283,12 +287,15 @@ class COCODetectionDatasetImporter(foud.LabeledImageDatasetImporter):
         self._images_map = {i["file_name"]: i for i in images.values()}
         self._annotations = annotations
 
+        uuids_to_image_paths = self.get_uuids_to_filepaths(self.dataset_dir)
+
         if self.skip_unlabeled:
             filenames = self._images_map.keys()
         else:
-            filenames = etau.list_files(self._data_dir, abs_paths=False)
+            filenames = list(uuids_to_image_paths.keys())
 
         self._filenames = self._preprocess_list(filenames)
+        self._uuids_to_image_paths = uuids_to_image_paths
 
     def get_dataset_info(self):
         return self._info

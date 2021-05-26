@@ -1976,6 +1976,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         tags=None,
         expand_schema=True,
         add_info=True,
+        data_json=False,
         **kwargs
     ):
         """Adds the contents of the given directory to the dataset.
@@ -1997,6 +1998,21 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 if a sample's schema is not a subset of the dataset schema
             add_info (True): whether to add dataset info from the importer (if
                 any) to the dataset's ``info``
+            data_json (False): whether to load media from the location(s)
+                defined by the ``dataset_type`` or to use media locations
+                stored in a ``data.json`` file created by a 
+                ::class`DatasetExporter <fiftyone.utils.data.exporters.DatasetExporter>`.
+
+                This argument is not available for the following dataset
+                types as they are required to store media on disk:
+                    
+                :class:`ImageDirectory <fiftyone.types.dataset_types.ImageDirectory>`, 
+                :class:`VideoDirectory <fiftyone.types.dataset_types.VideoDirectory>`, 
+                :class:`ImageClassificationDirectoryTree <fiftyone.types.dataset_types.ImageClassificationDirectoryTree>`,
+                :class:`VideoClassificationDirectoryTree <fiftyone.types.dataset_types.VideoClassificationDirectoryTree>`,
+                :class:`TFObjectDetectionDataset <fiftyone.types.dataset_types.TFObjectDetectionDataset>`,
+                :class:`TFImageClassificationDataset <fiftyone.types.dataset_types.TFImageClassificationDataset>`
+
             **kwargs: optional keyword arguments to pass to the constructor of
                 the :class:`fiftyone.utils.data.importers.DatasetImporter` for
                 the specified ``dataset_type`` via the syntax
@@ -2027,7 +2043,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         dataset_importer_cls = dataset_type.get_dataset_importer_cls()
 
         try:
-            dataset_importer = dataset_importer_cls(dataset_dir, **kwargs)
+            if issubclass(dataset_importer_cls, foud.ImportsDataJson):
+                dataset_importer = dataset_importer_cls(
+                    dataset_dir, data_json=data_json, **kwargs
+                )
+            else:
+                dataset_importer = dataset_importer_cls(dataset_dir, **kwargs)
+
         except Exception as e:
             importer_name = dataset_importer_cls.__name__
             raise ValueError(

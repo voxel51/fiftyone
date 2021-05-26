@@ -4808,12 +4808,12 @@ class SampleCollection(object):
                 This argument is not available for the following dataset
                 types as they are required to write media to disk:
                     
-                 :class:`ImageDirectory <fiftyone.types.dataset_types.ImageDirectory>`, 
-                 :class:`VideoDirectory <fiftyone.types.dataset_types.VideoDirectory>`, 
-                 :class:`ImageClassificationDirectoryTree <fiftyone.types.dataset_types.ImageClassificationDirectoryTree>`,
-                 :class:`VideoClassificationDirectoryTree <fiftyone.types.dataset_types.VideoClassificationDirectoryTree>`,
-                 :class:`TFObjectDetectionDataset <fiftyone.types.dataset_types.TFObjectDetectionDataset>`,
-                 :class:`TFImageClassificationDataset <fiftyone.types.dataset_types.TFImageClassificationDataset>`
+                :class:`ImageDirectory <fiftyone.types.dataset_types.ImageDirectory>`, 
+                :class:`VideoDirectory <fiftyone.types.dataset_types.VideoDirectory>`, 
+                :class:`ImageClassificationDirectoryTree <fiftyone.types.dataset_types.ImageClassificationDirectoryTree>`,
+                :class:`VideoClassificationDirectoryTree <fiftyone.types.dataset_types.VideoClassificationDirectoryTree>`,
+                :class:`TFObjectDetectionDataset <fiftyone.types.dataset_types.TFObjectDetectionDataset>`,
+                :class:`TFImageClassificationDataset <fiftyone.types.dataset_types.TFImageClassificationDataset>`
 
             **kwargs: optional keyword arguments to pass to the dataset
                 exporter's constructor via

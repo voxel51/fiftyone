@@ -152,7 +152,9 @@ class BDDSampleParser(foud.LabeledImageTupleSampleParser):
         return _parse_bdd_annotation(labels, frame_size)
 
 
-class BDDDatasetImporter(foud.LabeledImageDatasetImporter):
+class BDDDatasetImporter(
+    foud.ImportsDataJson, foud.LabeledImageDatasetImporter
+):
     """Importer for BDD datasets stored on disk.
 
     See :class:`fiftyone.types.dataset_types.BDDDataset` for format details.
@@ -165,6 +167,9 @@ class BDDDatasetImporter(foud.LabeledImageDatasetImporter):
         seed (None): a random seed to use when shuffling
         max_samples (None): a maximum number of samples to import. By default,
             all samples are imported
+        data_json (False): whether to load media from the location(s)
+            defined by the ``dataset_type`` or to use media locations
+            stored in a ``data.json`` file 
     """
 
     def __init__(
@@ -174,6 +179,7 @@ class BDDDatasetImporter(foud.LabeledImageDatasetImporter):
         shuffle=False,
         seed=None,
         max_samples=None,
+        data_json=False,
     ):
         super().__init__(
             dataset_dir,
@@ -181,8 +187,8 @@ class BDDDatasetImporter(foud.LabeledImageDatasetImporter):
             shuffle=shuffle,
             seed=seed,
             max_samples=max_samples,
+            data_json=data_json,
         )
-        self._data_dir = None
         self._labels_path = None
         self._anno_dict_map = None
         self._filenames = None
@@ -199,7 +205,7 @@ class BDDDatasetImporter(foud.LabeledImageDatasetImporter):
     def __next__(self):
         filename = next(self._iter_filenames)
 
-        image_path = os.path.join(self._data_dir, filename)
+        image_path = self._uuids_to_image_paths[filename]
 
         image_metadata = fom.ImageMetadata.build_for(image_path)
 
@@ -231,20 +237,21 @@ class BDDDatasetImporter(foud.LabeledImageDatasetImporter):
         }
 
     def setup(self):
-        self._data_dir = os.path.join(self.dataset_dir, "data")
         self._labels_path = os.path.join(self.dataset_dir, "labels.json")
         if os.path.isfile(self._labels_path):
             self._anno_dict_map = load_bdd_annotations(self._labels_path)
         else:
             self._anno_dict_map = {}
 
-        filenames = etau.list_files(self._data_dir, abs_paths=False)
+        uuids_to_image_paths = self.get_uuids_to_filepaths(self.dataset_dir,)
+        filenames = list(uuids_to_image_paths.keys())
 
         if self.skip_unlabeled:
             filenames = [f for f in filenames if f in self._anno_dict_map]
 
         self._filenames = self._preprocess_list(filenames)
         self._num_samples = len(self._filenames)
+        self._uuids_to_image_paths = uuids_to_image_paths
 
     @staticmethod
     def get_num_samples(dataset_dir):

@@ -154,7 +154,9 @@ class CVATVideoSampleParser(foud.LabeledVideoSampleParser):
         return _cvat_tracks_to_frames_dict(cvat_tracks)
 
 
-class CVATImageDatasetImporter(foud.LabeledImageDatasetImporter):
+class CVATImageDatasetImporter(
+    foud.ImportsDataJson, foud.LabeledImageDatasetImporter
+):
     """Importer for CVAT image datasets stored on disk.
 
     See :class:`fiftyone.types.dataset_types.CVATImageDataset` for format
@@ -168,6 +170,9 @@ class CVATImageDatasetImporter(foud.LabeledImageDatasetImporter):
         seed (None): a random seed to use when shuffling
         max_samples (None): a maximum number of samples to import. By default,
             all samples are imported
+        data_json (False): whether to load media from the location(s)
+            defined by the ``dataset_type`` or to use media locations
+            stored in a ``data.json`` file 
     """
 
     def __init__(
@@ -177,6 +182,7 @@ class CVATImageDatasetImporter(foud.LabeledImageDatasetImporter):
         shuffle=False,
         seed=None,
         max_samples=None,
+        data_json=False,
     ):
         super().__init__(
             dataset_dir,
@@ -184,6 +190,7 @@ class CVATImageDatasetImporter(foud.LabeledImageDatasetImporter):
             shuffle=shuffle,
             seed=seed,
             max_samples=max_samples,
+            data_json=data_json,
         )
         self._data_dir = None
         self._labels_path = None
@@ -203,7 +210,7 @@ class CVATImageDatasetImporter(foud.LabeledImageDatasetImporter):
     def __next__(self):
         filename = next(self._iter_filenames)
 
-        image_path = os.path.join(self._data_dir, filename)
+        image_path = self._uuids_to_image_paths[filename]
 
         cvat_image = self._images_map.get(filename, None)
         if cvat_image is not None:
@@ -234,7 +241,6 @@ class CVATImageDatasetImporter(foud.LabeledImageDatasetImporter):
         }
 
     def setup(self):
-        self._data_dir = os.path.join(self.dataset_dir, "data")
         self._labels_path = os.path.join(self.dataset_dir, "labels.xml")
 
         if os.path.isfile(self._labels_path):
@@ -250,13 +256,15 @@ class CVATImageDatasetImporter(foud.LabeledImageDatasetImporter):
         # Index by filename
         self._images_map = {i.name: i for i in cvat_images}
 
-        filenames = etau.list_files(self._data_dir, abs_paths=False)
+        uuids_to_image_paths = self.get_uuids_to_filepaths(self.dataset_dir)
+        filenames = list(uuids_to_image_paths.keys())
 
         if self.skip_unlabeled:
             filenames = [f for f in filenames if f in self._images_map]
 
         self._filenames = self._preprocess_list(filenames)
         self._num_samples = len(self._filenames)
+        self._uuids_to_image_paths = uuids_to_image_paths
 
     def get_dataset_info(self):
         return self._info
