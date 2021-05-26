@@ -151,69 +151,6 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
 
   getEvents(): Events<VideoState> {
     return {
-      keydown: ({ event, update }) => {
-        if (event.key === "Space") {
-          update(({ playing, config: { thumbnail } }) => {
-            return thumbnail
-              ? {}
-              : {
-                  playing: !playing,
-                };
-          });
-        }
-
-        if (event.key === "ArrowLeft") {
-          update(({ frameNumber, locked, fragment, playing }) => {
-            if (!playing) {
-              return {};
-            }
-            const limit = locked && fragment ? fragment[0] : 1;
-            return { frameNumber: Math.max(limit, frameNumber - 1) };
-          });
-        }
-
-        if (event.key === "ArrowRight") {
-          update(
-            ({
-              frameNumber,
-              duration,
-              locked,
-              fragment,
-              playing,
-              config: { frameRate },
-            }) => {
-              if (!playing) {
-                return {};
-              }
-              const limit =
-                locked && fragment
-                  ? fragment[1]
-                  : getFrameNumber(duration, duration, frameRate);
-              return { frameNumber: Math.max(limit, frameNumber + 1) };
-            }
-          );
-        }
-      },
-      mouseenter: ({ update }) => {
-        update(({ config: { thumbnail } }) => {
-          if (thumbnail) {
-            return {
-              playing: true,
-            };
-          }
-          return {};
-        });
-      },
-      mouseleave: ({ update }) => {
-        update(({ config: { thumbnail } }) => {
-          if (thumbnail) {
-            return {
-              playing: false,
-            };
-          }
-          return {};
-        });
-      },
       error: ({ event, dispatchEvent }) => {
         dispatchEvent("error", { event });
       },
@@ -348,4 +285,74 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
     }
     return this.element;
   }
+}
+
+export function withVideoLookerEvents(): () => Events<VideoState> {
+  return function () {
+    return {
+      keydown: ({ event, update }) => {
+        if (event.key === "Space") {
+          update(({ playing, config: { thumbnail } }) => {
+            return thumbnail
+              ? {}
+              : {
+                  playing: !playing,
+                };
+          });
+        }
+
+        if (event.key === "ArrowLeft") {
+          update(({ frameNumber, locked, fragment, playing }) => {
+            if (!playing) {
+              return {};
+            }
+            const limit = locked && fragment ? fragment[0] : 1;
+            return { frameNumber: Math.max(limit, frameNumber - 1) };
+          });
+        }
+
+        if (event.key === "ArrowRight") {
+          update(
+            ({
+              frameNumber,
+              duration,
+              locked,
+              fragment,
+              playing,
+              config: { frameRate },
+            }) => {
+              if (!playing) {
+                return {};
+              }
+              const limit =
+                locked && fragment
+                  ? fragment[1]
+                  : getFrameNumber(duration, duration, frameRate);
+              return { frameNumber: Math.max(limit, frameNumber + 1) };
+            }
+          );
+        }
+      },
+      mouseenter: ({ update }) => {
+        update(({ config: { thumbnail } }) => {
+          if (thumbnail) {
+            return {
+              playing: true,
+            };
+          }
+          return {};
+        });
+      },
+      mouseleave: ({ update }) => {
+        update(({ config: { thumbnail } }) => {
+          if (thumbnail) {
+            return {
+              playing: false,
+            };
+          }
+          return {};
+        });
+      },
+    };
+  };
 }

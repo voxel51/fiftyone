@@ -12,7 +12,7 @@ import {
   StateUpdate,
   VideoState,
 } from "../state";
-import { createElementsTree } from "./util";
+import { createElementsTree, withEvents } from "./util";
 import * as video from "./video";
 
 export type GetElements<State extends BaseState> = (
@@ -102,7 +102,7 @@ export const getVideoElements: GetElements<VideoState> = (
   dispatchEvent
 ) => {
   const elements = {
-    node: common.LookerElement,
+    node: withEvents(common.LookerElement, video.withVideoLookerEvents()),
     children: [
       {
         node: common.WindowElement,

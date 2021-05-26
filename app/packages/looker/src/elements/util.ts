@@ -3,7 +3,7 @@
  */
 
 import { BaseState, StateUpdate } from "../state";
-import { BaseElement } from "./base";
+import { BaseElement, Events } from "./base";
 
 export const FRAME_ZERO_OFFSET = 1;
 
@@ -44,15 +44,20 @@ export const makeCheckboxRow = function (
   return [label, checkbox];
 };
 
+type ElementConstructor<
+  State extends BaseState,
+  Element extends BaseElement<State>
+> = new (
+  update: StateUpdate<State>,
+  dispatchEvent: (eventType: string, details?: any) => void,
+  children?: BaseElement<State>[]
+) => Element;
+
 interface ElementsTemplate<
   State extends BaseState,
   Element extends BaseElement<State> = BaseElement<State>
 > {
-  node: new (
-    update: StateUpdate<State>,
-    dispatchEvent: (eventType: string, details?: any) => void,
-    children?: BaseElement<State>[]
-  ) => Element;
+  node: ElementConstructor<State, Element>;
   children?: ElementsTemplate<State>[];
 }
 
@@ -148,3 +153,29 @@ export const getTimeString = (
   }
   return mmss;
 };
+
+export function withEvents<
+  State extends BaseState,
+  Element extends BaseElement<State>
+>(base: ElementConstructor<State, Element>, getEvents: () => Events<State>) {
+  //@ts-ignore
+  class DerivedElement extends base {
+    getEvents() {
+      const newEvents = super.getEvents();
+      getEvents.bind(this);
+      const events = getEvents();
+
+      Object.entries(events).forEach(([eventType, event]) => {
+        if (eventType in newEvents) {
+          newEvents[eventType] = (options) => {
+            event(options);
+            newEvents[eventType](options);
+          };
+        }
+      });
+      return newEvents;
+    }
+  }
+
+  return DerivedElement;
+}
