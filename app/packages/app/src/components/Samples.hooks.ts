@@ -8,6 +8,7 @@ import { useMessageHandler } from "../utils/hooks";
 import tile, { State } from "../utils/tile";
 import { packageMessage } from "../utils/socket";
 import { filterView } from "../utils/view";
+import { zoomAspectRatio } from "@fiftyone/looker";
 
 export const gridZoom = atom<number | null>({
   key: "gridZoom",
@@ -54,13 +55,21 @@ export default (): [State, (state: State) => void] => {
     ({ snapshot, set }) => async ({ results, more }) => {
       const rows = await snapshot.getPromise(atoms.gridRows);
       const ratio = await snapshot.getPromise(gridRowAspectRatio);
+      const isPatchesView = await snapshot.getPromise(selectors.isPatchesView);
+      results.forEach((sample) => {
+        sample.aspect_ratio = isPatchesView
+          ? zoomAspectRatio(sample.sample)
+          : sample.width / sample.height;
+      });
       const [newState, newRows] = tile(results, more, state, rows, ratio);
-      results.forEach(({ sample, width, height, frame_rate }) => {
+
+      results.forEach(({ sample, width, height, frame_rate, aspect_ratio }) => {
         set(atoms.sample(sample._id), sample);
         set(atoms.sampleMetadata(sample._id), {
           width,
           height,
           frameRate: frame_rate,
+          aspectRatio: aspect_ratio,
         });
       });
       setState({ ...newState, pageToLoad: state.pageToLoad + 1 });

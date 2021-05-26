@@ -28,28 +28,28 @@ interface Rows {
 interface Sample {
   width: number;
   height: number;
+  aspect_ratio: number;
 }
 
 const lastRowRefWidth = (
   row: Sample[],
   threshold: number
 ): [number, number] => {
-  const baseAspectRatio = row[0].width / row[0].height;
+  const baseAspectRatio = row[0].aspect_ratio;
   const sameAspectRatios = row
     .slice(1)
-    .every((i) => baseAspectRatio === i.width / i.height);
+    .every((i) => baseAspectRatio === i.aspect_ratio);
 
   if (sameAspectRatios) {
-    let currentWidth = row[0].width;
-    const currentHeight = row[0].height;
+    let currentAR = row[0].aspect_ratio;
     let extraMargins = 0;
-    while (currentWidth / currentHeight < threshold) {
-      currentWidth += row[0].width;
+    while (currentAR < threshold) {
+      currentAR += row[0].aspect_ratio;
       extraMargins += 1;
     }
-    return [currentWidth, extraMargins];
+    return [currentAR, extraMargins];
   } else {
-    return [row[0].height * threshold, 0];
+    return [threshold, 0];
   }
 };
 
@@ -64,26 +64,22 @@ export default function tile(
   rows = [...rows];
   const newRows = [];
   let currentRow = [];
-  let currentWidth = null;
-  let currentHeight = null;
+  let currentAR = null;
   for (const i in samplesToFit) {
     const s = samplesToFit[i];
-    if (currentWidth === null) {
-      currentWidth = s.width;
-      currentHeight = s.height;
+    if (currentAR === null) {
+      currentAR = s.aspect_ratio;
       currentRow.push(s);
       continue;
     }
 
-    if (currentWidth / currentHeight >= rowAspectRatioThreshold) {
+    if (currentAR >= rowAspectRatioThreshold) {
       newRows.push(currentRow);
       currentRow = [s];
-      currentWidth = s.width;
-      currentHeight = s.height;
+      currentAR += s.aspect_ratio;
       continue;
     }
     currentRow.push(s);
-    currentWidth += (currentHeight / s.height) * s.width;
   }
 
   let remainder = [];
@@ -93,23 +89,15 @@ export default function tile(
   for (const i in newRows) {
     const row = newRows[i];
     const columns = [];
-    const baseHeight = row[0].height;
     const [refWidth, extraMargins] =
       !Boolean(newHasMore) &&
       i === String(newRows.length - 1) &&
-      currentWidth / currentHeight < rowAspectRatioThreshold
+      currentAR < rowAspectRatioThreshold
         ? lastRowRefWidth(row, rowAspectRatioThreshold)
-        : [
-            row.reduce(
-              (acc, val) => acc + (baseHeight / val.height) * val.width,
-              0
-            ),
-            0,
-          ];
+        : [currentAR, 0];
 
-    for (const sample of row) {
-      const sampleWidth = (baseHeight * sample.width) / sample.height;
-      columns.push(sampleWidth / refWidth);
+    for (const { aspect_ratio } of row) {
+      columns.push(aspect_ratio / refWidth);
     }
 
     let gridColumns = columns
@@ -141,9 +129,7 @@ export default function tile(
       columns: gridColumnsLength,
       samples: row.map((s) => s.sample._id),
       aspectRatio:
-        (refWidth +
-          ((columns.length - 1 + extraMargins) / 5) * (refWidth / 100)) /
-        baseHeight,
+        refWidth + ((columns.length - 1 + extraMargins) / 5) * (refWidth / 100),
       extraMargins,
     });
   }

@@ -121,7 +121,12 @@ export const sample = atomFamily<SerializableParam, string>({
 });
 
 export const sampleMetadata = atomFamily<
-  { width: number | null; height: number; frameRate?: number },
+  {
+    width: number | null;
+    height: number;
+    frameRate?: number;
+    aspectRatio: number;
+  },
   string
 >({
   key: "sampleMetadata",
@@ -129,6 +134,7 @@ export const sampleMetadata = atomFamily<
     width: null,
     height: null,
     frameRate: null,
+    aspectRatio: null,
   },
 });
 

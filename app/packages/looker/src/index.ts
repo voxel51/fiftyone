@@ -1,7 +1,7 @@
 /**
  * Copyright 2017-2021, Voxel51, Inc.
  */
-import { fromJS, mergeWith } from "immutable";
+import { mergeWith } from "immutable";
 
 import "./style.css";
 export { ColorGenerator } from "./color";
@@ -24,7 +24,7 @@ import {
   getVideoElements,
 } from "./elements";
 import { LookerElement } from "./elements/common";
-import { ClassificationsOverlay, FROM_FO } from "./overlays";
+import { ClassificationsOverlay, FROM_FO, POINTS_FROM_FO } from "./overlays";
 import { ClassificationLabels } from "./overlays/classifications";
 import { Overlay } from "./overlays/base";
 import processOverlays from "./processOverlays";
@@ -85,9 +85,7 @@ export abstract class Looker<
         this.pluckOverlays(this.state)
       );
       this.state = this.postProcess();
-      if (postUpdate) {
-        postUpdate(context, this.state, this.currentOverlays);
-      }
+      postUpdate && postUpdate(context, this.state, this.currentOverlays);
       this.lookerElement.render(this.state as Readonly<State>);
       clearCanvas(context);
       const numOverlays = this.currentOverlays.length;
@@ -382,7 +380,7 @@ function zoomToContent<State extends FrameState | ImageState>(
     } else {
       scale = 1 / zoomBBox[2];
     }
-    return fromJS({ ...state, scale });
+    return mergeUpdates(state, { scale });
   }
   return state;
 }
@@ -408,3 +406,16 @@ function mergeUpdates<State extends BaseState>(
   };
   return mergeWith(merger, state, updates);
 }
+
+export const zoomAspectRatio = (sample: {
+  [key: string]: { _cls?: string };
+}): number => {
+  let points = [];
+  Object.entries(sample).forEach(([_, label]) => {
+    if (label && label._cls in POINTS_FROM_FO) {
+      points = [...points, ...POINTS_FROM_FO[label._cls](label)];
+    }
+  });
+  const [_, __, width, height] = getContainingBox(points);
+  return width / height;
+};

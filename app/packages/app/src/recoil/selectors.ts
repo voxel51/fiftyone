@@ -100,6 +100,16 @@ export const isRootView = selector<boolean>({
   },
 });
 
+export const isPatchesView = selector<boolean>({
+  key: "isPatchesView",
+  get: ({ get }) => {
+    return [
+      "fiftyone.core.patches.EvaluationPatchesView",
+      "fiftyone.core.patches.PatchesView",
+    ].includes(get(viewCls));
+  },
+});
+
 export const datasets = selector({
   key: "datasets",
   get: ({ get }) => {
