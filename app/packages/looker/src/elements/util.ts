@@ -157,19 +157,20 @@ export const getTimeString = (
 export function withEvents<
   State extends BaseState,
   Element extends BaseElement<State>
->(base: ElementConstructor<State, Element>, getEvents: () => Events<State>) {
+>(Base: ElementConstructor<State, Element>, getEvents: () => Events<State>) {
   //@ts-ignore
-  class DerivedElement extends base {
+  class DerivedElement extends Base {
     getEvents() {
       const newEvents = super.getEvents();
       getEvents.bind(this);
       const events = getEvents();
 
-      Object.entries(events).forEach(([eventType, event]) => {
+      Object.entries(events).forEach(([eventType, handler]) => {
         if (eventType in newEvents) {
+          const parentHandler = newEvents[eventType];
           newEvents[eventType] = (options) => {
-            event(options);
-            newEvents[eventType](options);
+            parentHandler(options);
+            handler(options);
           };
         }
       });

@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useRecoilCallback, useRecoilValue } from "recoil";
 import styled from "styled-components";
-import { animated, useSpring, useTransition } from "react-spring";
+import { animated, useSpring } from "react-spring";
 import { Checkbox } from "@material-ui/core";
 
 import * as labelAtoms from "./Filters/utils";
@@ -60,27 +60,6 @@ const LoadingBar = animated(styled.div`
   );
   height: 0.2em;
 `);
-
-const useHoverLoad = (socket, id) => {
-  const [barItem, setBarItem] = useState([]);
-
-  const onMouseLeave = () => barItem.length && setBarItem([]);
-
-  const bar = useTransition(barItem, (item) => item, {
-    from: { right: "100%" },
-    enter: {
-      right: "0%",
-    },
-    leave: {
-      right: "-100%",
-    },
-    onRest: (item) => {
-      setBarItem(barItem.length ? [item + 1] : []);
-    },
-  });
-
-  return [bar, onMouseEnter, onMouseLeave];
-};
 
 const SampleInfo = React.memo(({ sampleId }: { sampleId: string }) => {
   const activeFields = useRecoilValue(labelAtoms.activeFields(false));
@@ -314,8 +293,6 @@ const Sample = ({ sampleId }: { sampleId: string }) => {
           sampleId={sampleId}
           modal={false}
         />
-        {false &&
-          bar.map(({ key, props }) => <LoadingBar key={key} style={props} />)}
       </div>
     </SampleDiv>
   );

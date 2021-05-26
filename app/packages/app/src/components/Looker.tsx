@@ -418,11 +418,13 @@ export const defaultLookerOptions = selectorFamily({
     const showConfidence = get(selectors.appConfig).show_confidence;
     const showTooltip = get(selectors.appConfig).show_tooltip;
     const video = get(selectors.isVideoDataset) && !modal ? { loop: true } : {};
+    const imageOrFrame = !get(selectors.isRootView) ? { zoom: true } : {};
     return {
       showAttrs,
       showConfidence,
       showTooltip,
       ...video,
+      ...imageOrFrame,
     };
   },
 });

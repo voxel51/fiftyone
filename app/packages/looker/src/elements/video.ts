@@ -168,6 +168,7 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
         const callback = () => {
           update(
             ({
+              playing,
               duration,
               seeking,
               locked,
@@ -188,13 +189,13 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
                 locked && fragment && newFrameNumber > fragment[1];
               if (!resetToFragment) {
                 this.frameNumber = newFrameNumber;
-              } else {
+              } else if (loop) {
                 newFrameNumber = fragment[0];
               }
 
               return {
                 frameNumber: newFrameNumber,
-                playing: !(resetToFragment && !loop),
+                playing: resetToFragment ? (loop ? true : false) : playing,
               };
             }
           );
@@ -205,9 +206,6 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
       pause: ({ event, update }) => {
         const target = event.target as HTMLVideoElement;
         update(({ playing, seeking, fragment }) => {
-          if (playing && !seeking && !Boolean(fragment) && !target.ended) {
-            target.play();
-          }
           return {};
         });
       },
@@ -282,6 +280,9 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
     }
     if (loaded && playing && this.element.paused) {
       this.element.play();
+    }
+    if (loaded && !playing && !this.element.paused) {
+      this.element.pause();
     }
     return this.element;
   }

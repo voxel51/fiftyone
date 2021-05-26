@@ -1,7 +1,7 @@
 /**
  * Copyright 2017-2021, Voxel51, Inc.
  */
-import { mergeWith } from "immutable";
+import { fromJS, mergeWith } from "immutable";
 
 import "./style.css";
 export { ColorGenerator } from "./color";
@@ -16,6 +16,7 @@ import {
   DEFAULT_VIDEO_OPTIONS,
   Coordinates,
   Optional,
+  BaseSample,
 } from "./state";
 import {
   getFrameElements,
@@ -28,25 +29,18 @@ import { ClassificationLabels } from "./overlays/classifications";
 import { Overlay } from "./overlays/base";
 import processOverlays from "./processOverlays";
 import { ColorGenerator } from "./color";
-import { getContainingBox } from "./util";
-
-interface BaseSample {
-  metadata: {
-    width: number;
-    height: number;
-  };
-}
+import { elementBBox, getContainingBox } from "./util";
 
 export abstract class Looker<
   State extends BaseState = BaseState,
   Sample extends BaseSample = BaseSample
 > {
   private eventTarget: EventTarget;
-  private state: State;
-  private lookerElement: LookerElement<State>;
+  protected lookerElement: LookerElement<State>;
   private canvas: HTMLCanvasElement;
-  private currentOverlays: Overlay<State>[];
 
+  protected state: State;
+  protected currentOverlays: Overlay<State>[];
   protected readonly updater: StateUpdate<State>;
   protected sample: Sample;
 
@@ -83,39 +77,18 @@ export abstract class Looker<
       if (Object.keys(updates).length === 0) {
         return;
       }
-
-      const merger = (o, n) => {
-        if (Array.isArray(n)) {
-          return n;
-        }
-        if (n instanceof Function || n instanceof ColorGenerator) {
-          return n;
-        }
-        if (typeof n !== "object") {
-          return n === undefined ? o : n;
-        }
-        if (n === null) {
-          return n;
-        }
-        return mergeWith(merger, o, n);
-      };
-      this.state = mergeWith<State>(merger, this.state, updates);
+      this.state = mergeUpdates(this.state, updates);
       const context = this.canvas.getContext("2d");
       [this.currentOverlays, this.state.rotate] = processOverlays(
         context,
         this.state,
         this.pluckOverlays(this.state)
       );
-      if (this.state.options.zoom) {
-        const points = this.currentOverlays.map((o) => o.getPoints()).flat();
-        const zoomBBox = getContainingBox(points);
-
-        this.state.pan;
-      }
-      this.lookerElement.render(this.state as Readonly<State>);
+      this.state = this.postProcess();
       if (postUpdate) {
         postUpdate(context, this.state, this.currentOverlays);
       }
+      this.lookerElement.render(this.state as Readonly<State>);
       clearCanvas(context);
       const numOverlays = this.currentOverlays.length;
       for (let index = numOverlays - 1; index >= 0; index--) {
@@ -181,6 +154,10 @@ export abstract class Looker<
       panning: false,
     };
   }
+
+  protected postProcess(): State {
+    return this.state;
+  }
 }
 
 export class FrameLooker extends Looker<FrameState> {
@@ -243,6 +220,14 @@ export class ImageLooker extends Looker<ImageState> {
 
   pluckOverlays() {
     return this.overlays;
+  }
+
+  postProcess(): ImageState {
+    return zoomToContent(
+      this.state,
+      this.currentOverlays,
+      this.lookerElement.element
+    );
   }
 }
 
@@ -377,4 +362,49 @@ function clearCanvas(context: CanvasRenderingContext2D): void {
   context.font = "14px sans-serif";
   // easier for setting offsets
   context.textBaseline = "bottom";
+}
+
+function zoomToContent<State extends FrameState | ImageState>(
+  state: Readonly<State>,
+  currentOverlays: Overlay<State>[],
+  looker: HTMLDivElement
+): State {
+  if (state.options.zoom) {
+    const points = currentOverlays.map((o) => o.getPoints()).flat();
+    const zoomBBox = getContainingBox(points);
+    const windowPixelBBox = elementBBox(looker);
+    const zoomAR = zoomBBox[2] / zoomBBox[3];
+    const windowAR = windowPixelBBox[2] / windowPixelBBox[3];
+
+    let scale = 1;
+    if (windowAR > zoomAR) {
+      scale = 1 / zoomBBox[3];
+    } else {
+      scale = 1 / zoomBBox[2];
+    }
+    return fromJS({ ...state, scale });
+  }
+  return state;
+}
+
+function mergeUpdates<State extends BaseState>(
+  state: State,
+  updates: Optional<State>
+): State {
+  const merger = (o, n) => {
+    if (Array.isArray(n)) {
+      return n;
+    }
+    if (n instanceof Function || n instanceof ColorGenerator) {
+      return n;
+    }
+    if (typeof n !== "object") {
+      return n === undefined ? o : n;
+    }
+    if (n === null) {
+      return n;
+    }
+    return mergeWith(merger, o, n);
+  };
+  return mergeWith(merger, state, updates);
 }

@@ -37,7 +37,7 @@ export abstract class BaseElement<
         (event) =>
           // @ts-ignore
           handler({ event, update, dispatchEvent }),
-        true
+        false
       );
     });
   }

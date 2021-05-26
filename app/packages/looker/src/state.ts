@@ -5,6 +5,13 @@
 import { colorGenerator, ColorGenerator } from "./color";
 import { Overlay } from "./overlays/base";
 
+export interface BaseSample {
+  metadata: {
+    width: number;
+    height: number;
+  };
+}
+
 interface BaseOptions {
   activeLabels: string[];
   colorByLabel: boolean;
@@ -18,7 +25,6 @@ interface BaseOptions {
   showConfidence: boolean;
   showTooltip: boolean;
   onlyShowHoveredLabel: boolean;
-  zoom: boolean;
   smoothMasks: boolean;
 }
 
@@ -43,13 +49,19 @@ export interface ImageConfig extends BaseConfig {}
 
 export interface VideoConfig extends BaseConfig {
   frameRate: number;
+  restPromise?: Promise<BaseSample>;
 }
 
 export interface FrameOptions extends BaseOptions {
   useFrameNumber: boolean;
+  zoom: boolean;
+  zoomPad: number;
 }
 
-export interface ImageOptions extends BaseOptions {}
+export interface ImageOptions extends BaseOptions {
+  zoom: boolean;
+  zoomPad: number;
+}
 
 export interface VideoOptions extends BaseOptions {
   useFrameNumber: boolean;
@@ -142,10 +154,14 @@ const DEFAULT_BASE_OPTIONS = {
 export const DEFAULT_FRAME_OPTIONS = {
   ...DEFAULT_BASE_OPTIONS,
   useFrameNumber: true,
+  zoom: false,
+  zoomPad: 16,
 };
 
 export const DEFAULT_IMAGE_OPTIONS = {
   ...DEFAULT_BASE_OPTIONS,
+  zoom: false,
+  zoomPad: 16,
 };
 
 export const DEFAULT_VIDEO_OPTIONS = {

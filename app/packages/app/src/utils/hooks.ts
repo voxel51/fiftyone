@@ -121,36 +121,6 @@ export const useFollow = (leaderRef, followerRef, set) => {
   useObserve(followerRef ? followerRef.current : null, follow);
 };
 
-export const useVideoData = (socket, id, callback = null) => {
-  return useRecoilCallback(
-    ({ snapshot, set }) => async (...args) => {
-      const isVideo = await snapshot.getPromise(selectors.isVideoDataset);
-      const requested = await snapshot.getPromise(
-        atoms.sampleVideoDataRequested(id)
-      );
-      if (requested || !isVideo) {
-        return;
-      }
-      const counter = await snapshot.getPromise(atoms.viewCounter);
-
-      if (requested === counter) {
-        callback && callback(null, ...args);
-        return;
-      }
-      const event = `video_data-${id}`;
-      const handler = ({ labels, frames, fps }) => {
-        set(atoms.sampleVideoLabels(id), labels);
-        set(atoms.sampleFrameData(id), frames);
-        callback && callback({ labels, frames, counter }, ...args);
-      };
-      attachDisposableHandler(event, handler);
-      socket.send(packageMessage("get_video_data", { _id: id }));
-      set(atoms.sampleVideoDataRequested(id), counter);
-    },
-    [socket, id, callback]
-  );
-};
-
 export const useSampleUpdate = () => {
   const handler = useRecoilCallback(
     ({ set }) => async ({ samples }) => {
