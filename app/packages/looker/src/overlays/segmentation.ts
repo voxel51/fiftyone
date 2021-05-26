@@ -104,6 +104,10 @@ export default class SegmentationOverlay<State extends BaseState>
     return state.options.activeLabels.includes(this.field);
   }
 
+  getPoints() {
+    return getSegmentationPoints([]);
+  }
+
   private getIndex(context: CanvasRenderingContext2D, [x, y]) {
     const [sx, sy] = this.getMaskCoordinates(context, [x, y]);
     return this.mask.shape[1] * sy + sx;
@@ -130,3 +134,14 @@ export default class SegmentationOverlay<State extends BaseState>
     return this.targets[index];
   }
 }
+
+export const getSegmentationPoints = (
+  labels: SegmentationLabel[]
+): Coordinates[] => {
+  return [
+    [0, 0],
+    [0, 1],
+    [1, 0],
+    [1, 1],
+  ];
+};

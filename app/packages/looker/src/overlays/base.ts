@@ -28,7 +28,7 @@ export interface SelectData {
   field: string;
 }
 
-export const isShown = <State extends BaseState, Label extends BaseLabel>(
+export const isShown = <State extends BaseState, Label extends RegularLabel>(
   state: Readonly<State>,
   field: string,
   label: Label

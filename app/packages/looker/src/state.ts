@@ -9,7 +9,9 @@ interface BaseOptions {
   activeLabels: string[];
   colorByLabel: boolean;
   colorGenerator: ColorGenerator;
-  filter: ((label: { label?: string; confidence?: number }) => boolean) | null;
+  filter: {
+    [key: string]: (label: { label?: string; confidence?: number }) => boolean;
+  } | null;
   colorMap: ((key: string | number | null | undefined) => string) | null;
   selectedLabels: string[];
   showAttrs: boolean;
@@ -72,7 +74,6 @@ export interface TooltipOverlay {
 export interface BaseState {
   cursorCoordinates: Coordinates;
   disableControls: boolean;
-  focused: boolean;
   loaded: boolean;
   hovering: boolean;
   hoveringControls: boolean;

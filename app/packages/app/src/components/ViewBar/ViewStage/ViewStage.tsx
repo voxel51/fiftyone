@@ -151,7 +151,7 @@ export const AddViewStage = React.memo(({ send, index, active }) => {
             lineHeight: "2rem",
           }}
         >
-          >
+          {">"}
         </animated.div>
         <animated.div
           style={{

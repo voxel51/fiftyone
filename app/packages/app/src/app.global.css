@@ -27,6 +27,10 @@ body.noscroll {
   overflow: hidden;
 }
 
+.noscroll .sample-grid {
+  overflow: hidden;
+}
+
 * {
   box-sizing: border-box;
 }

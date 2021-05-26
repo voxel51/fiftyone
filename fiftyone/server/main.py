@@ -1275,13 +1275,20 @@ async def _get_sample_data(col, view, page_length, page, detach_frames=True):
     )
 
     results = [{"sample": s} for s in samples]
-    if view.media_type == fom.VIDEO:
+    video = view.media_type == fom.VIDEO
+    if video:
         get_metadata = fosu.get_video_metadata
     else:
         get_metadata = fosu.get_image_metadata
     for r in results:
         for k, v in get_metadata(r["sample"]["filepath"]).items():
             r[k] = v
+
+        if video:
+            if r["sample"]["frames"]["frame_number"] == 1:
+                r["sample"]["frames"] = {1: r["sample"]["frames"]}
+            else:
+                r["sample"]["frames"] = {}
 
     return results, more
 

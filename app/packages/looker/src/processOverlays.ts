@@ -11,7 +11,7 @@ const processOverlays = <State extends BaseState>(
   context: CanvasRenderingContext2D,
   state: State,
   overlays: Overlay<State>[]
-): Overlay<State>[] => {
+): [Overlay<State>[], number] => {
   const activeLabels = state.options.activeLabels;
   const bins = Object.fromEntries(activeLabels.map((l) => [l, []]));
   let classifications = null;
@@ -32,15 +32,15 @@ const processOverlays = <State extends BaseState>(
   let ordered = activeLabels.reduce((acc, cur) => [...acc, ...bins[cur]], []);
 
   if (classifications) {
-    ordered = [classifications, ...ordered];
+    ordered = [[classifications, ...ordered], state.rotate];
   }
 
   if (overlays.length < 1) {
-    return ordered;
+    return [ordered, state.rotate];
   }
 
   if (state.config.thumbnail || !state.cursorCoordinates) {
-    return ordered;
+    return [ordered, state.rotate];
   }
 
   const [x, y] = getCanvasCoordinates(
@@ -66,11 +66,12 @@ const processOverlays = <State extends BaseState>(
     return contained.length ? contained[0] : [];
   }
 
+  let newRotate = state.rotate;
   if (state.rotate !== 0) {
-    contained = rotate(contained, state.rotate);
+    [contained, newRotate] = rotate(contained, state.rotate);
   }
 
-  return [...contained, ...outside];
+  return [[...contained, ...outside], newRotate];
 };
 
 export default processOverlays;

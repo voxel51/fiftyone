@@ -4,12 +4,17 @@
 
 import { BaseState, StateUpdate } from "../state";
 
+type ElementEvent<State extends BaseState, E extends Event> = (args: {
+  event: E;
+  update: StateUpdate<State>;
+  dispatchEvent: (eventType: string, details?: any) => void;
+}) => void;
+
 export type Events<State extends BaseState> = {
-  [K in keyof HTMLElementEventMap]?: (args: {
-    event: HTMLElementEventMap[K];
-    update: StateUpdate<State>;
-    dispatchEvent: (eventType: string, details?: any) => void;
-  }) => void;
+  [K in keyof HTMLElementEventMap]?: ElementEvent<
+    State,
+    HTMLElementEventMap[K]
+  >;
 };
 
 export abstract class BaseElement<
@@ -26,10 +31,13 @@ export abstract class BaseElement<
   ) {
     this.children = children;
     this.element = this.createHTMLElement();
-    Object.entries(this.getEvents()).forEach(([eventType, callback]) => {
-      this.element.addEventListener(eventType, (event) =>
-        // @ts-ignore
-        callback({ event, update, dispatchEvent })
+    Object.entries(this.getEvents()).forEach(([eventType, handler]) => {
+      this.element.addEventListener(
+        eventType,
+        (event) =>
+          // @ts-ignore
+          handler({ event, update, dispatchEvent }),
+        true
       );
     });
   }

@@ -93,4 +93,16 @@ export default class KeypointOverlay<
       type: "Keypoint",
     };
   }
+
+  getPoints() {
+    return getKeypointPoints([this.label]);
+  }
 }
+
+export const getKeypointPoints = (labels: KeypointLabel[]): Coordinates[] => {
+  let points = [];
+  labels.forEach((label) => {
+    points = [...points, ...label.points];
+  });
+  return points;
+};

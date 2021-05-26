@@ -80,6 +80,9 @@ export abstract class Looker<
         stateOrUpdater instanceof Function
           ? stateOrUpdater(this.state)
           : stateOrUpdater;
+      if (Object.keys(updates).length === 0) {
+        return;
+      }
 
       const merger = (o, n) => {
         if (Array.isArray(n)) {
@@ -98,7 +101,7 @@ export abstract class Looker<
       };
       this.state = mergeWith<State>(merger, this.state, updates);
       const context = this.canvas.getContext("2d");
-      this.currentOverlays = processOverlays(
+      [this.currentOverlays, this.state.rotate] = processOverlays(
         context,
         this.state,
         this.pluckOverlays(this.state)
@@ -109,7 +112,6 @@ export abstract class Looker<
 
         this.state.pan;
       }
-      console.log(this.state);
       this.lookerElement.render(this.state as Readonly<State>);
       if (postUpdate) {
         postUpdate(context, this.state, this.currentOverlays);
@@ -168,7 +170,6 @@ export abstract class Looker<
     return {
       cursorCoordinates: null,
       disableControls: false,
-      focused: false,
       hovering: false,
       hoveringControls: false,
       showControls: false,

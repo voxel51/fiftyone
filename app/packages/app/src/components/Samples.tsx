@@ -26,6 +26,7 @@ function Samples() {
   return (
     <Container ref={containerRef}>
       <InfiniteScroll
+        className={"sample-grid"}
         pageStart={1}
         initialLoad={true}
         loadMore={() =>

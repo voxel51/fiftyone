@@ -4,7 +4,7 @@
 
 import { ColorGenerator } from "../color";
 import { DASH_COLOR, DASH_LENGTH } from "../constants";
-import { BaseState } from "../state";
+import { BaseState, Coordinates } from "../state";
 import { computeBBoxForTextOverlay } from "../util";
 import { CONTAINS, isShown, Overlay, RegularLabel } from "./base";
 
@@ -170,4 +170,19 @@ export default class ClassificationsOverlay<State extends BaseState>
       y += PADDING + this.lineHeight;
     }
   }
+
+  getPoints() {
+    return getClassificationPoints([]);
+  }
 }
+
+export const getClassificationPoints = (
+  labels: ClassificationLabel[]
+): Coordinates[] => {
+  return [
+    [0, 0],
+    [0, 1],
+    [1, 0],
+    [1, 1],
+  ];
+};

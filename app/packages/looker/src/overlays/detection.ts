@@ -6,7 +6,13 @@ import { ColorGenerator } from "../color";
 import { DASH_COLOR, DASH_LENGTH, LINE_WIDTH, MASK_ALPHA } from "../constants";
 import { deserialize, NumpyResult } from "../numpy";
 import { BaseState, BoundingBox, Coordinates, Dimensions } from "../state";
-import { distanceFromLineSegment, ensureCanvasSize, inRect } from "../util";
+import {
+  distanceFromLineSegment,
+  elementBBox,
+  ensureCanvasSize,
+  getFitCanvasBBox,
+  inRect,
+} from "../util";
 import { CONTAINS, CoordinateOverlay, RegularLabel } from "./base";
 
 const LABEL_INDEX_PAD = 51;
@@ -44,12 +50,12 @@ const getHeaderWidth = (
   return labelWidth + indexWidth + 2 * pad + LABEL_INDEX_PAD;
 };
 
-const getHeaderHeight = (canvasHeight: number): number => {
-  return Math.min(26, 0.13 * canvasHeight);
+const getHeaderHeight = (canvasHeight: number, fitHeight: number): number => {
+  return Math.max(16, (16 / fitHeight) * canvasHeight);
 };
 
-const getLabelHeight = (canvasHeight: number): number => {
-  return Math.min(20, 0.09 * canvasHeight);
+const getLabelHeight = (canvasHeight: number, fitHeight: number): number => {
+  return Math.max(16, (16 / fitHeight) * canvasHeight);
 };
 
 export default class DetectionOverlay<
@@ -70,15 +76,15 @@ export default class DetectionOverlay<
   }
 
   containsPoint(context, state, [x, y]) {
-    // the header takes up an extra LINE_WIDTH / 2 on each side due to its border
-    if (this.inHeader(context, state, [x, y])) {
+    const [_, __, fh] = getFitCanvasBBox(
+      state.config.dimensions,
+      elementBBox(context.canvas)
+    );
+    if (this.inHeader(context, state, [x, y], fh)) {
       return CONTAINS.BORDER;
     }
-    // the distance from the box contents to the edge of the line segment is
-    // LINE_WIDTH / 2, so this gives a tolerance of an extra LINE_WIDTH on either
-    // side of the border
-    const tolerance = LINE_WIDTH * 1.5;
-    if (this.getMouseDistance(context, state, [x, y]) <= tolerance) {
+
+    if (this.getMouseDistance(context, state, [x, y]) <= 0) {
       return CONTAINS.BORDER;
     }
     if (
@@ -101,7 +107,15 @@ export default class DetectionOverlay<
     const color = this.getColor(state);
     context.strokeStyle = color;
     context.fillStyle = color;
-    context.lineWidth = (LINE_WIDTH / state.config.dimensions[0]) * 1280;
+    const [_, __, fw, fh] = getFitCanvasBBox(
+      state.config.dimensions,
+      elementBBox(context.canvas)
+    );
+    context.lineWidth = Math.max(
+      LINE_WIDTH,
+      (LINE_WIDTH / fw / (state.config.thumbnail ? 2 : 1)) *
+        context.canvas.width
+    );
     const [cw, ch] = [context.canvas.width, context.canvas.height];
     const [bx, by, bw, bh] = getCanvasBBox(this.label.bounding_box, [cw, ch]);
     context.strokeRect(bx, by, bw, bh);
@@ -158,8 +172,8 @@ export default class DetectionOverlay<
 
     if (!state.config.thumbnail) {
       // fill and stroke to account for line thickness variation
-      const headerHeight = getHeaderHeight(ch);
-      const labelHeight = getLabelHeight(ch);
+      const headerHeight = getHeaderHeight(ch, fh);
+      const labelHeight = getLabelHeight(ch, fh);
       const pad = getPad(headerHeight, labelHeight);
       const headerWidth = getHeaderWidth(
         context,
@@ -171,7 +185,7 @@ export default class DetectionOverlay<
       context.strokeRect(bx, by - headerHeight, headerWidth, headerHeight);
       context.fillRect(bx, by - headerHeight, headerWidth, headerHeight);
 
-      context.font = `${getLabelHeight(ch)}px Arial, sans-serif`;
+      context.font = `${getLabelHeight(ch, fh)}px Arial, sans-serif`;
       context.fillStyle = ColorGenerator.white;
       context.fillText(this.getLabelText(state), bx + pad, by - pad);
 
@@ -187,7 +201,11 @@ export default class DetectionOverlay<
   }
 
   getMouseDistance(context, state, [x, y]) {
-    if (this.inHeader(context, state, [x, y])) {
+    const [_, __, fh] = getFitCanvasBBox(
+      state.config.dimensions,
+      elementBBox(context.canvas)
+    );
+    if (this.inHeader(context, state, [x, y], fh)) {
       return 0;
     }
     const [bx, by, bw, bh] = getCanvasBBox(this.label.bounding_box, [
@@ -213,26 +231,24 @@ export default class DetectionOverlay<
   }
 
   getPoints() {
-    const [tlx, tly, w, h] = this.label.bounding_box;
-    return [
-      [tlx, tly],
-      [tlx + w, tly],
-      [tlx + w, tly + h],
-      [tlx, tly + h],
-    ];
+    return getDetectionPoints([this.label]);
   }
 
   private inHeader(
     context: CanvasRenderingContext2D,
     state: Readonly<State>,
-    [x, y]: Coordinates
+    [x, y]: Coordinates,
+    fitHeight: number
   ) {
     const bbox = getCanvasBBox(this.label.bounding_box, [
       context.canvas.width,
       context.canvas.height,
     ]);
-    const headerHeight = getHeaderHeight(context.canvas.height);
-    const pad = getPad(headerHeight, getLabelHeight(context.canvas.height));
+    const headerHeight = getHeaderHeight(context.canvas.height, fitHeight);
+    const pad = getPad(
+      headerHeight,
+      getLabelHeight(context.canvas.height, fitHeight)
+    );
     const headerWidth = getHeaderWidth(
       context,
       this.getLabelText(state),
@@ -241,8 +257,8 @@ export default class DetectionOverlay<
       bbox[3]
     );
     return inRect(x, y, [
-      bbox[0] - LINE_WIDTH / 2,
-      bbox[1] - headerHeight - LINE_WIDTH / 2,
+      bbox[0] - LINE_WIDTH,
+      bbox[1] - headerHeight - LINE_WIDTH,
       headerWidth + LINE_WIDTH,
       headerHeight + LINE_WIDTH,
     ]);
@@ -263,3 +279,18 @@ export default class DetectionOverlay<
       : "";
   }
 }
+
+export const getDetectionPoints = (labels: DetectionLabel[]): Coordinates[] => {
+  let points: Coordinates[] = [];
+  labels.forEach((label) => {
+    const [tlx, tly, w, h] = label.bounding_box;
+    points = [
+      ...points,
+      [tlx, tly],
+      [tlx + w, tly],
+      [tlx + w, tly + h],
+      [tlx, tly + h],
+    ];
+  });
+  return points;
+};

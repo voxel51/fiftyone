@@ -29,7 +29,6 @@ import {
   VideoOptions,
 } from "@fiftyone/looker/src/state";
 import { useLayoutEffect } from "react";
-import { LookerElement } from "@fiftyone/looker/src/elements/common";
 import { useMove } from "react-use-gesture";
 
 const InfoWrapper = styled.div`
@@ -327,7 +326,7 @@ const TooltipInfo = React.memo(
 
     useEventHandler(looker, "tooltip", (e) => {
       setDetail(e.detail ? e.detail : null);
-      setCoords(computeCoordinates(e.detail.coordinates));
+      e.detail && setCoords(computeCoordinates(e.detail.coordinates));
     });
 
     const showProps = useSpring({
@@ -412,16 +411,18 @@ const useLookerOptionsUpdate = (looker) => {
 
 type EventCallback = (event: Event) => void;
 
-export const defaultLookerOptions = selector({
+export const defaultLookerOptions = selectorFamily({
   key: "defaultLookerOptions",
-  get: ({ get }) => {
+  get: (modal) => ({ get }) => {
     const showAttrs = get(selectors.appConfig).show_attributes;
     const showConfidence = get(selectors.appConfig).show_confidence;
     const showTooltip = get(selectors.appConfig).show_tooltip;
+    const video = get(selectors.isVideoDataset) && !modal ? { loop: true } : {};
     return {
       showAttrs,
       showConfidence,
       showTooltip,
+      ...video,
     };
   },
 });
@@ -433,7 +434,7 @@ export const lookerOptions = selectorFamily<
   key: "lookerOptions",
   get: (modal) => ({ get }) => {
     return {
-      ...get(defaultLookerOptions),
+      ...get(defaultLookerOptions(modal)),
       ...get(atoms.savedPlayerOverlayOptions),
       activeLabels: get(labelAtoms.activeFields(modal)),
       colorGenerator: get(selectors.colorGenerator(modal)),

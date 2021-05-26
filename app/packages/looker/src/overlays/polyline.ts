@@ -124,4 +124,18 @@ export default class PolylineOverlay<
       type: "Polyline",
     };
   }
+
+  getPoints() {
+    return getPolylinePoints([this.label]);
+  }
 }
+
+export const getPolylinePoints = (labels: PolylineLabel[]): Coordinates[] => {
+  let points = [];
+  labels.forEach((label) => {
+    label.points.forEach((line) => {
+      points = [...points, ...line];
+    });
+  });
+  return points;
+};

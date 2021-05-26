@@ -16,21 +16,14 @@ export class LookerElement<State extends BaseState> extends BaseElement<
 
   getEvents(): Events<State> {
     return {
-      blur: ({ update }) => {
-        update({ focused: false });
-      },
-      focus: ({ update }) => {
-        update({ focused: true });
-      },
       keydown: ({ event, update }) => {
-        // esc: hide settings
         const e = event as KeyboardEvent;
         switch (e.key) {
           case "ArrowDown":
-            update(({ rotate }) => ({ rotate: rotate - 1 }));
+            update(({ rotate }) => ({ rotate: rotate + 1 }));
             return;
           case "ArrowUp":
-            update(({ rotate }) => ({ rotate: Math.min(rotate + 1, 0) }));
+            update(({ rotate }) => ({ rotate: Math.max(rotate - 1, 0) }));
             return;
           case "Escape":
             update({ showControls: false, showOptions: false });
@@ -92,7 +85,7 @@ export class LookerElement<State extends BaseState> extends BaseElement<
         this.hideControlsTimeout = setTimeout(
           () =>
             update(({ showOptions }) => {
-              if (!showOptions) {
+              if (showOptions) {
                 return { showControls: false };
               }
               return {};
@@ -101,7 +94,7 @@ export class LookerElement<State extends BaseState> extends BaseElement<
         );
         update((state) => {
           if (state.config.thumbnail || !state.panning) {
-            return { rotate: 0 };
+            return state.rotate !== 0 ? { rotate: 0 } : {};
           }
           return {
             rotate: 0,
@@ -148,9 +141,12 @@ export class LookerElement<State extends BaseState> extends BaseElement<
     return element;
   }
 
-  renderSelf({ loaded }) {
+  renderSelf({ loaded, hovering, config: { thumbnail } }) {
     if (loaded && this.element.classList.contains("loading")) {
       this.element.classList.remove("loading");
+    }
+    if (!thumbnail && hovering && this.element !== document.activeElement) {
+      this.element.focus();
     }
     return this.element;
   }
@@ -195,19 +191,24 @@ export class CanvasElement<State extends BaseState> extends BaseElement<
           }
         });
       },
-      mouseleave: ({ update }) => {
+      mouseleave: ({ update, dispatchEvent }) => {
         update({
           cursorCoordinates: null,
           disableControls: false,
         });
+        dispatchEvent("tooltip", null);
       },
       mousemove: ({ event, update, dispatchEvent }) => {
         update(
-          {
-            cursorCoordinates: [
-              (<MouseEvent>event).clientX,
-              (<MouseEvent>event).clientY,
-            ],
+          (state) => {
+            return state.config.thumbnail
+              ? {}
+              : {
+                  cursorCoordinates: [
+                    (<MouseEvent>event).clientX,
+                    (<MouseEvent>event).clientY,
+                  ],
+                };
           },
           (context, state, overlays) => {
             // @ts-ignore
@@ -550,6 +551,7 @@ export class WindowElement<State extends BaseState> extends BaseElement<State> {
     }
     this.element.style.transform =
       "translate(" + x + "px, " + y + "px) scale(" + scale + ")";
+
     return this.element;
   }
 }

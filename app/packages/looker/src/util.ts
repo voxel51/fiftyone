@@ -289,13 +289,17 @@ export const getCanvasCoordinates = function (
 /**
  * Rotates items in an array.
  */
-export const rotate = (array: any[], rotation: number): any[] => {
-  const len = array.length >>> 0; // convert to uint
+export const rotate = (array: any[], rotation: number): [any[], number] => {
+  rotation = Math.min(rotation, array.length - 1);
+  return [[...array.slice(rotation), ...array.slice(0, rotation)], rotation];
+};
 
-  // convert count to value in range [0, len)
-  const count = ((rotation % len) + len) % len;
-
-  const result = [...array];
-  result.push(array.splice(0, count));
-  return result;
+export const elementBBox = (element: HTMLElement): BoundingBox => {
+  const {
+    top: tlx,
+    left: tly,
+    width: w,
+    height: h,
+  } = element.getBoundingClientRect();
+  return [tlx, tly, w, h];
 };

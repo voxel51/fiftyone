@@ -153,10 +153,12 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
     return {
       keydown: ({ event, update }) => {
         if (event.key === "Space") {
-          update(({ playing }) => {
-            return {
-              playing: !playing,
-            };
+          update(({ playing, config: { thumbnail } }) => {
+            return thumbnail
+              ? {}
+              : {
+                  playing: !playing,
+                };
           });
         }
 
@@ -193,8 +195,8 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
         }
       },
       mouseenter: ({ update }) => {
-        update(({ loaded, config: { thumbnail } }) => {
-          if (thumbnail && loaded) {
+        update(({ config: { thumbnail } }) => {
+          if (thumbnail) {
             return {
               playing: true,
             };
@@ -203,8 +205,8 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
         });
       },
       mouseleave: ({ update }) => {
-        update(({ loaded, config: { thumbnail } }) => {
-          if (thumbnail && loaded) {
+        update(({ config: { thumbnail } }) => {
+          if (thumbnail) {
             return {
               playing: false,
             };
@@ -215,14 +217,13 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
       error: ({ event, dispatchEvent }) => {
         dispatchEvent("error", { event });
       },
-      loadedmetadata: ({ update }) => {
-        update({ loaded: true });
-      },
       loadeddata: ({ update, dispatchEvent }) => {
-        update(({ playing, options: { autoplay } }) => ({
-          loaded: true,
-          playing: autoplay || playing,
-        }));
+        update(({ playing, options: { autoplay } }) => {
+          return {
+            loaded: true,
+            playing: autoplay || playing,
+          };
+        });
         dispatchEvent("load");
       },
       play: ({ event, update }) => {
@@ -321,19 +322,29 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
     element.className = "looker-video";
     element.setAttribute("preload", "metadata");
     element.muted = true; // this works whereas .setAttribute does not
+    this.frameNumber = 1;
     return element;
   }
 
-  renderSelf({ config: { src }, frameNumber, seeking }) {
+  renderSelf({
+    config: { src, frameRate },
+    frameNumber,
+    seeking,
+    playing,
+    loaded,
+  }) {
     if (this.src !== src) {
       this.src = src;
       this.element.setAttribute("src", src);
     }
     if (this.frameNumber !== frameNumber) {
-      this.element.currentTime = frameNumber;
+      this.element.currentTime = getTime(frameNumber, frameRate);
     }
     if (seeking && !this.element.paused) {
       this.element.pause();
+    }
+    if (loaded && playing && this.element.paused) {
+      this.element.play();
     }
     return this.element;
   }
