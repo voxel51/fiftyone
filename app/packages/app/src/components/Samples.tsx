@@ -17,6 +17,12 @@ const Container = styled.div`
   height: 100%;
 `;
 
+const Row = styled.div`
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+`;
+
 function Samples() {
   const [containerRef, bounds] = useMeasure();
 
@@ -37,40 +43,35 @@ function Samples() {
         hasMore={scrollState.hasMore}
         useWindow={false}
       >
-        {rows.map((r, i) => (
-          <React.Fragment key={i}>
-            <div
-              style={{
-                ...r.style,
-                height: (bounds.width - 16) / r.aspectRatio,
-              }}
-              key={i}
-            >
-              {r.samples.map((id, j) => (
-                <React.Fragment key={j}>
-                  <div key={"column"} style={{ padding: 0, width: "100%" }}>
-                    <Sample sampleId={id} />
-                  </div>
-                  {j < r.samples.length - 1 && (
+        {rows.map((r, i) => {
+          const adjustedWidth = bounds.width - 16 - (r.samples.length - 1) * 4;
+          const height = adjustedWidth / r.aspectRatio;
+          return (
+            <React.Fragment key={i}>
+              <Row
+                style={{
+                  height,
+                }}
+                key={i}
+              >
+                {r.samples.map(({ id, aspectRatio }, j) => (
+                  <React.Fragment key={j}>
                     <div
-                      key={"separator"}
-                      style={{ padding: 0, width: "100%" }}
-                    />
-                  )}
-                </React.Fragment>
-              ))}
-              {Array.from(Array(r.extraMargins).keys()).map((i) => (
-                <div
-                  key={`separator-${i}`}
-                  style={{ padding: 0, width: "100%" }}
-                />
-              ))}
-            </div>
-            <div
-              style={{ width: "100%", display: "block", paddingTop: "0.2%" }}
-            />
-          </React.Fragment>
-        ))}
+                      key={"column"}
+                      style={{
+                        padding: 0,
+                        height: "100%",
+                        width: height * aspectRatio,
+                      }}
+                    >
+                      <Sample sampleId={id} />
+                    </div>
+                  </React.Fragment>
+                ))}
+              </Row>
+            </React.Fragment>
+          );
+        })}
       </InfiniteScroll>
       {scrollState.isLoading && rows.length === 0 ? <Loading /> : null}
     </Container>

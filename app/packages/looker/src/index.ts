@@ -41,6 +41,7 @@ export abstract class Looker<
 
   protected state: State;
   protected currentOverlays: Overlay<State>[];
+  protected pluckedOverlays: Overlay<State>[];
   protected readonly updater: StateUpdate<State>;
   protected sample: Sample;
 
@@ -79,10 +80,11 @@ export abstract class Looker<
       }
       this.state = mergeUpdates(this.state, updates);
       const context = this.canvas.getContext("2d");
+      this.pluckedOverlays = this.pluckOverlays(this.state);
       [this.currentOverlays, this.state.rotate] = processOverlays(
         context,
         this.state,
-        this.pluckOverlays(this.state)
+        this.pluckedOverlays
       );
       this.state = this.postProcess();
       postUpdate && postUpdate(context, this.state, this.currentOverlays);
@@ -188,6 +190,14 @@ export class FrameLooker extends Looker<FrameState> {
   pluckOverlays() {
     return this.overlays;
   }
+
+  postProcess(): FrameState {
+    return zoomToContent(
+      this.state,
+      this.pluckedOverlays,
+      this.lookerElement.element
+    );
+  }
 }
 
 export class ImageLooker extends Looker<ImageState> {
@@ -223,7 +233,7 @@ export class ImageLooker extends Looker<ImageState> {
   postProcess(): ImageState {
     return zoomToContent(
       this.state,
-      this.currentOverlays,
+      this.pluckedOverlays,
       this.lookerElement.element
     );
   }
@@ -380,7 +390,8 @@ function zoomToContent<State extends FrameState | ImageState>(
     } else {
       scale = 1 / zoomBBox[2];
     }
-    return mergeUpdates(state, { scale });
+    const pan = [windowPixelBBox[2] * scale * ((zoomBBox[2] - 1) / 2), 0];
+    return mergeUpdates(state, { scale, pan });
   }
   return state;
 }

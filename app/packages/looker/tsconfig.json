@@ -13,7 +13,8 @@
     "skipLibCheck": true,
     "module": "esnext",
     "target": "esnext",
-    "jsx": "preserve"
+    "jsx": "preserve",
+    "composite": true
   },
   "include": ["src"]
 }

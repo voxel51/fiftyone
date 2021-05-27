@@ -128,6 +128,7 @@ export class LookerElement<State extends BaseState> extends BaseElement<
           return {
             pan: [x - xs * scale, y - ys * scale],
             scale,
+            options: { zoom: false },
           };
         });
       },

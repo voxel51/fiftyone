@@ -5,19 +5,9 @@ export interface State {
   pageToLoad: number | null;
 }
 
-interface RowStyle {
-  display: string;
-  gridTemplateColumns: string;
-  width: string;
-  margin: number;
-}
-
 interface Row {
-  style: RowStyle;
-  columns: number;
-  samples: string[];
+  samples: { id: string; aspectRatio: number };
   aspectRatio: number;
-  extraMargins: number;
 }
 
 interface Rows {
@@ -40,16 +30,16 @@ const lastRowRefWidth = (
     .slice(1)
     .every((i) => baseAspectRatio === i.aspect_ratio);
 
+  let margins = 0;
   if (sameAspectRatios) {
     let currentAR = row[0].aspect_ratio;
-    let extraMargins = 0;
     while (currentAR < threshold) {
       currentAR += row[0].aspect_ratio;
-      extraMargins += 1;
+      margins += 1;
     }
-    return [currentAR, extraMargins];
+    return [currentAR, margins];
   } else {
-    return [threshold, 0];
+    return [threshold, margins];
   }
 };
 
@@ -76,9 +66,11 @@ export default function tile(
     if (currentAR >= rowAspectRatioThreshold) {
       newRows.push(currentRow);
       currentRow = [s];
-      currentAR += s.aspect_ratio;
+      currentAR = s.aspect_ratio;
       continue;
     }
+
+    currentAR += s.aspect_ratio;
     currentRow.push(s);
   }
 
@@ -88,49 +80,19 @@ export default function tile(
 
   for (const i in newRows) {
     const row = newRows[i];
-    const columns = [];
-    const [refWidth, extraMargins] =
+    const [ar] =
       !Boolean(newHasMore) &&
       i === String(newRows.length - 1) &&
       currentAR < rowAspectRatioThreshold
         ? lastRowRefWidth(row, rowAspectRatioThreshold)
         : [currentAR, 0];
 
-    for (const { aspect_ratio } of row) {
-      columns.push(aspect_ratio / refWidth);
-    }
-
-    let gridColumns = columns
-      .map((c) => {
-        return (
-          (c * (100 - (columns.length - 1 + extraMargins) / 5)).toFixed(2) + "%"
-        );
-      })
-      .reduce((acc, cur, i) => {
-        if (i < columns.length - 1) {
-          return [...acc, cur, "0.2%"];
-        }
-        return [...acc, cur];
-      }, []);
-
-    gridColumns = gridColumns.concat(
-      Array.from(Array(extraMargins).keys()).map(() => "0.2%")
-    );
-    const gridColumnsLength = gridColumns.length;
-    const rowStyle = {
-      display: "grid",
-      gridTemplateColumns: gridColumns.join(" "),
-      width: "100%",
-      margin: 0,
-    };
-
     rows.push({
-      style: rowStyle,
-      columns: gridColumnsLength,
-      samples: row.map((s) => s.sample._id),
-      aspectRatio:
-        refWidth + ((columns.length - 1 + extraMargins) / 5) * (refWidth / 100),
-      extraMargins,
+      samples: row.map((s) => ({
+        id: s.sample._id,
+        aspectRatio: s.aspect_ratio,
+      })),
+      aspectRatio: ar,
     });
   }
 
