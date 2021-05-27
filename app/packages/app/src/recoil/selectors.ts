@@ -777,7 +777,7 @@ export const currentSamples = selector<string[]>({
   key: "currentSamples",
   get: ({ get }) => {
     const { rows } = get(atoms.gridRows);
-    return rows.map((r) => r.samples).flat();
+    return rows.map((r) => r.samples.map(({ id }) => id)).flat();
   },
 });
 

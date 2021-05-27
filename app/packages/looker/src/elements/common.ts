@@ -2,6 +2,7 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 
+import { CANVAS_WIDTH, MAX_SCALE } from "../constants";
 import { BaseState, Coordinates } from "../state";
 import { getCanvasCoordinates, getFitCanvasBBox } from "../util";
 import { BaseElement, Events } from "./base";
@@ -127,7 +128,7 @@ export class LookerElement<State extends BaseState> extends BaseElement<
           const xs = (x - px) / scale;
           const ys = (y - py) / scale;
           scale = Math.max(
-            Math.min(event.deltaY < 0 ? scale * 1.2 : scale / 1.2, 6),
+            Math.min(event.deltaY < 0 ? scale * 1.2 : scale / 1.2, MAX_SCALE),
             1
           );
 
@@ -220,18 +221,19 @@ export class CanvasElement<State extends BaseState> extends BaseElement<
     };
   }
 
-  createHTMLElement() {
+  createHTMLElement({
+    config: {
+      dimensions: [w, h],
+    },
+  }) {
     const element = document.createElement("canvas");
+    element.width = CANVAS_WIDTH;
+    element.height = CANVAS_WIDTH / (w / h);
     element.className = "looker-canvas";
     return element;
   }
 
-  renderSelf({ config: { dimensions } }) {
-    if (this.element.width !== 1280) {
-      const aspectRatio = dimensions[0] / dimensions[1];
-      this.element.width = 1280;
-      this.element.height = 1280 / aspectRatio;
-    }
+  renderSelf() {
     return this.element;
   }
 }

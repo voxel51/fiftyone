@@ -16,11 +16,13 @@ import { createElementsTree, withEvents } from "./util";
 import * as video from "./video";
 
 export type GetElements<State extends BaseState> = (
+  state: Readonly<State>,
   update: StateUpdate<State>,
   dispatchEvent: (eventType: string, details?: any) => void
 ) => common.LookerElement<State>;
 
 export const getFrameElements: GetElements<FrameState> = (
+  state,
   update,
   dispatchEvent
 ) => {
@@ -55,12 +57,14 @@ export const getFrameElements: GetElements<FrameState> = (
 
   return createElementsTree<FrameState, common.LookerElement<FrameState>>(
     elements,
+    state,
     update,
     dispatchEvent
   );
 };
 
 export const getImageElements: GetElements<ImageState> = (
+  state,
   update,
   dispatchEvent
 ) => {
@@ -92,12 +96,14 @@ export const getImageElements: GetElements<ImageState> = (
 
   return createElementsTree<ImageState, common.LookerElement<ImageState>>(
     elements,
+    state,
     update,
     dispatchEvent
   );
 };
 
 export const getVideoElements: GetElements<VideoState> = (
+  state,
   update,
   dispatchEvent
 ) => {
@@ -135,6 +141,7 @@ export const getVideoElements: GetElements<VideoState> = (
 
   return createElementsTree<VideoState, common.LookerElement<VideoState>>(
     elements,
+    state,
     update,
     dispatchEvent
   );

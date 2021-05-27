@@ -29,7 +29,8 @@ import { ClassificationLabels } from "./overlays/classifications";
 import { Overlay } from "./overlays/base";
 import processOverlays from "./processOverlays";
 import { ColorGenerator } from "./color";
-import { elementBBox, getContainingBox, getFitCanvasBBox } from "./util";
+import { elementBBox, getContainingBox } from "./util";
+import { MAX_SCALE } from "./constants";
 
 export abstract class Looker<
   State extends BaseState = BaseState,
@@ -55,6 +56,7 @@ export abstract class Looker<
     this.eventTarget = new EventTarget();
     this.updater = this.makeUpdate();
     this.state = this.getInitialState(config, options);
+    this.pluckedOverlays = this.pluckOverlays(this.state);
     this.lookerElement = this.getElements();
     this.canvas = this.lookerElement.render(this.state).querySelector("canvas");
   }
@@ -86,7 +88,7 @@ export abstract class Looker<
         this.state,
         this.pluckedOverlays
       );
-      this.state = this.postProcess();
+      this.state = this.postProcess(this.lookerElement.element);
       postUpdate && postUpdate(context, this.state, this.currentOverlays);
       this.lookerElement.render(this.state as Readonly<State>);
       clearCanvas(context);
@@ -106,6 +108,7 @@ export abstract class Looker<
   }
 
   attach(element: HTMLElement): void {
+    this.state = this.postProcess(element);
     element.appendChild(this.lookerElement.render(this.state));
   }
 
@@ -155,7 +158,7 @@ export abstract class Looker<
     };
   }
 
-  protected postProcess(): State {
+  protected postProcess(element: HTMLElement): State {
     return this.state;
   }
 }
@@ -164,7 +167,7 @@ export class FrameLooker extends Looker<FrameState> {
   private overlays: Overlay<FrameState>[];
 
   getElements() {
-    return getFrameElements(this.updater, this.getDispatchEvent());
+    return getFrameElements(this.state, this.updater, this.getDispatchEvent());
   }
 
   getInitialState(config, options) {
@@ -191,12 +194,8 @@ export class FrameLooker extends Looker<FrameState> {
     return this.overlays;
   }
 
-  postProcess(): FrameState {
-    return zoomToContent(
-      this.state,
-      this.pluckedOverlays,
-      this.lookerElement.element
-    );
+  postProcess(element): FrameState {
+    return zoomToContent(this.state, this.pluckedOverlays, element);
   }
 }
 
@@ -204,7 +203,7 @@ export class ImageLooker extends Looker<ImageState> {
   private overlays: Overlay<ImageState>[];
 
   getElements() {
-    return getImageElements(this.updater, this.getDispatchEvent());
+    return getImageElements(this.state, this.updater, this.getDispatchEvent());
   }
 
   getInitialState(config, options) {
@@ -230,12 +229,8 @@ export class ImageLooker extends Looker<ImageState> {
     return this.overlays;
   }
 
-  postProcess(): ImageState {
-    return zoomToContent(
-      this.state,
-      this.pluckedOverlays,
-      this.lookerElement.element
-    );
+  postProcess(element): ImageState {
+    return zoomToContent(this.state, this.pluckedOverlays, element);
   }
 }
 
@@ -248,7 +243,7 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
   private frameOverlays: { [frameNumber: number]: Overlay<VideoState>[] };
 
   getElements() {
-    return getVideoElements(this.updater, this.getDispatchEvent());
+    return getVideoElements(this.state, this.updater, this.getDispatchEvent());
   }
 
   getInitialState(config, options) {
@@ -382,19 +377,27 @@ function zoomToContent<State extends FrameState | ImageState>(
     const [w, h] = state.config.dimensions;
     const zoomBBox = getContainingBox(points);
     const windowPixelBBox = elementBBox(looker);
-    const zoomAR = (zoomBBox[2] * w) / (zoomBBox[3] * h);
     const windowAR = windowPixelBBox[2] / windowPixelBBox[3];
 
-    let scale = 1;
+    let squeeze = 1,
+      scale = 1;
     let pan = [0, 0];
     if (windowAR > w / h) {
-      scale = scale / zoomBBox[3];
+      scale = Math.min(MAX_SCALE, scale / zoomBBox[3]);
+      const iw = (windowPixelBBox[3] * scale) / (h / w);
+      const margin = (windowPixelBBox[2] * scale - iw) / 2;
+      pan = [
+        -margin - zoomBBox[0] * iw,
+        -squeeze * scale * windowPixelBBox[3] * zoomBBox[1],
+      ];
     } else {
-      scale = scale / zoomBBox[2];
-      const ih = (windowPixelBBox[2] * scale) / w / h;
-
-      const margin = (windowPixelBBox[3] - ih) / 2;
-      pan = [-1 * scale * windowPixelBBox[2] * zoomBBox[0], -1 * margin];
+      scale = Math.min(MAX_SCALE, scale / zoomBBox[2]);
+      const ih = (windowPixelBBox[2] * scale) / (w / h);
+      const margin = (windowPixelBBox[3] * scale - ih) / 2;
+      pan = [
+        -squeeze * scale * windowPixelBBox[2] * zoomBBox[0],
+        -margin - zoomBBox[1] * ih,
+      ];
     }
     return mergeUpdates(state, { scale, pan });
   }

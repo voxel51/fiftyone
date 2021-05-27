@@ -17,12 +17,7 @@ import Looker from "./Looker";
 import { ModalFooter } from "./utils";
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
-import {
-  useEventHandler,
-  useKeydownHandler,
-  useResizeHandler,
-  useTheme,
-} from "../utils/hooks";
+import { useKeydownHandler, useTheme } from "../utils/hooks";
 import { formatMetadata } from "../utils/labels";
 import { showModalJSON } from "../recoil/utils";
 import Loading from "./Common/Loading";
