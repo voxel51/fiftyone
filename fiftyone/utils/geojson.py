@@ -465,7 +465,7 @@ class GeoJSONImageDatasetExporter(
         pretty_print=False,
         export_media=True,
     ):
-        super().__init__(export_dir)
+        super().__init__(export_dir, export_media=export_media)
         self.location_field = location_field
         self.property_makers = property_makers
         self.omit_none_fields = omit_none_fields

@@ -196,7 +196,7 @@ class VOCDetectionDatasetImporter(
         to_uuid = lambda p: os.path.splitext(os.path.basename(p))[0]
 
         self._uuids_to_image_paths = self.get_uuids_to_filepaths(
-            self.dataset_dir,
+            self.dataset_dir, include_uuid_ext=False,
         )
 
         labels_dir = os.path.join(self.dataset_dir, "labels")

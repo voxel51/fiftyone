@@ -673,12 +673,10 @@ class ExportsVideos(object):
             json_path: the complete filepath to the .json file that was written
         """
         if not self._export_media:
-            return
+            if os.path.splitext(json_path)[1] is not ".json":
+                json_path = os.path.join(json_path, "data.json")
 
-        if os.path.splitext(json_path)[1] is not ".json":
-            json_path = os.path.join(json_path, "data.json")
-
-        etas.write_json(self._filepath_mapping, json_path)
+            etas.write_json(self._filepath_mapping, json_path)
 
 
 class GenericSampleDatasetExporter(DatasetExporter):

@@ -496,7 +496,7 @@ class TFRecordsLabeledImageDatasetImporter(foud.LabeledImageDatasetImporter):
         return self._sample_parser.has_image_metadata
 
     def setup(self):
-        tf_records_patt = os.path.join(self.dataset_dir, "*")
+        tf_records_patt = os.path.join(self.dataset_dir, "*record*")
         tf_dataset = from_tf_records(tf_records_patt)
 
         self._dataset_ingestor = foud.LabeledImageDatasetIngestor(

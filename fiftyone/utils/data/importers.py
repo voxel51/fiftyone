@@ -499,7 +499,11 @@ class ImportsDataJson(object):
         self._data_json = data_json
 
     def get_uuids_to_filepaths(
-        self, dataset_dir, file_or_dir_name="data", uuids_list=None,
+        self,
+        dataset_dir,
+        file_or_dir_name="data",
+        uuids_list=None,
+        include_uuid_ext=True,
     ):
         """Loads the uuid to filepath mapping from the ``data.json`` in the
         dataset directory or directly from the directory containing the media
@@ -507,8 +511,11 @@ class ImportsDataJson(object):
         
         Args:
             dataset_dir: the dataset directory
-            file_or_dir_name: name of the json file containing uuid to filepath
+            file_or_dir_name ("data"): name of the json file containing uuid to filepath
                 mappings or of the directory containing media data
+            uuids_list (None): a list of uuids to be included in the returned mapping,
+                all others will be ignored
+            include_uuid_ext (True): whether to include the file extension in the uuid
         
         Returns:
             uuids_to_filepaths: a dict mapping unqiue filenames to filepaths
@@ -526,8 +533,17 @@ class ImportsDataJson(object):
 
             uuids_to_filepaths = etas.load_json(data_json_path)
 
+            if not include_uuid_ext:
+                uuids_to_filepaths = {
+                    os.path.splitext(uuid)[0]: fp
+                    for uuid, fp in uuids_to_filepaths.items()
+                }
+
         else:
-            to_uuid = lambda p: os.path.splitext(os.path.basename(p))[0]
+            if include_uuid_ext:
+                to_uuid = lambda p: os.path.basename(p)
+            else:
+                to_uuid = lambda p: os.path.splitext(os.path.basename(p))[0]
 
             data_dir = os.path.join(dataset_dir, file_or_dir_name)
             if os.path.isdir(data_dir):

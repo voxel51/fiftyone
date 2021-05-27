@@ -170,7 +170,7 @@ class YOLODatasetImporter(
             uuids = list(uuids_to_labels_paths.keys())
 
         uuids_to_image_paths = self.get_uuids_to_filepaths(
-            self.dataset_dir, uuids_list=uuids,
+            self.dataset_dir, uuids_list=uuids, include_uuid_ext=False,
         )
 
         self._classes = classes

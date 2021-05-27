@@ -270,7 +270,9 @@ class CVATImageDatasetImporter(
         return self._info
 
 
-class CVATVideoDatasetImporter(foud.LabeledVideoDatasetImporter):
+class CVATVideoDatasetImporter(
+    foud.ImportsDataJson, foud.LabeledVideoDatasetImporter
+):
     """Importer for CVAT video datasets stored on disk.
 
     See :class:`fiftyone.types.dataset_types.CVATVideoDataset` for format
@@ -284,6 +286,9 @@ class CVATVideoDatasetImporter(foud.LabeledVideoDatasetImporter):
         seed (None): a random seed to use when shuffling
         max_samples (None): a maximum number of samples to import. By default,
             all samples are imported
+        data_json (False): whether to load media from the location(s)
+            defined by the ``dataset_type`` or to use media locations
+            stored in a ``data.json`` file 
     """
 
     def __init__(
@@ -293,6 +298,7 @@ class CVATVideoDatasetImporter(foud.LabeledVideoDatasetImporter):
         shuffle=False,
         seed=None,
         max_samples=None,
+        data_json=False,
     ):
         super().__init__(
             dataset_dir,
@@ -300,6 +306,7 @@ class CVATVideoDatasetImporter(foud.LabeledVideoDatasetImporter):
             shuffle=shuffle,
             seed=seed,
             max_samples=max_samples,
+            data_json=data_json,
         )
         self._info = None
         self._cvat_task_labels = None
@@ -364,15 +371,6 @@ class CVATVideoDatasetImporter(foud.LabeledVideoDatasetImporter):
     def setup(self):
         to_uuid = lambda p: os.path.splitext(os.path.basename(p))[0]
 
-        data_dir = os.path.join(self.dataset_dir, "data")
-        if os.path.isdir(data_dir):
-            self._uuids_to_video_paths = {
-                to_uuid(p): p
-                for p in etau.list_files(data_dir, abs_paths=True)
-            }
-        else:
-            self._uuids_to_video_paths = {}
-
         labels_dir = os.path.join(self.dataset_dir, "labels")
         if os.path.isdir(labels_dir):
             self._uuids_to_labels_paths = {
@@ -381,6 +379,10 @@ class CVATVideoDatasetImporter(foud.LabeledVideoDatasetImporter):
             }
         else:
             self._uuids_to_labels_paths = {}
+
+        self._uuids_to_video_paths = self.get_uuids_to_filepaths(
+            self.dataset_dir
+        )
 
         if self.skip_unlabeled:
             uuids = sorted(self._uuids_to_labels_paths.keys())
@@ -439,7 +441,6 @@ class CVATImageDatasetExporter(foud.LabeledImageDatasetExporter):
         self._data_dir = os.path.join(self.export_dir, "data")
         self._labels_path = os.path.join(self.export_dir, "labels.xml")
         self._cvat_images = []
-        print(self.image_format)
         self._setup_filename_maker(
             output_dir=self._data_dir, default_ext=self.image_format
         )
