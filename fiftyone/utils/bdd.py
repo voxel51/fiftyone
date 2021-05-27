@@ -243,7 +243,7 @@ class BDDDatasetImporter(
         else:
             self._anno_dict_map = {}
 
-        uuids_to_image_paths = self.get_uuids_to_filepaths(self.dataset_dir,)
+        uuids_to_image_paths = self.get_uuids_to_filepaths(self.dataset_dir)
         filenames = list(uuids_to_image_paths.keys())
 
         if self.skip_unlabeled:

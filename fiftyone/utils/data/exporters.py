@@ -1658,6 +1658,7 @@ class FiftyOneImageLabelsDatasetExporter(LabeledImageDatasetExporter):
             default_ext=self.image_format,
             ignore_exts=True,
         )
+        self._disable_data_json()
 
     def log_collection(self, sample_collection):
         self._description = sample_collection.info.get("description", None)

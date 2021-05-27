@@ -1483,7 +1483,9 @@ class VideoDirectoryImporter(UnlabeledVideoDatasetImporter):
         return len(filepaths)
 
 
-class FiftyOneImageClassificationDatasetImporter(LabeledImageDatasetImporter):
+class FiftyOneImageClassificationDatasetImporter(
+    ImportsDataJson, LabeledImageDatasetImporter
+):
     """Importer for image classification datasets stored on disk in FiftyOne's
     default format.
 
@@ -1501,6 +1503,9 @@ class FiftyOneImageClassificationDatasetImporter(LabeledImageDatasetImporter):
         seed (None): a random seed to use when shuffling
         max_samples (None): a maximum number of samples to import. By default,
             all samples are imported
+        data_json (False): whether to load media from the location(s)
+            defined by the ``dataset_type`` or to use media locations
+            stored in a ``data.json`` file 
     """
 
     def __init__(
@@ -1511,6 +1516,7 @@ class FiftyOneImageClassificationDatasetImporter(LabeledImageDatasetImporter):
         shuffle=False,
         seed=None,
         max_samples=None,
+        data_json=False,
     ):
         super().__init__(
             dataset_dir,
@@ -1518,6 +1524,7 @@ class FiftyOneImageClassificationDatasetImporter(LabeledImageDatasetImporter):
             shuffle=shuffle,
             seed=seed,
             max_samples=max_samples,
+            data_json=data_json,
         )
         self.compute_metadata = compute_metadata
         self._classes = None
@@ -1566,11 +1573,9 @@ class FiftyOneImageClassificationDatasetImporter(LabeledImageDatasetImporter):
     def setup(self):
         self._sample_parser = FiftyOneImageClassificationSampleParser()
 
-        data_dir = os.path.join(self.dataset_dir, "data")
-        self._image_paths_map = {
-            os.path.splitext(os.path.basename(p))[0]: p
-            for p in etau.list_files(data_dir, abs_paths=True)
-        }
+        self._image_paths_map = self.get_uuids_to_filepaths(
+            self.dataset_dir, include_uuid_ext=False,
+        )
 
         labels_path = os.path.join(self.dataset_dir, "labels.json")
         if os.path.isfile(labels_path):
@@ -1834,7 +1839,9 @@ class VideoClassificationDirectoryTreeImporter(LabeledVideoDatasetImporter):
         return num_samples
 
 
-class FiftyOneImageDetectionDatasetImporter(LabeledImageDatasetImporter):
+class FiftyOneImageDetectionDatasetImporter(
+    ImportsDataJson, LabeledImageDatasetImporter
+):
     """Importer for image detection datasets stored on disk in FiftyOne's
     default format.
 
@@ -1852,6 +1859,9 @@ class FiftyOneImageDetectionDatasetImporter(LabeledImageDatasetImporter):
         seed (None): a random seed to use when shuffling
         max_samples (None): a maximum number of samples to import. By default,
             all samples are imported
+        data_json (False): whether to load media from the location(s)
+            defined by the ``dataset_type`` or to use media locations
+            stored in a ``data.json`` file 
     """
 
     def __init__(
@@ -1862,6 +1872,7 @@ class FiftyOneImageDetectionDatasetImporter(LabeledImageDatasetImporter):
         shuffle=False,
         seed=None,
         max_samples=None,
+        data_json=False,
     ):
         super().__init__(
             dataset_dir,
@@ -1869,6 +1880,7 @@ class FiftyOneImageDetectionDatasetImporter(LabeledImageDatasetImporter):
             shuffle=shuffle,
             seed=seed,
             max_samples=max_samples,
+            data_json=data_json,
         )
         self.compute_metadata = compute_metadata
         self._classes = None
@@ -1921,11 +1933,9 @@ class FiftyOneImageDetectionDatasetImporter(LabeledImageDatasetImporter):
     def setup(self):
         self._sample_parser = FiftyOneImageDetectionSampleParser()
 
-        data_dir = os.path.join(self.dataset_dir, "data")
-        self._image_paths_map = {
-            os.path.splitext(os.path.basename(p))[0]: p
-            for p in etau.list_files(data_dir, abs_paths=True)
-        }
+        self._image_paths_map = self.get_uuids_to_filepaths(
+            self.dataset_dir, include_uuid_ext=False,
+        )
 
         labels_path = os.path.join(self.dataset_dir, "labels.json")
         if os.path.isfile(labels_path):
