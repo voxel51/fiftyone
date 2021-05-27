@@ -3917,7 +3917,10 @@ class SampleCollection(object):
             field_or_expr: a field name, ``embedded.field.name``,
                 :class:`fiftyone.core.expressions.ViewExpression`, or
                 `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
-                defining the field or expression to aggregate
+                defining the field or expression to aggregate. This can also
+                be a list or tuple of such arguments, in which case a tuple of
+                corresponding aggregation results (each receiving the same
+                additional keyword arguments, if any) will be returned
             expr (None): a :class:`fiftyone.core.expressions.ViewExpression` or
                 `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
                 to apply to ``field_or_expr`` (which must be a field) before
@@ -3926,7 +3929,8 @@ class SampleCollection(object):
         Returns:
             the ``(min, max)`` bounds
         """
-        return self.aggregate(foa.Bounds(field_or_expr, expr=expr))
+        make = lambda field_or_expr: foa.Bounds(field_or_expr, expr=expr)
+        return self._make_and_aggregate(make, field_or_expr)
 
     @aggregation
     def count(self, field_or_expr=None, expr=None):
@@ -4008,7 +4012,10 @@ class SampleCollection(object):
                 `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
                 defining the field or expression to aggregate. If neither
                 ``field_or_expr`` or ``expr`` is provided, the samples
-                themselves are counted
+                themselves are counted. This can also be a list or tuple of
+                such arguments, in which case a tuple of corresponding
+                aggregation results (each receiving the same additional keyword
+                arguments, if any) will be returned
             expr (None): a :class:`fiftyone.core.expressions.ViewExpression` or
                 `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
                 to apply to ``field_or_expr`` (which must be a field) before
@@ -4017,9 +4024,8 @@ class SampleCollection(object):
         Returns:
             the count
         """
-        return self.aggregate(
-            foa.Count(field_or_expr=field_or_expr, expr=expr)
-        )
+        make = lambda field_or_expr: foa.Count(field_or_expr, expr=expr)
+        return self._make_and_aggregate(make, field_or_expr)
 
     @aggregation
     def count_values(self, field_or_expr, expr=None):
@@ -4096,7 +4102,10 @@ class SampleCollection(object):
             field_or_expr: a field name, ``embedded.field.name``,
                 :class:`fiftyone.core.expressions.ViewExpression`, or
                 `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
-                defining the field or expression to aggregate
+                defining the field or expression to aggregate. This can also
+                be a list or tuple of such arguments, in which case a tuple of
+                corresponding aggregation results (each receiving the same
+                additional keyword arguments, if any) will be returned
             expr (None): a :class:`fiftyone.core.expressions.ViewExpression` or
                 `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
                 to apply to ``field_or_expr`` (which must be a field) before
@@ -4105,7 +4114,8 @@ class SampleCollection(object):
         Returns:
             a dict mapping values to counts
         """
-        return self.aggregate(foa.CountValues(field_or_expr, expr=expr))
+        make = lambda field_or_expr: foa.CountValues(field_or_expr, expr=expr)
+        return self._make_and_aggregate(make, field_or_expr)
 
     @aggregation
     def distinct(self, field_or_expr, expr=None):
@@ -4184,7 +4194,10 @@ class SampleCollection(object):
             field_or_expr: a field name, ``embedded.field.name``,
                 :class:`fiftyone.core.expressions.ViewExpression`, or
                 `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
-                defining the field or expression to aggregate
+                defining the field or expression to aggregate. This can also
+                be a list or tuple of such arguments, in which case a tuple of
+                corresponding aggregation results (each receiving the same
+                additional keyword arguments, if any) will be returned
             expr (None): a :class:`fiftyone.core.expressions.ViewExpression` or
                 `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
                 to apply to ``field_or_expr`` (which must be a field) before
@@ -4193,7 +4206,8 @@ class SampleCollection(object):
         Returns:
             a sorted list of distinct values
         """
-        return self.aggregate(foa.Distinct(field_or_expr, expr=expr))
+        make = lambda field_or_expr: foa.Distinct(field_or_expr, expr=expr)
+        return self._make_and_aggregate(make, field_or_expr)
 
     @aggregation
     def histogram_values(
@@ -4272,7 +4286,10 @@ class SampleCollection(object):
             field_or_expr: a field name, ``embedded.field.name``,
                 :class:`fiftyone.core.expressions.ViewExpression`, or
                 `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
-                defining the field or expression to aggregate
+                defining the field or expression to aggregate. This can also
+                be a list or tuple of such arguments, in which case a tuple of
+                corresponding aggregation results (each receiving the same
+                additional keyword arguments, if any) will be returned
             expr (None): a :class:`fiftyone.core.expressions.ViewExpression` or
                 `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
                 to apply to ``field_or_expr`` (which must be a field) before
@@ -4301,11 +4318,10 @@ class SampleCollection(object):
                 ``[lower, upper)``, including the rightmost bin
             -   other: the number of items outside the bins
         """
-        return self.aggregate(
-            foa.HistogramValues(
-                field_or_expr, expr=expr, bins=bins, range=range, auto=auto
-            )
+        make = lambda field_or_expr: foa.HistogramValues(
+            field_or_expr, expr=expr, bins=bins, range=range, auto=auto
         )
+        return self._make_and_aggregate(make, field_or_expr)
 
     @aggregation
     def mean(self, field_or_expr, expr=None):
@@ -4370,7 +4386,10 @@ class SampleCollection(object):
             field_or_expr: a field name, ``embedded.field.name``,
                 :class:`fiftyone.core.expressions.ViewExpression`, or
                 `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
-                defining the field or expression to aggregate
+                defining the field or expression to aggregate. This can also
+                be a list or tuple of such arguments, in which case a tuple of
+                corresponding aggregation results (each receiving the same
+                additional keyword arguments, if any) will be returned
             expr (None): a :class:`fiftyone.core.expressions.ViewExpression` or
                 `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
                 to apply to ``field_or_expr`` (which must be a field) before
@@ -4379,7 +4398,8 @@ class SampleCollection(object):
         Returns:
             the mean
         """
-        return self.aggregate(foa.Mean(field_or_expr, expr=expr))
+        make = lambda field_or_expr: foa.Mean(field_or_expr, expr=expr)
+        return self._make_and_aggregate(make, field_or_expr)
 
     @aggregation
     def std(self, field_or_expr, expr=None, sample=False):
@@ -4445,7 +4465,10 @@ class SampleCollection(object):
             field_or_expr: a field name, ``embedded.field.name``,
                 :class:`fiftyone.core.expressions.ViewExpression`, or
                 `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
-                defining the field or expression to aggregate
+                defining the field or expression to aggregate. This can also
+                be a list or tuple of such arguments, in which case a tuple of
+                corresponding aggregation results (each receiving the same
+                additional keyword arguments, if any) will be returned
             expr (None): a :class:`fiftyone.core.expressions.ViewExpression` or
                 `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
                 to apply to ``field_or_expr`` (which must be a field) before
@@ -4456,7 +4479,10 @@ class SampleCollection(object):
         Returns:
             the standard deviation
         """
-        return self.aggregate(foa.Std(field_or_expr, expr=expr, sample=sample))
+        make = lambda field_or_expr: foa.Std(
+            field_or_expr, expr=expr, sample=sample
+        )
+        return self._make_and_aggregate(make, field_or_expr)
 
     @aggregation
     def sum(self, field_or_expr, expr=None):
@@ -4521,7 +4547,10 @@ class SampleCollection(object):
             field_or_expr: a field name, ``embedded.field.name``,
                 :class:`fiftyone.core.expressions.ViewExpression`, or
                 `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
-                defining the field or expression to aggregate
+                defining the field or expression to aggregate. This can also
+                be a list or tuple of such arguments, in which case a tuple of
+                corresponding aggregation results (each receiving the same
+                additional keyword arguments, if any) will be returned
             expr (None): a :class:`fiftyone.core.expressions.ViewExpression` or
                 `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
                 to apply to ``field_or_expr`` (which must be a field) before
@@ -4530,7 +4559,8 @@ class SampleCollection(object):
         Returns:
             the sum
         """
-        return self.aggregate(foa.Sum(field_or_expr, expr=expr))
+        make = lambda field_or_expr: foa.Sum(field_or_expr, expr=expr)
+        return self._make_and_aggregate(make, field_or_expr)
 
     @aggregation
     def values(
@@ -4632,7 +4662,10 @@ class SampleCollection(object):
             field_or_expr: a field name, ``embedded.field.name``,
                 :class:`fiftyone.core.expressions.ViewExpression`, or
                 `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
-                defining the field or expression to aggregate
+                defining the field or expression to aggregate. This can also
+                be a list or tuple of such arguments, in which case a tuple of
+                corresponding aggregation results (each receiving the same
+                additional keyword arguments, if any) will be returned
             expr (None): a :class:`fiftyone.core.expressions.ViewExpression` or
                 `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
                 to apply to ``field_or_expr`` (which must be a field) before
@@ -4645,17 +4678,16 @@ class SampleCollection(object):
         Returns:
             the list of values
         """
-        return self.aggregate(
-            foa.Values(
-                field_or_expr,
-                expr=expr,
-                missing_value=missing_value,
-                unwind=unwind,
-                _allow_missing=_allow_missing,
-                _big_result=_big_result,
-                _raw=_raw,
-            )
+        make = lambda field_or_expr: foa.Values(
+            field_or_expr,
+            expr=expr,
+            missing_value=missing_value,
+            unwind=unwind,
+            _allow_missing=_allow_missing,
+            _big_result=_big_result,
+            _raw=_raw,
         )
+        return self._make_and_aggregate(make, field_or_expr)
 
     def draw_labels(
         self,
@@ -5289,6 +5321,12 @@ class SampleCollection(object):
             the aggregation result dict
         """
         raise NotImplementedError("Subclass must implement _aggregate()")
+
+    def _make_and_aggregate(self, make, args):
+        if isinstance(args, (list, tuple)):
+            return tuple(self.aggregate([make(arg) for arg in args]))
+
+        return self.aggregate(make(args))
 
     def _build_aggregation(self, aggregations):
         scalar_result = isinstance(aggregations, foa.Aggregation)
