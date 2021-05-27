@@ -14,6 +14,7 @@ import warnings
 
 from bson import ObjectId
 from deprecated import deprecated
+import numpy as np
 
 import eta.core.utils as etau
 
@@ -4158,6 +4159,9 @@ def _get_sample_ids(samples_or_ids):
 
     if isinstance(samples_or_ids, foc.SampleCollection):
         return samples_or_ids.values("id")
+
+    if isinstance(samples_or_ids, np.ndarray):
+        return list(samples_or_ids)
 
     if not samples_or_ids:
         return []
