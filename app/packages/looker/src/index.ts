@@ -29,7 +29,7 @@ import { ClassificationLabels } from "./overlays/classifications";
 import { Overlay } from "./overlays/base";
 import processOverlays from "./processOverlays";
 import { ColorGenerator } from "./color";
-import { elementBBox, getContainingBox } from "./util";
+import { elementBBox, getContainingBox, getFitCanvasBBox } from "./util";
 
 export abstract class Looker<
   State extends BaseState = BaseState,
@@ -379,18 +379,23 @@ function zoomToContent<State extends FrameState | ImageState>(
 ): State {
   if (state.options.zoom) {
     const points = currentOverlays.map((o) => o.getPoints()).flat();
+    const [w, h] = state.config.dimensions;
     const zoomBBox = getContainingBox(points);
     const windowPixelBBox = elementBBox(looker);
-    const zoomAR = zoomBBox[2] / zoomBBox[3];
+    const zoomAR = (zoomBBox[2] * w) / (zoomBBox[3] * h);
     const windowAR = windowPixelBBox[2] / windowPixelBBox[3];
 
     let scale = 1;
-    if (windowAR > zoomAR) {
-      scale = 1 / zoomBBox[3];
+    let pan = [0, 0];
+    if (windowAR > w / h) {
+      scale = scale / zoomBBox[3];
     } else {
-      scale = 1 / zoomBBox[2];
+      scale = scale / zoomBBox[2];
+      const ih = (windowPixelBBox[2] * scale) / w / h;
+
+      const margin = (windowPixelBBox[3] - ih) / 2;
+      pan = [-1 * scale * windowPixelBBox[2] * zoomBBox[0], -1 * margin];
     }
-    const pan = [windowPixelBBox[2] * scale * ((zoomBBox[2] - 1) / 2), 0];
     return mergeUpdates(state, { scale, pan });
   }
   return state;
@@ -418,9 +423,12 @@ function mergeUpdates<State extends BaseState>(
   return mergeWith(merger, state, updates);
 }
 
-export const zoomAspectRatio = (sample: {
-  [key: string]: { _cls?: string };
-}): number => {
+export const zoomAspectRatio = (
+  sample: {
+    [key: string]: { _cls?: string };
+  },
+  mediaAspectRatio: number
+): number => {
   let points = [];
   Object.entries(sample).forEach(([_, label]) => {
     if (label && label._cls in POINTS_FROM_FO) {
@@ -428,5 +436,5 @@ export const zoomAspectRatio = (sample: {
     }
   });
   const [_, __, width, height] = getContainingBox(points);
-  return width / height;
+  return (width / height) * mediaAspectRatio;
 };

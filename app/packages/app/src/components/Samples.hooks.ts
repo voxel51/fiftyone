@@ -58,7 +58,7 @@ export default (): [State, (state: State) => void] => {
       const isPatchesView = await snapshot.getPromise(selectors.isPatchesView);
       results.forEach((sample) => {
         sample.aspect_ratio = isPatchesView
-          ? zoomAspectRatio(sample.sample)
+          ? zoomAspectRatio(sample.sample, sample.width / sample.height)
           : sample.width / sample.height;
       });
       const [newState, newRows] = tile(results, more, state, rows, ratio);

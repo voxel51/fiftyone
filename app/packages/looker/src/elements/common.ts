@@ -16,14 +16,20 @@ export class LookerElement<State extends BaseState> extends BaseElement<
 
   getEvents(): Events<State> {
     return {
-      keydown: ({ event, update }) => {
+      keydown: ({ event, update, dispatchEvent }) => {
         const e = event as KeyboardEvent;
         switch (e.key) {
           case "ArrowDown":
-            update(({ rotate }) => ({ rotate: rotate + 1 }));
+            update(
+              ({ rotate }) => ({ rotate: rotate + 1 }),
+              dispatchTooltipEvent(dispatchEvent)
+            );
             return;
           case "ArrowUp":
-            update(({ rotate }) => ({ rotate: Math.max(rotate - 1, 0) }));
+            update(
+              ({ rotate }) => ({ rotate: Math.max(rotate - 1, 0) }),
+              dispatchTooltipEvent(dispatchEvent)
+            );
             return;
           case "Escape":
             update({ showControls: false, showOptions: false });
@@ -200,59 +206,16 @@ export class CanvasElement<State extends BaseState> extends BaseElement<
         dispatchEvent("tooltip", null);
       },
       mousemove: ({ event, update, dispatchEvent }) => {
-        update(
-          (state) => {
-            return state.config.thumbnail
-              ? {}
-              : {
-                  cursorCoordinates: [
-                    (<MouseEvent>event).clientX,
-                    (<MouseEvent>event).clientY,
-                  ],
-                };
-          },
-          (context, state, overlays) => {
-            // @ts-ignore
-            if (state.playing && state.config.thumbnail) {
-              return {};
-            }
-            let detail =
-              overlays.length &&
-              overlays[0].containsPoint(
-                context,
-                state,
-                getCanvasCoordinates(
-                  state.cursorCoordinates,
-                  state.config.dimensions,
-                  context.canvas
-                )
-              )
-                ? overlays[0].getPointInfo(
-                    context,
-                    state,
-                    getCanvasCoordinates(
-                      state.cursorCoordinates,
-                      state.config.dimensions,
-                      context.canvas
-                    )
-                  )
-                : null;
-            // @ts-ignore
-            if (state.frameNumber && detail) {
-              // @ts-ignore
-              detail.frameNumber = state.frameNumber;
-            }
-            dispatchEvent(
-              "tooltip",
-              detail
-                ? {
-                    ...detail,
-                    coordinates: state.cursorCoordinates,
-                  }
-                : null
-            );
-          }
-        );
+        update((state) => {
+          return state.config.thumbnail
+            ? {}
+            : {
+                cursorCoordinates: [
+                  (<MouseEvent>event).clientX,
+                  (<MouseEvent>event).clientY,
+                ],
+              };
+        }, dispatchTooltipEvent(dispatchEvent));
       },
     };
   }
@@ -544,7 +507,11 @@ export class WindowElement<State extends BaseState> extends BaseElement<State> {
   renderSelf({ panning, pan: [x, y], scale, config: { thumbnail } }) {
     if (panning && this.element.style.cursor !== "grab") {
       this.element.style.cursor = "grab";
-    } else if (!panning && this.element.style.cursor !== "default") {
+    } else if (
+      !thumbnail &&
+      !panning &&
+      this.element.style.cursor !== "default"
+    ) {
       this.element.style.cursor = "default";
     }
     this.element.style.transform =
@@ -553,3 +520,45 @@ export class WindowElement<State extends BaseState> extends BaseElement<State> {
     return this.element;
   }
 }
+
+const dispatchTooltipEvent = (dispatchEvent) => (context, state, overlays) => {
+  // @ts-ignore
+  if (state.playing && state.config.thumbnail) {
+    return {};
+  }
+  let detail =
+    overlays.length &&
+    overlays[0].containsPoint(
+      context,
+      state,
+      getCanvasCoordinates(
+        state.cursorCoordinates,
+        state.config.dimensions,
+        context.canvas
+      )
+    )
+      ? overlays[0].getPointInfo(
+          context,
+          state,
+          getCanvasCoordinates(
+            state.cursorCoordinates,
+            state.config.dimensions,
+            context.canvas
+          )
+        )
+      : null;
+  // @ts-ignore
+  if (state.frameNumber && detail) {
+    // @ts-ignore
+    detail.frameNumber = state.frameNumber;
+  }
+  dispatchEvent(
+    "tooltip",
+    detail
+      ? {
+          ...detail,
+          coordinates: state.cursorCoordinates,
+        }
+      : null
+  );
+};

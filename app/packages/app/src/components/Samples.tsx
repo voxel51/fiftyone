@@ -15,12 +15,14 @@ const Container = styled.div`
   overflow-y: scroll;
   overflow-x: hidden;
   height: 100%;
+  margin-top: -4px;
 `;
 
 const Row = styled.div`
   display: flex;
   justify-content: space-between;
   width: 100%;
+  margin-top: 4px;
 `;
 
 function Samples() {
@@ -64,7 +66,7 @@ function Samples() {
                         width: height * aspectRatio,
                       }}
                     >
-                      <Sample sampleId={id} />
+                      {id && <Sample sampleId={id} />}
                     </div>
                   </React.Fragment>
                 ))}

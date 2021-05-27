@@ -5,8 +5,13 @@ export interface State {
   pageToLoad: number | null;
 }
 
+interface RowSample {
+  id?: string;
+  aspectRatio: number;
+}
+
 interface Row {
-  samples: { id: string; aspectRatio: number };
+  samples: RowSample[];
   aspectRatio: number;
 }
 
@@ -16,31 +21,35 @@ interface Rows {
 }
 
 interface Sample {
+  sample: {
+    _id: string;
+  };
   width: number;
   height: number;
   aspect_ratio: number;
 }
 
-const lastRowRefWidth = (
+const lastRow = (
   row: Sample[],
+  aspectRatio: number,
   threshold: number
-): [number, number] => {
+): [RowSample[], number] => {
   const baseAspectRatio = row[0].aspect_ratio;
   const sameAspectRatios = row
     .slice(1)
     .every((i) => baseAspectRatio === i.aspect_ratio);
 
-  let margins = 0;
+  let emptySamples: RowSample[] = [];
   if (sameAspectRatios) {
     let currentAR = row[0].aspect_ratio;
     while (currentAR < threshold) {
       currentAR += row[0].aspect_ratio;
-      margins += 1;
+      emptySamples.push({ aspectRatio: row[0].aspect_ratio });
     }
-    return [currentAR, margins];
-  } else {
-    return [threshold, margins];
+    return [emptySamples, currentAR];
   }
+
+  return [[{ aspectRatio: threshold - aspectRatio }], threshold];
 };
 
 export default function tile(
@@ -53,6 +62,7 @@ export default function tile(
   const samplesToFit = [...oldRemainder, ...data];
   rows = [...rows];
   const newRows = [];
+  const newRowsAR = [];
   let currentRow = [];
   let currentAR = null;
   for (const i in samplesToFit) {
@@ -65,6 +75,7 @@ export default function tile(
 
     if (currentAR >= rowAspectRatioThreshold) {
       newRows.push(currentRow);
+      newRowsAR.push(currentAR);
       currentRow = [s];
       currentAR = s.aspect_ratio;
       continue;
@@ -75,23 +86,32 @@ export default function tile(
   }
 
   let remainder = [];
-  if (!Boolean(newHasMore) && currentRow.length) newRows.push(currentRow);
-  else remainder = currentRow;
+  if (!Boolean(newHasMore) && currentRow.length) {
+    newRows.push(currentRow);
+    newRowsAR.push(currentAR);
+  } else remainder = currentRow;
 
   for (const i in newRows) {
-    const row = newRows[i];
-    const [ar] =
+    const row: Sample[] = newRows[i];
+    let ar = newRowsAR[i];
+
+    let emptySamples: RowSample[] = [];
+    if (
       !Boolean(newHasMore) &&
       i === String(newRows.length - 1) &&
-      currentAR < rowAspectRatioThreshold
-        ? lastRowRefWidth(row, rowAspectRatioThreshold)
-        : [currentAR, 0];
+      ar < rowAspectRatioThreshold
+    ) {
+      [emptySamples, ar] = lastRow(row, ar, rowAspectRatioThreshold);
+    }
 
     rows.push({
-      samples: row.map((s) => ({
-        id: s.sample._id,
-        aspectRatio: s.aspect_ratio,
-      })),
+      samples: [
+        ...row.map((s) => ({
+          id: s.sample._id,
+          aspectRatio: s.aspect_ratio,
+        })),
+        ...emptySamples,
+      ],
       aspectRatio: ar,
     });
   }
