@@ -2,7 +2,10 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 import ClassificationsOverlay from "./classifications";
-import DetectionOverlay, { getDetectionPoints } from "./detection";
+import DetectionOverlay, {
+  DetectionSvgOverlay,
+  getDetectionPoints,
+} from "./detection";
 import KeypointOverlay, { getKeypointPoints } from "./keypoint";
 import PolylineOverlay, { getPolylinePoints } from "./polyline";
 import SegmentationOverlay, { getSegmentationPoints } from "./segmentation";
@@ -27,8 +30,8 @@ const fromLabelList = (overlayType, list_key) => (
 export { ClassificationsOverlay };
 
 export const FROM_FO = {
-  Detection: fromLabel(DetectionOverlay),
-  Detections: fromLabelList(DetectionOverlay, "detections"),
+  Detection: fromLabel(DetectionSvgOverlay),
+  Detections: fromLabelList(DetectionSvgOverlay, "detections"),
   Keypoint: fromLabel(KeypointOverlay),
   Keypoints: fromLabelList(KeypointOverlay, "keypoints"),
   Polyline: fromLabel(PolylineOverlay),

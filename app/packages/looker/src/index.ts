@@ -2,6 +2,7 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 import { mergeWith } from "immutable";
+import { Svg, SVG } from "@svgdotjs/svg.js";
 
 import "./style.css";
 export { ColorGenerator } from "./color";
@@ -17,6 +18,7 @@ import {
   Coordinates,
   Optional,
   BaseSample,
+  Dimensions,
   BoundingBox,
 } from "./state";
 import {
@@ -31,7 +33,7 @@ import { Overlay } from "./overlays/base";
 import processOverlays from "./processOverlays";
 import { ColorGenerator } from "./color";
 import { elementBBox, getContainingBox } from "./util";
-import { MAX_SCALE } from "./constants";
+import { MIN_PIXELS } from "./constants";
 
 export abstract class Looker<
   State extends BaseState = BaseState,
@@ -41,11 +43,12 @@ export abstract class Looker<
   protected lookerElement: LookerElement<State>;
   private canvas: HTMLCanvasElement;
 
-  protected state: State;
   protected currentOverlays: Overlay<State>[];
   protected pluckedOverlays: Overlay<State>[];
-  protected readonly updater: StateUpdate<State>;
   protected sample: Sample;
+  protected state: State;
+  protected readonly svg: Svg;
+  protected readonly updater: StateUpdate<State>;
 
   constructor(
     sample: Sample,
@@ -60,6 +63,9 @@ export abstract class Looker<
     this.pluckedOverlays = this.pluckOverlays(this.state);
     this.lookerElement = this.getElements();
     this.canvas = this.lookerElement.render(this.state).querySelector("canvas");
+    this.svg = SVG()
+      .viewbox(`0 0 ${config.dimensions[0]} ${config.dimensions[1]}`)
+      .addTo(this.canvas.parentElement);
   }
 
   protected dispatchEvent(eventType: string, detail: any): void {
@@ -93,9 +99,14 @@ export abstract class Looker<
       postUpdate && postUpdate(context, this.state, this.currentOverlays);
       this.lookerElement.render(this.state as Readonly<State>);
       clearCanvas(context);
+      this.svg.clear();
       const numOverlays = this.currentOverlays.length;
       for (let index = numOverlays - 1; index >= 0; index--) {
-        this.currentOverlays[index].draw(context, this.state);
+        if (this.currentOverlays[index].svg) {
+          this.currentOverlays[index].draw(this.svg, this.state);
+        } else {
+          this.currentOverlays[index].draw(context, this.state);
+        }
       }
     };
   }
@@ -368,6 +379,35 @@ function clearCanvas(context: CanvasRenderingContext2D): void {
   context.textBaseline = "bottom";
 }
 
+const adjustBox = (
+  [w, h]: Dimensions,
+  [obtlx, obtly, obw, obh]: BoundingBox
+): {
+  center: Coordinates;
+  box: BoundingBox;
+} => {
+  const ar = obw / obh;
+  let [btlx, btly, bw, bh] = [obtlx, obtly, obw, obh];
+
+  while (bw * w < MIN_PIXELS || bh * h < MIN_PIXELS) {
+    bw = bw * 2;
+    bh = bw / ar;
+    btlx = obtlx + obw / 2 - bw / 2;
+    btly = obtly + obh / 2 - bh / 2;
+  }
+
+  return {
+    center: [obtlx + obw, obtly + obh],
+    box: [obtlx, obtly, bw, bh],
+  };
+};
+
+const getVisibleBox = (
+  pan: Coordinates,
+  [ww, wh]: Dimensions,
+  [iw, ih]: Dimensions
+) => {};
+
 function zoomToContent<State extends FrameState | ImageState>(
   state: Readonly<State>,
   currentOverlays: Overlay<State>[],
@@ -377,7 +417,10 @@ function zoomToContent<State extends FrameState | ImageState>(
     const points = currentOverlays.map((o) => o.getPoints()).flat();
     let [w, h] = state.config.dimensions;
     const iAR = w / h;
-    const [btlx, btly, bw, bh] = getContainingBox(points);
+    const {
+      center: [cw, ch],
+      box: [btlx, btly, bw, bh],
+    } = adjustBox([w, h], getContainingBox(points));
     const pAR = (bw / bh) * iAR;
 
     const [_, __, ww, wh] = elementBBox(looker);
@@ -385,18 +428,27 @@ function zoomToContent<State extends FrameState | ImageState>(
 
     let scale = 1;
     let pan = [0, 0];
+    const squeeze = 0.9;
+
+    // Assume thumbnail containers have the patch aspect ratio
     if (state.config.thumbnail) {
       wAR = pAR;
     }
 
+    // First set a scale
+    // We account greyspace from "object-fit: contain" styles
+    // Like https://en.wikipedia.org/wiki/Letterboxing_(filming)
+
+    // Vertical margins (whitespace)
     if (wAR < iAR) {
       scale = (1 / bw) * scale;
-      scale = Math.min(Math.max(1, scale), MAX_SCALE);
+      scale = Math.max(1, scale);
       w = ww * scale;
       h = ((wh * wAR) / iAR) * scale;
+      // Horizontal margins (whitespace)
     } else {
       scale = (1 / bh) * scale;
-      scale = Math.min(Math.max(1, scale), MAX_SCALE);
+      scale = Math.max(1, scale);
       h = wh * scale;
       w = (ww / wAR) * iAR * scale;
     }
@@ -410,7 +462,31 @@ function zoomToContent<State extends FrameState | ImageState>(
       pan = [-w * btlx - marginX, -h * btly - marginY];
     }
 
-    return mergeUpdates(state, { scale, pan });
+    if (ww * scale + pan[0] - marginX < ww) {
+      if (w < ww * scale) {
+        pan[0] = (-ww * (scale - 1)) / 2;
+      } else {
+        pan[0] += ww - (ww * scale + pan[0] - marginX);
+      }
+    } else if (wh * scale + pan[1] - marginY < wh) {
+      if (h < wh * scale) {
+        pan[1] = (-wh * (scale - 1)) / 2;
+      } else {
+        pan[1] += wh - (wh * scale + pan[1] - marginY);
+      }
+    }
+
+    // Recenter adjusted boxes, i.e. ones considered to small to fully zoom in
+    // on. See "adjustBox()"
+    pan[0] += (w * (bw + btlx - cw)) / 2;
+    pan[1] += (h * (bh + btly - ch)) / 2;
+
+    // Scale down and reposition for a centered patch with padding
+    const adjustedScale = squeeze * scale;
+    pan[0] = pan[0] * squeeze + (bw * w * (1 - squeeze)) / 2;
+    pan[1] = pan[1] * squeeze + (bh * h * (1 - squeeze)) / 2;
+
+    return mergeUpdates(state, { scale: adjustedScale, pan });
   }
   return state;
 }

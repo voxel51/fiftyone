@@ -5,6 +5,7 @@
 .looker {
   width: 100%;
   height: 100%;
+  opacity: 1;
 }
 
 @keyframes shine {
@@ -22,6 +23,7 @@
   );
   background-size: 300% 300%;
   animation: 0.5s shine linear infinite;
+  opacity: 0;
 }
 
 .looker-controls {
@@ -352,12 +354,15 @@ div.looker-image {
   height: 100%;
   overflow: visible;
   transform-origin: 0px 0px;
-  -webkit-transition: opacity 0.5s ease-in-out;
-  -moz-transition: opacity 0.5s ease-in-out;
-  -o-transition: opacity 0.5s ease-in-out;
-  transition: opacity 0.5s ease-in-out;
 }
-
-div.looker.loading .looker-window {
-  opacity: 0;
+.looker svg {
+  object-fit: contain;
+  height: 100%;
+  width: 100%;
+  position: absolute;
+  max-width: 100%;
+  max-height: 100%;
+  top: 0;
+  left: 0;
+  overflow: visible;
 }

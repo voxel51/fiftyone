@@ -2,6 +2,7 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 
+import { Svg } from "@svgdotjs/svg.js";
 import { BaseState, Coordinates } from "../state";
 
 // in numerical order (CONTAINS_BORDER takes precedence over CONTAINS_CONTENT)
@@ -47,27 +48,31 @@ export const isShown = <State extends BaseState, Label extends RegularLabel>(
   return true;
 };
 
-export interface Overlay<State extends BaseState> {
-  draw(context: CanvasRenderingContext2D, state: State): void;
+export interface Overlay<
+  State extends BaseState,
+  Drawer = CanvasRenderingContext2D | Svg
+> {
+  svg: boolean;
+  draw(context: Drawer, state: State): void;
   isShown(state: Readonly<State>): boolean;
   field?: string;
   containsPoint(
-    context: CanvasRenderingContext2D,
+    context: Drawer,
     state: Readonly<State>,
     coordinates: Coordinates
   ): CONTAINS;
   getMouseDistance(
-    context: CanvasRenderingContext2D,
+    context: Drawer,
     state: Readonly<State>,
     coordinates: Coordinates
   ): number;
   getPointInfo(
-    context: CanvasRenderingContext2D,
+    context: Drawer,
     state: Readonly<State>,
     coordinates: Coordinates
   ): any;
   getSelectData(
-    context: CanvasRenderingContext2D,
+    context: Drawer,
     state: Readonly<State>,
     coordinates: Coordinates
   ): SelectData;
@@ -76,8 +81,10 @@ export interface Overlay<State extends BaseState> {
 
 export abstract class CoordinateOverlay<
   State extends BaseState,
-  Label extends RegularLabel
-> implements Overlay<State> {
+  Label extends RegularLabel,
+  Drawer = CanvasRenderingContext2D | Svg
+> implements Overlay<State, Drawer> {
+  readonly svg: boolean = false;
   readonly field: string;
   protected readonly label: Label;
 
@@ -86,10 +93,7 @@ export abstract class CoordinateOverlay<
     this.label = label;
   }
 
-  abstract draw(
-    context: CanvasRenderingContext2D,
-    state: Readonly<State>
-  ): void;
+  abstract draw(context: Drawer, state: Readonly<State>): void;
 
   isShown(state: Readonly<State>): boolean {
     return isShown<State, Label>(state, this.field, this.label);
@@ -105,30 +109,26 @@ export abstract class CoordinateOverlay<
   }
 
   abstract containsPoint(
-    context: CanvasRenderingContext2D,
+    context: Drawer,
     state: Readonly<State>,
     [x, y]: Coordinates
   );
 
   abstract getMouseDistance(
-    context: CanvasRenderingContext2D,
+    context: Drawer,
     state: Readonly<State>,
     [x, y]: Coordinates
   );
 
   abstract getPointInfo(
-    context: CanvasRenderingContext2D,
+    context: Drawer,
     state: Readonly<State>,
     [x, y]: Coordinates
   );
 
   abstract getPoints(): Coordinates[];
 
-  getSelectData(
-    context: CanvasRenderingContext2D,
-    state: Readonly<State>,
-    [x, y]: Coordinates
-  ) {
+  getSelectData(context: Drawer, state: Readonly<State>, [x, y]: Coordinates) {
     return {
       id: this.label._id,
       field: this.field,

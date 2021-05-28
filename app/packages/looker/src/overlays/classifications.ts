@@ -17,6 +17,7 @@ const OVERLAY_BG_COLOR = "hsla(210, 20%, 10%, 0.8)";
 
 export default class ClassificationsOverlay<State extends BaseState>
   implements Overlay<State> {
+  readonly svg: boolean = false;
   private readonly labels: ClassificationLabels;
   private readonly font: string;
   private lines: string[] = [];

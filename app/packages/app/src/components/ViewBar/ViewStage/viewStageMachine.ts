@@ -1,5 +1,5 @@
 import { Machine, actions, assign, send, spawn, sendParent } from "xstate";
-import uuid from "uuid-v4";
+import { v4 as uuid } from "uuid";
 
 import viewStageParameterMachine from "./viewStageParameterMachine";
 import { computeBestMatchString, getMatch } from "./utils";

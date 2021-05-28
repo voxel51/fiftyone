@@ -1,6 +1,7 @@
 /**
  * Copyright 2017-2021, Voxel51, Inc.
  */
+import { Svg, SVG } from "@svgdotjs/svg.js";
 
 import { ColorGenerator } from "../color";
 import { DASH_COLOR, DASH_LENGTH, LINE_WIDTH, MASK_ALPHA } from "../constants";
@@ -103,7 +104,7 @@ export default class DetectionOverlay<
     return CONTAINS.NONE;
   }
 
-  draw(context, state) {
+  draw(context: CanvasRenderingContext2D, state) {
     const color = this.getColor(state);
     context.strokeStyle = color;
     context.fillStyle = color;
@@ -294,3 +295,57 @@ export const getDetectionPoints = (labels: DetectionLabel[]): Coordinates[] => {
   });
   return points;
 };
+
+export class DetectionSvgOverlay<
+  State extends BaseState
+> extends CoordinateOverlay<State, DetectionLabel, Svg> {
+  readonly svg: boolean = true;
+
+  constructor(field, label) {
+    super(field, label);
+  }
+
+  containsPoint(context, state, [x, y]) {
+    return 0;
+  }
+
+  draw(svg: Svg, state) {
+    const color = this.getColor(state);
+    const {
+      config: {
+        dimensions: [width, height],
+      },
+    } = state;
+    const {
+      bounding_box: [btlx, btly, bw, bh],
+    } = this.label;
+
+    svg
+      .rect(width * bw, height * bh)
+      .attr({
+        fill: "#000000",
+        "fill-opacity": 0,
+        stroke: color,
+        "stroke-width": 5 / state.scale,
+        "stroke-opacity": 0.8,
+      })
+      .move(btlx * width, btly * height);
+  }
+
+  getMouseDistance(context, state, [x, y]) {
+    return Infinity;
+  }
+
+  getPointInfo(context, state) {
+    return {
+      color: this.getColor(state),
+      field: this.field,
+      label: this.label,
+      type: "Detection",
+    };
+  }
+
+  getPoints() {
+    return getDetectionPoints([this.label]);
+  }
+}

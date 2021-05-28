@@ -18,6 +18,7 @@ export default class SegmentationOverlay<State extends BaseState>
     "canvas"
   );
   readonly field: string;
+  readonly svg: boolean = false;
   private readonly label: SegmentationLabel;
   private readonly mask: NumpyResult;
   private generator: ColorGenerator;

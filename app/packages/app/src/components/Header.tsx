@@ -11,7 +11,7 @@ import { useRecoilState, useRecoilValue, useResetRecoilState } from "recoil";
 import AuosizeInput from "react-input-autosize";
 import { Machine, assign } from "xstate";
 import { useMachine } from "@xstate/react";
-import uuid from "uuid-v4";
+import { v4 as uuid } from "uuid";
 import { animated, useSpring } from "react-spring";
 import { ThemeContext } from "styled-components";
 import { Close } from "@material-ui/icons";

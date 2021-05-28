@@ -1,5 +1,4 @@
-import React, { Suspense, useLayoutEffect, useRef, useState } from "react";
-import ReactDOM from "react-dom";
+import React, { useLayoutEffect, useRef, useState } from "react";
 import {
   RecoilState,
   RecoilValueReadOnly,
@@ -9,7 +8,7 @@ import {
   useSetRecoilState,
 } from "recoil";
 import styled from "styled-components";
-import uuid from "uuid-v4";
+import { v4 as uuid } from "uuid";
 
 import Checkbox from "../Common/Checkbox";
 import Input from "../Common/Input";
