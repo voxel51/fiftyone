@@ -29,6 +29,7 @@ on:
       - docs/**
       - examples/**
       - fiftyone/**
+      - requirements/**
       - "**.py"
       - "**.md"
       - "**.rst"
