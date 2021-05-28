@@ -128,7 +128,7 @@ export class LookerElement<State extends BaseState> extends BaseElement<
           const xs = (x - px) / scale;
           const ys = (y - py) / scale;
           scale = Math.max(
-            Math.min(event.deltaY < 0 ? scale * 1.2 : scale / 1.2, MAX_SCALE),
+            Math.min(event.deltaY < 0 ? scale * 1.1 : scale / 1.1, MAX_SCALE),
             1
           );
 

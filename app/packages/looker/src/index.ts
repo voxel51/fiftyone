@@ -17,6 +17,7 @@ import {
   Coordinates,
   Optional,
   BaseSample,
+  BoundingBox,
 } from "./state";
 import {
   getFrameElements,
@@ -374,31 +375,41 @@ function zoomToContent<State extends FrameState | ImageState>(
 ): State {
   if (state.options.zoom) {
     const points = currentOverlays.map((o) => o.getPoints()).flat();
-    const [w, h] = state.config.dimensions;
-    const zoomBBox = getContainingBox(points);
-    const windowPixelBBox = elementBBox(looker);
-    const windowAR = windowPixelBBox[2] / windowPixelBBox[3];
+    let [w, h] = state.config.dimensions;
+    const iAR = w / h;
+    const [btlx, btly, bw, bh] = getContainingBox(points);
+    const pAR = (bw / bh) * iAR;
 
-    let squeeze = 1,
-      scale = 1;
+    const [_, __, ww, wh] = elementBBox(looker);
+    let wAR = ww / wh;
+
+    let scale = 1;
     let pan = [0, 0];
-    if (windowAR > w / h) {
-      scale = Math.min(MAX_SCALE, scale / zoomBBox[3]);
-      const iw = (windowPixelBBox[3] * scale) / (h / w);
-      const margin = (windowPixelBBox[2] * scale - iw) / 2;
-      pan = [
-        -margin - zoomBBox[0] * iw,
-        -squeeze * scale * windowPixelBBox[3] * zoomBBox[1],
-      ];
-    } else {
-      scale = Math.min(MAX_SCALE, scale / zoomBBox[2]);
-      const ih = (windowPixelBBox[2] * scale) / (w / h);
-      const margin = (windowPixelBBox[3] * scale - ih) / 2;
-      pan = [
-        -squeeze * scale * windowPixelBBox[2] * zoomBBox[0],
-        -margin - zoomBBox[1] * ih,
-      ];
+    if (state.config.thumbnail) {
+      wAR = pAR;
     }
+
+    if (wAR < iAR) {
+      scale = (1 / bw) * scale;
+      scale = Math.min(Math.max(1, scale), MAX_SCALE);
+      w = ww * scale;
+      h = ((wh * wAR) / iAR) * scale;
+    } else {
+      scale = (1 / bh) * scale;
+      scale = Math.min(Math.max(1, scale), MAX_SCALE);
+      h = wh * scale;
+      w = (ww / wAR) * iAR * scale;
+    }
+
+    const marginY = wAR < iAR ? (scale * wh - h) / 2 : 0;
+    const marginX = wAR < iAR ? 0 : (scale * ww - w) / 2;
+
+    if (wAR <= pAR) {
+      pan = [-w * btlx - marginX, -h * btly - marginY];
+    } else {
+      pan = [-w * btlx - marginX, -h * btly - marginY];
+    }
+
     return mergeUpdates(state, { scale, pan });
   }
   return state;
