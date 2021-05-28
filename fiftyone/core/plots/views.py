@@ -76,7 +76,6 @@ class ViewGrid(PlotlyViewPlot):
     Args:
         plots: a :class:`PlotlyViewPlot` or iterable of :class:`PlotlyViewPlot`
             instances
-            :class:`fiftyone.core.collections.SampleCollection` to load
         shape (None): the ``(rows, cols)`` shape to use for the grid
         hgap (None): a horizontal spacing between the subplots, in ``[0, 1]``
         vgap (None): a vertical spacing between the subplots, in ``[0, 1]``
