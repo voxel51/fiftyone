@@ -3538,11 +3538,10 @@ class ViewExpression(object):
         if num_exprs == 0:
             return ViewExpression(False)
 
-        any_expr = exprs[0]
-        for expr in exprs[1:]:
-            any_expr |= expr
+        if num_exprs == 1:
+            return exprs[0]
 
-        return any_expr
+        return ViewExpression({"$or": exprs})
 
     @staticmethod
     def all(exprs):
@@ -3586,11 +3585,10 @@ class ViewExpression(object):
         if num_exprs == 0:
             return ViewExpression(True)
 
-        any_expr = exprs[0]
-        for expr in exprs[1:]:
-            any_expr &= expr
+        if num_exprs == 1:
+            return exprs[0]
 
-        return any_expr
+        return ViewExpression({"$and": exprs})
 
     @staticmethod
     def range(start, stop=None):
