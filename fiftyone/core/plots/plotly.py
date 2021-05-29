@@ -44,7 +44,7 @@ def plot_confusion_matrix(
     gt_field=None,
     pred_field=None,
     colorscale="oranges",
-    layout=None,
+    **kwargs,
 ):
     """Plots a confusion matrix.
 
@@ -66,8 +66,8 @@ def plot_confusion_matrix(
         pred_field (None): the name of the predictions field
         colorscale ("oranges"): a plotly colorscale to use. See
             https://plotly.com/python/builtin-colorscales for options
-        layout (None): an optional dict of parameters for
-            ``plotly.graph_objects.Figure.update_layout(**layout)``
+        **kwargs: optional keyword arguments for
+            ``plotly.graph_objects.Figure.update_layout(**kwargs)``
 
     Returns:
         one of the following:
@@ -79,7 +79,7 @@ def plot_confusion_matrix(
     """
     if ids is None:
         return _plot_confusion_matrix_static(
-            confusion_matrix, labels, colorscale=colorscale, layout=layout
+            confusion_matrix, labels, colorscale=colorscale, **kwargs
         )
 
     return _plot_confusion_matrix_interactive(
@@ -90,12 +90,12 @@ def plot_confusion_matrix(
         gt_field=gt_field,
         pred_field=pred_field,
         colorscale=colorscale,
-        layout=layout,
+        **kwargs,
     )
 
 
 def _plot_confusion_matrix_static(
-    confusion_matrix, labels, colorscale=None, layout=None
+    confusion_matrix, labels, colorscale=None, **kwargs
 ):
     confusion_matrix = np.asarray(confusion_matrix)
     num_rows, num_cols = confusion_matrix.shape
@@ -143,9 +143,7 @@ def _plot_confusion_matrix_static(
     )
 
     figure.update_layout(**_DEFAULT_LAYOUT)
-
-    if layout:
-        figure.update_layout(**layout)
+    figure.update_layout(**kwargs)
 
     if foc.is_jupyter_context():
         figure = PlotlyNotebookPlot(figure)
@@ -161,7 +159,7 @@ def _plot_confusion_matrix_interactive(
     gt_field=None,
     pred_field=None,
     colorscale=None,
-    layout=None,
+    **kwargs,
 ):
     confusion_matrix = np.asarray(confusion_matrix)
     ids = np.asarray(ids)
@@ -196,14 +194,12 @@ def _plot_confusion_matrix_interactive(
     )
 
     plot.update_layout(**_DEFAULT_LAYOUT)
-
-    if layout:
-        plot.update_layout(**layout)
+    plot.update_layout(**kwargs)
 
     return plot
 
 
-def plot_pr_curve(precision, recall, label=None, style="area", layout=None):
+def plot_pr_curve(precision, recall, label=None, style="area", **kwargs):
     """Plots a precision-recall (PR) curve.
 
     Args:
@@ -212,8 +208,8 @@ def plot_pr_curve(precision, recall, label=None, style="area", layout=None):
         label (None): a label for the curve
         style ("area"): a plot style to use. Supported values are
             ``("area", "line")``
-        layout (None): an optional dict of parameters for
-            ``plotly.graph_objects.Figure.update_layout(**layout)``
+        **kwargs: optional keyword arguments for
+            ``plotly.graph_objects.Figure.update_layout(**kwargs)``
 
     Returns:
         one of the following:
@@ -252,9 +248,7 @@ def plot_pr_curve(precision, recall, label=None, style="area", layout=None):
     )
 
     figure.update_layout(**_DEFAULT_LAYOUT)
-
-    if layout:
-        figure.update_layout(**layout)
+    figure.update_layout(**kwargs)
 
     if foc.is_jupyter_context():
         figure = PlotlyNotebookPlot(figure)
@@ -262,7 +256,7 @@ def plot_pr_curve(precision, recall, label=None, style="area", layout=None):
     return figure
 
 
-def plot_pr_curves(precisions, recall, classes, layout=None):
+def plot_pr_curves(precisions, recall, classes, **kwargs):
     """Plots a set of per-class precision-recall (PR) curves.
 
     Args:
@@ -270,8 +264,8 @@ def plot_pr_curves(precisions, recall, classes, layout=None):
             precision values
         recall: an array of recall values
         classes: the list of classes
-        layout (None): an optional dict of parameters for
-            ``plotly.graph_objects.Figure.update_layout(**layout)``
+        **kwargs: optional keyword arguments for
+            ``plotly.graph_objects.Figure.update_layout(**kwargs)``
 
     Returns:
         one of the following:
@@ -329,9 +323,7 @@ def plot_pr_curves(precisions, recall, classes, layout=None):
     )
 
     figure.update_layout(**_DEFAULT_LAYOUT)
-
-    if layout:
-        figure.update_layout(**layout)
+    figure.update_layout(**kwargs)
 
     if foc.is_jupyter_context():
         figure = PlotlyNotebookPlot(figure)
@@ -339,7 +331,7 @@ def plot_pr_curves(precisions, recall, classes, layout=None):
     return figure
 
 
-def plot_roc_curve(fpr, tpr, roc_auc=None, style="area", layout=None):
+def plot_roc_curve(fpr, tpr, roc_auc=None, style="area", **kwargs):
     """Plots a receiver operating characteristic (ROC) curve.
 
     Args:
@@ -348,8 +340,8 @@ def plot_roc_curve(fpr, tpr, roc_auc=None, style="area", layout=None):
         roc_auc (None): the area under the ROC curve
         style ("area"): a plot style to use. Supported values are
             ``("area", "line")``
-        layout (None): an optional dict of parameters for
-            ``plotly.graph_objects.Figure.update_layout(**layout)``
+        **kwargs: optional keyword arguments for
+            ``plotly.graph_objects.Figure.update_layout(**kwargs)``
 
     Returns:
         one of the following:
@@ -390,9 +382,7 @@ def plot_roc_curve(fpr, tpr, roc_auc=None, style="area", layout=None):
     )
 
     figure.update_layout(**_DEFAULT_LAYOUT)
-
-    if layout:
-        figure.update_layout(**layout)
+    figure.update_layout(**kwargs)
 
     if foc.is_jupyter_context():
         figure = PlotlyNotebookPlot(figure)
@@ -415,7 +405,7 @@ def scatterplot(
     edges_title=None,
     show_colorbar_title=None,
     axis_equal=False,
-    layout=None,
+    **kwargs,
 ):
     """Generates an interactive scatterplot of the given points.
 
@@ -495,8 +485,8 @@ def scatterplot(
             ``labels_title`` or an appropriate default can be inferred from
             the ``labels`` parameter
         axis_equal (False): whether to set the axes to equal scale
-        layout (None): an optional dict of parameters for
-            ``plotly.graph_objects.Figure.update_layout(**layout)``
+        **kwargs: optional keyword arguments for
+            ``plotly.graph_objects.Figure.update_layout(**kwargs)``
 
     Returns:
         one of the following:
@@ -579,9 +569,7 @@ def scatterplot(
         )
 
     figure.update_layout(**_DEFAULT_LAYOUT)
-
-    if layout:
-        figure.update_layout(**layout)
+    figure.update_layout(**kwargs)
 
     if num_dims == 3:
         if samples is not None:
@@ -755,7 +743,7 @@ def location_scatterplot(
     sizes_title=None,
     edges_title=None,
     show_colorbar_title=None,
-    layout=None,
+    **kwargs,
 ):
     """Generates an interactive scatterplot of the given location coordinates
     with a map rendered in the background of the plot.
@@ -837,8 +825,8 @@ def location_scatterplot(
             default, a title will be shown only if a value was pasesd to
             ``labels_title`` or an appropriate default can be inferred from
             the ``labels`` parameter
-        layout (None): an optional dict of parameters for
-            ``plotly.graph_objects.Figure.update_layout(**layout)``
+        **kwargs: optional keyword arguments for
+            ``plotly.graph_objects.Figure.update_layout(**kwargs)``
 
     Returns:
         one of the following:
@@ -931,9 +919,7 @@ def location_scatterplot(
         )
 
     figure.update_layout(**_DEFAULT_LAYOUT)
-
-    if layout:
-        figure.update_layout(**layout)
+    figure.update_layout(**kwargs)
 
     if style == "density" and not categorical:
         msg = "Density plots do not yet support interactivity"

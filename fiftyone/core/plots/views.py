@@ -191,7 +191,7 @@ class CategoricalHistogram(PlotlyViewPlot):
             ``sorted(items, key=order)``, where ``items`` is a list of
             ``(value, count)`` tuples
         xlabel (None): an optional x-label for the plot
-        log_y (None): whether to set the y-axis to log scale
+        log (False): whether to use a log scale y-axis
         bargap (None): relative spacing between bars in ``[0, 1]``
         color (None): a color for the bars. Can be any color supported by
             ``plotly.graph_objects.bar.Marker.color``
@@ -208,7 +208,7 @@ class CategoricalHistogram(PlotlyViewPlot):
         expr=None,
         order="alphabetical",
         xlabel=None,
-        log_y=None,
+        log=None,
         bargap=None,
         color=None,
         opacity=None,
@@ -219,7 +219,7 @@ class CategoricalHistogram(PlotlyViewPlot):
         self.expr = expr
         self.order = order
         self.xlabel = xlabel
-        self.log_y = log_y
+        self.log = log
         self.bargap = bargap
         self.color = color
         self.opacity = opacity
@@ -286,7 +286,7 @@ class CategoricalHistogram(PlotlyViewPlot):
             )
         )
 
-        if self.log_y:
+        if self.log:
             layout.update(dict(yaxis_type="log"))
 
         layout.update(self.layout)
@@ -341,7 +341,7 @@ class NumericalHistogram(PlotlyViewPlot):
             generate equal-width bins. Only applicable when ``bins`` is an
             integer or ``None``
         xlabel (None): an optional x-label for the plot
-        log_y (None): whether to set the y-axis to log scale
+        log (False): whether to use a log scale y-axis
         color (None): a color for the bars. Can be any color supported by
             ``plotly.graph_objects.bar.Marker.color``
         opacity (None): an optional opacity for the bars in ``[0, 1]``
@@ -358,7 +358,7 @@ class NumericalHistogram(PlotlyViewPlot):
         bins=None,
         range=None,
         xlabel=None,
-        log_y=None,
+        log=None,
         color=None,
         opacity=None,
         init_view=None,
@@ -369,7 +369,7 @@ class NumericalHistogram(PlotlyViewPlot):
         self.bins = bins
         self.range = range
         self.xlabel = xlabel
-        self.log_y = log_y
+        self.log = log
         self.color = color
         self.opacity = opacity
         self.layout = kwargs
@@ -424,7 +424,7 @@ class NumericalHistogram(PlotlyViewPlot):
 
         layout.update(dict(xaxis_title=xaxis_title, yaxis_title="count"))
 
-        if self.log_y:
+        if self.log:
             layout.update(dict(yaxis_type="log"))
 
         layout.update(self.layout)
