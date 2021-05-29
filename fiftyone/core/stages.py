@@ -3199,7 +3199,7 @@ class MatchTags(ViewStage):
 
     def to_mongo(self, _):
         if self._bool:
-            [{"$match": {"tags": {"$in": self._tags}}}]
+            return [{"$match": {"tags": {"$in": self._tags}}}]
 
         return [{"$match": {"tags": {"$nin": self._tags}}}]
 
