@@ -327,7 +327,7 @@ export class DetectionSvgOverlay<
         "fill-opacity": 0,
         stroke: color,
         "stroke-width": 5 / state.scale,
-        "stroke-opacity": 0.8,
+        "stroke-opacity": 1,
       })
       .move(btlx * width, btly * height);
   }

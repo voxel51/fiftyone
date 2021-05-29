@@ -402,11 +402,45 @@ const adjustBox = (
   };
 };
 
-const getVisibleBox = (
+const snapBox = (
+  scale: number,
   pan: Coordinates,
   [ww, wh]: Dimensions,
   [iw, ih]: Dimensions
-) => {};
+): Coordinates => {
+  const sww = ww * scale;
+  const swh = wh * scale;
+  const ar = iw / ih;
+  if (ww / wh < ar) {
+    iw = sww;
+    ih = iw / ar;
+  } else {
+    ih = swh;
+    iw = ih * ar;
+  }
+
+  const tly = -(swh - ih) / 2;
+  if (pan[1] > tly) {
+    pan[1] = tly;
+  }
+
+  const bry = tly - ih;
+  if (pan[1] - wh < bry) {
+    pan[1] -= pan[1] - wh - bry;
+  }
+
+  const tlx = -(sww - iw) / 2;
+  if (pan[0] > tlx) {
+    pan[0] = tlx;
+  }
+
+  const brx = tlx - iw;
+  if (pan[0] - ww < brx) {
+    pan[0] -= pan[0] - ww - brx;
+  }
+
+  return pan;
+};
 
 function zoomToContent<State extends FrameState | ImageState>(
   state: Readonly<State>,
@@ -415,7 +449,8 @@ function zoomToContent<State extends FrameState | ImageState>(
 ): State {
   if (state.options.zoom) {
     const points = currentOverlays.map((o) => o.getPoints()).flat();
-    let [w, h] = state.config.dimensions;
+    let [iw, ih] = state.config.dimensions;
+    let [w, h] = [iw, ih];
     const iAR = w / h;
     const {
       center: [cw, ch],
@@ -427,7 +462,7 @@ function zoomToContent<State extends FrameState | ImageState>(
     let wAR = ww / wh;
 
     let scale = 1;
-    let pan = [0, 0];
+    let pan: Coordinates = [0, 0];
     const squeeze = 0.9;
 
     // Assume thumbnail containers have the patch aspect ratio
@@ -441,40 +476,20 @@ function zoomToContent<State extends FrameState | ImageState>(
 
     // Vertical margins (whitespace)
     if (wAR < iAR) {
-      scale = (1 / bw) * scale;
-      scale = Math.max(1, scale);
+      scale = Math.max(1, (1 / bw) * scale);
       w = ww * scale;
-      h = ((wh * wAR) / iAR) * scale;
+      h = w / iAR;
       // Horizontal margins (whitespace)
     } else {
-      scale = (1 / bh) * scale;
-      scale = Math.max(1, scale);
+      scale = Math.max(1, (1 / bh) * scale);
       h = wh * scale;
-      w = (ww / wAR) * iAR * scale;
+      w = h * iAR;
     }
 
-    const marginY = wAR < iAR ? (scale * wh - h) / 2 : 0;
-    const marginX = wAR < iAR ? 0 : (scale * ww - w) / 2;
+    const marginY = (scale * wh - h) / 2;
+    const marginX = (scale * ww - w) / 2;
 
-    if (wAR <= pAR) {
-      pan = [-w * btlx - marginX, -h * btly - marginY];
-    } else {
-      pan = [-w * btlx - marginX, -h * btly - marginY];
-    }
-
-    if (ww * scale + pan[0] - marginX < ww) {
-      if (w < ww * scale) {
-        pan[0] = (-ww * (scale - 1)) / 2;
-      } else {
-        pan[0] += ww - (ww * scale + pan[0] - marginX);
-      }
-    } else if (wh * scale + pan[1] - marginY < wh) {
-      if (h < wh * scale) {
-        pan[1] = (-wh * (scale - 1)) / 2;
-      } else {
-        pan[1] += wh - (wh * scale + pan[1] - marginY);
-      }
-    }
+    pan = [-w * btlx - marginX, -h * btly - marginY];
 
     // Recenter adjusted boxes, i.e. ones considered to small to fully zoom in
     // on. See "adjustBox()"
@@ -482,11 +497,16 @@ function zoomToContent<State extends FrameState | ImageState>(
     pan[1] += (h * (bh + btly - ch)) / 2;
 
     // Scale down and reposition for a centered patch with padding
-    const adjustedScale = squeeze * scale;
-    pan[0] = pan[0] * squeeze + (bw * w * (1 - squeeze)) / 2;
-    pan[1] = pan[1] * squeeze + (bh * h * (1 - squeeze)) / 2;
 
-    return mergeUpdates(state, { scale: adjustedScale, pan });
+    if (w * squeeze > ww && h * squeeze > wh) {
+      scale = squeeze * scale;
+      pan[0] = pan[0] * squeeze + (bw * w * (1 - squeeze)) / 2;
+      pan[1] = pan[1] * squeeze + (bh * h * (1 - squeeze)) / 2;
+    }
+
+    pan = snapBox(scale, pan, [ww, wh], [iw, ih]);
+
+    return mergeUpdates(state, { scale: scale, pan });
   }
   return state;
 }
