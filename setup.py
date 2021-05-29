@@ -22,7 +22,7 @@ class BdistWheelCustom(bdist_wheel):
         ]
 
 
-VERSION = "0.9.1"
+VERSION = "0.9.3"
 
 
 def get_version():

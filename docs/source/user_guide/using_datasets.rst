@@ -59,6 +59,8 @@ have a bad time:
     dataset4 = fo.load_dataset("my_fourth_dataset")
     # DoesNotExistError: Dataset 'my_fourth_dataset' not found
 
+.. _dataset-persistence:
+
 Dataset persistence
 -------------------
 
