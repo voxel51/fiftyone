@@ -44,14 +44,14 @@ your datasets and turn your good models into *great models*.
 
 .. customcarditem::
     :header: Evaluating a classifier
-    :description: Evaluation made easy. This tutorial walks through and end-to-end example of fine-tuning a classifier and understanding its failure modes using FiftyOne.
+    :description: Evaluation made easy. This tutorial walks through an end-to-end example of fine-tuning a classifier and understanding its failure modes using FiftyOne.
     :link: evaluate_classifications.html
     :image: ../_static/images/tutorials/evaluate_classifications.png
     :tags: Model-Evaluation
 
 .. customcarditem::
     :header: Using image embeddings
-    :description: Visualize your data in new ways. This tutorial show how to use FiftyOne's powerful embeddings visualization capabilities to improve your image datasets.
+    :description: Visualize your data in new ways. This tutorial shows how to use FiftyOne's powerful embeddings visualization capabilities to improve your image datasets.
     :link: image_embeddings.html
     :image: ../_static/images/tutorials/image_embeddings.png
     :tags: Visualization,Brain
@@ -72,7 +72,7 @@ your datasets and turn your good models into *great models*.
 
 .. customcarditem::
     :header: Finding classification mistakes
-    :description: Better models start with better data. This tutorial shows how FiftyOne can automatically find possible label mistakes in your classification datasets.
+    :description: Better models start with better data. This tutorial shows how FiftyOne can automatically find label mistakes in your classification datasets.
     :link: classification_mistakes.html
     :image: ../_static/images/tutorials/classification_mistakes.png
     :tags: Dataset-Evaluation,Brain

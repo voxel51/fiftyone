@@ -649,9 +649,12 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             view = state.dataset
 
         result = await _get_video_data(
-            self.sample_collection(), state, view, [_id]
+            StateHandler.sample_collection(), state, view, [_id]
         )
         sample, frames, labels = result[0]
+        convert([labels])
+        convert([sample])
+        convert(frames)
 
         fps = etav.get_frame_rate(sample["filepath"])
         _write_message(
@@ -1311,9 +1314,6 @@ async def _get_video_data(col, state, view, _ids):
             sample["frames"] = frames[0]
         else:
             sample["frames"] = None
-
-        convert([sample])
-        convert(frames)
 
         labels = _make_video_labels(state, view, sample, frames)
         results.append((sample, frames, labels))
