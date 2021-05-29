@@ -19,6 +19,7 @@ import string
 from bson import ObjectId
 from deprecated import deprecated
 import mongoengine.errors as moe
+import numpy as np
 from pymongo import UpdateMany, UpdateOne
 from pymongo.errors import CursorNotFound, BulkWriteError
 
@@ -1530,8 +1531,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             )
 
         if key_fcn is None:
-            aggs = [foa.Values(key_field), foa.Values("id")]
-            id_map = {key: _id for key, _id in zip(*self.aggregate(aggs))}
+            id_map = {k: v for k, v in zip(*self.values([key_field, "id"]))}
             key_fcn = lambda sample: sample[key_field]
         else:
             id_map = {}
@@ -4050,10 +4050,10 @@ def _merge_samples(
 
 
 def _index_frames(sample_collection, key_field, frame_key_field):
-    aggs = [foa.Values("_id"), foa.Values(key_field)]
-    keys_map = {k: v for k, v in zip(*sample_collection.aggregate(aggs))}
-
-    all_sample_ids = sample_collection.values("frames._sample_id")
+    ids, keys, all_sample_ids = sample_collection.values(
+        ["_id", key_field, "frames._sample_id"]
+    )
+    keys_map = {k: v for k, v in zip(ids, keys)}
 
     frame_keys = []
     for sample_ids in all_sample_ids:
@@ -4088,8 +4088,8 @@ def _always_select_field(sample_collection, field):
 
 
 def _finalize_frames(sample_collection, key_field, frame_key_field):
-    aggs = [foa.Values(key_field), foa.Values("_id")]
-    ids_map = {k: v for k, v in zip(*sample_collection.aggregate(aggs))}
+    results = sample_collection.values([key_field, "_id"])
+    ids_map = {k: v for k, v in zip(*results)}
 
     frame_coll = sample_collection._frame_collection
 
@@ -4112,6 +4112,9 @@ def _get_sample_ids(samples_or_ids):
 
     if isinstance(samples_or_ids, foc.SampleCollection):
         return samples_or_ids.values("id")
+
+    if isinstance(samples_or_ids, np.ndarray):
+        return list(samples_or_ids)
 
     if not samples_or_ids:
         return []

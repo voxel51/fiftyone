@@ -138,6 +138,7 @@ from .core.stages import (
     GeoWithin,
     MapLabels,
     Match,
+    MatchLabels,
     MatchTags,
     Mongo,
     Shuffle,
