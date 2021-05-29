@@ -1958,14 +1958,24 @@ class SampleCollection(object):
         The returned view will omit samples, sample fields, and individual
         labels that do not match the specified selection criteria.
 
-        You can perform an exclusion via one of the following methods:
-
-        -   Provide one or both of the ``ids`` and ``tags`` arguments, and
-            optionally the ``fields`` argument
+        You can perform an exclusion via one or more of the following methods:
 
         -   Provide the ``labels`` argument, which should contain a list of
             dicts in the format returned by
-            :meth:`fiftyone.core.session.Session.selected_labels`
+            :meth:`fiftyone.core.session.Session.selected_labels`, to exclude
+            specific labels
+
+        -   Provide the ``ids`` argument to exclude labels with specific IDs
+
+        -   Provide the ``tags`` argument to exclude labels with specific tags
+
+        If multiple criteria are specified, labels must match all of them in
+        order to be excluded.
+
+        By default, the exclusion is applied to all
+        :class:`fiftyone.core.labels.Label` fields, but you can provide the
+        ``fields`` argument to explicitly define the field(s) in which to
+        exclude.
 
         Examples::
 
@@ -2013,14 +2023,14 @@ class SampleCollection(object):
             ]
 
             # Give the labels a "test" tag
-            dataset = dataset.clone()  # create a copy since we're modifying data
+            dataset = dataset.clone()  # create copy since we're modifying data
             dataset.select_labels(ids=ids).tag_labels("test")
 
             print(dataset.count_values("ground_truth.detections.tags"))
             print(dataset.count_values("predictions.detections.tags"))
 
             # Exclude the labels via their tag
-            view = dataset.exclude_labels(tags=["test"])
+            view = dataset.exclude_labels(tags="test")
 
             print(dataset.count("ground_truth.detections"))
             print(view.count("ground_truth.detections"))
@@ -3155,9 +3165,138 @@ class SampleCollection(object):
         return self._add_view_stage(fos.Match(filter))
 
     @view_stage
-    def match_tags(self, tags):
+    def match_labels(
+        self, labels=None, ids=None, tags=None, filter=None, fields=None
+    ):
+        """Selects the samples from the collection that contain the specified
+        labels.
+
+        The returned view will only contain samples that have at least one
+        label that matches the specified selection criteria.
+
+        Note that, unlike :meth:`select_labels` and :meth:`filter_labels`, this
+        stage will not filter the labels themselves; it only selects the
+        corresponding samples.
+
+        You can perform a selection via one or more of the following methods:
+
+        -   Provide the ``labels`` argument, which should contain a list of
+            dicts in the format returned by
+            :meth:`fiftyone.core.session.Session.selected_labels`, to match
+            specific labels
+
+        -   Provide the ``ids`` argument to match labels with specific IDs
+
+        -   Provide the ``tags`` argument to match labels with specific tags
+
+        -   Provide the ``filter`` argument to match labels based on a boolean
+            :class:`fiftyone.core.expressions.ViewExpression` that is applied
+            to each individual :class:`fiftyone.core.labels.Label` element
+
+        If multiple criteria are specified, labels must match all of them in
+        order to trigger a sample match.
+
+        By default, the selection is applied to all
+        :class:`fiftyone.core.labels.Label` fields, but you can provide the
+        ``fields`` argument to explicitly define the field(s) in which to
+        search.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            #
+            # Only show samples whose labels are currently selected in the App
+            #
+
+            session = fo.launch_app(dataset)
+
+            # Select some labels in the App...
+
+            view = dataset.match_labels(labels=session.selected_labels)
+
+            #
+            # Only include samples that contain labels with the specified IDs
+            #
+
+            # Grab some label IDs
+            ids = [
+                dataset.first().ground_truth.detections[0].id,
+                dataset.last().predictions.detections[0].id,
+            ]
+
+            view = dataset.match_labels(ids=ids)
+
+            print(len(view))
+            print(view.count("ground_truth.detections"))
+            print(view.count("predictions.detections"))
+
+            #
+            # Only include samples that contain labels with the specified tags
+            #
+
+            # Grab some label IDs
+            ids = [
+                dataset.first().ground_truth.detections[0].id,
+                dataset.last().predictions.detections[0].id,
+            ]
+
+            # Give the labels a "test" tag
+            dataset = dataset.clone()  # create copy since we're modifying data
+            dataset.select_labels(ids=ids).tag_labels("test")
+
+            print(dataset.count_values("ground_truth.detections.tags"))
+            print(dataset.count_values("predictions.detections.tags"))
+
+            # Retrieve the labels via their tag
+            view = dataset.match_labels(tags="test")
+
+            print(len(view))
+            print(view.count("ground_truth.detections"))
+            print(view.count("predictions.detections"))
+
+            #
+            # Only include samples that contain labels matching a filter
+            #
+
+            filter = F("confidence") > 0.99
+            view = dataset.match_labels(filter=filter, fields="predictions")
+
+            print(len(view))
+            print(view.count("ground_truth.detections"))
+            print(view.count("predictions.detections"))
+
+        Args:
+            labels (None): a list of dicts specifying the labels to select in
+                the format returned by
+                :meth:`fiftyone.core.session.Session.selected_labels`
+            ids (None): an ID or iterable of IDs of the labels to select
+            tags (None): a tag or iterable of tags of labels to select
+            filter (None): a :class:`fiftyone.core.expressions.ViewExpression`
+                or `MongoDB aggregation expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+                that returns a boolean describing whether to select a given
+                label. In the case of list fields like
+                :class:`fiftyone.core.labels.Detections`, the filter is applied
+                to the list elements, not the root field
+            fields (None): a field or iterable of fields from which to select
+
+        Returns:
+            a :class:`fiftyone.core.view.DatasetView`
+        """
+        return self._add_view_stage(
+            fos.MatchLabels(
+                labels=labels, ids=ids, tags=tags, filter=filter, fields=fields
+            )
+        )
+
+    @view_stage
+    def match_tags(self, tags, bool=True):
         """Returns a view containing the samples in the collection that have
-        any of the given tag(s).
+        (or do not have) any of the given tag(s).
 
         To match samples that must contain multiple tags, chain multiple
         :meth:`match_tags` calls together.
@@ -3198,13 +3337,21 @@ class SampleCollection(object):
 
             view = dataset.match_tags(["test", "train"])
 
+            #
+            # Only include samples that do not have the "train" tag
+            #
+
+            view = dataset.match_tags("train", bool=False)
+
         Args:
             tags: the tag or iterable of tags to match
+            bool (True): whether to match samples that have (True) or do not
+                have (False) the given tags
 
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
         """
-        return self._add_view_stage(fos.MatchTags(tags))
+        return self._add_view_stage(fos.MatchTags(tags, bool=bool))
 
     @view_stage
     def mongo(self, pipeline):
@@ -3403,14 +3550,24 @@ class SampleCollection(object):
         The returned view will omit samples, sample fields, and individual
         labels that do not match the specified selection criteria.
 
-        You can perform a selection via one of the following methods:
-
-        -   Provide one or both of the ``ids`` and ``tags`` arguments, and
-            optionally the ``fields`` argument
+        You can perform a selection via one or more of the following methods:
 
         -   Provide the ``labels`` argument, which should contain a list of
             dicts in the format returned by
-            :meth:`fiftyone.core.session.Session.selected_labels`
+            :meth:`fiftyone.core.session.Session.selected_labels`, to select
+            specific labels
+
+        -   Provide the ``ids`` argument to select labels with specific IDs
+
+        -   Provide the ``tags`` argument to select labels with specific tags
+
+        If multiple criteria are specified, labels must match all of them in
+        order to be selected.
+
+        By default, the selection is applied to all
+        :class:`fiftyone.core.labels.Label` fields, but you can provide the
+        ``fields`` argument to explicitly define the field(s) in which to
+        select.
 
         Examples::
 
@@ -3455,13 +3612,13 @@ class SampleCollection(object):
             ]
 
             # Give the labels a "test" tag
-            dataset = dataset.clone()  # create a copy since we're modifying data
+            dataset = dataset.clone()  # create copy since we're modifying data
             dataset.select_labels(ids=ids).tag_labels("test")
 
             print(dataset.count_label_tags())
 
             # Retrieve the labels via their tag
-            view = dataset.select_labels(tags=["test"])
+            view = dataset.select_labels(tags="test")
 
             print(view.count("ground_truth.detections"))
             print(view.count("predictions.detections"))
@@ -3902,7 +4059,10 @@ class SampleCollection(object):
             field_or_expr: a field name, ``embedded.field.name``,
                 :class:`fiftyone.core.expressions.ViewExpression`, or
                 `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
-                defining the field or expression to aggregate
+                defining the field or expression to aggregate. This can also
+                be a list or tuple of such arguments, in which case a tuple of
+                corresponding aggregation results (each receiving the same
+                additional keyword arguments, if any) will be returned
             expr (None): a :class:`fiftyone.core.expressions.ViewExpression` or
                 `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
                 to apply to ``field_or_expr`` (which must be a field) before
@@ -3911,7 +4071,8 @@ class SampleCollection(object):
         Returns:
             the ``(min, max)`` bounds
         """
-        return self.aggregate(foa.Bounds(field_or_expr, expr=expr))
+        make = lambda field_or_expr: foa.Bounds(field_or_expr, expr=expr)
+        return self._make_and_aggregate(make, field_or_expr)
 
     @aggregation
     def count(self, field_or_expr=None, expr=None):
@@ -3993,7 +4154,10 @@ class SampleCollection(object):
                 `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
                 defining the field or expression to aggregate. If neither
                 ``field_or_expr`` or ``expr`` is provided, the samples
-                themselves are counted
+                themselves are counted. This can also be a list or tuple of
+                such arguments, in which case a tuple of corresponding
+                aggregation results (each receiving the same additional keyword
+                arguments, if any) will be returned
             expr (None): a :class:`fiftyone.core.expressions.ViewExpression` or
                 `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
                 to apply to ``field_or_expr`` (which must be a field) before
@@ -4002,9 +4166,8 @@ class SampleCollection(object):
         Returns:
             the count
         """
-        return self.aggregate(
-            foa.Count(field_or_expr=field_or_expr, expr=expr)
-        )
+        make = lambda field_or_expr: foa.Count(field_or_expr, expr=expr)
+        return self._make_and_aggregate(make, field_or_expr)
 
     @aggregation
     def count_values(self, field_or_expr, expr=None):
@@ -4081,7 +4244,10 @@ class SampleCollection(object):
             field_or_expr: a field name, ``embedded.field.name``,
                 :class:`fiftyone.core.expressions.ViewExpression`, or
                 `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
-                defining the field or expression to aggregate
+                defining the field or expression to aggregate. This can also
+                be a list or tuple of such arguments, in which case a tuple of
+                corresponding aggregation results (each receiving the same
+                additional keyword arguments, if any) will be returned
             expr (None): a :class:`fiftyone.core.expressions.ViewExpression` or
                 `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
                 to apply to ``field_or_expr`` (which must be a field) before
@@ -4090,7 +4256,8 @@ class SampleCollection(object):
         Returns:
             a dict mapping values to counts
         """
-        return self.aggregate(foa.CountValues(field_or_expr, expr=expr))
+        make = lambda field_or_expr: foa.CountValues(field_or_expr, expr=expr)
+        return self._make_and_aggregate(make, field_or_expr)
 
     @aggregation
     def distinct(self, field_or_expr, expr=None):
@@ -4169,7 +4336,10 @@ class SampleCollection(object):
             field_or_expr: a field name, ``embedded.field.name``,
                 :class:`fiftyone.core.expressions.ViewExpression`, or
                 `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
-                defining the field or expression to aggregate
+                defining the field or expression to aggregate. This can also
+                be a list or tuple of such arguments, in which case a tuple of
+                corresponding aggregation results (each receiving the same
+                additional keyword arguments, if any) will be returned
             expr (None): a :class:`fiftyone.core.expressions.ViewExpression` or
                 `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
                 to apply to ``field_or_expr`` (which must be a field) before
@@ -4178,7 +4348,8 @@ class SampleCollection(object):
         Returns:
             a sorted list of distinct values
         """
-        return self.aggregate(foa.Distinct(field_or_expr, expr=expr))
+        make = lambda field_or_expr: foa.Distinct(field_or_expr, expr=expr)
+        return self._make_and_aggregate(make, field_or_expr)
 
     @aggregation
     def histogram_values(
@@ -4257,7 +4428,10 @@ class SampleCollection(object):
             field_or_expr: a field name, ``embedded.field.name``,
                 :class:`fiftyone.core.expressions.ViewExpression`, or
                 `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
-                defining the field or expression to aggregate
+                defining the field or expression to aggregate. This can also
+                be a list or tuple of such arguments, in which case a tuple of
+                corresponding aggregation results (each receiving the same
+                additional keyword arguments, if any) will be returned
             expr (None): a :class:`fiftyone.core.expressions.ViewExpression` or
                 `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
                 to apply to ``field_or_expr`` (which must be a field) before
@@ -4286,11 +4460,10 @@ class SampleCollection(object):
                 ``[lower, upper)``, including the rightmost bin
             -   other: the number of items outside the bins
         """
-        return self.aggregate(
-            foa.HistogramValues(
-                field_or_expr, expr=expr, bins=bins, range=range, auto=auto
-            )
+        make = lambda field_or_expr: foa.HistogramValues(
+            field_or_expr, expr=expr, bins=bins, range=range, auto=auto
         )
+        return self._make_and_aggregate(make, field_or_expr)
 
     @aggregation
     def mean(self, field_or_expr, expr=None):
@@ -4355,7 +4528,10 @@ class SampleCollection(object):
             field_or_expr: a field name, ``embedded.field.name``,
                 :class:`fiftyone.core.expressions.ViewExpression`, or
                 `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
-                defining the field or expression to aggregate
+                defining the field or expression to aggregate. This can also
+                be a list or tuple of such arguments, in which case a tuple of
+                corresponding aggregation results (each receiving the same
+                additional keyword arguments, if any) will be returned
             expr (None): a :class:`fiftyone.core.expressions.ViewExpression` or
                 `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
                 to apply to ``field_or_expr`` (which must be a field) before
@@ -4364,7 +4540,8 @@ class SampleCollection(object):
         Returns:
             the mean
         """
-        return self.aggregate(foa.Mean(field_or_expr, expr=expr))
+        make = lambda field_or_expr: foa.Mean(field_or_expr, expr=expr)
+        return self._make_and_aggregate(make, field_or_expr)
 
     @aggregation
     def std(self, field_or_expr, expr=None, sample=False):
@@ -4430,7 +4607,10 @@ class SampleCollection(object):
             field_or_expr: a field name, ``embedded.field.name``,
                 :class:`fiftyone.core.expressions.ViewExpression`, or
                 `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
-                defining the field or expression to aggregate
+                defining the field or expression to aggregate. This can also
+                be a list or tuple of such arguments, in which case a tuple of
+                corresponding aggregation results (each receiving the same
+                additional keyword arguments, if any) will be returned
             expr (None): a :class:`fiftyone.core.expressions.ViewExpression` or
                 `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
                 to apply to ``field_or_expr`` (which must be a field) before
@@ -4441,7 +4621,10 @@ class SampleCollection(object):
         Returns:
             the standard deviation
         """
-        return self.aggregate(foa.Std(field_or_expr, expr=expr, sample=sample))
+        make = lambda field_or_expr: foa.Std(
+            field_or_expr, expr=expr, sample=sample
+        )
+        return self._make_and_aggregate(make, field_or_expr)
 
     @aggregation
     def sum(self, field_or_expr, expr=None):
@@ -4506,7 +4689,10 @@ class SampleCollection(object):
             field_or_expr: a field name, ``embedded.field.name``,
                 :class:`fiftyone.core.expressions.ViewExpression`, or
                 `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
-                defining the field or expression to aggregate
+                defining the field or expression to aggregate. This can also
+                be a list or tuple of such arguments, in which case a tuple of
+                corresponding aggregation results (each receiving the same
+                additional keyword arguments, if any) will be returned
             expr (None): a :class:`fiftyone.core.expressions.ViewExpression` or
                 `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
                 to apply to ``field_or_expr`` (which must be a field) before
@@ -4515,7 +4701,8 @@ class SampleCollection(object):
         Returns:
             the sum
         """
-        return self.aggregate(foa.Sum(field_or_expr, expr=expr))
+        make = lambda field_or_expr: foa.Sum(field_or_expr, expr=expr)
+        return self._make_and_aggregate(make, field_or_expr)
 
     @aggregation
     def values(
@@ -4617,7 +4804,10 @@ class SampleCollection(object):
             field_or_expr: a field name, ``embedded.field.name``,
                 :class:`fiftyone.core.expressions.ViewExpression`, or
                 `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
-                defining the field or expression to aggregate
+                defining the field or expression to aggregate. This can also
+                be a list or tuple of such arguments, in which case a tuple of
+                corresponding aggregation results (each receiving the same
+                additional keyword arguments, if any) will be returned
             expr (None): a :class:`fiftyone.core.expressions.ViewExpression` or
                 `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
                 to apply to ``field_or_expr`` (which must be a field) before
@@ -4630,17 +4820,16 @@ class SampleCollection(object):
         Returns:
             the list of values
         """
-        return self.aggregate(
-            foa.Values(
-                field_or_expr,
-                expr=expr,
-                missing_value=missing_value,
-                unwind=unwind,
-                _allow_missing=_allow_missing,
-                _big_result=_big_result,
-                _raw=_raw,
-            )
+        make = lambda field_or_expr: foa.Values(
+            field_or_expr,
+            expr=expr,
+            missing_value=missing_value,
+            unwind=unwind,
+            _allow_missing=_allow_missing,
+            _big_result=_big_result,
+            _raw=_raw,
         )
+        return self._make_and_aggregate(make, field_or_expr)
 
     def draw_labels(
         self,
@@ -5274,6 +5463,12 @@ class SampleCollection(object):
             the aggregation result dict
         """
         raise NotImplementedError("Subclass must implement _aggregate()")
+
+    def _make_and_aggregate(self, make, args):
+        if isinstance(args, (list, tuple)):
+            return tuple(self.aggregate([make(arg) for arg in args]))
+
+        return self.aggregate(make(args))
 
     def _build_aggregation(self, aggregations):
         scalar_result = isinstance(aggregations, foa.Aggregation)
