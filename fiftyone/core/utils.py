@@ -194,6 +194,18 @@ def ensure_boto3(error_msg=None):
     _ensure_import("boto3", error_msg=error_msg)
 
 
+def ensure_lightning_flash(error_msg=None):
+    """Verifies that PyTorch Lightning Flash is installed and importable.
+
+    Args:
+        error_msg (None): an optional custom error message to print
+
+    Raises:
+        ImportError: if ``lightning-flash`` could not be imported
+    """
+    _ensure_import("flash", error_msg=error_msg)
+
+
 def ensure_tf(eager=False, error_msg=None):
     """Verifies that TensorFlow is installed and importable.
 
