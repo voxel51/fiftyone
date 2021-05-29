@@ -10903,7 +10903,6 @@ __metadata:
     less-loader: ^6.1.0
     less-plugin-rewrite-import: ^0.1.1
     lint-staged: ^10.0.2
-    lodash: ^4.17.20
     mime-types: ^2.1.27
     mini-css-extract-plugin: ^0.9.0
     modclean: ^3.0.0-beta.1
@@ -18003,11 +18002,11 @@ modclean-patterns-default@latest:
 
 "player51@file:./player51::locator=fiftyone%40workspace%3A.":
   version: 1.0.0
-  resolution: "player51@file:./player51#./player51::hash=e5c920&locator=fiftyone%40workspace%3A."
+  resolution: "player51@file:./player51#./player51::hash=4a7689&locator=fiftyone%40workspace%3A."
   dependencies:
     "@ungap/event-target": ^0.2.2
     event-target: ^1.2.3
-  checksum: a28966c7fa1cc563e598118a10af29bb0e954e932f1440dd7599588de87a0b5054e8995c79b19bf16de7725d1d61b6aba684ec08abf3fcaa5defdb0a4fe83674
+  checksum: 6bd3a63e87401b05cdec753f54fecefcff3bab064a6c87193b89a3c69d9e42f1848bca2efa1b06dc6e4c67d983943903ac61733238fb78347c6ce72c51939c72
   languageName: node
   linkType: hard
 

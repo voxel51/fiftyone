@@ -702,38 +702,7 @@ export const colorMap = selectorFamily<(val) => string, boolean>({
     pool = pool.length ? pool : [darkTheme.brand];
     const seed = get(atoms.colorSeed(modal));
 
-    const tags = [
-      ...get(tagNames).map((t) => "tags." + t),
-      ...get(labelTagNames).map((t) => "_label_tags." + t),
-    ];
-    if (colorByLabel) {
-      let values = ["true", "false"];
-      const stats = get(datasetStats);
-      Object.values(stats).forEach(({ result, _CLS }) => {
-        if (_CLS === AGGS.DISTINCT) {
-          values = [...values, ...result];
-        }
-      });
-      values = [...tags, ...values];
-      return generateColorMap(pool, [], seed, false);
-    } else {
-      const colorLabelNames = get(labelTuples("sample"))
-        .filter(([name, type]) => labelTypeHasColor(type))
-        .map(([name]) => name);
-      const colorFrameLabelNames = get(labelTuples("frame"))
-        .filter(([name, type]) => labelTypeHasColor(type))
-        .map(([name]) => "frames." + name);
-      const scalarsList = [
-        ...get(scalarNames("sample")),
-        ...get(scalarNames("frame")),
-      ];
-
-      return generateColorMap(
-        pool,
-        [...tags, ...scalarsList, ...colorLabelNames, ...colorFrameLabelNames],
-        seed
-      );
-    }
+    return generateColorMap(pool, seed, colorByLabel);
   },
 });
 

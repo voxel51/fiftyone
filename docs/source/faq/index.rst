@@ -5,6 +5,22 @@ Frequently Asked Questions
 
 .. default-role:: code
 
+.. _faq-browser-support:
+
+Can I open the FiftyOne App in a browser?
+-----------------------------------------
+
+Yes! In fact, this is the default behavior. Unless you're working
+:ref:`in a notebook <faq-notebook-support>`, the App will open in your default
+web browser whenever you call
+:func:`launch_app() <fiftyone.core.session.launch_app>` .
+
+You can also run FiftyOne
+:ref:`as a desktop application <faq-desktop-app-support>` if you prefer.
+
+Check out the :ref:`enviornments guide <environments>` to see how to use
+FiftyOne in all common local, remote, cloud, and notebook environments.
+
 .. _faq-desktop-app-support:
 
 Can I run the FiftyOne App as a desktop application?
@@ -17,19 +33,6 @@ an optional ``desktop`` flag that let you control whether to launch the App in
 your browser or as a desktop App. You can also set the ``desktop_app`` flag of
 your :ref:`FiftyOne config <configuring-fiftyone>` to use the desktop App by
 default.
-
-Check out the :ref:`enviornments guide <environments>` to see how to use
-FiftyOne in all common local, remote, cloud, and notebook environments.
-
-.. _faq-browser-support:
-
-Can I open the FiftyOne App in a browser?
------------------------------------------
-
-Yes! In fact, as of :ref:`FiftyOne v0.7 <release-notes-v0.7.0>`, this is the
-default behavior; the App will open in your default web browser. You can also
-run FiftyOne :ref:`as a desktop application <faq-desktop-app-support>` if you
-prefer.
 
 Check out the :ref:`enviornments guide <environments>` to see how to use
 FiftyOne in all common local, remote, cloud, and notebook environments.
@@ -132,25 +135,17 @@ compute instance in your cloud environment and then use the
 Check out the :doc:`environments guide </environments/index>` for instructions
 for working in AWS, GCP, and Azure.
 
-.. _faq-supported-labels:
+.. _faq-supported-os:
 
-What label types are supported?
--------------------------------
+What operating systems does FiftyOne support?
+---------------------------------------------
 
-FiftyOne provides support for all of the following label types for both image
-and video datasets:
+FiftyOne is guaranteed to support the latest versions of MacOS, Windows, and
+popular Linux distributions. FiftyOne will generally also support any version
+of these popular operating systems from the past few years.
 
-- :ref:`Classifications <classification>`
-- :ref:`Multilabel classifications <multilabel-classification>`
-- :ref:`Object detections <object-detection>`
-- :ref:`Instance segmentations <objects-with-instance-segmentations>`
-- :ref:`Object attributes <objects-with-attributes>`
-- :ref:`Polylines and polygons <polylines>`
-- :ref:`Keypoints <keypoints>`
-- :ref:`Semantic segmentations <semantic-segmentation>`
-
-Check out :ref:`this guide <manually-building-datasets>` for simple recipes to
-load labels in each of these formats.
+We also provide :ref:`custom install instructions <alternative-builds>` to use
+FiftyOne on old-but-popular setups like Ubuntu 16.04 and Debian 9.
 
 .. _faq-image-types:
 
@@ -204,17 +199,100 @@ to reencode the source video so it is viewable in the App.
     `this chart <https://en.wikipedia.org/wiki/HTML5_video#Browser_support>`_
     for supported video types.
 
-.. _faq-supported-os:
+.. _faq-supported-labels:
 
-What operating systems does FiftyOne support?
----------------------------------------------
+What label types are supported?
+-------------------------------
 
-FiftyOne is guaranteed to support the latest versions of MacOS, Windows, and
-popular Linux distributions. FiftyOne will generally also support any version
-of these popular operating systems from the past few years.
+FiftyOne provides support for all of the following label types for both image
+and video datasets:
 
-We also provide :ref:`custom install instructions <alternative-builds>` to use
-FiftyOne on old-but-popular setups like Ubuntu 16.04 and Debian 9.
+- :ref:`Classifications <classification>`
+- :ref:`Multilabel classifications <multilabel-classification>`
+- :ref:`Object detections <object-detection>`
+- :ref:`Instance segmentations <objects-with-instance-segmentations>`
+- :ref:`Object attributes <objects-with-attributes>`
+- :ref:`Polylines and polygons <polylines>`
+- :ref:`Keypoints <keypoints>`
+- :ref:`Semantic segmentations <semantic-segmentation>`
+- :ref:`Geolocation data <geolocation>`
+
+Check out :ref:`this guide <manually-building-datasets>` for simple recipes to
+load labels in each of these formats.
+
+.. _faq-dataset-persistence:
+
+What happened to my datasets from previous sessions?
+----------------------------------------------------
+
+By default, datasets are non-persistent, which means they are deleted from the
+database whenever you exit (all) Python sessions in which you've imported
+FiftyOne.
+
+To make a dataset persistent, set its
+:meth:`persistent <fiftyone.core.dataset.Dataset.persistent>` property to
+`True`:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    # This dataset will be deleted when you exit Python
+    dataset = fo.Dataset("test")
+
+    # Now the dataset is permanent
+    dataset.persistent = True
+
+See :ref:`this page <dataset-persistence>` for more details about dataset
+persistence.
+
+.. note::
+
+    FiftyOne does not store the raw data in datasets directly (only the
+    labels), so your source files on disk are never deleted!
+
+.. _faq-saving-changes:
+
+Why didn't changes to my dataset save?
+--------------------------------------
+
+Although **adding** samples to datasets immediately writes them to the
+database, remember that any **edits** that you make to a
+:ref:`sample <adding-sample-fields>` or its
+:ref:`frame labels <video-frame-labels>` will not be written to the database
+until you call :meth:`sample.save() <fiftyone.core.sample.Sample.save>`.
+
+Similarly, **setting** the properties of a |Dataset| object will be immediately
+saved, but you must call
+:meth:`dataset.save() <fiftyone.core.dataset.Dataset.save>` whenever you
+**edit** fields such as :meth:`info <fiftyone.core.dataset.Dataset.info>` or
+:meth:`classes <fiftyone.core.dataset.Dataset.classes>` in-place.
+
+Refer to :ref:`this section <adding-sample-fields>` for more details about
+modifying samples and :ref:`this section <storing-info>` for more details about
+storing dataset-level information.
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    dataset = fo.Dataset(...)
+    new_samples = [...]
+
+    # Setting a property is automatically saved
+    dataset.persistent = True
+
+    dataset.info["hello"] = "world"
+    dataset.save()  # don't forget this!
+
+    # Added samples are automatically saved
+    dataset.add_samples(new_samples)
+
+    for sample in dataset:
+        sample["field"] = 51
+        sample.save()  # don't forget this!
 
 .. _faq-share-dataset-export:
 
@@ -235,18 +313,30 @@ Alternatively, :ref:`see this FAQ <faq-multiple-sessions-same-dataset>` for
 instructions on launching a remote session and inviting collaborator(s) to
 connect to it from their local machines.
 
-.. _faq-brain-closed-source:
+.. _faq-multiple-shells:
 
-Are the Brain methods open source?
-----------------------------------
+Can I use FiftyOne in multiple shells?
+--------------------------------------
 
-No. Although the `core library <https://github.com/voxel51/fiftyone>`_ is open
-source and the :ref:`Brain methods <fiftyone-brain>` are freely available for
-use for any commerical or non-commerical purposes, the Brain methods are closed
-source.
+Yes! Any changes you make to a dataset or its samples in one shell will be
+reflected in the other shells whenever you access that dataset. You can also
+launch :ref:`multiple App instances <faq-multiple-apps>`.
 
-Check out the :ref:`Brain documentation <fiftyone-brain>` for detailed
-instructions on using the various Brain methods.
+Working with the same dataset in multiple shells simultaneously is generally
+seamless, even if you are editing the dataset, as the |Dataset| class does not
+store its |Sample| objects in-memory, it loads them from the database only when
+they are requested. Therefore, if you add or modify a |Sample| in one shell,
+you will immediately have access to the updates the next time you request that
+|Sample| in other shells.
+
+The one exception to this rule is that |Dataset| and |Sample| objects
+themselves are singletons, so if you hold references to these objects
+in-memory, they will not be automatically updated by re-accessing them, since
+the existing instances will be returned back to you.
+
+If a dataset may have been changed by another process, you can always manually
+call :meth:`Dataset.reload() <fiftyone.core.dataset.Dataset.reload>` to reload
+the |Dataset| object and all in-memory |Sample| instances that belong to it.
 
 .. _faq-multiple-apps:
 
@@ -512,12 +602,37 @@ forwarding and open the App in your browser as follows:
         --port YYYY \
         --local-port ZZZZ
 
+.. _faq-too-many-files-open:
+
+Too many open files in system?
+------------------------------
+
+If you are a MacOS user and see a "too many open files in system" error when
+performing import/export operations with FiftyOne, then you likely need to
+increase the open files limit for your OS.
+
+Following the instructions in `this post <https://superuser.com/a/443168>`_
+should resolve the issue for you.
+
 .. _faq-downgrade:
 
 Can I downgrade to an older version of FiftyOne?
 ------------------------------------------------
 
 Certainly, refer to :ref:`these instructions <downgrading-fiftyone>`.
+
+.. _faq-brain-closed-source:
+
+Are the Brain methods open source?
+----------------------------------
+
+Although the `core library <https://github.com/voxel51/fiftyone>`_ is open
+source and the :ref:`Brain methods <fiftyone-brain>` are freely available for
+use for any commerical or non-commerical purposes, the Brain methods are closed
+source.
+
+Check out the :ref:`Brain documentation <fiftyone-brain>` for detailed
+instructions on using the various Brain methods.
 
 .. _faq-do-we-track:
 
