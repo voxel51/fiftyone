@@ -66,11 +66,17 @@ def apply_flash_model(
     """
     serializer = _get_fo_serializer(model, confidence_thresh)
     model.serializer = serializer
-    with fou.ProgressBar() as pb:
-        for sample in pb(samples):
-            preds = model.predict(sample.filepath)
-            sample[label_field] = preds[0]
-            sample.save()
+
+    samples_loader = fou.iter_batches(samples, batch_size)
+
+    with fou.ProgressBar(samples) as pb:
+        for sample_batch in samples_loader:
+            predictions = model.predict([s.filepath for s in sample_batch])
+            for sample, prediction in zip(sample_batch, predictions):
+                sample.add_labels(
+                    prediction, label_field,
+                )
+            pb.update(len(sample_batch))
 
 
 def _get_fo_serializer(model, confidence_thresh):
