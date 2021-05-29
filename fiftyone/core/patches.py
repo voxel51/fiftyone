@@ -281,9 +281,7 @@ class _PatchesView(fov.DatasetView):
 
         _, id_path = self._get_label_field_path(field, "id")
 
-        sample_ids, label_ids = self.aggregate(
-            [foa.Values("id"), foa.Values(id_path)]
-        )
+        sample_ids, label_ids = self.values(["id", id_path])
 
         ids_map = {}
         if is_list_field:
