@@ -303,3 +303,43 @@ export const elementBBox = (element: HTMLElement): BoundingBox => {
   } = element.getBoundingClientRect();
   return [tlx, tly, w, h];
 };
+
+export const snapBox = (
+  scale: number,
+  pan: Coordinates,
+  [ww, wh]: Dimensions,
+  [iw, ih]: Dimensions
+): Coordinates => {
+  const sww = ww * scale;
+  const swh = wh * scale;
+  const ar = iw / ih;
+  if (ww / wh < ar) {
+    iw = sww;
+    ih = iw / ar;
+  } else {
+    ih = swh;
+    iw = ih * ar;
+  }
+
+  const tly = -(swh - ih) / 2;
+  if (pan[1] > tly) {
+    pan[1] = tly;
+  }
+
+  const bry = tly - ih;
+  if (pan[1] - wh < bry) {
+    pan[1] -= pan[1] - wh - bry;
+  }
+
+  const tlx = -(sww - iw) / 2;
+  if (pan[0] > tlx) {
+    pan[0] = tlx;
+  }
+
+  const brx = tlx - iw;
+  if (pan[0] - ww < brx) {
+    pan[0] -= pan[0] - ww - brx;
+  }
+
+  return pan;
+};

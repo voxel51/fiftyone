@@ -8,5 +8,5 @@ export const POINT_RADIUS = 5;
 export const DASH_LENGTH = 10;
 export const DASH_COLOR = "#ffffff";
 
-export const MIN_PIXELS = 32;
+export const MIN_PIXELS = 16;
 export const CANVAS_WIDTH = 1280;

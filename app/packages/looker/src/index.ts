@@ -32,7 +32,7 @@ import { ClassificationLabels } from "./overlays/classifications";
 import { Overlay } from "./overlays/base";
 import processOverlays from "./processOverlays";
 import { ColorGenerator } from "./color";
-import { elementBBox, getContainingBox } from "./util";
+import { elementBBox, getContainingBox, snapBox } from "./util";
 import { MIN_PIXELS } from "./constants";
 
 export abstract class Looker<
@@ -402,46 +402,6 @@ const adjustBox = (
   };
 };
 
-const snapBox = (
-  scale: number,
-  pan: Coordinates,
-  [ww, wh]: Dimensions,
-  [iw, ih]: Dimensions
-): Coordinates => {
-  const sww = ww * scale;
-  const swh = wh * scale;
-  const ar = iw / ih;
-  if (ww / wh < ar) {
-    iw = sww;
-    ih = iw / ar;
-  } else {
-    ih = swh;
-    iw = ih * ar;
-  }
-
-  const tly = -(swh - ih) / 2;
-  if (pan[1] > tly) {
-    pan[1] = tly;
-  }
-
-  const bry = tly - ih;
-  if (pan[1] - wh < bry) {
-    pan[1] -= pan[1] - wh - bry;
-  }
-
-  const tlx = -(sww - iw) / 2;
-  if (pan[0] > tlx) {
-    pan[0] = tlx;
-  }
-
-  const brx = tlx - iw;
-  if (pan[0] - ww < brx) {
-    pan[0] -= pan[0] - ww - brx;
-  }
-
-  return pan;
-};
-
 function zoomToContent<State extends FrameState | ImageState>(
   state: Readonly<State>,
   currentOverlays: Overlay<State>[],
@@ -497,7 +457,6 @@ function zoomToContent<State extends FrameState | ImageState>(
     pan[1] += (h * (bh + btly - ch)) / 2;
 
     // Scale down and reposition for a centered patch with padding
-
     if (w * squeeze > ww && h * squeeze > wh) {
       scale = squeeze * scale;
       pan[0] = pan[0] * squeeze + (bw * w * (1 - squeeze)) / 2;

@@ -4,7 +4,7 @@
 
 import { CANVAS_WIDTH } from "../constants";
 import { BaseState, Coordinates } from "../state";
-import { getCanvasCoordinates, getFitCanvasBBox } from "../util";
+import { getCanvasCoordinates, snapBox } from "../util";
 import { BaseElement, Events } from "./base";
 import { ICONS, makeCheckboxRow, makeWrapper } from "./util";
 
@@ -115,29 +115,41 @@ export class LookerElement<State extends BaseState> extends BaseElement<
         });
       },
       wheel: ({ event, update }) => {
-        update(({ config: { thumbnail }, pan: [px, py], scale }) => {
-          if (thumbnail) {
-            return {};
+        update(
+          ({ config: { thumbnail, dimensions }, pan: [px, py], scale }) => {
+            if (thumbnail) {
+              return {};
+            }
+            event.preventDefault();
+            let {
+              x: tlx,
+              y: tly,
+              width,
+              height,
+            } = this.element.getBoundingClientRect();
+
+            const x = event.x - tlx;
+            const y = event.y - tly;
+
+            const xs = (x - px) / scale;
+            const ys = (y - py) / scale;
+            scale = Math.max(
+              Math.min(event.deltaY < 0 ? scale * 1.1 : scale / 1.1),
+              1
+            );
+
+            return {
+              pan: snapBox(
+                scale,
+                [x - xs * scale, y - ys * scale],
+                [width, height],
+                dimensions
+              ),
+              scale,
+              options: { zoom: false },
+            };
           }
-          event.preventDefault();
-          let { x: tlx, y: tly } = this.element.getBoundingClientRect();
-
-          const x = event.x - tlx;
-          const y = event.y - tly;
-
-          const xs = (x - px) / scale;
-          const ys = (y - py) / scale;
-          scale = Math.max(
-            Math.min(event.deltaY < 0 ? scale * 1.1 : scale / 1.1),
-            1
-          );
-
-          return {
-            pan: [x - xs * scale, y - ys * scale],
-            scale,
-            options: { zoom: false },
-          };
-        });
+        );
       },
     };
   }
@@ -165,13 +177,7 @@ export class LookerElement<State extends BaseState> extends BaseElement<
   ): Coordinates {
     const [sx, sy] = this.start;
     const { width, height } = this.element.getBoundingClientRect();
-    const [tlx, tly, w, h] = getFitCanvasBBox(dimensions, [
-      0,
-      0,
-      width,
-      height,
-    ]);
-    return [x - sx, y - sy];
+    return snapBox(scale, [x - sx, y - sy], [width, height], dimensions);
   }
 }
 
