@@ -12,7 +12,6 @@ import os
 import warnings
 
 import numpy as np
-import plotly.callbacks as pc
 import plotly.express as px
 import plotly.graph_objects as go
 
@@ -23,7 +22,6 @@ import fiftyone.core.context as foc
 import fiftyone.core.expressions as foe
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
-import fiftyone.core.utils as fou
 
 from .base import Plot, InteractivePlot, ResponsivePlot
 
@@ -46,7 +44,7 @@ def plot_confusion_matrix(
     gt_field=None,
     pred_field=None,
     colorscale="oranges",
-    layout=None,
+    **kwargs,
 ):
     """Plots a confusion matrix.
 
@@ -68,8 +66,8 @@ def plot_confusion_matrix(
         pred_field (None): the name of the predictions field
         colorscale ("oranges"): a plotly colorscale to use. See
             https://plotly.com/python/builtin-colorscales for options
-        layout (None): an optional dict of parameters for
-            ``plotly.graph_objects.Figure.update_layout(**layout)``
+        **kwargs: optional keyword arguments for
+            ``plotly.graph_objects.Figure.update_layout(**kwargs)``
 
     Returns:
         one of the following:
@@ -81,7 +79,7 @@ def plot_confusion_matrix(
     """
     if ids is None:
         return _plot_confusion_matrix_static(
-            confusion_matrix, labels, colorscale=colorscale, layout=layout
+            confusion_matrix, labels, colorscale=colorscale, **kwargs
         )
 
     return _plot_confusion_matrix_interactive(
@@ -92,12 +90,12 @@ def plot_confusion_matrix(
         gt_field=gt_field,
         pred_field=pred_field,
         colorscale=colorscale,
-        layout=layout,
+        **kwargs,
     )
 
 
 def _plot_confusion_matrix_static(
-    confusion_matrix, labels, colorscale=None, layout=None
+    confusion_matrix, labels, colorscale=None, **kwargs
 ):
     confusion_matrix = np.asarray(confusion_matrix)
     num_rows, num_cols = confusion_matrix.shape
@@ -145,9 +143,7 @@ def _plot_confusion_matrix_static(
     )
 
     figure.update_layout(**_DEFAULT_LAYOUT)
-
-    if layout:
-        figure.update_layout(**layout)
+    figure.update_layout(**kwargs)
 
     if foc.is_jupyter_context():
         figure = PlotlyNotebookPlot(figure)
@@ -163,7 +159,7 @@ def _plot_confusion_matrix_interactive(
     gt_field=None,
     pred_field=None,
     colorscale=None,
-    layout=None,
+    **kwargs,
 ):
     confusion_matrix = np.asarray(confusion_matrix)
     ids = np.asarray(ids)
@@ -198,14 +194,12 @@ def _plot_confusion_matrix_interactive(
     )
 
     plot.update_layout(**_DEFAULT_LAYOUT)
-
-    if layout:
-        plot.update_layout(**layout)
+    plot.update_layout(**kwargs)
 
     return plot
 
 
-def plot_pr_curve(precision, recall, label=None, style="area", layout=None):
+def plot_pr_curve(precision, recall, label=None, style="area", **kwargs):
     """Plots a precision-recall (PR) curve.
 
     Args:
@@ -214,8 +208,8 @@ def plot_pr_curve(precision, recall, label=None, style="area", layout=None):
         label (None): a label for the curve
         style ("area"): a plot style to use. Supported values are
             ``("area", "line")``
-        layout (None): an optional dict of parameters for
-            ``plotly.graph_objects.Figure.update_layout(**layout)``
+        **kwargs: optional keyword arguments for
+            ``plotly.graph_objects.Figure.update_layout(**kwargs)``
 
     Returns:
         one of the following:
@@ -254,9 +248,7 @@ def plot_pr_curve(precision, recall, label=None, style="area", layout=None):
     )
 
     figure.update_layout(**_DEFAULT_LAYOUT)
-
-    if layout:
-        figure.update_layout(**layout)
+    figure.update_layout(**kwargs)
 
     if foc.is_jupyter_context():
         figure = PlotlyNotebookPlot(figure)
@@ -264,7 +256,7 @@ def plot_pr_curve(precision, recall, label=None, style="area", layout=None):
     return figure
 
 
-def plot_pr_curves(precisions, recall, classes, layout=None):
+def plot_pr_curves(precisions, recall, classes, **kwargs):
     """Plots a set of per-class precision-recall (PR) curves.
 
     Args:
@@ -272,8 +264,8 @@ def plot_pr_curves(precisions, recall, classes, layout=None):
             precision values
         recall: an array of recall values
         classes: the list of classes
-        layout (None): an optional dict of parameters for
-            ``plotly.graph_objects.Figure.update_layout(**layout)``
+        **kwargs: optional keyword arguments for
+            ``plotly.graph_objects.Figure.update_layout(**kwargs)``
 
     Returns:
         one of the following:
@@ -331,9 +323,7 @@ def plot_pr_curves(precisions, recall, classes, layout=None):
     )
 
     figure.update_layout(**_DEFAULT_LAYOUT)
-
-    if layout:
-        figure.update_layout(**layout)
+    figure.update_layout(**kwargs)
 
     if foc.is_jupyter_context():
         figure = PlotlyNotebookPlot(figure)
@@ -341,7 +331,7 @@ def plot_pr_curves(precisions, recall, classes, layout=None):
     return figure
 
 
-def plot_roc_curve(fpr, tpr, roc_auc=None, style="area", layout=None):
+def plot_roc_curve(fpr, tpr, roc_auc=None, style="area", **kwargs):
     """Plots a receiver operating characteristic (ROC) curve.
 
     Args:
@@ -350,8 +340,8 @@ def plot_roc_curve(fpr, tpr, roc_auc=None, style="area", layout=None):
         roc_auc (None): the area under the ROC curve
         style ("area"): a plot style to use. Supported values are
             ``("area", "line")``
-        layout (None): an optional dict of parameters for
-            ``plotly.graph_objects.Figure.update_layout(**layout)``
+        **kwargs: optional keyword arguments for
+            ``plotly.graph_objects.Figure.update_layout(**kwargs)``
 
     Returns:
         one of the following:
@@ -392,9 +382,7 @@ def plot_roc_curve(fpr, tpr, roc_auc=None, style="area", layout=None):
     )
 
     figure.update_layout(**_DEFAULT_LAYOUT)
-
-    if layout:
-        figure.update_layout(**layout)
+    figure.update_layout(**kwargs)
 
     if foc.is_jupyter_context():
         figure = PlotlyNotebookPlot(figure)
@@ -408,14 +396,16 @@ def scatterplot(
     link_field=None,
     labels=None,
     sizes=None,
+    edges=None,
     classes=None,
     multi_trace=None,
     marker_size=None,
     labels_title=None,
     sizes_title=None,
+    edges_title=None,
     show_colorbar_title=None,
     axis_equal=False,
-    layout=None,
+    **kwargs,
 ):
     """Generates an interactive scatterplot of the given points.
 
@@ -468,8 +458,14 @@ def scatterplot(
                 refers to a label list field like
                 :class:`fiftyone.core.labels.Detections`
 
+        edges (None): an optional ``num_edges x 2`` array of row indices into
+            ``points`` defining undirected edges between points to render as a
+            separate trace on the scatterplot
         classes (None): an optional list of classes whose points to plot.
-            Only applicable when ``labels`` contains strings
+            Only applicable when ``labels`` contains strings. If provided, the
+            element order of this list also controls the z-order and legend
+            order of multitrace plots (first class is rendered first, and thus
+            on the bottom, and appears first in the legend)
         multi_trace (None): whether to render each class as a separate trace.
             Only applicable when ``labels`` contains strings. By default, this
             will be true if there are up to 25 classes
@@ -482,13 +478,15 @@ def scatterplot(
         sizes_title (None): a title string to use for ``sizes`` in the tooltip.
             By default, if ``sizes`` is a field name, this name will be used,
             otherwise the tooltip will use "size"
+        edges_title (None): a title string to use for ``edges`` in the legend.
+            If none is provided, edges are not included in the legend
         show_colorbar_title (None): whether to show the colorbar title. By
             default, a title will be shown only if a value was pasesd to
             ``labels_title`` or an appropriate default can be inferred from
             the ``labels`` parameter
         axis_equal (False): whether to set the axes to equal scale
-        layout (None): an optional dict of parameters for
-            ``plotly.graph_objects.Figure.update_layout(**layout)``
+        **kwargs: optional keyword arguments for
+            ``plotly.graph_objects.Figure.update_layout(**kwargs)``
 
     Returns:
         one of the following:
@@ -509,8 +507,16 @@ def scatterplot(
         labels, labels_title, sizes, sizes_title, show_colorbar_title
     )
 
-    points, ids, labels, sizes, classes, categorical = _parse_scatter_inputs(
-        points, samples, link_field, labels, sizes, classes
+    (
+        points,
+        ids,
+        labels,
+        sizes,
+        edges,
+        classes,
+        categorical,
+    ) = _parse_scatter_inputs(
+        points, samples, link_field, labels, sizes, edges, classes
     )
 
     if categorical:
@@ -523,10 +529,12 @@ def scatterplot(
                 labels,
                 classes,
                 sizes,
+                edges,
                 ids,
                 marker_size,
                 labels_title,
                 sizes_title,
+                edges_title,
                 colorbar_title,
                 axis_equal,
             )
@@ -536,10 +544,12 @@ def scatterplot(
                 labels,
                 classes,
                 sizes,
+                edges,
                 ids,
                 marker_size,
                 labels_title,
                 sizes_title,
+                edges_title,
                 colorbar_title,
                 axis_equal,
             )
@@ -548,18 +558,18 @@ def scatterplot(
             points,
             labels,  # numeric values
             sizes,
+            edges,
             ids,
             marker_size,
             labels_title,
             sizes_title,
+            edges_title,
             colorbar_title,
             axis_equal,
         )
 
     figure.update_layout(**_DEFAULT_LAYOUT)
-
-    if layout:
-        figure.update_layout(**layout)
+    figure.update_layout(**kwargs)
 
     if num_dims == 3:
         if samples is not None:
@@ -609,7 +619,9 @@ def _parse_titles(
     return labels_title, sizes_title, colorbar_title
 
 
-def _parse_scatter_inputs(points, samples, link_field, labels, sizes, classes):
+def _parse_scatter_inputs(
+    points, samples, link_field, labels, sizes, edges, classes
+):
     num_dims = points.shape[1]
 
     labels = _get_data_for_points(points, samples, labels, "labels")
@@ -623,14 +635,7 @@ def _parse_scatter_inputs(points, samples, link_field, labels, sizes, classes):
         else:
             ids = _get_ids_for_points(points, samples, link_field=link_field)
 
-    points, labels, sizes, classes, inds, categorical = _parse_data(
-        points, labels, sizes, classes
-    )
-
-    if ids is not None and inds is not None:
-        ids = ids[inds]
-
-    return points, ids, labels, sizes, classes, categorical
+    return _parse_data(points, ids, labels, sizes, edges, classes)
 
 
 def _get_data_for_points(points, samples, values, parameter):
@@ -680,35 +685,47 @@ def _get_ids_for_points(points, samples, link_field=None):
             % (ptype, len(ids), len(points))
         )
 
-    return np.array(ids)
+    return ids
 
 
-def _parse_data(points, labels, sizes, classes):
+def _parse_data(points, ids, labels, sizes, edges, classes):
+    if ids is not None:
+        ids = np.asarray(ids)
+
     if sizes is not None:
         sizes = np.asarray(sizes)
 
+    if edges is not None:
+        edges = np.asarray(edges)
+
     if labels is None:
-        return points, None, sizes, None, None, False
+        return points, ids, None, sizes, edges, None, False
 
     labels = np.asarray(labels)
 
     if not etau.is_str(labels[0]):
-        return points, labels, sizes, None, None, False
+        return points, ids, labels, sizes, edges, None, False
 
     if classes is None:
         classes = sorted(set(labels))
-        return points, labels, sizes, classes, None, True
+        return points, ids, labels, sizes, edges, classes, True
 
     found = np.array([l in classes for l in labels])
     if not np.all(found):
         points = points[found, :]
         labels = labels[found]
+
         if sizes is not None:
             sizes = sizes[found]
-    else:
-        found = None
 
-    return points, labels, sizes, classes, found, True
+        if ids is not None:
+            ids = ids[found]
+
+        if edges is not None:
+            i = set(np.nonzero(found)[0])
+            edges = np.array([e for e in edges if e[0] in i and e[1] in i])
+
+    return points, ids, labels, sizes, edges, classes, True
 
 
 def location_scatterplot(
@@ -716,6 +733,7 @@ def location_scatterplot(
     samples=None,
     labels=None,
     sizes=None,
+    edges=None,
     classes=None,
     style=None,
     radius=None,
@@ -723,8 +741,9 @@ def location_scatterplot(
     marker_size=None,
     labels_title=None,
     sizes_title=None,
+    edges_title=None,
     show_colorbar_title=None,
-    layout=None,
+    **kwargs,
 ):
     """Generates an interactive scatterplot of the given location coordinates
     with a map rendered in the background of the plot.
@@ -775,8 +794,14 @@ def location_scatterplot(
                 :meth:`fiftyone.core.collections.SampleCollection.values`
             -   a list or array-like of numeric values
 
+        edges (None): an optional ``num_edges x 2`` array of row indices into
+            ``locations`` defining undirected edges between points to render as
+            a separate trace on the scatterplot
         classes (None): an optional list of classes whose points to plot.
-            Only applicable when ``labels`` contains strings
+            Only applicable when ``labels`` contains strings. If provided, the
+            element order of this list also controls the z-order and legend
+            order of multitrace plots (first class is rendered first, and thus
+            on the bottom, and appears first in the legend)
         style (None): the plot style to use. Only applicable when the color
             data is numeric. Supported values are ``("scatter", "density")``
         radius (None): the radius of influence of each lat/lon point. Only
@@ -794,12 +819,14 @@ def location_scatterplot(
         sizes_title (None): a title string to use for ``sizes`` in the tooltip.
             By default, if ``sizes`` is a field name, this name will be used,
             otherwise the tooltip will use "size"
+        edges_title (None): a title string to use for ``edges`` in the legend.
+            If none is provided, edges are not included in the legend
         show_colorbar_title (None): whether to show the colorbar title. By
             default, a title will be shown only if a value was pasesd to
             ``labels_title`` or an appropriate default can be inferred from
             the ``labels`` parameter
-        layout (None): an optional dict of parameters for
-            ``plotly.graph_objects.Figure.update_layout(**layout)``
+        **kwargs: optional keyword arguments for
+            ``plotly.graph_objects.Figure.update_layout(**kwargs)``
 
     Returns:
         one of the following:
@@ -820,9 +847,12 @@ def location_scatterplot(
         ids,
         labels,
         sizes,
+        edges,
         classes,
         categorical,
-    ) = _parse_scatter_inputs(locations, samples, None, labels, sizes, classes)
+    ) = _parse_scatter_inputs(
+        locations, samples, None, labels, sizes, edges, classes
+    )
 
     if style not in (None, "scatter", "density"):
         msg = "Ignoring unsupported style '%s'" % style
@@ -838,10 +868,12 @@ def location_scatterplot(
                 labels,
                 classes,
                 sizes,
+                edges,
                 ids,
                 marker_size,
                 labels_title,
                 sizes_title,
+                edges_title,
                 colorbar_title,
             )
         else:
@@ -850,13 +882,18 @@ def location_scatterplot(
                 labels,
                 classes,
                 sizes,
+                edges,
                 ids,
                 marker_size,
                 labels_title,
                 sizes_title,
+                edges_title,
                 colorbar_title,
             )
     elif style == "density":
+        if edges is not None:
+            logger.warning("Density plots do not support edges")
+
         figure = _plot_scatter_mapbox_density(
             locations,
             labels,
@@ -872,17 +909,17 @@ def location_scatterplot(
             locations,
             labels,
             sizes,
+            edges,
             ids,
             marker_size,
             labels_title,
             sizes_title,
+            edges_title,
             colorbar_title,
         )
 
     figure.update_layout(**_DEFAULT_LAYOUT)
-
-    if layout:
-        figure.update_layout(**layout)
+    figure.update_layout(**kwargs)
 
     if style == "density" and not categorical:
         msg = "Density plots do not yet support interactivity"
@@ -1122,8 +1159,9 @@ class InteractiveScatter(PlotlyInteractivePlot):
     This wrapper responds to selection and deselection events (if available)
     triggered on the figure's traces via Plotly's lasso and box selector tools.
 
-    All traces must contain IDs in their ``customdata`` attribute that identify
-    the points in the traces.
+    Traces whose ``customdata`` attribute contain numpy arrays are assumed to
+    contain the IDs of the points in the trace. Traces with no ``customdata``
+    are allowed, but will not have any selection events.
 
     Args:
         figure: a ``plotly.graph_objects.Figure``
@@ -1160,15 +1198,6 @@ class InteractiveScatter(PlotlyInteractivePlot):
 
     def _init_traces(self):
         for idx, trace in enumerate(self._traces):
-            if trace.customdata is None or not isinstance(
-                trace.customdata, np.ndarray
-            ):
-                _name = "'%s'" % trace.name if trace.name else str(idx)
-                raise ValueError(
-                    "Trace %s does not contain IDs in its `customdata` "
-                    "attribute" % _name
-                )
-
             trace_ids = trace.customdata
             if trace_ids.ndim > 1:
                 trace_ids = trace_ids[:, 0]
@@ -1210,7 +1239,11 @@ class InteractiveScatter(PlotlyInteractivePlot):
 
     def _make_widget(self):
         widget = go.FigureWidget(self._figure)
-        self._traces = widget.data
+        self._traces = [
+            trace
+            for trace in widget.data
+            if isinstance(trace.customdata, np.ndarray)
+        ]
         self._init_traces()
         return widget
 
@@ -1286,85 +1319,6 @@ class InteractiveScatter(PlotlyInteractivePlot):
             self._init_callback_flags()
 
         return ready
-
-
-mpl = fou.lazy_import("matplotlib")
-
-
-class ManualInteractiveScatter(InteractiveScatter):
-    """Interactive plot wrapper for a Plotly figure containing one or more
-    scatter-type traces.
-
-    This plot responds to selection and deselection events triggered on the
-    figure's traces via plotly's lasso and box selector tools.
-
-    Unlike :class:`InteractiveScatter`, this class does not require the traces
-    to store the IDs of their points in their ``customdata`` attribute.
-    Instead, the selected points are manually computed from the raw lasso/box
-    coordinates via the provided ``points`` array each time a selection event
-    occurs.
-
-    Args:
-        figure: a ``plotly.graph_objects.Figure``
-        points: a ``num_points x 2`` array of points
-        ids: a ``num_points`` array containing the IDs for ``points``
-        **kwargs: keyword arguments for :class:`InteractiveScatter`
-    """
-
-    def __init__(self, figure, points, ids, **kwargs):
-        self._points = points
-        self._point_ids = ids
-        self._trace_inds = None
-        self._ids = None
-
-        super().__init__(figure, **kwargs)
-
-    @property
-    def _selected_ids(self):
-        return list(self._ids) if self._ids is not None else []
-
-    def _init_traces(self):
-        self._trace_inds = np.zeros(len(self._points), dtype=int)
-        for trace_idx, trace in enumerate(self._traces):
-            trace_ids = set(self._trace_ids[trace_idx])
-            for point_idx, _id in enumerate(self._point_ids):
-                if _id in trace_ids:
-                    self._trace_inds[point_idx] = trace_idx
-
-    def _on_select(self, trace, selector=None):
-        # Manually compute points within selector
-        self._manual_select(selector)
-
-        super()._on_select(trace, selector=selector)
-
-    def _manual_select(self, selector):
-        if not isinstance(selector, (pc.LassoSelector, pc.BoxSelector)):
-            return
-
-        visible_traces = set(
-            idx
-            for idx, trace in enumerate(self._traces)
-            if trace.visible == True  # can be `{False, True, "legendonly"}`
-        )
-
-        if not visible_traces:
-            self._ids = np.array([], dtype=self._point_ids.dtype)
-            return
-
-        if isinstance(selector, pc.LassoSelector):
-            vertices = np.stack((selector.xs, selector.ys), axis=1)
-        else:
-            x1, x2 = selector.xrange
-            y1, y2 = selector.yrange
-            vertices = np.array([[x1, y1], [x1, y2], [x2, y2], [x2, y1]])
-
-        # @todo don't use matplotlib here?
-        path = mpl.path.Path(vertices)
-        found = path.contains_points(self._points)
-
-        mask = np.array([ind in visible_traces for ind in self._trace_inds])
-
-        self._ids = self._point_ids[found & mask]
 
 
 class InteractiveHeatmap(PlotlyInteractivePlot):
@@ -1705,10 +1659,12 @@ def _plot_scatter_categorical(
     labels,
     classes,
     sizes,
+    edges,
     ids,
     marker_size,
     labels_title,
     sizes_title,
+    edges_title,
     colorbar_title,
     axis_equal,
     colors=None,
@@ -1785,6 +1741,10 @@ def _plot_scatter_categorical(
 
         traces.append(scatter)
 
+    if edges is not None:
+        scatter = _make_edges_scatter(points, edges, edges_title)
+        traces.insert(0, scatter)
+
     figure = go.Figure(traces)
 
     figure.update_layout(
@@ -1802,10 +1762,12 @@ def _plot_scatter_categorical_single_trace(
     labels,
     classes,
     sizes,
+    edges,
     ids,
     marker_size,
     labels_title,
     sizes_title,
+    edges_title,
     colorbar_title,
     axis_equal,
     colors=None,
@@ -1878,7 +1840,13 @@ def _plot_scatter_categorical_single_trace(
     else:
         scatter = go.Scattergl(x=points[:, 0], y=points[:, 1], **kwargs)
 
-    figure = go.Figure(scatter)
+    traces = [scatter]
+
+    if edges is not None:
+        scatter = _make_edges_scatter(points, edges, edges_title)
+        traces.insert(0, scatter)
+
+    figure = go.Figure(traces)
 
     if axis_equal:
         figure.update_layout(yaxis_scaleanchor="x")
@@ -1892,10 +1860,12 @@ def _plot_scatter_numeric(
     points,
     values,
     sizes,
+    edges,
     ids,
     marker_size,
     labels_title,
     sizes_title,
+    edges_title,
     colorbar_title,
     axis_equal,
     colorscale="Viridis",
@@ -1961,7 +1931,13 @@ def _plot_scatter_numeric(
     else:
         scatter = go.Scattergl(x=points[:, 0], y=points[:, 1], **kwargs)
 
-    figure = go.Figure(scatter)
+    traces = [scatter]
+
+    if edges is not None:
+        scatter = _make_edges_scatter(points, edges, edges_title)
+        traces.insert(0, scatter)
+
+    figure = go.Figure(traces)
 
     if axis_equal:
         figure.update_layout(yaxis_scaleanchor="x")
@@ -1976,10 +1952,12 @@ def _plot_scatter_mapbox_categorical(
     labels,
     classes,
     sizes,
+    edges,
     ids,
     marker_size,
     labels_title,
     sizes_title,
+    edges_title,
     colorbar_title,
     colors=None,
 ):
@@ -2037,6 +2015,10 @@ def _plot_scatter_mapbox_categorical(
         )
         traces.append(scatter)
 
+    if edges is not None:
+        scatter = _make_edges_scatter_mapbox(coords, edges, edges_title)
+        traces.insert(0, scatter)
+
     figure = go.Figure(traces)
 
     zoom, (center_lon, center_lat) = _compute_zoom_center(coords)
@@ -2055,10 +2037,12 @@ def _plot_scatter_mapbox_categorical_single_trace(
     labels,
     classes,
     sizes,
+    edges,
     ids,
     marker_size,
     labels_title,
     sizes_title,
+    edges_title,
     colorbar_title,
     colors=None,
 ):
@@ -2121,7 +2105,13 @@ def _plot_scatter_mapbox_categorical_single_trace(
         hovertemplate=hovertemplate,
     )
 
-    figure = go.Figure(scatter)
+    traces = [scatter]
+
+    if edges is not None:
+        scatter = _make_edges_scatter_mapbox(coords, edges, edges_title)
+        traces.insert(0, scatter)
+
+    figure = go.Figure(traces)
 
     zoom, (center_lon, center_lat) = _compute_zoom_center(coords)
     figure.update_layout(
@@ -2136,10 +2126,12 @@ def _plot_scatter_mapbox_numeric(
     coords,
     values,
     sizes,
+    edges,
     ids,
     marker_size,
     labels_title,
     sizes_title,
+    edges_title,
     colorbar_title,
     colorscale="Viridis",
 ):
@@ -2194,7 +2186,13 @@ def _plot_scatter_mapbox_numeric(
         hovertemplate=hovertemplate,
     )
 
-    figure = go.Figure(scatter)
+    traces = [scatter]
+
+    if edges is not None:
+        scatter = _make_edges_scatter_mapbox(coords, edges, edges_title)
+        traces.insert(0, scatter)
+
+    figure = go.Figure(traces)
 
     zoom, (center_lon, center_lat) = _compute_zoom_center(coords)
     figure.update_layout(
@@ -2270,6 +2268,52 @@ def _plot_scatter_mapbox_density(
     figure.update_layout(legend_title_text=colorbar_title)
 
     return figure
+
+
+def _make_edges_scatter(points, edges, edges_title):
+    num_dims = points.shape[1]
+
+    xedges = []
+    yedges = []
+    zedges = []
+    for fromi, toi in edges:
+        xedges.extend([points[fromi, 0], points[toi, 0], None])
+        yedges.extend([points[fromi, 1], points[toi, 1], None])
+        if num_dims == 3:
+            zedges.extend([points[fromi, 2], points[toi, 2], None])
+
+    kwargs = dict(
+        line=dict(width=0.5, color="#888"),
+        hoverinfo="none",
+        mode="lines",
+        customdata=None,
+        showlegend=edges_title is not None,
+        name=edges_title,
+    )
+
+    if num_dims == 3:
+        return go.Scatter3d(x=xedges, y=yedges, z=zedges, **kwargs)
+
+    return go.Scattergl(x=xedges, y=yedges, **kwargs)
+
+
+def _make_edges_scatter_mapbox(coords, edges, edges_title):
+    lon_edges = []
+    lat_edges = []
+    for fromi, toi in edges:
+        lon_edges.extend([coords[fromi, 0], coords[toi, 0], None])
+        lat_edges.extend([coords[fromi, 1], coords[toi, 1], None])
+
+    kwargs = dict(
+        line=dict(width=0.5, color="#888"),
+        hoverinfo="none",
+        mode="lines",
+        customdata=None,
+        showlegend=edges_title is not None,
+        name=edges_title,
+    )
+
+    return go.Scattermapbox(lat=lat_edges, lon=lon_edges, **kwargs)
 
 
 def _get_qualitative_colors(num_classes, colors=None):

@@ -5,6 +5,7 @@ Metadata stored in dataset samples.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import itertools
 import logging
 import multiprocessing
 import os
@@ -213,12 +214,12 @@ def _compute_metadata_multi(sample_collection, num_workers, overwrite=False):
     if not overwrite:
         sample_collection = sample_collection.exists("metadata", False)
 
-    inputs = [
-        (sample.id, sample.filepath, sample.media_type)
-        for sample in sample_collection.select_fields()
-    ]
+    ids, filepaths = sample_collection.values(["id", "filepath"])
+    media_types = itertools.repeat(sample_collection.media_type)
 
+    inputs = list(zip(ids, filepaths, media_types))
     num_samples = len(inputs)
+
     if num_samples == 0:
         return
 
