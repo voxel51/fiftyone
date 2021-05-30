@@ -167,6 +167,7 @@ export abstract class Looker<
       pan: <Coordinates>[0, 0],
       rotate: 0,
       panning: false,
+      canZoom: false,
     };
   }
 
@@ -183,14 +184,16 @@ export class FrameLooker extends Looker<FrameState> {
   }
 
   getInitialState(config, options) {
+    options = {
+      ...this.getDefaultOptions(),
+      ...options,
+    };
     return {
       duration: null,
       ...this.getInitialBaseState(),
+      canZoom: options.zoom,
       config: { ...config },
-      options: {
-        ...this.getDefaultOptions(),
-        ...options,
-      },
+      options,
     };
   }
 
@@ -219,13 +222,16 @@ export class ImageLooker extends Looker<ImageState> {
   }
 
   getInitialState(config, options) {
+    options = {
+      ...this.getDefaultOptions(),
+      ...options,
+    };
+
     return {
       ...this.getInitialBaseState(),
+      canZoom: options.zoom,
       config: { ...config },
-      options: {
-        ...this.getDefaultOptions(),
-        ...options,
-      },
+      options,
     };
   }
 
@@ -390,7 +396,7 @@ const adjustBox = (
   let [btlx, btly, bw, bh] = [obtlx, obtly, obw, obh];
 
   while (bw * w < MIN_PIXELS || bh * h < MIN_PIXELS) {
-    bw = bw * 2;
+    bw = bw * 1.5;
     bh = bw / ar;
     btlx = obtlx + obw / 2 - bw / 2;
     btly = obtly + obh / 2 - bh / 2;
@@ -407,7 +413,7 @@ function zoomToContent<State extends FrameState | ImageState>(
   currentOverlays: Overlay<State>[],
   looker: HTMLDivElement
 ): State {
-  if (state.options.zoom) {
+  if (state.options.zoom && state.canZoom) {
     const points = currentOverlays.map((o) => o.getPoints()).flat();
     let [iw, ih] = state.config.dimensions;
     let [w, h] = [iw, ih];
@@ -436,19 +442,28 @@ function zoomToContent<State extends FrameState | ImageState>(
 
     // Vertical margins (whitespace)
     if (wAR < iAR) {
-      scale = Math.max(1, (1 / bw) * scale);
+      scale = Math.max(1, 1 / bw);
       w = ww * scale;
       h = w / iAR;
+      if (!state.config.thumbnail && bh * h > wh) {
+        scale = Math.max(1, 1 / bh);
+        h = wh * scale;
+        w = h * iAR;
+      }
       // Horizontal margins (whitespace)
     } else {
-      scale = Math.max(1, (1 / bh) * scale);
+      scale = Math.max(1, 1 / bh);
       h = wh * scale;
       w = h * iAR;
+      if (!state.config.thumbnail && bw * w > ww) {
+        scale = Math.max(1, 1 / bw);
+        w = ww * scale;
+        h = w / iAR;
+      }
     }
 
     const marginY = (scale * wh - h) / 2;
     const marginX = (scale * ww - w) / 2;
-
     pan = [-w * btlx - marginX, -h * btly - marginY];
 
     // Recenter adjusted boxes, i.e. ones considered to small to fully zoom in

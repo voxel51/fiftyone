@@ -45,22 +45,6 @@ const SampleInfoDiv = styled.div`
   pointer-events: none;
 `;
 
-const LoadingBar = animated(styled.div`
-  position: absolute;
-  bottom: 0;
-  left: 0px;
-  width: auto;
-  border-bottom-left-radius: 3px;
-  border-bottom-right-radius: 3px;
-  background: linear-gradient(
-    90deg,
-    ${({ theme }) => theme.brandFullyTransparent} 0%,
-    ${({ theme }) => theme.brand} 50%,
-    ${({ theme }) => theme.brandFullyTransparent} 100%
-  );
-  height: 0.2em;
-`);
-
 const SampleInfo = React.memo(({ sampleId }: { sampleId: string }) => {
   const activeFields = useRecoilValue(labelAtoms.activeFields(false));
   const colorMap = useRecoilValue(selectors.colorMap(false));

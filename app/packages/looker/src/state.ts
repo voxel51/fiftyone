@@ -97,6 +97,7 @@ export interface BaseState {
   pan: Coordinates;
   panning: boolean;
   rotate: number;
+  canZoom: boolean;
 }
 
 export interface FrameState extends BaseState {
@@ -144,7 +145,6 @@ const DEFAULT_BASE_OPTIONS = {
   showConfidence: false,
   showTooltip: false,
   onlyShowHoveredLabel: false,
-  zoom: false,
   filter: null,
   colorMap: null,
   colorGenerator: colorGenerator,

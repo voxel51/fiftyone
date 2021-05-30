@@ -343,3 +343,30 @@ export const snapBox = (
 
   return pan;
 };
+
+export const wallBox = (
+  scale: number,
+  pan: Coordinates,
+  [ww, wh]: Dimensions,
+  [iw, ih]: Dimensions
+): Coordinates => {
+  const sww = ww * scale;
+  const swh = wh * scale;
+  const ar = iw / ih;
+  if (ww / wh < ar) {
+    iw = sww;
+    ih = iw / ar;
+  } else {
+    ih = swh;
+    iw = ih * ar;
+  }
+
+  if (iw < ww) {
+    const tlx = -(sww - iw) / 2;
+    if (pan[0] < tlx) {
+      //pan[0] = tlx;
+    }
+  }
+
+  return pan;
+};

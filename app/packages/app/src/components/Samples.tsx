@@ -15,14 +15,14 @@ const Container = styled.div`
   overflow-y: scroll;
   overflow-x: hidden;
   height: 100%;
-  margin-top: -4px;
+  margin-top: -6px;
 `;
 
 const Row = styled.div`
   display: flex;
   justify-content: space-between;
   width: 100%;
-  margin-top: 4px;
+  margin-top: 6px;
 `;
 
 function Samples() {
@@ -46,7 +46,7 @@ function Samples() {
         useWindow={false}
       >
         {rows.map((r, i) => {
-          const adjustedWidth = bounds.width - 16 - (r.samples.length - 1) * 4;
+          const adjustedWidth = bounds.width - 16 - (r.samples.length - 1) * 6;
           const height = adjustedWidth / r.aspectRatio;
           return (
             <React.Fragment key={i}>

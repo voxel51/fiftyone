@@ -4,7 +4,7 @@
 
 import { CANVAS_WIDTH } from "../constants";
 import { BaseState, Coordinates } from "../state";
-import { getCanvasCoordinates, snapBox } from "../util";
+import { getCanvasCoordinates, snapBox, wallBox } from "../util";
 import { BaseElement, Events } from "./base";
 import { ICONS, makeCheckboxRow, makeWrapper } from "./util";
 
@@ -70,7 +70,7 @@ export class LookerElement<State extends BaseState> extends BaseElement<
           }
           event.preventDefault();
           this.start = [event.clientX - x, event.clientY - y];
-          return { panning: true };
+          return { panning: true, canZoom: false };
         });
       },
       mouseup: ({ event, update }) => {
@@ -111,7 +111,7 @@ export class LookerElement<State extends BaseState> extends BaseElement<
       },
       dblclick: ({ update }) => {
         update(({ config: { thumbnail } }) => {
-          return thumbnail ? {} : { scale: 1, pan: [0, 0] };
+          return thumbnail ? {} : { scale: 1, pan: [0, 0], canZoom: true };
         });
       },
       wheel: ({ event, update }) => {
@@ -146,7 +146,7 @@ export class LookerElement<State extends BaseState> extends BaseElement<
                 dimensions
               ),
               scale,
-              options: { zoom: false },
+              canZoom: false,
             };
           }
         );
@@ -177,7 +177,7 @@ export class LookerElement<State extends BaseState> extends BaseElement<
   ): Coordinates {
     const [sx, sy] = this.start;
     const { width, height } = this.element.getBoundingClientRect();
-    return snapBox(scale, [x - sx, y - sy], [width, height], dimensions);
+    return wallBox(scale, [x - sx, y - sy], [width, height], dimensions);
   }
 }
 
