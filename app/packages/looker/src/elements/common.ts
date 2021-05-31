@@ -4,7 +4,7 @@
 
 import { CANVAS_WIDTH } from "../constants";
 import { BaseState, Coordinates } from "../state";
-import { getCanvasCoordinates, snapBox, wallBox } from "../util";
+import { getCanvasCoordinates, snapBox } from "../util";
 import { BaseElement, Events } from "./base";
 import { ICONS, makeCheckboxRow, makeWrapper } from "./util";
 
@@ -177,7 +177,7 @@ export class LookerElement<State extends BaseState> extends BaseElement<
   ): Coordinates {
     const [sx, sy] = this.start;
     const { width, height } = this.element.getBoundingClientRect();
-    return wallBox(scale, [x - sx, y - sy], [width, height], dimensions);
+    return snapBox(scale, [x - sx, y - sy], [width, height], dimensions);
   }
 }
 
@@ -523,7 +523,13 @@ export class WindowElement<State extends BaseState> extends BaseElement<State> {
       this.element.style.cursor = "default";
     }
     this.element.style.transform =
-      "translate(" + x + "px, " + y + "px) scale(" + scale + ")";
+      "translate3d(" +
+      Math.round(x) +
+      "px, " +
+      Math.round(y) +
+      "px, 0px) scale(" +
+      scale +
+      ")";
 
     return this.element;
   }

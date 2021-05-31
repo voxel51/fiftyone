@@ -403,8 +403,8 @@ const adjustBox = (
   }
 
   return {
-    center: [obtlx + obw, obtly + obh],
-    box: [obtlx, obtly, bw, bh],
+    center: [obtlx + obw / 2, obtly + obh / 2],
+    box: [btlx, btly, bw, bh],
   };
 };
 
@@ -464,12 +464,7 @@ function zoomToContent<State extends FrameState | ImageState>(
 
     const marginY = (scale * wh - h) / 2;
     const marginX = (scale * ww - w) / 2;
-    pan = [-w * btlx - marginX, -h * btly - marginY];
-
-    // Recenter adjusted boxes, i.e. ones considered to small to fully zoom in
-    // on. See "adjustBox()"
-    pan[0] += (w * (bw + btlx - cw)) / 2;
-    pan[1] += (h * (bh + btly - ch)) / 2;
+    pan = [-w * cw - marginX + ww / 2, -h * ch - marginY + wh / 2];
 
     // Scale down and reposition for a centered patch with padding
     if (w * squeeze > ww && h * squeeze > wh) {
