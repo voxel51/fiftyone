@@ -189,9 +189,7 @@ def import_from_scale(
     else:
         labels = _load_labels_dir(labels_dir_or_json)
 
-    id_map = {}
-    for sample in dataset.select_fields(scale_id_field):
-        id_map[sample[scale_id_field]] = sample.id
+    id_map = {k: v for k, v in zip(*dataset.values([scale_id_field, "id"]))}
 
     if label_prefix:
         label_key = lambda k: label_prefix + "_" + k

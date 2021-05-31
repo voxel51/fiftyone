@@ -61,7 +61,7 @@ def import_from_labelbox(
 
         [
             {
-                "ID": <labelbox-id>,
+                "DataRow ID": <labelbox-id>,
                 "Labeled Data": <url-or-None>,
                 "Label": {...}
             }
@@ -111,9 +111,7 @@ def import_from_labelbox(
     if labelbox_id_field not in dataset.get_field_schema():
         dataset.add_sample_field(labelbox_id_field, fof.StringField)
 
-    id_map = {}
-    for sample in dataset.select_fields(labelbox_id_field):
-        id_map[sample[labelbox_id_field]] = sample.id
+    id_map = {k: v for k, v in zip(*dataset.values([labelbox_id_field, "id"]))}
 
     if label_prefix:
         label_key = lambda k: label_prefix + "_" + k
@@ -128,7 +126,7 @@ def import_from_labelbox(
     # ref: https://github.com/Labelbox/labelbox/blob/7c79b76310fa867dd38077e83a0852a259564da1/exporters/coco-exporter/coco_exporter.py#L33
     with fou.ProgressBar() as pb:
         for d in pb(d_list):
-            labelbox_id = d["ID"]
+            labelbox_id = d["DataRow ID"]
 
             if labelbox_id in id_map:
                 # Get existing sample
@@ -482,7 +480,7 @@ def convert_labelbox_export_to_import(inpath, outpath=None, video_outdir=None):
             )
 
             dout_map[uuid] = {
-                "ID": uuid,
+                "DataRow ID": uuid,
                 "Labeled Data": None,
                 "Label": {"frames": frames_outpath},
             }
@@ -490,7 +488,7 @@ def convert_labelbox_export_to_import(inpath, outpath=None, video_outdir=None):
 
         if uuid not in dout_map:
             dout_map[uuid] = {
-                "ID": uuid,
+                "DataRow ID": uuid,
                 "Labeled Data": None,
                 "Label": {"objects": [], "classifications": []},
             }

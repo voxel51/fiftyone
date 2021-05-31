@@ -1,10 +1,6 @@
-import _ from "lodash";
-
-import { RESERVED_FIELDS } from "./labels";
-
 let seedCache = 0;
 let mapCache = {};
-let poolCache = null;
+let poolCache: string[] = null;
 let colorByLabelCache = false;
 
 function shuffle(array: string[], seed: number) {
@@ -29,12 +25,8 @@ function random(seed: number) {
   return x - Math.floor(x);
 }
 
-type Color = string;
-type ColorMap = { [name: string]: Color };
-
 export function generateColorMap(
-  colorPool: Color[],
-  keys: string[],
+  colorPool: string[],
   seed: number,
   colorByLabel = false
 ): (value) => string {
@@ -45,28 +37,14 @@ export function generateColorMap(
     poolCache = colorPool;
     mapCache = {};
   }
-  const newMap = seed == seedCache ? Object.assign({}, mapCache) : {};
+  const newMap = seed === seedCache ? Object.assign({}, mapCache) : {};
   seedCache = seed;
   let colors = Array.from(poolCache);
-
-  keys = keys.filter((k) => !RESERVED_FIELDS.includes(k));
-
   if (seed > 0) {
     colors = shuffle(colors, seed);
   }
-  let idx = 0;
-  let offset = Object.keys(newMap).length;
-  [...keys, undefined, null].sort().forEach((key) => {
-    if (!newMap[key]) {
-      let color = (offset + idx) % colors.length;
-      if (isNaN(color)) {
-        color = 0;
-      }
-      newMap[key] = colors[color];
-      idx++;
-    }
-  });
 
+  let offset = Object.keys(newMap).length;
   mapCache = newMap;
   let i = 0;
   return (val) => {
