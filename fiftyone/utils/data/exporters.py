@@ -906,12 +906,13 @@ class LegacyFiftyOneDatasetExporter(GenericSampleDatasetExporter):
 
     Args:
         export_dir: the directory to write the export
-        export_media (True): whether to export media files using the method
-            defined by ``move_media`` (True), or to export only labels and
-            metadata (False)
-        move_media (False): whether to move (True) or copy (False) the source
-            media into its output destination. Only applicable if
-            ``export_media`` is True
+        export_media (True): defines how to export the raw media contained 
+            in the dataset. Options for this argument include:
+
+            * ``True``: copy and export all media files 
+            * ``False``: avoid exporting media, filepaths are stored in exported labels 
+            * ``"move"``: move media files instead of copying
+            * ``"symlink"``: create a symbolic link to every media file instead of copying
         relative_filepaths (True): whether to store relative (True) or absolute
             (False) filepaths to media files on disk in the output dataset
         pretty_print (False): whether to render the JSON in human readable
@@ -922,13 +923,11 @@ class LegacyFiftyOneDatasetExporter(GenericSampleDatasetExporter):
         self,
         export_dir,
         export_media=True,
-        move_media=False,
         relative_filepaths=True,
         pretty_print=False,
     ):
         super().__init__(export_dir)
         self.export_media = export_media
-        self.move_media = move_media
         self.relative_filepaths = relative_filepaths
         self.pretty_print = pretty_print
         self._data_dir = None
@@ -1068,11 +1067,13 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
 
     Args:
         export_dir: the directory to write the export
-        export_media (True): whether to export media files using the method
-            defined by ``move_media`` (True), or to export only labels and
-            metadata (False)
-        move_media (False): whether to move (True) or copy (False) the source
-            media into its output destination if ``export_media`` is True
+        export_media (True): defines how to export the raw media contained 
+            in the dataset. Options for this argument include:
+
+            * ``True``: copy and export all media files 
+            * ``False``: avoid exporting media, filepaths are stored in exported labels 
+            * ``"move"``: move media files instead of copying
+            * ``"symlink"``: create a symbolic link to every media file instead of copying
         rel_dir (None): a relative directory to remove from the ``filepath`` of
             each sample, if possible. The path is converted to an absolute path
             (if necessary) via ``os.path.abspath(os.path.expanduser(rel_dir))``.
@@ -1082,12 +1083,15 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
             Only applicable when ``export_media`` is False
     """
 
-    def __init__(
-        self, export_dir, export_media=True, move_media=False, rel_dir=None
-    ):
+    def __init__(self, export_dir, export_media=True, rel_dir=None):
         super().__init__(export_dir)
         self.export_media = export_media
-        self.move_media = move_media
+        self.move_media = False
+        self.symlink_media = False
+        if self.export_media == "move":
+            self.move_media = True
+        elif self.export_media == "symlink":
+            self.symlink_media = True
         self.rel_dir = rel_dir
         self._data_dir = None
         self._eval_dir = None
@@ -1184,7 +1188,12 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
 
         if self.export_media:
             logger.info("Exporting media...")
-            fomm.export_media(inpaths, outpaths, move_media=self.move_media)
+            fomm.export_media(
+                inpaths,
+                outpaths,
+                move_media=self.move_media,
+                symlink_media=self.symlink_media,
+            )
 
 
 def _export_evaluation_results(sample_collection, eval_dir):
