@@ -51,8 +51,13 @@ a |DatasetView| into any format of your choice via the basic recipe below.
         )
 
     Note the `label_field` argument in the above example, which specifies the
-    particular label field that you wish to export. This is necessary your
+    particular label field that you wish to export. This is necessary if your
     FiftyOne dataset contains multiple label fields.
+
+    Also see the 
+    :func:`export_media <fiftyone.core.collections.SampleCollection.export>` 
+    argument allowing you to move or symlink media
+    instead of copying it, or to avoid writing media to disk entirely.
 
   .. group-tab:: CLI
 
