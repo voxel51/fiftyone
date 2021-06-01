@@ -96,6 +96,7 @@ export abstract class Looker<
       this.pluckedOverlays = this.pluckOverlays(this.state);
       [this.currentOverlays, this.state.rotate] = processOverlays(
         context,
+        this.svg,
         this.state,
         this.pluckedOverlays
       );

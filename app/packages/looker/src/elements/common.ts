@@ -4,7 +4,7 @@
 
 import { CANVAS_WIDTH } from "../constants";
 import { BaseState, Coordinates } from "../state";
-import { getCanvasCoordinates, snapBox } from "../util";
+import { elementBBox, getPixelCoordinates, snapBox } from "../util";
 import { BaseElement, Events } from "./base";
 import { ICONS, makeCheckboxRow, makeWrapper } from "./util";
 
@@ -69,7 +69,7 @@ export class LookerElement<State extends BaseState> extends BaseElement<
             return {};
           }
           event.preventDefault();
-          this.start = [event.clientX - x, event.clientY - y];
+          this.start = [event.pageX - x, event.pageY - y];
           return { panning: true, canZoom: false };
         });
       },
@@ -81,7 +81,7 @@ export class LookerElement<State extends BaseState> extends BaseElement<
           event.preventDefault();
           return {
             panning: false,
-            pan: this.getPan([event.clientX, event.clientY], state),
+            pan: this.getPan([event.pageX, event.pageY], state),
           };
         });
       },
@@ -105,7 +105,7 @@ export class LookerElement<State extends BaseState> extends BaseElement<
           }
           return {
             rotate: 0,
-            pan: this.getPan([event.clientX, event.clientY], state),
+            pan: this.getPan([event.pageX, event.pageY], state),
           };
         });
       },
@@ -114,7 +114,7 @@ export class LookerElement<State extends BaseState> extends BaseElement<
           return thumbnail ? {} : { scale: 1, pan: [0, 0], canZoom: true };
         });
       },
-      wheel: ({ event, update }) => {
+      wheel: ({ event, update, dispatchEvent }) => {
         update(
           ({ config: { thumbnail, dimensions }, pan: [px, py], scale }) => {
             if (thumbnail) {
@@ -148,7 +148,8 @@ export class LookerElement<State extends BaseState> extends BaseElement<
               scale,
               canZoom: false,
             };
-          }
+          },
+          dispatchTooltipEvent(dispatchEvent)
         );
       },
     };
@@ -185,48 +186,6 @@ export class CanvasElement<State extends BaseState> extends BaseElement<
   State,
   HTMLCanvasElement
 > {
-  getEvents(): Events<State> {
-    return {
-      click: ({ update, dispatchEvent }) => {
-        update({ showOptions: false }, (context, state, overlays) => {
-          if (!state.config.thumbnail && overlays.length) {
-            dispatchEvent(
-              "select",
-              overlays[0].getSelectData(
-                context,
-                state,
-                getCanvasCoordinates(
-                  state.cursorCoordinates,
-                  state.config.dimensions,
-                  context.canvas
-                )
-              )
-            );
-          }
-        });
-      },
-      mouseleave: ({ update, dispatchEvent }) => {
-        update({
-          cursorCoordinates: null,
-          disableControls: false,
-        });
-        dispatchEvent("tooltip", null);
-      },
-      mousemove: ({ event, update, dispatchEvent }) => {
-        update((state) => {
-          return state.config.thumbnail
-            ? {}
-            : {
-                cursorCoordinates: [
-                  (<MouseEvent>event).clientX,
-                  (<MouseEvent>event).clientY,
-                ],
-              };
-        }, dispatchTooltipEvent(dispatchEvent));
-      },
-    };
-  }
-
   createHTMLElement({
     config: {
       dimensions: [w, h],
@@ -522,6 +481,48 @@ export class ShowTooltipOptionElement<
 }
 
 export class WindowElement<State extends BaseState> extends BaseElement<State> {
+  getEvents(): Events<State> {
+    return {
+      click: ({ update, dispatchEvent }) => {
+        update({ showOptions: false }, (context, state, overlays) => {
+          if (!state.config.thumbnail && overlays.length) {
+            dispatchEvent(
+              "select",
+              overlays[0].getSelectData(
+                context,
+                state,
+                getPixelCoordinates(
+                  state.cursorCoordinates,
+                  state.config.dimensions,
+                  elementBBox(context.canvas)
+                )
+              )
+            );
+          }
+        });
+      },
+      mouseleave: ({ update, dispatchEvent }) => {
+        update({
+          cursorCoordinates: null,
+          disableControls: false,
+        });
+        dispatchEvent("tooltip", null);
+      },
+      mousemove: ({ event, update, dispatchEvent }) => {
+        update((state) => {
+          return state.config.thumbnail
+            ? {}
+            : {
+                cursorCoordinates: [
+                  (<MouseEvent>event).pageX,
+                  (<MouseEvent>event).pageY,
+                ],
+              };
+        }, dispatchTooltipEvent(dispatchEvent));
+      },
+    };
+  }
+
   createHTMLElement() {
     const element = document.createElement("div");
     element.className = "looker-window";
@@ -562,19 +563,19 @@ const dispatchTooltipEvent = (dispatchEvent) => {
       overlays[0].containsPoint(
         context,
         state,
-        getCanvasCoordinates(
+        getPixelCoordinates(
           state.cursorCoordinates,
           state.config.dimensions,
-          context.canvas
+          elementBBox(context.canvas)
         )
       )
         ? overlays[0].getPointInfo(
             context,
             state,
-            getCanvasCoordinates(
+            getPixelCoordinates(
               state.cursorCoordinates,
               state.config.dimensions,
-              context.canvas
+              elementBBox(context.canvas)
             )
           )
         : null;

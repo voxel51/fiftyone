@@ -1,17 +1,23 @@
 /**
  * Copyright 2017-2021, Voxel51, Inc.
  */
-import { Svg, SVG } from "@svgdotjs/svg.js";
+import { Rect, Svg } from "@svgdotjs/svg.js";
 
 import { ColorGenerator } from "../color";
-import { DASH_COLOR, DASH_LENGTH, LINE_WIDTH, MASK_ALPHA } from "../constants";
+import {
+  DASH_COLOR,
+  DASH_LENGTH,
+  LINE_WIDTH,
+  MASK_ALPHA,
+  STROKE_WIDTH,
+} from "../constants";
 import { deserialize, NumpyResult } from "../numpy";
 import { BaseState, BoundingBox, Coordinates, Dimensions } from "../state";
 import {
   distanceFromLineSegment,
   elementBBox,
   ensureCanvasSize,
-  getFitCanvasBBox,
+  getFitRect,
   inRect,
 } from "../util";
 import { CONTAINS, CoordinateOverlay, RegularLabel } from "./base";
@@ -77,7 +83,7 @@ export default class DetectionOverlay<
   }
 
   containsPoint(context, state, [x, y]) {
-    const [_, __, fh] = getFitCanvasBBox(
+    const [_, __, fh] = getFitRect(
       state.config.dimensions,
       elementBBox(context.canvas)
     );
@@ -108,7 +114,7 @@ export default class DetectionOverlay<
     const color = this.getColor(state);
     context.strokeStyle = color;
     context.fillStyle = color;
-    const [_, __, fw, fh] = getFitCanvasBBox(
+    const [_, __, fw, fh] = getFitRect(
       state.config.dimensions,
       elementBBox(context.canvas)
     );
@@ -202,7 +208,7 @@ export default class DetectionOverlay<
   }
 
   getMouseDistance(context, state, [x, y]) {
-    const [_, __, fh] = getFitCanvasBBox(
+    const [_, __, fh] = getFitRect(
       state.config.dimensions,
       elementBBox(context.canvas)
     );
@@ -300,13 +306,26 @@ export class DetectionSvgOverlay<
   State extends BaseState
 > extends CoordinateOverlay<State, DetectionLabel, Svg> {
   readonly svg: boolean = true;
+  private rect: Rect;
+  private static readonly intermediateCanvas: HTMLCanvasElement = document.createElement(
+    "canvas"
+  );
+  private static readonly rawColorCache = {};
+  private readonly mask: NumpyResult;
 
   constructor(field, label) {
     super(field, label);
+    console.log(label);
+    if (typeof label.mask === "string") {
+      this.mask = deserialize(label.mask);
+    }
   }
 
   containsPoint(context, state, [x, y]) {
-    return 0;
+    if (this.rect.inside(x, y)) {
+      return CONTAINS.CONTENT;
+    }
+    return CONTAINS.NONE;
   }
 
   draw(svg: Svg, state) {
@@ -320,20 +339,59 @@ export class DetectionSvgOverlay<
       bounding_box: [btlx, btly, bw, bh],
     } = this.label;
 
-    svg
+    this.rect = svg
       .rect(width * bw, height * bh)
       .attr({
         fill: "#000000",
         "fill-opacity": 0,
         stroke: color,
-        "stroke-width": 5 / state.scale,
+        "stroke-width": STROKE_WIDTH / state.scale,
         "stroke-opacity": 1,
       })
       .move(btlx * width, btly * height);
+
+    if (this.mask) {
+      const [maskHeight, maskWidth] = this.mask.shape;
+      ensureCanvasSize(DetectionSvgOverlay.intermediateCanvas, [
+        maskWidth,
+        maskHeight,
+      ]);
+
+      const maskContext = DetectionSvgOverlay.intermediateCanvas.getContext(
+        "2d"
+      );
+      const maskImage = maskContext.createImageData(maskWidth, maskHeight);
+      const maskImageRaw = new Uint32Array(maskImage.data.buffer);
+
+      for (let i = 0; i < this.mask.data.length; i++) {
+        if (this.mask.data[i]) {
+          maskImageRaw[i] = 0;
+        }
+      }
+      svg.image(maskContext.canvas.toDataURL("image/png", 1));
+    }
   }
 
-  getMouseDistance(context, state, [x, y]) {
-    return Infinity;
+  getMouseDistance(
+    _,
+    {
+      config: {
+        dimensions: [w, h],
+      },
+    },
+    [x, y]
+  ) {
+    const [bx, by, bw, bh] = this.label.bounding_box;
+    x /= w;
+    y /= h;
+
+    const distances = [
+      distanceFromLineSegment(x, y, bx, by, bx + bw, by),
+      distanceFromLineSegment(x, y, bx, by, bx, by + bh),
+      distanceFromLineSegment(x, y, bx + bw, by + bh, bx + bw, by),
+      distanceFromLineSegment(x, y, bx + bw, by + bh, bx, by + bh),
+    ];
+    return Math.min(...distances);
   }
 
   getPointInfo(context, state) {

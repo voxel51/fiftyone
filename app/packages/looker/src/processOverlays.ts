@@ -2,13 +2,15 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 
+import { Svg } from "@svgdotjs/svg.js";
 import { CONTAINS, Overlay } from "./overlays/base";
 import ClassificationsOverlay from "./overlays/classifications";
-import { BaseState } from "./state";
-import { getCanvasCoordinates, rotate } from "./util";
+import { BaseState, BoundingBox } from "./state";
+import { elementBBox, getPixelCoordinates, rotate } from "./util";
 
 const processOverlays = <State extends BaseState>(
   context: CanvasRenderingContext2D,
+  svg: Svg,
   state: State,
   overlays: Overlay<State>[]
 ): [Overlay<State>[], number] => {
@@ -43,23 +45,27 @@ const processOverlays = <State extends BaseState>(
     return [ordered, state.rotate];
   }
 
-  const [x, y] = getCanvasCoordinates(
+  const bbox = elementBBox(context.canvas);
+  const [x, y] = getPixelCoordinates(
     state.cursorCoordinates,
     state.config.dimensions,
-    context.canvas
+    bbox
   );
 
   let contained = ordered
-    .filter((o) => o.containsPoint(context, state, [x, y]) > CONTAINS.NONE)
+    .filter(
+      (o) =>
+        o.containsPoint(o.svg ? svg : context, state, [x, y]) > CONTAINS.NONE
+    )
     .sort(
       (a, b) =>
-        a.getMouseDistance(context, state, [x, y]) -
-        b.getMouseDistance(context, state, [x, y])
+        a.getMouseDistance(a.svg ? svg : context, state, [x, y]) -
+        b.getMouseDistance(b.svg ? svg : context, state, [x, y])
     );
   const outside = ordered.filter(
     (o) =>
       o instanceof ClassificationsOverlay ||
-      o.containsPoint(context, state, [x, y]) === CONTAINS.NONE
+      o.containsPoint(o.svg ? svg : context, state, [x, y]) === CONTAINS.NONE
   );
 
   if (state.options.onlyShowHoveredLabel) {

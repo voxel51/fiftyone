@@ -235,7 +235,7 @@ export const getContainingBox = (points: Coordinates[]): BoundingBox => {
   return [tlx, tly, w, h];
 };
 
-export const getFitCanvasBBox = (
+export const getFitRect = (
   [mw, mh]: Dimensions,
   [tlx, tly, w, h]: BoundingBox
 ) => {
@@ -252,37 +252,22 @@ export const getFitCanvasBBox = (
   return [tlx, tly, w, h];
 };
 
-export const getZoom = (
-  bbox: BoundingBox
-): { scale: number; pan: Coordinates } => {
-  return {
-    scale: 2,
-    pan: [100, 100],
-  };
-};
-
 /**
  *
  */
-export const getCanvasCoordinates = function (
+export const getPixelCoordinates = function (
   [x, y]: Coordinates,
-  mediaDimensions: Dimensions,
-  canvas: HTMLCanvasElement
+  [mw, mh]: Dimensions,
+  [tlx, tly, w, h]: BoundingBox
 ): Coordinates {
-  let {
-    top: tly,
-    left: tlx,
-    width: w,
-    height: h,
-  } = canvas.getBoundingClientRect();
-  [tlx, tly, w, h] = getFitCanvasBBox(mediaDimensions, [tlx, tly, w, h]);
+  [tlx, tly, w, h] = getFitRect([mw, mh], [tlx, tly, w, h]);
 
   x -= tlx;
   y -= tly;
 
   return [
-    Math.round(rescale(x, 0, w, 0, canvas.width)),
-    Math.round(rescale(y, 0, h, 0, canvas.height)),
+    Math.round(rescale(x, 0, w, 0, mw)),
+    Math.round(rescale(y, 0, h, 0, mh)),
   ];
 };
 
@@ -296,8 +281,8 @@ export const rotate = (array: any[], rotation: number): [any[], number] => {
 
 export const elementBBox = (element: HTMLElement): BoundingBox => {
   const {
-    top: tlx,
-    left: tly,
+    top: tly,
+    left: tlx,
     width: w,
     height: h,
   } = element.getBoundingClientRect();
