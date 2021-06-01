@@ -108,7 +108,8 @@ export class SeekBarElement extends BaseElement<VideoState, HTMLInputElement> {
     if (duration !== null) {
       this.element.style.display = "block";
       //@ts-ignore
-      this.element.value = ((frameNumber - 1) / (frameRate * duration)) * 100;
+      this.element.value =
+        ((frameNumber - 1) / Math.max(frameRate * duration - 1, 1)) * 100;
     } else {
       this.element.style.display = "none";
     }

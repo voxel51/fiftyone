@@ -95,11 +95,10 @@ function App() {
     >
       <Header addNotification={addNotification} />
       {connected && (
-        <Suspense fallback={Setup}>
+        <Suspense fallback={<Setup />}>
           <Dataset />
         </Suspense>
       )}
-      {!connected && <Setup />}
       <NotificationHub children={(add) => (addNotification.current = add)} />
     </ErrorBoundary>
   );

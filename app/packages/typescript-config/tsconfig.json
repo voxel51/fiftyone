@@ -2,10 +2,9 @@
     "compilerOptions": {
         "module": "esnext",
         "target": "esnext",
-        "lib": ["es2020"],
+        "lib": ["dom", "es2020"],
         "moduleResolution": "node",
         "esModuleInterop": true,
-        "noEmit": true,
         "skipLibCheck": true,
         "typeRoots": ["node_modules/@types"],
         "forceConsistentCasingInFileNames": true,

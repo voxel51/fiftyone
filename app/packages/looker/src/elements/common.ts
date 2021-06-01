@@ -513,8 +513,8 @@ export class WindowElement<State extends BaseState> extends BaseElement<State> {
   }
 
   renderSelf({ panning, pan: [x, y], scale, config: { thumbnail } }) {
-    if (panning && this.element.style.cursor !== "grab") {
-      this.element.style.cursor = "grab";
+    if (panning && this.element.style.cursor !== "all-scroll") {
+      this.element.style.cursor = "all-scroll";
     } else if (
       !thumbnail &&
       !panning &&

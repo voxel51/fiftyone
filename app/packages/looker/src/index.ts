@@ -289,24 +289,22 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
         )
       )
     );
-    this.frameOverlays = true
-      ? []
-      : Object.fromEntries(
-          Object.entries(this.sample.frames).map(
-            ([frameNumber, frameSample]) => {
-              return [
-                Number(frameNumber),
-                loadOverlays(
-                  Object.fromEntries(
-                    Object.entries(frameSample).map(([fieldName, field]) => {
-                      return [`frames.${fieldName}`, field];
-                    })
-                  )
-                ),
-              ];
-            }
-          )
-        );
+    this.frameOverlays = Object.fromEntries(
+      Object.entries(this.sample.frames || []).map(
+        ([frameNumber, frameSample]) => {
+          return [
+            Number(frameNumber),
+            loadOverlays(
+              Object.fromEntries(
+                Object.entries(frameSample).map(([fieldName, field]) => {
+                  return [`frames.${fieldName}`, field];
+                })
+              )
+            ),
+          ];
+        }
+      )
+    );
   }
 
   pluckOverlays({ frameNumber }) {
