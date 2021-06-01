@@ -42,6 +42,7 @@ export abstract class Looker<
   private eventTarget: EventTarget;
   protected lookerElement: LookerElement<State>;
   private canvas: HTMLCanvasElement;
+  private resizeObserver: ResizeObserver;
 
   protected currentOverlays: Overlay<State>[];
   protected pluckedOverlays: Overlay<State>[];
@@ -62,6 +63,9 @@ export abstract class Looker<
     this.state = this.getInitialState(config, options);
     this.pluckedOverlays = this.pluckOverlays(this.state);
     this.lookerElement = this.getElements();
+    this.resizeObserver = new ResizeObserver(() =>
+      requestAnimationFrame(() => this.updater(({ loaded }) => ({ loaded })))
+    );
     this.canvas = this.lookerElement.render(this.state).querySelector("canvas");
     this.svg = SVG()
       .viewbox(`0 0 ${config.dimensions[0]} ${config.dimensions[1]}`)
@@ -122,9 +126,11 @@ export abstract class Looker<
   attach(element: HTMLElement): void {
     this.state = this.postProcess(element);
     element.appendChild(this.lookerElement.render(this.state));
+    this.resizeObserver.observe(element);
   }
 
   detach(): void {
+    this.resizeObserver.unobserve(this.lookerElement.element.parentElement);
     this.lookerElement.element.parentNode.removeChild(
       this.lookerElement.element
     );
