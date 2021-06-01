@@ -11,12 +11,12 @@ import fiftyone.core.labels as fol
 import fiftyone.core.utils as fou
 
 fou.ensure_lightning_flash()
-import flash
 from flash.core.classification import (
     ClassificationSerializer,
     ClassificationTask,
     FiftyOneLabels,
 )
+from flash.core.model import Task
 
 
 logger = logging.getLogger(__name__)
@@ -64,19 +64,27 @@ def apply_flash_model(
         skip_failures (True): whether to gracefully continue without raising an
             error if predictions cannot be generated for a sample
     """
+    if batch_size is not None:
+        print("Flash models only support the default batch size")
+
     serializer = _get_fo_serializer(model, confidence_thresh)
-    model.serializer = serializer
+    with fou.SetAttributes(model, serializer=serializer):
+        predictions = model.predict(samples.values("filepath"))
+        for sample, prediction in zip(samples, predictions):
+            sample.add_labels(
+                prediction, label_field,
+            )
 
-    samples_loader = fou.iter_batches(samples, batch_size)
 
-    with fou.ProgressBar(samples) as pb:
-        for sample_batch in samples_loader:
-            predictions = model.predict([s.filepath for s in sample_batch])
-            for sample, prediction in zip(sample_batch, predictions):
-                sample.add_labels(
-                    prediction, label_field,
-                )
-            pb.update(len(sample_batch))
+def is_flash_model(model):
+    """Checks model type to determine if it is a flash model
+    Args:
+        model: the model instance to check
+    """
+    if isinstance(model, Task):
+        return True
+    else:
+        return False
 
 
 def _get_fo_serializer(model, confidence_thresh):
