@@ -52,12 +52,14 @@ export class PlayButtonElement extends BaseElement<
   }
 }
 
-export class SeekBarElement extends BaseElement<VideoState> {
+export class SeekBarElement extends BaseElement<VideoState, HTMLInputElement> {
   getEvents(): Events<VideoState> {
     return {
-      input: ({ event, update }) => {
-        const target = event.target as HTMLInputElement;
-        const progress = target.valueAsNumber / 100;
+      click: ({ event }) => {
+        event.stopPropagation();
+      },
+      change: ({ update }) => {
+        const progress = this.element.valueAsNumber / 100;
         update(({ duration, config: { frameRate } }) => {
           return {
             frameNumber: getFrameNumber(
@@ -73,10 +75,8 @@ export class SeekBarElement extends BaseElement<VideoState> {
           locked: false,
           seeking: true,
         }),
-
-      mouseup: ({ event, update }) => {
-        const target = event.target as HTMLInputElement;
-        const progress = target.valueAsNumber / 100;
+      mouseup: ({ update }) => {
+        const progress = this.element.valueAsNumber / 100;
         update(({ duration, config: { frameRate } }) => {
           return {
             frameNumber: getFrameNumber(
@@ -101,13 +101,14 @@ export class SeekBarElement extends BaseElement<VideoState> {
     return element;
   }
 
-  renderSelf({ frameNumber, config: { frameRate }, duration }) {
+  renderSelf({ frameNumber, config: { frameRate, thumbnail }, duration }) {
+    if (thumbnail) {
+      return this.element;
+    }
     if (duration !== null) {
       this.element.style.display = "block";
-      this.element.setAttribute(
-        "value",
-        String((getTime(frameNumber, frameRate) / duration) * 100)
-      );
+      //@ts-ignore
+      this.element.value = ((frameNumber - 1) / (frameRate * duration)) * 100;
     } else {
       this.element.style.display = "none";
     }
@@ -118,6 +119,14 @@ export class SeekBarElement extends BaseElement<VideoState> {
 export class UseFrameNumberOptionElement extends BaseElement<VideoState> {
   checkbox: HTMLInputElement;
   label: HTMLLabelElement;
+
+  getEvents(): Events<VideoState> {
+    return {
+      click: ({ event }) => {
+        event.stopPropagation();
+      },
+    };
+  }
 
   createHTMLElement() {
     [this.label, this.checkbox] = makeCheckboxRow("Use frame number", false);
@@ -178,15 +187,11 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
             ({
               playing,
               duration,
-              seeking,
               locked,
               fragment,
               config: { frameRate },
               options: { loop },
             }) => {
-              if (!seeking) {
-                window.requestAnimationFrame(callback);
-              }
               let newFrameNumber = getFrameNumber(
                 target.currentTime,
                 duration,
@@ -205,37 +210,16 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
                 frameNumber: newFrameNumber,
                 playing: resetToFragment ? (loop ? true : false) : playing,
               };
+            },
+            (_, { seeking }) => {
+              if (!seeking) {
+                requestAnimationFrame(callback);
+              }
             }
           );
         };
 
         requestAnimationFrame(callback);
-      },
-      seeked: ({ event, update }) => {
-        const target = event.target as HTMLVideoElement;
-        update(({ duration, config: { frameRate } }) => {
-          return {
-            frameNumber: getFrameNumber(
-              target.currentTime,
-              duration,
-              frameRate
-            ),
-          };
-        });
-      },
-      timeupdate: ({ event, dispatchEvent, update }) => {
-        const target = event.target as HTMLVideoElement;
-        update(({ duration, config: { frameRate } }) => {
-          dispatchEvent("timeupdate", {
-            frameNumber: getFrameNumber(
-              target.currentTime,
-              duration,
-              frameRate
-            ),
-          });
-
-          return {};
-        });
       },
       ended: ({ update }) => {
         update(({ locked, fragment, options: { loop } }) => {

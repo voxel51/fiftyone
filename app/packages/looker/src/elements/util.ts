@@ -148,7 +148,7 @@ export const getTimeString = (
   const seconds = time % 60;
 
   const mmss =
-    secondsToHhmmss(minutes) + ":" + secondsToHhmmss(+seconds.toFixed(2));
+    secondsToHhmmss(minutes) + ":" + secondsToHhmmss(+seconds.toFixed(1));
 
   if (renderHours) {
     return secondsToHhmmss(hours) + ":" + mmss;
