@@ -18,11 +18,12 @@ export class PlayButtonElement extends BaseElement<
   VideoState,
   HTMLImageElement
 > {
-  private playing: boolean = false;
+  private playing: boolean;
 
   getEvents(): Events<VideoState> {
     return {
-      change: ({ event, update }) => {
+      click: ({ event, update }) => {
+        event.preventDefault();
         event.stopPropagation();
         update(({ playing }) => ({ playing: !playing }));
       },
@@ -42,8 +43,8 @@ export class PlayButtonElement extends BaseElement<
         this.element.src = ICONS.pause;
         this.element.title = "Pause (space)";
       } else {
-        this.element.src = ICONS.pause;
-        this.element.title = "Pause (space)";
+        this.element.src = ICONS.play;
+        this.element.title = "Play (space)";
       }
       this.playing = playing;
     }
@@ -83,6 +84,7 @@ export class SeekBarElement extends BaseElement<VideoState> {
               duration,
               frameRate
             ),
+            seeking: false,
           };
         });
       },
@@ -99,11 +101,16 @@ export class SeekBarElement extends BaseElement<VideoState> {
     return element;
   }
 
-  renderSelf({ frameNumber, config: { frameRate } }) {
-    this.element.setAttribute(
-      "value",
-      getTime(frameNumber, frameRate).toString()
-    );
+  renderSelf({ frameNumber, config: { frameRate }, duration }) {
+    if (duration !== null) {
+      this.element.style.display = "block";
+      this.element.setAttribute(
+        "value",
+        String((getTime(frameNumber, frameRate) / duration) * 100)
+      );
+    } else {
+      this.element.style.display = "none";
+    }
     return this.element;
   }
 }
@@ -159,6 +166,7 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
           return {
             loaded: true,
             playing: autoplay || playing,
+            duration: this.element.duration,
           };
         });
         dispatchEvent("load");
@@ -202,12 +210,6 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
         };
 
         requestAnimationFrame(callback);
-      },
-      pause: ({ event, update }) => {
-        const target = event.target as HTMLVideoElement;
-        update(({ playing, seeking, fragment }) => {
-          return {};
-        });
       },
       seeked: ({ event, update }) => {
         const target = event.target as HTMLVideoElement;
@@ -292,7 +294,7 @@ export function withVideoLookerEvents(): () => Events<VideoState> {
   return function () {
     return {
       keydown: ({ event, update }) => {
-        if (event.key === "Space") {
+        if (event.key === " ") {
           update(({ playing, config: { thumbnail } }) => {
             return thumbnail
               ? {}

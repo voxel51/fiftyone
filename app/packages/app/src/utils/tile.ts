@@ -41,7 +41,7 @@ const lastRow = (
 
   let emptySamples: RowSample[] = [];
   if (sameAspectRatios) {
-    let currentAR = row[0].aspect_ratio;
+    let currentAR = row[0].aspect_ratio * row.length;
     while (currentAR < threshold) {
       currentAR += row[0].aspect_ratio;
       emptySamples.push({ aspectRatio: row[0].aspect_ratio });

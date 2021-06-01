@@ -289,20 +289,24 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
         )
       )
     );
-    this.frameOverlays = Object.fromEntries(
-      Object.entries(this.sample.frames).map(([frameNumber, frameSample]) => {
-        return [
-          Number(frameNumber),
-          loadOverlays(
-            Object.fromEntries(
-              Object.entries(frameSample).map(([fieldName, field]) => {
-                return [`frames.${fieldName}`, field];
-              })
-            )
-          ),
-        ];
-      })
-    );
+    this.frameOverlays = true
+      ? []
+      : Object.fromEntries(
+          Object.entries(this.sample.frames).map(
+            ([frameNumber, frameSample]) => {
+              return [
+                Number(frameNumber),
+                loadOverlays(
+                  Object.fromEntries(
+                    Object.entries(frameSample).map(([fieldName, field]) => {
+                      return [`frames.${fieldName}`, field];
+                    })
+                  )
+                ),
+              ];
+            }
+          )
+        );
   }
 
   pluckOverlays({ frameNumber }) {
@@ -422,7 +426,6 @@ function zoomToContent<State extends FrameState | ImageState>(
       center: [cw, ch],
       box: [btlx, btly, bw, bh],
     } = adjustBox([w, h], getContainingBox(points));
-    const pAR = (bw / bh) * iAR;
 
     const [_, __, ww, wh] = elementBBox(looker);
     let wAR = ww / wh;
@@ -431,39 +434,28 @@ function zoomToContent<State extends FrameState | ImageState>(
     let pan: Coordinates = [0, 0];
     const squeeze = 0.9;
 
-    // Assume thumbnail containers have the patch aspect ratio
-    if (state.config.thumbnail) {
-      wAR = pAR;
-    }
-
-    // First set a scale
-    // We account greyspace from "object-fit: contain" styles
-    // Like https://en.wikipedia.org/wiki/Letterboxing_(filming)
-
-    // Vertical margins (whitespace)
     if (wAR < iAR) {
       scale = Math.max(1, 1 / bw);
       w = ww * scale;
       h = w / iAR;
       if (!state.config.thumbnail && bh * h > wh) {
-        scale = Math.max(1, 1 / bh);
-        h = wh * scale;
-        w = h * iAR;
+        scale = Math.max(1, (wh * scale) / (bh * h));
+        w = ww * scale;
+        h = w / iAR;
       }
-      // Horizontal margins (whitespace)
     } else {
       scale = Math.max(1, 1 / bh);
       h = wh * scale;
       w = h * iAR;
       if (!state.config.thumbnail && bw * w > ww) {
-        scale = Math.max(1, 1 / bw);
-        w = ww * scale;
-        h = w / iAR;
+        scale = Math.max(1, (ww * scale) / (bw * w));
+        h = wh * scale;
+        w = h * iAR;
       }
     }
 
-    const marginY = (scale * wh - h) / 2;
     const marginX = (scale * ww - w) / 2;
+    const marginY = (scale * wh - h) / 2;
     pan = [-w * cw - marginX + ww / 2, -h * ch - marginY + wh / 2];
 
     // Scale down and reposition for a centered patch with padding

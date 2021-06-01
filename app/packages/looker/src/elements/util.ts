@@ -161,7 +161,7 @@ export function withEvents<
   Element extends BaseElement<State>
 >(Base: ElementConstructor<State, Element>, getEvents: () => Events<State>) {
   //@ts-ignore
-  class DerivedElement extends Base {
+  class WithElement<State> extends Base {
     getEvents() {
       const newEvents = super.getEvents();
       getEvents.bind(this);
@@ -172,6 +172,8 @@ export function withEvents<
           const parentHandler = newEvents[eventType];
           newEvents[eventType] = (options) => {
             parentHandler(options);
+            if (eventType === "keydown") {
+            }
             handler(options);
           };
         }
@@ -180,5 +182,5 @@ export function withEvents<
     }
   }
 
-  return DerivedElement;
+  return WithElement;
 }
