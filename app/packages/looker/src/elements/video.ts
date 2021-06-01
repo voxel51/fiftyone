@@ -123,8 +123,14 @@ export class UseFrameNumberOptionElement extends BaseElement<VideoState> {
 
   getEvents(): Events<VideoState> {
     return {
-      click: ({ event }) => {
+      click: ({ event, update }) => {
         event.stopPropagation();
+        event.preventDefault();
+        update(({ options: { useFrameNumber } }) => {
+          return {
+            options: { useFrameNumber: !useFrameNumber },
+          };
+        });
       },
     };
   }
@@ -234,6 +240,19 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
               playing: false,
             };
           }
+        });
+      },
+      timeupdate: ({ dispatchEvent, update }) => {
+        update(({ duration, config: { frameRate } }) => {
+          dispatchEvent("timeupdate", {
+            frameNumber: getFrameNumber(
+              this.element.currentTime,
+              duration,
+              frameRate
+            ),
+          });
+
+          return {};
         });
       },
     };

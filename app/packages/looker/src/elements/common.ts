@@ -355,6 +355,9 @@ export class OptionsPanelElement<State extends BaseState> extends BaseElement<
 
   getEvents(): Events<State> {
     return {
+      click: ({ event }) => {
+        event.stopPropagation();
+      },
       mouseenter: ({ update }) => {
         update({ hoveringControls: true });
       },
@@ -400,6 +403,7 @@ export class OnlyShowHoveredOnLabelOptionElement<
     return {
       click: ({ event, update }) => {
         event.stopPropagation();
+        event.preventDefault();
         update(({ options: { onlyShowHoveredLabel } }) => ({
           options: { onlyShowHoveredLabel: !onlyShowHoveredLabel },
         }));
@@ -429,11 +433,15 @@ export class ShowAttributesOptionElement<
 
   getEvents(): Events<State> {
     return {
-      click: ({ event, update }) => {
+      click: ({ event, update, dispatchEvent }) => {
         event.stopPropagation();
-        update(({ options: { showAttrs } }) => ({
-          options: { showAttrs: !showAttrs },
-        }));
+        event.preventDefault();
+        update(({ options: { showAttrs } }) => {
+          dispatchEvent("options", { showAttrs: !showAttrs });
+          return {
+            options: { showAttrs: !showAttrs },
+          };
+        });
       },
     };
   }
@@ -457,11 +465,15 @@ export class ShowConfidenceOptionElement<
 
   getEvents(): Events<State> {
     return {
-      click: ({ event, update }) => {
+      click: ({ event, update, dispatchEvent }) => {
         event.stopPropagation();
-        update(({ options: { showConfidence } }) => ({
-          options: { showConfidence: !showConfidence },
-        }));
+        event.preventDefault();
+        update(({ options: { showConfidence } }) => {
+          dispatchEvent("options", { showConfidence: !showConfidence });
+          return {
+            options: { showConfidence: !showConfidence },
+          };
+        });
       },
     };
   }
@@ -485,11 +497,15 @@ export class ShowTooltipOptionElement<
 
   getEvents(): Events<State> {
     return {
-      click: ({ event, update }) => {
+      click: ({ event, update, dispatchEvent }) => {
         event.stopPropagation();
-        update(({ options: { showTooltip } }) => ({
-          options: { showTooltip: !showTooltip },
-        }));
+        event.preventDefault();
+        update(({ options: { showTooltip } }) => {
+          dispatchEvent("options", { showTooltip: !showTooltip });
+          return {
+            options: { showTooltip: !showTooltip },
+          };
+        });
       },
     };
   }

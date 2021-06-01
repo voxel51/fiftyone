@@ -15,6 +15,7 @@ import ExternalLink from "./ExternalLink";
 import { ContentDiv, ContentHeader } from "./utils";
 import {
   ImageLooker,
+  Looker,
   Looker as LookerType,
   VideoLooker,
 } from "@fiftyone/looker";
@@ -392,23 +393,6 @@ const useLookerError = (looker, sampleId, setError) => {
   useEventHandler(looker, "error", handler);
 };
 
-const useLookerOptionsUpdate = (looker) => {
-  const handler = useRecoilCallback(
-    ({ set }) => async ({
-      data: { showAttrs, showConfidence, showTooltip },
-    }) => {
-      set(atoms.savedPlayerOverlayOptions, {
-        showAttrs,
-        showConfidence,
-        showTooltip,
-      });
-    },
-    []
-  );
-
-  useEventHandler(looker, "options", handler);
-};
-
 type EventCallback = (event: Event) => void;
 
 export const defaultLookerOptions = selectorFamily({
@@ -435,16 +419,33 @@ export const lookerOptions = selectorFamily<
 >({
   key: "lookerOptions",
   get: (modal) => ({ get }) => {
-    return {
+    const options = {
       ...get(defaultLookerOptions(modal)),
-      ...get(atoms.savedPlayerOverlayOptions),
       activeLabels: get(labelAtoms.activeFields(modal)),
       colorGenerator: get(selectors.colorGenerator(modal)),
       colorMap: get(selectors.colorMap(modal)),
       filter: get(labelFilters(modal)),
     };
+    if (modal) {
+      return {
+        ...options,
+        ...get(atoms.savedLookerOptions),
+      };
+    }
+    return options;
   },
 });
+
+export const useLookerOptionsUpdate = () => {
+  return useRecoilCallback(
+    ({ snapshot, set }) => async (event: CustomEvent) => {
+      const currentOptions = await snapshot.getPromise(
+        atoms.savedLookerOptions
+      );
+      set(atoms.savedLookerOptions, { ...currentOptions, ...event.detail });
+    }
+  );
+};
 
 interface LookerProps {
   onClick?: React.MouseEventHandler<HTMLDivElement>;
@@ -452,6 +453,7 @@ interface LookerProps {
   sampleId: string;
   style?: React.CSSProperties;
   modal: boolean;
+  lookerRef: MutableRefObject<any>;
 }
 
 const Looker = ({
@@ -460,6 +462,7 @@ const Looker = ({
   style = {},
   modal,
   onSelect,
+  lookerRef,
 }: LookerProps) => {
   const sample = useRecoilValue(
     modal ? selectors.modalSample : atoms.sample(sampleId)
@@ -486,9 +489,13 @@ const Looker = ({
       )
   );
 
+  lookerRef && (lookerRef.current = looker);
+
   useLayoutEffect(() => {
     looker.update(sample, options);
   }, [looker, sample, options]);
+
+  modal && useEventHandler(looker, "options", useLookerOptionsUpdate());
 
   return (
     <>

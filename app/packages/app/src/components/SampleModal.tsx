@@ -292,6 +292,7 @@ const SampleModal = ({ onClose, sampleId }: Props, ref) => {
   const showJSON = useRecoilValue(showModalJSON);
   const [enableJSONFilter, setEnableJSONFilter] = useState(true);
   const [fullscreen, setFullscreen] = useState(false);
+  const lookerRef = useRef();
 
   useKeydownHandler((e) => {
     if (
@@ -333,6 +334,7 @@ const SampleModal = ({ onClose, sampleId }: Props, ref) => {
               key={`modal-${sampleSrc}`} // force re-render when this changes
               sampleId={_id}
               modal={true}
+              lookerRef={lookerRef}
             />
           )}
         </Suspense>
@@ -370,7 +372,9 @@ const SampleModal = ({ onClose, sampleId }: Props, ref) => {
             borderBottom: `2px solid ${theme.border}`,
             position: "relative",
           }}
-        ></ModalFooter>
+        >
+          <Actions modal={true} lookerRef={lookerRef} />
+        </ModalFooter>
         <div className="sidebar-content">
           <h2>
             Metadata

@@ -31,6 +31,7 @@ import { useOutsideClick, useTheme } from "../../utils/hooks";
 import { packageMessage } from "../../utils/socket";
 import Similar, { similaritySorting } from "./Similar";
 import { VideoLooker } from "@fiftyone/looker";
+import { showModalJSON } from "../../recoil/utils";
 
 const Loading = () => {
   const theme = useTheme();
@@ -220,7 +221,7 @@ const Options = ({ modal }) => {
 };
 
 const ShowJSON = () => {
-  const [showJSON, setShowJSON] = useRecoilState(atoms.showModalJSON);
+  const [showJSON, setShowJSON] = useRecoilState(showModalJSON);
   return (
     <PillButton
       open={false}
