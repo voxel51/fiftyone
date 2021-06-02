@@ -1,4 +1,4 @@
-import React, { Suspense, useState, useEffect, useRef } from "react";
+import React, { Suspense, useState, useRef } from "react";
 import styled from "styled-components";
 import { Close, Fullscreen, FullscreenExit } from "@material-ui/icons";
 import {
@@ -10,8 +10,6 @@ import {
 
 import Actions from "./Actions";
 import FieldsSidebar from "./FieldsSidebar";
-import * as labelAtoms from "./Filters/utils";
-import { labelFilters } from "./Filters/LabelFieldFilters.state";
 import JSONView from "./JSONView";
 import Looker from "./Looker";
 import { ModalFooter } from "./utils";

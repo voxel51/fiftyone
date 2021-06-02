@@ -9,7 +9,7 @@ import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
 import { ColorTheme } from "../shared/colors";
 import socket, { appContext, handleId, isColab } from "../shared/connection";
-import { attachDisposableHandler, packageMessage } from "./socket";
+import { packageMessage } from "./socket";
 import gaConfig from "../constants/ga.json";
 
 export const useEventHandler = (target, eventType, handler) => {
