@@ -309,7 +309,11 @@ export class DetectionSvgOverlay<
 
   private rect: Rect;
   private color: string;
+  private labelText: string;
   private titleRect: Rect;
+  private scale: number;
+  private hideTitle: boolean;
+  private strokeWidth: number;
   private title: Text;
   private img: Image;
   private static readonly intermediateCanvas: HTMLCanvasElement = document.createElement(
@@ -350,23 +354,19 @@ export class DetectionSvgOverlay<
     }
     this.g.add(this.rect);
 
-    if (!state.config.thumbnail && false) {
+    if (!state.config.thumbnail) {
+      this.hideTitle = false;
       this.title = new Text()
         .text(this.getLabelText(state))
         .fill("#FFFFFF")
         .font({
           family: "Palanquin",
-          size: Math.max(8 / state.scale, 2),
           anchor: "middle",
           weight: "bold",
         })
         .move(btlx * width, btly * height);
-      const titleBox = this.title.bbox();
-      this.titleRect = new Rect()
-        .size(titleBox.width + strokeWidth * 3, titleBox.height)
-        .move(btlx * width, btly * height)
-        .fill("rgba(0, 0, 0, 0.7)");
-
+      this.titleRect = new Rect().fill("rgba(0, 0, 0, 0.7)");
+      this.drawTitle(state);
       this.g.add(this.titleRect);
       this.g.add(this.title);
     }
@@ -395,22 +395,8 @@ export class DetectionSvgOverlay<
         "stroke-width": state.strokeWidth,
       });
 
-      if (!state.config.thumbnail && false) {
-        const {
-          config: {
-            dimensions: [width, height],
-          },
-        } = state;
-        const {
-          bounding_box: [btlx, btly],
-        } = this.label;
-        this.title
-          .text(this.getLabelText(state))
-          .font({ size: Math.max(8 / state.scale, 2) });
-        const titleBox = this.title.bbox();
-        this.titleRect
-          .size(titleBox.width + state.strokeWidth * 3, titleBox.height)
-          .move(btlx * width, btly * height);
+      if (!state.config.thumbnail) {
+        this.drawTitle(state);
       }
     } else {
       this.g.hide();
@@ -450,6 +436,65 @@ export class DetectionSvgOverlay<
 
   getPoints() {
     return getDetectionPoints([this.label]);
+  }
+
+  private sizeTitleRect(strokeWidth) {
+    const titleBox = this.title.bbox();
+    this.titleRect.size(titleBox.width + strokeWidth * 3, titleBox.height);
+  }
+
+  private drawTitle(state: Readonly<State>) {
+    if (state.scale !== this.scale) {
+      if (!this.hideTitle) {
+        this.hideTitle = true;
+        this.titleRect.remove();
+        this.title.remove();
+      }
+      this.scale = state.scale;
+      return;
+    }
+
+    let show = false;
+    if (this.hideTitle) {
+      this.title.font({ size: Math.max(8 / state.scale, 2) });
+      this.hideTitle = false;
+      show = true;
+    }
+
+    const labelText = this.getLabelText(state);
+    const textUpdate = labelText !== this.labelText;
+    if (labelText !== this.labelText) {
+      this.title.text(this.getLabelText(state));
+      this.sizeTitleRect(state.strokeWidth);
+      this.labelText = labelText;
+    }
+
+    if (this.strokeWidth !== state.strokeWidth) {
+      const {
+        strokeWidth,
+        config: {
+          dimensions: [width, height],
+        },
+      } = state;
+      const {
+        bounding_box: [btlx, btly],
+      } = this.label;
+      const [x, y]: Coordinates = [
+        btlx * width + strokeWidth / 2,
+        btly * height + strokeWidth / 2,
+      ];
+      if (!textUpdate) {
+        this.sizeTitleRect(strokeWidth);
+      }
+      this.title.move(x + strokeWidth * 1.5, y);
+      this.titleRect.move(x, y);
+      this.strokeWidth = state.strokeWidth;
+    }
+
+    if (show) {
+      this.g.add(this.titleRect);
+      this.g.add(this.title);
+    }
   }
 
   private getLabelText(state: Readonly<State>): string {

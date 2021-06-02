@@ -103,7 +103,8 @@ export abstract class Looker<
       const fragment = new G();
       const numOverlays = this.currentOverlays.length;
       this.state.strokeWidth =
-        (STROKE_WIDTH / this.state.config.dimensions[0]) * w * this.state.scale;
+        ((STROKE_WIDTH / h) * this.state.config.dimensions[1]) /
+        this.state.scale;
       for (let index = numOverlays - 1; index >= 0; index--) {
         this.currentOverlays[index].draw(fragment, this.state);
       }

@@ -13,6 +13,7 @@ export class LookerElement<State extends BaseState> extends BaseElement<
 > {
   private hideControlsTimeout?: ReturnType<typeof setTimeout>;
   private start: Coordinates = [0, 0];
+  private wheelTimeout: ReturnType<typeof setTimeout>;
 
   getEvents(): Events<State> {
     return {
@@ -127,20 +128,33 @@ export class LookerElement<State extends BaseState> extends BaseElement<
 
             const xs = (x - px) / scale;
             const ys = (y - py) / scale;
-            scale = clampScale(
+            const newScale = clampScale(
               [width, height],
               dimensions,
               event.deltaY < 0 ? scale * 1.15 : scale / 1.15
             );
 
+            if (scale === newScale) {
+              return {};
+            }
+
+            if (this.wheelTimeout) {
+              clearTimeout(this.wheelTimeout);
+            }
+
+            this.wheelTimeout = setTimeout(() => {
+              this.wheelTimeout = null;
+              update({ scale: newScale });
+            }, 100);
+
             return {
               pan: snapBox(
-                scale,
-                [x - xs * scale, y - ys * scale],
+                newScale,
+                [x - xs * newScale, y - ys * newScale],
                 [width, height],
                 dimensions
               ),
-              scale,
+              scale: newScale,
               canZoom: false,
               cursorCoordinates: [
                 (<MouseEvent>event).pageX,
