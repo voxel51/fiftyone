@@ -182,27 +182,6 @@ export class LookerElement<State extends BaseState> extends BaseElement<
   }
 }
 
-export class CanvasElement<State extends BaseState> extends BaseElement<
-  State,
-  HTMLCanvasElement
-> {
-  createHTMLElement({
-    config: {
-      dimensions: [w, h],
-    },
-  }) {
-    const element = document.createElement("canvas");
-    element.width = CANVAS_WIDTH;
-    element.height = CANVAS_WIDTH / (w / h);
-    element.className = "looker-canvas";
-    return element;
-  }
-
-  renderSelf() {
-    return this.element;
-  }
-}
-
 export class ControlsElement<State extends BaseState> extends BaseElement<
   State
 > {
@@ -513,6 +492,7 @@ export class WindowElement<State extends BaseState> extends BaseElement<State> {
           return state.config.thumbnail
             ? {}
             : {
+                redraw: false,
                 cursorCoordinates: [
                   (<MouseEvent>event).pageX,
                   (<MouseEvent>event).pageY,

@@ -5,11 +5,10 @@
 import { Svg } from "@svgdotjs/svg.js";
 import { CONTAINS, Overlay } from "./overlays/base";
 import ClassificationsOverlay from "./overlays/classifications";
-import { BaseState, BoundingBox } from "./state";
+import { BaseState } from "./state";
 import { elementBBox, getPixelCoordinates, rotate } from "./util";
 
 const processOverlays = <State extends BaseState>(
-  context: CanvasRenderingContext2D,
   svg: Svg,
   state: State,
   overlays: Overlay<State>[]
@@ -45,7 +44,7 @@ const processOverlays = <State extends BaseState>(
     return [ordered, state.rotate];
   }
 
-  const bbox = elementBBox(context.canvas);
+  const bbox = elementBBox(svg.dom);
   const [x, y] = getPixelCoordinates(
     state.cursorCoordinates,
     state.config.dimensions,
@@ -53,19 +52,16 @@ const processOverlays = <State extends BaseState>(
   );
 
   let contained = ordered
-    .filter(
-      (o) =>
-        o.containsPoint(o.svg ? svg : context, state, [x, y]) > CONTAINS.NONE
-    )
+    .filter((o) => o.containsPoint(svg, state, [x, y]) > CONTAINS.NONE)
     .sort(
       (a, b) =>
-        a.getMouseDistance(a.svg ? svg : context, state, [x, y]) -
-        b.getMouseDistance(b.svg ? svg : context, state, [x, y])
+        a.getMouseDistance(svg, state, [x, y]) -
+        b.getMouseDistance(svg, state, [x, y])
     );
   const outside = ordered.filter(
     (o) =>
       o instanceof ClassificationsOverlay ||
-      o.containsPoint(o.svg ? svg : context, state, [x, y]) === CONTAINS.NONE
+      o.containsPoint(svg, state, [x, y]) === CONTAINS.NONE
   );
 
   let newRotate = state.rotate;

@@ -308,13 +308,6 @@
   width: 100%;
   object-fit: contain;
 }
-canvas.looker-canvas {
-  position: absolute;
-  width: 100%;
-  height: 100%;
-  top: 0;
-  object-fit: contain;
-}
 
 img.looker-image {
   display: block;
@@ -335,10 +328,6 @@ div.looker-image {
   position: absolute;
   width: 100%;
   top: 0;
-}
-
-.looker-canvas {
-  z-index: 10;
 }
 
 .looker-display-none {

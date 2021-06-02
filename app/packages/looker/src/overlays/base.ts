@@ -2,7 +2,7 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 
-import { Svg } from "@svgdotjs/svg.js";
+import { G } from "@svgdotjs/svg.js";
 import { BaseState, Coordinates } from "../state";
 
 // in numerical order (CONTAINS_BORDER takes precedence over CONTAINS_CONTENT)
@@ -54,10 +54,10 @@ export const isShown = <State extends BaseState, Label extends RegularLabel>(
 
 export interface Overlay<
   State extends BaseState,
-  Drawer = CanvasRenderingContext2D | Svg
+  Drawer = CanvasRenderingContext2D | G
 > {
   svg: boolean;
-  draw(context: Drawer, state: State): void;
+  draw(context: Drawer, state: State, strokeWidth: number): void;
   isShown(state: Readonly<State>): boolean;
   field?: string;
   containsPoint(
@@ -86,7 +86,7 @@ export interface Overlay<
 export abstract class CoordinateOverlay<
   State extends BaseState,
   Label extends RegularLabel,
-  Drawer = CanvasRenderingContext2D | Svg
+  Drawer = CanvasRenderingContext2D | G
 > implements Overlay<State, Drawer> {
   readonly svg: boolean = false;
   readonly field: string;
@@ -97,7 +97,11 @@ export abstract class CoordinateOverlay<
     this.label = label;
   }
 
-  abstract draw(context: Drawer, state: Readonly<State>): void;
+  abstract draw(
+    context: Drawer,
+    state: Readonly<State>,
+    strokeWidth: number
+  ): void;
 
   isShown(state: Readonly<State>): boolean {
     return isShown<State, Label>(state, this.field, this.label);

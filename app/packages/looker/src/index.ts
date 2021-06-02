@@ -33,7 +33,7 @@ import { Overlay } from "./overlays/base";
 import processOverlays from "./processOverlays";
 import { ColorGenerator } from "./color";
 import { elementBBox, getContainingBox, snapBox } from "./util";
-import { MIN_PIXELS } from "./constants";
+import { MIN_PIXELS, STROKE_WIDTH } from "./constants";
 
 export abstract class Looker<
   State extends BaseState = BaseState,
@@ -57,19 +57,18 @@ export abstract class Looker<
     options: Optional<State["options"]>
   ) {
     this.sample = sample;
-    this.loadOverlays();
     this.eventTarget = new EventTarget();
     this.updater = this.makeUpdate();
     this.state = this.getInitialState(config, options);
+    this.loadOverlays();
     this.pluckedOverlays = this.pluckOverlays(this.state);
     this.lookerElement = this.getElements();
     this.resizeObserver = new ResizeObserver(() =>
       requestAnimationFrame(() => this.updater(({ loaded }) => ({ loaded })))
     );
-    this.canvas = this.lookerElement.render(this.state).querySelector("canvas");
     this.svg = SVG()
       .viewbox(`0 0 ${config.dimensions[0]} ${config.dimensions[1]}`)
-      .addTo(this.canvas.parentElement);
+      .addTo(<HTMLElement>this.lookerElement.element.firstChild);
   }
 
   protected dispatchEvent(eventType: string, detail: any): void {
@@ -92,27 +91,24 @@ export abstract class Looker<
         return;
       }
       this.state = mergeUpdates(this.state, updates);
-      const context = this.canvas.getContext("2d");
       this.pluckedOverlays = this.pluckOverlays(this.state);
+      const [_, __, w, h] = elementBBox(this.lookerElement.element);
       [this.currentOverlays, this.state.rotate] = processOverlays(
-        context,
         this.svg,
         this.state,
         this.pluckedOverlays
       );
       this.state = this.postProcess(this.lookerElement.element);
-      postUpdate && postUpdate(context, this.state, this.currentOverlays);
+      postUpdate && postUpdate(this.svg, this.state, this.currentOverlays);
       this.lookerElement.render(this.state as Readonly<State>);
-      clearCanvas(context);
       this.svg.clear();
       const fragment = new G();
+
       const numOverlays = this.currentOverlays.length;
+      const strokeWidth =
+        (STROKE_WIDTH / this.state.config.dimensions[0]) * w * this.state.scale;
       for (let index = numOverlays - 1; index >= 0; index--) {
-        if (this.currentOverlays[index].svg) {
-          this.currentOverlays[index].draw(fragment, this.state);
-        } else {
-          this.currentOverlays[index].draw(context, this.state);
-        }
+        this.currentOverlays[index].draw(fragment, this.state, strokeWidth);
       }
       this.svg.add(fragment);
     };
@@ -177,6 +173,7 @@ export abstract class Looker<
       rotate: 0,
       panning: false,
       canZoom: false,
+      strokeWidth: 2,
     };
   }
 
@@ -211,7 +208,7 @@ export class FrameLooker extends Looker<FrameState> {
   }
 
   loadOverlays() {
-    this.overlays = loadOverlays(this.sample);
+    this.overlays = loadOverlays(this.state.config, this.sample);
   }
 
   pluckOverlays() {
@@ -249,7 +246,7 @@ export class ImageLooker extends Looker<ImageState> {
   }
 
   loadOverlays() {
-    this.overlays = loadOverlays(this.sample);
+    this.overlays = loadOverlays(this.state.config, this.sample);
   }
 
   pluckOverlays() {
@@ -292,6 +289,7 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
 
   loadOverlays() {
     this.sampleOverlays = loadOverlays(
+      this.state.config,
       Object.fromEntries(
         Object.entries(this.sample).filter(
           ([fieldName]) => fieldName !== "frames."
@@ -304,6 +302,7 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
           return [
             Number(frameNumber),
             loadOverlays(
+              this.state.config,
               Object.fromEntries(
                 Object.entries(frameSample).map(([fieldName, field]) => {
                   return [`frames.${fieldName}`, field];
@@ -358,9 +357,12 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
   }
 }
 
-function loadOverlays<State extends BaseState>(sample: {
-  [key: string]: any;
-}): Overlay<State>[] {
+function loadOverlays<State extends BaseState>(
+  config: Readonly<State["config"]>,
+  sample: {
+    [key: string]: any;
+  }
+): Overlay<State>[] {
   const classifications = <ClassificationLabels>[];
   let overlays = [];
   for (const field in sample) {
@@ -369,7 +371,7 @@ function loadOverlays<State extends BaseState>(sample: {
       continue;
     }
     if (label._cls in FROM_FO) {
-      const labelOverlays = FROM_FO[label._cls](field, label, this);
+      const labelOverlays = FROM_FO[label._cls](config, field, label, this);
       overlays = [...overlays, ...labelOverlays];
     } else if (label._cls === "Classification") {
       classifications.push([field, label]);
@@ -384,16 +386,6 @@ function loadOverlays<State extends BaseState>(sample: {
   }
 
   return overlays;
-}
-
-function clearCanvas(context: CanvasRenderingContext2D): void {
-  context.clearRect(0, 0, context.canvas.width, context.canvas.height);
-  context.strokeStyle = "#fff";
-  context.fillStyle = "#fff";
-  context.lineWidth = 3;
-  context.font = "14px sans-serif";
-  // easier for setting offsets
-  context.textBaseline = "bottom";
 }
 
 const adjustBox = (

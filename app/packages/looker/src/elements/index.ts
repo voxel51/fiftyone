@@ -31,10 +31,7 @@ export const getFrameElements: GetElements<FrameState> = (
     children: [
       {
         node: common.WindowElement,
-        children: [
-          { node: frame.FrameElement },
-          { node: common.CanvasElement },
-        ],
+        children: [{ node: frame.FrameElement }],
       },
       {
         node: common.ControlsElement,
@@ -73,10 +70,7 @@ export const getImageElements: GetElements<ImageState> = (
     children: [
       {
         node: common.WindowElement,
-        children: [
-          { node: image.ImageElement },
-          { node: common.CanvasElement },
-        ],
+        children: [{ node: image.ImageElement }],
       },
       {
         node: common.ControlsElement,
@@ -112,10 +106,7 @@ export const getVideoElements: GetElements<VideoState> = (
     children: [
       {
         node: common.WindowElement,
-        children: [
-          { node: video.VideoElement },
-          { node: common.CanvasElement },
-        ],
+        children: [{ node: video.VideoElement }],
       },
       {
         node: common.ControlsElement,

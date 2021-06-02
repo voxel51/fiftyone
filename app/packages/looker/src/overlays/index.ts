@@ -10,22 +10,12 @@ import KeypointOverlay, { getKeypointPoints } from "./keypoint";
 import PolylineOverlay, { getPolylinePoints } from "./polyline";
 import SegmentationOverlay, { getSegmentationPoints } from "./segmentation";
 
-const fromLabel = (overlayType) => (
-  field,
-  label,
-  renderer,
-  frameNumber = null
-) => [new overlayType(field, label, renderer, frameNumber)];
+const fromLabel = (overlayType) => (state, field, label) => [
+  new overlayType(state, field, label),
+];
 
-const fromLabelList = (overlayType, list_key) => (
-  field,
-  labels,
-  renderer,
-  frameNumber = null
-) =>
-  labels[list_key].map(
-    (label) => new overlayType(field, label, renderer, frameNumber)
-  );
+const fromLabelList = (overlayType, list_key) => (state, field, labels) =>
+  labels[list_key].map((label) => new overlayType(state, field, label));
 
 export { ClassificationsOverlay };
 

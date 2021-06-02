@@ -2,6 +2,7 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 
+import { Svg } from "@svgdotjs/svg.js";
 import { colorGenerator, ColorGenerator } from "./color";
 import { Overlay } from "./overlays/base";
 
@@ -98,6 +99,7 @@ export interface BaseState {
   panning: boolean;
   rotate: number;
   canZoom: boolean;
+  strokeWidth: number;
 }
 
 export interface FrameState extends BaseState {
@@ -131,7 +133,7 @@ export type StateUpdate<State extends BaseState> = (
     | Optional<State>
     | ((state: Readonly<State>) => Optional<State>),
   postUpdate?: (
-    context: CanvasRenderingContext2D,
+    svg: Svg,
     state: Readonly<State>,
     overlays: Readonly<Overlay<State>[]>
   ) => void

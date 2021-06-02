@@ -1,7 +1,7 @@
 /**
  * Copyright 2017-2021, Voxel51, Inc.
  */
-import { G, Rect, SVG, Svg, Text } from "@svgdotjs/svg.js";
+import { G, Image, Rect, SVG, Svg, Text } from "@svgdotjs/svg.js";
 
 import { ColorGenerator } from "../color";
 import {
@@ -304,88 +304,54 @@ export const getDetectionPoints = (labels: DetectionLabel[]): Coordinates[] => {
 
 export class DetectionSvgOverlay<
   State extends BaseState
-> extends CoordinateOverlay<State, DetectionLabel, Svg> {
-  readonly svg: boolean = true;
+> extends CoordinateOverlay<State, DetectionLabel, G> {
+  readonly g: G;
+
   private rect: Rect;
+  private color: string;
   private titleRect: Rect;
+  private title: Text;
+  private img: Image;
   private static readonly intermediateCanvas: HTMLCanvasElement = document.createElement(
     "canvas"
   );
   private readonly mask: NumpyResult;
 
-  constructor(field, label) {
+  constructor(state, field, label) {
     super(field, label);
+    this.color = this.getColor(state);
     if (typeof label.mask === "string") {
       this.mask = deserialize(label.mask);
+      this.img = this.createMask(state);
     }
-  }
 
-  containsPoint(context, state, [x, y]) {
-    if (this.rect.inside(x, y)) {
-      return CONTAINS.CONTENT;
-    }
-    if (this.titleRect.inside(x, y)) {
-      return CONTAINS.CONTENT;
-    }
-    return CONTAINS.NONE;
-  }
-
-  draw(svg: G, state) {
-    const color = this.getColor(state);
     const {
       config: {
         dimensions: [width, height],
       },
+      strokeWidth,
     } = state;
     const {
       bounding_box: [btlx, btly, bw, bh],
     } = this.label;
 
-    const strokeWidth = STROKE_WIDTH / state.scale;
-
-    if (this.mask) {
-      const [maskHeight, maskWidth] = this.mask.shape;
-      const maskContext = DetectionSvgOverlay.intermediateCanvas.getContext(
-        "2d"
-      );
-      ensureCanvasSize(DetectionSvgOverlay.intermediateCanvas, [
-        maskWidth,
-        maskHeight,
-      ]);
-      const maskImage = maskContext.createImageData(maskWidth, maskHeight);
-      const maskImageRaw = new Uint32Array(maskImage.data.buffer);
-
-      const bitColor = state.options.colorGenerator.get32BitColor(color);
-      for (let i = 0; i < this.mask.data.length; i++) {
-        if (this.mask.data[i]) {
-          maskImageRaw[i] = bitColor;
-        }
-      }
-      maskContext.putImageData(maskImage, 0, 0);
-      svg
-        .image(maskContext.canvas.toDataURL("image/png", 1))
-        .attr({
-          "image-rendering": "pixelated",
-          preserveAspectRatio: "none",
-        })
-        .size(width * bw, height * bh)
-        .move(btlx * width, btly * height);
-    }
-    this.rect = svg
-      .rect(width * bw, height * bh)
+    this.g = new G();
+    this.rect = new Rect()
+      .size(width * bw, height * bh)
       .attr({
         fill: "#000000",
         "fill-opacity": 0,
-        stroke: color,
-        "stroke-width": strokeWidth,
         "stroke-opacity": 1,
       })
       .move(btlx * width, btly * height);
 
-    if (!state.config.thumbnail) {
-      // fill and stroke to account for line thickness variation
+    if (this.img) {
+      this.g.add(this.img);
+    }
 
-      const titleText = new Text()
+    if (state.config.thumbnail) {
+      this.g.add(this.rect);
+      this.title = new Text()
         .text(this.getLabelText(state))
         .fill("#FFFFFF")
         .font({
@@ -403,9 +369,36 @@ export class DetectionSvgOverlay<
         .fill("rgba(0, 0, 0, 0.7)");
 
       this.titleRect = titleRect;
-      svg.add(titleRect);
-      svg.add(titleText);
+      this.g.add(titleRect);
+      this.g.add(titleText);
     }
+  }
+
+  containsPoint(context, state, [x, y]) {
+    if (this.rect.inside(x, y)) {
+      return CONTAINS.CONTENT;
+    }
+
+    return CONTAINS.NONE;
+  }
+
+  draw(svg: G, state, strokeWidth) {
+    const color = this.getColor(state);
+
+    if (this.color !== color) {
+      const img = this.createMask(state);
+      this.img.replace(img);
+      this.img = img;
+    }
+    if (this.isShown(state)) {
+      this.rect.attr({
+        stroke: color,
+        "stroke-width": strokeWidth,
+      });
+    } else {
+      this.g.hide();
+    }
+    svg.add(this.g);
   }
 
   getMouseDistance(
@@ -451,5 +444,40 @@ export class DetectionSvgOverlay<
       text += `(${Number(this.label.confidence).toFixed(2)})`;
     }
     return text;
+  }
+
+  private createMask(state: Readonly<State>): Image {
+    const {
+      config: {
+        dimensions: [width, height],
+      },
+    } = state;
+    const {
+      bounding_box: [btlx, btly, bw, bh],
+    } = this.label;
+    const [maskHeight, maskWidth] = this.mask.shape;
+    const maskContext = DetectionSvgOverlay.intermediateCanvas.getContext("2d");
+    ensureCanvasSize(DetectionSvgOverlay.intermediateCanvas, [
+      maskWidth,
+      maskHeight,
+    ]);
+    const maskImage = maskContext.createImageData(maskWidth, maskHeight);
+    const maskImageRaw = new Uint32Array(maskImage.data.buffer);
+
+    const bitColor = state.options.colorGenerator.get32BitColor(color);
+    for (let i = 0; i < this.mask.data.length; i++) {
+      if (this.mask.data[i]) {
+        maskImageRaw[i] = bitColor;
+      }
+    }
+    maskContext.putImageData(maskImage, 0, 0);
+
+    return new Image(maskContext.canvas.toDataURL("image/png", 1))
+      .attr({
+        "image-rendering": "pixelated",
+        preserveAspectRatio: "none",
+      })
+      .size(width * bw, height * bh)
+      .move(btlx * width, btly * height);
   }
 }
