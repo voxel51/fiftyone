@@ -52,43 +52,21 @@ export const isShown = <State extends BaseState, Label extends RegularLabel>(
   return true;
 };
 
-export interface Overlay<
-  State extends BaseState,
-  Drawer = CanvasRenderingContext2D | G
-> {
-  svg: boolean;
-  draw(context: Drawer, state: State, strokeWidth: number): void;
+export interface Overlay<State extends BaseState> {
+  draw(svg: G, state: State): void;
   isShown(state: Readonly<State>): boolean;
   field?: string;
-  containsPoint(
-    context: Drawer,
-    state: Readonly<State>,
-    coordinates: Coordinates
-  ): CONTAINS;
-  getMouseDistance(
-    context: Drawer,
-    state: Readonly<State>,
-    coordinates: Coordinates
-  ): number;
-  getPointInfo(
-    context: Drawer,
-    state: Readonly<State>,
-    coordinates: Coordinates
-  ): any;
-  getSelectData(
-    context: Drawer,
-    state: Readonly<State>,
-    coordinates: Coordinates
-  ): SelectData;
+  containsPoint(state: Readonly<State>, coordinates: Coordinates): CONTAINS;
+  getMouseDistance(state: Readonly<State>, coordinates: Coordinates): number;
+  getPointInfo(state: Readonly<State>, coordinates: Coordinates): any;
+  getSelectData(state: Readonly<State>, coordinates: Coordinates): SelectData;
   getPoints(): Coordinates[];
 }
 
 export abstract class CoordinateOverlay<
   State extends BaseState,
-  Label extends RegularLabel,
-  Drawer = CanvasRenderingContext2D | G
-> implements Overlay<State, Drawer> {
-  readonly svg: boolean = false;
+  Label extends RegularLabel
+> implements Overlay<State> {
   readonly field: string;
   protected readonly label: Label;
 
@@ -97,11 +75,7 @@ export abstract class CoordinateOverlay<
     this.label = label;
   }
 
-  abstract draw(
-    context: Drawer,
-    state: Readonly<State>,
-    strokeWidth: number
-  ): void;
+  abstract draw(svg: G, state: Readonly<State>): void;
 
   isShown(state: Readonly<State>): boolean {
     return isShown<State, Label>(state, this.field, this.label);
@@ -116,27 +90,15 @@ export abstract class CoordinateOverlay<
     return options.colorMap(key);
   }
 
-  abstract containsPoint(
-    context: Drawer,
-    state: Readonly<State>,
-    [x, y]: Coordinates
-  );
+  abstract containsPoint(state: Readonly<State>, [x, y]: Coordinates);
 
-  abstract getMouseDistance(
-    context: Drawer,
-    state: Readonly<State>,
-    [x, y]: Coordinates
-  );
+  abstract getMouseDistance(state: Readonly<State>, [x, y]: Coordinates);
 
-  abstract getPointInfo(
-    context: Drawer,
-    state: Readonly<State>,
-    [x, y]: Coordinates
-  );
+  abstract getPointInfo(state: Readonly<State>, [x, y]: Coordinates);
 
   abstract getPoints(): Coordinates[];
 
-  getSelectData(context: Drawer, state: Readonly<State>, [x, y]: Coordinates) {
+  getSelectData(state: Readonly<State>, [x, y]: Coordinates) {
     return {
       id: this.label._id,
       field: this.field,

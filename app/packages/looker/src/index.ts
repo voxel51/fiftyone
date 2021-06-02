@@ -41,7 +41,6 @@ export abstract class Looker<
 > {
   private eventTarget: EventTarget;
   protected lookerElement: LookerElement<State>;
-  private canvas: HTMLCanvasElement;
   private resizeObserver: ResizeObserver;
 
   protected currentOverlays: Overlay<State>[];
@@ -68,7 +67,7 @@ export abstract class Looker<
     );
     this.svg = SVG()
       .viewbox(`0 0 ${config.dimensions[0]} ${config.dimensions[1]}`)
-      .addTo(<HTMLElement>this.lookerElement.element.firstChild);
+      .addTo(<HTMLElement>this.lookerElement.children[0].element);
   }
 
   protected dispatchEvent(eventType: string, detail: any): void {
@@ -101,15 +100,14 @@ export abstract class Looker<
       this.state = this.postProcess(this.lookerElement.element);
       postUpdate && postUpdate(this.svg, this.state, this.currentOverlays);
       this.lookerElement.render(this.state as Readonly<State>);
-      this.svg.clear();
       const fragment = new G();
-
       const numOverlays = this.currentOverlays.length;
-      const strokeWidth =
+      this.state.strokeWidth =
         (STROKE_WIDTH / this.state.config.dimensions[0]) * w * this.state.scale;
       for (let index = numOverlays - 1; index >= 0; index--) {
-        this.currentOverlays[index].draw(fragment, this.state, strokeWidth);
+        this.currentOverlays[index].draw(fragment, this.state);
       }
+      this.svg.clear();
       this.svg.add(fragment);
     };
   }
@@ -208,7 +206,7 @@ export class FrameLooker extends Looker<FrameState> {
   }
 
   loadOverlays() {
-    this.overlays = loadOverlays(this.state.config, this.sample);
+    this.overlays = loadOverlays(this.state, this.sample);
   }
 
   pluckOverlays() {
@@ -246,7 +244,7 @@ export class ImageLooker extends Looker<ImageState> {
   }
 
   loadOverlays() {
-    this.overlays = loadOverlays(this.state.config, this.sample);
+    this.overlays = loadOverlays(this.state, this.sample);
   }
 
   pluckOverlays() {
@@ -289,7 +287,7 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
 
   loadOverlays() {
     this.sampleOverlays = loadOverlays(
-      this.state.config,
+      this.state,
       Object.fromEntries(
         Object.entries(this.sample).filter(
           ([fieldName]) => fieldName !== "frames."
@@ -302,7 +300,7 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
           return [
             Number(frameNumber),
             loadOverlays(
-              this.state.config,
+              this.state,
               Object.fromEntries(
                 Object.entries(frameSample).map(([fieldName, field]) => {
                   return [`frames.${fieldName}`, field];
@@ -358,7 +356,7 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
 }
 
 function loadOverlays<State extends BaseState>(
-  config: Readonly<State["config"]>,
+  config: Readonly<State>,
   sample: {
     [key: string]: any;
   }

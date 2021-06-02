@@ -17,7 +17,6 @@ const OVERLAY_BG_COLOR = "hsla(210, 20%, 10%, 0.8)";
 
 export default class ClassificationsOverlay<State extends BaseState>
   implements Overlay<State> {
-  readonly svg: boolean = false;
   private readonly labels: ClassificationLabels;
   private readonly font: string;
   private lines: string[] = [];
@@ -84,22 +83,22 @@ export default class ClassificationsOverlay<State extends BaseState>
     });
   }
 
-  getSelectData(context, state, coordinates) {
+  getSelectData(state, coordinates) {
     const {
       label: { _id: id },
       field,
-    } = this.getPointInfo(context, state, coordinates)[0];
+    } = this.getPointInfo(state, coordinates)[0];
     return { id, field };
   }
 
-  getMouseDistance(context, state, coordinates) {
-    if (this.containsPoint(context, state, coordinates)) {
+  getMouseDistance(state, coordinates) {
+    if (this.containsPoint(state, coordinates)) {
       return 0;
     }
     return Infinity;
   }
 
-  containsPoint(context, state, [x, y]) {
+  containsPoint(state, [x, y]) {
     const xAxis = x > PADDING && x < this.width + PADDING;
     return xAxis &&
       this.getYIntervals(state).some(
@@ -109,7 +108,7 @@ export default class ClassificationsOverlay<State extends BaseState>
       : CONTAINS.NONE;
   }
 
-  getPointInfo(context, state, [x, y]) {
+  getPointInfo(state, [x, y]) {
     const yIntervals = this.getYIntervals(state);
     const [field, label] = this.getFilteredAndFlat(state).filter((_, i) => {
       const { y: top, height } = yIntervals[i];

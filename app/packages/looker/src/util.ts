@@ -276,7 +276,7 @@ export const rotate = (array: any[], rotation: number): [any[], number] => {
   return [[...array.slice(rotation), ...array.slice(0, rotation)], rotation];
 };
 
-export const elementBBox = (element: HTMLElement): BoundingBox => {
+export const elementBBox = (element: HTMLElement | SVGElement): BoundingBox => {
   const {
     top: tly,
     left: tlx,

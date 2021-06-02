@@ -304,7 +304,7 @@ export const getDetectionPoints = (labels: DetectionLabel[]): Coordinates[] => {
 
 export class DetectionSvgOverlay<
   State extends BaseState
-> extends CoordinateOverlay<State, DetectionLabel, G> {
+> extends CoordinateOverlay<State, DetectionLabel> {
   readonly g: G;
 
   private rect: Rect;
@@ -348,9 +348,9 @@ export class DetectionSvgOverlay<
     if (this.img) {
       this.g.add(this.img);
     }
+    this.g.add(this.rect);
 
-    if (state.config.thumbnail) {
-      this.g.add(this.rect);
+    if (!state.config.thumbnail && false) {
       this.title = new Text()
         .text(this.getLabelText(state))
         .fill("#FFFFFF")
@@ -360,32 +360,31 @@ export class DetectionSvgOverlay<
           anchor: "middle",
           weight: "bold",
         })
-        .attr({ "line-height": Math.max(14 / state.scale, 4) * 1.5 })
-        .move(btlx * width + strokeWidth * 2, btly * height);
-      const titleBox = titleText.bbox();
-      const titleRect = new Rect()
+        .move(btlx * width, btly * height);
+      const titleBox = this.title.bbox();
+      this.titleRect = new Rect()
         .size(titleBox.width + strokeWidth * 3, titleBox.height)
-        .move(btlx * width + strokeWidth / 2, btly * height + strokeWidth / 2)
+        .move(btlx * width, btly * height)
         .fill("rgba(0, 0, 0, 0.7)");
 
-      this.titleRect = titleRect;
-      this.g.add(titleRect);
-      this.g.add(titleText);
+      this.g.add(this.titleRect);
+      this.g.add(this.title);
     }
   }
 
-  containsPoint(context, state, [x, y]) {
-    if (this.rect.inside(x, y)) {
+  containsPoint(state, [x, y]) {
+    if (this.g.inside(x, y)) {
       return CONTAINS.CONTENT;
     }
 
     return CONTAINS.NONE;
   }
 
-  draw(svg: G, state, strokeWidth) {
+  draw(svg: G, state) {
     const color = this.getColor(state);
 
     if (this.color !== color) {
+      this.color = color;
       const img = this.createMask(state);
       this.img.replace(img);
       this.img = img;
@@ -393,8 +392,26 @@ export class DetectionSvgOverlay<
     if (this.isShown(state)) {
       this.rect.attr({
         stroke: color,
-        "stroke-width": strokeWidth,
+        "stroke-width": state.strokeWidth,
       });
+
+      if (!state.config.thumbnail && false) {
+        const {
+          config: {
+            dimensions: [width, height],
+          },
+        } = state;
+        const {
+          bounding_box: [btlx, btly],
+        } = this.label;
+        this.title
+          .text(this.getLabelText(state))
+          .font({ size: Math.max(8 / state.scale, 2) });
+        const titleBox = this.title.bbox();
+        this.titleRect
+          .size(titleBox.width + state.strokeWidth * 3, titleBox.height)
+          .move(btlx * width, btly * height);
+      }
     } else {
       this.g.hide();
     }
@@ -402,7 +419,6 @@ export class DetectionSvgOverlay<
   }
 
   getMouseDistance(
-    _,
     {
       config: {
         dimensions: [w, h],
@@ -423,7 +439,7 @@ export class DetectionSvgOverlay<
     return Math.min(...distances);
   }
 
-  getPointInfo(context, state) {
+  getPointInfo(state) {
     return {
       color: this.getColor(state),
       field: this.field,
@@ -464,7 +480,7 @@ export class DetectionSvgOverlay<
     const maskImage = maskContext.createImageData(maskWidth, maskHeight);
     const maskImageRaw = new Uint32Array(maskImage.data.buffer);
 
-    const bitColor = state.options.colorGenerator.get32BitColor(color);
+    const bitColor = state.options.colorGenerator.get32BitColor(this.color);
     for (let i = 0; i < this.mask.data.length; i++) {
       if (this.mask.data[i]) {
         maskImageRaw[i] = bitColor;
@@ -477,7 +493,6 @@ export class DetectionSvgOverlay<
         "image-rendering": "pixelated",
         preserveAspectRatio: "none",
       })
-      .size(width * bw, height * bh)
-      .move(btlx * width, btly * height);
+      .size(width * bw, height * bh);
   }
 }

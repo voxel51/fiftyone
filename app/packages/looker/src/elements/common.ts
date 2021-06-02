@@ -2,7 +2,6 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 
-import { CANVAS_WIDTH } from "../constants";
 import { BaseState, Coordinates } from "../state";
 import { clampScale, elementBBox, getPixelCoordinates, snapBox } from "../util";
 import { BaseElement, Events } from "./base";
@@ -463,17 +462,16 @@ export class WindowElement<State extends BaseState> extends BaseElement<State> {
   getEvents(): Events<State> {
     return {
       click: ({ update, dispatchEvent }) => {
-        update({ showOptions: false }, (context, state, overlays) => {
+        update({ showOptions: false }, (svg, state, overlays) => {
           if (!state.config.thumbnail && overlays.length) {
             dispatchEvent(
               "select",
               overlays[0].getSelectData(
-                context,
                 state,
                 getPixelCoordinates(
                   state.cursorCoordinates,
                   state.config.dimensions,
-                  elementBBox(context.canvas)
+                  elementBBox(svg.node)
                 )
               )
             );
@@ -533,7 +531,7 @@ export class WindowElement<State extends BaseState> extends BaseElement<State> {
 }
 
 const dispatchTooltipEvent = (dispatchEvent) => {
-  return (context, state, overlays) => {
+  return (svg, state, overlays) => {
     // @ts-ignore
     if (state.playing && state.config.thumbnail) {
       return;
@@ -544,21 +542,19 @@ const dispatchTooltipEvent = (dispatchEvent) => {
     let detail =
       overlays.length &&
       overlays[0].containsPoint(
-        context,
         state,
         getPixelCoordinates(
           state.cursorCoordinates,
           state.config.dimensions,
-          elementBBox(context.canvas)
+          elementBBox(svg.node)
         )
       )
         ? overlays[0].getPointInfo(
-            context,
             state,
             getPixelCoordinates(
               state.cursorCoordinates,
               state.config.dimensions,
-              elementBBox(context.canvas)
+              elementBBox(svg.node)
             )
           )
         : null;

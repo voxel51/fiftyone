@@ -336,31 +336,6 @@ const SampleModal = ({ onClose, sampleId }: Props, ref) => {
             />
           )}
         </Suspense>
-        {index > 0 ? (
-          <div
-            className="nav-button left"
-            onClick={() => setIndex(index - 1)}
-            title="Previous sample (Left arrow)"
-          >
-            &lt;
-          </div>
-        ) : null}
-        {index < numSamples - 1 ? (
-          <div
-            className="nav-button right"
-            onClick={() => setIndex(index + 1)}
-            title="Next sample (Right arrow)"
-          >
-            &gt;
-          </div>
-        ) : null}
-        <TopRightNavButtons>
-          <TopRightNavButton
-            onClick={() => setFullscreen(!fullscreen)}
-            title={fullscreen ? "Unmaximize (Esc)" : "Maximize"}
-            icon={fullscreen ? <FullscreenExit /> : <Fullscreen />}
-          />
-        </TopRightNavButtons>
       </div>
       <div className="sidebar">
         <ModalFooter

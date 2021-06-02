@@ -44,7 +44,7 @@ const processOverlays = <State extends BaseState>(
     return [ordered, state.rotate];
   }
 
-  const bbox = elementBBox(svg.dom);
+  const bbox = elementBBox(svg.node);
   const [x, y] = getPixelCoordinates(
     state.cursorCoordinates,
     state.config.dimensions,
@@ -52,16 +52,15 @@ const processOverlays = <State extends BaseState>(
   );
 
   let contained = ordered
-    .filter((o) => o.containsPoint(svg, state, [x, y]) > CONTAINS.NONE)
+    .filter((o) => o.containsPoint(state, [x, y]) > CONTAINS.NONE)
     .sort(
       (a, b) =>
-        a.getMouseDistance(svg, state, [x, y]) -
-        b.getMouseDistance(svg, state, [x, y])
+        a.getMouseDistance(state, [x, y]) - b.getMouseDistance(state, [x, y])
     );
   const outside = ordered.filter(
     (o) =>
       o instanceof ClassificationsOverlay ||
-      o.containsPoint(svg, state, [x, y]) === CONTAINS.NONE
+      o.containsPoint(state, [x, y]) === CONTAINS.NONE
   );
 
   let newRotate = state.rotate;
