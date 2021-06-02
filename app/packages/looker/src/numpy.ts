@@ -135,6 +135,5 @@ function parse(array: Uint8Array): NumpyResult {
  * Deserializes and parses a saved numpy array
  */
 function deserialize(str: string): NumpyResult {
-  console.log(str);
   return parse(pako.inflate(atob(str)));
 }

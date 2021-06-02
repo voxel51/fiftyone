@@ -56,7 +56,7 @@ export class ColorGenerator {
     }
   }
 
-  color(index: number): string {
+  color(index: number | string | null | undefined): string {
     if (!(index in this.colors)) {
       if (typeof this.colorSet === "undefined") {
         this.generateColorSet();
@@ -68,7 +68,7 @@ export class ColorGenerator {
     return this.colors[index];
   }
 
-  rawColor(index: number): number {
+  rawColor(index: number | string | null | undefined): number {
     if (!(index in this.rawColors)) {
       this.color(index);
     }

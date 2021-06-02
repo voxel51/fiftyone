@@ -315,7 +315,6 @@ export class DetectionSvgOverlay<
 
   constructor(field, label) {
     super(field, label);
-    console.log(label);
     if (typeof label.mask === "string") {
       this.mask = deserialize(label.mask);
     }
@@ -352,23 +351,32 @@ export class DetectionSvgOverlay<
 
     if (this.mask) {
       const [maskHeight, maskWidth] = this.mask.shape;
+      const maskContext = DetectionSvgOverlay.intermediateCanvas.getContext(
+        "2d"
+      );
       ensureCanvasSize(DetectionSvgOverlay.intermediateCanvas, [
         maskWidth,
         maskHeight,
       ]);
-
-      const maskContext = DetectionSvgOverlay.intermediateCanvas.getContext(
-        "2d"
-      );
       const maskImage = maskContext.createImageData(maskWidth, maskHeight);
       const maskImageRaw = new Uint32Array(maskImage.data.buffer);
 
       for (let i = 0; i < this.mask.data.length; i++) {
         if (this.mask.data[i]) {
-          maskImageRaw[i] = 0;
+          maskImageRaw[i] = new Uint32Array(
+            new Uint8ClampedArray([255, 255, 255, 255 * MASK_ALPHA]).buffer
+          )[0];
         }
       }
-      svg.image(maskContext.canvas.toDataURL("image/png", 1));
+      maskContext.putImageData(maskImage, 0, 0);
+      svg
+        .image(maskContext.canvas.toDataURL("image/png", 1))
+        .attr({
+          "image-rendering": "pixelated",
+          preserveAspectRatio: "none",
+        })
+        .size(width * bw, height * bh)
+        .move(btlx * width, btly * height);
     }
   }
 

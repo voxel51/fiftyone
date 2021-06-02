@@ -216,12 +216,8 @@ export const ensureCanvasSize = (
   canvas: HTMLCanvasElement,
   dimensions: Dimensions
 ): void => {
-  if (canvas.width < dimensions[0]) {
-    canvas.width = dimensions[0];
-  }
-  if (canvas.height < dimensions[1]) {
-    canvas.height = dimensions[1];
-  }
+  canvas.width = dimensions[0];
+  canvas.height = dimensions[1];
 };
 
 /**
