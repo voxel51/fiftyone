@@ -398,13 +398,13 @@ type EventCallback = (event: Event) => void;
 export const defaultLookerOptions = selectorFamily({
   key: "defaultLookerOptions",
   get: (modal) => ({ get }) => {
-    const showAttrs = get(selectors.appConfig).show_attributes;
+    const showLabel = get(selectors.appConfig).show_label;
     const showConfidence = get(selectors.appConfig).show_confidence;
     const showTooltip = get(selectors.appConfig).show_tooltip;
     const video = get(selectors.isVideoDataset) && !modal ? { loop: true } : {};
     const imageOrFrame = get(selectors.isPatchesView) ? { zoom: true } : {};
     return {
-      showAttrs,
+      showLabel,
       showConfidence,
       showTooltip,
       ...video,

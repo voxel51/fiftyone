@@ -4,7 +4,7 @@
 
 import { CANVAS_WIDTH } from "../constants";
 import { BaseState, Coordinates } from "../state";
-import { elementBBox, getPixelCoordinates, snapBox } from "../util";
+import { clampScale, elementBBox, getPixelCoordinates, snapBox } from "../util";
 import { BaseElement, Events } from "./base";
 import { ICONS, makeCheckboxRow, makeWrapper } from "./util";
 
@@ -121,21 +121,17 @@ export class LookerElement<State extends BaseState> extends BaseElement<
               return {};
             }
             event.preventDefault();
-            let {
-              x: tlx,
-              y: tly,
-              width,
-              height,
-            } = this.element.getBoundingClientRect();
+            const [tlx, tly, width, height] = elementBBox(this.element);
 
             const x = event.x - tlx;
             const y = event.y - tly;
 
             const xs = (x - px) / scale;
             const ys = (y - py) / scale;
-            scale = Math.max(
-              Math.min(event.deltaY < 0 ? scale * 1.1 : scale / 1.1),
-              1
+            scale = clampScale(
+              [width, height],
+              dimensions,
+              event.deltaY < 0 ? scale * 1.15 : scale / 1.15
             );
 
             return {

@@ -1,7 +1,7 @@
 /**
  * Copyright 2017-2021, Voxel51, Inc.
  */
-import { Rect, SVG, Svg, Text } from "@svgdotjs/svg.js";
+import { G, Rect, SVG, Svg, Text } from "@svgdotjs/svg.js";
 
 import { ColorGenerator } from "../color";
 import {
@@ -330,7 +330,7 @@ export class DetectionSvgOverlay<
     return CONTAINS.NONE;
   }
 
-  draw(svg: Svg, state) {
+  draw(svg: G, state) {
     const color = this.getColor(state);
     const {
       config: {

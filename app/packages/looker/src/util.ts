@@ -2,6 +2,7 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 
+import { MIN_PIXELS } from "./constants";
 import { BoundingBox, Coordinates, Dimensions } from "./state";
 
 /**
@@ -285,6 +286,19 @@ export const elementBBox = (element: HTMLElement): BoundingBox => {
   return [tlx, tly, w, h];
 };
 
+export const getRenderedUntransformedImageDimensions = (
+  [ww, wh]: Dimensions,
+  [iw, ih]: Dimensions
+): Dimensions => {
+  const ar = iw / ih;
+  if (ww / wh < ar) {
+    ih = iw / ar;
+  } else {
+    iw = ih * ar;
+  }
+  return [iw, ih];
+};
+
 export const snapBox = (
   scale: number,
   pan: Coordinates,
@@ -340,4 +354,22 @@ export const snapBox = (
   }
 
   return pan;
+};
+
+export const clampScale = (
+  [ww, wh]: Dimensions,
+  [iw, ih]: Dimensions,
+  scale: number
+): number => {
+  [iw, ih] = getRenderedUntransformedImageDimensions([ww, wh], [iw, ih]);
+
+  if (iw / scale < MIN_PIXELS) {
+    scale = iw / MIN_PIXELS;
+  }
+
+  if (ih / scale < MIN_PIXELS) {
+    scale = ih / MIN_PIXELS;
+  }
+
+  return Math.max(scale, 1);
 };

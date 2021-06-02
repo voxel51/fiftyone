@@ -2,7 +2,7 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 import { mergeWith } from "immutable";
-import { Svg, SVG } from "@svgdotjs/svg.js";
+import { G, Svg, SVG } from "@svgdotjs/svg.js";
 
 import "./style.css";
 export { ColorGenerator } from "./color";
@@ -105,14 +105,16 @@ export abstract class Looker<
       this.lookerElement.render(this.state as Readonly<State>);
       clearCanvas(context);
       this.svg.clear();
+      const fragment = new G();
       const numOverlays = this.currentOverlays.length;
       for (let index = numOverlays - 1; index >= 0; index--) {
         if (this.currentOverlays[index].svg) {
-          this.currentOverlays[index].draw(this.svg, this.state);
+          this.currentOverlays[index].draw(fragment, this.state);
         } else {
           this.currentOverlays[index].draw(context, this.state);
         }
       }
+      this.svg.add(fragment);
     };
   }
 

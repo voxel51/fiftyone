@@ -141,7 +141,7 @@ const DEFAULT_BASE_OPTIONS = {
   activeLabels: [],
   colorByLabel: false,
   selectedLabels: [],
-  showAttrs: false,
+  showLabel: false,
   showConfidence: false,
   showTooltip: false,
   onlyShowHoveredLabel: false,
