@@ -388,7 +388,7 @@ export class OnlyShowHoveredOnLabelOptionElement<
   }
 }
 
-export class ShowAttributesOptionElement<
+export class ShowLabelOptionElement<
   State extends BaseState
 > extends BaseElement<State> {
   checkbox: HTMLInputElement;
@@ -399,10 +399,10 @@ export class ShowAttributesOptionElement<
       click: ({ event, update, dispatchEvent }) => {
         event.stopPropagation();
         event.preventDefault();
-        update(({ options: { showAttrs } }) => {
-          dispatchEvent("options", { showAttrs: !showAttrs });
+        update(({ options: { showLabel } }) => {
+          dispatchEvent("options", { showLabel: !showLabel });
           return {
-            options: { showAttrs: !showAttrs },
+            options: { showLabel: !showLabel },
           };
         });
       },
@@ -410,12 +410,12 @@ export class ShowAttributesOptionElement<
   }
 
   createHTMLElement() {
-    [this.label, this.checkbox] = makeCheckboxRow("Show attributes", false);
+    [this.label, this.checkbox] = makeCheckboxRow("Show label", false);
     return makeWrapper([this.label]);
   }
 
-  renderSelf({ options: { showAttrs } }) {
-    this.checkbox.checked = showAttrs;
+  renderSelf({ options: { showLabel } }) {
+    this.checkbox.checked = showLabel;
     return this.element;
   }
 }

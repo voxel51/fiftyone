@@ -21,7 +21,7 @@ interface BaseOptions {
   } | null;
   colorMap: ((key: string | number | null | undefined) => string) | null;
   selectedLabels: string[];
-  showAttrs: boolean;
+  showLabel: boolean;
   showConfidence: boolean;
   showTooltip: boolean;
   onlyShowHoveredLabel: boolean;

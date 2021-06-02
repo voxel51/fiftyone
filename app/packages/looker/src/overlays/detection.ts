@@ -398,7 +398,7 @@ export class DetectionSvgOverlay<
         .move(btlx * width + strokeWidth * 2, btly * height);
       const titleBox = titleText.bbox();
       const titleRect = new Rect()
-        .size(titleBox.width + strokeWidth * 4, titleBox.height)
+        .size(titleBox.width + strokeWidth * 3, titleBox.height)
         .move(btlx * width + strokeWidth / 2, btly * height + strokeWidth / 2)
         .fill("rgba(0, 0, 0, 0.7)");
 
@@ -444,7 +444,8 @@ export class DetectionSvgOverlay<
   }
 
   private getLabelText(state: Readonly<State>): string {
-    let text = (this.label.label ? `${this.label.label} ` : "").toUpperCase();
+    let text =
+      this.label.label && state.options.showLabel ? `${this.label.label} ` : "";
 
     if (state.options.showConfidence && !isNaN(this.label.confidence)) {
       text += `(${Number(this.label.confidence).toFixed(2)})`;
