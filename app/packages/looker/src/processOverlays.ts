@@ -68,13 +68,12 @@ const processOverlays = <State extends BaseState>(
       o.containsPoint(o.svg ? svg : context, state, [x, y]) === CONTAINS.NONE
   );
 
-  if (state.options.onlyShowHoveredLabel) {
-    return contained.length ? contained[0] : [];
-  }
-
   let newRotate = state.rotate;
   if (state.rotate !== 0) {
     [contained, newRotate] = rotate(contained, state.rotate);
+  }
+  if (state.options.onlyShowHoveredLabel) {
+    return [contained.length ? [contained[0]] : [], newRotate];
   }
 
   return [[...contained, ...outside], newRotate];
