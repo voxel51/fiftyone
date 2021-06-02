@@ -261,7 +261,8 @@ The FiftyOne App can be configured in the ways described below:
 +---------------------+-----------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
 | `notebook_height`   | `FIFTYONE_APP_NOTEBOOK_HEIGHT`    | `800`                       | The height of App instances displayed in notebook cells.                                 |
 +---------------------+-----------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
-| `show_attributes`   | `FIFTYONE_APP_SHOW_ATTRIBUTES`    | `False`                     | Whether to show attributes when rendering labels in the App's expanded sample view.      |
+| `show_label`        | `FIFTYONE_APP_SHOW_LABEL`         | `False`                     | Whether to show the label value when rendering detection labels in the App's expanded    |
+|                     |                                   |                             | sample view.                                                                             |
 +---------------------+-----------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
 | `show_confidence`   | `FIFTYONE_APP_SHOW_CONFIDENCE`    | `True`                      | Whether to show confidences when rendering labels in the App's expanded sample view.     |
 +---------------------+-----------------------------------+-----------------------------+------------------------------------------------------------------------------------------+

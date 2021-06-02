@@ -709,7 +709,7 @@ below shows the basic pattern for customizing the App on a one-off basis:
     # Create a custom App config
     app_config = fo.AppConfig()
     app_config.show_confidence = False
-    app_config.show_attributes = True
+    app_config.show_label = True
 
     session = fo.launch_app(dataset, config=app_config)
 
@@ -723,7 +723,7 @@ apply the changes:
 
     # Customize the config of a live Session
     session.config.show_confidence = True
-    session.config.show_attributes = True
+    session.config.show_label = True
 
     # Refresh the session to apply the changes
     session.refresh()
