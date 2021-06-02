@@ -1,7 +1,7 @@
 /**
  * Copyright 2017-2021, Voxel51, Inc.
  */
-import { Rect, Svg } from "@svgdotjs/svg.js";
+import { Rect, SVG, Svg, Text } from "@svgdotjs/svg.js";
 
 import { ColorGenerator } from "../color";
 import {
@@ -307,10 +307,10 @@ export class DetectionSvgOverlay<
 > extends CoordinateOverlay<State, DetectionLabel, Svg> {
   readonly svg: boolean = true;
   private rect: Rect;
+  private titleRect: Rect;
   private static readonly intermediateCanvas: HTMLCanvasElement = document.createElement(
     "canvas"
   );
-  private static readonly rawColorCache = {};
   private readonly mask: NumpyResult;
 
   constructor(field, label) {
@@ -322,6 +322,9 @@ export class DetectionSvgOverlay<
 
   containsPoint(context, state, [x, y]) {
     if (this.rect.inside(x, y)) {
+      return CONTAINS.CONTENT;
+    }
+    if (this.titleRect.inside(x, y)) {
       return CONTAINS.CONTENT;
     }
     return CONTAINS.NONE;
@@ -338,16 +341,7 @@ export class DetectionSvgOverlay<
       bounding_box: [btlx, btly, bw, bh],
     } = this.label;
 
-    this.rect = svg
-      .rect(width * bw, height * bh)
-      .attr({
-        fill: "#000000",
-        "fill-opacity": 0,
-        stroke: color,
-        "stroke-width": STROKE_WIDTH / state.scale,
-        "stroke-opacity": 1,
-      })
-      .move(btlx * width, btly * height);
+    const strokeWidth = STROKE_WIDTH / state.scale;
 
     if (this.mask) {
       const [maskHeight, maskWidth] = this.mask.shape;
@@ -376,6 +370,41 @@ export class DetectionSvgOverlay<
         })
         .size(width * bw, height * bh)
         .move(btlx * width, btly * height);
+    }
+    this.rect = svg
+      .rect(width * bw, height * bh)
+      .attr({
+        fill: "#000000",
+        "fill-opacity": 0,
+        stroke: color,
+        "stroke-width": strokeWidth,
+        "stroke-opacity": 1,
+      })
+      .move(btlx * width, btly * height);
+
+    if (!state.config.thumbnail) {
+      // fill and stroke to account for line thickness variation
+
+      const titleText = new Text()
+        .text(this.getLabelText(state))
+        .fill("#FFFFFF")
+        .font({
+          family: "Palanquin",
+          size: Math.max(8 / state.scale, 2),
+          anchor: "middle",
+          weight: "bold",
+        })
+        .attr({ "line-height": Math.max(14 / state.scale, 4) * 1.5 })
+        .move(btlx * width + strokeWidth * 2, btly * height);
+      const titleBox = titleText.bbox();
+      const titleRect = new Rect()
+        .size(titleBox.width + strokeWidth * 4, titleBox.height)
+        .move(btlx * width + strokeWidth / 2, btly * height + strokeWidth / 2)
+        .fill("rgba(0, 0, 0, 0.7)");
+
+      this.titleRect = titleRect;
+      svg.add(titleRect);
+      svg.add(titleText);
     }
   }
 
@@ -412,5 +441,14 @@ export class DetectionSvgOverlay<
 
   getPoints() {
     return getDetectionPoints([this.label]);
+  }
+
+  private getLabelText(state: Readonly<State>): string {
+    let text = (this.label.label ? `${this.label.label} ` : "").toUpperCase();
+
+    if (state.options.showConfidence && !isNaN(this.label.confidence)) {
+      text += `(${Number(this.label.confidence).toFixed(2)})`;
+    }
+    return text;
   }
 }

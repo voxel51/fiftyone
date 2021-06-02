@@ -41,7 +41,11 @@ export const isShown = <State extends BaseState, Label extends RegularLabel>(
     return false;
   }
 
-  if (state.options.filter && state.options.filter[field].call) {
+  if (
+    state.options.filter &&
+    state.options.filter[field] &&
+    state.options.filter[field].call
+  ) {
     return state.options.filter[field](label);
   }
 

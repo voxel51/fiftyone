@@ -147,6 +147,10 @@ export class LookerElement<State extends BaseState> extends BaseElement<
               ),
               scale,
               canZoom: false,
+              cursorCoordinates: [
+                (<MouseEvent>event).pageX,
+                (<MouseEvent>event).pageY,
+              ],
             };
           },
           dispatchTooltipEvent(dispatchEvent)
@@ -556,6 +560,9 @@ const dispatchTooltipEvent = (dispatchEvent) => {
   return (context, state, overlays) => {
     // @ts-ignore
     if (state.playing && state.config.thumbnail) {
+      return;
+    }
+    if (!state.options.showTooltip) {
       return;
     }
     let detail =
