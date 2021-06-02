@@ -361,11 +361,10 @@ export class DetectionSvgOverlay<
       const maskImage = maskContext.createImageData(maskWidth, maskHeight);
       const maskImageRaw = new Uint32Array(maskImage.data.buffer);
 
+      const bitColor = state.options.colorGenerator.get32BitColor(color);
       for (let i = 0; i < this.mask.data.length; i++) {
         if (this.mask.data[i]) {
-          maskImageRaw[i] = new Uint32Array(
-            new Uint8ClampedArray([255, 255, 255, 255 * MASK_ALPHA]).buffer
-          )[0];
+          maskImageRaw[i] = bitColor;
         }
       }
       maskContext.putImageData(maskImage, 0, 0);

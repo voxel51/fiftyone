@@ -11,9 +11,11 @@ export class ColorGenerator {
   private static colorL: string = "40%";
   private static colorA: string = "0.875";
 
+  private static bitColorCache: { [key: string]: number } = {};
   private colors = {};
   private colorSet: string[];
   private seed: number;
+  private canvas: HTMLCanvasElement;
 
   rawColors: { [key: number]: number } = {};
   rawMaskColors: Uint32Array;
@@ -21,6 +23,9 @@ export class ColorGenerator {
 
   constructor(seed: number = null) {
     this.seed = (seed % 32) / 32;
+    this.canvas = document.createElement("canvas");
+    this.canvas.width = 1;
+    this.canvas.height = 1;
 
     const maskOffset = Math.floor(this.seed * 256);
     this.rawMaskColors = new Uint32Array(256);
@@ -37,10 +42,8 @@ export class ColorGenerator {
   }
 
   private generateColorSet(n: number = 36) {
-    const canvas = document.createElement("canvas");
-    canvas.width = 1;
-    canvas.height = 1;
-    const context = canvas.getContext("2d");
+    const context = this.canvas.getContext("2d");
+    context.clearRect(0, 0, 1, 1);
     const delta = 360 / n;
     this.colorSet = new Array(n);
     for (let i = 0; i < n; i++) {
@@ -73,6 +76,21 @@ export class ColorGenerator {
       this.color(index);
     }
     return this.rawColors[index];
+  }
+
+  get32BitColor(color: string): number {
+    if (color in ColorGenerator.bitColorCache) {
+      return ColorGenerator.bitColorCache[color];
+    }
+    const context = this.canvas.getContext("2d");
+    context.fillStyle = color;
+    context.clearRect(0, 0, 1, 1);
+    context.fillRect(0, 0, 1, 1);
+    const rgba = new Uint8Array(context.getImageData(0, 0, 1, 1).data.buffer);
+    rgba[3] *= MASK_ALPHA;
+    ColorGenerator.bitColorCache[color] = new Uint32Array(rgba.buffer)[0];
+
+    return ColorGenerator.bitColorCache[color];
   }
 }
 
