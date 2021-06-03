@@ -68,7 +68,7 @@ export default class KeypointOverlay<
     return CONTAINS.NONE;
   }
 
-  draw(svg, state) {
+  draw(g, state) {
     const color = this.getColor(state);
     if (color !== this.getColor(state)) {
       this.color = color;
@@ -84,8 +84,8 @@ export default class KeypointOverlay<
         c.radius(radius);
       });
     }
-    console.log(this.circles);
-    svg.add(this.g);
+
+    g.add(this.g);
   }
 
   getMouseDistance(state, [x, y]) {

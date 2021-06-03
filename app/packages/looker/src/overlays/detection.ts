@@ -88,7 +88,7 @@ export default class DetectionOverlay<
     return CONTAINS.NONE;
   }
 
-  draw(svg: G, state) {
+  draw(g, state) {
     const color = this.getColor(state);
 
     if (this.color !== color) {
@@ -109,7 +109,8 @@ export default class DetectionOverlay<
     } else {
       this.g.hide();
     }
-    svg.add(this.g);
+
+    g.add(this.g);
   }
 
   getMouseDistance(
@@ -177,9 +178,11 @@ export default class DetectionOverlay<
     const labelText = this.getLabelText(state);
     const textUpdate = labelText !== this.labelText;
 
-    this.title.plain(this.getLabelText(state));
-    this.sizeTitleRect(state.strokeWidth);
-    this.labelText = labelText;
+    if (textUpdate) {
+      this.title.plain(this.getLabelText(state));
+      this.sizeTitleRect(state.strokeWidth);
+      this.labelText = labelText;
+    }
 
     if (fontChange || this.strokeWidth !== state.strokeWidth || textUpdate) {
       const {
@@ -195,9 +198,9 @@ export default class DetectionOverlay<
         btlx * width + strokeWidth / 2,
         btly * height + strokeWidth / 2,
       ];
-      this.sizeTitleRect(strokeWidth);
 
-      this.title.move(x + strokeWidth * 1.5, y);
+      !textUpdate && this.sizeTitleRect(strokeWidth);
+      this.title.move(x + strokeWidth * 1.5, y - strokeWidth / 2);
       this.titleRect.move(x, y);
       this.strokeWidth = state.strokeWidth;
     }

@@ -182,10 +182,13 @@ export abstract class Looker<
 
   protected postProcess(element: HTMLElement): State {
     let [_, __, w, h] = elementBBox(this.lookerElement.element);
-    const [iw, ih] = getRenderedUntransformedImageDimensions(
+    let [iw, ih] = this.state.config.dimensions;
+    [w, h] = [Math.max(w, iw), Math.max(h, ih)];
+    [iw, ih] = getRenderedUntransformedImageDimensions(
       [w, h],
       this.state.config.dimensions
     );
+
     const [from, to] =
       w / h > iw / ih
         ? [this.state.config.dimensions[1], ih]
