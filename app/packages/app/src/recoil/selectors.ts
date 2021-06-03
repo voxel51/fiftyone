@@ -100,13 +100,64 @@ export const isRootView = selector<boolean>({
   },
 });
 
+const FRAMES_VIEW = "fiftyone.core.video.FramesView";
+const EVALUATION_PATCHES_VIEW = "fiftyone.core.patches.EvaluationPatchesView";
+const PATCHES_VIEW = "fiftyone.core.patches.PatchesView";
+const PATCH_VIEWS = [PATCHES_VIEW, EVALUATION_PATCHES_VIEW];
+
+enum ELEMENT_NAMES {
+  FRAME = "frame",
+  PATCH = "patch",
+  SAMPLE = "sample",
+}
+
+enum ELEMENT_NAMES_PLURAL {
+  FRAME = "frames",
+  PATCH = "patches",
+  SAMPLE = "samples",
+}
+
+export const rootElementName = selector<string>({
+  key: "rootElementName",
+  get: ({ get }) => {
+    const cls = get(viewCls);
+    if (PATCH_VIEWS.includes(cls)) {
+      return ELEMENT_NAMES.PATCH;
+    }
+
+    if (cls === FRAMES_VIEW) return ELEMENT_NAMES.FRAME;
+
+    return ELEMENT_NAMES.SAMPLE;
+  },
+});
+
+export const rootElementNamePlural = selector<string>({
+  key: "rootElementNamePlural",
+  get: ({ get }) => {
+    const elementName = get(rootElementName);
+
+    switch (elementName) {
+      case ELEMENT_NAMES.FRAME:
+        return ELEMENT_NAMES_PLURAL.FRAME;
+      case ELEMENT_NAMES.PATCH:
+        return ELEMENT_NAMES_PLURAL.PATCH;
+      default:
+        return ELEMENT_NAMES_PLURAL.SAMPLE;
+    }
+  },
+});
+
 export const isPatchesView = selector<boolean>({
   key: "isPatchesView",
   get: ({ get }) => {
-    return [
-      "fiftyone.core.patches.EvaluationPatchesView",
-      "fiftyone.core.patches.PatchesView",
-    ].includes(get(viewCls));
+    return get(rootElementName) === ELEMENT_NAMES.PATCH;
+  },
+});
+
+export const isFramesView = selector<boolean>({
+  key: "isFramesView",
+  get: ({ get }) => {
+    return get(rootElementName) === ELEMENT_NAMES.FRAME;
   },
 });
 
@@ -126,6 +177,7 @@ export const mediaType = selector({
   key: "mediaType",
   get: ({ get }) => {
     const stateDescription = get(atoms.stateDescription);
+
     return stateDescription.dataset
       ? stateDescription.dataset.media_type
       : null;
@@ -1016,7 +1068,6 @@ export const sampleMimeType = selectorFamily<string, string>({
   key: "sampleMimeType",
   get: (id) => ({ get }) => {
     const sample = get(atoms.sample(id));
-    console.log(sample);
     return (
       (sample.metadata && sample.metadata.mime_type) ||
       mime.lookup(sample.filepath) ||

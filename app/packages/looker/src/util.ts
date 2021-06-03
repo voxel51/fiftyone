@@ -231,6 +231,7 @@ export const getContainingBox = (points: Coordinates[]): BoundingBox => {
   const tly = Math.min(...points.map(([_, y]) => y));
   const w = Math.max(...points.map(([x]) => x)) - tlx;
   const h = Math.max(...points.map(([_, y]) => y)) - tly;
+
   return [tlx, tly, w, h];
 };
 

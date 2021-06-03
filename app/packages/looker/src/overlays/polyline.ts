@@ -4,13 +4,7 @@
 
 import { G, Polyline } from "@svgdotjs/svg.js";
 
-import {
-  ALPHA_MULITPLIER,
-  DASH_COLOR,
-  DASH_LENGTH,
-  LINE_WIDTH,
-  MASK_ALPHA,
-} from "../constants";
+import { MASK_ALPHA } from "../constants";
 import { BaseState, Coordinates } from "../state";
 import { distanceFromLineSegment, getAlphaColor } from "../util";
 import { CONTAINS, CoordinateOverlay, RegularLabel } from "./base";
@@ -38,7 +32,7 @@ export default class PolylineOverlay<
       },
     } = state;
     this.g = new G();
-    const alphaColor = getAlphaColor(this.color, ALPHA_MULITPLIER);
+    const alphaColor = getAlphaColor(this.color, MASK_ALPHA);
     this.polylines = this.label.points.map((points) => {
       const polyline = new Polyline().plot(
         points.map<[number, number]>(([x, y]) => [x * w, y * h])
@@ -60,7 +54,7 @@ export default class PolylineOverlay<
     const color = this.getColor(state);
     if (this.color !== color) {
       this.color = color;
-      const alphaColor = getAlphaColor(this.color, ALPHA_MULITPLIER);
+      const alphaColor = getAlphaColor(this.color, MASK_ALPHA);
       this.polylines.forEach((polyline) => {
         polyline.stroke({ color: this.color });
 

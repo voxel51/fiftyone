@@ -2,6 +2,7 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 import { G, Image, Rect, Text } from "@svgdotjs/svg.js";
+import { TEXT_BG_COLOR } from "../constants";
 
 import { deserialize, NumpyResult } from "../numpy";
 import { BaseState, BoundingBox, Coordinates } from "../state";
@@ -73,7 +74,7 @@ export default class DetectionOverlay<
           weight: "bold",
         })
         .move(btlx * width, btly * height);
-      this.titleRect = new Rect().fill("rgba(0, 0, 0, 0.7)");
+      this.titleRect = new Rect().fill(TEXT_BG_COLOR);
       this.drawTitle(state);
       this.g.add(this.titleRect);
       this.g.add(this.title);
@@ -239,7 +240,7 @@ export default class DetectionOverlay<
     const maskImage = maskContext.createImageData(maskWidth, maskHeight);
     const maskImageRaw = new Uint32Array(maskImage.data.buffer);
 
-    const bitColor = state.options.colorGenerator.get32BitColor(this.color);
+    const bitColor = state.options.colorGenerator.getMaskColor(this.color);
     for (let i = 0; i < this.mask.data.length; i++) {
       if (this.mask.data[i]) {
         maskImageRaw[i] = bitColor;

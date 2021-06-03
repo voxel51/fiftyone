@@ -78,7 +78,7 @@ export class ColorGenerator {
     return this.rawColors[index];
   }
 
-  get32BitColor(color: string): number {
+  getMaskColor(color: string): number {
     if (color in ColorGenerator.bitColorCache) {
       return ColorGenerator.bitColorCache[color];
     }

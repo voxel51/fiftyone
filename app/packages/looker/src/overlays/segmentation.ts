@@ -2,6 +2,7 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 
+import { Image } from "@svgdotjs/svg.js";
 import { ColorGenerator } from "../color";
 import { deserialize, NumpyResult } from "../numpy";
 import { BaseState, Coordinates } from "../state";
@@ -14,73 +15,48 @@ interface SegmentationLabel extends BaseLabel {
 
 export default class SegmentationOverlay<State extends BaseState>
   implements Overlay<State> {
-  private readonly intermediateCanvas: HTMLCanvasElement = document.createElement(
+  private static readonly intermediateCanvas: HTMLCanvasElement = document.createElement(
     "canvas"
   );
   readonly field: string;
-  readonly svg: boolean = false;
   private readonly label: SegmentationLabel;
   private readonly mask: NumpyResult;
   private generator: ColorGenerator;
-  private imageColors: Uint32Array;
   private targets: Uint32Array;
-  private rendered: boolean = false;
+  private image: Image;
 
-  constructor(field: string, label: SegmentationLabel) {
+  constructor(state: Readonly<State>, field: string, label: SegmentationLabel) {
     this.field = field;
     this.label = label;
-    this.mask = deserialize(this.label.mask);
-    this.imageColors = new Uint32Array(this.mask.data);
-    this.targets = new Uint32Array(this.mask.data);
+    if (this.label.mask) {
+      this.mask = deserialize(this.label.mask);
+      this.targets = new Uint32Array(this.mask.data);
+      this.image = this.createMask(state);
+    }
   }
 
-  containsPoint(context, state, [x, y]) {
-    if (this.getTarget(context, [x, y])) {
+  containsPoint(state, [x, y]) {
+    if (this.getTarget(state, [x, y])) {
       return CONTAINS.CONTENT;
     }
     return CONTAINS.NONE;
   }
 
-  draw(context, state) {
-    ensureCanvasSize(this.intermediateCanvas, this.mask.shape);
-    const maskContext = this.intermediateCanvas.getContext("2d");
-    const maskImage = maskContext.createImageData(...this.mask.shape);
-    const imageColors = new Uint32Array(maskImage.data.buffer);
-    const canvasShape = [context.canvas.width, context.canvas.height];
-    if (this.rendered && this.generator === state.options.colorGenerator) {
-      imageColors.set(this.imageColors);
-    } else {
-      this.generator = state.options.colorGenerator;
-      const maskColors = this.isSelected(state)
-        ? this.generator.rawMaskColorsSelected
-        : this.generator.rawMaskColors;
-
-      for (let i = 0; i < this.mask.data.length; i++) {
-        if (this.mask.data[i]) {
-          imageColors[i] = maskColors[this.mask.data[i]];
-        }
-      }
-
-      this.imageColors = imageColors;
-      this.rendered = true;
+  draw(g, state) {
+    if (this.image) {
+      g.add(this.image);
     }
-    maskContext.putImageData(maskImage, 0, 0);
-    context.imageSmoothingEnabled = state.options.smoothMasks;
-    context.drawImage(
-      this.intermediateCanvas,
-      ...[0, 0, ...this.mask.shape, 0, 0, canvasShape]
-    );
   }
 
-  getMouseDistance(context, state, [x, y]) {
-    if (this.containsPoint(state, context, [x, y])) {
+  getMouseDistance(state, [x, y]) {
+    if (this.containsPoint(state, [x, y])) {
       return 0;
     }
     return Infinity;
   }
 
-  getPointInfo(context, state, [x, y]) {
-    const target = this.getTarget(context, [x, y]);
+  getPointInfo(state, [x, y]) {
+    const target = this.getTarget(state, [x, y]);
     return {
       color: this.getRGBAColor(state, target),
       field: this.field,
@@ -109,18 +85,16 @@ export default class SegmentationOverlay<State extends BaseState>
     return getSegmentationPoints([]);
   }
 
-  private getIndex(context: CanvasRenderingContext2D, [x, y]) {
-    const [sx, sy] = this.getMaskCoordinates(context, [x, y]);
+  private getIndex(state: Readonly<State>, [x, y]) {
+    const [sx, sy] = this.getMaskCoordinates(state, [x, y]);
     return this.mask.shape[1] * sy + sx;
   }
 
-  private getMaskCoordinates(
-    context: CanvasRenderingContext2D,
-    [x, y]: Coordinates
-  ) {
+  private getMaskCoordinates(state: Readonly<State>, [x, y]: Coordinates) {
     const [h, w] = this.mask.shape;
-    const sx = Math.floor(x * (w / context.canvas.width));
-    const sy = Math.floor(y * (h / context.canvas.height));
+    const [iw, ih] = state.config.dimensions;
+    const sx = Math.floor(x * (w / iw));
+    const sy = Math.floor(y * (h / ih));
     return [sx, sy];
   }
 
@@ -130,9 +104,39 @@ export default class SegmentationOverlay<State extends BaseState>
     return `rgba(${r},${g},${b},${a / 255})`;
   }
 
-  private getTarget(context: CanvasRenderingContext2D, [x, y]: Coordinates) {
-    const index = this.getIndex(context, [x, y]);
+  private getTarget(state: Readonly<State>, [x, y]: Coordinates) {
+    const index = this.getIndex(state, [x, y]);
     return this.targets[index];
+  }
+
+  private createMask(state: Readonly<State>): Image {
+    const [maskHeight, maskWidth] = this.mask.shape;
+    const [w, h] = state.config.dimensions;
+    const maskContext = SegmentationOverlay.intermediateCanvas.getContext("2d");
+    ensureCanvasSize(SegmentationOverlay.intermediateCanvas, [
+      maskWidth,
+      maskHeight,
+    ]);
+    const maskImage = maskContext.createImageData(maskWidth, maskHeight);
+    const maskImageRaw = new Uint32Array(maskImage.data.buffer);
+    this.generator = state.options.colorGenerator;
+    const maskColors = this.isSelected(state)
+      ? this.generator.rawMaskColorsSelected
+      : this.generator.rawMaskColors;
+
+    for (let i = 0; i < this.mask.data.length; i++) {
+      if (this.mask.data[i]) {
+        maskImageRaw[i] = maskColors[this.mask.data[i]];
+      }
+    }
+    maskContext.putImageData(maskImage, 0, 0);
+
+    return new Image()
+      .attr({
+        preserveAspectRatio: "none",
+        href: maskContext.canvas.toDataURL("image/png", 1),
+      })
+      .size(w, h);
   }
 }
 

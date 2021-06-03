@@ -62,6 +62,7 @@ export abstract class Looker<
     config: State["config"],
     options: Optional<State["options"]>
   ) {
+    console.log(config, options);
     this.sample = sample;
     this.eventTarget = new EventTarget();
     this.updater = this.makeUpdate();
@@ -524,6 +525,17 @@ export const zoomAspectRatio = (
       points = [...points, ...POINTS_FROM_FO[label._cls](label)];
     }
   });
-  const [_, __, width, height] = getContainingBox(points);
+  let [_, __, width, height] = getContainingBox(points);
+
+  if (width === 0 || height === 0) {
+    if (width === height) {
+      width = 1;
+      height = 1;
+    } else if (height === 0) {
+      height = width;
+    } else {
+      width = height;
+    }
+  }
   return (width / height) * mediaAspectRatio;
 };

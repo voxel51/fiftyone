@@ -1,24 +1,13 @@
 import React, { useState, useRef, MutableRefObject } from "react";
 import ReactDOM from "react-dom";
 import styled from "styled-components";
-import {
-  SerializableParam,
-  selectorFamily,
-  useRecoilValue,
-  useRecoilCallback,
-  selector,
-} from "recoil";
+import { selectorFamily, useRecoilValue, useRecoilCallback } from "recoil";
 import { animated, useSpring } from "react-spring";
 
 import * as labelAtoms from "./Filters/utils";
 import ExternalLink from "./ExternalLink";
 import { ContentDiv, ContentHeader } from "./utils";
-import {
-  ImageLooker,
-  Looker,
-  Looker as LookerType,
-  VideoLooker,
-} from "@fiftyone/looker";
+import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
 import { useEventHandler } from "../utils/hooks";
 
 import * as atoms from "../recoil/atoms";
@@ -32,28 +21,24 @@ import {
 import { useLayoutEffect } from "react";
 import { useMove } from "react-use-gesture";
 
-const InfoWrapper = styled.div`
-  display: flex;
-  flex-direction: column;
-  position: relative;
-  z-index: 100;
-  width: 100%;
-  height: 100%;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  font-size: 125%;
-  svg {
-    font-size: 200%;
-    color: ${({ theme }) => theme.fontDark};
-  }
-  svg.error {
-    color: ${({ theme }) => theme.error};
-  }
-  p {
-    margin: 0;
-  }
-`;
+type LookerTypes = typeof FrameLooker | typeof ImageLooker | typeof VideoLooker;
+
+const lookerType = selectorFamily<LookerTypes, string>({
+  key: "lookerType",
+  get: (sampleId) => ({ get }) => {
+    const video = get(selectors.sampleMimeType(sampleId)).startsWith("video/");
+    const isFrame = get(selectors.isFramesView);
+    const isPatch = get(selectors.isPatchesView);
+    if (video && (isFrame || isPatch)) {
+      return FrameLooker;
+    }
+
+    if (video) {
+      return VideoLooker;
+    }
+    return ImageLooker;
+  },
+});
 
 const TagBlock = styled.div`
   margin: 0;
@@ -472,18 +457,17 @@ const Looker = ({
   const metadata = useRecoilValue(atoms.sampleMetadata(sampleId));
   const ref = useRef<any>();
   const bindMove = useMove((s) => ref.current && ref.current(s));
-  const LookerType = useRecoilValue(selectors.isVideoDataset)
-    ? VideoLooker
-    : ImageLooker;
+  const lookerConstructor = useRecoilValue(lookerType(sampleId));
   const [looker] = useState(
     () =>
-      new LookerType(
+      new lookerConstructor(
         sample,
         {
           src: sampleSrc,
           thumbnail: !modal,
           dimensions: [metadata.width, metadata.height],
           frameRate: metadata.frameRate,
+          frameNumber: sample.frame_number,
         },
         options
       )

@@ -2,29 +2,26 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 
-import { ColorGenerator } from "../color";
-import { DASH_COLOR, DASH_LENGTH } from "../constants";
+import { G } from "@svgdotjs/svg.js";
+
 import { BaseState, Coordinates } from "../state";
-import { computeBBoxForTextOverlay } from "../util";
 import { CONTAINS, isShown, Overlay, RegularLabel } from "./base";
 
 interface ClassificationLabel extends RegularLabel {}
 
 export type ClassificationLabels = [string, ClassificationLabel[]][];
 
-const PADDING = 8;
-const OVERLAY_BG_COLOR = "hsla(210, 20%, 10%, 0.8)";
+const PADDING = 4;
 
 export default class ClassificationsOverlay<State extends BaseState>
   implements Overlay<State> {
   private readonly labels: ClassificationLabels;
-  private readonly font: string;
-  private lines: string[] = [];
-  private width: number;
-  private lineHeight: number;
+  private readonly g: G;
+  private lines: { [id: string]: G };
 
   constructor(labels: ClassificationLabels) {
     this.labels = labels;
+    this.g = new G();
   }
 
   private getColor(
@@ -57,9 +54,9 @@ export default class ClassificationsOverlay<State extends BaseState>
       .flat();
   }
 
-  private updateLines(state: Readonly<State>) {
+  private getLines(state: Readonly<State>) {
     this.lines = [];
-    const strLimit = 24;
+    const strLimit = 48;
     this.getFiltered(state).forEach(([field, labels]) => {
       const name =
         field.length > strLimit ? field.slice(0, strLimit) + "..." : field;
@@ -132,43 +129,8 @@ export default class ClassificationsOverlay<State extends BaseState>
     }));
   }
 
-  draw(context, state) {
-    this.updateLines(state);
-    if (!this.lines.length) {
-      return;
-    }
-    const fontHeight = Math.min(20, 0.09 * context.canvas.height);
-    context.font = this.font;
-
-    let y = PADDING;
-    const bboxes = this.lines.map((label) =>
-      computeBBoxForTextOverlay(context, [label], fontHeight, PADDING)
-    );
-    this.lineHeight = bboxes[0].height;
-    this.width = Math.max(...bboxes.map((b) => b.width));
-
-    const labels = this.getFilteredAndFlat(state);
-
-    for (let l = 0; l < this.lines.length; l++) {
-      context.fillStyle = OVERLAY_BG_COLOR;
-      context.fillRect(PADDING, y, this.width, this.lineHeight);
-
-      // Rendering y is at the baseline of the text
-      context.fillStyle = ColorGenerator.white;
-      context.fillText(this.lines[l], PADDING * 2, y + fontHeight + PADDING);
-      const [field, label] = labels[l];
-      if (state.options.selectedLabels.includes(label._id)) {
-        context.lineWidth = PADDING / 2;
-        context.strokeRect(PADDING, y, this.width, this.lineHeight);
-        context.strokeStyle = this.getColor(state, field, label);
-        context.strokeRect(PADDING, y, this.width, this.lineHeight);
-        context.strokeStyle = DASH_COLOR;
-        context.setLineDash([DASH_LENGTH]);
-        context.strokeRect(PADDING, y, this.width, this.lineHeight);
-        context.setLineDash([]);
-      }
-      y += PADDING + this.lineHeight;
-    }
+  draw(g, state) {
+    g.add(this.g);
   }
 
   getPoints() {

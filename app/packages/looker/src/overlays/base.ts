@@ -53,7 +53,7 @@ export const isShown = <State extends BaseState, Label extends RegularLabel>(
 };
 
 export interface Overlay<State extends BaseState> {
-  draw(svg: G, state: State): void;
+  draw(g: G, state: State): void;
   isShown(state: Readonly<State>): boolean;
   field?: string;
   containsPoint(state: Readonly<State>, coordinates: Coordinates): CONTAINS;
@@ -75,7 +75,7 @@ export abstract class CoordinateOverlay<
     this.label = label;
   }
 
-  abstract draw(svg: G, state: Readonly<State>): void;
+  abstract draw(g: G, state: Readonly<State>): void;
 
   isShown(state: Readonly<State>): boolean {
     return isShown<State, Label>(state, this.field, this.label);

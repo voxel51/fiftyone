@@ -21,7 +21,7 @@ module.exports = {
   buildOptions: {
     baseUrl: "",
     clean: true,
-    out: "../../fiftyone/server/static",
+    out: "../../../fiftyone/server/static",
   },
   alias: {
     "@fiftyone/looker": "../looker",
