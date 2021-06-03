@@ -1085,21 +1085,6 @@ export const sampleSrc = selectorFamily<string, string>({
   },
 });
 
-export const itemNames = selector<{ plural: string; singular: string }>({
-  key: "itemNames",
-  get: ({ get }) => {
-    return get(isRootView)
-      ? {
-          plural: "samples",
-          singular: "samples",
-        }
-      : {
-          plural: "patches",
-          singular: "patch",
-        };
-  },
-});
-
 interface BrainMethod {
   config: {
     method: string;

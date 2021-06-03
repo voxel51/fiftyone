@@ -3,8 +3,8 @@
  */
 
 import { FrameState } from "../state";
-import { BaseElement } from "./base";
-import { getFrameString, getTimeString } from "./util";
+import { BaseElement, Events } from "./base";
+import { getFrameString, getTime, getTimeString } from "./util";
 
 export class FrameNumberElement extends BaseElement<FrameState> {
   createHTMLElement() {
@@ -29,21 +29,43 @@ export class FrameNumberElement extends BaseElement<FrameState> {
   }
 }
 
-export class FrameElement extends BaseElement<FrameState> {
+export class FrameElement extends BaseElement<FrameState, HTMLVideoElement> {
   private src: string;
+  private frameNumber: number;
 
-  createHTMLElement() {
+  getEvents(): Events<FrameState> {
+    return {
+      error: ({ event, dispatchEvent }) => {
+        dispatchEvent("error", { event });
+      },
+      loadeddata: ({ update, dispatchEvent }) => {
+        update(({}) => {
+          return {
+            loaded: true,
+            duration: this.element.duration,
+          };
+        });
+        dispatchEvent("load");
+      },
+    };
+  }
+
+  createHTMLElement({ config: { src, frameNumber, frameRate } }) {
     const element = document.createElement("video");
     element.className = "looker-video";
-    element.setAttribute("preload", "metadata");
+    element.preload = "metadata";
     element.muted = true; // this works whereas .setAttribute does not
     return element;
   }
 
-  renderSelf({ config: { src } }) {
+  renderSelf({ config: { src, frameNumber, frameRate } }) {
     if (this.src !== src) {
       this.src = src;
       this.element.setAttribute("src", src);
+    }
+    if (this.frameNumber !== frameNumber) {
+      this.frameNumber = frameNumber;
+      this.element.currentTime = getTime(frameNumber, frameRate);
     }
     return this.element;
   }

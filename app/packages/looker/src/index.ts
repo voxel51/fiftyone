@@ -73,9 +73,10 @@ export abstract class Looker<
     this.resizeObserver = new ResizeObserver(() =>
       requestAnimationFrame(() => this.updater(({ loaded }) => ({ loaded })))
     );
-    this.svg = SVG()
-      .viewbox(`0 0 ${config.dimensions[0]} ${config.dimensions[1]}`)
-      .addTo(<HTMLElement>this.lookerElement.children[0].element);
+    this.svg = SVG().viewbox(
+      `0 0 ${config.dimensions[0]} ${config.dimensions[1]}`
+    );
+    this.lookerElement.children[0].element.appendChild(this.svg.node);
   }
 
   protected dispatchEvent(eventType: string, detail: any): void {
@@ -182,18 +183,12 @@ export abstract class Looker<
   }
 
   protected postProcess(element: HTMLElement): State {
-    let [_, __, w, h] = elementBBox(this.lookerElement.element);
-    let [iw, ih] = this.state.config.dimensions;
-    [w, h] = [Math.max(w, iw), Math.max(h, ih)];
-    [iw, ih] = getRenderedUntransformedImageDimensions(
+    let [_, __, w, h] = elementBBox(element);
+    [w] = getRenderedUntransformedImageDimensions(
       [w, h],
       this.state.config.dimensions
     );
-
-    const [from, to] =
-      w / h > iw / ih
-        ? [this.state.config.dimensions[1], ih]
-        : [this.state.config.dimensions[0], iw];
+    const [from, to] = [this.state.config.dimensions[0], w];
     this.state.strokeWidth = getStrokeWidth(from, to, this.state.scale);
     this.state.fontSize = getFontSize(from, to, this.state.scale);
     return this.state;

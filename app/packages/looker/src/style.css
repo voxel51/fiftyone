@@ -344,6 +344,12 @@ div.looker-image {
   overflow: visible;
   transform-origin: 0px 0px;
 }
+
+.looker video,
+.looker img {
+  z-index: 0;
+}
+
 .looker svg {
   object-fit: contain;
   height: 100%;
@@ -354,6 +360,7 @@ div.looker-image {
   top: 0;
   left: 0;
   overflow: visible;
+  z-index: 1;
 }
 
 .looker svg * {
