@@ -15,7 +15,10 @@ const Container = styled.div`
   overflow-y: scroll;
   overflow-x: hidden;
   height: 100%;
-  margin-top: -6px;
+
+  &:first {
+    margin-top: -6px;
+  }
 `;
 
 const Row = styled.div`

@@ -492,8 +492,8 @@ const Looker = ({
   lookerRef && (lookerRef.current = looker);
 
   useLayoutEffect(() => {
-    looker.update(sample, options);
-  }, [looker, sample, options]);
+    looker.update(options);
+  }, [looker, options]);
 
   modal && useEventHandler(looker, "options", useLookerOptionsUpdate());
 
