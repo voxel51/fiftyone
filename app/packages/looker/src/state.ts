@@ -100,6 +100,7 @@ export interface BaseState {
   rotate: number;
   canZoom: boolean;
   strokeWidth: number;
+  fontSize: number;
 }
 
 export interface FrameState extends BaseState {

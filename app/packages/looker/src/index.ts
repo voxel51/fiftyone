@@ -32,8 +32,15 @@ import { ClassificationLabels } from "./overlays/classifications";
 import { Overlay } from "./overlays/base";
 import processOverlays from "./processOverlays";
 import { ColorGenerator } from "./color";
-import { elementBBox, getContainingBox, snapBox } from "./util";
-import { MIN_PIXELS, STROKE_WIDTH } from "./constants";
+import {
+  elementBBox,
+  getContainingBox,
+  getFontSize,
+  getRenderedUntransformedImageDimensions,
+  getStrokeWidth,
+  snapBox,
+} from "./util";
+import { FONT_SIZE, MIN_PIXELS, STROKE_WIDTH } from "./constants";
 
 export abstract class Looker<
   State extends BaseState = BaseState,
@@ -91,7 +98,6 @@ export abstract class Looker<
       }
       this.state = mergeUpdates(this.state, updates);
       this.pluckedOverlays = this.pluckOverlays(this.state);
-      const [_, __, w, h] = elementBBox(this.lookerElement.element);
       [this.currentOverlays, this.state.rotate] = processOverlays(
         this.svg,
         this.state,
@@ -102,9 +108,7 @@ export abstract class Looker<
       this.lookerElement.render(this.state as Readonly<State>);
       const fragment = new G();
       const numOverlays = this.currentOverlays.length;
-      this.state.strokeWidth =
-        ((STROKE_WIDTH / h) * this.state.config.dimensions[1]) /
-        this.state.scale;
+
       for (let index = numOverlays - 1; index >= 0; index--) {
         this.currentOverlays[index].draw(fragment, this.state);
       }
@@ -139,9 +143,7 @@ export abstract class Looker<
     delete this.lookerElement;
   }
 
-  update(sample: Sample, options: Optional<State["options"]>) {
-    this.sample = sample;
-    this.loadOverlays();
+  update(options: Optional<State["options"]>) {
     this.updater({ options });
   }
 
@@ -172,11 +174,23 @@ export abstract class Looker<
       rotate: 0,
       panning: false,
       canZoom: false,
-      strokeWidth: 2,
+      strokeWidth: STROKE_WIDTH,
+      fontSize: FONT_SIZE,
     };
   }
 
   protected postProcess(element: HTMLElement): State {
+    let [_, __, w, h] = elementBBox(this.lookerElement.element);
+    const [iw, ih] = getRenderedUntransformedImageDimensions(
+      [w, h],
+      this.state.config.dimensions
+    );
+    const [from, to] =
+      w / h > iw / ih
+        ? [this.state.config.dimensions[1], ih]
+        : [this.state.config.dimensions[0], iw];
+    this.state.strokeWidth = getStrokeWidth(from, to, this.state.scale);
+    this.state.fontSize = getFontSize(from, to, this.state.scale);
     return this.state;
   }
 }
@@ -215,6 +229,7 @@ export class FrameLooker extends Looker<FrameState> {
   }
 
   postProcess(element): FrameState {
+    this.state = super.postProcess(element);
     return zoomToContent(this.state, this.pluckedOverlays, element);
   }
 }
@@ -253,6 +268,7 @@ export class ImageLooker extends Looker<ImageState> {
   }
 
   postProcess(element): ImageState {
+    this.state = super.postProcess(element);
     return zoomToContent(this.state, this.pluckedOverlays, element);
   }
 }

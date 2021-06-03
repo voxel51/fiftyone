@@ -145,7 +145,7 @@ export class LookerElement<State extends BaseState> extends BaseElement<
             this.wheelTimeout = setTimeout(() => {
               this.wheelTimeout = null;
               update({ scale: newScale });
-            }, 100);
+            }, 200);
 
             return {
               pan: snapBox(
@@ -302,12 +302,11 @@ export class OptionsButtonElement<State extends BaseState> extends BaseElement<
 export class OptionsPanelElement<State extends BaseState> extends BaseElement<
   State
 > {
-  private showOptions: boolean;
-
   getEvents(): Events<State> {
     return {
       click: ({ event }) => {
         event.stopPropagation();
+        event.preventDefault();
       },
       mouseenter: ({ update }) => {
         update({ hoveringControls: true });

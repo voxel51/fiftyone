@@ -2,7 +2,12 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 
-import { MIN_PIXELS } from "./constants";
+import {
+  FONT_SIZE,
+  MIN_PIXELS,
+  STROKE_WIDTH,
+  THUMBNAIL_STROKE_WIDTH,
+} from "./constants";
 import { BoundingBox, Coordinates, Dimensions } from "./state";
 
 /**
@@ -292,9 +297,11 @@ export const getRenderedUntransformedImageDimensions = (
 ): Dimensions => {
   const ar = iw / ih;
   if (ww / wh < ar) {
-    ih = iw / ar;
+    iw = ww;
+    ih = ww / ar;
   } else {
-    iw = ih * ar;
+    ih = wh;
+    iw = wh * ar;
   }
   return [iw, ih];
 };
@@ -372,4 +379,16 @@ export const clampScale = (
   }
 
   return Math.max(scale, 1);
+};
+
+export const getStrokeWidth = (
+  from: number,
+  to: number,
+  scale: number
+): number => {
+  return ((STROKE_WIDTH / to) * from) / scale;
+};
+
+export const getFontSize = (from: number, to: number, scale: number) => {
+  return ((FONT_SIZE / to) * from) / scale;
 };
