@@ -196,7 +196,7 @@ def ensure_boto3(error_msg=None):
 
 
 def ensure_lightning_flash(error_msg=None):
-    """Verifies that PyTorch Lightning Flash is installed and importable.
+    """Verifies that Lightning Flash is installed and importable.
 
     Args:
         error_msg (None): an optional custom error message to print
