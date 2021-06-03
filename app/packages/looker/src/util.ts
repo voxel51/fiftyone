@@ -390,5 +390,5 @@ export const getStrokeWidth = (
 };
 
 export const getFontSize = (from: number, to: number, scale: number) => {
-  return ((FONT_SIZE / to) * from) / scale;
+  return Math.max(((FONT_SIZE / to) * from) / scale, 1);
 };
