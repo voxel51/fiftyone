@@ -1872,6 +1872,8 @@ class ImageSegmentationDirectoryImporter(LabeledImageDatasetImporter):
             or an absolute path to the directory of images
         labels_path ("labels"): either the name of the subfolder in
             ``dataset_dir`` or an absolute path to the directory of labels
+        force_grayscale (False): whether to load RGB masks as grayscale by
+            storing only the first channel
         compute_metadata (False): whether to produce
             :class:`fiftyone.core.metadata.ImageMetadata` instances for each
             image when importing
@@ -1889,6 +1891,7 @@ class ImageSegmentationDirectoryImporter(LabeledImageDatasetImporter):
         data_path="data",
         labels_path="labels",
         compute_metadata=False,
+        force_grayscale=False,
         skip_unlabeled=False,
         shuffle=False,
         seed=None,
@@ -1903,6 +1906,7 @@ class ImageSegmentationDirectoryImporter(LabeledImageDatasetImporter):
         )
         self.data_path = data_path
         self.labels_path = labels_path
+        self.force_grayscale = force_grayscale
         self.compute_metadata = compute_metadata
 
         self._data_path = None
@@ -1934,7 +1938,7 @@ class ImageSegmentationDirectoryImporter(LabeledImageDatasetImporter):
         if mask_path is None:
             return image_path, image_metadata, None
 
-        mask = _read_mask(mask_path)
+        mask = _read_mask(mask_path, force_grayscale=self.force_grayscale)
         label = fol.Segmentation(mask=mask)
 
         return image_path, image_metadata, label
@@ -2263,6 +2267,9 @@ class FiftyOneVideoLabelsDatasetImporter(LabeledVideoDatasetImporter):
         return len(etads.load_dataset(dataset_dir))
 
 
-def _read_mask(mask_path):
+def _read_mask(mask_path, force_grayscale=False):
     # pylint: disable=no-member
-    return etai.read(mask_path, cv2.IMREAD_UNCHANGED)
+    mask = etai.read(mask_path, cv2.IMREAD_UNCHANGED)
+    if force_grayscale and len(mask.shape) == 3:
+        mask = mask[:, :, 0]
+    return mask
