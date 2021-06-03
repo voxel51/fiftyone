@@ -2,9 +2,17 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 
-import { DASH_COLOR, DASH_LENGTH, LINE_WIDTH, MASK_ALPHA } from "../constants";
+import { G, Polyline } from "@svgdotjs/svg.js";
+
+import {
+  ALPHA_MULITPLIER,
+  DASH_COLOR,
+  DASH_LENGTH,
+  LINE_WIDTH,
+  MASK_ALPHA,
+} from "../constants";
 import { BaseState, Coordinates } from "../state";
-import { distanceFromLineSegment } from "../util";
+import { distanceFromLineSegment, getAlphaColor } from "../util";
 import { CONTAINS, CoordinateOverlay, RegularLabel } from "./base";
 
 interface PolylineLabel extends RegularLabel {
@@ -16,77 +24,56 @@ interface PolylineLabel extends RegularLabel {
 export default class PolylineOverlay<
   State extends BaseState
 > extends CoordinateOverlay<State, PolylineLabel> {
-  private path: Path2D;
-  private lastWidth: number;
-  private lastHeight: number;
+  private readonly g: G;
+  private readonly polylines: Polyline[];
+  private color: string;
 
-  constructor(field: string, label: PolylineLabel) {
+  constructor(state: Readonly<State>, field: string, label: PolylineLabel) {
     super(field, label);
+    this.color = this.getColor(state);
+
+    const {
+      config: {
+        dimensions: [w, h],
+      },
+    } = state;
+    this.g = new G();
+    const alphaColor = getAlphaColor(this.color, ALPHA_MULITPLIER);
+    this.polylines = this.label.points.map((points) => {
+      const polyline = new Polyline().plot(
+        points.map<[number, number]>(([x, y]) => [x * w, y * h])
+      );
+      polyline.stroke({ width: state.strokeWidth, color: this.color });
+
+      if (this.label.filled) {
+        polyline.fill(alphaColor);
+      }
+      return polyline;
+    });
   }
 
-  private setup(width: number, height: number) {
-    this.path = new Path2D();
-    for (const shape of this.label.points) {
-      const shapePath = new Path2D();
-      for (const [pidx, point] of Object.entries(shape)) {
-        if (Number(pidx) > 0) {
-          shapePath.lineTo(height * point[0], height * point[1]);
-        } else {
-          shapePath.moveTo(width * point[0], height * point[1]);
-        }
-      }
-      if (this.label.closed) {
-        shapePath.closePath();
-      }
-      this.path.addPath(shapePath);
-    }
-  }
-
-  containsPoint(state, context, [x, y]) {
-    const tolerance = LINE_WIDTH * 1.5;
-    const minDistance = this.getMouseDistance(context, state, [x, y]);
-    if (minDistance <= tolerance) {
-      return CONTAINS.BORDER;
-    }
-
-    if (this.label.closed || this.label.filled) {
-      return context.isPointInPath(this.path, x, y)
-        ? CONTAINS.CONTENT
-        : CONTAINS.NONE;
-    }
+  containsPoint(state, [x, y]) {
     return CONTAINS.NONE;
   }
 
   draw(context, state) {
-    const [width, height] = [context.canvas.width, context.canvas.height];
-    if (!this.path || width !== this.lastWidth || height !== this.lastHeight) {
-      this.setup(width, height);
-      this.lastWidth = width;
-      this.lastHeight = height;
-    }
-
     const color = this.getColor(state);
-    context.fillStyle = color;
-    context.strokeStyle = color;
-    context.lineWidth = LINE_WIDTH;
-    context.stroke(this.path);
-    if (this.isSelected(state)) {
-      context.strokeStyle = DASH_COLOR;
-      context.setLineDash([DASH_LENGTH]);
-      context.stroke(this.path);
-      context.strokeStyle = color;
-      context.setLineDash([]);
-    }
-    if (this.label.filled) {
-      context.globalAlpha = MASK_ALPHA;
-      context.fill(this.path);
-      context.globalAlpha = 1;
+    if (this.color !== color) {
+      this.color = color;
+      const alphaColor = getAlphaColor(this.color, ALPHA_MULITPLIER);
+      this.polylines.forEach((polyline) => {
+        polyline.stroke({ color: this.color });
+
+        if (this.label.filled) {
+          polyline.fill(alphaColor);
+        }
+      });
     }
   }
 
-  getMouseDistance(context, state, [x, y]) {
+  getMouseDistance(state, [x, y]) {
     const distances = [];
-    const [w, h] = [context.canvas.width, context.canvas.height];
+    const [w, h] = state.config.dimensions;
     for (const shape of this.label.points) {
       for (let i = 0; i < shape.length - 1; i++) {
         distances.push(
