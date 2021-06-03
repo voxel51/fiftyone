@@ -62,10 +62,7 @@ def apply_flash_model(
     serializer = _get_fo_serializer(model, confidence_thresh, store_logits,)
     with fou.SetAttributes(model, serializer=serializer):
         predictions = model.predict(samples.values("filepath"))
-        for sample, prediction in zip(samples, predictions):
-            sample.add_labels(
-                prediction, label_field,
-            )
+        samples.set_values(label_field, predictions)
 
 
 def is_flash_model(model):
