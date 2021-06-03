@@ -20,9 +20,7 @@ import tornado.web
 from tornado.web import HTTPError
 import tornado.websocket
 
-import eta.core.labels as etal
 import eta.core.serial as etas
-import eta.core.video as etav
 
 os.environ["FIFTYONE_SERVER"] = "1"
 
@@ -1276,13 +1274,14 @@ async def _get_sample_data(col, view, page_length, page, detach_frames=True):
 
     results = [{"sample": s} for s in samples]
     video = view.media_type == fom.VIDEO
-    if video:
-        get_metadata = fosu.get_video_metadata
-    else:
-        get_metadata = fosu.get_image_metadata
+    metadata = {}
+
     for r in results:
-        for k, v in get_metadata(r["sample"]["filepath"]).items():
-            r[k] = v
+        filepath = r["sample"]["filepath"]
+        if filepath not in metadata:
+            metadata[filepath] = fosu.read_metadata(filepath)
+
+        r.update(metadata[filepath])
 
         if video:
             if r["sample"]["frames"]["frame_number"] == 1:

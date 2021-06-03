@@ -61,7 +61,24 @@ def change_label_tags(collection, changes, label_fields=None):
     collection._edit_label_tags(modifier, label_fields=label_fields)
 
 
-def get_image_metadata(filepath):
+def read_metadata(filepath):
+    """
+    Calculates the metadata for a specified media file
+
+    Args:
+        filepath (str): path to the file
+
+    Returns:
+        dict
+    """
+    mimetype, _ = mimetypes.guess_type(filepath)
+    if mimetype.startswith("video/"):
+        return read_video_metadata(filepath)
+
+    return read_image_metadata(filepath)
+
+
+def read_image_metadata(filepath):
     """
     Calculates the metadata for a specified image
 
@@ -81,7 +98,7 @@ def get_image_metadata(filepath):
         }
 
 
-def get_video_metadata(filepath):
+def read_video_metadata(filepath):
     """
     Calculates the metadata for a video
 
