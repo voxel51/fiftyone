@@ -1,5 +1,6 @@
 """
-PyTorch Lightning Flash utilities.
+Utilities for working with
+`PyTorch Lightning Flash <https://github.com/PyTorchLightning/lightning-flash>`_.
 
 | Copyright 2017-2021, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -34,7 +35,7 @@ def apply_flash_model(
     confidence_thresh=None,
     store_logits=False,
 ):
-    """Applies the given ``flash.core.model.Task`` to the samples in the
+    """Applies the given Lightning Flash model to the samples in the
     collection.
 
     Args:
@@ -62,10 +63,10 @@ def apply_flash_model(
 
 
 def is_flash_model(model):
-    """Determines whether the given model is a ``flash.core.model.Task``.
+    """Determines whether the given model is a Lightning Flash model.
 
     Args:
-        model: the model instance
+        model: the model
 
     Returns:
         True/False

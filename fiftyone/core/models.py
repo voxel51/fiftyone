@@ -28,7 +28,6 @@ import fiftyone.core.validation as fov
 
 tud = fou.lazy_import("torch.utils.data")
 
-
 foe = fou.lazy_import("fiftyone.core.eta_utils")
 fout = fou.lazy_import("fiftyone.utils.torch")
 fouf = fou.lazy_import("fiftyone.utils.flash")
@@ -54,17 +53,19 @@ def apply_model(
     num_workers=None,
     skip_failures=True,
 ):
-    """Applies the given :class:`Model` to the samples in the collection.
+    """Applies the given :class:`Model` or Lightning Flash model to the samples
+    in the collection.
 
-    This method supports all the following cases:
+    This method supports all of the following cases:
 
-    -   Applying an image model to an image collection
-    -   Applying an image model to the frames of a video collection
-    -   Applying a video model to a video collection
+    -   Applying an image :class:`Model` to an image collection
+    -   Applying an image :class:`Model` to the frames of a video collection
+    -   Applying a video :class:`Model` to a video collection
+    -   Applying a Lightning Flash model to an image or video collection
 
     Args:
         samples: a :class:`fiftyone.core.collections.SampleCollection`
-        model: a :class:`Model`
+        model: a :class:`Model` or ``flash.core.model.Task``
         label_field ("predictions"): the name of the field in which to store
             the model predictions. When performing inference on video frames,
             the "frames." prefix is optional
@@ -73,23 +74,34 @@ def apply_model(
         store_logits (False): whether to store logits for the model
             predictions. This is only supported when the provided ``model`` has
             logits, ``model.has_logits == True``
-        batch_size (None): an optional batch size to use. Only applicable for
-            image samples
+        batch_size (None): an optional batch size to use. Only applicable when
+            applying a :class:`Model` that supports batching to images or video
+            frames
         num_workers (None): the number of workers to use when loading images.
             Only applicable for Torch models
         skip_failures (True): whether to gracefully continue without raising an
-            error if predictions cannot be generated for a sample
+            error if predictions cannot be generated for a sample. Not
+            applicable to Lightning Flash models
     """
     if fouf.is_flash_model(model):
+        if batch_size is not None:
+            logger.warning(
+                "The `batch_size` parameter is not supported for Lightning "
+                "Flash models"
+            )
+
+        if num_workers is not None:
+            logger.warning(
+                "The `num_workers` parameter is not supported for Lightning "
+                "Flash models"
+            )
+
         return fouf.apply_flash_model(
             samples,
             model,
             label_field=label_field,
             confidence_thresh=confidence_thresh,
             store_logits=store_logits,
-            batch_size=batch_size,
-            num_workers=num_workers,
-            skip_failures=skip_failures,
         )
 
     if not isinstance(model, Model):

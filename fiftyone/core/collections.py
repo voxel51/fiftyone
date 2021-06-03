@@ -1234,17 +1234,22 @@ class SampleCollection(object):
         num_workers=None,
         skip_failures=True,
     ):
-        """Applies the :class:`fiftyone.core.models.Model` to the samples in
-        the collection.
+        """Applies the :class:`fiftyone.core.models.Model` or Lightning Flash
+        model to the samples in the collection.
 
-        This method supports all the following cases:
+        This method supports all of the following cases:
 
-        -   Applying an image model to an image collection
-        -   Applying an image model to the frames of a video collection
-        -   Applying a video model to a video collection
+        -   Applying an image :class:`fiftyone.core.models.Model` to an image
+            collection
+        -   Applying an image :class:`fiftyone.core.models.Model` to the frames
+            of a video collection
+        -   Applying a video :class:`fiftyone.core.models.Model` to a video
+            collection
+        -   Applying a Lightning Flash model to an image or video collection
 
         Args:
-            model: a :class:`fiftyone.core.models.Model`
+            model: a :class:`fiftyone.core.models.Model` or
+                ``flash.core.model.Task``
             label_field ("predictions"): the name of the field in which to
                 store the model predictions. When performing inference on video
                 frames, the "frames." prefix is optional
@@ -1254,12 +1259,13 @@ class SampleCollection(object):
                 predictions. This is only supported when the provided ``model``
                 has logits, ``model.has_logits == True``
             batch_size (None): an optional batch size to use. Only applicable
-                for image samples
+                when applying a :class:`fiftyone.core.models.Model` that
+                supports batching to images or video frames
             num_workers (None): the number of workers to use when loading
                 images. Only applicable for Torch models
             skip_failures (True): whether to gracefully continue without
                 raising an error if predictions cannot be generated for a
-                sample
+                sample. Not applicable to Lightning Flash models
         """
         fomo.apply_model(
             self,
