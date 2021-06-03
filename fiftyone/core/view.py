@@ -117,6 +117,10 @@ class DatasetView(foc.SampleCollection):
         return self._dataset._is_patches
 
     @property
+    def _is_frames(self):
+        return self._dataset._is_frames
+
+    @property
     def _stages(self):
         return self.__stages
 

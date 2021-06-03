@@ -180,8 +180,6 @@ class DatasetMixin(object):
     subtypes that are backed by a dataset.
     """
 
-    _FRAME_COLLECTION_PREFIX = "frames."
-
     def __setattr__(self, name, value):
         if name in self._fields and value is not None:
             self._fields[name].validate(value)
@@ -201,21 +199,21 @@ class DatasetMixin(object):
 
     @classmethod
     def _is_frames_doc(cls):
-        return cls.__name__.startswith(cls._FRAME_COLLECTION_PREFIX)
+        return cls.__name__.startswith("frames.samples.")
 
     @classmethod
     def _sample_collection_name(cls):
         name = cls.__name__
-        if name.startswith(cls._FRAME_COLLECTION_PREFIX):
-            name = name[len(cls._FRAME_COLLECTION_PREFIX) :]
+        if name.startswith("frames.samples."):
+            name = name[len("frames.") :]
 
         return name
 
     @classmethod
     def _frame_collection_name(cls):
         name = cls.__name__
-        if not name.startswith(cls._FRAME_COLLECTION_PREFIX):
-            name = cls._FRAME_COLLECTION_PREFIX + name
+        if not name.startswith("frames.samples."):
+            name = "frames." + name
 
         return name
 

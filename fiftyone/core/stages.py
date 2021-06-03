@@ -30,6 +30,7 @@ import fiftyone.core.utils as fou
 
 fod = fou.lazy_import("fiftyone.core.dataset")
 fop = fou.lazy_import("fiftyone.core.patches")
+fov = fou.lazy_import("fiftyone.core.video")
 foug = fou.lazy_import("fiftyone.utils.geojson")
 
 
@@ -4628,6 +4629,101 @@ class ToEvaluationPatches(ViewStage):
         ]
 
 
+class ToFrames(ViewStage):
+    """Creates a view that contains one sample per frame in the video
+    collection.
+
+    .. note::
+
+         The first time this method is run on a collection, it will sample
+         each video in the collection into a directory of per-frame images.
+
+         Videos that have previously been sampled will not be resampled, unless
+         you override this behavior via ``config``.
+
+    Examples::
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("quickstart-video")
+
+        session = fo.launch_app(dataset)
+
+        #
+        # Create a frames view
+        #
+
+        stage = fo.ToFrames()
+        view = dataset.add_stage(stage)
+        print(view)
+
+        session.view = view
+
+    Args:
+        config (None): an optional dict of keyword arguments for
+            :meth:`fiftyone.core.video.make_frames_dataset` specifying how to
+            perform the conversion
+    """
+
+    def __init__(self, config=None, _state=None):
+        self._config = config
+        self._state = _state
+
+    @property
+    def has_view(self):
+        return True
+
+    @property
+    def config(self):
+        """Parameters specifying how to perform the conversion."""
+        return self._config
+
+    def load_view(self, sample_collection):
+        state = {
+            "dataset": sample_collection.dataset_name,
+            "stages": sample_collection.view()._serialize(include_uuids=False),
+            "config": self._config,
+        }
+
+        last_state = deepcopy(self._state)
+        if last_state is not None:
+            name = last_state.pop("name", None)
+        else:
+            name = None
+
+        if state != last_state or not fod.dataset_exists(name):
+            kwargs = self._config or {}
+            frames_dataset = fov.make_frames_dataset(
+                sample_collection, **kwargs
+            )
+
+            state["name"] = frames_dataset.name
+            self._state = state
+        else:
+            frames_dataset = fod.load_dataset(name)
+
+        return fov.FramesView(sample_collection, self, frames_dataset)
+
+    def _kwargs(self):
+        return [
+            ["config", self.config],
+            ["_state", self._state],
+        ]
+
+    @classmethod
+    def _params(self):
+        return [
+            {
+                "name": "config",
+                "type": "NoneType|json",
+                "default": "None",
+                "placeholder": "config (default=None)",
+            },
+            {"name": "_state", "type": "NoneType|json", "default": "None"},
+        ]
+
+
 def _get_sample_ids(samples_or_ids):
     import fiftyone.core.collections as foc
 
@@ -4910,4 +5006,5 @@ _STAGES = [
     Take,
     ToPatches,
     ToEvaluationPatches,
+    ToFrames,
 ]
