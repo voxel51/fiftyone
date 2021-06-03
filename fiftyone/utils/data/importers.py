@@ -1728,6 +1728,136 @@ class VideoClassificationDirectoryTreeImporter(LabeledVideoDatasetImporter):
         return num_samples
 
 
+class ImageSegmentationDirectoryImporter(LabeledImageDatasetImporter):
+    """Importer for an image segmentation dataset stored on disk.
+
+    See :class:`fiftyone.types.dataset_types.ImageSegmentationDirectory`
+    for format details.
+
+    Args:
+        dataset_dir: the dataset directory
+        data_path: the path to the directory containing raw images
+        labels_path: the path to the labels directory or file 
+        compute_metadata (False): whether to produce
+            :class:`fiftyone.core.metadata.ImageMetadata` instances for each
+            image when importing
+        skip_unlabeled (False): whether to skip unlabeled images when importing
+        shuffle (False): whether to randomly shuffle the order in which the
+            samples are imported
+        seed (None): a random seed to use when shuffling
+        max_samples (None): a maximum number of samples to import. By default,
+            all samples are imported
+    """
+
+    def __init__(
+        self,
+        dataset_dir="",
+        data_path=None,
+        labels_path=None,
+        compute_metadata=False,
+        skip_unlabeled=False,
+        shuffle=False,
+        seed=None,
+        max_samples=None,
+    ):
+        if dataset_dir is None:
+            if data_path is None:
+                raise ValueError(
+                    "Either `dataset_dir` or `data_path` must be specified"
+                )
+            else:
+                dataset_dir = ""
+
+        super().__init__(
+            dataset_dir,
+            skip_unlabeled=skip_unlabeled,
+            shuffle=shuffle,
+            seed=seed,
+            max_samples=max_samples,
+        )
+        self.compute_metadata = compute_metadata
+        self._samples = None
+        self._iter_samples = None
+        self._num_samples = None
+
+        if data_path is not None:
+            self._data_path = data_path
+        else:
+            self._data_path = os.path.join(self.dataset_dir, "data")
+        if labels_path is not None:
+            self._labels_path = labels_path
+        else:
+            self._labels_path = os.path.join(self.dataset_dir, "labels")
+
+    def __iter__(self):
+        self._iter_samples = iter(self._samples)
+        return self
+
+    def __len__(self):
+        return self._num_samples
+
+    def __next__(self):
+        image_path, mask_path = next(self._iter_samples)
+
+        if self.compute_metadata:
+            image_metadata = fom.ImageMetadata.build_for(image_path)
+        else:
+            image_metadata = None
+
+        if mask_path is None:
+            return image_path, image_metadata, None
+
+        mask = etai.read(mask_path)
+        if len(mask.shape) == 3:
+            mask = mask[:, :, 0]
+
+        label = fol.Segmentation(mask=mask)
+
+        return image_path, image_metadata, label
+
+    @property
+    def has_dataset_info(self):
+        return False
+
+    @property
+    def has_image_metadata(self):
+        return self.compute_metadata
+
+    @property
+    def label_cls(self):
+        return fol.Segmentation
+
+    def setup(self):
+        samples = []
+        get_filename = lambda f: os.path.splitext(os.path.basename(f))[0]
+        data_paths = etau.list_files(self._data_path, abs_paths=True)
+        mask_paths = etau.list_files(self._labels_path, abs_paths=True)
+
+        samples = []
+        mask_filenames = [get_filename(f) for f in mask_paths]
+        for data_path in data_paths:
+            data_fn = get_filename(data_path)
+            if data_fn in mask_filenames:
+                mask_path = mask_paths[mask_filenames.index(data_fn)]
+                samples.append((data_path, mask_path))
+            elif not self.skip_unlabeled:
+                samples.append((data_path, None))
+
+        self._samples = self._preprocess_list(samples)
+        self._num_samples = len(self._samples)
+
+    @staticmethod
+    def get_num_samples(dataset_dir=None, data_path=None):
+        if data_path is not None:
+            return len(etau.list_files(data_path))
+        elif dataset_dir is None:
+            raise ValueError(
+                "Either `dataset_dir` or `data_path` must be specified"
+            )
+        else:
+            return len(etau.list_files(os.path.join(dataset_dir, "data")))
+
+
 class FiftyOneImageDetectionDatasetImporter(LabeledImageDatasetImporter):
     """Importer for image detection datasets stored on disk in FiftyOne's
     default format.

@@ -5,25 +5,23 @@ PyTorch Lightning Flash utilities.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import inspect
 import logging
 
 import fiftyone.core.labels as fol
+from fiftyone.core.metadata import ImageMetadata
 import fiftyone.core.utils as fou
 
-fou.ensure_lightning_flash()
-from flash.core.classification import (
-    ClassificationSerializer,
-    ClassificationTask,
-    FiftyOneLabels,
-)
-from flash.core.model import Task
+import eta.core.utils as etau
+
+fcc = fou.lazy_import("flash.core.classification")
 
 
 logger = logging.getLogger(__name__)
 
 
 _SUPPORTED_TASKS = [
-    ClassificationTask,
+    "ClassificationTask",
 ]
 
 
@@ -67,7 +65,7 @@ def apply_flash_model(
     if batch_size is not None:
         print("Flash models only support the default batch size")
 
-    serializer = _get_fo_serializer(model, confidence_thresh)
+    serializer = _get_fo_serializer(model, confidence_thresh, store_logits,)
     with fou.SetAttributes(model, serializer=serializer):
         predictions = model.predict(samples.values("filepath"))
         for sample, prediction in zip(samples, predictions):
@@ -78,30 +76,65 @@ def apply_flash_model(
 
 def is_flash_model(model):
     """Checks model type to determine if it is a flash model
+
     Args:
         model: the model instance to check
     """
-    if isinstance(model, Task):
-        return True
-    else:
-        return False
+    model_class = type(model)
+    mro = inspect.getmro(model_class)
+    for c in mro:
+        class_name = etau.get_class_name(c)
+        if class_name == "flash.core.model.Task":
+            return True
+
+    return False
 
 
-def _get_fo_serializer(model, confidence_thresh):
+def normalize_labels(filepaths, predictions):
+    """Converts Detections from absolute to relative coordinates
+
+    Args:
+	filepaths: paths to the related images for every Detection used to generate metadata
+        predictions: the list of Detections to normalize 
+    """
+    for filepath, prediction in zip(filepaths, predictions):
+        metadata = ImageMetadata.build_for(filepath)
+        width = metadata.width
+        height = metadata.height
+        for detection in prediction.detections:
+            x, y, w, h = detection.bounding_box
+            detection.bounding_box = [
+                x / width,
+                y / height,
+                w / width,
+                h / height,
+            ]
+
+
+def _get_fo_serializer(model, confidence_thresh, store_logits):
     """Initializes the FiftyOne serializer to be used for the given task"""
     previous_serializer = model.serializer
-    if isinstance(model, ClassificationTask):
+    if isinstance(model, fcc.ClassificationTask):
+        prev_args = dict(inspect.getmembers(model.serializer))
         multi_label = False
-        if isinstance(previous_serializer, ClassificationSerializer):
-            multi_label = previous_serializer.multi_label
+        if "multi_label" in prev_args:
+            multi_label = prev_args["multi_label"]
 
-        return FiftyOneLabels(
-            multi_label=multi_label, threshold=confidence_thresh
-        )
+        kwargs = {
+            "multi_label": multi_label,
+            "store_logits": store_logits,
+        }
+
+        if confidence_thresh is None and "threshold" in prev_args:
+            kwargs["threshold"] = prev_args["threshold"]
+
+        if confidence_thresh is not None:
+            kwargs["threshold"] = confidence_thresh
+
+        return fcc.FiftyOneLabels(**kwargs)
 
     else:
         raise ValueError(
             "Found an unsupported model of type %s. Supported model types are "
-            "%s"
-            % (type(model), ", ".join([t.__name__ for t in _SUPPORTED_TASKS]))
+            "%s" % (type(model), ", ".join(_SUPPORTED_TASKS))
         )
