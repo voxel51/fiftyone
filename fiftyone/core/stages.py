@@ -14,6 +14,7 @@ import warnings
 
 from bson import ObjectId
 from deprecated import deprecated
+import numpy as np
 
 import eta.core.utils as etau
 
@@ -962,9 +963,10 @@ class FilterField(ViewStage):
             filter (True) or include all samples (False)
     """
 
-    def __init__(self, field, filter, only_matches=True):
+    def __init__(self, field, filter, only_matches=True, _new_field=None):
         self._field = field
         self._filter = filter
+        self._new_field = _new_field or field
         self._only_matches = only_matches
         self._is_frame_field = None
         self._validate_params()
@@ -988,13 +990,21 @@ class FilterField(ViewStage):
         field_name, is_frame_field = sample_collection._handle_frame_field(
             self._field
         )
+        new_field = self._get_new_field(sample_collection)
+
         if is_frame_field:
             return _get_filter_frames_field_pipeline(
-                field_name, self._filter, only_matches=self._only_matches,
+                field_name,
+                new_field,
+                self._filter,
+                only_matches=self._only_matches,
             )
 
         return _get_filter_field_pipeline(
-            field_name, self._filter, only_matches=self._only_matches,
+            field_name,
+            new_field,
+            self._filter,
+            only_matches=self._only_matches,
         )
 
     def _get_mongo_filter(self):
@@ -1005,6 +1015,10 @@ class FilterField(ViewStage):
             )
 
         return _get_field_mongo_filter(self._filter, prefix=self._field)
+
+    def _get_new_field(self, sample_collection):
+        new_field, _ = sample_collection._handle_frame_field(self._new_field)
+        return new_field
 
     def _needs_frames(self, sample_collection):
         return sample_collection._is_frame_field(self._field)
@@ -1046,16 +1060,19 @@ class FilterField(ViewStage):
         self._is_frame_field = is_frame_field
 
 
-def _get_filter_field_pipeline(filter_field, filter_arg, only_matches=True):
-    cond = _get_field_mongo_filter(filter_arg, prefix=filter_field)
+def _get_filter_field_pipeline(
+    filter_field, new_field, filter_arg, only_matches=True, prefix=""
+):
+    cond = _get_field_mongo_filter(filter_arg, prefix=prefix + filter_field)
 
     pipeline = [
         {
             "$set": {
-                filter_field: {
+                prefix
+                + new_field: {
                     "$cond": {
                         "if": cond,
-                        "then": "$" + filter_field,
+                        "then": "$" + prefix + filter_field,
                         "else": None,
                     }
                 }
@@ -1064,7 +1081,7 @@ def _get_filter_field_pipeline(filter_field, filter_arg, only_matches=True):
     ]
 
     if only_matches:
-        match_expr = _get_field_only_matches_expr(filter_field)
+        match_expr = _get_field_only_matches_expr(prefix + new_field)
         pipeline.append({"$match": {"$expr": match_expr.to_mongo()}})
 
     return pipeline
@@ -1075,9 +1092,11 @@ def _get_field_only_matches_expr(field):
 
 
 def _get_filter_frames_field_pipeline(
-    filter_field, filter_arg, only_matches=True
+    filter_field, new_field, filter_arg, only_matches=True, prefix=""
 ):
-    cond = _get_field_mongo_filter(filter_arg, prefix="$frame." + filter_field)
+    cond = _get_field_mongo_filter(
+        filter_arg, prefix="$frame." + prefix + filter_field
+    )
 
     pipeline = [
         {
@@ -1090,10 +1109,13 @@ def _get_filter_frames_field_pipeline(
                             "$mergeObjects": [
                                 "$$frame",
                                 {
-                                    filter_field: {
+                                    prefix
+                                    + new_field: {
                                         "$cond": {
                                             "if": cond,
-                                            "then": "$$frame." + filter_field,
+                                            "then": "$$frame."
+                                            + prefix
+                                            + filter_field,
                                             "else": None,
                                         }
                                     }
@@ -1107,7 +1129,7 @@ def _get_filter_frames_field_pipeline(
     ]
 
     if only_matches:
-        match_expr = _get_frames_field_only_matches_expr(filter_field)
+        match_expr = _get_frames_field_only_matches_expr(prefix + new_field)
         pipeline.append({"$match": {"$expr": match_expr.to_mongo()}})
 
     return pipeline
@@ -1400,10 +1422,14 @@ class FilterLabels(FilterField):
             one label after filtering (True) or include all samples (False)
     """
 
-    def __init__(self, field, filter, only_matches=True):
+    def __init__(
+        self, field, filter, only_matches=True, _new_field=None, _prefix=""
+    ):
         self._field = field
         self._filter = filter
+        self._new_field = _new_field or field
         self._only_matches = only_matches
+        self._prefix = _prefix
         self._labels_field = None
         self._is_frame_field = None
         self._is_labels_list_field = None
@@ -1428,6 +1454,7 @@ class FilterLabels(FilterField):
         labels_field, is_frame_field = sample_collection._handle_frame_field(
             self._labels_field
         )
+        new_field = self._get_new_field(sample_collection)
 
         if is_frame_field:
             if self._is_labels_list_field:
@@ -1441,7 +1468,11 @@ class FilterLabels(FilterField):
             _make_pipeline = _get_filter_field_pipeline
 
         return _make_pipeline(
-            labels_field, self._filter, only_matches=self._only_matches,
+            labels_field,
+            new_field,
+            self._filter,
+            only_matches=self._only_matches,
+            prefix=self._prefix,
         )
 
     def _needs_frames(self, sample_collection):
@@ -1468,26 +1499,39 @@ class FilterLabels(FilterField):
         self._is_labels_list_field = is_list_field
         self._is_frame_field = is_frame_field
 
+    def _get_new_field(self, sample_collection):
+        field, _ = sample_collection._handle_frame_field(self._labels_field)
+        new_field, _ = sample_collection._handle_frame_field(self._new_field)
+
+        if "." in field:
+            return ".".join([new_field, field.split(".")[-1]])
+
+        return new_field
+
     def validate(self, sample_collection):
         self._parse_labels_field(sample_collection)
 
 
 def _get_filter_list_field_pipeline(
-    filter_field, filter_arg, only_matches=True, prefix=""
+    filter_field, new_field, filter_arg, only_matches=True, prefix=""
 ):
     cond = _get_list_field_mongo_filter(filter_arg)
     pipeline = [
         {
             "$set": {
-                filter_field: {
-                    "$filter": {"input": "$" + filter_field, "cond": cond,}
+                prefix
+                + new_field: {
+                    "$filter": {
+                        "input": "$" + prefix + filter_field,
+                        "cond": cond,
+                    }
                 }
             }
         }
     ]
 
     if only_matches:
-        match_expr = _get_list_field_only_matches_expr(filter_field)
+        match_expr = _get_list_field_only_matches_expr(prefix + new_field)
         pipeline.append({"$match": {"$expr": match_expr.to_mongo()}})
 
     return pipeline
@@ -1498,10 +1542,12 @@ def _get_list_field_only_matches_expr(field):
 
 
 def _get_filter_frames_list_field_pipeline(
-    filter_field, filter_arg, only_matches=True
+    filter_field, new_field, filter_arg, only_matches=True, prefix=""
 ):
     cond = _get_list_field_mongo_filter(filter_arg)
-    label_field, labels_list = filter_field.split(".")[-2:]
+    label_field, labels_list = new_field.split(".")[-2:]
+
+    old_field = filter_field.split(".")[0]
 
     pipeline = [
         {
@@ -1514,14 +1560,16 @@ def _get_filter_frames_list_field_pipeline(
                             "$mergeObjects": [
                                 "$$frame",
                                 {
-                                    label_field: {
+                                    prefix
+                                    + label_field: {
                                         "$mergeObjects": [
-                                            "$$frame." + label_field,
+                                            "$$frame." + prefix + old_field,
                                             {
                                                 labels_list: {
                                                     "$filter": {
                                                         "input": "$$frame."
-                                                        + label_field,
+                                                        + prefix
+                                                        + filter_field,
                                                         "cond": cond,
                                                     }
                                                 }
@@ -1538,7 +1586,9 @@ def _get_filter_frames_list_field_pipeline(
     ]
 
     if only_matches:
-        match_expr = _get_frames_list_field_only_matches_expr(label_field)
+        match_expr = _get_frames_list_field_only_matches_expr(
+            prefix + new_field
+        )
         pipeline.append({"$match": {"$expr": match_expr.to_mongo()}})
 
     return pipeline
@@ -1556,6 +1606,10 @@ def _get_list_field_mongo_filter(filter_arg, prefix="$this"):
 
 
 class _FilterListField(FilterField):
+    def _get_new_field(self, sample_collection):
+        new_field, _ = sample_collection._handle_frame_field(self._new_field)
+        return new_field
+
     @property
     def _filter_field(self):
         raise NotImplementedError("subclasses must implement `_filter_field`")
@@ -1574,6 +1628,7 @@ class _FilterListField(FilterField):
         filter_field, is_frame_field = sample_collection._handle_frame_field(
             self._filter_field
         )
+        new_field = self._get_new_field(sample_collection)
 
         if is_frame_field:
             _make_pipeline = _get_filter_frames_list_field_pipeline
@@ -1581,7 +1636,10 @@ class _FilterListField(FilterField):
             _make_pipeline = _get_filter_list_field_pipeline
 
         return _make_pipeline(
-            filter_field, self._filter, only_matches=self._only_matches,
+            filter_field,
+            new_field,
+            self._filter,
+            only_matches=self._only_matches,
         )
 
     def _get_mongo_filter(self):
@@ -3142,7 +3200,7 @@ class MatchTags(ViewStage):
 
     def to_mongo(self, _):
         if self._bool:
-            [{"$match": {"tags": {"$in": self._tags}}}]
+            return [{"$match": {"tags": {"$in": self._tags}}}]
 
         return [{"$match": {"tags": {"$nin": self._tags}}}]
 
@@ -4581,6 +4639,9 @@ def _get_sample_ids(samples_or_ids):
 
     if isinstance(samples_or_ids, foc.SampleCollection):
         return samples_or_ids.values("id")
+
+    if isinstance(samples_or_ids, np.ndarray):
+        return list(samples_or_ids)
 
     if not samples_or_ids:
         return []
