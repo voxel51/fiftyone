@@ -10,6 +10,7 @@ from base64 import b64encode, b64decode
 from collections import defaultdict
 from contextlib import contextmanager
 from copy import deepcopy
+import hashlib
 import importlib
 import inspect
 import io
@@ -638,17 +639,37 @@ class UniqueFilenameMaker(object):
         return os.path.join(self.output_dir, filename)
 
 
-def compute_filehash(filepath):
-    """Computes the file hash of the given file.
+def compute_filehash(filepath, method=None, chunk_size=None):
+    """Computes the hash of the given file.
 
     Args:
         filepath: the path to the file
+        method (None): an optional ``hashlib`` method to use. If not specified,
+            the builtin ``str.__hash__`` will be used
+        chunk_size (None): an optional chunk size to use to read the file, in
+            bytes. Only applicable when a ``method`` is provided. The default
+            is 64kB. If negative, the entire file is read at once
 
     Returns:
-        the file hash
+        the hash
     """
+    if method is None:
+        with open(filepath, "rb") as f:
+            return hash(f.read())
+
+    if chunk_size is None:
+        chunk_size = 65536
+
+    hasher = getattr(hashlib, method)()
     with open(filepath, "rb") as f:
-        return hash(f.read())
+        while True:
+            data = f.read(chunk_size)
+            if not data:
+                break
+
+            hasher.update(data)
+
+    return hasher.hexdigest()
 
 
 def serialize_numpy_array(array, ascii=False):

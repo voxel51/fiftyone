@@ -11,7 +11,6 @@ import warnings
 import numpy as np
 import sklearn.metrics as skm
 
-import fiftyone.core.aggregations as foa
 import fiftyone.core.evaluation as foe
 from fiftyone.core.expressions import ViewField as F
 import fiftyone.core.fields as fof
@@ -190,14 +189,8 @@ class SimpleEvaluation(ClassificationEvaluation):
         pred_id = pred_field + ".id"
         pred_conf = pred_field + ".confidence"
 
-        ytrue, ytrue_ids, ypred, ypred_ids, confs = samples.aggregate(
-            [
-                foa.Values(gt),
-                foa.Values(gt_id),
-                foa.Values(pred),
-                foa.Values(pred_id),
-                foa.Values(pred_conf),
-            ]
+        ytrue, ytrue_ids, ypred, ypred_ids, confs = samples.values(
+            [gt, gt_id, pred, pred_id, pred_conf]
         )
 
         if is_frame_field:
@@ -294,13 +287,13 @@ class TopKEvaluation(ClassificationEvaluation):
 
         # This extracts a potentially huge number of logits
         # @todo consider sample iteration for very large datasets
-        ytrue, ytrue_ids, ypred, ypred_ids, logits = samples.aggregate(
+        ytrue, ytrue_ids, ypred, ypred_ids, logits = samples.values(
             [
-                foa.Values(gt_field + ".label"),
-                foa.Values(gt_field + ".id"),
-                foa.Values(pred_field + ".label"),
-                foa.Values(pred_field + ".id"),
-                foa.Values(pred_field + ".logits"),
+                gt_field + ".label",
+                gt_field + ".id",
+                pred_field + ".label",
+                pred_field + ".id",
+                pred_field + ".logits",
             ]
         )
 
@@ -450,14 +443,8 @@ class BinaryEvaluation(ClassificationEvaluation):
         pred_id = pred_field + ".id"
         pred_conf = pred_field + ".confidence"
 
-        ytrue, ytrue_ids, ypred, ypred_ids, confs = samples.aggregate(
-            [
-                foa.Values(gt),
-                foa.Values(gt_id),
-                foa.Values(pred),
-                foa.Values(pred_id),
-                foa.Values(pred_conf),
-            ]
+        ytrue, ytrue_ids, ypred, ypred_ids, confs = samples.values(
+            [gt, gt_id, pred, pred_id, pred_conf]
         )
 
         if is_frame_field:
