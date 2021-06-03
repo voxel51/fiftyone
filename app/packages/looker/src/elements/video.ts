@@ -25,7 +25,7 @@ export class PlayButtonElement extends BaseElement<
       click: ({ event, update }) => {
         event.preventDefault();
         event.stopPropagation();
-        update(({ playing }) => ({ playing: !playing }));
+        update(({ playing }) => ({ playing: !playing, showOptions: false }));
       },
     };
   }

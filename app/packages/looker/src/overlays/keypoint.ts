@@ -2,7 +2,8 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 
-import { DASH_COLOR, POINT_RADIUS } from "../constants";
+import { Circle, G } from "@svgdotjs/svg.js";
+import { KEYPOINT_RADIUS_FACTOR } from "../constants";
 import { BaseState, Coordinates } from "../state";
 import { distance } from "../util";
 import { CONTAINS, CoordinateOverlay, RegularLabel } from "./base";
@@ -14,19 +15,43 @@ interface KeypointLabel extends RegularLabel {
 export default class KeypointOverlay<
   State extends BaseState
 > extends CoordinateOverlay<State, KeypointLabel> {
-  constructor(field, label) {
+  private readonly g: G;
+  private color: string;
+  private radius: number;
+  private circles: Circle[];
+
+  constructor(state, field, label) {
     super(field, label);
+    this.color = this.getColor(state);
+
+    this.g = new G();
+
+    const radius = state.strokeWidth * KEYPOINT_RADIUS_FACTOR;
+    const [w, h] = state.config.dimensions;
+    this.circles = this.label.points.map(([x, y]) => {
+      const circle = new Circle()
+        .radius(radius)
+        .center(x * w, y * h)
+        .fill(this.color);
+      this.g.add(circle);
+      return circle;
+    });
   }
 
   private getDistanceAndPoint(
-    context: CanvasRenderingContext2D,
+    {
+      strokeWidth,
+      config: {
+        dimensions: [w, h],
+      },
+    },
     [x, y]: Coordinates
   ) {
-    const [w, h] = [context.canvas.width, context.canvas.height];
     const distances = [];
+    this.radius = strokeWidth * KEYPOINT_RADIUS_FACTOR;
     for (const point of this.label.points) {
       const d = distance(x, y, point[0] * w, point[1] * h);
-      if (d <= POINT_RADIUS) {
+      if (d <= this.radius) {
         distances.push([0, point]);
       } else {
         distances.push([d, point]);
@@ -36,60 +61,43 @@ export default class KeypointOverlay<
     return distances.sort((a, b) => a[0] - b[0])[0];
   }
 
-  containsPoint(context, state, [x, y]) {
-    if (this.getDistanceAndPoint(context, [x, y])[0] <= 2 * POINT_RADIUS) {
+  containsPoint(state, [x, y]) {
+    if (this.getDistanceAndPoint(state, [x, y])[0] <= 2 * this.radius) {
       return CONTAINS.BORDER;
     }
     return CONTAINS.NONE;
   }
 
-  draw(context, state) {
+  draw(svg, state) {
     const color = this.getColor(state);
-    context.lineWidth = 0;
-    const isSelected = this.isSelected(state);
-
-    const [canvasWidth, canvasHeight] = [
-      context.canvas.width,
-      context.canvas.height,
-    ];
-
-    for (const point of this.label.points) {
-      context.fillStyle = color;
-      context.beginPath();
-      context.arc(
-        point[0] * canvasWidth,
-        point[1] * canvasHeight,
-        isSelected ? POINT_RADIUS * 2 : POINT_RADIUS,
-        0,
-        Math.PI * 2
-      );
-      context.fill();
-
-      if (isSelected) {
-        context.fillStyle = DASH_COLOR;
-        context.beginPath();
-        context.arc(
-          point[0] * canvasWidth,
-          point[1] * canvasHeight,
-          POINT_RADIUS,
-          0,
-          Math.PI * 2
-        );
-        context.fill();
-      }
+    if (color !== this.getColor(state)) {
+      this.color = color;
+      this.circles.forEach((c) => {
+        c.fill(color);
+      });
     }
+
+    const radius = state.strokeWidth * KEYPOINT_RADIUS_FACTOR;
+    if (this.radius !== radius) {
+      this.radius = radius;
+      this.circles.forEach((c) => {
+        c.radius(radius);
+      });
+    }
+    console.log(this.circles);
+    svg.add(this.g);
   }
 
-  getMouseDistance(context, state, [x, y]) {
-    return this.getDistanceAndPoint(context, [x, y])[0];
+  getMouseDistance(state, [x, y]) {
+    return this.getDistanceAndPoint(state, [x, y])[0];
   }
 
-  getPointInfo(context, state, [x, y]) {
+  getPointInfo(state, [x, y]) {
     return {
       color: this.getColor(state),
       field: this.field,
       label: this.label,
-      point: this.getDistanceAndPoint(context, [x, y])[1],
+      point: this.getDistanceAndPoint(state, [x, y])[1],
       type: "Keypoint",
     };
   }

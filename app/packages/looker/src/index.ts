@@ -176,6 +176,7 @@ export abstract class Looker<
       canZoom: false,
       strokeWidth: STROKE_WIDTH,
       fontSize: FONT_SIZE,
+      wheeling: false,
     };
   }
 
@@ -229,8 +230,8 @@ export class FrameLooker extends Looker<FrameState> {
   }
 
   postProcess(element): FrameState {
-    this.state = super.postProcess(element);
-    return zoomToContent(this.state, this.pluckedOverlays, element);
+    this.state = zoomToContent(this.state, this.pluckedOverlays, element);
+    return super.postProcess(element);
   }
 }
 
@@ -268,8 +269,8 @@ export class ImageLooker extends Looker<ImageState> {
   }
 
   postProcess(element): ImageState {
-    this.state = super.postProcess(element);
-    return zoomToContent(this.state, this.pluckedOverlays, element);
+    this.state = zoomToContent(this.state, this.pluckedOverlays, element);
+    return super.postProcess(element);
   }
 }
 
@@ -438,10 +439,10 @@ function zoomToContent<State extends FrameState | ImageState>(
     const iAR = w / h;
     const {
       center: [cw, ch],
-      box: [btlx, btly, bw, bh],
+      box: [_, __, bw, bh],
     } = adjustBox([w, h], getContainingBox(points));
 
-    const [_, __, ww, wh] = elementBBox(looker);
+    const [___, ____, ww, wh] = elementBBox(looker);
     let wAR = ww / wh;
 
     let scale = 1;

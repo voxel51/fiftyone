@@ -65,7 +65,7 @@ export default class DetectionOverlay<
     if (!state.config.thumbnail) {
       this.hideTitle = false;
       this.title = new Text()
-        .text(this.getLabelText(state))
+        .plain(this.getLabelText(state))
         .fill("#FFFFFF")
         .font({
           family: "Palanquin",
@@ -152,32 +152,36 @@ export default class DetectionOverlay<
   }
 
   private drawTitle(state: Readonly<State>) {
-    if (state.fontSize !== this.fontSize) {
+    if (state.wheeling) {
       if (!this.hideTitle) {
         this.hideTitle = true;
         this.titleRect.remove();
         this.title.remove();
       }
-      this.fontSize = state.fontSize;
       return;
     }
 
     let show = false;
     if (this.hideTitle) {
-      this.title.font({ size: state.fontSize });
       this.hideTitle = false;
       show = true;
     }
 
-    const labelText = this.getLabelText(state);
-    const textUpdate = labelText !== this.labelText;
-    if (labelText !== this.labelText) {
-      this.title.text(this.getLabelText(state));
-      this.sizeTitleRect(state.strokeWidth);
-      this.labelText = labelText;
+    let fontChange = false;
+    if (this.fontSize !== state.fontSize) {
+      this.title.font({ size: state.fontSize });
+      this.fontSize = state.fontSize;
+      fontChange = true;
     }
 
-    if (this.strokeWidth !== state.strokeWidth || textUpdate) {
+    const labelText = this.getLabelText(state);
+    const textUpdate = labelText !== this.labelText;
+
+    this.title.plain(this.getLabelText(state));
+    this.sizeTitleRect(state.strokeWidth);
+    this.labelText = labelText;
+
+    if (fontChange || this.strokeWidth !== state.strokeWidth || textUpdate) {
       const {
         strokeWidth,
         config: {
@@ -191,9 +195,8 @@ export default class DetectionOverlay<
         btlx * width + strokeWidth / 2,
         btly * height + strokeWidth / 2,
       ];
-      if (!textUpdate) {
-        this.sizeTitleRect(strokeWidth);
-      }
+      this.sizeTitleRect(strokeWidth);
+
       this.title.move(x + strokeWidth * 1.5, y);
       this.titleRect.move(x, y);
       this.strokeWidth = state.strokeWidth;

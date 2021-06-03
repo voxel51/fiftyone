@@ -92,7 +92,8 @@ export class LookerElement<State extends BaseState> extends BaseElement<
         this.hideControlsTimeout = setTimeout(
           () =>
             update(({ showOptions }) => {
-              if (showOptions) {
+              this.hideControlsTimeout = null;
+              if (!showOptions) {
                 return { showControls: false };
               }
               return {};
@@ -144,7 +145,7 @@ export class LookerElement<State extends BaseState> extends BaseElement<
 
             this.wheelTimeout = setTimeout(() => {
               this.wheelTimeout = null;
-              update({ scale: newScale });
+              update({ wheeling: false });
             }, 200);
 
             return {
@@ -160,6 +161,7 @@ export class LookerElement<State extends BaseState> extends BaseElement<
                 (<MouseEvent>event).pageX,
                 (<MouseEvent>event).pageY,
               ],
+              wheeling: true,
             };
           },
           dispatchTooltipEvent(dispatchEvent)
@@ -217,15 +219,19 @@ export class ControlsElement<State extends BaseState> extends BaseElement<
         update({ hoveringControls: false });
       },
       wheel: ({ event }) => {
+        event.preventDefault();
         event.stopPropagation();
       },
       dblclick: ({ event }) => {
+        event.preventDefault();
         event.stopPropagation();
       },
       mousedown: ({ event }) => {
+        event.preventDefault();
         event.stopPropagation();
       },
       mouseup: ({ event }) => {
+        event.preventDefault();
         event.stopPropagation();
       },
     };
@@ -245,17 +251,18 @@ export class ControlsElement<State extends BaseState> extends BaseElement<
     if (thumbnail) {
       return this.element;
     }
-    if (this.showControls === (showControls && !disableControls)) {
-      this.element;
+    showControls = showControls && !disableControls;
+    if (this.showControls === showControls) {
+      return this.element;
     }
-    if (showControls && !disableControls) {
+    if (showControls) {
       this.element.style.opacity = "0.9";
       this.element.style.height = "unset";
     } else {
       this.element.style.opacity = "0.0";
       this.element.style.height = "0";
     }
-    this.showControls = showControls && !disableControls;
+    this.showControls = showControls;
     return this.element;
   }
 }
@@ -263,8 +270,6 @@ export class ControlsElement<State extends BaseState> extends BaseElement<
 export class OptionsButtonElement<State extends BaseState> extends BaseElement<
   State
 > {
-  private showControls: boolean;
-
   getEvents(): Events<State> {
     return {
       click: ({ event, update }) => {
@@ -283,18 +288,7 @@ export class OptionsButtonElement<State extends BaseState> extends BaseElement<
     return element;
   }
 
-  renderSelf({ showControls, disableControls }) {
-    if (this.showControls === (showControls && !disableControls)) {
-      this.element;
-    }
-    if (showControls && !disableControls) {
-      this.element.style.opacity = "0.9";
-      this.element.style.height = "unset";
-    } else {
-      this.element.style.opacity = "0.0";
-      this.element.style.height = "0";
-    }
-    this.showControls = showControls && !disableControls;
+  renderSelf() {
     return this.element;
   }
 }
@@ -302,9 +296,14 @@ export class OptionsButtonElement<State extends BaseState> extends BaseElement<
 export class OptionsPanelElement<State extends BaseState> extends BaseElement<
   State
 > {
+  private showOptions: boolean;
   getEvents(): Events<State> {
     return {
       click: ({ event }) => {
+        event.stopPropagation();
+        event.preventDefault();
+      },
+      dblclick: ({ event }) => {
         event.stopPropagation();
         event.preventDefault();
       },
@@ -327,18 +326,21 @@ export class OptionsPanelElement<State extends BaseState> extends BaseElement<
     return !thumbnail;
   }
 
-  renderSelf({ showOptions, disableControls }) {
-    if (this.showOptions === (showOptions && !disableControls)) {
-      this.element;
+  renderSelf({ showOptions, config: { thumbnail } }) {
+    if (thumbnail) {
+      return this.element;
     }
-    if (showOptions && !disableControls) {
+    if (this.showOptions === showOptions) {
+      return this.element;
+    }
+    if (showOptions) {
       this.element.style.opacity = "0.9";
       this.element.classList.remove("looker-display-none");
     } else {
       this.element.style.opacity = "0.0";
       this.element.classList.add("looker-display-none");
     }
-    this.showOptions = showOptions && !disableControls;
+    this.showOptions = showOptions;
     return this.element;
   }
 }
@@ -494,7 +496,6 @@ export class WindowElement<State extends BaseState> extends BaseElement<State> {
       mouseleave: ({ update, dispatchEvent }) => {
         update({
           cursorCoordinates: null,
-          disableControls: false,
         });
         dispatchEvent("tooltip", null);
       },
@@ -503,7 +504,6 @@ export class WindowElement<State extends BaseState> extends BaseElement<State> {
           return state.config.thumbnail
             ? {}
             : {
-                redraw: false,
                 cursorCoordinates: [
                   (<MouseEvent>event).pageX,
                   (<MouseEvent>event).pageY,

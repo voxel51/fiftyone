@@ -2,12 +2,7 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 
-import {
-  FONT_SIZE,
-  MIN_PIXELS,
-  STROKE_WIDTH,
-  THUMBNAIL_STROKE_WIDTH,
-} from "./constants";
+import { FONT_SIZE, MIN_PIXELS, STROKE_WIDTH } from "./constants";
 import { BoundingBox, Coordinates, Dimensions } from "./state";
 
 /**
@@ -390,5 +385,5 @@ export const getStrokeWidth = (
 };
 
 export const getFontSize = (from: number, to: number, scale: number) => {
-  return Math.max(((FONT_SIZE / to) * from) / scale, 1);
+  return Math.max(((FONT_SIZE / to) * from) / scale, 2);
 };

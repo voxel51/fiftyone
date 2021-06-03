@@ -101,6 +101,7 @@ export interface BaseState {
   canZoom: boolean;
   strokeWidth: number;
   fontSize: number;
+  wheeling: boolean;
 }
 
 export interface FrameState extends BaseState {
