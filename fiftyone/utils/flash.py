@@ -38,12 +38,6 @@ def apply_flash_model(
     """Applies the given ``flash.core.model.Task`` to the samples in the 
     collection.
 
-    This method supports all the following cases:
-
-    -   Applying an image model to an image collection
-    -   Applying an image model to the frames of a video collection
-    -   Applying a video model to a video collection
-
     Args:
         samples: a :class:`fiftyone.core.collections.SampleCollection`
         model: a ``flash.core.model.Task``
@@ -63,7 +57,7 @@ def apply_flash_model(
             error if predictions cannot be generated for a sample
     """
     if batch_size is not None:
-        print("Flash models only support the default batch size")
+        logger.info("Flash models only support the default batch size")
 
     serializer = _get_fo_serializer(model, confidence_thresh, store_logits,)
     with fou.SetAttributes(model, serializer=serializer):
@@ -90,7 +84,7 @@ def is_flash_model(model):
     return False
 
 
-def normalize_labels(filepaths, predictions):
+def normalize_detections(filepaths, predictions):
     """Converts Detections from absolute to relative coordinates
 
     Args:
@@ -116,9 +110,7 @@ def _get_fo_serializer(model, confidence_thresh, store_logits):
     previous_serializer = model.serializer
     if isinstance(model, fcc.ClassificationTask):
         prev_args = dict(inspect.getmembers(model.serializer))
-        multi_label = False
-        if "multi_label" in prev_args:
-            multi_label = prev_args["multi_label"]
+        multi_label = prev_args.get("multi_label", False)
 
         kwargs = {
             "multi_label": multi_label,
