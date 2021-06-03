@@ -6,26 +6,24 @@ PyTorch Lightning Flash utilities.
 |
 """
 import inspect
-import logging
-
-import fiftyone.core.labels as fol
-from fiftyone.core.metadata import ImageMetadata
-import fiftyone.core.utils as fou
 
 import eta.core.utils as etau
 
-fc = fou.lazy_import("flash.core.classification")
-fds = fou.lazy_import("flash.image.detection.serialization")
-fdm = fou.lazy_import("flash.image.detection.model")
-fss = fou.lazy_import("flash.image.segmentation.serialization")
-fsm = fou.lazy_import("flash.image.segmentation.model")
+import fiftyone.core.metadata as fom
+import fiftyone.core.utils as fou
 
-
-logger = logging.getLogger(__name__)
+fou.ensure_lightning_flash()
+import flash.core.classification as fc
+import flash.image.detection.serialization as fds
+import flash.image.detection.model as fdm
+import flash.image.segmentation.serialization as fss
+import flash.image.segmentation.model as fsm
 
 
 _SUPPORTED_TASKS = [
-    "ClassificationTask",
+    fc.ClassificationTask,
+    fdm.ObjectDetector,
+    fsm.SemanticSegmentation,
 ]
 
 
@@ -35,11 +33,8 @@ def apply_flash_model(
     label_field="predictions",
     confidence_thresh=None,
     store_logits=False,
-    batch_size=None,
-    num_workers=None,
-    skip_failures=True,
 ):
-    """Applies the given ``flash.core.model.Task`` to the samples in the 
+    """Applies the given ``flash.core.model.Task`` to the samples in the
     collection.
 
     Args:
@@ -53,17 +48,8 @@ def apply_flash_model(
         store_logits (False): whether to store logits for the model
             predictions. This is only supported when the provided ``model`` has
             logits
-        batch_size (None): an optional batch size to use. Only applicable for
-            image samples
-        num_workers (None): the number of workers to use when loading images.
-            Only applicable for Torch models
-        skip_failures (True): whether to gracefully continue without raising an
-            error if predictions cannot be generated for a sample
     """
-    if batch_size is not None:
-        logger.info("Flash models only support the default batch size")
-
-    serializer = _get_fo_serializer(model, confidence_thresh, store_logits,)
+    serializer = _get_serializer(model, confidence_thresh, store_logits,)
     with fou.SetAttributes(model, serializer=serializer):
         filepaths = samples.values("filepath")
         predictions = model.predict(filepaths)
@@ -76,30 +62,32 @@ def apply_flash_model(
 
 
 def is_flash_model(model):
-    """Checks model type to determine if it is a flash model
+    """Determines whether the given model is a ``flash.core.model.Task``.
 
     Args:
-        model: the model instance to check
+        model: the model instance
+
+    Returns:
+        True/False
     """
-    model_class = type(model)
-    mro = inspect.getmro(model_class)
-    for c in mro:
-        class_name = etau.get_class_name(c)
-        if class_name == "flash.core.model.Task":
+    for cls in inspect.getmro(type(model)):
+        if etau.get_class_name(cls) == "flash.core.model.Task":
             return True
 
     return False
 
 
 def normalize_detections(filepaths, predictions):
-    """Converts Detections from absolute to relative coordinates
+    """Converts the bounding boxes of the provided
+    :class:`fiftyone.core.labels.Detections` from absolute to relative
+    coordinates.
 
     Args:
-	filepaths: paths to the related images for every Detection used to generate metadata
-        predictions: the list of Detections to normalize 
+        filepaths: a list of filepaths
+        predictions: a list of :class:`fiftyone.core.labels.Detections`
     """
     for filepath, prediction in zip(filepaths, predictions):
-        metadata = ImageMetadata.build_for(filepath)
+        metadata = fom.ImageMetadata.build_for(filepath)
         width = metadata.width
         height = metadata.height
         for detection in prediction.detections:
@@ -112,25 +100,16 @@ def normalize_detections(filepaths, predictions):
             ]
 
 
-def _get_fo_serializer(model, confidence_thresh, store_logits):
-    """Initializes the FiftyOne serializer to be used for the given task"""
-    previous_serializer = model.serializer
-    if isinstance(model, fsm.SemanticSegmentation):
-        return fss.FiftyOneSegmentationLabels()
-
-    elif isinstance(model, fdm.ObjectDetector):
-        return fds.FiftyOneDetectionLabels()
-
-    elif isinstance(model, fc.ClassificationTask):
+def _get_serializer(model, confidence_thresh, store_logits):
+    if isinstance(model, fc.ClassificationTask):
         prev_args = dict(inspect.getmembers(model.serializer))
-        multi_label = prev_args.get("multi_label", False)
 
         kwargs = {
-            "multi_label": multi_label,
+            "multi_label": prev_args.get("multi_label", False),
             "store_logits": store_logits,
         }
 
-        if confidence_thresh is None and "threshold" in prev_args:
+        if "threshold" in prev_args:
             kwargs["threshold"] = prev_args["threshold"]
 
         if confidence_thresh is not None:
@@ -138,8 +117,13 @@ def _get_fo_serializer(model, confidence_thresh, store_logits):
 
         return fc.FiftyOneLabels(**kwargs)
 
-    else:
-        raise ValueError(
-            "Found an unsupported model of type %s. Supported model types are "
-            "%s" % (type(model), ", ".join(_SUPPORTED_TASKS))
-        )
+    if isinstance(model, fdm.ObjectDetector):
+        return fds.FiftyOneDetectionLabels()
+
+    if isinstance(model, fsm.SemanticSegmentation):
+        return fss.FiftyOneSegmentationLabels()
+
+    raise ValueError(
+        "Unsupported model type %s. Supported model types are %s"
+        % (type(model), _SUPPORTED_TASKS)
+    )
