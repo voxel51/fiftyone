@@ -2,8 +2,6 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 
-import colorString from "color-string";
-
 import { FONT_SIZE, MIN_PIXELS, STROKE_WIDTH } from "./constants";
 import { BoundingBox, Coordinates, Dimensions } from "./state";
 
@@ -389,13 +387,4 @@ export const getStrokeWidth = (
 
 export const getFontSize = (from: number, to: number, scale: number) => {
   return Math.max(((FONT_SIZE / to) * from) / scale, 2);
-};
-
-export const getAlphaColor = (
-  color: string,
-  alphaMultiplier: number
-): string => {
-  const rgba = colorString.get.rgb(color);
-  rgba[3] *= alphaMultiplier;
-  return colorString.to.rgb(rgba);
 };

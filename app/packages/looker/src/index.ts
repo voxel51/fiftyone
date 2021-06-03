@@ -4,8 +4,17 @@
 import { mergeWith } from "immutable";
 import { G, Svg, SVG } from "@svgdotjs/svg.js";
 
-import "./style.css";
-export { ColorGenerator } from "./color";
+import { FONT_SIZE, MIN_PIXELS, STROKE_WIDTH } from "./constants";
+import {
+  getFrameElements,
+  getImageElements,
+  getVideoElements,
+} from "./elements";
+import { LookerElement } from "./elements/common";
+import processOverlays from "./processOverlays";
+import { ClassificationsOverlay, FROM_FO, POINTS_FROM_FO } from "./overlays";
+import { Overlay } from "./overlays/base";
+import { ClassificationLabels } from "./overlays/classifications";
 import {
   FrameState,
   ImageState,
@@ -22,17 +31,6 @@ import {
   BoundingBox,
 } from "./state";
 import {
-  getFrameElements,
-  getImageElements,
-  getVideoElements,
-} from "./elements";
-import { LookerElement } from "./elements/common";
-import { ClassificationsOverlay, FROM_FO, POINTS_FROM_FO } from "./overlays";
-import { ClassificationLabels } from "./overlays/classifications";
-import { Overlay } from "./overlays/base";
-import processOverlays from "./processOverlays";
-import { ColorGenerator } from "./color";
-import {
   elementBBox,
   getContainingBox,
   getFontSize,
@@ -40,7 +38,8 @@ import {
   getStrokeWidth,
   snapBox,
 } from "./util";
-import { FONT_SIZE, MIN_PIXELS, STROKE_WIDTH } from "./constants";
+
+import "./style.css";
 
 export abstract class Looker<
   State extends BaseState = BaseState,
@@ -62,7 +61,6 @@ export abstract class Looker<
     config: State["config"],
     options: Optional<State["options"]>
   ) {
-    console.log(config, options);
     this.sample = sample;
     this.eventTarget = new EventTarget();
     this.updater = this.makeUpdate();
@@ -446,7 +444,7 @@ function zoomToContent<State extends FrameState | ImageState>(
 
     let scale = 1;
     let pan: Coordinates = [0, 0];
-    const squeeze = 0.9;
+    const squeeze = 1 - state.options.zoomPad;
 
     if (wAR < iAR) {
       scale = Math.max(1, 1 / bw);
@@ -494,7 +492,7 @@ function mergeUpdates<State extends BaseState>(
     if (Array.isArray(n)) {
       return n;
     }
-    if (n instanceof Function || n instanceof ColorGenerator) {
+    if (n instanceof Function) {
       return n;
     }
     if (typeof n !== "object") {

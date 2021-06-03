@@ -2,7 +2,6 @@ import mime from "mime-types";
 import { selector, selectorFamily, SerializableParam } from "recoil";
 
 import * as atoms from "./atoms";
-import { ColorGenerator } from "@fiftyone/looker";
 import { generateColorMap } from "../utils/colors";
 import {
   RESERVED_FIELDS,
@@ -17,6 +16,7 @@ import { packageMessage, request } from "../utils/socket";
 import { viewsAreEqual } from "../utils/view";
 import { darkTheme } from "../shared/colors";
 import socket, { handleId, isNotebook, http } from "../shared/connection";
+import { string } from "prop-types";
 
 export const refresh = selector<boolean>({
   key: "refresh",
@@ -144,6 +144,16 @@ export const rootElementNamePlural = selector<string>({
       default:
         return ELEMENT_NAMES_PLURAL.SAMPLE;
     }
+  },
+});
+
+export const elementNames = selector<{ plural: string; singular: string }>({
+  key: "elementNames",
+  get: ({ get }) => {
+    return {
+      plural: get(rootElementNamePlural),
+      singular: get(rootElementName),
+    };
   },
 });
 
@@ -929,13 +939,6 @@ export const modalLabelTags = selectorFamily<
       return tags && tags[0] && tags[0][1] ? Array.from(tags[0][1]) : [];
     }
     return [];
-  },
-});
-
-export const colorGenerator = selectorFamily<any, boolean>({
-  key: "colorGenerator",
-  get: (modal) => ({ get }) => {
-    return new ColorGenerator(get(atoms.colorSeed(modal)));
   },
 });
 

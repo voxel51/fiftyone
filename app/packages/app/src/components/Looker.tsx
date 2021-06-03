@@ -382,13 +382,15 @@ type EventCallback = (event: Event) => void;
 
 export const defaultLookerOptions = selectorFamily({
   key: "defaultLookerOptions",
-  get: (modal) => ({ get }) => {
+  get: (modal: boolean) => ({ get }) => {
     const showLabel = get(selectors.appConfig).show_label;
     const showConfidence = get(selectors.appConfig).show_confidence;
     const showTooltip = get(selectors.appConfig).show_tooltip;
     const video = get(selectors.isVideoDataset) && !modal ? { loop: true } : {};
     const imageOrFrame = get(selectors.isPatchesView) ? { zoom: true } : {};
+    const colorByLabel = get(atoms.colorByLabel(modal));
     return {
+      colorByLabel,
       showLabel,
       showConfidence,
       showTooltip,
@@ -407,7 +409,6 @@ export const lookerOptions = selectorFamily<
     const options = {
       ...get(defaultLookerOptions(modal)),
       activeLabels: get(labelAtoms.activeFields(modal)),
-      colorGenerator: get(selectors.colorGenerator(modal)),
       colorMap: get(selectors.colorMap(modal)),
       filter: get(labelFilters(modal)),
     };
@@ -458,6 +459,7 @@ const Looker = ({
   const ref = useRef<any>();
   const bindMove = useMove((s) => ref.current && ref.current(s));
   const lookerConstructor = useRecoilValue(lookerType(sampleId));
+
   const [looker] = useState(
     () =>
       new lookerConstructor(

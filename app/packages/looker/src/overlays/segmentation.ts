@@ -3,7 +3,8 @@
  */
 
 import { Image } from "@svgdotjs/svg.js";
-import { ColorGenerator } from "../color";
+import { get32BitColor, getAlphaColor } from "../color";
+import { MASK_ALPHA, SELECTED_MASK_ALPHA } from "../constants";
 import { deserialize, NumpyResult } from "../numpy";
 import { BaseState, Coordinates } from "../state";
 import { ensureCanvasSize } from "../util";
@@ -21,7 +22,6 @@ export default class SegmentationOverlay<State extends BaseState>
   readonly field: string;
   private readonly label: SegmentationLabel;
   private readonly mask: NumpyResult;
-  private generator: ColorGenerator;
   private targets: Uint32Array;
   private image: Image;
 
@@ -58,7 +58,7 @@ export default class SegmentationOverlay<State extends BaseState>
   getPointInfo(state, [x, y]) {
     const target = this.getTarget(state, [x, y]);
     return {
-      color: this.getRGBAColor(state, target),
+      color: this.getColor(state, target),
       field: this.field,
       label: this.label,
       target,
@@ -98,10 +98,8 @@ export default class SegmentationOverlay<State extends BaseState>
     return [sx, sy];
   }
 
-  private getRGBAColor(state: Readonly<State>, target: number) {
-    const rawColor = state.options.colorGenerator.rawMaskColors[target];
-    const [r, g, b, a] = new Uint8Array(new Uint32Array([rawColor]).buffer);
-    return `rgba(${r},${g},${b},${a / 255})`;
+  private getColor(state: Readonly<State>, target: number) {
+    return state.options.colorMap(target);
   }
 
   private getTarget(state: Readonly<State>, [x, y]: Coordinates) {
@@ -119,14 +117,14 @@ export default class SegmentationOverlay<State extends BaseState>
     ]);
     const maskImage = maskContext.createImageData(maskWidth, maskHeight);
     const maskImageRaw = new Uint32Array(maskImage.data.buffer);
-    this.generator = state.options.colorGenerator;
-    const maskColors = this.isSelected(state)
-      ? this.generator.rawMaskColorsSelected
-      : this.generator.rawMaskColors;
+
+    const alpha = this.isSelected(state) ? SELECTED_MASK_ALPHA : MASK_ALPHA;
 
     for (let i = 0; i < this.mask.data.length; i++) {
       if (this.mask.data[i]) {
-        maskImageRaw[i] = maskColors[this.mask.data[i]];
+        maskImageRaw[i] = get32BitColor(
+          getAlphaColor(state.options.colorMap(this.mask.data[i]), alpha)
+        );
       }
     }
     maskContext.putImageData(maskImage, 0, 0);

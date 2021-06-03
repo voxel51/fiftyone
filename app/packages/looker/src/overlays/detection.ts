@@ -2,7 +2,8 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 import { G, Image, Rect, Text } from "@svgdotjs/svg.js";
-import { TEXT_BG_COLOR } from "../constants";
+import { get32BitColor, getAlphaColor } from "../color";
+import { MASK_ALPHA, TEXT_BG_COLOR } from "../constants";
 
 import { deserialize, NumpyResult } from "../numpy";
 import { BaseState, BoundingBox, Coordinates } from "../state";
@@ -94,13 +95,15 @@ export default class DetectionOverlay<
 
     if (this.color !== color) {
       this.color = color;
-      const img = this.createMask(state);
-      this.img.replace(img);
-      this.img = img;
+      if (this.mask) {
+        const img = this.createMask(state);
+        this.img.replace(img);
+        this.img = img;
+      }
     }
     if (this.isShown(state)) {
       this.rect.attr({
-        stroke: color,
+        stroke: this.color,
         "stroke-width": state.strokeWidth,
       });
 
@@ -240,7 +243,7 @@ export default class DetectionOverlay<
     const maskImage = maskContext.createImageData(maskWidth, maskHeight);
     const maskImageRaw = new Uint32Array(maskImage.data.buffer);
 
-    const bitColor = state.options.colorGenerator.getMaskColor(this.color);
+    const bitColor = get32BitColor(getAlphaColor(this.color, MASK_ALPHA));
     for (let i = 0; i < this.mask.data.length; i++) {
       if (this.mask.data[i]) {
         maskImageRaw[i] = bitColor;

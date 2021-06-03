@@ -14,6 +14,7 @@ export class LookerElement<State extends BaseState> extends BaseElement<
   private hideControlsTimeout?: ReturnType<typeof setTimeout>;
   private start: Coordinates = [0, 0];
   private wheelTimeout: ReturnType<typeof setTimeout>;
+  private shimmerTimeout: ReturnType<typeof setTimeout>;
 
   getEvents(): Events<State> {
     return {
@@ -184,6 +185,7 @@ export class LookerElement<State extends BaseState> extends BaseElement<
     if (!thumbnail && hovering && this.element !== document.activeElement) {
       this.element.focus();
     }
+
     return this.element;
   }
 

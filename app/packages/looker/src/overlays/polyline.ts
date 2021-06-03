@@ -4,9 +4,10 @@
 
 import { G, Polyline } from "@svgdotjs/svg.js";
 
+import { getAlphaColor } from "../color";
 import { MASK_ALPHA } from "../constants";
 import { BaseState, Coordinates } from "../state";
-import { distanceFromLineSegment, getAlphaColor } from "../util";
+import { distanceFromLineSegment } from "../util";
 import { CONTAINS, CoordinateOverlay, RegularLabel } from "./base";
 
 interface PolylineLabel extends RegularLabel {

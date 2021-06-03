@@ -3,7 +3,6 @@
  */
 
 import { Svg } from "@svgdotjs/svg.js";
-import { colorGenerator, ColorGenerator } from "./color";
 import { Overlay } from "./overlays/base";
 
 export interface BaseSample {
@@ -16,7 +15,6 @@ export interface BaseSample {
 interface BaseOptions {
   activeLabels: string[];
   colorByLabel: boolean;
-  colorGenerator: ColorGenerator;
   filter: {
     [key: string]: (label: { label?: string; confidence?: number }) => boolean;
   } | null;
@@ -151,7 +149,6 @@ const DEFAULT_BASE_OPTIONS = {
   onlyShowHoveredLabel: false,
   filter: null,
   colorMap: null,
-  colorGenerator: colorGenerator,
   smoothMasks: true,
 };
 
@@ -159,13 +156,13 @@ export const DEFAULT_FRAME_OPTIONS = {
   ...DEFAULT_BASE_OPTIONS,
   useFrameNumber: true,
   zoom: false,
-  zoomPad: 16,
+  zoomPad: 0.1,
 };
 
 export const DEFAULT_IMAGE_OPTIONS = {
   ...DEFAULT_BASE_OPTIONS,
   zoom: false,
-  zoomPad: 16,
+  zoomPad: 0.1,
 };
 
 export const DEFAULT_VIDEO_OPTIONS = {

@@ -2,97 +2,39 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 
-import { MASK_ALPHA } from "./constants";
+import colorString from "color-string";
 
-export class ColorGenerator {
-  static white = "#ffffff";
+const alphaCache: { [key: string]: string } = {};
 
-  private static colorS: string = "70%";
-  private static colorL: string = "40%";
-  private static colorA: string = "0.875";
+type RGBA = [number, number, number, number];
 
-  private static bitColorCache: { [key: string]: number } = {};
-  private colors = {};
-  private colorSet: string[];
-  private seed: number;
-  private canvas: HTMLCanvasElement;
+const getRGBAAlphaArray = (color: string, alpha?: number): RGBA => {
+  const rgba = colorString.get.rgb(color);
+  if (alpha) {
+    rgba[3] *= alpha;
+  }
+  return rgba;
+};
 
-  rawColors: { [key: number]: number } = {};
-  rawMaskColors: Uint32Array;
-  rawMaskColorsSelected: Uint32Array;
+export const getAlphaColor = (color: string, alpha: number): string => {
+  const key = `${color}${alpha}`;
+  if (key in alphaCache) {
+    return alphaCache[color];
+  }
+  alphaCache[key] = colorString.to.rgb(getRGBAAlphaArray(color, alpha));
+  return alphaCache[key];
+};
 
-  constructor(seed: number = null) {
-    this.seed = (seed % 32) / 32;
-    this.canvas = document.createElement("canvas");
-    this.canvas.width = 1;
-    this.canvas.height = 1;
+const bitColorCache: { [color: string]: number } = {};
 
-    const maskOffset = Math.floor(this.seed * 256);
-    this.rawMaskColors = new Uint32Array(256);
-    this.rawMaskColorsSelected = new Uint32Array(256);
-    for (let i = 0; i < this.rawMaskColors.length; i++) {
-      this.rawMaskColors[i] = this.rawColor((i + maskOffset) % 256);
-      this.rawMaskColorsSelected[i] = this.rawMaskColors[i];
-    }
-    // reduce alpha of masks
-    const rawMaskColorComponents = new Uint8Array(this.rawMaskColors.buffer);
-    for (let i = 3; i < rawMaskColorComponents.length; i += 4) {
-      rawMaskColorComponents[i] = Math.floor(255 * MASK_ALPHA);
-    }
+export const get32BitColor = (color: string) => {
+  if (color in bitColorCache) {
+    return bitColorCache[color];
   }
 
-  private generateColorSet(n: number = 36) {
-    const context = this.canvas.getContext("2d");
-    context.clearRect(0, 0, 1, 1);
-    const delta = 360 / n;
-    this.colorSet = new Array(n);
-    for (let i = 0; i < n; i++) {
-      this.colorSet[i] = `hsla(${i * delta}, ${ColorGenerator.colorS}, ${
-        ColorGenerator.colorL
-      }, ${ColorGenerator.colorA})`;
-      context.fillStyle = this.colorSet[i];
-      context.clearRect(0, 0, 1, 1);
-      context.fillRect(0, 0, 1, 1);
-      this.rawColors[i] = new Uint32Array(
-        context.getImageData(0, 0, 1, 1).data.buffer
-      )[0];
-    }
-  }
+  bitColorCache[color] = new Uint32Array(
+    new Uint8Array(getRGBAAlphaArray(color)).buffer
+  )[0];
 
-  color(index: number | string | null | undefined): string {
-    if (!(index in this.colors)) {
-      if (typeof this.colorSet === "undefined") {
-        this.generateColorSet();
-      }
-      const rawIndex = Math.floor(this.seed * this.colorSet.length);
-      this.colors[index] = this.colorSet[rawIndex];
-      this.rawColors[index] = this.rawColors[rawIndex];
-    }
-    return this.colors[index];
-  }
-
-  rawColor(index: number | string | null | undefined): number {
-    if (!(index in this.rawColors)) {
-      this.color(index);
-    }
-    return this.rawColors[index];
-  }
-
-  getMaskColor(color: string): number {
-    if (color in ColorGenerator.bitColorCache) {
-      return ColorGenerator.bitColorCache[color];
-    }
-    const context = this.canvas.getContext("2d");
-    context.fillStyle = color;
-    context.clearRect(0, 0, 1, 1);
-    context.fillRect(0, 0, 1, 1);
-    const rgba = new Uint8Array(context.getImageData(0, 0, 1, 1).data.buffer);
-    rgba[3] *= MASK_ALPHA;
-    ColorGenerator.bitColorCache[color] = new Uint32Array(rgba.buffer)[0];
-
-    return ColorGenerator.bitColorCache[color];
-  }
-}
-
-// Instantiate one colorGenerator for global use
-export const colorGenerator = new ColorGenerator();
+  return bitColorCache[color];
+};

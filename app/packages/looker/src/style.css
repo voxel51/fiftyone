@@ -15,15 +15,14 @@
 }
 
 .looker.loading {
+  animation: shimmer 2s infinite;
   background: linear-gradient(
     110deg,
     rgba(0, 0, 0, 0) 8%,
     hsl(210, 11%, 11%) 18%,
     rgba(0, 0, 0, 0) 33%
   );
-  background-size: 300% 300%;
-  animation: 0.5s shine linear infinite;
-  opacity: 0;
+  background-size: 300% 100%;
 }
 
 .looker-controls {
@@ -350,6 +349,13 @@ div.looker-image {
   z-index: 0;
 }
 
+.looker.loading *:not(img, .looker-window, svg) {
+  display: none;
+}
+.looker.loading .looker-window {
+  opacity: 0;
+}
+
 .looker svg {
   object-fit: contain;
   height: 100%;
@@ -375,4 +381,13 @@ div.looker-image {
   image-rendering: pixelated; /* Chrome */
   image-rendering: optimize-contrast; /* CSS3 Proposed                  */
   -ms-interpolation-mode: nearest-neighbor; /* IE8+                           */
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -1000px 0;
+  }
+  100% {
+    background-position: 1000px 0;
+  }
 }

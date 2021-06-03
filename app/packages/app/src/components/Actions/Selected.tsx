@@ -17,7 +17,7 @@ import { packageMessage } from "../../utils/socket";
 import { VideoLooker } from "@fiftyone/looker";
 
 const useGridActions = (close: () => void) => {
-  const itemNames = useRecoilValue(selectors.itemNames);
+  const elementNames = useRecoilValue(selectors.elementNames);
   const clearSelection = useRecoilCallback(
     ({ snapshot, set, reset }) => async () => {
       const [oldSelected, state] = await Promise.all([
@@ -51,18 +51,18 @@ const useGridActions = (close: () => void) => {
 
   return [
     {
-      text: `Clear selected ${itemNames.plural}`,
-      title: `Deselect all selected ${itemNames.plural}`,
+      text: `Clear selected ${elementNames.plural}`,
+      title: `Deselect all selected ${elementNames.plural}`,
       onClick: clearSelection,
     },
     {
-      text: `Only show selected ${itemNames.plural}`,
-      title: `Hide all other ${itemNames.plural}`,
+      text: `Only show selected ${elementNames.plural}`,
+      title: `Hide all other ${elementNames.plural}`,
       onClick: () => addStage("Select"),
     },
     {
-      text: `Hide selected ${itemNames.plural}`,
-      title: `Show only unselected ${itemNames.plural}`,
+      text: `Hide selected ${elementNames.plural}`,
+      title: `Show only unselected ${elementNames.plural}`,
       onClick: () => addStage("Exclude"),
     },
   ];
@@ -185,7 +185,7 @@ const useModalActions = (frameNumber, close) => {
       callback();
     }, []);
   };
-  const itemNames = useRecoilValue(selectors.itemNames);
+  const elementNames = useRecoilValue(selectors.elementNames);
 
   const hasVisibleUnselected = hasSetDiff(visibleSampleLabels, selectedLabels);
   const hasFrameVisibleUnselected = hasSetDiff(
@@ -196,12 +196,12 @@ const useModalActions = (frameNumber, close) => {
 
   return [
     {
-      text: `Select visible (current ${itemNames.singular})`,
+      text: `Select visible (current ${elementNames.singular})`,
       hidden: !hasVisibleUnselected,
       onClick: closeAndCall(useSelectVisible(visibleModalSampleLabels)),
     },
     {
-      text: `Unselect visible (current ${itemNames.singular})`,
+      text: `Unselect visible (current ${elementNames.singular})`,
       hidden: !hasVisibleSelection,
       onClick: closeAndCall(useUnselectVisible(visibleModalSampleLabelIds)),
     },
@@ -230,7 +230,7 @@ const useModalActions = (frameNumber, close) => {
       onClick: closeAndCall(useHideSelected()),
     },
     {
-      text: `Hide unselected (current ${itemNames.singular})`,
+      text: `Hide unselected (current ${elementNames.singular})`,
       hidden: !hasVisibleUnselected,
       onClick: closeAndCall(useHideOthers(visibleModalSampleLabels)),
     },
@@ -258,7 +258,7 @@ const SelectionActions = ({
   bounds,
 }: SelectionActionsProps) => {
   useLayoutEffect(() => {
-    lookerRef.current && lookerRef.current.pause();
+    lookerRef && lookerRef.current && lookerRef.current.pause();
   });
   const actions = modal
     ? useModalActions(lookerRef, close)
