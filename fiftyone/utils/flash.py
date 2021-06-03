@@ -14,7 +14,11 @@ import fiftyone.core.utils as fou
 
 import eta.core.utils as etau
 
-fcc = fou.lazy_import("flash.core.classification")
+fc = fou.lazy_import("flash.core.classification")
+fds = fou.lazy_import("flash.image.detection.serialization")
+fdm = fou.lazy_import("flash.image.detection.model")
+fss = fou.lazy_import("flash.image.segmentation.serialization")
+fsm = fou.lazy_import("flash.image.segmentation.model")
 
 
 logger = logging.getLogger(__name__)
@@ -61,7 +65,13 @@ def apply_flash_model(
 
     serializer = _get_fo_serializer(model, confidence_thresh, store_logits,)
     with fou.SetAttributes(model, serializer=serializer):
-        predictions = model.predict(samples.values("filepath"))
+        filepaths = samples.values("filepath")
+        predictions = model.predict(filepaths)
+
+        # Temporary until detections can be normalized in the serializer
+        if isinstance(serializer, fds.FiftyOneDetectionLabels):
+            normalize_detections(filepaths, predictions)
+
         samples.set_values(label_field, predictions)
 
 
@@ -105,7 +115,13 @@ def normalize_detections(filepaths, predictions):
 def _get_fo_serializer(model, confidence_thresh, store_logits):
     """Initializes the FiftyOne serializer to be used for the given task"""
     previous_serializer = model.serializer
-    if isinstance(model, fcc.ClassificationTask):
+    if isinstance(model, fsm.SemanticSegmentation):
+        return fss.FiftyOneSegmentationLabels()
+
+    elif isinstance(model, fdm.ObjectDetector):
+        return fds.FiftyOneDetectionLabels()
+
+    elif isinstance(model, fc.ClassificationTask):
         prev_args = dict(inspect.getmembers(model.serializer))
         multi_label = prev_args.get("multi_label", False)
 
@@ -120,7 +136,7 @@ def _get_fo_serializer(model, confidence_thresh, store_logits):
         if confidence_thresh is not None:
             kwargs["threshold"] = confidence_thresh
 
-        return fcc.FiftyOneLabels(**kwargs)
+        return fc.FiftyOneLabels(**kwargs)
 
     else:
         raise ValueError(
