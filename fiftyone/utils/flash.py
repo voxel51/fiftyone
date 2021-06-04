@@ -21,7 +21,8 @@ import flash.image.segmentation.serialization as fss
 import flash.image.segmentation.model as fsm
 
 
-_SUPPORTED_TASKS = [
+_BASE_MODEL_TYPE = "flash.core.model.Task"
+_SUPPORTED_MODELS = [
     fc.ClassificationTask,
     fdm.ObjectDetector,
     fsm.SemanticSegmentation,
@@ -72,7 +73,7 @@ def is_flash_model(model):
         True/False
     """
     for cls in inspect.getmro(type(model)):
-        if etau.get_class_name(cls) == "flash.core.model.Task":
+        if etau.get_class_name(cls) == _BASE_MODEL_TYPE:
             return True
 
     return False
@@ -126,5 +127,5 @@ def _get_serializer(model, confidence_thresh, store_logits):
 
     raise ValueError(
         "Unsupported model type %s. Supported model types are %s"
-        % (type(model), _SUPPORTED_TASKS)
+        % (type(model), _SUPPORTED_MODELS)
     )
