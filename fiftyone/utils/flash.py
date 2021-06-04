@@ -107,7 +107,7 @@ def _get_serializer(model, confidence_thresh, store_logits):
         return fss.FiftyOneSegmentationLabels()
 
     if isinstance(model, fdm.ObjectDetector):
-        return fds.FiftyOneDetectionLabels()
+        return fds.FiftyOneDetectionLabels(threshold=confidence_thresh)
 
     if isinstance(model, fc.ClassificationTask):
         prev_args = dict(inspect.getmembers(model.serializer))
