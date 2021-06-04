@@ -132,6 +132,9 @@ format when writing the dataset to disk.
     |                                                                    | stored as TFRecords in `TF Object Detection API format \                           |
     |                                                                    | <https://github.com/tensorflow/models/blob/master/research/object\_detection>`_.   |
     +--------------------------------------------------------------------+------------------------------------------------------------------------------------+
+    | :ref:`ImageSegmentationDirectory                                   | A labeled dataset consisting of images and their associated semantic segmentations |
+    | <ImageSegmentationDirectory-export>`                               | stored as images on disk.                                                          |
+    +--------------------------------------------------------------------+------------------------------------------------------------------------------------+
     | :ref:`CVATImageDataset <CVATImageDataset-export>`                  | A labeled dataset consisting of images and their associated object detections      |
     |                                                                    | stored in `CVAT image format <https://github.com/opencv/cvat>`_.                   |
     +--------------------------------------------------------------------+------------------------------------------------------------------------------------+
@@ -1172,6 +1175,72 @@ format as follows:
             --export-dir $EXPORT_DIR \
             --label-field $LABEL_FIELD \
             --type fiftyone.types.TFObjectDetectionDataset
+
+.. _ImageSegmentationDirectory-export:
+
+ImageSegmentationDirectory
+--------------------------
+
+The :class:`fiftyone.types.ImageSegmentationDirectory <fiftyone.types.dataset_types.ImageSegmentationDirectory>`
+type represents a labeled dataset consisting of images and their associated
+semantic segmentations stored as images on disk.
+
+Datasets of this type are exported in the following format:
+
+.. code-block:: text
+
+    <dataset_dir>/
+        data/
+            <filename1>.<ext>
+            <filename2>.<ext>
+            ...
+        labels/
+            <filename1>.<ext>
+            <filename2>.<ext>
+            ...
+
+where ``labels/`` contains the semantic segmentations stored as images.
+
+Unlabeled images have no corresponding file in ``labels/``.
+
+You can export a FiftyOne dataset as an image segmentation dataset in the above
+format as follows:
+
+.. tabs::
+
+  .. group-tab:: Python
+
+    .. code-block:: python
+        :linenos:
+
+        import fiftyone as fo
+
+        export_dir = "/path/for/image-segmentation-dataset"
+        label_field = "ground_truth"  # for example
+
+        # The Dataset or DatasetView to export
+        dataset_or_view = fo.Dataset(...)
+
+        # Export the dataset
+        dataset_or_view.export(
+            export_dir=export_dir,
+            dataset_type=fo.types.ImageSegmentationDirectory,
+            label_field=label_field,
+        )
+
+  .. group-tab:: CLI
+
+    .. code-block:: shell
+
+        NAME=my-dataset
+        EXPORT_DIR=/path/for/image-segmentation-dataset
+        LABEL_FIELD=ground_truth  # for example
+
+        # Export the dataset
+        fiftyone datasets export $NAME \
+            --export-dir $EXPORT_DIR \
+            --label-field $LABEL_FIELD \
+            --type fiftyone.types.ImageSegmentationDirectory
 
 .. _CVATImageDataset-export:
 

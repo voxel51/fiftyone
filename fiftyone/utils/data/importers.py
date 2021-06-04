@@ -11,6 +11,7 @@ import os
 import random
 
 from bson import json_util
+import cv2
 
 import eta.core.datasets as etads
 import eta.core.image as etai
@@ -1858,6 +1859,145 @@ class FiftyOneImageDetectionDatasetImporter(LabeledImageDatasetImporter):
         return len(labels.get("labels", {}))
 
 
+class ImageSegmentationDirectoryImporter(LabeledImageDatasetImporter):
+    """Importer for image segmentation datasets stored on disk.
+
+    See :class:`fiftyone.types.dataset_types.ImageSegmentationDirectory` for
+    format details.
+
+    Args:
+        dataset_dir: the dataset directory. If ``data_path`` and
+            ``labels_path`` are both absolute paths, this value has no effect
+        data_path ("data"): either the name of the subfolder in ``dataset_dir``
+            or an absolute path to the directory of images
+        labels_path ("labels"): either the name of the subfolder in
+            ``dataset_dir`` or an absolute path to the directory of labels
+        force_grayscale (False): whether to load RGB masks as grayscale by
+            storing only the first channel
+        compute_metadata (False): whether to produce
+            :class:`fiftyone.core.metadata.ImageMetadata` instances for each
+            image when importing
+        skip_unlabeled (False): whether to skip unlabeled images when importing
+        shuffle (False): whether to randomly shuffle the order in which the
+            samples are imported
+        seed (None): a random seed to use when shuffling
+        max_samples (None): a maximum number of samples to import. By default,
+            all samples are imported
+    """
+
+    def __init__(
+        self,
+        dataset_dir,
+        data_path="data",
+        labels_path="labels",
+        compute_metadata=False,
+        force_grayscale=False,
+        skip_unlabeled=False,
+        shuffle=False,
+        seed=None,
+        max_samples=None,
+    ):
+        super().__init__(
+            dataset_dir,
+            skip_unlabeled=skip_unlabeled,
+            shuffle=shuffle,
+            seed=seed,
+            max_samples=max_samples,
+        )
+        self.data_path = data_path
+        self.labels_path = labels_path
+        self.force_grayscale = force_grayscale
+        self.compute_metadata = compute_metadata
+
+        self._data_path = None
+        self._labels_path = None
+        self._image_paths_map = None
+        self._mask_paths_map = None
+        self._uuids = None
+        self._iter_uuids = None
+        self._num_samples = None
+
+    def __iter__(self):
+        self._iter_uuids = iter(self._uuids)
+        return self
+
+    def __len__(self):
+        return self._num_samples
+
+    def __next__(self):
+        uuid = next(self._iter_uuids)
+
+        image_path = self._image_paths_map[uuid]
+        mask_path = self._mask_paths_map.get(uuid, None)
+
+        if self.compute_metadata:
+            image_metadata = fom.ImageMetadata.build_for(image_path)
+        else:
+            image_metadata = None
+
+        if mask_path is None:
+            return image_path, image_metadata, None
+
+        mask = _read_mask(mask_path, force_grayscale=self.force_grayscale)
+        label = fol.Segmentation(mask=mask)
+
+        return image_path, image_metadata, label
+
+    @property
+    def has_dataset_info(self):
+        return False
+
+    @property
+    def has_image_metadata(self):
+        return self.compute_metadata
+
+    @property
+    def label_cls(self):
+        return fol.Segmentation
+
+    def setup(self):
+        if os.path.isabs(self.data_path):
+            data_dir = self.data_path
+        else:
+            data_dir = os.path.join(self.dataset_dir, self.data_path)
+
+        if os.path.isabs(self.labels_path):
+            labels_dir = self.labels_path
+        else:
+            labels_dir = os.path.join(self.dataset_dir, self.labels_path)
+
+        self._image_paths_map = {
+            os.path.splitext(os.path.basename(p))[0]: p
+            for p in etau.list_files(data_dir, abs_paths=True)
+        }
+
+        self._mask_paths_map = {
+            os.path.splitext(os.path.basename(p))[0]: p
+            for p in etau.list_files(labels_dir, abs_paths=True)
+        }
+
+        if self.skip_unlabeled:
+            uuids = sorted(self._mask_paths_map.keys())
+        else:
+            uuids = sorted(self._image_paths_map.keys())
+
+        self._uuids = self._preprocess_list(uuids)
+        self._num_samples = len(self._uuids)
+
+    @staticmethod
+    def get_num_samples(dataset_dir=None, data_path="data"):
+        if os.path.isabs(data_path):
+            data_dir = data_path
+        elif dataset_dir is not None:
+            data_dir = os.path.join(dataset_dir, data_path)
+        else:
+            raise ValueError(
+                "Either `dataset_dir` or `data_path` must be provided"
+            )
+
+        return len(etau.list_files(data_dir))
+
+
 class FiftyOneImageLabelsDatasetImporter(LabeledImageDatasetImporter):
     """Importer for labeled image datasets whose labels are stored in
     `ETA ImageLabels format <https://github.com/voxel51/eta/blob/develop/docs/image_labels_guide.md>`_.
@@ -2125,3 +2265,12 @@ class FiftyOneVideoLabelsDatasetImporter(LabeledVideoDatasetImporter):
     @staticmethod
     def get_num_samples(dataset_dir):
         return len(etads.load_dataset(dataset_dir))
+
+
+def _read_mask(mask_path, force_grayscale=False):
+    # pylint: disable=no-member
+    mask = etai.read(mask_path, cv2.IMREAD_UNCHANGED)
+    if force_grayscale and mask.ndim > 1:
+        mask = mask[:, :, 0]
+
+    return mask

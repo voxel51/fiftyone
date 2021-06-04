@@ -1443,6 +1443,64 @@ class FiftyOneImageDetectionDatasetExporter(LabeledImageDatasetExporter):
             self._labels_map_rev = _to_labels_map_rev(self.classes)
 
 
+class ImageSegmentationDirectoryExporter(LabeledImageDatasetExporter):
+    """Exporter that writes an image segmentation dataset to disk.
+
+    See :class:`fiftyone.types.dataset_types.ImageSegmentationDirectory` for
+    format details.
+
+    If the path to an image is provided, the image is directly copied to its
+    destination, maintaining the original filename, unless a name conflict
+    would occur, in which case an index of the form ``"-%d" % count`` is
+    appended to the base filename.
+
+    Args:
+        export_dir: the directory to write the export
+        image_format (None): the image format to use when writing in-memory
+            images to disk. By default, ``fiftyone.config.default_image_ext``
+            is used
+        mask_format (".png"): the image format to use when writing masks to
+            disk
+    """
+
+    def __init__(self, export_dir, image_format=None, mask_format=".png"):
+        if image_format is None:
+            image_format = fo.config.default_image_ext
+
+        super().__init__(export_dir)
+        self.image_format = image_format
+        self.mask_format = mask_format
+        self._data_dir = None
+        self._labels_dir = None
+        self._filename_maker = None
+
+    @property
+    def requires_image_metadata(self):
+        return False
+
+    @property
+    def label_cls(self):
+        return fol.Segmentation
+
+    def setup(self):
+        self._data_dir = os.path.join(self.export_dir, "data")
+        self._labels_dir = os.path.join(self.export_dir, "labels")
+        self._filename_maker = fou.UniqueFilenameMaker(
+            output_dir=self._data_dir,
+            default_ext=self.image_format,
+            ignore_exts=True,
+        )
+
+    def export_sample(self, image_or_path, segmentation, metadata=None):
+        out_image_path = self._export_image_or_path(
+            image_or_path, self._filename_maker
+        )
+        name = os.path.splitext(os.path.basename(out_image_path))[0]
+
+        out_mask_path = os.path.join(self._labels_dir, name + self.mask_format)
+        etai.write(segmentation.mask, out_mask_path)
+
+
 class FiftyOneImageLabelsDatasetExporter(LabeledImageDatasetExporter):
     """Exporter that writes a labeled image dataset to disk with labels stored
     in `ETA ImageLabels format <https://github.com/voxel51/eta/blob/develop/docs/image_labels_guide.md>`_.
