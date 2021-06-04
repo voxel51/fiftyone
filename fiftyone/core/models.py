@@ -77,35 +77,23 @@ def apply_model(
         store_logits (False): whether to store logits for the model
             predictions. This is only supported when the provided ``model`` has
             logits, ``model.has_logits == True``
-        batch_size (None): an optional batch size to use. Only applicable when
-            applying a :class:`Model` that supports batching to images or video
-            frames
+        batch_size (None): an optional batch size to use, if the model supports
+            batching
         num_workers (None): the number of workers to use when loading images.
-            Only applicable to FiftyOne models that implement
-            :class:`TorchModelMixin`
+            Only applicable for Torch-based models
         skip_failures (True): whether to gracefully continue without raising an
-            error if predictions cannot be generated for a sample. Not
-            applicable to Lightning Flash models
+            error if predictions cannot be generated for a sample. Only
+            applicable to :class:`Model` instances
     """
     if _is_flash_model(model):
-        if batch_size is not None:
-            logger.warning(
-                "The `batch_size` parameter is not supported for Lightning "
-                "Flash models"
-            )
-
-        if num_workers is not None:
-            logger.warning(
-                "The `num_workers` parameter is not supported for Lightning "
-                "Flash models"
-            )
-
         return fouf.apply_flash_model(
             samples,
             model,
             label_field=label_field,
             confidence_thresh=confidence_thresh,
             store_logits=store_logits,
+            batch_size=batch_size,
+            num_workers=num_workers,
         )
 
     if not isinstance(model, Model):
@@ -652,12 +640,13 @@ def compute_embeddings(
         embeddings_field (None): the name of a field in which to store the
             embeddings. When computing video frame embeddings, the "frames."
             prefix is optional
-        batch_size (None): an optional batch size to use. Only applicable for
-            image samples
+        batch_size (None): an optional batch size to use, if the model supports
+            batching
         num_workers (None): the number of workers to use when loading images.
-            Only applicable for Torch models
+            Only applicable for Torch-based models
         skip_failures (True): whether to gracefully continue without raising an
-            error if embeddings cannot be generated for a sample
+            error if embeddings cannot be generated for a sample. Only
+            applicable to :class:`fiftyone.core.models.Model` instances
 
     Returns:
         one of the following:
@@ -678,20 +667,12 @@ def compute_embeddings(
             error occurred, or ``None`` if no embeddings were computed at all
     """
     if _is_flash_model(model):
-        if batch_size is not None:
-            logger.warning(
-                "The `batch_size` parameter is not supported for Lightning "
-                "Flash models"
-            )
-
-        if num_workers is not None:
-            logger.warning(
-                "The `num_workers` parameter is not supported for Lightning "
-                "Flash models"
-            )
-
         return fouf.compute_flash_embeddings(
-            samples, model, embeddings_field=embeddings_field
+            samples,
+            model,
+            embeddings_field=embeddings_field,
+            batch_size=batch_size,
+            num_workers=num_workers,
         )
 
     if not isinstance(model, Model):
@@ -1201,7 +1182,8 @@ def compute_patch_embeddings(
             -   "image": use the whole image as a single patch
             -   "error": raise an error
 
-        batch_size (None): an optional batch size to use
+        batch_size (None): an optional batch size to use, if the model supports
+            batching
         num_workers (None): the number of workers to use when loading images.
             Only applicable for Torch models
         skip_failures (True): whether to gracefully continue without raising an
