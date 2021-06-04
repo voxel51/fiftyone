@@ -243,7 +243,7 @@ export default class DetectionOverlay<
     const maskImage = maskContext.createImageData(maskWidth, maskHeight);
     const maskImageRaw = new Uint32Array(maskImage.data.buffer);
 
-    const bitColor = get32BitColor(getAlphaColor(this.color, MASK_ALPHA));
+    const bitColor = get32BitColor(this.color, MASK_ALPHA);
     for (let i = 0; i < this.mask.data.length; i++) {
       if (this.mask.data[i]) {
         maskImageRaw[i] = bitColor;

@@ -144,7 +144,9 @@ export abstract class Looker<
   }
 
   update(options: Optional<State["options"]>) {
-    this.updater({ options });
+    new Promise(() => this.updater({ options })).then(() =>
+      console.log("done")
+    );
   }
 
   protected abstract getElements(): LookerElement<State>;

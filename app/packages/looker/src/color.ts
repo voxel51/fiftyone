@@ -3,6 +3,7 @@
  */
 
 import colorString from "color-string";
+import { MASK_ALPHA, SELECTED_MASK_ALPHA } from "./constants";
 
 const alphaCache: { [key: string]: string } = {};
 
@@ -13,6 +14,7 @@ const getRGBAAlphaArray = (color: string, alpha?: number): RGBA => {
   if (alpha) {
     rgba[3] *= alpha;
   }
+  rgba[3] = Math.min(Math.floor(255 * rgba[3]), 255);
   return rgba;
 };
 
@@ -29,14 +31,35 @@ export const getAlphaColor = (color: string, alpha: number): string => {
 
 const bitColorCache: { [color: string]: number } = {};
 
-export const get32BitColor = (color: string) => {
-  if (color in bitColorCache) {
-    return bitColorCache[color];
+export const get32BitColor = (color: string, alpha?: number) => {
+  const key = `${color}${alpha}`;
+  if (key in bitColorCache) {
+    return bitColorCache[key];
   }
 
-  bitColorCache[color] = Number(
-    new Uint32Array(new Uint8Array(getRGBAAlphaArray(color)).buffer)[0]
-  );
+  bitColorCache[key] = new Uint32Array(
+    new Uint8Array(getRGBAAlphaArray(color, alpha)).buffer
+  )[0];
 
-  return bitColorCache[color];
+  return bitColorCache[key];
+};
+
+let rawMaskColors = new Uint32Array(256);
+let rawMaskColorsSelected;
+
+let cachedColorMap = null;
+
+export const getSegmentationColorArray = (
+  colorMap: Function,
+  selected: boolean
+): Readonly<Uint32Array> => {
+  if (cachedColorMap !== colorMap) {
+    cachedColorMap = colorMap;
+    for (let i = 0; i < 256; i++) {
+      rawMaskColors[i] = get32BitColor(colorMap(i), MASK_ALPHA);
+      rawMaskColorsSelected = get32BitColor(colorMap(i), SELECTED_MASK_ALPHA);
+    }
+  }
+
+  return selected ? rawMaskColorsSelected : rawMaskColors;
 };
