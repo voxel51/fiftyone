@@ -8,25 +8,25 @@ Utilities for working with
 """
 import inspect
 
-import eta.core.utils as etau
+import numpy as np
 
 import fiftyone.core.metadata as fom
 import fiftyone.core.utils as fou
 
 fou.ensure_lightning_flash()
 import flash.core.classification as fc
+import flash.image as fi
 import flash.image.detection.serialization as fds
-import flash.image.detection.model as fdm
 import flash.image.segmentation.serialization as fss
-import flash.image.segmentation.model as fsm
 
 
-_BASE_MODEL_TYPE = "flash.core.model.Task"
-_SUPPORTED_MODELS = [
-    fc.ClassificationTask,
-    fdm.ObjectDetector,
-    fsm.SemanticSegmentation,
-]
+_SUPPORTED_MODELS = (
+    fi.ImageClassifier,
+    fi.ObjectDetector,
+    fi.SemanticSegmentation,
+)
+
+_SUPPORTED_EMBEDDING_MODELS = (fi.ImageEmbedder,)
 
 
 def apply_flash_model(
@@ -64,20 +64,44 @@ def apply_flash_model(
         samples.set_values(label_field, predictions)
 
 
-def is_flash_model(model):
-    """Determines whether the given model is a Lightning Flash model.
+def compute_flash_embeddings(samples, model, embeddings_field=None):
+    """Computes embeddings for the samples in the collection using the given
+    :class:`Lightning Flash model <flash:flash.core.model.Task>`.
+
+    This method only supports applying an
+    :class:`flash:flash.image.ImageEmbeder` to an image collection.
+
+    If an ``embeddings_field`` is provided, the embeddings are saved to the
+    samples; otherwise, the embeddings are returned in-memory.
 
     Args:
-        model: the model
+        samples: a :class:`fiftyone.core.collections.SampleCollection`
+        model: a :class:`flash:flash.image.ImageEmbeder`
+        embeddings_field (None): the name of a field in which to store the
+            embeddings
 
     Returns:
-        True/False
-    """
-    for cls in inspect.getmro(type(model)):
-        if etau.get_class_name(cls) == _BASE_MODEL_TYPE:
-            return True
+        one of the following:
 
-    return False
+        -   ``None``, if an ``embeddings_field`` is provided
+        -   a ``num_samples x num_dim`` array of embeddings, if
+            ``embeddings_field`` is None
+    """
+    if not isinstance(model, _SUPPORTED_EMBEDDING_MODELS):
+        raise ValueError(
+            "Unsupported model type %s. Supported model types are %s"
+            % (type(model), _SUPPORTED_EMBEDDING_MODELS)
+        )
+
+    filepaths = samples.values("filepath")
+    embeddings = model.predict(filepaths)
+    embeddings = np.stack(embeddings)
+
+    if embeddings_field is not None:
+        samples.set_values(embeddings_field, list(embeddings))
+        return
+
+    return embeddings
 
 
 def normalize_detections(filepaths, predictions):
@@ -104,13 +128,7 @@ def normalize_detections(filepaths, predictions):
 
 
 def _get_serializer(model, confidence_thresh, store_logits):
-    if isinstance(model, fsm.SemanticSegmentation):
-        return fss.FiftyOneSegmentationLabels()
-
-    if isinstance(model, fdm.ObjectDetector):
-        return fds.FiftyOneDetectionLabels(threshold=confidence_thresh)
-
-    if isinstance(model, fc.ClassificationTask):
+    if isinstance(model, fi.ImageClassifier):
         prev_args = dict(inspect.getmembers(model.serializer))
 
         kwargs = {
@@ -125,6 +143,12 @@ def _get_serializer(model, confidence_thresh, store_logits):
             kwargs["threshold"] = confidence_thresh
 
         return fc.FiftyOneLabels(**kwargs)
+
+    if isinstance(model, fi.ObjectDetector):
+        return fds.FiftyOneDetectionLabels(threshold=confidence_thresh)
+
+    if isinstance(model, fi.SemanticSegmentation):
+        return fss.FiftyOneSegmentationLabels()
 
     raise ValueError(
         "Unsupported model type %s. Supported model types are %s"

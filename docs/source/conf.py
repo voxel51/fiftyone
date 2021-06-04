@@ -136,7 +136,7 @@ redirects_file = "redirects"
 # -- Options for intersphinx extension ---------------------------------------
 
 intersphinx_mapping = {
-    # including this autolinks things like (None) which is not desirable
+    # including `python` autolinks things like (None) which is not desirable
     # "python": ("https://docs.python.org/3", None),
     "numpy": ("https://numpy.org/doc/stable/", None),
     "torch": ("https://pytorch.org/docs/stable/", None),

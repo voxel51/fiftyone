@@ -6,6 +6,7 @@ FiftyOne models.
 |
 """
 import contextlib
+import inspect
 import itertools
 import logging
 import warnings
@@ -86,7 +87,7 @@ def apply_model(
             error if predictions cannot be generated for a sample. Not
             applicable to Lightning Flash models
     """
-    if fouf.is_flash_model(model):
+    if _is_flash_model(model):
         if batch_size is not None:
             logger.warning(
                 "The `batch_size` parameter is not supported for Lightning "
@@ -109,7 +110,8 @@ def apply_model(
 
     if not isinstance(model, Model):
         raise ValueError(
-            "Model must be a %s instance; found %s" % (Model, type(model))
+            "Model must be a %s or %s; found %s"
+            % (Model, _BASE_FLASH_TYPE, type(model))
         )
 
     if model.media_type == "video" and samples.media_type != fom.VIDEO:
@@ -209,6 +211,17 @@ def apply_model(
         return _apply_image_model_single(
             samples, model, label_field, confidence_thresh, skip_failures
         )
+
+
+_BASE_FLASH_TYPE = "flash.core.model.Task"
+
+
+def _is_flash_model(model):
+    for cls in inspect.getmro(type(model)):
+        if etau.get_class_name(cls) == _BASE_FLASH_TYPE:
+            return True
+
+    return False
 
 
 def _apply_image_model_single(
@@ -613,23 +626,29 @@ def compute_embeddings(
     skip_failures=True,
 ):
     """Computes embeddings for the samples in the collection using the given
-    :class:`Model`.
+    :class:`FiftyOne model <Model>` or
+    :class:`Lightning Flash model <flash:flash.core.model.Task>`.
 
     This method supports all the following cases:
 
-    -   Using an image model to compute embeddings for an image collection
-    -   Using an image model to compute frame embeddings for a video collection
-    -   Using a video model to compute embeddings for a video collection
+    -   Using an image :class:`Model` to compute embeddings for an image
+        collection
+    -   Using an image :class:`Model` to compute frame embeddings for a video
+        collection
+    -   Using a video :class:`Model` to compute embeddings for a video
+        collection
+    -   Using an :class:`flash:flash.image.ImageEmbeder` to compute embeddings
+        for an image collection
 
-    The ``model`` must expose embeddings, i.e., :meth:`Model.has_embeddings`
-    must return ``True``.
+    When ``model`` is a FiftyOne model, it must expose embeddings, i.e.,
+    :meth:`Model.has_embeddings` must return ``True``.
 
     If an ``embeddings_field`` is provided, the embeddings are saved to the
     samples; otherwise, the embeddings are returned in-memory.
 
     Args:
         samples: a :class:`fiftyone.core.collections.SampleCollection`
-        model: a :class:`Model`
+        model: a :class:`Model` or :class:`flash:flash.image.ImageEmbeder`
         embeddings_field (None): the name of a field in which to store the
             embeddings. When computing video frame embeddings, the "frames."
             prefix is optional
@@ -658,9 +677,27 @@ def compute_embeddings(
             contain arrays of embeddings for all frames 1, 2, ... until the
             error occurred, or ``None`` if no embeddings were computed at all
     """
+    if _is_flash_model(model):
+        if batch_size is not None:
+            logger.warning(
+                "The `batch_size` parameter is not supported for Lightning "
+                "Flash models"
+            )
+
+        if num_workers is not None:
+            logger.warning(
+                "The `num_workers` parameter is not supported for Lightning "
+                "Flash models"
+            )
+
+        return fouf.compute_flash_embeddings(
+            samples, model, embeddings_field=embeddings_field
+        )
+
     if not isinstance(model, Model):
         raise ValueError(
-            "Model must be a %s instance; found %s" % (Model, type(model))
+            "Model must be a %s or %s; found %s"
+            % (Model, _BASE_FLASH_TYPE, type(model))
         )
 
     if not model.has_embeddings:
