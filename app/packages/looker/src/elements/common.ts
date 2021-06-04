@@ -14,7 +14,6 @@ export class LookerElement<State extends BaseState> extends BaseElement<
   private hideControlsTimeout?: ReturnType<typeof setTimeout>;
   private start: Coordinates = [0, 0];
   private wheelTimeout: ReturnType<typeof setTimeout>;
-  private shimmerTimeout: ReturnType<typeof setTimeout>;
 
   getEvents(): Events<State> {
     return {

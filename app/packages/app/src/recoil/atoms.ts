@@ -138,18 +138,8 @@ export const sampleMetadata = atomFamily<
   },
 });
 
-export const sampleVideoLabels = atomFamily({
-  key: "sampleVideoLabels",
-  default: null,
-});
-
-export const sampleFrameData = atomFamily({
-  key: "sampleFrameData",
-  default: null,
-});
-
-export const sampleVideoDataRequested = atomFamily({
-  key: "sampleVideoDataRequested",
+export const sampleVideoData = atomFamily({
+  key: "sampleVideoData",
   default: null,
 });
 

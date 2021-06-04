@@ -858,10 +858,10 @@ export const sampleIds = selector<{ [key: number]: string }>({
 export const sampleFramesMap = selectorFamily<any, string>({
   key: "sampleFramesMap",
   get: (id) => ({ get }) => {
-    const frameData = get(atoms.sampleFrameData(id));
+    const frameData = get(atoms.sampleVideoData(id));
 
     return frameData
-      ? Object.fromEntries(frameData.map((f) => [f.frame_number, f]))
+      ? Object.fromEntries(frameData.frames.map((f) => [f.frame_number, f]))
       : {};
   },
 });

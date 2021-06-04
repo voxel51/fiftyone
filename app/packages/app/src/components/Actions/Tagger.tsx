@@ -152,7 +152,9 @@ const Section = ({
       <TaggingContainerInput>
         <TaggingInput
           placeholder={
-            disabled
+            count == 0
+              ? `No ${labels ? "labels" : elementNames.plural}`
+              : disabled
               ? count === null
                 ? "loading..."
                 : "saving..."

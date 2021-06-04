@@ -7,6 +7,6 @@
     "outDir": "dist",
     "jsx": "preserve"
   },
-  "include": ["src"],
+  "include": ["index.ts"],
   "references": [{ "path": "../looker" }]
 }

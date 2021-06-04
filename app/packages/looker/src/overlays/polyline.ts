@@ -43,6 +43,7 @@ export default class PolylineOverlay<
       if (this.label.filled) {
         polyline.fill(alphaColor);
       }
+      this.g.add(polyline);
       return polyline;
     });
   }

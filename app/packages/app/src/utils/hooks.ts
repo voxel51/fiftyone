@@ -124,10 +124,8 @@ export const useFollow = (leaderRef, followerRef, set) => {
 export const useSampleUpdate = () => {
   const handler = useRecoilCallback(
     ({ set }) => async ({ samples }) => {
-      samples.forEach(({ sample, frames, labels }) => {
+      samples.forEach(({ sample }) => {
         set(atoms.sample(sample._id), sample);
-        labels && set(atoms.sampleVideoLabels(sample._id), labels);
-        frames && set(atoms.sampleFrameData(sample._id), frames);
       });
       set(selectors.anyTagging, false);
     },

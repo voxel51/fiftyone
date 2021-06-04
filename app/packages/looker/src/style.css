@@ -26,7 +26,6 @@
 }
 
 .looker-controls {
-  font-family: Arial, sans-serif;
   position: absolute;
   bottom: 0;
   left: 0;
@@ -61,7 +60,6 @@
 }
 
 .looker-options-panel {
-  font-family: Arial, sans-serif;
   position: absolute;
   right: 0;
   bottom: 3em; /* overridden by _repositionOptionsPanel */
@@ -73,6 +71,7 @@
   flex-direction: row;
   justify-content: center;
   align-items: center;
+  font-weight: bold;
 
   color: #eee;
 
@@ -115,8 +114,8 @@
   grid-template-columns: max-content 1fr;
   cursor: pointer;
   margin: 0 0 1px;
-  padding: 0;
-  line-height: 1.2;
+  padding-left: 3px;
+  line-height: 1.5;
 }
 
 .looker-controls button {

@@ -1,4 +1,4 @@
-import React, { useState, useRef, MutableRefObject } from "react";
+import React, { useState, useRef, MutableRefObject, useEffect } from "react";
 import ReactDOM from "react-dom";
 import styled from "styled-components";
 import { selectorFamily, useRecoilValue, useRecoilCallback } from "recoil";
@@ -18,7 +18,6 @@ import {
   ImageOptions,
   VideoOptions,
 } from "@fiftyone/looker/src/state";
-import { useLayoutEffect } from "react";
 import { useMove } from "react-use-gesture";
 
 type LookerTypes = typeof FrameLooker | typeof ImageLooker | typeof VideoLooker;
@@ -477,7 +476,7 @@ const Looker = ({
 
   lookerRef && (lookerRef.current = looker);
 
-  useLayoutEffect(() => {
+  useEffect(() => {
     looker.update(options);
   }, [looker, options]);
 

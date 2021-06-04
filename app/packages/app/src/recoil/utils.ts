@@ -1,8 +1,7 @@
-import { atom, selector, useRecoilCallback } from "recoil";
+import { atom, useRecoilCallback } from "recoil";
 
 import * as atoms from "./atoms";
 import * as selectors from "./selectors";
-import * as labelAtoms from "./../components/Filters/LabelFieldFilters.state";
 
 import socket from "../shared/connection";
 
@@ -33,7 +32,6 @@ export const useClearModal = () => {
       reset(atoms.modal);
       reset(selectors.selectedLabels);
       reset(atoms.hiddenLabels);
-      reset(labelAtoms.labelFilters(true));
       reset(showModalJSON);
     },
     []

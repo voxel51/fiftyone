@@ -91,9 +91,6 @@ export default (): [State, (state: State) => void] => {
       const clearSample = (id) => {
         reset(atoms.sample(id));
         reset(atoms.sampleMetadata(id));
-        reset(atoms.sampleFrameData(id));
-        reset(atoms.sampleVideoLabels(id));
-        reset(atoms.sampleVideoDataRequested(id));
       };
       reset(atoms.gridRows);
       const rows = await snapshot.getPromise(atoms.gridRows);
