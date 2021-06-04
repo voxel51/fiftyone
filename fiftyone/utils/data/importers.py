@@ -2270,6 +2270,7 @@ class FiftyOneVideoLabelsDatasetImporter(LabeledVideoDatasetImporter):
 def _read_mask(mask_path, force_grayscale=False):
     # pylint: disable=no-member
     mask = etai.read(mask_path, cv2.IMREAD_UNCHANGED)
-    if force_grayscale and len(mask.shape) == 3:
+    if force_grayscale and mask.ndim > 1:
         mask = mask[:, :, 0]
+
     return mask
