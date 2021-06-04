@@ -53,7 +53,8 @@ def apply_model(
     num_workers=None,
     skip_failures=True,
 ):
-    """Applies the given :class:`Model` or Lightning Flash model to the samples
+    """Applies the :class:`FiftyOne model <Model>` or
+    :class:`Lightning Flash model <flash:flash.core.model.Task>` to the samples
     in the collection.
 
     This method supports all of the following cases:
@@ -61,11 +62,12 @@ def apply_model(
     -   Applying an image :class:`Model` to an image collection
     -   Applying an image :class:`Model` to the frames of a video collection
     -   Applying a video :class:`Model` to a video collection
-    -   Applying a Lightning Flash model to an image or video collection
+    -   Applying a :class:`flash:flash.core.model.Task` to an image or video
+        collection
 
     Args:
         samples: a :class:`fiftyone.core.collections.SampleCollection`
-        model: a :class:`Model` or ``flash.core.model.Task``
+        model: a :class:`Model` or :class:`flash:flash.core.model.Task`
         label_field ("predictions"): the name of the field in which to store
             the model predictions. When performing inference on video frames,
             the "frames." prefix is optional
@@ -78,7 +80,8 @@ def apply_model(
             applying a :class:`Model` that supports batching to images or video
             frames
         num_workers (None): the number of workers to use when loading images.
-            Only applicable for Torch models
+            Only applicable to FiftyOne models that implement
+            :class:`TorchModelMixin`
         skip_failures (True): whether to gracefully continue without raising an
             error if predictions cannot be generated for a sample. Not
             applicable to Lightning Flash models

@@ -36,12 +36,13 @@ def apply_flash_model(
     confidence_thresh=None,
     store_logits=False,
 ):
-    """Applies the given Lightning Flash model to the samples in the
-    collection.
+    """Applies the given
+    :class:`Lightning Flash model <flash:flash.core.model.Task>` to the samples
+    in the collection.
 
     Args:
         samples: a :class:`fiftyone.core.collections.SampleCollection`
-        model: a ``flash.core.model.Task``
+        model: a :class:`flash:flash.core.model.Task`
         label_field ("predictions"): the name of the field in which to store
             the model predictions. When performing inference on video frames,
             the "frames." prefix is optional

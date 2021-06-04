@@ -1234,8 +1234,9 @@ class SampleCollection(object):
         num_workers=None,
         skip_failures=True,
     ):
-        """Applies the :class:`fiftyone.core.models.Model` or Lightning Flash
-        model to the samples in the collection.
+        """Applies the :class:`FiftyOne model <fiftyone.core.models.Model>` or
+        :class:`Lightning Flash model <flash:flash.core.model.Task>` to the
+        samples in the collection.
 
         This method supports all of the following cases:
 
@@ -1245,11 +1246,12 @@ class SampleCollection(object):
             of a video collection
         -   Applying a video :class:`fiftyone.core.models.Model` to a video
             collection
-        -   Applying a Lightning Flash model to an image or video collection
+        -   Applying a :class:`flash:flash.core.model.Task` to an image or
+            video collection
 
         Args:
             model: a :class:`fiftyone.core.models.Model` or
-                ``flash.core.model.Task``
+                :class:`flash:flash.core.model.Task`
             label_field ("predictions"): the name of the field in which to
                 store the model predictions. When performing inference on video
                 frames, the "frames." prefix is optional
@@ -1262,7 +1264,8 @@ class SampleCollection(object):
                 when applying a :class:`fiftyone.core.models.Model` that
                 supports batching to images or video frames
             num_workers (None): the number of workers to use when loading
-                images. Only applicable for Torch models
+                images. Only applicable to FiftyOne models that implement
+                :class:`fiftyone.core.models.TorchModelMixin`
             skip_failures (True): whether to gracefully continue without
                 raising an error if predictions cannot be generated for a
                 sample. Not applicable to Lightning Flash models
