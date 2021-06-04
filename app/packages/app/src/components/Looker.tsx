@@ -478,7 +478,7 @@ const Looker = ({
 
   useEffect(() => {
     looker.update(options);
-  }, [looker, options]);
+  }, [options]);
 
   modal && useEventHandler(looker, "options", useLookerOptionsUpdate());
 

@@ -1,7 +1,7 @@
 /**
  * Copyright 2017-2021, Voxel51, Inc.
  */
-import { G, Image, Rect, Text } from "@svgdotjs/svg.js";
+import { ForeignObject, G, Image, Rect, SVG, Text } from "@svgdotjs/svg.js";
 import { get32BitColor, getAlphaColor } from "../color";
 import { MASK_ALPHA, TEXT_BG_COLOR } from "../constants";
 
@@ -28,7 +28,8 @@ export default class DetectionOverlay<
   private strokeWidth: number;
   private fontSize: number;
   private title: Text;
-  private img: Image;
+  private foreignObject: ForeignObject;
+  private canvas: HTMLCanvasElement;
   private static readonly intermediateCanvas: HTMLCanvasElement = document.createElement(
     "canvas"
   );
@@ -39,20 +40,29 @@ export default class DetectionOverlay<
     this.color = this.getColor(state);
     this.g = new G();
 
-    if (typeof label.mask === "string") {
-      this.mask = deserialize(label.mask);
-      this.img = this.createMask(state);
-      this.g.add(this.img);
-    }
-
     const {
       config: {
         dimensions: [width, height],
       },
     } = state;
+
     const {
       bounding_box: [btlx, btly, bw, bh],
     } = this.label;
+
+    if (typeof label.mask === "string") {
+      this.mask = deserialize(this.label.mask);
+      this.canvas = document.createElement("canvas");
+      this.canvas.width = width;
+      this.canvas.height = height;
+      this.canvas.getContext("2d").imageSmoothingEnabled = false;
+      this.foreignObject = new ForeignObject()
+        .size(width * bw, height * bh)
+        .move(btlx * width, btly * height)
+        .add(SVG(this.canvas));
+      this.drawMask(state);
+      this.g.add(this.foreignObject);
+    }
 
     this.rect = new Rect()
       .size(width * bw, height * bh)
@@ -96,9 +106,7 @@ export default class DetectionOverlay<
     if (this.color !== color) {
       this.color = color;
       if (this.mask) {
-        const img = this.createMask(state);
-        this.img.replace(img);
-        this.img = img;
+        const img = this.drawMask(state);
       }
     }
     if (this.isShown(state)) {
@@ -225,15 +233,12 @@ export default class DetectionOverlay<
     return text;
   }
 
-  private createMask(state: Readonly<State>): Image {
+  private drawMask(state: Readonly<State>) {
     const {
       config: {
         dimensions: [width, height],
       },
     } = state;
-    const {
-      bounding_box: [btlx, btly, bw, bh],
-    } = this.label;
     const [maskHeight, maskWidth] = this.mask.shape;
     const maskContext = DetectionOverlay.intermediateCanvas.getContext("2d");
     ensureCanvasSize(DetectionOverlay.intermediateCanvas, [
@@ -250,14 +255,11 @@ export default class DetectionOverlay<
       }
     }
     maskContext.putImageData(maskImage, 0, 0);
-
-    return new Image()
-      .attr({
-        preserveAspectRatio: "none",
-        href: maskContext.canvas.toDataURL("image/png", 1),
-      })
-      .size(width * bw, height * bh)
-      .move(btlx * width, btly * height);
+    const context = this.canvas.getContext("2d");
+    context.clearRect(0, 0, width, height);
+    this.canvas
+      .getContext("2d")
+      .drawImage(maskContext.canvas, 0, 0, width, height);
   }
 }
 

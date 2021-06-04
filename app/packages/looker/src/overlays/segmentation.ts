@@ -40,6 +40,7 @@ export default class SegmentationOverlay<State extends BaseState>
       this.mask = deserialize(this.label.mask);
       this.targets = new Uint32Array(this.mask.data);
       this.canvas = document.createElement("canvas");
+      this.canvas.getContext("2d").imageSmoothingEnabled = false;
       this.canvas.width = w;
       this.canvas.height = h;
       this.foreignObject = new ForeignObject().size(w, h).add(SVG(this.canvas));
