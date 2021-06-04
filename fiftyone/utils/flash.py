@@ -102,6 +102,12 @@ def normalize_detections(filepaths, predictions):
 
 
 def _get_serializer(model, confidence_thresh, store_logits):
+    if isinstance(model, fsm.SemanticSegmentation):
+        return fss.FiftyOneSegmentationLabels()
+
+    if isinstance(model, fdm.ObjectDetector):
+        return fds.FiftyOneDetectionLabels()
+
     if isinstance(model, fc.ClassificationTask):
         prev_args = dict(inspect.getmembers(model.serializer))
 
@@ -117,12 +123,6 @@ def _get_serializer(model, confidence_thresh, store_logits):
             kwargs["threshold"] = confidence_thresh
 
         return fc.FiftyOneLabels(**kwargs)
-
-    if isinstance(model, fdm.ObjectDetector):
-        return fds.FiftyOneDetectionLabels()
-
-    if isinstance(model, fsm.SemanticSegmentation):
-        return fss.FiftyOneSegmentationLabels()
 
     raise ValueError(
         "Unsupported model type %s. Supported model types are %s"
