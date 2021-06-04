@@ -51,12 +51,12 @@ def apply_flash_model(
             predictions. This is only supported when the provided ``model`` has
             logits
     """
-    serializer = _get_serializer(model, confidence_thresh, store_logits,)
+    serializer = _get_serializer(model, confidence_thresh, store_logits)
     with fou.SetAttributes(model, serializer=serializer):
         filepaths = samples.values("filepath")
         predictions = model.predict(filepaths)
 
-        # Temporary until detections can be normalized in the serializer
+        # @todo remove when `FiftyOneDetectionLabels` can self-normalize
         if isinstance(serializer, fds.FiftyOneDetectionLabels):
             normalize_detections(filepaths, predictions)
 
