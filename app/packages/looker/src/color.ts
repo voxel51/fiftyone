@@ -18,9 +18,11 @@ const getRGBAAlphaArray = (color: string, alpha?: number): RGBA => {
 
 export const getAlphaColor = (color: string, alpha: number): string => {
   const key = `${color}${alpha}`;
+
   if (key in alphaCache) {
-    return alphaCache[color];
+    return alphaCache[key];
   }
+
   alphaCache[key] = colorString.to.rgb(getRGBAAlphaArray(color, alpha));
   return alphaCache[key];
 };
@@ -32,9 +34,9 @@ export const get32BitColor = (color: string) => {
     return bitColorCache[color];
   }
 
-  bitColorCache[color] = new Uint32Array(
-    new Uint8Array(getRGBAAlphaArray(color)).buffer
-  )[0];
+  bitColorCache[color] = Number(
+    new Uint32Array(new Uint8Array(getRGBAAlphaArray(color)).buffer)[0]
+  );
 
   return bitColorCache[color];
 };

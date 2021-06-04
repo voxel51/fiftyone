@@ -10,7 +10,7 @@ import * as selectors from "../recoil/selectors";
 import { ColorTheme } from "../shared/colors";
 import socket, { appContext, handleId, isColab } from "../shared/connection";
 import { packageMessage } from "./socket";
-import gaConfig from "../constants/ga.json";
+import gaConfig from "../constants/ga";
 
 export const useEventHandler = (target, eventType, handler) => {
   // Adapted from https://reactjs.org/docs/hooks-faq.html#what-can-i-do-if-my-effect-dependencies-change-too-often
