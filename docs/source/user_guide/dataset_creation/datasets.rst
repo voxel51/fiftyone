@@ -142,6 +142,9 @@ format when reading the dataset from disk.
     |                                                                                       | stored as TFRecords in `TF Object Detection API format \                           |
     |                                                                                       | <https://github.com/tensorflow/models/blob/master/research/object\_detection>`_.   |
     +---------------------------------------------------------------------------------------+------------------------------------------------------------------------------------+
+    | :ref:`ImageSegmentationDirectory <ImageSegmentationDirectory-import>`                 | A labeled dataset consisting of images and their associated semantic segmentations |
+    |                                                                                       | stored as images on disk.                                                          |
+    +---------------------------------------------------------------------------------------+------------------------------------------------------------------------------------+
     | :ref:`CVATImageDataset <CVATImageDataset-import>`                                     | A labeled dataset consisting of images and their associated object detections      |
     |                                                                                       | stored in `CVAT image format <https://github.com/opencv/cvat>`_.                   |
     +---------------------------------------------------------------------------------------+------------------------------------------------------------------------------------+
@@ -1434,6 +1437,91 @@ directory of TFRecords in the above format as follows:
         fiftyone app view \
             --dataset-dir $DATASET_DIR \
             --type fiftyone.types.TFObjectDetectionDataset
+
+.. _ImageSegmentationDirectory-import:
+
+ImageSegmentationDirectory
+--------------------------
+
+The :class:`fiftyone.types.ImageSegmentationDirectory <fiftyone.types.dataset_types.ImageSegmentationDirectory>`
+type represents a labeled dataset consisting of images and their associated
+semantic segmentations stored as images on disk.
+
+Datasets of this type are read in the following format:
+
+.. code-block:: text
+
+    <dataset_dir>/
+        data/
+            <filename1>.<ext>
+            <filename2>.<ext>
+            ...
+        labels/
+            <filename1>.<ext>
+            <filename2>.<ext>
+            ...
+
+where ``labels/`` contains the semantic segmentations stored as images.
+
+Unlabeled images have no corresponding file in ``labels/``.
+
+You can create a FiftyOne dataset from an image segmentation dataset stored in
+the above format as follows:
+
+.. tabs::
+
+  .. group-tab:: Python
+
+    .. code-block:: python
+        :linenos:
+
+        import fiftyone as fo
+
+        name = "my-image-segmentation-dataset"
+        dataset_dir = "/path/to/image-segmentation-dataset"
+
+        # Create the dataset
+        dataset = fo.Dataset.from_dir(
+            dataset_dir, fo.types.ImageSegmentationDirectory, name=name
+        )
+
+        # View summary info about the dataset
+        print(dataset)
+
+        # Print the first few samples in the dataset
+        print(dataset.head())
+
+  .. group-tab:: CLI
+
+    .. code-block:: shell
+
+        NAME=my-image-segmentation-dataset
+        DATASET_DIR=/path/to/image-segmentation-dataset
+
+        # Create the dataset
+        fiftyone datasets create \
+            --name $NAME \
+            --dataset-dir $DATASET_DIR \
+            --type fiftyone.types.ImageSegmentationDirectory
+
+        # View summary info about the dataset
+        fiftyone datasets info $NAME
+
+        # Print the first few samples in the dataset
+        fiftyone datasets head $NAME
+
+    To view an image segmentation dataset stored in the above format in the
+    FiftyOne App without creating a persistent FiftyOne dataset, you
+    can execute:
+
+    .. code-block:: shell
+
+        DATASET_DIR=/path/to/image-segmentation-dataset
+
+        # View the dataset in the App
+        fiftyone app view \
+            --dataset-dir $DATASET_DIR \
+            --type fiftyone.types.ImageSegmentationDirectory
 
 .. _CVATImageDataset-import:
 

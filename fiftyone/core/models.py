@@ -30,6 +30,7 @@ tud = fou.lazy_import("torch.utils.data")
 
 foe = fou.lazy_import("fiftyone.core.eta_utils")
 fout = fou.lazy_import("fiftyone.utils.torch")
+foup = fou.lazy_import("fiftyone.utils.patches")
 
 
 logger = logging.getLogger(__name__)
@@ -1273,7 +1274,9 @@ def _embed_patches(
             embeddings = None
 
             try:
-                patches = _parse_patches(sample, patches_field, handle_missing)
+                patches = foup.parse_patches(
+                    sample, patches_field, handle_missing=handle_missing
+                )
 
                 if patches is not None:
                     img = etai.read(sample.filepath)
@@ -1332,7 +1335,9 @@ def _embed_patches(
 def _embed_patches_single(model, img, detections, force_square, alpha):
     embeddings = []
     for detection in detections.detections:
-        patch = _extract_patch(img, detection, force_square, alpha)
+        patch = foup.extract_patch(
+            img, detection, force_square=force_square, alpha=alpha
+        )
         embedding = model.embed(patch)
         embeddings.append(embedding)
 
@@ -1345,8 +1350,10 @@ def _embed_patches_batch(
     embeddings = []
     for detection_batch in fou.iter_batches(detections.detections, batch_size):
         patches = [
-            _extract_patch(img, d, force_square, alpha)
-            for d in detection_batch
+            foup.extract_patch(
+                img, detection, force_square=force_square, alpha=alpha
+            )
+            for detection in detection_batch
         ]
         embeddings_batch = model.embed_all(patches)
         embeddings.append(embeddings_batch)
@@ -1461,8 +1468,8 @@ def _embed_frame_patches(
                         frame_number = video_reader.frame_number
                         frame = sample.frames[frame_number]
 
-                        patches = _parse_patches(
-                            frame, patches_field, handle_missing
+                        patches = foup.parse_patches(
+                            frame, patches_field, handle_missing=handle_missing
                         )
 
                         if patches is not None:
@@ -1547,7 +1554,9 @@ def _make_patch_data_loader(
     image_paths = []
     detections = []
     for sample in samples.select_fields(patches_field):
-        patches = _parse_patches(sample, patches_field, handle_missing)
+        patches = foup.parse_patches(
+            sample, patches_field, handle_missing=handle_missing
+        )
         image_paths.append(sample.filepath)
         detections.append(patches)
 
@@ -1569,56 +1578,6 @@ def _make_patch_data_loader(
         num_workers=num_workers,
         collate_fn=lambda batch: batch[0],  # return patches directly
     )
-
-
-def _parse_patches(sample_or_frame, patches_field, handle_missing):
-    label = sample_or_frame[patches_field]
-
-    if isinstance(label, fol.Detections):
-        patches = label
-    elif isinstance(label, fol.Detection):
-        patches = fol.Detections(detections=[label])
-    elif isinstance(label, fol.Polyline):
-        patches = fol.Detections(detections=[label.to_detection()])
-    elif isinstance(label, fol.Polylines):
-        patches = label.to_detections()
-    else:
-        patches = None
-
-    if patches is None or not patches.detections:
-        if handle_missing == "skip":
-            msg = "Sample found with no patches; embedding will be None"
-            warnings.warn(msg)
-
-            patches = None
-        elif handle_missing == "image":
-            msg = "Sample found with no patches; using entire image instead"
-            warnings.warn(msg)
-
-            patches = fol.Detections(
-                detections=[fol.Detection(bounding_box=[0, 0, 1, 1])]
-            )
-        else:
-            if isinstance(sample_or_frame, fof.Frame):
-                dtype = "Frame"
-            else:
-                dtype = "Sample"
-
-            raise ValueError(
-                "%s '%s' has no patches" % (dtype, sample_or_frame.id)
-            )
-
-    return patches
-
-
-def _extract_patch(img, detection, force_square, alpha):
-    dobj = detection.to_detected_object()
-
-    bbox = dobj.bounding_box
-    if alpha is not None:
-        bbox = bbox.pad_relative(alpha)
-
-    return bbox.extract_from(img, force_square=force_square)
 
 
 def _parse_batch_size(batch_size, model, use_data_loader):

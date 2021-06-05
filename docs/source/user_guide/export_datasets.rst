@@ -81,6 +81,108 @@ a |DatasetView| into any format of your choice via the basic recipe below.
     particular label field that you wish to export. This is necessary your
     FiftyOne dataset contains multiple label fields.
 
+.. _export-label-coercion:
+
+Label type coercion
+-------------------
+
+For your convenience, the
+:meth:`export() <fiftyone.core.collections.SampleCollection.export>` method
+will automatically coerce the data to match the requested export types in a
+variety of common cases listed below.
+
+Object patches
+~~~~~~~~~~~~~~
+
+When exporting in either an unlabeled image or image classification format, if
+a spatial label field (|Detection|, |Detections|, |Polyline|, or |Polylines|)
+is provided to
+:meth:`export() <fiftyone.core.collections.SampleCollection.export>`, the
+object patches of the provided samples will be exported.
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart")
+
+    # No label field is provided; only images are exported
+    dataset.export("/tmp/quickstart/images", fo.types.ImageDirectory)
+
+    # A detections field is provided, so the object patches are exported as a
+    # directory of images
+    dataset.export(
+        "/tmp/quickstart/patches",
+        fo.types.ImageDirectory,
+        label_field="ground_truth",
+    )
+
+    # A detections field is provided, so the object patches are exported as an
+    # image classification directory tree
+    dataset.export(
+        "/tmp/quickstart/objects",
+        fo.types.ImageClassificationDirectoryTree,
+        label_field="ground_truth",
+    )
+
+Single labels to lists
+~~~~~~~~~~~~~~~~~~~~~~
+
+Many export formats expect label list types
+(|Classifications|, |Detections|, |Polylines|, or |Keypoints|). If you provide
+a label field to
+:meth:`export() <fiftyone.core.collections.SampleCollection.export>` that
+refers to a single label type (|Classification|, |Detection|, |Polyline|, or
+|Keypoint|), then the labels will be automatically upgraded to single-label
+lists to match the export type's expectations.
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart")
+    patches = dataset.to_patches("ground_truth")
+
+    # The `ground_truth` field has type `Detection`, but COCO format expects
+    # `Detections`, so the labels are automatically coerced to single-label lists
+    patches.export(
+        "/tmp/quickstart/detections",
+        fo.types.COCODetectionDataset,
+        label_field="ground_truth",
+    )
+
+Classifications as detections
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+When exporting in labeled image dataset formats that expect |Detections|
+labels, if you provide a label field to
+:meth:`export() <fiftyone.core.collections.SampleCollection.export>` that has
+type |Classification|, the classification labels will be automatically upgraded
+to detections that span the entire images.
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart").limit(5).clone()
+
+    for idx, sample in enumerate(dataset):
+        sample["attribute"] = fo.Classification(label=str(idx))
+        sample.save()
+
+    # Exports the `attribute` classifications as detections that span entire images
+    dataset.export(
+        "/tmp/quickstart/attributes",
+        fo.types.COCODetectionDataset,
+        label_field="attribute",
+    )
+
 .. _supported-export-formats:
 
 Supported formats
@@ -131,6 +233,9 @@ format when writing the dataset to disk.
     | :ref:`TFObjectDetectionDataset <TFObjectDetectionDataset-export>`  | A labeled dataset consisting of images and their associated object detections      |
     |                                                                    | stored as TFRecords in `TF Object Detection API format \                           |
     |                                                                    | <https://github.com/tensorflow/models/blob/master/research/object\_detection>`_.   |
+    +--------------------------------------------------------------------+------------------------------------------------------------------------------------+
+    | :ref:`ImageSegmentationDirectory                                   | A labeled dataset consisting of images and their associated semantic segmentations |
+    | <ImageSegmentationDirectory-export>`                               | stored as images on disk.                                                          |
     +--------------------------------------------------------------------+------------------------------------------------------------------------------------+
     | :ref:`CVATImageDataset <CVATImageDataset-export>`                  | A labeled dataset consisting of images and their associated object detections      |
     |                                                                    | stored in `CVAT image format <https://github.com/opencv/cvat>`_.                   |
@@ -1172,6 +1277,72 @@ format as follows:
             --export-dir $EXPORT_DIR \
             --label-field $LABEL_FIELD \
             --type fiftyone.types.TFObjectDetectionDataset
+
+.. _ImageSegmentationDirectory-export:
+
+ImageSegmentationDirectory
+--------------------------
+
+The :class:`fiftyone.types.ImageSegmentationDirectory <fiftyone.types.dataset_types.ImageSegmentationDirectory>`
+type represents a labeled dataset consisting of images and their associated
+semantic segmentations stored as images on disk.
+
+Datasets of this type are exported in the following format:
+
+.. code-block:: text
+
+    <dataset_dir>/
+        data/
+            <filename1>.<ext>
+            <filename2>.<ext>
+            ...
+        labels/
+            <filename1>.<ext>
+            <filename2>.<ext>
+            ...
+
+where ``labels/`` contains the semantic segmentations stored as images.
+
+Unlabeled images have no corresponding file in ``labels/``.
+
+You can export a FiftyOne dataset as an image segmentation dataset in the above
+format as follows:
+
+.. tabs::
+
+  .. group-tab:: Python
+
+    .. code-block:: python
+        :linenos:
+
+        import fiftyone as fo
+
+        export_dir = "/path/for/image-segmentation-dataset"
+        label_field = "ground_truth"  # for example
+
+        # The Dataset or DatasetView to export
+        dataset_or_view = fo.Dataset(...)
+
+        # Export the dataset
+        dataset_or_view.export(
+            export_dir=export_dir,
+            dataset_type=fo.types.ImageSegmentationDirectory,
+            label_field=label_field,
+        )
+
+  .. group-tab:: CLI
+
+    .. code-block:: shell
+
+        NAME=my-dataset
+        EXPORT_DIR=/path/for/image-segmentation-dataset
+        LABEL_FIELD=ground_truth  # for example
+
+        # Export the dataset
+        fiftyone datasets export $NAME \
+            --export-dir $EXPORT_DIR \
+            --label-field $LABEL_FIELD \
+            --type fiftyone.types.ImageSegmentationDirectory
 
 .. _CVATImageDataset-export:
 

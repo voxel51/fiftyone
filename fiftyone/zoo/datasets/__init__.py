@@ -9,7 +9,6 @@ download via FiftyOne.
 |
 """
 from collections import OrderedDict
-import inspect
 import logging
 import os
 
@@ -17,6 +16,7 @@ import eta.core.serial as etas
 import eta.core.utils as etau
 
 import fiftyone as fo
+import fiftyone.core.utils as fou
 
 
 logger = logging.getLogger(__name__)
@@ -121,19 +121,6 @@ def download_zoo_dataset(
     )
 
 
-def _extract_kwargs_for_class(cls, kwargs):
-    class_kwargs = {}
-    other_kwargs = {}
-    spec = inspect.getfullargspec(cls)
-    for k, v in kwargs.items():
-        if k in spec.args:
-            class_kwargs[k] = v
-        else:
-            other_kwargs[k] = v
-
-    return class_kwargs, other_kwargs
-
-
 def load_zoo_dataset(
     name,
     split=None,
@@ -195,7 +182,9 @@ def load_zoo_dataset(
 
     if download_if_necessary:
         zoo_dataset_cls = _get_zoo_dataset_cls(name)
-        download_kwargs, _ = _extract_kwargs_for_class(zoo_dataset_cls, kwargs)
+        download_kwargs, _ = fou.extract_kwargs_for_class(
+            zoo_dataset_cls, kwargs
+        )
 
         info, dataset_dir = download_zoo_dataset(
             name,
@@ -212,7 +201,7 @@ def load_zoo_dataset(
 
     dataset_type = info.get_dataset_type()
     dataset_importer = dataset_type.get_dataset_importer_cls()
-    importer_kwargs, _ = _extract_kwargs_for_class(dataset_importer, kwargs)
+    importer_kwargs, _ = fou.extract_kwargs_for_class(dataset_importer, kwargs)
 
     if dataset_name is None:
         dataset_name = zoo_dataset.name
