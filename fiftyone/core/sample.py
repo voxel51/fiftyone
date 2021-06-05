@@ -14,6 +14,7 @@ import fiftyone.core.labels as fol
 import fiftyone.core.metadata as fom
 import fiftyone.core.media as fomm
 import fiftyone.core.odm as foo
+import fiftyone.core.utils as fou
 from fiftyone.core.singletons import SampleSingleton
 
 
@@ -209,23 +210,56 @@ class _SampleMixin(object):
     def merge(
         self,
         sample,
+        fields=None,
         omit_fields=None,
-        omit_frame_fields=None,
-        omit_none_fields=True,
+        merge_lists=True,
         overwrite=True,
         expand_schema=True,
     ):
-        """Merges the fields of the sample into this sample.
+        """Merges the fields of the given sample into this sample.
+
+        The behavior of this method is highly customizable. By default, all
+        top-level fields from the provided sample are merged in, overwriting
+        any existing values for those fields, with the exception of list fields
+        (e.g., ``tags``) and label list fields (e.g.,
+        :class:`fiftyone.core.labels.Detections` fields), in which case the
+        elements of the lists themselves are merged. In the case of label list
+        fields, labels with the same ``id`` in both samples are updated rather
+        than duplicated.
+
+        To avoid confusion between missing fields and fields whose value is
+        ``None``, ``None``-valued fields are always treated as missing while
+        merging.
+
+        This method can be configured in numerous ways, including:
+
+        -   Whether new fields can be added to the dataset schema
+        -   Whether list fields should be treated as ordinary fields and merged
+            as a whole rather than merging their elements
+        -   Whether to merge (a) only specific fields or (b) all but certain
+            fields
+        -   Mapping input sample fields to different field names of this sample
 
         Args:
             sample: a :class:`fiftyone.core.sample.Sample`
-            omit_fields (None): an optional list of fields to omit
-            omit_frame_fields (None): an optional lits of frame fields to omit
-            omit_none_fields (True): whether to omit ``None``-valued fields of
-                the provided sample
-            overwrite (True): whether to overwrite existing fields. Note that
-                existing fields whose values are ``None`` are always
-                overwritten
+            fields (None): an optional field or iterable of fields to which to
+                restrict the merge. May contain frame fields for video samples.
+                This can also be a dict mapping field names of the input sample
+                to field names of this sample
+            omit_fields (None): an optional field or iterable of fields to
+                exclude from the merge. May contain frame fields for video
+                samples
+            merge_lists (True): whether to merge the elements of list fields
+                (e.g., ``tags``) and label list fields (e.g.,
+                :class:`fiftyone.core.labels.Detections` fields) rather than
+                merging the entire top-level field like other field types.
+                For label lists fields, existing
+                :class:`fiftyone.core.label.Label` elements are either replaced
+                (when ``overwrite`` is True) or kept (when ``overwrite`` is
+                False) when their ``id`` matches a label from the provided
+                sample
+            overwrite (True): whether to overwrite (True) or skip (False)
+                existing fields and label elements
             expand_schema (True): whether to dynamically add new fields
                 encountered to the dataset schema. If False, an error is raised
                 if any fields are not in the dataset schema
@@ -236,10 +270,21 @@ class _SampleMixin(object):
                 "media type '%s'" % (sample.media_type, self.media_type)
             )
 
+        if self.media_type == fomm.VIDEO:
+            (
+                fields,
+                frame_fields,
+                omit_fields,
+                omit_frame_fields,
+            ) = self._parse_fields_video(
+                fields=fields, omit_fields=omit_fields
+            )
+
         super().merge(
             sample,
+            fields=fields,
             omit_fields=omit_fields,
-            omit_none_fields=omit_none_fields,
+            merge_lists=merge_lists,
             overwrite=overwrite,
             expand_schema=expand_schema,
         )
@@ -247,8 +292,9 @@ class _SampleMixin(object):
         if self.media_type == fomm.VIDEO:
             self.frames.merge(
                 sample.frames,
+                fields=frame_fields,
                 omit_fields=omit_frame_fields,
-                omit_none_fields=omit_none_fields,
+                merge_lists=merge_lists,
                 overwrite=overwrite,
                 expand_schema=expand_schema,
             )
@@ -288,6 +334,21 @@ class _SampleMixin(object):
                 "cannot; current '%s', new '%s'"
                 % (self.media_type, new_media_type)
             )
+
+    def _parse_fields_video(self, fields=None, omit_fields=None):
+        if fields is not None:
+            fields, frame_fields = fou.split_frame_fields(fields)
+        else:
+            frame_fields = None
+
+        if omit_fields is not None:
+            omit_fields, omit_frame_fields = fou.split_frame_fields(
+                omit_fields
+            )
+        else:
+            omit_frame_fields = None
+
+        return fields, frame_fields, omit_fields, omit_frame_fields
 
 
 class Sample(_SampleMixin, Document, metaclass=SampleSingleton):
@@ -341,17 +402,41 @@ class Sample(_SampleMixin, Document, metaclass=SampleSingleton):
         d = self._dataset._sample_collection.find_one({"_id": self._id})
         self._doc = self._dataset._sample_dict_to_doc(d)
 
-    def copy(self):
+    def copy(self, fields=None, omit_fields=None):
         """Returns a deep copy of the sample that has not been added to the
         database.
+
+        Args:
+            fields (None): an optional field or iterable of fields to which to
+                restrict the copy. This can also be a dict mapping existing
+                field names to new field names
+            omit_fields (None): an optional field or iterable of fields to
+                exclude from the copy
 
         Returns:
             a :class:`Sample`
         """
-        sample = super().copy()
+        if self.media_type == fomm.VIDEO:
+            (
+                fields,
+                frame_fields,
+                omit_fields,
+                omit_frame_fields,
+            ) = self._parse_fields_video(
+                fields=fields, omit_fields=omit_fields
+            )
+
+        sample = super().copy(fields=fields, omit_fields=omit_fields)
 
         if self.media_type == fomm.VIDEO:
-            sample.frames.update({k: v.copy() for k, v in self.frames.items()})
+            sample.frames.update(
+                {
+                    frame_number: frame.copy(
+                        fields=frame_fields, omit_fields=omit_frame_fields
+                    )
+                    for frame_number, frame in self.frames.items()
+                }
+            )
 
         return sample
 
