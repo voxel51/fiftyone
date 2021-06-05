@@ -144,10 +144,10 @@ def compute_flash_embeddings(
         embeddings = list(itertools.chain.from_iterable(embeddings))
 
         if embeddings_field is not None:
-            samples.set_values(embeddings_field, list(embeddings))
+            samples.set_values(embeddings_field, embeddings)
             return
 
-    return np.stack(embeddings)
+        return np.stack(embeddings)
 
 
 def normalize_detections(filepaths, predictions):
