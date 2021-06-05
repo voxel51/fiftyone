@@ -81,6 +81,108 @@ a |DatasetView| into any format of your choice via the basic recipe below.
     particular label field that you wish to export. This is necessary your
     FiftyOne dataset contains multiple label fields.
 
+.. _export-label-coercion:
+
+Label type coercion
+-------------------
+
+For your convenience, the
+:meth:`export() <fiftyone.core.collections.SampleCollection.export>` method
+will automatically coerce the data to match the requested export types in a
+variety of common cases listed below.
+
+Object patches
+~~~~~~~~~~~~~~
+
+When exporting in either an unlabeled image or image classification format, if
+a spatial label field (|Detection|, |Detections|, |Polyline|, or |Polylines|)
+is provided to
+:meth:`export() <fiftyone.core.collections.SampleCollection.export>`, the
+object patches of the provided samples will be exported.
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart")
+
+    # No label field is provided; only images are exported
+    dataset.export("/tmp/quickstart/images", fo.types.ImageDirectory)
+
+    # A detections field is provided, so the object patches are exported as a
+    # directory of images
+    dataset.export(
+        "/tmp/quickstart/patches",
+        fo.types.ImageDirectory,
+        label_field="ground_truth",
+    )
+
+    # A detections field is provided, so the object patches are exported as an
+    # image classification directory tree
+    dataset.export(
+        "/tmp/quickstart/objects",
+        fo.types.ImageClassificationDirectoryTree,
+        label_field="ground_truth",
+    )
+
+Single labels to lists
+~~~~~~~~~~~~~~~~~~~~~~
+
+Many export formats expect label list types
+(|Classifications|, |Detections|, |Polylines|, or |Keypoints|). If you provide
+a label field to
+:meth:`export() <fiftyone.core.collections.SampleCollection.export>` that
+refers to a single label type (|Classification|, |Detection|, |Polyline|, or
+|Keypoint|), then the labels will be automatically upgraded to single-label
+lists to match the export type's expectations.
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart")
+    patches = dataset.to_patches("ground_truth")
+
+    # The `ground_truth` field has type `Detection`, but COCO format expects
+    # `Detections`, so the labels are automatically coerced to single-label lists
+    patches.export(
+        "/tmp/quickstart/detections",
+        fo.types.COCODetectionDataset,
+        label_field="ground_truth",
+    )
+
+Classifications as detections
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+When exporting in labeled image dataset formats that expect |Detections|
+labels, if you provide a label field to
+:meth:`export() <fiftyone.core.collections.SampleCollection.export>` that has
+type |Classification|, the classification labels will be automatically upgraded
+to detections that span the entire images.
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart").limit(5).clone()
+
+    for idx, sample in enumerate(dataset):
+        sample["attribute"] = fo.Classification(label=str(idx))
+        sample.save()
+
+    # Exports the `attribute` classifications as detections that span entire images
+    dataset.export(
+        "/tmp/quickstart/attributes",
+        fo.types.COCODetectionDataset,
+        label_field="attribute",
+    )
+
 .. _supported-export-formats:
 
 Supported formats

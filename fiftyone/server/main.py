@@ -1398,6 +1398,12 @@ class FileHandler(tornado.web.StaticFileHandler):
         self.set_header("content-length", self.get_content_size())
         self.set_header("x-colab-notebook-cache-control", "no-cache")
 
+    def get_content_type(self):
+        if self.absolute_path.endswith(".js"):
+            return "text/javascript"
+
+        return super().get_content_type()
+
 
 class MediaHandler(FileHandler):
     @classmethod
