@@ -2,6 +2,7 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 
+import { FONT_SIZE, STROKE_WIDTH } from "../constants";
 import { BaseState, Coordinates } from "../state";
 import { clampScale, snapBox } from "../util";
 import { BaseElement, Events } from "./base";
@@ -244,8 +245,10 @@ export class CanvasElement<State extends BaseState> extends BaseElement<
   renderSelf({
     config: { thumbnail },
     panning,
+    pan,
+    scale,
     windowBBox: [_, __, width, height],
-  }) {
+  }: Readonly<State>) {
     if (this.width !== width) {
       this.element.width = width;
     }

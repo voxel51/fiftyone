@@ -105,6 +105,8 @@ export interface BaseState {
   transformedWindowBBox: BoundingBox;
   mediaBBox: BoundingBox;
   transformedMediaBBox: BoundingBox;
+  canvasBBox: BoundingBox;
+  textPad: number;
 }
 
 export interface FrameState extends BaseState {

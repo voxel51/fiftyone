@@ -3,7 +3,7 @@
  */
 import { mergeWith } from "immutable";
 
-import { FONT_SIZE, MIN_PIXELS, STROKE_WIDTH } from "./constants";
+import { FONT_SIZE, MIN_PIXELS, STROKE_WIDTH, TEXT_PAD } from "./constants";
 import {
   getFrameElements,
   getImageElements,
@@ -96,18 +96,26 @@ export abstract class Looker<
       this.state = mergeUpdates(this.state, updates);
       this.state = this.postProcess(this.lookerElement.element.parentElement);
       this.pluckedOverlays = this.pluckOverlays(this.state);
-      const context = this.canvas.getContext("2d");
       [this.currentOverlays, this.state.rotate] = processOverlays(
         this.state,
         this.pluckedOverlays
       );
+      console.log("E");
       postUpdate && postUpdate(this.state, this.currentOverlays);
       this.lookerElement.render(this.state as Readonly<State>);
 
+      const ctx = this.canvas.getContext("2d");
+      ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+      ctx.lineWidth = this.state.strokeWidth;
+      ctx.font = `bold ${this.state.fontSize.toFixed(2)}px Palanquin`;
+      ctx.textAlign = "left";
+      ctx.textBaseline = "top";
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.translate(...this.state.pan);
+      ctx.scale(this.state.scale, this.state.scale);
       const numOverlays = this.currentOverlays.length;
-      clearContext(context);
       for (let index = numOverlays - 1; index >= 0; index--) {
-        this.currentOverlays[index].draw(context, this.state);
+        this.currentOverlays[index].draw(ctx, this.state);
       }
     };
   }
@@ -177,6 +185,8 @@ export abstract class Looker<
       windowBBox: null,
       transformedMediaBBox: null,
       mediaBBox: null,
+      canvasBBox: null,
+      textPad: TEXT_PAD,
     };
   }
 
@@ -200,12 +210,19 @@ export abstract class Looker<
       this.state.cursorCoordinates,
       this.state.transformedMediaBBox
     );
+    this.state.canvasBBox = [
+      this.state.mediaBBox[0] - this.state.windowBBox[0],
+      this.state.mediaBBox[1] - this.state.windowBBox[1],
+      this.state.mediaBBox[2],
+      this.state.mediaBBox[3],
+    ];
     const [from, to] = [
       this.state.config.dimensions[0],
       this.state.mediaBBox[2],
     ];
-    this.state.strokeWidth = getStrokeWidth(from, to, this.state.scale);
-    this.state.fontSize = getFontSize(from, to, this.state.scale);
+    this.state.strokeWidth = STROKE_WIDTH / this.state.scale;
+    this.state.fontSize = Math.max(FONT_SIZE / this.state.scale, 1);
+    this.state.textPad = Math.max(TEXT_PAD / this.state.scale, 1 / 7);
     return this.state;
   }
 }
@@ -423,16 +440,6 @@ function loadOverlays<State extends BaseState>(
   }
 
   return overlays;
-}
-
-function clearContext(context: CanvasRenderingContext2D): void {
-  context.clearRect(0, 0, context.canvas.width, context.canvas.height);
-  context.strokeStyle = "#fff";
-  context.fillStyle = "#fff";
-  context.lineWidth = 3;
-  context.font = "14px sans-serif";
-  // easier for setting offsets
-  context.textBaseline = "bottom";
 }
 
 const adjustBox = (

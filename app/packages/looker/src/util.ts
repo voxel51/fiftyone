@@ -372,15 +372,3 @@ export const clampScale = (
 
   return Math.max(scale, 1);
 };
-
-export const getStrokeWidth = (
-  from: number,
-  to: number,
-  scale: number
-): number => {
-  return ((STROKE_WIDTH / to) * from) / scale;
-};
-
-export const getFontSize = (from: number, to: number, scale: number) => {
-  return Math.max(((FONT_SIZE / to) * from) / scale, 2);
-};
