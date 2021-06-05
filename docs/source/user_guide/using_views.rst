@@ -641,44 +641,10 @@ non-patch views:
 -   Any new fields that you add to an object patches view will not be added to
     the source dataset
 
-.. _exporting-object-patches:
+.. note::
 
-Exporting object patches
-------------------------
-
-Object patches views are able to be exported to disk as a classification
-dataset containing cropped object patches. 
-
-In fact, even outside of patches views, whenever a |Detection| 
-or |Detections| field and a classification dataset format (like an
-:class:`ImageClassificationDirectoryTree <fiftyone.types.dataset_types.ImageClassificationDirectoryTree>`)
-are specified when exporting a |Dataset|,
-then the individual cropped detection image patches will be exported automatically.
-
-.. code-block:: python
-    :linenos:
-
-    import fiftyone as fo
-    import fiftyone.zoo as foz
-
-    # Load some data and create a patches view
-    dataset = foz.load_zoo_dataset("quickstart").limit(5).clone()
-    view = dataset.to_patches("ground_truth")
-
-    # Export a patches view as a ImageClassificationDirectoryTree
-    view.export(
-        "/tmp/quickstart/tree",
-        fo.types.ImageClassificationDirectoryTree, 
-        label_field="ground_truth",
-    )
-
-    # Export unlabled image patches in a directory 
-    dataset.export(
-        "/tmp/quickstart/images",
-        fo.types.ImageDirectory, 
-        label_field="ground_truth",
-    )
-
+    Did you know? You can :ref:`export object patches <export-label-coercion>`
+    as classification datasets!
 
 .. _eval-patches-views:
 
