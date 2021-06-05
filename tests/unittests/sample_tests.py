@@ -9,10 +9,7 @@ import datetime
 import os
 import unittest
 
-from mongoengine.errors import (
-    FieldDoesNotExist,
-    ValidationError,
-)
+from mongoengine.errors import ValidationError
 import numpy as np
 
 import fiftyone as fo
@@ -226,7 +223,7 @@ class SampleInDatasetTests(unittest.TestCase):
 
         sample[field_name] = value
 
-        with self.assertRaises(FieldDoesNotExist):
+        with self.assertRaises(ValueError):
             dataset.add_sample(sample, expand_schema=False)
 
         # ensure sample was not inserted
@@ -248,7 +245,7 @@ class SampleInDatasetTests(unittest.TestCase):
 
         sample[field_name] = value
 
-        with self.assertRaises(FieldDoesNotExist):
+        with self.assertRaises(ValueError):
             dataset.add_samples([sample], expand_schema=False)
 
         dataset.add_samples([sample])
@@ -516,23 +513,6 @@ class VideoSampleTests(unittest.TestCase):
         d.add_sample(s)
         self.assertTrue(1 in s.frames)
         self.assertFalse(2 in s.frames)
-
-    def test_merge(self):
-        d = fo.Dataset()
-        s1 = fo.Sample(filepath="video.mp4")
-        s1[1]["one"] = "one"
-        s2 = fo.Sample(filepath="video.mp4")
-        s2[1]["two"] = "two"
-        other = fo.Sample(filepath="video_other.mp4")
-        d.add_sample(s1)
-        d.merge_samples([s2, other])
-        self.assertEqual(len(d), 2)
-        for s in d:
-            if s.filepath.endswith("video.mp4"):
-                self.assertEqual(s[1]["one"], "one")
-                self.assertEqual(s[1]["two"], "two")
-            else:
-                self.assertFalse(1 in s.frames)
 
     def test_copy(self):
         sample = fo.Sample("video.mp4")

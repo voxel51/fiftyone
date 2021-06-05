@@ -562,6 +562,407 @@ class VideoTests(unittest.TestCase):
         self.assertEqual(frame4["field2"], "b")
 
     @drop_datasets
+    def test_merge_video_samples_and_labels(self):
+        sample11 = fo.Sample(filepath="video1.mp4")
+
+        sample12 = fo.Sample(filepath="video2.mp4")
+        sample12.frames[1] = fo.Frame()
+        sample12.frames[2] = fo.Frame(
+            ground_truth=fo.Detections(
+                detections=[
+                    fo.Detection(label="hello"),
+                    fo.Detection(label="world"),
+                ]
+            ),
+            predictions1=fo.Detections(
+                detections=[
+                    fo.Detection(label="hello", confidence=0.99),
+                    fo.Detection(label="world", confidence=0.99),
+                ]
+            ),
+            hello="world",
+        )
+        sample12.frames[3] = fo.Frame(
+            ground_truth=fo.Detections(
+                detections=[
+                    fo.Detection(label="hello"),
+                    fo.Detection(label="world"),
+                    fo.Detection(label="common"),
+                ]
+            ),
+            predictions1=fo.Detections(
+                detections=[
+                    fo.Detection(label="hello", confidence=0.99),
+                    fo.Detection(label="world", confidence=0.99),
+                ]
+            ),
+            hello="world",
+        )
+        sample12.frames[4] = fo.Frame(
+            ground_truth=fo.Detections(
+                detections=[
+                    fo.Detection(label="hi"),
+                    fo.Detection(label="there"),
+                ]
+            ),
+            hello="world",
+        )
+        sample12.frames[5] = fo.Frame(ground_truth=None, hello=None)
+
+        dataset1 = fo.Dataset()
+        dataset1.add_samples([sample11, sample12])
+
+        ref = sample12.frames[3].ground_truth.detections[2]
+        common = ref.copy()
+        common._id = ref._id
+        common.label = "COMMON"
+
+        sample22 = fo.Sample(filepath="video2.mp4")
+
+        sample22.frames[2] = fo.Frame()
+        sample22.frames[3] = fo.Frame(
+            ground_truth=fo.Detections(
+                detections=[
+                    common,
+                    fo.Detection(label="foo"),
+                    fo.Detection(label="bar"),
+                ]
+            ),
+            predictions2=fo.Detections(
+                detections=[
+                    fo.Detection(label="foo", confidence=0.99),
+                    fo.Detection(label="bar", confidence=0.99),
+                ]
+            ),
+            hello="bar",
+        )
+        sample22.frames[4] = fo.Frame(ground_truth=None, hello=None)
+        sample22.frames[5] = fo.Frame(
+            ground_truth=fo.Detections(
+                detections=[
+                    fo.Detection(label="foo"),
+                    fo.Detection(label="bar"),
+                ]
+            ),
+            predictions2=fo.Detections(
+                detections=[
+                    fo.Detection(label="foo", confidence=0.99),
+                    fo.Detection(label="bar", confidence=0.99),
+                ]
+            ),
+            hello="bar",
+        )
+        sample23 = fo.Sample(filepath="video3.mp4")
+
+        dataset2 = fo.Dataset()
+        dataset2.add_samples([sample22, sample23])
+
+        filepath_fcn = lambda sample: sample.filepath
+
+        for key_fcn in (None, filepath_fcn):
+            d1 = dataset1.clone()
+            d1.merge_samples(dataset2, skip_existing=True, key_fcn=key_fcn)
+
+            fields1 = set(dataset1.get_frame_field_schema().keys())
+            fields2 = set(d1.get_frame_field_schema().keys())
+            new_fields = fields2 - fields1
+
+            self.assertEqual(len(d1), 3)
+            for s1, s2 in zip(dataset1, d1):
+                for f1, f2 in zip(s1.frames.values(), s2.frames.values()):
+                    for field in fields1:
+                        self.assertEqual(f1[field], f2[field])
+
+                    for field in new_fields:
+                        self.assertIsNone(f2[field])
+
+        for key_fcn in (None, filepath_fcn):
+            d2 = dataset1.clone()
+            d2.merge_samples(dataset2, insert_new=False, key_fcn=key_fcn)
+
+            self.assertEqual(len(d2), len(dataset1))
+
+        for key_fcn in (None, filepath_fcn):
+            with self.assertRaises(ValueError):
+                d3 = dataset1.clone()
+                d3.merge_samples(
+                    dataset2, expand_schema=False, key_fcn=key_fcn
+                )
+
+        for key_fcn in (None, filepath_fcn):
+            d3 = dataset1.clone()
+            d3.merge_samples(
+                dataset2, merge_lists=False, overwrite=True, key_fcn=key_fcn
+            )
+
+            self.assertListEqual(
+                d3.values("frames.hello"),
+                [[], [None, "world", "bar", "world", "bar"], []],
+            )
+            self.assertListEqual(
+                d3.values("frames.ground_truth.detections.label"),
+                [
+                    [],
+                    [
+                        None,
+                        ["hello", "world"],
+                        ["COMMON", "foo", "bar"],
+                        ["hi", "there"],
+                        ["foo", "bar"],
+                    ],
+                    [],
+                ],
+            )
+            self.assertListEqual(
+                d3.values("frames.predictions1.detections.label"),
+                [
+                    [],
+                    [None, ["hello", "world"], ["hello", "world"], None, None],
+                    [],
+                ],
+            )
+            self.assertListEqual(
+                d3.values("frames.predictions2.detections.label"),
+                [[], [None, None, ["foo", "bar"], None, ["foo", "bar"]], []],
+            )
+
+        for key_fcn in (None, filepath_fcn):
+            d4 = dataset1.clone()
+            d4.merge_samples(
+                dataset2, merge_lists=False, overwrite=False, key_fcn=key_fcn
+            )
+
+            self.assertListEqual(
+                d4.values("frames.hello"),
+                [[], [None, "world", "world", "world", "bar"], []],
+            )
+            self.assertListEqual(
+                d4.values("frames.ground_truth.detections.label"),
+                [
+                    [],
+                    [
+                        None,
+                        ["hello", "world"],
+                        ["hello", "world", "common"],
+                        ["hi", "there"],
+                        ["foo", "bar"],
+                    ],
+                    [],
+                ],
+            )
+            self.assertListEqual(
+                d4.values("frames.predictions1.detections.label"),
+                [
+                    [],
+                    [None, ["hello", "world"], ["hello", "world"], None, None],
+                    [],
+                ],
+            )
+            self.assertListEqual(
+                d4.values("frames.predictions2.detections.label"),
+                [[], [None, None, ["foo", "bar"], None, ["foo", "bar"]], []],
+            )
+
+        for key_fcn in (None, filepath_fcn):
+            d5 = dataset1.clone()
+            d5.merge_samples(dataset2, fields="frames.hello", key_fcn=key_fcn)
+
+            # ensures documents are valid
+            for sample in d5:
+                self.assertIsNotNone(sample.id)
+                for frame in sample.frames.values():
+                    self.assertIsNotNone(frame.id)
+
+            self.assertNotIn("predictions2", d5.get_frame_field_schema())
+            self.assertListEqual(
+                d5.values("frames.hello"),
+                [[], [None, "world", "bar", "world", "bar"], []],
+            )
+            self.assertListEqual(
+                d5.values("frames.ground_truth.detections.label"),
+                [
+                    [],
+                    [
+                        None,
+                        ["hello", "world"],
+                        ["hello", "world", "common"],
+                        ["hi", "there"],
+                        None,
+                    ],
+                    [],
+                ],
+            )
+
+        for key_fcn in (None, filepath_fcn):
+            d6 = dataset1.clone()
+            d6.merge_samples(
+                dataset2,
+                omit_fields=["frames.ground_truth", "frames.predictions2"],
+                key_fcn=key_fcn,
+            )
+
+            # ensures documents are valid
+            for sample in d6:
+                self.assertIsNotNone(sample.id)
+                for frame in sample.frames.values():
+                    self.assertIsNotNone(frame.id)
+
+            self.assertNotIn("predictions2", d6.get_frame_field_schema())
+            self.assertListEqual(
+                d6.values("frames.hello"),
+                [[], [None, "world", "bar", "world", "bar"], []],
+            )
+            self.assertListEqual(
+                d6.values("frames.ground_truth.detections.label"),
+                [
+                    [],
+                    [
+                        None,
+                        ["hello", "world"],
+                        ["hello", "world", "common"],
+                        ["hi", "there"],
+                        None,
+                    ],
+                    [],
+                ],
+            )
+
+        for key_fcn in (None, filepath_fcn):
+            d7 = dataset1.clone()
+            d7.merge_samples(
+                dataset2, merge_lists=False, overwrite=True, key_fcn=key_fcn
+            )
+
+            self.assertListEqual(
+                d7.values("frames.hello"),
+                [[], [None, "world", "bar", "world", "bar"], []],
+            )
+            self.assertListEqual(
+                d7.values("frames.ground_truth.detections.label"),
+                [
+                    [],
+                    [
+                        None,
+                        ["hello", "world"],
+                        ["COMMON", "foo", "bar"],
+                        ["hi", "there"],
+                        ["foo", "bar"],
+                    ],
+                    [],
+                ],
+            )
+
+        for key_fcn in (None, filepath_fcn):
+            d8 = dataset1.clone()
+            d8.merge_samples(dataset2, key_fcn=key_fcn)
+
+            self.assertListEqual(
+                d8.values("frames.hello"),
+                [[], [None, "world", "bar", "world", "bar"], []],
+            )
+            self.assertListEqual(
+                d8.values("frames.ground_truth.detections.label"),
+                [
+                    [],
+                    [
+                        None,
+                        ["hello", "world"],
+                        ["hello", "world", "COMMON", "foo", "bar"],
+                        ["hi", "there"],
+                        ["foo", "bar"],
+                    ],
+                    [],
+                ],
+            )
+            self.assertListEqual(
+                d8.values("frames.predictions1.detections.label"),
+                [
+                    [],
+                    [None, ["hello", "world"], ["hello", "world"], None, None],
+                    [],
+                ],
+            )
+            self.assertListEqual(
+                d8.values("frames.predictions2.detections.label"),
+                [[], [None, None, ["foo", "bar"], None, ["foo", "bar"]], []],
+            )
+
+        for key_fcn in (None, filepath_fcn):
+            d9 = dataset1.clone()
+            d9.merge_samples(dataset2, overwrite=False, key_fcn=key_fcn)
+
+            self.assertListEqual(
+                d9.values("frames.hello"),
+                [[], [None, "world", "world", "world", "bar"], []],
+            )
+            self.assertListEqual(
+                d9.values("frames.ground_truth.detections.label"),
+                [
+                    [],
+                    [
+                        None,
+                        ["hello", "world"],
+                        ["hello", "world", "common", "foo", "bar"],
+                        ["hi", "there"],
+                        ["foo", "bar"],
+                    ],
+                    [],
+                ],
+            )
+            self.assertListEqual(
+                d9.values("frames.predictions1.detections.label"),
+                [
+                    [],
+                    [None, ["hello", "world"], ["hello", "world"], None, None],
+                    [],
+                ],
+            )
+            self.assertListEqual(
+                d9.values("frames.predictions2.detections.label"),
+                [[], [None, None, ["foo", "bar"], None, ["foo", "bar"]], []],
+            )
+
+        for key_fcn in (None, filepath_fcn):
+            d10 = dataset1.clone()
+            d10.merge_samples(
+                dataset2,
+                fields={
+                    "frames.hello": "frames.hello2",
+                    "frames.predictions2": "frames.predictions1",
+                },
+                key_fcn=key_fcn,
+            )
+
+            d10_frame_schema = d10.get_frame_field_schema()
+            self.assertIn("hello", d10_frame_schema)
+            self.assertIn("hello2", d10_frame_schema)
+            self.assertIn("predictions1", d10_frame_schema)
+            self.assertNotIn("predictions2", d10_frame_schema)
+
+            self.assertListEqual(
+                d10.values("frames.hello"),
+                [[], [None, "world", "world", "world", None], []],
+            )
+            self.assertListEqual(
+                d10.values("frames.hello2"),
+                [[], [None, None, "bar", None, "bar"], []],
+            )
+            self.assertListEqual(
+                d10.values("frames.predictions1.detections.label"),
+                [
+                    [],
+                    [
+                        None,
+                        ["hello", "world"],
+                        ["hello", "world", "foo", "bar"],
+                        None,
+                        ["foo", "bar"],
+                    ],
+                    [],
+                ],
+            )
+
+    @drop_datasets
     def test_to_frames(self):
         dataset = fo.Dataset()
 

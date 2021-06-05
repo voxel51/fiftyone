@@ -220,6 +220,7 @@ class Frames(object):
 
             d = {"_sample_id": self._sample._id}
             doc = self._dataset._frame_dict_to_doc(d)
+
             for field, value in _frame.iter_fields():
                 doc.set_field(field, value, create=expand_schema)
 
@@ -263,12 +264,36 @@ class Frames(object):
     def merge(
         self,
         frames,
+        fields=None,
         omit_fields=None,
-        omit_none_fields=True,
+        merge_lists=True,
         overwrite=True,
         expand_schema=True,
     ):
         """Merges the given frames into this instance.
+
+        The behavior of this method is highly customizable. By default, all
+        top-level fields from the provided frames are merged into existing
+        frames with the same frame numbers (and new frames created as
+        necessary), overwriting any existing values for those fields, with the
+        exception of list fields (e.g., ``tags``) and label list fields (e.g.,
+        :class:`fiftyone.core.labels.Detections` fields), in which case the
+        elements of the lists themselves are merged. In the case of label list
+        fields, labels with the same ``id`` in both frames are updated rather
+        than duplicated.
+
+        To avoid confusion between missing fields and fields whose value is
+        ``None``, ``None``-valued fields are always treated as missing while
+        merging.
+
+        This method can be configured in numerous ways, including:
+
+        -   Whether new fields can be added to the frame schema
+        -   Whether list fields should be treated as ordinary fields and merged
+            as a whole rather than merging their elements
+        -   Whether to merge (a) only specific fields or (b) all but certain
+            fields
+        -   Mapping input frame fields to different field names of this frame
 
         Args:
             frames: can be any of the following
@@ -280,10 +305,22 @@ class Frames(object):
                     label fields to :class:`fiftyone.core.labels.Label`
                     instances
 
-            omit_fields (None): an optional list of fields to omit
-            omit_none_fields (True): whether to omit ``None``-valued fields of
-                the provided frames
-            overwrite (True): whether to overwrite existing fields
+            fields (None): an optional field or iterable of fields to which to
+                restrict the merge. This can also be a dict mapping field names
+                of the input frame to field names of this frame
+            omit_fields (None): an optional field or iterable of fields to
+                exclude from the merge
+            merge_lists (True): whether to merge the elements of list fields
+                (e.g., ``tags``) and label list fields (e.g.,
+                :class:`fiftyone.core.labels.Detections` fields) rather than
+                merging the entire top-level field like other field types.
+                For label lists fields, existing
+                :class:`fiftyone.core.label.Label` elements are either replaced
+                (when ``overwrite`` is True) or kept (when ``overwrite`` is
+                False) when their ``id`` matches a label from the provided
+                frames
+            overwrite (True): whether to overwrite (True) or skip (False)
+                existing fields and label elements
             expand_schema (True): whether to dynamically add new frame fields
                 encountered to the dataset schema. If False, an error is raised
                 if the frame's schema is not a subset of the dataset schema
@@ -295,12 +332,16 @@ class Frames(object):
             if frame_number in self:
                 self[frame_number].merge(
                     frame,
+                    fields=fields,
                     omit_fields=omit_fields,
-                    omit_none_fields=omit_none_fields,
+                    merge_lists=merge_lists,
                     overwrite=overwrite,
                     expand_schema=expand_schema,
                 )
             else:
+                if fields is not None or omit_fields is not None:
+                    frame = frame.copy(fields=fields, omit_fields=omit_fields)
+
                 self.add_frame(
                     frame_number, frame, expand_schema=expand_schema
                 )
