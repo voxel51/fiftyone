@@ -186,6 +186,14 @@ class ImageDetectionDataset(LabeledImageDataset):
     pass
 
 
+class ImageSegmentationDataset(LabeledImageDataset):
+    """Base type for datasets that represent a collection of images and a set
+    of associated semantic segmentations.
+    """
+
+    pass
+
+
 class VideoDetectionDataset(LabeledVideoDataset):
     """Base type for datasets that represent a collection of videos and a set
     of associated video object detections.
@@ -876,7 +884,39 @@ class TFObjectDetectionDataset(ImageDetectionDataset):
         return fout.TFObjectDetectionDatasetExporter
 
 
-class CVATImageDataset(ImageDetectionDataset):
+class ImageSegmentationDirectory(ImageSegmentationDataset):
+    """An labeled dataset consisting of images and their associated semantic
+    segmentations stored as images on disk.
+
+    Datasets of this type are read/written in the following format::
+
+        <dataset_dir>/
+            data/
+                <filename1>.<ext>
+                <filename2>.<ext>
+                ...
+            labels/
+                <filename1>.<ext>
+                <filename2>.<ext>
+                ...
+
+    where ``labels/`` contains the semantic segmentations stored as images.
+
+    Unlabeled images have no corresponding file in ``labels/``.
+    """
+
+    def get_dataset_importer_cls(self):
+        import fiftyone.utils.data as foud
+
+        return foud.ImageSegmentationDirectoryImporter
+
+    def get_dataset_exporter_cls(self):
+        import fiftyone.utils.data as foud
+
+        return foud.ImageSegmentationDirectoryExporter
+
+
+class CVATImageDataset(ImageLabelsDataset):
     """A labeled dataset consisting of images and their associated labels
     stored in `CVAT image format <https://github.com/opencv/cvat>`_.
 

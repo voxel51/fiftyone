@@ -430,7 +430,7 @@ def scatterplot(
 
             -   None, if the points correspond to samples
             -   the name of a :class:`fiftyone.core.labels.Label` field, if the
-                points correspond linked to the labels in this field
+                points correspond to the labels in this field
 
         labels (None): data to use to color the points. Can be any of the
             following:
