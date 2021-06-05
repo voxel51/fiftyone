@@ -19,6 +19,7 @@ import logging
 import os
 import signal
 import subprocess
+import timeit
 import types
 import zlib
 
@@ -99,6 +100,57 @@ def pformat(obj, indent=4, width=80, depth=None):
         the pretty-formatted string
     """
     return _pprint.pformat(obj, indent=indent, width=width, depth=depth)
+
+
+def split_frame_fields(fields):
+    """Splits the given fields into sample and frame fields.
+
+    Frame fields are those prefixed by ``"frames."``, and this prefix is
+    removed from the returned frame fields.
+
+    Args:
+        fields: a field, iterable of fields, or dict mapping field names to new
+            field names
+
+    Returns:
+        a tuple of:
+
+        -   a list or dict of sample fields
+        -   a list or dict of frame fields
+    """
+    if isinstance(fields, dict):
+        return _split_frame_fields_dict(fields)
+
+    if etau.is_str(fields):
+        fields = [fields]
+
+    frames_prefix = "frames."
+    n = len(frames_prefix)
+
+    sample_fields = []
+    frame_fields = []
+    for field in fields:
+        if field.startswith(frames_prefix):
+            frame_fields.append(field[n:])
+        else:
+            sample_fields.append(field)
+
+    return sample_fields, frame_fields
+
+
+def _split_frame_fields_dict(fields):
+    frames_prefix = "frames."
+    n = len(frames_prefix)
+
+    sample_fields = {}
+    frame_fields = {}
+    for src_field, dst_field in fields.items():
+        if src_field.startswith(frames_prefix):
+            frame_fields[src_field[n:]] = dst_field[n:]
+        else:
+            sample_fields[src_field] = dst_field
+
+    return sample_fields, frame_fields
 
 
 def stream_objects(objects):
@@ -560,6 +612,114 @@ class ProgressBar(etau.ProgressBar):
             kwargs["max_width"] = 90
 
         super().__init__(*args, **kwargs)
+
+
+class DynamicBatcher(object):
+    """Class for iterating over the elements of an iterable with a dynamic
+    batch size to achieve a desired latency.
+
+    The batch sizes emitted when iterating over this object are dynamically
+    scaled such that the latency between ``next()`` calls is as close as
+    possible to a specified target latency.
+
+    This class is often used in conjunction with a :class:`ProgressBar` to keep
+    the user appraised on the status of a long-running task.
+
+    Example usage::
+
+        import fiftyone.core.utils as fou
+
+        total = int(1e7)
+        elements = range(total)
+
+        batches = fou.DynamicBatcher(elements, 0.1, max_batch_beta=2.0)
+
+        with fou.ProgressBar(total) as pb:
+            for batch in batches:
+                batch_size = len(batch)
+                print("batch size: %d" % batch_size)
+                pb.update(count=batch_size)
+
+    Args:
+        iterable: an iterable
+        target_latency_seconds: the target latency between ``next()`` calls,
+            in seconds
+        init_batch_size (1): the initial batch size to use
+        min_batch_size (1): the minimum allowed batch size
+        max_batch_size (None): an optional maximum allowed batch size
+        max_batch_beta (None): an optional lower/upper bound on the ratio
+            between successive batch sizes
+    """
+
+    def __init__(
+        self,
+        iterable,
+        target_latency_seconds,
+        init_batch_size=1,
+        min_batch_size=1,
+        max_batch_size=None,
+        max_batch_beta=None,
+    ):
+        self.iterable = iterable
+        self.target_latency_seconds = target_latency_seconds
+        self.init_batch_size = init_batch_size
+        self.min_batch_size = min_batch_size
+        self.max_batch_size = max_batch_size
+        self.max_batch_beta = max_batch_beta
+
+        self._iter = None
+        self._last_time = None
+        self._last_batch_size = None
+
+    def __iter__(self):
+        self._iter = iter(self.iterable)
+        self._last_batch_size = None
+        return self
+
+    def __next__(self):
+        current_time = timeit.default_timer()
+
+        if self._last_batch_size is None:
+            batch_size = self.init_batch_size
+        else:
+            # Compute optimal batch size
+            try:
+                beta = self.target_latency_seconds / (
+                    current_time - self._last_time
+                )
+            except ZeroDivisionError:
+                beta = 1e6
+
+            if self.max_batch_beta is not None:
+                if beta >= 1:
+                    beta = min(beta, self.max_batch_beta)
+                else:
+                    beta = max(beta, 1 / self.max_batch_beta)
+
+            batch_size = int(round(beta * self._last_batch_size))
+
+            if self.min_batch_size is not None:
+                batch_size = max(batch_size, self.min_batch_size)
+
+            if self.max_batch_size is not None:
+                batch_size = min(batch_size, self.max_batch_size)
+
+        self._last_batch_size = batch_size
+        self._last_time = current_time
+
+        batch = []
+
+        try:
+            idx = 0
+            while idx < batch_size:
+                batch.append(next(self._iter))
+                idx += 1
+
+        except StopIteration:
+            if not batch:
+                raise StopIteration
+
+        return batch
 
 
 @contextmanager

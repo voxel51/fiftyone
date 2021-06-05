@@ -463,33 +463,18 @@ class SampleCollection(object):
 
         return field_name in self.get_frame_field_schema()
 
-    def validate_fields_exist(self, field_or_fields):
-        """Validates that the collection has fields with the given names.
+    def validate_fields_exist(self, fields):
+        """Validates that the collection has field(s) with the given name(s).
 
-        If ``field_or_fields`` contains an embedded field name such as
-        ``field_name.document.field``, only the root ``field_name`` is checked
-        for existence.
+        If embedded field names are provided, only the root field is checked.
 
         Args:
-            field_or_fields: a field name or iterable of field names
+            fields: a field name or iterable of field names
 
         Raises:
             ValueError: if one or more of the fields do not exist
         """
-        if etau.is_str(field_or_fields):
-            fields = [field_or_fields]
-        else:
-            fields = field_or_fields
-
-        if self.media_type == fom.VIDEO:
-            frame_fields = list(
-                filter(lambda n: n.startswith(self._FRAMES_PREFIX), fields)
-            )
-            fields = list(
-                filter(lambda n: not n.startswith(self._FRAMES_PREFIX), fields)
-            )
-        else:
-            frame_fields = []
+        fields, frame_fields = self._split_frame_fields(fields)
 
         if fields:
             schema = self.get_field_schema(include_private=True)
@@ -522,7 +507,7 @@ class SampleCollection(object):
 
             for field in frame_fields:
                 # We only validate that the root field exists
-                field_name = field.split(".", 2)[1]  # removes "frames."
+                field_name = field.split(".", 1)[0]
                 if (
                     field_name not in frame_schema
                     and field_name not in default_frame_fields
@@ -5614,6 +5599,15 @@ class SampleCollection(object):
             "    %s %s" % ((field_name + ":").ljust(max_len), str(field))
             for field_name, field in field_schema.items()
         )
+
+    def _split_frame_fields(self, fields):
+        if etau.is_str(fields):
+            fields = [fields]
+
+        if self.media_type != fom.VIDEO:
+            return fields, []
+
+        return fou.split_frame_fields(fields)
 
     def _parse_field_name(
         self,
