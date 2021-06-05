@@ -2,7 +2,6 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 import { mergeWith } from "immutable";
-import { G, Svg, SVG } from "@svgdotjs/svg.js";
 
 import { FONT_SIZE, MIN_PIXELS, STROKE_WIDTH } from "./constants";
 import {
@@ -31,10 +30,11 @@ import {
   BoundingBox,
 } from "./state";
 import {
-  elementBBox,
   getContainingBox,
+  getElementBBox,
+  getFitRect,
   getFontSize,
-  getRenderedUntransformedImageDimensions,
+  getPixelCoordinates,
   getStrokeWidth,
   snapBox,
 } from "./util";
@@ -53,7 +53,7 @@ export abstract class Looker<
   protected pluckedOverlays: Overlay<State>[];
   protected sample: Sample;
   protected state: State;
-  protected readonly svg: Svg;
+  protected readonly canvas: HTMLCanvasElement;
   protected readonly updater: StateUpdate<State>;
 
   constructor(
@@ -68,13 +68,10 @@ export abstract class Looker<
     this.loadOverlays();
     this.pluckedOverlays = this.pluckOverlays(this.state);
     this.lookerElement = this.getElements();
+    this.canvas = this.lookerElement.children[1].element as HTMLCanvasElement;
     this.resizeObserver = new ResizeObserver(() =>
       requestAnimationFrame(() => this.updater(({ loaded }) => ({ loaded })))
     );
-    this.svg = SVG().viewbox(
-      `0 0 ${config.dimensions[0]} ${config.dimensions[1]}`
-    );
-    this.lookerElement.children[0].element.appendChild(this.svg.node);
   }
 
   protected dispatchEvent(eventType: string, detail: any): void {
@@ -97,23 +94,21 @@ export abstract class Looker<
         return;
       }
       this.state = mergeUpdates(this.state, updates);
+      this.state = this.postProcess(this.lookerElement.element.parentElement);
       this.pluckedOverlays = this.pluckOverlays(this.state);
+      const context = this.canvas.getContext("2d");
       [this.currentOverlays, this.state.rotate] = processOverlays(
-        this.svg,
         this.state,
         this.pluckedOverlays
       );
-      this.state = this.postProcess(this.lookerElement.element);
-      postUpdate && postUpdate(this.svg, this.state, this.currentOverlays);
+      postUpdate && postUpdate(this.state, this.currentOverlays);
       this.lookerElement.render(this.state as Readonly<State>);
-      const fragment = new G();
-      const numOverlays = this.currentOverlays.length;
 
+      const numOverlays = this.currentOverlays.length;
+      clearContext(context);
       for (let index = numOverlays - 1; index >= 0; index--) {
-        this.currentOverlays[index].draw(fragment, this.state);
+        this.currentOverlays[index].draw(context, this.state);
       }
-      this.svg.clear();
-      this.svg.add(fragment);
     };
   }
 
@@ -144,9 +139,7 @@ export abstract class Looker<
   }
 
   update(options: Optional<State["options"]>) {
-    new Promise(() => this.updater({ options })).then(() =>
-      console.log("done")
-    );
+    this.updater({ options });
   }
 
   protected abstract getElements(): LookerElement<State>;
@@ -164,7 +157,8 @@ export abstract class Looker<
 
   protected getInitialBaseState(): Omit<BaseState, "config" | "options"> {
     return {
-      cursorCoordinates: null,
+      cursorCoordinates: [0, 0],
+      pixelCoordinates: null,
       disableControls: false,
       hovering: false,
       hoveringControls: false,
@@ -179,16 +173,37 @@ export abstract class Looker<
       strokeWidth: STROKE_WIDTH,
       fontSize: FONT_SIZE,
       wheeling: false,
+      transformedWindowBBox: null,
+      windowBBox: null,
+      transformedMediaBBox: null,
+      mediaBBox: null,
     };
   }
 
   protected postProcess(element: HTMLElement): State {
-    let [_, __, w, h] = elementBBox(element);
-    [w] = getRenderedUntransformedImageDimensions(
-      [w, h],
-      this.state.config.dimensions
+    let [tlx, tly, w, h] = this.state.windowBBox;
+    this.state.transformedWindowBBox = [
+      tlx + this.state.pan[0],
+      tly + this.state.pan[1],
+      this.state.scale * w,
+      this.state.scale * h,
+    ];
+    this.state.mediaBBox = getFitRect(
+      this.state.config.dimensions,
+      this.state.windowBBox
     );
-    const [from, to] = [this.state.config.dimensions[0], w];
+    this.state.transformedMediaBBox = getFitRect(
+      this.state.config.dimensions,
+      this.state.transformedWindowBBox
+    );
+    this.state.pixelCoordinates = getPixelCoordinates(
+      this.state.cursorCoordinates,
+      this.state.transformedMediaBBox
+    );
+    const [from, to] = [
+      this.state.config.dimensions[0],
+      this.state.mediaBBox[2],
+    ];
     this.state.strokeWidth = getStrokeWidth(from, to, this.state.scale);
     this.state.fontSize = getFontSize(from, to, this.state.scale);
     return this.state;
@@ -199,7 +214,7 @@ export class FrameLooker extends Looker<FrameState> {
   private overlays: Overlay<FrameState>[];
 
   getElements() {
-    return getFrameElements(this.state, this.updater, this.getDispatchEvent());
+    return getFrameElements(this.updater, this.getDispatchEvent());
   }
 
   getInitialState(config, options) {
@@ -229,7 +244,8 @@ export class FrameLooker extends Looker<FrameState> {
   }
 
   postProcess(element): FrameState {
-    this.state = zoomToContent(this.state, this.pluckedOverlays, element);
+    this.state.windowBBox = getElementBBox(element);
+    this.state = zoomToContent(this.state, this.pluckedOverlays);
     return super.postProcess(element);
   }
 }
@@ -238,7 +254,7 @@ export class ImageLooker extends Looker<ImageState> {
   private overlays: Overlay<ImageState>[];
 
   getElements() {
-    return getImageElements(this.state, this.updater, this.getDispatchEvent());
+    return getImageElements(this.updater, this.getDispatchEvent());
   }
 
   getInitialState(config, options) {
@@ -268,7 +284,8 @@ export class ImageLooker extends Looker<ImageState> {
   }
 
   postProcess(element): ImageState {
-    this.state = zoomToContent(this.state, this.pluckedOverlays, element);
+    this.state.windowBBox = getElementBBox(element);
+    this.state = zoomToContent(this.state, this.pluckedOverlays);
     return super.postProcess(element);
   }
 }
@@ -282,7 +299,7 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
   private frameOverlays: { [frameNumber: number]: Overlay<VideoState>[] };
 
   getElements() {
-    return getVideoElements(this.state, this.updater, this.getDispatchEvent());
+    return getVideoElements(this.updater, this.getDispatchEvent());
   }
 
   getInitialState(config, options) {
@@ -370,6 +387,11 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
       }
     });
   }
+
+  postProcess(element): VideoState {
+    this.state.windowBBox = getElementBBox(element);
+    return super.postProcess(element);
+  }
 }
 
 function loadOverlays<State extends BaseState>(
@@ -403,6 +425,16 @@ function loadOverlays<State extends BaseState>(
   return overlays;
 }
 
+function clearContext(context: CanvasRenderingContext2D): void {
+  context.clearRect(0, 0, context.canvas.width, context.canvas.height);
+  context.strokeStyle = "#fff";
+  context.fillStyle = "#fff";
+  context.lineWidth = 3;
+  context.font = "14px sans-serif";
+  // easier for setting offsets
+  context.textBaseline = "bottom";
+}
+
 const adjustBox = (
   [w, h]: Dimensions,
   [obtlx, obtly, obw, obh]: BoundingBox
@@ -428,8 +460,7 @@ const adjustBox = (
 
 function zoomToContent<State extends FrameState | ImageState>(
   state: Readonly<State>,
-  currentOverlays: Overlay<State>[],
-  looker: HTMLDivElement
+  currentOverlays: Overlay<State>[]
 ): State {
   if (state.options.zoom && state.canZoom) {
     const points = currentOverlays.map((o) => o.getPoints()).flat();
@@ -441,7 +472,7 @@ function zoomToContent<State extends FrameState | ImageState>(
       box: [_, __, bw, bh],
     } = adjustBox([w, h], getContainingBox(points));
 
-    const [___, ____, ww, wh] = elementBBox(looker);
+    const [___, ____, ww, wh] = state.windowBBox;
     let wAR = ww / wh;
 
     let scale = 1;

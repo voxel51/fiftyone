@@ -3,7 +3,7 @@
  */
 
 import { BaseState, Coordinates } from "../state";
-import { clampScale, elementBBox, getPixelCoordinates, snapBox } from "../util";
+import { clampScale, snapBox } from "../util";
 import { BaseElement, Events } from "./base";
 import { ICONS, makeCheckboxRow, makeWrapper } from "./util";
 
@@ -117,12 +117,16 @@ export class LookerElement<State extends BaseState> extends BaseElement<
       },
       wheel: ({ event, update, dispatchEvent }) => {
         update(
-          ({ config: { thumbnail, dimensions }, pan: [px, py], scale }) => {
+          ({
+            config: { thumbnail, dimensions },
+            pan: [px, py],
+            scale,
+            windowBBox: [tlx, tly, width, height],
+          }) => {
             if (thumbnail) {
               return {};
             }
             event.preventDefault();
-            const [tlx, tly, width, height] = elementBBox(this.element);
 
             const x = event.x - tlx;
             const y = event.y - tly;
@@ -195,6 +199,69 @@ export class LookerElement<State extends BaseState> extends BaseElement<
     const [sx, sy] = this.start;
     const { width, height } = this.element.getBoundingClientRect();
     return snapBox(scale, [x - sx, y - sy], [width, height], dimensions);
+  }
+}
+
+export class CanvasElement<State extends BaseState> extends BaseElement<
+  State,
+  HTMLCanvasElement
+> {
+  private width: number;
+  private height: number;
+
+  getEvents(): Events<State> {
+    return {
+      click: ({ update, dispatchEvent }) => {
+        update({ showOptions: false }, (state, overlays) => {
+          if (!state.config.thumbnail && overlays.length) {
+            dispatchEvent("select", overlays[0].getSelectData(state));
+          }
+        });
+      },
+      mouseleave: ({ dispatchEvent }) => {
+        dispatchEvent("tooltip", null);
+      },
+      mousemove: ({ event, update, dispatchEvent }) => {
+        update((state) => {
+          return state.config.thumbnail
+            ? {}
+            : {
+                cursorCoordinates: [
+                  (<MouseEvent>event).pageX,
+                  (<MouseEvent>event).pageY,
+                ],
+              };
+        }, dispatchTooltipEvent(dispatchEvent));
+      },
+    };
+  }
+
+  createHTMLElement() {
+    const element = document.createElement("canvas");
+    return element;
+  }
+
+  renderSelf({
+    config: { thumbnail },
+    panning,
+    windowBBox: [_, __, width, height],
+  }) {
+    if (this.width !== width) {
+      this.element.width = width;
+    }
+    if (this.height !== height) {
+      this.element.height = height;
+    }
+    if (panning && this.element.style.cursor !== "all-scroll") {
+      this.element.style.cursor = "all-scroll";
+    } else if (
+      !thumbnail &&
+      !panning &&
+      this.element.style.cursor !== "default"
+    ) {
+      this.element.style.cursor = "default";
+    }
+    return this.element;
   }
 }
 
@@ -474,78 +541,22 @@ export class ShowTooltipOptionElement<
   }
 }
 
-export class WindowElement<State extends BaseState> extends BaseElement<State> {
-  getEvents(): Events<State> {
-    return {
-      click: ({ update, dispatchEvent }) => {
-        update({ showOptions: false }, (svg, state, overlays) => {
-          if (!state.config.thumbnail && overlays.length) {
-            dispatchEvent(
-              "select",
-              overlays[0].getSelectData(
-                state,
-                getPixelCoordinates(
-                  state.cursorCoordinates,
-                  state.config.dimensions,
-                  elementBBox(svg.node)
-                )
-              )
-            );
-          }
-        });
-      },
-      mouseleave: ({ update, dispatchEvent }) => {
-        update({
-          cursorCoordinates: null,
-        });
-        dispatchEvent("tooltip", null);
-      },
-      mousemove: ({ event, update, dispatchEvent }) => {
-        update((state) => {
-          return state.config.thumbnail
-            ? {}
-            : {
-                cursorCoordinates: [
-                  (<MouseEvent>event).pageX,
-                  (<MouseEvent>event).pageY,
-                ],
-              };
-        }, dispatchTooltipEvent(dispatchEvent));
-      },
-    };
-  }
-
-  createHTMLElement() {
-    const element = document.createElement("div");
-    element.className = "looker-window";
-    return element;
-  }
-
-  renderSelf({ panning, pan: [x, y], scale, config: { thumbnail } }) {
-    if (panning && this.element.style.cursor !== "all-scroll") {
-      this.element.style.cursor = "all-scroll";
-    } else if (
-      !thumbnail &&
-      !panning &&
-      this.element.style.cursor !== "default"
-    ) {
-      this.element.style.cursor = "default";
-    }
-    this.element.style.transform =
-      "translate3d(" +
-      Math.round(x) +
-      "px, " +
-      Math.round(y) +
-      "px, 0px) scale(" +
-      scale +
-      ")";
-
-    return this.element;
-  }
-}
+export const transformWindowElement = (
+  { pan: [x, y], scale }: Readonly<BaseState>,
+  element: HTMLElement
+): void => {
+  element.style.transform =
+    "translate3d(" +
+    Math.round(x) +
+    "px, " +
+    Math.round(y) +
+    "px, 0px) scale(" +
+    scale +
+    ")";
+};
 
 const dispatchTooltipEvent = (dispatchEvent) => {
-  return (svg, state, overlays) => {
+  return (state, overlays) => {
     // @ts-ignore
     if (state.playing && state.config.thumbnail) {
       return;
@@ -554,23 +565,8 @@ const dispatchTooltipEvent = (dispatchEvent) => {
       return;
     }
     let detail =
-      overlays.length &&
-      overlays[0].containsPoint(
-        state,
-        getPixelCoordinates(
-          state.cursorCoordinates,
-          state.config.dimensions,
-          elementBBox(svg.node)
-        )
-      )
-        ? overlays[0].getPointInfo(
-            state,
-            getPixelCoordinates(
-              state.cursorCoordinates,
-              state.config.dimensions,
-              elementBBox(svg.node)
-            )
-          )
+      overlays.length && overlays[0].containsPoint(state)
+        ? overlays[0].getPointInfo(state)
         : null;
     // @ts-ignore
     if (state.frameNumber && detail) {

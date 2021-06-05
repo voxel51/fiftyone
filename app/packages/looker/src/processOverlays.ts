@@ -2,14 +2,12 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 
-import { Svg } from "@svgdotjs/svg.js";
 import { CONTAINS, Overlay } from "./overlays/base";
 import ClassificationsOverlay from "./overlays/classifications";
 import { BaseState } from "./state";
-import { elementBBox, getPixelCoordinates, rotate } from "./util";
+import { rotate } from "./util";
 
 const processOverlays = <State extends BaseState>(
-  svg: Svg,
   state: State,
   overlays: Overlay<State>[]
 ): [Overlay<State>[], number] => {
@@ -33,23 +31,18 @@ const processOverlays = <State extends BaseState>(
   let ordered = activeLabels.reduce((acc, cur) => [...acc, ...bins[cur]], []);
 
   if (classifications) {
-    ordered = [[classifications, ...ordered], state.rotate];
+    ordered = [classifications, ...ordered];
   }
 
   if (overlays.length < 1) {
-    return [ordered, state.rotate];
+    return [ordered, 0];
   }
 
   if (state.config.thumbnail || !state.cursorCoordinates) {
-    return [ordered, state.rotate];
+    return [ordered, 0];
   }
 
-  const bbox = elementBBox(svg.node);
-  const [x, y] = getPixelCoordinates(
-    state.cursorCoordinates,
-    state.config.dimensions,
-    bbox
-  );
+  const [x, y] = state.pixelCoordinates;
 
   let contained = ordered
     .filter((o) => o.containsPoint(state, [x, y]) > CONTAINS.NONE)

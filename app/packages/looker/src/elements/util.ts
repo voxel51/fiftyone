@@ -48,7 +48,6 @@ type ElementConstructor<
   State extends BaseState,
   Element extends BaseElement<State>
 > = new (
-  state: Readonly<State>,
   update: StateUpdate<State>,
   dispatchEvent: (eventType: string, details?: any) => void,
   children?: BaseElement<State>[]
@@ -67,18 +66,17 @@ export function createElementsTree<
   Element extends BaseElement<State> = BaseElement<State>
 >(
   root: ElementsTemplate<State, Element>,
-  state: Readonly<State>,
   update: StateUpdate<State>,
   dispatchEvent: (eventType: string, details?: any) => void
 ): Element {
   let children = new Array<BaseElement<State>>();
   children = root.children
     ? root.children.map((child) =>
-        createElementsTree<State>(child, state, update, dispatchEvent)
+        createElementsTree<State>(child, update, dispatchEvent)
       )
     : children;
 
-  return new root.node(state, update, dispatchEvent, children);
+  return new root.node(update, dispatchEvent, children);
 }
 
 const secondsToHhmmss = function (number: number): string {

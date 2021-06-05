@@ -25,13 +25,12 @@ export abstract class BaseElement<
   readonly element: Element;
 
   constructor(
-    state: Readonly<State>,
     update: StateUpdate<State>,
     dispatchEvent: (eventType: string, details?: any) => void,
     children?: BaseElement<State>[]
   ) {
     this.children = children;
-    this.element = this.createHTMLElement(state);
+    this.element = this.createHTMLElement();
     Object.entries(this.getEvents()).forEach(([eventType, handler]) => {
       this.element.addEventListener(
         eventType,
@@ -47,7 +46,7 @@ export abstract class BaseElement<
     return {};
   }
 
-  abstract createHTMLElement(state: Readonly<State>): Element;
+  abstract createHTMLElement(): Element;
 
   isShown(state: Readonly<State>): boolean {
     return true;

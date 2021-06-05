@@ -1,8 +1,7 @@
 /**
  * Copyright 2017-2021, Voxel51, Inc.
  */
-import { ForeignObject, G, Image, Rect, SVG, Text } from "@svgdotjs/svg.js";
-import { get32BitColor, getAlphaColor } from "../color";
+import { get32BitColor } from "../color";
 import { MASK_ALPHA, TEXT_BG_COLOR } from "../constants";
 
 import { deserialize, NumpyResult } from "../numpy";
@@ -18,121 +17,34 @@ interface DetectionLabel extends RegularLabel {
 export default class DetectionOverlay<
   State extends BaseState
 > extends CoordinateOverlay<State, DetectionLabel> {
-  readonly g: G;
-
-  private rect: Rect;
-  private color: string;
-  private labelText: string;
-  private titleRect: Rect;
-  private hideTitle: boolean;
-  private strokeWidth: number;
-  private fontSize: number;
-  private title: Text;
-  private foreignObject: ForeignObject;
-  private canvas: HTMLCanvasElement;
   private static readonly intermediateCanvas: HTMLCanvasElement = document.createElement(
     "canvas"
   );
   private readonly mask: NumpyResult;
 
-  constructor(state, field, label) {
+  constructor(config, field, label) {
     super(field, label);
-    this.color = this.getColor(state);
-    this.g = new G();
-
-    const {
-      config: {
-        dimensions: [width, height],
-      },
-    } = state;
-
-    const {
-      bounding_box: [btlx, btly, bw, bh],
-    } = this.label;
-
-    if (typeof label.mask === "string") {
-      this.mask = deserialize(this.label.mask);
-      this.canvas = document.createElement("canvas");
-      this.canvas.width = width;
-      this.canvas.height = height;
-      this.canvas.getContext("2d").imageSmoothingEnabled = false;
-      this.foreignObject = new ForeignObject()
-        .size(width * bw, height * bh)
-        .move(btlx * width, btly * height)
-        .add(SVG(this.canvas));
-      this.drawMask(state);
-      this.g.add(this.foreignObject);
-    }
-
-    this.rect = new Rect()
-      .size(width * bw, height * bh)
-      .attr({
-        fill: "#000000",
-        "fill-opacity": 0,
-        "stroke-opacity": 1,
-      })
-      .move(btlx * width, btly * height);
-    this.g.add(this.rect);
-
-    if (!state.config.thumbnail) {
-      this.hideTitle = false;
-      this.title = new Text()
-        .plain(this.getLabelText(state))
-        .fill("#FFFFFF")
-        .font({
-          family: "Palanquin",
-          anchor: "middle",
-          weight: "bold",
-        })
-        .move(btlx * width, btly * height);
-      this.titleRect = new Rect().fill(TEXT_BG_COLOR);
-      this.drawTitle(state);
-      this.g.add(this.titleRect);
-      this.g.add(this.title);
-    }
   }
 
-  containsPoint(state, [x, y]) {
-    if (this.g.inside(x, y)) {
-      return CONTAINS.CONTENT;
-    }
-
+  containsPoint(state) {
     return CONTAINS.NONE;
   }
 
-  draw(g, state) {
-    const color = this.getColor(state);
-
-    if (this.color !== color) {
-      this.color = color;
-      if (this.mask) {
-        const img = this.drawMask(state);
-      }
-    }
-    if (this.isShown(state)) {
-      this.rect.attr({
-        stroke: this.color,
-        "stroke-width": state.strokeWidth,
-      });
-
-      if (!state.config.thumbnail) {
-        this.drawTitle(state);
-      }
-    } else {
-      this.g.hide();
-    }
-
-    g.add(this.g);
+  draw(ctx: CanvasRenderingContext2D, state) {
+    ctx.scale(state.scale, state.scale);
+    ctx.strokeStyle = this.getColor(state);
+    ctx.lineWidth = 4;
+    const [btlx, btly, bw, bh] = this.label.bounding_box;
+    const [w, h] = state.config.dimensions;
+    ctx.strokeRect(w * btlx, h * btly, bw * w, h * bh);
   }
 
-  getMouseDistance(
-    {
-      config: {
-        dimensions: [w, h],
-      },
+  getMouseDistance({
+    config: {
+      dimensions: [w, h],
     },
-    [x, y]
-  ) {
+    pixelCoordinates: [x, y],
+  }) {
     const [bx, by, bw, bh] = this.label.bounding_box;
     x /= w;
     y /= h;
@@ -159,70 +71,6 @@ export default class DetectionOverlay<
     return getDetectionPoints([this.label]);
   }
 
-  private sizeTitleRect(strokeWidth) {
-    const titleBox = this.title.bbox();
-    this.titleRect.size(titleBox.width + strokeWidth * 3, titleBox.height);
-  }
-
-  private drawTitle(state: Readonly<State>) {
-    if (state.wheeling) {
-      if (!this.hideTitle) {
-        this.hideTitle = true;
-        this.titleRect.remove();
-        this.title.remove();
-      }
-      return;
-    }
-
-    let show = false;
-    if (this.hideTitle) {
-      this.hideTitle = false;
-      show = true;
-    }
-
-    let fontChange = false;
-    if (this.fontSize !== state.fontSize) {
-      this.title.font({ size: state.fontSize });
-      this.fontSize = state.fontSize;
-      fontChange = true;
-    }
-
-    const labelText = this.getLabelText(state);
-    const textUpdate = labelText !== this.labelText;
-
-    if (textUpdate) {
-      this.title.plain(this.getLabelText(state));
-      this.sizeTitleRect(state.strokeWidth);
-      this.labelText = labelText;
-    }
-
-    if (fontChange || this.strokeWidth !== state.strokeWidth || textUpdate) {
-      const {
-        strokeWidth,
-        config: {
-          dimensions: [width, height],
-        },
-      } = state;
-      const {
-        bounding_box: [btlx, btly],
-      } = this.label;
-      const [x, y]: Coordinates = [
-        btlx * width + strokeWidth / 2,
-        btly * height + strokeWidth / 2,
-      ];
-
-      !textUpdate && this.sizeTitleRect(strokeWidth);
-      this.title.move(x + strokeWidth * 1.5, y - strokeWidth / 2);
-      this.titleRect.move(x, y);
-      this.strokeWidth = state.strokeWidth;
-    }
-
-    if (show) {
-      this.g.add(this.titleRect);
-      this.g.add(this.title);
-    }
-  }
-
   private getLabelText(state: Readonly<State>): string {
     let text =
       this.label.label && state.options.showLabel ? `${this.label.label} ` : "";
@@ -231,35 +79,6 @@ export default class DetectionOverlay<
       text += `(${Number(this.label.confidence).toFixed(2)})`;
     }
     return text;
-  }
-
-  private drawMask(state: Readonly<State>) {
-    const {
-      config: {
-        dimensions: [width, height],
-      },
-    } = state;
-    const [maskHeight, maskWidth] = this.mask.shape;
-    const maskContext = DetectionOverlay.intermediateCanvas.getContext("2d");
-    ensureCanvasSize(DetectionOverlay.intermediateCanvas, [
-      maskWidth,
-      maskHeight,
-    ]);
-    const maskImage = maskContext.createImageData(maskWidth, maskHeight);
-    const maskImageRaw = new Uint32Array(maskImage.data.buffer);
-
-    const bitColor = get32BitColor(this.color, MASK_ALPHA);
-    for (let i = 0; i < this.mask.data.length; i++) {
-      if (this.mask.data[i]) {
-        maskImageRaw[i] = bitColor;
-      }
-    }
-    maskContext.putImageData(maskImage, 0, 0);
-    const context = this.canvas.getContext("2d");
-    context.clearRect(0, 0, width, height);
-    this.canvas
-      .getContext("2d")
-      .drawImage(maskContext.canvas, 0, 0, width, height);
   }
 }
 

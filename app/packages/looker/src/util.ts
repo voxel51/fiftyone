@@ -3,7 +3,7 @@
  */
 
 import { FONT_SIZE, MIN_PIXELS, STROKE_WIDTH } from "./constants";
-import { BoundingBox, Coordinates, Dimensions } from "./state";
+import { BaseState, BoundingBox, Coordinates, Dimensions } from "./state";
 
 /**
  * Shallow data-object comparison for equality
@@ -236,7 +236,7 @@ export const getContainingBox = (points: Coordinates[]): BoundingBox => {
 export const getFitRect = (
   [mw, mh]: Dimensions,
   [tlx, tly, w, h]: BoundingBox
-) => {
+): BoundingBox => {
   if (mw / mh > w / h) {
     const fitHeight = (w * mh) / mw;
     tly += (h - fitHeight) / 2;
@@ -255,18 +255,12 @@ export const getFitRect = (
  */
 export const getPixelCoordinates = function (
   [x, y]: Coordinates,
-  [mw, mh]: Dimensions,
   [tlx, tly, w, h]: BoundingBox
 ): Coordinates {
-  [tlx, tly, w, h] = getFitRect([mw, mh], [tlx, tly, w, h]);
-
   x -= tlx;
   y -= tly;
 
-  return [
-    Math.round(rescale(x, 0, w, 0, mw)),
-    Math.round(rescale(y, 0, h, 0, mh)),
-  ];
+  return [rescale(x, 0, w, 0, w), rescale(y, 0, h, 0, h)];
 };
 
 /**
@@ -277,7 +271,9 @@ export const rotate = (array: any[], rotation: number): [any[], number] => {
   return [[...array.slice(rotation), ...array.slice(0, rotation)], rotation];
 };
 
-export const elementBBox = (element: HTMLElement | SVGElement): BoundingBox => {
+export const getElementBBox = (
+  element: HTMLElement | SVGElement
+): BoundingBox => {
   const {
     top: tly,
     left: tlx,

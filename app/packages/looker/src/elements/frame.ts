@@ -4,6 +4,7 @@
 
 import { FrameState } from "../state";
 import { BaseElement, Events } from "./base";
+import { transformWindowElement } from "./common";
 import { getFrameString, getTime, getTimeString } from "./util";
 
 export class FrameNumberElement extends BaseElement<FrameState> {
@@ -50,15 +51,17 @@ export class FrameElement extends BaseElement<FrameState, HTMLVideoElement> {
     };
   }
 
-  createHTMLElement({ config: { src, frameNumber, frameRate } }) {
+  createHTMLElement() {
     const element = document.createElement("video");
-    element.className = "looker-video";
     element.preload = "metadata";
-    element.muted = true; // this works whereas .setAttribute does not
+    element.muted = true;
     return element;
   }
 
-  renderSelf({ config: { src, frameNumber, frameRate } }) {
+  renderSelf(state) {
+    const {
+      config: { src, frameNumber, frameRate },
+    } = state;
     if (this.src !== src) {
       this.src = src;
       this.element.setAttribute("src", src);
@@ -67,6 +70,7 @@ export class FrameElement extends BaseElement<FrameState, HTMLVideoElement> {
       this.frameNumber = frameNumber;
       this.element.currentTime = getTime(frameNumber, frameRate);
     }
+    transformWindowElement(state, this.element);
     return this.element;
   }
 }

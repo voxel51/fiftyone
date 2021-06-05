@@ -84,6 +84,7 @@ export interface TooltipOverlay {
 
 export interface BaseState {
   cursorCoordinates: Coordinates;
+  pixelCoordinates: Coordinates;
   disableControls: boolean;
   loaded: boolean;
   hovering: boolean;
@@ -100,6 +101,10 @@ export interface BaseState {
   strokeWidth: number;
   fontSize: number;
   wheeling: boolean;
+  windowBBox: BoundingBox;
+  transformedWindowBBox: BoundingBox;
+  mediaBBox: BoundingBox;
+  transformedMediaBBox: BoundingBox;
 }
 
 export interface FrameState extends BaseState {
@@ -133,7 +138,6 @@ export type StateUpdate<State extends BaseState> = (
     | Optional<State>
     | ((state: Readonly<State>) => Optional<State>),
   postUpdate?: (
-    svg: Svg,
     state: Readonly<State>,
     overlays: Readonly<Overlay<State>[]>
   ) => void

@@ -2,7 +2,6 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 
-import { G } from "@svgdotjs/svg.js";
 import { BaseState, Coordinates } from "../state";
 
 // in numerical order (CONTAINS_BORDER takes precedence over CONTAINS_CONTENT)
@@ -53,13 +52,13 @@ export const isShown = <State extends BaseState, Label extends RegularLabel>(
 };
 
 export interface Overlay<State extends BaseState> {
-  draw(g: G, state: State): void;
+  draw(ctx: CanvasRenderingContext2D, state: State): void;
   isShown(state: Readonly<State>): boolean;
   field?: string;
-  containsPoint(state: Readonly<State>, coordinates: Coordinates): CONTAINS;
-  getMouseDistance(state: Readonly<State>, coordinates: Coordinates): number;
-  getPointInfo(state: Readonly<State>, coordinates: Coordinates): any;
-  getSelectData(state: Readonly<State>, coordinates: Coordinates): SelectData;
+  containsPoint(state: Readonly<State>): CONTAINS;
+  getMouseDistance(state: Readonly<State>): number;
+  getPointInfo(state: Readonly<State>): any;
+  getSelectData(state: Readonly<State>): SelectData;
   getPoints(): Coordinates[];
 }
 
@@ -75,7 +74,7 @@ export abstract class CoordinateOverlay<
     this.label = label;
   }
 
-  abstract draw(g: G, state: Readonly<State>): void;
+  abstract draw(ctx: CanvasRenderingContext2D, state: Readonly<State>): void;
 
   isShown(state: Readonly<State>): boolean {
     return isShown<State, Label>(state, this.field, this.label);
@@ -90,15 +89,15 @@ export abstract class CoordinateOverlay<
     return options.colorMap(key);
   }
 
-  abstract containsPoint(state: Readonly<State>, [x, y]: Coordinates);
+  abstract containsPoint(state: Readonly<State>);
 
-  abstract getMouseDistance(state: Readonly<State>, [x, y]: Coordinates);
+  abstract getMouseDistance(state: Readonly<State>);
 
-  abstract getPointInfo(state: Readonly<State>, [x, y]: Coordinates);
+  abstract getPointInfo(state: Readonly<State>);
 
   abstract getPoints(): Coordinates[];
 
-  getSelectData(state: Readonly<State>, [x, y]: Coordinates) {
+  getSelectData(state: Readonly<State>) {
     return {
       id: this.label._id,
       field: this.field,

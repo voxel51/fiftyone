@@ -4,6 +4,7 @@
 
 import { VideoState } from "../state";
 import { BaseElement, Events } from "./base";
+import { transformWindowElement } from "./common";
 import {
   getFrameNumber,
   getFrameString,
@@ -260,20 +261,20 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
 
   createHTMLElement() {
     const element = document.createElement("video");
-    element.className = "looker-video";
-    element.setAttribute("preload", "metadata");
-    element.muted = true; // this works whereas .setAttribute does not
+    element.preload = "metadata";
+    element.muted = true;
     this.frameNumber = 1;
     return element;
   }
 
-  renderSelf({
-    config: { src, frameRate },
-    frameNumber,
-    seeking,
-    playing,
-    loaded,
-  }) {
+  renderSelf(state) {
+    const {
+      config: { src, frameRate },
+      frameNumber,
+      seeking,
+      playing,
+      loaded,
+    } = state;
     if (this.src !== src) {
       this.src = src;
       this.element.setAttribute("src", src);
@@ -290,6 +291,7 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
     if (loaded && !playing && !this.element.paused) {
       this.element.pause();
     }
+    transformWindowElement(state, this.element);
     return this.element;
   }
 }

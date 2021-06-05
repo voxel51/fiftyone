@@ -4,6 +4,7 @@
 
 import { ImageState } from "../state";
 import { BaseElement, Events } from "./base";
+import { transformWindowElement } from "./common";
 
 export class ImageElement extends BaseElement<ImageState, HTMLImageElement> {
   private src: string;
@@ -21,16 +22,19 @@ export class ImageElement extends BaseElement<ImageState, HTMLImageElement> {
 
   createHTMLElement() {
     const element = document.createElement("img");
-    element.className = "looker-image";
-    element.setAttribute("loading", "lazy");
+    element.loading = "lazy";
     return element;
   }
 
-  renderSelf({ config: { src } }) {
+  renderSelf(state) {
+    const {
+      config: { src },
+    } = state;
     if (this.src !== src) {
       this.src = src;
       this.element.setAttribute("src", src);
     }
+    transformWindowElement(state, this.element);
     return this.element;
   }
 }
