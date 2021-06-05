@@ -610,6 +610,42 @@ class DatasetTests(unittest.TestCase):
                 [None, None, ["foo", "bar"], None, ["foo", "bar"], None],
             )
 
+        for key_fcn in (None, filepath_fcn):
+            d10 = dataset1.clone()
+            d10.merge_samples(
+                dataset2,
+                fields={"hello": "hello2", "predictions2": "predictions1"},
+                key_fcn=key_fcn,
+            )
+
+            d10_schema = d10.get_field_schema()
+            self.assertIn("hello", d10_schema)
+            self.assertIn("hello2", d10_schema)
+            self.assertIn("predictions1", d10_schema)
+            self.assertNotIn("predictions2", d10_schema)
+
+            self.assertListEqual(
+                d10.values("tags"), [[], ["hello"], ["world"], [], [], []],
+            )
+            self.assertListEqual(
+                d10.values("hello"),
+                [None, "world", "world", "world", None, None],
+            )
+            self.assertListEqual(
+                d10.values("hello2"), [None, None, "bar", None, "bar", None],
+            )
+            self.assertListEqual(
+                d10.values("predictions1.detections.label"),
+                [
+                    None,
+                    ["hello", "world"],
+                    ["hello", "world", "foo", "bar"],
+                    None,
+                    ["foo", "bar"],
+                    None,
+                ],
+            )
+
     @drop_datasets
     def test_rename_fields(self):
         dataset = fo.Dataset()

@@ -922,6 +922,46 @@ class VideoTests(unittest.TestCase):
                 [[], [None, None, ["foo", "bar"], None, ["foo", "bar"]], []],
             )
 
+        for key_fcn in (None, filepath_fcn):
+            d10 = dataset1.clone()
+            d10.merge_samples(
+                dataset2,
+                fields={
+                    "frames.hello": "frames.hello2",
+                    "frames.predictions2": "frames.predictions1",
+                },
+                key_fcn=key_fcn,
+            )
+
+            d10_frame_schema = d10.get_frame_field_schema()
+            self.assertIn("hello", d10_frame_schema)
+            self.assertIn("hello2", d10_frame_schema)
+            self.assertIn("predictions1", d10_frame_schema)
+            self.assertNotIn("predictions2", d10_frame_schema)
+
+            self.assertListEqual(
+                d10.values("frames.hello"),
+                [[], [None, "world", "world", "world", None], []],
+            )
+            self.assertListEqual(
+                d10.values("frames.hello2"),
+                [[], [None, None, "bar", None, "bar"], []],
+            )
+            self.assertListEqual(
+                d10.values("frames.predictions1.detections.label"),
+                [
+                    [],
+                    [
+                        None,
+                        ["hello", "world"],
+                        ["hello", "world", "foo", "bar"],
+                        None,
+                        ["foo", "bar"],
+                    ],
+                    [],
+                ],
+            )
+
 
 if __name__ == "__main__":
     fo.config.show_progress_bars = False

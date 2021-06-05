@@ -254,12 +254,15 @@ class _Document(object):
             as a whole rather than merging their elements
         -   Whether to merge (a) only specific fields or (b) all but certain
             fields
+        -   Mapping input document fields to different field names of this
+            document
 
         Args:
             document: a :class:`Document` or :class:`DocumentView` of the same
                 type
             fields (None): an optional field or iterable of fields to which to
-                restrict the merge
+                restrict the merge. This can also be a dict mapping field names
+                of the input document to field names of this document
             omit_fields (None): an optional field or iterable of fields to
                 exclude from the merge
             merge_lists (True): whether to merge the elements of top-level list
@@ -286,14 +289,14 @@ class _Document(object):
 
         fields = document._parse_fields(fields=fields, omit_fields=omit_fields)
 
-        for field_name in fields:
-            value = document[field_name]
+        for src_field, dst_field in fields.items():
+            value = document[src_field]
 
             if value is None:
                 continue
 
             try:
-                curr_value = self[field_name]
+                curr_value = self[dst_field]
             except KeyError:
                 curr_value = None
 
@@ -321,12 +324,12 @@ class _Document(object):
 
             if (
                 not overwrite
-                and field_name in existing_field_names
+                and dst_field in existing_field_names
                 and curr_value is not None
             ):
                 continue
 
-            self.set_field(field_name, value, create=expand_schema)
+            self.set_field(dst_field, value, create=expand_schema)
 
     def copy(self, fields=None, omit_fields=None):
         """Returns a deep copy of the document that has not been added to the
@@ -334,7 +337,8 @@ class _Document(object):
 
         Args:
             fields (None): an optional field or iterable of fields to which to
-                restrict the copy
+                restrict the copy. This can also be a dict mapping existing
+                field names to new field names
             omit_fields (None): an optional field or iterable of fields to
                 exclude from the copy
 
@@ -383,9 +387,12 @@ class _Document(object):
 
     def _parse_fields(self, fields=None, omit_fields=None):
         if fields is None:
-            fields = self.field_names
+            fields = {f: f for f in self.field_names}
         elif etau.is_str(fields):
-            fields = [fields]
+            fields = {fields: fields}
+
+        if not isinstance(fields, dict):
+            fields = {f: f for f in fields}
 
         if omit_fields is not None:
             if etau.is_str(omit_fields):
@@ -393,7 +400,7 @@ class _Document(object):
             else:
                 omit_fields = set(omit_fields)
 
-            fields = [f for f in fields if f not in omit_fields]
+            fields = {k: v for k, v in fields.items() if k not in omit_fields}
 
         return fields
 
@@ -423,7 +430,7 @@ class Document(_Document):
     def copy(self, fields=None, omit_fields=None):
         fields = self._parse_fields(fields=fields, omit_fields=omit_fields)
         return self.__class__(
-            **{field: deepcopy(self[field]) for field in fields}
+            **{v: deepcopy(self[k]) for k, v in fields.items()}
         )
 
     def reload(self, hard=False):
@@ -716,7 +723,7 @@ class DocumentView(_Document):
     def copy(self, fields=None, omit_fields=None):
         fields = self._parse_fields(fields=fields, omit_fields=omit_fields)
         return self._DOCUMENT_CLS(
-            **{field: deepcopy(self[field]) for field in fields}
+            **{v: deepcopy(self[k]) for k, v in fields.items()}
         )
 
     def save(self):

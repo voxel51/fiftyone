@@ -1416,7 +1416,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if fields is not None:
             if etau.is_str(fields):
                 fields = [fields]
-            else:
+            elif not isinstance(fields, dict):
                 fields = list(fields)
 
         if omit_fields is not None:
@@ -1480,6 +1480,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             as a whole rather than merging their elements
         -   Whether to merge (a) only specific fields or (b) all but certain
             fields
+        -   Mapping input collection fields to different field names of this
+            dataset
 
         Args:
             samples: a :class:`fiftyone.core.collections.SampleCollection` or
@@ -1498,7 +1500,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 restrict the merge. If provided, fields other than these are
                 omitted from ``samples`` when merging or adding samples. One
                 exception is that ``filepath`` is always included when adding
-                new samples, since the field is required
+                new samples, since the field is required. This can also be a
+                dict mapping field names of the input collection to field names
+                of this dataset
             omit_fields (None): an optional field or iterable of fields to
                 exclude from the merge. If provided, these fields are omitted
                 from ``samples``, if present, when merging or adding samples.
@@ -1530,7 +1534,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if fields is not None:
             if etau.is_str(fields):
                 fields = [fields]
-            else:
+            elif not isinstance(fields, dict):
                 fields = list(fields)
 
         if omit_fields is not None:
@@ -1562,9 +1566,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 omit_fields=omit_fields,
                 merge_lists=merge_lists,
                 overwrite=overwrite,
-                expand_schema=expand_schema,
-                include_info=include_info,
-                overwrite_info=overwrite_info,
             )
             return
 
@@ -1580,10 +1581,15 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         # When inserting new samples, `filepath` cannot be excluded
         if insert_new:
-            insert_fields = fields
-            if insert_fields is not None:
+            if isinstance(fields, dict):
+                insert_fields = fields.copy()
+                insert_fields["filepath"] = "filepath"
+            elif fields is not None:
+                insert_fields = fields.copy()
                 if "filepath" not in insert_fields:
                     insert_fields = ["filepath"] + insert_fields
+            else:
+                insert_fields = None
 
             insert_omit_fields = omit_fields
             if insert_omit_fields is not None:
@@ -3784,15 +3790,7 @@ def _merge_dataset_doc(
         if is_video:
             frame_schema = {f.name: f.to_field() for f in doc.frame_fields}
 
-    if fields is not None:
-        if is_video:
-            fields, frame_fields = fou.split_frame_fields(fields)
-            frame_schema = {
-                k: v for k, v in frame_schema.items() if k in frame_fields
-            }
-
-        schema = {k: v for k, v in schema.items() if k in fields}
-
+    # Omit fields first in case `fields` is a dict that changes field names
     if omit_fields is not None:
         if is_video:
             omit_fields, omit_frame_fields = fou.split_frame_fields(
@@ -3805,6 +3803,21 @@ def _merge_dataset_doc(
             }
 
         schema = {k: v for k, v in schema.items() if k not in omit_fields}
+
+    if fields is not None:
+        if not isinstance(fields, dict):
+            fields = {f: f for f in fields}
+
+        if is_video:
+            fields, frame_fields = fou.split_frame_fields(fields)
+
+            frame_schema = {
+                frame_fields[k]: v
+                for k, v in frame_schema.items()
+                if k in frame_fields
+            }
+
+        schema = {fields[k]: v for k, v in schema.items() if k in fields}
 
     dataset._sample_doc_cls.merge_field_schema(
         schema, expand_schema=expand_schema
@@ -3935,9 +3948,6 @@ def _merge_samples(
     omit_fields=None,
     merge_lists=True,
     overwrite=True,
-    expand_schema=True,
-    include_info=True,
-    overwrite_info=False,
 ):
     #
     # Prepare for merge
@@ -3964,8 +3974,12 @@ def _merge_samples(
         frame_fields = None
         omit_frame_fields = None
 
-    if fields is not None and is_video:
-        fields, frame_fields = fou.split_frame_fields(fields)
+    if fields is not None:
+        if not isinstance(fields, dict):
+            fields = {f: f for f in fields}
+
+        if is_video:
+            fields, frame_fields = fou.split_frame_fields(fields)
 
     if omit_fields is not None:
         if is_video:
@@ -3974,13 +3988,15 @@ def _merge_samples(
             )
 
         if fields is not None:
-            fields = [f for f in fields if f not in omit_fields]
+            fields = {k: v for k, v in fields.items() if k not in omit_fields}
             omit_fields = None
 
         if is_video and frame_fields is not None:
-            frame_fields = [
-                f for f in frame_fields if f not in omit_frame_fields
-            ]
+            frame_fields = {
+                k: v
+                for k, v in frame_fields.items()
+                if k not in omit_frame_fields
+            }
             omit_frame_fields = None
 
     #
@@ -4030,7 +4046,12 @@ def _merge_samples(
     sample_pipeline = src_collection._pipeline(detach_frames=True)
 
     if fields is not None:
-        project = {f: True for f in fields}
+        project = {}
+        for k, v in fields.items():
+            if k == v:
+                project[k] = True
+            else:
+                project[v] = "$" + k
 
         if insert_new:
             # Must include default fields when new samples may be inserted.
@@ -4070,7 +4091,7 @@ def _merge_samples(
         if insert_new:
             if fields is not None:
                 delete_fields.update(
-                    f for f in default_fields if f not in fields
+                    f for f in default_fields if f not in set(fields.values())
                 )
 
             if omit_fields is not None:
@@ -4135,7 +4156,13 @@ def _merge_samples(
         frame_pipeline = _src_collection._pipeline(frames_only=True)
 
         if frame_fields is not None:
-            project = {f: True for f in frame_fields}
+            project = {}
+            for k, v in frame_fields.items():
+                if k == v:
+                    project[k] = True
+                else:
+                    project[v] = "$" + k
+
             project[frame_key_field] = True
             project["frame_number"] = True
             frame_pipeline.append({"$project": project})
@@ -4219,12 +4246,14 @@ def _merge_docs(
                 continue
 
             if isinstance(field_type, fof.ListField):
-                list_fields.append(field)
+                root = fields[field] if fields is not None else field
+                list_fields.append(root)
             elif isinstance(
                 field_type, fof.EmbeddedDocumentField
             ) and issubclass(field_type.document_type, fol._LABEL_LIST_FIELDS):
+                root = fields[field] if fields is not None else field
                 elem_fields.append(
-                    field + "." + field_type.document_type._LABEL_LIST_FIELD
+                    root + "." + field_type.document_type._LABEL_LIST_FIELD
                 )
     else:
         list_fields = None

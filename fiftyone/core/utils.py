@@ -109,14 +109,18 @@ def split_frame_fields(fields):
     removed from the returned frame fields.
 
     Args:
-        fields: a field or iterable of fields
+        fields: a field, iterable of fields, or dict mapping field names to new
+            field names
 
     Returns:
         a tuple of:
 
-        -   a list of sample fields
-        -   a list of frame fields
+        -   a list or dict of sample fields
+        -   a list or dict of frame fields
     """
+    if isinstance(fields, dict):
+        return _split_frame_fields_dict(fields)
+
     if etau.is_str(fields):
         fields = [fields]
 
@@ -130,6 +134,21 @@ def split_frame_fields(fields):
             frame_fields.append(field[n:])
         else:
             sample_fields.append(field)
+
+    return sample_fields, frame_fields
+
+
+def _split_frame_fields_dict(fields):
+    frames_prefix = "frames."
+    n = len(frames_prefix)
+
+    sample_fields = {}
+    frame_fields = {}
+    for src_field, dst_field in fields.items():
+        if src_field.startswith(frames_prefix):
+            frame_fields[src_field[n:]] = dst_field[n:]
+        else:
+            sample_fields[src_field] = dst_field
 
     return sample_fields, frame_fields
 

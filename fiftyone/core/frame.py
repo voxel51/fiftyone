@@ -293,6 +293,7 @@ class Frames(object):
             as a whole rather than merging their elements
         -   Whether to merge (a) only specific fields or (b) all but certain
             fields
+        -   Mapping input frame fields to different field names of this frame
 
         Args:
             frames: can be any of the following
@@ -305,7 +306,8 @@ class Frames(object):
                     instances
 
             fields (None): an optional field or iterable of fields to which to
-                restrict the merge
+                restrict the merge. This can also be a dict mapping field names
+                of the input frame to field names of this frame
             omit_fields (None): an optional field or iterable of fields to
                 exclude from the merge
             merge_lists (True): whether to merge the elements of list fields

@@ -242,11 +242,14 @@ class _SampleMixin(object):
             as a whole rather than merging their elements
         -   Whether to merge (a) only specific fields or (b) all but certain
             fields
+        -   Mapping input sample fields to different field names of this sample
 
         Args:
             sample: a :class:`fiftyone.core.sample.Sample`
             fields (None): an optional field or iterable of fields to which to
-                restrict the merge. May contain frame fields for video samples
+                restrict the merge. May contain frame fields for video samples.
+                This can also be a dict mapping field names of the input sample
+                to field names of this sample
             omit_fields (None): an optional field or iterable of fields to
                 exclude from the merge. May contain frame fields for video
                 samples
@@ -409,7 +412,8 @@ class Sample(_SampleMixin, Document, metaclass=SampleSingleton):
 
         Args:
             fields (None): an optional field or iterable of fields to which to
-                restrict the copy
+                restrict the copy. This can also be a dict mapping existing
+                field names to new field names
             omit_fields (None): an optional field or iterable of fields to
                 exclude from the copy
 
