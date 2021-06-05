@@ -641,6 +641,11 @@ non-patch views:
 -   Any new fields that you add to an object patches view will not be added to
     the source dataset
 
+.. note::
+
+    Did you know? You can :ref:`export object patches <export-label-coercion>`
+    as classification datasets!
+
 .. _eval-patches-views:
 
 Evaluation patches

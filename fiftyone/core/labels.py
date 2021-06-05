@@ -974,13 +974,29 @@ _SINGLE_LABEL_FIELDS = (
     Polyline,
     Segmentation,
 )
+
 _LABEL_LIST_FIELDS = (
     Classifications,
     Detections,
     Keypoints,
     Polylines,
 )
+
 _LABEL_FIELDS = _SINGLE_LABEL_FIELDS + _LABEL_LIST_FIELDS
+
+_PATCHES_FIELDS = (
+    Detection,
+    Detections,
+    Polyline,
+    Polylines,
+)
+
+_LABEL_LIST_TO_SINGLE_MAP = {
+    Classifications: Classification,
+    Detections: Detection,
+    Keypoints: Keypoint,
+    Polylines: Polyline,
+}
 
 
 def _from_geo_json_single(d):
