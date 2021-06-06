@@ -37,6 +37,7 @@ You can explicitly create a view that contains an entire dataset via
     Num samples:    200
     Tags:           ['validation']
     Sample fields:
+        id:           fiftyone.core.fields.ObjectIdField
         filepath:     fiftyone.core.fields.StringField
         tags:         fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
         metadata:     fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.Metadata)
@@ -1082,15 +1083,16 @@ Let's say you have a dataset that looks like this:
     Persistent:     True
     Tags:           []
     Sample fields:
-        filepath:                 StringField
-        tags:                     ListField(StringField)
-        metadata:                 EmbeddedDocumentField(Metadata)
-        open_images_id:           StringField
-        groundtruth_image_labels: EmbeddedDocumentField(Classifications)
-        groundtruth_detections:   EmbeddedDocumentField(Detections)
-        faster_rcnn:              EmbeddedDocumentField(Detections)
-        mAP:                      FloatField
-        AP_per_class:             DictField
+        id:                       fiftyone.core.fields.ObjectIdField
+        filepath:                 fiftyone.core.fields.StringField
+        tags:                     fiftyone.core.fields.ListField(StringField)
+        metadata:                 fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.Metadata)
+        open_images_id:           fiftyone.core.fields.StringField
+        groundtruth_image_labels: fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Classifications)
+        groundtruth_detections:   fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Detections)
+        faster_rcnn:              fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Detections)
+        mAP:                      fiftyone.core.fields.FloatField
+        AP_per_class:             fiftyone.core.fields.DictField
 
 and you want to get a list of ``open_images_id``'s for all samples in the
 dataset. Loading other fields is unnecessary; in fact, using
