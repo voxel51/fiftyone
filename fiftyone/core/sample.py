@@ -472,10 +472,7 @@ class Sample(_SampleMixin, Document, metaclass=SampleSingleton):
         Returns:
             a :class:`Sample`
         """
-        return cls(
-            filepath=filepath,
-            **{k: v for k, v in frame.iter_fields() if k != "id"},
-        )
+        return cls(filepath=filepath, **{k: v for k, v in frame.iter_fields()})
 
     @classmethod
     def from_doc(cls, doc, dataset=None):

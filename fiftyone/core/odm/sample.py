@@ -92,9 +92,7 @@ class DatasetSampleDocument(DatasetMixin, Document, SampleDocument):
 
     meta = {"abstract": True}
 
-    id = fof.ObjectIdField(
-        required=True, primary_key=True, unique=True, db_field="_id"
-    )
+    id = fof.ObjectIdField(required=True, primary_key=True, db_field="_id")
     filepath = fof.StringField(required=True)
     tags = fof.ListField(fof.StringField())
     metadata = fof.EmbeddedDocumentField(fom.Metadata, null=True)

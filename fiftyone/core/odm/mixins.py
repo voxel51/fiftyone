@@ -253,7 +253,7 @@ class DatasetMixin(object):
                 "Field type %s must be subclass of %s" % (ftype, fof.Field)
             )
 
-        if embedded_doc_type and not issubclass(
+        if embedded_doc_type is not None and not issubclass(
             ftype, fof.EmbeddedDocumentField
         ):
             raise ValueError(
@@ -266,8 +266,10 @@ class DatasetMixin(object):
         for field_name in field_names:
             # pylint: disable=no-member
             field = cls._fields[field_name]
+            if not isinstance(field, ftype):
+                continue
 
-            if embedded_doc_type and not issubclass(
+            if embedded_doc_type is not None and not issubclass(
                 field.document_type, embedded_doc_type
             ):
                 continue
@@ -1025,8 +1027,7 @@ class NoDatasetMixin(object):
     def to_dict(self, extended=False):
         d = {}
         for k, v in self._data.items():
-            # @todo avoid hard-coding this? this field uses `db_field`
-            if k == "id":
+            if k == "id":  # @todo `use_db_field` hack
                 k = "_id"
 
             if hasattr(v, "to_dict"):

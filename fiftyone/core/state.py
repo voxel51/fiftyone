@@ -194,28 +194,17 @@ class DatasetStatistics(object):
         Returns:
             a ``list`` of (path, field) ``tuple``s
         """
-        schemas = [("", collection.get_field_schema())]
-        if collection.media_type == fom.VIDEO:
-            schemas.append(
-                (
-                    collection._FRAMES_PREFIX,
-                    collection.get_frame_field_schema(),
-                )
-            )
-
-        default_fields = collection._get_default_sample_fields()
-
         result = []
-        for prefix, schema in schemas:
-            for field_name, field in schema.items():
 
-                if (field_name.startswith("_") or field_name == "tags") or (
-                    prefix == collection._FRAMES_PREFIX
-                    and field_name == "frame_number"
-                ):
-                    continue
+        for field_name, field in collection.get_field_schema():
+            if field_name not in ("tags",):  # @todo exclude "id" here?
+                result.append((field_name, field))
 
-                result.append((prefix + field_name, field))
+        if collection.media_type == fom.VIDEO:
+            prefix = collection._FRAMES_PREFIX
+            for field_name, field in collection.get_frame_field_schema():
+                if field_name not in ("id", "frame_number"):
+                    result.append((prefix + field_name, field))
 
         return result
 

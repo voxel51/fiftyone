@@ -430,7 +430,7 @@ class ExcludeFields(ViewStage):
                     "Cannot exclude private field '%s'" % field_name
                 )
 
-            if field_name == "id" or field_name in default_fields:
+            if field_name == "_id" or field_name in default_fields:
                 ftype = "frame field" if frames else "field"
                 raise ValueError(
                     "Cannot exclude default %s '%s'" % (ftype, field_name)
@@ -3522,9 +3522,20 @@ class SelectFields(ViewStage):
             sample_collection, frames=False
         )
 
+        # @todo `use_db_field` hack
+        selected_fields = [f if f != "id" else "_id" for f in selected_fields]
+
+        selected_frame_fields = self.get_selected_fields(
+            sample_collection, frames=True
+        )
+
+        # @todo `use_db_field` hack
         selected_frame_fields = [
-            sample_collection._FRAMES_PREFIX + f
-            for f in self.get_selected_fields(sample_collection, frames=True)
+            f if f != "id" else "_id" for f in selected_frame_fields
+        ]
+
+        selected_frame_fields = [
+            sample_collection._FRAMES_PREFIX + f for f in selected_frame_fields
         ]
 
         if selected_frame_fields:

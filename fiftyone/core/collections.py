@@ -473,8 +473,8 @@ class SampleCollection(object):
 
             default_fields = set(
                 self._get_default_sample_fields(include_private=True)
-                + ("id", "_id")
             )
+            default_fields.add("_id")
 
             for field in fields:
                 # We only validate that the root field exists
@@ -494,8 +494,8 @@ class SampleCollection(object):
 
             default_frame_fields = set(
                 self._get_default_frame_fields(include_private=True)
-                + ("id", "_id")
             )
+            default_frame_fields.add("_id")
 
             for field in frame_fields:
                 # We only validate that the root field exists

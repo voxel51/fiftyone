@@ -4045,9 +4045,10 @@ def _merge_samples(
     # Merge samples
     #
 
-    default_fields = src_collection._get_default_sample_fields(
-        include_private=True
+    default_fields = set(
+        src_collection._get_default_sample_fields(include_private=True)
     )
+    default_fields.discard("id")  # @todo `use_db_field` hack
 
     sample_pipeline = src_collection._pipeline(detach_frames=True)
 
@@ -4082,7 +4083,7 @@ def _merge_samples(
     if insert_new:
         # Can't omit default fields here when new samples may be inserted.
         # Any extra fields here are omitted in `when_matched` pipeline
-        _omit_fields -= set(default_fields)
+        _omit_fields -= default_fields
 
     if _omit_fields:
         sample_pipeline.append({"$unset": list(_omit_fields)})

@@ -213,14 +213,20 @@ class _Document(object):
         """
         self._doc.clear_field(field_name)
 
-    def iter_fields(self):
+    def iter_fields(self, include_id=False):
         """Returns an iterator over the ``(name, value)`` pairs of the fields
         of the document.
+
+        Args:
+            include_id (False): whether to include the ``id`` field
 
         Returns:
             an iterator that emits ``(name, value)`` tuples
         """
         for field_name in self.field_names:
+            if field_name == "id" and not include_id:
+                continue
+
             yield field_name, self.get_field(field_name)
 
     def merge(
