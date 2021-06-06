@@ -187,7 +187,7 @@ class VideoTests(unittest.TestCase):
             )
 
     @drop_datasets
-    def test_save_frame(self):
+    def test_save_frames(self):
         dataset = fo.Dataset()
 
         sample = fo.Sample(filepath="video.mp4")
@@ -201,7 +201,7 @@ class VideoTests(unittest.TestCase):
         self.assertEqual(len(sample.frames), 1)
         self.assertEqual(dataset.count("frames"), 0)
 
-        frame.save()
+        sample.save()
 
         self.assertIsNotNone(frame.id)
         self.assertTrue(frame._in_db)
