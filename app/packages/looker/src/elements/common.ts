@@ -235,8 +235,6 @@ export class CanvasElement<State extends BaseState> extends BaseElement<
   renderSelf({
     config: { thumbnail },
     panning,
-    pan,
-    scale,
     windowBBox: [_, __, width, height],
   }: Readonly<State>) {
     if (this.width !== width) {
@@ -324,6 +322,91 @@ export class ControlsElement<State extends BaseState> extends BaseElement<
       this.element.style.height = "0";
     }
     this.showControls = showControls;
+    return this.element;
+  }
+}
+
+export class FullscreenButtonElement<
+  State extends BaseState
+> extends BaseElement<State, HTMLImageElement> {
+  private fullscreen: boolean;
+
+  getEvents(): Events<State> {
+    return {
+      click: ({ event, update }) => {
+        event.stopPropagation();
+        update(({ fullscreen }) => ({ fullscreen: !fullscreen }));
+      },
+    };
+  }
+
+  createHTMLElement() {
+    const element = document.createElement("img");
+    element.className = "looker-clickable";
+    element.style.gridArea = "2 / 5 / 2 / 5";
+    return element;
+  }
+
+  renderSelf({ fullscreen }) {
+    if (this.fullscreen !== fullscreen) {
+      this.fullscreen = fullscreen;
+      this.element.src = fullscreen ? ICONS.fullscreenExit : ICONS.fullscreen;
+      this.element.title = `${fullscreen ? "Minimize" : "Maximize"} (m)`;
+    }
+    return this.element;
+  }
+}
+
+export class PlusElement<State extends BaseState> extends BaseElement<
+  State,
+  HTMLImageElement
+> {
+  getEvents(): Events<State> {
+    return {
+      click: ({ event, update }) => {
+        event.stopPropagation();
+        // update(({ fullscreen }) => ({ fullscreen: !fullscreen }));
+      },
+    };
+  }
+
+  createHTMLElement() {
+    const element = document.createElement("img");
+    element.className = "looker-clickable";
+    element.src = ICONS.plus;
+    element.title = "Zoom in (+)";
+    element.style.gridArea = "2 / 5 / 2 / 5";
+    return element;
+  }
+
+  renderSelf() {
+    return this.element;
+  }
+}
+
+export class MinusElement<State extends BaseState> extends BaseElement<
+  State,
+  HTMLImageElement
+> {
+  getEvents(): Events<State> {
+    return {
+      click: ({ event, update }) => {
+        event.stopPropagation();
+        // update(({ fullscreen }) => ({ fullscreen: !fullscreen }));
+      },
+    };
+  }
+
+  createHTMLElement() {
+    const element = document.createElement("img");
+    element.className = "looker-clickable";
+    element.src = ICONS.minus;
+    element.title = "Zoom out (-)";
+    element.style.gridArea = "2 / 5 / 2 / 5";
+    return element;
+  }
+
+  renderSelf() {
     return this.element;
   }
 }
