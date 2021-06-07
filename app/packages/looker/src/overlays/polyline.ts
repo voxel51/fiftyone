@@ -2,12 +2,7 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 
-import { G, Polyline } from "@svgdotjs/svg.js";
-
-import { getAlphaColor } from "../color";
-import { MASK_ALPHA } from "../constants";
 import { BaseState, Coordinates } from "../state";
-import { distanceFromLineSegment } from "../util";
 import { CONTAINS, CoordinateOverlay, RegularLabel } from "./base";
 
 interface PolylineLabel extends RegularLabel {
@@ -19,58 +14,25 @@ interface PolylineLabel extends RegularLabel {
 export default class PolylineOverlay<
   State extends BaseState
 > extends CoordinateOverlay<State, PolylineLabel> {
-  private readonly g: G;
-  private readonly polylines: Polyline[];
   private color: string;
 
   constructor(state: Readonly<State>, field: string, label: PolylineLabel) {
     super(field, label);
     this.color = this.getColor(state);
-
-    const {
-      config: {
-        dimensions: [w, h],
-      },
-    } = state;
-    this.g = new G();
-    const alphaColor = getAlphaColor(this.color, MASK_ALPHA);
-    this.polylines = this.label.points.map((points) => {
-      const polyline = new Polyline().plot(
-        points.map<[number, number]>(([x, y]) => [x * w, y * h])
-      );
-      polyline.stroke({ width: state.strokeWidth, color: this.color });
-
-      if (this.label.filled) {
-        polyline.fill(alphaColor);
-      }
-      this.g.add(polyline);
-      return polyline;
-    });
   }
 
-  containsPoint(state, [x, y]) {
+  containsPoint(state: Readonly<State>): CONTAINS {
     return CONTAINS.NONE;
   }
 
-  draw(context, state) {
-    const color = this.getColor(state);
-    if (this.color !== color) {
-      this.color = color;
-      const alphaColor = getAlphaColor(this.color, MASK_ALPHA);
-      this.polylines.forEach((polyline) => {
-        polyline.stroke({ color: this.color });
-
-        if (this.label.filled) {
-          polyline.fill(alphaColor);
-        }
-      });
-    }
+  draw(ctx: CanvasRenderingContext2D, state: Readonly<State>) {
+    // const color = this.getColor(state);
   }
 
-  getMouseDistance(state, [x, y]) {
+  getMouseDistance(state: Readonly<State>): number {
     const distances = [];
     const [w, h] = state.config.dimensions;
-    for (const shape of this.label.points) {
+    /*for (const shape of this.label.points) {
       for (let i = 0; i < shape.length - 1; i++) {
         distances.push(
           distanceFromLineSegment(
@@ -97,7 +59,8 @@ export default class PolylineOverlay<
         );
       }
     }
-    return Math.min(...distances);
+    return Math.min(...distances)*/
+    return Infinity;
   }
 
   getPointInfo() {

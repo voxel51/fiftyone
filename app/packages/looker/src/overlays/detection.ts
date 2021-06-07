@@ -85,7 +85,7 @@ export default class DetectionOverlay<
     this.strokeRect(ctx, state);
   }
 
-  getMouseDistance(state: Readonly<State>) {
+  getMouseDistance(state: Readonly<State>): number {
     let [bx, by, bw, bh] = this.label.bounding_box;
     const [w, h] = state.config.dimensions;
     const [px, py] = state.pixelCoordinates;

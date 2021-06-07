@@ -21,7 +21,6 @@ export default class SegmentationOverlay<State extends BaseState>
   readonly field: string;
   private readonly label: SegmentationLabel;
   private readonly mask: NumpyResult;
-  private imageData: Uint32Array;
   private targets: Uint32Array;
   private imageColors: Uint32Array;
   private colorMap: (key: string | number) => string;

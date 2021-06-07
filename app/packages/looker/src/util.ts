@@ -2,8 +2,8 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 
-import { FONT_SIZE, MIN_PIXELS, SCALE_FACTOR, STROKE_WIDTH } from "./constants";
-import { BaseState, BoundingBox, Coordinates, Dimensions } from "./state";
+import { MIN_PIXELS, SCALE_FACTOR } from "./constants";
+import { BoundingBox, Coordinates, Dimensions } from "./state";
 
 /**
  * Shallow data-object comparison for equality

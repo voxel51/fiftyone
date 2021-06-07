@@ -2,8 +2,6 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 
-import { G } from "@svgdotjs/svg.js";
-
 import { BaseState, Coordinates } from "../state";
 import { CONTAINS, isShown, Overlay, RegularLabel } from "./base";
 
@@ -14,11 +12,9 @@ export type ClassificationLabels = [string, ClassificationLabel[]][];
 export default class ClassificationsOverlay<State extends BaseState>
   implements Overlay<State> {
   private readonly labels: ClassificationLabels;
-  private readonly g: G;
 
   constructor(labels: ClassificationLabels) {
     this.labels = labels;
-    this.g = new G();
   }
 
   getColor(
@@ -41,28 +37,26 @@ export default class ClassificationsOverlay<State extends BaseState>
     ]);
   }
 
-  getSelectData(state, coordinates) {
+  getSelectData(state: Readonly<State>) {
     return { id: "s", field: "s" };
   }
 
-  getMouseDistance(state, coordinates) {
-    if (this.containsPoint(state, coordinates)) {
+  getMouseDistance(state: Readonly<State>) {
+    if (this.containsPoint(state)) {
       return 0;
     }
     return Infinity;
   }
 
-  containsPoint(state, [x, y]) {
+  containsPoint(state) {
     return CONTAINS.NONE;
   }
 
-  getPointInfo(state, [x, y]) {
-    return [{}];
+  getPointInfo(state: Readonly<State>) {
+    return {};
   }
 
-  draw(g, state) {
-    g.add(this.g);
-  }
+  draw(ctx: CanvasRenderingContext2D, state: Readonly<State>) {}
 
   getPoints() {
     return getClassificationPoints([]);

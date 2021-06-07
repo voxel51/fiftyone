@@ -2,7 +2,6 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 
-import { Svg } from "@svgdotjs/svg.js";
 import { Overlay } from "./overlays/base";
 
 export interface BaseSample {

@@ -2,7 +2,6 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 
-import { Circle, G } from "@svgdotjs/svg.js";
 import { KEYPOINT_RADIUS_FACTOR } from "../constants";
 import { BaseState, Coordinates } from "../state";
 import { distance } from "../util";
@@ -27,7 +26,7 @@ export default class KeypointOverlay<
     pixelCoordinates: [x, y],
   }: Readonly<State>) {
     const distances = [];
-    this.radius = strokeWidth * KEYPOINT_RADIUS_FACTOR;
+    // this.radius = strokeWidth * KEYPOINT_RADIUS_FACTOR;
     for (const point of this.label.points) {
       const d = distance(x, y, point[0] * w, point[1] * h);
       if (d <= 8) {
