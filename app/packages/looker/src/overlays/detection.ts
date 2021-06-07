@@ -2,7 +2,13 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 import { get32BitColor, getAlphaColor } from "../color";
-import { BACKGROUND_ALPHA, MASK_ALPHA, TEXT_COLOR } from "../constants";
+import {
+  BACKGROUND_ALPHA,
+  DASH_COLOR,
+  DASH_LENGTH,
+  MASK_ALPHA,
+  TEXT_COLOR,
+} from "../constants";
 
 import { deserialize, NumpyResult } from "../numpy";
 import { BaseState, BoundingBox, Coordinates, Dimensions } from "../state";
@@ -65,16 +71,18 @@ export default class DetectionOverlay<
 
     !state.config.thumbnail && this.drawLabelText(ctx, state);
 
-    const [tlx, tly, w, h] = this.label.bounding_box;
     ctx.beginPath();
+    if (this.isSelected(state)) {
+      ctx.strokeStyle = DASH_COLOR;
+      this.strokeRect(ctx, state);
+      ctx.beginPath();
+      ctx.setLineDash([DASH_LENGTH, DASH_LENGTH]);
+    } else {
+      ctx.setLineDash([]);
+    }
+
     ctx.strokeStyle = this.getColor(state);
-    ctx.lineWidth = state.strokeWidth;
-    ctx.moveTo(...t(state, tlx, tly));
-    ctx.lineTo(...t(state, tlx + w, tly));
-    ctx.lineTo(...t(state, tlx + w, tly + h));
-    ctx.lineTo(...t(state, tlx, tly + h));
-    ctx.closePath();
-    ctx.stroke();
+    this.strokeRect(ctx, state);
   }
 
   getMouseDistance(state: Readonly<State>) {
@@ -180,6 +188,17 @@ export default class DetectionOverlay<
       text += `(${Number(this.label.confidence).toFixed(2)})`;
     }
     return text;
+  }
+
+  private strokeRect(ctx: CanvasRenderingContext2D, state: Readonly<State>) {
+    const [tlx, tly, w, h] = this.label.bounding_box;
+    ctx.lineWidth = state.strokeWidth;
+    ctx.moveTo(...t(state, tlx, tly));
+    ctx.lineTo(...t(state, tlx + w, tly));
+    ctx.lineTo(...t(state, tlx + w, tly + h));
+    ctx.lineTo(...t(state, tlx, tly + h));
+    ctx.closePath();
+    ctx.stroke();
   }
 }
 

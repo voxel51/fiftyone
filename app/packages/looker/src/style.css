@@ -328,6 +328,12 @@
   -ms-interpolation-mode: nearest-neighbor; /* IE8+                           */
 }
 
+.looker.loading > canvas,
+.looker.loading > img,
+.looker.loading > video {
+  opacity: 0;
+}
+
 .looker-display-none {
   display: none;
 }

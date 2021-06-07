@@ -3,8 +3,8 @@
  */
 
 export const LINE_WIDTH = 3;
-export const DASH_LENGTH = 10;
-export const DASH_COLOR = "#ffffff";
+export const DASH_LENGTH = 8;
+export const DASH_COLOR = "rgba(255, 255, 255, 0.7)";
 export const TEXT_COLOR = "#ffffff";
 export const TEXT_PAD = 4;
 export const BACKGROUND_ALPHA = 0.8;

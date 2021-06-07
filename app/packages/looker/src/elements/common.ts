@@ -3,7 +3,7 @@
  */
 
 import { SCALE_FACTOR } from "../constants";
-import { BaseState, Coordinates, StateUpdate } from "../state";
+import { BaseState, Coordinates, Optional, StateUpdate } from "../state";
 import { clampScale } from "../util";
 import { BaseElement, Events } from "./base";
 import { ICONS, makeCheckboxRow, makeWrapper } from "./util";
@@ -12,10 +12,6 @@ export class LookerElement<State extends BaseState> extends BaseElement<
   State,
   HTMLDivElement
 > {
-  private hideControlsTimeout?: ReturnType<typeof setTimeout>;
-  private start: Coordinates = [0, 0];
-  private wheelTimeout: ReturnType<typeof setTimeout>;
-
   getEvents(): Events<State> {
     return {
       keydown: ({ event, update, dispatchEvent }) => {
@@ -46,20 +42,7 @@ export class LookerElement<State extends BaseState> extends BaseElement<
             toggleFullscreen(update);
             return;
           case "s":
-            update(({ showOptions, config: { thumbnail } }) => {
-              if (thumbnail) {
-                return {};
-              } else if (showOptions) {
-                return {
-                  showOptions: false,
-                };
-              } else {
-                return {
-                  showControls: true,
-                  showOptions: true,
-                };
-              }
-            });
+            toggleOptions(update);
             return;
         }
       },
@@ -83,6 +66,90 @@ export class LookerElement<State extends BaseState> extends BaseElement<
           panning: false,
         });
       },
+    };
+  }
+
+  createHTMLElement() {
+    const element = document.createElement("div");
+    element.className = "looker loading";
+    element.tabIndex = -1;
+    return element;
+  }
+
+  renderSelf({ fullscreen, loaded, hovering, config: { thumbnail } }) {
+    if (loaded && this.element.classList.contains("loading")) {
+      this.element.classList.remove("loading");
+    }
+    if (!thumbnail && hovering && this.element !== document.activeElement) {
+      this.element.focus();
+    }
+
+    const fullscreenClass = this.element.classList.contains("fullscreen");
+    if (fullscreen && !fullscreenClass) {
+      this.element.classList.add("fullscreen");
+    } else if (!fullscreen && fullscreenClass) {
+      this.element.classList.remove("fullscreen");
+    }
+
+    return this.element;
+  }
+}
+
+export class CanvasElement<State extends BaseState> extends BaseElement<
+  State,
+  HTMLCanvasElement
+> {
+  private width: number;
+  private height: number;
+  private hideControlsTimeout?: ReturnType<typeof setTimeout>;
+  private start: Coordinates = [0, 0];
+  private wheelTimeout: ReturnType<typeof setTimeout>;
+
+  getEvents(): Events<State> {
+    return {
+      click: ({ update, dispatchEvent }) => {
+        update({ showOptions: false }, (state, overlays) => {
+          if (!state.config.thumbnail && overlays.length) {
+            dispatchEvent("select", overlays[0].getSelectData(state));
+          }
+        });
+      },
+      mouseleave: ({ dispatchEvent }) => {
+        dispatchEvent("tooltip", null);
+      },
+      mousemove: ({ event, update, dispatchEvent }) => {
+        if (this.hideControlsTimeout) {
+          clearTimeout(this.hideControlsTimeout);
+        }
+        this.hideControlsTimeout = setTimeout(
+          () =>
+            update(({ showOptions }) => {
+              this.hideControlsTimeout = null;
+              if (!showOptions) {
+                return { showControls: false };
+              }
+              return {};
+            }),
+          2500
+        );
+        update((state) => {
+          if (state.config.thumbnail) {
+            return {};
+          }
+          const newState: Optional<State> = {
+            cursorCoordinates: [
+              (<MouseEvent>event).pageX,
+              (<MouseEvent>event).pageY,
+            ],
+            rotate: 0,
+          };
+          if (!state.panning) {
+            return newState;
+          }
+          newState.pan = this.getPan([event.pageX, event.pageY]);
+          return newState;
+        }, dispatchTooltipEvent(dispatchEvent));
+      },
       mousedown: ({ event, update }) => {
         update(({ config: { thumbnail }, pan: [x, y] }) => {
           if (thumbnail) {
@@ -101,31 +168,6 @@ export class LookerElement<State extends BaseState> extends BaseElement<
           event.preventDefault();
           return {
             panning: false,
-            pan: this.getPan([event.pageX, event.pageY]),
-          };
-        });
-      },
-      mousemove: ({ event, update }) => {
-        if (this.hideControlsTimeout) {
-          clearTimeout(this.hideControlsTimeout);
-        }
-        this.hideControlsTimeout = setTimeout(
-          () =>
-            update(({ showOptions }) => {
-              this.hideControlsTimeout = null;
-              if (!showOptions) {
-                return { showControls: false };
-              }
-              return {};
-            }),
-          2500
-        );
-        update((state) => {
-          if (state.config.thumbnail || !state.panning) {
-            return state.rotate !== 0 ? { rotate: 0 } : {};
-          }
-          return {
-            rotate: 0,
             pan: this.getPan([event.pageX, event.pageY]),
           };
         });
@@ -190,71 +232,6 @@ export class LookerElement<State extends BaseState> extends BaseElement<
   }
 
   createHTMLElement() {
-    const element = document.createElement("div");
-    element.className = "looker loading";
-    element.tabIndex = -1;
-    return element;
-  }
-
-  renderSelf({ fullscreen, loaded, hovering, config: { thumbnail } }) {
-    if (loaded && this.element.classList.contains("loading")) {
-      this.element.classList.remove("loading");
-    }
-    if (!thumbnail && hovering && this.element !== document.activeElement) {
-      this.element.focus();
-    }
-
-    const fullscreenClass = this.element.classList.contains("fullscreen");
-    if (fullscreen && !fullscreenClass) {
-      this.element.classList.add("fullscreen");
-    } else if (!fullscreen && fullscreenClass) {
-      this.element.classList.remove("fullscreen");
-    }
-
-    return this.element;
-  }
-
-  private getPan([x, y]: Coordinates): Coordinates {
-    const [sx, sy] = this.start;
-    return [x - sx, y - sy];
-  }
-}
-
-export class CanvasElement<State extends BaseState> extends BaseElement<
-  State,
-  HTMLCanvasElement
-> {
-  private width: number;
-  private height: number;
-
-  getEvents(): Events<State> {
-    return {
-      click: ({ update, dispatchEvent }) => {
-        update({ showOptions: false }, (state, overlays) => {
-          if (!state.config.thumbnail && overlays.length) {
-            dispatchEvent("select", overlays[0].getSelectData(state));
-          }
-        });
-      },
-      mouseleave: ({ dispatchEvent }) => {
-        dispatchEvent("tooltip", null);
-      },
-      mousemove: ({ event, update, dispatchEvent }) => {
-        update((state) => {
-          return state.config.thumbnail
-            ? {}
-            : {
-                cursorCoordinates: [
-                  (<MouseEvent>event).pageX,
-                  (<MouseEvent>event).pageY,
-                ],
-              };
-        }, dispatchTooltipEvent(dispatchEvent));
-      },
-    };
-  }
-
-  createHTMLElement() {
     const element = document.createElement("canvas");
     return element;
   }
@@ -281,6 +258,11 @@ export class CanvasElement<State extends BaseState> extends BaseElement<
     }
     return this.element;
   }
+
+  private getPan([x, y]: Coordinates): Coordinates {
+    const [sx, sy] = this.start;
+    return [x - sx, y - sy];
+  }
 }
 
 export class ControlsElement<State extends BaseState> extends BaseElement<
@@ -303,22 +285,6 @@ export class ControlsElement<State extends BaseState> extends BaseElement<
       },
       mouseleave: ({ update }) => {
         update({ hoveringControls: false });
-      },
-      wheel: ({ event }) => {
-        event.preventDefault();
-        event.stopPropagation();
-      },
-      dblclick: ({ event }) => {
-        event.preventDefault();
-        event.stopPropagation();
-      },
-      mousedown: ({ event }) => {
-        event.preventDefault();
-        event.stopPropagation();
-      },
-      mouseup: ({ event }) => {
-        event.preventDefault();
-        event.stopPropagation();
       },
     };
   }
@@ -345,8 +311,8 @@ export class ControlsElement<State extends BaseState> extends BaseElement<
       this.element.style.opacity = "0.9";
       this.element.style.height = "unset";
     } else {
-      // this.element.style.opacity = "0.0";
-      // this.element.style.height = "0";
+      this.element.style.opacity = "0.0";
+      this.element.style.height = "0";
     }
     this.showControls = showControls;
     return this.element;
@@ -402,6 +368,7 @@ export class PlusElement<State extends BaseState> extends BaseElement<
   createHTMLElement() {
     const element = document.createElement("img");
     element.className = "looker-clickable";
+    element.style.padding = "2px";
     element.src = ICONS.plus;
     element.title = "Zoom in (+)";
     element.style.gridArea = "2 / 6 / 2 / 6";
@@ -430,6 +397,7 @@ export class MinusElement<State extends BaseState> extends BaseElement<
   createHTMLElement() {
     const element = document.createElement("img");
     element.className = "looker-clickable";
+    element.style.padding = "2px";
     element.src = ICONS.minus;
     element.title = "Zoom out (-)";
     element.style.gridArea = "2 / 5 / 2 / 5";
@@ -449,7 +417,7 @@ export class OptionsButtonElement<State extends BaseState> extends BaseElement<
       click: ({ event, update }) => {
         event.stopPropagation();
         event.preventDefault();
-        update((state) => ({ showOptions: !state.showOptions }));
+        toggleOptions(update);
       },
     };
   }
@@ -666,7 +634,7 @@ export const transformWindowElement = (
 const dispatchTooltipEvent = (dispatchEvent) => {
   return (state, overlays) => {
     // @ts-ignore
-    if (state.playing && state.config.thumbnail) {
+    if (state.playing || state.config.thumbnail) {
       return;
     }
     if (!state.options.showTooltip) {
@@ -709,4 +677,21 @@ const toggleFullscreen = (update: StateUpdate<BaseState>) => {
   update(({ fullscreen, config: { thumbnail } }) =>
     thumbnail ? {} : { fullscreen: !fullscreen }
   );
+};
+
+const toggleOptions = (update: StateUpdate<BaseState>) => {
+  update(({ showOptions, loaded, config: { thumbnail } }) => {
+    if (thumbnail) {
+      return {};
+    } else if (showOptions) {
+      return {
+        showOptions: false,
+      };
+    } else {
+      return {
+        showControls: loaded,
+        showOptions: loaded,
+      };
+    }
+  });
 };

@@ -248,17 +248,17 @@ type Props = {
 };
 
 interface SelectEvent {
-  data: {
+  detail: {
     id: string;
     field: string;
     frameNumber?: number;
   };
 }
 
-const onSelectLabel = () => {
+const useOnSelectLabel = () => {
   return useRecoilCallback(
     ({ snapshot, set }) => async ({
-      data: { id, field, frameNumber },
+      detail: { id, field, frameNumber },
     }: SelectEvent) => {
       const { sampleId } = await snapshot.getPromise(atoms.modal);
       let labels = {
@@ -291,6 +291,7 @@ const SampleModal = ({ onClose, sampleId }: Props, ref) => {
   const [enableJSONFilter, setEnableJSONFilter] = useState(true);
   const [fullscreen, setFullscreen] = useState(false);
   const lookerRef = useRef();
+  const onSelectLabel = useOnSelectLabel();
 
   useKeydownHandler((e) => {
     if (
@@ -333,6 +334,7 @@ const SampleModal = ({ onClose, sampleId }: Props, ref) => {
               sampleId={_id}
               modal={true}
               lookerRef={lookerRef}
+              onSelectLabel={onSelectLabel}
             />
           )}
         </Suspense>
