@@ -296,9 +296,9 @@
   background: white;
 }
 
-.looker canvas,
-.looker img,
-.looker video {
+.looker > canvas,
+.looker > img,
+.looker > video {
   position: absolute;
   margin: auto;
   top: 0;
