@@ -14,3 +14,4 @@ export const KEYPOINT_RADIUS_FACTOR = 2;
 export const STROKE_WIDTH = 3;
 export const FONT_SIZE = 16;
 export const MIN_PIXELS = 16;
+export const SCALE_FACTOR = 1.15;

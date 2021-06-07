@@ -2,7 +2,7 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 
-import { FONT_SIZE, MIN_PIXELS, STROKE_WIDTH } from "./constants";
+import { FONT_SIZE, MIN_PIXELS, SCALE_FACTOR, STROKE_WIDTH } from "./constants";
 import { BaseState, BoundingBox, Coordinates, Dimensions } from "./state";
 
 /**
@@ -342,5 +342,5 @@ export const clampScale = (
     scale = (wh * wh) / (ih * renderedScale * MIN_PIXELS);
   }
 
-  return Math.max(scale, 1 / 1.15);
+  return Math.max(scale, 1 / SCALE_FACTOR);
 };

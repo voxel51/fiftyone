@@ -2,7 +2,8 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 
-import { BaseState, Coordinates } from "../state";
+import { SCALE_FACTOR } from "../constants";
+import { BaseState, Coordinates, StateUpdate } from "../state";
 import { clampScale } from "../util";
 import { BaseElement, Events } from "./base";
 import { ICONS, makeCheckboxRow, makeWrapper } from "./util";
@@ -20,6 +21,12 @@ export class LookerElement<State extends BaseState> extends BaseElement<
       keydown: ({ event, update, dispatchEvent }) => {
         const e = event as KeyboardEvent;
         switch (e.key) {
+          case "-":
+            zoomOut(update);
+            return;
+          case "+":
+            zoomIn(update);
+            return;
           case "ArrowDown":
             update(
               ({ rotate }) => ({ rotate: rotate + 1 }),
@@ -36,9 +43,7 @@ export class LookerElement<State extends BaseState> extends BaseElement<
             update({ showControls: false, showOptions: false });
             return;
           case "m":
-            update(({ fullscreen, config: { thumbnail } }) =>
-              thumbnail ? {} : { fullscreen: !fullscreen }
-            );
+            toggleFullscreen(update);
             return;
           case "s":
             update(({ showOptions, config: { thumbnail } }) => {
@@ -151,7 +156,7 @@ export class LookerElement<State extends BaseState> extends BaseElement<
             const newScale = clampScale(
               [width, height],
               dimensions,
-              event.deltaY < 0 ? scale * 1.15 : scale / 1.15
+              event.deltaY < 0 ? scale * SCALE_FACTOR : scale / SCALE_FACTOR
             );
 
             if (scale === newScale) {
@@ -357,6 +362,7 @@ export class FullscreenButtonElement<
     return {
       click: ({ event, update }) => {
         event.stopPropagation();
+        event.preventDefault();
         update(({ fullscreen }) => ({ fullscreen: !fullscreen }));
       },
     };
@@ -365,7 +371,7 @@ export class FullscreenButtonElement<
   createHTMLElement() {
     const element = document.createElement("img");
     element.className = "looker-clickable";
-    element.style.gridArea = "2 / 6 / 2 / 6";
+    element.style.gridArea = "2 / 7 / 2 / 7";
     return element;
   }
 
@@ -387,7 +393,8 @@ export class PlusElement<State extends BaseState> extends BaseElement<
     return {
       click: ({ event, update }) => {
         event.stopPropagation();
-        // update(({ fullscreen }) => ({ fullscreen: !fullscreen }));
+        event.preventDefault();
+        zoomIn(update);
       },
     };
   }
@@ -397,7 +404,7 @@ export class PlusElement<State extends BaseState> extends BaseElement<
     element.className = "looker-clickable";
     element.src = ICONS.plus;
     element.title = "Zoom in (+)";
-    element.style.gridArea = "2 / 5 / 2 / 5";
+    element.style.gridArea = "2 / 6 / 2 / 6";
     return element;
   }
 
@@ -414,7 +421,8 @@ export class MinusElement<State extends BaseState> extends BaseElement<
     return {
       click: ({ event, update }) => {
         event.stopPropagation();
-        // update(({ fullscreen }) => ({ fullscreen: !fullscreen }));
+        event.preventDefault();
+        zoomOut(update);
       },
     };
   }
@@ -440,6 +448,7 @@ export class OptionsButtonElement<State extends BaseState> extends BaseElement<
     return {
       click: ({ event, update }) => {
         event.stopPropagation();
+        event.preventDefault();
         update((state) => ({ showOptions: !state.showOptions }));
       },
     };
@@ -448,9 +457,10 @@ export class OptionsButtonElement<State extends BaseState> extends BaseElement<
   createHTMLElement() {
     const element = document.createElement("img");
     element.className = "looker-clickable";
+    element.style.padding = "2px";
     element.src = ICONS.options;
     element.title = "Settings (s)";
-    element.style.gridArea = "2 / 5 / 2 / 5";
+    element.style.gridArea = "2 / 8 / 2 / 8";
     return element;
   }
 
@@ -681,4 +691,22 @@ const dispatchTooltipEvent = (dispatchEvent) => {
         : null
     );
   };
+};
+
+const zoomIn = (update: StateUpdate<BaseState>) => {
+  update(({ scale, windowBBox: [_, __, ww, wh], config: { dimensions } }) => ({
+    scale: clampScale([ww, wh], dimensions, scale * SCALE_FACTOR),
+  }));
+};
+
+const zoomOut = (update: StateUpdate<BaseState>) => {
+  update(({ scale, windowBBox: [_, __, ww, wh], config: { dimensions } }) => ({
+    scale: clampScale([ww, wh], dimensions, scale / SCALE_FACTOR),
+  }));
+};
+
+const toggleFullscreen = (update: StateUpdate<BaseState>) => {
+  update(({ fullscreen, config: { thumbnail } }) =>
+    thumbnail ? {} : { fullscreen: !fullscreen }
+  );
 };
