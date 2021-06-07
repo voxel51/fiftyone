@@ -44,6 +44,12 @@ export const getFrameElements: GetElements<FrameState> = (
         ],
       },
       {
+        node: common.PreviousElement,
+      },
+      {
+        node: common.NextElement,
+      },
+      {
         node: common.OptionsPanelElement,
         children: [
           { node: common.OnlyShowHoveredOnLabelOptionElement },
@@ -83,6 +89,12 @@ export const getImageElements: GetElements<ImageState> = (
           { node: common.MinusElement },
           { node: common.OptionsButtonElement },
         ],
+      },
+      {
+        node: common.PreviousElement,
+      },
+      {
+        node: common.NextElement,
       },
       {
         node: common.OptionsPanelElement,
@@ -127,6 +139,12 @@ export const getVideoElements: GetElements<VideoState> = (
           { node: video.SeekBarElement },
           { node: video.TimeElement },
         ],
+      },
+      {
+        node: common.PreviousElement,
+      },
+      {
+        node: common.NextElement,
       },
       {
         node: common.OptionsPanelElement,

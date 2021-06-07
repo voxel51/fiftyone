@@ -5,7 +5,7 @@
 import { SCALE_FACTOR } from "../constants";
 import { BaseState, Coordinates, Optional, StateUpdate } from "../state";
 import { clampScale } from "../util";
-import { BaseElement, Events } from "./base";
+import { BaseElement, DispatchEvent, Events } from "./base";
 import { ICONS, makeCheckboxRow, makeWrapper } from "./util";
 
 export class LookerElement<State extends BaseState> extends BaseElement<
@@ -110,7 +110,9 @@ export class CanvasElement<State extends BaseState> extends BaseElement<
       click: ({ update, dispatchEvent }) => {
         update({ showOptions: false }, (state, overlays) => {
           if (!state.config.thumbnail && overlays.length) {
-            dispatchEvent("select", overlays[0].getSelectData(state));
+            const top = overlays[0];
+            top.containsPoint(state) &&
+              dispatchEvent("select", top.getSelectData(state));
           }
         });
       },
@@ -263,6 +265,112 @@ export class CanvasElement<State extends BaseState> extends BaseElement<
   private getPan([x, y]: Coordinates): Coordinates {
     const [sx, sy] = this.start;
     return [x - sx, y - sy];
+  }
+}
+
+export class NextElement<State extends BaseState> extends BaseElement<
+  State,
+  HTMLImageElement
+> {
+  private showControls: boolean;
+  getEvents(): Events<State> {
+    return {
+      click: ({ event, dispatchEvent }) => {
+        event.stopPropagation();
+        event.preventDefault();
+        next(dispatchEvent);
+      },
+      mouseenter: ({ update }) => {
+        update({ hoveringControls: true });
+      },
+      mouseleave: ({ update }) => {
+        update({ hoveringControls: false });
+      },
+    };
+  }
+
+  createHTMLElement() {
+    const element = document.createElement("img");
+    element.className = "looker-arrow";
+    element.src = ICONS.arrowRight;
+    element.style.right = "0";
+    return element;
+  }
+
+  isShown({ config: { thumbnail } }) {
+    return !thumbnail;
+  }
+
+  renderSelf({ showControls, disableControls, config: { thumbnail } }) {
+    if (thumbnail) {
+      return this.element;
+    }
+    showControls = showControls && !disableControls;
+    if (this.showControls === showControls) {
+      return this.element;
+    }
+    if (showControls) {
+      this.element.style.opacity = "0.9";
+      this.element.style.height = "unset";
+    } else {
+      this.element.style.opacity = "0.0";
+      this.element.style.height = "0";
+    }
+    this.showControls = showControls;
+    return this.element;
+  }
+}
+
+export class PreviousElement<State extends BaseState> extends BaseElement<
+  State,
+  HTMLImageElement
+> {
+  private showControls: boolean;
+  getEvents(): Events<State> {
+    return {
+      click: ({ event, dispatchEvent }) => {
+        event.stopPropagation();
+        event.preventDefault();
+        next(dispatchEvent);
+      },
+      mouseenter: ({ update }) => {
+        update({ hoveringControls: true });
+      },
+      mouseleave: ({ update }) => {
+        update({ hoveringControls: false });
+      },
+    };
+  }
+
+  createHTMLElement() {
+    const element = document.createElement("img");
+    element.src = ICONS.arrowLeft;
+    element.className = "looker-arrow";
+    element.style.left = "0";
+    return element;
+  }
+
+  isShown({ config: { thumbnail } }) {
+    return !thumbnail;
+  }
+
+  renderSelf({ showControls, disableControls, config: { thumbnail } }) {
+    if (thumbnail) {
+      return this.element;
+    }
+    showControls = showControls && !disableControls;
+    if (this.showControls === showControls) {
+      return this.element;
+    }
+    if (showControls) {
+      this.element.style.opacity = "0.9";
+      this.element.style.height = "unset";
+    } else {
+      this.element.style.opacity = "0.0";
+      this.element.style.height = "0";
+    }
+    this.showControls = showControls;
+    return this.element;
   }
 }
 
@@ -695,4 +803,12 @@ const toggleOptions = (update: StateUpdate<BaseState>) => {
       };
     }
   });
+};
+
+const next = (dispatchEvent: DispatchEvent) => {
+  dispatchEvent("next");
+};
+
+const previous = (dispatchEvent: DispatchEvent) => {
+  dispatchEvent("previous");
 };
