@@ -15,21 +15,17 @@ from fiftyone.core.singletons import FrameSingleton
 import fiftyone.core.utils as fou
 
 
-def get_default_frame_fields(include_private=False, include_id=False):
+def get_default_frame_fields(include_private=False):
     """Returns the default fields present on all frames.
 
     Args:
-        include_private (False): whether to include fields that start with
-            ``_``
-        include_id (False): whether to include ID fields
+        include_private (False): whether to include fields starting with ``_``
 
     Returns:
         a tuple of field names
     """
     return foo.get_default_fields(
-        foo.DatasetFrameSampleDocument,
-        include_private=include_private,
-        include_id=include_id,
+        foo.DatasetFrameSampleDocument, include_private=include_private
     )
 
 
@@ -152,6 +148,19 @@ class Frames(object):
             id_str = " '%s'" % self._sample.id if self._sample.id else ""
             raise ValueError("Sample%s has no frame labels" % id_str)
 
+    def last(self):
+        """Returns the last :class:`Frame` for the sample.
+
+        Returns:
+            a :class:`Frame`
+        """
+        frame_numbers = self._get_frame_numbers()
+        if frame_numbers:
+            return self[max(frame_numbers)]
+
+        id_str = " '%s'" % self._sample.id if self._sample.id else ""
+        raise ValueError("Sample%s has no frame labels" % id_str)
+
     def keys(self):
         """Returns an iterator over the frame numbers with labels in the
         sample.
@@ -208,7 +217,7 @@ class Frames(object):
         fofu.validate_frame_number(frame_number)
 
         if not isinstance(frame, (Frame, FrameView)):
-            raise ValueError(
+            raise TypeError(
                 "Expected a %s or %s; found %s"
                 % (Frame, FrameView, type(frame))
             )
@@ -347,7 +356,7 @@ class Frames(object):
                 )
 
     def clear(self):
-        """Removes all frames from this instance."""
+        """Removes all frames from this sample."""
         self._replacements.clear()
 
         if not self._in_db:
@@ -357,9 +366,12 @@ class Frames(object):
         self._delete_frames.clear()
 
     def save(self):
-        """Saves all frames to the database."""
+        """Saves all frames for the sample to the database."""
         if not self._in_db:
-            return
+            raise ValueError(
+                "Cannot save frames of a sample that has not been added to "
+                "a dataset"
+            )
 
         self._save_deletions()
         self._save_replacements()
@@ -486,7 +498,6 @@ class Frames(object):
 
     def _make_dict(self, frame):
         d = frame.to_mongo_dict()
-        d.pop("_id", None)
         d["_sample_id"] = self._sample._id
         return d
 
@@ -662,7 +673,7 @@ class FramesView(Frames):
         fofu.validate_frame_number(frame_number)
 
         if not isinstance(frame, (Frame, FrameView)):
-            raise ValueError(
+            raise TypeError(
                 "Expected a %s or %s; found %s"
                 % (Frame, FrameView, type(frame))
             )
@@ -819,6 +830,15 @@ class Frame(Document, metaclass=FrameSingleton):
     """
 
     _NO_DATASET_DOC_CLS = foo.NoDatasetFrameSampleDocument
+
+    def save(self):
+        """Saves the frame to the database."""
+        if not self._in_db:
+            raise ValueError(
+                "Use `sample.save()` to save newly added frames to a sample"
+            )
+
+        super().save()
 
     def _reload_backing_doc(self):
         if not self._in_db:

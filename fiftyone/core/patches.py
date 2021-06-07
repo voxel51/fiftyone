@@ -132,11 +132,9 @@ class _PatchesView(fov.DatasetView):
         return self.dataset_name + "-patches"
 
     @classmethod
-    def _get_default_sample_fields(
-        cls, include_private=False, include_id=False
-    ):
+    def _get_default_sample_fields(cls, include_private=False):
         fields = super()._get_default_sample_fields(
-            include_private=include_private, include_id=include_id
+            include_private=include_private
         )
 
         return fields + ("sample_id",)

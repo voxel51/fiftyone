@@ -79,6 +79,7 @@ obtain a desired subset of the samples.
     Persistent:     False
     Tags:           []
     Sample fields:
+        id:         fiftyone.core.fields.ObjectIdField
         media_type: fiftyone.core.fields.StringField
         filepath:   fiftyone.core.fields.StringField
         tags:       fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
@@ -190,6 +191,7 @@ schema and thus accessible on all other samples in the dataset.
     Persistent:     False
     Tags:           []
     Sample fields:
+        id:        fiftyone.core.fields.ObjectIdField
         filepath:  fiftyone.core.fields.StringField
         tags:      fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
         metadata:  fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.Metadata)

@@ -27,25 +27,18 @@ from .document import Document, BaseEmbeddedDocument, SampleDocument
 logger = logging.getLogger(__name__)
 
 
-def get_default_fields(cls, include_private=False, include_id=False):
+def get_default_fields(cls, include_private=False):
     """Gets the default fields present on all instances of the given
     :class:`DatasetMixin` class.
 
     Args:
         cls: the :class:`DatasetMixin` class
-        include_private (False): whether to include fields that start with
-            ``_``
-        include_id (False): whether to include the ``_id`` field
+        include_private (False): whether to include fields starting with ``_``
 
     Returns:
         a tuple of field names
     """
-    fields = cls._get_fields_ordered(include_private=include_private)
-
-    if include_id:
-        fields += ("_id",)
-
-    return fields
+    return cls._get_fields_ordered(include_private=include_private)
 
 
 def validate_fields_match(
@@ -258,7 +251,7 @@ class DatasetMixin(object):
                 "Field type %s must be subclass of %s" % (ftype, fof.Field)
             )
 
-        if embedded_doc_type and not issubclass(
+        if embedded_doc_type is not None and not issubclass(
             ftype, fof.EmbeddedDocumentField
         ):
             raise ValueError(
@@ -271,10 +264,10 @@ class DatasetMixin(object):
         for field_name in field_names:
             # pylint: disable=no-member
             field = cls._fields[field_name]
-            if not isinstance(cls._fields[field_name], ftype):
+            if not isinstance(field, ftype):
                 continue
 
-            if embedded_doc_type and not issubclass(
+            if embedded_doc_type is not None and not issubclass(
                 field.document_type, embedded_doc_type
             ):
                 continue
@@ -297,10 +290,13 @@ class DatasetMixin(object):
                 existing field of the same name or a new field is found but
                 ``expand_schema == False``
         """
-        _schema = cls.get_field_schema(include_private=True)
+        _schema = cls._fields
 
         add_fields = []
         for field_name, field in schema.items():
+            if field_name == "id":
+                continue
+
             if field_name in _schema:
                 validate_fields_match(field_name, field, _schema[field_name])
             else:
@@ -400,10 +396,10 @@ class DatasetMixin(object):
             are_frame_fields (False): whether these are frame-level fields
         """
         default_fields = get_default_fields(
-            cls.__bases__[0], include_private=True, include_id=True
+            cls.__bases__[0], include_private=True
         )
         for field_name in field_names:
-            if field_name == "id" or field_name in default_fields:
+            if field_name in default_fields:
                 raise ValueError(
                     "Cannot rename default field '%s'" % field_name
                 )
@@ -542,13 +538,13 @@ class DatasetMixin(object):
                 2: ignore fields that cannot be deleted
         """
         default_fields = get_default_fields(
-            cls.__bases__[0], include_private=True, include_id=True
+            cls.__bases__[0], include_private=True
         )
 
         _field_names = []
         for field_name in field_names:
             # pylint: disable=no-member
-            if field_name == "id" or field_name in default_fields:
+            if field_name in default_fields:
                 _handle_error(
                     ValueError(
                         "Cannot delete default field '%s'" % field_name
@@ -914,13 +910,9 @@ class DatasetMixin(object):
     @classmethod
     def _get_fields_ordered(cls, include_private=False):
         if include_private:
-            return tuple(f for f in cls._fields_ordered if f != "id")
+            return cls._fields_ordered
 
-        return tuple(
-            f
-            for f in cls._fields_ordered
-            if f != "id" and not f.startswith("_")
-        )
+        return tuple(f for f in cls._fields_ordered if not f.startswith("_"))
 
 
 class NoDatasetMixin(object):
@@ -945,20 +937,14 @@ class NoDatasetMixin(object):
         else:
             self._data[name] = value
 
-    @property
-    def id(self):
-        return None
-
     def _get_field_names(self, include_private=False):
         if include_private:
-            return tuple(k for k in self._data.keys() if k != "id")
+            return tuple(self._data.keys())
 
-        return tuple(
-            k for k in self._data.keys() if k != "id" and not k.startswith("_")
-        )
+        return tuple(f for f in self._data.keys() if not f.startswith("_"))
 
     def _get_repr_fields(self):
-        return ("id",) + self.field_names
+        return self.field_names
 
     @property
     def field_names(self):
@@ -1039,6 +1025,9 @@ class NoDatasetMixin(object):
     def to_dict(self, extended=False):
         d = {}
         for k, v in self._data.items():
+            if k == "id":  # @todo `use_db_field` hack
+                k = "_id"
+
             if hasattr(v, "to_dict"):
                 # Embedded document
                 d[k] = v.to_dict(extended=extended)

@@ -160,9 +160,7 @@ class _HasID(Label):
 
     meta = {"allow_inheritance": True}
 
-    _id = fof.ObjectIdField(
-        required=True, default=ObjectId, unique=True, primary_key=True
-    )
+    _id = fof.ObjectIdField(default=ObjectId, required=True, unique=True)
     tags = fof.ListField(fof.StringField())
 
     @property

@@ -355,20 +355,12 @@ class SampleCollection(object):
         raise NotImplementedError("Subclass must implement iter_samples()")
 
     @classmethod
-    def _get_default_sample_fields(
-        cls, include_private=False, include_id=False
-    ):
-        return fosa.get_default_sample_fields(
-            include_private=include_private, include_id=include_id
-        )
+    def _get_default_sample_fields(cls, include_private=False):
+        return fosa.get_default_sample_fields(include_private=include_private)
 
     @classmethod
-    def _get_default_frame_fields(
-        cls, include_private=False, include_id=False
-    ):
-        return fofr.get_default_frame_fields(
-            include_private=include_private, include_id=include_id
-        )
+    def _get_default_frame_fields(cls, include_private=False):
+        return fofr.get_default_frame_fields(include_private=include_private)
 
     def get_field_schema(
         self, ftype=None, embedded_doc_type=None, include_private=False
@@ -486,8 +478,8 @@ class SampleCollection(object):
 
             default_fields = set(
                 self._get_default_sample_fields(include_private=True)
-                + ("id", "_id")
             )
+            default_fields.add("_id")
 
             for field in fields:
                 # We only validate that the root field exists
@@ -507,8 +499,8 @@ class SampleCollection(object):
 
             default_frame_fields = set(
                 self._get_default_frame_fields(include_private=True)
-                + ("id", "_id")
             )
+            default_frame_fields.add("_id")
 
             for field in frame_fields:
                 # We only validate that the root field exists
@@ -6111,7 +6103,9 @@ def _parse_field_name(
     # Validate root field, if requested
     if not allow_missing:
         root_field_name = field_name.split(".", 1)[0]
-        if root_field_name not in ("id", "_id"):
+
+        # @todo `use_db_field` hack
+        if root_field_name != "_id":
             if is_frame_field:
                 schema = sample_collection.get_frame_field_schema(
                     include_private=True

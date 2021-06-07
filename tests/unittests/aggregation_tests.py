@@ -7,6 +7,8 @@ FiftyOne aggregation-related unit tests.
 """
 import unittest
 
+from bson import ObjectId
+
 import fiftyone as fo
 from fiftyone import ViewField as F
 
@@ -353,6 +355,77 @@ class DatasetTests(unittest.TestCase):
             ),
             ["found", "found", "found", "found", "found", "found", "missing"],
         )
+
+    @drop_datasets
+    def test_id_values(self):
+        dataset = fo.Dataset()
+        for i in range(5):
+            sample = fo.Sample(
+                filepath="video%d.mp4" % i,
+                ground_truth=fo.Classification(label=str(i)),
+            )
+            for j in range(1, 5):
+                sample.frames[j] = fo.Frame(
+                    ground_truth=fo.Classification(label=str(j)),
+                )
+
+            dataset.add_sample(sample)
+
+        ids = dataset.values("id")
+
+        self.assertEqual(len(ids), 5)
+        for _id in ids:
+            self.assertIsInstance(_id, str)
+
+        object_ids = dataset.values("_id")
+
+        self.assertEqual(len(object_ids), 5)
+        for oid in object_ids:
+            self.assertIsInstance(oid, ObjectId)
+
+        label_ids = dataset.values("ground_truth.id")
+
+        self.assertEqual(len(label_ids), 5)
+        for _id in label_ids:
+            self.assertIsInstance(_id, str)
+
+        label_object_ids = dataset.values("ground_truth._id")
+
+        self.assertEqual(len(label_object_ids), 5)
+        for oid in label_object_ids:
+            self.assertIsInstance(oid, ObjectId)
+
+        frame_ids = dataset.values("frames.id")
+
+        self.assertEqual(len(frame_ids), 5)
+        for _frame_ids in frame_ids:
+            self.assertEqual(len(_frame_ids), 4)
+            for _id in _frame_ids:
+                self.assertIsInstance(_id, str)
+
+        frame_object_ids = dataset.values("frames._id")
+
+        self.assertEqual(len(frame_object_ids), 5)
+        for _frame_object_ids in frame_object_ids:
+            self.assertEqual(len(_frame_object_ids), 4)
+            for oid in _frame_object_ids:
+                self.assertIsInstance(oid, ObjectId)
+
+        frame_label_ids = dataset.values("frames.ground_truth.id")
+
+        self.assertEqual(len(frame_label_ids), 5)
+        for _frame_label_ids in frame_label_ids:
+            self.assertEqual(len(_frame_label_ids), 4)
+            for _id in _frame_label_ids:
+                self.assertIsInstance(_id, str)
+
+        frame_label_object_ids = dataset.values("frames.ground_truth._id")
+
+        self.assertEqual(len(frame_label_object_ids), 5)
+        for _frame_label_object_ids in frame_label_object_ids:
+            self.assertEqual(len(_frame_label_object_ids), 4)
+            for oid in _frame_label_object_ids:
+                self.assertIsInstance(oid, ObjectId)
 
 
 if __name__ == "__main__":

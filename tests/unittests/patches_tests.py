@@ -62,7 +62,14 @@ class PatchesTests(unittest.TestCase):
 
         self.assertSetEqual(
             set(view.get_field_schema().keys()),
-            {"filepath", "tags", "metadata", "sample_id", "ground_truth"},
+            {
+                "id",
+                "filepath",
+                "tags",
+                "metadata",
+                "sample_id",
+                "ground_truth",
+            },
         )
 
         self.assertEqual(dataset.count("ground_truth.detections"), 6)
@@ -241,6 +248,7 @@ class PatchesTests(unittest.TestCase):
         self.assertSetEqual(
             set(view.get_field_schema().keys()),
             {
+                "id",
                 "filepath",
                 "metadata",
                 "tags",
