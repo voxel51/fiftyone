@@ -334,12 +334,12 @@ export const clampScale = (
 ): number => {
   const renderedScale = getRenderedScale([ww, wh], [iw, ih]);
 
-  if (iw / renderedScale < MIN_PIXELS) {
-    scale = iw / renderedScale;
+  if ((ww * ww) / (iw * renderedScale * scale) < MIN_PIXELS) {
+    scale = (ww * ww) / (iw * renderedScale * MIN_PIXELS);
   }
 
-  if (ih / renderedScale < MIN_PIXELS) {
-    scale = renderedScale;
+  if ((wh * wh) / (ih * renderedScale * scale) < MIN_PIXELS) {
+    scale = (wh * wh) / (ih * renderedScale * MIN_PIXELS);
   }
 
   return Math.max(scale, 1 / 1.15);

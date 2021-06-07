@@ -179,6 +179,7 @@ export abstract class Looker<
       mediaBBox: null,
       canvasBBox: null,
       textPad: TEXT_PAD,
+      fullscreen: false,
     };
   }
 
@@ -212,22 +213,16 @@ export abstract class Looker<
       this.state.mediaBBox[3],
     ];
     this.state.pixelCoordinates = [
-      Math.round(
-        ((this.state.cursorCoordinates[0] -
-          this.state.transformedMediaBBox[0]) /
-          this.state.transformedMediaBBox[2]) *
-          this.state.config.dimensions[0]
-      ),
-      Math.round(
-        ((this.state.cursorCoordinates[1] -
-          this.state.transformedMediaBBox[1]) /
-          this.state.transformedMediaBBox[3]) *
-          this.state.config.dimensions[1]
-      ),
+      ((this.state.cursorCoordinates[0] - this.state.transformedMediaBBox[0]) /
+        this.state.transformedMediaBBox[2]) *
+        this.state.config.dimensions[0],
+      ((this.state.cursorCoordinates[1] - this.state.transformedMediaBBox[1]) /
+        this.state.transformedMediaBBox[3]) *
+        this.state.config.dimensions[1],
     ];
     this.state.strokeWidth = STROKE_WIDTH / this.state.scale;
-    this.state.fontSize = Math.max(FONT_SIZE / this.state.scale, 1);
-    this.state.textPad = Math.max(TEXT_PAD / this.state.scale, 1 / 7);
+    this.state.fontSize = Math.max(FONT_SIZE / this.state.scale);
+    this.state.textPad = Math.max(TEXT_PAD / this.state.scale);
     return this.state;
   }
 }
@@ -457,9 +452,16 @@ const adjustBox = (
   const ar = obw / obh;
   let [btlx, btly, bw, bh] = [obtlx, obtly, obw, obh];
 
-  while (bw * w < MIN_PIXELS || bh * h < MIN_PIXELS) {
-    bw = bw * 1.5;
+  if (bw * w < MIN_PIXELS) {
+    bw = MIN_PIXELS / w;
     bh = bw / ar;
+    btlx = obtlx + obw / 2 - bw / 2;
+    btly = obtly + obh / 2 - bh / 2;
+  }
+
+  if (bh * h < MIN_PIXELS) {
+    bh = MIN_PIXELS / h;
+    bw = bh * ar;
     btlx = obtlx + obw / 2 - bw / 2;
     btly = obtly + obh / 2 - bh / 2;
   }
