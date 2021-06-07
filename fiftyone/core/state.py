@@ -196,13 +196,15 @@ class DatasetStatistics(object):
         """
         result = []
 
-        for field_name, field in collection.get_field_schema():
-            if field_name not in ("tags",):  # @todo exclude "id" here?
+        schema = collection.get_field_schema()
+        for field_name, field in schema.items():
+            if field_name not in ("id", "tags"):
                 result.append((field_name, field))
 
         if collection.media_type == fom.VIDEO:
             prefix = collection._FRAMES_PREFIX
-            for field_name, field in collection.get_frame_field_schema():
+            frame_schema = collection.get_frame_field_schema()
+            for field_name, field in frame_schema.items():
                 if field_name not in ("id", "frame_number"):
                     result.append((prefix + field_name, field))
 
