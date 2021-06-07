@@ -1376,6 +1376,9 @@ class Values(Aggregation):
 
 
 def _handle_id_fields(sample_collection, field_name):
+    if not field_name:
+        return field_name, False
+
     if "." not in field_name:
         root = None
         leaf = field_name
