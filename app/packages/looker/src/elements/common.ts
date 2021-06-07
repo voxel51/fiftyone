@@ -123,9 +123,9 @@ export class CanvasElement<State extends BaseState> extends BaseElement<
         }
         this.hideControlsTimeout = setTimeout(
           () =>
-            update(({ showOptions }) => {
+            update(({ showOptions, hoveringControls }) => {
               this.hideControlsTimeout = null;
-              if (!showOptions) {
+              if (!showOptions && !hoveringControls) {
                 return { showControls: false };
               }
               return {};
@@ -142,6 +142,7 @@ export class CanvasElement<State extends BaseState> extends BaseElement<
               (<MouseEvent>event).pageY,
             ],
             rotate: 0,
+            showControls: true,
           };
           if (!state.panning) {
             return newState;

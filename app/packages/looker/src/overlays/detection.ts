@@ -117,6 +117,7 @@ export default class DetectionOverlay<
     const labelText = this.getLabelText(state);
 
     if (!labelText.length) {
+      this.labelBoundingBox = null;
       return;
     }
     const color = this.getColor(state);
