@@ -185,7 +185,7 @@ class DatasetStatistics(object):
 
     @classmethod
     def fields(cls, collection):
-        """The list of custom fields on the provided
+        """Returns the list of filterable fields on the provided
         :class:`fiftyone.core.collections.SampleCollection`.
 
         Args:
@@ -198,7 +198,7 @@ class DatasetStatistics(object):
 
         schema = collection.get_field_schema()
         for field_name, field in schema.items():
-            if field_name not in ("id", "tags"):
+            if field_name not in ("metadata" "tags"):
                 result.append((field_name, field))
 
         if collection.media_type == fom.VIDEO:
@@ -212,7 +212,7 @@ class DatasetStatistics(object):
 
     @classmethod
     def labels(cls, collection):
-        """The list of label fields on the provided
+        """Returns the list of label fields on the provided
         :class:`fiftyone.core.collections.SampleCollection`.
 
         Args:
