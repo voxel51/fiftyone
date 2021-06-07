@@ -253,7 +253,7 @@ export class FrameLooker extends Looker<FrameState> {
   }
 
   loadOverlays() {
-    this.overlays = loadOverlays(this.state, this.sample);
+    this.overlays = loadOverlays(this.sample);
   }
 
   pluckOverlays() {
@@ -293,7 +293,7 @@ export class ImageLooker extends Looker<ImageState> {
   }
 
   loadOverlays() {
-    this.overlays = loadOverlays(this.state, this.sample);
+    this.overlays = loadOverlays(this.sample);
   }
 
   pluckOverlays() {
@@ -338,7 +338,6 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
 
   loadOverlays() {
     this.sampleOverlays = loadOverlays(
-      this.state,
       Object.fromEntries(
         Object.entries(this.sample).filter(
           ([fieldName]) => fieldName !== "frames."
@@ -351,7 +350,6 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
           return [
             Number(frameNumber),
             loadOverlays(
-              this.state,
               Object.fromEntries(
                 Object.entries(frameSample).map(([fieldName, field]) => {
                   return [`frames.${fieldName}`, field];
@@ -411,12 +409,9 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
   }
 }
 
-function loadOverlays<State extends BaseState>(
-  config: Readonly<State>,
-  sample: {
-    [key: string]: any;
-  }
-): Overlay<State>[] {
+function loadOverlays<State extends BaseState>(sample: {
+  [key: string]: any;
+}): Overlay<State>[] {
   const classifications = <ClassificationLabels>[];
   let overlays = [];
   for (const field in sample) {
@@ -425,7 +420,7 @@ function loadOverlays<State extends BaseState>(
       continue;
     }
     if (label._cls in FROM_FO) {
-      const labelOverlays = FROM_FO[label._cls](config, field, label, this);
+      const labelOverlays = FROM_FO[label._cls](field, label, this);
       overlays = [...overlays, ...labelOverlays];
     } else if (label._cls === "Classification") {
       classifications.push([field, label]);

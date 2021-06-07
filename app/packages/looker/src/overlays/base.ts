@@ -81,7 +81,7 @@ export abstract class CoordinateOverlay<
     return isShown<State, Label>(state, this.field, this.label);
   }
 
-  isSelected(state: Readonly<State>) {
+  isSelected(state: Readonly<State>): boolean {
     return state.options.selectedLabels.includes(this.label._id);
   }
 

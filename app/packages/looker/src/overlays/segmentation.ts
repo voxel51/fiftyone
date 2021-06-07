@@ -24,8 +24,9 @@ export default class SegmentationOverlay<State extends BaseState>
   private targets: Uint32Array;
   private imageColors: Uint32Array;
   private colorMap: (key: string | number) => string;
+  private selected: boolean;
 
-  constructor(state: Readonly<State>, field: string, label: SegmentationLabel) {
+  constructor(field: string, label: SegmentationLabel) {
     this.field = field;
     this.label = label;
     if (this.label.mask) {
@@ -54,14 +55,16 @@ export default class SegmentationOverlay<State extends BaseState>
     const maskImageRaw = new Uint32Array(maskImage.data.buffer);
     const imageColors = new Uint32Array(maskImage.data.buffer);
 
-    if (this.colorMap === state.options.colorMap) {
+    const selected = this.isSelected(state);
+    if (
+      this.colorMap === state.options.colorMap &&
+      this.selected === selected
+    ) {
       imageColors.set(this.imageColors);
     } else {
       this.colorMap = state.options.colorMap;
-      const colors = getSegmentationColorArray(
-        this.colorMap,
-        this.isSelected(state)
-      );
+      this.selected = selected;
+      const colors = getSegmentationColorArray(this.colorMap, selected);
 
       for (let i = 0; i < this.mask.data.length; i++) {
         if (this.mask.data[i]) {

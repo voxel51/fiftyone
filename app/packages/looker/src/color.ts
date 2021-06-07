@@ -45,7 +45,7 @@ export const get32BitColor = (color: string, alpha?: number) => {
 };
 
 let rawMaskColors = new Uint32Array(256);
-let rawMaskColorsSelected;
+let rawMaskColorsSelected = new Uint32Array(256);
 
 let cachedColorMap = null;
 
@@ -57,7 +57,10 @@ export const getSegmentationColorArray = (
     cachedColorMap = colorMap;
     for (let i = 0; i < 256; i++) {
       rawMaskColors[i] = get32BitColor(colorMap(i), MASK_ALPHA);
-      rawMaskColorsSelected = get32BitColor(colorMap(i), SELECTED_MASK_ALPHA);
+      rawMaskColorsSelected[i] = get32BitColor(
+        colorMap(i),
+        SELECTED_MASK_ALPHA
+      );
     }
   }
 
