@@ -5,8 +5,12 @@ import { get32BitColor, getAlphaColor } from "../color";
 import { BACKGROUND_ALPHA, MASK_ALPHA, TEXT_COLOR } from "../constants";
 
 import { deserialize, NumpyResult } from "../numpy";
-import { BaseState, BoundingBox, Coordinates } from "../state";
-import { distanceFromLineSegment, ensureCanvasSize } from "../util";
+import { BaseState, BoundingBox, Coordinates, Dimensions } from "../state";
+import {
+  distanceFromLineSegment,
+  ensureCanvasSize,
+  getRenderedScale,
+} from "../util";
 import { CONTAINS, CoordinateOverlay, RegularLabel } from "./base";
 import { t } from "./util";
 
@@ -33,13 +37,24 @@ export default class DetectionOverlay<
 
   containsPoint(state: Readonly<State>) {
     const [w, h] = state.config.dimensions;
+    const [_, __, ww, wh] = state.windowBBox;
+    const pad = (getRenderedScale([ww, wh], [w, h]) * state.strokeWidth) / 2;
     let [bx, by, bw, bh] = this.label.bounding_box;
-    [bx, by, bw, bh] = [bx * w, by * h, bw * w, bh * h];
+    [bx, by, bw, bh] = [bx * w, by * h, bw * w + pad, bh * h + pad];
 
     const [px, py] = state.pixelCoordinates;
 
     if (px >= bx && py >= by && px <= bx + bw && py <= by + bh) {
       return CONTAINS.CONTENT;
+    }
+
+    if (this.labelBoundingBox) {
+      [bx, by, bw, bh] = this.labelBoundingBox;
+      [bx, by, bw, bh] = [bx * w, by * h, bw * w, bh * h];
+
+      if (px >= bx && py >= by && px <= bx + bw && py <= by + bh) {
+        return CONTAINS.BORDER;
+      }
     }
 
     return CONTAINS.NONE;
@@ -116,6 +131,14 @@ export default class DetectionOverlay<
     ctx.fillStyle = TEXT_COLOR;
     const pad = state.textPad + state.strokeWidth;
     ctx.fillText(labelText, ox + pad, oy - pad);
+
+    const rHeight = (height + bpad) / state.canvasBBox[3];
+    this.labelBoundingBox = [
+      tlx,
+      tly - rHeight,
+      (width + bpad) / state.canvasBBox[2],
+      rHeight,
+    ];
   }
 
   private drawMask(ctx: CanvasRenderingContext2D, state: Readonly<State>) {

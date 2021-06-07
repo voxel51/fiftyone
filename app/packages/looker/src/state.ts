@@ -107,6 +107,7 @@ export interface BaseState {
   transformedMediaBBox: BoundingBox;
   canvasBBox: BoundingBox;
   textPad: number;
+  fullscreen: boolean;
 }
 
 export interface FrameState extends BaseState {
