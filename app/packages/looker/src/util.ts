@@ -94,12 +94,9 @@ export function project2d(
  * points.
  */
 export function distanceFromLineSegment(
-  px: number,
-  py: number,
-  ax: number,
-  ay: number,
-  bx: number,
-  by: number
+  [px, py]: Coordinates,
+  [ax, ay]: Coordinates,
+  [bx, by]: Coordinates
 ): number {
   const segmentLength = distance(ax, ay, bx, by);
   const [projX, projY] = project2d(px, py, ax, ay, bx, by);
@@ -251,19 +248,6 @@ export const getFitRect = (
 };
 
 /**
- *
- */
-export const getPixelCoordinates = function (
-  [x, y]: Coordinates,
-  [tlx, tly, w, h]: BoundingBox
-): Coordinates {
-  x -= tlx;
-  y -= tly;
-
-  return [rescale(x, 0, w, 0, w), rescale(y, 0, h, 0, h)];
-};
-
-/**
  * Rotates items in an array.
  */
 export const rotate = (array: any[], rotation: number): [any[], number] => {
@@ -283,19 +267,16 @@ export const getElementBBox = (
   return [tlx, tly, w, h];
 };
 
-export const getRenderedUntransformedImageDimensions = (
+export const getRenderedScale = (
   [ww, wh]: Dimensions,
   [iw, ih]: Dimensions
-): Dimensions => {
+): number => {
   const ar = iw / ih;
   if (ww / wh < ar) {
-    iw = ww;
-    ih = ww / ar;
-  } else {
-    ih = wh;
-    iw = wh * ar;
+    return ww / iw;
   }
-  return [iw, ih];
+
+  return wh / ih;
 };
 
 export const snapBox = (
@@ -315,7 +296,7 @@ export const snapBox = (
     iw = ih * ar;
   }
 
-  const tly = (swh - ih) / 2;
+  const tly = (swh - ih) / 2 - Math.max((wh - ih) / 2, 0);
   if (ih > wh) {
     if (pan[1] > -tly) {
       pan[1] = -tly;
@@ -326,15 +307,10 @@ export const snapBox = (
       pan[1] -= pan[1] - wh - bry;
     }
   } else {
-    const tly = (swh - ih) / 2;
-    if (pan[1] < -tly) {
-      pan[1] = -tly;
-    }
-
-    pan[1] = Math.min(pan[1], wh - (tly + ih));
+    pan[1] = -tly;
   }
 
-  const tlx = (sww - iw) / 2;
+  const tlx = (sww - iw) / 2 - Math.max((ww - iw) / 2, 0);
   if (iw > ww) {
     if (pan[0] > -tlx) {
       pan[0] = -tlx;
@@ -345,11 +321,7 @@ export const snapBox = (
       pan[0] -= pan[0] - ww - brx;
     }
   } else {
-    if (pan[0] < -tlx) {
-      pan[0] = -tlx;
-    }
-
-    pan[0] = Math.min(pan[0], ww - (tlx + iw));
+    pan[0] = -tlx;
   }
 
   return pan;
@@ -360,15 +332,15 @@ export const clampScale = (
   [iw, ih]: Dimensions,
   scale: number
 ): number => {
-  [iw, ih] = getRenderedUntransformedImageDimensions([ww, wh], [iw, ih]);
+  const renderedScale = getRenderedScale([ww, wh], [iw, ih]);
 
-  if (iw / scale < MIN_PIXELS) {
-    scale = iw / MIN_PIXELS;
+  if (iw / renderedScale < MIN_PIXELS) {
+    scale = iw / renderedScale;
   }
 
-  if (ih / scale < MIN_PIXELS) {
-    scale = ih / MIN_PIXELS;
+  if (ih / renderedScale < MIN_PIXELS) {
+    scale = renderedScale;
   }
 
-  return Math.max(scale, 1);
+  return Math.max(scale, 1 / 1.15);
 };

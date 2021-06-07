@@ -29,15 +29,7 @@ import {
   Dimensions,
   BoundingBox,
 } from "./state";
-import {
-  getContainingBox,
-  getElementBBox,
-  getFitRect,
-  getFontSize,
-  getPixelCoordinates,
-  getStrokeWidth,
-  snapBox,
-} from "./util";
+import { getContainingBox, getElementBBox, getFitRect, snapBox } from "./util";
 
 import "./style.css";
 
@@ -100,7 +92,6 @@ export abstract class Looker<
         this.state,
         this.pluckedOverlays
       );
-      console.log("E");
       postUpdate && postUpdate(this.state, this.currentOverlays);
       this.lookerElement.render(this.state as Readonly<State>);
 
@@ -109,7 +100,8 @@ export abstract class Looker<
       ctx.lineWidth = this.state.strokeWidth;
       ctx.font = `bold ${this.state.fontSize.toFixed(2)}px Palanquin`;
       ctx.textAlign = "left";
-      ctx.textBaseline = "top";
+      ctx.textBaseline = "bottom";
+      ctx.imageSmoothingEnabled = false;
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.translate(...this.state.pan);
       ctx.scale(this.state.scale, this.state.scale);
@@ -130,7 +122,7 @@ export abstract class Looker<
 
   attach(element: HTMLElement): void {
     this.state = this.postProcess(element);
-    element.appendChild(this.lookerElement.render(this.state));
+    element.appendChild(this.lookerElement.element);
     this.resizeObserver.observe(element);
   }
 
@@ -166,7 +158,7 @@ export abstract class Looker<
   protected getInitialBaseState(): Omit<BaseState, "config" | "options"> {
     return {
       cursorCoordinates: [0, 0],
-      pixelCoordinates: null,
+      pixelCoordinates: [0, 0],
       disableControls: false,
       hovering: false,
       hoveringControls: false,
@@ -192,23 +184,26 @@ export abstract class Looker<
 
   protected postProcess(element: HTMLElement): State {
     let [tlx, tly, w, h] = this.state.windowBBox;
+    this.state.pan = snapBox(
+      this.state.scale,
+      this.state.pan,
+      [w, h],
+      this.state.config.dimensions
+    );
+    this.state.mediaBBox = getFitRect(
+      this.state.config.dimensions,
+      this.state.windowBBox
+    );
     this.state.transformedWindowBBox = [
       tlx + this.state.pan[0],
       tly + this.state.pan[1],
       this.state.scale * w,
       this.state.scale * h,
     ];
-    this.state.mediaBBox = getFitRect(
-      this.state.config.dimensions,
-      this.state.windowBBox
-    );
+
     this.state.transformedMediaBBox = getFitRect(
       this.state.config.dimensions,
       this.state.transformedWindowBBox
-    );
-    this.state.pixelCoordinates = getPixelCoordinates(
-      this.state.cursorCoordinates,
-      this.state.transformedMediaBBox
     );
     this.state.canvasBBox = [
       this.state.mediaBBox[0] - this.state.windowBBox[0],
@@ -216,9 +211,19 @@ export abstract class Looker<
       this.state.mediaBBox[2],
       this.state.mediaBBox[3],
     ];
-    const [from, to] = [
-      this.state.config.dimensions[0],
-      this.state.mediaBBox[2],
+    this.state.pixelCoordinates = [
+      Math.round(
+        ((this.state.cursorCoordinates[0] -
+          this.state.transformedMediaBBox[0]) /
+          this.state.transformedMediaBBox[2]) *
+          this.state.config.dimensions[0]
+      ),
+      Math.round(
+        ((this.state.cursorCoordinates[1] -
+          this.state.transformedMediaBBox[1]) /
+          this.state.transformedMediaBBox[3]) *
+          this.state.config.dimensions[1]
+      ),
     ];
     this.state.strokeWidth = STROKE_WIDTH / this.state.scale;
     this.state.fontSize = Math.max(FONT_SIZE / this.state.scale, 1);

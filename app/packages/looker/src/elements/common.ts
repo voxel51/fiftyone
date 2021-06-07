@@ -2,9 +2,8 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 
-import { FONT_SIZE, STROKE_WIDTH } from "../constants";
 import { BaseState, Coordinates } from "../state";
-import { clampScale, snapBox } from "../util";
+import { clampScale } from "../util";
 import { BaseElement, Events } from "./base";
 import { ICONS, makeCheckboxRow, makeWrapper } from "./util";
 
@@ -82,7 +81,7 @@ export class LookerElement<State extends BaseState> extends BaseElement<
           event.preventDefault();
           return {
             panning: false,
-            pan: this.getPan([event.pageX, event.pageY], state),
+            pan: this.getPan([event.pageX, event.pageY]),
           };
         });
       },
@@ -107,7 +106,7 @@ export class LookerElement<State extends BaseState> extends BaseElement<
           }
           return {
             rotate: 0,
-            pan: this.getPan([event.pageX, event.pageY], state),
+            pan: this.getPan([event.pageX, event.pageY]),
           };
         });
       },
@@ -154,12 +153,7 @@ export class LookerElement<State extends BaseState> extends BaseElement<
             }, 200);
 
             return {
-              pan: snapBox(
-                newScale,
-                [x - xs * newScale, y - ys * newScale],
-                [width, height],
-                dimensions
-              ),
+              pan: [x - xs * newScale, y - ys * newScale],
               scale: newScale,
               canZoom: false,
               cursorCoordinates: [
@@ -193,13 +187,9 @@ export class LookerElement<State extends BaseState> extends BaseElement<
     return this.element;
   }
 
-  private getPan(
-    [x, y]: Coordinates,
-    { scale, config: { dimensions } }: Readonly<State>
-  ): Coordinates {
+  private getPan([x, y]: Coordinates): Coordinates {
     const [sx, sy] = this.start;
-    const { width, height } = this.element.getBoundingClientRect();
-    return snapBox(scale, [x - sx, y - sy], [width, height], dimensions);
+    return [x - sx, y - sy];
   }
 }
 
