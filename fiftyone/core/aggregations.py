@@ -13,6 +13,7 @@ import eta.core.utils as etau
 
 import fiftyone.core.expressions as foe
 from fiftyone.core.expressions import ViewField as F
+import fiftyone.core.fields as fof
 import fiftyone.core.media as fom
 
 
@@ -119,22 +120,6 @@ class Aggregation(object):
 
         return False
 
-    def _parse_field_and_expr(
-        self,
-        sample_collection,
-        auto_unwind=True,
-        omit_terminal_lists=False,
-        allow_missing=False,
-    ):
-        return _parse_field_and_expr(
-            sample_collection,
-            self._field_name,
-            self._expr,
-            auto_unwind,
-            omit_terminal_lists,
-            allow_missing,
-        )
-
 
 class AggregationError(Exception):
     """An error raised during the execution of an :class:`Aggregation`."""
@@ -234,7 +219,9 @@ class Bounds(Aggregation):
         return d["min"], d["max"]
 
     def to_mongo(self, sample_collection):
-        path, pipeline, _ = self._parse_field_and_expr(sample_collection)
+        path, pipeline, _ = _parse_field_and_expr(
+            sample_collection, self._field_name, expr=self._expr
+        )
 
         pipeline.append(
             {
@@ -365,7 +352,9 @@ class Count(Aggregation):
         if self._field_name is None and self._expr is None:
             return [{"$count": "count"}]
 
-        path, pipeline, _ = self._parse_field_and_expr(sample_collection)
+        path, pipeline, _ = _parse_field_and_expr(
+            sample_collection, self._field_name, expr=self._expr
+        )
 
         if sample_collection.media_type != fom.VIDEO or path != "frames":
             pipeline.append({"$match": {"$expr": {"$gt": ["$" + path, None]}}})
@@ -479,7 +468,9 @@ class CountValues(Aggregation):
         return {i["k"]: i["count"] for i in d["result"]}
 
     def to_mongo(self, sample_collection):
-        path, pipeline, _ = self._parse_field_and_expr(sample_collection)
+        path, pipeline, _ = _parse_field_and_expr(
+            sample_collection, self._field_name, expr=self._expr
+        )
 
         pipeline += [
             {"$group": {"_id": "$" + path, "count": {"$sum": 1}}},
@@ -610,7 +601,9 @@ class Distinct(Aggregation):
         return d["count"], d["values"]
 
     def to_mongo(self, sample_collection):
-        path, pipeline, _ = self._parse_field_and_expr(sample_collection)
+        path, pipeline, _ = _parse_field_and_expr(
+            sample_collection, self._field_name, expr=self._expr
+        )
 
         pipeline += [
             {"$match": {"$expr": {"$gt": ["$" + path, None]}}},
@@ -770,7 +763,9 @@ class HistogramValues(Aggregation):
         return self._parse_result_edges(d)
 
     def to_mongo(self, sample_collection):
-        path, pipeline, _ = self._parse_field_and_expr(sample_collection)
+        path, pipeline, _ = _parse_field_and_expr(
+            sample_collection, self._field_name, expr=self._expr
+        )
 
         if self._auto:
             pipeline.append(
@@ -960,7 +955,9 @@ class Mean(Aggregation):
         return d["mean"]
 
     def to_mongo(self, sample_collection):
-        path, pipeline, _ = self._parse_field_and_expr(sample_collection)
+        path, pipeline, _ = _parse_field_and_expr(
+            sample_collection, self._field_name, expr=self._expr
+        )
 
         pipeline.append(
             {"$group": {"_id": None, "mean": {"$avg": "$" + path}}}
@@ -1067,7 +1064,9 @@ class Std(Aggregation):
         return d["std"]
 
     def to_mongo(self, sample_collection):
-        path, pipeline, _ = self._parse_field_and_expr(sample_collection)
+        path, pipeline, _ = _parse_field_and_expr(
+            sample_collection, self._field_name, expr=self._expr
+        )
 
         op = "$stdDevSamp" if self._sample else "$stdDevPop"
         pipeline.append({"$group": {"_id": None, "std": {op: "$" + path}}})
@@ -1167,7 +1166,9 @@ class Sum(Aggregation):
         return d["sum"]
 
     def to_mongo(self, sample_collection):
-        path, pipeline, _ = self._parse_field_and_expr(sample_collection)
+        path, pipeline, _ = _parse_field_and_expr(
+            sample_collection, self._field_name, expr=self._expr
+        )
 
         pipeline.append({"$group": {"_id": None, "sum": {"$sum": "$" + path}}})
 
@@ -1292,7 +1293,6 @@ class Values(Aggregation):
         _big_result=True,
         _raw=False,
     ):
-        field_or_expr, found_id_field = _handle_id_fields(field_or_expr)
         super().__init__(field_or_expr, expr=expr)
 
         self._missing_value = missing_value
@@ -1300,8 +1300,7 @@ class Values(Aggregation):
         self._allow_missing = _allow_missing
         self._big_result = _big_result
         self._raw = _raw
-        self._found_id_field = found_id_field
-        self._field_type = None
+        self._parse_fcn = None
         self._num_list_fields = None
 
     @property
@@ -1333,30 +1332,38 @@ class Values(Aggregation):
         if self._raw:
             return values
 
-        if self._found_id_field:
+        if self._parse_fcn is not None:
             level = 1 + self._num_list_fields
-            return _transform_values(values, str, level=level)
-
-        if self._field_type is not None:
-            fcn = self._field_type.to_python
-            level = 1 + self._num_list_fields
-            return _transform_values(values, fcn, level=level)
+            return _transform_values(values, self._parse_fcn, level=level)
 
         return values
 
     def to_mongo(self, sample_collection):
-        path, pipeline, list_fields = self._parse_field_and_expr(
+        field_name, to_str = _handle_id_fields(
+            sample_collection, self._field_name
+        )
+
+        path, pipeline, list_fields = _parse_field_and_expr(
             sample_collection,
+            field_name,
+            expr=self._expr,
             auto_unwind=self._unwind,
             omit_terminal_lists=not self._unwind,
             allow_missing=self._allow_missing,
         )
 
+        parse_fcn = None
         if self._expr is None:
-            self._field_type = sample_collection._get_field_type(
-                self._field_name, ignore_primitives=True
-            )
+            if to_str:
+                parse_fcn = str
+            else:
+                field_type = sample_collection._get_field_type(
+                    self._field_name, ignore_primitives=True
+                )
+                if field_type is not None:
+                    parse_fcn = field_type.to_python
 
+        self._parse_fcn = parse_fcn
         self._num_list_fields = len(list_fields)
 
         pipeline.extend(
@@ -1368,19 +1375,38 @@ class Values(Aggregation):
         return pipeline
 
 
-def _handle_id_fields(field_name):
-    if not etau.is_str(field_name):
-        found_id_field = False
-    elif field_name == "id":
-        field_name = "_id"
-        found_id_field = True
-    elif field_name.endswith(".id"):
-        field_name = field_name[: -len(".id")] + "._id"
-        found_id_field = True
+def _handle_id_fields(sample_collection, field_name):
+    if "." not in field_name:
+        root = None
+        leaf = field_name
     else:
-        found_id_field = False
+        root, leaf = field_name.rsplit(".", 1)
 
-    return field_name, found_id_field
+    is_private = leaf.startswith("_")
+
+    if is_private:
+        private_field = field_name
+        public_field = leaf[1:]
+        if root is not None:
+            public_field = root + "." + public_field
+    else:
+        public_field = field_name
+        private_field = "_" + leaf
+        if root is not None:
+            private_field = root + "." + private_field
+
+    public_type = sample_collection._get_field_type(public_field)
+    private_type = sample_collection._get_field_type(private_field)
+
+    if isinstance(public_type, fof.ObjectIdField) or isinstance(
+        private_type, fof.ObjectIdField
+    ):
+        if is_private:
+            return private_field, False
+
+        return private_field, True
+
+    return field_name, False
 
 
 def _transform_values(values, fcn, level=1):
@@ -1438,10 +1464,10 @@ def _extract_list_values(subfield, expr):
 def _parse_field_and_expr(
     sample_collection,
     field_name,
-    expr,
-    auto_unwind,
-    omit_terminal_lists,
-    allow_missing,
+    expr=None,
+    auto_unwind=True,
+    omit_terminal_lists=False,
+    allow_missing=False,
 ):
     if field_name is None and expr is None:
         raise ValueError(

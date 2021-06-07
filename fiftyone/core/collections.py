@@ -6057,7 +6057,9 @@ def _parse_field_name(
     # Validate root field, if requested
     if not allow_missing:
         root_field_name = field_name.split(".", 1)[0]
-        if root_field_name not in ("id", "_id"):
+
+        # @todo `use_db_field` hack
+        if root_field_name != "_id":
             if is_frame_field:
                 schema = sample_collection.get_frame_field_schema(
                     include_private=True

@@ -62,6 +62,7 @@ from .core.fields import (
     IntDictField,
     KeypointsField,
     ListField,
+    ObjectIdField,
     PolylinePointsField,
     StringField,
     TargetsField,
