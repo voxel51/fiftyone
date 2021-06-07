@@ -86,7 +86,7 @@ export abstract class Looker<
         return;
       }
       this.state = mergeUpdates(this.state, updates);
-      this.state = this.postProcess(this.lookerElement.element.parentElement);
+      this.state = this.postProcess(this.lookerElement.element);
       this.pluckedOverlays = this.pluckOverlays(this.state);
       [this.currentOverlays, this.state.rotate] = processOverlays(
         this.state,
@@ -122,12 +122,12 @@ export abstract class Looker<
 
   attach(element: HTMLElement): void {
     this.state = this.postProcess(element);
+    this.resizeObserver.observe(this.lookerElement.element);
     element.appendChild(this.lookerElement.element);
-    this.resizeObserver.observe(element);
   }
 
   detach(): void {
-    this.resizeObserver.unobserve(this.lookerElement.element.parentElement);
+    this.resizeObserver.unobserve(this.lookerElement.element);
     this.lookerElement.element.parentNode.removeChild(
       this.lookerElement.element
     );

@@ -19,7 +19,6 @@ export class LookerElement<State extends BaseState> extends BaseElement<
     return {
       keydown: ({ event, update, dispatchEvent }) => {
         const e = event as KeyboardEvent;
-        alert(e.key);
         switch (e.key) {
           case "ArrowDown":
             update(
@@ -38,8 +37,9 @@ export class LookerElement<State extends BaseState> extends BaseElement<
             return;
           case "m":
             update(({ fullscreen, config: { thumbnail } }) =>
-              thumbnail || true ? {} : { fullscreen: !fullscreen }
+              thumbnail ? {} : { fullscreen: !fullscreen }
             );
+            return;
           case "s":
             update(({ showOptions, config: { thumbnail } }) => {
               if (thumbnail) {
@@ -191,12 +191,19 @@ export class LookerElement<State extends BaseState> extends BaseElement<
     return element;
   }
 
-  renderSelf({ loaded, hovering, config: { thumbnail } }) {
+  renderSelf({ fullscreen, loaded, hovering, config: { thumbnail } }) {
     if (loaded && this.element.classList.contains("loading")) {
       this.element.classList.remove("loading");
     }
     if (!thumbnail && hovering && this.element !== document.activeElement) {
       this.element.focus();
+    }
+
+    const fullscreenClass = this.element.classList.contains("fullscreen");
+    if (fullscreen && !fullscreenClass) {
+      this.element.classList.add("fullscreen");
+    } else if (!fullscreen && fullscreenClass) {
+      this.element.classList.remove("fullscreen");
     }
 
     return this.element;
