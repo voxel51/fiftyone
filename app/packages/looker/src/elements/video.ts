@@ -98,7 +98,7 @@ export class SeekBarElement extends BaseElement<VideoState, HTMLInputElement> {
     element.setAttribute("min", "0");
     element.setAttribute("max", "100");
     element.className = "looker-seek-bar";
-    element.style.gridArea = "1 / 2 / 1 / 6";
+    element.style.gridArea = "1 / 2 / 1 / 7";
     return element;
   }
 
@@ -219,7 +219,7 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
                 playing: resetToFragment ? (loop ? true : false) : playing,
               };
             },
-            (_, { seeking }) => {
+            ({ seeking }) => {
               if (!seeking) {
                 requestAnimationFrame(callback);
               }
@@ -310,17 +310,7 @@ export function withVideoLookerEvents(): () => Events<VideoState> {
           });
         }
 
-        if (event.key === "ArrowLeft") {
-          update(({ frameNumber, locked, fragment, playing }) => {
-            if (!playing) {
-              return {};
-            }
-            const limit = locked && fragment ? fragment[0] : 1;
-            return { frameNumber: Math.max(limit, frameNumber - 1) };
-          });
-        }
-
-        if (event.key === "ArrowRight") {
+        if (event.key === "n") {
           update(
             ({
               frameNumber,
@@ -340,6 +330,16 @@ export function withVideoLookerEvents(): () => Events<VideoState> {
               return { frameNumber: Math.max(limit, frameNumber + 1) };
             }
           );
+        }
+
+        if (event.key === "p") {
+          update(({ frameNumber, locked, fragment, playing }) => {
+            if (!playing) {
+              return {};
+            }
+            const limit = locked && fragment ? fragment[0] : 1;
+            return { frameNumber: Math.max(limit, frameNumber - 1) };
+          });
         }
       },
       mouseenter: ({ update }) => {

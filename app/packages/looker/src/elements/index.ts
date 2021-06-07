@@ -36,6 +36,7 @@ export const getFrameElements: GetElements<FrameState> = (
       {
         node: common.ControlsElement,
         children: [
+          { node: common.FullscreenButtonElement },
           { node: common.OptionsButtonElement },
           { node: frame.FrameNumberElement },
         ],
@@ -74,7 +75,10 @@ export const getImageElements: GetElements<ImageState> = (
       },
       {
         node: common.ControlsElement,
-        children: [{ node: common.OptionsButtonElement }],
+        children: [
+          { node: common.FullscreenButtonElement },
+          { node: common.OptionsButtonElement },
+        ],
       },
       {
         node: common.OptionsPanelElement,
@@ -111,6 +115,7 @@ export const getVideoElements: GetElements<VideoState> = (
       {
         node: common.ControlsElement,
         children: [
+          { node: common.FullscreenButtonElement },
           { node: common.OptionsButtonElement },
           { node: video.PlayButtonElement },
           { node: video.SeekBarElement },

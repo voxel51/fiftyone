@@ -13,6 +13,7 @@ export enum CONTAINS {
 
 export interface BaseLabel {
   _id: string;
+  _cls: string;
   frame_number?: number;
   tags: string[];
   index?: number;

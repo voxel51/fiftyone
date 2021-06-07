@@ -19,6 +19,7 @@ export class LookerElement<State extends BaseState> extends BaseElement<
     return {
       keydown: ({ event, update, dispatchEvent }) => {
         const e = event as KeyboardEvent;
+        alert(e.key);
         switch (e.key) {
           case "ArrowDown":
             update(
@@ -35,11 +36,25 @@ export class LookerElement<State extends BaseState> extends BaseElement<
           case "Escape":
             update({ showControls: false, showOptions: false });
             return;
+          case "m":
+            update(({ fullscreen, config: { thumbnail } }) =>
+              thumbnail || true ? {} : { fullscreen: !fullscreen }
+            );
           case "s":
-            update((state) => ({
-              showOptions: state.showOptions,
-              showControls: state.showControls,
-            }));
+            update(({ showOptions, config: { thumbnail } }) => {
+              if (thumbnail) {
+                return {};
+              } else if (showOptions) {
+                return {
+                  showOptions: false,
+                };
+              } else {
+                return {
+                  showControls: true,
+                  showOptions: true,
+                };
+              }
+            });
             return;
         }
       },
@@ -318,8 +333,8 @@ export class ControlsElement<State extends BaseState> extends BaseElement<
       this.element.style.opacity = "0.9";
       this.element.style.height = "unset";
     } else {
-      this.element.style.opacity = "0.0";
-      this.element.style.height = "0";
+      // this.element.style.opacity = "0.0";
+      // this.element.style.height = "0";
     }
     this.showControls = showControls;
     return this.element;
@@ -343,7 +358,7 @@ export class FullscreenButtonElement<
   createHTMLElement() {
     const element = document.createElement("img");
     element.className = "looker-clickable";
-    element.style.gridArea = "2 / 5 / 2 / 5";
+    element.style.gridArea = "2 / 6 / 2 / 6";
     return element;
   }
 

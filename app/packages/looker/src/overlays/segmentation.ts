@@ -89,8 +89,11 @@ export default class SegmentationOverlay<State extends BaseState>
     const target = this.getTarget(state);
     return {
       color: this.getColor(state, target),
+      label: {
+        _id: this.label._id,
+        _cls: this.label._cls,
+      },
       field: this.field,
-      label: this.label,
       target,
       type: "Segmentation",
     };

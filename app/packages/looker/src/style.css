@@ -2,9 +2,13 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 
+@import url("https://fonts.googleapis.com/css2?family=Palanquin&display=swap");
+
 .looker {
   width: 100%;
   height: 100%;
+  font-family: "Palanquin", sans-serif;
+  font-weight: bold;
 }
 
 @keyframes shimmer {
@@ -31,12 +35,11 @@
   position: absolute;
   bottom: 0;
   left: 0;
-  right: 0;
   opacity: 0;
   z-index: 20;
   padding-bottom: 0.25rem;
   display: grid;
-  grid-template-columns: 1rem max-content max-content 1fr max-content max-content 1rem;
+  grid-template-columns: 1rem max-content max-content 1fr max-content max-content max-content max-content 1rem;
   grid-gap: 0.25rem;
   justify-items: center;
   align-items: center;
@@ -323,4 +326,11 @@
 
 .looker-clickable {
   cursor: pointer;
+}
+
+.looker-time {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-content: center;
 }
