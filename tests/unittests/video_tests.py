@@ -1004,7 +1004,7 @@ class VideoTests(unittest.TestCase):
 
         dataset.add_samples([sample1, sample2])
 
-        view = dataset.to_frames(config={"sample_frames": False})
+        view = dataset.to_frames(sample_frames=False)
 
         self.assertSetEqual(
             set(view.get_field_schema().keys()),

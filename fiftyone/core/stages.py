@@ -4664,7 +4664,7 @@ class ToFrames(ViewStage):
          each video in the collection into a directory of per-frame images.
 
          Videos that have previously been sampled will not be resampled, unless
-         you override this behavior via ``config``.
+         you override this behavior.
 
     Examples::
 
@@ -4689,9 +4689,18 @@ class ToFrames(ViewStage):
         config (None): an optional dict of keyword arguments for
             :meth:`fiftyone.core.video.make_frames_dataset` specifying how to
             perform the conversion
+        **kwargs: optional keyword arguments for
+            :meth:`fiftyone.core.video.make_frames_dataset` specifying how to
+            perform the conversion
     """
 
-    def __init__(self, config=None, _state=None):
+    def __init__(self, config=None, _state=None, **kwargs):
+        if kwargs:
+            if config is None:
+                config = kwargs
+            else:
+                config.update(kwargs)
+
         self._config = config
         self._state = _state
 

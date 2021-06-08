@@ -3994,7 +3994,7 @@ class SampleCollection(object):
         return self._add_view_stage(fos.ToEvaluationPatches(eval_key))
 
     @view_stage
-    def to_frames(self, config=None):
+    def to_frames(self, **kwargs):
         """Creates a view that contains one sample per frame in the video
         collection.
 
@@ -4004,7 +4004,7 @@ class SampleCollection(object):
              each video in the collection into a directory of per-frame images.
 
              Videos that have previously been sampled will not be resampled,
-             unless you override this behavior via ``config``.
+             unless you override this behavior.
 
         Examples::
 
@@ -4025,14 +4025,14 @@ class SampleCollection(object):
             session.view = view
 
         Args:
-            config (None): an optional dict of keyword arguments for
+            **kwargs: optional keyword arguments for
                 :meth:`fiftyone.core.video.make_frames_dataset` specifying how
                 to perform the conversion
 
         Returns:
             a :class:`fiftyone.core.video.FramesView`
         """
-        return self._add_view_stage(fos.ToFrames(config=config))
+        return self._add_view_stage(fos.ToFrames(**kwargs))
 
     @classmethod
     def list_aggregations(cls):
