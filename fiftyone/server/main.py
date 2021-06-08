@@ -42,7 +42,7 @@ import fiftyone.core.state as fos
 import fiftyone.core.uid as fou
 import fiftyone.core.view as fov
 
-from fiftyone.server.extended_view import get_extended_view
+from fiftyone.server.extended_view import get_extended_view, get_view_field
 from fiftyone.server.json_util import convert, FiftyOneJSONEncoder
 import fiftyone.server.utils as fosu
 
@@ -1063,6 +1063,7 @@ def _label_filter(field):
 def _get_search_view(view, path, search, selected):
     search = _escape_regex_chars(search)
 
+    fields_map = view._get_db_fields_map()
     if search == "" and not selected:
         return view
 
@@ -1076,7 +1077,7 @@ def _get_search_view(view, path, search, selected):
         vf = F("label")
         meth = lambda expr: view.filter_labels(field, expr)
     else:
-        vf = F(path)
+        vf = get_view_field(fields_map, path)
         meth = view.match
 
     if search != "" and selected:
