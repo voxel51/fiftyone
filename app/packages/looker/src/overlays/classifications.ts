@@ -4,6 +4,7 @@
 
 import { TEXT_COLOR } from "../constants";
 import { BaseState, BoundingBox, Coordinates } from "../state";
+import { getRenderedScale } from "../util";
 import { CONTAINS, isShown, Overlay, PointInfo, RegularLabel } from "./base";
 
 interface ClassificationLabel extends RegularLabel {}
@@ -34,26 +35,52 @@ export default class ClassificationsOverlay<State extends BaseState>
   }
 
   getSelectData(state: Readonly<State>) {
-    const { id, field, frameNumber } = this.getPointInfo(state);
-    return { id, field, frameNumber };
+    const {
+      label: { _id: id },
+      field,
+    } = this.getPointInfo(state);
+    return { id, field };
   }
 
   getMouseDistance(state: Readonly<State>) {
-    if (this.containsPoint(state)) {
+    if (this.getPointInfo(state)) {
       return 0;
     }
     return Infinity;
   }
 
   containsPoint(state: Readonly<State>): CONTAINS {
-    if (this.containsPoint(state)) {
-      return 0;
+    if (this.getPointInfo(state)) {
+      return CONTAINS.CONTENT;
     }
     return Infinity;
   }
 
   getPointInfo(state: Readonly<State>): PointInfo {
-    return {};
+    const filtered = this.getFilteredAndFlat(state);
+    const [w, h] = state.config.dimensions;
+    const [_, __, ww, wh] = state.windowBBox;
+    const pad = (getRenderedScale([ww, wh], [w, h]) * state.strokeWidth) / 2;
+
+    for (const [field, label] of filtered) {
+      const box = this.labelBoundingBoxes[label._id];
+
+      if (box) {
+        let [bx, by, bw, bh] = box;
+        [bx, by, bw, bh] = [bx * w, by * h, bw * w + pad, bh * h + pad];
+
+        const [px, py] = state.pixelCoordinates;
+
+        if (px >= bx && py >= by && px <= bx + bw && py <= by + bh) {
+          return {
+            field: field,
+            label,
+            type: "Classification",
+            color: this.getColor(state, field, label),
+          };
+        }
+      }
+    }
   }
 
   draw(ctx: CanvasRenderingContext2D, state: Readonly<State>) {
@@ -96,7 +123,8 @@ export default class ClassificationsOverlay<State extends BaseState>
   }
 
   private getFilteredAndFlat(
-    state: Readonly<State>
+    state: Readonly<State>,
+    sort: boolean = true
   ): [string, ClassificationLabel][] {
     let result: [string, ClassificationLabel][] = [];
     this.getFiltered(state).forEach(([field, labels]) => {
@@ -105,6 +133,28 @@ export default class ClassificationsOverlay<State extends BaseState>
         ...labels.map<[string, ClassificationLabel]>((label) => [field, label]),
       ];
     });
+
+    if (sort) {
+      const store = Object.fromEntries(
+        state.options.activeLabels.map((a) => [a, []])
+      );
+      result.forEach(([field, label]) => {
+        store[field].push(label);
+      });
+      result = state.options.activeLabels.reduce((acc, field) => {
+        return [...acc, ...store[field].map((label) => [field, label])];
+      }, []);
+      result.sort((a, b) => {
+        if (a[0] === b[0]) {
+          if (a[1].label < b[1].label) {
+            return -1;
+          } else if (a[1].label > b[1].label) {
+            return 1;
+          }
+          return 0;
+        }
+      });
+    }
     return result;
   }
 
@@ -126,28 +176,37 @@ export default class ClassificationsOverlay<State extends BaseState>
     }
     const color = this.getColor(state, field, label);
     const selected = this.isSelected(state, label);
+    const [cx, cy] = state.canvasBBox;
 
-    const [tlx, tly, brx, bry] = [
-      state.textPad,
-      top,
+    let [tlx, tly, w, h] = [
+      state.textPad + cx,
+      top + cy,
       state.textPad * 3 + width,
-      state.fontSize + top + state.textPad * 3,
+      state.fontSize + state.textPad * 3,
     ];
     ctx.beginPath();
     ctx.fillStyle = color;
     ctx.moveTo(tlx, tly);
-    ctx.lineTo(brx, tly);
-    ctx.lineTo(brx, bry);
-    ctx.lineTo(tlx, bry);
+    ctx.lineTo(tlx + w, tly);
+    ctx.lineTo(tlx + w, tly + h);
+    ctx.lineTo(tlx, tly + h);
     ctx.closePath();
     ctx.fill();
 
     ctx.fillStyle = TEXT_COLOR;
-    ctx.fillText(text, tlx + state.textPad, bry - state.textPad);
+    ctx.fillText(text, tlx + state.textPad, tly + h - state.textPad);
+
+    tlx -= cx;
+    tly -= cy;
 
     return {
-      top: bry + state.textPad,
-      box: [tlx, tly, brx, bry],
+      top: tly + h + state.textPad,
+      box: [
+        tlx / state.canvasBBox[2],
+        tly / state.canvasBBox[3],
+        w / state.canvasBBox[2],
+        h / state.canvasBBox[3],
+      ],
     };
   }
 

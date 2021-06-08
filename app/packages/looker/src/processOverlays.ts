@@ -30,7 +30,7 @@ const processOverlays = <State extends BaseState>(
 
   let ordered = activeLabels.reduce((acc, cur) => [...acc, ...bins[cur]], []);
 
-  if (classifications) {
+  if (classifications && !state.config.thumbnail) {
     ordered = [classifications, ...ordered];
   }
 

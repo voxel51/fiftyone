@@ -423,7 +423,7 @@ function loadOverlays<State extends BaseState>(sample: {
       const labelOverlays = FROM_FO[label._cls](field, label, this);
       overlays = [...overlays, ...labelOverlays];
     } else if (label._cls === "Classification") {
-      classifications.push([field, label]);
+      classifications.push([field, [label]]);
     } else if (label._cls === "Classifications") {
       classifications.push([field, label.classifications]);
     }
