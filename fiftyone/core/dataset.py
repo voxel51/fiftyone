@@ -699,16 +699,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
              an ``OrderedDict`` mapping field names to field types
         """
-        d = self._sample_doc_cls.get_field_schema(
+        return self._sample_doc_cls.get_field_schema(
             ftype=ftype,
             embedded_doc_type=embedded_doc_type,
             include_private=include_private,
         )
-
-        if not include_private and (self.media_type == fom.VIDEO):
-            d.pop("frames", None)
-
-        return d
 
     def get_frame_field_schema(
         self, ftype=None, embedded_doc_type=None, include_private=False
@@ -1260,7 +1255,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             for sample in self._iter_samples(pipeline):
                 yield sample
 
-    def add_sample(self, sample, expand_schema=True):
+    def add_sample(self, sample, expand_schema=True, validate=True):
         """Adds the given sample to the dataset.
 
         If the sample instance does not belong to a dataset, it is updated
@@ -1272,38 +1267,23 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             expand_schema (True): whether to dynamically add new sample fields
                 encountered to the dataset schema. If False, an error is raised
                 if the sample's schema is not a subset of the dataset schema
+            validate (True): whether to validate that the fields of the sample
+                are compliant with the dataset schema before adding it
 
         Returns:
             the ID of the sample in the dataset
 
         Raises:
-            ``mongoengine.errors.ValidationError``: if a field of the sample
-                has a type that is inconsistent with the dataset schema, or if
-                ``expand_schema == False`` and a new field is encountered
+            ValueError: if ``expand_schema`` is False and a new field is
+                encountered
+            ``mongoengine.errors.ValidationError``: if a sample field has a
+                type that is inconsistent with the dataset schema
         """
-        if sample._in_db:
-            sample = sample.copy()
+        return self._add_samples_batch([sample], expand_schema, validate)[0]
 
-        if self.media_type is None:
-            self.media_type = sample.media_type
-
-        if expand_schema:
-            self._expand_schema([sample])
-
-        self._validate_sample(sample)
-
-        d = sample.to_mongo_dict()
-        self._sample_collection.insert_one(d)  # adds `_id` to `d`
-
-        doc = self._sample_dict_to_doc(d)
-        sample._set_backing_doc(doc, dataset=self)
-
-        if self.media_type == fom.VIDEO:
-            sample.frames.save()
-
-        return str(d["_id"])
-
-    def add_samples(self, samples, expand_schema=True, num_samples=None):
+    def add_samples(
+        self, samples, expand_schema=True, validate=True, num_samples=None
+    ):
         """Adds the given samples to the dataset.
 
         Any sample instances that do not belong to a dataset are updated
@@ -1317,18 +1297,20 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             expand_schema (True): whether to dynamically add new sample fields
                 encountered to the dataset schema. If False, an error is raised
                 if a sample's schema is not a subset of the dataset schema
+            validate (True): whether to validate that the fields of each sample
+                are compliant with the dataset schema before adding it
             num_samples (None): the number of samples in ``samples``. If not
                 provided, this is computed via ``len(samples)``, if possible.
-                This value is optional and is used only for optimization and
-                progress tracking
+                This value is optional and is used only for progress tracking
 
         Returns:
             a list of IDs of the samples in the dataset
 
         Raises:
-            ``mongoengine.errors.ValidationError``: if a field of a sample has
-                a type that is inconsistent with the dataset schema, or if
-                ``expand_schema == False`` and a new field is encountered
+            ValueError: if ``expand_schema`` is False and a new field is
+                encountered
+            ``mongoengine.errors.ValidationError``: if a sample field has a
+                type that is inconsistent with the dataset schema
         """
         if num_samples is None:
             try:
@@ -1336,14 +1318,18 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             except:
                 pass
 
-        # @todo optimize adjust dynamically based on sample save time
-        batch_size = 128 if self.media_type == fom.IMAGE else 1
+        # Dynamically size batches so that they are as large as possible while
+        # still achieving a nice frame rate on the progress bar
+        target_latency = 0.2  # in seconds
+        batcher = fou.DynamicBatcher(
+            samples, target_latency, init_batch_size=1, max_batch_beta=2.0
+        )
 
         sample_ids = []
         with fou.ProgressBar(total=num_samples) as pb:
-            for batch in fou.iter_batches(samples, batch_size):
+            for batch in batcher:
                 sample_ids.extend(
-                    self._add_samples_batch(batch, expand_schema)
+                    self._add_samples_batch(batch, expand_schema, validate)
                 )
                 pb.update(count=len(batch))
 
@@ -1375,7 +1361,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self.merge_samples(
             sample_collection,
             key_field="id",
-            omit_none_fields=False,
             skip_existing=True,
             insert_new=True,
             include_info=include_info,
@@ -1383,7 +1368,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         )
         return self.skip(num_samples).values("id")
 
-    def _add_samples_batch(self, samples, expand_schema):
+    def _add_samples_batch(self, samples, expand_schema, validate):
         samples = [s.copy() if s._in_db else s for s in samples]
 
         if self.media_type is None and samples:
@@ -1392,8 +1377,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if expand_schema:
             self._expand_schema(samples)
 
-        for sample in samples:
-            self._validate_sample(sample)
+        if validate:
+            self._validate_samples(samples)
 
         dicts = [sample.to_mongo_dict() for sample in samples]
 
@@ -1427,11 +1412,31 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             fos.Sample._reload_docs(self._sample_collection_name)
 
     def _merge_doc(
-        self, doc, expand_schema=True, merge_info=True, overwrite_info=False
+        self,
+        doc,
+        fields=None,
+        omit_fields=None,
+        expand_schema=True,
+        merge_info=True,
+        overwrite_info=False,
     ):
+        if fields is not None:
+            if etau.is_str(fields):
+                fields = [fields]
+            elif not isinstance(fields, dict):
+                fields = list(fields)
+
+        if omit_fields is not None:
+            if etau.is_str(omit_fields):
+                omit_fields = [omit_fields]
+            else:
+                omit_fields = list(omit_fields)
+
         _merge_dataset_doc(
             self,
             doc,
+            fields=fields,
+            omit_fields=omit_fields,
             expand_schema=expand_schema,
             merge_info=merge_info,
             overwrite_info=overwrite_info,
@@ -1442,46 +1447,88 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         samples,
         key_field="filepath",
         key_fcn=None,
-        omit_none_fields=True,
         skip_existing=False,
         insert_new=True,
-        expand_schema=True,
-        omit_default_fields=False,
+        fields=None,
+        omit_fields=None,
+        merge_lists=True,
         overwrite=True,
+        expand_schema=True,
         include_info=True,
         overwrite_info=False,
     ):
         """Merges the given samples into this dataset.
 
-        By default, samples with the same absolute ``filepath`` are merged.
-        You can customize this behavior via the ``key_field`` and ``key_fcn``
+        By default, samples with the same absolute ``filepath`` are merged, but
+        can customize this behavior via the ``key_field`` and ``key_fcn``
         parameters. For example, you could set
         ``key_fcn = lambda sample: os.path.basename(sample.filepath)`` to merge
         samples with the same base filename.
 
+        The behavior of this method is highly customizable. By default, all
+        top-level fields from the provided samples are merged in, overwriting
+        any existing values for those fields, with the exception of list fields
+        (e.g., ``tags``) and label list fields (e.g.,
+        :class:`fiftyone.core.labels.Detections` fields), in which case the
+        elements of the lists themselves are merged. In the case of label list
+        fields, labels with the same ``id`` in both collections are updated
+        rather than duplicated.
+
+        To avoid confusion between missing fields and fields whose value is
+        ``None``, ``None``-valued fields are always treated as missing while
+        merging.
+
+        This method can be configured in numerous ways, including:
+
+        -   Whether existing samples should be modified or skipped
+        -   Whether new samples should be added or omitted
+        -   Whether new fields can be added to the dataset schema
+        -   Whether list fields should be treated as ordinary fields and merged
+            as a whole rather than merging their elements
+        -   Whether to merge (a) only specific fields or (b) all but certain
+            fields
+        -   Mapping input collection fields to different field names of this
+            dataset
+
         Args:
-            samples: an iterable of :class:`fiftyone.core.sample.Sample`
-                instances or a
-                :class:`fiftyone.core.collections.SampleCollection`
+            samples: a :class:`fiftyone.core.collections.SampleCollection` or
+                iterable of :class:`fiftyone.core.sample.Sample` instances
             key_field ("filepath"): the sample field to use to decide whether
                 to join with an existing sample
             key_fcn (None): a function that accepts a
                 :class:`fiftyone.core.sample.Sample` instance and computes a
                 key to decide if two samples should be merged. If a ``key_fcn``
                 is provided, ``key_field`` is ignored
-            omit_none_fields (True): whether to omit ``None``-valued fields of
-                the provided samples when merging their fields
             skip_existing (False): whether to skip existing samples (True) or
                 merge them (False)
             insert_new (True): whether to insert new samples (True) or skip
                 them (False)
+            fields (None): an optional field or iterable of fields to which to
+                restrict the merge. If provided, fields other than these are
+                omitted from ``samples`` when merging or adding samples. One
+                exception is that ``filepath`` is always included when adding
+                new samples, since the field is required. This can also be a
+                dict mapping field names of the input collection to field names
+                of this dataset
+            omit_fields (None): an optional field or iterable of fields to
+                exclude from the merge. If provided, these fields are omitted
+                from ``samples``, if present, when merging or adding samples.
+                One exception is that ``filepath`` is always included when
+                adding new samples, since the field is required
+            merge_lists (True): whether to merge the elements of list fields
+                (e.g., ``tags``) and label list fields (e.g.,
+                :class:`fiftyone.core.labels.Detections` fields) rather than
+                merging the entire top-level field like other field types.
+                For label lists fields, existing
+                :class:`fiftyone.core.label.Label` elements are either replaced
+                (when ``overwrite`` is True) or kept (when ``overwrite`` is
+                False) when their ``id`` matches a label from the provided
+                samples
+            overwrite (True): whether to overwrite (True) or skip (False)
+                existing fields and label elements
             expand_schema (True): whether to dynamically add new fields
                 encountered to the dataset schema. If False, an error is raised
                 if a sample's schema is not a subset of the dataset schema
-            omit_default_fields (False): whether to omit default sample fields
-                when merging. If ``True``, ``insert_new`` must be ``False``
-            overwrite (True): whether to overwrite (True) or skip (False)
-                existing sample fields
             include_info (True): whether to merge dataset-level information
                 such as ``info`` and ``classes``. Only applicable when
                 ``samples`` is a
@@ -1491,44 +1538,43 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 :class:`fiftyone.core.collections.SampleCollection` and
                 ``include_info`` is True
         """
-        # Use efficient implementation when possible
-        if (
-            isinstance(samples, foc.SampleCollection)
-            and key_fcn is None
-            and overwrite
-        ):
-            _merge_samples(
-                samples,
-                self,
-                key_field,
-                omit_none_fields=omit_none_fields,
-                skip_existing=skip_existing,
-                insert_new=insert_new,
-                expand_schema=expand_schema,
-                omit_default_fields=omit_default_fields,
-                include_info=include_info,
-                overwrite_info=overwrite_info,
-            )
-            return
+        if fields is not None:
+            if etau.is_str(fields):
+                fields = [fields]
+            elif not isinstance(fields, dict):
+                fields = list(fields)
 
-        if omit_default_fields:
-            if insert_new:
-                raise ValueError(
-                    "Cannot omit default fields when `insert_new=True`"
-                )
-
-            omit_fields = self._get_default_sample_fields()
-        else:
-            omit_fields = None
+        if omit_fields is not None:
+            if etau.is_str(omit_fields):
+                omit_fields = [omit_fields]
+            else:
+                omit_fields = list(omit_fields)
 
         if isinstance(samples, foc.SampleCollection):
             _merge_dataset_doc(
                 self,
                 samples,
+                fields=fields,
+                omit_fields=omit_fields,
                 expand_schema=expand_schema,
                 merge_info=include_info,
                 overwrite_info=overwrite_info,
             )
+
+        # Use efficient implementation when possible
+        if isinstance(samples, foc.SampleCollection) and key_fcn is None:
+            _merge_samples(
+                samples,
+                self,
+                key_field,
+                skip_existing=skip_existing,
+                insert_new=insert_new,
+                fields=fields,
+                omit_fields=omit_fields,
+                merge_lists=merge_lists,
+                overwrite=overwrite,
+            )
+            return
 
         if key_fcn is None:
             id_map = {k: v for k, v in zip(*self.values([key_field, "id"]))}
@@ -1540,6 +1586,24 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 for sample in pb(self):
                     id_map[key_fcn(sample)] = sample.id
 
+        # When inserting new samples, `filepath` cannot be excluded
+        if insert_new:
+            if isinstance(fields, dict):
+                insert_fields = fields.copy()
+                insert_fields["filepath"] = "filepath"
+            elif fields is not None:
+                insert_fields = fields.copy()
+                if "filepath" not in insert_fields:
+                    insert_fields = ["filepath"] + insert_fields
+            else:
+                insert_fields = None
+
+            insert_omit_fields = omit_fields
+            if insert_omit_fields is not None:
+                insert_omit_fields = [
+                    f for f in insert_omit_fields if f != "filepath"
+                ]
+
         logger.info("Merging samples...")
         with fou.ProgressBar() as pb:
             for sample in pb(samples):
@@ -1549,13 +1613,24 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                         existing_sample = self[id_map[key]]
                         existing_sample.merge(
                             sample,
+                            fields=fields,
                             omit_fields=omit_fields,
-                            omit_none_fields=omit_none_fields,
+                            merge_lists=merge_lists,
                             overwrite=overwrite,
                             expand_schema=expand_schema,
                         )
                         existing_sample.save()
+
                 elif insert_new:
+                    if (
+                        insert_fields is not None
+                        or insert_omit_fields is not None
+                    ):
+                        sample = sample.copy(
+                            fields=insert_fields,
+                            omit_fields=insert_omit_fields,
+                        )
+
                     self.add_sample(sample, expand_schema=expand_schema)
 
     def delete_samples(self, samples_or_ids):
@@ -2945,7 +3020,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         regardless of the ``unique`` value you specify.
 
         If the given field already has a non-unique index but you requested a
-        unique index, the existing index will be dropped.
+        unique index, the existing index will be replaced with a unique index.
 
         Indexes enable efficient sorting, merging, and other such operations.
 
@@ -3250,12 +3325,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             )
 
     def _expand_schema(self, samples):
+        expanded = False
         fields = self.get_field_schema(include_private=True)
         for sample in samples:
             self._validate_media_type(sample)
 
             if self.media_type == fom.VIDEO:
-                self._expand_frame_schema(sample.frames)
+                expanded |= self._expand_frame_schema(sample.frames)
 
             for field_name in sample._get_field_names(include_private=True):
                 if field_name == "_id":
@@ -3264,19 +3340,19 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 if field_name in fields:
                     continue
 
-                if field_name == "frames" and self.media_type == fom.VIDEO:
-                    continue
-
                 value = sample[field_name]
                 if value is None:
                     continue
 
                 self._sample_doc_cls.add_implied_field(field_name, value)
                 fields = self.get_field_schema(include_private=True)
+                expanded = True
 
-        self._reload()
+        if expanded:
+            self._reload()
 
     def _expand_frame_schema(self, frames):
+        expanded = False
         fields = self.get_frame_field_schema(include_private=True)
         for frame in frames.values():
             for field_name in frame._get_field_names(include_private=True):
@@ -3292,8 +3368,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
                 self._frame_doc_cls.add_implied_field(field_name, value)
                 fields = self.get_frame_field_schema(include_private=True)
+                expanded = True
 
-        return fields
+        return expanded
 
     def _validate_media_type(self, sample):
         if self.media_type != sample.media_type:
@@ -3322,32 +3399,25 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
             return self._frame_doc_cls.from_dict(d, extended=False)
 
-    def _validate_sample(self, sample):
+    def _validate_samples(self, samples):
         fields = self.get_field_schema(include_private=True)
+        for sample in samples:
+            non_existent_fields = set()
 
-        non_existent_fields = {
-            fn for fn in sample.field_names if fn not in fields
-        }
+            for field_name, value in sample.iter_fields():
+                field = fields.get(field_name, None)
+                if field is None:
+                    if value is not None:
+                        non_existent_fields.add(field_name)
+                else:
+                    if value is not None or not field.null:
+                        field.validate(value)
 
-        if self.media_type == fom.VIDEO:
-            non_existent_fields.discard("frames")
-
-        if non_existent_fields:
-            msg = "The fields %s do not exist on the dataset '%s'" % (
-                non_existent_fields,
-                self.name,
-            )
-            raise moe.FieldDoesNotExist(msg)
-
-        for field_name, value in sample.iter_fields():
-            field = fields[field_name]
-            if field_name == "frames" and self.media_type == fom.VIDEO:
-                continue
-
-            if value is None and field.null:
-                continue
-
-            field.validate(value)
+            if non_existent_fields:
+                raise ValueError(
+                    "Fields %s do not exist on dataset '%s'"
+                    % (non_existent_fields, self.name)
+                )
 
     def reload(self):
         """Reloads the dataset and any in-memory samples from the database."""
@@ -3704,6 +3774,8 @@ def _save_view(view, fields):
 def _merge_dataset_doc(
     dataset,
     collection_or_doc,
+    fields=None,
+    omit_fields=None,
     expand_schema=True,
     merge_info=True,
     overwrite_info=False,
@@ -3741,6 +3813,35 @@ def _merge_dataset_doc(
         schema = {f.name: f.to_field() for f in doc.sample_fields}
         if is_video:
             frame_schema = {f.name: f.to_field() for f in doc.frame_fields}
+
+    # Omit fields first in case `fields` is a dict that changes field names
+    if omit_fields is not None:
+        if is_video:
+            omit_fields, omit_frame_fields = fou.split_frame_fields(
+                omit_fields
+            )
+            frame_schema = {
+                k: v
+                for k, v in frame_schema.items()
+                if k not in omit_frame_fields
+            }
+
+        schema = {k: v for k, v in schema.items() if k not in omit_fields}
+
+    if fields is not None:
+        if not isinstance(fields, dict):
+            fields = {f: f for f in fields}
+
+        if is_video:
+            fields, frame_fields = fou.split_frame_fields(fields)
+
+            frame_schema = {
+                frame_fields[k]: v
+                for k, v in frame_schema.items()
+                if k in frame_fields
+            }
+
+        schema = {fields[k]: v for k, v in schema.items() if k in fields}
 
     dataset._sample_doc_cls.merge_field_schema(
         schema, expand_schema=expand_schema
@@ -3832,66 +3933,95 @@ def _clone_runs(dst_dataset, src_doc):
     dst_doc.save()
 
 
+def _ensure_index(dataset, field, unique=False):
+    coll = dataset._sample_collection
+
+    index_info = coll.index_information()
+
+    # field -> (name, unique)
+    index_map = {
+        v["key"][0][0]: (k, v.get("unique", False))
+        for k, v in index_info.items()
+    }
+
+    new = False
+    dropped = False
+
+    if field in index_map:
+        name, current_unique = index_map[field]
+        if current_unique or (current_unique == unique):
+            # Satisfactory index already exists
+            return new, dropped
+
+        coll.drop_index(name)
+        dropped = True
+
+    coll.create_index(field, unique=True)
+    new = True
+
+    return new, dropped
+
+
 def _merge_samples(
     src_collection,
     dst_dataset,
     key_field,
-    omit_none_fields=True,
     skip_existing=False,
     insert_new=True,
-    expand_schema=True,
-    omit_default_fields=False,
-    include_info=True,
-    overwrite_info=False,
+    fields=None,
+    omit_fields=None,
+    merge_lists=True,
+    overwrite=True,
 ):
-    if omit_default_fields and insert_new:
-        raise ValueError("Cannot omit default fields when `insert_new=True`")
-
-    if key_field == "id":
-        key_field = "_id"
-
-    if skip_existing:
-        when_matched = "keepExisting"
-    else:
-        when_matched = "merge"
-
-    if insert_new:
-        when_not_matched = "insert"
-    else:
-        when_not_matched = "discard"
-
-    # Merge dataset metadata
-    _merge_dataset_doc(
-        dst_dataset,
-        src_collection,
-        expand_schema=expand_schema,
-        merge_info=include_info,
-        overwrite_info=overwrite_info,
-    )
-
     #
     # Prepare for merge
     #
+
+    if key_field == "id":
+        key_field = "_id"
 
     is_video = dst_dataset.media_type == fom.VIDEO
     src_dataset = src_collection._dataset
 
     if key_field != "_id":
-        # Must have unique indexes in order to use `$merge`
-        new_src_index = key_field not in src_collection.list_indexes(
-            include_private=True
+        new_src_index, dropped_src_index = _ensure_index(
+            src_dataset, key_field, unique=True
         )
-        new_dst_index = key_field not in dst_dataset.list_indexes(
-            include_private=True
+        new_dst_index, dropped_dst_index = _ensure_index(
+            dst_dataset, key_field, unique=True
         )
-
-        # Re-run creation in case existing index is not unique. If the index
-        # is already unique, this is a no-op
-        src_dataset.create_index(key_field, unique=True)
-        dst_dataset.create_index(key_field, unique=True)
     else:
-        new_src_index = False
-        new_dst_index = False
+        new_src_index, dropped_src_index = False, False
+        new_dst_index, dropped_dst_index = False, False
+
+    if is_video:
+        frame_fields = None
+        omit_frame_fields = None
+
+    if fields is not None:
+        if not isinstance(fields, dict):
+            fields = {f: f for f in fields}
+
+        if is_video:
+            fields, frame_fields = fou.split_frame_fields(fields)
+
+    if omit_fields is not None:
+        if is_video:
+            omit_fields, omit_frame_fields = fou.split_frame_fields(
+                omit_fields
+            )
+
+        if fields is not None:
+            fields = {k: v for k, v in fields.items() if k not in omit_fields}
+            omit_fields = None
+
+        if is_video and frame_fields is not None:
+            frame_fields = {
+                k: v
+                for k, v in frame_fields.items()
+                if k not in omit_frame_fields
+            }
+            omit_frame_fields = None
 
     #
     # The implementation of merging video frames is currently a bit complex.
@@ -3933,37 +4063,80 @@ def _merge_samples(
     # Merge samples
     #
 
-    if omit_default_fields:
-        omit_fields = list(
-            dst_dataset._get_default_sample_fields(include_private=True)
-        )
-    else:
-        omit_fields = ["_id"]
-
-    try:
-        omit_fields.remove(key_field)
-    except ValueError:
-        pass
+    default_fields = src_collection._get_default_sample_fields(
+        include_private=True
+    )
 
     sample_pipeline = src_collection._pipeline(detach_frames=True)
 
-    if omit_fields:
-        sample_pipeline.append({"$unset": omit_fields})
+    if fields is not None:
+        project = {}
+        for k, v in fields.items():
+            if k == v:
+                project[k] = True
+            else:
+                project[v] = "$" + k
 
-    if omit_none_fields:
-        sample_pipeline.append(
-            {
-                "$replaceWith": {
-                    "$arrayToObject": {
-                        "$filter": {
-                            "input": {"$objectToArray": "$$ROOT"},
-                            "as": "item",
-                            "cond": {"$ne": ["$$item.v", None]},
-                        }
-                    }
-                }
-            }
+        if insert_new:
+            # Must include default fields when new samples may be inserted.
+            # Any extra fields here are omitted in `when_matched` pipeline
+            project["filepath"] = True
+            project["_rand"] = True
+            project["_media_type"] = True
+
+            if "tags" not in project:
+                project["tags"] = []
+
+        sample_pipeline.append({"$project": project})
+
+    if omit_fields is not None:
+        _omit_fields = set(omit_fields)
+    else:
+        _omit_fields = set()
+
+    _omit_fields.add("_id")
+    _omit_fields.discard(key_field)
+
+    if insert_new:
+        # Can't omit default fields here when new samples may be inserted.
+        # Any extra fields here are omitted in `when_matched` pipeline
+        _omit_fields -= set(default_fields)
+
+    if _omit_fields:
+        sample_pipeline.append({"$unset": list(_omit_fields)})
+
+    if skip_existing:
+        when_matched = "keepExisting"
+    else:
+        # We had to include all default fields since they are required if new
+        # samples are inserted, but, when merging, the user may have wanted
+        # them excluded
+        delete_fields = set()
+        if insert_new:
+            if fields is not None:
+                delete_fields.update(
+                    f for f in default_fields if f not in set(fields.values())
+                )
+
+            if omit_fields is not None:
+                delete_fields.update(
+                    f for f in default_fields if f in omit_fields
+                )
+
+        when_matched = _merge_docs(
+            src_collection,
+            merge_lists=merge_lists,
+            fields=fields,
+            omit_fields=omit_fields,
+            delete_fields=delete_fields,
+            overwrite=overwrite,
+            frames=False,
         )
+
+    if insert_new:
+        when_not_matched = "insert"
+    else:
+        when_not_matched = "discard"
 
     sample_pipeline.append(
         {
@@ -3984,8 +4157,14 @@ def _merge_samples(
     if new_src_index:
         src_collection.drop_index(key_field)
 
+    if dropped_src_index:
+        src_collection.create_index(key_field)
+
     if new_dst_index:
         dst_dataset.drop_index(key_field)
+
+    if dropped_dst_index:
+        dst_dataset.create_index(key_field)
 
     #
     # Merge frames
@@ -4000,21 +4179,38 @@ def _merge_samples(
 
         frame_pipeline = _src_collection._pipeline(frames_only=True)
 
-        frame_pipeline.extend([{"$unset": ["_id", "_sample_id"]}])
+        if frame_fields is not None:
+            project = {}
+            for k, v in frame_fields.items():
+                if k == v:
+                    project[k] = True
+                else:
+                    project[v] = "$" + k
 
-        if omit_none_fields:
-            frame_pipeline.append(
-                {
-                    "$replaceWith": {
-                        "$arrayToObject": {
-                            "$filter": {
-                                "input": {"$objectToArray": "$$ROOT"},
-                                "as": "item",
-                                "cond": {"$ne": ["$$item.v", None]},
-                            }
-                        }
-                    }
-                }
+            project[frame_key_field] = True
+            project["frame_number"] = True
+            frame_pipeline.append({"$project": project})
+
+        if omit_frame_fields is not None:
+            _omit_frame_fields = set(omit_frame_fields)
+        else:
+            _omit_frame_fields = set()
+
+        _omit_frame_fields.update(["_id", "_sample_id"])
+        _omit_frame_fields.discard(frame_key_field)
+        _omit_frame_fields.discard("frame_number")
+        frame_pipeline.append({"$unset": list(_omit_frame_fields)})
+
+        if skip_existing:
+            when_frame_matched = "keepExisting"
+        else:
+            when_frame_matched = _merge_docs(
+                src_collection,
+                merge_lists=merge_lists,
+                fields=frame_fields,
+                omit_fields=omit_frame_fields,
+                overwrite=overwrite,
+                frames=True,
             )
 
         frame_pipeline.append(
@@ -4022,7 +4218,7 @@ def _merge_samples(
                 "$merge": {
                     "into": dst_dataset._frame_collection_name,
                     "on": [frame_key_field, "frame_number"],
-                    "whenMatched": when_matched,
+                    "whenMatched": when_frame_matched,
                     "whenNotMatched": "insert",
                 }
             }
@@ -4047,6 +4243,239 @@ def _merge_samples(
     fos.Sample._reload_docs(dst_dataset._sample_collection_name)
     if is_video:
         fofr.Frame._reload_docs(dst_dataset._frame_collection_name)
+
+
+def _merge_docs(
+    sample_collection,
+    merge_lists=True,
+    fields=None,
+    omit_fields=None,
+    delete_fields=None,
+    overwrite=False,
+    frames=False,
+):
+    if frames:
+        schema = sample_collection.get_frame_field_schema()
+    else:
+        schema = sample_collection.get_field_schema()
+
+    if merge_lists:
+        list_fields = []
+        elem_fields = []
+        for field, field_type in schema.items():
+            if fields is not None and field not in fields:
+                continue
+
+            if omit_fields is not None and field in omit_fields:
+                continue
+
+            if isinstance(field_type, fof.ListField):
+                root = fields[field] if fields is not None else field
+                list_fields.append(root)
+            elif isinstance(
+                field_type, fof.EmbeddedDocumentField
+            ) and issubclass(field_type.document_type, fol._LABEL_LIST_FIELDS):
+                root = fields[field] if fields is not None else field
+                elem_fields.append(
+                    root + "." + field_type.document_type._LABEL_LIST_FIELD
+                )
+    else:
+        list_fields = None
+        elem_fields = None
+
+    if overwrite:
+        root_doc = "$$ROOT"
+
+        if delete_fields:
+            cond = {
+                "$and": [
+                    {"$ne": ["$$item.v", None]},
+                    {"$not": {"$in": ["$$item.k", list(delete_fields)]}},
+                ]
+            }
+        else:
+            cond = {"$ne": ["$$item.v", None]}
+
+        new_doc = {
+            "$arrayToObject": {
+                "$filter": {
+                    "input": {"$objectToArray": "$$new"},
+                    "as": "item",
+                    "cond": cond,
+                }
+            }
+        }
+
+        docs = [root_doc, new_doc]
+    else:
+        if delete_fields:
+            new_doc = {
+                "$arrayToObject": {
+                    "$filter": {
+                        "input": {"$objectToArray": "$$new"},
+                        "as": "item",
+                        "cond": {
+                            "$not": {"$in": ["$$item.k", list(delete_fields)]}
+                        },
+                    }
+                }
+            }
+        else:
+            new_doc = "$$new"
+
+        root_doc = {
+            "$arrayToObject": {
+                "$filter": {
+                    "input": {"$objectToArray": "$$ROOT"},
+                    "as": "item",
+                    "cond": {"$ne": ["$$item.v", None]},
+                }
+            }
+        }
+
+        docs = [new_doc, root_doc]
+
+    if list_fields or elem_fields:
+        doc = {}
+
+        if list_fields:
+            for list_field in list_fields:
+                _merge_list_field(doc, list_field)
+
+        if elem_fields:
+            for elem_field in elem_fields:
+                _merge_label_list_field(doc, elem_field, overwrite=overwrite)
+
+        docs.append(doc)
+
+    return [{"$replaceWith": {"$mergeObjects": docs}}]
+
+
+def _merge_list_field(doc, list_field):
+    doc[list_field] = {
+        "$switch": {
+            "branches": [
+                {
+                    "case": {"$not": {"$gt": ["$" + list_field, None]}},
+                    "then": "$$new." + list_field,
+                },
+                {
+                    "case": {"$not": {"$gt": ["$$new." + list_field, None]}},
+                    "then": "$" + list_field,
+                },
+            ],
+            "default": {
+                "$concatArrays": [
+                    "$" + list_field,
+                    {
+                        "$filter": {
+                            "input": "$$new." + list_field,
+                            "as": "this",
+                            "cond": {
+                                "$not": {"$in": ["$$this", "$" + list_field]}
+                            },
+                        }
+                    },
+                ]
+            },
+        }
+    }
+
+
+def _merge_label_list_field(doc, elem_field, overwrite=False):
+    field, leaf = elem_field.split(".")
+
+    if overwrite:
+        root = "$$new." + field
+        elements = {
+            "$reverseArray": {
+                "$let": {
+                    "vars": {
+                        "new_ids": {
+                            "$map": {
+                                "input": "$$new." + elem_field,
+                                "as": "this",
+                                "in": "$$this._id",
+                            },
+                        },
+                    },
+                    "in": {
+                        "$reduce": {
+                            "input": {"$reverseArray": "$" + elem_field},
+                            "initialValue": {
+                                "$reverseArray": "$$new." + elem_field
+                            },
+                            "in": {
+                                "$cond": {
+                                    "if": {
+                                        "$not": {
+                                            "$in": ["$$this._id", "$$new_ids"]
+                                        }
+                                    },
+                                    "then": {
+                                        "$concatArrays": [
+                                            "$$value",
+                                            ["$$this"],
+                                        ]
+                                    },
+                                    "else": "$$value",
+                                }
+                            },
+                        }
+                    },
+                }
+            }
+        }
+    else:
+        root = "$" + field
+        elements = {
+            "$let": {
+                "vars": {
+                    "existing_ids": {
+                        "$map": {
+                            "input": "$" + elem_field,
+                            "as": "this",
+                            "in": "$$this._id",
+                        },
+                    },
+                },
+                "in": {
+                    "$reduce": {
+                        "input": "$$new." + elem_field,
+                        "initialValue": "$" + elem_field,
+                        "in": {
+                            "$cond": {
+                                "if": {
+                                    "$not": {
+                                        "$in": ["$$this._id", "$$existing_ids"]
+                                    }
+                                },
+                                "then": {
+                                    "$concatArrays": ["$$value", ["$$this"]]
+                                },
+                                "else": "$$value",
+                            }
+                        },
+                    }
+                },
+            }
+        }
+
+    doc[field] = {
+        "$switch": {
+            "branches": [
+                {
+                    "case": {"$not": {"$gt": ["$" + field, None]}},
+                    "then": "$$new." + field,
+                },
+                {
+                    "case": {"$not": {"$gt": ["$$new." + field, None]}},
+                    "then": "$" + field,
+                },
+            ],
+            "default": {"$mergeObjects": [root, {leaf: elements}]},
+        }
+    }
 
 
 def _index_frames(sample_collection, key_field, frame_key_field):

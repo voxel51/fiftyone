@@ -8,7 +8,9 @@ Base classes for objects that are backed by database documents.
 from copy import deepcopy
 
 import eta.core.serial as etas
+import eta.core.utils as etau
 
+import fiftyone.core.labels as fol
 from fiftyone.core.singletons import DocumentSingleton
 
 
@@ -224,21 +226,56 @@ class _Document(object):
     def merge(
         self,
         document,
+        fields=None,
         omit_fields=None,
-        omit_none_fields=True,
+        merge_lists=True,
         overwrite=True,
         expand_schema=True,
     ):
         """Merges the fields of the document into this document.
 
+        The behavior of this method is highly customizable. By default, all
+        top-level fields from the provided document are merged in, overwriting
+        any existing values for those fields, with the exception of list fields
+        (e.g., ``tags``) and label list fields (e.g.,
+        :class:`fiftyone.core.labels.Detections` fields), in which case the
+        elements of the lists themselves are merged. In the case of label list
+        fields, labels with the same ``id`` in both documents are updated
+        rather than duplicated.
+
+        To avoid confusion between missing fields and fields whose value is
+        ``None``, ``None``-valued fields are always treated as missing while
+        merging.
+
+        This method can be configured in numerous ways, including:
+
+        -   Whether new fields can be added to the document schema
+        -   Whether list fields should be treated as ordinary fields and merged
+            as a whole rather than merging their elements
+        -   Whether to merge (a) only specific fields or (b) all but certain
+            fields
+        -   Mapping input document fields to different field names of this
+            document
+
         Args:
-            document: a :class:`Document` of the same type
-            omit_fields (None): an optional list of fields to omit
-            omit_none_fields (True): whether to omit ``None``-valued fields of
-                the provided document
-            overwrite (True): whether to overwrite existing fields. Note that
-                existing fields whose values are ``None`` are always
-                overwritten
+            document: a :class:`Document` or :class:`DocumentView` of the same
+                type
+            fields (None): an optional field or iterable of fields to which to
+                restrict the merge. This can also be a dict mapping field names
+                of the input document to field names of this document
+            omit_fields (None): an optional field or iterable of fields to
+                exclude from the merge
+            merge_lists (True): whether to merge the elements of top-level list
+                fields (e.g., ``tags``) and label list fields (e.g.,
+                :class:`fiftyone.core.labels.Detections` fields) rather than
+                merging the entire top-level field like other field types.
+                For label lists fields, existing
+                :class:`fiftyone.core.label.Label` elements are either replaced
+                (when ``overwrite`` is True) or kept (when ``overwrite`` is
+                False) when their ``id`` matches a label from the provided
+                document
+            overwrite (True): whether to overwrite (True) or skip (False)
+                existing fields and label elements
             expand_schema (True): whether to dynamically add new fields
                 encountered to the document schema. If False, an error is
                 raised if any fields are not in the document schema
@@ -247,37 +284,68 @@ class _Document(object):
             AttributeError: if ``expand_schema == False`` and a field does not
                 exist
         """
-        if omit_fields is not None:
-            omit_fields = set(omit_fields)
-        else:
-            omit_fields = set()
+        if not overwrite:
+            existing_field_names = set(self.field_names)
 
-        existing_field_names = self.field_names
+        fields = document._parse_fields(fields=fields, omit_fields=omit_fields)
 
-        for field_name, value in document.iter_fields():
-            if field_name in omit_fields:
+        for src_field, dst_field in fields.items():
+            value = document[src_field]
+
+            if value is None:
                 continue
 
-            if omit_none_fields and value is None:
-                continue
+            try:
+                curr_value = self[dst_field]
+            except KeyError:
+                curr_value = None
+
+            if merge_lists:
+                field_type = type(curr_value)
+
+                if issubclass(field_type, list):
+                    if value is not None:
+                        curr_value.extend(
+                            v for v in value if v not in curr_value
+                        )
+
+                    continue
+
+                if field_type in fol._LABEL_LIST_FIELDS:
+                    if value is not None:
+                        list_field = field_type._LABEL_LIST_FIELD
+                        _merge_labels(
+                            curr_value[list_field],
+                            value[list_field],
+                            overwrite=overwrite,
+                        )
+
+                    continue
 
             if (
                 not overwrite
-                and (field_name in existing_field_names)
-                and (self[field_name] is not None)
+                and dst_field in existing_field_names
+                and curr_value is not None
             ):
                 continue
 
-            self.set_field(field_name, value, create=expand_schema)
+            self.set_field(dst_field, value, create=expand_schema)
 
-    def copy(self):
+    def copy(self, fields=None, omit_fields=None):
         """Returns a deep copy of the document that has not been added to the
         database.
+
+        Args:
+            fields (None): an optional field or iterable of fields to which to
+                restrict the copy. This can also be a dict mapping existing
+                field names to new field names
+            omit_fields (None): an optional field or iterable of fields to
+                exclude from the copy
 
         Returns:
             a :class:`Document`
         """
-        return self.__class__(self._doc.copy())
+        raise NotImplementedError("subclass must implement copy()")
 
     def to_dict(self):
         """Serializes the document to a JSON dictionary.
@@ -317,6 +385,25 @@ class _Document(object):
         """Saves the document to the database."""
         self._doc.save()
 
+    def _parse_fields(self, fields=None, omit_fields=None):
+        if fields is None:
+            fields = {f: f for f in self.field_names}
+        elif etau.is_str(fields):
+            fields = {fields: fields}
+
+        if not isinstance(fields, dict):
+            fields = {f: f for f in fields}
+
+        if omit_fields is not None:
+            if etau.is_str(omit_fields):
+                omit_fields = {omit_fields}
+            else:
+                omit_fields = set(omit_fields)
+
+            fields = {k: v for k, v in fields.items() if k not in omit_fields}
+
+        return fields
+
 
 class Document(_Document):
     """Abstract base class for objects that are associated with
@@ -340,9 +427,10 @@ class Document(_Document):
         doc = self._NO_DATASET_DOC_CLS(**kwargs)
         super().__init__(doc)
 
-    def copy(self):
+    def copy(self, fields=None, omit_fields=None):
+        fields = self._parse_fields(fields=fields, omit_fields=omit_fields)
         return self.__class__(
-            **{k: deepcopy(v) for k, v in self.iter_fields()}
+            **{v: deepcopy(self[k]) for k, v in fields.items()}
         )
 
     def reload(self, hard=False):
@@ -632,9 +720,10 @@ class DocumentView(_Document):
 
         return d
 
-    def copy(self):
+    def copy(self, fields=None, omit_fields=None):
+        fields = self._parse_fields(fields=fields, omit_fields=omit_fields)
         return self._DOCUMENT_CLS(
-            **{k: deepcopy(v) for k, v in self.iter_fields()}
+            **{v: deepcopy(self[k]) for k, v in fields.items()}
         )
 
     def save(self):
@@ -642,3 +731,17 @@ class DocumentView(_Document):
 
         if issubclass(type(self._DOCUMENT_CLS), DocumentSingleton):
             self._DOCUMENT_CLS._reload_instance(self)
+
+
+def _merge_labels(labels, new_labels, overwrite=True):
+    if overwrite:
+        existing_ids = {l.id: idx for idx, l in enumerate(labels)}
+        for l in new_labels:
+            idx = existing_ids.get(l.id, None)
+            if idx is not None:
+                labels[idx] = l
+            else:
+                labels.append(l)
+    else:
+        existing_ids = set(l.id for l in labels)
+        labels.extend(l for l in new_labels if l.id not in existing_ids)
