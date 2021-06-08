@@ -8,6 +8,7 @@ export const DASH_COLOR = "rgba(255, 255, 255, 0.7)";
 export const TEXT_COLOR = "#ffffff";
 export const PAD = 4;
 export const TOLERANCE = 3;
+export const POINT_RADIUS = 4;
 export const BACKGROUND_ALPHA = 0.8;
 export const MASK_ALPHA = 0.4;
 export const SELECTED_MASK_ALPHA = 0.7;

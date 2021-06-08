@@ -2,10 +2,11 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 
-import { KEYPOINT_RADIUS_FACTOR } from "../constants";
+import { DASH_COLOR } from "../constants";
 import { BaseState, Coordinates } from "../state";
 import { distance } from "../util";
 import { CONTAINS, CoordinateOverlay, RegularLabel } from "./base";
+import { t } from "./util";
 
 interface KeypointLabel extends RegularLabel {
   points: Coordinates[];
@@ -14,12 +15,12 @@ interface KeypointLabel extends RegularLabel {
 export default class KeypointOverlay<
   State extends BaseState
 > extends CoordinateOverlay<State, KeypointLabel> {
-  constructor(state, field, label) {
+  constructor(field, label) {
     super(field, label);
   }
 
   private getDistanceAndPoint({
-    strokeWidth,
+    pointRadius,
     config: {
       dimensions: [w, h],
     },
@@ -29,7 +30,7 @@ export default class KeypointOverlay<
     // this.radius = strokeWidth * KEYPOINT_RADIUS_FACTOR;
     for (const point of this.label.points) {
       const d = distance(x, y, point[0] * w, point[1] * h);
-      if (d <= 8) {
+      if (d <= pointRadius) {
         distances.push([0, point]);
       } else {
         distances.push([d, point]);
@@ -46,7 +47,32 @@ export default class KeypointOverlay<
     return CONTAINS.NONE;
   }
 
-  draw(ctx: CanvasRenderingContext2D, state: Readonly<State>) {}
+  draw(ctx: CanvasRenderingContext2D, state: Readonly<State>): void {
+    const color = this.getColor(state);
+    const selected = this.isSelected(state);
+    ctx.lineWidth = 0;
+
+    for (const point of this.label.points) {
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      const [x, y] = t(state, ...point);
+      ctx.arc(
+        x,
+        y,
+        selected ? state.pointRadius * 2 : state.pointRadius,
+        0,
+        Math.PI * 2
+      );
+      ctx.fill();
+
+      if (selected) {
+        ctx.fillStyle = DASH_COLOR;
+        ctx.beginPath();
+        ctx.arc(x, y, state.pointRadius, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+  }
 
   getMouseDistance(state) {
     return this.getDistanceAndPoint(state)[0];

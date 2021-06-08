@@ -3,7 +3,13 @@
  */
 import { mergeWith } from "immutable";
 
-import { FONT_SIZE, MIN_PIXELS, STROKE_WIDTH, PAD } from "./constants";
+import {
+  FONT_SIZE,
+  MIN_PIXELS,
+  STROKE_WIDTH,
+  PAD,
+  POINT_RADIUS,
+} from "./constants";
 import {
   getFrameElements,
   getImageElements,
@@ -159,6 +165,7 @@ export abstract class Looker<
     return {
       cursorCoordinates: [0, 0],
       pixelCoordinates: [0, 0],
+      relativeCoordinates: [0, 0],
       disableControls: false,
       hovering: false,
       hoveringControls: false,
@@ -180,6 +187,7 @@ export abstract class Looker<
       canvasBBox: null,
       textPad: PAD,
       fullscreen: false,
+      pointRadius: POINT_RADIUS,
     };
   }
 
@@ -212,25 +220,20 @@ export abstract class Looker<
       this.state.mediaBBox[2],
       this.state.mediaBBox[3],
     ];
-    this.state.pixelCoordinates = [
-      ((this.state.cursorCoordinates[0] - this.state.transformedMediaBBox[0]) /
-        this.state.transformedMediaBBox[2]) *
-        this.state.config.dimensions[0],
-      ((this.state.cursorCoordinates[1] - this.state.transformedMediaBBox[1]) /
-        this.state.transformedMediaBBox[3]) *
-        this.state.config.dimensions[1],
+    this.state.relativeCoordinates = [
+      (this.state.cursorCoordinates[0] - this.state.transformedMediaBBox[0]) /
+        this.state.transformedMediaBBox[2],
+      (this.state.cursorCoordinates[1] - this.state.transformedMediaBBox[1]) /
+        this.state.transformedMediaBBox[3],
     ];
     this.state.pixelCoordinates = [
-      ((this.state.cursorCoordinates[0] - this.state.transformedWindowBBox[0]) /
-        this.state.transMediaBBox[2]) *
-        this.state.config.dimensions[0],
-      ((this.state.cursorCoordinates[1] - this.state.transformedMediaBBox[1]) /
-        this.state.transformedMediaBBox[3]) *
-        this.state.config.dimensions[1],
+      this.state.relativeCoordinates[0] * this.state.config.dimensions[0],
+      this.state.relativeCoordinates[1] * this.state.config.dimensions[1],
     ];
+    this.state.fontSize = FONT_SIZE / this.state.scale;
+    this.state.pointRadius = POINT_RADIUS / this.state.scale;
     this.state.strokeWidth = STROKE_WIDTH / this.state.scale;
-    this.state.fontSize = Math.max(FONT_SIZE / this.state.scale);
-    this.state.textPad = Math.max(PAD / this.state.scale);
+    this.state.textPad = PAD / this.state.scale;
     return this.state;
   }
 }

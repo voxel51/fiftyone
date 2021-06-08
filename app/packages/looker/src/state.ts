@@ -108,6 +108,8 @@ export interface BaseState {
   canvasBBox: BoundingBox;
   textPad: number;
   fullscreen: boolean;
+  pointRadius: number;
+  relativeCoordinates: Coordinates;
 }
 
 export interface FrameState extends BaseState {
