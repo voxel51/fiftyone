@@ -15,6 +15,28 @@ import {
   makeWrapper,
 } from "./util";
 
+export class LoaderBar extends BaseElement<VideoState> {
+  createHTMLElement() {
+    const element = document.createElement("img");
+    element.className = "looker-loader";
+    return element;
+  }
+
+  renderSelf({ playing }) {
+    if (playing !== this.playing) {
+      if (playing) {
+        this.element.src = ICONS.pause;
+        this.element.title = "Pause (space)";
+      } else {
+        this.element.src = ICONS.play;
+        this.element.title = "Play (space)";
+      }
+      this.playing = playing;
+    }
+    return this.element;
+  }
+}
+
 export class PlayButtonElement extends BaseElement<
   VideoState,
   HTMLImageElement
@@ -181,7 +203,7 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
       loadeddata: ({ update, dispatchEvent }) => {
         update(({ playing, options: { autoplay } }) => {
           return {
-            loaded: true,
+            loaded: false,
             playing: autoplay || playing,
             duration: this.element.duration,
           };

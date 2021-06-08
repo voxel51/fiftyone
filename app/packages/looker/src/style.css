@@ -348,6 +348,8 @@
   flex-direction: column;
   justify-content: center;
   align-content: center;
+  font-family: Arial, sans-serif, monospace;
+  font-weight: bold;
 }
 
 .looker-arrow {
@@ -358,4 +360,15 @@
   top: 50%;
   margin-top: -1.75rem;
   cursor: pointer;
+}
+
+.looker-loader {
+  animation: shimmer 2s infinite;
+  background: linear-gradient(
+    90deg,
+    hsla(27, 95%, 49%, 0) 0%,
+    hsla(27, 95%, 49%, 0.9) 50%,
+    hsla(27, 95%, 49%, 0) 100%
+  );
+  background-size: 400% 100%;
 }

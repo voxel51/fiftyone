@@ -18,7 +18,7 @@ import {
   ensureCanvasSize,
   getRenderedScale,
 } from "../util";
-import { CONTAINS, CoordinateOverlay, RegularLabel } from "./base";
+import { CONTAINS, CoordinateOverlay, PointInfo, RegularLabel } from "./base";
 import { t } from "./util";
 
 interface DetectionLabel extends RegularLabel {
@@ -45,7 +45,7 @@ export default class DetectionOverlay<
     }
   }
 
-  containsPoint(state: Readonly<State>) {
+  containsPoint(state: Readonly<State>): CONTAINS {
     const [w, h] = state.config.dimensions;
     const [_, __, ww, wh] = state.windowBBox;
     const pad = (getRenderedScale([ww, wh], [w, h]) * state.strokeWidth) / 2;
@@ -65,7 +65,7 @@ export default class DetectionOverlay<
     return CONTAINS.NONE;
   }
 
-  draw(ctx: CanvasRenderingContext2D, state: Readonly<State>) {
+  draw(ctx: CanvasRenderingContext2D, state: Readonly<State>): void {
     this.mask && this.drawMask(ctx, state);
 
     !state.config.thumbnail && this.drawLabelText(ctx, state);
@@ -79,7 +79,7 @@ export default class DetectionOverlay<
       ctx,
       state,
       this.getColor(state),
-      selected ? [DASH_LENGTH, DASH_LENGTH] : null
+      selected ? DASH_LENGTH : null
     );
   }
 
@@ -103,7 +103,7 @@ export default class DetectionOverlay<
     return Math.min(...distances);
   }
 
-  getPointInfo(state: Readonly<State>) {
+  getPointInfo(state: Readonly<State>): PointInfo {
     return {
       color: this.getColor(state),
       field: this.field,
@@ -227,13 +227,13 @@ export default class DetectionOverlay<
     ctx: CanvasRenderingContext2D,
     state: Readonly<State>,
     color: string,
-    dash?: [number, number]
+    dash?: number
   ) {
     const [tlx, tly, w, h] = this.label.bounding_box;
     ctx.beginPath();
     ctx.lineWidth = state.strokeWidth;
     ctx.strokeStyle = color;
-    ctx.setLineDash(dash ? dash : []);
+    ctx.setLineDash(dash ? [dash] : []);
     ctx.moveTo(...t(state, tlx, tly));
     ctx.lineTo(...t(state, tlx + w, tly));
     ctx.lineTo(...t(state, tlx + w, tly + h));

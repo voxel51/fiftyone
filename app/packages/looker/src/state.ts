@@ -65,6 +65,7 @@ export interface VideoOptions extends BaseOptions {
   useFrameNumber: boolean;
   autoplay: boolean;
   loop: boolean;
+  loader: Promise<BaseSample>;
 }
 
 export interface TooltipOverlay {

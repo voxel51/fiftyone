@@ -11,6 +11,16 @@ export enum CONTAINS {
   BORDER = 2,
 }
 
+export interface PointInfo {
+  color: string;
+  field: string;
+  label: {
+    _id: string;
+    _cls: string;
+  };
+  type: string;
+}
+
 export interface BaseLabel {
   _id: string;
   _cls: string;
@@ -90,11 +100,11 @@ export abstract class CoordinateOverlay<
     return options.colorMap(key);
   }
 
-  abstract containsPoint(state: Readonly<State>);
+  abstract containsPoint(state: Readonly<State>): CONTAINS;
 
-  abstract getMouseDistance(state: Readonly<State>);
+  abstract getMouseDistance(state: Readonly<State>): number;
 
-  abstract getPointInfo(state: Readonly<State>);
+  abstract getPointInfo(state: Readonly<State>): PointInfo;
 
   abstract getPoints(): Coordinates[];
 
@@ -102,6 +112,8 @@ export abstract class CoordinateOverlay<
     return {
       id: this.label._id,
       field: this.field,
+      // @ts-ignore
+      frameNumber: state.frameNumber,
     };
   }
 }

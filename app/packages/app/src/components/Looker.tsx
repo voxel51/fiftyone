@@ -377,7 +377,7 @@ const useLookerError = (looker, sampleId, setError) => {
   useEventHandler(looker, "error", handler);
 };
 
-type EventCallback = (event: Event) => void;
+type EventCallback = (event: CustomEvent) => void;
 
 export const defaultLookerOptions = selectorFamily({
   key: "defaultLookerOptions",

@@ -3,7 +3,7 @@
  */
 import { mergeWith } from "immutable";
 
-import { FONT_SIZE, MIN_PIXELS, STROKE_WIDTH, TEXT_PAD } from "./constants";
+import { FONT_SIZE, MIN_PIXELS, STROKE_WIDTH, PAD } from "./constants";
 import {
   getFrameElements,
   getImageElements,
@@ -178,7 +178,7 @@ export abstract class Looker<
       transformedMediaBBox: null,
       mediaBBox: null,
       canvasBBox: null,
-      textPad: TEXT_PAD,
+      textPad: PAD,
       fullscreen: false,
     };
   }
@@ -222,7 +222,7 @@ export abstract class Looker<
     ];
     this.state.strokeWidth = STROKE_WIDTH / this.state.scale;
     this.state.fontSize = Math.max(FONT_SIZE / this.state.scale);
-    this.state.textPad = Math.max(TEXT_PAD / this.state.scale);
+    this.state.textPad = Math.max(PAD / this.state.scale);
     return this.state;
   }
 }
