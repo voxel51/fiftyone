@@ -27,18 +27,22 @@ from .document import Document, BaseEmbeddedDocument, SampleDocument
 logger = logging.getLogger(__name__)
 
 
-def get_default_fields(cls, include_private=False):
+def get_default_fields(cls, include_private=False, use_db_fields=False):
     """Gets the default fields present on all instances of the given
     :class:`DatasetMixin` class.
 
     Args:
         cls: the :class:`DatasetMixin` class
         include_private (False): whether to include fields starting with ``_``
+        use_db_fields (False): whether to return database fields rather than
+            user-facing fields, when applicable
 
     Returns:
         a tuple of field names
     """
-    return cls._get_fields_ordered(include_private=include_private)
+    return cls._get_fields_ordered(
+        include_private=include_private, use_db_fields=use_db_fields
+    )
 
 
 def validate_fields_match(
@@ -323,7 +327,7 @@ class DatasetMixin(object):
 
     @classmethod
     def add_field(
-        cls, field_name, ftype, embedded_doc_type=None, subfield=None
+        cls, field_name, ftype, embedded_doc_type=None, subfield=None, **kwargs
     ):
         """Adds a new field to the sample.
 
@@ -339,12 +343,15 @@ class DatasetMixin(object):
                 the contained field. Only applicable when ``ftype`` is
                 :class:`fiftyone.core.fields.ListField` or
                 :class:`fiftyone.core.fields.DictField`
+            **kwargs: optional keyword arguments for
+                :meth:`fiftyone.core.odm.dataset.create_field`
         """
         cls._add_field_schema(
             field_name,
             ftype,
             embedded_doc_type=embedded_doc_type,
             subfield=subfield,
+            **kwargs,
         )
 
     @classmethod
@@ -703,7 +710,7 @@ class DatasetMixin(object):
 
     @classmethod
     def _add_field_schema(
-        cls, field_name, ftype, embedded_doc_type=None, subfield=None
+        cls, field_name, ftype, embedded_doc_type=None, subfield=None, **kwargs
     ):
         # pylint: disable=no-member
         if field_name in cls._fields:
@@ -714,6 +721,7 @@ class DatasetMixin(object):
             ftype,
             embedded_doc_type=embedded_doc_type,
             subfield=subfield,
+            **kwargs,
         )
 
         cls._declare_field(field)
@@ -908,11 +916,16 @@ class DatasetMixin(object):
         return el._id, el_filter
 
     @classmethod
-    def _get_fields_ordered(cls, include_private=False):
-        if include_private:
-            return cls._fields_ordered
+    def _get_fields_ordered(cls, include_private=False, use_db_fields=False):
+        fields = cls._fields_ordered
 
-        return tuple(f for f in cls._fields_ordered if not f.startswith("_"))
+        if not include_private:
+            fields = tuple(f for f in fields if not f.startswith("_"))
+
+        if use_db_fields:
+            return tuple(cls._fields[f].db_field for f in fields)
+
+        return fields
 
 
 class NoDatasetMixin(object):
@@ -922,7 +935,7 @@ class NoDatasetMixin(object):
 
     def __getattr__(self, name):
         try:
-            return super().__getattribute__(name)
+            return super().__getattr__(name)
         except AttributeError:
             pass
 
@@ -1025,7 +1038,8 @@ class NoDatasetMixin(object):
     def to_dict(self, extended=False):
         d = {}
         for k, v in self._data.items():
-            if k == "id":  # @todo `use_db_field` hack
+            # @todo `use_db_field` hack
+            if k == "id":
                 k = "_id"
 
             if hasattr(v, "to_dict"):

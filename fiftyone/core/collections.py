@@ -355,12 +355,20 @@ class SampleCollection(object):
         raise NotImplementedError("Subclass must implement iter_samples()")
 
     @classmethod
-    def _get_default_sample_fields(cls, include_private=False):
-        return fosa.get_default_sample_fields(include_private=include_private)
+    def _get_default_sample_fields(
+        cls, include_private=False, use_db_fields=False
+    ):
+        return fosa.get_default_sample_fields(
+            include_private=include_private, use_db_fields=use_db_fields
+        )
 
     @classmethod
-    def _get_default_frame_fields(cls, include_private=False):
-        return fofr.get_default_frame_fields(include_private=include_private)
+    def _get_default_frame_fields(
+        cls, include_private=False, use_db_fields=False
+    ):
+        return fofr.get_default_frame_fields(
+            include_private=include_private, use_db_fields=use_db_fields
+        )
 
     def get_field_schema(
         self, ftype=None, embedded_doc_type=None, include_private=False
@@ -460,13 +468,15 @@ class SampleCollection(object):
 
         return field_name in self.get_frame_field_schema()
 
-    def validate_fields_exist(self, fields):
+    def validate_fields_exist(self, fields, include_private=False):
         """Validates that the collection has field(s) with the given name(s).
 
         If embedded field names are provided, only the root field is checked.
 
         Args:
             fields: a field name or iterable of field names
+            include_private (False): whether to include private fields when
+                checking for existence
 
         Raises:
             ValueError: if one or more of the fields do not exist
@@ -474,42 +484,29 @@ class SampleCollection(object):
         fields, frame_fields = self._split_frame_fields(fields)
 
         if fields:
-            schema = self.get_field_schema(include_private=True)
-
-            default_fields = set(
-                self._get_default_sample_fields(include_private=True)
+            existing_fields = set(
+                self.get_field_schema(include_private=include_private).keys()
             )
-            default_fields.add("_id")
+            if self.media_type == fom.VIDEO:
+                existing_fields.add("frames")
 
             for field in fields:
                 # We only validate that the root field exists
                 field_name = field.split(".", 1)[0]
-                if (
-                    field_name not in schema
-                    and field_name not in default_fields
-                    and (
-                        field_name == "frames" and self.media_type != fom.VIDEO
-                    )
-                    and not field_name.startswith("_")
-                ):
+                if field_name not in existing_fields:
                     raise ValueError("Field '%s' does not exist" % field_name)
 
         if frame_fields:
-            frame_schema = self.get_frame_field_schema(include_private=True)
-
-            default_frame_fields = set(
-                self._get_default_frame_fields(include_private=True)
+            existing_frame_fields = set(
+                self.get_frame_field_schema(
+                    include_private=include_private
+                ).keys()
             )
-            default_frame_fields.add("_id")
 
             for field in frame_fields:
                 # We only validate that the root field exists
                 field_name = field.split(".", 1)[0]
-                if (
-                    field_name not in frame_schema
-                    and field_name not in default_frame_fields
-                    and not field_name.startswith("_")
-                ):
+                if field_name not in existing_frame_fields:
                     raise ValueError(
                         "Frame field '%s' does not exist" % field_name
                     )
@@ -905,17 +902,27 @@ class SampleCollection(object):
         if expand_schema:
             self._expand_schema_from_values(field_name, values)
 
-        field_name, is_frame_field, list_fields, _ = self._parse_field_name(
+        (
+            field_name,
+            is_frame_field,
+            list_fields,
+            _,
+            id_to_str,
+        ) = self._parse_field_name(
             field_name, omit_terminal_lists=True, allow_missing=_allow_missing
         )
 
-        field_type = self._get_field_type(
-            field_name, is_frame_field=is_frame_field, ignore_primitives=True
-        )
-        if field_type is not None:
-            to_mongo = field_type.to_mongo
+        to_mongo = None
+        if id_to_str:
+            to_mongo = lambda _id: ObjectId(_id)
         else:
-            to_mongo = None
+            field_type = self._get_field_type(
+                field_name,
+                is_frame_field=is_frame_field,
+                ignore_primitives=True,
+            )
+            if field_type is not None:
+                to_mongo = field_type.to_mongo
 
         # Setting an entire label list document whose label elements have been
         # filtered is not allowed because this would delete the filtered labels
@@ -1901,7 +1908,7 @@ class SampleCollection(object):
         return self._add_view_stage(fos.Exclude(sample_ids))
 
     @view_stage
-    def exclude_fields(self, field_names):
+    def exclude_fields(self, field_names, _allow_missing=False):
         """Excludes the fields with the given names from the samples in the
         collection.
 
@@ -1944,7 +1951,9 @@ class SampleCollection(object):
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
         """
-        return self._add_view_stage(fos.ExcludeFields(field_names))
+        return self._add_view_stage(
+            fos.ExcludeFields(field_names, _allow_missing=_allow_missing)
+        )
 
     @view_stage
     def exclude_labels(
@@ -3486,7 +3495,7 @@ class SampleCollection(object):
         return self._add_view_stage(fos.Select(sample_ids, ordered=ordered))
 
     @view_stage
-    def select_fields(self, field_names=None):
+    def select_fields(self, field_names=None, _allow_missing=False):
         """Selects only the fields with the given names from the samples in the
         collection. All other fields are excluded.
 
@@ -3536,7 +3545,9 @@ class SampleCollection(object):
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
         """
-        return self._add_view_stage(fos.SelectFields(field_names))
+        return self._add_view_stage(
+            fos.SelectFields(field_names, _allow_missing=_allow_missing)
+        )
 
     @view_stage
     def select_labels(
@@ -5654,6 +5665,24 @@ class SampleCollection(object):
 
         return any(issubclass(label_type, t) for t in label_type_or_types)
 
+    def _get_db_fields_map(self, include_private=False, frames=False):
+        if frames:
+            schema = self.get_frame_field_schema(
+                include_private=include_private
+            )
+        else:
+            schema = self.get_field_schema(include_private=include_private)
+
+        if schema is None:
+            return None
+
+        fields_map = {}
+        for field_name, field in schema.items():
+            if field.db_field != field_name:
+                fields_map[field_name] = field.db_field
+
+        return fields_map
+
     def _get_label_fields(self):
         fields = self._get_sample_label_fields()
 
@@ -5748,7 +5777,7 @@ class SampleCollection(object):
         if values is None:
             return None
 
-        list_fields = self._parse_field_name(field_name, auto_unwind=False)[-1]
+        list_fields = self._parse_field_name(field_name, auto_unwind=False)[-2]
         level = len(list_fields)
 
         while level > 0:
@@ -6082,13 +6111,6 @@ def _parse_field_name(
     omit_terminal_lists,
     allow_missing,
 ):
-    field_name, is_frame_field = sample_collection._handle_frame_field(
-        field_name
-    )
-
-    if is_frame_field and not field_name:
-        return "frames", True, [], []
-
     unwind_list_fields = set()
     other_list_fields = set()
 
@@ -6100,27 +6122,35 @@ def _parse_field_name(
     # Array references [] have been stripped
     field_name = "".join(chunks)
 
+    # Convert `id` to `_id` if necessary
+    field_name, is_id_field, id_to_str = _handle_id_fields(
+        sample_collection, field_name
+    )
+
+    field_name, is_frame_field = sample_collection._handle_frame_field(
+        field_name
+    )
+
+    if is_frame_field and not field_name:
+        return "frames", True, [], [], False
+
     # Validate root field, if requested
-    if not allow_missing:
+    if not allow_missing and not is_id_field:
         root_field_name = field_name.split(".", 1)[0]
 
-        # @todo `use_db_field` hack
-        if root_field_name != "_id":
-            if is_frame_field:
-                schema = sample_collection.get_frame_field_schema(
-                    include_private=True
-                )
-            else:
-                schema = sample_collection.get_field_schema(
-                    include_private=True
-                )
+        if is_frame_field:
+            schema = sample_collection.get_frame_field_schema(
+                include_private=True
+            )
+        else:
+            schema = sample_collection.get_field_schema(include_private=True)
 
-            if root_field_name not in schema:
-                ftype = "Frame field" if is_frame_field else "Field"
-                raise ValueError(
-                    "%s '%s' does not exist on collection '%s'"
-                    % (ftype, root_field_name, sample_collection.name)
-                )
+        if root_field_name not in schema:
+            ftype = "Frame field" if is_frame_field else "Field"
+            raise ValueError(
+                "%s '%s' does not exist on collection '%s'"
+                % (ftype, root_field_name, sample_collection.name)
+            )
 
     # Detect list fields in schema
     path = None
@@ -6158,7 +6188,48 @@ def _parse_field_name(
         other_list_fields = [prefix + f for f in other_list_fields]
         other_list_fields.insert(0, "frames")
 
-    return field_name, is_frame_field, unwind_list_fields, other_list_fields
+    return (
+        field_name,
+        is_frame_field,
+        unwind_list_fields,
+        other_list_fields,
+        id_to_str,
+    )
+
+
+def _handle_id_fields(sample_collection, field_name):
+    if not field_name:
+        return field_name, False, False
+
+    if "." not in field_name:
+        root = None
+        leaf = field_name
+    else:
+        root, leaf = field_name.rsplit(".", 1)
+
+    is_private = leaf.startswith("_")
+
+    if is_private:
+        private_field = field_name
+        public_field = leaf[1:]
+        if root is not None:
+            public_field = root + "." + public_field
+    else:
+        public_field = field_name
+        private_field = "_" + leaf
+        if root is not None:
+            private_field = root + "." + private_field
+
+    public_type = sample_collection._get_field_type(public_field)
+    private_type = sample_collection._get_field_type(private_field)
+
+    if isinstance(public_type, fof.ObjectIdField) or isinstance(
+        private_type, fof.ObjectIdField
+    ):
+        id_to_str = not is_private
+        return private_field, True, id_to_str
+
+    return field_name, False, False
 
 
 def _get_field_type(
@@ -6236,7 +6307,13 @@ def _transform_values(values, fcn, level=1):
 def _make_set_field_pipeline(
     sample_collection, field, expr, embedded_root, allow_missing=False
 ):
-    path, is_frame_field, list_fields, _ = sample_collection._parse_field_name(
+    (
+        path,
+        is_frame_field,
+        list_fields,
+        _,
+        _,
+    ) = sample_collection._parse_field_name(
         field,
         auto_unwind=True,
         omit_terminal_lists=True,

@@ -386,13 +386,14 @@ class ExcludeFields(ViewStage):
         field_names: a field name or iterable of field names to exclude
     """
 
-    def __init__(self, field_names):
+    def __init__(self, field_names, _allow_missing=False):
         if etau.is_str(field_names):
             field_names = [field_names]
         elif field_names is not None:
             field_names = list(field_names)
 
         self._field_names = field_names
+        self._allow_missing = _allow_missing
 
     @property
     def field_names(self):
@@ -400,44 +401,11 @@ class ExcludeFields(ViewStage):
         return self._field_names
 
     def get_excluded_fields(self, sample_collection, frames=False):
-        if frames:
-            default_fields = sample_collection._get_default_frame_fields(
-                include_private=True
-            )
+        if sample_collection.media_type == fom.VIDEO:
+            fields, frame_fields = fou.split_frame_fields(self.field_names)
+            return frame_fields if frames else fields
 
-            excluded_fields = []
-            for field in self.field_names:
-                (
-                    field_name,
-                    is_frame_field,
-                ) = sample_collection._handle_frame_field(field)
-                if is_frame_field:
-                    excluded_fields.append(field_name)
-        else:
-            default_fields = sample_collection._get_default_sample_fields(
-                include_private=True
-            )
-            if sample_collection.media_type == fom.VIDEO:
-                default_fields += ("frames",)
-
-            excluded_fields = []
-            for field in self.field_names:
-                if not sample_collection._is_frame_field(field):
-                    excluded_fields.append(field)
-
-        for field_name in excluded_fields:
-            if field_name.startswith("_"):
-                raise ValueError(
-                    "Cannot exclude private field '%s'" % field_name
-                )
-
-            if field_name == "_id" or field_name in default_fields:
-                ftype = "frame field" if frames else "field"
-                raise ValueError(
-                    "Cannot exclude default %s '%s'" % (ftype, field_name)
-                )
-
-        return excluded_fields
+        return self.field_names
 
     def to_mongo(self, sample_collection):
         excluded_fields = self.get_excluded_fields(
@@ -466,7 +434,10 @@ class ExcludeFields(ViewStage):
         )
 
     def _kwargs(self):
-        return [["field_names", self._field_names]]
+        return [
+            ["field_names", self._field_names],
+            ["_allow_missing", self._allow_missing],
+        ]
 
     @classmethod
     def _params(cls):
@@ -475,12 +446,46 @@ class ExcludeFields(ViewStage):
                 "name": "field_names",
                 "type": "list<str>",
                 "placeholder": "list,of,fields",
-            }
+            },
+            {"name": "_allow_missing", "type": "bool", "default": "False"},
         ]
 
     def validate(self, sample_collection):
+        if self._allow_missing:
+            return
+
         # Using dataset here allows a field to be excluded multiple times
         sample_collection._dataset.validate_fields_exist(self.field_names)
+
+        if sample_collection.media_type == fom.VIDEO:
+            fields, frame_fields = fou.split_frame_fields(self.field_names)
+        else:
+            fields = self.field_names
+            frame_fields = None
+
+        if fields:
+            default_fields = set(
+                sample_collection._get_default_sample_fields(
+                    include_private=True
+                )
+            )
+
+            defaults = [f for f in fields if f in default_fields]
+            if defaults:
+                raise ValueError("Cannot exclude default fields %s" % defaults)
+
+        if frame_fields:
+            default_frame_fields = set(
+                sample_collection._get_default_frame_fields(
+                    include_private=True
+                )
+            )
+
+            defaults = [f for f in fields if f in default_frame_fields]
+            if defaults:
+                raise ValueError(
+                    "Cannot exclude default frame fields %s" % defaults
+                )
 
 
 class ExcludeLabels(ViewStage):
@@ -1052,13 +1057,21 @@ class FilterField(ViewStage):
             )
 
     def validate(self, sample_collection):
-        if self._field == "filepath":
-            raise ValueError("Cannot filter required field `filepath`")
-
         sample_collection.validate_fields_exist(self._field)
 
-        _, is_frame_field = sample_collection._handle_frame_field(self._field)
+        field, is_frame_field = sample_collection._handle_frame_field(
+            self._field
+        )
         self._is_frame_field = is_frame_field
+
+        if is_frame_field:
+            if field in ("id", "frame_number"):
+                raise ValueError(
+                    "Cannot filter required frame field '%s'" % field
+                )
+        else:
+            if field in ("id", "filepath"):
+                raise ValueError("Cannot filter required field '%s'" % field)
 
 
 def _get_filter_field_pipeline(
@@ -2565,6 +2578,7 @@ class SetField(ViewStage):
         return [
             ["field", self._field],
             ["expr", self._get_mongo_expr()],
+            ["_allow_missing", self._allow_missing],
         ]
 
     @classmethod
@@ -2572,6 +2586,7 @@ class SetField(ViewStage):
         return [
             {"name": "field", "type": "field|str"},
             {"name": "expr", "type": "json", "placeholder": ""},
+            {"name": "_allow_missing", "type": "bool", "default": "False"},
         ]
 
     def _get_mongo_expr(self):
@@ -3477,13 +3492,14 @@ class SelectFields(ViewStage):
         field_names (None): a field name or iterable of field names to select
     """
 
-    def __init__(self, field_names=None):
+    def __init__(self, field_names=None, _allow_missing=False):
         if etau.is_str(field_names):
             field_names = [field_names]
         elif field_names is not None:
             field_names = list(field_names)
 
         self._field_names = field_names
+        self._allow_missing = _allow_missing
 
     @property
     def field_names(self):
@@ -3491,52 +3507,20 @@ class SelectFields(ViewStage):
         return self._field_names or []
 
     def get_selected_fields(self, sample_collection, frames=False):
-        if frames:
-            default_fields = sample_collection._get_default_frame_fields(
-                include_private=True
-            )
-
-            selected_fields = []
-            for field in self.field_names:
-                (
-                    field_name,
-                    is_frame_field,
-                ) = sample_collection._handle_frame_field(field)
-                if is_frame_field:
-                    selected_fields.append(field_name)
-        else:
-            default_fields = sample_collection._get_default_sample_fields(
-                include_private=True
-            )
-            if sample_collection.media_type == fom.VIDEO:
-                default_fields += ("frames",)
-
-            selected_fields = []
-            for field in self.field_names:
-                if not sample_collection._is_frame_field(field):
-                    selected_fields.append(field)
-
-        return list(set(selected_fields) | set(default_fields))
+        return self._get_selected_fields(
+            sample_collection, frames=frames, use_db_fields=False
+        )
 
     def to_mongo(self, sample_collection):
-        selected_fields = self.get_selected_fields(
-            sample_collection, frames=False
+        selected_fields = self._get_selected_fields(
+            sample_collection, frames=False, use_db_fields=True
         )
 
-        # @todo `use_db_field` hack
-        selected_fields = [f if f != "id" else "_id" for f in selected_fields]
-
-        selected_frame_fields = self.get_selected_fields(
-            sample_collection, frames=True
-        )
-
-        # @todo `use_db_field` hack
         selected_frame_fields = [
-            f if f != "id" else "_id" for f in selected_frame_fields
-        ]
-
-        selected_frame_fields = [
-            sample_collection._FRAMES_PREFIX + f for f in selected_frame_fields
+            sample_collection._FRAMES_PREFIX + field
+            for field in self._get_selected_fields(
+                sample_collection, frames=True, use_db_fields=True
+            )
         ]
 
         if selected_frame_fields:
@@ -3550,13 +3534,46 @@ class SelectFields(ViewStage):
 
         return [{"$project": {fn: True for fn in selected_fields}}]
 
+    def _get_selected_fields(
+        self, sample_collection, frames=False, use_db_fields=False
+    ):
+        if frames:
+            default_fields = sample_collection._get_default_frame_fields(
+                include_private=True, use_db_fields=use_db_fields
+            )
+
+            selected_fields = []
+            for field in self.field_names:
+                (
+                    field_name,
+                    is_frame_field,
+                ) = sample_collection._handle_frame_field(field)
+                if is_frame_field:
+                    selected_fields.append(field_name)
+        else:
+            default_fields = sample_collection._get_default_sample_fields(
+                include_private=True, use_db_fields=use_db_fields
+            )
+            if sample_collection.media_type == fom.VIDEO:
+                default_fields += ("frames",)
+
+            selected_fields = []
+            for field in self.field_names:
+                if not sample_collection._is_frame_field(field):
+                    selected_fields.append(field)
+
+        return list(set(selected_fields) | set(default_fields))
+
     def _needs_frames(self, sample_collection):
         return any(
             sample_collection._is_frame_field(f) for f in self.field_names
         )
 
     def _kwargs(self):
-        return [["field_names", self._field_names]]
+        return [
+            ["field_names", self._field_names],
+            ["_allow_missing", self._allow_missing],
+        ]
 
     @classmethod
     def _params(cls):
@@ -3566,17 +3583,14 @@ class SelectFields(ViewStage):
                 "type": "NoneType|list<field>|field|list<str>|str",
                 "default": "None",
                 "placeholder": "list,of,fields",
-            }
+            },
+            {"name": "_allow_missing", "type": "bool", "default": "False"},
         ]
 
-    def _validate_params(self):
-        for field_name in self.field_names:
-            if field_name.startswith("_"):
-                raise ValueError(
-                    "Cannot select private field '%s'" % field_name
-                )
-
     def validate(self, sample_collection):
+        if self._allow_missing:
+            return
+
         sample_collection.validate_fields_exist(self.field_names)
 
 

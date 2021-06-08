@@ -5,6 +5,7 @@ FiftyOne patches-related unit tests.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+from bson import ObjectId
 import unittest
 
 import fiftyone as fo
@@ -75,6 +76,24 @@ class PatchesTests(unittest.TestCase):
         self.assertEqual(dataset.count("ground_truth.detections"), 6)
         self.assertEqual(view.count(), 6)
         self.assertEqual(len(view), 6)
+
+        sample = view.first()
+        self.assertIsInstance(sample.id, str)
+        self.assertIsInstance(sample._id, ObjectId)
+        self.assertIsInstance(sample.sample_id, str)
+        self.assertIsInstance(sample._sample_id, ObjectId)
+
+        for _id in view.values("id"):
+            self.assertIsInstance(_id, str)
+
+        for oid in view.values("_id"):
+            self.assertIsInstance(oid, ObjectId)
+
+        for _id in view.values("sample_id"):
+            self.assertIsInstance(_id, str)
+
+        for oid in view.values("_sample_id"):
+            self.assertIsInstance(oid, ObjectId)
 
         self.assertDictEqual(
             dataset.count_sample_tags(), {"sample1": 1, "sample2": 1}
@@ -266,6 +285,24 @@ class PatchesTests(unittest.TestCase):
 
         self.assertEqual(view.count(), 4)
         self.assertEqual(len(view), 4)
+
+        sample = view.first()
+        self.assertIsInstance(sample.id, str)
+        self.assertIsInstance(sample._id, ObjectId)
+        self.assertIsInstance(sample.sample_id, str)
+        self.assertIsInstance(sample._sample_id, ObjectId)
+
+        for _id in view.values("id"):
+            self.assertIsInstance(_id, str)
+
+        for oid in view.values("_id"):
+            self.assertIsInstance(oid, ObjectId)
+
+        for _id in view.values("sample_id"):
+            self.assertIsInstance(_id, str)
+
+        for oid in view.values("_sample_id"):
+            self.assertIsInstance(oid, ObjectId)
 
         self.assertDictEqual(dataset.count_sample_tags(), {"sample": 1})
         self.assertDictEqual(view.count_sample_tags(), {"sample": 4})

@@ -47,9 +47,12 @@ class FrameView(fos.SampleView):
     """
 
     @property
-    def sample_id(self):
-        """The ID of the sample to which this frame belongs."""
-        return str(self._sample_id)
+    def _sample_id(self):
+        return self._doc.sample_id
+
+    @property
+    def _frame_id(self):
+        return self._doc.frame_id
 
     def save(self):
         super().save()
@@ -123,18 +126,16 @@ class FramesView(fov.DatasetView):
 
     @classmethod
     def _get_default_sample_fields(
-        cls, include_private=False, include_id=False
+        cls, include_private=False, use_db_fields=False
     ):
         fields = super()._get_default_sample_fields(
-            include_private=include_private, include_id=include_id
+            include_private=include_private, use_db_fields=use_db_fields
         )
 
-        extras = ["frame_id", "frame_number"]
+        if use_db_fields:
+            return fields + ("_sample_id", "_frame_id", "frame_number")
 
-        if include_private:
-            extras.append("_sample_id")
-
-        return fields + tuple(extras)
+        return fields + ("sample_id", "frame_id", "frame_number")
 
     def set_values(self, field_name, *args, **kwargs):
         # The `set_values()` operation could change the contents of this view,
@@ -176,7 +177,7 @@ class FramesView(fov.DatasetView):
 
         default_fields = set(
             self._get_default_sample_fields(
-                include_private=True, include_id=True
+                include_private=True, use_db_fields=True
             )
         )
 
@@ -193,7 +194,7 @@ class FramesView(fov.DatasetView):
             "_sample_id": sample._sample_id,
             "frame_number": sample.frame_number,
         }
-        match = {"_id": ObjectId(sample.frame_id)}
+        # match = {"_id": sample._frame_id}
 
         self._source_collection._dataset._frame_collection.update_one(
             match, {"$set": updates}
@@ -202,7 +203,7 @@ class FramesView(fov.DatasetView):
     def _sync_source(self, fields=None, ids=None):
         default_fields = set(
             self._get_default_sample_fields(
-                include_private=True, include_id=True
+                include_private=True, use_db_fields=True
             )
         )
 
@@ -288,9 +289,7 @@ class FramesView(fov.DatasetView):
             # aren't in this view
 
             default_fields = set(
-                self._get_default_sample_fields(
-                    include_private=True, include_id=True
-                )
+                self._get_default_sample_fields(include_private=True)
             )
 
             for field_name in schema.keys():
@@ -330,8 +329,9 @@ def make_frames_dataset(
     collection.
 
     The returned dataset will contain all frame-level fields and the ``tags``
-    of each video as sample-level fields, as well as a ``frame_id`` field that
-    records the ID of the corresponding frame in the input collection.
+    of each video as sample-level fields, as well as ``sample_id`` and
+    ``frame_id`` fields that record the IDs of the frame in the input
+    collection.
 
     When ``sample_frames`` is True (the default), this method samples each
     video in the collection into a directory of per-frame images with the same
@@ -410,8 +410,12 @@ def make_frames_dataset(
 
     dataset = fod.Dataset(name, _frames=True)
     dataset.media_type = fom.IMAGE
-    dataset.add_sample_field("_sample_id", fof.ObjectIdField)
-    dataset.add_sample_field("frame_id", fof.StringField)
+    dataset.add_sample_field(
+        "sample_id", fof.ObjectIdField, db_field="_sample_id"
+    )
+    dataset.add_sample_field(
+        "frame_id", fof.ObjectIdField, db_field="_frame_id"
+    )
 
     frame_schema = sample_collection.get_frame_field_schema()
     dataset._sample_doc_cls.merge_field_schema(frame_schema)
@@ -504,26 +508,22 @@ def _ensure_frames(sample_collection):
 
 
 def _initialize_frames(dataset, src_collection, sample_frames):
-    project_fields = ["_sample_id", "frame_number", "tags"]
+    project = {
+        "_id": False,
+        "_sample_id": "$_id",
+        "frame_number": {
+            "$range": [1, {"$add": ["$metadata.total_frame_count", 1]}]
+        },
+        "tags": True,
+    }
+
     if not sample_frames:
-        project_fields.append("filepath")
+        project["filepath"] = True
 
     pipeline = src_collection._pipeline(detach_frames=True)
     pipeline.extend(
         [
-            {
-                "$set": {
-                    "_sample_id": "$_id",
-                    "frame_number": {
-                        "$range": [
-                            1,
-                            {"$add": ["$metadata.total_frame_count", 1]},
-                        ]
-                    },
-                }
-            },
-            {"$project": {f: True for f in project_fields}},
-            {"$unset": "_id"},
+            {"$project": project},
             {"$unwind": "$frame_number"},
             {"$out": dataset._sample_collection_name},
         ]
@@ -542,7 +542,7 @@ def _merge_frame_labels(dataset, src_collection):
     pipeline = src_collection._pipeline(frames_only=True)
     pipeline.extend(
         [
-            {"$set": {"frame_id": {"$toString": "$_id"}}},
+            {"$set": {"_frame_id": "$_id"}},
             {"$unset": "_id"},
             {
                 "$merge": {

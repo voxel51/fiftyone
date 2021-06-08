@@ -811,6 +811,9 @@ class DatasetView(foc.SampleCollection):
         return view
 
     def _get_filtered_schema(self, schema, frames=False):
+        if schema is None:
+            return None
+
         selected_fields, excluded_fields = self._get_selected_excluded_fields(
             frames=frames
         )

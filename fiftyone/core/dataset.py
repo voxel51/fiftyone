@@ -737,7 +737,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         )
 
     def add_sample_field(
-        self, field_name, ftype, embedded_doc_type=None, subfield=None
+        self,
+        field_name,
+        ftype,
+        embedded_doc_type=None,
+        subfield=None,
+        **kwargs,
     ):
         """Adds a new sample field to the dataset.
 
@@ -759,16 +764,23 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             ftype,
             embedded_doc_type=embedded_doc_type,
             subfield=subfield,
+            **kwargs,
         )
         self._reload()
 
     def _add_sample_field_if_necessary(
-        self, field_name, ftype, embedded_doc_type=None, subfield=None
+        self,
+        field_name,
+        ftype,
+        embedded_doc_type=None,
+        subfield=None,
+        **kwargs,
     ):
         field_kwargs = dict(
             ftype=ftype,
             embedded_doc_type=embedded_doc_type,
             subfield=subfield,
+            **kwargs,
         )
 
         schema = self.get_field_schema()
@@ -789,7 +801,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         )
 
     def add_frame_field(
-        self, field_name, ftype, embedded_doc_type=None, subfield=None
+        self,
+        field_name,
+        ftype,
+        embedded_doc_type=None,
+        subfield=None,
+        **kwargs,
     ):
         """Adds a new frame-level field to the dataset.
 
@@ -816,16 +833,23 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             ftype,
             embedded_doc_type=embedded_doc_type,
             subfield=subfield,
+            **kwargs,
         )
         self._reload()
 
     def _add_frame_field_if_necessary(
-        self, field_name, ftype, embedded_doc_type=None, subfield=None
+        self,
+        field_name,
+        ftype,
+        embedded_doc_type=None,
+        subfield=None,
+        **kwargs,
     ):
         field_kwargs = dict(
             ftype=ftype,
             embedded_doc_type=embedded_doc_type,
             subfield=subfield,
+            **kwargs,
         )
 
         schema = self.get_frame_field_schema()
@@ -2058,7 +2082,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         tags=None,
         expand_schema=True,
         add_info=True,
-        **kwargs
+        **kwargs,
     ):
         """Adds the contents of the given directory to the dataset.
 
@@ -2137,7 +2161,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         tags=None,
         expand_schema=True,
         add_info=True,
-        **kwargs
+        **kwargs,
     ):
         """Adds the contents of the given archive to the dataset.
 
@@ -2658,7 +2682,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         name=None,
         label_field="ground_truth",
         tags=None,
-        **kwargs
+        **kwargs,
     ):
         """Creates a :class:`Dataset` from the contents of the given directory.
 
@@ -2702,7 +2726,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         name=None,
         label_field="ground_truth",
         tags=None,
-        **kwargs
+        **kwargs,
     ):
         """Creates a :class:`Dataset` from the contents of the given archive.
 
@@ -4072,13 +4096,17 @@ def _merge_samples(
     default_fields = set(
         src_collection._get_default_sample_fields(include_private=True)
     )
-    default_fields.discard("id")  # @todo `use_db_field` hack
+    default_fields.discard("id")
+
+    db_fields_map = src_collection._get_db_fields_map()
 
     sample_pipeline = src_collection._pipeline(detach_frames=True)
 
     if fields is not None:
         project = {}
         for k, v in fields.items():
+            k = db_fields_map.get(k, k)
+            v = db_fields_map.get(v, v)
             if k == v:
                 project[k] = True
             else:
@@ -4101,7 +4129,7 @@ def _merge_samples(
     else:
         _omit_fields = set()
 
-    _omit_fields.add("_id")
+    _omit_fields.add("id")
     _omit_fields.discard(key_field)
 
     if insert_new:
@@ -4110,7 +4138,8 @@ def _merge_samples(
         _omit_fields -= default_fields
 
     if _omit_fields:
-        sample_pipeline.append({"$unset": list(_omit_fields)})
+        unset_fields = [db_fields_map.get(f, f) for f in _omit_fields]
+        sample_pipeline.append({"$unset": unset_fields})
 
     if skip_existing:
         when_matched = "keepExisting"
@@ -4184,11 +4213,15 @@ def _merge_samples(
             src_collection, "frames." + frame_key_field
         )
 
+        db_fields_map = src_collection._get_db_fields_map(frames=True)
+
         frame_pipeline = _src_collection._pipeline(frames_only=True)
 
         if frame_fields is not None:
             project = {}
             for k, v in frame_fields.items():
+                k = db_fields_map.get(k, k)
+                v = db_fields_map.get(v, v)
                 if k == v:
                     project[k] = True
                 else:
@@ -4203,10 +4236,12 @@ def _merge_samples(
         else:
             _omit_frame_fields = set()
 
-        _omit_frame_fields.update(["_id", "_sample_id"])
+        _omit_frame_fields.update(["id", "_sample_id"])
         _omit_frame_fields.discard(frame_key_field)
         _omit_frame_fields.discard("frame_number")
-        frame_pipeline.append({"$unset": list(_omit_frame_fields)})
+
+        unset_fields = [db_fields_map.get(f, f) for f in _omit_frame_fields]
+        frame_pipeline.append({"$unset": unset_fields})
 
         if skip_existing:
             when_frame_matched = "keepExisting"
@@ -4516,7 +4551,9 @@ def _always_select_field(sample_collection, field):
     view = sample_collection._dataset.view()
     for stage in sample_collection._stages:
         if isinstance(stage, fost.SelectFields):
-            stage = fost.SelectFields(stage.field_names + [field])
+            stage = fost.SelectFields(
+                stage.field_names + [field], _allow_missing=True
+            )
 
         view = view.add_stage(stage)
 

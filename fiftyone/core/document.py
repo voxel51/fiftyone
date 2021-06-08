@@ -7,6 +7,8 @@ Base classes for objects that are backed by database documents.
 """
 from copy import deepcopy
 
+from bson import ObjectId
+
 import eta.core.serial as etas
 import eta.core.utils as etau
 
@@ -36,7 +38,7 @@ class _Document(object):
 
     def __getattr__(self, name):
         try:
-            return super().__getattribute__(name)
+            return super().__getattr__(name)
         except AttributeError:
             return self.get_field(name)
 
@@ -84,14 +86,15 @@ class _Document(object):
         """The ID of the document, or ``None`` if it has not been added to the
         database.
         """
-        return str(self._doc.id) if self._in_db else None
+        _id = self._doc.id
+        return str(_id) if _id is not None else None
 
     @property
     def _id(self):
         """The ObjectId of the document, or ``None`` if it has not been added
         to the database.
         """
-        return self._doc.id if self._in_db else None
+        return self._doc.id
 
     @property
     def ingest_time(self):
@@ -156,15 +159,18 @@ class _Document(object):
         Raises:
             AttributeError: if the field does not exist
         """
-        if field_name == "id":
-            return self.id
-
         try:
-            return self._doc.get_field(field_name)
+            value = self._doc.get_field(field_name)
         except AttributeError:
             raise AttributeError(
                 "%s has no field '%s'" % (self.__class__.__name__, field_name)
             )
+
+        # @todo `use_db_field` hack
+        if isinstance(value, ObjectId):
+            value = str(value)
+
+        return value
 
     def set_field(self, field_name, value, create=True):
         """Sets the value of a field of the document.

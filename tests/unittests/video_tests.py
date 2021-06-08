@@ -5,6 +5,7 @@ FiftyOne video-related unit tests.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+from bson import ObjectId
 import unittest
 
 import fiftyone as fo
@@ -1005,10 +1006,43 @@ class VideoTests(unittest.TestCase):
 
         view = dataset.to_frames(config={"sample_frames": False})
 
-        self.assertFalse("weather" in view.get_field_schema())
-        self.assertTrue("hello" in view.get_field_schema())
-        self.assertTrue("ground_truth" in view.get_field_schema())
+        self.assertSetEqual(
+            set(view.get_field_schema().keys()),
+            {
+                "id",
+                "filepath",
+                "metadata",
+                "tags",
+                "sample_id",
+                "frame_number",
+                "frame_id",
+                "hello",
+                "ground_truth",
+            },
+        )
+
         self.assertEqual(len(view), 9)
+
+        frame = view.first()
+        self.assertIsInstance(frame.id, str)
+        self.assertIsInstance(frame._id, ObjectId)
+        self.assertIsInstance(frame.sample_id, str)
+        self.assertIsInstance(frame._sample_id, ObjectId)
+        self.assertIsInstance(frame.frame_id, str)
+        self.assertIsInstance(frame._frame_id, ObjectId)
+
+        for _id in view.values("id"):
+            self.assertIsInstance(_id, str)
+
+        for oid in view.values("_id"):
+            self.assertIsInstance(oid, ObjectId)
+
+        for _id in view.values("sample_id"):
+            self.assertIsInstance(_id, str)
+
+        for oid in view.values("_sample_id"):
+            self.assertIsInstance(oid, ObjectId)
+
         self.assertDictEqual(dataset.count_sample_tags(), {"test": 2})
         self.assertDictEqual(view.count_sample_tags(), {"test": 9})
 

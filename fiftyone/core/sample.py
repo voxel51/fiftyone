@@ -18,17 +18,21 @@ import fiftyone.core.utils as fou
 from fiftyone.core.singletons import SampleSingleton
 
 
-def get_default_sample_fields(include_private=False):
+def get_default_sample_fields(include_private=False, use_db_fields=False):
     """Returns the default fields present on all samples.
 
     Args:
         include_private (False): whether to include fields starting with ``_``
+        use_db_fields (False): whether to return database fields rather than
+            user-facing fields, when applicable
 
     Returns:
         a tuple of field names
     """
     return foo.get_default_fields(
-        foo.DatasetSampleDocument, include_private=include_private
+        foo.DatasetSampleDocument,
+        include_private=include_private,
+        use_db_fields=use_db_fields,
     )
 
 

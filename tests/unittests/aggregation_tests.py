@@ -5,9 +5,8 @@ FiftyOne aggregation-related unit tests.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-import unittest
-
 from bson import ObjectId
+import unittest
 
 import fiftyone as fo
 from fiftyone import ViewField as F
