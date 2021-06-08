@@ -2,7 +2,7 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 
-import { TEXT_COLOR } from "../constants";
+import { MASK_ALPHA, SELECTED_MASK_ALPHA, TEXT_COLOR } from "../constants";
 import { BaseState, BoundingBox, Coordinates } from "../state";
 import { getRenderedScale } from "../util";
 import { CONTAINS, isShown, Overlay, PointInfo, RegularLabel } from "./base";
@@ -184,6 +184,7 @@ export default class ClassificationsOverlay<State extends BaseState>
       state.textPad * 3 + width,
       state.fontSize + state.textPad * 3,
     ];
+    ctx.globalAlpha = selected ? SELECTED_MASK_ALPHA : MASK_ALPHA;
     ctx.beginPath();
     ctx.fillStyle = color;
     ctx.moveTo(tlx, tly);
@@ -192,6 +193,7 @@ export default class ClassificationsOverlay<State extends BaseState>
     ctx.lineTo(tlx, tly + h);
     ctx.closePath();
     ctx.fill();
+    ctx.globalAlpha = 1;
 
     ctx.fillStyle = TEXT_COLOR;
     ctx.fillText(text, tlx + state.textPad, tly + h - state.textPad);
