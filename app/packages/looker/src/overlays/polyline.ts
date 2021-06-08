@@ -3,10 +3,12 @@
  */
 
 import {
+  CONTAINS_FACTOR,
   DASH_COLOR,
   DASH_LENGTH,
   MASK_ALPHA,
   SELECTED_MASK_ALPHA,
+  TOLERANCE,
 } from "../constants";
 import { BaseState, Coordinates } from "../state";
 import { distanceFromLineSegment } from "../util";
@@ -27,6 +29,19 @@ export default class PolylineOverlay<
   }
 
   containsPoint(state: Readonly<State>): CONTAINS {
+    const [w, h] = state.config.dimensions;
+    const tolerance = TOLERANCE / (w > h ? w : h);
+    const minDistance = this.getMouseDistance(state);
+    if (minDistance <= tolerance) {
+      return CONTAINS.BORDER;
+    }
+
+    if (
+      (this.label.closed || this.label.filled) &&
+      this.label.points.some((path) => this.isPointInPath(state, path))
+    ) {
+      return CONTAINS.CONTENT;
+    }
     return CONTAINS.NONE;
   }
 
@@ -123,6 +138,30 @@ export default class PolylineOverlay<
       ctx.closePath();
     }
     ctx.stroke();
+  }
+
+  private isPointInPath(state: Readonly<State>, path: Coordinates[]): boolean {
+    const [x, y] = state.pixelCoordinates;
+
+    let inside = false;
+    if (this.label.closed) {
+      path = [...path, path[0]];
+    }
+    for (let i = 0, j = path.length - 1; i < path.length; j = i++) {
+      let xi = path[i][0],
+        yi = path[i][1];
+      let xj = path[j][0],
+        yj = path[j][1];
+
+      [xi, yi] = t(state, xi, yi);
+      [xj, yj] = t(state, xj, yj);
+
+      const intersect =
+        yi > y != yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi;
+      if (intersect) inside = !inside;
+    }
+
+    return inside;
   }
 }
 

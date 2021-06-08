@@ -220,6 +220,14 @@ export abstract class Looker<
         this.state.transformedMediaBBox[3]) *
         this.state.config.dimensions[1],
     ];
+    this.state.pixelCoordinates = [
+      ((this.state.cursorCoordinates[0] - this.state.transformedWindowBBox[0]) /
+        this.state.transMediaBBox[2]) *
+        this.state.config.dimensions[0],
+      ((this.state.cursorCoordinates[1] - this.state.transformedMediaBBox[1]) /
+        this.state.transformedMediaBBox[3]) *
+        this.state.config.dimensions[1],
+    ];
     this.state.strokeWidth = STROKE_WIDTH / this.state.scale;
     this.state.fontSize = Math.max(FONT_SIZE / this.state.scale);
     this.state.textPad = Math.max(PAD / this.state.scale);
