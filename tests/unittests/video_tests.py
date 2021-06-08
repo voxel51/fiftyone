@@ -1124,6 +1124,211 @@ class VideoTests(unittest.TestCase):
         self.assertEqual(dataset.count_sample_tags(), {})
         self.assertEqual(view.count_sample_tags(), {})
 
+    @drop_datasets
+    def test_to_frame_patches(self):
+        dataset = fo.Dataset()
+
+        sample1 = fo.Sample(
+            filepath="video.mp4",
+            metadata=fo.VideoMetadata(total_frame_count=4),
+            tags=["test"],
+            weather="sunny",
+        )
+        sample1.frames[1] = fo.Frame(hello="world")
+        sample1.frames[2] = fo.Frame(
+            ground_truth=fo.Detections(
+                detections=[
+                    fo.Detection(label="cat"),
+                    fo.Detection(label="dog"),
+                ]
+            )
+        )
+        sample1.frames[3] = fo.Frame(hello="goodbye")
+
+        sample2 = fo.Sample(
+            filepath="video.mp4",
+            metadata=fo.VideoMetadata(total_frame_count=5),
+            tags=["test"],
+            weather="cloudy",
+        )
+        sample2.frames[1] = fo.Frame(
+            hello="goodbye",
+            ground_truth=fo.Detections(
+                detections=[
+                    fo.Detection(label="dog"),
+                    fo.Detection(label="rabbit"),
+                ]
+            ),
+        )
+        sample2.frames[3] = fo.Frame()
+        sample2.frames[5] = fo.Frame(hello="there")
+
+        dataset.add_samples([sample1, sample2])
+
+        frames = dataset.to_frames(config={"sample_frames": False})
+        patches = frames.to_patches("ground_truth")
+
+        self.assertSetEqual(
+            set(patches.get_field_schema().keys()),
+            {
+                "id",
+                "filepath",
+                "metadata",
+                "tags",
+                "sample_id",
+                "frame_id",
+                "frame_number",
+                "ground_truth",
+            },
+        )
+
+        self.assertEqual(dataset.count("frames.ground_truth.detections"), 4)
+        self.assertEqual(patches.count(), 4)
+        self.assertEqual(len(patches), 4)
+
+        patch = patches.first()
+        self.assertIsInstance(patch.id, str)
+        self.assertIsInstance(patch._id, ObjectId)
+        self.assertIsInstance(patch.sample_id, str)
+        self.assertIsInstance(patch._sample_id, ObjectId)
+        self.assertIsInstance(patch.frame_id, str)
+        self.assertIsInstance(patch._frame_id, ObjectId)
+        self.assertIsInstance(patch.frame_number, int)
+
+        for _id in patches.values("id"):
+            self.assertIsInstance(_id, str)
+
+        for oid in patches.values("_id"):
+            self.assertIsInstance(oid, ObjectId)
+
+        for _id in patches.values("sample_id"):
+            self.assertIsInstance(_id, str)
+
+        for oid in patches.values("_sample_id"):
+            self.assertIsInstance(oid, ObjectId)
+
+        for _id in patches.values("frame_id"):
+            self.assertIsInstance(_id, str)
+
+        for oid in patches.values("_frame_id"):
+            self.assertIsInstance(oid, ObjectId)
+
+        self.assertDictEqual(dataset.count_sample_tags(), {"test": 2})
+        self.assertDictEqual(patches.count_sample_tags(), {"test": 4})
+
+        patches.tag_samples("patch")
+
+        self.assertEqual(patches.count_sample_tags()["patch"], 4)
+        self.assertNotIn("patch", dataset.count_sample_tags())
+
+        patches.untag_samples("patch")
+
+        self.assertNotIn("patch", patches.count_sample_tags())
+        self.assertNotIn("patch", dataset.count_sample_tags())
+
+        patches.tag_labels("test")
+
+        self.assertDictEqual(patches.count_label_tags(), {"test": 4})
+        self.assertDictEqual(
+            dataset.count_label_tags("frames.ground_truth"), {"test": 4}
+        )
+
+        # Including `select_labels()` here tests an important property: if the
+        # contents of a `view` changes after a save operation occurs, the
+        # original view still needs to be synced with the source dataset
+        patches.select_labels(tags="test").untag_labels("test")
+
+        self.assertDictEqual(patches.count_label_tags(), {})
+        self.assertDictEqual(
+            dataset.count_label_tags("frames.ground_truth"), {}
+        )
+
+        view2 = patches.limit(2)
+
+        values = [l.upper() for l in view2.values("ground_truth.label")]
+        view2.set_values("ground_truth.label_upper", values)
+
+        self.assertEqual(dataset.count(), 2)
+        self.assertEqual(patches.count(), 4)
+        self.assertEqual(view2.count(), 2)
+        self.assertEqual(dataset.count("frames.detections"), 4)
+        self.assertEqual(patches.count("ground_truth"), 4)
+        self.assertEqual(view2.count("ground_truth"), 2)
+        self.assertEqual(
+            dataset.count("frames.ground_truth.detections.label_upper"), 2
+        )
+        self.assertEqual(patches.count("ground_truth.label_upper"), 2)
+        self.assertEqual(view2.count("ground_truth.label_upper"), 2)
+
+        view3 = patches.skip(2).set_field(
+            "ground_truth.label", F("label").upper()
+        )
+
+        self.assertEqual(patches.count(), 4)
+        self.assertEqual(view3.count(), 2)
+        self.assertEqual(dataset.count("frames.ground_truth.detections"), 6)
+        self.assertNotIn("rabbit", view3.count_values("ground_truth.label"))
+        self.assertEqual(view3.count_values("ground_truth.label")["RABBIT"], 1)
+        self.assertEqual(
+            patches.count_values("ground_truth.label")["RABBIT"], 1
+        )
+        self.assertEqual(
+            dataset.count_values("frames.ground_truth.detections.label")[
+                "dog"
+            ],
+            1,
+        )
+        self.assertEqual(
+            dataset.count_values("frames.ground_truth.detections.label")[
+                "DOG"
+            ],
+            1,
+        )
+
+        view3.save()
+
+        self.assertEqual(patches.count(), 2)
+        self.assertEqual(dataset.count(), 2)
+        self.assertEqual(dataset.count("frames"), 6)
+        self.assertEqual(dataset.count("frames.ground_truth.detections"), 2)
+
+        sample = patches.first()
+
+        sample.ground_truth.hello = "world"
+        sample.save()
+
+        self.assertEqual(
+            patches.count_values("ground_truth.hello")["world"], 1
+        )
+        self.assertEqual(
+            dataset.count_values("frames.ground_truth.detections.hello")[
+                "world"
+            ],
+            1,
+        )
+
+        dataset.untag_samples("test")
+        patches.reload()
+
+        self.assertDictEqual(dataset.count_sample_tags(), {})
+        self.assertDictEqual(patches.count_sample_tags(), {})
+
+        patches.tag_labels("test")
+
+        self.assertDictEqual(
+            patches.count_label_tags(), dataset.count_label_tags()
+        )
+
+        # Including `select_labels()` here tests an important property: if the
+        # contents of a `view` changes after a save operation occurs, the
+        # original view still needs to be synced with the source dataset
+        patches.select_labels(tags="test").untag_labels("test")
+
+        self.assertDictEqual(patches.count_values("ground_truth.tags"), {})
+        self.assertDictEqual(
+            dataset.count_values("frames.ground_truth.detections.tags"), {}
+        )
+
 
 if __name__ == "__main__":
     fo.config.show_progress_bars = False
