@@ -6,6 +6,7 @@ import useMeasure from "react-use-measure";
 import * as selectors from "../../recoil/selectors";
 import {
   BOOLEAN_FIELD,
+  OBJECT_ID_FIELD,
   STRING_FIELD,
   VALID_NUMERIC_TYPES,
 } from "../../utils/labels";
@@ -40,7 +41,7 @@ export const isStringField = selectorFamily<boolean, string>({
   key: "isStringField",
   get: (name) => ({ get }) => {
     const map = get(selectors.scalarsMap("sample"));
-    return map[name] === STRING_FIELD;
+    return [OBJECT_ID_FIELD, STRING_FIELD].includes(map[name]);
   },
 });
 
