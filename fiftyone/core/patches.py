@@ -549,6 +549,11 @@ def make_evaluation_dataset(sample_collection, eval_key, name=None):
 
 
 def _make_patches_view(sample_collection, field, keep_label_lists=False):
+    if sample_collection._is_frames:
+        raise ValueError(
+            "Creating patches views into frame views is not yet supported"
+        )
+
     if sample_collection._is_frame_field(field):
         raise ValueError(
             "Frame label patches cannot be directly extracted; you must first "
