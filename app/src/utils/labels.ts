@@ -87,6 +87,7 @@ export const BOOLEAN_FIELD = "fiftyone.core.fields.BooleanField";
 export const FLOAT_FIELD = "fiftyone.core.fields.FloatField";
 export const FRAME_NUMBER_FIELD = "fiftyone.core.fields.FrameNumberField";
 export const INT_FIELD = "fiftyone.core.fields.IntField";
+export const OBJECT_ID_FIELD = "fiftyone.core.fields.ObjectIdField";
 export const STRING_FIELD = "fiftyone.core.fields.StringField";
 
 export const VALID_SCALAR_TYPES = [
@@ -94,6 +95,7 @@ export const VALID_SCALAR_TYPES = [
   FLOAT_FIELD,
   FRAME_NUMBER_FIELD,
   INT_FIELD,
+  OBJECT_ID_FIELD,
   STRING_FIELD,
 ];
 
