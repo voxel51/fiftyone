@@ -6122,7 +6122,7 @@ def _parse_field_name(
     # Array references [] have been stripped
     field_name = "".join(chunks)
 
-    # Convert `id` to `_id` if necessary
+    # Handle public (string) vs private (ObjectId) ID fields
     field_name, is_id_field, id_to_str = _handle_id_fields(
         sample_collection, field_name
     )
