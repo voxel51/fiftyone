@@ -135,18 +135,20 @@ class _PatchesView(fov.DatasetView):
     def name(self):
         return self.dataset_name + "-patches"
 
-    @classmethod
     def _get_default_sample_fields(
-        cls, include_private=False, use_db_fields=False
+        self, include_private=False, use_db_fields=False
     ):
         fields = super()._get_default_sample_fields(
             include_private=include_private, use_db_fields=use_db_fields
         )
 
-        if use_db_fields:
-            return fields + ("_sample_id",)
+        extras = ["_sample_id" if use_db_fields else "sample_id"]
 
-        return fields + ("sample_id",)
+        if self._source_collection._is_frames:
+            extras.append("_frame_id" if use_db_fields else "frame_id")
+            extras.append("frame_number")
+
+        return fields + tuple(extras)
 
     def set_values(self, field_name, *args, **kwargs):
         field = field_name.split(".", 1)[0]
@@ -436,6 +438,13 @@ def make_patches_dataset(
     dataset.add_sample_field(
         "sample_id", fof.ObjectIdField, db_field="_sample_id"
     )
+
+    if sample_collection._is_frames:
+        dataset.add_sample_field(
+            "frame_id", fof.ObjectIdField, db_field="_frame_id"
+        )
+        dataset.add_sample_field("frame_number", fof.FrameNumberField)
+
     dataset.add_sample_field(
         field, fof.EmbeddedDocumentField, embedded_doc_type=field_type
     )
@@ -525,6 +534,9 @@ def make_evaluation_dataset(sample_collection, eval_key, name=None):
     dataset.add_sample_field(
         "sample_id", fof.ObjectIdField, db_field="_sample_id"
     )
+    if sample_collection._is_frames:
+        dataset.add_sample_field("frame_number", fof.FrameNumberField)
+
     dataset.add_sample_field("type", fof.StringField)
     dataset.add_sample_field("iou", fof.FloatField)
     if crowd_attr is not None:
@@ -565,19 +577,26 @@ def _make_patches_view(sample_collection, field, keep_label_lists=False):
             % (label_type, _PATCHES_TYPES)
         )
 
+    project = {
+        "_id": False,
+        "_media_type": True,
+        "filepath": True,
+        "metadata": True,
+        "tags": True,
+        field + "._cls": True,
+        list_field: True,
+    }
+
+    if sample_collection._is_frames:
+        project["_sample_id"] = True
+        project["_frame_id"] = True
+        # project["_frame_id"] = "$_id"
+        project["frame_number"] = True
+    else:
+        project["_sample_id"] = "$_id"
+
     pipeline = [
-        {
-            "$project": {
-                "_id": True,
-                "_sample_id": "$_id",
-                "_media_type": True,
-                "filepath": True,
-                "metadata": True,
-                "tags": True,
-                field + "._cls": True,
-                list_field: True,
-            }
-        },
+        {"$project": project},
         {"$unwind": "$" + list_field},
         {"$set": {"_rand": {"$rand": {}}}},
         {"$set": {"_id": "$" + list_field + "._id"}},
