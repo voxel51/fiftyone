@@ -1382,22 +1382,23 @@ class Values(Aggregation):
         )
 
         parse_fcn = None
-        if self._expr is None:
-            if id_to_str:
-                parse_fcn = str
-            else:
-                field_type = sample_collection._get_field_type(
-                    self._field_name, ignore_primitives=True
-                )
-                if field_type is not None:
-                    parse_fcn = field_type.to_python
+        if self._expr is None and not id_to_str:
+            field_type = sample_collection._get_field_type(
+                self._field_name, ignore_primitives=True
+            )
+            if field_type is not None:
+                parse_fcn = field_type.to_python
 
         self._parse_fcn = parse_fcn
         self._num_list_fields = len(list_fields)
 
         pipeline.extend(
             _make_extract_values_pipeline(
-                path, list_fields, self._missing_value, self._big_result
+                path,
+                list_fields,
+                id_to_str,
+                self._missing_value,
+                self._big_result,
             )
         )
 
@@ -1415,14 +1416,15 @@ def _transform_values(values, fcn, level=1):
 
 
 def _make_extract_values_pipeline(
-    path, list_fields, missing_value, big_result
+    path, list_fields, id_to_str, missing_value, big_result
 ):
     if not list_fields:
         root = path
     else:
         root = list_fields[0]
 
-    expr = (F() != None).if_else(F(), missing_value)
+    expr = F().to_string() if id_to_str else F()
+    expr = (F() != None).if_else(expr, missing_value)
 
     if list_fields:
         subfield = path[len(list_fields[-1]) + 1 :]
@@ -1503,6 +1505,9 @@ def _parse_field_and_expr(
         omit_terminal_lists=omit_terminal_lists,
         allow_missing=allow_missing,
     )
+
+    if expr is not None:
+        id_to_str = False  # we have no way of knowing what type expr outputs
 
     if is_frame_field and auto_unwind:
         pipeline.extend(

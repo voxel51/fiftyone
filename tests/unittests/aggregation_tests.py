@@ -356,7 +356,7 @@ class DatasetTests(unittest.TestCase):
         )
 
     @drop_datasets
-    def test_id_values(self):
+    def test_object_ids(self):
         dataset = fo.Dataset()
         for i in range(5):
             sample = fo.Sample(
@@ -369,6 +369,93 @@ class DatasetTests(unittest.TestCase):
                 )
 
             dataset.add_sample(sample)
+
+        id_bounds = dataset.bounds("id")
+        for _id in id_bounds:
+            self.assertIsInstance(_id, str)
+
+        oid_bounds = dataset.bounds("_id")
+        for oid in oid_bounds:
+            self.assertIsInstance(oid, ObjectId)
+
+        id_bounds = dataset.bounds("ground_truth.id")
+        for _id in id_bounds:
+            self.assertIsInstance(_id, str)
+
+        oid_bounds = dataset.bounds("ground_truth._id")
+        for oid in oid_bounds:
+            self.assertIsInstance(oid, ObjectId)
+
+        id_bounds = dataset.bounds("frames.ground_truth.id")
+        for _id in id_bounds:
+            self.assertIsInstance(_id, str)
+
+        oid_bounds = dataset.bounds("frames.ground_truth._id")
+        for oid in oid_bounds:
+            self.assertIsInstance(oid, ObjectId)
+
+        ids = dataset.distinct("id")
+        for _id in ids:
+            self.assertIsInstance(_id, str)
+
+        oids = dataset.distinct("_id")
+        for oid in oids:
+            self.assertIsInstance(oid, ObjectId)
+
+        ids = dataset.distinct("ground_truth.id")
+        for _id in ids:
+            self.assertIsInstance(_id, str)
+
+        oids = dataset.distinct("ground_truth._id")
+        for oid in oids:
+            self.assertIsInstance(oid, ObjectId)
+
+        ids = dataset.distinct("frames.ground_truth.id")
+        for _id in ids:
+            self.assertIsInstance(_id, str)
+
+        oids = dataset.distinct("frames.ground_truth._id")
+        for oid in oids:
+            self.assertIsInstance(oid, ObjectId)
+
+        self.assertEqual(dataset.count("id"), 5)
+        self.assertEqual(dataset.count("_id"), 5)
+
+        self.assertEqual(dataset.count("ground_truth.id"), 5)
+        self.assertEqual(dataset.count("ground_truth._id"), 5)
+
+        self.assertEqual(dataset.count("frames.ground_truth.id"), 20)
+        self.assertEqual(dataset.count("frames.ground_truth._id"), 20)
+
+        id_counts = dataset.count_values("id")
+        for _id, count in id_counts.items():
+            self.assertIsInstance(_id, str)
+            self.assertEqual(count, 1)
+
+        oid_counts = dataset.count_values("_id")
+        for oid, count in oid_counts.items():
+            self.assertIsInstance(oid, ObjectId)
+            self.assertEqual(count, 1)
+
+        id_counts = dataset.count_values("ground_truth.id")
+        for _id, count in id_counts.items():
+            self.assertIsInstance(_id, str)
+            self.assertEqual(count, 1)
+
+        oid_counts = dataset.count_values("ground_truth._id")
+        for oid, count in oid_counts.items():
+            self.assertIsInstance(oid, ObjectId)
+            self.assertEqual(count, 1)
+
+        id_counts = dataset.count_values("frames.ground_truth.id")
+        for _id, count in id_counts.items():
+            self.assertIsInstance(_id, str)
+            self.assertEqual(count, 1)
+
+        oid_counts = dataset.count_values("frames.ground_truth._id")
+        for oid, count in oid_counts.items():
+            self.assertIsInstance(oid, ObjectId)
+            self.assertEqual(count, 1)
 
         ids = dataset.values("id")
 
@@ -425,42 +512,6 @@ class DatasetTests(unittest.TestCase):
             self.assertEqual(len(_frame_label_oids), 4)
             for oid in _frame_label_oids:
                 self.assertIsInstance(oid, ObjectId)
-
-    @drop_datasets
-    def test_object_ids(self):
-        dataset = fo.Dataset()
-        dataset.add_samples(
-            [fo.Sample(filepath="image%d.png" % i) for i in range(10)]
-        )
-
-        id_bounds = dataset.bounds("id")
-        for _id in id_bounds:
-            self.assertIsInstance(_id, str)
-
-        oid_bounds = dataset.bounds("_id")
-        for oid in oid_bounds:
-            self.assertIsInstance(oid, ObjectId)
-
-        ids = dataset.distinct("id")
-        for _id in ids:
-            self.assertIsInstance(_id, str)
-
-        oids = dataset.distinct("_id")
-        for oid in oids:
-            self.assertIsInstance(oid, ObjectId)
-
-        self.assertEqual(dataset.count("id"), 10)
-        self.assertEqual(dataset.count("_id"), 10)
-
-        id_counts = dataset.count_values("id")
-        for _id, count in id_counts.items():
-            self.assertIsInstance(_id, str)
-            self.assertEqual(count, 1)
-
-        oid_counts = dataset.count_values("_id")
-        for oid, count in oid_counts.items():
-            self.assertIsInstance(oid, ObjectId)
-            self.assertEqual(count, 1)
 
 
 if __name__ == "__main__":
