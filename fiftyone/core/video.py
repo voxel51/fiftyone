@@ -319,6 +319,8 @@ def make_frames_dataset(
     sample_collection,
     sample_frames=True,
     frames_patt=None,
+    fps=None,
+    max_fps=None,
     size=None,
     min_size=None,
     max_size=None,
@@ -369,6 +371,10 @@ def make_frames_dataset(
         frames_patt (None): a pattern specifying the filename/format to use to
             store the sampled frames, e.g., ``"%%06d.jpg"``. The default value
             is ``fiftyone.config.default_sequence_idx + fiftyone.config.default_image_ext``
+        fps (None): an optional frame rate at which to sample each video's
+            frames
+        max_fps (None): an optional maximum frame rate at which to sample.
+            Videos with frame rate exceeding this value are downsampled
         size (None): an optional ``(width, height)`` for each frame. One
             dimension can be -1, in which case the aspect ratio is preserved
         min_size (None): an optional minimum ``(width, height)`` for each
@@ -426,12 +432,15 @@ def make_frames_dataset(
 
     if sample_frames and ids_to_sample:
         logger.info("Sampling video frames...")
-        fouv.sample_videos(
+        frames = fouv.sample_videos(
             sample_collection.select(ids_to_sample),
             frames_patt=frames_patt,
+            fps=fps,
+            max_fps=max_fps,
             size=size,
             min_size=min_size,
             max_size=max_size,
+            original_frame_numbers=True,
             force_sample=force_sample,
         )
 
