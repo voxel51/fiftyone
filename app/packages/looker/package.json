@@ -16,7 +16,6 @@
   },
   "homepage": "https://github.com/voxel51/fiftyone/app/looker#readme",
   "dependencies": {
-    "@svgdotjs/svg.js": "https://github.com/svgdotjs/svg.js#8e08f865f77d8a3713e9939595eb43b966709fbf",
     "@types/color-string": "^1.5.0",
     "@ungap/event-target": "^0.2.2",
     "color-string": "^1.5.5",
