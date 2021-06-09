@@ -100,8 +100,12 @@ class _PatchesView(fov.DatasetView):
         )
 
     @property
-    def _label_fields(self):
-        raise NotImplementedError("subclass must implement _label_fields")
+    def _base_view(self):
+        return self.__class__(
+            self._source_collection,
+            self._patches_stage,
+            self._patches_dataset,
+        )
 
     @property
     def _dataset(self):
@@ -122,6 +126,10 @@ class _PatchesView(fov.DatasetView):
             + [self._patches_stage]
             + self.__stages
         )
+
+    @property
+    def _label_fields(self):
+        raise NotImplementedError("subclass must implement _label_fields")
 
     @property
     def _element_str(self):

@@ -5,9 +5,8 @@ Video utilities.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import itertools
 import os
-
-import numpy as np
 
 import eta.core.image as etai
 import eta.core.numutils as etan
@@ -144,6 +143,7 @@ def transform_videos(
 def sample_videos(
     sample_collection,
     frames_patt=None,
+    frames=None,
     fps=None,
     max_fps=None,
     size=None,
@@ -185,6 +185,10 @@ def sample_videos(
         frames_patt (None): a pattern specifying the filename/format to use to
             store the sampled frames, e.g., ``"%%06d.jpg"``. The default value
             is ``fiftyone.config.default_sequence_idx + fiftyone.config.default_image_ext``
+        frames (None): an optional list of lists defining specific frames to
+            sample from each video. Entries can also be None, in which case all
+            frames will be sampled. If provided, ``fps`` and ``max_fps`` are
+            ignored
         fps (None): an optional frame rate at which to sample frames
         max_fps (None): an optional maximum frame rate. Videos with frame rate
             exceeding this value are downsampled
@@ -208,19 +212,12 @@ def sample_videos(
         verbose (False): whether to log the ``ffmpeg`` commands that are
             executed
         **kwargs: keyword arguments for ``eta.core.video.FFmpeg(**kwargs)``
-
-    Returns:
-        one of the following:
-
-        -   None, if ``original_frame_numbers`` is False
-        -   a list of lists of frame numbers of each video that were sampled,
-            if ``original_frame_numbers`` is True. Entries for any videos for
-            which every frame was sampled will be None
     """
     fov.validate_video_collection(sample_collection)
 
-    results = _transform_videos(
+    _transform_videos(
         sample_collection,
+        frames=frames,
         fps=fps,
         max_fps=max_fps,
         size=size,
@@ -234,9 +231,6 @@ def sample_videos(
         verbose=verbose,
         **kwargs
     )
-
-    if original_frame_numbers:
-        return results
 
 
 def reencode_video(input_path, output_path, verbose=False, **kwargs):
@@ -335,6 +329,7 @@ def transform_video(
 def sample_video(
     input_path,
     output_patt,
+    frames=None,
     fps=None,
     max_fps=None,
     size=None,
@@ -351,6 +346,8 @@ def sample_video(
         input_path: the path to the input video
         output_patt: a pattern like ``/path/to/images/%%06d.jpg`` specifying
             the filename/format to write the sampled frames
+        frames (None): an iterable of frame numbers to sample. If provided,
+            ``fps`` and ``max_fps`` are ignored
         fps (None): an optional frame rate at which to sample the frames
         max_fps (None): an optional maximum frame rate. Videos with frame rate
             exceeding this value are downsampled
@@ -369,13 +366,11 @@ def sample_video(
             the frames as 1, 2, ... (False)
         verbose (False): whether to log the ``ffmpeg`` command that is executed
         **kwargs: keyword arguments for ``eta.core.video.FFmpeg(**kwargs)``
-
-    Returns:
-        a list of frame numbers that were sampled
     """
-    return _transform_video(
+    _transform_video(
         input_path,
         output_patt,
+        frames=frames,
         fps=fps,
         max_fps=max_fps,
         size=size,
@@ -389,8 +384,62 @@ def sample_video(
     )
 
 
+def sample_frames_uniform(
+    total_frame_count,
+    frame_rate,
+    fps=None,
+    max_fps=None,
+    always_sample_last=False,
+):
+    """Returns a list of frame numbers sampled uniformly according to the
+    provided parameters.
+
+    Args:
+        total_frame_count: the total number of frames in the video
+        frame_rate: the video frame rate
+        fps (None): a frame rate at which to sample frames
+        max_fps (None): a maximum frame rate at which to sample frames
+        always_sample_last (False): whether to always sample the last frame
+
+    Returns:
+        a list of frame numbers, or None if all frames should be sampled
+    """
+    if total_frame_count <= 0:
+        return []
+
+    ifps = frame_rate
+
+    if fps is not None:
+        ofps = fps
+    else:
+        ofps = ifps
+
+    if max_fps is not None:
+        ofps = min(ofps, max_fps)
+
+    if ofps == ifps:
+        return None
+
+    x = 1
+    last_fn = 1
+    beta = ifps / ofps
+    sample_frames = [x]
+    while x <= total_frame_count:
+        x += beta
+        fn = int(round(x))
+        if last_fn < fn <= total_frame_count:
+            sample_frames.append(fn)
+            last_fn = fn
+
+    if always_sample_last and last_fn < total_frame_count:
+        sample_frames.append(total_frame_count)
+
+    return sample_frames
+
+
 def _transform_videos(
     sample_collection,
+    frames=None,
     fps=None,
     min_fps=None,
     max_fps=None,
@@ -413,15 +462,22 @@ def _transform_videos(
                 fo.config.default_sequence_idx + fo.config.default_image_ext
             )
 
-        frames = []
+    view = sample_collection.select_fields()
 
-    with fou.ProgressBar() as pb:
-        for sample in pb(sample_collection.select_fields()):
+    if frames is None:
+        frames = itertools.repeat(None)
+
+    with fou.ProgressBar(total=len(view)) as pb:
+        for sample, _frames in pb(zip(view, frames)):
             inpath = sample.filepath
 
             if sample_frames:
-                outpath, found = _prep_for_sampling(inpath, frames_patt)
-                if found and not force_reencode:
+                outdir = os.path.splitext(inpath)[0]
+                outpath = os.path.join(outdir, frames_patt)
+
+                # If sampling was not forced and the first frame exists, assume
+                # that all frames exist
+                if not force_reencode and os.path.exists(outpath % 1):
                     continue
 
             elif reencode:
@@ -429,9 +485,10 @@ def _transform_videos(
             else:
                 outpath = inpath
 
-            result = _transform_video(
+            _transform_video(
                 inpath,
                 outpath,
+                frames=_frames,
                 fps=fps,
                 min_fps=min_fps,
                 max_fps=max_fps,
@@ -446,30 +503,15 @@ def _transform_videos(
                 **kwargs
             )
 
-            if sample_frames:
-                frames.append(result)
-            else:
+            if not sample_frames:
                 sample.filepath = outpath
                 sample.save()
-
-    if sample_frames:
-        return frames
-
-
-def _prep_for_sampling(inpath, frames_patt):
-    outdir = os.path.splitext(inpath)[0]
-    outpatt = os.path.join(outdir, frames_patt)
-
-    # @todo what about resampling at a different `fps`?
-    # If the first frame exists, assume the video has already been sampled
-    found = os.path.exists(outpatt % 1)
-
-    return outpatt, found
 
 
 def _transform_video(
     inpath,
     outpath,
+    frames=None,
     fps=None,
     min_fps=None,
     max_fps=None,
@@ -489,6 +531,17 @@ def _transform_video(
     in_ext = os.path.splitext(inpath)[1]
     out_ext = os.path.splitext(outpath)[1]
 
+    if frames is not None:
+        if not original_frame_numbers:
+            raise ValueError(
+                "`original_frame_numbers` must be True when `frames` to "
+                "sample are explicitly specified"
+            )
+
+        fps = None
+        min_fps = None
+        max_fps = None
+
     if (
         fps is not None
         or min_fps is not None
@@ -497,7 +550,7 @@ def _transform_video(
         or min_size is not None
         or max_size is not None
     ):
-        fps, size, frames = _parse_parameters(
+        fps, size, _frames = _parse_parameters(
             inpath,
             fps,
             min_fps,
@@ -508,8 +561,9 @@ def _transform_video(
             sample_frames,
             original_frame_numbers,
         )
-    else:
-        frames = None
+
+        if frames is None:
+            frames = _frames
 
     if reencode:
         # Use default reencoding parameters from ``eta.core.video.FFmpeg``
@@ -551,8 +605,6 @@ def _transform_video(
 
     if delete_original and diff_path:
         etau.delete_file(inpath)
-
-    return frames
 
 
 def _parse_parameters(
@@ -605,31 +657,15 @@ def _parse_parameters(
         osize = None
 
     if sample_frames and original_frame_numbers and ofps is not None:
-        target_accel = ifps / ofps
-        if target_accel > 1:
+        if ofps > ifps:
             raise ValueError(
                 "Cannot maintain original frame numbers when requested frame "
                 "rate (%f) exceeds native frame rate (%f) of video '%s'"
                 % (ofps, ifps, video_path)
             )
 
-        frames = _select_frames_uniformly(iframe_count, target_accel)
+        frames = sample_frames_uniform(iframe_count, ifps, fps=ofps)
     else:
         frames = None
 
     return ofps, osize, frames
-
-
-def _select_frames_uniformly(
-    total_frame_count, target_accel, always_sample_last=False
-):
-    if total_frame_count <= 0:
-        return []
-
-    sample_points = np.arange(1, total_frame_count + 1, target_accel)
-    sample_frames = set(int(round(x)) for x in sample_points)
-
-    if always_sample_last:
-        sample_frames.add(total_frame_count)
-
-    return sorted(sample_frames)

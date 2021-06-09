@@ -105,6 +105,10 @@ class DatasetView(foc.SampleCollection):
         return self.__class__(self.__dataset, _stages=deepcopy(self.__stages))
 
     @property
+    def _base_view(self):
+        return self.__class__(self.__dataset)
+
+    @property
     def _dataset(self):
         return self.__dataset
 
@@ -717,7 +721,7 @@ class DatasetView(foc.SampleCollection):
         frames_only=False,
     ):
         _pipeline = []
-        _view = self._dataset.view()
+        _view = self._base_view
         for stage in self._stages:
             _pipeline.extend(stage.to_mongo(_view))
             _view._stages.append(stage)

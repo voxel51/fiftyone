@@ -3516,18 +3516,19 @@ class SelectFields(ViewStage):
             sample_collection, frames=False, use_db_fields=True
         )
 
-        selected_frame_fields = [
-            sample_collection._FRAMES_PREFIX + field
-            for field in self._get_selected_fields(
-                sample_collection, frames=True, use_db_fields=True
-            )
-        ]
+        if sample_collection.media_type == fom.VIDEO:
+            selected_frame_fields = [
+                sample_collection._FRAMES_PREFIX + field
+                for field in self._get_selected_fields(
+                    sample_collection, frames=True, use_db_fields=True
+                )
+            ]
 
-        if selected_frame_fields:
-            # Don't project on root `frames` and embedded fields
-            # https://docs.mongodb.com/manual/reference/operator/aggregation/project/#path-collision-errors-in-embedded-fields
-            selected_fields = [f for f in selected_fields if f != "frames"]
-            selected_fields += selected_frame_fields
+            if selected_frame_fields:
+                # Don't project on root `frames` and embedded fields
+                # https://docs.mongodb.com/manual/reference/operator/aggregation/project/#path-collision-errors-in-embedded-fields
+                selected_fields = [f for f in selected_fields if f != "frames"]
+                selected_fields += selected_frame_fields
 
         if not selected_fields:
             return []
@@ -3538,6 +3539,9 @@ class SelectFields(ViewStage):
         self, sample_collection, frames=False, use_db_fields=False
     ):
         if frames:
+            if sample_collection.media_type != fom.VIDEO:
+                return None
+
             default_fields = sample_collection._get_default_frame_fields(
                 include_private=True, use_db_fields=use_db_fields
             )
