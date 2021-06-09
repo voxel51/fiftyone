@@ -50,6 +50,7 @@ const useStateUpdate = () => {
 
 const useStatisticsUpdate = () => {
   return useRecoilCallback(({ set }) => async ({ stats, view, filters }) => {
+    console.log(stats);
     filters && set(atoms.extendedDatasetStatsRaw, { stats, view, filters });
     !filters && set(atoms.datasetStatsRaw, { stats, view });
   });

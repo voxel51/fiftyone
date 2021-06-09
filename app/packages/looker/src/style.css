@@ -164,6 +164,15 @@
 .looker-seek-bar {
   width: 100%;
   margin: 3px;
+  background: linear-gradient(
+    to right,
+    #82cfd0 0%,
+    #82cfd0 50%,
+    #fff 50%,
+    #fff 100%
+  );
+  transition: background 450ms ease-in;
+  -webkit-appearance: none;
 }
 .looker-controls input[type="range"] {
   width: 100%;

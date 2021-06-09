@@ -254,15 +254,12 @@ const SampleTagsCell = ({ modal }: TagsCellProps) => {
   const [subCountAtom, countAtom] = modal
     ? [null, selectors.tagSampleModalCounts]
     : [selectors.filteredTagSampleCounts, selectors.tagSampleCounts];
-
-  const isRootView = useRecoilValue(selectors.isRootView);
+  const { singular: element } = useRecoilValue(selectors.elementNames);
 
   const subCount = subCountAtom ? useRecoilValue(subCountAtom) : null;
   const count = useRecoilValue(countAtom);
   const colorByLabel = useRecoilValue(atoms.colorByLabel(modal));
   const theme = useTheme();
-
-  const element = isRootView ? "Sample" : "Patch";
   return (
     <Cell
       label={`${element} tags`}

@@ -119,10 +119,17 @@ export class SeekBarElement extends BaseElement<VideoState, HTMLInputElement> {
       return this.element;
     }
     if (duration !== null) {
-      this.element.style.display = "block";
-      //@ts-ignore
-      this.element.value =
+      const value =
         ((frameNumber - 1) / Math.max(frameRate * duration - 1, 1)) * 100;
+      this.element.style.display = "block";
+      this.element.style.backgroundColor =
+        "linear-gradient(to right, #82CFD0 0%, #82CFD0 " +
+        value.toFixed(0) +
+        "%, #fff " +
+        value.toFixed(0) +
+        "%, white 100%)";
+      //@ts-ignore
+      this.element.value = value;
     } else {
       this.element.style.display = "none";
     }

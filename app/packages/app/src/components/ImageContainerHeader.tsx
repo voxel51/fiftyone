@@ -60,10 +60,9 @@ const SliderContainer = styled.div`
   margin: 0.25rem 0;
 `;
 
-const SAMPLE_ITEMS = [null, "fiftyone.core.view.DatasetView"];
-
 const ImageContainerHeader = ({ showSidebar, onShowSidebar }: Props) => {
   const totalCount = useRecoilValue(selectors.totalCount);
+  const element = useRecoilValue(selectors.elementNames);
   const filteredCount = useRecoilValue(selectors.filteredCount);
   const resetGridZoom = useResetRecoilState(gridZoom);
   const isRootView = useRecoilValue(selectors.isRootView);
@@ -94,8 +93,8 @@ const ImageContainerHeader = ({ showSidebar, onShowSidebar }: Props) => {
               <div>
                 Viewing{" "}
                 <strong>
-                  {countStr} {isRootView ? "sample" : "patch"}
-                  {totalCount === 1 ? "" : isRootView ? "s" : "es"}
+                  {countStr}{" "}
+                  {totalCount === 1 ? element.singular : element.plural}
                 </strong>
               </div>
             </CountDiv>
