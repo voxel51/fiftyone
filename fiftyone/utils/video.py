@@ -420,7 +420,7 @@ def sample_frames_uniform(
     if max_fps is not None:
         ofps = min(ofps, max_fps)
 
-    if ofps == ifps:
+    if ofps >= ifps:
         return None
 
     x = 1

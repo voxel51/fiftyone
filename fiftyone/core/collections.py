@@ -4085,31 +4085,54 @@ class SampleCollection(object):
         """Creates a view that contains one sample per frame in the video
         collection.
 
+        By default, samples will be generated for every frame of each video,
+        based on the total frame count of the video files, but this method is
+        highly customizable. Refer to
+        :meth:`fiftyone.core.video.make_frames_dataset` to see the available
+        configuration options.
+
         .. note::
 
-             The first time this method is run on a collection, it will sample
-             each video in the collection into a directory of per-frame images.
+            Unless you have configured otherwise, creating frame views will
+            sample the necessary frames from the input video collection into
+            directories of per-frame images. For large video datasets,
+            **this may take some time and require substantial disk space!**
 
-             Videos that have previously been sampled will not be resampled,
-             unless you override this behavior.
+            Frames that have previously been sampled will not be resampled, so
+            creating frame views into the same dataset will become faster if
+            the same frames are requested.
 
         Examples::
 
             import fiftyone as fo
             import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
 
             dataset = foz.load_zoo_dataset("quickstart-video")
 
             session = fo.launch_app(dataset)
 
             #
-            # Create a frames view
+            # Create a frames view for an entire video dataset
             #
 
-            view = dataset.to_frames()
-            print(view)
+            frames = dataset.to_frames()
+            print(frames)
 
-            session.view = view
+            session.view = frames
+
+            #
+            # Create a frames view that only contains frames with at least 10
+            # objects, sampled at a maximum frame rate of 1fps
+            #
+
+            num_objects = F("ground_truth_detections.detections").length()
+            view = dataset.match_frames(num_objects > 10)
+
+            frames = view.to_frames(max_fps=1, sparse=True)
+            print(frames)
+
+            session.view = frames
 
         Args:
             **kwargs: optional keyword arguments for
