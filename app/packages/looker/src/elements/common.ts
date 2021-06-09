@@ -176,6 +176,7 @@ export class CanvasElement<State extends BaseState> extends BaseElement<
           if (state.config.thumbnail || !state.panning) {
             return {};
           }
+          this.mousedownCoordinates = [event.pageX, event.pageY];
           event.preventDefault();
           return {
             panning: false,
