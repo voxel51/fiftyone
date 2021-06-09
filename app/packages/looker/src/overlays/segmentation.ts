@@ -6,7 +6,7 @@ import { getSegmentationColorArray } from "../color";
 import { deserialize, NumpyResult } from "../numpy";
 import { BaseState, Coordinates } from "../state";
 import { ensureCanvasSize } from "../util";
-import { BaseLabel, CONTAINS, Overlay } from "./base";
+import { BaseLabel, CONTAINS, Overlay, PointInfo, SelectData } from "./base";
 import { t } from "./util";
 
 interface SegmentationLabel extends BaseLabel {
@@ -36,14 +36,14 @@ export default class SegmentationOverlay<State extends BaseState>
     }
   }
 
-  containsPoint(state) {
+  containsPoint(state: Readonly<State>): CONTAINS {
     if (this.getTarget(state)) {
       return CONTAINS.CONTENT;
     }
     return CONTAINS.NONE;
   }
 
-  draw(ctx: CanvasRenderingContext2D, state: Readonly<State>) {
+  draw(ctx: CanvasRenderingContext2D, state: Readonly<State>): void {
     const [maskHeight, maskWidth] = this.mask.shape;
 
     const maskContext = SegmentationOverlay.intermediateCanvas.getContext("2d");
@@ -80,14 +80,14 @@ export default class SegmentationOverlay<State extends BaseState>
     ctx.drawImage(maskContext.canvas, tlx, tly, brx - tlx, bry - tly);
   }
 
-  getMouseDistance(state) {
+  getMouseDistance(state: Readonly<State>): number {
     if (this.containsPoint(state)) {
       return 0;
     }
     return Infinity;
   }
 
-  getPointInfo(state) {
+  getPointInfo(state: Readonly<State>): PointInfo {
     const target = this.getTarget(state);
     return {
       color: this.getColor(state, target),
@@ -101,7 +101,7 @@ export default class SegmentationOverlay<State extends BaseState>
     };
   }
 
-  getSelectData() {
+  getSelectData(): SelectData {
     return {
       id: this.label._id,
       field: this.field,
@@ -116,11 +116,11 @@ export default class SegmentationOverlay<State extends BaseState>
     return state.options.activeLabels.includes(this.field);
   }
 
-  getPoints() {
+  getPoints(): Coordinates[] {
     return getSegmentationPoints([]);
   }
 
-  private getIndex(state: Readonly<State>) {
+  private getIndex(state: Readonly<State>): number {
     const [sx, sy] = this.getMaskCoordinates(state);
     return this.mask.shape[1] * sy + sx;
   }
@@ -130,18 +130,18 @@ export default class SegmentationOverlay<State extends BaseState>
     config: {
       dimensions: [mw, mh],
     },
-  }: Readonly<State>) {
+  }: Readonly<State>): Coordinates {
     const [h, w] = this.mask.shape;
     const sx = Math.floor(x * (w / mw));
     const sy = Math.floor(y * (h / mh));
     return [sx, sy];
   }
 
-  private getColor(state: Readonly<State>, target: number) {
+  private getColor(state: Readonly<State>, target: number): string {
     return state.options.colorMap(target);
   }
 
-  private getTarget(state: Readonly<State>) {
+  private getTarget(state: Readonly<State>): number {
     const index = this.getIndex(state);
     return this.targets[index];
   }

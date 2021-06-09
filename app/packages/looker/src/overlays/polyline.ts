@@ -3,7 +3,6 @@
  */
 
 import {
-  CONTAINS_FACTOR,
   DASH_COLOR,
   DASH_LENGTH,
   MASK_ALPHA,
@@ -144,7 +143,11 @@ export default class PolylineOverlay<
   }
 
   private isPointInPath(state: Readonly<State>, path: Coordinates[]): boolean {
-    const [x, y] = state.pixelCoordinates;
+    const [_, __, w, h] = state.canvasBBox;
+    const [x, y] = [
+      state.relativeCoordinates[0] * w,
+      state.relativeCoordinates[1] * h,
+    ];
 
     let inside = false;
     if (this.label.closed) {
@@ -156,8 +159,8 @@ export default class PolylineOverlay<
       let xj = path[j][0],
         yj = path[j][1];
 
-      [xi, yi] = t(state, xi, yi);
-      [xj, yj] = t(state, xj, yj);
+      [xi, yi] = [xi * w, yi * h];
+      [xj, yj] = [xj * w, yj * h];
 
       const intersect =
         yi > y != yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi;

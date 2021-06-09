@@ -116,7 +116,7 @@ export abstract class CoordinateOverlay<
 
   abstract getPoints(): Coordinates[];
 
-  getSelectData(state: Readonly<State>) {
+  getSelectData(state: Readonly<State>): SelectData {
     return {
       id: this.label._id,
       field: this.field,
