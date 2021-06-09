@@ -589,6 +589,22 @@ detection dataset:
     # View patches in the App
     session.view = gt_patches
 
+.. code-block:: text
+
+    Dataset:     quickstart
+    Media type:  image
+    Num patches: 1232
+    Tags:        ['validation']
+    Patch fields:
+        id:           fiftyone.core.fields.ObjectIdField
+        filepath:     fiftyone.core.fields.StringField
+        tags:         fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
+        metadata:     fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.Metadata)
+        sample_id:    fiftyone.core.fields.ObjectIdField
+        ground_truth: fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Detection)
+    View stages:
+        1. ToPatches(field='ground_truth')
+
 Or, you could :ref:`chain view stages <chaining-views>` to create a view that
 contains patches for a filtered set of predictions:
 
@@ -685,6 +701,26 @@ respectively.
     # View patches in the App
     session.view = eval_patches
 
+.. code-block:: text
+
+    Dataset:     quickstart
+    Media type:  image
+    Num patches: 5363
+    Tags:        ['validation']
+    Patch fields:
+        id:           fiftyone.core.fields.ObjectIdField
+        filepath:     fiftyone.core.fields.StringField
+        tags:         fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
+        metadata:     fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.Metadata)
+        predictions:  fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Detections)
+        ground_truth: fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Detections)
+        sample_id:    fiftyone.core.fields.ObjectIdField
+        type:         fiftyone.core.fields.StringField
+        iou:          fiftyone.core.fields.FloatField
+        crowd:        fiftyone.core.fields.BooleanField
+    View stages:
+        1. ToEvaluationPatches(eval_key='eval')
+
 .. note::
 
     Did you know? You can convert to evaluation patches view directly
@@ -726,11 +762,13 @@ non-patch views:
     to the source dataset
 
 .. _video-views:
-________________
+
+Video views
+___________
 
 Most view stages naturally support video datasets. For example, stages that
 refer to fields can be applied to the frame-level fields of video samples by
-prepending ``frames.`` to the relevent parameters:
+prepending ``"frames."`` to the relevent parameters:
 
 .. code-block:: python
     :linenos:
@@ -747,16 +785,16 @@ prepending ``frames.`` to the relevent parameters:
     )
 
     # Compare the number of objects in the view and the source dataset
-    print(dataset.count("frames.ground_truth.detections.detections"))
-    print(view.count("frames.ground_truth.detections.detections"))
+    print(dataset.count("frames.ground_truth_detections.detections"))  # 11345
+    print(view.count("frames.ground_truth_detections.detections"))  # 7511
 
 In addition, FiftyOne provides a variety of dedicated view stages for
 performing manipulations that are unique to video data.
 
 .. _frame-views:
 
-Video frame views
------------------
+Frame views
+-----------
 
 Use :meth:`to_frames() <fiftyone.core.collections.SampleCollection.to_frames>`
 to create **image views** into your video datasets that contain one sample per
@@ -764,6 +802,7 @@ video frame in the dataset.
 
 .. note::
 
+    Did you know? Using
     :meth:`to_frames() <fiftyone.core.collections.SampleCollection.to_frames>`
     enables you to execute workflows such as
     :ref:`model evaluation <evaluating-models>` and
@@ -788,21 +827,36 @@ frame of the videos in a |Dataset| or |DatasetView|:
     print(frames)
 
     # Verify that one sample per frame was created
-    print(dataset.sum("metadata.total_frame_count"))
-    print(len(frames))
+    print(dataset.sum("metadata.total_frame_count"))  # 1279
+    print(len(frames))  # 1279
 
     # View frames in the App
     session.view = frames
 
 .. code-block:: text
 
+    Dataset:     quickstart-video
+    Media type:  image
+    Num samples: 1279
+    Tags:        []
+    Sample fields:
+        id:                      fiftyone.core.fields.ObjectIdField
+        filepath:                fiftyone.core.fields.StringField
+        tags:                    fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
+        metadata:                fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.Metadata)
+        sample_id:               fiftyone.core.fields.ObjectIdField
+        frame_number:            fiftyone.core.fields.FrameNumberField
+        ground_truth_detections: fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Detections)
+    View stages:
+        1. ToFrames(config=None)
+
 .. note::
 
     Unless you have configured otherwise,
     :meth:`to_frames() <fiftyone.core.collections.SampleCollection.to_frames>`
     will sample the necessary frames from the input video collection into
-    directories of per-frame images when the view is created. For large video
-    datasets, **this may take some time and require substantial disk space!**
+    directories of per-frame images when the view is created. **For large video
+    datasets, this may take some time and require substantial disk space.**
 
     Frames that have previously been sampled will not be resampled, so creating
     frame views into the same dataset will become faster after the frames have
@@ -833,9 +887,9 @@ for frames with at least 10 objects, sampling at most one frame per second:
     print(frames)
 
     # Compare the number of frames in each step
-    print(dataset.count("frames"))
-    print(view.count("frames"))
-    print(len(frames))
+    print(dataset.count("frames"))  # 1279
+    print(view.count("frames"))  # 354
+    print(len(frames))  # 13
 
     # View frames in the App
     session.view = frames
@@ -865,7 +919,7 @@ Frame views are just like any other image collection view in the sense that:
     video  dataset
 
 The only way in which frames views differ from regular image collections is
-that changes to the ``tags`` or ``metadata`` of frame samples will not be
+that changes to the ``tags`` or ``metadata`` fields of frame samples will not be
 propagated to the frames of the underlying video dataset.
 
 .. _querying-frames:
@@ -873,17 +927,17 @@ propagated to the frames of the underlying video dataset.
 Querying frames
 ---------------
 
-You can query for a subset of the frames in a video dataset via the
-:meth:`match_frames() <fiftyone.core.collections.SampleCollection.match_frames>`
-method. The syntax is:
+You can query for a subset of the frames in a video dataset via
+:meth:`match_frames() <fiftyone.core.collections.SampleCollection.match_frames>`.
+The syntax is:
 
 .. code-block:: python
     :linenos:
 
     match_view = dataset.match_frames(expression)
 
-where `expression` defines the matching expression to use to decide whether to
-include a frame in the view.
+where ``expression`` defines the matching expression to use to decide whether
+to include a frame in the view.
 
 FiftyOne provides powerful |ViewField| and |ViewExpression| classes that allow
 you to use native Python operators to define your match expression. Simply wrap
@@ -910,8 +964,8 @@ The snippet below demonstrates a possible workflow. See the API reference for
     view = dataset.match_frames(num_objects > 10)
 
     # Compare the number of frames in each collection
-    print(dataset.count("frames"))
-    print(view.count("frames"))
+    print(dataset.count("frames"))  # 1279
+    print(view.count("frames"))  # 354
 
 You can also use
 :meth:`select_frames() <fiftyone.core.collections.SampleCollection.select_frames>` and

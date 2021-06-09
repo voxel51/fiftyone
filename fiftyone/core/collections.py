@@ -1468,14 +1468,16 @@ class SampleCollection(object):
                 are given this label for results purposes
             method ("simple"): a string specifying the evaluation method to use.
                 Supported values are ``("simple", "binary", "top-k")``
-            config (None): an :class:`ClassificationEvaluationConfig`
+            config (None): a
+                :class:`fiftyone.utils.eval.classification.ClassificationEvaluationConfig`
                 specifying the evaluation method to use. If a ``config`` is
                 provided, the ``method`` and ``kwargs`` parameters are ignored
             **kwargs: optional keyword arguments for the constructor of the
-                :class:`ClassificationEvaluationConfig` being used
+                :class:`fiftyone.utils.eval.classification.ClassificationEvaluationConfig`
+                being used
 
         Returns:
-            a :class:`ClassificationResults`
+            a :class:`fiftyone.utils.eval.classification.ClassificationResults`
         """
         return foue.evaluate_classifications(
             self,
