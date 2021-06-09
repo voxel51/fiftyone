@@ -3171,6 +3171,43 @@ class SampleCollection(object):
         return self._add_view_stage(fos.Match(filter))
 
     @view_stage
+    def match_frames(self, filter, omit_empty=True):
+        """Filters the frames in the collection by the given filter.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset("quickstart-video")
+
+            #
+            # Match frames with at least 10 detections
+            #
+
+            num_objects = F("ground_truth_detections.detections").length()
+            view = dataset.match_frames(num_objects > 10)
+
+            print(dataset.count())
+            print(view.count())
+
+            print(dataset.count("frames"))
+            print(view.count("frames"))
+
+        Args:
+            filter: a :class:`fiftyone.core.expressions.ViewExpression` or
+                `MongoDB aggregation expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+                that returns a boolean describing the filter to apply
+
+        Returns:
+            a :class:`fiftyone.core.view.DatasetView`
+        """
+        return self._add_view_stage(
+            fos.MatchFrames(filter, omit_empty=omit_empty)
+        )
+
+    @view_stage
     def match_labels(
         self, labels=None, ids=None, tags=None, filter=None, fields=None
     ):
@@ -3547,6 +3584,56 @@ class SampleCollection(object):
         """
         return self._add_view_stage(
             fos.SelectFields(field_names, _allow_missing=_allow_missing)
+        )
+
+    @view_stage
+    def select_frames(self, frame_ids, omit_empty=True):
+        """Selects the frames with the given IDs from the collection.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+
+            dataset = foz.load_zoo_dataset("quickstart-video")
+
+            #
+            # Select some specific frames
+            #
+
+            frame_ids = [
+                dataset.first().frames.first().id,
+                dataset.last().frames.last().id,
+            ]
+
+            view = dataset.select_frames(frame_ids)
+
+            print(dataset.count())
+            print(view.count())
+
+            print(dataset.count("frames"))
+            print(view.count("frames"))
+
+        Args:
+            frame_ids: the frames to select. Can be any of the following:
+
+                -   a frame ID
+                -   an iterable of frame IDs
+                -   a :class:`fiftyone.core.frame.Frame` or
+                    :class:`fiftyone.core.frame.FrameView`
+                -   an iterable of :class:`fiftyone.core.frame.Frame` or
+                    :class:`fiftyone.core.frame.FrameView` instances
+                -   a :class:`fiftyone.core.collections.SampleCollection`, in
+                    which case the frame IDs in the collection are used
+
+            omit_empty (True): whether to omit samples that have no frames after
+                selecting the specified frames
+
+        Returns:
+            a :class:`fiftyone.core.view.DatasetView`
+        """
+        return self._add_view_stage(
+            fos.SelectFrames(frame_ids, omit_empty=omit_empty)
         )
 
     @view_stage

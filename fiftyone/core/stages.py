@@ -22,11 +22,13 @@ import fiftyone.core.expressions as foe
 from fiftyone.core.expressions import ViewField as F
 from fiftyone.core.expressions import VALUE
 import fiftyone.core.fields as fof
+import fiftyone.core.frame as fofr
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 from fiftyone.core.odm.document import MongoEngineBaseDocument
 import fiftyone.core.sample as fos
 import fiftyone.core.utils as fou
+import fiftyone.core.validation as fova
 
 fod = fou.lazy_import("fiftyone.core.dataset")
 fop = fou.lazy_import("fiftyone.core.patches")
@@ -1050,7 +1052,7 @@ class FilterField(ViewStage):
         ]
 
     def _validate_params(self):
-        if not isinstance(self._filter, (foe.ViewExpression, dict)):
+        if not isinstance(self._filter, (foe.ViewExpression, dict, bool)):
             raise ValueError(
                 "Filter must be a ViewExpression or a MongoDB aggregation "
                 "expression defining a filter; found '%s'" % self._filter
@@ -2752,7 +2754,7 @@ class Match(ViewStage):
         return [["filter", self._get_mongo_expr()]]
 
     def _validate_params(self):
-        if not isinstance(self._filter, (foe.ViewExpression, dict)):
+        if not isinstance(self._filter, (foe.ViewExpression, dict, bool)):
             raise ValueError(
                 "Filter must be a ViewExpression or a MongoDB aggregation "
                 "expression defining a filter; found '%s'" % self._filter
@@ -2761,6 +2763,111 @@ class Match(ViewStage):
     @classmethod
     def _params(cls):
         return [{"name": "filter", "type": "json", "placeholder": ""}]
+
+
+class MatchFrames(ViewStage):
+    """Filters the frames in the collection by the given filter.
+
+    Examples::
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+        from fiftyone import ViewField as F
+
+        dataset = foz.load_zoo_dataset("quickstart-video")
+
+        #
+        # Match frames with at least 10 detections
+        #
+
+        num_objects = F("ground_truth_detections.detections").length()
+        stage = fo.MatchFrames(num_objects > 10)
+        view = dataset.add_stage(stage)
+
+        print(dataset.count())
+        print(view.count())
+
+        print(dataset.count("frames"))
+        print(view.count("frames"))
+
+    Args:
+        filter: a :class:`fiftyone.core.expressions.ViewExpression` or
+            `MongoDB aggregation expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+            that returns a boolean describing the filter to apply
+    """
+
+    def __init__(self, filter, omit_empty=True):
+        self._filter = filter
+        self._omit_empty = omit_empty
+        self._validate_params()
+
+    @property
+    def filter(self):
+        """The filter expression."""
+        return self._filter
+
+    @property
+    def omit_empty(self):
+        """Whether to omit samples that have no labels after filtering."""
+        return self._omit_empty
+
+    def _get_mongo_expr(self):
+        if not isinstance(self._filter, foe.ViewExpression):
+            return self._filter
+
+        return self._filter.to_mongo(prefix="$$this")
+
+    def to_mongo(self, _):
+        pipeline = [
+            {
+                "$set": {
+                    "frames": {
+                        "$filter": {
+                            "input": "$frames",
+                            "as": "this",
+                            "cond": self._get_mongo_expr(),
+                        }
+                    }
+                }
+            }
+        ]
+
+        if self._omit_empty:
+            non_empty_expr = F("frames").length() > 0
+            pipeline.append({"$match": {"$expr": non_empty_expr.to_mongo()}})
+
+        return pipeline
+
+    def _kwargs(self):
+        return [
+            ["filter", self._get_mongo_expr()],
+            ["omit_empty", self._omit_empty],
+        ]
+
+    @classmethod
+    def _params(cls):
+        return [
+            {"name": "filter", "type": "json", "placeholder": ""},
+            {
+                "name": "omit_empty",
+                "type": "bool",
+                "default": "True",
+                "placeholder": "omit empty (default=True)",
+            },
+        ]
+
+    def _validate_params(self):
+        if not isinstance(self._filter, (foe.ViewExpression, dict, bool)):
+            raise ValueError(
+                "Filter must be a ViewExpression or a MongoDB aggregation "
+                "expression defining a filter; found '%s'" % self._filter
+            )
+
+    def _needs_frames(self, _):
+        return True
+
+    def validate(self, sample_collection):
+        fova.validate_video_collection(sample_collection)
 
 
 class MatchLabels(ViewStage):
@@ -3596,6 +3703,110 @@ class SelectFields(ViewStage):
             return
 
         sample_collection.validate_fields_exist(self.field_names)
+
+
+class SelectFrames(ViewStage):
+    """Selects the frames with the given IDs from a collection.
+
+    Examples::
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("quickstart-video")
+
+        #
+        # Select some specific frames
+        #
+
+        frame_ids = [
+            dataset.first().frames.first().id,
+            dataset.last().frames.last().id,
+        ]
+
+        stage = fo.SelectFrames(frame_ids)
+        view = dataset.add_stage(stage)
+
+        print(dataset.count())
+        print(view.count())
+
+        print(dataset.count("frames"))
+        print(view.count("frames"))
+
+    Args:
+        frame_ids: the frames to select. Can be any of the following:
+
+            -   a frame ID
+            -   an iterable of frame IDs
+            -   a :class:`fiftyone.core.frame.Frame` or
+                :class:`fiftyone.core.frame.FrameView`
+            -   an iterable of :class:`fiftyone.core.frame.Frame` or
+                :class:`fiftyone.core.frame.FrameView` instances
+            -   a :class:`fiftyone.core.collections.SampleCollection`, in which
+                case the frame IDs in the collection are used
+
+        omit_empty (True): whether to omit samples that have no frames after
+            selecting the specified frames
+    """
+
+    def __init__(self, frame_ids, omit_empty=True):
+        self._frame_ids = _get_frame_ids(frame_ids)
+        self._omit_empty = omit_empty
+        self._validate_params()
+
+    @property
+    def frame_ids(self):
+        """The list of sample IDs to select."""
+        return self._frame_ids
+
+    @property
+    def omit_empty(self):
+        """Whether to omit samples that have no labels after filtering."""
+        return self._omit_empty
+
+    def to_mongo(self, _):
+        ids = [ObjectId(_id) for _id in self._frame_ids]
+        select_expr = F("frames").filter(F("_id").is_in(ids))
+        pipeline = [{"$set": {"frames": select_expr.to_mongo()}}]
+
+        if self._omit_empty:
+            non_empty_expr = F("frames").length() > 0
+            pipeline.append({"$match": {"$expr": non_empty_expr.to_mongo()}})
+
+        return pipeline
+
+    def _kwargs(self):
+        return [
+            ["frame_ids", self._frame_ids],
+            ["omit_empty", self._omit_empty],
+        ]
+
+    @classmethod
+    def _params(cls):
+        return [
+            {
+                "name": "frame_ids",
+                "type": "list<id>|id",
+                "placeholder": "list,of,frame,ids",
+            },
+            {
+                "name": "omit_empty",
+                "type": "bool",
+                "default": "True",
+                "placeholder": "omit empty (default=True)",
+            },
+        ]
+
+    def _validate_params(self):
+        # Ensures that ObjectIDs are valid
+        for _id in self._frame_ids:
+            ObjectId(_id)
+
+    def _needs_frames(self, _):
+        return True
+
+    def validate(self, sample_collection):
+        fova.validate_video_collection(sample_collection)
 
 
 class SelectLabels(ViewStage):
@@ -4786,6 +4997,30 @@ def _get_sample_ids(samples_or_ids):
     return list(samples_or_ids)
 
 
+def _get_frame_ids(frames_or_ids):
+    import fiftyone.core.collections as foc
+
+    if etau.is_str(frames_or_ids):
+        return [frames_or_ids]
+
+    if isinstance(frames_or_ids, (fofr.Frame, fofr.FrameView)):
+        return [frames_or_ids.id]
+
+    if isinstance(frames_or_ids, foc.SampleCollection):
+        return frames_or_ids.values("frames.id", unwind=True)
+
+    if isinstance(frames_or_ids, np.ndarray):
+        return list(frames_or_ids)
+
+    if not frames_or_ids:
+        return []
+
+    if isinstance(next(iter(frames_or_ids)), (fofr.Frame, fofr.FrameView)):
+        return [s.id for s in frames_or_ids]
+
+    return list(frames_or_ids)
+
+
 def _get_rng(seed):
     if seed is None:
         return random
@@ -5030,12 +5265,14 @@ _STAGES = [
     LimitLabels,
     MapLabels,
     Match,
+    MatchFrames,
     MatchLabels,
     MatchTags,
     Mongo,
     Shuffle,
     Select,
     SelectFields,
+    SelectFrames,
     SelectLabels,
     SetField,
     Skip,
