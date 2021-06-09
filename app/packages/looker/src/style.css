@@ -21,23 +21,9 @@
 }
 
 @keyframes shimmer {
-  0% {
-    background-position: -1000px 0;
-  }
-  100% {
-    background-position: 1000px 0;
-  }
 }
 
 .looker.loading {
-  animation: shimmer 2s infinite;
-  background: linear-gradient(
-    110deg,
-    rgba(0, 0, 0, 0) 8%,
-    hsl(210, 11%, 11%) 18%,
-    rgba(0, 0, 0, 0) 33%
-  );
-  background-size: 400% 100%;
 }
 
 .looker-controls {

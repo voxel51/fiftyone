@@ -1,6 +1,5 @@
-import React, { Suspense, useState, useRef } from "react";
+import React, { Suspense, useState, useRef, useCallback, useMemo } from "react";
 import styled from "styled-components";
-import { Close, Fullscreen, FullscreenExit } from "@material-ui/icons";
 import {
   useRecoilValue,
   useRecoilState,
@@ -50,16 +49,6 @@ const Container = styled.div`
   height: 80vh;
   max-height: 80vh;
   background-color: ${({ theme }) => theme.background};
-
-  &.fullscreen {
-    width: 100vw;
-    height: 100vh;
-    max-height: 100vh;
-    grid-template-columns: auto;
-    .sidebar {
-      display: none;
-    }
-  }
 
   h2 {
     margin: 0.5rem -1rem;
@@ -187,44 +176,6 @@ const Container = styled.div`
   }
 `;
 
-const TopRightNavButtonsContainer = styled.div`
-  position: absolute;
-  z-index: 1000;
-  top: 0;
-  right: 0;
-  display: flex;
-`;
-
-const TopRightNavButtons = ({ children }) => {
-  return <TopRightNavButtonsContainer>{children}</TopRightNavButtonsContainer>;
-};
-
-const TopRightNavButtonContainer = styled.div`
-  display: block;
-  background-color: ${({ theme }) => theme.overlayButton};
-  cursor: pointer;
-  font-size: 150%;
-  font-weight: bold;
-  user-select: none;
-  width: 2em;
-  margin-top: 0;
-  height: 2em;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  &:hover {
-    background-color: ${({ theme }) => theme.overlayButtonHover};
-  }
-`;
-
-const TopRightNavButton = ({ icon, title, onClick, ...rest }) => {
-  return (
-    <TopRightNavButtonContainer title={title} onClick={onClick} {...rest}>
-      {icon}
-    </TopRightNavButtonContainer>
-  );
-};
-
 type RowProps = {
   name: string;
   value: string;
@@ -286,12 +237,24 @@ const SampleModal = ({ onClose, sampleId }: Props, ref) => {
   const sampleSrc = useRecoilValue(modalSrc);
   const [index, setIndex] = useRecoilState(modalIndex);
   const numSamples = useRecoilValue(selectors.currentSamplesSize);
-  const playerContainerRef = useRef();
   const showJSON = useRecoilValue(showModalJSON);
   const [enableJSONFilter, setEnableJSONFilter] = useState(true);
-  const [fullscreen, setFullscreen] = useState(false);
   const lookerRef = useRef();
   const onSelectLabel = useOnSelectLabel();
+
+  const onNext = useMemo(() => {
+    if (index < numSamples - 1) {
+      return () => setIndex(index + 1);
+    }
+    return null;
+  }, [index, numSamples]);
+
+  const onPrevious = useMemo(() => {
+    if (index > 0) {
+      return () => setIndex(index - 1);
+    }
+    return null;
+  }, [index]);
 
   useKeydownHandler((e) => {
     if (
@@ -301,27 +264,19 @@ const SampleModal = ({ onClose, sampleId }: Props, ref) => {
         document.activeElement.getAttribute("role") === "slider")
     ) {
       return;
-    } else if (e.key == "Escape") {
-      if (fullscreen) {
-        setFullscreen(false);
-      } else if (onClose) {
-        onClose();
-      }
-    } else if (e.key == "ArrowLeft" && index > 0) {
-      setIndex(index - 1);
-    } else if (e.key == "ArrowRight" && index < numSamples - 1) {
-      setIndex(index + 1);
+    } else if (e.key == "Escape" && onClose) {
+      onClose();
+    } else if (e.key == "ArrowLeft" && onPrevious) {
+      onPrevious();
+    } else if (e.key == "ArrowRight" && onNext) {
+      onNext();
     }
   });
   const theme = useTheme();
 
   return (
-    <Container
-      style={{ zIndex: 10001 }}
-      className={fullscreen ? "fullscreen" : ""}
-      ref={ref}
-    >
-      <div className="looker-element" ref={playerContainerRef}>
+    <Container style={{ zIndex: 10001 }} ref={ref}>
+      <div className="looker-element">
         <Suspense fallback={<Loading />}>
           {showJSON ? (
             <JSONView
@@ -335,6 +290,8 @@ const SampleModal = ({ onClose, sampleId }: Props, ref) => {
               modal={true}
               lookerRef={lookerRef}
               onSelectLabel={onSelectLabel}
+              onNext={onNext}
+              onPrevious={onPrevious}
             />
           )}
         </Suspense>
@@ -376,12 +333,6 @@ const SampleModal = ({ onClose, sampleId }: Props, ref) => {
             />
           </Suspense>
         </div>
-        <TopRightNavButton
-          onClick={onClose}
-          title={"Close"}
-          icon={<Close />}
-          style={{ position: "absolute", top: 0, right: 0 }}
-        />
       </div>
     </Container>
   );

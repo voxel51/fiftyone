@@ -209,7 +209,7 @@ export default class ClassificationsOverlay<State extends BaseState>
     tly -= cy;
 
     return {
-      top: tly + h + state.textPad,
+      top: tly + h + state.textPad * 2,
       box: [
         tlx / state.canvasBBox[2],
         tly / state.canvasBBox[3],

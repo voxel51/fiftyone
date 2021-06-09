@@ -879,7 +879,7 @@ export const selectedLoading = selector({
 });
 
 export const modalLabelAttrs = selectorFamily<
-  [string, string | null | number],
+  [string, string | null | number][],
   { field: string; id: string; frameNumber?: number }
 >({
   key: "modalLabelAttrs",

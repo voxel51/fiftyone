@@ -24,6 +24,8 @@ interface BaseOptions {
   showTooltip: boolean;
   onlyShowHoveredLabel: boolean;
   smoothMasks: boolean;
+  hasNext: boolean;
+  hasPrevious: boolean;
 }
 
 export type BoundingBox = [number, number, number, number];
