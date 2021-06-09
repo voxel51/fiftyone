@@ -101,15 +101,19 @@ export class CanvasElement<State extends BaseState> extends BaseElement<
 > {
   private width: number;
   private height: number;
+  private mousedownCoordinates: Coordinates;
   private hideControlsTimeout?: ReturnType<typeof setTimeout>;
   private start: Coordinates = [0, 0];
   private wheelTimeout: ReturnType<typeof setTimeout>;
 
   getEvents(): Events<State> {
     return {
-      click: ({ update, dispatchEvent }) => {
+      click: ({ event, update, dispatchEvent }) => {
         update({ showOptions: false }, (state, overlays) => {
-          if (!state.config.thumbnail && overlays.length) {
+          const moved =
+            event.pageX !== this.mousedownCoordinates[0] ||
+            event.pageY !== this.mousedownCoordinates[1];
+          if (!state.config.thumbnail && !moved && overlays.length) {
             const top = overlays[0];
             top.containsPoint(state) &&
               dispatchEvent("select", top.getSelectData(state));
@@ -159,6 +163,7 @@ export class CanvasElement<State extends BaseState> extends BaseElement<
             return {};
           }
           event.preventDefault();
+          this.mousedownCoordinates = [event.pageX - x, event.pageY];
           this.start = [event.pageX - x, event.pageY - y];
           return { panning: true, canZoom: false };
         });
@@ -293,7 +298,7 @@ export class NextElement<State extends BaseState> extends BaseElement<
     const element = document.createElement("img");
     element.className = "looker-arrow";
     element.src = ICONS.arrowRight;
-    element.style.right = "0";
+    element.style.right = "0.5rem";
     return element;
   }
 
@@ -346,7 +351,7 @@ export class PreviousElement<State extends BaseState> extends BaseElement<
     const element = document.createElement("img");
     element.src = ICONS.arrowLeft;
     element.className = "looker-arrow";
-    element.style.left = "0";
+    element.style.left = "0.5rem";
     return element;
   }
 
@@ -510,6 +515,33 @@ export class MinusElement<State extends BaseState> extends BaseElement<
     element.src = ICONS.minus;
     element.title = "Zoom out (-)";
     element.style.gridArea = "2 / 5 / 2 / 5";
+    return element;
+  }
+
+  renderSelf() {
+    return this.element;
+  }
+}
+
+export class HelpButtonElement<State extends BaseState> extends BaseElement<
+  State
+> {
+  getEvents(): Events<State> {
+    return {
+      click: ({ event, update }) => {
+        event.stopPropagation();
+        event.preventDefault();
+        toggleHelp(update);
+      },
+    };
+  }
+
+  createHTMLElement() {
+    const element = document.createElement("img");
+    element.className = "looker-clickable";
+    element.src = ICONS.help;
+    element.title = "Help (?)";
+    element.style.gridArea = "2 / 9 / 2 / 9";
     return element;
   }
 

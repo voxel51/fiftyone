@@ -20,12 +20,6 @@
   position: fixed;
 }
 
-@keyframes shimmer {
-}
-
-.looker.loading {
-}
-
 .looker-controls {
   position: absolute;
   bottom: 0;
@@ -46,8 +40,11 @@
   -o-transition: opacity 0.5s;
   -ms-transition: opacity 0.5s;
   transition: opacity 0.5s;
-  background-color: rgba(33, 33, 33, 0.5);
   width: 100%;
+
+  background-color: hsl(210, 11%, 11%);
+  border: 1px solid #191c1f;
+  box-shadow: 0 8px 15px 0 rgba(0, 0, 0, 0.43);
 }
 
 .looker-controls img {
@@ -153,7 +150,6 @@
   height: 4px;
   cursor: pointer;
   animate: 0.2s;
-  background: rgb(175, 175, 175);
   outline: none;
   border: none;
 }
@@ -341,11 +337,15 @@
 .looker-arrow {
   position: absolute;
   width: 3rem;
-  height: 3.5rem;
-  padding: 1.25rem 0.75rem;
+  height: 2.5rem;
+  padding: 0.75rem 0.75rem;
   top: 50%;
   margin-top: -1.75rem;
   cursor: pointer;
+  background-color: hsl(210, 11%, 11%);
+  border: 1px solid #191c1f;
+  box-shadow: 0 8px 15px 0 rgba(0, 0, 0, 0.43);
+  border-radius: 3px;
 }
 
 .looker-loader {

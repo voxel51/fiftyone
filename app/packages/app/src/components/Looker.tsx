@@ -434,21 +434,25 @@ export const useLookerOptionsUpdate = () => {
 };
 
 interface LookerProps {
+  lookerRef: MutableRefObject<any>;
+  modal: boolean;
   onClick?: React.MouseEventHandler<HTMLDivElement>;
+  onNext?: EventCallback;
+  onPrevious?: EventCallback;
   onSelectLabel?: EventCallback;
   sampleId: string;
   style?: React.CSSProperties;
-  modal: boolean;
-  lookerRef: MutableRefObject<any>;
 }
 
 const Looker = ({
-  onClick,
-  sampleId,
-  style = {},
-  modal,
-  onSelectLabel,
   lookerRef,
+  modal,
+  onClick,
+  onNext,
+  onPrevious,
+  onSelectLabel,
+  sampleId,
+  style,
 }: LookerProps) => {
   const sample = useRecoilValue(
     modal ? selectors.modalSample : atoms.sample(sampleId)
@@ -482,6 +486,8 @@ const Looker = ({
   }, [options]);
 
   modal && useEventHandler(looker, "options", useLookerOptionsUpdate());
+  onNext && useEventHandler(looker, "next", onNext);
+  onPrevious && useEventHandler(looker, "previous", onPrevious);
   onSelectLabel && useEventHandler(looker, "select", onSelectLabel);
 
   return (
