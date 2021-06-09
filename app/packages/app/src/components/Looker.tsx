@@ -475,7 +475,11 @@ const Looker = ({
           frameRate: metadata.frameRate,
           frameNumber: sample.frame_number,
         },
-        options
+        {
+          ...options,
+          hasNext: Boolean(onNext),
+          hasPrevious: Boolean(onPrevious),
+        }
       )
   );
 

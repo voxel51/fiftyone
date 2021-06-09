@@ -112,6 +112,7 @@ export interface BaseState {
   fullscreen: boolean;
   pointRadius: number;
   relativeCoordinates: Coordinates;
+  mouseIsOnOverlay: boolean;
 }
 
 export interface FrameState extends BaseState {
@@ -161,6 +162,8 @@ const DEFAULT_BASE_OPTIONS = {
   filter: null,
   colorMap: null,
   smoothMasks: true,
+  hasNext: false,
+  hasPrevious: false,
 };
 
 export const DEFAULT_FRAME_OPTIONS = {

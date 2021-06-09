@@ -60,7 +60,7 @@ export default class ClassificationsOverlay<State extends BaseState>
     if (this.getPointInfo(state)) {
       return CONTAINS.CONTENT;
     }
-    return Infinity;
+    return CONTAINS.NONE;
   }
 
   getPointInfo(state: Readonly<State>): PointInfo {
@@ -191,7 +191,6 @@ export default class ClassificationsOverlay<State extends BaseState>
       state.textPad * 3 + width,
       state.fontSize + state.textPad * 3,
     ];
-    ctx.globalAlpha = selected ? SELECTED_MASK_ALPHA : MASK_ALPHA;
     ctx.beginPath();
     ctx.fillStyle = color;
     ctx.moveTo(tlx, tly);
@@ -200,7 +199,6 @@ export default class ClassificationsOverlay<State extends BaseState>
     ctx.lineTo(tlx, tly + h);
     ctx.closePath();
     ctx.fill();
-    ctx.globalAlpha = 1;
 
     ctx.fillStyle = TEXT_COLOR;
     ctx.fillText(text, tlx + state.textPad, tly + h - state.textPad);

@@ -18,7 +18,7 @@ import {
 import { LookerElement } from "./elements/common";
 import processOverlays from "./processOverlays";
 import { ClassificationsOverlay, FROM_FO, POINTS_FROM_FO } from "./overlays";
-import { Overlay } from "./overlays/base";
+import { CONTAINS, Overlay } from "./overlays/base";
 import { ClassificationLabels } from "./overlays/classifications";
 import {
   FrameState,
@@ -92,12 +92,15 @@ export abstract class Looker<
         return;
       }
       this.state = mergeUpdates(this.state, updates);
-      this.state = this.postProcess(this.lookerElement.element);
       this.pluckedOverlays = this.pluckOverlays(this.state);
       [this.currentOverlays, this.state.rotate] = processOverlays(
         this.state,
         this.pluckedOverlays
       );
+      this.state = this.postProcess(this.lookerElement.element);
+      this.state.mouseIsOnOverlay =
+        this.currentOverlays.length &&
+        this.currentOverlays[0].containsPoint(this.state) > CONTAINS.NONE;
       postUpdate && postUpdate(this.state, this.currentOverlays);
       this.lookerElement.render(this.state as Readonly<State>);
 
@@ -188,6 +191,7 @@ export abstract class Looker<
       textPad: PAD,
       fullscreen: false,
       pointRadius: POINT_RADIUS,
+      mouseIsOnOverlay: false,
     };
   }
 
@@ -234,6 +238,7 @@ export abstract class Looker<
     this.state.pointRadius = POINT_RADIUS / this.state.scale;
     this.state.strokeWidth = STROKE_WIDTH / this.state.scale;
     this.state.textPad = PAD / this.state.scale;
+
     return this.state;
   }
 }

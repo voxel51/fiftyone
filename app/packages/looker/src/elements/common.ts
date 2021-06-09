@@ -110,10 +110,13 @@ export class CanvasElement<State extends BaseState> extends BaseElement<
     return {
       click: ({ event, update, dispatchEvent }) => {
         update({ showOptions: false }, (state, overlays) => {
+          if (state.config.thumbnail) {
+            return;
+          }
           const moved =
             event.pageX !== this.mousedownCoordinates[0] ||
             event.pageY !== this.mousedownCoordinates[1];
-          if (!state.config.thumbnail && !moved && overlays.length) {
+          if (!moved && overlays.length) {
             const top = overlays[0];
             top.containsPoint(state) &&
               dispatchEvent("select", top.getSelectData(state));
@@ -248,6 +251,7 @@ export class CanvasElement<State extends BaseState> extends BaseElement<
     config: { thumbnail },
     panning,
     windowBBox: [_, __, width, height],
+    mouseIsOnOverlay,
   }: Readonly<State>) {
     if (this.width !== width) {
       this.element.width = width;
@@ -257,11 +261,9 @@ export class CanvasElement<State extends BaseState> extends BaseElement<
     }
     if (panning && this.element.style.cursor !== "all-scroll") {
       this.element.style.cursor = "all-scroll";
-    } else if (
-      !thumbnail &&
-      !panning &&
-      this.element.style.cursor !== "default"
-    ) {
+    } else if (!thumbnail && mouseIsOnOverlay) {
+      this.element.style.cursor = "pointer";
+    } else {
       this.element.style.cursor = "default";
     }
     return this.element;
@@ -302,8 +304,8 @@ export class NextElement<State extends BaseState> extends BaseElement<
     return element;
   }
 
-  isShown({ config: { thumbnail } }) {
-    return !thumbnail;
+  isShown({ config: { thumbnail }, options: { hasNext } }) {
+    return !thumbnail && hasNext;
   }
 
   renderSelf({ showControls, disableControls, config: { thumbnail } }) {
@@ -355,8 +357,8 @@ export class PreviousElement<State extends BaseState> extends BaseElement<
     return element;
   }
 
-  isShown({ config: { thumbnail } }) {
-    return !thumbnail;
+  isShown({ config: { thumbnail }, options: { hasPrevious } }) {
+    return !thumbnail && hasPrevious;
   }
 
   renderSelf({ showControls, disableControls, config: { thumbnail } }) {
