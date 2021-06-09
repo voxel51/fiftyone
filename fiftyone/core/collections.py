@@ -1466,14 +1466,16 @@ class SampleCollection(object):
                 are given this label for results purposes
             method ("simple"): a string specifying the evaluation method to use.
                 Supported values are ``("simple", "binary", "top-k")``
-            config (None): an :class:`ClassificationEvaluationConfig`
+            config (None): a
+                :class:`fiftyone.utils.eval.classification.ClassificationEvaluationConfig`
                 specifying the evaluation method to use. If a ``config`` is
                 provided, the ``method`` and ``kwargs`` parameters are ignored
             **kwargs: optional keyword arguments for the constructor of the
-                :class:`ClassificationEvaluationConfig` being used
+                :class:`fiftyone.utils.eval.classification.ClassificationEvaluationConfig`
+                being used
 
         Returns:
-            a :class:`ClassificationResults`
+            a :class:`fiftyone.utils.eval.classification.ClassificationResults`
         """
         return foue.evaluate_classifications(
             self,
@@ -1951,6 +1953,53 @@ class SampleCollection(object):
         """
         return self._add_view_stage(
             fos.ExcludeFields(field_names, _allow_missing=_allow_missing)
+        )
+
+    @view_stage
+    def exclude_frames(self, frame_ids, omit_empty=True):
+        """Excludes the frames with the given IDs from the video collection.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+
+            dataset = foz.load_zoo_dataset("quickstart-video")
+
+            #
+            # Exclude some specific frames
+            #
+
+            frame_ids = [
+                dataset.first().frames.first().id,
+                dataset.last().frames.last().id,
+            ]
+
+            view = dataset.exclude_frames(frame_ids)
+
+            print(dataset.count("frames"))
+            print(view.count("frames"))
+
+        Args:
+            frame_ids: the frames to exclude. Can be any of the following:
+
+                -   a frame ID
+                -   an iterable of frame IDs
+                -   a :class:`fiftyone.core.frame.Frame` or
+                    :class:`fiftyone.core.frame.FrameView`
+                -   an iterable of :class:`fiftyone.core.frame.Frame` or
+                    :class:`fiftyone.core.frame.FrameView` instances
+                -   a :class:`fiftyone.core.collections.SampleCollection`, in
+                    which case the frame IDs in the collection are used
+
+            omit_empty (True): whether to omit samples that have no frames
+                after excluding the specified frames
+
+        Returns:
+            a :class:`fiftyone.core.view.DatasetView`
+        """
+        return self._add_view_stage(
+            fos.ExcludeFrames(frame_ids, omit_empty=omit_empty)
         )
 
     @view_stage
@@ -3169,6 +3218,43 @@ class SampleCollection(object):
         return self._add_view_stage(fos.Match(filter))
 
     @view_stage
+    def match_frames(self, filter, omit_empty=True):
+        """Filters the frames in the video collection by the given filter.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset("quickstart-video")
+
+            #
+            # Match frames with at least 10 detections
+            #
+
+            num_objects = F("ground_truth_detections.detections").length()
+            view = dataset.match_frames(num_objects > 10)
+
+            print(dataset.count())
+            print(view.count())
+
+            print(dataset.count("frames"))
+            print(view.count("frames"))
+
+        Args:
+            filter: a :class:`fiftyone.core.expressions.ViewExpression` or
+                `MongoDB aggregation expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+                that returns a boolean describing the filter to apply
+
+        Returns:
+            a :class:`fiftyone.core.view.DatasetView`
+        """
+        return self._add_view_stage(
+            fos.MatchFrames(filter, omit_empty=omit_empty)
+        )
+
+    @view_stage
     def match_labels(
         self, labels=None, ids=None, tags=None, filter=None, fields=None
     ):
@@ -3545,6 +3631,56 @@ class SampleCollection(object):
         """
         return self._add_view_stage(
             fos.SelectFields(field_names, _allow_missing=_allow_missing)
+        )
+
+    @view_stage
+    def select_frames(self, frame_ids, omit_empty=True):
+        """Selects the frames with the given IDs from the video collection.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+
+            dataset = foz.load_zoo_dataset("quickstart-video")
+
+            #
+            # Select some specific frames
+            #
+
+            frame_ids = [
+                dataset.first().frames.first().id,
+                dataset.last().frames.last().id,
+            ]
+
+            view = dataset.select_frames(frame_ids)
+
+            print(dataset.count())
+            print(view.count())
+
+            print(dataset.count("frames"))
+            print(view.count("frames"))
+
+        Args:
+            frame_ids: the frames to select. Can be any of the following:
+
+                -   a frame ID
+                -   an iterable of frame IDs
+                -   a :class:`fiftyone.core.frame.Frame` or
+                    :class:`fiftyone.core.frame.FrameView`
+                -   an iterable of :class:`fiftyone.core.frame.Frame` or
+                    :class:`fiftyone.core.frame.FrameView` instances
+                -   a :class:`fiftyone.core.collections.SampleCollection`, in
+                    which case the frame IDs in the collection are used
+
+            omit_empty (True): whether to omit samples that have no frames
+                after selecting the specified frames
+
+        Returns:
+            a :class:`fiftyone.core.view.DatasetView`
+        """
+        return self._add_view_stage(
+            fos.SelectFrames(frame_ids, omit_empty=omit_empty)
         )
 
     @view_stage
@@ -3992,45 +4128,68 @@ class SampleCollection(object):
         return self._add_view_stage(fos.ToEvaluationPatches(eval_key))
 
     @view_stage
-    def to_frames(self, config=None):
+    def to_frames(self, **kwargs):
         """Creates a view that contains one sample per frame in the video
         collection.
 
+        By default, samples will be generated for every frame of each video,
+        based on the total frame count of the video files, but this method is
+        highly customizable. Refer to
+        :meth:`fiftyone.core.video.make_frames_dataset` to see the available
+        configuration options.
+
         .. note::
 
-             The first time this method is run on a collection, it will sample
-             each video in the collection into a directory of per-frame images.
+            Unless you have configured otherwise, creating frame views will
+            sample the necessary frames from the input video collection into
+            directories of per-frame images. For large video datasets,
+            **this may take some time and require substantial disk space!**
 
-             Videos that have previously been sampled will not be resampled,
-             unless you override this behavior via ``config``.
+            Frames that have previously been sampled will not be resampled, so
+            creating frame views into the same dataset will become faster if
+            the same frames are requested.
 
         Examples::
 
             import fiftyone as fo
             import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
 
             dataset = foz.load_zoo_dataset("quickstart-video")
 
             session = fo.launch_app(dataset)
 
             #
-            # Create a frames view
+            # Create a frames view for an entire video dataset
             #
 
-            view = dataset.to_frames()
-            print(view)
+            frames = dataset.to_frames()
+            print(frames)
 
-            session.view = view
+            session.view = frames
+
+            #
+            # Create a frames view that only contains frames with at least 10
+            # objects, sampled at a maximum frame rate of 1fps
+            #
+
+            num_objects = F("ground_truth_detections.detections").length()
+            view = dataset.match_frames(num_objects > 10)
+
+            frames = view.to_frames(max_fps=1, sparse=True)
+            print(frames)
+
+            session.view = frames
 
         Args:
-            config (None): an optional dict of keyword arguments for
+            **kwargs: optional keyword arguments for
                 :meth:`fiftyone.core.video.make_frames_dataset` specifying how
                 to perform the conversion
 
         Returns:
             a :class:`fiftyone.core.video.FramesView`
         """
-        return self._add_view_stage(fos.ToFrames(config=config))
+        return self._add_view_stage(fos.ToFrames(**kwargs))
 
     @classmethod
     def list_aggregations(cls):
@@ -6120,7 +6279,7 @@ def _parse_field_name(
     # Array references [] have been stripped
     field_name = "".join(chunks)
 
-    # Convert `id` to `_id` if necessary
+    # Handle public (string) vs private (ObjectId) ID fields
     field_name, is_id_field, id_to_str = _handle_id_fields(
         sample_collection, field_name
     )

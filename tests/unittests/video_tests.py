@@ -968,7 +968,7 @@ class VideoTests(unittest.TestCase):
         dataset = fo.Dataset()
 
         sample1 = fo.Sample(
-            filepath="video.mp4",
+            filepath="video1.mp4",
             metadata=fo.VideoMetadata(total_frame_count=4),
             tags=["test"],
             weather="sunny",
@@ -985,7 +985,7 @@ class VideoTests(unittest.TestCase):
         sample1.frames[3] = fo.Frame(hello="goodbye")
 
         sample2 = fo.Sample(
-            filepath="video.mp4",
+            filepath="video2.mp4",
             metadata=fo.VideoMetadata(total_frame_count=5),
             tags=["test"],
             weather="cloudy",
@@ -1004,7 +1004,7 @@ class VideoTests(unittest.TestCase):
 
         dataset.add_samples([sample1, sample2])
 
-        view = dataset.to_frames(config={"sample_frames": False})
+        view = dataset.to_frames(sample_frames=False)
 
         self.assertSetEqual(
             set(view.get_field_schema().keys()),
@@ -1015,7 +1015,6 @@ class VideoTests(unittest.TestCase):
                 "tags",
                 "sample_id",
                 "frame_number",
-                "frame_id",
                 "hello",
                 "ground_truth",
             },
@@ -1028,8 +1027,6 @@ class VideoTests(unittest.TestCase):
         self.assertIsInstance(frame._id, ObjectId)
         self.assertIsInstance(frame.sample_id, str)
         self.assertIsInstance(frame._sample_id, ObjectId)
-        self.assertIsInstance(frame.frame_id, str)
-        self.assertIsInstance(frame._frame_id, ObjectId)
 
         for _id in view.values("id"):
             self.assertIsInstance(_id, str)
@@ -1095,7 +1092,7 @@ class VideoTests(unittest.TestCase):
             dataset.count_values("frames.ground_truth.detections.label"),
             {"DOG": 1, "RABBIT": 1},
         )
-        self.assertIsNotNone(view.first().frame_id)
+        self.assertIsNotNone(view.first().id)
         self.assertIsNotNone(dataset.last().frames.first().id)
 
         sample = view.exclude_fields("ground_truth").first()
@@ -1123,6 +1120,51 @@ class VideoTests(unittest.TestCase):
 
         self.assertEqual(dataset.count_sample_tags(), {})
         self.assertEqual(view.count_sample_tags(), {})
+
+    @drop_datasets
+    def test_to_frames_sparse(self):
+        dataset = fo.Dataset()
+
+        sample1 = fo.Sample(
+            filepath="video1.mp4",
+            metadata=fo.VideoMetadata(total_frame_count=4),
+        )
+        sample1.frames[1] = fo.Frame()
+        sample1.frames[2] = fo.Frame(
+            ground_truth=fo.Detections(
+                detections=[
+                    fo.Detection(label="cat"),
+                    fo.Detection(label="dog"),
+                ]
+            )
+        )
+        sample1.frames[3] = fo.Frame(hello="goodbye")
+
+        sample2 = fo.Sample(
+            filepath="video2.mp4",
+            metadata=fo.VideoMetadata(total_frame_count=5),
+        )
+        sample2.frames[1] = fo.Frame(
+            ground_truth=fo.Detections(
+                detections=[
+                    fo.Detection(label="dog"),
+                    fo.Detection(label="rabbit"),
+                ]
+            ),
+        )
+        sample2.frames[3] = fo.Frame()
+        sample2.frames[5] = fo.Frame(hello="there")
+
+        dataset.add_samples([sample1, sample2])
+
+        frames = dataset.to_frames(sparse=True, sample_frames=False)
+
+        self.assertEqual(len(frames), 6)
+
+        view = dataset.match_frames(F("ground_truth.detections").length() > 0)
+        frames = view.to_frames(sparse=True, sample_frames=False)
+
+        self.assertEqual(len(frames), 2)
 
     @drop_datasets
     def test_to_frame_patches(self):

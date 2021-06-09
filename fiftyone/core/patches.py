@@ -100,8 +100,12 @@ class _PatchesView(fov.DatasetView):
         )
 
     @property
-    def _label_fields(self):
-        raise NotImplementedError("subclass must implement _label_fields")
+    def _base_view(self):
+        return self.__class__(
+            self._source_collection,
+            self._patches_stage,
+            self._patches_dataset,
+        )
 
     @property
     def _dataset(self):
@@ -122,6 +126,10 @@ class _PatchesView(fov.DatasetView):
             + [self._patches_stage]
             + self.__stages
         )
+
+    @property
+    def _label_fields(self):
+        raise NotImplementedError("subclass must implement _label_fields")
 
     @property
     def _element_str(self):
@@ -561,6 +569,11 @@ def make_evaluation_dataset(sample_collection, eval_key, name=None):
 
 
 def _make_patches_view(sample_collection, field, keep_label_lists=False):
+    if sample_collection._is_frames:
+        raise ValueError(
+            "Creating patches views into frame views is not yet supported"
+        )
+
     if sample_collection._is_frame_field(field):
         raise ValueError(
             "Frame label patches cannot be directly extracted; you must first "
