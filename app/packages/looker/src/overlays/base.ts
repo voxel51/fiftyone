@@ -18,7 +18,15 @@ export interface PointInfo {
     _id: string;
     _cls: string;
   };
+  point?: Coordinates;
+  target?: number;
   type: string;
+}
+
+export interface SelectData {
+  field: string;
+  id: string;
+  frameNumber?: number;
 }
 
 export interface BaseLabel {

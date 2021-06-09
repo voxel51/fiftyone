@@ -2,10 +2,10 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 
-import { DASH_COLOR } from "../constants";
+import { DASH_COLOR, TOLERANCE } from "../constants";
 import { BaseState, Coordinates } from "../state";
 import { distance } from "../util";
-import { CONTAINS, CoordinateOverlay, RegularLabel } from "./base";
+import { CONTAINS, CoordinateOverlay, PointInfo, RegularLabel } from "./base";
 import { t } from "./util";
 
 interface KeypointLabel extends RegularLabel {
@@ -19,29 +19,8 @@ export default class KeypointOverlay<
     super(field, label);
   }
 
-  private getDistanceAndPoint({
-    pointRadius,
-    config: {
-      dimensions: [w, h],
-    },
-    pixelCoordinates: [x, y],
-  }: Readonly<State>) {
-    const distances = [];
-    // this.radius = strokeWidth * KEYPOINT_RADIUS_FACTOR;
-    for (const point of this.label.points) {
-      const d = distance(x, y, point[0] * w, point[1] * h);
-      if (d <= pointRadius) {
-        distances.push([0, point]);
-      } else {
-        distances.push([d, point]);
-      }
-    }
-
-    return distances.sort((a, b) => a[0] - b[0])[0];
-  }
-
-  containsPoint(state) {
-    if (this.getDistanceAndPoint(state)[0] <= 2 * 8) {
+  containsPoint(state: Readonly<State>): CONTAINS {
+    if (this.getDistanceAndPoint(state)[0] <= state.pointRadius) {
       return CONTAINS.BORDER;
     }
     return CONTAINS.NONE;
@@ -74,11 +53,11 @@ export default class KeypointOverlay<
     }
   }
 
-  getMouseDistance(state) {
+  getMouseDistance(state: Readonly<State>): number {
     return this.getDistanceAndPoint(state)[0];
   }
 
-  getPointInfo(state) {
+  getPointInfo(state: Readonly<State>): PointInfo {
     return {
       color: this.getColor(state),
       field: this.field,
@@ -88,8 +67,28 @@ export default class KeypointOverlay<
     };
   }
 
-  getPoints() {
+  getPoints(): Coordinates[] {
     return getKeypointPoints([this.label]);
+  }
+
+  private getDistanceAndPoint(state: Readonly<State>) {
+    const distances = [];
+    let {
+      canvasBBox: [_, __, w, h],
+      pointRadius,
+      relativeCoordinates: [x, y],
+    } = state;
+    pointRadius = this.isSelected(state) ? pointRadius * 2 : pointRadius;
+    for (const [px, py] of this.label.points) {
+      const d = distance(x * w, y * h, px * w, py * h);
+      if (d <= pointRadius * TOLERANCE) {
+        distances.push([0, [px, py]]);
+      } else {
+        distances.push([d, [px, py]]);
+      }
+    }
+
+    return distances.sort((a, b) => a[0] - b[0])[0];
   }
 }
 

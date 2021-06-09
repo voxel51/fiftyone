@@ -5,7 +5,14 @@
 import { MASK_ALPHA, SELECTED_MASK_ALPHA, TEXT_COLOR } from "../constants";
 import { BaseState, BoundingBox, Coordinates } from "../state";
 import { getRenderedScale } from "../util";
-import { CONTAINS, isShown, Overlay, PointInfo, RegularLabel } from "./base";
+import {
+  CONTAINS,
+  isShown,
+  Overlay,
+  PointInfo,
+  RegularLabel,
+  SelectData,
+} from "./base";
 
 interface ClassificationLabel extends RegularLabel {}
 
@@ -34,7 +41,7 @@ export default class ClassificationsOverlay<State extends BaseState>
     return this.getFiltered(state).length > 0;
   }
 
-  getSelectData(state: Readonly<State>) {
+  getSelectData(state: Readonly<State>): SelectData {
     const {
       label: { _id: id },
       field,
@@ -42,7 +49,7 @@ export default class ClassificationsOverlay<State extends BaseState>
     return { id, field };
   }
 
-  getMouseDistance(state: Readonly<State>) {
+  getMouseDistance(state: Readonly<State>): number {
     if (this.getPointInfo(state)) {
       return 0;
     }
