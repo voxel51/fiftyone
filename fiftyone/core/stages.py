@@ -316,7 +316,6 @@ class Exclude(ViewStage):
 
     def __init__(self, sample_ids):
         self._sample_ids = _get_sample_ids(sample_ids)
-        self._validate_params()
 
     @property
     def sample_ids(self):
@@ -339,11 +338,6 @@ class Exclude(ViewStage):
                 "placeholder": "list,of,sample,ids",
             }
         ]
-
-    def _validate_params(self):
-        # Ensures that ObjectIDs are valid
-        for _id in self._sample_ids:
-            ObjectId(_id)
 
 
 class ExcludeFields(ViewStage):
@@ -488,6 +482,101 @@ class ExcludeFields(ViewStage):
                 raise ValueError(
                     "Cannot exclude default frame fields %s" % defaults
                 )
+
+
+class ExcludeFrames(ViewStage):
+    """Excludes the frames with the given IDs from a video collection.
+
+    Examples::
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("quickstart-video")
+
+        #
+        # Exclude some specific frames
+        #
+
+        frame_ids = [
+            dataset.first().frames.first().id,
+            dataset.last().frames.last().id,
+        ]
+
+        stage = fo.ExcludeFrames(frame_ids)
+        view = dataset.add_stage(stage)
+
+        print(dataset.count("frames"))
+        print(view.count("frames"))
+
+    Args:
+        frame_ids: the frames to exclude. Can be any of the following:
+
+            -   a frame ID
+            -   an iterable of frame IDs
+            -   a :class:`fiftyone.core.frame.Frame` or
+                :class:`fiftyone.core.frame.FrameView`
+            -   an iterable of :class:`fiftyone.core.frame.Frame` or
+                :class:`fiftyone.core.frame.FrameView` instances
+            -   a :class:`fiftyone.core.collections.SampleCollection`, in which
+                case the frame IDs in the collection are used
+
+        omit_empty (True): whether to omit samples that have no frames after
+            excluding the specified frames
+    """
+
+    def __init__(self, frame_ids, omit_empty=True):
+        self._frame_ids = _get_frame_ids(frame_ids)
+        self._omit_empty = omit_empty
+
+    @property
+    def frame_ids(self):
+        """The list of frame IDs to exclude."""
+        return self._frame_ids
+
+    @property
+    def omit_empty(self):
+        """Whether to omit samples that have no frames after filtering."""
+        return self._omit_empty
+
+    def to_mongo(self, _):
+        frame_ids = [ObjectId(_id) for _id in self._frame_ids]
+        select_expr = F("frames").filter(~F("_id").is_in(frame_ids))
+        pipeline = [{"$set": {"frames": select_expr.to_mongo()}}]
+
+        if self._omit_empty:
+            non_empty_expr = F("frames").length() > 0
+            pipeline.append({"$match": {"$expr": non_empty_expr.to_mongo()}})
+
+        return pipeline
+
+    def _kwargs(self):
+        return [
+            ["frame_ids", self._frame_ids],
+            ["omit_empty", self._omit_empty],
+        ]
+
+    @classmethod
+    def _params(cls):
+        return [
+            {
+                "name": "frame_ids",
+                "type": "list<id>|id",
+                "placeholder": "list,of,frame,ids",
+            },
+            {
+                "name": "omit_empty",
+                "type": "bool",
+                "default": "True",
+                "placeholder": "omit empty (default=True)",
+            },
+        ]
+
+    def _needs_frames(self, _):
+        return True
+
+    def validate(self, sample_collection):
+        fova.validate_video_collection(sample_collection)
 
 
 class ExcludeLabels(ViewStage):
@@ -2766,7 +2855,7 @@ class Match(ViewStage):
 
 
 class MatchFrames(ViewStage):
-    """Filters the frames in the collection by the given filter.
+    """Filters the frames in a video collection by the given filter.
 
     Examples::
 
@@ -2808,7 +2897,7 @@ class MatchFrames(ViewStage):
 
     @property
     def omit_empty(self):
-        """Whether to omit samples that have no labels after filtering."""
+        """Whether to omit samples that have no frames after filtering."""
         return self._omit_empty
 
     def _get_mongo_expr(self):
@@ -3500,7 +3589,6 @@ class Select(ViewStage):
     def __init__(self, sample_ids, ordered=False):
         self._sample_ids = _get_sample_ids(sample_ids)
         self._ordered = ordered
-        self._validate_params()
 
     @property
     def sample_ids(self):
@@ -3543,11 +3631,6 @@ class Select(ViewStage):
                 "placeholder": "ordered (default=False)",
             },
         ]
-
-    def _validate_params(self):
-        # Ensures that ObjectIDs are valid
-        for _id in self._sample_ids:
-            ObjectId(_id)
 
 
 class SelectFields(ViewStage):
@@ -3706,7 +3789,7 @@ class SelectFields(ViewStage):
 
 
 class SelectFrames(ViewStage):
-    """Selects the frames with the given IDs from a collection.
+    """Selects the frames with the given IDs from a video collection.
 
     Examples::
 
@@ -3752,11 +3835,10 @@ class SelectFrames(ViewStage):
     def __init__(self, frame_ids, omit_empty=True):
         self._frame_ids = _get_frame_ids(frame_ids)
         self._omit_empty = omit_empty
-        self._validate_params()
 
     @property
     def frame_ids(self):
-        """The list of sample IDs to select."""
+        """The list of frame IDs to select."""
         return self._frame_ids
 
     @property
@@ -3765,8 +3847,8 @@ class SelectFrames(ViewStage):
         return self._omit_empty
 
     def to_mongo(self, _):
-        ids = [ObjectId(_id) for _id in self._frame_ids]
-        select_expr = F("frames").filter(F("_id").is_in(ids))
+        frame_ids = [ObjectId(_id) for _id in self._frame_ids]
+        select_expr = F("frames").filter(F("_id").is_in(frame_ids))
         pipeline = [{"$set": {"frames": select_expr.to_mongo()}}]
 
         if self._omit_empty:
@@ -3796,11 +3878,6 @@ class SelectFrames(ViewStage):
                 "placeholder": "omit empty (default=True)",
             },
         ]
-
-    def _validate_params(self):
-        # Ensures that ObjectIDs are valid
-        for _id in self._frame_ids:
-            ObjectId(_id)
 
     def _needs_frames(self, _):
         return True
@@ -5274,6 +5351,7 @@ _repr.maxother = 30
 _STAGES = [
     Exclude,
     ExcludeFields,
+    ExcludeFrames,
     ExcludeLabels,
     Exists,
     FilterField,

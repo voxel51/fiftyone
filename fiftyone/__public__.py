@@ -125,6 +125,7 @@ from .core.sample import Sample
 from .core.stages import (
     Exclude,
     ExcludeFields,
+    ExcludeFrames,
     ExcludeLabels,
     Exists,
     FilterField,

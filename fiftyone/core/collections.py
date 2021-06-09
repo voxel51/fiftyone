@@ -1956,6 +1956,53 @@ class SampleCollection(object):
         )
 
     @view_stage
+    def exclude_frames(self, frame_ids, omit_empty=True):
+        """Excludes the frames with the given IDs from the video collection.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+
+            dataset = foz.load_zoo_dataset("quickstart-video")
+
+            #
+            # Exclude some specific frames
+            #
+
+            frame_ids = [
+                dataset.first().frames.first().id,
+                dataset.last().frames.last().id,
+            ]
+
+            view = dataset.exclude_frames(frame_ids)
+
+            print(dataset.count("frames"))
+            print(view.count("frames"))
+
+        Args:
+            frame_ids: the frames to exclude. Can be any of the following:
+
+                -   a frame ID
+                -   an iterable of frame IDs
+                -   a :class:`fiftyone.core.frame.Frame` or
+                    :class:`fiftyone.core.frame.FrameView`
+                -   an iterable of :class:`fiftyone.core.frame.Frame` or
+                    :class:`fiftyone.core.frame.FrameView` instances
+                -   a :class:`fiftyone.core.collections.SampleCollection`, in
+                    which case the frame IDs in the collection are used
+
+            omit_empty (True): whether to omit samples that have no frames
+                after excluding the specified frames
+
+        Returns:
+            a :class:`fiftyone.core.view.DatasetView`
+        """
+        return self._add_view_stage(
+            fos.ExcludeFrames(frame_ids, omit_empty=omit_empty)
+        )
+
+    @view_stage
     def exclude_labels(
         self, labels=None, ids=None, tags=None, fields=None, omit_empty=True
     ):
@@ -3172,7 +3219,7 @@ class SampleCollection(object):
 
     @view_stage
     def match_frames(self, filter, omit_empty=True):
-        """Filters the frames in the collection by the given filter.
+        """Filters the frames in the video collection by the given filter.
 
         Examples::
 
@@ -3588,7 +3635,7 @@ class SampleCollection(object):
 
     @view_stage
     def select_frames(self, frame_ids, omit_empty=True):
-        """Selects the frames with the given IDs from the collection.
+        """Selects the frames with the given IDs from the video collection.
 
         Examples::
 
@@ -3626,8 +3673,8 @@ class SampleCollection(object):
                 -   a :class:`fiftyone.core.collections.SampleCollection`, in
                     which case the frame IDs in the collection are used
 
-            omit_empty (True): whether to omit samples that have no frames after
-                selecting the specified frames
+            omit_empty (True): whether to omit samples that have no frames
+                after selecting the specified frames
 
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
