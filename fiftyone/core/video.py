@@ -478,9 +478,10 @@ def _populate_frames(
     for sample in samples:
         sample_id = sample["_id"]
         video_path = sample["filepath"]
-        tags = sample["tags"]
-        frame_rate = sample["metadata"]["frame_rate"]
-        total_frame_count = sample["metadata"]["total_frame_count"]
+        tags = sample.get("tags", [])
+        metadata = sample.get("metadata", {})
+        frame_rate = metadata.get("frame_rate", None)
+        total_frame_count = metadata.get("total_frame_count", -1)
         frame_ids_map = {
             f["frame_number"]: f["_id"] for f in sample.get("frames", [])
         }
@@ -593,7 +594,10 @@ def _parse_video_frames(
     #
 
     if target_frame_numbers is None:
-        doc_frame_numbers = list(range(1, total_frame_count + 1))
+        if sparse and total_frame_count < 0:
+            doc_frame_numbers = sorted(frame_ids_map.keys())
+        else:
+            doc_frame_numbers = list(range(1, total_frame_count + 1))
     else:
         doc_frame_numbers = target_frame_numbers
 

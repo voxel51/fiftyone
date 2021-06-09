@@ -1015,7 +1015,6 @@ class VideoTests(unittest.TestCase):
                 "tags",
                 "sample_id",
                 "frame_number",
-                "frame_id",
                 "hello",
                 "ground_truth",
             },
@@ -1028,8 +1027,6 @@ class VideoTests(unittest.TestCase):
         self.assertIsInstance(frame._id, ObjectId)
         self.assertIsInstance(frame.sample_id, str)
         self.assertIsInstance(frame._sample_id, ObjectId)
-        self.assertIsInstance(frame.frame_id, str)
-        self.assertIsInstance(frame._frame_id, ObjectId)
 
         for _id in view.values("id"):
             self.assertIsInstance(_id, str)
@@ -1095,7 +1092,7 @@ class VideoTests(unittest.TestCase):
             dataset.count_values("frames.ground_truth.detections.label"),
             {"DOG": 1, "RABBIT": 1},
         )
-        self.assertIsNotNone(view.first().frame_id)
+        self.assertIsNotNone(view.first().id)
         self.assertIsNotNone(dataset.last().frames.first().id)
 
         sample = view.exclude_fields("ground_truth").first()

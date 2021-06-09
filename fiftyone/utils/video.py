@@ -407,6 +407,9 @@ def sample_frames_uniform(
     if total_frame_count <= 0:
         return []
 
+    if frame_rate is None or total_frame_count is None:
+        return None
+
     ifps = frame_rate
 
     if fps is not None:
