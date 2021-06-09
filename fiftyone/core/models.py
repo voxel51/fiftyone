@@ -30,8 +30,8 @@ tud = fou.lazy_import("torch.utils.data")
 
 foe = fou.lazy_import("fiftyone.core.eta_utils")
 fouf = fou.lazy_import("fiftyone.utils.flash")
-fout = fou.lazy_import("fiftyone.utils.torch")
 foup = fou.lazy_import("fiftyone.utils.patches")
+fout = fou.lazy_import("fiftyone.utils.torch")
 
 
 logger = logging.getLogger(__name__)
