@@ -968,7 +968,7 @@ class VideoTests(unittest.TestCase):
         dataset = fo.Dataset()
 
         sample1 = fo.Sample(
-            filepath="video.mp4",
+            filepath="video1.mp4",
             metadata=fo.VideoMetadata(total_frame_count=4),
             tags=["test"],
             weather="sunny",
@@ -985,7 +985,7 @@ class VideoTests(unittest.TestCase):
         sample1.frames[3] = fo.Frame(hello="goodbye")
 
         sample2 = fo.Sample(
-            filepath="video.mp4",
+            filepath="video2.mp4",
             metadata=fo.VideoMetadata(total_frame_count=5),
             tags=["test"],
             weather="cloudy",
@@ -1120,6 +1120,51 @@ class VideoTests(unittest.TestCase):
 
         self.assertEqual(dataset.count_sample_tags(), {})
         self.assertEqual(view.count_sample_tags(), {})
+
+    @drop_datasets
+    def test_to_frames_sparse(self):
+        dataset = fo.Dataset()
+
+        sample1 = fo.Sample(
+            filepath="video1.mp4",
+            metadata=fo.VideoMetadata(total_frame_count=4),
+        )
+        sample1.frames[1] = fo.Frame()
+        sample1.frames[2] = fo.Frame(
+            ground_truth=fo.Detections(
+                detections=[
+                    fo.Detection(label="cat"),
+                    fo.Detection(label="dog"),
+                ]
+            )
+        )
+        sample1.frames[3] = fo.Frame(hello="goodbye")
+
+        sample2 = fo.Sample(
+            filepath="video2.mp4",
+            metadata=fo.VideoMetadata(total_frame_count=5),
+        )
+        sample2.frames[1] = fo.Frame(
+            ground_truth=fo.Detections(
+                detections=[
+                    fo.Detection(label="dog"),
+                    fo.Detection(label="rabbit"),
+                ]
+            ),
+        )
+        sample2.frames[3] = fo.Frame()
+        sample2.frames[5] = fo.Frame(hello="there")
+
+        dataset.add_samples([sample1, sample2])
+
+        frames = dataset.to_frames(sparse=True, sample_frames=False)
+
+        self.assertEqual(len(frames), 6)
+
+        view = dataset.match_frames(F("ground_truth.detections").length() > 0)
+        frames = view.to_frames(sparse=True, sample_frames=False)
+
+        self.assertEqual(len(frames), 2)
 
 
 if __name__ == "__main__":
