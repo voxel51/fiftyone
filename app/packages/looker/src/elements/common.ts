@@ -102,6 +102,7 @@ export class CanvasElement<State extends BaseState> extends BaseElement<
   private width: number;
   private height: number;
   private mousedownCoordinates: Coordinates;
+  private mousedown: boolean;
   private hideControlsTimeout?: ReturnType<typeof setTimeout>;
   private start: Coordinates = [0, 0];
   private wheelTimeout: ReturnType<typeof setTimeout>;
@@ -114,8 +115,9 @@ export class CanvasElement<State extends BaseState> extends BaseElement<
             return;
           }
           const moved =
-            event.pageX !== this.mousedownCoordinates[0] ||
-            event.pageY !== this.mousedownCoordinates[1];
+            Boolean(this.mousedownCoordinates) &&
+            (event.pageX !== this.mousedownCoordinates[0] ||
+              event.pageY !== this.mousedownCoordinates[1]);
           if (!moved && overlays.length) {
             const top = overlays[0];
             top.containsPoint(state) &&
@@ -124,6 +126,7 @@ export class CanvasElement<State extends BaseState> extends BaseElement<
         });
       },
       mouseleave: ({ dispatchEvent }) => {
+        this.mousedown = false;
         dispatchEvent("tooltip", null);
       },
       mousemove: ({ event, update, dispatchEvent }) => {
@@ -153,10 +156,12 @@ export class CanvasElement<State extends BaseState> extends BaseElement<
             rotate: 0,
             showControls: true,
           };
-          if (!state.panning) {
+          if (!this.mousedown) {
             return newState;
           }
           newState.pan = this.getPan([event.pageX, event.pageY]);
+          newState.panning = true;
+          newState.canZoom = false;
           return newState;
         }, dispatchTooltipEvent(dispatchEvent));
       },
@@ -166,9 +171,10 @@ export class CanvasElement<State extends BaseState> extends BaseElement<
             return {};
           }
           event.preventDefault();
-          this.mousedownCoordinates = [event.pageX - x, event.pageY];
+          this.mousedown = true;
+          this.mousedownCoordinates = [event.pageX, event.pageY];
           this.start = [event.pageX - x, event.pageY - y];
-          return { panning: true, canZoom: false };
+          return {};
         });
       },
       mouseup: ({ event, update }) => {
@@ -176,8 +182,8 @@ export class CanvasElement<State extends BaseState> extends BaseElement<
           if (state.config.thumbnail || !state.panning) {
             return {};
           }
-          this.mousedownCoordinates = [event.pageX, event.pageY];
           event.preventDefault();
+          this.mousedown = false;
           return {
             panning: false,
             pan: this.getPan([event.pageX, event.pageY]),
@@ -260,8 +266,9 @@ export class CanvasElement<State extends BaseState> extends BaseElement<
     if (this.height !== height) {
       this.element.height = height;
     }
-    if (panning && this.element.style.cursor !== "all-scroll") {
-      this.element.style.cursor = "all-scroll";
+    if (panning) {
+      this.element.style.cursor !== "all-scroll" &&
+        (this.element.style.cursor = "all-scroll");
     } else if (!thumbnail && mouseIsOnOverlay) {
       this.element.style.cursor = "pointer";
     } else if (thumbnail) {
