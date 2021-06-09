@@ -29,8 +29,7 @@ export default class PolylineOverlay<
   }
 
   containsPoint(state: Readonly<State>): CONTAINS {
-    const [w, h] = state.config.dimensions;
-    const tolerance = TOLERANCE / (w > h ? w : h);
+    const tolerance = state.strokeWidth * TOLERANCE;
     const minDistance = this.getMouseDistance(state);
     if (minDistance <= tolerance) {
       return CONTAINS.BORDER;
@@ -45,7 +44,7 @@ export default class PolylineOverlay<
     return CONTAINS.NONE;
   }
 
-  draw(ctx: CanvasRenderingContext2D, state: Readonly<State>) {
+  draw(ctx: CanvasRenderingContext2D, state: Readonly<State>): void {
     const color = this.getColor(state);
     const selected = this.isSelected(state);
 
@@ -65,19 +64,23 @@ export default class PolylineOverlay<
         color,
         this.label.filled,
         selected,
-        DASH_LENGTH
+        selected ? DASH_LENGTH : null
       );
     }
   }
 
   getMouseDistance(state: Readonly<State>): number {
     const distances = [];
-    const [w, h] = state.config.dimensions;
+    const [_, __, w, h] = state.canvasBBox;
+    const xy: Coordinates = [
+      state.relativeCoordinates[0] * w,
+      state.relativeCoordinates[1] * h,
+    ];
     for (const shape of this.label.points) {
       for (let i = 0; i < shape.length - 1; i++) {
         distances.push(
           distanceFromLineSegment(
-            state.pixelCoordinates,
+            xy,
             [w * shape[i][0], h * shape[i][1]],
             [w * shape[i + 1][0], h * shape[i + 1][1]]
           )
@@ -87,7 +90,7 @@ export default class PolylineOverlay<
       if (this.label.closed) {
         distances.push(
           distanceFromLineSegment(
-            state.pixelCoordinates,
+            xy,
             [w * shape[0][0], h * shape[0][1]],
             [w * shape[shape.length - 1][0], h * shape[shape.length - 1][1]]
           )
