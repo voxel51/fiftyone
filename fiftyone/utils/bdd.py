@@ -593,7 +593,7 @@ def _make_bdd_annotation(labels, metadata, filename):
         if isinstance(_labels, fol.Classification):
             frame_attrs[name] = _labels.label
         elif isinstance(_labels, fol.Classifications):
-            frame_attrs[name] = [l.label for l in _labels]
+            frame_attrs[name] = [l.label for l in _labels.classifications]
         elif isinstance(_labels, fol.Detection):
             objects.append(_detection_to_bdd(_labels, frame_size))
         elif isinstance(_labels, fol.Detections):
