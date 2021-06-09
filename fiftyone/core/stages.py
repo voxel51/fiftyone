@@ -22,11 +22,13 @@ import fiftyone.core.expressions as foe
 from fiftyone.core.expressions import ViewField as F
 from fiftyone.core.expressions import VALUE
 import fiftyone.core.fields as fof
+import fiftyone.core.frame as fofr
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 from fiftyone.core.odm.document import MongoEngineBaseDocument
 import fiftyone.core.sample as fos
 import fiftyone.core.utils as fou
+import fiftyone.core.validation as fova
 
 fod = fou.lazy_import("fiftyone.core.dataset")
 fop = fou.lazy_import("fiftyone.core.patches")
@@ -386,13 +388,14 @@ class ExcludeFields(ViewStage):
         field_names: a field name or iterable of field names to exclude
     """
 
-    def __init__(self, field_names):
+    def __init__(self, field_names, _allow_missing=False):
         if etau.is_str(field_names):
             field_names = [field_names]
         elif field_names is not None:
             field_names = list(field_names)
 
         self._field_names = field_names
+        self._allow_missing = _allow_missing
 
     @property
     def field_names(self):
@@ -400,44 +403,11 @@ class ExcludeFields(ViewStage):
         return self._field_names
 
     def get_excluded_fields(self, sample_collection, frames=False):
-        if frames:
-            default_fields = sample_collection._get_default_frame_fields(
-                include_private=True, include_id=True
-            )
+        if sample_collection.media_type == fom.VIDEO:
+            fields, frame_fields = fou.split_frame_fields(self.field_names)
+            return frame_fields if frames else fields
 
-            excluded_fields = []
-            for field in self.field_names:
-                (
-                    field_name,
-                    is_frame_field,
-                ) = sample_collection._handle_frame_field(field)
-                if is_frame_field:
-                    excluded_fields.append(field_name)
-        else:
-            default_fields = sample_collection._get_default_sample_fields(
-                include_private=True, include_id=True
-            )
-            if sample_collection.media_type == fom.VIDEO:
-                default_fields += ("frames",)
-
-            excluded_fields = []
-            for field in self.field_names:
-                if not sample_collection._is_frame_field(field):
-                    excluded_fields.append(field)
-
-        for field_name in excluded_fields:
-            if field_name.startswith("_"):
-                raise ValueError(
-                    "Cannot exclude private field '%s'" % field_name
-                )
-
-            if field_name == "id" or field_name in default_fields:
-                ftype = "frame field" if frames else "field"
-                raise ValueError(
-                    "Cannot exclude default %s '%s'" % (ftype, field_name)
-                )
-
-        return excluded_fields
+        return self.field_names
 
     def to_mongo(self, sample_collection):
         excluded_fields = self.get_excluded_fields(
@@ -466,7 +436,10 @@ class ExcludeFields(ViewStage):
         )
 
     def _kwargs(self):
-        return [["field_names", self._field_names]]
+        return [
+            ["field_names", self._field_names],
+            ["_allow_missing", self._allow_missing],
+        ]
 
     @classmethod
     def _params(cls):
@@ -475,12 +448,46 @@ class ExcludeFields(ViewStage):
                 "name": "field_names",
                 "type": "list<str>",
                 "placeholder": "list,of,fields",
-            }
+            },
+            {"name": "_allow_missing", "type": "bool", "default": "False"},
         ]
 
     def validate(self, sample_collection):
+        if self._allow_missing:
+            return
+
         # Using dataset here allows a field to be excluded multiple times
         sample_collection._dataset.validate_fields_exist(self.field_names)
+
+        if sample_collection.media_type == fom.VIDEO:
+            fields, frame_fields = fou.split_frame_fields(self.field_names)
+        else:
+            fields = self.field_names
+            frame_fields = None
+
+        if fields:
+            default_fields = set(
+                sample_collection._get_default_sample_fields(
+                    include_private=True
+                )
+            )
+
+            defaults = [f for f in fields if f in default_fields]
+            if defaults:
+                raise ValueError("Cannot exclude default fields %s" % defaults)
+
+        if frame_fields:
+            default_frame_fields = set(
+                sample_collection._get_default_frame_fields(
+                    include_private=True
+                )
+            )
+
+            defaults = [f for f in fields if f in default_frame_fields]
+            if defaults:
+                raise ValueError(
+                    "Cannot exclude default frame fields %s" % defaults
+                )
 
 
 class ExcludeLabels(ViewStage):
@@ -1045,20 +1052,28 @@ class FilterField(ViewStage):
         ]
 
     def _validate_params(self):
-        if not isinstance(self._filter, (foe.ViewExpression, dict)):
+        if not isinstance(self._filter, (foe.ViewExpression, dict, bool)):
             raise ValueError(
                 "Filter must be a ViewExpression or a MongoDB aggregation "
                 "expression defining a filter; found '%s'" % self._filter
             )
 
     def validate(self, sample_collection):
-        if self._field == "filepath":
-            raise ValueError("Cannot filter required field `filepath`")
-
         sample_collection.validate_fields_exist(self._field)
 
-        _, is_frame_field = sample_collection._handle_frame_field(self._field)
+        field, is_frame_field = sample_collection._handle_frame_field(
+            self._field
+        )
         self._is_frame_field = is_frame_field
+
+        if is_frame_field:
+            if field in ("id", "frame_number"):
+                raise ValueError(
+                    "Cannot filter required frame field '%s'" % field
+                )
+        else:
+            if field in ("id", "filepath"):
+                raise ValueError("Cannot filter required field '%s'" % field)
 
 
 def _get_filter_field_pipeline(
@@ -2565,6 +2580,7 @@ class SetField(ViewStage):
         return [
             ["field", self._field],
             ["expr", self._get_mongo_expr()],
+            ["_allow_missing", self._allow_missing],
         ]
 
     @classmethod
@@ -2572,6 +2588,7 @@ class SetField(ViewStage):
         return [
             {"name": "field", "type": "field|str"},
             {"name": "expr", "type": "json", "placeholder": ""},
+            {"name": "_allow_missing", "type": "bool", "default": "False"},
         ]
 
     def _get_mongo_expr(self):
@@ -2737,7 +2754,7 @@ class Match(ViewStage):
         return [["filter", self._get_mongo_expr()]]
 
     def _validate_params(self):
-        if not isinstance(self._filter, (foe.ViewExpression, dict)):
+        if not isinstance(self._filter, (foe.ViewExpression, dict, bool)):
             raise ValueError(
                 "Filter must be a ViewExpression or a MongoDB aggregation "
                 "expression defining a filter; found '%s'" % self._filter
@@ -2746,6 +2763,111 @@ class Match(ViewStage):
     @classmethod
     def _params(cls):
         return [{"name": "filter", "type": "json", "placeholder": ""}]
+
+
+class MatchFrames(ViewStage):
+    """Filters the frames in the collection by the given filter.
+
+    Examples::
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+        from fiftyone import ViewField as F
+
+        dataset = foz.load_zoo_dataset("quickstart-video")
+
+        #
+        # Match frames with at least 10 detections
+        #
+
+        num_objects = F("ground_truth_detections.detections").length()
+        stage = fo.MatchFrames(num_objects > 10)
+        view = dataset.add_stage(stage)
+
+        print(dataset.count())
+        print(view.count())
+
+        print(dataset.count("frames"))
+        print(view.count("frames"))
+
+    Args:
+        filter: a :class:`fiftyone.core.expressions.ViewExpression` or
+            `MongoDB aggregation expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+            that returns a boolean describing the filter to apply
+    """
+
+    def __init__(self, filter, omit_empty=True):
+        self._filter = filter
+        self._omit_empty = omit_empty
+        self._validate_params()
+
+    @property
+    def filter(self):
+        """The filter expression."""
+        return self._filter
+
+    @property
+    def omit_empty(self):
+        """Whether to omit samples that have no labels after filtering."""
+        return self._omit_empty
+
+    def _get_mongo_expr(self):
+        if not isinstance(self._filter, foe.ViewExpression):
+            return self._filter
+
+        return self._filter.to_mongo(prefix="$$this")
+
+    def to_mongo(self, _):
+        pipeline = [
+            {
+                "$set": {
+                    "frames": {
+                        "$filter": {
+                            "input": "$frames",
+                            "as": "this",
+                            "cond": self._get_mongo_expr(),
+                        }
+                    }
+                }
+            }
+        ]
+
+        if self._omit_empty:
+            non_empty_expr = F("frames").length() > 0
+            pipeline.append({"$match": {"$expr": non_empty_expr.to_mongo()}})
+
+        return pipeline
+
+    def _kwargs(self):
+        return [
+            ["filter", self._get_mongo_expr()],
+            ["omit_empty", self._omit_empty],
+        ]
+
+    @classmethod
+    def _params(cls):
+        return [
+            {"name": "filter", "type": "json", "placeholder": ""},
+            {
+                "name": "omit_empty",
+                "type": "bool",
+                "default": "True",
+                "placeholder": "omit empty (default=True)",
+            },
+        ]
+
+    def _validate_params(self):
+        if not isinstance(self._filter, (foe.ViewExpression, dict, bool)):
+            raise ValueError(
+                "Filter must be a ViewExpression or a MongoDB aggregation "
+                "expression defining a filter; found '%s'" % self._filter
+            )
+
+    def _needs_frames(self, _):
+        return True
+
+    def validate(self, sample_collection):
+        fova.validate_video_collection(sample_collection)
 
 
 class MatchLabels(ViewStage):
@@ -3477,13 +3599,14 @@ class SelectFields(ViewStage):
         field_names (None): a field name or iterable of field names to select
     """
 
-    def __init__(self, field_names=None):
+    def __init__(self, field_names=None, _allow_missing=False):
         if etau.is_str(field_names):
             field_names = [field_names]
         elif field_names is not None:
             field_names = list(field_names)
 
         self._field_names = field_names
+        self._allow_missing = _allow_missing
 
     @property
     def field_names(self):
@@ -3491,9 +3614,43 @@ class SelectFields(ViewStage):
         return self._field_names or []
 
     def get_selected_fields(self, sample_collection, frames=False):
+        return self._get_selected_fields(
+            sample_collection, frames=frames, use_db_fields=False
+        )
+
+    def to_mongo(self, sample_collection):
+        selected_fields = self._get_selected_fields(
+            sample_collection, frames=False, use_db_fields=True
+        )
+
+        if sample_collection.media_type == fom.VIDEO:
+            selected_frame_fields = [
+                sample_collection._FRAMES_PREFIX + field
+                for field in self._get_selected_fields(
+                    sample_collection, frames=True, use_db_fields=True
+                )
+            ]
+
+            if selected_frame_fields:
+                # Don't project on root `frames` and embedded fields
+                # https://docs.mongodb.com/manual/reference/operator/aggregation/project/#path-collision-errors-in-embedded-fields
+                selected_fields = [f for f in selected_fields if f != "frames"]
+                selected_fields += selected_frame_fields
+
+        if not selected_fields:
+            return []
+
+        return [{"$project": {fn: True for fn in selected_fields}}]
+
+    def _get_selected_fields(
+        self, sample_collection, frames=False, use_db_fields=False
+    ):
         if frames:
+            if sample_collection.media_type != fom.VIDEO:
+                return None
+
             default_fields = sample_collection._get_default_frame_fields(
-                include_private=True, include_id=True
+                include_private=True, use_db_fields=use_db_fields
             )
 
             selected_fields = []
@@ -3506,7 +3663,7 @@ class SelectFields(ViewStage):
                     selected_fields.append(field_name)
         else:
             default_fields = sample_collection._get_default_sample_fields(
-                include_private=True, include_id=True
+                include_private=True, use_db_fields=use_db_fields
             )
             if sample_collection.media_type == fom.VIDEO:
                 default_fields += ("frames",)
@@ -3518,34 +3675,16 @@ class SelectFields(ViewStage):
 
         return list(set(selected_fields) | set(default_fields))
 
-    def to_mongo(self, sample_collection):
-        selected_fields = self.get_selected_fields(
-            sample_collection, frames=False
-        )
-
-        selected_frame_fields = [
-            sample_collection._FRAMES_PREFIX + f
-            for f in self.get_selected_fields(sample_collection, frames=True)
-        ]
-
-        if selected_frame_fields:
-            # Don't project on root `frames` and embedded fields
-            # https://docs.mongodb.com/manual/reference/operator/aggregation/project/#path-collision-errors-in-embedded-fields
-            selected_fields = [f for f in selected_fields if f != "frames"]
-            selected_fields += selected_frame_fields
-
-        if not selected_fields:
-            return []
-
-        return [{"$project": {fn: True for fn in selected_fields}}]
-
     def _needs_frames(self, sample_collection):
         return any(
             sample_collection._is_frame_field(f) for f in self.field_names
         )
 
     def _kwargs(self):
-        return [["field_names", self._field_names]]
+        return [
+            ["field_names", self._field_names],
+            ["_allow_missing", self._allow_missing],
+        ]
 
     @classmethod
     def _params(cls):
@@ -3555,18 +3694,119 @@ class SelectFields(ViewStage):
                 "type": "NoneType|list<field>|field|list<str>|str",
                 "default": "None",
                 "placeholder": "list,of,fields",
-            }
+            },
+            {"name": "_allow_missing", "type": "bool", "default": "False"},
+        ]
+
+    def validate(self, sample_collection):
+        if self._allow_missing:
+            return
+
+        sample_collection.validate_fields_exist(self.field_names)
+
+
+class SelectFrames(ViewStage):
+    """Selects the frames with the given IDs from a collection.
+
+    Examples::
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("quickstart-video")
+
+        #
+        # Select some specific frames
+        #
+
+        frame_ids = [
+            dataset.first().frames.first().id,
+            dataset.last().frames.last().id,
+        ]
+
+        stage = fo.SelectFrames(frame_ids)
+        view = dataset.add_stage(stage)
+
+        print(dataset.count())
+        print(view.count())
+
+        print(dataset.count("frames"))
+        print(view.count("frames"))
+
+    Args:
+        frame_ids: the frames to select. Can be any of the following:
+
+            -   a frame ID
+            -   an iterable of frame IDs
+            -   a :class:`fiftyone.core.frame.Frame` or
+                :class:`fiftyone.core.frame.FrameView`
+            -   an iterable of :class:`fiftyone.core.frame.Frame` or
+                :class:`fiftyone.core.frame.FrameView` instances
+            -   a :class:`fiftyone.core.collections.SampleCollection`, in which
+                case the frame IDs in the collection are used
+
+        omit_empty (True): whether to omit samples that have no frames after
+            selecting the specified frames
+    """
+
+    def __init__(self, frame_ids, omit_empty=True):
+        self._frame_ids = _get_frame_ids(frame_ids)
+        self._omit_empty = omit_empty
+        self._validate_params()
+
+    @property
+    def frame_ids(self):
+        """The list of sample IDs to select."""
+        return self._frame_ids
+
+    @property
+    def omit_empty(self):
+        """Whether to omit samples that have no labels after filtering."""
+        return self._omit_empty
+
+    def to_mongo(self, _):
+        ids = [ObjectId(_id) for _id in self._frame_ids]
+        select_expr = F("frames").filter(F("_id").is_in(ids))
+        pipeline = [{"$set": {"frames": select_expr.to_mongo()}}]
+
+        if self._omit_empty:
+            non_empty_expr = F("frames").length() > 0
+            pipeline.append({"$match": {"$expr": non_empty_expr.to_mongo()}})
+
+        return pipeline
+
+    def _kwargs(self):
+        return [
+            ["frame_ids", self._frame_ids],
+            ["omit_empty", self._omit_empty],
+        ]
+
+    @classmethod
+    def _params(cls):
+        return [
+            {
+                "name": "frame_ids",
+                "type": "list<id>|id",
+                "placeholder": "list,of,frame,ids",
+            },
+            {
+                "name": "omit_empty",
+                "type": "bool",
+                "default": "True",
+                "placeholder": "omit empty (default=True)",
+            },
         ]
 
     def _validate_params(self):
-        for field_name in self.field_names:
-            if field_name.startswith("_"):
-                raise ValueError(
-                    "Cannot select private field '%s'" % field_name
-                )
+        # Ensures that ObjectIDs are valid
+        for _id in self._frame_ids:
+            ObjectId(_id)
+
+    def _needs_frames(self, _):
+        return True
 
     def validate(self, sample_collection):
-        sample_collection.validate_fields_exist(self.field_names)
+        fova.validate_video_collection(sample_collection)
 
 
 class SelectLabels(ViewStage):
@@ -4630,43 +4870,75 @@ class ToEvaluationPatches(ViewStage):
 
 
 class ToFrames(ViewStage):
-    """Creates a view that contains one sample per frame in the video
-    collection.
+    """Creates a view that contains one sample per frame in a video collection.
+
+    By default, samples will be generated for every frame of each video,
+    based on the total frame count of the video files, but this method is
+    highly customizable. Refer to
+    :meth:`fiftyone.core.video.make_frames_dataset` to see the available
+    configuration options.
 
     .. note::
 
-         The first time this method is run on a collection, it will sample
-         each video in the collection into a directory of per-frame images.
+        Unless you have configured otherwise, creating frame views will
+        sample the necessary frames from the input video collection into
+        directories of per-frame images. For large video datasets,
+        **this may take some time and require substantial disk space!**
 
-         Videos that have previously been sampled will not be resampled, unless
-         you override this behavior via ``config``.
+        Frames that have previously been sampled will not be resampled, so
+        creating frame views into the same dataset will become faster if
+        the same frames are requested.
 
     Examples::
 
         import fiftyone as fo
         import fiftyone.zoo as foz
+        from fiftyone import ViewField as F
 
         dataset = foz.load_zoo_dataset("quickstart-video")
 
         session = fo.launch_app(dataset)
 
         #
-        # Create a frames view
+        # Create a frames view for an entire video dataset
         #
 
         stage = fo.ToFrames()
-        view = dataset.add_stage(stage)
-        print(view)
+        frames = dataset.add_stage(stage)
+        print(frames)
 
-        session.view = view
+        session.view = frames
+
+        #
+        # Create a frames view that only contains frames with at least 10
+        # objects, sampled at a maximum frame rate of 1fps
+        #
+
+        num_objects = F("ground_truth_detections.detections").length()
+        view = dataset.match_frames(num_objects > 10)
+
+        stage = fo.ToFrames(max_fps=1, sparse=True)
+        frames = view.add_stage(stage)
+        print(frames)
+
+        session.view = frames
 
     Args:
         config (None): an optional dict of keyword arguments for
             :meth:`fiftyone.core.video.make_frames_dataset` specifying how to
             perform the conversion
+        **kwargs: optional keyword arguments for
+            :meth:`fiftyone.core.video.make_frames_dataset` specifying how to
+            perform the conversion
     """
 
-    def __init__(self, config=None, _state=None):
+    def __init__(self, config=None, _state=None, **kwargs):
+        if kwargs:
+            if config is None:
+                config = kwargs
+            else:
+                config.update(kwargs)
+
         self._config = config
         self._state = _state
 
@@ -4746,6 +5018,30 @@ def _get_sample_ids(samples_or_ids):
         return [s.id for s in samples_or_ids]
 
     return list(samples_or_ids)
+
+
+def _get_frame_ids(frames_or_ids):
+    import fiftyone.core.collections as foc
+
+    if etau.is_str(frames_or_ids):
+        return [frames_or_ids]
+
+    if isinstance(frames_or_ids, (fofr.Frame, fofr.FrameView)):
+        return [frames_or_ids.id]
+
+    if isinstance(frames_or_ids, foc.SampleCollection):
+        return frames_or_ids.values("frames.id", unwind=True)
+
+    if isinstance(frames_or_ids, np.ndarray):
+        return list(frames_or_ids)
+
+    if not frames_or_ids:
+        return []
+
+    if isinstance(next(iter(frames_or_ids)), (fofr.Frame, fofr.FrameView)):
+        return [s.id for s in frames_or_ids]
+
+    return list(frames_or_ids)
 
 
 def _get_rng(seed):
@@ -4992,12 +5288,14 @@ _STAGES = [
     LimitLabels,
     MapLabels,
     Match,
+    MatchFrames,
     MatchLabels,
     MatchTags,
     Mongo,
     Shuffle,
     Select,
     SelectFields,
+    SelectFrames,
     SelectLabels,
     SetField,
     Skip,

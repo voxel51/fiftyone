@@ -54,7 +54,7 @@ import numbers
 import os
 import random
 
-from bson import json_util
+from bson import json_util, ObjectId
 from bson.binary import Binary
 from mongoengine.errors import InvalidQueryError
 import numpy as np
@@ -67,7 +67,6 @@ import fiftyone.core.metadata as fom
 import fiftyone.core.media as fomm
 import fiftyone.core.utils as fou
 
-from .dataset import SampleFieldDocument, DatasetDocument
 from .document import Document, SampleDocument
 from .mixins import DatasetMixin, get_default_fields, NoDatasetMixin
 
@@ -77,6 +76,7 @@ _random = random.Random()
 
 
 def _generate_rand(filepath=None):
+    # @todo filepath no longer has to be unique. Should we change this?
     if filepath is not None:
         _random.seed(filepath)
 
@@ -92,6 +92,7 @@ class DatasetSampleDocument(DatasetMixin, Document, SampleDocument):
 
     meta = {"abstract": True}
 
+    id = fof.ObjectIdField(required=True, primary_key=True, db_field="_id")
     filepath = fof.StringField(required=True)
     tags = fof.ListField(fof.StringField())
     metadata = fof.EmbeddedDocumentField(fom.Metadata, null=True)
@@ -104,7 +105,8 @@ class DatasetSampleDocument(DatasetMixin, Document, SampleDocument):
         return self._media_type
 
     def _get_repr_fields(self):
-        return ("id", "media_type") + self.field_names
+        fields = self.field_names
+        return fields[:1] + ("media_type",) + fields[1:]
 
 
 class NoDatasetSampleDocument(NoDatasetMixin, SampleDocument):
@@ -117,23 +119,20 @@ class NoDatasetSampleDocument(NoDatasetMixin, SampleDocument):
     )
 
     def __init__(self, **kwargs):
-        self._data = OrderedDict()
-
         filepath = os.path.abspath(os.path.expanduser(kwargs["filepath"]))
-        _media_type = fomm.get_media_type(filepath)
-        kwargs["_media_type"] = _media_type
+
+        kwargs["id"] = None
+        kwargs["filepath"] = filepath
+        kwargs["_rand"] = _generate_rand(filepath=filepath)
+        kwargs["_media_type"] = fomm.get_media_type(filepath)
+
+        self._data = OrderedDict()
 
         for field_name in self.default_fields_ordered:
             value = kwargs.pop(field_name, None)
 
-            if field_name == "_rand":
-                value = _generate_rand(filepath=filepath)
-
-            if value is None:
+            if value is None and field_name != "id":
                 value = self._get_default(self.default_fields[field_name])
-
-            if field_name == "filepath":
-                value = os.path.abspath(os.path.expanduser(value))
 
             self._data[field_name] = value
 
@@ -144,4 +143,5 @@ class NoDatasetSampleDocument(NoDatasetMixin, SampleDocument):
         return self._media_type
 
     def _get_repr_fields(self):
-        return ("id", "media_type") + self.field_names
+        fields = self.field_names
+        return fields[:1] + ("media_type",) + fields[1:]

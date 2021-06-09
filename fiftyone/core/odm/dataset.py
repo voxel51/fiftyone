@@ -25,7 +25,9 @@ from .document import Document, EmbeddedDocument, BaseEmbeddedDocument
 from .runs import RunDocument
 
 
-def create_field(field_name, ftype, embedded_doc_type=None, subfield=None):
+def create_field(
+    field_name, ftype, embedded_doc_type=None, subfield=None, **kwargs
+):
     """Creates the :class:`fiftyone.core.fields.Field` instance defined by the
     given specification.
 
@@ -41,6 +43,7 @@ def create_field(field_name, ftype, embedded_doc_type=None, subfield=None):
             contained field. Only applicable when ``ftype`` is
             :class:`fiftyone.core.fields.ListField` or
             :class:`fiftyone.core.fields.DictField`
+        **kwargs: optional keyword arguments for ``ftype(**kwargs)``
 
     Returns:
         a :class:`fiftyone.core.fields.Field` instance
@@ -50,7 +53,11 @@ def create_field(field_name, ftype, embedded_doc_type=None, subfield=None):
             "Invalid field type %s; must be a subclass of %s" % (ftype, Field)
         )
 
-    kwargs = dict(db_field=field_name, null=True)
+    if "db_field" not in kwargs:
+        kwargs["db_field"] = field_name
+
+    if "null" not in kwargs:
+        kwargs["null"] = True
 
     if issubclass(ftype, EmbeddedDocumentField):
         if not issubclass(embedded_doc_type, BaseEmbeddedDocument):
@@ -140,9 +147,7 @@ class SampleFieldDocument(EmbeddedDocument):
         Returns:
              a list of :class:`SampleFieldDocument` objects
         """
-        return [
-            cls.from_field(field) for field in d.values() if field.name != "id"
-        ]
+        return [cls.from_field(field) for field in d.values()]
 
     def matches_field(self, field):
         """Determines whether this sample field matches the given field.
