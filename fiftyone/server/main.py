@@ -1285,7 +1285,8 @@ async def _get_sample_data(col, view, page_length, page, detach_frames=True):
         r.update(metadata[filepath])
 
         if video:
-            if r["sample"]["frames"]["frame_number"] == 1:
+            sample = r["sample"]
+            if "frames" in sample and sample["frames"]["frame_number"] == 1:
                 r["sample"]["frames"] = {1: r["sample"]["frames"]}
             else:
                 r["sample"]["frames"] = {}

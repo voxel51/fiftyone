@@ -264,6 +264,8 @@ export class CanvasElement<State extends BaseState> extends BaseElement<
       this.element.style.cursor = "all-scroll";
     } else if (!thumbnail && mouseIsOnOverlay) {
       this.element.style.cursor = "pointer";
+    } else if (thumbnail) {
+      this.element.style.cursor = "unset";
     } else {
       this.element.style.cursor = "default";
     }
@@ -534,7 +536,7 @@ export class HelpButtonElement<State extends BaseState> extends BaseElement<
       click: ({ event, update }) => {
         event.stopPropagation();
         event.preventDefault();
-        toggleHelp(update);
+        // toggleHelp(update);
       },
     };
   }
@@ -542,6 +544,7 @@ export class HelpButtonElement<State extends BaseState> extends BaseElement<
   createHTMLElement() {
     const element = document.createElement("img");
     element.className = "looker-clickable";
+    element.style.padding = "2px";
     element.src = ICONS.help;
     element.title = "Help (?)";
     element.style.gridArea = "2 / 9 / 2 / 9";

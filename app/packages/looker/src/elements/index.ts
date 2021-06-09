@@ -36,11 +36,12 @@ export const getFrameElements: GetElements<FrameState> = (
       {
         node: common.ControlsElement,
         children: [
+          { node: frame.FrameNumberElement },
           { node: common.FullscreenButtonElement },
           { node: common.PlusElement },
           { node: common.MinusElement },
           { node: common.OptionsButtonElement },
-          { node: frame.FrameNumberElement },
+          { node: common.HelpButtonElement },
         ],
       },
       {
@@ -88,6 +89,7 @@ export const getImageElements: GetElements<ImageState> = (
           { node: common.PlusElement },
           { node: common.MinusElement },
           { node: common.OptionsButtonElement },
+          { node: common.HelpButtonElement },
         ],
       },
       {
@@ -131,13 +133,14 @@ export const getVideoElements: GetElements<VideoState> = (
       {
         node: common.ControlsElement,
         children: [
+          { node: video.SeekBarElement },
+          { node: video.PlayButtonElement },
+          { node: video.TimeElement },
           { node: common.FullscreenButtonElement },
           { node: common.PlusElement },
           { node: common.MinusElement },
           { node: common.OptionsButtonElement },
-          { node: video.PlayButtonElement },
-          { node: video.SeekBarElement },
-          { node: video.TimeElement },
+          { node: common.HelpButtonElement },
         ],
       },
       {

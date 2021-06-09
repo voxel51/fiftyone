@@ -10,7 +10,7 @@
   height: 100%;
   font-family: "Palanquin", sans-serif;
   font-weight: bold;
-  background-color: hsl(214, 7%, 19%);
+  background-color: hsl(210, 11%, 15%);
 }
 
 .looker.fullscreen {
@@ -18,6 +18,26 @@
   left: 0;
   z-index: 20000;
   position: fixed;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -2000px 0;
+  }
+  100% {
+    background-position: 2000px 0;
+  }
+}
+
+.looker.loading {
+  animation: shimmer 4s infinite;
+  background: linear-gradient(
+    110deg,
+    rgba(0, 0, 0, 0) 8%,
+    hsl(210, 11%, 11%) 18%,
+    rgba(0, 0, 0, 0) 33%
+  );
+  background-size: 400% 100%;
 }
 
 .looker-controls {
@@ -28,7 +48,7 @@
   z-index: 20;
   padding-bottom: 0.25rem;
   display: grid;
-  grid-template-columns: 0.5rem max-content max-content 1fr max-content max-content max-content max-content 0.5rem;
+  grid-template-columns: 0.5rem max-content max-content 1fr max-content max-content max-content max-content max-content 0.5rem;
   grid-gap: 0.25rem;
   justify-items: center;
   align-items: center;

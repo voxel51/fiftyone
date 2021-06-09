@@ -23,16 +23,6 @@ export class LoaderBar extends BaseElement<VideoState> {
   }
 
   renderSelf({ playing }) {
-    if (playing !== this.playing) {
-      if (playing) {
-        this.element.src = ICONS.pause;
-        this.element.title = "Pause (space)";
-      } else {
-        this.element.src = ICONS.play;
-        this.element.title = "Play (space)";
-      }
-      this.playing = playing;
-    }
     return this.element;
   }
 }
@@ -81,7 +71,7 @@ export class SeekBarElement extends BaseElement<VideoState, HTMLInputElement> {
       click: ({ event }) => {
         event.stopPropagation();
       },
-      change: ({ update }) => {
+      input: ({ update }) => {
         const progress = this.element.valueAsNumber / 100;
         update(({ duration, config: { frameRate } }) => {
           return {
@@ -120,7 +110,7 @@ export class SeekBarElement extends BaseElement<VideoState, HTMLInputElement> {
     element.setAttribute("min", "0");
     element.setAttribute("max", "100");
     element.className = "looker-seek-bar";
-    element.style.gridArea = "1 / 2 / 1 / 7";
+    element.style.gridArea = "1 / 2 / 1 / 10";
     return element;
   }
 
@@ -203,7 +193,7 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
       loadeddata: ({ update, dispatchEvent }) => {
         update(({ playing, options: { autoplay } }) => {
           return {
-            loaded: false,
+            loaded: true,
             playing: autoplay || playing,
             duration: this.element.duration,
           };
@@ -241,8 +231,8 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
                 playing: resetToFragment ? (loop ? true : false) : playing,
               };
             },
-            ({ seeking }) => {
-              if (!seeking) {
+            ({ seeking, playing }) => {
+              if (!seeking && playing) {
                 requestAnimationFrame(callback);
               }
             }
@@ -307,7 +297,7 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
     if (seeking && !this.element.paused) {
       this.element.pause();
     }
-    if (loaded && playing && this.element.paused) {
+    if (loaded && playing && !seeking && this.element.paused) {
       this.element.play();
     }
     if (loaded && !playing && !this.element.paused) {
