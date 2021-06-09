@@ -543,6 +543,9 @@ def make_evaluation_dataset(sample_collection, eval_key, name=None):
         "sample_id", fof.ObjectIdField, db_field="_sample_id"
     )
     if sample_collection._is_frames:
+        dataset.add_sample_field(
+            "frame_id", fof.ObjectIdField, db_field="_frame_id"
+        )
         dataset.add_sample_field("frame_number", fof.FrameNumberField)
 
     dataset.add_sample_field("type", fof.StringField)
@@ -602,8 +605,7 @@ def _make_patches_view(sample_collection, field, keep_label_lists=False):
 
     if sample_collection._is_frames:
         project["_sample_id"] = True
-        project["_frame_id"] = True
-        # project["_frame_id"] = "$_id"
+        project["_frame_id"] = "$_id"
         project["frame_number"] = True
     else:
         project["_sample_id"] = "$_id"
