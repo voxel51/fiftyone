@@ -69,7 +69,7 @@ class FiftyOneJSONEncoder(JSONEncoder):
             str
         """
         if isinstance(o, (Sample, SampleView)):
-            return _handle_bytes(o.to_mongo_dict())
+            return _handle_bytes(o.to_mongo_dict(include_id=True))
         if issubclass(type(o), ViewStage):
             return o._serialize()
         if isinstance(o, ObjectId):

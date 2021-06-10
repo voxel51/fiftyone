@@ -62,6 +62,7 @@ from .core.fields import (
     IntDictField,
     KeypointsField,
     ListField,
+    ObjectIdField,
     PolylinePointsField,
     StringField,
     TargetsField,
@@ -124,6 +125,7 @@ from .core.sample import Sample
 from .core.stages import (
     Exclude,
     ExcludeFields,
+    ExcludeFrames,
     ExcludeLabels,
     Exists,
     FilterField,
@@ -138,12 +140,14 @@ from .core.stages import (
     GeoWithin,
     MapLabels,
     Match,
+    MatchFrames,
     MatchLabels,
     MatchTags,
     Mongo,
     Shuffle,
     Select,
     SelectFields,
+    SelectFrames,
     SelectLabels,
     SetField,
     Skip,
@@ -152,6 +156,7 @@ from .core.stages import (
     Take,
     ToPatches,
     ToEvaluationPatches,
+    ToFrames,
 )
 from .core.session import (
     close_app,

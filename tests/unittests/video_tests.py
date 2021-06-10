@@ -5,6 +5,7 @@ FiftyOne video-related unit tests.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+from bson import ObjectId
 import unittest
 
 import fiftyone as fo
@@ -187,7 +188,7 @@ class VideoTests(unittest.TestCase):
             )
 
     @drop_datasets
-    def test_save_frame(self):
+    def test_save_frames(self):
         dataset = fo.Dataset()
 
         sample = fo.Sample(filepath="video.mp4")
@@ -201,7 +202,7 @@ class VideoTests(unittest.TestCase):
         self.assertEqual(len(sample.frames), 1)
         self.assertEqual(dataset.count("frames"), 0)
 
-        frame.save()
+        sample.save()
 
         self.assertIsNotNone(frame.id)
         self.assertTrue(frame._in_db)
@@ -961,6 +962,209 @@ class VideoTests(unittest.TestCase):
                     [],
                 ],
             )
+
+    @drop_datasets
+    def test_to_frames(self):
+        dataset = fo.Dataset()
+
+        sample1 = fo.Sample(
+            filepath="video1.mp4",
+            metadata=fo.VideoMetadata(total_frame_count=4),
+            tags=["test"],
+            weather="sunny",
+        )
+        sample1.frames[1] = fo.Frame(hello="world")
+        sample1.frames[2] = fo.Frame(
+            ground_truth=fo.Detections(
+                detections=[
+                    fo.Detection(label="cat"),
+                    fo.Detection(label="dog"),
+                ]
+            )
+        )
+        sample1.frames[3] = fo.Frame(hello="goodbye")
+
+        sample2 = fo.Sample(
+            filepath="video2.mp4",
+            metadata=fo.VideoMetadata(total_frame_count=5),
+            tags=["test"],
+            weather="cloudy",
+        )
+        sample2.frames[1] = fo.Frame(
+            hello="goodbye",
+            ground_truth=fo.Detections(
+                detections=[
+                    fo.Detection(label="dog"),
+                    fo.Detection(label="rabbit"),
+                ]
+            ),
+        )
+        sample2.frames[3] = fo.Frame()
+        sample2.frames[5] = fo.Frame(hello="there")
+
+        dataset.add_samples([sample1, sample2])
+
+        view = dataset.to_frames(sample_frames=False)
+
+        self.assertSetEqual(
+            set(view.get_field_schema().keys()),
+            {
+                "id",
+                "filepath",
+                "metadata",
+                "tags",
+                "sample_id",
+                "frame_number",
+                "hello",
+                "ground_truth",
+            },
+        )
+
+        self.assertEqual(len(view), 9)
+
+        frame = view.first()
+        self.assertIsInstance(frame.id, str)
+        self.assertIsInstance(frame._id, ObjectId)
+        self.assertIsInstance(frame.sample_id, str)
+        self.assertIsInstance(frame._sample_id, ObjectId)
+
+        for _id in view.values("id"):
+            self.assertIsInstance(_id, str)
+
+        for oid in view.values("_id"):
+            self.assertIsInstance(oid, ObjectId)
+
+        for _id in view.values("sample_id"):
+            self.assertIsInstance(_id, str)
+
+        for oid in view.values("_sample_id"):
+            self.assertIsInstance(oid, ObjectId)
+
+        self.assertDictEqual(dataset.count_sample_tags(), {"test": 2})
+        self.assertDictEqual(view.count_sample_tags(), {"test": 9})
+
+        view.tag_samples("foo")
+
+        self.assertEqual(view.count_sample_tags()["foo"], 9)
+        self.assertNotIn("foo", dataset.count_sample_tags())
+        self.assertNotIn("tags", dataset.get_frame_field_schema())
+
+        view.untag_samples("foo")
+
+        self.assertNotIn("foo", view.count_sample_tags())
+
+        view.tag_labels("test")
+
+        self.assertDictEqual(view.count_label_tags(), {"test": 4})
+        self.assertDictEqual(dataset.count_label_tags(), {"test": 4})
+
+        view.select_labels(tags="test").untag_labels("test")
+
+        self.assertDictEqual(view.count_label_tags(), {})
+        self.assertDictEqual(dataset.count_label_tags(), {})
+
+        view2 = view.skip(4).set_field(
+            "ground_truth.detections.label", F("label").upper()
+        )
+
+        self.assertDictEqual(
+            view.count_values("ground_truth.detections.label"),
+            {"cat": 1, "dog": 2, "rabbit": 1},
+        )
+        self.assertDictEqual(
+            view2.count_values("ground_truth.detections.label"),
+            {"DOG": 1, "RABBIT": 1},
+        )
+        self.assertDictEqual(
+            dataset.count_values("frames.ground_truth.detections.label"),
+            {"cat": 1, "dog": 2, "rabbit": 1},
+        )
+
+        view2.save()
+
+        self.assertEqual(len(view), 5)
+        self.assertEqual(dataset.values(F("frames").length()), [0, 5])
+        self.assertDictEqual(
+            view.count_values("ground_truth.detections.label"),
+            {"DOG": 1, "RABBIT": 1},
+        )
+        self.assertDictEqual(
+            dataset.count_values("frames.ground_truth.detections.label"),
+            {"DOG": 1, "RABBIT": 1},
+        )
+        self.assertIsNotNone(view.first().id)
+        self.assertIsNotNone(dataset.last().frames.first().id)
+
+        sample = view.exclude_fields("ground_truth").first()
+
+        sample["foo"] = "bar"
+        sample.save()
+
+        self.assertIn("foo", view.get_field_schema())
+        self.assertIn("foo", dataset.get_frame_field_schema())
+        self.assertIn("ground_truth", view.get_field_schema())
+        self.assertIn("ground_truth", dataset.get_frame_field_schema())
+        self.assertEqual(view.count_values("foo")["bar"], 1)
+        self.assertEqual(dataset.count_values("frames.foo")["bar"], 1)
+        self.assertDictEqual(
+            view.count_values("ground_truth.detections.label"),
+            {"DOG": 1, "RABBIT": 1},
+        )
+        self.assertDictEqual(
+            dataset.count_values("frames.ground_truth.detections.label"),
+            {"DOG": 1, "RABBIT": 1},
+        )
+
+        dataset.untag_samples("test")
+        view.reload()
+
+        self.assertEqual(dataset.count_sample_tags(), {})
+        self.assertEqual(view.count_sample_tags(), {})
+
+    @drop_datasets
+    def test_to_frames_sparse(self):
+        dataset = fo.Dataset()
+
+        sample1 = fo.Sample(
+            filepath="video1.mp4",
+            metadata=fo.VideoMetadata(total_frame_count=4),
+        )
+        sample1.frames[1] = fo.Frame()
+        sample1.frames[2] = fo.Frame(
+            ground_truth=fo.Detections(
+                detections=[
+                    fo.Detection(label="cat"),
+                    fo.Detection(label="dog"),
+                ]
+            )
+        )
+        sample1.frames[3] = fo.Frame(hello="goodbye")
+
+        sample2 = fo.Sample(
+            filepath="video2.mp4",
+            metadata=fo.VideoMetadata(total_frame_count=5),
+        )
+        sample2.frames[1] = fo.Frame(
+            ground_truth=fo.Detections(
+                detections=[
+                    fo.Detection(label="dog"),
+                    fo.Detection(label="rabbit"),
+                ]
+            ),
+        )
+        sample2.frames[3] = fo.Frame()
+        sample2.frames[5] = fo.Frame(hello="there")
+
+        dataset.add_samples([sample1, sample2])
+
+        frames = dataset.to_frames(sparse=True, sample_frames=False)
+
+        self.assertEqual(len(frames), 6)
+
+        view = dataset.match_frames(F("ground_truth.detections").length() > 0)
+        frames = view.to_frames(sparse=True, sample_frames=False)
+
+        self.assertEqual(len(frames), 2)
 
 
 if __name__ == "__main__":
