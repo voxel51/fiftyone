@@ -4144,12 +4144,12 @@ class SampleCollection(object):
 
             Unless you have configured otherwise, creating frame views will
             sample the necessary frames from the input video collection into
-            directories of per-frame images. For large video datasets,
-            **this may take some time and require substantial disk space!**
+            directories of per-frame images. **For large video datasets,
+            this may take some time and require substantial disk space.**
 
             Frames that have previously been sampled will not be resampled, so
-            creating frame views into the same dataset will become faster if
-            the same frames are requested.
+            creating frame views into the same dataset will become faster after
+            the frames have been sampled.
 
         Examples::
 
