@@ -123,6 +123,11 @@ class SampleCollection(object):
         raise NotImplementedError("Subclass must implement _is_patches")
 
     @property
+    def _is_frames(self):
+        """Whether this collection contains frames of a video dataset."""
+        raise NotImplementedError("Subclass must implement _is_frames")
+
+    @property
     def _element_str(self):
         return "sample"
 
@@ -350,12 +355,20 @@ class SampleCollection(object):
         raise NotImplementedError("Subclass must implement iter_samples()")
 
     @classmethod
-    def _get_default_sample_fields(cls, include_private=False):
-        return fosa.get_default_sample_fields(include_private=include_private)
+    def _get_default_sample_fields(
+        cls, include_private=False, use_db_fields=False
+    ):
+        return fosa.get_default_sample_fields(
+            include_private=include_private, use_db_fields=use_db_fields
+        )
 
     @classmethod
-    def _get_default_frame_fields(cls, include_private=False):
-        return fofr.get_default_frame_fields(include_private=include_private)
+    def _get_default_frame_fields(
+        cls, include_private=False, use_db_fields=False
+    ):
+        return fofr.get_default_frame_fields(
+            include_private=include_private, use_db_fields=use_db_fields
+        )
 
     def get_field_schema(
         self, ftype=None, embedded_doc_type=None, include_private=False
@@ -455,13 +468,15 @@ class SampleCollection(object):
 
         return field_name in self.get_frame_field_schema()
 
-    def validate_fields_exist(self, fields):
+    def validate_fields_exist(self, fields, include_private=False):
         """Validates that the collection has field(s) with the given name(s).
 
         If embedded field names are provided, only the root field is checked.
 
         Args:
             fields: a field name or iterable of field names
+            include_private (False): whether to include private fields when
+                checking for existence
 
         Raises:
             ValueError: if one or more of the fields do not exist
@@ -469,42 +484,29 @@ class SampleCollection(object):
         fields, frame_fields = self._split_frame_fields(fields)
 
         if fields:
-            schema = self.get_field_schema(include_private=True)
-
-            default_fields = set(
-                self._get_default_sample_fields(include_private=True)
+            existing_fields = set(
+                self.get_field_schema(include_private=include_private).keys()
             )
-            default_fields.add("_id")
+            if self.media_type == fom.VIDEO:
+                existing_fields.add("frames")
 
             for field in fields:
                 # We only validate that the root field exists
                 field_name = field.split(".", 1)[0]
-                if (
-                    field_name not in schema
-                    and field_name not in default_fields
-                    and (
-                        field_name == "frames" and self.media_type != fom.VIDEO
-                    )
-                    and not field_name.startswith("_")
-                ):
+                if field_name not in existing_fields:
                     raise ValueError("Field '%s' does not exist" % field_name)
 
         if frame_fields:
-            frame_schema = self.get_frame_field_schema(include_private=True)
-
-            default_frame_fields = set(
-                self._get_default_frame_fields(include_private=True)
+            existing_frame_fields = set(
+                self.get_frame_field_schema(
+                    include_private=include_private
+                ).keys()
             )
-            default_frame_fields.add("_id")
 
             for field in frame_fields:
                 # We only validate that the root field exists
                 field_name = field.split(".", 1)[0]
-                if (
-                    field_name not in frame_schema
-                    and field_name not in default_frame_fields
-                    and not field_name.startswith("_")
-                ):
+                if field_name not in existing_frame_fields:
                     raise ValueError(
                         "Frame field '%s' does not exist" % field_name
                     )
@@ -900,17 +902,27 @@ class SampleCollection(object):
         if expand_schema:
             self._expand_schema_from_values(field_name, values)
 
-        field_name, is_frame_field, list_fields, _ = self._parse_field_name(
+        (
+            field_name,
+            is_frame_field,
+            list_fields,
+            _,
+            id_to_str,
+        ) = self._parse_field_name(
             field_name, omit_terminal_lists=True, allow_missing=_allow_missing
         )
 
-        field_type = self._get_field_type(
-            field_name, is_frame_field=is_frame_field, ignore_primitives=True
-        )
-        if field_type is not None:
-            to_mongo = field_type.to_mongo
+        to_mongo = None
+        if id_to_str:
+            to_mongo = lambda _id: ObjectId(_id)
         else:
-            to_mongo = None
+            field_type = self._get_field_type(
+                field_name,
+                is_frame_field=is_frame_field,
+                ignore_primitives=True,
+            )
+            if field_type is not None:
+                to_mongo = field_type.to_mongo
 
         # Setting an entire label list document whose label elements have been
         # filtered is not allowed because this would delete the filtered labels
@@ -1456,14 +1468,16 @@ class SampleCollection(object):
                 are given this label for results purposes
             method ("simple"): a string specifying the evaluation method to use.
                 Supported values are ``("simple", "binary", "top-k")``
-            config (None): an :class:`ClassificationEvaluationConfig`
+            config (None): a
+                :class:`fiftyone.utils.eval.classification.ClassificationEvaluationConfig`
                 specifying the evaluation method to use. If a ``config`` is
                 provided, the ``method`` and ``kwargs`` parameters are ignored
             **kwargs: optional keyword arguments for the constructor of the
-                :class:`ClassificationEvaluationConfig` being used
+                :class:`fiftyone.utils.eval.classification.ClassificationEvaluationConfig`
+                being used
 
         Returns:
-            a :class:`ClassificationResults`
+            a :class:`fiftyone.utils.eval.classification.ClassificationResults`
         """
         return foue.evaluate_classifications(
             self,
@@ -1896,7 +1910,7 @@ class SampleCollection(object):
         return self._add_view_stage(fos.Exclude(sample_ids))
 
     @view_stage
-    def exclude_fields(self, field_names):
+    def exclude_fields(self, field_names, _allow_missing=False):
         """Excludes the fields with the given names from the samples in the
         collection.
 
@@ -1939,7 +1953,56 @@ class SampleCollection(object):
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
         """
-        return self._add_view_stage(fos.ExcludeFields(field_names))
+        return self._add_view_stage(
+            fos.ExcludeFields(field_names, _allow_missing=_allow_missing)
+        )
+
+    @view_stage
+    def exclude_frames(self, frame_ids, omit_empty=True):
+        """Excludes the frames with the given IDs from the video collection.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+
+            dataset = foz.load_zoo_dataset("quickstart-video")
+
+            #
+            # Exclude some specific frames
+            #
+
+            frame_ids = [
+                dataset.first().frames.first().id,
+                dataset.last().frames.last().id,
+            ]
+
+            view = dataset.exclude_frames(frame_ids)
+
+            print(dataset.count("frames"))
+            print(view.count("frames"))
+
+        Args:
+            frame_ids: the frames to exclude. Can be any of the following:
+
+                -   a frame ID
+                -   an iterable of frame IDs
+                -   a :class:`fiftyone.core.frame.Frame` or
+                    :class:`fiftyone.core.frame.FrameView`
+                -   an iterable of :class:`fiftyone.core.frame.Frame` or
+                    :class:`fiftyone.core.frame.FrameView` instances
+                -   a :class:`fiftyone.core.collections.SampleCollection`, in
+                    which case the frame IDs in the collection are used
+
+            omit_empty (True): whether to omit samples that have no frames
+                after excluding the specified frames
+
+        Returns:
+            a :class:`fiftyone.core.view.DatasetView`
+        """
+        return self._add_view_stage(
+            fos.ExcludeFrames(frame_ids, omit_empty=omit_empty)
+        )
 
     @view_stage
     def exclude_labels(
@@ -3157,6 +3220,43 @@ class SampleCollection(object):
         return self._add_view_stage(fos.Match(filter))
 
     @view_stage
+    def match_frames(self, filter, omit_empty=True):
+        """Filters the frames in the video collection by the given filter.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset("quickstart-video")
+
+            #
+            # Match frames with at least 10 detections
+            #
+
+            num_objects = F("ground_truth_detections.detections").length()
+            view = dataset.match_frames(num_objects > 10)
+
+            print(dataset.count())
+            print(view.count())
+
+            print(dataset.count("frames"))
+            print(view.count("frames"))
+
+        Args:
+            filter: a :class:`fiftyone.core.expressions.ViewExpression` or
+                `MongoDB aggregation expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+                that returns a boolean describing the filter to apply
+
+        Returns:
+            a :class:`fiftyone.core.view.DatasetView`
+        """
+        return self._add_view_stage(
+            fos.MatchFrames(filter, omit_empty=omit_empty)
+        )
+
+    @view_stage
     def match_labels(
         self, labels=None, ids=None, tags=None, filter=None, fields=None
     ):
@@ -3481,7 +3581,7 @@ class SampleCollection(object):
         return self._add_view_stage(fos.Select(sample_ids, ordered=ordered))
 
     @view_stage
-    def select_fields(self, field_names=None):
+    def select_fields(self, field_names=None, _allow_missing=False):
         """Selects only the fields with the given names from the samples in the
         collection. All other fields are excluded.
 
@@ -3531,7 +3631,59 @@ class SampleCollection(object):
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
         """
-        return self._add_view_stage(fos.SelectFields(field_names))
+        return self._add_view_stage(
+            fos.SelectFields(field_names, _allow_missing=_allow_missing)
+        )
+
+    @view_stage
+    def select_frames(self, frame_ids, omit_empty=True):
+        """Selects the frames with the given IDs from the video collection.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+
+            dataset = foz.load_zoo_dataset("quickstart-video")
+
+            #
+            # Select some specific frames
+            #
+
+            frame_ids = [
+                dataset.first().frames.first().id,
+                dataset.last().frames.last().id,
+            ]
+
+            view = dataset.select_frames(frame_ids)
+
+            print(dataset.count())
+            print(view.count())
+
+            print(dataset.count("frames"))
+            print(view.count("frames"))
+
+        Args:
+            frame_ids: the frames to select. Can be any of the following:
+
+                -   a frame ID
+                -   an iterable of frame IDs
+                -   a :class:`fiftyone.core.frame.Frame` or
+                    :class:`fiftyone.core.frame.FrameView`
+                -   an iterable of :class:`fiftyone.core.frame.Frame` or
+                    :class:`fiftyone.core.frame.FrameView` instances
+                -   a :class:`fiftyone.core.collections.SampleCollection`, in
+                    which case the frame IDs in the collection are used
+
+            omit_empty (True): whether to omit samples that have no frames
+                after selecting the specified frames
+
+        Returns:
+            a :class:`fiftyone.core.view.DatasetView`
+        """
+        return self._add_view_stage(
+            fos.SelectFrames(frame_ids, omit_empty=omit_empty)
+        )
 
     @view_stage
     def select_labels(
@@ -3976,6 +4128,70 @@ class SampleCollection(object):
             a :class:`fiftyone.core.patches.EvaluationPatchesView`
         """
         return self._add_view_stage(fos.ToEvaluationPatches(eval_key))
+
+    @view_stage
+    def to_frames(self, **kwargs):
+        """Creates a view that contains one sample per frame in the video
+        collection.
+
+        By default, samples will be generated for every frame of each video,
+        based on the total frame count of the video files, but this method is
+        highly customizable. Refer to
+        :meth:`fiftyone.core.video.make_frames_dataset` to see the available
+        configuration options.
+
+        .. note::
+
+            Unless you have configured otherwise, creating frame views will
+            sample the necessary frames from the input video collection into
+            directories of per-frame images. **For large video datasets,
+            this may take some time and require substantial disk space.**
+
+            Frames that have previously been sampled will not be resampled, so
+            creating frame views into the same dataset will become faster after
+            the frames have been sampled.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset("quickstart-video")
+
+            session = fo.launch_app(dataset)
+
+            #
+            # Create a frames view for an entire video dataset
+            #
+
+            frames = dataset.to_frames()
+            print(frames)
+
+            session.view = frames
+
+            #
+            # Create a frames view that only contains frames with at least 10
+            # objects, sampled at a maximum frame rate of 1fps
+            #
+
+            num_objects = F("ground_truth_detections.detections").length()
+            view = dataset.match_frames(num_objects > 10)
+
+            frames = view.to_frames(max_fps=1, sparse=True)
+            print(frames)
+
+            session.view = frames
+
+        Args:
+            **kwargs: optional keyword arguments for
+                :meth:`fiftyone.core.video.make_frames_dataset` specifying how
+                to perform the conversion
+
+        Returns:
+            a :class:`fiftyone.core.video.FramesView`
+        """
+        return self._add_view_stage(fos.ToFrames(**kwargs))
 
     @classmethod
     def list_aggregations(cls):
@@ -5608,6 +5824,24 @@ class SampleCollection(object):
 
         return any(issubclass(label_type, t) for t in label_type_or_types)
 
+    def _get_db_fields_map(self, include_private=False, frames=False):
+        if frames:
+            schema = self.get_frame_field_schema(
+                include_private=include_private
+            )
+        else:
+            schema = self.get_field_schema(include_private=include_private)
+
+        if schema is None:
+            return None
+
+        fields_map = {}
+        for field_name, field in schema.items():
+            if field.db_field != field_name:
+                fields_map[field_name] = field.db_field
+
+        return fields_map
+
     def _get_label_fields(self):
         fields = self._get_sample_label_fields()
 
@@ -5702,7 +5936,7 @@ class SampleCollection(object):
         if values is None:
             return None
 
-        list_fields = self._parse_field_name(field_name, auto_unwind=False)[-1]
+        list_fields = self._parse_field_name(field_name, auto_unwind=False)[-2]
         level = len(list_fields)
 
         while level > 0:
@@ -6036,13 +6270,6 @@ def _parse_field_name(
     omit_terminal_lists,
     allow_missing,
 ):
-    field_name, is_frame_field = sample_collection._handle_frame_field(
-        field_name
-    )
-
-    if is_frame_field and not field_name:
-        return "frames", True, [], []
-
     unwind_list_fields = set()
     other_list_fields = set()
 
@@ -6054,27 +6281,35 @@ def _parse_field_name(
     # Array references [] have been stripped
     field_name = "".join(chunks)
 
+    # Handle public (string) vs private (ObjectId) ID fields
+    field_name, is_id_field, id_to_str = _handle_id_fields(
+        sample_collection, field_name
+    )
+
+    field_name, is_frame_field = sample_collection._handle_frame_field(
+        field_name
+    )
+
+    if is_frame_field and not field_name:
+        return "frames", True, [], [], False
+
     # Validate root field, if requested
-    if not allow_missing:
+    if not allow_missing and not is_id_field:
         root_field_name = field_name.split(".", 1)[0]
 
-        # @todo `use_db_field` hack
-        if root_field_name != "_id":
-            if is_frame_field:
-                schema = sample_collection.get_frame_field_schema(
-                    include_private=True
-                )
-            else:
-                schema = sample_collection.get_field_schema(
-                    include_private=True
-                )
+        if is_frame_field:
+            schema = sample_collection.get_frame_field_schema(
+                include_private=True
+            )
+        else:
+            schema = sample_collection.get_field_schema(include_private=True)
 
-            if root_field_name not in schema:
-                ftype = "Frame field" if is_frame_field else "Field"
-                raise ValueError(
-                    "%s '%s' does not exist on collection '%s'"
-                    % (ftype, root_field_name, sample_collection.name)
-                )
+        if root_field_name not in schema:
+            ftype = "Frame field" if is_frame_field else "Field"
+            raise ValueError(
+                "%s '%s' does not exist on collection '%s'"
+                % (ftype, root_field_name, sample_collection.name)
+            )
 
     # Detect list fields in schema
     path = None
@@ -6112,7 +6347,48 @@ def _parse_field_name(
         other_list_fields = [prefix + f for f in other_list_fields]
         other_list_fields.insert(0, "frames")
 
-    return field_name, is_frame_field, unwind_list_fields, other_list_fields
+    return (
+        field_name,
+        is_frame_field,
+        unwind_list_fields,
+        other_list_fields,
+        id_to_str,
+    )
+
+
+def _handle_id_fields(sample_collection, field_name):
+    if not field_name:
+        return field_name, False, False
+
+    if "." not in field_name:
+        root = None
+        leaf = field_name
+    else:
+        root, leaf = field_name.rsplit(".", 1)
+
+    is_private = leaf.startswith("_")
+
+    if is_private:
+        private_field = field_name
+        public_field = leaf[1:]
+        if root is not None:
+            public_field = root + "." + public_field
+    else:
+        public_field = field_name
+        private_field = "_" + leaf
+        if root is not None:
+            private_field = root + "." + private_field
+
+    public_type = sample_collection._get_field_type(public_field)
+    private_type = sample_collection._get_field_type(private_field)
+
+    if isinstance(public_type, fof.ObjectIdField) or isinstance(
+        private_type, fof.ObjectIdField
+    ):
+        id_to_str = not is_private
+        return private_field, True, id_to_str
+
+    return field_name, False, False
 
 
 def _get_field_type(
@@ -6190,7 +6466,13 @@ def _transform_values(values, fcn, level=1):
 def _make_set_field_pipeline(
     sample_collection, field, expr, embedded_root, allow_missing=False
 ):
-    path, is_frame_field, list_fields, _ = sample_collection._parse_field_name(
+    (
+        path,
+        is_frame_field,
+        list_fields,
+        _,
+        _,
+    ) = sample_collection._parse_field_name(
         field,
         auto_unwind=True,
         omit_terminal_lists=True,

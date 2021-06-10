@@ -219,16 +219,21 @@ class Bounds(Aggregation):
         return d["min"], d["max"]
 
     def to_mongo(self, sample_collection):
-        path, pipeline, _ = _parse_field_and_expr(
+        path, pipeline, _, id_to_str = _parse_field_and_expr(
             sample_collection, self._field_name, expr=self._expr
         )
+
+        if id_to_str:
+            value = {"$toString": "$" + path}
+        else:
+            value = "$" + path
 
         pipeline.append(
             {
                 "$group": {
                     "_id": None,
-                    "min": {"$min": "$" + path},
-                    "max": {"$max": "$" + path},
+                    "min": {"$min": value},
+                    "max": {"$max": value},
                 }
             }
         )
@@ -352,7 +357,7 @@ class Count(Aggregation):
         if self._field_name is None and self._expr is None:
             return [{"$count": "count"}]
 
-        path, pipeline, _ = _parse_field_and_expr(
+        path, pipeline, _, _ = _parse_field_and_expr(
             sample_collection, self._field_name, expr=self._expr
         )
 
@@ -468,12 +473,17 @@ class CountValues(Aggregation):
         return {i["k"]: i["count"] for i in d["result"]}
 
     def to_mongo(self, sample_collection):
-        path, pipeline, _ = _parse_field_and_expr(
+        path, pipeline, _, id_to_str = _parse_field_and_expr(
             sample_collection, self._field_name, expr=self._expr
         )
 
+        if id_to_str:
+            value = {"$toString": "$" + path}
+        else:
+            value = "$" + path
+
         pipeline += [
-            {"$group": {"_id": "$" + path, "count": {"$sum": 1}}},
+            {"$group": {"_id": value, "count": {"$sum": 1}}},
             {
                 "$group": {
                     "_id": None,
@@ -601,13 +611,18 @@ class Distinct(Aggregation):
         return d["count"], d["values"]
 
     def to_mongo(self, sample_collection):
-        path, pipeline, _ = _parse_field_and_expr(
+        path, pipeline, _, id_to_str = _parse_field_and_expr(
             sample_collection, self._field_name, expr=self._expr
         )
 
+        if id_to_str:
+            value = {"$toString": "$" + path}
+        else:
+            value = "$" + path
+
         pipeline += [
             {"$match": {"$expr": {"$gt": ["$" + path, None]}}},
-            {"$group": {"_id": None, "values": {"$addToSet": "$" + path}}},
+            {"$group": {"_id": None, "values": {"$addToSet": value}}},
             {"$unwind": "$values"},
             {"$sort": {"values": 1}},
             {"$group": {"_id": None, "values": {"$push": "$values"}}},
@@ -763,15 +778,20 @@ class HistogramValues(Aggregation):
         return self._parse_result_edges(d)
 
     def to_mongo(self, sample_collection):
-        path, pipeline, _ = _parse_field_and_expr(
+        path, pipeline, _, id_to_str = _parse_field_and_expr(
             sample_collection, self._field_name, expr=self._expr
         )
+
+        if id_to_str:
+            value = {"$toString": "$" + path}
+        else:
+            value = "$" + path
 
         if self._auto:
             pipeline.append(
                 {
                     "$bucketAuto": {
-                        "groupBy": "$" + path,
+                        "groupBy": value,
                         "buckets": self._num_bins,
                         "output": {"count": {"$sum": 1}},
                     }
@@ -787,7 +807,7 @@ class HistogramValues(Aggregation):
             pipeline.append(
                 {
                     "$bucket": {
-                        "groupBy": "$" + path,
+                        "groupBy": value,
                         "boundaries": edges,
                         "default": "other",  # counts documents outside of bins
                         "output": {"count": {"$sum": 1}},
@@ -955,13 +975,16 @@ class Mean(Aggregation):
         return d["mean"]
 
     def to_mongo(self, sample_collection):
-        path, pipeline, _ = _parse_field_and_expr(
+        path, pipeline, _, id_to_str = _parse_field_and_expr(
             sample_collection, self._field_name, expr=self._expr
         )
 
-        pipeline.append(
-            {"$group": {"_id": None, "mean": {"$avg": "$" + path}}}
-        )
+        if id_to_str:
+            value = {"$toString": "$" + path}
+        else:
+            value = "$" + path
+
+        pipeline.append({"$group": {"_id": None, "mean": {"$avg": value}}})
 
         return pipeline
 
@@ -1064,12 +1087,17 @@ class Std(Aggregation):
         return d["std"]
 
     def to_mongo(self, sample_collection):
-        path, pipeline, _ = _parse_field_and_expr(
+        path, pipeline, _, id_to_str = _parse_field_and_expr(
             sample_collection, self._field_name, expr=self._expr
         )
 
+        if id_to_str:
+            value = {"$toString": "$" + path}
+        else:
+            value = "$" + path
+
         op = "$stdDevSamp" if self._sample else "$stdDevPop"
-        pipeline.append({"$group": {"_id": None, "std": {op: "$" + path}}})
+        pipeline.append({"$group": {"_id": None, "std": {op: value}}})
 
         return pipeline
 
@@ -1166,11 +1194,16 @@ class Sum(Aggregation):
         return d["sum"]
 
     def to_mongo(self, sample_collection):
-        path, pipeline, _ = _parse_field_and_expr(
+        path, pipeline, _, id_to_str = _parse_field_and_expr(
             sample_collection, self._field_name, expr=self._expr
         )
 
-        pipeline.append({"$group": {"_id": None, "sum": {"$sum": "$" + path}}})
+        if id_to_str:
+            value = {"$toString": "$" + path}
+        else:
+            value = "$" + path
+
+        pipeline.append({"$group": {"_id": None, "sum": {"$sum": value}}})
 
         return pipeline
 
@@ -1339,13 +1372,9 @@ class Values(Aggregation):
         return values
 
     def to_mongo(self, sample_collection):
-        field_name, to_str = _handle_id_fields(
-            sample_collection, self._field_name
-        )
-
-        path, pipeline, list_fields = _parse_field_and_expr(
+        path, pipeline, list_fields, id_to_str = _parse_field_and_expr(
             sample_collection,
-            field_name,
+            self._field_name,
             expr=self._expr,
             auto_unwind=self._unwind,
             omit_terminal_lists=not self._unwind,
@@ -1353,63 +1382,27 @@ class Values(Aggregation):
         )
 
         parse_fcn = None
-        if self._expr is None:
-            if to_str:
-                parse_fcn = str
-            else:
-                field_type = sample_collection._get_field_type(
-                    self._field_name, ignore_primitives=True
-                )
-                if field_type is not None:
-                    parse_fcn = field_type.to_python
+        if self._expr is None and not id_to_str:
+            field_type = sample_collection._get_field_type(
+                self._field_name, ignore_primitives=True
+            )
+            if field_type is not None:
+                parse_fcn = field_type.to_python
 
         self._parse_fcn = parse_fcn
         self._num_list_fields = len(list_fields)
 
         pipeline.extend(
             _make_extract_values_pipeline(
-                path, list_fields, self._missing_value, self._big_result
+                path,
+                list_fields,
+                id_to_str,
+                self._missing_value,
+                self._big_result,
             )
         )
 
         return pipeline
-
-
-def _handle_id_fields(sample_collection, field_name):
-    if not field_name:
-        return field_name, False
-
-    if "." not in field_name:
-        root = None
-        leaf = field_name
-    else:
-        root, leaf = field_name.rsplit(".", 1)
-
-    is_private = leaf.startswith("_")
-
-    if is_private:
-        private_field = field_name
-        public_field = leaf[1:]
-        if root is not None:
-            public_field = root + "." + public_field
-    else:
-        public_field = field_name
-        private_field = "_" + leaf
-        if root is not None:
-            private_field = root + "." + private_field
-
-    public_type = sample_collection._get_field_type(public_field)
-    private_type = sample_collection._get_field_type(private_field)
-
-    if isinstance(public_type, fof.ObjectIdField) or isinstance(
-        private_type, fof.ObjectIdField
-    ):
-        if is_private:
-            return private_field, False
-
-        return private_field, True
-
-    return field_name, False
 
 
 def _transform_values(values, fcn, level=1):
@@ -1423,14 +1416,15 @@ def _transform_values(values, fcn, level=1):
 
 
 def _make_extract_values_pipeline(
-    path, list_fields, missing_value, big_result
+    path, list_fields, id_to_str, missing_value, big_result
 ):
     if not list_fields:
         root = path
     else:
         root = list_fields[0]
 
-    expr = (F() != None).if_else(F(), missing_value)
+    expr = F().to_string() if id_to_str else F()
+    expr = (F() != None).if_else(expr, missing_value)
 
     if list_fields:
         subfield = path[len(list_fields[-1]) + 1 :]
@@ -1504,12 +1498,16 @@ def _parse_field_and_expr(
         is_frame_field,
         unwind_list_fields,
         other_list_fields,
+        id_to_str,
     ) = sample_collection._parse_field_name(
         field_name,
         auto_unwind=auto_unwind,
         omit_terminal_lists=omit_terminal_lists,
         allow_missing=allow_missing,
     )
+
+    if expr is not None:
+        id_to_str = False  # we have no way of knowing what type expr outputs
 
     if is_frame_field and auto_unwind:
         pipeline.extend(
@@ -1526,7 +1524,7 @@ def _parse_field_and_expr(
 
     pipeline.append({"$project": {root: True}})
 
-    return path, pipeline, other_list_fields
+    return path, pipeline, other_list_fields, id_to_str
 
 
 def _extract_prefix_from_expr(expr):

@@ -43,6 +43,6 @@ class NoDatasetFrameSampleDocument(NoDatasetMixin, SampleDocument):
 
     def __init__(self, **kwargs):
         self._data = OrderedDict(
-            [("_sample_id", None), ("frame_number", None)]
+            [("id", None), ("frame_number", None), ("_sample_id", None)]
         )
         self._data.update(kwargs)

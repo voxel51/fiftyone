@@ -5,6 +5,8 @@ Video frames.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import itertools
+
 from pymongo import ReplaceOne, UpdateOne, DeleteOne
 from pymongo.errors import BulkWriteError
 
@@ -15,17 +17,21 @@ from fiftyone.core.singletons import FrameSingleton
 import fiftyone.core.utils as fou
 
 
-def get_default_frame_fields(include_private=False):
+def get_default_frame_fields(include_private=False, use_db_fields=False):
     """Returns the default fields present on all frames.
 
     Args:
         include_private (False): whether to include fields starting with ``_``
+        use_db_fields (False): whether to return database fields rather than
+            user-facing fields, when applicable
 
     Returns:
         a tuple of field names
     """
     return foo.get_default_fields(
-        foo.DatasetFrameSampleDocument, include_private=include_private
+        foo.DatasetFrameSampleDocument,
+        include_private=include_private,
+        use_db_fields=use_db_fields,
     )
 
 
@@ -160,6 +166,46 @@ class Frames(object):
 
         id_str = " '%s'" % self._sample.id if self._sample.id else ""
         raise ValueError("Sample%s has no frame labels" % id_str)
+
+    def head(self, num_frames=3):
+        """Returns a list of the first few frames for the sample.
+
+        If fewer than ``num_frames`` frames exist, only the available frames
+        are returned.
+
+        Args:
+            num_frames (3): the number of frames
+
+        Returns:
+            a list of :class:`Frame` objects
+        """
+        if num_frames <= 0:
+            return []
+
+        return list(itertools.islice(self.values(), num_frames))
+
+    def tail(self, num_frames=3):
+        """Returns a list of the last few frames for the sample.
+
+        If fewer than ``num_frames`` frames exist, only the available frames
+        are returned.
+
+        Args:
+            num_frames (3): the number of frames
+
+        Returns:
+            a list of :class:`Frame` objects
+        """
+        if num_frames <= 0:
+            return []
+
+        frame_numbers = self._get_frame_numbers()
+        if num_frames > len(frame_numbers):
+            offset = None
+        else:
+            offset = sorted(frame_numbers)[-num_frames]
+
+        return list(self._iter_frames(offset=offset))
 
     def keys(self):
         """Returns an iterator over the frame numbers with labels in the
@@ -431,10 +477,14 @@ class Frames(object):
     def _set_replacement(self, frame):
         self._replacements[frame.frame_number] = frame
 
-    def _iter_frames(self):
+    def _iter_frames(self, offset=None):
+        if offset is None:
+            offset = -1
+
         if not self._in_db or self._delete_all:
             for frame_number in sorted(self._replacements.keys()):
-                yield self._replacements[frame_number]
+                if frame_number >= offset:
+                    yield self._replacements[frame_number]
 
             return
 
@@ -459,18 +509,19 @@ class Frames(object):
             if repl_done and db_done:
                 break
 
-            if not repl_done and frame_number in self._replacements:
-                yield self._replacements[frame_number]
+            if frame_number >= offset:
+                if not repl_done and frame_number in self._replacements:
+                    yield self._replacements[frame_number]
 
-            elif (
-                not db_done
-                and frame_number == d["frame_number"]
-                and frame_number not in self._delete_frames
-            ):
-                frame = self._make_frame(d)
-                self._set_replacement(frame)
+                elif (
+                    not db_done
+                    and frame_number == d["frame_number"]
+                    and frame_number not in self._delete_frames
+                ):
+                    frame = self._make_frame(d)
+                    self._set_replacement(frame)
 
-                yield frame
+                    yield frame
 
             frame_number += 1
 
