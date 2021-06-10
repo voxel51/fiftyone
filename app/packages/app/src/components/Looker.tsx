@@ -1,7 +1,12 @@
 import React, { useState, useRef, MutableRefObject, useEffect } from "react";
 import ReactDOM from "react-dom";
 import styled from "styled-components";
-import { selectorFamily, useRecoilValue, useRecoilCallback } from "recoil";
+import {
+  selectorFamily,
+  useRecoilValue,
+  useRecoilCallback,
+  useRecoilState,
+} from "recoil";
 import { animated, useSpring } from "react-spring";
 import { v4 as uuid } from "uuid";
 
@@ -347,7 +352,9 @@ const TooltipInfo = React.memo(
 const useLookerError = (looker, sampleId, setError) => {
   const handler = useRecoilCallback(
     ({ snapshot }) => async () => {
-      const isVideo = await snapshot.getPromise(selectors.isVideoDataset);
+      const isVideo =
+        (await snapshot.getPromise(selectors.isVideoDataset)) &&
+        (await snapshot.getPromise(selectors.isRootView));
       const mimeType = await snapshot.getPromise(
         selectors.sampleMimeType(sampleId)
       );
@@ -403,41 +410,21 @@ export const defaultLookerOptions = selectorFamily({
 
 export const lookerOptions = selectorFamily<
   Partial<FrameOptions | ImageOptions | VideoOptions>,
-  { modal: boolean; sampleId: string }
+  boolean
 >({
   key: "lookerOptions",
-  get: ({ modal, sampleId }) => ({ get, getCallback }) => {
+  get: (modal) => ({ get }) => {
     const options = {
       ...get(defaultLookerOptions(modal)),
       activeLabels: get(labelAtoms.activeFields(modal)),
       colorMap: get(selectors.colorMap(modal)),
       filter: get(labelFilters(modal)),
     };
-    const isVideo = get(selectors.isVideoDataset) && get(selectors.isRootView);
     if (modal) {
       return {
         ...options,
         ...get(atoms.savedLookerOptions),
         selectedLabels: [...get(selectors.selectedLabelIds)],
-      };
-    }
-    if (isVideo) {
-      const frames = get(atoms.sampleFrames(sampleId));
-      let cancelled = false;
-      return {
-        ...options,
-        requestFrames: {
-          request: getCallback(({ set }) => async () => {
-            const { sample } = await request({
-              type: "sample",
-              args: { sample_id: sampleId },
-              uuid: uuid(),
-            });
-
-            !cancelled && set(atoms.sampleFrames(sampleId), sample.frames);
-          }),
-        },
-        cancel: () => (cancelled = true),
       };
     }
     return options;
@@ -453,6 +440,26 @@ export const useLookerOptionsUpdate = () => {
       set(atoms.savedLookerOptions, { ...currentOptions, ...event.detail });
     }
   );
+};
+
+const requestFrames = (frames, sampleId: string, setFrames) => {
+  if (!frames) {
+    let cancelled = false;
+    return {
+      request: () => {
+        request({
+          type: "sample",
+          args: { sample_id: sampleId },
+          uuid: uuid(),
+        }).then(({ sample }) => {
+          console.log(sample);
+          !cancelled && setFrames(sample.frames);
+        });
+      },
+      cancel: () => (cancelled = true),
+    };
+  }
+  return null;
 };
 
 interface LookerProps {
@@ -477,9 +484,9 @@ const Looker = ({
   style,
 }: LookerProps) => {
   let sample = useRecoilValue(atoms.sample(sampleId));
-  const frames = useRecoilValue(atoms.sampleFrames(sampleId));
+  const [frames, setFrames] = useRecoilState(atoms.sampleFrames(sampleId));
   const sampleSrc = useRecoilValue(selectors.sampleSrc(sampleId));
-  const options = useRecoilValue(lookerOptions({ modal, sampleId }));
+  const options = useRecoilValue(lookerOptions(modal));
   const metadata = useRecoilValue(atoms.sampleMetadata(sampleId));
   const ref = useRef<any>();
   const bindMove = useMove((s) => ref.current && ref.current(s));
@@ -508,6 +515,7 @@ const Looker = ({
           ...options,
           hasNext: Boolean(onNext),
           hasPrevious: Boolean(onPrevious),
+          requestFrames: requestFrames(frames, sampleId, setFrames),
         }
       )
   );

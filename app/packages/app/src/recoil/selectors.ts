@@ -853,7 +853,7 @@ export const sampleFramesMap = selectorFamily<any, string>({
     const frameData = get(atoms.sampleFrames(id));
 
     return frameData
-      ? Object.fromEntries(frames.map((f) => [f.frame_number, f]))
+      ? Object.fromEntries(frameData.map((f) => [f.frame_number, f]))
       : {};
   },
 });

@@ -357,9 +357,13 @@ export function withVideoLookerEvents(): () => Events<VideoState> {
         }
       },
       mouseenter: ({ update }) => {
-        update(({ config: { thumbnail } }) => {
+        update(({ config: { thumbnail }, options: { requestFrames } }) => {
           if (thumbnail) {
+            if (requestFrames) {
+              requestFrames.request();
+            }
             return {
+              framesRequested: true,
               playing: true,
             };
           }
@@ -367,14 +371,21 @@ export function withVideoLookerEvents(): () => Events<VideoState> {
         });
       },
       mouseleave: ({ update }) => {
-        update(({ config: { thumbnail } }) => {
-          if (thumbnail) {
-            return {
-              playing: false,
-            };
+        update(
+          ({
+            config: { thumbnail },
+            framesRequested,
+            options: { requestFrames },
+          }) => {
+            if (thumbnail) {
+              framesRequested && requestFrames && requestFrames.cancel();
+              return {
+                playing: false,
+              };
+            }
+            return {};
           }
-          return {};
-        });
+        );
       },
     };
   };

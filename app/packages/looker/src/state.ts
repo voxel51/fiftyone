@@ -68,7 +68,7 @@ export interface VideoOptions extends BaseOptions {
   autoplay: boolean;
   loop: boolean;
   requestFrames?: {
-    request: Promise<void>;
+    request: () => void;
     cancel: () => void;
   };
 }

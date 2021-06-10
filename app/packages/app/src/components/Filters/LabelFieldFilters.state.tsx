@@ -337,7 +337,7 @@ export const labelSampleModalCounts = selectorFamily<Counts | null, string>({
       return labels.reduce((acc, path) => {
         if (!(path in acc)) acc[path] = 0;
         if (!Boolean(frameData)) return acc;
-        for (const frame of frameData.frames) {
+        for (const frame of frameData) {
           acc[path] += sampleCountResolver(
             frame[path],
             types["frames." + path]

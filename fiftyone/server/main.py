@@ -536,8 +536,10 @@ class StateHandler(tornado.websocket.WebSocketHandler):
 
         view = view.select(sample_id)
 
-        results, more = await _get_samples(cls.sample_collection(), view, 1, 0)
-        message = {"type": sample_id, "sample": results[0], "uuid": uuid}
+        results, more = await _get_samples(
+            cls.sample_collection(), view, 1, 0, detach_frames=False
+        )
+        message = {"type": "sample", "sample": results[0], "uuid": uuid}
 
         _write_message(message, app=True, only=self)
 
@@ -1255,11 +1257,11 @@ async def _numeric_histograms(coll, view, schema, prefix=""):
 
 
 async def _get_samples(col, view, page_length, page, detach_frames=True):
-    pipeline = view._pipeline(detach_frames=detach_frames)
+    pipeline = view._pipeline(attach_frames=True, detach_frames=detach_frames)
 
     samples = await foo.aggregate(col, pipeline).to_list(page_length + 1)
-
     convert(samples)
+
     more = False
     if len(samples) > page_length:
         samples = samples[:page_length]
