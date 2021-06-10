@@ -309,7 +309,8 @@ class COCODetectionDatasetExporter(foud.LabeledImageDatasetExporter):
     details.
 
     Args:
-        export_dir (None): the directory to write the export
+        export_dir (None): the directory to write the export. This has no
+            effect if ``data_path`` and ``labels_path`` are absolute paths
         data_path (None): an optional parameter that enables explicit control
             over the location of the exported media. Can be any of the
             following:

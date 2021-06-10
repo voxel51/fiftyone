@@ -5137,6 +5137,9 @@ class SampleCollection(object):
         In all workflows, the remaining parameters of this method can be
         provided to further configure the export.
 
+        See :ref:`this page <exporting-datasets>` for more information about
+        the available export formats and examples of using this method.
+
         See :ref:`this guide <custom-dataset-exporter>` for more details about
         exporting datasets in custom formats by defining your own
         :class:`fiftyone.utils.data.exporters.DatasetExporter`.
@@ -5183,30 +5186,30 @@ class SampleCollection(object):
                 :class:`fiftyone.types.dataset_types.Dataset` type to write. If
                 not specified, the default type for ``label_field`` is used
             data_path (None): an optional parameter that enables explicit
-                control over the location of the exported media. Can be any of
-                the following:
+                control over the location of the exported media for certain
+                export formats. Can be any of the following:
 
                 -   a folder name like "data" or "data/" specifying a subfolder
                     of ``export_dir`` in which to export the media
                 -   an absolute directory path in which to export the media. In
                     this case, the ``export_dir`` has no effect on the location
                     of the data
-                -   a JSON filename like "data.json" specifying the filename of
-                    the JSON mapping file in ``export_dir`` generated when
-                    ``export_media`` is False
-                -   an absolute JSON path specifying the location to write the
-                    JSON mapping file when ``export_media`` is False. In this
-                    case, ``export_dir`` has no effect on the location of the
-                    data
+                -   a filename like "data.json" specifying the filename of a
+                    JSON manifest file in ``export_dir`` generated when
+                    ``export_media`` is ``"manifest"``
+                -   an absolute filepath specifying the location to write the
+                    JSON manifest file when ``export_media`` is ``"manifest"``.
+                    In this case, ``export_dir`` has no effect on the location
+                    of the data
 
-                When applicable, a default value of this parameter will be
-                chosen based on the value of the ``export_media`` parameter.
-                Note that this parameter is not applicable to certain export
-                formats such as binary types like TF records
+                If None, a default value of this parameter will be chosen based
+                on the value of the ``export_media`` parameter. Note that this
+                parameter is not applicable to certain export formats such as
+                binary types like TF records
             labels_path (None): an optional parameter that enables explicit
                 control over the location of the exported labels. Only
-                applicable when exporting in labeled dataset formats. Can be
-                any of the following:
+                applicable when exporting in certain labeled dataset formats.
+                Can be any of the following:
 
                 -   a type-specific folder name like "labels" or "labels/" or a
                     filename like "labels.json" or "labels.xml" specifying the
@@ -5233,11 +5236,11 @@ class SampleCollection(object):
                     filepaths of the source media, rather than exporting the
                     actual media
 
-                When necessary, an appropriate default value of this parameter
-                will be chosen based on the value of the ``data_path``
-                parameter. Note that some dataset formats may not support
-                certain values for this parameter (e.g., when exporting in
-                binary formats such as TF records, "symlink" is not an option)
+                If None, an appropriate default value of this parameter will be
+                chosen based on the value of the ``data_path`` parameter. Note
+                that some dataset formats may not support certain values for
+                this parameter (e.g., when exporting in binary formats such as
+                TF records, "symlink" is not an option)
             dataset_exporter (None): a
                 :class:`fiftyone.utils.data.exporters.DatasetExporter` to use
                 to export the samples. When provided, parameters such as

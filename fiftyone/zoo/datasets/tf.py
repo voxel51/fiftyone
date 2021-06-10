@@ -768,10 +768,7 @@ def _download_and_prepare(
 
     # Write the formatted dataset to `dataset_dir`
     foud.write_dataset(
-        samples,
-        sample_parser,
-        dataset_exporter=dataset_exporter,
-        num_samples=num_samples,
+        samples, sample_parser, dataset_exporter, num_samples=num_samples
     )
 
     return dataset_type, num_samples, classes

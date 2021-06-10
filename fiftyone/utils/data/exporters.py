@@ -45,17 +45,41 @@ def export_samples(
     samples,
     export_dir=None,
     dataset_type=None,
+    data_path=None,
+    labels_path=None,
+    export_media=None,
     dataset_exporter=None,
     label_field_or_dict=None,
     frame_labels_field_or_dict=None,
     num_samples=None,
-    export_media=True,
     **kwargs,
 ):
-    """Exports the given samples to disk as a dataset in the specified format.
+    """Exports the given samples to disk.
 
-    Provide either ``export_dir`` and ``dataset_type`` or ``dataset_exporter``
-    to perform the export.
+    You can perform an export with this method via the following three basic
+    workflows:
+
+    (a) Provide ``dataset_type`` and ``export_dir`` to export the content to a
+        specific directory in a desired format
+
+    (b) Provide ``dataset_type`` along with ``data_path``, ``labels_path``,
+        and/or ``export_media`` to directly specify where to export the source
+        media and/or labels (if applicable) in your desired format. This syntax
+        provides the flexibility to, for example, perform workflows like
+        labels-only exports
+
+    (c) Provide a ``dataset_exporter`` to which to feed samples to perform a
+        fully-customized export
+
+    In all workflows, the remaining parameters of this method can be provided
+    to further configure the export.
+
+    See :ref:`this page <exporting-datasets>` for more information about the
+    available export formats and examples of using this method.
+
+    See :ref:`this guide <custom-dataset-exporter>` for more details about
+    exporting datasets in custom formats by defining your own
+    :class:`fiftyone.utils.data.exporters.DatasetExporter`.
 
     This method will automatically coerce the data to match the requested
     export in the following cases:
@@ -89,9 +113,62 @@ def export_samples(
             format ``dataset_type``
         dataset_type (None): the :class:`fiftyone.types.dataset_types.Dataset`
             type to write
-        dataset_exporter (None): a
-            :class:`fiftyone.utils.data.exporters.DatasetExporter` to use to
-            write the dataset
+        data_path (None): an optional parameter that enables explicit control
+            over the location of the exported media for certain export formats.
+            Can be any of the following:
+
+            -   a folder name like "data" or "data/" specifying a subfolder of
+                ``export_dir`` in which to export the media
+            -   an absolute directory path in which to export the media. In
+                this case, the ``export_dir`` has no effect on the location of
+                the data
+            -   a filename like "data.json" specifying the filename of a JSON
+                manifest file in ``export_dir`` generated when ``export_media``
+                is ``"manifest"``
+            -   an absolute filepath specifying the location to write the JSON
+                manifest file when ``export_media`` is ``"manifest"``. In this
+                case, ``export_dir`` has no effect on the location of the data
+
+            If None, a default value of this parameter will be chosen based on
+            the value of the ``export_media`` parameter. Note that this
+            parameter is not applicable to certain export formats such as
+            binary types like TF records
+        labels_path (None): an optional parameter that enables explicit control
+            over the location of the exported labels. Only applicable when
+            exporting in certain labeled dataset formats. Can be any of the
+            following:
+
+            -   a type-specific folder name like "labels" or "labels/" or a
+                filename like "labels.json" or "labels.xml" specifying the
+                location in ``export_dir`` in which to export the labels
+            -   an absolute directory or filepath in which to export the
+                labels. In this case, the ``export_dir`` has no effect on the
+                location of the labels
+
+            For labeled datasets, the default value of this parameter will be
+            chosen based on the export format so that the labels will be
+            exported into ``export_dir``
+        export_media (None): controls how to export the raw media. The
+            supported values are:
+
+            -   ``True``: copy all media files into the output directory
+            -   ``False``: don't export media. This option is only useful when
+                exporting labeled datasets whose label format stores sufficient
+                information to locate the associated media
+            -   ``"move"``: move all media files into the output directory
+            -   ``"symlink"``: create symlinks to the media files in the output
+                directory
+            -   ``"manifest"``: create a ``data.json`` in the output directory
+                that maps UUIDs used in the labels files to the filepaths of
+                the source media, rather than exporting the actual media
+
+            If None, an appropriate default value of this parameter will be
+            chosen based on the value of the ``data_path`` parameter. Note that
+            some dataset formats may not support certain values for this
+            parameter (e.g., when exporting in binary formats such as TF
+            records, "symlink" is not an option)
+        dataset_exporter (None): a :class:`DatasetExporter` to use to write the
+            dataset
         label_field_or_dict (None): the name of the label field to export, or
             a dictionary mapping field names to output keys describing the
             label fields to export. Only applicable if ``dataset_exporter`` is
@@ -104,9 +181,6 @@ def export_samples(
             ``dataset_exporter`` is a :class:`LabeledVideoDatasetExporter`
         num_samples (None): the number of samples in ``samples``. If omitted,
             this is computed (if possible) via ``len(samples)``
-        export_media (True): whether to export media files or to export only
-            labels and metadata. This argument only applies to certain dataset
-            types
         **kwargs: optional keyword arguments to pass to the dataset exporter's
             constructor via ``DatasetExporter(export_dir=export_dir, **kwargs)``.
             If you are exporting image patches, this can also contain keyword
@@ -116,12 +190,12 @@ def export_samples(
         samples, dataset_exporter, label_field_or_dict, kwargs
     )
 
-    sample_collection = samples
-
     if dataset_exporter is None:
         dataset_exporter, kwargs = build_dataset_exporter(
             dataset_type,
             export_dir=export_dir,
+            data_path=data_path,
+            labels_path=labels_path,
             export_media=export_media,
             **kwargs,
         )
@@ -129,11 +203,13 @@ def export_samples(
     for key, value in kwargs.items():
         if value is not None:
             logger.warning(
-                "Ignoring unsupported parameter %s=%s for export type " "%s",
+                "Ignoring unsupported parameter %s=%s for export type %s",
                 key,
                 value,
                 type(dataset_exporter),
             )
+
+    sample_collection = samples
 
     if isinstance(dataset_exporter, BatchDatasetExporter):
         _write_batch_dataset(dataset_exporter, samples)
@@ -209,7 +285,7 @@ def export_samples(
     write_dataset(
         samples,
         sample_parser,
-        dataset_exporter=dataset_exporter,
+        dataset_exporter,
         num_samples=num_samples,
         sample_collection=sample_collection,
     )
@@ -218,62 +294,27 @@ def export_samples(
 def write_dataset(
     samples,
     sample_parser,
-    dataset_dir=None,
-    dataset_type=None,
-    dataset_exporter=None,
+    dataset_exporter,
     num_samples=None,
-    export_media=True,
     sample_collection=None,
-    **kwargs,
 ):
     """Writes the samples to disk as a dataset in the specified format.
-
-    Provide either ``dataset_dir`` and ``dataset_type`` or ``dataset_exporter``
-    to perform the write.
 
     Args:
         samples: an iterable of samples that can be parsed by ``sample_parser``
         sample_parser: a :class:`fiftyone.utils.data.parsers.SampleParser` to
             use to parse the samples
-        dataset_dir (None): the directory to which to write the dataset in
-            format ``dataset_type``
-        dataset_type (None): the :class:`fiftyone.types.dataset_types.Dataset`
-            type to write
-        dataset_exporter (None): a
-            :class:`fiftyone.utils.data.exporters.DatasetExporter` to use to
-            write the dataset
+        dataset_exporter: a :class:`DatasetExporter` to use to write the
+            dataset
         num_samples (None): the number of samples in ``samples``. If omitted,
             this is computed (if possible) via ``len(samples)``
-        export_media (True): whether to export media files or to export only
-            labels and metadata. This argument only applies to certain dataset
-            types
         sample_collection (None): the
             :class:`fiftyone.core.collections.SampleCollection` from which
             ``samples`` were extracted. If ``samples`` is itself a
             :class:`fiftyone.core.collections.SampleCollection`, this parameter
             defaults to ``samples``. This parameter is optional and is only
             passed to :meth:`DatasetExporter.log_collection`
-        **kwargs: optional keyword arguments to pass to the dataset exporter's
-            constructor via
-            ``DatasetExporter(export_dir=dataset_dir, **kwargs)``
     """
-    if dataset_exporter is None:
-        dataset_exporter, kwargs = build_dataset_exporter(
-            dataset_type,
-            export_dir=dataset_dir,
-            export_media=export_media,
-            **kwargs,
-        )
-
-    for key, value in kwargs.items():
-        if value is not None:
-            logger.warning(
-                "Ignoring unsupported parameter %s=%s for export type " "%s",
-                key,
-                value,
-                type(dataset_exporter),
-            )
-
     if num_samples is None:
         try:
             num_samples = len(samples)
@@ -318,15 +359,13 @@ def write_dataset(
         )
 
 
-def build_dataset_exporter(dataset_type, export_dir=None, **kwargs):
+def build_dataset_exporter(dataset_type, **kwargs):
     """Builds the :class:`DatasetExporter` instance for the given parameters.
 
     Args:
         dataset_type: the :class:`fiftyone.types.dataset_types.Dataset` type
-        export_dir (None): the export directory
-        **kwargs: optional keyword arguments to pass to the dataset exporter's
-            constructor via
-            ``DatasetExporter(export_dir=export_dir, **kwargs)``
+        **kwargs: keyword arguments to pass to the dataset exporter's
+            constructor via ``DatasetExporter(**kwargs)``
 
     Returns:
         a tuple of:
@@ -335,7 +374,10 @@ def build_dataset_exporter(dataset_type, export_dir=None, **kwargs):
         -   a dict of extra keyword arguments that were unused
     """
     if dataset_type is None:
-        raise ValueError("You must provide a `dataset_type`")
+        raise ValueError(
+            "You must provide a `dataset_type` in order to build a dataset "
+            "exporter"
+        )
 
     if inspect.isclass(dataset_type):
         dataset_type = dataset_type()
@@ -358,16 +400,13 @@ def build_dataset_exporter(dataset_type, export_dir=None, **kwargs):
     )
 
     try:
-        dataset_exporter = dataset_exporter_cls(
-            export_dir=export_dir, **kwargs
-        )
+        dataset_exporter = dataset_exporter_cls(**kwargs)
     except Exception as e:
         raise ValueError(
-            "Failed to construct exporter using syntax "
-            "%s(export_dir=export_dir, **kwargs); you may need to supply "
-            "mandatory arguments to the constructor via `kwargs`. Please "
-            "consult the documentation of %s to learn more"
-            % (dataset_exporter_cls.__name__, dataset_exporter_cls)
+            "Failed to construct exporter of type %s using the provided "
+            "parameters. You may need to supply mandatory arguments to the "
+            "constructor via `kwargs`. Please consult the documentation of %s "
+            "to learn more" % (dataset_exporter_cls, dataset_exporter_cls)
         ) from e
 
     return dataset_exporter, other_kwargs
@@ -679,7 +718,8 @@ class DatasetExporter(object):
     for information about implementing/using dataset exporters.
 
     Args:
-        export_dir (None): the directory to write the export
+        export_dir (None): the directory to write the export. This may be
+            optional for some exporters
     """
 
     def __init__(self, export_dir=None):
@@ -760,13 +800,14 @@ class BatchDatasetExporter(DatasetExporter):
     handle aggregating over the samples themselves.
 
     Args:
-        export_dir (None): the directory to write the export
+        export_dir (None): the directory to write the export. This may be
+            optional for some exporters
     """
 
     def export_sample(self, *args, **kwargs):
         raise ValueError(
             "Use export_samples() to perform exports with %s instances"
-            % self.__class__
+            % type(self)
         )
 
     def export_samples(self, sample_collection):
@@ -787,7 +828,8 @@ class GenericSampleDatasetExporter(DatasetExporter):
     for information about implementing/using dataset exporters.
 
     Args:
-        export_dir (None): the directory to write the export
+        export_dir (None): the directory to write the export. This may be
+            optional for some exporters
     """
 
     def export_sample(self, sample):
@@ -806,7 +848,8 @@ class UnlabeledImageDatasetExporter(DatasetExporter):
     for information about implementing/using dataset exporters.
 
     Args:
-        export_dir (None): the directory to write the export
+        export_dir (None): the directory to write the export. This may be
+            optional for some exporters
     """
 
     @property
@@ -838,7 +881,8 @@ class UnlabeledVideoDatasetExporter(DatasetExporter):
     for information about implementing/using dataset exporters.
 
     Args:
-        export_dir (None): the directory to write the export
+        export_dir (None): the directory to write the export. This may be
+            optional for some exporters
     """
 
     @property
@@ -870,7 +914,8 @@ class LabeledImageDatasetExporter(DatasetExporter):
     for information about implementing/using dataset exporters.
 
     Args:
-        export_dir (None): the directory to write the export
+        export_dir (None): the directory to write the export. This may be
+            optional for some exporters
     """
 
     @property
@@ -923,7 +968,8 @@ class LabeledVideoDatasetExporter(DatasetExporter):
     for information about implementing/using dataset exporters.
 
     Args:
-        export_dir (None): the directory to write the export
+        export_dir (None): the directory to write the export. This may be
+            optional for some exporters
     """
 
     @property
@@ -1218,7 +1264,7 @@ class LegacyFiftyOneDatasetExporter(GenericSampleDatasetExporter):
         if export_dir is None:
             raise ValueError(
                 "`export_dir` is required when exporting with a %s"
-                % self.__class__,
+                % type(self),
             )
 
         if export_media is None:
@@ -1386,7 +1432,7 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
         if export_dir is None:
             raise ValueError(
                 "`export_dir` is required when exporting with a %s"
-                % self.__class__,
+                % type(self),
             )
 
         if export_media is None:
@@ -1550,7 +1596,7 @@ class ImageDirectoryExporter(UnlabeledImageDatasetExporter):
         if export_dir is None:
             raise ValueError(
                 "`export_dir` is required when exporting with a %s"
-                % self.__class__,
+                % type(self),
             )
 
         if export_media is None:
@@ -1609,7 +1655,7 @@ class VideoDirectoryExporter(UnlabeledVideoDatasetExporter):
         if export_dir is None:
             raise ValueError(
                 "`export_dir` is required when exporting with a %s"
-                % self.__class__,
+                % type(self),
             )
 
         if export_media is None:
@@ -1653,7 +1699,8 @@ class FiftyOneImageClassificationDatasetExporter(LabeledImageDatasetExporter):
     appended to the base filename.
 
     Args:
-        export_dir (None): the directory to write the export
+        export_dir (None): the directory to write the export. This has no
+            effect if ``data_path`` and ``labels_path`` are absolute paths
         data_path (None): an optional parameter that enables explicit control
             over the location of the exported media. Can be any of the
             following:
@@ -1843,7 +1890,7 @@ class ImageClassificationDirectoryTreeExporter(LabeledImageDatasetExporter):
         if export_dir is None:
             raise ValueError(
                 "`export_dir` is required when exporting with a %s"
-                % self.__class__,
+                % type(self),
             )
 
         if export_media is None:
@@ -1852,8 +1899,8 @@ class ImageClassificationDirectoryTreeExporter(LabeledImageDatasetExporter):
         supported_modes = (True, "move", "symlink")
         if export_media not in supported_modes:
             raise ValueError(
-                "Unsupported export_media=%s. The supported values are %s"
-                % (export_media, supported_modes)
+                "Unsupported export_media=%s for %s. The supported values "
+                "are %s" % (export_media, type(self), supported_modes)
             )
 
         if image_format is None:
@@ -1949,7 +1996,7 @@ class VideoClassificationDirectoryTreeExporter(LabeledVideoDatasetExporter):
         if export_dir is None:
             raise ValueError(
                 "`export_dir` is required when exporting with a %s"
-                % self.__class__,
+                % type(self),
             )
 
         if export_media is None:
@@ -1958,8 +2005,8 @@ class VideoClassificationDirectoryTreeExporter(LabeledVideoDatasetExporter):
         supported_modes = (True, "move", "symlink")
         if export_media not in supported_modes:
             raise ValueError(
-                "Unsupported export_media=%s. The supported values are %s"
-                % (export_media, supported_modes)
+                "Unsupported export_media=%s for %s. The supported values are "
+                "%s" % (export_media, type(self), supported_modes)
             )
 
         super().__init__(export_dir=export_dir)
@@ -2025,7 +2072,8 @@ class FiftyOneImageDetectionDatasetExporter(LabeledImageDatasetExporter):
     appended to the base filename.
 
     Args:
-        export_dir (None): the directory to write the export
+        export_dir (None): the directory to write the export. This has no
+            effect if ``data_path`` and ``labels_path`` are absolute paths
         data_path (None): an optional parameter that enables explicit control
             over the location of the exported media. Can be any of the
             following:
@@ -2198,7 +2246,8 @@ class ImageSegmentationDirectoryExporter(LabeledImageDatasetExporter):
     appended to the base filename.
 
     Args:
-        export_dir (None): the directory to write the export
+        export_dir (None): the directory to write the export. This has no
+            effect if ``data_path`` and ``labels_path`` are absolute paths
         data_path (None): an optional parameter that enables explicit control
             over the location of the exported media. Can be any of the
             following:
@@ -2365,7 +2414,7 @@ class FiftyOneImageLabelsDatasetExporter(LabeledImageDatasetExporter):
         if export_dir is None:
             raise ValueError(
                 "`export_dir` is required when exporting with a %s"
-                % self.__class__,
+                % type(self),
             )
 
         if export_media is None:
@@ -2484,7 +2533,7 @@ class FiftyOneVideoLabelsDatasetExporter(LabeledVideoDatasetExporter):
         if export_dir is None:
             raise ValueError(
                 "`export_dir` is required when exporting with a %s"
-                % self.__class__,
+                % type(self),
             )
 
         if export_media is None:

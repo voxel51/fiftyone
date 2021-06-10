@@ -188,7 +188,9 @@ class YOLODatasetExporter(foud.LabeledImageDatasetExporter):
     See :class:`fiftyone.types.dataset_types.YOLODataset` for format details.
 
     Args:
-        export_dir (None): the directory to write the export
+        export_dir (None): the directory to write the export. This has no
+            effect if ``data_path``, ``objects_path``, and ``images_path`` are
+            absolute paths
         data_path (None): an optional parameter that enables explicit control
             over the location of the exported media. Can be any of the
             following:
