@@ -179,11 +179,11 @@ export class CanvasElement<State extends BaseState> extends BaseElement<
       },
       mouseup: ({ event, update }) => {
         update((state) => {
+          this.mousedown = false;
           if (state.config.thumbnail || !state.panning) {
             return {};
           }
           event.preventDefault();
-          this.mousedown = false;
           return {
             panning: false,
             pan: this.getPan([event.pageX, event.pageY]),
