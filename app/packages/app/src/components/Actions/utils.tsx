@@ -201,7 +201,7 @@ export const labelModalTagCounts = selectorFamily<
         ? filter(get(selectors.modalSample))
         : get(selectors.modalSample);
       if (get(selectors.isVideoDataset)) {
-        const frames = get(atoms.sampleVideoData(sample._id));
+        const frames = get(atoms.sampleFrames(sample._id));
 
         if (!frames) {
           return null;

@@ -1,12 +1,9 @@
 import { atom, useRecoilCallback } from "recoil";
-import { v4 as uuid } from "uuid";
 
 import * as atoms from "./atoms";
 import * as selectors from "./selectors";
 
-import socket from "../shared/connection";
 import { labelFilters } from "../components/Filters/LabelFieldFilters.state";
-import { request } from "../utils/socket";
 
 export const showModalJSON = atom({
   key: "showModalJSON",
@@ -34,14 +31,4 @@ export const useClearModal = () => {
     },
     []
   );
-};
-
-export const useLoadFrames = () => {
-  return useRecoilCallback(({ set }) => async (sampleId: string) => {
-    const data = await request({
-      type: "sample",
-      args: { sample_id: sampleId },
-      uuid: uuid(),
-    });
-  });
 };

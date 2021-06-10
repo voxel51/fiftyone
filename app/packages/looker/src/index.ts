@@ -352,6 +352,7 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
       fragment: null,
       playing: false,
       frameNumber: 1,
+      framesRequested: false,
       ...this.getInitialBaseState(),
       config: { ...config },
       options: {

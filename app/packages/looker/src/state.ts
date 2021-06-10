@@ -67,7 +67,10 @@ export interface VideoOptions extends BaseOptions {
   useFrameNumber: boolean;
   autoplay: boolean;
   loop: boolean;
-  loader?: Promise<BaseSample>;
+  requestFrames?: {
+    request: Promise<void>;
+    cancel: () => void;
+  };
 }
 
 export interface TooltipOverlay {
@@ -135,6 +138,7 @@ export interface VideoState extends BaseState {
   frameNumber: number;
   duration: number;
   fragment?: [number, number];
+  framesRequested: boolean;
 }
 
 export type Optional<T> = {

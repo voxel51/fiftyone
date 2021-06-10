@@ -331,7 +331,7 @@ export const labelSampleModalCounts = selectorFamily<Counts | null, string>({
     const labels = get(selectors.labelNames(dimension));
     const types = get(selectors.labelTypesMap);
     const sample = get(selectors.modalSample) || {};
-    const frameData = get(atoms.sampleVideoData(sample._id));
+    const frameData = get(atoms.sampleFrames(sample._id));
 
     if (dimension === "frame") {
       return labels.reduce((acc, path) => {
@@ -384,7 +384,7 @@ export const filteredLabelSampleModalCounts = selectorFamily<
     const types = get(selectors.labelTypesMap);
     const filter = get(sampleModalFilter);
     const sample = filter(get(selectors.modalSample) || {}, null, true);
-    const frameData = get(atoms.sampleVideoData(sample._id));
+    const frameData = get(atoms.sampleFrames(sample._id));
     if (dimension === "frame") {
       return labels.reduce((acc, path) => {
         if (!(path in acc)) acc[path] = 0;
@@ -494,7 +494,7 @@ export const modalLabels = selector<atoms.SelectedLabel[]>({
       const activeFrameLabels = get(
         activeLabels({ modal: true, frames: true })
       );
-      const frames = get(atoms.sampleVideoData(sample._id));
+      const frames = get(atoms.sampleFrames(sample._id));
       frames &&
         frames.forEach((frame) =>
           addLabels({
