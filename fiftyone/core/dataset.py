@@ -3483,7 +3483,7 @@ def _create_dataset(name, persistent=False, media_type=None, patches=False):
         sample_collection_name=sample_collection_name,
         persistent=persistent,
         sample_fields=foo.SampleFieldDocument.list_from_field_schema(
-            sample_doc_cls.get_field_schema(include_private=True)
+            sample_doc_cls._fields  # pylint: disable=no-member
         ),
         version=focn.VERSION,
     )
@@ -3546,15 +3546,21 @@ def _load_dataset(name, migrate=True):
         "frames." + dataset_doc.sample_collection_name
     )
 
-    default_fields = fos.get_default_sample_fields(include_private=True)
+    default_sample_fields = fos.get_default_sample_fields(include_private=True)
     for sample_field in dataset_doc.sample_fields:
-        if sample_field.name in default_fields:
+        if sample_field.name in default_sample_fields:
             continue
 
         sample_doc_cls._declare_field(sample_field)
 
     if dataset_doc.media_type == fom.VIDEO:
+        default_frame_fields = fofr.get_default_frame_fields(
+            include_private=True
+        )
         for frame_field in dataset_doc.frame_fields:
+            if frame_field.name in default_frame_fields:
+                continue
+
             frame_doc_cls._declare_field(frame_field)
 
     return dataset_doc, sample_doc_cls, frame_doc_cls
@@ -4039,9 +4045,10 @@ def _merge_samples(
     # Merge samples
     #
 
-    default_fields = src_collection._get_default_sample_fields(
-        include_private=True
+    default_fields = set(
+        src_collection._get_default_sample_fields(include_private=True)
     )
+    default_fields.discard("id")  # @todo `use_db_field` hack
 
     sample_pipeline = src_collection._pipeline(detach_frames=True)
 
@@ -4076,7 +4083,7 @@ def _merge_samples(
     if insert_new:
         # Can't omit default fields here when new samples may be inserted.
         # Any extra fields here are omitted in `when_matched` pipeline
-        _omit_fields -= set(default_fields)
+        _omit_fields -= default_fields
 
     if _omit_fields:
         sample_pipeline.append({"$unset": list(_omit_fields)})

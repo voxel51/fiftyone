@@ -433,18 +433,6 @@ class VideoSampleTests(unittest.TestCase):
             for i in range(1, 50):
                 self.assertEqual(sample.frames[i]["box"].label, "foo")
 
-        samples = [fo.Sample("/path/to/video1.mp4")]
-        for sample in samples:
-            for i in range(1, 50):
-                sample.frames[i]["box"] = fo.Detection(
-                    label="foo", bounding_box=[i / 100, i / 100, 0.9, 0.9]
-                )
-            sample.save()
-
-        for sample in samples:
-            for i in range(1, 50):
-                self.assertEqual(sample.frames[i]["box"].label, "foo")
-
     def test_frames(self):
         dataset = self._make_dataset()
         for sample in dataset.iter_samples():
@@ -480,18 +468,14 @@ class VideoSampleTests(unittest.TestCase):
         s = fo.Sample(filepath="video.mp4")
         label = "label"
         new_label = "new label"
+
         s[1]["label"] = label
-        s[1].save()
         self.assertEqual(s[1]["label"], label)
 
-        s[1].save()
         s[1]["label"] = new_label
         self.assertEqual(s[1]["label"], new_label)
 
         d.add_sample(s)
-        self.assertEqual(s[1]["label"], new_label)
-
-        s[1].save()
         self.assertEqual(s[1]["label"], new_label)
 
         for f in s:

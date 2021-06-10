@@ -213,14 +213,20 @@ class _Document(object):
         """
         self._doc.clear_field(field_name)
 
-    def iter_fields(self):
+    def iter_fields(self, include_id=False):
         """Returns an iterator over the ``(name, value)`` pairs of the fields
         of the document.
+
+        Args:
+            include_id (False): whether to include the ``id`` field
 
         Returns:
             an iterator that emits ``(name, value)`` tuples
         """
         for field_name in self.field_names:
+            if field_name == "id" and not include_id:
+                continue
+
             yield field_name, self.get_field(field_name)
 
     def merge(
@@ -358,14 +364,21 @@ class _Document(object):
         d = self._doc.to_dict(extended=True)
         return {k: v for k, v in d.items() if not k.startswith("_")}
 
-    def to_mongo_dict(self):
+    def to_mongo_dict(self, include_id=False):
         """Serializes the document to a BSON dictionary equivalent to the
         representation that would be stored in the database.
+
+        Args:
+            include_id (False): whether to include the document ID
 
         Returns:
             a BSON dict
         """
-        return self._doc.to_dict()
+        d = self._doc.to_dict()
+        if not include_id:
+            d.pop("_id", None)
+
+        return d
 
     def to_json(self, pretty_print=False):
         """Serializes the document to a JSON string.
@@ -383,11 +396,16 @@ class _Document(object):
 
     def save(self):
         """Saves the document to the database."""
+        if not self._in_db:
+            raise ValueError(
+                "Cannot save a document that has not been added to a dataset"
+            )
+
         self._doc.save()
 
     def _parse_fields(self, fields=None, omit_fields=None):
         if fields is None:
-            fields = {f: f for f in self.field_names}
+            fields = {f: f for f in self.field_names if f != "id"}
         elif etau.is_str(fields):
             fields = {fields: fields}
 
@@ -712,11 +730,15 @@ class DocumentView(_Document):
 
         return d
 
-    def to_mongo_dict(self):
-        d = super().to_mongo_dict()
+    def to_mongo_dict(self, include_id=False):
+        d = super().to_mongo_dict(include_id=include_id)
 
         if self._selected_fields or self._excluded_fields:
-            d = {k: v for k, v in d.items() if k in self.field_names}
+            d = {
+                k: v
+                for k, v in d.items()
+                if k in self.field_names or k == "_id"
+            }
 
         return d
 
@@ -727,6 +749,7 @@ class DocumentView(_Document):
         )
 
     def save(self):
+        """Saves the document view to the database."""
         self._doc.save(filtered_fields=self._filtered_fields)
 
         if issubclass(type(self._DOCUMENT_CLS), DocumentSingleton):
