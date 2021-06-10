@@ -343,8 +343,6 @@ class DatasetMixin(object):
                 the contained field. Only applicable when ``ftype`` is
                 :class:`fiftyone.core.fields.ListField` or
                 :class:`fiftyone.core.fields.DictField`
-            **kwargs: optional keyword arguments for
-                :meth:`fiftyone.core.odm.dataset.create_field`
         """
         cls._add_field_schema(
             field_name,
@@ -710,7 +708,12 @@ class DatasetMixin(object):
 
     @classmethod
     def _add_field_schema(
-        cls, field_name, ftype, embedded_doc_type=None, subfield=None, **kwargs
+        cls,
+        field_name,
+        ftype,
+        embedded_doc_type=None,
+        subfield=None,
+        **kwargs,
     ):
         # pylint: disable=no-member
         if field_name in cls._fields:
