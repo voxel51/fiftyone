@@ -591,7 +591,7 @@ class TFRecordsDatasetExporter(foud.LabeledImageDatasetExporter):
     """
 
     def __init__(self, export_dir, num_shards=None):
-        super().__init__(export_dir, export_media=False)
+        super().__init__(export_dir)
         self.num_shards = num_shards
         self._example_generator = None
         self._tf_records_writer = None
@@ -602,7 +602,7 @@ class TFRecordsDatasetExporter(foud.LabeledImageDatasetExporter):
 
     def setup(self):
         tf_records_path = os.path.join(self.export_dir, "tf.records")
-        self._setup_filename_maker()
+
         self._example_generator = self._make_example_generator()
         self._tf_records_writer = TFRecordsWriter(
             tf_records_path, num_shards=self.num_shards
@@ -610,7 +610,11 @@ class TFRecordsDatasetExporter(foud.LabeledImageDatasetExporter):
         self._tf_records_writer.__enter__()
 
     def export_sample(self, image_or_path, label, metadata=None):
-        filename = self._export_image_or_path(image_or_path)
+        if etau.is_str(image_or_path):
+            filename = image_or_path
+        else:
+            # @todo must generate unique filenames + exts here
+            filename = None
 
         tf_example = self._example_generator.make_tf_example(
             image_or_path, label, filename=filename

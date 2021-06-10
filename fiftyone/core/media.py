@@ -37,18 +37,14 @@ def get_media_type(filepath):
     return IMAGE
 
 
-def export_media(
-    inpaths, outpaths, move_media=False, symlink_media=False, num_workers=None
-):
+def export_media(inpaths, outpaths, mode="copy", num_workers=None):
     """Exports the media at the given input paths to the given output paths.
 
     Args:
         inpaths: the list of input paths
         outpaths: the list of output paths
-        move_media (False): whether to move (True) or copy (False) the source
-            media into its output destination
-        symlink_media (False): whether to symlink (True) or copy (False) the source
-            media into its output destination (overridden by `move_media`)
+        mode ("copy"): the export mode to use. Supported values are
+            ``("copy", "move", "symlink")``
         num_workers (None): the number of processes to use. By default,
             ``multiprocessing.cpu_count()`` is used
     """
@@ -60,12 +56,17 @@ def export_media(
         num_workers = multiprocessing.cpu_count()
 
     inputs = list(zip(inpaths, outpaths))
-    if move_media:
+    if mode == "copy":
+        op = _do_copy_file
+    elif mode == "move":
         op = _do_move_file
-    elif symlink_media:
+    elif mode == "symlink":
         op = _do_symlink_file
     else:
-        op = _do_copy_file
+        raise ValueError(
+            "Unsupported mode '%s'. Supported values are %s"
+            % (mode, ("copy", "move", "symlink"))
+        )
 
     with fou.ProgressBar(total=num_files, iters_str="files") as pb:
         with multiprocessing.Pool(processes=num_workers) as pool:

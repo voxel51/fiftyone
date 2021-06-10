@@ -172,7 +172,7 @@ class CVATImageDatasetImporter(
             all samples are imported
         data_json (False): whether to load media from the location(s)
             defined by the ``dataset_type`` or to use media locations
-            stored in a ``data.json`` file 
+            stored in a ``data.json`` file
     """
 
     def __init__(
@@ -288,7 +288,7 @@ class CVATVideoDatasetImporter(
             all samples are imported
         data_json (False): whether to load media from the location(s)
             defined by the ``dataset_type`` or to use media locations
-            stored in a ``data.json`` file 
+            stored in a ``data.json`` file
     """
 
     def __init__(
@@ -398,7 +398,9 @@ class CVATVideoDatasetImporter(
         return self._info
 
 
-class CVATImageDatasetExporter(foud.LabeledImageDatasetExporter):
+class CVATImageDatasetExporter(
+    foud.LabeledImageDatasetExporter, foud.ExportsImages
+):
     """Exporter that writes CVAT image datasets to disk.
 
     See :class:`fiftyone.types.dataset_types.CVATImageDataset` for format
@@ -409,15 +411,15 @@ class CVATImageDatasetExporter(foud.LabeledImageDatasetExporter):
         image_format (None): the image format to use when writing in-memory
             images to disk. By default, ``fiftyone.config.default_image_ext``
             is used
-        export_media (True): whether to export media files or to export only 
-            labels and metadata
     """
 
-    def __init__(self, export_dir, image_format=None, export_media=True):
+    def __init__(self, export_dir, image_format=None):
         if image_format is None:
             image_format = fo.config.default_image_ext
 
-        super().__init__(export_dir, export_media=export_media)
+        super().__init__(export_dir)
+        foud.ExportsImages.__init__(self)
+
         self.image_format = image_format
         self._name = None
         self._task_labels = None
@@ -441,8 +443,13 @@ class CVATImageDatasetExporter(foud.LabeledImageDatasetExporter):
         self._data_dir = os.path.join(self.export_dir, "data")
         self._labels_path = os.path.join(self.export_dir, "labels.xml")
         self._cvat_images = []
-        self._setup_filename_maker(
-            output_dir=self._data_dir, default_ext=self.image_format
+
+        # @todo implement `export_media`
+        self._setup(
+            True,
+            self._data_dir,
+            default_ext=self.image_format,
+            ignore_exts=False,
         )
 
     def log_collection(self, sample_collection):
@@ -450,7 +457,7 @@ class CVATImageDatasetExporter(foud.LabeledImageDatasetExporter):
         self._task_labels = sample_collection.info.get("task_labels", None)
 
     def export_sample(self, image_or_path, labels, metadata=None):
-        out_image_path = self._export_image_or_path(image_or_path)
+        out_image_path = self._export_media_or_path(image_or_path)
 
         if labels is None:
             return  # unlabeled
@@ -492,8 +499,12 @@ class CVATImageDatasetExporter(foud.LabeledImageDatasetExporter):
             name=self._name,
         )
 
+        self._close()
 
-class CVATVideoDatasetExporter(foud.LabeledVideoDatasetExporter):
+
+class CVATVideoDatasetExporter(
+    foud.LabeledVideoDatasetExporter, foud.ExportsVideos
+):
     """Exporter that writes CVAT video datasets to disk.
 
     See :class:`fiftyone.types.dataset_types.CVATVideoDataset` for format
@@ -501,12 +512,12 @@ class CVATVideoDatasetExporter(foud.LabeledVideoDatasetExporter):
 
     Args:
         export_dir: the directory to write the export
-        export_media (True): whether to export media files or to export only 
-            labels and metadata
     """
 
-    def __init__(self, export_dir, export_media=True):
-        super().__init__(export_dir, export_media=export_media)
+    def __init__(self, export_dir):
+        super().__init__(export_dir)
+        foud.ExportsVideos.__init__(self)
+
         self._task_labels = None
         self._data_dir = None
         self._labels_dir = None
@@ -532,17 +543,21 @@ class CVATVideoDatasetExporter(foud.LabeledVideoDatasetExporter):
     def setup(self):
         self._data_dir = os.path.join(self.export_dir, "data")
         self._labels_dir = os.path.join(self.export_dir, "labels")
-        self._setup_filename_maker(output_dir=self._data_dir)
         self._writer = CVATVideoAnnotationWriter()
 
         etau.ensure_dir(self._data_dir)
         etau.ensure_dir(self._labels_dir)
 
+        # @todo implement `export_media`
+        self._setup(
+            True, self._data_dir, ignore_exts=False,
+        )
+
     def log_collection(self, sample_collection):
         self._task_labels = sample_collection.info.get("task_labels", None)
 
     def export_sample(self, video_path, _, frames, metadata=None):
-        out_video_path = self._export_video(video_path)
+        out_video_path = self._export_media_or_path(video_path)
 
         if frames is None:
             return  # unlabeled
@@ -579,6 +594,9 @@ class CVATVideoDatasetExporter(foud.LabeledVideoDatasetExporter):
             id=self._num_samples - 1,
             name=name_with_ext,
         )
+
+    def close(self):
+        self._close()
 
 
 class CVATTaskLabels(object):

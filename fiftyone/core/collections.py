@@ -5105,6 +5105,9 @@ class SampleCollection(object):
         export_dir=None,
         dataset_type=None,
         dataset_exporter=None,
+        data_path=None,
+        labels_path=None,
+        export_media=None,
         label_field=None,
         label_prefix=None,
         labels_dict=None,
@@ -5112,13 +5115,27 @@ class SampleCollection(object):
         frame_labels_prefix=None,
         frame_labels_dict=None,
         overwrite=False,
-        export_media=True,
         **kwargs,
     ):
         """Exports the samples in the collection to disk.
 
-        Provide either ``export_dir`` and ``dataset_type`` or
-        ``dataset_exporter`` to perform an export.
+        You can perform an export with this method via the following three
+        basic workflows:
+
+        (a) Provide ``export_dir`` and ``dataset_type`` to export the content
+            to a specific directory in a desired format
+
+        (b) Provide ``data_path`` and/or ``labels_path`` and ``dataset_type``
+            to directly specify where to export the source media and/or labels
+            (if applicable) in your desired format. This syntax provides
+            additional flexibility over (a) to perform workflows like
+            labels-only exports
+
+        (c) Provide a ``dataset_exporter`` to which to feed samples to perform
+            a fully-customized export
+
+        In all workflows, the remaining parameters of this method can be
+        provided to further configure the export.
 
         See :ref:`this guide <custom-dataset-exporter>` for more details about
         exporting datasets in custom formats by defining your own
@@ -5152,8 +5169,10 @@ class SampleCollection(object):
 
         Args:
             export_dir (None): the directory to which to export the samples in
-                format ``dataset_type``. This can also be an archive path with
-                one of the following extensions::
+                format ``dataset_type``. This parameter may be omitted if you
+                have provided appropriate values for the ``data_path`` and/or
+                ``labels_path`` parameters. Alternatively, this can also be an
+                archive path with one of the following extensions::
 
                     .zip, .tar, .tar.gz, .tgz, .tar.bz, .tbz
 
@@ -5165,7 +5184,62 @@ class SampleCollection(object):
                 not specified, the default type for ``label_field`` is used
             dataset_exporter (None): a
                 :class:`fiftyone.utils.data.exporters.DatasetExporter` to use
-                to export the samples
+                to export the samples. When provided, parameters such as
+                ``export_dir``, ``dataset_type``, ``data_path``, and
+                ``labels_path`` have no effect
+            data_path (None): an optional parameter that enables explicit
+                control over the location of the exported media. Can be any of
+                the following:
+
+                -   a folder name like "data" or "data/" specifying a subfolder
+                    of ``export_dir`` in which to export the media
+                -   an absolute directory path in which to export the media. In
+                    this case, the ``export_dir`` has no effect on the location
+                    of the data
+                -   a JSON filename like "data.json" specifying the filename of
+                    the JSON mapping file in ``export_dir`` generated when
+                    ``export_media`` is False
+                -   an absolute JSON path specifying the location to write the
+                    JSON mapping file when ``export_media`` is False. In this
+                    case, ``export_dir`` has no effect on the location of the
+                    data
+
+                When applicable, a default value of this parameter will be
+                chosen based on the value of the ``export_media`` parameter.
+                Note that this parameter is not applicable to certain export
+                formats such as binary types like TF records
+            labels_path (None): an optional parameter that enables explicit
+                control over the location of the exported labels. Only
+                applicable when exporting in labeled dataset formats. Can be
+                any of the following:
+
+                -   a type-specific folder name like "labels" or "labels/" or a
+                    filename like "labels.json" or "labels.xml" specifying the
+                    location in ``export_dir`` in which to export the labels
+                -   an absolute directory or filepath in which to export the
+                    labels. In this case, the ``export_dir`` has no effect on
+                    the location of the labels
+
+                For labeled datasets, the default value of this parameter will
+                be chosen based on the export format so that the labels will be
+                exported into ``export_dir``
+            export_media (None): controls how to export the raw media. The
+                supported values are:
+
+                -   ``True``: copy all media files into the output directory
+                -   ``False``: create a ``data.json`` in the output directory
+                    that maps UUIDs used in the labels files to the filepaths
+                    of the source media, rather than exporting the actual media
+                    files. Only applicable for labeled dataset types
+                -   ``"move"``: move all media files into the output directory
+                -   ``"symlink"``: create symlinks to the media files in the
+                    output directory
+
+                When necessary, an appropriate default value of this parameter
+                will be chosen based on the value of the ``data_path``
+                parameter. Note that some dataset formats may not support
+                certain values for this parameter (e.g., when exporting in
+                binary formats such as TF records)
             label_field (None): the name of the label field to export. Only
                 applicable to labeled image datasets or labeled video datasets
                 with sample-level labels. If none of ``label_field``,
@@ -5203,29 +5277,15 @@ class SampleCollection(object):
                 dicts to pass to the exporter. Only applicable for labeled
                 video datasets. This parameter can only be used when the
                 exporter can handle dictionaries of frame-level labels
-            overwrite (False): when an ``export_dir`` is provided, whether to
-                delete the existing directory before performing the export
-            export_media (True): defines how to export the raw media contained 
-                in the dataset. Options for this argument include:
-
-                * ``True``: copy all media files to ``export_dir/data/`` 
-                * ``False``: create a ``data.json`` file containing a mapping of unqiue filename to filepath for every sample. Labels are exported as normal using the unique sample filename 
-                * ``"move"``: move media files to ``export_dir/data/`` instead of copying
-                * ``"symlink"``: create a symbolic link in ``export_dir/data/`` to every media file
-
-                This argument is not available for the following dataset
-                types as they are required to write media to disk:
-                    
-                :class:`ImageDirectory <fiftyone.types.dataset_types.ImageDirectory>`, 
-                :class:`VideoDirectory <fiftyone.types.dataset_types.VideoDirectory>`, 
-                :class:`ImageClassificationDirectoryTree <fiftyone.types.dataset_types.ImageClassificationDirectoryTree>`,
-                :class:`VideoClassificationDirectoryTree <fiftyone.types.dataset_types.VideoClassificationDirectoryTree>`,
-                :class:`TFObjectDetectionDataset <fiftyone.types.dataset_types.TFObjectDetectionDataset>`,
-                :class:`TFImageClassificationDataset <fiftyone.types.dataset_types.TFImageClassificationDataset>`
-
+            overwrite (False): whether to delete existing directories before
+                performing the export (True) or to merge the export with
+                existing files and directories (False). Not applicable when a
+                ``dataset_exporter`` was provided
             **kwargs: optional keyword arguments to pass to the dataset
                 exporter's constructor via
-                ``DatasetExporter(export_dir, **kwargs)``
+                ``DatasetExporter(export_dir, **kwargs)``. If you are exporting
+                image patches, this can also contain keyword arguments for
+                :class:`fiftyone.utils.patches.ImagePatchesExtractor`
         """
         if export_dir is not None and etau.is_archive(export_dir):
             archive_path = export_dir
@@ -5238,49 +5298,20 @@ class SampleCollection(object):
                 "Either `dataset_type` or `dataset_exporter` must be provided"
             )
 
-        if dataset_type is not None and inspect.isclass(dataset_type):
-            dataset_type = dataset_type()
-
-        # If no dataset exporter was provided, construct one based on the
-        # dataset type
+        # If no dataset exporter was provided, construct one
         if dataset_exporter is None:
-            if os.path.isdir(export_dir):
-                if overwrite:
-                    etau.delete_dir(export_dir)
-                else:
-                    logger.warning(
-                        "Directory '%s' already exists; export will be merged "
-                        "with existing files",
-                        export_dir,
-                    )
+            _handle_existing_dirs(
+                export_dir, data_path, labels_path, overwrite
+            )
 
-            dataset_exporter_cls = dataset_type.get_dataset_exporter_cls()
-
-            try:
-                exporter_args = inspect.getfullargspec(
-                    dataset_exporter_cls
-                ).args
-                if "export_media" in exporter_args:
-                    dataset_exporter = dataset_exporter_cls(
-                        export_dir, export_media=export_media, **kwargs
-                    )
-                else:
-                    dataset_exporter = dataset_exporter_cls(
-                        export_dir, **kwargs
-                    )
-
-            except Exception as e:
-                exporter_name = dataset_exporter_cls.__name__
-                raise ValueError(
-                    "Failed to construct exporter using syntax "
-                    "%s(export_dir, **kwargs); you may need to supply "
-                    "mandatory arguments to the constructor via `kwargs`. "
-                    "Please consult the documentation of `%s` to learn more"
-                    % (
-                        exporter_name,
-                        etau.get_class_name(dataset_exporter_cls),
-                    )
-                ) from e
+            dataset_exporter, kwargs = foud.build_dataset_exporter(
+                dataset_type,
+                export_dir=export_dir,
+                data_path=data_path,
+                labels_path=labels_path,
+                export_media=export_media,
+                **kwargs,
+            )
 
         # Get label field(s) to export
         if isinstance(dataset_exporter, foud.LabeledImageDatasetExporter):
@@ -5329,12 +5360,13 @@ class SampleCollection(object):
             label_field_or_dict = label_field
             frame_labels_field_or_dict = frame_labels_field
 
-        # Export the dataset
+        # Perform the export
         foud.export_samples(
             self,
             dataset_exporter=dataset_exporter,
             label_field_or_dict=label_field_or_dict,
             frame_labels_field_or_dict=frame_labels_field_or_dict,
+            **kwargs,
         )
 
         # Archive, if requested
@@ -6596,3 +6628,53 @@ def _get_non_none_value(values):
             return value
 
     return None
+
+
+def _handle_existing_dirs(export_dir, data_path, labels_path, overwrite):
+    if export_dir is not None and os.path.isdir(export_dir):
+        if overwrite:
+            etau.delete_dir(export_dir)
+        else:
+            logger.warning(
+                "Directory '%s' already exists; export will be merged with "
+                "existing files",
+                export_dir,
+            )
+
+    if data_path is not None:
+        if os.path.isabs(data_path) or export_dir is None:
+            _data_path = data_path
+        else:
+            _data_path = os.path.join(export_dir, data_path)
+
+        if os.path.isdir(_data_path):
+            if overwrite:
+                etau.delete_dir(_data_path)
+            else:
+                logger.warning(
+                    "Directory '%s' already exists; export will be merged "
+                    "with existing files",
+                    _data_path,
+                )
+        elif os.path.isfile(_data_path):
+            if overwrite:
+                etau.delete_file(_data_path)
+
+    if labels_path is not None:
+        if os.path.isabs(labels_path) or export_dir is None:
+            _labels_path = labels_path
+        else:
+            _labels_path = os.path.join(export_dir, labels_path)
+
+        if os.path.isdir(_labels_path):
+            if overwrite:
+                etau.delete_dir(_labels_path)
+            else:
+                logger.warning(
+                    "Directory '%s' already exists; export will be merged "
+                    "with existing files",
+                    _labels_path,
+                )
+        elif os.path.isfile(_labels_path):
+            if overwrite:
+                etau.delete_file(_labels_path)

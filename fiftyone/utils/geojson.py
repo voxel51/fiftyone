@@ -424,7 +424,7 @@ class GeoJSONImageDatasetImporter(foud.GenericSampleDatasetImporter):
 
 
 class GeoJSONImageDatasetExporter(
-    foud.ExportsImages, foud.GenericSampleDatasetExporter
+    foud.GenericSampleDatasetExporter, foud.ExportsImages
 ):
     """Exporter for image datasets whose labels and location data are stored in
     GeoJSON format.
@@ -451,21 +451,21 @@ class GeoJSONImageDatasetExporter(
             from the output properties
         pretty_print (False): whether to render the JSON in human readable
             format with newlines and indentations
-        export_media (True): whether to export media files or to export only 
-            labels and metadata. False will additionally embed the input
-            filepaths in the output labels JSON
     """
 
     def __init__(
         self,
         export_dir,
+        export_media=True,
         location_field=None,
         property_makers=None,
         omit_none_fields=True,
         pretty_print=False,
-        export_media=True,
     ):
-        super().__init__(export_dir, export_media=export_media)
+        super().__init__(export_dir)
+        foud.ExportsImages.__init__(self)
+
+        self.export_media = export_media
         self.location_field = location_field
         self.property_makers = property_makers
         self.omit_none_fields = omit_none_fields
@@ -478,8 +478,11 @@ class GeoJSONImageDatasetExporter(
     def setup(self):
         self._data_dir = os.path.join(self.export_dir, "data")
         self._labels_path = os.path.join(self.export_dir, "labels.json")
-        self._setup_filename_maker(output_dir=self._data_dir)
-        self._disable_data_json()
+
+        # @todo implement `export_media`
+        self._setup(
+            True, self._data_dir,
+        )
 
     def log_collection(self, sample_collection):
         if self.location_field is None:
@@ -494,8 +497,9 @@ class GeoJSONImageDatasetExporter(
                 if value is not None or not self.omit_none_fields:
                     properties[key] = fn(value)
 
-        out_filepath = self._export_image_or_path(sample.filepath)
-        if self._export_media is False:
+        out_filepath = self._export_media_or_path(sample.filepath)
+
+        if self.export_media == False:
             properties["filepath"] = sample.filepath
         else:
             properties["filename"] = os.path.basename(out_filepath)
@@ -515,6 +519,7 @@ class GeoJSONImageDatasetExporter(
         etas.write_json(
             features, self._labels_path, pretty_print=self.pretty_print
         )
+        self._close()
 
 
 def _to_geo_primitive(label):

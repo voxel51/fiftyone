@@ -164,7 +164,7 @@ class COCODetectionDatasetImporter(
             all samples are imported
         data_json (False): whether to load media from the location(s)
             defined by the ``dataset_type`` or to use media locations
-            stored in a ``data.json`` file 
+            stored in a ``data.json`` file
     """
 
     def __init__(
@@ -301,7 +301,9 @@ class COCODetectionDatasetImporter(
         return self._info
 
 
-class COCODetectionDatasetExporter(foud.LabeledImageDatasetExporter):
+class COCODetectionDatasetExporter(
+    foud.LabeledImageDatasetExporter, foud.ExportsImages
+):
     """Exporter that writes COCO detection datasets to disk.
 
     See :class:`fiftyone.types.dataset_types.COCODetectionDataset` for format
@@ -321,8 +323,6 @@ class COCODetectionDatasetExporter(foud.LabeledImageDatasetExporter):
             is used
         tolerance (None): a tolerance, in pixels, when generating approximate
             polylines for instance masks. Typical values are 1-3 pixels
-        export_media (True): whether to export media files or to export only 
-            labels and metadata
     """
 
     def __init__(
@@ -332,12 +332,13 @@ class COCODetectionDatasetExporter(foud.LabeledImageDatasetExporter):
         info=None,
         image_format=None,
         tolerance=None,
-        export_media=True,
     ):
         if image_format is None:
             image_format = fo.config.default_image_ext
 
-        super().__init__(export_dir, export_media=export_media)
+        super().__init__(export_dir)
+        foud.ExportsImages.__init__(self)
+
         self.classes = classes
         self.info = info
         self.image_format = image_format
@@ -368,9 +369,12 @@ class COCODetectionDatasetExporter(foud.LabeledImageDatasetExporter):
         self._images = []
         self._annotations = []
         self._classes = set()
-        self._setup_filename_maker(
-            output_dir=self._data_dir, default_ext=self.image_format
+
+        # @todo implement `export_media`
+        self._setup(
+            True, self._data_dir, default_ext=self.image_format,
         )
+
         self._has_labels = False
         self._parse_classes()
 
@@ -390,7 +394,7 @@ class COCODetectionDatasetExporter(foud.LabeledImageDatasetExporter):
             self.info = sample_collection.info
 
     def export_sample(self, image_or_path, detections, metadata=None):
-        out_image_path = self._export_image_or_path(image_or_path)
+        out_image_path = self._export_media_or_path(image_or_path)
 
         if metadata is None:
             metadata = fom.ImageMetadata.build_for(out_image_path)
@@ -464,6 +468,8 @@ class COCODetectionDatasetExporter(foud.LabeledImageDatasetExporter):
             labels["annotations"] = self._annotations
 
         etas.write_json(labels, self._labels_path)
+
+        self._close()
 
     def _parse_classes(self):
         if self.classes is not None:

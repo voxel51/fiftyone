@@ -71,7 +71,7 @@ class YOLODatasetImporter(
             all samples are imported
         data_json (False): whether to load media from the location(s)
             defined by the ``dataset_type`` or to use media locations
-            stored in a ``data.json`` file 
+            stored in a ``data.json`` file
     """
 
     def __init__(
@@ -184,7 +184,9 @@ class YOLODatasetImporter(
         return self._info
 
 
-class YOLODatasetExporter(foud.LabeledImageDatasetExporter):
+class YOLODatasetExporter(
+    foud.LabeledImageDatasetExporter, foud.ExportsImages
+):
     """Exporter that writes YOLO datasets to disk.
 
     See :class:`fiftyone.types.dataset_types.YOLODataset` for format details.
@@ -197,17 +199,15 @@ class YOLODatasetExporter(foud.LabeledImageDatasetExporter):
         image_format (None): the image format to use when writing in-memory
             images to disk. By default, ``fiftyone.config.default_image_ext``
             is used
-        export_media (True): whether to export media files or to export only 
-            labels and metadata
     """
 
-    def __init__(
-        self, export_dir, classes=None, image_format=None, export_media=True,
-    ):
+    def __init__(self, export_dir, classes=None, image_format=None):
         if image_format is None:
             image_format = fo.config.default_image_ext
 
-        super().__init__(export_dir, export_media=export_media)
+        super().__init__(export_dir)
+        foud.ExportsImages.__init__(self)
+
         self.classes = classes
         self.image_format = image_format
 
@@ -233,18 +233,21 @@ class YOLODatasetExporter(foud.LabeledImageDatasetExporter):
         self._images_path = os.path.join(self.export_dir, "images.txt")
         self._data_dir = os.path.join(self.export_dir, "data")
 
+        etau.ensure_dir(self._data_dir)
+
+        # @todo implement `export_media`
+        self._setup(
+            True,
+            self._data_dir,
+            default_ext=self.image_format,
+            ignore_exts=True,
+        )
+
         self._classes = {}
         self._labels_map_rev = {}
         self._images = []
 
-        self._setup_filename_maker(
-            output_dir=self._data_dir,
-            default_ext=self.image_format,
-            ignore_exts=True,
-        )
         self._writer = YOLOAnnotationWriter()
-
-        etau.ensure_dir(self._data_dir)
         self._parse_classes()
 
     def log_collection(self, sample_collection):
@@ -263,7 +266,7 @@ class YOLODatasetExporter(foud.LabeledImageDatasetExporter):
                 self._dynamic_classes = False
 
     def export_sample(self, image_or_path, detections, metadata=None):
-        out_image_path = self._export_image_or_path(image_or_path)
+        out_image_path = self._export_media_or_path(image_or_path)
 
         if detections is None:
             return
@@ -289,6 +292,8 @@ class YOLODatasetExporter(foud.LabeledImageDatasetExporter):
 
         _write_file_lines(classes, self._obj_names_path)
         _write_file_lines(self._images, self._images_path)
+
+        self._close()
 
     def _parse_classes(self):
         if self.classes is not None:
