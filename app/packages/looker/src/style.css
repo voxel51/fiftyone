@@ -162,17 +162,13 @@
 
 /* seek bar stuff */
 .looker-seek-bar {
+  --progress: 0%;
   width: 100%;
-  margin: 3px;
-  background: linear-gradient(
-    to right,
-    #82cfd0 0%,
-    #82cfd0 50%,
-    #fff 50%,
-    #fff 100%
-  );
-  transition: background 450ms ease-in;
+  border-radius: 8px;
+  background: rgb(225, 100, 40);
+  cursor: pointer;
   -webkit-appearance: none;
+  margin-top: -5px;
 }
 .looker-controls input[type="range"] {
   width: 100%;
@@ -191,31 +187,22 @@
   height: 4px;
   cursor: pointer;
   animate: 0.2s;
-  background: rgb(175, 175, 175);
+  background: linear-gradient(
+    to right,
+    rgb(225, 100, 40) 0%,
+    rgb(225, 100, 40) var(--progress, 0%),
+    rgb(175, 175, 175) var(--progress, 0%),
+    rgb(175, 175, 175) 100%
+  );
 }
-.looker-controls input[type="range"]::-webkit-slider-thumb,
-.looker-seek-bar {
-  height: 16px;
-  width: 16px;
-  border-radius: 8px;
-  background: rgb(225, 100, 40);
-  cursor: pointer;
+.looker-controls input[type="range"]::-webkit-slider-thumb {
+  height: 0;
+  width: 0;
   -webkit-appearance: none;
-  margin-top: -6px;
 }
 .looker-controls input[type="range"]:hover::-webkit-slider-runnable-track {
   animate: 0.2s;
   height: 6px;
-  background: rgb(200, 200, 200);
-}
-.looker-controls input[type="range"]:hover::-webkit-slider-thumb {
-  height: 20px;
-  width: 20px;
-  border-radius: 10px;
-  background: rgb(225, 100, 40);
-  cursor: pointer;
-  -webkit-appearance: none;
-  margin-top: -7px;
 }
 .looker-controls input[type="range"]::-moz-range-runnable-track {
   width: 100%;
@@ -225,14 +212,17 @@
   background: rgb(175, 175, 175);
   outline: 0;
   border: none;
+  background: linear-gradient(
+    to right,
+    rgb(225, 100, 40) 0%,
+    rgb(225, 100, 40) var(--progress, 0%),
+    rgb(175, 175, 175) var(--progress, 0%),
+    rgb(175, 175, 175) 100%
+  );
 }
 .looker-controls input[type="range"]::-moz-range-thumb {
-  height: 16px;
-  width: 16px;
-  border-radius: 8px;
-  background: rgb(225, 100, 40);
-  cursor: pointer;
-  margin-top: -6px;
+  height: 0;
+  width: 0;
   outline: 0;
   border: none;
 }
@@ -240,14 +230,6 @@
   animate: 0.2s;
   height: 6px;
   background: rgb(200, 200, 200);
-}
-.looker-controls input[type="range"]:hover::-moz-range-thumb {
-  height: 20px;
-  width: 20px;
-  border-radius: 10px;
-  background: rgb(225, 100, 40);
-  cursor: pointer;
-  margin-top: -7px;
 }
 .looker-controls *:hover,
 .looker-controls *:active,
@@ -361,6 +343,7 @@
   align-content: center;
   font-family: Arial, sans-serif, monospace;
   font-weight: bold;
+  height: 100%;
 }
 
 .looker-arrow {

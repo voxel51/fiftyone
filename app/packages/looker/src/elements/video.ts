@@ -110,7 +110,7 @@ export class SeekBarElement extends BaseElement<VideoState, HTMLInputElement> {
     element.setAttribute("min", "0");
     element.setAttribute("max", "100");
     element.className = "looker-seek-bar";
-    element.style.gridArea = "1 / 2 / 1 / 10";
+    element.style.gridArea = "1 / 1 / 1 / 11";
     return element;
   }
 
@@ -122,12 +122,7 @@ export class SeekBarElement extends BaseElement<VideoState, HTMLInputElement> {
       const value =
         ((frameNumber - 1) / Math.max(frameRate * duration - 1, 1)) * 100;
       this.element.style.display = "block";
-      this.element.style.backgroundColor =
-        "linear-gradient(to right, #82CFD0 0%, #82CFD0 " +
-        value.toFixed(0) +
-        "%, #fff " +
-        value.toFixed(0) +
-        "%, white 100%)";
+      this.element.style.setProperty("--progress", `${value}%`);
       //@ts-ignore
       this.element.value = value;
     } else {
