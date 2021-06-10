@@ -454,15 +454,14 @@ const Looker = ({
   sampleId,
   style,
 }: LookerProps) => {
-  const sample = useRecoilValue(
-    modal ? selectors.modalSample : atoms.sample(sampleId)
-  );
+  const sample = useRecoilValue(atoms.sample(sampleId));
   const sampleSrc = useRecoilValue(selectors.sampleSrc(sampleId));
   const options = useRecoilValue(lookerOptions(modal));
   const metadata = useRecoilValue(atoms.sampleMetadata(sampleId));
   const ref = useRef<any>();
   const bindMove = useMove((s) => ref.current && ref.current(s));
   const lookerConstructor = useRecoilValue(lookerType(sampleId));
+  const initialRef = useRef<boolean>(true);
 
   const [looker] = useState(
     () =>
@@ -483,16 +482,24 @@ const Looker = ({
       )
   );
 
-  lookerRef && (lookerRef.current = looker);
+  useEffect(() => {
+    !initialRef.current && looker.updateOptions(options);
+  }, [options]);
 
   useEffect(() => {
-    looker.update(options);
-  }, [options]);
+    !initialRef.current && looker.updateSample(sample);
+  }, [sample]);
+
+  lookerRef && (lookerRef.current = looker);
 
   modal && useEventHandler(looker, "options", useLookerOptionsUpdate());
   onNext && useEventHandler(looker, "next", onNext);
   onPrevious && useEventHandler(looker, "previous", onPrevious);
   onSelectLabel && useEventHandler(looker, "select", onSelectLabel);
+
+  useEffect(() => {
+    initialRef.current = false;
+  }, []);
 
   return (
     <>

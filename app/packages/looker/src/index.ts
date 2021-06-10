@@ -147,8 +147,13 @@ export abstract class Looker<
     delete this.lookerElement;
   }
 
-  update(options: Optional<State["options"]>) {
+  updateOptions(options: Optional<State["options"]>) {
     this.updater({ options });
+  }
+
+  updateSample(sample: Sample) {
+    this.sample = sample;
+    this.loadOverlays();
   }
 
   protected abstract getElements(): LookerElement<State>;
@@ -330,6 +335,10 @@ interface VideoSample extends BaseSample {
 export class VideoLooker extends Looker<VideoState, VideoSample> {
   private sampleOverlays: Overlay<VideoState>[];
   private frameOverlays: { [frameNumber: number]: Overlay<VideoState>[] };
+
+  get frameNumber() {
+    return this.state.frameNumber;
+  }
 
   getElements() {
     return getVideoElements(this.updater, this.getDispatchEvent());

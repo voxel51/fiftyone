@@ -258,10 +258,13 @@ const SelectionActions = ({
   bounds,
 }: SelectionActionsProps) => {
   useLayoutEffect(() => {
-    lookerRef && lookerRef.current && lookerRef.current.pause();
+    lookerRef &&
+      lookerRef.current &&
+      lookerRef.current.pause &&
+      lookerRef.current.pause();
   });
   const actions = modal
-    ? useModalActions(lookerRef, close)
+    ? useModalActions(lookerRef.frameNumber, close)
     : useGridActions(close);
 
   return (

@@ -804,14 +804,7 @@ export const modalSample = selector({
   key: "modalSample",
   get: async ({ get }) => {
     const { sampleId } = get(atoms.modal);
-    const { sample } = await request(
-      "sample",
-      {
-        sample_id: get(atoms.modal).sampleId,
-      },
-      sampleId
-    );
-    return sample;
+    return get(atoms.sample(sampleId));
   },
 });
 
