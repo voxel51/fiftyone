@@ -4,6 +4,7 @@ import * as atoms from "./atoms";
 import * as selectors from "./selectors";
 
 import socket from "../shared/connection";
+import { labelFilters } from "../components/Filters/LabelFieldFilters.state";
 
 export const messageListener = (type, handler) => {
   const wrapper = ({ data }) => {
@@ -21,9 +22,14 @@ export const showModalJSON = atom({
 });
 
 export const useSetModal = () => {
-  return useRecoilCallback(({ set }) => async (sampleId: string) => {
-    set(atoms.modal, { visible: true, sampleId: sampleId });
-  });
+  return useRecoilCallback(
+    ({ set, snapshot }) => async (sampleId: string) => {
+      set(atoms.modal, { visible: true, sampleId: sampleId });
+      const filters = await snapshot.getPromise(labelFilters(false));
+      set(labelFilters(true), filters);
+    },
+    []
+  );
 };
 
 export const useClearModal = () => {
