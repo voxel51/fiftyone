@@ -133,6 +133,16 @@ nbsphinx_prolog = """
 # Path to the redirects file, relative to `source/`
 redirects_file = "redirects"
 
+# -- Options for intersphinx extension ---------------------------------------
+
+intersphinx_mapping = {
+    # including `python` autolinks things like (None) which is not desirable
+    # "python": ("https://docs.python.org/3", None),
+    "numpy": ("https://numpy.org/doc/stable/", None),
+    "torch": ("https://pytorch.org/docs/stable/", None),
+    "flash": ("https://lightning-flash.readthedocs.io/en/latest", None),
+}
+
 # -- Options for HTML output -------------------------------------------------
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for

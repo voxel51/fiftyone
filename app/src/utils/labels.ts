@@ -85,17 +85,21 @@ export const AGGS = {
 
 export const BOOLEAN_FIELD = "fiftyone.core.fields.BooleanField";
 export const FLOAT_FIELD = "fiftyone.core.fields.FloatField";
+export const FRAME_NUMBER_FIELD = "fiftyone.core.fields.FrameNumberField";
 export const INT_FIELD = "fiftyone.core.fields.IntField";
+export const OBJECT_ID_FIELD = "fiftyone.core.fields.ObjectIdField";
 export const STRING_FIELD = "fiftyone.core.fields.StringField";
 
 export const VALID_SCALAR_TYPES = [
   BOOLEAN_FIELD,
   FLOAT_FIELD,
+  FRAME_NUMBER_FIELD,
   INT_FIELD,
+  OBJECT_ID_FIELD,
   STRING_FIELD,
 ];
 
-export const VALID_NUMERIC_TYPES = [FLOAT_FIELD, INT_FIELD];
+export const VALID_NUMERIC_TYPES = [FLOAT_FIELD, FRAME_NUMBER_FIELD, INT_FIELD];
 
 export const RESERVED_FIELDS = [
   "_id",
@@ -104,7 +108,6 @@ export const RESERVED_FIELDS = [
   "metadata",
   "tags",
   "frames",
-  "frame_number",
 ];
 export const RESERVED_DETECTION_FIELDS = [
   "label",

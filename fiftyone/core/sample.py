@@ -18,13 +18,13 @@ import fiftyone.core.utils as fou
 from fiftyone.core.singletons import SampleSingleton
 
 
-def get_default_sample_fields(include_private=False, include_id=False):
+def get_default_sample_fields(include_private=False, use_db_fields=False):
     """Returns the default fields present on all samples.
 
     Args:
-        include_private (False): whether to include fields that start with
-            ``_``
-        include_id (False): whether to include ID fields
+        include_private (False): whether to include fields starting with ``_``
+        use_db_fields (False): whether to return database fields rather than
+            user-facing fields, when applicable
 
     Returns:
         a tuple of field names
@@ -32,7 +32,7 @@ def get_default_sample_fields(include_private=False, include_id=False):
     return foo.get_default_fields(
         foo.DatasetSampleDocument,
         include_private=include_private,
-        include_id=include_id,
+        use_db_fields=use_db_fields,
     )
 
 
@@ -69,7 +69,7 @@ class _SampleMixin(object):
         if self.media_type == fomm.VIDEO:
             return iter(self._frames)
 
-        raise AttributeError("Image samples are not iterable")
+        raise ValueError("Image samples are not iterable")
 
     @property
     def filename(self):
@@ -458,7 +458,12 @@ class Sample(_SampleMixin, Document, metaclass=SampleSingleton):
         super().reload(hard=hard)
 
     def save(self):
-        """Saves the contents of the sample to the database."""
+        """Saves the sample to the database."""
+        if not self._in_db:
+            raise ValueError(
+                "Cannot save a sample that has not been added to a dataset"
+            )
+
         if self.media_type == fomm.VIDEO:
             self.frames.save()
 
@@ -595,13 +600,9 @@ class SampleView(_SampleMixin, DocumentView):
         return d
 
     def save(self):
-        """Saves the contents of this sample view to the database."""
+        """Saves the sample view to the database."""
         if self.media_type == fomm.VIDEO:
-            try:
-                self.frames.save()
-            except AttributeError:
-                # frames is not selected, so we don't need to save it
-                pass
+            self.frames.save()
 
         super().save()
 

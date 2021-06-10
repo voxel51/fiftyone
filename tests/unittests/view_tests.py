@@ -1354,11 +1354,7 @@ class ViewStageTests(unittest.TestCase):
         for sample in self.dataset.select_fields():
             self.assertSetEqual(
                 sample.selected_field_names,
-                set(
-                    fos.get_default_sample_fields(
-                        include_private=True, include_id=True
-                    )
-                ),
+                set(fos.get_default_sample_fields(include_private=True)),
             )
             self.assertIsNone(sample.excluded_field_names)
             sample.filepath

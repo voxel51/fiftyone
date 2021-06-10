@@ -20,6 +20,18 @@ _STR_FILTER = "str"
 _LABEL_TAGS = "_label_tags"
 
 
+def get_view_field(fields_map, path):
+    """Returns the proper view field, even for special paths like "id"
+
+    Returns:
+        :class:`fiftyone.core.expressions.ViewField`
+    """
+    if path in fields_map:
+        return F(fields_map[path]).to_string()
+
+    return F(path)
+
+
 def get_extended_view(view, filters, count_labels_tags=False):
     """Create an extended view with the provided filters.
 
@@ -102,6 +114,7 @@ def _make_filter_stages(view, filters, label_tags=None, hide_result=False):
     stages = []
     cleanup = set()
     filtered_labels = set()
+    fields_map = view._get_db_fields_map()
     for path, args in filters.items():
         if path == "tags":
             continue
@@ -132,7 +145,8 @@ def _make_filter_stages(view, filters, label_tags=None, hide_result=False):
                 filtered_labels.add(path)
                 cleanup.add(new_field)
         else:
-            expr = _make_scalar_expression(F(path), args)
+            view_field = get_view_field(fields_map, path)
+            expr = _make_scalar_expression(view_field, args)
             if expr is not None:
                 stages.append(fosg.Match(expr))
 

@@ -7,7 +7,9 @@ Backing document classes for :class:`fiftyone.core.frame.Frame` instances.
 """
 from collections import OrderedDict
 
-from fiftyone.core.fields import FrameNumberField, ObjectIdField
+from bson import ObjectId
+
+import fiftyone.core.fields as fof
 
 from .document import Document, SampleDocument
 from .mixins import DatasetMixin, get_default_fields, NoDatasetMixin
@@ -17,8 +19,10 @@ class DatasetFrameSampleDocument(DatasetMixin, Document, SampleDocument):
 
     meta = {"abstract": True}
 
-    _sample_id = ObjectIdField(required=True)
-    frame_number = FrameNumberField(required=True)
+    id = fof.ObjectIdField(required=True, primary_key=True, db_field="_id")
+    frame_number = fof.FrameNumberField(required=True)
+
+    _sample_id = fof.ObjectIdField(required=True)
 
     @classmethod
     def _sample_collection_name(cls):
@@ -39,6 +43,6 @@ class NoDatasetFrameSampleDocument(NoDatasetMixin, SampleDocument):
 
     def __init__(self, **kwargs):
         self._data = OrderedDict(
-            [("_sample_id", None), ("frame_number", None)]
+            [("id", None), ("frame_number", None), ("_sample_id", None)]
         )
         self._data.update(kwargs)

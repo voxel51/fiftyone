@@ -27,25 +27,22 @@ from .document import Document, BaseEmbeddedDocument, SampleDocument
 logger = logging.getLogger(__name__)
 
 
-def get_default_fields(cls, include_private=False, include_id=False):
+def get_default_fields(cls, include_private=False, use_db_fields=False):
     """Gets the default fields present on all instances of the given
     :class:`DatasetMixin` class.
 
     Args:
         cls: the :class:`DatasetMixin` class
-        include_private (False): whether to include fields that start with
-            ``_``
-        include_id (False): whether to include the ``_id`` field
+        include_private (False): whether to include fields starting with ``_``
+        use_db_fields (False): whether to return database fields rather than
+            user-facing fields, when applicable
 
     Returns:
         a tuple of field names
     """
-    fields = cls._get_fields_ordered(include_private=include_private)
-
-    if include_id:
-        fields += ("_id",)
-
-    return fields
+    return cls._get_fields_ordered(
+        include_private=include_private, use_db_fields=use_db_fields
+    )
 
 
 def validate_fields_match(
@@ -180,8 +177,6 @@ class DatasetMixin(object):
     subtypes that are backed by a dataset.
     """
 
-    _FRAME_COLLECTION_PREFIX = "frames."
-
     def __setattr__(self, name, value):
         if name in self._fields and value is not None:
             self._fields[name].validate(value)
@@ -201,21 +196,21 @@ class DatasetMixin(object):
 
     @classmethod
     def _is_frames_doc(cls):
-        return cls.__name__.startswith(cls._FRAME_COLLECTION_PREFIX)
+        return cls.__name__.startswith("frames.samples.")
 
     @classmethod
     def _sample_collection_name(cls):
         name = cls.__name__
-        if name.startswith(cls._FRAME_COLLECTION_PREFIX):
-            name = name[len(cls._FRAME_COLLECTION_PREFIX) :]
+        if name.startswith("frames.samples."):
+            name = name[len("frames.") :]
 
         return name
 
     @classmethod
     def _frame_collection_name(cls):
         name = cls.__name__
-        if not name.startswith(cls._FRAME_COLLECTION_PREFIX):
-            name = cls._FRAME_COLLECTION_PREFIX + name
+        if not name.startswith("frames.samples."):
+            name = "frames." + name
 
         return name
 
@@ -260,7 +255,7 @@ class DatasetMixin(object):
                 "Field type %s must be subclass of %s" % (ftype, fof.Field)
             )
 
-        if embedded_doc_type and not issubclass(
+        if embedded_doc_type is not None and not issubclass(
             ftype, fof.EmbeddedDocumentField
         ):
             raise ValueError(
@@ -273,10 +268,10 @@ class DatasetMixin(object):
         for field_name in field_names:
             # pylint: disable=no-member
             field = cls._fields[field_name]
-            if not isinstance(cls._fields[field_name], ftype):
+            if not isinstance(field, ftype):
                 continue
 
-            if embedded_doc_type and not issubclass(
+            if embedded_doc_type is not None and not issubclass(
                 field.document_type, embedded_doc_type
             ):
                 continue
@@ -299,10 +294,13 @@ class DatasetMixin(object):
                 existing field of the same name or a new field is found but
                 ``expand_schema == False``
         """
-        _schema = cls.get_field_schema(include_private=True)
+        _schema = cls._fields
 
         add_fields = []
         for field_name, field in schema.items():
+            if field_name == "id":
+                continue
+
             if field_name in _schema:
                 validate_fields_match(field_name, field, _schema[field_name])
             else:
@@ -329,7 +327,7 @@ class DatasetMixin(object):
 
     @classmethod
     def add_field(
-        cls, field_name, ftype, embedded_doc_type=None, subfield=None
+        cls, field_name, ftype, embedded_doc_type=None, subfield=None, **kwargs
     ):
         """Adds a new field to the sample.
 
@@ -351,6 +349,7 @@ class DatasetMixin(object):
             ftype,
             embedded_doc_type=embedded_doc_type,
             subfield=subfield,
+            **kwargs,
         )
 
     @classmethod
@@ -402,10 +401,10 @@ class DatasetMixin(object):
             are_frame_fields (False): whether these are frame-level fields
         """
         default_fields = get_default_fields(
-            cls.__bases__[0], include_private=True, include_id=True
+            cls.__bases__[0], include_private=True
         )
         for field_name in field_names:
-            if field_name == "id" or field_name in default_fields:
+            if field_name in default_fields:
                 raise ValueError(
                     "Cannot rename default field '%s'" % field_name
                 )
@@ -544,13 +543,13 @@ class DatasetMixin(object):
                 2: ignore fields that cannot be deleted
         """
         default_fields = get_default_fields(
-            cls.__bases__[0], include_private=True, include_id=True
+            cls.__bases__[0], include_private=True
         )
 
         _field_names = []
         for field_name in field_names:
             # pylint: disable=no-member
-            if field_name == "id" or field_name in default_fields:
+            if field_name in default_fields:
                 _handle_error(
                     ValueError(
                         "Cannot delete default field '%s'" % field_name
@@ -709,7 +708,12 @@ class DatasetMixin(object):
 
     @classmethod
     def _add_field_schema(
-        cls, field_name, ftype, embedded_doc_type=None, subfield=None
+        cls,
+        field_name,
+        ftype,
+        embedded_doc_type=None,
+        subfield=None,
+        **kwargs,
     ):
         # pylint: disable=no-member
         if field_name in cls._fields:
@@ -720,6 +724,7 @@ class DatasetMixin(object):
             ftype,
             embedded_doc_type=embedded_doc_type,
             subfield=subfield,
+            **kwargs,
         )
 
         cls._declare_field(field)
@@ -914,15 +919,16 @@ class DatasetMixin(object):
         return el._id, el_filter
 
     @classmethod
-    def _get_fields_ordered(cls, include_private=False):
-        if include_private:
-            return tuple(f for f in cls._fields_ordered if f != "id")
+    def _get_fields_ordered(cls, include_private=False, use_db_fields=False):
+        fields = cls._fields_ordered
 
-        return tuple(
-            f
-            for f in cls._fields_ordered
-            if f != "id" and not f.startswith("_")
-        )
+        if not include_private:
+            fields = tuple(f for f in fields if not f.startswith("_"))
+
+        if use_db_fields:
+            return tuple(cls._fields[f].db_field for f in fields)
+
+        return fields
 
 
 class NoDatasetMixin(object):
@@ -932,7 +938,7 @@ class NoDatasetMixin(object):
 
     def __getattr__(self, name):
         try:
-            return super().__getattribute__(name)
+            return super().__getattr__(name)
         except AttributeError:
             pass
 
@@ -947,20 +953,14 @@ class NoDatasetMixin(object):
         else:
             self._data[name] = value
 
-    @property
-    def id(self):
-        return None
-
     def _get_field_names(self, include_private=False):
         if include_private:
-            return tuple(k for k in self._data.keys() if k != "id")
+            return tuple(self._data.keys())
 
-        return tuple(
-            k for k in self._data.keys() if k != "id" and not k.startswith("_")
-        )
+        return tuple(f for f in self._data.keys() if not f.startswith("_"))
 
     def _get_repr_fields(self):
-        return ("id",) + self.field_names
+        return self.field_names
 
     @property
     def field_names(self):
@@ -1041,6 +1041,10 @@ class NoDatasetMixin(object):
     def to_dict(self, extended=False):
         d = {}
         for k, v in self._data.items():
+            # @todo `use_db_field` hack
+            if k == "id":
+                k = "_id"
+
             if hasattr(v, "to_dict"):
                 # Embedded document
                 d[k] = v.to_dict(extended=extended)

@@ -30,6 +30,10 @@ _NO_MATCH_ID = ""
 
 
 class _PatchView(fos.SampleView):
+    @property
+    def _sample_id(self):
+        return self._doc.sample_id
+
     def save(self):
         super().save()
         self._view._sync_source_sample(self)
@@ -96,8 +100,12 @@ class _PatchesView(fov.DatasetView):
         )
 
     @property
-    def _label_fields(self):
-        raise NotImplementedError("subclass must implement _label_fields")
+    def _base_view(self):
+        return self.__class__(
+            self._source_collection,
+            self._patches_stage,
+            self._patches_dataset,
+        )
 
     @property
     def _dataset(self):
@@ -120,6 +128,10 @@ class _PatchesView(fov.DatasetView):
         )
 
     @property
+    def _label_fields(self):
+        raise NotImplementedError("subclass must implement _label_fields")
+
+    @property
     def _element_str(self):
         return "patch"
 
@@ -133,11 +145,14 @@ class _PatchesView(fov.DatasetView):
 
     @classmethod
     def _get_default_sample_fields(
-        cls, include_private=False, include_id=False
+        cls, include_private=False, use_db_fields=False
     ):
         fields = super()._get_default_sample_fields(
-            include_private=include_private, include_id=include_id
+            include_private=include_private, use_db_fields=use_db_fields
         )
+
+        if use_db_fields:
+            return fields + ("_sample_id",)
 
         return fields + ("sample_id",)
 
@@ -426,7 +441,9 @@ def make_patches_dataset(
 
     dataset = fod.Dataset(name, _patches=True)
     dataset.media_type = fom.IMAGE
-    dataset.add_sample_field("sample_id", fof.StringField)
+    dataset.add_sample_field(
+        "sample_id", fof.ObjectIdField, db_field="_sample_id"
+    )
     dataset.add_sample_field(
         field, fof.EmbeddedDocumentField, embedded_doc_type=field_type
     )
@@ -513,7 +530,9 @@ def make_evaluation_dataset(sample_collection, eval_key, name=None):
     dataset.add_sample_field(
         gt_field, fof.EmbeddedDocumentField, embedded_doc_type=gt_type
     )
-    dataset.add_sample_field("sample_id", fof.StringField)
+    dataset.add_sample_field(
+        "sample_id", fof.ObjectIdField, db_field="_sample_id"
+    )
     dataset.add_sample_field("type", fof.StringField)
     dataset.add_sample_field("iou", fof.FloatField)
     if crowd_attr is not None:
@@ -538,10 +557,15 @@ def make_evaluation_dataset(sample_collection, eval_key, name=None):
 
 
 def _make_patches_view(sample_collection, field, keep_label_lists=False):
+    if sample_collection._is_frames:
+        raise ValueError(
+            "Creating patches views into frame views is not yet supported"
+        )
+
     if sample_collection._is_frame_field(field):
         raise ValueError(
             "Frame label patches cannot be directly extracted; you must first "
-            "convert your video dataset into a frame dataset"
+            "convert your video dataset to frames via `to_frames()`"
         )
 
     label_type = sample_collection._get_label_field_type(field)
@@ -557,22 +581,18 @@ def _make_patches_view(sample_collection, field, keep_label_lists=False):
     pipeline = [
         {
             "$project": {
-                "_id": 1,
-                "_media_type": 1,
-                "filepath": 1,
-                "metadata": 1,
-                "tags": 1,
-                field + "._cls": 1,
-                list_field: 1,
+                "_id": True,
+                "_sample_id": "$_id",
+                "_media_type": True,
+                "filepath": True,
+                "metadata": True,
+                "tags": True,
+                field + "._cls": True,
+                list_field: True,
             }
         },
         {"$unwind": "$" + list_field},
-        {
-            "$set": {
-                "sample_id": {"$toString": "$_id"},
-                "_rand": {"$rand": {}},
-            }
-        },
+        {"$set": {"_rand": {"$rand": {}}}},
         {"$set": {"_id": "$" + list_field + "._id"}},
     ]
 
@@ -671,7 +691,7 @@ def _merge_matched_labels(dataset, src_collection, eval_key, field):
     lookup_pipeline = src_collection._pipeline(detach_frames=True)
     lookup_pipeline.extend(
         [
-            {"$project": {list_field: 1}},
+            {"$project": {list_field: True}},
             {"$unwind": "$" + list_field},
             {"$replaceRoot": {"newRoot": "$" + list_field}},
             {

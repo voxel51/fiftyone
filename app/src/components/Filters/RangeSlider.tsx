@@ -230,8 +230,7 @@ type NamedProps = {
   boundsAtom: RecoilValueReadOnly<Range>;
   hasNoneAtom: RecoilValueReadOnly<boolean>;
   noneAtom: RecoilState<boolean>;
-  name: string;
-  valueName: string;
+  name?: string;
   int?: boolean;
   color: string;
 };
@@ -242,17 +241,7 @@ const isDefaultRange = (range, bounds) => {
 
 export const NamedRangeSlider = React.memo(
   React.forwardRef(
-    (
-      {
-        name,
-        valueName,
-        hasNoneAtom,
-        noneAtom,
-        ...rangeSliderProps
-      }: NamedProps,
-      ref
-    ) => {
-      const theme = useContext(ThemeContext);
+    ({ hasNoneAtom, name, noneAtom, ...rangeSliderProps }: NamedProps, ref) => {
       const hasNone = useRecoilValue(hasNoneAtom);
       const [includeNone, setIncludeNone] = useRecoilState(noneAtom);
       const [range, setRange] = useRecoilState(rangeSliderProps.valueAtom);

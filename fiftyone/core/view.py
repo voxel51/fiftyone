@@ -105,6 +105,10 @@ class DatasetView(foc.SampleCollection):
         return self.__class__(self.__dataset, _stages=deepcopy(self.__stages))
 
     @property
+    def _base_view(self):
+        return self.__class__(self.__dataset)
+
+    @property
     def _dataset(self):
         return self.__dataset
 
@@ -115,6 +119,10 @@ class DatasetView(foc.SampleCollection):
     @property
     def _is_patches(self):
         return self._dataset._is_patches
+
+    @property
+    def _is_frames(self):
+        return self._dataset._is_frames
 
     @property
     def _stages(self):
@@ -713,7 +721,7 @@ class DatasetView(foc.SampleCollection):
         frames_only=False,
     ):
         _pipeline = []
-        _view = self._dataset.view()
+        _view = self._base_view
         for stage in self._stages:
             _pipeline.extend(stage.to_mongo(_view))
             _view._stages.append(stage)
@@ -807,6 +815,9 @@ class DatasetView(foc.SampleCollection):
         return view
 
     def _get_filtered_schema(self, schema, frames=False):
+        if schema is None:
+            return None
+
         selected_fields, excluded_fields = self._get_selected_excluded_fields(
             frames=frames
         )

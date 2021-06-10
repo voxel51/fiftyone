@@ -521,15 +521,16 @@ By default, all |Sample| instances have the following fields:
     +--------------+------------------------------------+---------------+---------------------------------------------------+
     | Field        | Type                               | Default       | Description                                       |
     +==============+====================================+===============+===================================================+
-    | `filepath`   | string                             | **REQUIRED**  | The path to the source data on disk               |
-    +--------------+------------------------------------+---------------+---------------------------------------------------+
-    | `media_type` | string                             | N/A           | The media type of the sample. Computed            |
-    |              |                                    |               | automatically from the provided `filepath`        |
-    +--------------+------------------------------------+---------------+---------------------------------------------------+
     | `id`         | string                             | `None`        | The ID of the sample in its parent dataset, which |
     |              |                                    |               | is generated automatically when the sample is     |
     |              |                                    |               | added to a dataset, or `None` if the sample does  |
     |              |                                    |               | not belong to a dataset                           |
+    +--------------+------------------------------------+---------------+---------------------------------------------------+
+    | `media_type` | string                             | N/A           | The media type of the sample. Computed            |
+    |              |                                    |               | automatically from the provided `filepath`        |
+    +--------------+------------------------------------+---------------+---------------------------------------------------+
+    | `filepath`   | string                             | **REQUIRED**  | The path to the source data on disk. Must be      |
+    |              |                                    |               | provided at sample creation time                  |
     +--------------+------------------------------------+---------------+---------------------------------------------------+
     | `metadata`   | :class:`Metadata                   | `None`        | Type-specific metadata about the source data      |
     |              | <fiftyone.core.metadata.Metadata>` |               |                                                   |
@@ -600,6 +601,7 @@ printing it:
     Persistent:     False
     Tags:           []
     Sample fields:
+        id:         fiftyone.core.fields.ObjectIdField
         media_type: fiftyone.core.fields.StringField
         filepath:   fiftyone.core.fields.StringField
         tags:       fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
@@ -643,6 +645,7 @@ updated to reflect the new field:
     Persistent:     False
     Tags:           []
     Sample fields:
+        id:            fiftyone.core.fields.ObjectIdField
         media_type:    fiftyone.core.fields.StringField
         filepath:      fiftyone.core.fields.StringField
         tags:          fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
@@ -2012,10 +2015,12 @@ Video samples can be added to datasets just like image samples:
     Persistent:     False
     Tags:           []
     Sample fields:
+        id:       fiftyone.core.fields.ObjectIdField
         filepath: fiftyone.core.fields.StringField
         tags:     fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
         metadata: fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.Metadata)
     Frame fields:
+        id:           fiftyone.core.fields.ObjectIdField
         frame_number: fiftyone.core.fields.FrameNumberField
         quality:      fiftyone.core.fields.FloatField
         weather:      fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Classification)

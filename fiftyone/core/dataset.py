@@ -221,6 +221,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         _create=True,
         _migrate=True,
         _patches=False,
+        _frames=False,
     ):
         if name is None and _create:
             name = get_default_dataset_name()
@@ -233,7 +234,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 self._doc,
                 self._sample_doc_cls,
                 self._frame_doc_cls,
-            ) = _create_dataset(name, persistent=persistent, patches=_patches)
+            ) = _create_dataset(
+                name, persistent=persistent, patches=_patches, frames=_frames
+            )
         else:
             (
                 self._doc,
@@ -311,6 +314,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return self._sample_collection_name.startswith("patches.")
 
     @property
+    def _is_frames(self):
+        return self._sample_collection_name.startswith("frames.")
+
+    @property
     def media_type(self):
         """The media type of the dataset."""
         return self._doc.media_type
@@ -327,6 +334,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             )
 
         self._doc.media_type = media_type
+
+        if media_type == fom.VIDEO:
+            # pylint: disable=no-member
+            self._doc.frame_fields = [
+                foo.SampleFieldDocument.from_field(field)
+                for field in self._frame_doc_cls._fields.values()
+            ]
 
         self._doc.save()
 
@@ -730,7 +744,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         )
 
     def add_sample_field(
-        self, field_name, ftype, embedded_doc_type=None, subfield=None
+        self,
+        field_name,
+        ftype,
+        embedded_doc_type=None,
+        subfield=None,
+        **kwargs,
     ):
         """Adds a new sample field to the dataset.
 
@@ -752,16 +771,23 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             ftype,
             embedded_doc_type=embedded_doc_type,
             subfield=subfield,
+            **kwargs,
         )
         self._reload()
 
     def _add_sample_field_if_necessary(
-        self, field_name, ftype, embedded_doc_type=None, subfield=None
+        self,
+        field_name,
+        ftype,
+        embedded_doc_type=None,
+        subfield=None,
+        **kwargs,
     ):
         field_kwargs = dict(
             ftype=ftype,
             embedded_doc_type=embedded_doc_type,
             subfield=subfield,
+            **kwargs,
         )
 
         schema = self.get_field_schema()
@@ -782,7 +808,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         )
 
     def add_frame_field(
-        self, field_name, ftype, embedded_doc_type=None, subfield=None
+        self,
+        field_name,
+        ftype,
+        embedded_doc_type=None,
+        subfield=None,
+        **kwargs,
     ):
         """Adds a new frame-level field to the dataset.
 
@@ -809,16 +840,23 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             ftype,
             embedded_doc_type=embedded_doc_type,
             subfield=subfield,
+            **kwargs,
         )
         self._reload()
 
     def _add_frame_field_if_necessary(
-        self, field_name, ftype, embedded_doc_type=None, subfield=None
+        self,
+        field_name,
+        ftype,
+        embedded_doc_type=None,
+        subfield=None,
+        **kwargs,
     ):
         field_kwargs = dict(
             ftype=ftype,
             embedded_doc_type=embedded_doc_type,
             subfield=subfield,
+            **kwargs,
         )
 
         schema = self.get_frame_field_schema()
@@ -2051,7 +2089,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         tags=None,
         expand_schema=True,
         add_info=True,
-        **kwargs
+        **kwargs,
     ):
         """Adds the contents of the given directory to the dataset.
 
@@ -2130,7 +2168,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         tags=None,
         expand_schema=True,
         add_info=True,
-        **kwargs
+        **kwargs,
     ):
         """Adds the contents of the given archive to the dataset.
 
@@ -2651,7 +2689,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         name=None,
         label_field="ground_truth",
         tags=None,
-        **kwargs
+        **kwargs,
     ):
         """Creates a :class:`Dataset` from the contents of the given directory.
 
@@ -2695,7 +2733,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         name=None,
         label_field="ground_truth",
         tags=None,
-        **kwargs
+        **kwargs,
     ):
         """Creates a :class:`Dataset` from the contents of the given archive.
 
@@ -3452,7 +3490,7 @@ def _list_datasets(include_private=False):
         return sorted(foo.DatasetDocument.objects.distinct("name"))
 
     # Datasets whose sample collections don't start with `samples.` are private
-    # e.g., patches datasets
+    # e.g., patches or frames datasets
     # pylint: disable=no-member
     return sorted(
         foo.DatasetDocument.objects.filter(
@@ -3461,7 +3499,7 @@ def _list_datasets(include_private=False):
     )
 
 
-def _create_dataset(name, persistent=False, media_type=None, patches=False):
+def _create_dataset(name, persistent=False, patches=False, frames=False):
     if dataset_exists(name):
         raise ValueError(
             (
@@ -3471,25 +3509,33 @@ def _create_dataset(name, persistent=False, media_type=None, patches=False):
             % name
         )
 
-    sample_collection_name = _make_sample_collection_name(patches)
+    sample_collection_name = _make_sample_collection_name(
+        patches=patches, frames=frames
+    )
     sample_doc_cls = _create_sample_document_cls(sample_collection_name)
+
+    # pylint: disable=no-member
+    sample_fields = [
+        foo.SampleFieldDocument.from_field(field)
+        for field in sample_doc_cls._fields.values()
+    ]
 
     frame_collection_name = "frames." + sample_collection_name
     frame_doc_cls = _create_frame_document_cls(frame_collection_name)
 
+    frame_fields = []  # not populated until `media_type` is video
+
     dataset_doc = foo.DatasetDocument(
-        media_type=media_type,
+        media_type=None,
         name=name,
         sample_collection_name=sample_collection_name,
         persistent=persistent,
-        sample_fields=foo.SampleFieldDocument.list_from_field_schema(
-            sample_doc_cls.get_field_schema(include_private=True)
-        ),
+        sample_fields=sample_fields,
+        frame_fields=frame_fields,
         version=focn.VERSION,
     )
     dataset_doc.save()
 
-    # Create indexes
     _create_indexes(sample_collection_name, frame_collection_name)
 
     return dataset_doc, sample_doc_cls, frame_doc_cls
@@ -3502,14 +3548,21 @@ def _create_indexes(sample_collection_name, frame_collection_name):
     collection.create_index("filepath")
 
     frame_collection = conn[frame_collection_name]
-    frame_collection.create_index([("_sample_id", 1), ("frame_number", 1)])
+    frame_collection.create_index(
+        [("_sample_id", 1), ("frame_number", 1)], unique=True
+    )
 
 
-def _make_sample_collection_name(patches=False):
+def _make_sample_collection_name(patches=False, frames=False):
     conn = foo.get_db_conn()
     now = datetime.datetime.now()
 
-    prefix = "patches" if patches else "samples"
+    if patches:
+        prefix = "patches"
+    elif frames:
+        prefix = "frames"
+    else:
+        prefix = "samples"
 
     create_name = lambda timestamp: ".".join([prefix, timestamp])
 
@@ -3546,15 +3599,21 @@ def _load_dataset(name, migrate=True):
         "frames." + dataset_doc.sample_collection_name
     )
 
-    default_fields = fos.get_default_sample_fields(include_private=True)
+    default_sample_fields = fos.get_default_sample_fields(include_private=True)
     for sample_field in dataset_doc.sample_fields:
-        if sample_field.name in default_fields:
+        if sample_field.name in default_sample_fields:
             continue
 
         sample_doc_cls._declare_field(sample_field)
 
     if dataset_doc.media_type == fom.VIDEO:
+        default_frame_fields = fofr.get_default_frame_fields(
+            include_private=True
+        )
         for frame_field in dataset_doc.frame_fields:
+            if frame_field.name in default_frame_fields:
+                continue
+
             frame_doc_cls._declare_field(frame_field)
 
     return dataset_doc, sample_doc_cls, frame_doc_cls
@@ -3702,6 +3761,9 @@ def _save_view(view, fields):
 
     if merge:
         if sample_fields:
+            # @todo if `view` omits samples, shouldn't we set their field
+            # values to None here, for consistency with the fact that $out
+            # will delete samples that don't appear in `view`?
             pipeline.append({"$project": {f: True for f in sample_fields}})
             pipeline.append({"$merge": dataset._sample_collection_name})
             foo.aggregate(dataset._sample_collection, pipeline)
@@ -3723,6 +3785,9 @@ def _save_view(view, fields):
 
         if merge:
             if frame_fields:
+                # @todo if `view` omits samples, shouldn't we set their field
+                # values to None here, for consistency with the fact that $out
+                # will delete samples that don't appear in `view`?
                 pipeline.append({"$project": {f: True for f in frame_fields}})
                 pipeline.append({"$merge": dataset._frame_collection_name})
                 foo.aggregate(dataset._sample_collection, pipeline)
@@ -3756,27 +3821,26 @@ def _merge_dataset_doc(
     merge_info=True,
     overwrite_info=False,
 ):
-    curr_doc = dataset._doc
-
     #
     # Merge media type
     #
 
     src_media_type = collection_or_doc.media_type
-    if curr_doc.media_type is None:
-        curr_doc.media_type = src_media_type
+    if dataset.media_type is None:
+        dataset.media_type = src_media_type
 
-    if src_media_type != curr_doc.media_type and src_media_type is not None:
+    if src_media_type != dataset.media_type and src_media_type is not None:
         raise ValueError(
             "Cannot merge a dataset with media_type='%s' into a dataset "
-            "with media_type='%s'" % (src_media_type, curr_doc.media_type)
+            "with media_type='%s'" % (src_media_type, dataset.media_type)
         )
 
     #
     # Merge schemas
     #
 
-    is_video = curr_doc.media_type == fom.VIDEO
+    curr_doc = dataset._doc
+    is_video = dataset.media_type == fom.VIDEO
 
     if isinstance(collection_or_doc, foc.SampleCollection):
         # Respects filtered schemas, if any
@@ -4039,15 +4103,20 @@ def _merge_samples(
     # Merge samples
     #
 
-    default_fields = src_collection._get_default_sample_fields(
-        include_private=True
+    default_fields = set(
+        src_collection._get_default_sample_fields(include_private=True)
     )
+    default_fields.discard("id")
+
+    db_fields_map = src_collection._get_db_fields_map()
 
     sample_pipeline = src_collection._pipeline(detach_frames=True)
 
     if fields is not None:
         project = {}
         for k, v in fields.items():
+            k = db_fields_map.get(k, k)
+            v = db_fields_map.get(v, v)
             if k == v:
                 project[k] = True
             else:
@@ -4070,16 +4139,17 @@ def _merge_samples(
     else:
         _omit_fields = set()
 
-    _omit_fields.add("_id")
+    _omit_fields.add("id")
     _omit_fields.discard(key_field)
 
     if insert_new:
         # Can't omit default fields here when new samples may be inserted.
         # Any extra fields here are omitted in `when_matched` pipeline
-        _omit_fields -= set(default_fields)
+        _omit_fields -= default_fields
 
     if _omit_fields:
-        sample_pipeline.append({"$unset": list(_omit_fields)})
+        unset_fields = [db_fields_map.get(f, f) for f in _omit_fields]
+        sample_pipeline.append({"$unset": unset_fields})
 
     if skip_existing:
         when_matched = "keepExisting"
@@ -4153,11 +4223,15 @@ def _merge_samples(
             src_collection, "frames." + frame_key_field
         )
 
+        db_fields_map = src_collection._get_db_fields_map(frames=True)
+
         frame_pipeline = _src_collection._pipeline(frames_only=True)
 
         if frame_fields is not None:
             project = {}
             for k, v in frame_fields.items():
+                k = db_fields_map.get(k, k)
+                v = db_fields_map.get(v, v)
                 if k == v:
                     project[k] = True
                 else:
@@ -4172,10 +4246,12 @@ def _merge_samples(
         else:
             _omit_frame_fields = set()
 
-        _omit_frame_fields.update(["_id", "_sample_id"])
+        _omit_frame_fields.update(["id", "_sample_id"])
         _omit_frame_fields.discard(frame_key_field)
         _omit_frame_fields.discard("frame_number")
-        frame_pipeline.append({"$unset": list(_omit_frame_fields)})
+
+        unset_fields = [db_fields_map.get(f, f) for f in _omit_frame_fields]
+        frame_pipeline.append({"$unset": unset_fields})
 
         if skip_existing:
             when_frame_matched = "keepExisting"
@@ -4485,7 +4561,9 @@ def _always_select_field(sample_collection, field):
     view = sample_collection._dataset.view()
     for stage in sample_collection._stages:
         if isinstance(stage, fost.SelectFields):
-            stage = fost.SelectFields(stage.field_names + [field])
+            stage = fost.SelectFields(
+                stage.field_names + [field], _allow_missing=True
+            )
 
         view = view.add_stage(stage)
 

@@ -185,7 +185,7 @@ class DatasetStatistics(object):
 
     @classmethod
     def fields(cls, collection):
-        """The list of custom fields on the provided
+        """Returns the list of filterable fields on the provided
         :class:`fiftyone.core.collections.SampleCollection`.
 
         Args:
@@ -194,34 +194,25 @@ class DatasetStatistics(object):
         Returns:
             a ``list`` of (path, field) ``tuple``s
         """
-        schemas = [("", collection.get_field_schema())]
-        if collection.media_type == fom.VIDEO:
-            schemas.append(
-                (
-                    collection._FRAMES_PREFIX,
-                    collection.get_frame_field_schema(),
-                )
-            )
-
-        default_fields = collection._get_default_sample_fields()
-
         result = []
-        for prefix, schema in schemas:
-            for field_name, field in schema.items():
 
-                if (field_name.startswith("_") or field_name == "tags") or (
-                    prefix == collection._FRAMES_PREFIX
-                    and field_name == "frame_number"
-                ):
-                    continue
+        schema = collection.get_field_schema()
+        for field_name, field in schema.items():
+            if field_name not in ("metadata" "tags"):
+                result.append((field_name, field))
 
-                result.append((prefix + field_name, field))
+        if collection.media_type == fom.VIDEO:
+            prefix = collection._FRAMES_PREFIX
+            frame_schema = collection.get_frame_field_schema()
+            for field_name, field in frame_schema.items():
+                if field_name not in ("id", "frame_number"):
+                    result.append((prefix + field_name, field))
 
         return result
 
     @classmethod
     def labels(cls, collection):
-        """The list of label fields on the provided
+        """Returns the list of label fields on the provided
         :class:`fiftyone.core.collections.SampleCollection`.
 
         Args:
@@ -291,7 +282,7 @@ class DatasetStatistics(object):
 
                 if _meets_type(field, (fof.IntField, fof.FloatField)):
                     aggregations.append(foa.Bounds(field_name))
-                elif _meets_type(field, fof.StringField):
+                elif _meets_type(field, (fof.StringField, fof.ObjectIdField)):
                     aggregations.append(foa.Distinct(field_name, _first=15))
 
         return aggregations, exists_aggregations
