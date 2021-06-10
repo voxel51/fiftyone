@@ -335,6 +335,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         self._doc.media_type = media_type
 
+        if media_type == fom.VIDEO:
+            # pylint: disable=no-member
+            self._doc.frame_fields = [
+                foo.SampleFieldDocument.from_field(field)
+                for field in self._frame_doc_cls._fields.values()
+            ]
+
         self._doc.save()
 
     @property
@@ -3492,9 +3499,7 @@ def _list_datasets(include_private=False):
     )
 
 
-def _create_dataset(
-    name, persistent=False, media_type=None, patches=False, frames=False
-):
+def _create_dataset(name, persistent=False, patches=False, frames=False):
     if dataset_exists(name):
         raise ValueError(
             (
@@ -3509,22 +3514,28 @@ def _create_dataset(
     )
     sample_doc_cls = _create_sample_document_cls(sample_collection_name)
 
+    # pylint: disable=no-member
+    sample_fields = [
+        foo.SampleFieldDocument.from_field(field)
+        for field in sample_doc_cls._fields.values()
+    ]
+
     frame_collection_name = "frames." + sample_collection_name
     frame_doc_cls = _create_frame_document_cls(frame_collection_name)
 
+    frame_fields = []  # not populated until `media_type` is video
+
     dataset_doc = foo.DatasetDocument(
-        media_type=media_type,
+        media_type=None,
         name=name,
         sample_collection_name=sample_collection_name,
         persistent=persistent,
-        sample_fields=foo.SampleFieldDocument.list_from_field_schema(
-            sample_doc_cls._fields  # pylint: disable=no-member
-        ),
+        sample_fields=sample_fields,
+        frame_fields=frame_fields,
         version=focn.VERSION,
     )
     dataset_doc.save()
 
-    # Create indexes
     _create_indexes(sample_collection_name, frame_collection_name)
 
     return dataset_doc, sample_doc_cls, frame_doc_cls
@@ -3810,27 +3821,26 @@ def _merge_dataset_doc(
     merge_info=True,
     overwrite_info=False,
 ):
-    curr_doc = dataset._doc
-
     #
     # Merge media type
     #
 
     src_media_type = collection_or_doc.media_type
-    if curr_doc.media_type is None:
-        curr_doc.media_type = src_media_type
+    if dataset.media_type is None:
+        dataset.media_type = src_media_type
 
-    if src_media_type != curr_doc.media_type and src_media_type is not None:
+    if src_media_type != dataset.media_type and src_media_type is not None:
         raise ValueError(
             "Cannot merge a dataset with media_type='%s' into a dataset "
-            "with media_type='%s'" % (src_media_type, curr_doc.media_type)
+            "with media_type='%s'" % (src_media_type, dataset.media_type)
         )
 
     #
     # Merge schemas
     #
 
-    is_video = curr_doc.media_type == fom.VIDEO
+    curr_doc = dataset._doc
+    is_video = dataset.media_type == fom.VIDEO
 
     if isinstance(collection_or_doc, foc.SampleCollection):
         # Respects filtered schemas, if any
