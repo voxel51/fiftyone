@@ -47,17 +47,49 @@ a |DatasetView| into any format of your choice via the basic recipe below.
 
         # Export the dataset!
         dataset_or_view.export(
-            export_dir=export_dir, dataset_type=dataset_type, label_field=label_field
+            export_dir=export_dir,
+            dataset_type=dataset_type,
+            label_field=label_field,
         )
 
     Note the `label_field` argument in the above example, which specifies the
     particular label field that you wish to export. This is necessary if your
     FiftyOne dataset contains multiple label fields.
 
-    Also see the 
-    :func:`export_media <fiftyone.core.collections.SampleCollection.export>` 
-    argument allowing you to move or symlink media
-    instead of copying it, or to avoid writing media to disk entirely.
+    The :meth:`export() <fiftyone.core.collections.SampleCollection.export>`
+    method also provides additional parameters that you can use to configure
+    the export, such as the `export_media` parameter, which allows you to
+    configure whether to copy, move, symlink, or omit the media files from
+    the export:
+
+    .. code-block:: python
+        :linenos:
+
+        #
+        # Variation #1
+        #
+        # Export the labels in the `ground_truth` field in COCO format, and
+        # write a `data.json` file describing the locations of the source media
+        # rather than exporting the actual media
+        #
+        dataset_or_view.export(
+            export_dir="/path/for/export",
+            dataset_type=fo.types.COCODetectionDataset,
+            label_field="ground_truth",
+            export_media=False,
+        )
+
+        #
+        # Variation #2
+        #
+        # Directly export **only** labels in the `ground_truth` field in COCO
+        # format
+        #
+        dataset_or_view.export(
+            labels_path="/path/for/export.json",
+            dataset_type=fo.types.COCODetectionDataset,
+            label_field="ground_truth",
+        )
 
   .. group-tab:: CLI
 
