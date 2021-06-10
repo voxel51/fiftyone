@@ -10,9 +10,7 @@ import os
 
 import eta.core.utils as etau
 
-import fiftyone as fo
 import fiftyone.core.labels as fol
-import fiftyone.core.utils as fou
 import fiftyone.utils.data as foud
 
 
@@ -184,15 +182,66 @@ class YOLODatasetImporter(
         return self._info
 
 
-class YOLODatasetExporter(
-    foud.LabeledImageDatasetExporter, foud.ExportsImages
-):
+class YOLODatasetExporter(foud.LabeledImageDatasetExporter):
     """Exporter that writes YOLO datasets to disk.
 
     See :class:`fiftyone.types.dataset_types.YOLODataset` for format details.
 
     Args:
-        export_dir: the directory to write the export
+        export_dir (None): the directory to write the export
+        data_path (None): an optional parameter that enables explicit control
+            over the location of the exported media. Can be any of the
+            following:
+
+            -   a folder name like "data" or "data/" specifying a subfolder of
+                ``export_dir`` in which to export the media
+            -   an absolute directory path in which to export the media. In
+                this case, the ``export_dir`` has no effect on the location of
+                the data
+            -   a JSON filename like "data.json" specifying the filename of the
+                manifest file in ``export_dir`` generated when ``export_media``
+                is ``"manifest"``
+            -   an absolute filepath specifying the location to write the JSON
+                manifest file when ``export_media`` is ``"manifest"``. In this
+                case, ``export_dir`` has no effect on the location of the data
+
+            If None, the default value of this parameter will be chosen based
+            on the value of the ``export_media`` parameter
+        objects_path (None): an optional parameter that enables explicit
+            control over the location of the object names file. Can be any of
+            the following:
+
+            -   a filename like "obj.names" specifying the location in
+                ``export_dir`` in which to export the object names
+            -   an absolute filepath to which to export the object names. In
+                this case, the ``export_dir`` has no effect on the location of
+                the object names
+
+            If None, the object names will be written into ``export_dir``
+            using the default filename
+        images_path (None): an optional parameter that enables explicit control
+            over the location of the image listing file. Can be any of the
+            following:
+
+            -   a filename like "images.txt" specifying the location in
+                ``export_dir`` in which to export the image listing
+            -   an absolute filepath to which to export the image listing. In
+                this case, the ``export_dir`` has no effect on the location of
+                the image listing
+
+            If None, the image listing will be written into ``export_dir``
+            using the default filename
+        export_media (None): controls how to export the raw media. The
+            supported values are:
+
+            -   ``True``: copy all media files into the output directory
+            -   ``False``: don't export media
+            -   ``"move"``: move all media files into the output directory
+            -   ``"symlink"``: create symlinks to the media files in the output
+                directory
+
+            If None, the default value of this parameter will be chosen based
+            on the value of the ``data_path`` parameter
         classes (None): the list of possible class labels. If not provided,
             this list will be extracted when :meth:`log_collection` is called,
             if possible
@@ -201,24 +250,47 @@ class YOLODatasetExporter(
             is used
     """
 
-    def __init__(self, export_dir, classes=None, image_format=None):
-        if image_format is None:
-            image_format = fo.config.default_image_ext
+    def __init__(
+        self,
+        export_dir,
+        data_path=None,
+        objects_path=None,
+        images_path=None,
+        export_media=None,
+        classes=None,
+        image_format=None,
+    ):
+        if data_path is None:
+            data_path = "data"
 
-        super().__init__(export_dir)
-        foud.ExportsImages.__init__(self)
+        if objects_path is None:
+            objects_path = "obj.names"
 
+        if images_path is None:
+            images_path = "labels.txt"
+
+        if export_media is None:
+            export_media = True
+
+        super().__init__(export_dir=export_dir)
+
+        self.data_path = data_path
+        self.objects_path = objects_path
+        self.images_path = images_path
+        self.export_media = export_media
         self.classes = classes
         self.image_format = image_format
 
         self._classes = None
         self._dynamic_classes = classes is None
         self._labels_map_rev = None
-        self._obj_names_path = None
         self._images_path = None
+        self._objects_path = None
         self._data_dir = None
+        self._rel_dir = None
         self._images = None
         self._writer = None
+        self._media_exporter = None
 
     @property
     def requires_image_metadata(self):
@@ -229,19 +301,27 @@ class YOLODatasetExporter(
         return fol.Detections
 
     def setup(self):
-        self._obj_names_path = os.path.join(self.export_dir, "obj.names")
-        self._images_path = os.path.join(self.export_dir, "images.txt")
-        self._data_dir = os.path.join(self.export_dir, "data")
+        if os.path.isabs(self.data_path) or self.export_dir is None:
+            data_dir = self.data_path
+            rel_dir = data_dir
+        else:
+            data_dir = os.path.join(self.export_dir, self.data_path)
+            rel_dir = self.export_dir
 
-        etau.ensure_dir(self._data_dir)
+        if os.path.isabs(self.images_path) or self.export_dir is None:
+            images_path = self.images_path
+        else:
+            images_path = os.path.join(self.export_dir, self.images_path)
 
-        # @todo implement `export_media`
-        self._setup(
-            True,
-            self._data_dir,
-            default_ext=self.image_format,
-            ignore_exts=True,
-        )
+        if os.path.isabs(self.objects_path) or self.export_dir is None:
+            objects_path = self.objects_path
+        else:
+            objects_path = os.path.join(self.export_dir, self.objects_path)
+
+        self._data_dir = data_dir
+        self._rel_dir = rel_dir
+        self._images_path = images_path
+        self._objects_path = objects_path
 
         self._classes = {}
         self._labels_map_rev = {}
@@ -249,6 +329,15 @@ class YOLODatasetExporter(
 
         self._writer = YOLOAnnotationWriter()
         self._parse_classes()
+
+        self._media_exporter = foud.ImageExporter(
+            self.export_media,
+            export_path=data_dir,
+            supported_modes=(True, False, "move", "symlink"),
+            default_ext=self.image_format,
+            ignore_exts=True,
+        )
+        self._media_exporter.setup()
 
     def log_collection(self, sample_collection):
         if self.classes is None:
@@ -266,16 +355,14 @@ class YOLODatasetExporter(
                 self._dynamic_classes = False
 
     def export_sample(self, image_or_path, detections, metadata=None):
-        out_image_path = self._export_media_or_path(image_or_path)
+        out_image_path, _ = self._media_exporter.export(image_or_path)
 
         if detections is None:
             return
 
-        self._images.append(os.path.relpath(out_image_path, self.export_dir))
+        self._images.append(os.path.relpath(out_image_path, self._rel_dir))
 
-        image_filename = os.path.basename(out_image_path)
-        labels_filename = os.path.splitext(image_filename)[0] + ".txt"
-        out_labels_path = os.path.join(self._data_dir, labels_filename)
+        out_labels_path = os.path.splitext(out_image_path)[0] + ".txt"
 
         self._writer.write(
             detections,
@@ -290,10 +377,10 @@ class YOLODatasetExporter(
         else:
             classes = self.classes
 
-        _write_file_lines(classes, self._obj_names_path)
+        _write_file_lines(classes, self._objects_path)
         _write_file_lines(self._images, self._images_path)
 
-        self._close()
+        self._media_exporter.close()
 
     def _parse_classes(self):
         if self.classes is not None:

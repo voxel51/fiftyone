@@ -18,7 +18,6 @@ import eta.core.serial as etas
 import fiftyone as fo
 import fiftyone.core.labels as fol
 import fiftyone.core.metadata as fom
-import fiftyone.core.utils as fou
 import fiftyone.utils.data as foud
 
 
@@ -190,6 +189,7 @@ class BDDDatasetImporter(
             data_json=data_json,
         )
         self._labels_path = None
+        self._image_paths_map = None
         self._anno_dict_map = None
         self._filenames = None
         self._iter_filenames = None
@@ -205,7 +205,7 @@ class BDDDatasetImporter(
     def __next__(self):
         filename = next(self._iter_filenames)
 
-        image_path = self._uuids_to_image_paths[filename]
+        image_path = self._image_paths_map[filename]
 
         image_metadata = fom.ImageMetadata.build_for(image_path)
 
@@ -244,6 +244,8 @@ class BDDDatasetImporter(
             self._anno_dict_map = {}
 
         uuids_to_image_paths = self.get_uuids_to_filepaths(self.dataset_dir)
+        self._image_paths_map = uuids_to_image_paths
+
         filenames = list(uuids_to_image_paths.keys())
 
         if self.skip_unlabeled:
@@ -251,36 +253,102 @@ class BDDDatasetImporter(
 
         self._filenames = self._preprocess_list(filenames)
         self._num_samples = len(self._filenames)
-        self._uuids_to_image_paths = uuids_to_image_paths
 
     @staticmethod
     def get_num_samples(dataset_dir):
         return len(etau.list_files(os.path.join(dataset_dir, "data")))
 
 
-class BDDDatasetExporter(foud.LabeledImageDatasetExporter, foud.ExportsImages):
+class BDDDatasetExporter(foud.LabeledImageDatasetExporter):
     """Exporter that writes BDD datasets to disk.
 
     See :class:`fiftyone.types.dataset_types.BDDDataset` for format details.
 
     Args:
-        export_dir: the directory to write the export
+        export_dir (None): the directory to write the export
+        data_path (None): an optional parameter that enables explicit control
+            over the location of the exported media. Can be any of the
+            following:
+
+            -   a folder name like "data" or "data/" specifying a subfolder of
+                ``export_dir`` in which to export the media
+            -   an absolute directory path in which to export the media. In
+                this case, the ``export_dir`` has no effect on the location of
+                the data
+            -   a JSON filename like "data.json" specifying the filename of the
+                manifest file in ``export_dir`` generated when ``export_media``
+                is ``"manifest"``
+            -   an absolute filepath specifying the location to write the JSON
+                manifest file when ``export_media`` is ``"manifest"``. In this
+                case, ``export_dir`` has no effect on the location of the data
+
+            If None, the default value of this parameter will be chosen based
+            on the value of the ``export_media`` parameter
+        labels_path (None): an optional parameter that enables explicit control
+            over the location of the exported labels. Can be any of the
+            following:
+
+            -   a filename like "labels.json" specifying the location in
+                ``export_dir`` in which to export the labels
+            -   an absolute filepath to which to export the labels. In this
+                case, the ``export_dir`` has no effect on the location of the
+                labels
+
+            If None, the labels will be exported into ``export_dir`` using the
+            default filename
+        export_media (None): controls how to export the raw media. The
+            supported values are:
+
+            -   ``True``: copy all media files into the output directory
+            -   ``False``: don't export media
+            -   ``"move"``: move all media files into the output directory
+            -   ``"symlink"``: create symlinks to the media files in the output
+                directory
+            -   ``"manifest"``: create a ``data.json`` in the output directory
+                that maps UUIDs used in the labels files to the filepaths of
+                the source media, rather than exporting the actual media
+
+            If None, the default value of this parameter will be chosen based
+            on the value of the ``data_path`` parameter
         image_format (None): the image format to use when writing in-memory
             images to disk. By default, ``fiftyone.config.default_image_ext``
             is used
     """
 
-    def __init__(self, export_dir, image_format=None):
-        if image_format is None:
-            image_format = fo.config.default_image_ext
+    def __init__(
+        self,
+        export_dir=None,
+        data_path=None,
+        labels_path=None,
+        export_media=None,
+        image_format=None,
+    ):
+        if data_path is None:
+            if export_media == "manifest":
+                data_path = "data.json"
+            else:
+                data_path = "data"
 
-        super().__init__(export_dir)
-        foud.ExportsImages.__init__(self)
+        if labels_path is None:
+            labels_path = "labels.json"
 
+        if export_media is None:
+            if data_path.endswith(".json"):
+                export_media = "manifest"
+            else:
+                export_media = True
+
+        super().__init__(export_dir=export_dir)
+
+        self.data_path = data_path
+        self.labels_path = labels_path
+        self.export_media = export_media
         self.image_format = image_format
-        self._data_dir = None
+
+        self._data_path = None
         self._labels_path = None
         self._annotations = None
+        self._media_exporter = None
 
     @property
     def requires_image_metadata(self):
@@ -295,17 +363,29 @@ class BDDDatasetExporter(foud.LabeledImageDatasetExporter, foud.ExportsImages):
         }
 
     def setup(self):
-        self._data_dir = os.path.join(self.export_dir, "data")
-        self._labels_path = os.path.join(self.export_dir, "labels.json")
+        if os.path.isabs(self.data_path) or self.export_dir is None:
+            data_path = self.data_path
+        else:
+            data_path = os.path.join(self.export_dir, self.data_path)
+
+        if os.path.isabs(self.labels_path) or self.export_dir is None:
+            labels_path = self.labels_path
+        else:
+            labels_path = os.path.join(self.export_dir, self.labels_path)
+
+        self._data_path = data_path
+        self._labels_path = labels_path
         self._annotations = []
 
-        # @todo implement `export_media`
-        self._setup(
-            True, self._data_dir, default_ext=self.image_format,
+        self._media_exporter = foud.ImageExporter(
+            self.export_media,
+            export_path=data_path,
+            default_ext=self.image_format,
         )
+        self._media_exporter.setup()
 
     def export_sample(self, image_or_path, labels, metadata=None):
-        out_image_path = self._export_media_or_path(image_or_path)
+        out_image_path, _ = self._media_exporter.export(image_or_path)
 
         if labels is None:
             return  # unlabeled
@@ -325,7 +405,7 @@ class BDDDatasetExporter(foud.LabeledImageDatasetExporter, foud.ExportsImages):
 
     def close(self, *args):
         etas.write_json(self._annotations, self._labels_path)
-        self._close()
+        self._media_exporter.close()
 
 
 def load_bdd_annotations(json_path):

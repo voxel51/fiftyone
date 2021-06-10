@@ -13,7 +13,6 @@ import jinja2
 
 import eta.core.utils as etau
 
-import fiftyone as fo
 import fiftyone.constants as foc
 import fiftyone.core.labels as fol
 import fiftyone.core.metadata as fom
@@ -222,32 +221,97 @@ class VOCDetectionDatasetImporter(
         self._num_samples = len(self._uuids)
 
 
-class VOCDetectionDatasetExporter(
-    foud.LabeledImageDatasetExporter, foud.ExportsImages
-):
+class VOCDetectionDatasetExporter(foud.LabeledImageDatasetExporter):
     """Exporter that writes VOC detection datasets to disk.
 
     See :class:`fiftyone.types.dataset_types.VOCDetectionDataset` for format
     details.
 
     Args:
-        export_dir: the directory to write the export
+        export_dir (None): the directory to write the export
+        data_path (None): an optional parameter that enables explicit control
+            over the location of the exported media. Can be any of the
+            following:
+
+            -   a folder name like "data" or "data/" specifying a subfolder of
+                ``export_dir`` in which to export the media
+            -   an absolute directory path in which to export the media. In
+                this case, the ``export_dir`` has no effect on the location of
+                the data
+            -   a JSON filename like "data.json" specifying the filename of the
+                manifest file in ``export_dir`` generated when ``export_media``
+                is ``"manifest"``
+            -   an absolute filepath specifying the location to write the JSON
+                manifest file when ``export_media`` is ``"manifest"``. In this
+                case, ``export_dir`` has no effect on the location of the data
+
+            If None, the default value of this parameter will be chosen based
+            on the value of the ``export_media`` parameter
+        labels_path (None): an optional parameter that enables explicit control
+            over the location of the exported labels. Can be any of the
+            following:
+
+            -   a folder name like "labels" or "labels/" specifying the
+                location in ``export_dir`` in which to export the labels
+            -   an absolute folder path to which to export the labels. In this
+                case, the ``export_dir`` has no effect on the location of the
+                labels
+
+            If None, the labels will be exported into ``export_dir`` using the
+            default folder name
+        export_media (None): controls how to export the raw media. The
+            supported values are:
+
+            -   ``True``: copy all media files into the output directory
+            -   ``False``: don't export media
+            -   ``"move"``: move all media files into the output directory
+            -   ``"symlink"``: create symlinks to the media files in the output
+                directory
+            -   ``"manifest"``: create a ``data.json`` in the output directory
+                that maps UUIDs used in the labels files to the filepaths of
+                the source media, rather than exporting the actual media
+
+            If None, the default value of this parameter will be chosen based
+            on the value of the ``data_path`` parameter
         image_format (None): the image format to use when writing in-memory
             images to disk. By default, ``fiftyone.config.default_image_ext``
             is used
     """
 
-    def __init__(self, export_dir, image_format=None):
-        if image_format is None:
-            image_format = fo.config.default_image_ext
+    def __init__(
+        self,
+        export_dir=None,
+        data_path=None,
+        labels_path=None,
+        export_media=None,
+        image_format=None,
+    ):
+        if data_path is None:
+            if export_media == "manifest":
+                data_path = "data.json"
+            else:
+                data_path = "data"
 
-        super().__init__(export_dir)
-        foud.ExportsImages.__init__(self)
+        if labels_path is None:
+            labels_path = "labels"
 
+        if export_media is None:
+            if data_path.endswith(".json"):
+                export_media = "manifest"
+            else:
+                export_media = True
+
+        super().__init__(export_dir=export_dir)
+
+        self.data_path = data_path
+        self.labels_path = labels_path
+        self.export_media = export_media
         self.image_format = image_format
-        self._data_dir = None
+
+        self._data_path = None
         self._labels_dir = None
         self._writer = None
+        self._media_exporter = None
 
     @property
     def requires_image_metadata(self):
@@ -258,32 +322,40 @@ class VOCDetectionDatasetExporter(
         return fol.Detections
 
     def setup(self):
-        self._data_dir = os.path.join(self.export_dir, "data")
-        self._labels_dir = os.path.join(self.export_dir, "labels")
+        if os.path.isabs(self.data_path) or self.export_dir is None:
+            data_path = self.data_path
+        else:
+            data_path = os.path.join(self.export_dir, self.data_path)
 
-        etau.ensure_dir(self._labels_dir)
+        if os.path.isabs(self.labels_path) or self.export_dir is None:
+            labels_dir = self.labels_path
+        else:
+            labels_dir = os.path.join(self.export_dir, self.labels_path)
 
-        # @todo implement `export_media`
-        self._setup(
-            True,
-            self._data_dir,
+        self._data_path = data_path
+        self._labels_dir = labels_dir
+        self._writer = VOCAnnotationWriter()
+
+        self._media_exporter = foud.ImageExporter(
+            self.export_media,
+            export_path=data_path,
             default_ext=self.image_format,
             ignore_exts=True,
         )
+        self._media_exporter.setup()
 
-        self._writer = VOCAnnotationWriter()
+        etau.ensure_dir(self._labels_dir)
 
     def export_sample(self, image_or_path, detections, metadata=None):
         if metadata is None and detections is not None:
             metadata = fom.ImageMetadata.build_for(image_or_path)
 
-        out_image_path = self._export_media_or_path(image_or_path)
+        out_image_path, uuid = self._media_exporter.export(image_or_path)
 
         if detections is None:
             return
 
-        name = os.path.splitext(os.path.basename(out_image_path))[0]
-        out_anno_path = os.path.join(self._labels_dir, name + ".xml")
+        out_anno_path = os.path.join(self._labels_dir, uuid + ".xml")
 
         annotation = VOCAnnotation.from_labeled_image(
             out_image_path, metadata, detections
@@ -291,7 +363,7 @@ class VOCDetectionDatasetExporter(
         self._writer.write(annotation, out_anno_path)
 
     def close(self):
-        self._close()
+        self._media_exporter.close()
 
 
 class VOCAnnotation(object):

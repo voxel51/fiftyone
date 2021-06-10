@@ -21,7 +21,6 @@ import eta.core.serial as etas
 import eta.core.utils as etau
 import eta.core.web as etaw
 
-import fiftyone as fo
 import fiftyone.core.labels as fol
 import fiftyone.core.metadata as fom
 import fiftyone.core.utils as fou
@@ -190,10 +189,12 @@ class COCODetectionDatasetImporter(
         self.load_segmentations = load_segmentations
         self.return_polylines = return_polylines
         self.tolerance = tolerance
+
         self._info = None
         self._classes = None
         self._supercategory_map = None
-        self._images_map = None
+        self._image_paths_map = None
+        self._image_dicts_map = None
         self._annotations = None
         self._filenames = None
         self._iter_filenames = None
@@ -208,9 +209,9 @@ class COCODetectionDatasetImporter(
     def __next__(self):
         filename = next(self._iter_filenames)
 
-        image_path = self._uuids_to_image_paths[filename]
+        image_path = self._image_paths_map[filename]
 
-        image_dict = self._images_map.get(filename, None)
+        image_dict = self._image_dicts_map.get(filename, None)
         if image_dict is None:
             image_metadata = fom.ImageMetadata.build_for(image_path)
             return image_path, image_metadata, None
@@ -284,33 +285,78 @@ class COCODetectionDatasetImporter(
         self._info = info
         self._classes = classes
         self._supercategory_map = supercategory_map
-        self._images_map = {i["file_name"]: i for i in images.values()}
+        self._image_dicts_map = {i["file_name"]: i for i in images.values()}
         self._annotations = annotations
 
-        uuids_to_image_paths = self.get_uuids_to_filepaths(self.dataset_dir)
+        image_paths_map = self.get_uuids_to_filepaths(self.dataset_dir)
+        self._image_paths_map = image_paths_map
 
         if self.skip_unlabeled:
-            filenames = self._images_map.keys()
+            filenames = self._image_dicts_map.keys()
         else:
-            filenames = list(uuids_to_image_paths.keys())
+            filenames = list(image_paths_map.keys())
 
         self._filenames = self._preprocess_list(filenames)
-        self._uuids_to_image_paths = uuids_to_image_paths
 
     def get_dataset_info(self):
         return self._info
 
 
-class COCODetectionDatasetExporter(
-    foud.LabeledImageDatasetExporter, foud.ExportsImages
-):
+class COCODetectionDatasetExporter(foud.LabeledImageDatasetExporter):
     """Exporter that writes COCO detection datasets to disk.
 
     See :class:`fiftyone.types.dataset_types.COCODetectionDataset` for format
     details.
 
     Args:
-        export_dir: the directory to write the export
+        export_dir (None): the directory to write the export
+        data_path (None): an optional parameter that enables explicit control
+            over the location of the exported media. Can be any of the
+            following:
+
+            -   a folder name like "data" or "data/" specifying a subfolder of
+                ``export_dir`` in which to export the media
+            -   an absolute directory path in which to export the media. In
+                this case, the ``export_dir`` has no effect on the location of
+                the data
+            -   a JSON filename like "data.json" specifying the filename of the
+                manifest file in ``export_dir`` generated when ``export_media``
+                is ``"manifest"``
+            -   an absolute filepath specifying the location to write the JSON
+                manifest file when ``export_media`` is ``"manifest"``. In this
+                case, ``export_dir`` has no effect on the location of the data
+
+            If None, the default value of this parameter will be chosen based
+            on the value of the ``export_media`` parameter
+        labels_path (None): an optional parameter that enables explicit control
+            over the location of the exported labels. Can be any of the
+            following:
+
+            -   a filename like "labels.json" specifying the location in
+                ``export_dir`` in which to export the labels
+            -   an absolute filepath to which to export the labels. In this
+                case, the ``export_dir`` has no effect on the location of the
+                labels
+
+            If None, the labels will be exported into ``export_dir`` using the
+            default filename
+        export_media (None): controls how to export the raw media. The
+            supported values are:
+
+            -   ``True``: copy all media files into the output directory
+            -   ``False``: don't export media
+            -   ``"move"``: move all media files into the output directory
+            -   ``"symlink"``: create symlinks to the media files in the output
+                directory
+            -   ``"manifest"``: create a ``data.json`` in the output directory
+                that maps UUIDs used in the labels files to the filepaths of
+                the source media, rather than exporting the actual media
+
+            If None, the default value of this parameter will be chosen based
+            on the value of the ``data_path`` parameter
+        image_format (None): the image format to use when writing in-memory
+            images to disk. By default, ``fiftyone.config.default_image_ext``
+            is used
         classes (None): the list of possible class labels. If not provided,
             this list will be extracted when :meth:`log_collection` is called,
             if possible
@@ -318,40 +364,56 @@ class COCODetectionDatasetExporter(
             :meth:`load_coco_detection_annotations`. If not provided, this info
             will be extracted when :meth:`log_collection` is called, if
             possible
-        image_format (None): the image format to use when writing in-memory
-            images to disk. By default, ``fiftyone.config.default_image_ext``
-            is used
         tolerance (None): a tolerance, in pixels, when generating approximate
             polylines for instance masks. Typical values are 1-3 pixels
     """
 
     def __init__(
         self,
-        export_dir,
+        export_dir=None,
+        data_path=None,
+        labels_path=None,
+        export_media=None,
+        image_format=None,
         classes=None,
         info=None,
-        image_format=None,
         tolerance=None,
     ):
-        if image_format is None:
-            image_format = fo.config.default_image_ext
+        if data_path is None:
+            if export_media == "manifest":
+                data_path = "data.json"
+            else:
+                data_path = "data"
 
-        super().__init__(export_dir)
-        foud.ExportsImages.__init__(self)
+        if labels_path is None:
+            labels_path = "labels.json"
 
+        if export_media is None:
+            if data_path.endswith(".json"):
+                export_media = "manifest"
+            else:
+                export_media = True
+
+        super().__init__(export_dir=export_dir)
+
+        self.data_path = data_path
+        self.labels_path = labels_path
+        self.export_media = export_media
+        self.image_format = image_format
         self.classes = classes
         self.info = info
-        self.image_format = image_format
         self.tolerance = tolerance
-        self._labels_map_rev = None
-        self._data_dir = None
+
+        self._data_path = None
         self._labels_path = None
+        self._labels_map_rev = None
         self._image_id = None
         self._anno_id = None
         self._images = None
         self._annotations = None
         self._classes = None
         self._has_labels = None
+        self._media_exporter = None
 
     @property
     def requires_image_metadata(self):
@@ -362,21 +424,32 @@ class COCODetectionDatasetExporter(
         return fol.Detections
 
     def setup(self):
-        self._data_dir = os.path.join(self.export_dir, "data")
-        self._labels_path = os.path.join(self.export_dir, "labels.json")
+        if os.path.isabs(self.data_path) or self.export_dir is None:
+            data_path = self.data_path
+        else:
+            data_path = os.path.join(self.export_dir, self.data_path)
+
+        if os.path.isabs(self.labels_path) or self.export_dir is None:
+            labels_path = self.labels_path
+        else:
+            labels_path = os.path.join(self.export_dir, self.labels_path)
+
+        self._data_path = data_path
+        self._labels_path = labels_path
         self._image_id = -1
         self._anno_id = -1
         self._images = []
         self._annotations = []
         self._classes = set()
-
-        # @todo implement `export_media`
-        self._setup(
-            True, self._data_dir, default_ext=self.image_format,
-        )
-
         self._has_labels = False
         self._parse_classes()
+
+        self._media_exporter = foud.ImageExporter(
+            self.export_media,
+            export_path=data_path,
+            default_ext=self.image_format,
+        )
+        self._media_exporter.setup()
 
     def log_collection(self, sample_collection):
         if self.classes is None:
@@ -394,7 +467,7 @@ class COCODetectionDatasetExporter(
             self.info = sample_collection.info
 
     def export_sample(self, image_or_path, detections, metadata=None):
-        out_image_path = self._export_media_or_path(image_or_path)
+        out_image_path, _ = self._media_exporter.export(image_or_path)
 
         if metadata is None:
             metadata = fom.ImageMetadata.build_for(out_image_path)
@@ -429,7 +502,6 @@ class COCODetectionDatasetExporter(
             self._annotations.append(obj.to_anno_dict())
 
     def close(self, *args):
-        # Populate observed category IDs, if necessary
         if self.classes is None:
             classes = sorted(self._classes)
             labels_map_rev = _to_labels_map_rev(classes)
@@ -469,7 +541,7 @@ class COCODetectionDatasetExporter(
 
         etas.write_json(labels, self._labels_path)
 
-        self._close()
+        self._media_exporter.close()
 
     def _parse_classes(self):
         if self.classes is not None:

@@ -423,9 +423,7 @@ class GeoJSONImageDatasetImporter(foud.GenericSampleDatasetImporter):
         self._num_samples = len(self._filepaths)
 
 
-class GeoJSONImageDatasetExporter(
-    foud.GenericSampleDatasetExporter, foud.ExportsImages
-):
+class GeoJSONImageDatasetExporter(foud.GenericSampleDatasetExporter):
     """Exporter for image datasets whose labels and location data are stored in
     GeoJSON format.
 
@@ -433,7 +431,54 @@ class GeoJSONImageDatasetExporter(
     details.
 
     Args:
-        export_dir: the directory to write the export
+        export_dir (None): the directory to write the export
+        data_path (None): an optional parameter that enables explicit control
+            over the location of the exported media. Can be any of the
+            following:
+
+            -   a folder name like "data" or "data/" specifying a subfolder of
+                ``export_dir`` in which to export the media
+            -   an absolute directory path in which to export the media. In
+                this case, the ``export_dir`` has no effect on the location of
+                the data
+            -   a JSON filename like "data.json" specifying the filename of the
+                manifest file in ``export_dir`` generated when ``export_media``
+                is ``"manifest"``
+            -   an absolute filepath specifying the location to write the JSON
+                manifest file when ``export_media`` is ``"manifest"``. In this
+                case, ``export_dir`` has no effect on the location of the data
+
+            If None, the default value of this parameter will be chosen based
+            on the value of the ``export_media`` parameter
+        labels_path (None): an optional parameter that enables explicit control
+            over the location of the exported labels. Can be any of the
+            following:
+
+            -   a filename like "labels.json" specifying the location in
+                ``export_dir`` in which to export the labels
+            -   an absolute filepath to which to export the labels. In this
+                case, the ``export_dir`` has no effect on the location of the
+                labels
+
+            If None, the labels will be exported into ``export_dir`` using the
+            default filename
+        export_media (None): controls how to export the raw media. The
+            supported values are:
+
+            -   ``True``: copy all media files into the output directory
+            -   ``False``: don't export media
+            -   ``"move"``: move all media files into the output directory
+            -   ``"symlink"``: create symlinks to the media files in the output
+                directory
+            -   ``"manifest"``: create a ``data.json`` in the output directory
+                that maps UUIDs used in the labels files to the filepaths of
+                the source media, rather than exporting the actual media
+
+            If None, the default value of this parameter will be chosen based
+            on the value of the ``data_path`` parameter
+        image_format (None): the image format to use when writing in-memory
+            images to disk. By default, ``fiftyone.config.default_image_ext``
+            is used
         location_field (None): the name of the field containing the location
             data for each sample. Can be any of the following:
 
@@ -455,34 +500,68 @@ class GeoJSONImageDatasetExporter(
 
     def __init__(
         self,
-        export_dir,
-        export_media=True,
+        export_dir=None,
+        data_path=None,
+        labels_path=None,
+        export_media=None,
+        image_format=None,
         location_field=None,
         property_makers=None,
         omit_none_fields=True,
         pretty_print=False,
     ):
-        super().__init__(export_dir)
-        foud.ExportsImages.__init__(self)
+        if data_path is None:
+            if export_media == "manifest":
+                data_path = "data.json"
+            else:
+                data_path = "data"
 
+        if labels_path is None:
+            labels_path = "labels.json"
+
+        if export_media is None:
+            if data_path.endswith(".json"):
+                export_media = "manifest"
+            else:
+                export_media = True
+
+        super().__init__(export_dir=export_dir)
+
+        self.data_path = data_path
+        self.labels_path = labels_path
         self.export_media = export_media
+        self.image_format = image_format
         self.location_field = location_field
         self.property_makers = property_makers
         self.omit_none_fields = omit_none_fields
         self.pretty_print = pretty_print
-        self._data_dir = None
+
+        self._data_path = None
         self._labels_path = None
         self._features = []
         self._location_field = None
+        self._media_exporter = None
 
     def setup(self):
-        self._data_dir = os.path.join(self.export_dir, "data")
-        self._labels_path = os.path.join(self.export_dir, "labels.json")
+        if os.path.isabs(self.data_path) or self.export_dir is None:
+            data_path = self.data_path
+        else:
+            data_path = os.path.join(self.export_dir, self.data_path)
 
-        # @todo implement `export_media`
-        self._setup(
-            True, self._data_dir,
+        if os.path.isabs(self.labels_path) or self.export_dir is None:
+            labels_path = self.labels_path
+        else:
+            labels_path = os.path.join(self.export_dir, self.labels_path)
+
+        self._data_path = data_path
+        self._labels_path = labels_path
+
+        self._media_exporter = foud.ImageExporter(
+            self.export_media,
+            export_path=data_path,
+            default_ext=self.image_format,
         )
+        self._media_exporter.setup()
 
     def log_collection(self, sample_collection):
         if self.location_field is None:
@@ -497,7 +576,7 @@ class GeoJSONImageDatasetExporter(
                 if value is not None or not self.omit_none_fields:
                     properties[key] = fn(value)
 
-        out_filepath = self._export_media_or_path(sample.filepath)
+        out_filepath, _ = self._media_exporter.export(sample.filepath)
 
         if self.export_media == False:
             properties["filepath"] = sample.filepath
@@ -519,7 +598,7 @@ class GeoJSONImageDatasetExporter(
         etas.write_json(
             features, self._labels_path, pretty_print=self.pretty_print
         )
-        self._close()
+        self._media_exporter.close()
 
 
 def _to_geo_primitive(label):

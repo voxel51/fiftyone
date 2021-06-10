@@ -5104,10 +5104,10 @@ class SampleCollection(object):
         self,
         export_dir=None,
         dataset_type=None,
-        dataset_exporter=None,
         data_path=None,
         labels_path=None,
         export_media=None,
+        dataset_exporter=None,
         label_field=None,
         label_prefix=None,
         labels_dict=None,
@@ -5122,14 +5122,14 @@ class SampleCollection(object):
         You can perform an export with this method via the following three
         basic workflows:
 
-        (a) Provide ``export_dir`` and ``dataset_type`` to export the content
+        (a) Provide ``dataset_type`` and ``export_dir`` to export the content
             to a specific directory in a desired format
 
-        (b) Provide ``data_path`` and/or ``labels_path`` and ``dataset_type``
-            to directly specify where to export the source media and/or labels
-            (if applicable) in your desired format. This syntax provides
-            additional flexibility over (a) to perform workflows like
-            labels-only exports
+        (b) Provide ``dataset_type`` along with ``data_path``, ``labels_path``,
+            and/or ``export_media`` to directly specify where to export the
+            source media and/or labels (if applicable) in your desired format.
+            This syntax provides the flexibility to, for example, perform
+            workflows like labels-only exports
 
         (c) Provide a ``dataset_exporter`` to which to feed samples to perform
             a fully-customized export
@@ -5182,11 +5182,6 @@ class SampleCollection(object):
             dataset_type (None): the
                 :class:`fiftyone.types.dataset_types.Dataset` type to write. If
                 not specified, the default type for ``label_field`` is used
-            dataset_exporter (None): a
-                :class:`fiftyone.utils.data.exporters.DatasetExporter` to use
-                to export the samples. When provided, parameters such as
-                ``export_dir``, ``dataset_type``, ``data_path``, and
-                ``labels_path`` have no effect
             data_path (None): an optional parameter that enables explicit
                 control over the location of the exported media. Can be any of
                 the following:
@@ -5227,19 +5222,27 @@ class SampleCollection(object):
                 supported values are:
 
                 -   ``True``: copy all media files into the output directory
-                -   ``False``: create a ``data.json`` in the output directory
-                    that maps UUIDs used in the labels files to the filepaths
-                    of the source media, rather than exporting the actual media
-                    files. Only applicable for labeled dataset types
+                -   ``False``: don't export media. This option is only useful
+                    when exporting labeled datasets whose label format stores
+                    sufficient information to locate the associated media
                 -   ``"move"``: move all media files into the output directory
                 -   ``"symlink"``: create symlinks to the media files in the
                     output directory
+                -   ``"manifest"``: create a ``data.json`` in the output
+                    directory that maps UUIDs used in the labels files to the
+                    filepaths of the source media, rather than exporting the
+                    actual media
 
                 When necessary, an appropriate default value of this parameter
                 will be chosen based on the value of the ``data_path``
                 parameter. Note that some dataset formats may not support
                 certain values for this parameter (e.g., when exporting in
-                binary formats such as TF records)
+                binary formats such as TF records, "symlink" is not an option)
+            dataset_exporter (None): a
+                :class:`fiftyone.utils.data.exporters.DatasetExporter` to use
+                to export the samples. When provided, parameters such as
+                ``export_dir``, ``dataset_type``, ``data_path``, and
+                ``labels_path`` have no effect
             label_field (None): the name of the label field to export. Only
                 applicable to labeled image datasets or labeled video datasets
                 with sample-level labels. If none of ``label_field``,
