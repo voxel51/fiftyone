@@ -527,7 +527,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         _write_message(message, only=self)
 
     @classmethod
-    async def on_sample(cls, self, sample_id):
+    async def on_sample(cls, self, sample_id, uuid):
         state = fos.StateDescription.from_dict(StateHandler.state)
         if state.view is not None:
             view = state.view
@@ -537,7 +537,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         view = view.select(sample_id)
 
         results, more = await _get_samples(cls.sample_collection(), view, 1, 0)
-        message = {"type": sample_id, "sample": results[0]}
+        message = {"type": sample_id, "sample": results[0], "uuid": uuid}
 
         _write_message(message, app=True, only=self)
 

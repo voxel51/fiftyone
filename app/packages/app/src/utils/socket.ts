@@ -23,14 +23,29 @@ const requestWrapper = (type, handler) => ({ data }) => {
   data.type === type && handler(data);
 };
 
-export const request = (type, args, responseType = null) => {
+export const request = ({
+  type,
+  args,
+  uuid,
+  responseType,
+}: {
+  type: string;
+  uuid: string;
+  args: any;
+  responseType?: string;
+}) => {
   const promise = new Promise((resolve) => {
-    const listener = requestWrapper(responseType || type, (data) => {
-      socket.removeEventListener("message", listener);
-      resolve(data);
-    });
+    const listener = requestWrapper(
+      responseType || type,
+      ({ uuid: responseUuid, ...data }) => {
+        if (uuid === responseUuid) {
+          socket.removeEventListener("message", listener);
+          resolve(data);
+        }
+      }
+    );
     socket.addEventListener("message", listener);
-    socket.send(packageMessage(type, args));
+    socket.send(packageMessage(type, { ...args, uuid }));
   });
 
   return promise;

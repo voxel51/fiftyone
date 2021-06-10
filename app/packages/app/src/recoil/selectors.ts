@@ -12,11 +12,10 @@ import {
   HIDDEN_LABEL_ATTRS,
   LABEL_LIST,
 } from "../utils/labels";
-import { packageMessage, request } from "../utils/socket";
+import { packageMessage } from "../utils/socket";
 import { viewsAreEqual } from "../utils/view";
 import { darkTheme } from "../shared/colors";
 import socket, { handleId, isNotebook, http } from "../shared/connection";
-import { string } from "prop-types";
 
 export const refresh = selector<boolean>({
   key: "refresh",
