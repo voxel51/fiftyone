@@ -11,8 +11,8 @@ import {
   TEXT_COLOR,
 } from "../constants";
 
-import { deserialize, NumpyResult } from "../numpy";
-import { BaseState, BoundingBox, Coordinates, Dimensions } from "../state";
+import { NumpyResult } from "../numpy";
+import { BaseState, BoundingBox, Coordinates } from "../state";
 import {
   distanceFromLineSegment,
   ensureCanvasSize,
@@ -22,7 +22,7 @@ import { CONTAINS, CoordinateOverlay, PointInfo, RegularLabel } from "./base";
 import { t } from "./util";
 
 interface DetectionLabel extends RegularLabel {
-  mask?: string;
+  mask?: NumpyResult;
   bounding_box: BoundingBox;
 }
 
@@ -40,9 +40,6 @@ export default class DetectionOverlay<
 
   constructor(field, label) {
     super(field, label);
-    if (this.label.mask) {
-      this.mask = deserialize(this.label.mask);
-    }
   }
 
   containsPoint(state: Readonly<State>): CONTAINS {

@@ -1,6 +1,7 @@
 /**
  * Copyright 2017-2021, Voxel51, Inc.
  */
+import { deserialize } from "../numpy";
 import { BaseState } from "../state";
 import { Overlay } from "./base";
 import ClassificationsOverlay, {
@@ -38,6 +39,30 @@ export const POINTS_FROM_FO = {
   Polyline: (label) => getPolylinePoints([label]),
   Poylines: (label) => getPolylinePoints(label.polylines),
   Segmentation: (label) => getSegmentationPoints([label]),
+};
+
+const MASK_OVERLAYS = {
+  Detection: (label) => {
+    if (typeof label.mask === "string") {
+      label.mask = deserialize(label.mask);
+    }
+  },
+};
+
+export const processMasks = <State extends BaseState>(sample: {
+  [key: string]: any;
+}): Overlay<State>[] => {
+  for (const field in sample) {
+    const label = sample[field];
+    if (!label) {
+      continue;
+    }
+    if (label._cls in MASK_OVERLAYS) {
+      const labelOverlays = FROM_FO[label._cls](field, label, this);
+    }
+  }
+
+  return overlays;
 };
 
 export const loadOverlays = <State extends BaseState>(sample: {

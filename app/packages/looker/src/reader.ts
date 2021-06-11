@@ -39,10 +39,12 @@ const createStream = ({
           )
             .then((response: Response) => response.json())
             .then((data) => {
-              console.log(data);
-              controller.enqueue({ hello: "world" });
+              data.frames.array.forEach((frame) => controller.enqueue(frame));
               frameNumber = nextFrameChunkStart;
               resolve();
+            })
+            .catch((error) => {
+              reject(error);
             });
         });
       },

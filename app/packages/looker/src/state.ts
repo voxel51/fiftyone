@@ -139,6 +139,7 @@ export interface VideoState extends BaseState {
   duration: number;
   fragment?: [number, number];
   buffering: boolean;
+  hasReader: boolean;
 }
 
 export type Optional<T> = {

@@ -16,7 +16,6 @@
   },
   "homepage": "https://github.com/voxel51/fiftyone/app/looker#readme",
   "dependencies": {
-    "@types/color-string": "^1.5.0",
     "@ungap/event-target": "^0.2.2",
     "color-string": "^1.5.5",
     "immutable": "^4.0.0-rc.12",
@@ -29,6 +28,8 @@
     "@fiftyone/typescript-config": "^0.1.0",
     "@snowpack/plugin-react-refresh": "^2.5.0",
     "@snowpack/plugin-typescript": "^1.2.1",
+    "@types/color-string": "^1.5.0",
+    "@types/lru-cache": "^5.1.0",
     "@types/pako": "^1.0.1",
     "prettier": "2.2.1",
     "react": "^17.0.0",

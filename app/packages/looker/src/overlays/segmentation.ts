@@ -3,14 +3,14 @@
  */
 
 import { getSegmentationColorArray } from "../color";
-import { deserialize, NumpyResult } from "../numpy";
+import { NumpyResult } from "../numpy";
 import { BaseState, Coordinates } from "../state";
 import { ensureCanvasSize } from "../util";
 import { BaseLabel, CONTAINS, Overlay, PointInfo, SelectData } from "./base";
 import { t } from "./util";
 
 interface SegmentationLabel extends BaseLabel {
-  mask: string;
+  mask?: NumpyResult;
 }
 
 export default class SegmentationOverlay<State extends BaseState>
@@ -30,9 +30,8 @@ export default class SegmentationOverlay<State extends BaseState>
     this.field = field;
     this.label = label;
     if (this.label.mask) {
-      this.mask = deserialize(this.label.mask);
-      this.imageColors = new Uint32Array(this.mask.data);
-      this.targets = new Uint32Array(this.mask.data);
+      this.imageColors = new Uint32Array(this.label.mask.data);
+      this.targets = new Uint32Array(this.label.mask.data);
     }
   }
 

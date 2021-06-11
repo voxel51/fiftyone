@@ -1,8 +1,15 @@
 /**
  * Copyright 2017-2021, Voxel51, Inc.
  */
+import LRU from "lru-cache";
 
-import { FONT_SIZE, STROKE_WIDTH, PAD, POINT_RADIUS } from "./constants";
+import {
+  FONT_SIZE,
+  STROKE_WIDTH,
+  PAD,
+  POINT_RADIUS,
+  MAX_FRAME_CACHE_SIZE,
+} from "./constants";
 import {
   getFrameElements,
   getImageElements,
@@ -325,17 +332,30 @@ export class ImageLooker extends Looker<ImageState> {
   }
 }
 
-interface FrameSample {
+const attachReader = (() => {
+  const frameCache = new LRU<string, FrameSample>({
+    max: MAX_FRAME_CACHE_SIZE,
+  });
+
+  const frameReader = new Worker("./reader.ts");
+  let looker = null;
+
+  return (newLooker: VideoLooker) => {
+    frameReader.postMessage({});
+  };
+})();
+
+interface FrameSample extends Object {
   frame_number: number;
 }
 
 interface VideoSample extends BaseSample {
-  frames: { 1: BaseSample };
+  frames: { 1?: FrameSample };
 }
 
 export class VideoLooker extends Looker<VideoState, VideoSample> {
   private sampleOverlays: Overlay<VideoState>[];
-  private frameOverlays: Map<number, WeakRef<FrameSample>>;
+  private frameOverlays: Map<number, WeakRef<Overlay<VideoState>[]>>;
 
   constructor(sample, config, options) {
     super(sample, config, options);
@@ -358,6 +378,7 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
       playing: false,
       frameNumber: 1,
       buffering: true,
+      hasReader: false,
       ...this.getInitialBaseState(),
       config: { ...config },
       options: {
@@ -375,12 +396,20 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
         )
       )
     );
+    this.frameOverlays[1] = loadOverlays(this.sample.frames[1]);
   }
 
   pluckOverlays(state: VideoState, prevState: Readonly<VideoState>) {
     const overlays = this.sampleOverlays;
-    if (state.frameNumber in this.frameOverlays) {
-      return [...overlays, ...this.frameOverlays[state.frameNumber]];
+    if (
+      state.frameNumber in this.frameOverlays &&
+      this.frameOverlays.has(state.frameNumber)
+    ) {
+      const frame = this.frameOverlays.get(state.frameNumber).deref();
+
+      if (frame !== undefined) {
+        return [...overlays, ...frame];
+      }
     }
 
     state.frameNumber = prevState.frameNumber;
