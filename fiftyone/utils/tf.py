@@ -12,6 +12,7 @@ import os
 
 import eta.core.utils as etau
 
+import fiftyone as fo
 import fiftyone.core.labels as fol
 import fiftyone.core.metadata as fom
 import fiftyone.core.utils as fou
@@ -465,14 +466,13 @@ class TFRecordsLabeledImageDatasetImporter(foud.LabeledImageDatasetImporter):
         image_format=None,
         skip_unlabeled=False,
         max_samples=None,
-        **kwargs
     ):
-        for arg in kwargs:
-            logger.warning("Ignoring unsupported parameter '%s'", arg)
-
         super().__init__(
-            dataset_dir, skip_unlabeled=skip_unlabeled, max_samples=max_samples
+            dataset_dir=dataset_dir,
+            skip_unlabeled=skip_unlabeled,
+            max_samples=max_samples,
         )
+
         self.images_dir = images_dir
         self.image_format = image_format
 
@@ -588,12 +588,22 @@ class TFRecordsDatasetExporter(foud.LabeledImageDatasetExporter):
         export_dir: the directory to write the export
         num_shards (None): an optional number of shards to split the records
             into (using a round robin strategy)
+        image_format (None): the image format to use when writing in-memory
+            images to disk. By default, ``fiftyone.config.default_image_ext``
+            is used
     """
 
-    def __init__(self, export_dir, num_shards=None):
-        super().__init__(export_dir)
+    def __init__(self, export_dir, num_shards=None, image_format=None):
+        if image_format is None:
+            image_format = fo.config.default_image_ext
+
+        super().__init__(export_dir=export_dir)
+
         self.num_shards = num_shards
+        self.image_format = image_format
+
         self._example_generator = None
+        self._filename_maker = None
         self._tf_records_writer = None
 
     @property
@@ -604,6 +614,9 @@ class TFRecordsDatasetExporter(foud.LabeledImageDatasetExporter):
         tf_records_path = os.path.join(self.export_dir, "tf.records")
 
         self._example_generator = self._make_example_generator()
+        self._filename_maker = fou.UniqueFilenameMaker(
+            default_ext=self.image_format
+        )
         self._tf_records_writer = TFRecordsWriter(
             tf_records_path, num_shards=self.num_shards
         )
@@ -613,8 +626,7 @@ class TFRecordsDatasetExporter(foud.LabeledImageDatasetExporter):
         if etau.is_str(image_or_path):
             filename = image_or_path
         else:
-            # @todo must generate unique filenames + exts here
-            filename = None
+            filename = self._filename_maker.get_output_path()
 
         tf_example = self._example_generator.make_tf_example(
             image_or_path, label, filename=filename
@@ -644,6 +656,9 @@ class TFImageClassificationDatasetExporter(TFRecordsDatasetExporter):
         export_dir: the directory to write the export
         num_shards (None): an optional number of shards to split the records
             into (using a round robin strategy)
+        image_format (None): the image format to use when writing in-memory
+            images to disk. By default, ``fiftyone.config.default_image_ext``
+            is used
     """
 
     @property
@@ -663,14 +678,22 @@ class TFObjectDetectionDatasetExporter(TFRecordsDatasetExporter):
 
     Args:
         export_dir: the directory to write the export
-        classes (None): the list of possible class labels. If omitted, the
-            class list is dynamically generated as samples are processed
         num_shards (None): an optional number of shards to split the records
             into (using a round robin strategy)
+        image_format (None): the image format to use when writing in-memory
+            images to disk. By default, ``fiftyone.config.default_image_ext``
+            is used
+        classes (None): the list of possible class labels. If omitted, the
+            class list is dynamically generated as samples are processed
     """
 
-    def __init__(self, export_dir, classes=None, num_shards=None):
-        super().__init__(export_dir, num_shards=num_shards)
+    def __init__(
+        self, export_dir, num_shards=None, image_format=None, classes=None
+    ):
+        super().__init__(
+            export_dir, num_shards=num_shards, image_format=image_format
+        )
+
         self.classes = classes
 
     @property

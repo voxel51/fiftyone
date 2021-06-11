@@ -5289,9 +5289,8 @@ class SampleCollection(object):
                 existing files and directories (False). Not applicable when a
                 ``dataset_exporter`` was provided
             **kwargs: optional keyword arguments to pass to the dataset
-                exporter's constructor via
-                ``DatasetExporter(export_dir, **kwargs)``. If you are exporting
-                image patches, this can also contain keyword arguments for
+                exporter's constructor. If you are exporting image patches,
+                this can also contain keyword arguments for
                 :class:`fiftyone.utils.patches.ImagePatchesExtractor`
         """
         if export_dir is not None and etau.is_archive(export_dir):

@@ -116,17 +116,15 @@ class UnlabeledImageDatasetIngestor(
         sample_parser,
         image_format=None,
         max_samples=None,
-        **kwargs
     ):
-        for arg in kwargs:
-            logger.warning("Ignoring unsupported parameter '%s'", arg)
-
         UnlabeledImageDatasetImporter.__init__(
-            self, dataset_dir, max_samples=max_samples
+            self, dataset_dir=dataset_dir, max_samples=max_samples
         )
         ImageIngestor.__init__(self, dataset_dir, image_format=image_format)
+
         self.samples = samples
         self.sample_parser = sample_parser
+
         self._iter_samples = None
         self._num_samples = None
         self._num_imported = None
@@ -226,20 +224,18 @@ class LabeledImageDatasetIngestor(LabeledImageDatasetImporter, ImageIngestor):
         image_format=None,
         skip_unlabeled=False,
         max_samples=None,
-        **kwargs
     ):
-        for arg in kwargs:
-            logger.warning("Ignoring unsupported parameter '%s'", arg)
-
         LabeledImageDatasetImporter.__init__(
             self,
-            dataset_dir,
+            dataset_dir=dataset_dir,
             skip_unlabeled=skip_unlabeled,
             max_samples=max_samples,
         )
         ImageIngestor.__init__(self, dataset_dir, image_format=image_format)
+
         self.samples = samples
         self.sample_parser = sample_parser
+
         self._iter_samples = None
         self._num_samples = None
         self._num_imported = None
@@ -359,18 +355,15 @@ class UnlabeledVideoDatasetIngestor(
             all samples are imported
     """
 
-    def __init__(
-        self, dataset_dir, samples, sample_parser, max_samples=None, **kwargs
-    ):
-        for arg in kwargs:
-            logger.warning("Ignoring unsupported parameter '%s'", arg)
-
+    def __init__(self, dataset_dir, samples, sample_parser, max_samples=None):
         UnlabeledVideoDatasetImporter.__init__(
-            self, dataset_dir, max_samples=max_samples
+            self, dataset_dir=dataset_dir, max_samples=max_samples
         )
         VideoIngestor.__init__(self, dataset_dir)
+
         self.samples = samples
         self.sample_parser = sample_parser
+
         self._iter_samples = None
         self._num_samples = None
         self._num_imported = None
@@ -456,20 +449,18 @@ class LabeledVideoDatasetIngestor(LabeledVideoDatasetImporter, VideoIngestor):
         sample_parser,
         skip_unlabeled=False,
         max_samples=None,
-        **kwargs
     ):
-        for arg in kwargs:
-            logger.warning("Ignoring unsupported parameter '%s'", arg)
-
         LabeledVideoDatasetImporter.__init__(
             self,
-            dataset_dir,
+            dataset_dir=dataset_dir,
             skip_unlabeled=skip_unlabeled,
             max_samples=max_samples,
         )
         VideoIngestor.__init__(self, dataset_dir)
+
         self.samples = samples
         self.sample_parser = sample_parser
+
         self._iter_samples = None
         self._num_samples = None
         self._num_imported = None

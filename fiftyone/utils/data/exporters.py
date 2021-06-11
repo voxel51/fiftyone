@@ -182,16 +182,16 @@ def export_samples(
         num_samples (None): the number of samples in ``samples``. If omitted,
             this is computed (if possible) via ``len(samples)``
         **kwargs: optional keyword arguments to pass to the dataset exporter's
-            constructor via ``DatasetExporter(export_dir=export_dir, **kwargs)``.
-            If you are exporting image patches, this can also contain keyword
-            arguments for :class:`fiftyone.utils.patches.ImagePatchesExtractor`
+            constructor. If you are exporting image patches, this can also
+            contain keyword arguments for
+            :class:`fiftyone.utils.patches.ImagePatchesExtractor`
     """
     found_patches, patches_kwargs, kwargs = _check_for_patches_export(
         samples, dataset_exporter, label_field_or_dict, kwargs
     )
 
     if dataset_exporter is None:
-        dataset_exporter, kwargs = build_dataset_exporter(
+        dataset_exporter, unused_kwargs = build_dataset_exporter(
             dataset_type,
             export_dir=export_dir,
             data_path=data_path,
@@ -200,14 +200,17 @@ def export_samples(
             **kwargs,
         )
 
-    for key, value in kwargs.items():
-        if value is not None:
-            logger.warning(
-                "Ignoring unsupported parameter %s=%s for exporter type %s",
-                key,
-                value,
-                type(dataset_exporter),
-            )
+        for key, value in unused_kwargs.items():
+            if value is not None:
+                logger.warning(
+                    "Ignoring unsupported parameter %s for exporter type %s",
+                    key,
+                    type(dataset_exporter),
+                )
+    elif kwargs:
+        for key, value in kwargs.items():
+            if value is not None:
+                logger.warning("Ignoring unsupported parameter %s", key)
 
     sample_collection = samples
 
@@ -1280,7 +1283,7 @@ class LegacyFiftyOneDatasetExporter(GenericSampleDatasetExporter):
         The new exporter is :class:`FiftyOneDatasetExporter`.
 
     Args:
-        export_dir (None): the directory to write the export
+        export_dir: the directory to write the export
         export_media (None): defines how to export the raw media contained
             in the dataset. The supported values are:
 
@@ -1299,17 +1302,11 @@ class LegacyFiftyOneDatasetExporter(GenericSampleDatasetExporter):
 
     def __init__(
         self,
-        export_dir=None,
+        export_dir,
         export_media=None,
         relative_filepaths=True,
         pretty_print=False,
     ):
-        if export_dir is None:
-            raise ValueError(
-                "`export_dir` is required when exporting with a %s"
-                % type(self),
-            )
-
         if export_media is None:
             export_media = True
 
@@ -1451,7 +1448,7 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
     details.
 
     Args:
-        export_dir (None): the directory to write the export
+        export_dir: the directory to write the export
         export_media (None): defines how to export the raw media contained
             in the dataset. The supported values are:
 
@@ -1471,13 +1468,7 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
             Only applicable when ``export_media`` is False
     """
 
-    def __init__(self, export_dir=None, export_media=None, rel_dir=None):
-        if export_dir is None:
-            raise ValueError(
-                "`export_dir` is required when exporting with a %s"
-                % type(self),
-            )
-
+    def __init__(self, export_dir, export_media=None, rel_dir=None):
         if export_media is None:
             export_media = True
 
@@ -1621,7 +1612,7 @@ class ImageDirectoryExporter(UnlabeledImageDatasetExporter):
     the form ``"-%d" % count`` is appended to the base filename.
 
     Args:
-        export_dir (None): the directory to write the export
+        export_dir: the directory to write the export
         export_media (None): defines how to export the raw media contained
             in the dataset. The supported values are:
 
@@ -1635,13 +1626,7 @@ class ImageDirectoryExporter(UnlabeledImageDatasetExporter):
             is used
     """
 
-    def __init__(self, export_dir=None, export_media=None, image_format=None):
-        if export_dir is None:
-            raise ValueError(
-                "`export_dir` is required when exporting with a %s"
-                % type(self),
-            )
-
+    def __init__(self, export_dir, export_media=None, image_format=None):
         if export_media is None:
             export_media = True
 
@@ -1683,7 +1668,7 @@ class VideoDirectoryExporter(UnlabeledVideoDatasetExporter):
     the form ``"-%d" % count`` is appended to the base filename.
 
     Args:
-        export_dir (None): the directory to write the export
+        export_dir: the directory to write the export
         export_media (None): defines how to export the raw media contained
             in the dataset. The supported values are:
 
@@ -1694,13 +1679,7 @@ class VideoDirectoryExporter(UnlabeledVideoDatasetExporter):
                 directory
     """
 
-    def __init__(self, export_dir=None, export_media=None):
-        if export_dir is None:
-            raise ValueError(
-                "`export_dir` is required when exporting with a %s"
-                % type(self),
-            )
-
+    def __init__(self, export_dir, export_media=None):
         if export_media is None:
             export_media = True
 
@@ -1900,7 +1879,7 @@ class ImageClassificationDirectoryTreeExporter(LabeledImageDatasetExporter):
     appended to the base filename.
 
     Args:
-        export_dir (None): the directory to write the export
+        export_dir: the directory to write the export
         export_media (None): controls how to export the raw media. The
             supported values are:
 
@@ -1914,13 +1893,7 @@ class ImageClassificationDirectoryTreeExporter(LabeledImageDatasetExporter):
             is used
     """
 
-    def __init__(self, export_dir=None, export_media=None, image_format=None):
-        if export_dir is None:
-            raise ValueError(
-                "`export_dir` is required when exporting with a %s"
-                % type(self),
-            )
-
+    def __init__(self, export_dir, export_media=None, image_format=None):
         if export_media is None:
             export_media = True
 
@@ -2008,7 +1981,7 @@ class VideoClassificationDirectoryTreeExporter(LabeledVideoDatasetExporter):
     appended to the base filename.
 
     Args:
-        export_dir (None): the directory to write the export
+        export_dir: the directory to write the export
         export_media (None): controls how to export the raw media. The
             supported values are:
 
@@ -2020,13 +1993,7 @@ class VideoClassificationDirectoryTreeExporter(LabeledVideoDatasetExporter):
                 directory
     """
 
-    def __init__(self, export_dir=None, export_media=None):
-        if export_dir is None:
-            raise ValueError(
-                "`export_dir` is required when exporting with a %s"
-                % type(self),
-            )
-
+    def __init__(self, export_dir, export_media=None):
         if export_media is None:
             export_media = True
 
@@ -2383,7 +2350,7 @@ class FiftyOneImageLabelsDatasetExporter(LabeledImageDatasetExporter):
     appended to the base filename.
 
     Args:
-        export_dir (None): the directory to write the export
+        export_dir: the directory to write the export
         export_media (None): controls how to export the raw media. The
             supported values are:
 
@@ -2402,17 +2369,11 @@ class FiftyOneImageLabelsDatasetExporter(LabeledImageDatasetExporter):
 
     def __init__(
         self,
-        export_dir=None,
+        export_dir,
         export_media=None,
         image_format=None,
         pretty_print=False,
     ):
-        if export_dir is None:
-            raise ValueError(
-                "`export_dir` is required when exporting with a %s"
-                % type(self),
-            )
-
         if export_media is None:
             export_media = True
 
@@ -2509,7 +2470,7 @@ class FiftyOneVideoLabelsDatasetExporter(LabeledVideoDatasetExporter):
     appended to the base filename.
 
     Args:
-        export_dir (None): the directory to write the export
+        export_dir: the directory to write the export
         export_media (None): controls how to export the raw media. The
             supported values are:
 
@@ -2523,15 +2484,7 @@ class FiftyOneVideoLabelsDatasetExporter(LabeledVideoDatasetExporter):
             format with newlines and indentations
     """
 
-    def __init__(
-        self, export_dir=None, export_media=None, pretty_print=False,
-    ):
-        if export_dir is None:
-            raise ValueError(
-                "`export_dir` is required when exporting with a %s"
-                % type(self),
-            )
-
+    def __init__(self, export_dir, export_media=None, pretty_print=False):
         if export_media is None:
             export_media = True
 

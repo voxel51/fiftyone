@@ -75,7 +75,7 @@ def download_zoo_dataset(
     dataset_dir=None,
     overwrite=False,
     cleanup=True,
-    **kwargs
+    **kwargs,
 ):
     """Downloads the dataset of the given name from the FiftyOne Dataset Zoo.
 
@@ -131,7 +131,7 @@ def load_zoo_dataset(
     drop_existing_dataset=False,
     overwrite=False,
     cleanup=None,
-    **kwargs
+    **kwargs,
 ):
     """Loads the dataset of the given name from the FiftyOne Dataset Zoo as
     a :class:`fiftyone.core.dataset.Dataset`.
@@ -182,7 +182,7 @@ def load_zoo_dataset(
 
     if download_if_necessary:
         zoo_dataset_cls = _get_zoo_dataset_cls(name)
-        download_kwargs, _ = fou.extract_kwargs_for_class(
+        download_kwargs, kwargs = fou.extract_kwargs_for_class(
             zoo_dataset_cls, kwargs
         )
 
@@ -192,7 +192,7 @@ def load_zoo_dataset(
             dataset_dir=dataset_dir,
             overwrite=overwrite,
             cleanup=cleanup,
-            **download_kwargs
+            **download_kwargs,
         )
         zoo_dataset = info.get_zoo_dataset()
     else:
@@ -200,16 +200,26 @@ def load_zoo_dataset(
         info = zoo_dataset.load_info(dataset_dir)
 
     dataset_type = info.get_dataset_type()
-    dataset_importer = dataset_type.get_dataset_importer_cls()
-    importer_kwargs, _ = fou.extract_kwargs_for_class(dataset_importer, kwargs)
+    dataset_importer_cls = dataset_type.get_dataset_importer_cls()
+    importer_kwargs, unused_kwargs = fou.extract_kwargs_for_class(
+        dataset_importer_cls, kwargs
+    )
+
+    for key, value in unused_kwargs.items():
+        if value is not None:
+            logger.warning(
+                "Ignoring unsupported parameter %s for importer type %s",
+                key,
+                dataset_importer_cls,
+            )
 
     if dataset_name is None:
         dataset_name = zoo_dataset.name
         if splits is not None:
             dataset_name += "-" + "-".join(splits)
 
-        if "max_samples" in kwargs:
-            dataset_name += "-%s" % kwargs["max_samples"]
+        if "max_samples" in importer_kwargs:
+            dataset_name += "-%s" % importer_kwargs["max_samples"]
 
     if fo.dataset_exists(dataset_name):
         if not drop_existing_dataset:
@@ -241,7 +251,7 @@ def load_zoo_dataset(
                 dataset_type,
                 tags=tags,
                 label_field=label_field,
-                **importer_kwargs
+                **importer_kwargs,
             )
     else:
         logger.info("Loading '%s'", zoo_dataset.name)
@@ -249,7 +259,7 @@ def load_zoo_dataset(
             dataset_dir,
             dataset_type,
             label_field=label_field,
-            **importer_kwargs
+            **importer_kwargs,
         )
 
     if info.classes is not None:
