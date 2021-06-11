@@ -1,15 +1,8 @@
 /**
  * Copyright 2017-2021, Voxel51, Inc.
  */
-import { mergeWith } from "immutable";
 
-import {
-  FONT_SIZE,
-  MIN_PIXELS,
-  STROKE_WIDTH,
-  PAD,
-  POINT_RADIUS,
-} from "./constants";
+import { FONT_SIZE, STROKE_WIDTH, PAD, POINT_RADIUS } from "./constants";
 import {
   getFrameElements,
   getImageElements,
@@ -17,9 +10,8 @@ import {
 } from "./elements";
 import { LookerElement } from "./elements/common";
 import processOverlays from "./processOverlays";
-import { ClassificationsOverlay, FROM_FO, POINTS_FROM_FO } from "./overlays";
+import { loadOverlays } from "./overlays";
 import { CONTAINS, Overlay } from "./overlays/base";
-import { ClassificationLabels } from "./overlays/classifications";
 import {
   FrameState,
   ImageState,
@@ -32,13 +24,13 @@ import {
   Coordinates,
   Optional,
   BaseSample,
-  Dimensions,
-  BoundingBox,
 } from "./state";
-import { getContainingBox, getElementBBox, getFitRect, snapBox } from "./util";
+import { getElementBBox, getFitRect, mergeUpdates, snapBox } from "./util";
+import { zoomToContent } from "./zoom";
 
 import "./style.css";
-import { LookerError } from "./errors";
+
+export { zoomAspectRatio } from "./zoom";
 
 export abstract class Looker<
   State extends BaseState = BaseState,
@@ -435,169 +427,3 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
     return super.postProcess(element);
   }
 }
-
-function loadOverlays<State extends BaseState>(sample: {
-  [key: string]: any;
-}): Overlay<State>[] {
-  const classifications = <ClassificationLabels>[];
-  let overlays = [];
-  for (const field in sample) {
-    const label = sample[field];
-    if (!label) {
-      continue;
-    }
-    if (label._cls in FROM_FO) {
-      const labelOverlays = FROM_FO[label._cls](field, label, this);
-      overlays = [...overlays, ...labelOverlays];
-    } else if (label._cls === "Classification") {
-      classifications.push([field, [label]]);
-    } else if (label._cls === "Classifications") {
-      classifications.push([field, label.classifications]);
-    }
-  }
-
-  if (classifications.length > 0) {
-    const overlay = new ClassificationsOverlay(classifications);
-    overlays.push(overlay);
-  }
-
-  return overlays;
-}
-
-const adjustBox = (
-  [w, h]: Dimensions,
-  [obtlx, obtly, obw, obh]: BoundingBox
-): {
-  center: Coordinates;
-  box: BoundingBox;
-} => {
-  const ar = obw / obh;
-  let [btlx, btly, bw, bh] = [obtlx, obtly, obw, obh];
-
-  if (bw * w < MIN_PIXELS) {
-    bw = MIN_PIXELS / w;
-    bh = bw / ar;
-    btlx = obtlx + obw / 2 - bw / 2;
-    btly = obtly + obh / 2 - bh / 2;
-  }
-
-  if (bh * h < MIN_PIXELS) {
-    bh = MIN_PIXELS / h;
-    bw = bh * ar;
-    btlx = obtlx + obw / 2 - bw / 2;
-    btly = obtly + obh / 2 - bh / 2;
-  }
-
-  return {
-    center: [obtlx + obw / 2, obtly + obh / 2],
-    box: [btlx, btly, bw, bh],
-  };
-};
-
-function zoomToContent<State extends FrameState | ImageState>(
-  state: Readonly<State>,
-  currentOverlays: Overlay<State>[]
-): State {
-  if (state.options.zoom && state.canZoom) {
-    const points = currentOverlays.map((o) => o.getPoints()).flat();
-    let [iw, ih] = state.config.dimensions;
-    let [w, h] = [iw, ih];
-    const iAR = w / h;
-    const {
-      center: [cw, ch],
-      box: [_, __, bw, bh],
-    } = adjustBox([w, h], getContainingBox(points));
-
-    const [___, ____, ww, wh] = state.windowBBox;
-    let wAR = ww / wh;
-
-    let scale = 1;
-    let pan: Coordinates = [0, 0];
-    const squeeze = 1 - state.options.zoomPad;
-
-    if (wAR < iAR) {
-      scale = Math.max(1, 1 / bw);
-      w = ww * scale;
-      h = w / iAR;
-      if (!state.config.thumbnail && bh * h > wh) {
-        scale = Math.max(1, (wh * scale) / (bh * h));
-        w = ww * scale;
-        h = w / iAR;
-      }
-    } else {
-      scale = Math.max(1, 1 / bh);
-      h = wh * scale;
-      w = h * iAR;
-      if (!state.config.thumbnail && bw * w > ww) {
-        scale = Math.max(1, (ww * scale) / (bw * w));
-        h = wh * scale;
-        w = h * iAR;
-      }
-    }
-
-    const marginX = (scale * ww - w) / 2;
-    const marginY = (scale * wh - h) / 2;
-    pan = [-w * cw - marginX + ww / 2, -h * ch - marginY + wh / 2];
-
-    // Scale down and reposition for a centered patch with padding
-    if (w * squeeze > ww && h * squeeze > wh) {
-      scale = squeeze * scale;
-      pan[0] = pan[0] * squeeze + (bw * w * (1 - squeeze)) / 2;
-      pan[1] = pan[1] * squeeze + (bh * h * (1 - squeeze)) / 2;
-    }
-
-    pan = snapBox(scale, pan, [ww, wh], [iw, ih]);
-
-    return mergeUpdates(state, { scale: scale, pan });
-  }
-  return state;
-}
-
-function mergeUpdates<State extends BaseState>(
-  state: State,
-  updates: Optional<State>
-): State {
-  const merger = (o, n) => {
-    if (Array.isArray(n)) {
-      return n;
-    }
-    if (n instanceof Function) {
-      return n;
-    }
-    if (typeof n !== "object") {
-      return n === undefined ? o : n;
-    }
-    if (n === null) {
-      return n;
-    }
-    return mergeWith(merger, o, n);
-  };
-  return mergeWith(merger, state, updates);
-}
-
-export const zoomAspectRatio = (
-  sample: {
-    [key: string]: { _cls?: string };
-  },
-  mediaAspectRatio: number
-): number => {
-  let points = [];
-  Object.entries(sample).forEach(([_, label]) => {
-    if (label && label._cls in POINTS_FROM_FO) {
-      points = [...points, ...POINTS_FROM_FO[label._cls](label)];
-    }
-  });
-  let [_, __, width, height] = getContainingBox(points);
-
-  if (width === 0 || height === 0) {
-    if (width === height) {
-      width = 1;
-      height = 1;
-    } else if (height === 0) {
-      height = width;
-    } else {
-      width = height;
-    }
-  }
-  return (width / height) * mediaAspectRatio;
-};

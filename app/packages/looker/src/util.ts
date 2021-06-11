@@ -2,8 +2,18 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 
+import { mergeWith } from "immutable";
+
 import { MIN_PIXELS, SCALE_FACTOR } from "./constants";
-import { BoundingBox, Coordinates, Dimensions } from "./state";
+import {
+  BaseState,
+  BoundingBox,
+  Coordinates,
+  Dimensions,
+  FrameState,
+  ImageState,
+  Optional,
+} from "./state";
 
 /**
  * Shallow data-object comparison for equality
@@ -343,4 +353,26 @@ export const clampScale = (
   }
 
   return Math.max(scale, 1 / SCALE_FACTOR);
+};
+
+export const mergeUpdates = <State extends BaseState>(
+  state: State,
+  updates: Optional<State>
+): State => {
+  const merger = (o, n) => {
+    if (Array.isArray(n)) {
+      return n;
+    }
+    if (n instanceof Function) {
+      return n;
+    }
+    if (typeof n !== "object") {
+      return n === undefined ? o : n;
+    }
+    if (n === null) {
+      return n;
+    }
+    return mergeWith(merger, o, n);
+  };
+  return mergeWith(merger, state, updates);
 };

@@ -1,7 +1,11 @@
 /**
  * Copyright 2017-2021, Voxel51, Inc.
  */
-import ClassificationsOverlay from "./classifications";
+import { BaseState } from "../state";
+import { Overlay } from "./base";
+import ClassificationsOverlay, {
+  ClassificationLabels,
+} from "./classifications";
 import DetectionOverlay, { getDetectionPoints } from "./detection";
 import KeypointOverlay, { getKeypointPoints } from "./keypoint";
 import PolylineOverlay, { getPolylinePoints } from "./polyline";
@@ -34,4 +38,32 @@ export const POINTS_FROM_FO = {
   Polyline: (label) => getPolylinePoints([label]),
   Poylines: (label) => getPolylinePoints(label.polylines),
   Segmentation: (label) => getSegmentationPoints([label]),
+};
+
+export const loadOverlays = <State extends BaseState>(sample: {
+  [key: string]: any;
+}): Overlay<State>[] => {
+  const classifications = <ClassificationLabels>[];
+  let overlays = [];
+  for (const field in sample) {
+    const label = sample[field];
+    if (!label) {
+      continue;
+    }
+    if (label._cls in FROM_FO) {
+      const labelOverlays = FROM_FO[label._cls](field, label, this);
+      overlays = [...overlays, ...labelOverlays];
+    } else if (label._cls === "Classification") {
+      classifications.push([field, [label]]);
+    } else if (label._cls === "Classifications") {
+      classifications.push([field, label.classifications]);
+    }
+  }
+
+  if (classifications.length > 0) {
+    const overlay = new ClassificationsOverlay(classifications);
+    overlays.push(overlay);
+  }
+
+  return overlays;
 };
