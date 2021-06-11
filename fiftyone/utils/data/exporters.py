@@ -700,6 +700,250 @@ def _write_video_dataset(
                     )
 
 
+class ExportPathsMixin(object):
+    """Mixin for :class:`DatasetExporter` classes that provides convenience
+    methods for parsing the ``data_path``, ``labels_path``, and
+    ``export_media`` parameters supported by many exporters.
+    """
+
+    @staticmethod
+    def _parse_data_path(
+        export_dir=None, data_path=None, export_media=None, default=None,
+    ):
+        """Helper function that computes default values for the ``data_path``
+        and ``export_media`` parameters supported by many exporters.
+        """
+        if data_path is None:
+            if export_media == "manifest" and default is not None:
+                data_path = os.path.normpath(default) + ".json"
+            elif export_dir is not None:
+                data_path = default
+
+        if data_path is not None:
+            data_path = os.path.expanduser(data_path)
+
+            if not os.path.isabs(data_path) and export_dir is not None:
+                export_dir = os.path.abspath(os.path.expanduser(export_dir))
+                data_path = os.path.join(export_dir, data_path)
+
+        if export_media is None:
+            if data_path is None:
+                export_media = False
+            elif data_path.endswith(".json"):
+                export_media = "manifest"
+            else:
+                export_media = True
+
+        return data_path, export_media
+
+    @staticmethod
+    def _parse_labels_path(export_dir=None, labels_path=None, default=None):
+        """Helper function that computes default values for the ``labels_path``
+        parameter supported by many exporters.
+        """
+        if labels_path is None:
+            labels_path = default
+
+        if labels_path is not None:
+            labels_path = os.path.expanduser(labels_path)
+
+            if not os.path.isabs(labels_path) and export_dir is not None:
+                export_dir = os.path.abspath(os.path.expanduser(export_dir))
+                labels_path = os.path.join(export_dir, labels_path)
+
+        return labels_path
+
+
+class MediaExporter(object):
+    """Base class for :class:`DatasetExporter` utilities that provide support
+    for populating a directory or manifest of media files.
+
+    This class is designed for populating a single, flat directory or manifest
+    of media files, and automatically takes care of things like name clashes.
+
+    The export strategy used is defined by the ``export_mode`` parameter, and
+    users can restrict the available options via the ``supported_modes``
+    parameter.
+
+    Args:
+        export_mode: the export mode to use. The supported values are:
+
+            -   ``True``: copy all media files into the output directory
+            -   ``False``: don't export media. This option is only useful when
+                exporting labeled datasets whose label format stores sufficient
+                information to locate the associated media
+            -   ``"move"``: move all media files into the output directory
+            -   ``"symlink"``: create symlinks to the media files in the output
+                directory
+            -   ``"manifest"``: create a ``data.json`` in the output directory
+                that maps UUIDs used in the labels files to the filepaths of
+                the source media, rather than exporting the actual media
+        export_path (None): the location to export the media. Can be any of the
+            following:
+
+            -   When ``export_media`` is True, "move", or "symlink", a
+                directory in which to export the media
+            -   When ``export_mode`` is "manifest", the path to write a JSON
+                file mapping UUIDs to input filepaths
+            -   When ``export_media`` is False, this parameter has no effect
+        supported_modes (None): an optional tuple specifying a subset of the
+            ``export_mode`` values that are allowed
+        default_ext (None): the file extension to use when generating default
+            output paths
+        ignore_exts (False): whether to omit file extensions when generating
+            UUIDs for files
+    """
+
+    def __init__(
+        self,
+        export_mode,
+        export_path=None,
+        supported_modes=None,
+        default_ext=None,
+        ignore_exts=False,
+    ):
+        if supported_modes is None:
+            supported_modes = (True, False, "move", "symlink", "manifest")
+
+        if export_mode not in supported_modes:
+            raise ValueError(
+                "Unsupported media export mode %s. The supported values are %s"
+                % (export_mode, supported_modes)
+            )
+
+        if export_mode != False and export_path is None:
+            raise ValueError(
+                "An export path must be provided for export mode %s"
+                % export_mode
+            )
+
+        self.export_mode = export_mode
+        self.export_path = export_path
+        self.supported_modes = supported_modes
+        self.default_ext = default_ext
+        self.ignore_exts = ignore_exts
+
+        self._filename_maker = None
+        self._manifest = None
+        self._manifest_path = None
+
+    def _write_media(self, media, outpath):
+        raise NotImplementedError("subclass must implement _write_media()")
+
+    def _get_uuid(self, media_path):
+        filename = os.path.basename(media_path)
+        if self.ignore_exts:
+            return os.path.splitext(filename)[0]
+
+        return filename
+
+    def setup(self):
+        """Performs necessary setup to begin exporting media.
+
+        :class:`DatasetExporter` classes using this class should invoke this
+        method in :meth:`DatasetExporter.setup`.
+        """
+        output_dir = None
+        manifest_path = None
+        manifest = None
+
+        if self.export_mode in {True, "move", "symlink"}:
+            output_dir = self.export_path
+        elif self.export_mode == "manifest":
+            manifest_path = self.export_path
+            manifest = {}
+
+        self._filename_maker = fou.UniqueFilenameMaker(
+            output_dir=output_dir,
+            default_ext=self.default_ext,
+            ignore_exts=self.ignore_exts,
+        )
+        self._manifest_path = manifest_path
+        self._manifest = manifest
+
+    def export(self, media_or_path):
+        """Exports the given media.
+
+        Args:
+            media_or_path: the media or path to the media on disk
+
+        Returns:
+            a tuple of:
+
+            -   the path to the exported media
+            -   the UUID of the exported media
+        """
+        if etau.is_str(media_or_path):
+            media_path = media_or_path
+            outpath = self._filename_maker.get_output_path(media_path)
+            uuid = self._get_uuid(outpath)
+
+            if self.export_mode == True:
+                etau.copy_file(media_path, outpath)
+            if self.export_mode == "move":
+                etau.move_file(media_path, outpath)
+            elif self.export_mode == "symlink":
+                etau.symlink_file(media_path, outpath)
+            elif self.export_mode == "manifest":
+                outpath = None
+                self._manifest[uuid] = media_path
+        else:
+            media = media_or_path
+            outpath = self._filename_maker.get_output_path()
+            uuid = self._get_uuid(outpath)
+
+            if self.export_mode == True:
+                self._write_media(media, outpath)
+            elif self.export_mode != False:
+                raise ValueError(
+                    "Cannot export in-memory media when 'export_mode=%s'"
+                    % self.export_mode
+                )
+
+        return outpath, uuid
+
+    def close(self):
+        """Performs any necessary actions to complete an export.
+
+        :class:`DatasetExporter` classes implementing this mixin should invoke
+        this method in :meth:`DatasetExporter.close`.
+        """
+        if self.export_mode == "manifest":
+            etas.write_json(self._manifest, self._manifest_path)
+
+
+class ImageExporter(MediaExporter):
+    """Utility class for :class:`DatasetExporter` instances that export images.
+
+    See :class:`MediaExporter` for details.
+    """
+
+    def __init__(self, *args, default_ext=None, **kwargs):
+        if default_ext is None:
+            default_ext = fo.config.default_image_ext
+
+        super().__init__(*args, default_ext=default_ext, **kwargs)
+
+    def _write_media(self, img, outpath):
+        etai.write(img, outpath)
+
+
+class VideoExporter(MediaExporter):
+    """Utility class for :class:`DatasetExporter` instances that export videos.
+
+    See :class:`MediaExporter` for details.
+    """
+
+    def __init__(self, *args, default_ext=None, **kwargs):
+        if default_ext is None:
+            default_ext = fo.config.default_video_ext
+
+        super().__init__(*args, default_ext=default_ext, **kwargs)
+
+    def _write_media(self, media, outpath):
+        raise ValueError("Only video paths can be exported")
+
+
 class DatasetExporter(object):
     """Base interface for exporting datsets.
 
@@ -896,60 +1140,6 @@ class UnlabeledVideoDatasetExporter(DatasetExporter):
         raise NotImplementedError("subclass must implement export_sample()")
 
 
-class PathsMixin(object):
-    """Mixin for dataset exporters that provides convenience methods for
-    parsing the ``data_path``, ``labels_path``, and ``export_media`` parameters
-    supported by many exporters.
-    """
-
-    @staticmethod
-    def _parse_data_path(
-        export_dir=None, data_path=None, export_media=None, default=None,
-    ):
-        """Helper function that computes default values for the ``data_path``
-        and ``export_media`` parameters supported by many exporters.
-        """
-        if data_path is None:
-            if export_media == "manifest" and default is not None:
-                data_path = os.path.normpath(default) + ".json"
-            elif export_dir is not None:
-                data_path = default
-
-        if data_path is not None:
-            data_path = os.path.expanduser(data_path)
-
-            if not os.path.isabs(data_path) and export_dir is not None:
-                export_dir = os.path.abspath(os.path.expanduser(export_dir))
-                data_path = os.path.join(export_dir, data_path)
-
-        if export_media is None:
-            if data_path is None:
-                export_media = False
-            elif data_path.endswith(".json"):
-                export_media = "manifest"
-            else:
-                export_media = True
-
-        return data_path, export_media
-
-    @staticmethod
-    def _parse_labels_path(export_dir=None, labels_path=None, default=None):
-        """Helper function that computes default values for the ``labels_path``
-        parameter supported by many exporters.
-        """
-        if labels_path is None:
-            labels_path = default
-
-        if labels_path is not None:
-            labels_path = os.path.expanduser(labels_path)
-
-            if not os.path.isabs(labels_path) and export_dir is not None:
-                export_dir = os.path.abspath(os.path.expanduser(export_dir))
-                labels_path = os.path.join(export_dir, labels_path)
-
-        return labels_path
-
-
 class LabeledImageDatasetExporter(DatasetExporter):
     """Interface for exporting datasets of labeled image samples.
 
@@ -1077,196 +1267,6 @@ class LabeledVideoDatasetExporter(DatasetExporter):
                 :meth:`requires_video_metadata` is ``True``
         """
         raise NotImplementedError("subclass must implement export_sample()")
-
-
-class MediaExporter(object):
-    """Base class for :class:`DatasetExporter` utilities that provide support
-    for populating a directory or manifest of media files.
-
-    This class is designed for populating a single, flat directory or manifest
-    of media files, and automatically takes care of things like name clashes.
-
-    The export strategy used is defined by the ``export_mode`` parameter, and
-    users can restrict the available options via the ``supported_modes``
-    parameter.
-
-    Args:
-        export_mode: the export mode to use. The supported values are:
-
-            -   ``True``: copy all media files into the output directory
-            -   ``False``: don't export media. This option is only useful when
-                exporting labeled datasets whose label format stores sufficient
-                information to locate the associated media
-            -   ``"move"``: move all media files into the output directory
-            -   ``"symlink"``: create symlinks to the media files in the output
-                directory
-            -   ``"manifest"``: create a ``data.json`` in the output directory
-                that maps UUIDs used in the labels files to the filepaths of
-                the source media, rather than exporting the actual media
-        export_path (None): the location to export the media. Can be any of the
-            following:
-
-            -   When ``export_media`` is True, "move", or "symlink", a
-                directory in which to export the media
-            -   When ``export_mode`` is "manifest", the path to write a JSON
-                file mapping UUIDs to input filepaths
-            -   When ``export_media`` is False, this parameter has no effect
-        supported_modes (None): an optional tuple specifying a subset of the
-            ``export_mode`` values that are allowed
-        default_ext (None): the file extension to use when generating default
-            output paths
-        ignore_exts (False): whether to omit file extensions when generating
-            UUIDs for files
-    """
-
-    def __init__(
-        self,
-        export_mode,
-        export_path=None,
-        supported_modes=None,
-        default_ext=None,
-        ignore_exts=False,
-    ):
-        if supported_modes is None:
-            supported_modes = (True, False, "move", "symlink", "manifest")
-
-        if export_mode not in supported_modes:
-            raise ValueError(
-                "Unsupported media export mode %s. The supported values are %s"
-                % (export_mode, supported_modes)
-            )
-
-        if export_mode != False and export_path is None:
-            raise ValueError(
-                "An export path must be provided for export mode %s"
-                % export_mode
-            )
-
-        self.export_mode = export_mode
-        self.export_path = export_path
-        self.supported_modes = supported_modes
-        self.default_ext = default_ext
-        self.ignore_exts = ignore_exts
-
-        self._filename_maker = None
-        self._manifest = None
-        self._manifest_path = None
-
-    def _write_media(self, media, outpath):
-        raise NotImplementedError("subclass must implement _write_media()")
-
-    def _get_uuid(self, media_path):
-        filename = os.path.basename(media_path)
-        if self.ignore_exts:
-            return os.path.splitext(filename)[0]
-
-        return filename
-
-    def setup(self):
-        """Performs necessary setup to begin exporting media.
-
-        :class:`DatasetExporter` classes using this class should invoke this
-        method in :meth:`DatasetExporter.setup`.
-        """
-        output_dir = None
-        manifest_path = None
-        manifest = None
-
-        if self.export_mode in {True, "move", "symlink"}:
-            output_dir = self.export_path
-        elif self.export_mode == "manifest":
-            manifest_path = self.export_path
-            manifest = {}
-
-        self._filename_maker = fou.UniqueFilenameMaker(
-            output_dir=output_dir,
-            default_ext=self.default_ext,
-            ignore_exts=self.ignore_exts,
-        )
-        self._manifest_path = manifest_path
-        self._manifest = manifest
-
-    def export(self, media_or_path):
-        """Exports the given media.
-
-        Args:
-            media_or_path: the media or path to the media on disk
-
-        Returns:
-            a tuple of:
-
-            -   the path to the exported media
-            -   the UUID of the exported media
-        """
-        if etau.is_str(media_or_path):
-            media_path = media_or_path
-            outpath = self._filename_maker.get_output_path(media_path)
-            uuid = self._get_uuid(outpath)
-
-            if self.export_mode == True:
-                etau.copy_file(media_path, outpath)
-            if self.export_mode == "move":
-                etau.move_file(media_path, outpath)
-            elif self.export_mode == "symlink":
-                etau.symlink_file(media_path, outpath)
-            elif self.export_mode == "manifest":
-                outpath = None
-                self._manifest[uuid] = media_path
-        else:
-            media = media_or_path
-            outpath = self._filename_maker.get_output_path()
-            uuid = self._get_uuid(outpath)
-
-            if self.export_mode == True:
-                self._write_media(media, outpath)
-            elif self.export_mode != False:
-                raise ValueError(
-                    "Cannot export in-memory media when 'export_mode=%s'"
-                    % self.export_mode
-                )
-
-        return outpath, uuid
-
-    def close(self):
-        """Performs any necessary actions to complete an export.
-
-        :class:`DatasetExporter` classes implementing this mixin should invoke
-        this method in :meth:`DatasetExporter.close`.
-        """
-        if self.export_mode == "manifest":
-            etas.write_json(self._manifest, self._manifest_path)
-
-
-class ImageExporter(MediaExporter):
-    """Utility class for :class:`DatasetExporter` instances that export images.
-
-    See :class:`MediaExporter` for details.
-    """
-
-    def __init__(self, *args, default_ext=None, **kwargs):
-        if default_ext is None:
-            default_ext = fo.config.default_image_ext
-
-        super().__init__(*args, default_ext=default_ext, **kwargs)
-
-    def _write_media(self, img, outpath):
-        etai.write(img, outpath)
-
-
-class VideoExporter(MediaExporter):
-    """Utility class for :class:`DatasetExporter` instances that export videos.
-
-    See :class:`MediaExporter` for details.
-    """
-
-    def __init__(self, *args, default_ext=None, **kwargs):
-        if default_ext is None:
-            default_ext = fo.config.default_video_ext
-
-        super().__init__(*args, default_ext=default_ext, **kwargs)
-
-    def _write_media(self, media, outpath):
-        raise ValueError("Only video paths can be exported")
 
 
 class LegacyFiftyOneDatasetExporter(GenericSampleDatasetExporter):
@@ -1730,7 +1730,7 @@ class VideoDirectoryExporter(UnlabeledVideoDatasetExporter):
 
 
 class FiftyOneImageClassificationDatasetExporter(
-    LabeledImageDatasetExporter, PathsMixin
+    LabeledImageDatasetExporter, ExportPathsMixin
 ):
     """Exporter that writes an image classification dataset to disk in
     FiftyOne's default format.
@@ -2088,7 +2088,7 @@ class VideoClassificationDirectoryTreeExporter(LabeledVideoDatasetExporter):
 
 
 class FiftyOneImageDetectionDatasetExporter(
-    LabeledImageDatasetExporter, PathsMixin
+    LabeledImageDatasetExporter, ExportPathsMixin
 ):
     """Exporter that writes an image detection dataset to disk in FiftyOne's
     default format.
@@ -2248,7 +2248,7 @@ class FiftyOneImageDetectionDatasetExporter(
 
 
 class ImageSegmentationDirectoryExporter(
-    LabeledImageDatasetExporter, PathsMixin
+    LabeledImageDatasetExporter, ExportPathsMixin
 ):
     """Exporter that writes an image segmentation dataset to disk.
 

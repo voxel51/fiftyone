@@ -152,43 +152,78 @@ class BDDSampleParser(foud.LabeledImageTupleSampleParser):
 
 
 class BDDDatasetImporter(
-    foud.ImportsDataJson, foud.LabeledImageDatasetImporter
+    foud.LabeledImageDatasetImporter, foud.ImportPathsMixin
 ):
     """Importer for BDD datasets stored on disk.
 
     See :class:`fiftyone.types.dataset_types.BDDDataset` for format details.
 
     Args:
-        dataset_dir: the dataset directory
+        dataset_dir (None): the dataset directory
+        data_path (None): an optional parameter that enables explicit control
+            over the location of the media. Can be any of the following:
+
+            -   a folder name like "data" or "data/" specifying a subfolder of
+                ``dataset_dir`` where the media files reside
+            -   an absolute directory path where the media files reside. In
+                this case, the ``dataset_dir`` has no effect on the location of
+                the data
+            -   a filename like "data.json" specifying the filename of the JSON
+                data manifest file in ``dataset_dir``
+            -   an absolute filepath specifying the location of the JSON data
+                manifest. In this case, ``dataset_dir`` has no effect on the
+                location of the data
+
+            If None, this parameter will default to whichever of ``data/`` or
+            ``data.json`` exists in the dataset directory
+        labels_path (None): an optional parameter that enables explicit control
+            over the location of the labels. Can be any of the following:
+
+            -   a filename like "labels.json" specifying the location of the
+                labels in ``dataset_dir``
+            -   an absolute filepath to the labels. In this case,
+                ``dataset_dir`` has no effect on the location of the labels
+
+            If None, the parameter will default to ``labels.json``
         skip_unlabeled (False): whether to skip unlabeled images when importing
         shuffle (False): whether to randomly shuffle the order in which the
             samples are imported
         seed (None): a random seed to use when shuffling
         max_samples (None): a maximum number of samples to import. By default,
             all samples are imported
-        data_json (False): whether to load media from the location(s)
-            defined by the ``dataset_type`` or to use media locations
-            stored in a ``data.json`` file
     """
 
     def __init__(
         self,
-        dataset_dir,
+        dataset_dir=None,
+        data_path=None,
+        labels_path=None,
         skip_unlabeled=False,
         shuffle=False,
         seed=None,
         max_samples=None,
-        data_json=False,
     ):
+        data_path = self._parse_data_path(
+            dataset_dir=dataset_dir, data_path=data_path, default="data/",
+        )
+
+        labels_path = self._parse_labels_path(
+            dataset_dir=dataset_dir,
+            labels_path=labels_path,
+            default="labels.json",
+        )
+
         super().__init__(
-            dataset_dir,
+            dataset_dir=dataset_dir,
             skip_unlabeled=skip_unlabeled,
             shuffle=shuffle,
             seed=seed,
             max_samples=max_samples,
-            data_json=data_json,
         )
-        self._labels_path = None
+
+        self.data_path = data_path
+        self.labels_path = labels_path
+
         self._image_paths_map = None
         self._anno_dict_map = None
         self._filenames = None
@@ -237,16 +272,14 @@ class BDDDatasetImporter(
         }
 
     def setup(self):
-        self._labels_path = os.path.join(self.dataset_dir, "labels.json")
-        if os.path.isfile(self._labels_path):
-            self._anno_dict_map = load_bdd_annotations(self._labels_path)
+        self._image_paths_map = self._load_data_map(self.data_path)
+
+        if self.labels_path is not None and os.path.isfile(self.labels_path):
+            self._anno_dict_map = load_bdd_annotations(self.labels_path)
         else:
             self._anno_dict_map = {}
 
-        uuids_to_image_paths = self.get_uuids_to_filepaths(self.dataset_dir)
-        self._image_paths_map = uuids_to_image_paths
-
-        filenames = list(uuids_to_image_paths.keys())
+        filenames = list(self._image_paths_map.keys())
 
         if self.skip_unlabeled:
             filenames = [f for f in filenames if f in self._anno_dict_map]
@@ -255,11 +288,16 @@ class BDDDatasetImporter(
         self._num_samples = len(self._filenames)
 
     @staticmethod
-    def get_num_samples(dataset_dir):
-        return len(etau.list_files(os.path.join(dataset_dir, "data")))
+    def get_num_samples(dataset_dir=None, data_path=None):
+        data_path = foud.ImportPathsMixin._parse_data_path(
+            dataset_dir=dataset_dir, data_path=data_path, default="data/",
+        )
+        return len(etau.list_files(data_path))
 
 
-class BDDDatasetExporter(foud.LabeledImageDatasetExporter, foud.PathsMixin):
+class BDDDatasetExporter(
+    foud.LabeledImageDatasetExporter, foud.ExportPathsMixin
+):
     """Exporter that writes BDD datasets to disk.
 
     See :class:`fiftyone.types.dataset_types.BDDDataset` for format details.

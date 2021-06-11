@@ -293,7 +293,9 @@ def extract_coordinates(d):
     return _parse_geometries(geometries)
 
 
-class GeoJSONImageDatasetImporter(foud.GenericSampleDatasetImporter):
+class GeoJSONImageDatasetImporter(
+    foud.GenericSampleDatasetImporter, foud.ImportPathsMixin
+):
     """Importer for image datasets whose labels and location data are stored in
     GeoJSON format.
 
@@ -301,7 +303,32 @@ class GeoJSONImageDatasetImporter(foud.GenericSampleDatasetImporter):
     details.
 
     Args:
-        dataset_dir: the dataset directory
+        dataset_dir (None): the dataset directory
+        data_path (None): an optional parameter that enables explicit control
+            over the location of the media. Can be any of the following:
+
+            -   a folder name like "data" or "data/" specifying a subfolder of
+                ``dataset_dir`` where the media files reside
+            -   an absolute directory path where the media files reside. In
+                this case, the ``dataset_dir`` has no effect on the location of
+                the data
+            -   a filename like "data.json" specifying the filename of the JSON
+                data manifest file in ``dataset_dir``
+            -   an absolute filepath specifying the location of the JSON data
+                manifest. In this case, ``dataset_dir`` has no effect on the
+                location of the data
+
+            If None, this parameter will default to whichever of ``data/`` or
+            ``data.json`` exists in the dataset directory
+        labels_path (None): an optional parameter that enables explicit control
+            over the location of the labels. Can be any of the following:
+
+            -   a filename like "labels.json" specifying the location of the
+                labels in ``dataset_dir``
+            -   an absolute filepath to the labels. In this case,
+                ``dataset_dir`` has no effect on the location of the labels
+
+            If None, the parameter will default to ``labels.json``
         location_field ("location"): the name of the field in which to store
             the location data
         multi_location (False): whether this GeoJSON may contain multiple
@@ -324,7 +351,9 @@ class GeoJSONImageDatasetImporter(foud.GenericSampleDatasetImporter):
 
     def __init__(
         self,
-        dataset_dir,
+        dataset_dir=None,
+        data_path=None,
+        labels_path=None,
         location_field="location",
         multi_location=False,
         property_parsers=None,
@@ -334,15 +363,32 @@ class GeoJSONImageDatasetImporter(foud.GenericSampleDatasetImporter):
         seed=None,
         max_samples=None,
     ):
-        super().__init__(
-            dataset_dir, shuffle=shuffle, seed=seed, max_samples=max_samples,
+        data_path = self._parse_data_path(
+            dataset_dir=dataset_dir, data_path=data_path, default="data/",
         )
+
+        labels_path = self._parse_labels_path(
+            dataset_dir=dataset_dir,
+            labels_path=labels_path,
+            default="labels.json",
+        )
+
+        super().__init__(
+            dataset_dir=dataset_dir,
+            shuffle=shuffle,
+            seed=seed,
+            max_samples=max_samples,
+        )
+
+        self.data_path = data_path
+        self.labels_path = labels_path
         self.location_field = location_field
         self.multi_location = multi_location
         self.property_parsers = property_parsers
         self.skip_unlabeled = skip_unlabeled
         self.skip_missing_media = skip_missing_media
-        self._data_dir = None
+
+        self._image_paths_map = None
         self._features_map = None
         self._filepaths = None
         self._iter_filepaths = None
@@ -389,34 +435,43 @@ class GeoJSONImageDatasetImporter(foud.GenericSampleDatasetImporter):
         return False
 
     def setup(self):
-        self._data_dir = os.path.join(self.dataset_dir, "data")
-        json_path = os.path.join(self.dataset_dir, "labels.json")
-
-        geojson = etas.load_json(json_path)
-        _ensure_type(geojson, "FeatureCollection")
+        self._image_paths_map = self._load_data_map(self.data_path)
 
         features_map = {}
-        for feature in geojson.get("features", []):
-            properties = feature["properties"]
-            if "filepath" in properties:
-                filepath = properties.pop("filepath")
-            elif "filename" in properties:
-                filepath = os.path.join(
-                    self._data_dir, properties.pop("filename")
-                )
-            elif self.skip_missing_media:
-                continue
-            else:
-                raise ValueError(
-                    "Found feature with no ``filepath`` or ``filename`` "
-                    "property"
-                )
 
-            features_map[filepath] = feature
+        if self.labels_path is not None and os.path.isfile(self.labels_path):
+            geojson = etas.load_json(self.labels_path)
+            _ensure_type(geojson, "FeatureCollection")
+
+            for feature in geojson.get("features", []):
+                properties = feature["properties"]
+                if "filepath" in properties:
+                    filepath = properties.pop("filepath")
+                elif "filename" in properties:
+                    filename = properties.pop("filename")
+                    filepath = self._image_paths_map.get(filename, None)
+                    if filepath is None:
+                        if self.skip_missing_media:
+                            continue
+
+                        raise ValueError(
+                            "Could not locate media for feature with "
+                            "filename=%s" % filename
+                        )
+
+                elif self.skip_missing_media:
+                    continue
+                else:
+                    raise ValueError(
+                        "Found feature with no `filepath` or `filename` "
+                        "property"
+                    )
+
+                features_map[filepath] = feature
 
         filepaths = set(features_map.keys())
-        if not self.skip_unlabeled and os.path.isdir(self._data_dir):
-            filepaths.update(etau.list_files(self._data_dir, abs_paths=True))
+        if not self.skip_unlabeled:
+            filepaths.update(self._image_paths_map.values())
 
         self._features_map = features_map
         self._filepaths = self._preprocess_list(list(filepaths))
@@ -424,7 +479,7 @@ class GeoJSONImageDatasetImporter(foud.GenericSampleDatasetImporter):
 
 
 class GeoJSONImageDatasetExporter(
-    foud.GenericSampleDatasetExporter, foud.PathsMixin
+    foud.GenericSampleDatasetExporter, foud.ExportPathsMixin
 ):
     """Exporter for image datasets whose labels and location data are stored in
     GeoJSON format.

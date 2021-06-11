@@ -53,46 +53,101 @@ class YOLOSampleParser(foud.ImageDetectionSampleParser):
 
 
 class YOLODatasetImporter(
-    foud.ImportsDataJson, foud.LabeledImageDatasetImporter
+    foud.LabeledImageDatasetImporter, foud.ImportPathsMixin
 ):
     """Importer for YOLO datasets stored on disk.
 
     See :class:`fiftyone.types.dataset_types.YOLODataset` for format details.
 
     Args:
-        dataset_dir: the dataset directory
+        dataset_dir (None): the dataset directory
+        data_path (None): an optional parameter that enables explicit control
+            over the location of the media. Can be any of the following:
+
+            -   a folder name like "data" or "data/" specifying a subfolder of
+                ``dataset_dir`` where the media files reside
+            -   an absolute directory path where the media files reside. In
+                this case, the ``dataset_dir`` has no effect on the location of
+                the data
+            -   a filename like "data.json" specifying the filename of the JSON
+                data manifest file in ``dataset_dir``
+            -   an absolute filepath specifying the location of the JSON data
+                manifest. In this case, ``dataset_dir`` has no effect on the
+                location of the data
+
+            If None, this parameter will default to whichever of ``data/`` or
+            ``data.json`` exists in the dataset directory
+        objects_path (None): an optional parameter that enables explicit
+            control over the location of the object names file. Can be any of
+            the following:
+
+            -   a filename like "obj.names" specifying the location of the
+                object names file labels in ``dataset_dir``
+            -   an absolute filepath to the object names file. In this case,
+                ``dataset_dir`` has no effect on the location of the file
+
+            If None, the parameter will default to ``obj.names``
+        images_path (None): an optional parameter that enables explicit
+            control over the location of the image listing file. Can be any of
+            the following:
+
+            -   a filename like "images.txt" specifying the location of the
+                image listing file labels in ``dataset_dir``
+            -   an absolute filepath to the image listing file. In this case,
+                ``dataset_dir`` has no effect on the location of the file
+
+            If None, the parameter will default to ``images.txt``
         skip_unlabeled (False): whether to skip unlabeled images when importing
         shuffle (False): whether to randomly shuffle the order in which the
             samples are imported
         seed (None): a random seed to use when shuffling
         max_samples (None): a maximum number of samples to import. By default,
             all samples are imported
-        data_json (False): whether to load media from the location(s)
-            defined by the ``dataset_type`` or to use media locations
-            stored in a ``data.json`` file
     """
 
     def __init__(
         self,
-        dataset_dir,
+        dataset_dir=None,
+        data_path=None,
+        objects_path=None,
+        images_path=None,
         skip_unlabeled=False,
         shuffle=False,
         seed=None,
         max_samples=None,
-        data_json=False,
     ):
+        data_path = self._parse_data_path(
+            dataset_dir=dataset_dir, data_path=data_path, default="data/",
+        )
+
+        objects_path = self._parse_labels_path(
+            dataset_dir=dataset_dir,
+            labels_path=objects_path,
+            default="obj.names",
+        )
+
+        images_path = self._parse_labels_path(
+            dataset_dir=dataset_dir,
+            labels_path=images_path,
+            default="images.txt",
+        )
+
         super().__init__(
-            dataset_dir,
+            dataset_dir=dataset_dir,
             skip_unlabeled=skip_unlabeled,
             shuffle=shuffle,
             seed=seed,
             max_samples=max_samples,
-            data_json=data_json,
         )
+
+        self.data_path = data_path
+        self.objects_path = objects_path
+        self.images_path = images_path
+
         self._classes = None
         self._info = None
-        self._uuids_to_image_paths = None
-        self._uuids_to_labels_paths = None
+        self._image_paths_map = None
+        self._labels_paths_map = None
         self._uuids = None
         self._iter_uuids = None
         self._num_samples = None
@@ -108,11 +163,11 @@ class YOLODatasetImporter(
         uuid = next(self._iter_uuids)
 
         try:
-            image_path = self._uuids_to_image_paths[uuid]
+            image_path = self._image_paths_map[uuid]
         except KeyError:
             raise ValueError("No image found for sample '%s'" % uuid)
 
-        labels_path = self._uuids_to_labels_paths.get(uuid, None)
+        labels_path = self._labels_paths_map.get(uuid, None)
         if labels_path:
             # Labeled image
             detections = load_yolo_annotations(labels_path, self._classes)
@@ -135,9 +190,12 @@ class YOLODatasetImporter(
         return fol.Detections
 
     def setup(self):
-        classes_path = os.path.join(self.dataset_dir, "obj.names")
-        if os.path.exists(classes_path):
-            classes = _read_file_lines(classes_path)
+        self._image_paths_map = self._load_data_map(
+            self.data_path, ignore_exts=True
+        )
+
+        if self.objects_path is not None and os.path.exists(self.objects_path):
+            classes = _read_file_lines(self.objects_path)
         else:
             classes = None
 
@@ -145,14 +203,13 @@ class YOLODatasetImporter(
         if classes is not None:
             info["classes"] = classes
 
-        images_path = os.path.join(self.dataset_dir, "images.txt")
-        if os.path.exists(images_path):
-            images = _read_file_lines(images_path)
+        if self.images_path is not None and os.path.exists(self.images_path):
+            images = _read_file_lines(self.images_path)
         else:
             images = []
 
         uuids = []
-        uuids_to_labels_paths = {}
+        labels_paths_map = {}
         for image in images:
             uuid = os.path.splitext(os.path.basename(image))[0]
             uuids.append(uuid)
@@ -162,27 +219,27 @@ class YOLODatasetImporter(
             )
 
             if os.path.exists(labels_path):
-                uuids_to_labels_paths[uuid] = labels_path
+                labels_paths_map[uuid] = labels_path
+
+        self._labels_paths_map = labels_paths_map
 
         if self.skip_unlabeled:
-            uuids = list(uuids_to_labels_paths.keys())
-
-        uuids_to_image_paths = self.get_uuids_to_filepaths(
-            self.dataset_dir, uuids_list=uuids, include_uuid_ext=False,
-        )
+            uuids = list(self._labels_paths_map.keys())
+        else:
+            uuids = list(self._image_paths_map.keys())
 
         self._classes = classes
         self._info = info
         self._uuids = self._preprocess_list(uuids)
-        self._uuids_to_image_paths = uuids_to_image_paths
-        self._uuids_to_labels_paths = uuids_to_labels_paths
         self._num_samples = len(self._uuids)
 
     def get_dataset_info(self):
         return self._info
 
 
-class YOLODatasetExporter(foud.LabeledImageDatasetExporter, foud.PathsMixin):
+class YOLODatasetExporter(
+    foud.LabeledImageDatasetExporter, foud.ExportPathsMixin
+):
     """Exporter that writes YOLO datasets to disk.
 
     See :class:`fiftyone.types.dataset_types.YOLODataset` for format details.

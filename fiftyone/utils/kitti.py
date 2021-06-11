@@ -58,7 +58,7 @@ class KITTIDetectionSampleParser(foud.ImageDetectionSampleParser):
 
 
 class KITTIDetectionDatasetImporter(
-    foud.ImportsDataJson, foud.LabeledImageDatasetImporter
+    foud.LabeledImageDatasetImporter, foud.ImportPathsMixin
 ):
     """Importer for KITTI detection datasets stored on disk.
 
@@ -66,37 +66,73 @@ class KITTIDetectionDatasetImporter(
     details.
 
     Args:
-        dataset_dir: the dataset directory
+        dataset_dir (None): the dataset directory
+        data_path (None): an optional parameter that enables explicit control
+            over the location of the media. Can be any of the following:
+
+            -   a folder name like "data" or "data/" specifying a subfolder of
+                ``dataset_dir`` where the media files reside
+            -   an absolute directory path where the media files reside. In
+                this case, the ``dataset_dir`` has no effect on the location of
+                the data
+            -   a filename like "data.json" specifying the filename of the JSON
+                data manifest file in ``dataset_dir``
+            -   an absolute filepath specifying the location of the JSON data
+                manifest. In this case, ``dataset_dir`` has no effect on the
+                location of the data
+
+            If None, this parameter will default to whichever of ``data/`` or
+            ``data.json`` exists in the dataset directory
+        labels_path (None): an optional parameter that enables explicit control
+            over the location of the labels. Can be any of the following:
+
+            -   a folder name like "labels" or "labels/" specifying the
+                location of the labels in ``dataset_dir``
+            -   an absolute folder path to the labels. In this case,
+                ``dataset_dir`` has no effect on the location of the labels
+
+            If None, the parameter will default to ``labels/``
         skip_unlabeled (False): whether to skip unlabeled images when importing
         shuffle (False): whether to randomly shuffle the order in which the
             samples are imported
         seed (None): a random seed to use when shuffling
         max_samples (None): a maximum number of samples to import. By default,
             all samples are imported
-        data_json (False): whether to load media from the location(s)
-            defined by the ``dataset_type`` or to use media locations
-            stored in a ``data.json`` file
     """
 
     def __init__(
         self,
-        dataset_dir,
+        dataset_dir=None,
+        data_path=None,
+        labels_path=None,
         skip_unlabeled=False,
         shuffle=False,
         seed=None,
         max_samples=None,
-        data_json=False,
     ):
+        data_path = self._parse_data_path(
+            dataset_dir=dataset_dir, data_path=data_path, default="data/",
+        )
+
+        labels_path = self._parse_labels_path(
+            dataset_dir=dataset_dir,
+            labels_path=labels_path,
+            default="labels/",
+        )
+
         super().__init__(
-            dataset_dir,
+            dataset_dir=dataset_dir,
             skip_unlabeled=skip_unlabeled,
             shuffle=shuffle,
             seed=seed,
             max_samples=max_samples,
-            data_json=data_json,
         )
-        self._uuids_to_image_paths = None
-        self._uuids_to_labels_paths = None
+
+        self.data_path = data_path
+        self.labels_path = labels_path
+
+        self._image_paths_map = None
+        self._labels_paths_map = None
         self._uuids = None
         self._iter_uuids = None
         self._num_samples = None
@@ -112,13 +148,13 @@ class KITTIDetectionDatasetImporter(
         uuid = next(self._iter_uuids)
 
         try:
-            image_path = self._uuids_to_image_paths[uuid]
+            image_path = self._image_paths_map[uuid]
         except KeyError:
             raise ValueError("No image found for sample '%s'" % uuid)
 
         image_metadata = fom.ImageMetadata.build_for(image_path)
 
-        labels_path = self._uuids_to_labels_paths.get(uuid, None)
+        labels_path = self._labels_paths_map.get(uuid, None)
         if labels_path:
             # Labeled image
             frame_size = (image_metadata.width, image_metadata.height)
@@ -144,40 +180,40 @@ class KITTIDetectionDatasetImporter(
         return fol.Detections
 
     def setup(self):
-        to_uuid = lambda p: os.path.splitext(os.path.basename(p))[0]
-
-        self._uuids_to_image_paths = self.get_uuids_to_filepaths(
-            self.dataset_dir
+        self._image_paths_map = self._load_data_map(
+            self.data_path, ignore_exts=True
         )
 
-        labels_dir = os.path.join(self.dataset_dir, "labels")
-        if os.path.isdir(labels_dir):
-            self._uuids_to_labels_paths = {
-                to_uuid(p): p
-                for p in etau.list_files(labels_dir, abs_paths=True)
+        if self.labels_path is not None and os.path.isdir(self.labels_path):
+            self._labels_paths_map = {
+                os.path.splitext(os.path.basename(p))[0]: p
+                for p in etau.list_files(self.labels_path, abs_paths=True)
             }
         else:
-            self._uuids_to_labels_paths = {}
+            self._labels_paths_map = {}
 
         if self.skip_unlabeled:
-            uuids = sorted(self._uuids_to_labels_paths.keys())
+            uuids = sorted(self._labels_paths_map.keys())
         else:
-            uuids = sorted(self._uuids_to_image_paths.keys())
+            uuids = sorted(self._image_paths_map.keys())
 
         self._uuids = self._preprocess_list(uuids)
         self._num_samples = len(self._uuids)
 
     @staticmethod
-    def get_num_samples(dataset_dir):
-        data_dir = os.path.join(dataset_dir, "data")
-        if not os.path.isdir(data_dir):
+    def get_num_samples(dataset_dir=None, data_path=None):
+        data_path = foud.ImportPathsMixin._parse_data_path(
+            dataset_dir=dataset_dir, data_path=data_path, default="data/",
+        )
+
+        if not os.path.isdir(data_path):
             return 0
 
-        return len(etau.list_files(data_dir))
+        return len(etau.list_files(data_path))
 
 
 class KITTIDetectionDatasetExporter(
-    foud.LabeledImageDatasetExporter, foud.PathsMixin
+    foud.LabeledImageDatasetExporter, foud.ExportPathsMixin
 ):
     """Exporter that writes KITTI detection datasets to disk.
 

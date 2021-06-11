@@ -139,7 +139,7 @@ class COCODetectionSampleParser(foud.LabeledImageTupleSampleParser):
 
 
 class COCODetectionDatasetImporter(
-    foud.ImportsDataJson, foud.LabeledImageDatasetImporter
+    foud.LabeledImageDatasetImporter, foud.ImportPathsMixin
 ):
     """Importer for COCO detection datasets stored on disk.
 
@@ -147,7 +147,32 @@ class COCODetectionDatasetImporter(
     details.
 
     Args:
-        dataset_dir: the dataset directory
+        dataset_dir (None): the dataset directory
+        data_path (None): an optional parameter that enables explicit control
+            over the location of the media. Can be any of the following:
+
+            -   a folder name like "data" or "data/" specifying a subfolder of
+                ``dataset_dir`` where the media files reside
+            -   an absolute directory path where the media files reside. In
+                this case, the ``dataset_dir`` has no effect on the location of
+                the data
+            -   a filename like "data.json" specifying the filename of the JSON
+                data manifest file in ``dataset_dir``
+            -   an absolute filepath specifying the location of the JSON data
+                manifest. In this case, ``dataset_dir`` has no effect on the
+                location of the data
+
+            If None, this parameter will default to whichever of ``data/`` or
+            ``data.json`` exists in the dataset directory
+        labels_path (None): an optional parameter that enables explicit control
+            over the location of the labels. Can be any of the following:
+
+            -   a filename like "labels.json" specifying the location of the
+                labels in ``dataset_dir``
+            -   an absolute filepath to the labels. In this case,
+                ``dataset_dir`` has no effect on the location of the labels
+
+            If None, the parameter will default to ``labels.json``
         load_segmentations (True): whether to load segmentation masks, if
             available
         return_polylines (False): whether to return
@@ -161,14 +186,13 @@ class COCODetectionDatasetImporter(
         seed (None): a random seed to use when shuffling
         max_samples (None): a maximum number of samples to import. By default,
             all samples are imported
-        data_json (False): whether to load media from the location(s)
-            defined by the ``dataset_type`` or to use media locations
-            stored in a ``data.json`` file
     """
 
     def __init__(
         self,
-        dataset_dir,
+        dataset_dir=None,
+        data_path=None,
+        labels_path=None,
         load_segmentations=True,
         return_polylines=False,
         tolerance=None,
@@ -176,16 +200,27 @@ class COCODetectionDatasetImporter(
         shuffle=False,
         seed=None,
         max_samples=None,
-        data_json=False,
     ):
+        data_path = self._parse_data_path(
+            dataset_dir=dataset_dir, data_path=data_path, default="data/",
+        )
+
+        labels_path = self._parse_labels_path(
+            dataset_dir=dataset_dir,
+            labels_path=labels_path,
+            default="labels.json",
+        )
+
         super().__init__(
-            dataset_dir,
+            dataset_dir=dataset_dir,
             skip_unlabeled=skip_unlabeled,
             shuffle=shuffle,
             seed=seed,
             max_samples=max_samples,
-            data_json=data_json,
         )
+
+        self.data_path = data_path
+        self.labels_path = labels_path
         self.load_segmentations = load_segmentations
         self.return_polylines = return_polylines
         self.tolerance = tolerance
@@ -263,15 +298,16 @@ class COCODetectionDatasetImporter(
         return fol.Detections
 
     def setup(self):
-        labels_path = os.path.join(self.dataset_dir, "labels.json")
-        if os.path.isfile(labels_path):
+        self._image_paths_map = self._load_data_map(self.data_path)
+
+        if self.labels_path is not None and os.path.isfile(self.labels_path):
             (
                 info,
                 classes,
                 supercategory_map,
                 images,
                 annotations,
-            ) = load_coco_detection_annotations(labels_path)
+            ) = load_coco_detection_annotations(self.labels_path)
         else:
             info = {}
             classes = None
@@ -288,13 +324,10 @@ class COCODetectionDatasetImporter(
         self._image_dicts_map = {i["file_name"]: i for i in images.values()}
         self._annotations = annotations
 
-        image_paths_map = self.get_uuids_to_filepaths(self.dataset_dir)
-        self._image_paths_map = image_paths_map
-
         if self.skip_unlabeled:
-            filenames = self._image_dicts_map.keys()
+            filenames = list(self._image_dicts_map.keys())
         else:
-            filenames = list(image_paths_map.keys())
+            filenames = list(self._image_paths_map.keys())
 
         self._filenames = self._preprocess_list(filenames)
 
@@ -303,7 +336,7 @@ class COCODetectionDatasetImporter(
 
 
 class COCODetectionDatasetExporter(
-    foud.LabeledImageDatasetExporter, foud.PathsMixin
+    foud.LabeledImageDatasetExporter, foud.ExportPathsMixin
 ):
     """Exporter that writes COCO detection datasets to disk.
 

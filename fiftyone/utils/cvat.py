@@ -154,7 +154,7 @@ class CVATVideoSampleParser(foud.LabeledVideoSampleParser):
 
 
 class CVATImageDatasetImporter(
-    foud.ImportsDataJson, foud.LabeledImageDatasetImporter
+    foud.LabeledImageDatasetImporter, foud.ImportPathsMixin
 ):
     """Importer for CVAT image datasets stored on disk.
 
@@ -162,37 +162,71 @@ class CVATImageDatasetImporter(
     details.
 
     Args:
-        dataset_dir: the dataset directory
+        dataset_dir (None): the dataset directory
+        data_path (None): an optional parameter that enables explicit control
+            over the location of the media. Can be any of the following:
+
+            -   a folder name like "data" or "data/" specifying a subfolder of
+                ``dataset_dir`` where the media files reside
+            -   an absolute directory path where the media files reside. In
+                this case, the ``dataset_dir`` has no effect on the location of
+                the data
+            -   a filename like "data.json" specifying the filename of the JSON
+                data manifest file in ``dataset_dir``
+            -   an absolute filepath specifying the location of the JSON data
+                manifest. In this case, ``dataset_dir`` has no effect on the
+                location of the data
+
+            If None, this parameter will default to whichever of ``data/`` or
+            ``data.json`` exists in the dataset directory
+        labels_path (None): an optional parameter that enables explicit control
+            over the location of the labels. Can be any of the following:
+
+            -   a filename like "labels.xml" specifying the location of the
+                labels in ``dataset_dir``
+            -   an absolute filepath to the labels. In this case,
+                ``dataset_dir`` has no effect on the location of the labels
+
+            If None, the parameter will default to ``labels.xml``
         skip_unlabeled (False): whether to skip unlabeled images when importing
         shuffle (False): whether to randomly shuffle the order in which the
             samples are imported
         seed (None): a random seed to use when shuffling
         max_samples (None): a maximum number of samples to import. By default,
             all samples are imported
-        data_json (False): whether to load media from the location(s)
-            defined by the ``dataset_type`` or to use media locations
-            stored in a ``data.json`` file
     """
 
     def __init__(
         self,
-        dataset_dir,
+        dataset_dir=None,
+        data_path=None,
+        labels_path=None,
         skip_unlabeled=False,
         shuffle=False,
         seed=None,
         max_samples=None,
-        data_json=False,
     ):
+        data_path = self._parse_data_path(
+            dataset_dir=dataset_dir, data_path=data_path, default="data/",
+        )
+
+        labels_path = self._parse_labels_path(
+            dataset_dir=dataset_dir,
+            labels_path=labels_path,
+            default="labels.xml",
+        )
+
         super().__init__(
-            dataset_dir,
+            dataset_dir=dataset_dir,
             skip_unlabeled=skip_unlabeled,
             shuffle=shuffle,
             seed=seed,
             max_samples=max_samples,
-            data_json=data_json,
         )
-        self._data_dir = None
-        self._labels_path = None
+
+        self.data_path = data_path
+        self.labels_path = labels_path
+
         self._info = None
         self._image_paths_map = None
         self._cvat_images_map = None
@@ -241,11 +275,11 @@ class CVATImageDatasetImporter(
         }
 
     def setup(self):
-        self._labels_path = os.path.join(self.dataset_dir, "labels.xml")
+        self._image_paths_map = self._load_data_map(self.data_path)
 
-        if os.path.isfile(self._labels_path):
+        if self.labels_path is not None and os.path.isfile(self.labels_path):
             info, _, cvat_images = load_cvat_image_annotations(
-                self._labels_path
+                self.labels_path
             )
         else:
             info = {}
@@ -256,10 +290,7 @@ class CVATImageDatasetImporter(
         # Index by filename
         self._cvat_images_map = {i.name: i for i in cvat_images}
 
-        image_paths_map = self.get_uuids_to_filepaths(self.dataset_dir)
-        self._image_paths_map = image_paths_map
-
-        filenames = list(image_paths_map.keys())
+        filenames = list(self._image_paths_map.keys())
 
         if self.skip_unlabeled:
             filenames = [f for f in filenames if f in self._cvat_images_map]
@@ -272,7 +303,7 @@ class CVATImageDatasetImporter(
 
 
 class CVATVideoDatasetImporter(
-    foud.ImportsDataJson, foud.LabeledVideoDatasetImporter
+    foud.LabeledVideoDatasetImporter, foud.ImportPathsMixin
 ):
     """Importer for CVAT video datasets stored on disk.
 
@@ -280,35 +311,71 @@ class CVATVideoDatasetImporter(
     details.
 
     Args:
-        dataset_dir: the dataset directory
+        dataset_dir (None): the dataset directory
+        data_path (None): an optional parameter that enables explicit control
+            over the location of the media. Can be any of the following:
+
+            -   a folder name like "data" or "data/" specifying a subfolder of
+                ``dataset_dir`` where the media files reside
+            -   an absolute directory path where the media files reside. In
+                this case, the ``dataset_dir`` has no effect on the location of
+                the data
+            -   a filename like "data.json" specifying the filename of the JSON
+                data manifest file in ``dataset_dir``
+            -   an absolute filepath specifying the location of the JSON data
+                manifest. In this case, ``dataset_dir`` has no effect on the
+                location of the data
+
+            If None, this parameter will default to whichever of ``data/`` or
+            ``data.json`` exists in the dataset directory
+        labels_path (None): an optional parameter that enables explicit control
+            over the location of the labels. Can be any of the following:
+
+            -   a folder name like "labels" or "labels/" specifying the
+                location of the labels in ``dataset_dir``
+            -   an absolute folder path to the labels. In this case,
+                ``dataset_dir`` has no effect on the location of the labels
+
+            If None, the parameter will default to ``labels/``
         skip_unlabeled (False): whether to skip unlabeled videos when importing
         shuffle (False): whether to randomly shuffle the order in which the
             samples are imported
         seed (None): a random seed to use when shuffling
         max_samples (None): a maximum number of samples to import. By default,
             all samples are imported
-        data_json (False): whether to load media from the location(s)
-            defined by the ``dataset_type`` or to use media locations
-            stored in a ``data.json`` file
     """
 
     def __init__(
         self,
-        dataset_dir,
+        dataset_dir=None,
+        data_path=None,
+        labels_path=None,
         skip_unlabeled=False,
         shuffle=False,
         seed=None,
         max_samples=None,
-        data_json=False,
     ):
+        data_path = self._parse_data_path(
+            dataset_dir=dataset_dir, data_path=data_path, default="data/",
+        )
+
+        labels_path = self._parse_labels_path(
+            dataset_dir=dataset_dir,
+            labels_path=labels_path,
+            default="labels/",
+        )
+
         super().__init__(
-            dataset_dir,
+            dataset_dir=dataset_dir,
             skip_unlabeled=skip_unlabeled,
             shuffle=shuffle,
             seed=seed,
             max_samples=max_samples,
-            data_json=data_json,
         )
+
+        self.data_path = data_path
+        self.labels_path = labels_path
+
         self._info = None
         self._cvat_task_labels = None
         self._video_paths_map = None
@@ -370,18 +437,15 @@ class CVATVideoDatasetImporter(
         }
 
     def setup(self):
-        to_uuid = lambda p: os.path.splitext(os.path.basename(p))[0]
+        self._video_paths_map = self._load_data_map(self.data_path)
 
-        labels_dir = os.path.join(self.dataset_dir, "labels")
-        if os.path.isdir(labels_dir):
+        if self.labels_path is not None and os.path.isdir(self.labels_path):
             self._labels_paths_map = {
-                to_uuid(p): p
-                for p in etau.list_files(labels_dir, abs_paths=True)
+                os.path.splitext(os.path.basename(p))[0]: p
+                for p in etau.list_files(self.labels_path, abs_paths=True)
             }
         else:
             self._labels_paths_map = {}
-
-        self._video_paths_map = self.get_uuids_to_filepaths(self.dataset_dir)
 
         if self.skip_unlabeled:
             uuids = sorted(self._labels_paths_map.keys())
@@ -398,7 +462,7 @@ class CVATVideoDatasetImporter(
 
 
 class CVATImageDatasetExporter(
-    foud.LabeledImageDatasetExporter, foud.PathsMixin
+    foud.LabeledImageDatasetExporter, foud.ExportPathsMixin
 ):
     """Exporter that writes CVAT image datasets to disk.
 
@@ -562,7 +626,7 @@ class CVATImageDatasetExporter(
 
 
 class CVATVideoDatasetExporter(
-    foud.LabeledVideoDatasetExporter, foud.PathsMixin
+    foud.LabeledVideoDatasetExporter, foud.ExportPathsMixin
 ):
     """Exporter that writes CVAT video datasets to disk.
 
