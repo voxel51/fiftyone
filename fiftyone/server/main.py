@@ -163,6 +163,58 @@ class StagesHandler(RequestHandler):
         }
 
 
+class FramesHandler(tornado.web.RequestHandler):
+    """
+    """
+
+    def set_default_headers(self, *args, **kwargs):
+        self.set_header("Access-Control-Allow-Origin", "*")
+        self.set_header("Access-Control-Allow-Headers", "x-requested-with")
+        self.set_header("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
+        self.set_header("x-colab-notebook-cache-control", "no-cache")
+
+    async def get(self):
+        sample_id = self.get_argument("sampleId", None)
+        start_frame = self.get_argument("frameNumber", None)
+
+        if sample_id is None or start_frame is None:
+            raise ValueError("error")
+
+        end_frame = self.get_argument("numFrames", 30) + start_frame
+        state = fos.StateDescription.from_dict(StateHandler.state)
+        if state.view is not None:
+            view = state.view
+        elif state.dataset is not None:
+            view = state.dataset
+
+        view = view.select(sample_id)
+        view = view.select_fields("frames")
+        view = view.set_field(
+            "frames",
+            F("frames").filter(
+                (F("frame_number") >= start_frame)
+                & (F("frame_number") <= end_frame)
+            ),
+        )
+
+        results, _ = await _get_sample_data(
+            StateHandler.sample_collection(), view, 1, 0, detach_frames=False,
+        )
+
+        results = results[0]["frames"]
+
+        frames = {}
+        mn = 0
+        mx = 0
+        for frame in results:
+            frame_number = frame["frame_number"]
+            frames[frame["frame_number"]] = frame
+            mn = min([mn, frame_number])
+            mx = max([mx, frame_number])
+
+        self.write({"frames": frames, "range": [mn, mx]})
+
+
 class FeedbackHandler(RequestHandler):
     """Returns whether the feedback button should be minimized"""
 
