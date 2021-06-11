@@ -882,7 +882,7 @@ export const modalLabelAttrs = selectorFamily<
       field = field.slice("frames.".length);
       sample = get(sampleFramesMap(sample._id))[frameNumber];
       if (!sample && frameNumber === 1) {
-        sample = get(modalSample).frames;
+        sample = get(modalSample).frames["1"];
       } else if (!sample) {
         return [];
       }

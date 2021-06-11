@@ -182,7 +182,6 @@ export default class ClassificationsOverlay<State extends BaseState>
       return { top };
     }
     const color = this.getColor(state, field, label);
-    const selected = this.isSelected(state, label);
     const [cx, cy] = state.canvasBBox;
 
     let [tlx, tly, w, h] = [

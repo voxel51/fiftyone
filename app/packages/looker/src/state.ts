@@ -138,7 +138,7 @@ export interface VideoState extends BaseState {
   frameNumber: number;
   duration: number;
   fragment?: [number, number];
-  framesRequested: boolean;
+  buffering: boolean;
 }
 
 export type Optional<T> = {

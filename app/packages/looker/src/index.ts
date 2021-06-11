@@ -38,6 +38,7 @@ import {
 import { getContainingBox, getElementBBox, getFitRect, snapBox } from "./util";
 
 import "./style.css";
+import { LookerError } from "./errors";
 
 export abstract class Looker<
   State extends BaseState = BaseState,
@@ -64,7 +65,7 @@ export abstract class Looker<
     this.updater = this.makeUpdate();
     this.state = this.getInitialState(config, options);
     this.loadOverlays();
-    this.pluckedOverlays = this.pluckOverlays(this.state);
+    this.pluckedOverlays = this.pluckOverlays(this.state, this.state);
     this.lookerElement = this.getElements();
     this.canvas = this.lookerElement.children[1].element as HTMLCanvasElement;
     this.resizeObserver = new ResizeObserver(() =>
@@ -91,8 +92,9 @@ export abstract class Looker<
       if (Object.keys(updates).length === 0 && !postUpdate) {
         return;
       }
+      const prevState = this.state;
       this.state = mergeUpdates(this.state, updates);
-      this.pluckedOverlays = this.pluckOverlays(this.state);
+      this.pluckedOverlays = this.pluckOverlays(this.state, prevState);
       [this.currentOverlays, this.state.rotate] = processOverlays(
         this.state,
         this.pluckedOverlays
@@ -160,7 +162,10 @@ export abstract class Looker<
 
   protected abstract loadOverlays();
 
-  protected abstract pluckOverlays(state: Readonly<State>): Overlay<State>[];
+  protected abstract pluckOverlays(
+    state: State,
+    prevState: Readonly<State>
+  ): Overlay<State>[];
 
   protected abstract getDefaultOptions(): State["options"];
 
@@ -328,13 +333,21 @@ export class ImageLooker extends Looker<ImageState> {
   }
 }
 
+interface FrameSample {
+  frame_number: number;
+}
+
 interface VideoSample extends BaseSample {
-  frames: { [frameNumber: number]: BaseSample };
+  frames: { 1: BaseSample };
 }
 
 export class VideoLooker extends Looker<VideoState, VideoSample> {
   private sampleOverlays: Overlay<VideoState>[];
-  private frameOverlays: { [frameNumber: number]: Overlay<VideoState>[] };
+  private frameOverlays: Map<number, WeakRef<FrameSample>>;
+
+  constructor(sample, config, options) {
+    super(sample, config, options);
+  }
 
   get frameNumber() {
     return this.state.frameNumber;
@@ -352,7 +365,7 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
       fragment: null,
       playing: false,
       frameNumber: 1,
-      framesRequested: false,
+      buffering: true,
       ...this.getInitialBaseState(),
       config: { ...config },
       options: {
@@ -370,30 +383,18 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
         )
       )
     );
-    this.frameOverlays = Object.fromEntries(
-      Object.entries(this.sample.frames || []).map(
-        ([frameNumber, frameSample]) => {
-          return [
-            Number(frameNumber),
-            loadOverlays(
-              Object.fromEntries(
-                Object.entries(frameSample).map(([fieldName, field]) => {
-                  return [`frames.${fieldName}`, field];
-                })
-              )
-            ),
-          ];
-        }
-      )
-    );
   }
 
-  pluckOverlays({ frameNumber }) {
+  pluckOverlays(state: VideoState, prevState: Readonly<VideoState>) {
     const overlays = this.sampleOverlays;
-    if (frameNumber in this.frameOverlays) {
-      return [...overlays, ...this.frameOverlays[frameNumber]];
+    if (state.frameNumber in this.frameOverlays) {
+      return [...overlays, ...this.frameOverlays[state.frameNumber]];
     }
-    return overlays;
+
+    state.frameNumber = prevState.frameNumber;
+    state.buffering = true;
+
+    return this.pluckedOverlays;
   }
 
   getDefaultOptions() {

@@ -963,14 +963,11 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         cls, self, path, uuid=None, selected=[], search="", limit=10
     ):
         state = fos.StateDescription.from_dict(StateHandler.state)
-        results = None
         col = cls.sample_collection()
         if state.view is not None:
             view = state.view
         elif state.dataset is not None:
             view = state.dataset
-        else:
-            results = []
 
         view = _get_search_view(view, path, search, selected)
 
@@ -1396,14 +1393,15 @@ class Application(tornado.web.Application):
         rel_web_path = "static"
         web_path = os.path.join(server_path, rel_web_path)
         handlers = [
-            (r"/fiftyone", FiftyOneHandler),
-            (r"/polling", PollingHandler),
             (r"/feedback", FeedbackHandler),
+            (r"/fiftyone", FiftyOneHandler),
+            (r"/frames", FramesHandler),
             (r"/filepath/(.*)", MediaHandler, {"path": ""},),
             (r"/notebook", NotebookHandler),
+            (r"/polling", PollingHandler),
+            (r"/reactivate", ReactivateHandler),
             (r"/stages", StagesHandler),
             (r"/state", StateHandler),
-            (r"/reactivate", ReactivateHandler),
             (
                 r"/(.*)",
                 FileHandler,

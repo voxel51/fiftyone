@@ -452,7 +452,6 @@ const requestFrames = (frames, sampleId: string, setFrames) => {
           args: { sample_id: sampleId },
           uuid: uuid(),
         }).then(({ sample }) => {
-          console.log(sample);
           !cancelled && setFrames(sample.frames);
         });
       },
