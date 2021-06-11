@@ -56,11 +56,11 @@ def export_samples(
 ):
     """Exports the given samples to disk.
 
-    You can perform an export with this method via the following three basic
-    workflows:
+    You can perform exports with this method via the following basic patterns:
 
-    (a) Provide ``dataset_type`` and ``export_dir`` to export the content to a
-        specific directory in a desired format
+    (a) Provide ``export_dir`` and ``dataset_type`` to export the content to a
+        directory in the default layout for the specified format, as documented
+        in :ref:`this page <exporting-datasets>`
 
     (b) Provide ``dataset_type`` along with ``data_path``, ``labels_path``,
         and/or ``export_media`` to directly specify where to export the source
@@ -203,7 +203,7 @@ def export_samples(
     for key, value in kwargs.items():
         if value is not None:
             logger.warning(
-                "Ignoring unsupported parameter %s=%s for export type %s",
+                "Ignoring unsupported parameter %s=%s for exporter type %s",
                 key,
                 value,
                 type(dataset_exporter),
@@ -382,20 +382,9 @@ def build_dataset_exporter(dataset_type, **kwargs):
     if inspect.isclass(dataset_type):
         dataset_type = dataset_type()
 
-    if not isinstance(
-        dataset_type,
-        (
-            fot.UnlabeledImageDataset,
-            fot.LabeledImageDataset,
-            fot.UnlabeledVideoDataset,
-            fot.LabeledVideoDataset,
-        ),
-    ):
-        raise ValueError("Unsupported `dataset_type` %s" % type(dataset_type))
-
     dataset_exporter_cls = dataset_type.get_dataset_exporter_cls()
 
-    kwargs, other_kwargs = fou.extract_kwargs_for_class(
+    kwargs, unused_kwargs = fou.extract_kwargs_for_class(
         dataset_exporter_cls, kwargs
     )
 
@@ -409,7 +398,7 @@ def build_dataset_exporter(dataset_type, **kwargs):
             "to learn more" % (dataset_exporter_cls, dataset_exporter_cls)
         ) from e
 
-    return dataset_exporter, other_kwargs
+    return dataset_exporter, unused_kwargs
 
 
 def _check_for_patches_export(

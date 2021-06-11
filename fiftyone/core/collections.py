@@ -5119,11 +5119,12 @@ class SampleCollection(object):
     ):
         """Exports the samples in the collection to disk.
 
-        You can perform an export with this method via the following three
-        basic workflows:
+        You can perform exports with this method via the following basic
+        patterns:
 
-        (a) Provide ``dataset_type`` and ``export_dir`` to export the content
-            to a specific directory in a desired format
+        (a) Provide ``export_dir`` and ``dataset_type`` to export the content
+            to a directory in the default layout for the specified format, as
+            documented in :ref:`this page <exporting-datasets>`
 
         (b) Provide ``dataset_type`` along with ``data_path``, ``labels_path``,
             and/or ``export_media`` to directly specify where to export the

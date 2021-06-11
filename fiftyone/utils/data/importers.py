@@ -6,6 +6,7 @@ Dataset importers.
 |
 """
 from copy import copy
+import inspect
 import logging
 import os
 import random
@@ -26,10 +27,11 @@ import fiftyone.core.frame as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.metadata as fom
 import fiftyone.core.media as fomm
-import fiftyone.migrations as fomi
 import fiftyone.core.odm as foo
 import fiftyone.core.runs as fors
 import fiftyone.core.sample as fos
+import fiftyone.core.utils as fou
+import fiftyone.migrations as fomi
 
 from .parsers import (
     FiftyOneImageClassificationSampleParser,
@@ -274,6 +276,48 @@ def import_samples(
         return sample_ids
 
 
+def build_dataset_importer(dataset_type, **kwargs):
+    """Builds the :class:`DatasetImporter` instance for the given parameters.
+
+    Args:
+        dataset_type: the :class:`fiftyone.types.dataset_types.Dataset` type
+        **kwargs: keyword arguments to pass to the dataset importer's
+            constructor via ``DatasetImporter(**kwargs)``
+
+    Returns:
+        a tuple of:
+
+        -   the :class:`DatasetImporter` instance
+        -   a dict of extra keyword arguments that were unused
+    """
+    if dataset_type is None:
+        raise ValueError(
+            "You must provide a `dataset_type` in order to build a dataset "
+            "importer"
+        )
+
+    if inspect.isclass(dataset_type):
+        dataset_type = dataset_type()
+
+    dataset_importer_cls = dataset_type.get_dataset_importer_cls()
+
+    kwargs, other_kwargs = fou.extract_kwargs_for_class(
+        dataset_importer_cls, kwargs
+    )
+
+    try:
+        dataset_importer = dataset_importer_cls(**kwargs)
+    except Exception as e:
+        raise ValueError(
+            "Failed to construct importer of type %s using the provided "
+            "parameters. You may need to supply mandatory arguments to the "
+            "constructor via `kwargs`. Please consult the documentation of %s "
+            "to learn more" % (dataset_importer_cls, dataset_importer_cls)
+        ) from e
+
+    return dataset_importer, other_kwargs
+
+
 def parse_info(dataset, info):
     """Parses the info returned by :meth:`DatasetImporter.get_dataset_info` and
     stores it on the relevant properties of the dataset.
@@ -473,21 +517,21 @@ class BatchDatasetImporter(DatasetImporter):
 
 
 class ImportsDataJson(object):
-    """Mixin for :class:`DatasetImporter` classes that provides the option to 
+    """Mixin for :class:`DatasetImporter` classes that provides the option to
     imports media samples from filepaths stored in a ``data.json`` file.
 
     Args:
         data_json (False): whether to load media from the location(s)
             defined by the ``dataset_type`` or to use media locations
-            stored in a ``data.json`` file created by a 
+            stored in a ``data.json`` file created by a
             ::class`DatasetExporter <fiftyone.utils.data.exporters.DatasetExporter>`.
 
             This argument is not available for the following dataset
             types as they are required to store media on disk or store
             filepaths internally:
-                
-            :class:`ImageDirectory <fiftyone.types.dataset_types.ImageDirectory>`, 
-            :class:`VideoDirectory <fiftyone.types.dataset_types.VideoDirectory>`, 
+
+            :class:`ImageDirectory <fiftyone.types.dataset_types.ImageDirectory>`,
+            :class:`VideoDirectory <fiftyone.types.dataset_types.VideoDirectory>`,
             :class:`ImageClassificationDirectoryTree <fiftyone.types.dataset_types.ImageClassificationDirectoryTree>`,
             :class:`VideoClassificationDirectoryTree <fiftyone.types.dataset_types.VideoClassificationDirectoryTree>`,
             :class:`GeoJSONImageDataset <fiftyone.types.dataset_types.GeoJSONImageDataset>`,
@@ -509,7 +553,7 @@ class ImportsDataJson(object):
         """Loads the uuid to filepath mapping from the ``data.json`` in the
         dataset directory or directly from the directory containing the media
         data.
-        
+
         Args:
             dataset_dir: the dataset directory
             file_or_dir_name ("data"): name of the json file containing uuid to filepath
@@ -517,7 +561,7 @@ class ImportsDataJson(object):
             uuids_list (None): a list of uuids to be included in the returned mapping,
                 all others will be ignored
             include_uuid_ext (True): whether to include the file extension in the uuid
-        
+
         Returns:
             uuids_to_filepaths: a dict mapping unqiue filenames to filepaths
         """
@@ -1506,7 +1550,7 @@ class FiftyOneImageClassificationDatasetImporter(
             all samples are imported
         data_json (False): whether to load media from the location(s)
             defined by the ``dataset_type`` or to use media locations
-            stored in a ``data.json`` file 
+            stored in a ``data.json`` file
     """
 
     def __init__(
@@ -1862,7 +1906,7 @@ class FiftyOneImageDetectionDatasetImporter(
             all samples are imported
         data_json (False): whether to load media from the location(s)
             defined by the ``dataset_type`` or to use media locations
-            stored in a ``data.json`` file 
+            stored in a ``data.json`` file
     """
 
     def __init__(

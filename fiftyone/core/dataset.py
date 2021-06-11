@@ -2083,25 +2083,78 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     def add_dir(
         self,
-        dataset_dir,
-        dataset_type,
+        dataset_dir=None,
+        dataset_type=None,
+        data_path=None,
+        labels_path=None,
         label_field="ground_truth",
         tags=None,
         expand_schema=True,
         add_info=True,
-        data_json=False,
         **kwargs,
     ):
         """Adds the contents of the given directory to the dataset.
 
-        See :doc:`this guide </user_guide/dataset_creation/datasets>` for
-        descriptions of available dataset types.
+        You can perform imports with this method via the following basic
+        patterns:
+
+        (a) Provide ``dataset_dir`` and ``dataset_type`` to import the contents
+            of a directory that is organized in the default layout for the
+            dataset type as documented in
+            :ref:`this guide <loading-datasets-from-disk>`
+
+        (b) Provide ``dataset_type`` along with ``data_path``, ``labels_path``,
+            or other type-specific parameters to perform a customized import.
+            This syntax provides the flexibility to, for example, perform
+            labels-only imports or imports where the source media lies in a
+            different location than the labels
+
+        In either workflow, the remaining parameters of this method can be
+        provided to further configure the import.
+
+        See :ref:`this guide <loading-datasets-from-disk>` for descriptions of
+        the available dataset types.
 
         Args:
-            dataset_dir: the dataset directory
+            dataset_dir (None): the dataset directory. This can be omitted if
+                you provide arguments such as ``data_path`` and ``labels_path``
             dataset_type (None): the
                 :class:`fiftyone.types.dataset_types.Dataset` type of the
-                dataset in ``dataset_dir``
+                dataset
+            data_path (None): an optional parameter that enables explicit
+                control over the location of the exported media for certain
+                dataset types. Can be any of the following:
+
+                -   a folder name like "data" or "data/" specifying a subfolder
+                    of ``dataset_dir`` in which the media lies
+                -   an absolute directory path in which the media lies. In this
+                    case, the ``export_dir`` has no effect on the location of
+                    the data
+                -   a filename like "data.json" specifying the filename of a
+                    JSON manifest file in ``dataset_dir`` that maps UUIDs to
+                    media filepaths. Files of this format are generated when
+                    passing the ``export_media="manifest"`` option to
+                    :meth:`fiftyone.core.collections.SampleCollection.export`
+                -   an absolute filepath to a JSON manifest file. In this case,
+                    ``dataset_dir`` has no effect on the location of the data
+
+                By default, it is assumed that the data can be located in the
+                default location within ``dataset_dir`` for the dataset type
+            labels_path (None): an optional parameter that enables explicit
+                control over the location of the labels. Only applicable when
+                importing certain labeled dataset formats. Can be any of the
+                following:
+
+                -   a type-specific folder name like "labels" or "labels/" or a
+                    filename like "labels.json" or "labels.xml" specifying the
+                    location in ``dataset_dir`` of the labels file(s)
+                -   an absolute directory or filepath containing the labels
+                    file(s). In this case, ``dataset_dir`` has no effect on the
+                    location of the labels
+
+                For labeled datasets, this parameter defaults to the location
+                in ``dataset_dir`` of the labels for the default layout of the
+                dataset type being imported
             label_field ("ground_truth"): the name (or root name) of the
                 field(s) to use for the labels (if applicable)
             tags (None): an optional tag or iterable of tags to attach to each
@@ -2111,25 +2164,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 if a sample's schema is not a subset of the dataset schema
             add_info (True): whether to add dataset info from the importer (if
                 any) to the dataset's ``info``
-            data_json (False): whether to load media from the location(s)
-                defined by the ``dataset_type`` or to use media locations
-                stored in a ``data.json`` file created by a
-                ::class`DatasetExporter <fiftyone.utils.data.exporters.DatasetExporter>`.
-
-                This argument is not available for the following dataset
-                types as they are required to store media on disk:
-
-                :class:`ImageDirectory <fiftyone.types.dataset_types.ImageDirectory>`,
-                :class:`VideoDirectory <fiftyone.types.dataset_types.VideoDirectory>`,
-                :class:`ImageClassificationDirectoryTree <fiftyone.types.dataset_types.ImageClassificationDirectoryTree>`,
-                :class:`VideoClassificationDirectoryTree <fiftyone.types.dataset_types.VideoClassificationDirectoryTree>`,
-                :class:`TFObjectDetectionDataset <fiftyone.types.dataset_types.TFObjectDetectionDataset>`,
-                :class:`TFImageClassificationDataset <fiftyone.types.dataset_types.TFImageClassificationDataset>`
-
             **kwargs: optional keyword arguments to pass to the constructor of
                 the :class:`fiftyone.utils.data.importers.DatasetImporter` for
-                the specified ``dataset_type`` via the syntax
-                ``DatasetImporter(dataset_dir, **kwargs)``
+                the specified ``dataset_type``
 
         Returns:
             a list of IDs of the samples that were added to the dataset
@@ -2153,25 +2190,22 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             logger.info("Unpacking images to '%s'", images_dir)
             kwargs["images_dir"] = images_dir
 
-        dataset_importer_cls = dataset_type.get_dataset_importer_cls()
+        dataset_importer, unused_kwargs = foud.build_dataset_importer(
+            dataset_type,
+            dataset_dir=dataset_dir,
+            data_path=data_path,
+            labels_path=labels_path,
+            **kwargs,
+        )
 
-        try:
-            if issubclass(dataset_importer_cls, foud.ImportsDataJson):
-                dataset_importer = dataset_importer_cls(
-                    dataset_dir, data_json=data_json, **kwargs
+        for key, value in unused_kwargs.items():
+            if value is not None:
+                logger.warning(
+                    "Ignoring unsupported parameter %s=%s for importer type %s",
+                    key,
+                    value,
+                    type(dataset_importer),
                 )
-            else:
-                dataset_importer = dataset_importer_cls(dataset_dir, **kwargs)
-
-        except Exception as e:
-            importer_name = dataset_importer_cls.__name__
-            raise ValueError(
-                "Failed to construct importer using syntax "
-                "%s(dataset_dir, **kwargs); you may need to supply mandatory "
-                "arguments to the constructor via `kwargs`. Please consult "
-                "the documentation of `%s` to learn more"
-                % (importer_name, etau.get_class_name(dataset_importer_cls))
-            ) from e
 
         return self.add_importer(
             dataset_importer,
@@ -2184,12 +2218,14 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def add_archive(
         self,
         archive_path,
-        dataset_type,
-        cleanup=True,
+        dataset_type=None,
+        data_path=None,
+        labels_path=None,
         label_field="ground_truth",
         tags=None,
         expand_schema=True,
         add_info=True,
+        cleanup=True,
         **kwargs,
     ):
         """Adds the contents of the given archive to the dataset.
@@ -2198,8 +2234,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         does exist, it is assumed that this directory contains the extracted
         contents of the archive.
 
-        See :doc:`this guide </user_guide/dataset_creation/datasets>` for
-        descriptions of available dataset types.
+        See :ref:`this guide <loading-datasets-from-disk>` for descriptions of
+        the available dataset types.
 
         .. note::
 
@@ -2216,7 +2252,40 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             dataset_type (None): the
                 :class:`fiftyone.types.dataset_types.Dataset` type of the
                 dataset in ``archive_path``
-            cleanup (True): whether to delete the archive after extracting it
+            data_path (None): an optional parameter that enables explicit
+                control over the location of the exported media for certain
+                dataset types. Can be any of the following:
+
+                -   a folder name like "data" or "data/" specifying a subfolder
+                    of ``dataset_dir`` in which the media lies
+                -   an absolute directory path in which the media lies. In this
+                    case, the ``archive_path`` has no effect on the location of
+                    the data
+                -   a filename like "data.json" specifying the filename of a
+                    JSON manifest file in ``archive_path`` that maps UUIDs to
+                    media filepaths. Files of this format are generated when
+                    passing the ``export_media="manifest"`` option to
+                    :meth:`fiftyone.core.collections.SampleCollection.export`
+                -   an absolute filepath to a JSON manifest file. In this case,
+                    ``archive_path`` has no effect on the location of the data
+
+                By default, it is assumed that the data can be located in the
+                default location within ``archive_path`` for the dataset type
+            labels_path (None): an optional parameter that enables explicit
+                control over the location of the labels. Only applicable when
+                importing certain labeled dataset formats. Can be any of the
+                following:
+
+                -   a type-specific folder name like "labels" or "labels/" or a
+                    filename like "labels.json" or "labels.xml" specifying the
+                    location in ``archive_path`` of the labels file(s)
+                -   an absolute directory or filepath containing the labels
+                    file(s). In this case, ``archive_path`` has no effect on
+                    the location of the labels
+
+                For labeled datasets, this parameter defaults to the location
+                in ``archive_path`` of the labels for the default layout of the
+                dataset type being imported
             label_field ("ground_truth"): the name (or root name) of the
                 field(s) to use for the labels (if applicable)
             tags (None): an optional tag or iterable of tags to attach to each
@@ -2226,10 +2295,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 if a sample's schema is not a subset of the dataset schema
             add_info (True): whether to add dataset info from the importer (if
                 any) to the dataset's ``info``
+            cleanup (True): whether to delete the archive after extracting it
             **kwargs: optional keyword arguments to pass to the constructor of
                 the :class:`fiftyone.utils.data.importers.DatasetImporter` for
-                the specified ``dataset_type`` via the syntax
-                ``DatasetImporter(dataset_dir, **kwargs)``
+                the specified ``dataset_type``
 
         Returns:
             a list of IDs of the samples that were added to the dataset
@@ -2241,8 +2310,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             )
 
         return self.add_dir(
-            dataset_dir,
-            dataset_type,
+            dataset_dir=dataset_dir,
+            dataset_type=dataset_type,
+            data_path=data_path,
+            labels_path=labels_path,
             label_field=label_field,
             tags=tags,
             expand_schema=expand_schema,
@@ -2290,7 +2361,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             add_info=add_info,
         )
 
-    def add_images(self, samples, sample_parser=None, tags=None):
+    def add_images(self, paths_or_samples, sample_parser=None, tags=None):
         """Adds the given images to the dataset.
 
         This operation does not read the images.
@@ -2300,13 +2371,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         :class:`UnlabeledImageSampleParser <fiftyone.utils.data.parsers.UnlabeledImageSampleParser>`.
 
         Args:
-            samples: an iterable of data. If no ``sample_parser`` is provided,
-                this must be an iterable of image paths. If a ``sample_parser``
-                is provided, this can be an arbitrary iterable whose elements
-                can be parsed by the sample parser
+            paths_or_samples: an iterable of data. If no ``sample_parser`` is
+                provided, this must be an iterable of image paths. If a
+                ``sample_parser`` is provided, this can be an arbitrary
+                iterable whose elements can be parsed by the sample parser
             sample_parser (None): a
                 :class:`fiftyone.utils.data.parsers.UnlabeledImageSampleParser`
-                instance to use to parse ``samples``
+                instance to use to parse the samples
             tags (None): an optional tag or iterable of tags to attach to each
                 sample
 
@@ -2316,7 +2387,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if sample_parser is None:
             sample_parser = foud.ImageSampleParser()
 
-        return foud.add_images(self, samples, sample_parser, tags=tags)
+        return foud.add_images(
+            self, paths_or_samples, sample_parser, tags=tags
+        )
 
     def add_labeled_images(
         self,
@@ -2340,7 +2413,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             samples: an iterable of data
             sample_parser: a
                 :class:`fiftyone.utils.data.parsers.LabeledImageSampleParser`
-                instance to use to parse ``samples``
+                instance to use to parse the samples
             label_field ("ground_truth"): the name (or root name) of the
                 field(s) to use for the labels (if applicable)
             tags (None): an optional tag or iterable of tags to attach to each
@@ -2403,7 +2476,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     def ingest_images(
         self,
-        samples,
+        paths_or_samples,
         sample_parser=None,
         tags=None,
         dataset_dir=None,
@@ -2418,13 +2491,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         :class:`UnlabeledImageSampleParser <fiftyone.utils.data.parsers.UnlabeledImageSampleParser>`.
 
         Args:
-            samples: an iterable of data. If no ``sample_parser`` is
+            paths_or_samples: an iterable of data. If no ``sample_parser`` is
                 provided, this must be an iterable of image paths. If a
                 ``sample_parser`` is provided, this can be an arbitrary
                 iterable whose elements can be parsed by the sample parser
             sample_parser (None): a
                 :class:`fiftyone.utils.data.parsers.UnlabeledImageSampleParser`
-                instance to use to parse ``samples``
+                instance to use to parse the samples
             tags (None): an optional tag or iterable of tags to attach to each
                 sample
             dataset_dir (None): the directory in which the images will be
@@ -2442,7 +2515,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             dataset_dir = get_default_dataset_dir(self.name)
 
         dataset_ingestor = foud.UnlabeledImageDatasetIngestor(
-            dataset_dir, samples, sample_parser, image_format=image_format,
+            dataset_dir,
+            paths_or_samples,
+            sample_parser,
+            image_format=image_format,
         )
 
         return self.add_importer(dataset_ingestor, tags=tags)
@@ -2471,7 +2547,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             samples: an iterable of data
             sample_parser: a
                 :class:`fiftyone.utils.data.parsers.LabeledImageSampleParser`
-                instance to use to parse ``samples``
+                instance to use to parse the samples
             label_field ("ground_truth"): the name (or root name) of the
                 field(s) to use for the labels (if applicable)
             tags (None): an optional tag or iterable of tags to attach to each
@@ -2507,7 +2583,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             expand_schema=expand_schema,
         )
 
-    def add_videos(self, samples, sample_parser=None, tags=None):
+    def add_videos(self, paths_or_samples, sample_parser=None, tags=None):
         """Adds the given videos to the dataset.
 
         This operation does not read the videos.
@@ -2517,13 +2593,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         :class:`UnlabeledVideoSampleParser <fiftyone.utils.data.parsers.UnlabeledVideoSampleParser>`.
 
         Args:
-            samples: an iterable of data. If no ``sample_parser`` is provided,
-                this must be an iterable of video paths. If a ``sample_parser``
-                is provided, this can be an arbitrary iterable whose elements
-                can be parsed by the sample parser
+            paths_or_samples: an iterable of data. If no ``sample_parser`` is
+                provided, this must be an iterable of video paths. If a
+                ``sample_parser`` is provided, this can be an arbitrary
+                iterable whose elements can be parsed by the sample parser
             sample_parser (None): a
-                :class:`fiftyone.utils.data.parsers.UnlabeledImageSampleParser`
-                instance to use to parse ``samples``
+                :class:`fiftyone.utils.data.parsers.UnlabeledVideoSampleParser`
+                instance to use to parse the samples
             tags (None): an optional tag or iterable of tags to attach to each
                 sample
 
@@ -2533,7 +2609,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if sample_parser is None:
             sample_parser = foud.VideoSampleParser()
 
-        return foud.add_videos(self, samples, sample_parser, tags=tags)
+        return foud.add_videos(
+            self, paths_or_samples, sample_parser, tags=tags
+        )
 
     def add_labeled_videos(
         self,
@@ -2556,7 +2634,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             samples: an iterable of data
             sample_parser: a
                 :class:`fiftyone.utils.data.parsers.LabeledVideoSampleParser`
-                instance to use to parse ``samples``
+                instance to use to parse the samples
             label_field ("ground_truth"): the name (or root name) of the
                 frame field(s) to use for the labels
             tags (None): an optional tag or iterable of tags to attach to each
@@ -2618,7 +2696,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return self.add_videos(video_paths, sample_parser, tags=tags)
 
     def ingest_videos(
-        self, samples, sample_parser=None, tags=None, dataset_dir=None,
+        self, paths_or_samples, sample_parser=None, tags=None, dataset_dir=None
     ):
         """Ingests the given iterable of videos into the dataset.
 
@@ -2629,13 +2707,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         :class:`UnlabeledVideoSampleParser <fiftyone.utils.data.parsers.UnlabeledVideoSampleParser>`.
 
         Args:
-            samples: an iterable of data. If no ``sample_parser`` is provided,
-                this must be an iterable of video paths. If a ``sample_parser``
-                is provided, this can be an arbitrary iterable whose elements
-                can be parsed by the sample parser
+            paths_or_samples: an iterable of data. If no ``sample_parser`` is
+                provided, this must be an iterable of video paths. If a
+                ``sample_parser`` is provided, this can be an arbitrary
+                iterable whose elements can be parsed by the sample parser
             sample_parser (None): a
-                :class:`fiftyone.utils.data.parsers.UnlabeledImageSampleParser`
-                instance to use to parse ``samples``
+                :class:`fiftyone.utils.data.parsers.UnlabeledVideoSampleParser`
+                instance to use to parse the samples
             tags (None): an optional tag or iterable of tags to attach to each
                 sample
             dataset_dir (None): the directory in which the videos will be
@@ -2651,7 +2729,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             dataset_dir = get_default_dataset_dir(self.name)
 
         dataset_ingestor = foud.UnlabeledVideoDatasetIngestor(
-            dataset_dir, samples, sample_parser
+            dataset_dir, paths_or_samples, sample_parser
         )
 
         return self.add_importer(dataset_ingestor, tags=tags)
@@ -2678,7 +2756,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             samples: an iterable of data
             sample_parser: a
                 :class:`fiftyone.utils.data.parsers.LabeledVideoSampleParser`
-                instance to use to parse ``samples``
+                instance to use to parse the samples
             tags (None): an optional tag or iterable of tags to attach to each
                 sample
             expand_schema (True): whether to dynamically add new sample fields
@@ -2706,8 +2784,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     @classmethod
     def from_dir(
         cls,
-        dataset_dir,
-        dataset_type,
+        dataset_dir=None,
+        dataset_type=None,
+        data_path=None,
+        labels_path=None,
         name=None,
         label_field="ground_truth",
         tags=None,
@@ -2715,13 +2795,66 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     ):
         """Creates a :class:`Dataset` from the contents of the given directory.
 
-        See :doc:`this guide </user_guide/dataset_creation/datasets>` for
-        descriptions of available dataset types.
+        You can create datasets with this method via the following basic
+        patterns:
+
+        (a) Provide ``dataset_dir`` and ``dataset_type`` to import the contents
+            of a directory that is organized in the default layout for the
+            dataset type as documented in
+            :ref:`this guide <loading-datasets-from-disk>`
+
+        (b) Provide ``dataset_type`` along with ``data_path``, ``labels_path``,
+            or other type-specific parameters to perform a customized
+            import. This syntax provides the flexibility to, for example,
+            perform labels-only imports or imports where the source media lies
+            in a different location than the labels
+
+        In either workflow, the remaining parameters of this method can be
+        provided to further configure the import.
+
+        See :ref:`this guide <loading-datasets-from-disk>` for descriptions of
+        the available dataset types.
 
         Args:
-            dataset_dir: the dataset directory
-            dataset_type: the :class:`fiftyone.types.dataset_types.Dataset`
-                type of the dataset in ``dataset_dir``
+            dataset_dir (None): the dataset directory. This can be omitted if
+                you provide arguments such as ``data_path`` and ``labels_path``
+            dataset_type (None): the
+                :class:`fiftyone.types.dataset_types.Dataset` type of the
+                dataset
+            data_path (None): an optional parameter that enables explicit
+                control over the location of the exported media for certain
+                dataset types. Can be any of the following:
+
+                -   a folder name like "data" or "data/" specifying a subfolder
+                    of ``dataset_dir`` in which the media lies
+                -   an absolute directory path in which the media lies. In this
+                    case, the ``export_dir`` has no effect on the location of
+                    the data
+                -   a filename like "data.json" specifying the filename of a
+                    JSON manifest file in ``dataset_dir`` that maps UUIDs to
+                    media filepaths. Files of this format are generated when
+                    passing the ``export_media="manifest"`` option to
+                    :meth:`fiftyone.core.collections.SampleCollection.export`
+                -   an absolute filepath to a JSON manifest file. In this case,
+                    ``dataset_dir`` has no effect on the location of the data
+
+                By default, it is assumed that the data can be located in the
+                default location within ``dataset_dir`` for the dataset type
+            labels_path (None): an optional parameter that enables explicit
+                control over the location of the labels. Only applicable when
+                importing certain labeled dataset formats. Can be any of the
+                following:
+
+                -   a type-specific folder name like "labels" or "labels/" or a
+                    filename like "labels.json" or "labels.xml" specifying the
+                    location in ``dataset_dir`` of the labels file(s)
+                -   an absolute directory or filepath containing the labels
+                    file(s). In this case, ``dataset_dir`` has no effect on the
+                    location of the labels
+
+                For labeled datasets, this parameter defaults to the location
+                in ``dataset_dir`` of the labels for the default layout of the
+                dataset type being imported
             name (None): a name for the dataset. By default,
                 :func:`get_default_dataset_name` is used
             label_field ("ground_truth"): the name (or root name) of the
@@ -2730,16 +2863,17 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 sample
             **kwargs: optional keyword arguments to pass to the constructor of
                 the :class:`fiftyone.utils.data.importers.DatasetImporter` for
-                the specified ``dataset_type`` via the syntax
-                ``DatasetImporter(dataset_dir, **kwargs)``
+                the specified ``dataset_type``
 
         Returns:
             a :class:`Dataset`
         """
         dataset = cls(name)
         dataset.add_dir(
-            dataset_dir,
-            dataset_type,
+            dataset_dir=dataset_dir,
+            dataset_type=dataset_type,
+            data_path=data_path,
+            labels_path=labels_path,
             label_field=label_field,
             tags=tags,
             **kwargs,
@@ -2750,11 +2884,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def from_archive(
         cls,
         archive_path,
-        dataset_type,
-        cleanup=True,
+        dataset_type=None,
+        data_path=None,
+        labels_path=None,
         name=None,
         label_field="ground_truth",
         tags=None,
+        cleanup=True,
         **kwargs,
     ):
         """Creates a :class:`Dataset` from the contents of the given archive.
@@ -2763,8 +2899,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         does exist, it is assumed that this directory contains the extracted
         contents of the archive.
 
-        See :doc:`this guide </user_guide/dataset_creation/datasets>` for
-        descriptions of available dataset types.
+        See :ref:`this guide <loading-datasets-from-disk>` for descriptions of
+        the available dataset types.
 
         .. note::
 
@@ -2778,19 +2914,53 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         Args:
             archive_path: the path to an archive of a dataset directory
-            dataset_type: the :class:`fiftyone.types.dataset_types.Dataset`
-                type of the dataset in ``archive_path``
-            cleanup (True): whether to delete the archive after extracting it
+            dataset_type (None): the
+                :class:`fiftyone.types.dataset_types.Dataset` type of the
+                dataset in ``archive_path``
+            data_path (None): an optional parameter that enables explicit
+                control over the location of the exported media for certain
+                dataset types. Can be any of the following:
+
+                -   a folder name like "data" or "data/" specifying a subfolder
+                    of ``dataset_dir`` in which the media lies
+                -   an absolute directory path in which the media lies. In this
+                    case, the ``archive_path`` has no effect on the location of
+                    the data
+                -   a filename like "data.json" specifying the filename of a
+                    JSON manifest file in ``archive_path`` that maps UUIDs to
+                    media filepaths. Files of this format are generated when
+                    passing the ``export_media="manifest"`` option to
+                    :meth:`fiftyone.core.collections.SampleCollection.export`
+                -   an absolute filepath to a JSON manifest file. In this case,
+                    ``archive_path`` has no effect on the location of the data
+
+                By default, it is assumed that the data can be located in the
+                default location within ``archive_path`` for the dataset type
+            labels_path (None): an optional parameter that enables explicit
+                control over the location of the labels. Only applicable when
+                importing certain labeled dataset formats. Can be any of the
+                following:
+
+                -   a type-specific folder name like "labels" or "labels/" or a
+                    filename like "labels.json" or "labels.xml" specifying the
+                    location in ``archive_path`` of the labels file(s)
+                -   an absolute directory or filepath containing the labels
+                    file(s). In this case, ``archive_path`` has no effect on
+                    the location of the labels
+
+                For labeled datasets, this parameter defaults to the location
+                in ``archive_path`` of the labels for the default layout of the
+                dataset type being imported
             name (None): a name for the dataset. By default,
                 :func:`get_default_dataset_name` is used
             label_field ("ground_truth"): the name (or root name) of the
                 field(s) to use for the labels (if applicable)
             tags (None): an optional tag or iterable of tags to attach to each
                 sample
+            cleanup (True): whether to delete the archive after extracting it
             **kwargs: optional keyword arguments to pass to the constructor of
                 the :class:`fiftyone.utils.data.importers.DatasetImporter` for
-                the specified ``dataset_type`` via the syntax
-                ``DatasetImporter(dataset_dir, **kwargs)``
+                the specified ``dataset_type``
 
         Returns:
             a :class:`Dataset`
@@ -2798,10 +2968,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         dataset = cls(name)
         dataset.add_archive(
             archive_path,
-            dataset_type,
-            cleanup=cleanup,
+            dataset_type=dataset_type,
+            data_path=data_path,
+            labels_path=labels_path,
             label_field=label_field,
             tags=tags,
+            cleanup=cleanup,
             **kwargs,
         )
         return dataset
@@ -2838,7 +3010,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return dataset
 
     @classmethod
-    def from_images(cls, samples, sample_parser, name=None, tags=None):
+    def from_images(
+        cls, paths_or_samples, sample_parser=None, name=None, tags=None
+    ):
         """Creates a :class:`Dataset` from the given images.
 
         This operation does not read the images.
@@ -2849,10 +3023,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         to load image samples into FiftyOne.
 
         Args:
-            samples: an iterable of data
-            sample_parser: a
+            paths_or_samples: an iterable of data. If no ``sample_parser`` is
+                provided, this must be an iterable of image paths. If a
+                ``sample_parser`` is provided, this can be an arbitrary
+                iterable whose elements can be parsed by the sample parser
+            sample_parser (None): a
                 :class:`fiftyone.utils.data.parsers.UnlabeledImageSampleParser`
-                instance to use to parse ``samples``
+                instance to use to parse the samples
             name (None): a name for the dataset. By default,
                 :func:`get_default_dataset_name` is used
             tags (None): an optional tag or iterable of tags to attach to each
@@ -2862,7 +3039,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             a :class:`Dataset`
         """
         dataset = cls(name)
-        dataset.add_images(samples, sample_parser, tags=tags)
+        dataset.add_images(
+            paths_or_samples, sample_parser=sample_parser, tags=tags
+        )
         return dataset
 
     @classmethod
@@ -2888,7 +3067,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             samples: an iterable of data
             sample_parser: a
                 :class:`fiftyone.utils.data.parsers.LabeledImageSampleParser`
-                instance to use to parse ``samples``
+                instance to use to parse the samples
             name (None): a name for the dataset. By default,
                 :func:`get_default_dataset_name` is used
             label_field ("ground_truth"): the name (or root name) of the
@@ -2948,7 +3127,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return dataset
 
     @classmethod
-    def from_videos(cls, samples, sample_parser, name=None, tags=None):
+    def from_videos(
+        cls, paths_or_samples, sample_parser=None, name=None, tags=None
+    ):
         """Creates a :class:`Dataset` from the given videos.
 
         This operation does not read/decode the videos.
@@ -2959,10 +3140,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         to load video samples into FiftyOne.
 
         Args:
-            samples: an iterable of data
-            sample_parser: a
+            paths_or_samples: an iterable of data. If no ``sample_parser`` is
+                provided, this must be an iterable of video paths. If a
+                ``sample_parser`` is provided, this can be an arbitrary
+                iterable whose elements can be parsed by the sample parser
+            sample_parser (None): a
                 :class:`fiftyone.utils.data.parsers.UnlabeledVideoSampleParser`
-                instance to use to parse ``samples``
+                instance to use to parse the samples
             name (None): a name for the dataset. By default,
                 :func:`get_default_dataset_name` is used
             tags (None): an optional tag or iterable of tags to attach to each
@@ -2972,7 +3156,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             a :class:`Dataset`
         """
         dataset = cls(name)
-        dataset.add_videos(samples, sample_parser, tags=tags)
+        dataset.add_videos(
+            paths_or_samples, sample_parser=sample_parser, tags=tags
+        )
         return dataset
 
     @classmethod
@@ -2993,7 +3179,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             samples: an iterable of data
             sample_parser: a
                 :class:`fiftyone.utils.data.parsers.LabeledVideoSampleParser`
-                instance to use to parse ``samples``
+                instance to use to parse the samples
             name (None): a name for the dataset. By default,
                 :func:`get_default_dataset_name` is used
             tags (None): an optional tag or iterable of tags to attach to each
