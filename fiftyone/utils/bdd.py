@@ -259,7 +259,7 @@ class BDDDatasetImporter(
         return len(etau.list_files(os.path.join(dataset_dir, "data")))
 
 
-class BDDDatasetExporter(foud.LabeledImageDatasetExporter):
+class BDDDatasetExporter(foud.LabeledImageDatasetExporter, foud.PathsMixin):
     """Exporter that writes BDD datasets to disk.
 
     See :class:`fiftyone.types.dataset_types.BDDDataset` for format details.
@@ -324,20 +324,18 @@ class BDDDatasetExporter(foud.LabeledImageDatasetExporter):
         export_media=None,
         image_format=None,
     ):
-        if data_path is None:
-            if export_media == "manifest":
-                data_path = "data.json"
-            else:
-                data_path = "data"
+        data_path, export_media = self._parse_data_path(
+            export_dir=export_dir,
+            data_path=data_path,
+            export_media=export_media,
+            default="data/",
+        )
 
-        if labels_path is None:
-            labels_path = "labels.json"
-
-        if export_media is None:
-            if data_path.endswith(".json"):
-                export_media = "manifest"
-            else:
-                export_media = True
+        labels_path = self._parse_labels_path(
+            export_dir=export_dir,
+            labels_path=labels_path,
+            default="labels.json",
+        )
 
         super().__init__(export_dir=export_dir)
 
@@ -346,8 +344,6 @@ class BDDDatasetExporter(foud.LabeledImageDatasetExporter):
         self.export_media = export_media
         self.image_format = image_format
 
-        self._data_path = None
-        self._labels_path = None
         self._annotations = None
         self._media_exporter = None
 
@@ -364,23 +360,10 @@ class BDDDatasetExporter(foud.LabeledImageDatasetExporter):
         }
 
     def setup(self):
-        if os.path.isabs(self.data_path) or self.export_dir is None:
-            data_path = self.data_path
-        else:
-            data_path = os.path.join(self.export_dir, self.data_path)
-
-        if os.path.isabs(self.labels_path) or self.export_dir is None:
-            labels_path = self.labels_path
-        else:
-            labels_path = os.path.join(self.export_dir, self.labels_path)
-
-        self._data_path = data_path
-        self._labels_path = labels_path
         self._annotations = []
-
         self._media_exporter = foud.ImageExporter(
             self.export_media,
-            export_path=data_path,
+            export_path=self.data_path,
             default_ext=self.image_format,
         )
         self._media_exporter.setup()
@@ -405,7 +388,7 @@ class BDDDatasetExporter(foud.LabeledImageDatasetExporter):
         self._annotations.append(annotation)
 
     def close(self, *args):
-        etas.write_json(self._annotations, self._labels_path)
+        etas.write_json(self._annotations, self.labels_path)
         self._media_exporter.close()
 
 

@@ -397,7 +397,9 @@ class CVATVideoDatasetImporter(
         return self._info
 
 
-class CVATImageDatasetExporter(foud.LabeledImageDatasetExporter):
+class CVATImageDatasetExporter(
+    foud.LabeledImageDatasetExporter, foud.PathsMixin
+):
     """Exporter that writes CVAT image datasets to disk.
 
     See :class:`fiftyone.types.dataset_types.CVATImageDataset` for format
@@ -463,20 +465,18 @@ class CVATImageDatasetExporter(foud.LabeledImageDatasetExporter):
         export_media=None,
         image_format=None,
     ):
-        if data_path is None:
-            if export_media == "manifest":
-                data_path = "data.json"
-            else:
-                data_path = "data"
+        data_path, export_media = self._parse_data_path(
+            export_dir=export_dir,
+            data_path=data_path,
+            export_media=export_media,
+            default="data/",
+        )
 
-        if labels_path is None:
-            labels_path = "labels.xml"
-
-        if export_media is None:
-            if data_path.endswith(".json"):
-                export_media = "manifest"
-            else:
-                export_media = True
+        labels_path = self._parse_labels_path(
+            export_dir=export_dir,
+            labels_path=labels_path,
+            default="labels.xml",
+        )
 
         super().__init__(export_dir=export_dir)
 
@@ -487,8 +487,6 @@ class CVATImageDatasetExporter(foud.LabeledImageDatasetExporter):
 
         self._name = None
         self._task_labels = None
-        self._data_path = None
-        self._labels_path = None
         self._cvat_images = None
         self._media_exporter = None
 
@@ -505,23 +503,10 @@ class CVATImageDatasetExporter(foud.LabeledImageDatasetExporter):
         }
 
     def setup(self):
-        if os.path.isabs(self.data_path) or self.export_dir is None:
-            data_path = self.data_path
-        else:
-            data_path = os.path.join(self.export_dir, self.data_path)
-
-        if os.path.isabs(self.labels_path) or self.export_dir is None:
-            labels_path = self.labels_path
-        else:
-            labels_path = os.path.join(self.export_dir, self.labels_path)
-
-        self._data_path = data_path
-        self._labels_path = labels_path
         self._cvat_images = []
-
         self._media_exporter = foud.ImageExporter(
             self.export_media,
-            export_path=data_path,
+            export_path=self.data_path,
             default_ext=self.image_format,
         )
         self._media_exporter.setup()
@@ -568,7 +553,7 @@ class CVATImageDatasetExporter(foud.LabeledImageDatasetExporter):
         writer.write(
             cvat_task_labels,
             self._cvat_images,
-            self._labels_path,
+            self.labels_path,
             id=0,
             name=self._name,
         )
@@ -576,7 +561,9 @@ class CVATImageDatasetExporter(foud.LabeledImageDatasetExporter):
         self._media_exporter.close()
 
 
-class CVATVideoDatasetExporter(foud.LabeledVideoDatasetExporter):
+class CVATVideoDatasetExporter(
+    foud.LabeledVideoDatasetExporter, foud.PathsMixin
+):
     """Exporter that writes CVAT video datasets to disk.
 
     See :class:`fiftyone.types.dataset_types.CVATVideoDataset` for format
@@ -638,20 +625,16 @@ class CVATVideoDatasetExporter(foud.LabeledVideoDatasetExporter):
         labels_path=None,
         export_media=None,
     ):
-        if data_path is None:
-            if export_media == "manifest":
-                data_path = "data.json"
-            else:
-                data_path = "data"
+        data_path, export_media = self._parse_data_path(
+            export_dir=export_dir,
+            data_path=data_path,
+            export_media=export_media,
+            default="data/",
+        )
 
-        if labels_path is None:
-            labels_path = "labels"
-
-        if export_media is None:
-            if data_path.endswith(".json"):
-                export_media = "manifest"
-            else:
-                export_media = True
+        labels_path = self._parse_labels_path(
+            export_dir=export_dir, labels_path=labels_path, default="labels/",
+        )
 
         super().__init__(export_dir=export_dir)
 
@@ -660,10 +643,8 @@ class CVATVideoDatasetExporter(foud.LabeledVideoDatasetExporter):
         self.export_media = export_media
 
         self._task_labels = None
-        self._data_path = None
-        self._labels_dir = None
-        self._writer = None
         self._num_samples = 0
+        self._writer = None
         self._media_exporter = None
 
     @property
@@ -683,25 +664,11 @@ class CVATVideoDatasetExporter(foud.LabeledVideoDatasetExporter):
         }
 
     def setup(self):
-        if os.path.isabs(self.data_path) or self.export_dir is None:
-            data_path = self.data_path
-        else:
-            data_path = os.path.join(self.export_dir, self.data_path)
-
-        if os.path.isabs(self.labels_path) or self.export_dir is None:
-            labels_dir = self.labels_path
-        else:
-            labels_dir = os.path.join(self.export_dir, self.labels_path)
-
-        self._data_path = data_path
-        self._labels_dir = labels_dir
-
+        self._writer = CVATVideoAnnotationWriter()
         self._media_exporter = foud.ImageExporter(
-            self.export_media, export_path=data_path,
+            self.export_media, export_path=self.data_path,
         )
         self._media_exporter.setup()
-
-        self._writer = CVATVideoAnnotationWriter()
 
     def log_collection(self, sample_collection):
         self._task_labels = sample_collection.info.get("task_labels", None)
@@ -717,7 +684,7 @@ class CVATVideoDatasetExporter(foud.LabeledVideoDatasetExporter):
 
         name_with_ext = os.path.basename(out_video_path)
         name = os.path.splitext(name_with_ext)[0]
-        out_anno_path = os.path.join(self._labels_dir, name + ".xml")
+        out_anno_path = os.path.join(self.labels_path, name + ".xml")
 
         # Generate object tracks
         frame_size = (metadata.frame_width, metadata.frame_height)

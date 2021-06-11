@@ -176,7 +176,9 @@ class KITTIDetectionDatasetImporter(
         return len(etau.list_files(data_dir))
 
 
-class KITTIDetectionDatasetExporter(foud.LabeledImageDatasetExporter):
+class KITTIDetectionDatasetExporter(
+    foud.LabeledImageDatasetExporter, foud.PathsMixin
+):
     """Exporter that writes KITTI detection datasets to disk.
 
     See :class:`fiftyone.types.dataset_types.KITTIDetectionDataset` for format
@@ -242,20 +244,16 @@ class KITTIDetectionDatasetExporter(foud.LabeledImageDatasetExporter):
         export_media=None,
         image_format=None,
     ):
-        if data_path is None:
-            if export_media == "manifest":
-                data_path = "data.json"
-            else:
-                data_path = "data"
+        data_path, export_media = self._parse_data_path(
+            export_dir=export_dir,
+            data_path=data_path,
+            export_media=export_media,
+            default="data/",
+        )
 
-        if labels_path is None:
-            labels_path = "labels"
-
-        if export_media is None:
-            if data_path.endswith(".json"):
-                export_media = "manifest"
-            else:
-                export_media = True
+        labels_path = self._parse_labels_path(
+            export_dir=export_dir, labels_path=labels_path, default="labels/",
+        )
 
         super().__init__(export_dir=export_dir)
 
@@ -264,8 +262,6 @@ class KITTIDetectionDatasetExporter(foud.LabeledImageDatasetExporter):
         self.export_media = export_media
         self.image_format = image_format
 
-        self._data_path = None
-        self._labels_dir = None
         self._writer = None
         self._media_exporter = None
 
@@ -278,29 +274,16 @@ class KITTIDetectionDatasetExporter(foud.LabeledImageDatasetExporter):
         return fol.Detections
 
     def setup(self):
-        if os.path.isabs(self.data_path) or self.export_dir is None:
-            data_path = self.data_path
-        else:
-            data_path = os.path.join(self.export_dir, self.data_path)
-
-        if os.path.isabs(self.labels_path) or self.export_dir is None:
-            labels_dir = self.labels_path
-        else:
-            labels_dir = os.path.join(self.export_dir, self.labels_path)
-
-        self._data_path = data_path
-        self._labels_dir = labels_dir
         self._writer = KITTIAnnotationWriter()
-
         self._media_exporter = foud.ImageExporter(
             self.export_media,
-            export_path=data_path,
+            export_path=self.data_path,
             default_ext=self.image_format,
             ignore_exts=True,
         )
         self._media_exporter.setup()
 
-        etau.ensure_dir(self._labels_dir)
+        etau.ensure_dir(self.labels_path)
 
     def export_sample(self, image_or_path, detections, metadata=None):
         out_image_path, uuid = self._media_exporter.export(image_or_path)
@@ -308,7 +291,7 @@ class KITTIDetectionDatasetExporter(foud.LabeledImageDatasetExporter):
         if detections is None:
             return
 
-        out_anno_path = os.path.join(self._labels_dir, uuid + ".txt")
+        out_anno_path = os.path.join(self.labels_path, uuid + ".txt")
 
         if metadata is None:
             metadata = fom.ImageMetadata.build_for(out_image_path)

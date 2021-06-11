@@ -907,6 +907,60 @@ class UnlabeledVideoDatasetExporter(DatasetExporter):
         raise NotImplementedError("subclass must implement export_sample()")
 
 
+class PathsMixin(object):
+    """Mixin for dataset exporters that provides convenience methods for
+    parsing the ``data_path``, ``labels_path``, and ``export_media`` parameters
+    supported by many exporters.
+    """
+
+    @staticmethod
+    def _parse_data_path(
+        export_dir=None, data_path=None, export_media=None, default=None,
+    ):
+        """Helper function that computes default values for the ``data_path``
+        and ``export_media`` parameters supported by many exporters.
+        """
+        if data_path is None:
+            if export_media == "manifest" and default is not None:
+                data_path = os.path.normpath(default) + ".json"
+            elif export_dir is not None:
+                data_path = default
+
+        if data_path is not None:
+            data_path = os.path.expanduser(data_path)
+
+            if not os.path.isabs(data_path) and export_dir is not None:
+                export_dir = os.path.abspath(os.path.expanduser(export_dir))
+                data_path = os.path.join(export_dir, data_path)
+
+        if export_media is None:
+            if data_path is None:
+                export_media = False
+            elif data_path.endswith(".json"):
+                export_media = "manifest"
+            else:
+                export_media = True
+
+        return data_path, export_media
+
+    @staticmethod
+    def _parse_labels_path(export_dir=None, labels_path=None, default=None):
+        """Helper function that computes default values for the ``labels_path``
+        parameter supported by many exporters.
+        """
+        if labels_path is None:
+            labels_path = default
+
+        if labels_path is not None:
+            labels_path = os.path.expanduser(labels_path)
+
+            if not os.path.isabs(labels_path) and export_dir is not None:
+                export_dir = os.path.abspath(os.path.expanduser(export_dir))
+                labels_path = os.path.join(export_dir, labels_path)
+
+        return labels_path
+
+
 class LabeledImageDatasetExporter(DatasetExporter):
     """Interface for exporting datasets of labeled image samples.
 
@@ -1686,7 +1740,9 @@ class VideoDirectoryExporter(UnlabeledVideoDatasetExporter):
         self._media_exporter.close()
 
 
-class FiftyOneImageClassificationDatasetExporter(LabeledImageDatasetExporter):
+class FiftyOneImageClassificationDatasetExporter(
+    LabeledImageDatasetExporter, PathsMixin
+):
     """Exporter that writes an image classification dataset to disk in
     FiftyOne's default format.
 
@@ -1765,20 +1821,18 @@ class FiftyOneImageClassificationDatasetExporter(LabeledImageDatasetExporter):
         image_format=None,
         pretty_print=False,
     ):
-        if data_path is None:
-            if export_media == "manifest":
-                data_path = "data.json"
-            else:
-                data_path = "data"
+        data_path, export_media = self._parse_data_path(
+            export_dir=export_dir,
+            data_path=data_path,
+            export_media=export_media,
+            default="data/",
+        )
 
-        if labels_path is None:
-            labels_path = "labels.json"
-
-        if export_media is None:
-            if data_path.endswith(".json"):
-                export_media = "manifest"
-            else:
-                export_media = True
+        labels_path = self._parse_labels_path(
+            export_dir=export_dir,
+            labels_path=labels_path,
+            default="labels.json",
+        )
 
         super().__init__(export_dir=export_dir)
 
@@ -1789,8 +1843,6 @@ class FiftyOneImageClassificationDatasetExporter(LabeledImageDatasetExporter):
         self.image_format = image_format
         self.pretty_print = pretty_print
 
-        self._data_path = None
-        self._labels_path = None
         self._labels_dict = None
         self._labels_map_rev = None
         self._media_exporter = None
@@ -1804,29 +1856,16 @@ class FiftyOneImageClassificationDatasetExporter(LabeledImageDatasetExporter):
         return fol.Classification
 
     def setup(self):
-        if os.path.isabs(self.data_path) or self.export_dir is None:
-            data_path = self.data_path
-        else:
-            data_path = os.path.join(self.export_dir, self.data_path)
-
-        if os.path.isabs(self.labels_path) or self.export_dir is None:
-            labels_path = self.labels_path
-        else:
-            labels_path = os.path.join(self.export_dir, self.labels_path)
-
-        self._data_path = data_path
-        self._labels_path = labels_path
         self._labels_dict = {}
+        self._parse_classes()
 
         self._media_exporter = ImageExporter(
             self.export_media,
-            export_path=data_path,
+            export_path=self.data_path,
             default_ext=self.image_format,
             ignore_exts=True,
         )
         self._media_exporter.setup()
-
-        self._parse_classes()
 
     def log_collection(self, sample_collection):
         if self.classes is None:
@@ -1852,7 +1891,7 @@ class FiftyOneImageClassificationDatasetExporter(LabeledImageDatasetExporter):
             "labels": self._labels_dict,
         }
         etas.write_json(
-            labels, self._labels_path, pretty_print=self.pretty_print
+            labels, self.labels_path, pretty_print=self.pretty_print
         )
         self._media_exporter.close()
 
@@ -2059,7 +2098,9 @@ class VideoClassificationDirectoryTreeExporter(LabeledVideoDatasetExporter):
             etau.copy_file(video_path, out_video_path)
 
 
-class FiftyOneImageDetectionDatasetExporter(LabeledImageDatasetExporter):
+class FiftyOneImageDetectionDatasetExporter(
+    LabeledImageDatasetExporter, PathsMixin
+):
     """Exporter that writes an image detection dataset to disk in FiftyOne's
     default format.
 
@@ -2138,20 +2179,18 @@ class FiftyOneImageDetectionDatasetExporter(LabeledImageDatasetExporter):
         image_format=None,
         pretty_print=False,
     ):
-        if data_path is None:
-            if export_media == "manifest":
-                data_path = "data.json"
-            else:
-                data_path = "data"
+        data_path, export_media = self._parse_data_path(
+            export_dir=export_dir,
+            data_path=data_path,
+            export_media=export_media,
+            default="data/",
+        )
 
-        if labels_path is None:
-            labels_path = "labels.json"
-
-        if export_media is None:
-            if data_path.endswith(".json"):
-                export_media = "manifest"
-            else:
-                export_media = True
+        labels_path = self._parse_labels_path(
+            export_dir=export_dir,
+            labels_path=labels_path,
+            default="labels.json",
+        )
 
         super().__init__(export_dir=export_dir)
 
@@ -2162,8 +2201,6 @@ class FiftyOneImageDetectionDatasetExporter(LabeledImageDatasetExporter):
         self.image_format = image_format
         self.pretty_print = pretty_print
 
-        self._data_path = None
-        self._labels_path = None
         self._labels_dict = None
         self._labels_map_rev = None
         self._media_exporter = None
@@ -2177,29 +2214,16 @@ class FiftyOneImageDetectionDatasetExporter(LabeledImageDatasetExporter):
         return fol.Detections
 
     def setup(self):
-        if os.path.isabs(self.data_path) or self.export_dir is None:
-            data_path = self.data_path
-        else:
-            data_path = os.path.join(self.export_dir, self.data_path)
-
-        if os.path.isabs(self.labels_path) or self.export_dir is None:
-            labels_path = self.labels_path
-        else:
-            labels_path = os.path.join(self.export_dir, self.labels_path)
-
-        self._data_path = data_path
-        self._labels_path = labels_path
         self._labels_dict = {}
+        self._parse_classes()
 
         self._media_exporter = ImageExporter(
             self.export_media,
-            export_path=data_path,
+            export_path=self.data_path,
             default_ext=self.image_format,
             ignore_exts=True,
         )
         self._media_exporter.setup()
-
-        self._parse_classes()
 
     def log_collection(self, sample_collection):
         if self.classes is None:
@@ -2225,7 +2249,7 @@ class FiftyOneImageDetectionDatasetExporter(LabeledImageDatasetExporter):
             "labels": self._labels_dict,
         }
         etas.write_json(
-            labels, self._labels_path, pretty_print=self.pretty_print
+            labels, self.labels_path, pretty_print=self.pretty_print
         )
         self._media_exporter.close()
 
@@ -2234,7 +2258,9 @@ class FiftyOneImageDetectionDatasetExporter(LabeledImageDatasetExporter):
             self._labels_map_rev = _to_labels_map_rev(self.classes)
 
 
-class ImageSegmentationDirectoryExporter(LabeledImageDatasetExporter):
+class ImageSegmentationDirectoryExporter(
+    LabeledImageDatasetExporter, PathsMixin
+):
     """Exporter that writes an image segmentation dataset to disk.
 
     See :class:`fiftyone.types.dataset_types.ImageSegmentationDirectory` for
@@ -2308,20 +2334,16 @@ class ImageSegmentationDirectoryExporter(LabeledImageDatasetExporter):
         image_format=None,
         mask_format=".png",
     ):
-        if data_path is None:
-            if export_media == "manifest":
-                data_path = "data.json"
-            else:
-                data_path = "data"
+        data_path, export_media = self._parse_data_path(
+            export_dir=export_dir,
+            data_path=data_path,
+            export_media=export_media,
+            default="data/",
+        )
 
-        if labels_path is None:
-            labels_path = "labels"
-
-        if export_media is None:
-            if data_path.endswith(".json"):
-                export_media = "manifest"
-            else:
-                export_media = True
+        labels_path = self._parse_labels_path(
+            export_dir=export_dir, labels_path=labels_path, default="labels/",
+        )
 
         super().__init__(export_dir=export_dir)
 
@@ -2331,8 +2353,6 @@ class ImageSegmentationDirectoryExporter(LabeledImageDatasetExporter):
         self.image_format = image_format
         self.mask_format = mask_format
 
-        self._data_path = None
-        self._labels_dir = None
         self._media_exporter = None
 
     @property
@@ -2344,22 +2364,9 @@ class ImageSegmentationDirectoryExporter(LabeledImageDatasetExporter):
         return fol.Segmentation
 
     def setup(self):
-        if os.path.isabs(self.data_path) or self.export_dir is None:
-            data_path = self.data_path
-        else:
-            data_path = os.path.join(self.export_dir, self.data_path)
-
-        if os.path.isabs(self.labels_path) or self.export_dir is None:
-            labels_dir = self.labels_path
-        else:
-            labels_dir = os.path.join(self.export_dir, self.labels_path)
-
-        self._data_path = data_path
-        self._labels_dir = labels_dir
-
         self._media_exporter = ImageExporter(
             self.export_media,
-            export_path=data_path,
+            export_path=self.data_path,
             default_ext=self.image_format,
             ignore_exts=True,
         )
@@ -2367,7 +2374,7 @@ class ImageSegmentationDirectoryExporter(LabeledImageDatasetExporter):
 
     def export_sample(self, image_or_path, segmentation, metadata=None):
         _, uuid = self._media_exporter.export(image_or_path)
-        out_mask_path = os.path.join(self._labels_dir, uuid + self.mask_format)
+        out_mask_path = os.path.join(self.labels_path, uuid + self.mask_format)
         etai.write(segmentation.mask, out_mask_path)
 
     def close(self):

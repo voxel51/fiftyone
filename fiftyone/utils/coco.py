@@ -302,7 +302,9 @@ class COCODetectionDatasetImporter(
         return self._info
 
 
-class COCODetectionDatasetExporter(foud.LabeledImageDatasetExporter):
+class COCODetectionDatasetExporter(
+    foud.LabeledImageDatasetExporter, foud.PathsMixin
+):
     """Exporter that writes COCO detection datasets to disk.
 
     See :class:`fiftyone.types.dataset_types.COCODetectionDataset` for format
@@ -380,20 +382,18 @@ class COCODetectionDatasetExporter(foud.LabeledImageDatasetExporter):
         info=None,
         tolerance=None,
     ):
-        if data_path is None:
-            if export_media == "manifest":
-                data_path = "data.json"
-            else:
-                data_path = "data"
+        data_path, export_media = self._parse_data_path(
+            export_dir=export_dir,
+            data_path=data_path,
+            export_media=export_media,
+            default="data/",
+        )
 
-        if labels_path is None:
-            labels_path = "labels.json"
-
-        if export_media is None:
-            if data_path.endswith(".json"):
-                export_media = "manifest"
-            else:
-                export_media = True
+        labels_path = self._parse_labels_path(
+            export_dir=export_dir,
+            labels_path=labels_path,
+            default="labels.json",
+        )
 
         super().__init__(export_dir=export_dir)
 
@@ -405,8 +405,6 @@ class COCODetectionDatasetExporter(foud.LabeledImageDatasetExporter):
         self.info = info
         self.tolerance = tolerance
 
-        self._data_path = None
-        self._labels_path = None
         self._labels_map_rev = None
         self._image_id = None
         self._anno_id = None
@@ -425,29 +423,18 @@ class COCODetectionDatasetExporter(foud.LabeledImageDatasetExporter):
         return fol.Detections
 
     def setup(self):
-        if os.path.isabs(self.data_path) or self.export_dir is None:
-            data_path = self.data_path
-        else:
-            data_path = os.path.join(self.export_dir, self.data_path)
-
-        if os.path.isabs(self.labels_path) or self.export_dir is None:
-            labels_path = self.labels_path
-        else:
-            labels_path = os.path.join(self.export_dir, self.labels_path)
-
-        self._data_path = data_path
-        self._labels_path = labels_path
         self._image_id = -1
         self._anno_id = -1
         self._images = []
         self._annotations = []
         self._classes = set()
         self._has_labels = False
+
         self._parse_classes()
 
         self._media_exporter = foud.ImageExporter(
             self.export_media,
-            export_path=data_path,
+            export_path=self.data_path,
             default_ext=self.image_format,
         )
         self._media_exporter.setup()
@@ -540,7 +527,7 @@ class COCODetectionDatasetExporter(foud.LabeledImageDatasetExporter):
         if self._has_labels:
             labels["annotations"] = self._annotations
 
-        etas.write_json(labels, self._labels_path)
+        etas.write_json(labels, self.labels_path)
 
         self._media_exporter.close()
 
