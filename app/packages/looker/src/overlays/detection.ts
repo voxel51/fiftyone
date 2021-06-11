@@ -63,7 +63,7 @@ export default class DetectionOverlay<
   }
 
   draw(ctx: CanvasRenderingContext2D, state: Readonly<State>): void {
-    this.mask && this.drawMask(ctx, state);
+    this.label.mask && this.drawMask(ctx, state);
 
     !state.config.thumbnail && this.drawLabelText(ctx, state);
 

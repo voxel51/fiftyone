@@ -2,6 +2,8 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 
+import { processMasks } from "./overlays";
+
 const HIGH_WATER_MARK = 3;
 
 let stream: ReadableStream = null;
@@ -39,7 +41,10 @@ const createStream = ({
           )
             .then((response: Response) => response.json())
             .then((data) => {
-              data.frames.array.forEach((frame) => controller.enqueue(frame));
+              data.frames.array.forEach((frame) => {
+                processMasks(frame);
+                controller.enqueue(frame);
+              });
               frameNumber = nextFrameChunkStart;
               resolve();
             })
@@ -57,8 +62,6 @@ const createStream = ({
 };
 
 let currentOrigin: string = null;
-let current;
-
 interface Frames {
   [key: number]: any;
 }

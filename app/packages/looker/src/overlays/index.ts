@@ -41,10 +41,28 @@ export const POINTS_FROM_FO = {
   Segmentation: (label) => getSegmentationPoints([label]),
 };
 
-const MASK_OVERLAYS = {
+const DESERIALIZE = {
   Detection: (label) => {
     if (typeof label.mask === "string") {
       label.mask = deserialize(label.mask);
+    } else {
+      label.mask = null;
+    }
+  },
+  Detections: (labels) => {
+    labels.detections.forEach((label) => {
+      if (typeof label.mask === "string") {
+        label.mask = deserialize(label.mask);
+      } else {
+        label.mask = null;
+      }
+    });
+  },
+  Segmentation: (label) => {
+    if (typeof label.mask === "string") {
+      label.mask = deserialize(label.mask);
+    } else {
+      label.mask = null;
     }
   },
 };
@@ -57,8 +75,8 @@ export const processMasks = <State extends BaseState>(sample: {
     if (!label) {
       continue;
     }
-    if (label._cls in MASK_OVERLAYS) {
-      const labelOverlays = FROM_FO[label._cls](field, label, this);
+    if (label._cls in DESERIALIZE) {
+      DESERIALIZE[label._cls](field, label, this);
     }
   }
 
