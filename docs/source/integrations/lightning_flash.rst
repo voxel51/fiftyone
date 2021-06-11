@@ -5,10 +5,11 @@ PyTorch Lightning Flash Integration
 
 .. default-role:: code
 
-We have worked together with the team behind PyTorch Lightning Flash to make it
-as easy as possible to train Flash models on your FiftyOne datasets and to add
-the predictions of :class:`Flash models <flash:flash.core.model.Task>`
-to a FiftyOne |Dataset| for visualiziation and
+We have collaborated with the team behind 
+`PyTorch Lightning Flash <https://github.com/PyTorchLightning/lightning-flash>`_ to make it
+as easy as possible to train Flash :class:`models <flash:flash.core.model.Task>`
+on your FiftyOne datasets and to add
+the predictions of Flash models to a FiftyOne |Dataset| for visualiziation and
 analysis.
 
 The following Flash tasks are supported by FiftyOne:
