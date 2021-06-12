@@ -66,7 +66,7 @@ def apply_flash_model(
     data_pipeline = model.data_pipeline
 
     with fou.SetAttributes(
-        model, serializer=serializer, data_pipeline=data_pipeline
+        model, data_pipeline=data_pipeline, serializer=serializer
     ):
         kwargs = dict(preprocess=model.preprocess, num_workers=num_workers)
         if batch_size is not None:
@@ -139,29 +139,6 @@ def compute_flash_embeddings(
             return
 
         return np.stack(embeddings)
-
-
-def normalize_detections(filepaths, predictions):
-    """Converts the bounding boxes of the provided
-    :class:`fiftyone.core.labels.Detections` from absolute to relative
-    coordinates.
-
-    Args:
-        filepaths: a list of filepaths
-        predictions: a list of :class:`fiftyone.core.labels.Detections`
-    """
-    for filepath, prediction in zip(filepaths, predictions):
-        metadata = fom.ImageMetadata.build_for(filepath)
-        width = metadata.width
-        height = metadata.height
-        for detection in prediction.detections:
-            x, y, w, h = detection.bounding_box
-            detection.bounding_box = [
-                x / width,
-                y / height,
-                w / width,
-                h / height,
-            ]
 
 
 def _get_serializer(model, confidence_thresh, store_logits):

@@ -367,6 +367,7 @@ function, passing in your Flash model.
 .. code-block:: python
     :linenos:
 
+    import fiftyone as fo
     import fiftyone.zoo as foz
 
     from flash.image import ObjectDetector
@@ -404,12 +405,14 @@ There are a few different ways that this workflow may come about.
 
 .. code-block:: python
     :linenos:
+    
+    import itertools
 
     import fiftyone as fo
     import fiftyone.zoo as foz
 
     from flash import Trainer
-    from flash.image import ObjectDetector
+    from flash.image import ObjectDetectionData, ObjectDetector
     from flash.image.detection.serialization import FiftyOneDetectionLabels
 
     # Load your dataset
@@ -427,6 +430,9 @@ There are a few different ways that this workflow may come about.
     )
     trainer = Trainer() 
     predictions = trainer.predict(model, datamodule=datamodule)
+
+    # Flatten batched predictions
+    predictions = list(itertools.chain.from_iterable(predictions))
 
     # Option 2: Predict with model
     filepaths = dataset.values("filepath")
