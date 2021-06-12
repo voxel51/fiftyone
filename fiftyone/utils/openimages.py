@@ -128,6 +128,7 @@ class OpenImagesDatasetImporter(foud.LabeledImageDatasetImporter):
             )
             if pos_labels is not None:
                 labels["positive_labels"] = pos_labels
+
             if neg_labels is not None:
                 labels["negative_labels"] = neg_labels
 
@@ -322,8 +323,10 @@ class OpenImagesDatasetImporter(foud.LabeledImageDatasetImporter):
 
         if attrs_map:
             self._info["attributes_map"] = attrs_map
+
         if all_attrs:
             self._info["attributes"] = all_attrs
+
         if seg_classes:
             self._info["segmentation_classes"] = seg_classes
 
@@ -496,7 +499,7 @@ def download_open_images_split(
     else:
         downloaded_ids = []
         split_image_ids = _parse_image_ids(
-            image_ids, image_ids_file, dataset_dir, split=split, download=True,
+            image_ids, image_ids_file, dataset_dir, split=split, download=True
         )
 
     download = True
@@ -583,6 +586,7 @@ def _setup(
                 filtered_classes.append(c)
             except:
                 missing_classes.append(c)
+
         classes = filtered_classes
         if missing_classes:
             logger.warning(
@@ -669,6 +673,7 @@ def get_attributes(dataset_dir=None, version="v6"):
 
     if not dataset_dir:
         dataset_dir = os.path.join(fo.config.dataset_zoo_dir, "open-images")
+
     try:
         attrs_map = _get_attrs_map(dataset_dir, download=False)
     except FileNotFoundError:
@@ -697,11 +702,13 @@ def get_classes(dataset_dir=None, version="v6"):
 
     if not dataset_dir:
         dataset_dir = os.path.join(fo.config.dataset_zoo_dir, "open-images")
+
     try:
         classes_map = _get_classes_map(dataset_dir, download=False)
     except FileNotFoundError:
         with etau.TempDir() as tmp_dir:
-            classes_map = _get_classes_map(dataset_dir=tmp_dir, download=True,)
+            classes_map = _get_classes_map(dataset_dir=tmp_dir, download=True)
+
     return sorted(list(classes_map.values()))
 
 
@@ -724,11 +731,13 @@ def get_segmentation_classes(dataset_dir=None, version="v6"):
 
     if not dataset_dir:
         dataset_dir = os.path.join(fo.config.dataset_zoo_dir, "open-images")
+
     try:
         seg_classes = _get_seg_classes(dataset_dir, download=False)
     except FileNotFoundError:
         with etau.TempDir() as tmp_dir:
-            seg_classes = _get_seg_classes(dataset_dir=tmp_dir, download=True,)
+            seg_classes = _get_seg_classes(dataset_dir=tmp_dir, download=True)
+
     return seg_classes
 
 
@@ -774,7 +783,7 @@ def _get_classes_map(dataset_dir, download=True):
 def _get_seg_classes(dataset_dir, classes_map=None, download=True):
     if not classes_map:
         classes_map = _get_classes_map(
-            dataset_dir=dataset_dir, download=download,
+            dataset_dir=dataset_dir, download=download
         )
 
     annot_link = _ANNOTATION_DOWNLOAD_LINKS["general"]["segmentation_classes"]
@@ -803,7 +812,7 @@ def _get_hierarchy(dataset_dir, classes_map=None, download=True):
 
             if classes_map is None:
                 classes_map = _get_classes_map(
-                    dataset_dir=tmp_dir, download=download,
+                    dataset_dir=tmp_dir, download=download
                 )
 
             # Not included in standard classes
@@ -826,12 +835,14 @@ def _rename_subcategories(hierarchy, classes_map):
         subs = []
         for sub in hierarchy["Subcategory"]:
             subs.append(_rename_subcategories(sub, classes_map))
+
         hierarchy["Subcategory"] = subs
 
     if "Part" in hierarchy.keys():
         parts = []
         for part in hierarchy["Part"]:
             parts.append(_rename_subcategories(part, classes_map))
+
         hierarchy["Part"] = parts
 
     return hierarchy
@@ -849,6 +860,7 @@ def _parse_csv(filename, dataframe=False):
                 reader = csv.reader(csvfile, dialect)
             else:
                 reader = csv.reader(csvfile)
+
             data = [row for row in reader]
 
     return data
