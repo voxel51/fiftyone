@@ -4,11 +4,17 @@
 
 import { processMasks } from "./overlays";
 
-const HIGH_WATER_MARK = 3;
+const HIGH_WATER_MARK = 120;
+const CHUNK_SIZE = 30;
 
-let stream: ReadableStream = null;
+interface FrameReader {
+  chunkSize: number;
+  frameNumber: number;
+  sampleId: string;
+  stream: ReadableStream;
+}
 
-const createStream = ({
+const createReader = ({
   chunkSize,
   frameCount,
   frameNumber,
@@ -20,48 +26,55 @@ const createStream = ({
   frameNumber: number;
   url: string;
   sampleId: string;
-}) => {
+}): FrameReader => {
   let cancelled = false;
-  return new ReadableStream(
-    {
-      pull: (controller: ReadableStreamDefaultController) => {
-        if (frameNumber >= frameCount) {
-          controller.close();
-        }
+  return {
+    sampleId,
+    frameNumber,
+    chunkSize,
+    stream: new ReadableStream(
+      {
+        pull: (controller: ReadableStreamDefaultController) => {
+          if (frameNumber >= frameCount) {
+            controller.close();
+            return Promise.resolve();
+          }
 
-        let nextFrameChunkStart = frameNumber + chunkSize;
-        return new Promise((resolve, reject) => {
-          fetch(
-            url +
-              new URLSearchParams({
-                frameNumber: frameNumber.toString(),
-                numFrames: chunkSize.toString(),
-                sampleId,
+          let nextFrameChunkStart = frameNumber + chunkSize;
+          return new Promise((resolve, reject) => {
+            fetch(
+              url +
+                new URLSearchParams({
+                  frameNumber: frameNumber.toString(),
+                  numFrames: chunkSize.toString(),
+                  sampleId,
+                })
+            )
+              .then((response: Response) => response.json())
+              .then((data) => {
+                data.frames.array.forEach((frame) => {
+                  processMasks(frame);
+                  controller.enqueue(frame);
+                });
+                frameNumber = nextFrameChunkStart;
+                resolve();
               })
-          )
-            .then((response: Response) => response.json())
-            .then((data) => {
-              data.frames.array.forEach((frame) => {
-                processMasks(frame);
-                controller.enqueue(frame);
+              .catch((error) => {
+                reject(error);
               });
-              frameNumber = nextFrameChunkStart;
-              resolve();
-            })
-            .catch((error) => {
-              reject(error);
-            });
-        });
+          });
+        },
+        cancel: (reason) => {
+          cancelled = true;
+        },
       },
-      cancel: (reason) => {
-        cancelled = true;
-      },
-    },
-    new CountQueuingStrategy({ highWaterMark: 3 })
-  );
+      new CountQueuingStrategy({ highWaterMark: HIGH_WATER_MARK })
+    ),
+  };
 };
 
 let currentOrigin: string = null;
+let reader: FrameReader = null;
 interface Frames {
   [key: number]: any;
 }
@@ -73,16 +86,33 @@ interface FramesResult {
   range: FrameRange;
 }
 
-const setReader = (args: {
+const setReader = ({
+  origin,
+  sampleId,
+  frameNumber,
+  frameCount,
+  force,
+}: {
   origin: string;
   sampleId: string;
   frameNumber: number;
-  numFrames: number;
+  frameCount: number;
   force: boolean;
-}) => {};
+}) => {
+  currentOrigin = origin;
+  if (!reader || force || reader.sampleId !== sampleId) {
+    reader.stream && reader.stream.cancel();
+    reader = createReader({
+      chunkSize: CHUNK_SIZE,
+      frameCount: frameCount,
+      frameNumber: frameNumber,
+      sampleId,
+      url: `${origin}/frames`,
+    });
+  }
 
-const send = () => {
-  postMessage({}, currentOrigin);
+  const stream = reader.stream.getReader();
+  while (!stream.closed) {}
 };
 
 onmessage = (message: MessageEvent) => setReader(message.data);

@@ -4,15 +4,13 @@
 
 import { VideoState } from "../state";
 import { BaseElement, Events } from "./base";
-import { transformWindowElement } from "./common";
 import {
   getFrameNumber,
   getFrameString,
   getTime,
   getTimeString,
   ICONS,
-  makeCheckboxRow,
-  makeWrapper,
+  transformWindowElement,
 } from "./util";
 
 export class LoaderBar extends BaseElement<VideoState> {
@@ -128,35 +126,6 @@ export class SeekBarElement extends BaseElement<VideoState, HTMLInputElement> {
     } else {
       this.element.style.display = "none";
     }
-    return this.element;
-  }
-}
-
-export class UseFrameNumberOptionElement extends BaseElement<VideoState> {
-  checkbox: HTMLInputElement;
-  label: HTMLLabelElement;
-
-  getEvents(): Events<VideoState> {
-    return {
-      click: ({ event, update }) => {
-        event.stopPropagation();
-        event.preventDefault();
-        update(({ options: { useFrameNumber } }) => {
-          return {
-            options: { useFrameNumber: !useFrameNumber },
-          };
-        });
-      },
-    };
-  }
-
-  createHTMLElement() {
-    [this.label, this.checkbox] = makeCheckboxRow("Use frame number", false);
-    return makeWrapper([this.label]);
-  }
-
-  renderSelf({ options: { useFrameNumber } }) {
-    this.checkbox.checked = useFrameNumber;
     return this.element;
   }
 }
@@ -371,21 +340,14 @@ export function withVideoLookerEvents(): () => Events<VideoState> {
         });
       },
       mouseleave: ({ update }) => {
-        update(
-          ({
-            config: { thumbnail },
-            framesRequested,
-            options: { requestFrames },
-          }) => {
-            if (thumbnail) {
-              framesRequested && requestFrames && requestFrames.cancel();
-              return {
-                playing: false,
-              };
-            }
-            return {};
+        update(({ config: { thumbnail } }) => {
+          if (thumbnail) {
+            return {
+              playing: false,
+            };
           }
-        );
+          return {};
+        });
       },
     };
   };

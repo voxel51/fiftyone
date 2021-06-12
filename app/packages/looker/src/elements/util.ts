@@ -30,40 +30,14 @@ export const ICONS = Object.freeze({
     "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpath fill='rgb(238, 238, 238)' d='M12,15.5A3.5,3.5 0 0,1 8.5,12A3.5,3.5 0 0,1 12,8.5A3.5,3.5 0 0,1 15.5,12A3.5,3.5 0 0,1 12,15.5M19.43,12.97C19.47,12.65 19.5,12.33 19.5,12C19.5,11.67 19.47,11.34 19.43,11L21.54,9.37C21.73,9.22 21.78,8.95 21.66,8.73L19.66,5.27C19.54,5.05 19.27,4.96 19.05,5.05L16.56,6.05C16.04,5.66 15.5,5.32 14.87,5.07L14.5,2.42C14.46,2.18 14.25,2 14,2H10C9.75,2 9.54,2.18 9.5,2.42L9.13,5.07C8.5,5.32 7.96,5.66 7.44,6.05L4.95,5.05C4.73,4.96 4.46,5.05 4.34,5.27L2.34,8.73C2.21,8.95 2.27,9.22 2.46,9.37L4.57,11C4.53,11.34 4.5,11.67 4.5,12C4.5,12.33 4.53,12.65 4.57,12.97L2.46,14.63C2.27,14.78 2.21,15.05 2.34,15.27L4.34,18.73C4.46,18.95 4.73,19.03 4.95,18.95L7.44,17.94C7.96,18.34 8.5,18.68 9.13,18.93L9.5,21.58C9.54,21.82 9.75,22 10,22H14C14.25,22 14.46,21.82 14.5,21.58L14.87,18.93C15.5,18.67 16.04,18.34 16.56,17.94L19.05,18.95C19.27,19.03 19.54,18.95 19.66,18.73L21.66,15.27C21.78,15.05 21.73,14.78 21.54,14.63L19.43,12.97Z' /%3E%3C/svg%3E",
 });
 
-export const makeWrapper = function (children) {
-  const wrapper = document.createElement("div");
-  wrapper.className = "looker-opt-input";
-  for (const child of children) {
-    wrapper.appendChild(child);
-  }
-  return wrapper;
-};
-
-export const makeCheckboxRow = function (
-  text,
-  checked
-): [HTMLLabelElement, HTMLInputElement] {
-  const label = document.createElement("label");
-  label.className = "looker-label";
-  label.innerHTML = text;
-
-  const checkbox = document.createElement("input");
-  checkbox.setAttribute("type", "checkbox");
-  checkbox.checked = checked;
-  const span = document.createElement("span");
-  span.className = "looker-checkbox";
-  label.appendChild(checkbox);
-  label.appendChild(span);
-
-  return [label, checkbox];
-};
+export type DispatchEvent = (eventType: string, details?: any) => void;
 
 type ElementConstructor<
   State extends BaseState,
   Element extends BaseElement<State>
 > = new (
   update: StateUpdate<State>,
-  dispatchEvent: (eventType: string, details?: any) => void,
+  dispatchEvent: DispatchEvent,
   children?: BaseElement<State>[]
 ) => Element;
 
@@ -196,3 +170,17 @@ export function withEvents<
 
   return WithElement;
 }
+
+export const transformWindowElement = (
+  { pan: [x, y], scale }: Readonly<BaseState>,
+  element: HTMLElement
+): void => {
+  element.style.transform =
+    "translate3d(" +
+    Math.round(x) +
+    "px, " +
+    Math.round(y) +
+    "px, 0px) scale(" +
+    scale +
+    ")";
+};

@@ -4,8 +4,12 @@
 
 import { FrameState } from "../state";
 import { BaseElement, Events } from "./base";
-import { transformWindowElement } from "./common";
-import { getFrameString, getTime, getTimeString } from "./util";
+import {
+  getFrameString,
+  getTime,
+  getTimeString,
+  transformWindowElement,
+} from "./util";
 
 export class FrameNumberElement extends BaseElement<FrameState> {
   createHTMLElement() {

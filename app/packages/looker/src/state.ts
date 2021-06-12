@@ -116,6 +116,7 @@ export interface BaseState {
   pointRadius: number;
   relativeCoordinates: Coordinates;
   mouseIsOnOverlay: boolean;
+  showHelp: boolean;
 }
 
 export interface FrameState extends BaseState {

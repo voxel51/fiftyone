@@ -332,6 +332,22 @@ export class ImageLooker extends Looker<ImageState> {
   }
 }
 
+interface FrameSample extends Object {
+  frame_number: number;
+}
+
+interface VideoSample extends BaseSample {
+  frames: { 1?: FrameSample };
+}
+
+interface AttachReaderOptions {
+  addFrames: (frames: { [frameNumber: number]: FrameSample }) => void;
+  sampleId: string;
+  frameNumber: number;
+  frameCount: number;
+  force?: boolean;
+}
+
 const attachReader = (() => {
   const frameCache = new LRU<string, FrameSample>({
     max: MAX_FRAME_CACHE_SIZE,
@@ -340,18 +356,22 @@ const attachReader = (() => {
   const frameReader = new Worker("./reader.ts");
   let looker = null;
 
-  return (newLooker: VideoLooker) => {
-    frameReader.postMessage({});
+  return ({
+    addFrames,
+    sampleId,
+    frameNumber,
+    frameCount,
+    force,
+  }: AttachReaderOptions) => {
+    frameReader.onmessage = (event: MessageEvent) => {
+      console.log(event.data);
+    };
+    frameReader.postMessage({
+      sampleId,
+      frameCount,
+    });
   };
 })();
-
-interface FrameSample extends Object {
-  frame_number: number;
-}
-
-interface VideoSample extends BaseSample {
-  frames: { 1?: FrameSample };
-}
 
 export class VideoLooker extends Looker<VideoState, VideoSample> {
   private sampleOverlays: Overlay<VideoState>[];

@@ -4,7 +4,7 @@
 
 import { ImageState } from "../state";
 import { BaseElement, Events } from "./base";
-import { transformWindowElement } from "./common";
+import { transformWindowElement } from "./util";
 
 export class ImageElement extends BaseElement<ImageState, HTMLImageElement> {
   private src: string;

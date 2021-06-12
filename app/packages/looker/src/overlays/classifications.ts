@@ -2,7 +2,7 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 
-import { MASK_ALPHA, SELECTED_MASK_ALPHA, TEXT_COLOR } from "../constants";
+import { TEXT_COLOR } from "../constants";
 import { BaseState, BoundingBox, Coordinates } from "../state";
 import { getRenderedScale } from "../util";
 import {
