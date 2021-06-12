@@ -288,11 +288,8 @@ class BDDDatasetImporter(
         self._num_samples = len(self._filenames)
 
     @staticmethod
-    def get_num_samples(dataset_dir=None, data_path=None):
-        data_path = foud.ImportPathsMixin._parse_data_path(
-            dataset_dir=dataset_dir, data_path=data_path, default="data/",
-        )
-        return len(etau.list_files(data_path))
+    def get_num_samples(dataset_dir):
+        return len(etau.list_files(os.path.join(dataset_dir, "data")))
 
 
 class BDDDatasetExporter(

@@ -634,25 +634,6 @@ class ImportPathsMixin(object):
 
         return data_map
 
-    @staticmethod
-    def _get_num_samples(dataset_dir=None, data_path=None, default=None):
-        """Helper function for computing the number of data samples in a
-        dataset.
-        """
-        data_path = ImportPathsMixin._parse_data_path(
-            dataset_dir=dataset_dir, data_path=data_path, default=default,
-        )
-
-        num_samples = 0
-
-        if data_path.endswith(".json"):
-            if os.path.exists(data_path):
-                num_samples = len(etas.load_json(data_path))
-        elif os.path.isdir(data_path):
-            num_samples = len(etau.list_files(data_path))
-
-        return num_samples
-
 
 class DatasetImporter(object):
     """Base interface for importing datasets stored on disk into FiftyOne.
@@ -1686,8 +1667,8 @@ class ImageDirectoryImporter(UnlabeledImageDatasetImporter):
         self._num_samples = len(self._filepaths)
 
     @staticmethod
-    def get_num_samples(dataset_dir, recursive=True):
-        filepaths = etau.list_files(dataset_dir, recursive=recursive)
+    def get_num_samples(dataset_dir):
+        filepaths = etau.list_files(dataset_dir, recursive=True)
         filepaths = [p for p in filepaths if etai.is_image_mime_type(p)]
         return len(filepaths)
 
@@ -1767,8 +1748,8 @@ class VideoDirectoryImporter(UnlabeledVideoDatasetImporter):
         self._num_samples = len(self._filepaths)
 
     @staticmethod
-    def get_num_samples(dataset_dir, recursive=True):
-        filepaths = etau.list_files(dataset_dir, recursive=recursive)
+    def get_num_samples(dataset_dir):
+        filepaths = etau.list_files(dataset_dir, recursive=True)
         filepaths = [p for p in filepaths if etav.is_video_mime_type(p)]
         return len(filepaths)
 
@@ -1926,24 +1907,14 @@ class FiftyOneImageClassificationDatasetImporter(
         return {"classes": self._classes}
 
     @staticmethod
-    def get_classes(dataset_dir=None, labels_path=None):
-        labels_path = ImportPathsMixin._parse_labels_path(
-            dataset_dir=dataset_dir,
-            labels_path=labels_path,
-            default="labels.json",
-        )
-
+    def get_classes(dataset_dir):
+        labels_path = os.path.join(dataset_dir, "labels.json")
         labels = etas.read_json(labels_path)
         return labels.get("classes", None)
 
     @staticmethod
-    def get_num_samples(dataset_dir=None, labels_path=None):
-        labels_path = ImportPathsMixin._parse_labels_path(
-            dataset_dir=dataset_dir,
-            labels_path=labels_path,
-            default="labels.json",
-        )
-
+    def get_num_samples(dataset_dir):
+        labels_path = os.path.join(dataset_dir, "labels.json")
         labels = etas.read_json(labels_path)
         return len(labels.get("labels", {}))
 
@@ -2336,24 +2307,14 @@ class FiftyOneImageDetectionDatasetImporter(
         return {"classes": self._classes}
 
     @staticmethod
-    def get_classes(dataset_dir=None, labels_path=None):
-        labels_path = ImportPathsMixin._parse_labels_path(
-            dataset_dir=dataset_dir,
-            labels_path=labels_path,
-            default="labels.json",
-        )
-
+    def get_classes(dataset_dir):
+        labels_path = os.path.join(dataset_dir, "labels.json")
         labels = etas.read_json(labels_path)
         return labels.get("classes", None)
 
     @staticmethod
-    def get_num_samples(dataset_dir=None, labels_path=None):
-        labels_path = ImportPathsMixin._parse_labels_path(
-            dataset_dir=dataset_dir,
-            labels_path=labels_path,
-            default="labels.json",
-        )
-
+    def get_num_samples(dataset_dir):
+        labels_path = os.path.join(dataset_dir, "labels.json")
         labels = etas.read_json(labels_path)
         return len(labels.get("labels", {}))
 
@@ -2504,14 +2465,8 @@ class ImageSegmentationDirectoryImporter(
         self._num_samples = len(self._uuids)
 
     @staticmethod
-    def get_num_samples(dataset_dir=None, labels_path=None):
-        labels_path = ImportPathsMixin._parse_labels_path(
-            dataset_dir=dataset_dir,
-            labels_path=labels_path,
-            default="labels/",
-        )
-
-        return len(etau.list_files(labels_path))
+    def get_num_samples(dataset_dir):
+        return len(etau.list_files(os.path.join(dataset_dir, "data")))
 
 
 class FiftyOneImageLabelsDatasetImporter(LabeledImageDatasetImporter):

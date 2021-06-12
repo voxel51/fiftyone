@@ -82,12 +82,13 @@ class OpenImagesDatasetImporter(foud.LabeledImageDatasetImporter):
         max_samples=None,
     ):
         super().__init__(
-            dataset_dir,
+            dataset_dir=dataset_dir,
             skip_unlabeled=skip_unlabeled,
             shuffle=shuffle,
             seed=seed,
             max_samples=max_samples,
         )
+
         self.label_types = label_types
         self.classes = classes
         self.attrs = attrs
@@ -95,6 +96,7 @@ class OpenImagesDatasetImporter(foud.LabeledImageDatasetImporter):
         self.image_ids_file = image_ids_file
         self.load_hierarchy = load_hierarchy
         self.version = version
+
         self._data_dir = None
         self._info = None
         self._classes = None

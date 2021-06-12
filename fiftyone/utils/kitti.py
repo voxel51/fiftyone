@@ -201,15 +201,12 @@ class KITTIDetectionDatasetImporter(
         self._num_samples = len(self._uuids)
 
     @staticmethod
-    def get_num_samples(dataset_dir=None, data_path=None):
-        data_path = foud.ImportPathsMixin._parse_data_path(
-            dataset_dir=dataset_dir, data_path=data_path, default="data/",
-        )
-
-        if not os.path.isdir(data_path):
+    def get_num_samples(dataset_dir):
+        data_dir = os.path.join(dataset_dir, "data")
+        if not os.path.isdir(data_dir):
             return 0
 
-        return len(etau.list_files(data_path))
+        return len(etau.list_files(data_dir))
 
 
 class KITTIDetectionDatasetExporter(
