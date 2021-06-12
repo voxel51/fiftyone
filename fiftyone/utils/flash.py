@@ -68,24 +68,15 @@ def apply_flash_model(
     with fou.SetAttributes(
         model, serializer=serializer, data_pipeline=data_pipeline
     ):
-        # equivalent(?) but no progress bar...
-        # filepaths = samples.values("filepath")
-        # predictions = model.predict(filepaths, "fiftyone")
-
         kwargs = dict(preprocess=model.preprocess, num_workers=num_workers)
         if batch_size is not None:
             kwargs["batch_size"] = batch_size
 
-        datamodule = fi.ImageClassificationData.fiftyone_from_datasets(
+        datamodule = fi.ImageClassificationData.from_fiftyone_datasets(
             predict_dataset=samples, **kwargs
         )
         predictions = flash.Trainer().predict(model, datamodule=datamodule)
         predictions = list(itertools.chain.from_iterable(predictions))
-
-        # @todo remove when `FiftyOneDetectionLabels` can self-normalize
-        if isinstance(serializer, fds.FiftyOneDetectionLabels):
-            filepaths = samples.values("filepath")
-            normalize_detections(filepaths, predictions)
 
         samples.set_values(label_field, predictions)
 
@@ -137,7 +128,7 @@ def compute_flash_embeddings(
         if batch_size is not None:
             kwargs["batch_size"] = batch_size
 
-        datamodule = fi.ImageClassificationData.fiftyone_from_datasets(
+        datamodule = fi.ImageClassificationData.from_fiftyone_datasets(
             predict_dataset=samples, **kwargs
         )
         embeddings = flash.Trainer().predict(model, datamodule=datamodule)
