@@ -1449,7 +1449,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 ops.append(ReplaceOne({"_id": sample._id}, d, upsert=True))
             else:
                 d.pop("_id", None)
-                ops.append(InsertOne(d))
+                ops.append(InsertOne(d))  # adds `_id` to dict
 
         foo.bulk_write(ops, self._sample_collection, ordered=False)
 
@@ -1655,71 +1655,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             expand_schema=expand_schema,
             num_samples=num_samples,
         )
-
-        """
-        if num_samples is None:
-            try:
-                num_samples = len(samples)
-            except:
-                pass
-
-        if key_fcn is None:
-            id_map = {k: v for k, v in zip(*self.values([key_field, "id"]))}
-            key_fcn = lambda sample: sample[key_field]
-        else:
-            id_map = {}
-            logger.info("Indexing dataset...")
-            with fou.ProgressBar() as pb:
-                for sample in pb(self):
-                    id_map[key_fcn(sample)] = sample.id
-
-        # When inserting new samples, `filepath` cannot be excluded
-        if insert_new:
-            if isinstance(fields, dict):
-                insert_fields = fields.copy()
-                insert_fields["filepath"] = "filepath"
-            elif fields is not None:
-                insert_fields = fields.copy()
-                if "filepath" not in insert_fields:
-                    insert_fields = ["filepath"] + insert_fields
-            else:
-                insert_fields = None
-
-            insert_omit_fields = omit_fields
-            if insert_omit_fields is not None:
-                insert_omit_fields = [
-                    f for f in insert_omit_fields if f != "filepath"
-                ]
-
-        logger.info("Merging samples...")
-        with fou.ProgressBar(total=num_samples) as pb:
-            for sample in pb(samples):
-                key = key_fcn(sample)
-                if key in id_map:
-                    if not skip_existing:
-                        existing_sample = self[id_map[key]]
-                        existing_sample.merge(
-                            sample,
-                            fields=fields,
-                            omit_fields=omit_fields,
-                            merge_lists=merge_lists,
-                            overwrite=overwrite,
-                            expand_schema=expand_schema,
-                        )
-                        existing_sample.save()
-
-                elif insert_new:
-                    if (
-                        insert_fields is not None
-                        or insert_omit_fields is not None
-                    ):
-                        sample = sample.copy(
-                            fields=insert_fields,
-                            omit_fields=insert_omit_fields,
-                        )
-
-                    self.add_sample(sample, expand_schema=expand_schema)
-        """
 
     def delete_samples(self, samples_or_ids):
         """Deletes the given sample(s) from the dataset.
@@ -4805,25 +4740,7 @@ def _merge_samples_python(
             for sample in pb(dataset):
                 id_map[key_fcn(sample)] = sample.id
 
-    # When inserting new samples, `filepath` cannot be excluded
-    if insert_new:
-        if isinstance(fields, dict):
-            insert_fields = fields.copy()
-            insert_fields["filepath"] = "filepath"
-        elif fields is not None:
-            insert_fields = fields.copy()
-            if "filepath" not in insert_fields:
-                insert_fields = ["filepath"] + insert_fields
-        else:
-            insert_fields = None
-
-        insert_omit_fields = omit_fields
-        if insert_omit_fields is not None:
-            insert_omit_fields = [
-                f for f in insert_omit_fields if f != "filepath"
-            ]
-
-    _samples = _merge_samples_generator(
+    _samples = _make_merge_samples_generator(
         dataset,
         samples,
         key_fcn,
@@ -4851,7 +4768,7 @@ def _merge_samples_python(
             pb.update(count=len(batch))
 
 
-def _merge_samples_generator(
+def _make_merge_samples_generator(
     dataset,
     samples,
     key_fcn,
