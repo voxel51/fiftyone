@@ -82,26 +82,29 @@ def import_samples(
 
     dataset_importer = _handle_legacy_formats(dataset_importer)
 
-    # Invoke the importer's context manager first, since some of its properies
-    # may need to be initialized
-    with dataset_importer:
-        if isinstance(dataset_importer, BatchDatasetImporter):
-            # @todo support `expand_schema=False` here?
-            if not expand_schema:
-                logger.warning(
-                    "`expand_schema=False` is not supported for %s instances",
-                    BatchDatasetImporter,
-                )
+    # Batch imports
+    if isinstance(dataset_importer, BatchDatasetImporter):
+        # @todo support `expand_schema=False` here?
+        if not expand_schema:
+            logger.warning(
+                "`expand_schema=False` is not supported for %s instances",
+                BatchDatasetImporter,
+            )
 
-            if not add_info:
-                logger.warning(
-                    "`add_info=False` is not supported for %s instances",
-                    BatchDatasetImporter,
-                )
+        if not add_info:
+            logger.warning(
+                "`add_info=False` is not supported for %s instances",
+                BatchDatasetImporter,
+            )
 
+        with dataset_importer:
             return dataset_importer.import_samples(dataset, tags=tags)
 
-        # Construct function to parse samples
+    #
+    # Non-batch imports
+    #
+
+    with dataset_importer:
         parse_sample, expand_schema = _build_parse_sample_fcn(
             dataset, dataset_importer, label_field, tags, expand_schema
         )
@@ -111,19 +114,16 @@ def import_samples(
         except:
             num_samples = None
 
-        # Import samples
         samples = map(parse_sample, iter(dataset_importer))
         sample_ids = dataset.add_samples(
             samples, expand_schema=expand_schema, num_samples=num_samples
         )
 
-        # Load dataset info
         if add_info and dataset_importer.has_dataset_info:
             info = dataset_importer.get_dataset_info()
             if info:
                 parse_dataset_info(dataset, info)
 
-        # Load run results
         if isinstance(dataset_importer, LegacyFiftyOneDatasetImporter):
             dataset_importer.import_run_results(dataset)
 
@@ -234,65 +234,71 @@ def merge_samples(
 
     dataset_importer = _handle_legacy_formats(dataset_importer)
 
-    # Invoke the importer's context manager first, since some of its properies
-    # may need to be initialized
+    #
+    # Batch imports
+    #
+
+    if isinstance(dataset_importer, BatchDatasetImporter):
+        tmp = fod.Dataset()
+        with dataset_importer:
+            dataset_importer.import_samples(tmp, tags=tags)
+
+        dataset.merge_samples(
+            tmp,
+            key_field=key_field,
+            key_fcn=key_fcn,
+            skip_existing=skip_existing,
+            insert_new=insert_new,
+            fields=fields,
+            omit_fields=omit_fields,
+            merge_lists=merge_lists,
+            overwrite=overwrite,
+            expand_schema=expand_schema,
+            include_info=add_info,
+            overwrite_info=True,
+        )
+
+        tmp.delete()
+
+        return
+
+    #
+    # Non-batch imports
+    #
+
     with dataset_importer:
-        if isinstance(dataset_importer, BatchDatasetImporter):
-            samples = fod.Dataset()
-            dataset_importer.import_samples(samples, tags=tags)
+        parse_sample, expand_schema = _build_parse_sample_fcn(
+            dataset, dataset_importer, label_field, tags, expand_schema
+        )
 
-            # Merge samples
-            dataset.merge_samples(
-                samples,
-                key_field=key_field,
-                key_fcn=key_fcn,
-                skip_existing=skip_existing,
-                insert_new=insert_new,
-                fields=fields,
-                omit_fields=omit_fields,
-                merge_lists=merge_lists,
-                overwrite=overwrite,
-                expand_schema=expand_schema,
-                include_info=add_info,
-                overwrite_info=True,
-            )
-        else:
-            # Construct function to parse samples
-            parse_sample, expand_schema = _build_parse_sample_fcn(
-                dataset, dataset_importer, label_field, tags, expand_schema
-            )
+        try:
+            num_samples = len(dataset_importer)
+        except:
+            num_samples = None
 
-            try:
-                num_samples = len(dataset_importer)
-            except:
-                num_samples = None
+        samples = map(parse_sample, iter(dataset_importer))
 
-            samples = map(parse_sample, iter(dataset_importer))
+        dataset.merge_samples(
+            samples,
+            key_field=key_field,
+            key_fcn=key_fcn,
+            skip_existing=skip_existing,
+            insert_new=insert_new,
+            fields=fields,
+            omit_fields=omit_fields,
+            merge_lists=merge_lists,
+            overwrite=overwrite,
+            expand_schema=expand_schema,
+            num_samples=num_samples,
+        )
 
-            # Merge samples
-            dataset.merge_samples(
-                samples,
-                key_field=key_field,
-                key_fcn=key_fcn,
-                skip_existing=skip_existing,
-                insert_new=insert_new,
-                fields=fields,
-                omit_fields=omit_fields,
-                merge_lists=merge_lists,
-                overwrite=overwrite,
-                expand_schema=expand_schema,
-                num_samples=num_samples,
-            )
+        if add_info and dataset_importer.has_dataset_info:
+            info = dataset_importer.get_dataset_info()
+            if info:
+                parse_dataset_info(dataset, info)
 
-            # Load dataset info
-            if add_info and dataset_importer.has_dataset_info:
-                info = dataset_importer.get_dataset_info()
-                if info:
-                    parse_dataset_info(dataset, info)
-
-            # Load run results
-            if isinstance(dataset_importer, LegacyFiftyOneDatasetImporter):
-                dataset_importer.import_run_results(dataset)
+        if isinstance(dataset_importer, LegacyFiftyOneDatasetImporter):
+            dataset_importer.import_run_results(dataset)
 
 
 def _handle_legacy_formats(dataset_importer):

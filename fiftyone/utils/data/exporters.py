@@ -203,14 +203,14 @@ def export_samples(
         for key, value in unused_kwargs.items():
             if value is not None:
                 logger.warning(
-                    "Ignoring unsupported parameter %s for exporter type %s",
+                    "Ignoring unsupported parameter '%s' for exporter type %s",
                     key,
                     type(dataset_exporter),
                 )
     elif kwargs:
         for key, value in kwargs.items():
             if value is not None:
-                logger.warning("Ignoring unsupported parameter %s", key)
+                logger.warning("Ignoring unsupported parameter '%s'", key)
 
     sample_collection = samples
 

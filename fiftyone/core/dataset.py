@@ -1626,7 +1626,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 overwrite_info=overwrite_info,
             )
 
-        # Use efficient implementation when possible
+            expand_schema = False
+
+        # If we're merging a collection, use aggregation pipelines
         if isinstance(samples, foc.SampleCollection) and key_fcn is None:
             _merge_samples_pipeline(
                 samples,
@@ -1639,6 +1641,33 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 merge_lists=merge_lists,
                 overwrite=overwrite,
             )
+            return
+
+        #
+        # If we're not merging a collection but the merge key is a field, it's
+        # faster to import into a temporary dataset and then do a merge that
+        # leverages aggregation pipelines, because this avoids the need to
+        # load samples from `self` into memory
+        #
+
+        if key_fcn is None:
+            tmp = Dataset()
+            tmp.add_samples(samples)
+
+            self.merge_samples(
+                tmp,
+                key_field=key_field,
+                skip_existing=skip_existing,
+                insert_new=insert_new,
+                fields=fields,
+                omit_fields=omit_fields,
+                merge_lists=merge_lists,
+                overwrite=overwrite,
+                expand_schema=expand_schema,
+                include_info=False,
+            )
+            tmp.delete()
+
             return
 
         _merge_samples_python(
@@ -2104,12 +2133,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         In either workflow, the remaining parameters of this method can be
         provided to further configure the import.
 
-        See :ref:`this guide <loading-datasets-from-disk>` for descriptions of
-        the available dataset types.
+        See :ref:`this guide <loading-datasets-from-disk>` for example usages
+        of this method and descriptions of the available dataset types.
 
         Args:
-            dataset_dir (None): the dataset directory. This can be omitted if
-                you provide arguments such as ``data_path`` and ``labels_path``
+            dataset_dir (None): the dataset directory. This can be omitted for
+                certain dataset formats if you provide arguments such as
+                ``data_path`` and ``labels_path``
             dataset_type (None): the
                 :class:`fiftyone.types.dataset_types.Dataset` type of the
                 dataset
@@ -2193,9 +2223,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         for key, value in unused_kwargs.items():
             if value is not None:
                 logger.warning(
-                    "Ignoring unsupported parameter %s=%s for importer type %s",
+                    "Ignoring unsupported parameter '%s' for importer type %s",
                     key,
-                    value,
                     type(dataset_importer),
                 )
 
@@ -2246,8 +2275,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         In either workflow, the remaining parameters of this method can be
         provided to further configure the import.
 
-        See :ref:`this guide <loading-datasets-from-disk>` for descriptions of
-        the available dataset types.
+        See :ref:`this guide <loading-datasets-from-disk>` for example usages
+        of this method and descriptions of the available dataset types.
 
         By default, samples with the same absolute ``filepath`` are merged, but
         you can customize this behavior via the ``key_field`` and ``key_fcn``
@@ -2280,8 +2309,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         -   Mapping input fields to different field names of this dataset
 
         Args:
-            dataset_dir (None): the dataset directory. This can be omitted if
-                you provide arguments such as ``data_path`` and ``labels_path``
+            dataset_dir (None): the dataset directory. This can be omitted for
+                certain dataset formats if you provide arguments such as
+                ``data_path`` and ``labels_path``
             dataset_type (None): the
                 :class:`fiftyone.types.dataset_types.Dataset` type of the
                 dataset
@@ -2394,9 +2424,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         for key, value in unused_kwargs.items():
             if value is not None:
                 logger.warning(
-                    "Ignoring unsupported parameter %s=%s for importer type %s",
+                    "Ignoring unsupported parameter '%s' for importer type %s",
                     key,
-                    value,
                     type(dataset_importer),
                 )
 
@@ -2435,8 +2464,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         does exist, it is assumed that this directory contains the extracted
         contents of the archive.
 
-        See :ref:`this guide <loading-datasets-from-disk>` for descriptions of
-        the available dataset types.
+        See :ref:`this guide <loading-datasets-from-disk>` for example usages
+        of this method and descriptions of the available dataset types.
 
         .. note::
 
@@ -2549,8 +2578,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         does exist, it is assumed that this directory contains the extracted
         contents of the archive.
 
-        See :ref:`this guide <loading-datasets-from-disk>` for descriptions of
-        the available dataset types.
+        See :ref:`this guide <loading-datasets-from-disk>` for example usages
+        of this method and descriptions of the available dataset types.
 
         .. note::
 
@@ -3312,8 +3341,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         In either workflow, the remaining parameters of this method can be
         provided to further configure the import.
 
-        See :ref:`this guide <loading-datasets-from-disk>` for descriptions of
-        the available dataset types.
+        See :ref:`this guide <loading-datasets-from-disk>` for example usages
+        of this method and descriptions of the available dataset types.
 
         Args:
             dataset_dir (None): the dataset directory. This can be omitted if
@@ -3399,8 +3428,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         does exist, it is assumed that this directory contains the extracted
         contents of the archive.
 
-        See :ref:`this guide <loading-datasets-from-disk>` for descriptions of
-        the available dataset types.
+        See :ref:`this guide <loading-datasets-from-disk>` for example usages
+        of this method and descriptions of the available dataset types.
 
         .. note::
 

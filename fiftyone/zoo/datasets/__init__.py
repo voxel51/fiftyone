@@ -208,7 +208,7 @@ def load_zoo_dataset(
     for key, value in unused_kwargs.items():
         if value is not None:
             logger.warning(
-                "Ignoring unsupported parameter %s for importer type %s",
+                "Ignoring unsupported parameter '%s' for importer type %s",
                 key,
                 dataset_importer_cls,
             )
