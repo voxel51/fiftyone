@@ -59,6 +59,9 @@ export const getFrameElements: GetElements<FrameState> = (
           { node: common.ShowTooltipOptionElement },
         ],
       },
+      {
+        node: common.HelpPanelElement,
+      },
     ],
   };
 
@@ -107,6 +110,9 @@ export const getImageElements: GetElements<ImageState> = (
           { node: common.ShowTooltipOptionElement },
         ],
       },
+      {
+        node: common.HelpPanelElement,
+      },
     ],
   };
 
@@ -152,12 +158,15 @@ export const getVideoElements: GetElements<VideoState> = (
       {
         node: common.OptionsPanelElement,
         children: [
-          { node: video.UseFrameNumberOptionElement },
+          { node: common.UseFrameNumberOptionElement },
           { node: common.OnlyShowHoveredOnLabelOptionElement },
           { node: common.ShowLabelOptionElement },
           { node: common.ShowConfidenceOptionElement },
           { node: common.ShowTooltipOptionElement },
         ],
+      },
+      {
+        node: common.HelpPanelElement,
       },
     ],
   };

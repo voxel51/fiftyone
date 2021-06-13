@@ -12,7 +12,7 @@ import {
   toggleOptions,
   zoomIn,
   zoomOut,
-} from "./util";
+} from "./actions";
 
 export class NextElement<State extends BaseState> extends BaseElement<
   State,

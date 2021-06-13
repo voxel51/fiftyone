@@ -367,3 +367,26 @@
   );
   background-size: 400% 100%;
 }
+
+.looker-help-panel {
+  position: absolute;
+  left: 50%;
+  width: auto;
+  margin-left: -50%;
+  top: 4rem;
+  padding: 1rem;
+  line-height: 1;
+  opacity: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: row;
+  font-weight: bold;
+
+  color: #eee;
+
+  display: flex;
+  background-color: hsl(210, 11%, 11%);
+  border: 1px solid #191c1f;
+  box-shadow: 0 8px 15px 0 rgba(0, 0, 0, 0.43);
+  border-radius: 3px;
+}

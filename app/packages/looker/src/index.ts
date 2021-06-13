@@ -182,6 +182,7 @@ export abstract class Looker<
       hovering: false,
       hoveringControls: false,
       showControls: false,
+      showHelp: false,
       showOptions: false,
       loaded: false,
       scale: 1,
@@ -352,6 +353,7 @@ const attachReader = (() => {
   const frameCache = new LRU<string, FrameSample>({
     max: MAX_FRAME_CACHE_SIZE,
   });
+  frameCache;
 
   const frameReader = new Worker("./reader.ts");
   let looker = null;
