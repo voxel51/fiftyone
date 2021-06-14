@@ -247,6 +247,7 @@ export abstract class Looker<
     this.state.fontSize = FONT_SIZE / this.state.scale;
     this.state.pointRadius = POINT_RADIUS / this.state.scale;
     this.state.strokeWidth = STROKE_WIDTH / this.state.scale;
+    this.state.config.thumbnail && (this.state.strokeWidth /= 2);
     this.state.textPad = PAD / this.state.scale;
 
     return this.state;
