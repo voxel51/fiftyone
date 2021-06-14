@@ -3,6 +3,37 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+.. _release-notes-v0.10.0:
+
+FiftyOne 0.10.0
+--------------
+*Released June 15, 2021*
+
+App
+^^^
+- Fixed `Color by value` in the grid and expanded sample view
+- Fixed loading datasets and views that contain vector or array data,
+  e.g. logits
+- Fixed loading video datasets in Colab
+- Fixed opening the web App on some Windows machines by ensuring the correct
+  MIME type is set for JavaScript files
+
+Core
+^^^^
+
+Utils
+^^^^^
+- Fixed :meth:`import_from_labelbox() <fiftyone.utils.labelbox.import_from_labelbox>`
+  to use the correct label ID, specifically the "DataRow ID"
+
+Zoo
+^^^
+- Fixed an encoding issue when loading the
+  :ref:`Open Images V6 <dataset-zoo-open-images-v6>` dataset on some Windows
+  machinesa
+
+
+
 .. _release-notes-v0.9.0:
 
 FiftyOne 0.9.0
