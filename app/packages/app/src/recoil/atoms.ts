@@ -138,11 +138,6 @@ export const sampleMetadata = atomFamily<
   },
 });
 
-export const sampleFrames = atomFamily({
-  key: "sampleFrames",
-  default: null,
-});
-
 export const viewCounter = atom({
   key: "viewCounter",
   default: 0,

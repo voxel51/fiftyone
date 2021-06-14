@@ -155,9 +155,6 @@ const useTarget = (field, target) => {
 };
 
 const AttrInfo = ({ field, id, frameNumber, children = null }) => {
-  const attrs = useRecoilValue(
-    selectors.modalLabelAttrs({ field, id, frameNumber })
-  );
   let entries = attrs.filter(([k, v]) => k !== "tags");
   if (!entries || !entries.length) {
     return null;
@@ -275,11 +272,10 @@ const OVERLAY_INFO = {
   Polyline: PolylineInfo,
 };
 
-const TagInfo = ({ field, id, frameNumber }) => {
-  const tags = useRecoilValue(
-    selectors.modalLabelTags({ field, id, frameNumber })
-  );
-  if (!tags.length) return null;
+const TagInfo = ({ tags }: { tags: string[] }) => {
+  if (!tags) {
+    return null;
+  }
   return (
     <TagBlock>
       <ContentItem
@@ -335,12 +331,7 @@ const TooltipInfo = React.memo(
           >
             <ContentHeader key="header">{detail.field}</ContentHeader>
             <Border color={detail.color} id={detail.label._id} />
-            <TagInfo
-              key={"tags"}
-              field={detail.field}
-              id={detail.label._id}
-              frameNumber={detail.frameNumber}
-            />
+            <TagInfo key={"tags"} tags={detail.label.tags} />
             <Component key={"attrs"} info={detail} />
           </TooltipDiv>,
           document.body
@@ -348,43 +339,6 @@ const TooltipInfo = React.memo(
       : null;
   }
 );
-
-const useLookerError = (looker, sampleId, setError) => {
-  const handler = useRecoilCallback(
-    ({ snapshot }) => async () => {
-      const isVideo =
-        (await snapshot.getPromise(selectors.isVideoDataset)) &&
-        (await snapshot.getPromise(selectors.isRootView));
-      const mimeType = await snapshot.getPromise(
-        selectors.sampleMimeType(sampleId)
-      );
-      setError(
-        <>
-          <p>
-            This {isVideo ? "video" : "image"} failed to load. The file may not
-            exist, or its type ({mimeType}) may be unsupported.
-          </p>
-          <p>
-            {isVideo && (
-              <>
-                {" "}
-                You can use{" "}
-                <code>
-                  <ExternalLink href="https://voxel51.com/docs/fiftyone/api/fiftyone.utils.video.html#fiftyone.utils.video.reencode_videos">
-                    fiftyone.utils.video.reencode_videos()
-                  </ExternalLink>
-                </code>{" "}
-                to re-encode videos in a supported format.
-              </>
-            )}
-          </p>
-        </>
-      );
-    },
-    [sampleId]
-  );
-  useEventHandler(looker, "error", handler);
-};
 
 type EventCallback = (event: CustomEvent) => void;
 
@@ -395,7 +349,7 @@ export const defaultLookerOptions = selectorFamily({
     const showConfidence = get(selectors.appConfig).show_confidence;
     const showTooltip = get(selectors.appConfig).show_tooltip;
     const video = get(selectors.isVideoDataset) && !modal ? { loop: true } : {};
-    const imageOrFrame = get(selectors.isPatchesView) ? { zoom: true } : {};
+    const zoom = get(selectors.isPatchesView) ? { zoom: true } : {};
     const colorByLabel = get(atoms.colorByLabel(modal));
     return {
       colorByLabel,
@@ -403,7 +357,7 @@ export const defaultLookerOptions = selectorFamily({
       showConfidence,
       showTooltip,
       ...video,
-      ...imageOrFrame,
+      ...zoom,
     };
   },
 });
@@ -442,25 +396,6 @@ export const useLookerOptionsUpdate = () => {
   );
 };
 
-const requestFrames = (frames, sampleId: string, setFrames) => {
-  if (!frames) {
-    let cancelled = false;
-    return {
-      request: () => {
-        request({
-          type: "sample",
-          args: { sample_id: sampleId },
-          uuid: uuid(),
-        }).then(({ sample }) => {
-          !cancelled && setFrames(sample.frames);
-        });
-      },
-      cancel: () => (cancelled = true),
-    };
-  }
-  return null;
-};
-
 interface LookerProps {
   lookerRef: MutableRefObject<any>;
   modal: boolean;
@@ -483,7 +418,6 @@ const Looker = ({
   style,
 }: LookerProps) => {
   let sample = useRecoilValue(atoms.sample(sampleId));
-  const [frames, setFrames] = useRecoilState(atoms.sampleFrames(sampleId));
   const sampleSrc = useRecoilValue(selectors.sampleSrc(sampleId));
   const options = useRecoilValue(lookerOptions(modal));
   const metadata = useRecoilValue(atoms.sampleMetadata(sampleId));
@@ -491,13 +425,6 @@ const Looker = ({
   const bindMove = useMove((s) => ref.current && ref.current(s));
   const lookerConstructor = useRecoilValue(lookerType(sampleId));
   const initialRef = useRef<boolean>(true);
-
-  if (frames) {
-    sample = {
-      ...sample,
-      frames: frames,
-    };
-  }
 
   const [looker] = useState(
     () =>
@@ -514,7 +441,6 @@ const Looker = ({
           ...options,
           hasNext: Boolean(onNext),
           hasPrevious: Boolean(onPrevious),
-          requestFrames: requestFrames(frames, sampleId, setFrames),
         }
       )
   );

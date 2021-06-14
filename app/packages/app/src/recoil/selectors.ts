@@ -847,17 +847,6 @@ export const sampleIds = selector<{ [key: number]: string }>({
     Object.fromEntries(get(currentSamples).map((id, i) => [i, id])),
 });
 
-export const sampleFramesMap = selectorFamily<any, string>({
-  key: "sampleFramesMap",
-  get: (id) => ({ get }) => {
-    const frameData = get(atoms.sampleFrames(id));
-
-    return frameData
-      ? Object.fromEntries(frameData.map((f) => [f.frame_number, f]))
-      : {};
-  },
-});
-
 export const selectedLoading = selector({
   key: "selectedLoading",
   get: ({ get }) => {
@@ -867,70 +856,6 @@ export const selectedLoading = selector({
       loading = get(atoms.sample(id)) === null;
     });
     return loading;
-  },
-});
-
-export const modalLabelAttrs = selectorFamily<
-  [string, string | null | number][],
-  { field: string; id: string; frameNumber?: number }
->({
-  key: "modalLabelAttrs",
-  get: ({ field, id, frameNumber }) => ({ get }) => {
-    let sample = get(modalSample);
-    const type = get(labelTypesMap)[field];
-    if (get(isVideoDataset) && field.startsWith("frames.")) {
-      field = field.slice("frames.".length);
-      sample = get(sampleFramesMap(sample._id))[frameNumber];
-      if (!sample && frameNumber === 1) {
-        sample = get(modalSample).frames["1"];
-      } else if (!sample) {
-        return [];
-      }
-    }
-
-    let label = sample[field];
-    if (VALID_LIST_TYPES.includes(type)) {
-      label = label[LABEL_LIST[type]].filter((l) => l._id === id)[0];
-    }
-
-    const hidden = HIDDEN_LABEL_ATTRS[label._cls];
-    let attrs = Object.entries(label)
-      .filter((a) => !hidden.includes(a[0]) && !a[0].startsWith("_"))
-      .map(([k, v]) => [
-        k,
-        typeof v === "object" && k !== "tags"
-          ? Array.isArray(v)
-            ? "[...]"
-            : "{...}"
-          : v,
-      ]);
-    if (label.attributes) {
-      attrs = [
-        ...Object.entries(label.attributes).map(([k, v]) => [
-          `attributes.${k}`,
-          v.value,
-        ]),
-        ...attrs,
-      ];
-    }
-    return attrs.sort((a, b) => (a[0] < b[0] ? -1 : 1));
-  },
-});
-
-export const modalLabelTags = selectorFamily<
-  string[],
-  { field: string; id: string; frameNumber?: number }
->({
-  key: "modalLabelTags",
-  get: (params) => ({ get }) => {
-    const all = get(modalLabelAttrs(params));
-    if (all.length) {
-      const tags = get(modalLabelAttrs(params)).filter(
-        ([k, v]) => k === "tags"
-      );
-      return tags && tags[0] && tags[0][1] ? Array.from(tags[0][1]) : [];
-    }
-    return [];
   },
 });
 

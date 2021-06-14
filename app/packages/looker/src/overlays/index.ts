@@ -45,24 +45,18 @@ const DESERIALIZE = {
   Detection: (label) => {
     if (typeof label.mask === "string") {
       label.mask = deserialize(label.mask);
-    } else {
-      label.mask = null;
     }
   },
   Detections: (labels) => {
     labels.detections.forEach((label) => {
       if (typeof label.mask === "string") {
         label.mask = deserialize(label.mask);
-      } else {
-        label.mask = null;
       }
     });
   },
   Segmentation: (label) => {
     if (typeof label.mask === "string") {
       label.mask = deserialize(label.mask);
-    } else {
-      label.mask = null;
     }
   },
 };
@@ -74,7 +68,7 @@ export const processMasks = (sample: { [key: string]: any }): void => {
       continue;
     }
     if (label._cls in DESERIALIZE) {
-      DESERIALIZE[label._cls](field, label, this);
+      // DESERIALIZE[label._cls](label);
     }
   }
 };

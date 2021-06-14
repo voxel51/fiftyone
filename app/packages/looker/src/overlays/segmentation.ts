@@ -15,9 +15,8 @@ interface SegmentationLabel extends BaseLabel {
 
 export default class SegmentationOverlay<State extends BaseState>
   implements Overlay<State> {
-  private static readonly intermediateCanvas: HTMLCanvasElement = document.createElement(
-    "canvas"
-  );
+  private static readonly intermediateCanvas: HTMLCanvasElement =
+    typeof document !== "undefined" ? document.createElement("canvas") : null;
   readonly field: string;
   private readonly label: SegmentationLabel;
   private readonly mask: NumpyResult;

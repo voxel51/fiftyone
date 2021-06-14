@@ -9,7 +9,7 @@ import { sampleModalFilter } from "./Filters/LabelFieldFilters.state";
 import * as selectors from "../recoil/selectors";
 
 const modalSampleOrCurrentFrame = selectorFamily<
-  SerializableParam,
+  {},
   { frameNumber?: number; filterJSON: boolean }
 >({
   key: "modalSampleOrCurrentFrame",
@@ -18,20 +18,6 @@ const modalSampleOrCurrentFrame = selectorFamily<
     const filter = get(sampleModalFilter);
     const op = (obj, prefix = null) => (filterJSON ? filter(obj, prefix) : obj);
     let object = { ...op(sample) };
-    if (get(selectors.isVideoDataset)) {
-      let frame = get(selectors.sampleFramesMap(sample._id))[frameNumber];
-      if (!frame && frameNumber === 1) {
-        frame = sample.frames;
-      }
-      object = {
-        ...object,
-        frames: {
-          frameNumber: Object.fromEntries(
-            Object.entries(op(frame, "frames.")).map(([k, v]) => [k, v])
-          ),
-        },
-      };
-    }
     return Object.fromEntries(
       Object.entries(object).filter(([k]) => !k.startsWith("_"))
     );

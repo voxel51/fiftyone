@@ -31,9 +31,8 @@ export default class DetectionOverlay<
 > extends CoordinateOverlay<State, DetectionLabel> {
   private colorMap: (key: string | number) => string;
   private imageColors: Uint32Array;
-  private static readonly intermediateCanvas: HTMLCanvasElement = document.createElement(
-    "canvas"
-  );
+  private static readonly intermediateCanvas: HTMLCanvasElement =
+    typeof document !== "undefined" ? document.createElement("canvas") : null;
   private labelBoundingBox: BoundingBox;
   private readonly mask: NumpyResult;
   private selected: boolean;

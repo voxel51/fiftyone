@@ -17,7 +17,7 @@ import {
 } from "./elements";
 import { LookerElement } from "./elements/common";
 import processOverlays from "./processOverlays";
-import { loadOverlays } from "./overlays";
+import { loadOverlays, processMasks } from "./overlays";
 import { CONTAINS, Overlay } from "./overlays/base";
 import {
   FrameState,
@@ -280,6 +280,7 @@ export class FrameLooker extends Looker<FrameState> {
   }
 
   loadOverlays() {
+    processMasks(this.sample);
     this.overlays = loadOverlays(this.sample);
   }
 
@@ -320,6 +321,7 @@ export class ImageLooker extends Looker<ImageState> {
   }
 
   loadOverlays() {
+    processMasks(this.sample);
     this.overlays = loadOverlays(this.sample);
   }
 
@@ -356,7 +358,10 @@ const attachReader = (() => {
   });
   frameCache;
 
-  const frameReader = new Worker("./reader.ts");
+  const frameReader = new Worker(new URL("./reader.js", import.meta.url), {
+    name: "reader",
+    type: "module",
+  });
   let looker = null;
 
   return ({
@@ -411,6 +416,10 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
   }
 
   loadOverlays() {
+    processMasks(this.sample);
+    this.sample.frames &&
+      this.sample.frames[1] &&
+      processMasks(this.sample.frames[1]);
     this.sampleOverlays = loadOverlays(
       Object.fromEntries(
         Object.entries(this.sample).filter(
@@ -420,7 +429,7 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
     );
     this.firstFrameOverlays = loadOverlays(
       Object.fromEntries(
-        Object.entries(this.sample.frames[1]).map(([k, v]) => [
+        Object.entries(this.sample?.frames[1] || {}).map(([k, v]) => [
           "frames." + k,
           v,
         ])

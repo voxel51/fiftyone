@@ -97,14 +97,16 @@ export const allTags = selector<{ sample: string[]; label: string[] }>({
       data.type === type && handler(data);
     };
 
-    const promise = new Promise((resolve) => {
-      const listener = wrap(({ sample, label }) => {
-        socket.removeEventListener("message", listener);
-        resolve({ sample: sample.sort(), label: label.sort() });
-      }, "all_tags");
-      socket.addEventListener("message", listener);
-      socket.send(packageMessage("all_tags", {}));
-    });
+    const promise = new Promise<{ sample: string[]; label: string[] }>(
+      (resolve) => {
+        const listener = wrap(({ sample, label }) => {
+          socket.removeEventListener("message", listener);
+          resolve({ sample: sample.sort(), label: label.sort() });
+        }, "all_tags");
+        socket.addEventListener("message", listener);
+        socket.send(packageMessage("all_tags", {}));
+      }
+    );
 
     const result = await promise;
     return result;
@@ -166,72 +168,6 @@ const addLabelToTagsResult = (result, label, label_id = null) => {
   }
 };
 
-export const labelModalTagCounts = selectorFamily<
-  { [key: string]: number },
-  { filtered: boolean; selected: boolean }
->({
-  key: "labelModalTagCounts",
-  get: ({ filtered, selected }) => ({ get }) => {
-    const result = {};
-
-    if (selected && get(selectors.selectedLabelIds).size > 0) {
-      const selected = get(selectors.selectedLabels);
-
-      for (const label_id in selected) {
-        const { sample_id, frame_number, field } = selected[label_id];
-
-        if (get(selectors.isVideoDataset) && frame_number) {
-          const frame = get(selectors.sampleFramesMap(sample_id))[frame_number];
-          if (!frame) {
-            return null;
-          }
-          addLabelToTagsResult(
-            result,
-            frame[field.slice("frames.".length)],
-            label_id
-          );
-        } else {
-          const sample = get(atoms.sample(sample_id));
-          addLabelToTagsResult(result, sample[field], label_id);
-        }
-      }
-    } else {
-      const filter = get(sampleModalFilter);
-      const sample = filtered
-        ? filter(get(selectors.modalSample))
-        : get(selectors.modalSample);
-      if (get(selectors.isVideoDataset)) {
-        const frames = get(atoms.sampleFrames(sample._id));
-
-        if (!frames) {
-          return null;
-        }
-        frames.forEach((frame) => {
-          if (filtered) {
-            frame = filter(frame, "frames.");
-          }
-          for (const field in frame) {
-            if (!frame[field] || !VALID_LABEL_TYPES.includes(frame[field]._cls))
-              continue;
-
-            const label = frame[field];
-            addLabelToTagsResult(result, label);
-          }
-        });
-      }
-
-      for (const field in sample) {
-        if (!sample[field] || !VALID_LABEL_TYPES.includes(sample[field]._cls))
-          continue;
-
-        const label = sample[field];
-        addLabelToTagsResult(result, label);
-      }
-    }
-    return result;
-  },
-});
-
 export const tagStats = selectorFamily<
   { [key: string]: number },
   { modal: boolean; labels: boolean }
@@ -239,16 +175,9 @@ export const tagStats = selectorFamily<
   key: "tagStats",
   get: ({ modal, labels }) => ({ get }) => {
     if (modal && labels) {
-      return {
-        ...Object.fromEntries(get(allTags).label.map((t) => [t, 0])),
-        ...get(labelModalTagCounts({ filtered: true, selected: true })),
-      };
+      return {};
     } else if (modal) {
-      const sample = get(selectors.modalSample);
-      return {
-        ...Object.fromEntries(get(allTags).sample.map((t) => [t, 0])),
-        ...Object.fromEntries(sample.tags.map((t) => [t, 1])),
-      };
+      return {};
     } else if (labels) {
       const types = get(selectors.labelTypesMap);
       const active = [
