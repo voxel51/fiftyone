@@ -39,6 +39,7 @@ def apply_flash_model(
     store_logits=False,
     batch_size=None,
     num_workers=None,
+    **trainer_kwargs,
 ):
     """Applies the given
     :class:`Lightning Flash model <flash:flash.core.model.Task>` to the samples
@@ -58,6 +59,8 @@ def apply_flash_model(
         batch_size (None): an optional batch size to use. If not provided, a
             default batch size is used
         num_workers (None): the number of workers for the data loader to use
+        trainer_kwargs: additional kwargs are passed into the Trainer()
+            constructor
     """
     serializer = _get_serializer(model, confidence_thresh, store_logits)
 
@@ -72,10 +75,12 @@ def apply_flash_model(
         if batch_size is not None:
             kwargs["batch_size"] = batch_size
 
-        datamodule = fi.ImageClassificationData.from_fiftyone_datasets(
+        datamodule = fi.ImageClassificationData.from_fiftyone(
             predict_dataset=samples, **kwargs
         )
-        predictions = flash.Trainer().predict(model, datamodule=datamodule)
+        predictions = flash.Trainer(**trainer_kwargs).predict(
+            model, datamodule=datamodule
+        )
         predictions = list(itertools.chain.from_iterable(predictions))
 
         samples.set_values(label_field, predictions)
@@ -128,7 +133,7 @@ def compute_flash_embeddings(
         if batch_size is not None:
             kwargs["batch_size"] = batch_size
 
-        datamodule = fi.ImageClassificationData.from_fiftyone_datasets(
+        datamodule = fi.ImageClassificationData.from_fiftyone(
             predict_dataset=samples, **kwargs
         )
         embeddings = flash.Trainer().predict(model, datamodule=datamodule)

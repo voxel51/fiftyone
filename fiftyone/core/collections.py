@@ -1222,6 +1222,7 @@ class SampleCollection(object):
         batch_size=None,
         num_workers=None,
         skip_failures=True,
+        **kwargs,
     ):
         """Applies the :class:`FiftyOne model <fiftyone.core.models.Model>` or
         :class:`Lightning Flash model <flash:flash.core.model.Task>` to the
@@ -1258,6 +1259,9 @@ class SampleCollection(object):
                 raising an error if predictions cannot be generated for a
                 sample. Only applicable to :class:`fiftyone.core.models.Model`
                 instances
+            kwargs: additional kwargs used to construct a 
+                :class:`flash:flash.core.trainer.Trainer` for Flash
+                models
         """
         fomo.apply_model(
             self,
@@ -1268,6 +1272,7 @@ class SampleCollection(object):
             batch_size=batch_size,
             num_workers=num_workers,
             skip_failures=skip_failures,
+            **kwargs,
         )
 
     def compute_embeddings(

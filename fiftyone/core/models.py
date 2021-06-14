@@ -55,6 +55,7 @@ def apply_model(
     batch_size=None,
     num_workers=None,
     skip_failures=True,
+    **kwargs,
 ):
     """Applies the :class:`FiftyOne model <Model>` or
     :class:`Lightning Flash model <flash:flash.core.model.Task>` to the samples
@@ -86,6 +87,9 @@ def apply_model(
         skip_failures (True): whether to gracefully continue without raising an
             error if predictions cannot be generated for a sample. Only
             applicable to :class:`Model` instances
+        kwargs: additional kwargs used to construct a 
+            :class:`flash:flash.core.trainer.Trainer` for Flash
+            models
     """
     if _is_flash_model(model):
         return fouf.apply_flash_model(
@@ -96,6 +100,7 @@ def apply_model(
             store_logits=store_logits,
             batch_size=batch_size,
             num_workers=num_workers,
+            **kwargs,
         )
 
     if not isinstance(model, Model):
