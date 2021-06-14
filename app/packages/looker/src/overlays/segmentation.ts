@@ -19,7 +19,6 @@ export default class SegmentationOverlay<State extends BaseState>
     typeof document !== "undefined" ? document.createElement("canvas") : null;
   readonly field: string;
   private readonly label: SegmentationLabel;
-  private readonly mask: NumpyResult;
   private targets: Uint32Array;
   private imageColors: Uint32Array;
   private colorMap: (key: string | number) => string;
@@ -42,7 +41,7 @@ export default class SegmentationOverlay<State extends BaseState>
   }
 
   draw(ctx: CanvasRenderingContext2D, state: Readonly<State>): void {
-    const [maskHeight, maskWidth] = this.mask.shape;
+    const [maskHeight, maskWidth] = this.label.mask.shape;
 
     const maskContext = SegmentationOverlay.intermediateCanvas.getContext("2d");
     ensureCanvasSize(SegmentationOverlay.intermediateCanvas, [
@@ -64,9 +63,9 @@ export default class SegmentationOverlay<State extends BaseState>
       this.selected = selected;
       const colors = getSegmentationColorArray(this.colorMap, selected);
 
-      for (let i = 0; i < this.mask.data.length; i++) {
-        if (this.mask.data[i]) {
-          maskImageRaw[i] = colors[this.mask.data[i]];
+      for (let i = 0; i < this.label.mask.data.length; i++) {
+        if (this.label.mask.data[i]) {
+          maskImageRaw[i] = colors[this.label.mask.data[i]];
         }
       }
       this.imageColors = imageColors;
@@ -120,7 +119,7 @@ export default class SegmentationOverlay<State extends BaseState>
 
   private getIndex(state: Readonly<State>): number {
     const [sx, sy] = this.getMaskCoordinates(state);
-    return this.mask.shape[1] * sy + sx;
+    return this.label.mask.shape[1] * sy + sx;
   }
 
   private getMaskCoordinates({
@@ -129,7 +128,7 @@ export default class SegmentationOverlay<State extends BaseState>
       dimensions: [mw, mh],
     },
   }: Readonly<State>): Coordinates {
-    const [h, w] = this.mask.shape;
+    const [h, w] = this.label.mask.shape;
     const sx = Math.floor(x * (w / mw));
     const sy = Math.floor(y * (h / mh));
     return [sx, sy];

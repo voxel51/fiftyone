@@ -150,7 +150,7 @@ export default class DetectionOverlay<
   }
 
   private drawMask(ctx: CanvasRenderingContext2D, state: Readonly<State>) {
-    const [maskHeight, maskWidth] = this.mask.shape;
+    const [maskHeight, maskWidth] = this.label.mask.shape;
     const maskContext = DetectionOverlay.intermediateCanvas.getContext("2d");
     ensureCanvasSize(DetectionOverlay.intermediateCanvas, [
       maskWidth,
@@ -173,8 +173,8 @@ export default class DetectionOverlay<
         this.getColor(state),
         selected ? SELECTED_MASK_ALPHA : MASK_ALPHA
       );
-      for (let i = 0; i < this.mask.data.length; i++) {
-        if (this.mask.data[i]) {
+      for (let i = 0; i < this.label.mask.data.length; i++) {
+        if (this.label.mask.data[i]) {
           maskImageRaw[i] = bitColor;
         }
       }

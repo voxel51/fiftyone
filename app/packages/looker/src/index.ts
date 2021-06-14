@@ -161,8 +161,7 @@ export abstract class Looker<
   updateSample(sample: Sample) {
     const worker = createWorker();
     worker.onmessage = ({ data: { sample } }) => {
-      this.sample = sample;
-      this.loadOverlays();
+      this.loadOverlays(sample);
       this.updater({ overlaysPrepared: true });
       worker.onmessage = null;
     };
@@ -175,7 +174,7 @@ export abstract class Looker<
 
   protected abstract getElements(): LookerElement<State>;
 
-  protected abstract loadOverlays();
+  protected abstract loadOverlays(sample: BaseSample);
 
   protected abstract pluckOverlays(
     state: State,
@@ -301,9 +300,8 @@ export class FrameLooker extends Looker<FrameState> {
     return DEFAULT_FRAME_OPTIONS;
   }
 
-  loadOverlays() {
-    processMasks(this.sample);
-    this.overlays = loadOverlays(this.sample);
+  loadOverlays(sample) {
+    this.overlays = loadOverlays(sample);
   }
 
   pluckOverlays() {
@@ -347,9 +345,8 @@ export class ImageLooker extends Looker<ImageState> {
     return DEFAULT_IMAGE_OPTIONS;
   }
 
-  loadOverlays() {
-    processMasks(this.sample);
-    this.overlays = loadOverlays(this.sample);
+  loadOverlays(sample) {
+    this.overlays = loadOverlays(sample);
   }
 
   pluckOverlays() {
@@ -441,21 +438,15 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
     };
   }
 
-  loadOverlays() {
-    processMasks(this.sample);
-    this.sample.frames &&
-      this.sample.frames[1] &&
-      processMasks(this.sample.frames[1]);
+  loadOverlays(sample) {
     this.sampleOverlays = loadOverlays(
       Object.fromEntries(
-        Object.entries(this.sample).filter(
-          ([fieldName]) => fieldName !== "frames"
-        )
+        Object.entries(sample).filter(([fieldName]) => fieldName !== "frames")
       )
     );
     this.firstFrameOverlays = loadOverlays(
       Object.fromEntries(
-        Object.entries(this.sample?.frames[1] || {}).map(([k, v]) => [
+        Object.entries(sample?.frames[1] || {}).map(([k, v]) => [
           "frames." + k,
           v,
         ])

@@ -135,7 +135,7 @@ interface ProcessSample {
 
 type ProcessSampleMethod = ReaderMethod & ProcessSample;
 
-const processSample = ({ sample, origin }: ProcessSample) => {
+const processSample = ({ sample }: ProcessSample) => {
   processMasks(sample);
   sample.frames && sample.frames[1] && processMasks(sample.frames[1]);
 

@@ -258,6 +258,7 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
       seeking,
       playing,
       loaded,
+      buffering,
     } = state;
     if (this.src !== src) {
       this.src = src;
@@ -266,10 +267,10 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
     if (this.frameNumber !== frameNumber) {
       this.element.currentTime = getTime(frameNumber, frameRate);
     }
-    if (seeking && !this.element.paused) {
+    if ((seeking || buffering) && !this.element.paused) {
       this.element.pause();
     }
-    if (loaded && playing && !seeking && this.element.paused) {
+    if (loaded && playing && !seeking && !buffering && this.element.paused) {
       this.element.play();
     }
     if (loaded && !playing && !this.element.paused) {
