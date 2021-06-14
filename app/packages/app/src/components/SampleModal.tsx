@@ -322,16 +322,18 @@ const SampleModal = ({ onClose, sampleId }: Props, ref) => {
             Fields
             <span className="push-right" />
           </h2>
-          <Suspense fallback={<Loading />}>
-            <FieldsSidebar
-              modal={true}
-              style={{
-                overflowY: "auto",
-                overflowX: "hidden",
-                height: "auto",
-              }}
-            />
-          </Suspense>
+          {false && (
+            <Suspense fallback={<Loading />}>
+              <FieldsSidebar
+                modal={true}
+                style={{
+                  overflowY: "auto",
+                  overflowX: "hidden",
+                  height: "auto",
+                }}
+              />
+            </Suspense>
+          )}
         </div>
       </div>
     </Container>

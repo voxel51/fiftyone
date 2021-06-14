@@ -86,19 +86,27 @@ interface FramesResult {
   range: FrameRange;
 }
 
+interface ReaderMethod {
+  method: string;
+}
+
+interface SetReader {
+  origin: string;
+  sampleId: string;
+  frameNumber: number;
+  frameCount: number;
+  force?: boolean;
+}
+
+type SetReaderMethod = ReaderMethod & SetReader;
+
 const setReader = ({
   origin,
   sampleId,
   frameNumber,
   frameCount,
   force,
-}: {
-  origin: string;
-  sampleId: string;
-  frameNumber: number;
-  frameCount: number;
-  force: boolean;
-}) => {
+}: SetReader) => {
   currentOrigin = origin;
   if (!reader || force || reader.sampleId !== sampleId) {
     reader.stream && reader.stream.cancel();
@@ -115,4 +123,39 @@ const setReader = ({
   while (!stream.closed) {}
 };
 
-onmessage = (message: MessageEvent) => setReader(message.data);
+interface ProcessSample {
+  origin: string;
+  sample: {
+    [key: string]: object;
+    frames?: {
+      1: object;
+    };
+  };
+}
+
+type ProcessSampleMethod = ReaderMethod & ProcessSample;
+
+const processSample = ({ sample, origin }: ProcessSample) => {
+  processMasks(sample);
+  sample.frames && sample.frames[1] && processMasks(sample.frames[1]);
+
+  postMessage({
+    method: "processSample",
+    sample,
+  });
+};
+
+type Method = SetReaderMethod | ProcessSampleMethod;
+
+onmessage = ({ data: { method, ...args } }: MessageEvent<Method>) => {
+  switch (method) {
+    case "setReader":
+      setReader(args as SetReader);
+      return;
+    case "processSample":
+      processSample(args as ProcessSample);
+      return;
+    default:
+      throw new Error("unknown method");
+  }
+};

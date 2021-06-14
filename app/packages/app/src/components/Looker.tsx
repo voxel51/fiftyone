@@ -1,17 +1,10 @@
 import React, { useState, useRef, MutableRefObject, useEffect } from "react";
 import ReactDOM from "react-dom";
 import styled from "styled-components";
-import {
-  selectorFamily,
-  useRecoilValue,
-  useRecoilCallback,
-  useRecoilState,
-} from "recoil";
+import { selectorFamily, useRecoilValue, useRecoilCallback } from "recoil";
 import { animated, useSpring } from "react-spring";
-import { v4 as uuid } from "uuid";
 
 import * as labelAtoms from "./Filters/utils";
-import ExternalLink from "./ExternalLink";
 import { ContentDiv, ContentHeader } from "./utils";
 import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
 import { useEventHandler } from "../utils/hooks";
@@ -25,7 +18,6 @@ import {
   VideoOptions,
 } from "@fiftyone/looker/src/state";
 import { useMove } from "react-use-gesture";
-import { request } from "../utils/socket";
 
 type LookerTypes = typeof FrameLooker | typeof ImageLooker | typeof VideoLooker;
 

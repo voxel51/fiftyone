@@ -68,7 +68,7 @@ export const processMasks = (sample: { [key: string]: any }): void => {
       continue;
     }
     if (label._cls in DESERIALIZE) {
-      // DESERIALIZE[label._cls](label);
+      DESERIALIZE[label._cls](label);
     }
   }
 };

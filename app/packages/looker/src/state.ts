@@ -117,6 +117,7 @@ export interface BaseState {
   relativeCoordinates: Coordinates;
   mouseIsOnOverlay: boolean;
   showHelp: boolean;
+  overlaysPrepared: boolean;
 }
 
 export interface FrameState extends BaseState {

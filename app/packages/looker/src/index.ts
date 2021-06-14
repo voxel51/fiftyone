@@ -32,7 +32,13 @@ import {
   Optional,
   BaseSample,
 } from "./state";
-import { getElementBBox, getFitRect, mergeUpdates, snapBox } from "./util";
+import {
+  createWorker,
+  getElementBBox,
+  getFitRect,
+  mergeUpdates,
+  snapBox,
+} from "./util";
 import { zoomToContent } from "./zoom";
 
 import "./style.css";
@@ -59,12 +65,12 @@ export abstract class Looker<
     config: State["config"],
     options: Optional<State["options"]>
   ) {
-    this.sample = sample;
+    this.updateSample(sample);
     this.eventTarget = new EventTarget();
     this.updater = this.makeUpdate();
     this.state = this.getInitialState(config, options);
-    this.loadOverlays();
-    this.pluckedOverlays = this.pluckOverlays(this.state, this.state);
+    this.pluckedOverlays = [];
+    this.currentOverlays = [];
     this.lookerElement = this.getElements();
     this.canvas = this.lookerElement.children[1].element as HTMLCanvasElement;
     this.resizeObserver = new ResizeObserver(() =>
@@ -153,8 +159,18 @@ export abstract class Looker<
   }
 
   updateSample(sample: Sample) {
-    this.sample = sample;
-    this.loadOverlays();
+    const worker = createWorker();
+    worker.onmessage = ({ data: { sample } }) => {
+      this.sample = sample;
+      this.loadOverlays();
+      this.updater({ overlaysPrepared: true });
+      worker.onmessage = null;
+    };
+    worker.postMessage({
+      method: "processSample",
+      origin: window.location.origin,
+      sample,
+    });
   }
 
   protected abstract getElements(): LookerElement<State>;
@@ -202,6 +218,7 @@ export abstract class Looker<
       fullscreen: false,
       pointRadius: POINT_RADIUS,
       mouseIsOnOverlay: false,
+      overlaysPrepared: false,
     };
   }
 
@@ -257,6 +274,11 @@ export abstract class Looker<
 export class FrameLooker extends Looker<FrameState> {
   private overlays: Overlay<FrameState>[];
 
+  constructor(sample, config, options) {
+    super(sample, config, options);
+    this.overlays = [];
+  }
+
   getElements() {
     return getFrameElements(this.updater, this.getDispatchEvent());
   }
@@ -297,6 +319,11 @@ export class FrameLooker extends Looker<FrameState> {
 
 export class ImageLooker extends Looker<ImageState> {
   private overlays: Overlay<ImageState>[];
+
+  constructor(sample, config, options) {
+    super(sample, config, options);
+    this.overlays = [];
+  }
 
   getElements() {
     return getImageElements(this.updater, this.getDispatchEvent());
@@ -358,10 +385,7 @@ const attachReader = (() => {
   });
   frameCache;
 
-  const frameReader = new Worker(new URL("./reader.js", import.meta.url), {
-    name: "reader",
-    type: "module",
-  });
+  const frameReader = createWorker();
   let looker = null;
 
   return ({
@@ -386,6 +410,8 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
 
   constructor(sample, config, options) {
     super(sample, config, options);
+    this.sampleOverlays = [];
+    this.frameOverlays = new Map();
   }
 
   get frameNumber() {
@@ -435,7 +461,6 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
         ])
       )
     );
-    this.frameOverlays = new Map();
     this.frameOverlays.set(1, new WeakRef(this.firstFrameOverlays));
   }
 

@@ -48,8 +48,18 @@ export class LookerElement<State extends BaseState> extends BaseElement<
     return element;
   }
 
-  renderSelf({ fullscreen, loaded, hovering, config: { thumbnail } }) {
-    if (loaded && this.element.classList.contains("loading")) {
+  renderSelf({
+    fullscreen,
+    loaded,
+    overlaysPrepared,
+    hovering,
+    config: { thumbnail },
+  }) {
+    if (
+      loaded &&
+      overlaysPrepared &&
+      this.element.classList.contains("loading")
+    ) {
       this.element.classList.remove("loading");
     }
     if (!thumbnail && hovering && this.element !== document.activeElement) {

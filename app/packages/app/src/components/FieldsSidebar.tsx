@@ -29,7 +29,6 @@ import * as filtering from "./Filters/filtered";
 import CheckboxGrid from "./CheckboxGroup";
 import { Entry } from "./CheckboxGroup";
 import * as atoms from "../recoil/atoms";
-import { labelModalTagCounts } from "./Actions/utils";
 import * as fieldAtoms from "./Filters/utils";
 import * as labelAtoms from "./Filters/LabelFieldFilters.state";
 import * as selectors from "../recoil/selectors";
@@ -362,12 +361,10 @@ const useLabelTags = (modal, countAtom) => {
 
 const LabelTagsCell = ({ modal }: TagsCellProps) => {
   const colorMap = useRecoilValue(selectors.colorMap(modal));
-  const [subCountAtom, countAtom] = modal
-    ? [
-        labelModalTagCounts({ filtered: true, selected: false }),
-        labelModalTagCounts({ filtered: false, selected: false }),
-      ]
-    : [selectors.filteredLabelTagSampleCounts, selectors.labelTagSampleCounts];
+  const [subCountAtom, countAtom] = [
+    selectors.filteredLabelTagSampleCounts,
+    selectors.labelTagSampleCounts,
+  ];
 
   const {
     tags,

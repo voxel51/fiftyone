@@ -376,3 +376,10 @@ export const mergeUpdates = <State extends BaseState>(
   };
   return mergeWith(merger, state, updates);
 };
+
+export const createWorker = (): Worker => {
+  return new Worker(new URL("./worker.js", import.meta.url), {
+    name: "reader",
+    type: "module",
+  });
+};
