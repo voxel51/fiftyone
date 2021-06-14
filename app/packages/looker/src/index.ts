@@ -365,9 +365,7 @@ const attachReader = (() => {
     frameCount,
     force,
   }: AttachReaderOptions) => {
-    frameReader.onmessage = (event: MessageEvent) => {
-      console.log(event.data);
-    };
+    frameReader.onmessage = (event: MessageEvent) => {};
     frameReader.postMessage({
       sampleId,
       frameCount,
@@ -378,6 +376,7 @@ const attachReader = (() => {
 export class VideoLooker extends Looker<VideoState, VideoSample> {
   private sampleOverlays: Overlay<VideoState>[];
   private frameOverlays: Map<number, WeakRef<Overlay<VideoState>[]>>;
+  private firstFrameOverlays: Overlay<VideoState>[];
 
   constructor(sample, config, options) {
     super(sample, config, options);
@@ -414,19 +413,25 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
     this.sampleOverlays = loadOverlays(
       Object.fromEntries(
         Object.entries(this.sample).filter(
-          ([fieldName]) => fieldName !== "frames."
+          ([fieldName]) => fieldName !== "frames"
         )
       )
     );
-    this.frameOverlays[1] = loadOverlays(this.sample.frames[1]);
+    this.firstFrameOverlays = loadOverlays(
+      Object.fromEntries(
+        Object.entries(this.sample.frames[1]).map(([k, v]) => [
+          "frames." + k,
+          v,
+        ])
+      )
+    );
+    this.frameOverlays = new Map();
+    this.frameOverlays.set(1, new WeakRef(this.firstFrameOverlays));
   }
 
   pluckOverlays(state: VideoState, prevState: Readonly<VideoState>) {
     const overlays = this.sampleOverlays;
-    if (
-      state.frameNumber in this.frameOverlays &&
-      this.frameOverlays.has(state.frameNumber)
-    ) {
+    if (this.frameOverlays.has(state.frameNumber)) {
       const frame = this.frameOverlays.get(state.frameNumber).deref();
 
       if (frame !== undefined) {

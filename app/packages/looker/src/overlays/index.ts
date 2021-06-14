@@ -67,9 +67,7 @@ const DESERIALIZE = {
   },
 };
 
-export const processMasks = <State extends BaseState>(sample: {
-  [key: string]: any;
-}): Overlay<State>[] => {
+export const processMasks = (sample: { [key: string]: any }): void => {
   for (const field in sample) {
     const label = sample[field];
     if (!label) {
@@ -79,8 +77,6 @@ export const processMasks = <State extends BaseState>(sample: {
       DESERIALIZE[label._cls](field, label, this);
     }
   }
-
-  return overlays;
 };
 
 export const loadOverlays = <State extends BaseState>(sample: {
