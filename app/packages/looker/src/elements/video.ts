@@ -4,6 +4,7 @@
 
 import { VideoState } from "../state";
 import { BaseElement, Events } from "./base";
+import { VIDEO_SHORTCUTS } from "./common/actions";
 import {
   getFrameNumber,
   getFrameString,
@@ -282,47 +283,10 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
 export function withVideoLookerEvents(): () => Events<VideoState> {
   return function () {
     return {
-      keydown: ({ event, update }) => {
-        if (event.key === " ") {
-          update(({ playing, config: { thumbnail } }) => {
-            return thumbnail
-              ? {}
-              : {
-                  playing: !playing,
-                };
-          });
-        }
-
-        if (event.key === "n") {
-          update(
-            ({
-              frameNumber,
-              duration,
-              locked,
-              fragment,
-              playing,
-              config: { frameRate },
-            }) => {
-              if (!playing) {
-                return {};
-              }
-              const limit =
-                locked && fragment
-                  ? fragment[1]
-                  : getFrameNumber(duration, duration, frameRate);
-              return { frameNumber: Math.max(limit, frameNumber + 1) };
-            }
-          );
-        }
-
-        if (event.key === "p") {
-          update(({ frameNumber, locked, fragment, playing }) => {
-            if (!playing) {
-              return {};
-            }
-            const limit = locked && fragment ? fragment[0] : 1;
-            return { frameNumber: Math.max(limit, frameNumber - 1) };
-          });
+      keydown: ({ event, update, dispatchEvent }) => {
+        const e = event as KeyboardEvent;
+        if (e.key in VIDEO_SHORTCUTS) {
+          VIDEO_SHORTCUTS[e.key].action(update, dispatchEvent);
         }
       },
       mouseenter: ({ update }) => {

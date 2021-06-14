@@ -6,10 +6,12 @@ import { BaseState } from "../../state";
 import { BaseElement, Events } from "../base";
 import { ICONS } from "../util";
 import {
+  controls,
+  fullscreen,
+  help,
   next,
   previous,
-  toggleHelp,
-  toggleOptions,
+  settings,
   zoomIn,
   zoomOut,
 } from "./actions";
@@ -21,10 +23,10 @@ export class NextElement<State extends BaseState> extends BaseElement<
   private showControls: boolean;
   getEvents(): Events<State> {
     return {
-      click: ({ event, dispatchEvent }) => {
+      click: ({ update, event, dispatchEvent }) => {
         event.stopPropagation();
         event.preventDefault();
-        next(dispatchEvent);
+        next.action(update, dispatchEvent);
       },
       mouseenter: ({ update }) => {
         update({ hoveringControls: true });
@@ -74,10 +76,10 @@ export class PreviousElement<State extends BaseState> extends BaseElement<
   private showControls: boolean;
   getEvents(): Events<State> {
     return {
-      click: ({ event, dispatchEvent }) => {
+      click: ({ update, event, dispatchEvent }) => {
         event.stopPropagation();
         event.preventDefault();
-        previous(dispatchEvent);
+        previous.action(update, dispatchEvent);
       },
       mouseenter: ({ update }) => {
         update({ hoveringControls: true });
@@ -127,13 +129,9 @@ export class ControlsElement<State extends BaseState> extends BaseElement<
 
   getEvents(): Events<State> {
     return {
-      click: ({ event, update }) => {
+      click: ({ event, update, dispatchEvent }) => {
         event.stopPropagation();
-        update({
-          showControls: false,
-          disableControls: true,
-          showOptions: false,
-        });
+        controls.action(update, dispatchEvent);
       },
       mouseenter: ({ update }) => {
         update({ hoveringControls: true });
@@ -181,10 +179,10 @@ export class FullscreenButtonElement<
 
   getEvents(): Events<State> {
     return {
-      click: ({ event, update }) => {
+      click: ({ event, update, dispatchEvent }) => {
         event.stopPropagation();
         event.preventDefault();
-        update(({ fullscreen }) => ({ fullscreen: !fullscreen }));
+        fullscreen.action(update, dispatchEvent);
       },
     };
   }
@@ -212,10 +210,10 @@ export class PlusElement<State extends BaseState> extends BaseElement<
 > {
   getEvents(): Events<State> {
     return {
-      click: ({ event, update }) => {
+      click: ({ event, update, dispatchEvent }) => {
         event.stopPropagation();
         event.preventDefault();
-        zoomIn(update);
+        zoomIn.action(update, dispatchEvent);
       },
     };
   }
@@ -241,10 +239,10 @@ export class MinusElement<State extends BaseState> extends BaseElement<
 > {
   getEvents(): Events<State> {
     return {
-      click: ({ event, update }) => {
+      click: ({ event, update, dispatchEvent }) => {
         event.stopPropagation();
         event.preventDefault();
-        zoomOut(update);
+        zoomOut.action(update, dispatchEvent);
       },
     };
   }
@@ -269,10 +267,10 @@ export class HelpButtonElement<State extends BaseState> extends BaseElement<
 > {
   getEvents(): Events<State> {
     return {
-      click: ({ event, update }) => {
+      click: ({ event, update, dispatchEvent }) => {
         event.stopPropagation();
         event.preventDefault();
-        toggleHelp(update);
+        help.action(update, dispatchEvent);
       },
     };
   }
@@ -297,10 +295,10 @@ export class OptionsButtonElement<State extends BaseState> extends BaseElement<
 > {
   getEvents(): Events<State> {
     return {
-      click: ({ event, update }) => {
+      click: ({ event, update, dispatchEvent }) => {
         event.stopPropagation();
         event.preventDefault();
-        toggleOptions(update);
+        settings.action(update, dispatchEvent);
       },
     };
   }

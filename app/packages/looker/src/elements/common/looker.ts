@@ -4,13 +4,7 @@
 
 import { BaseState } from "../../state";
 import { BaseElement, Events } from "../base";
-import {
-  dispatchTooltipEvent,
-  toggleFullscreen,
-  toggleOptions,
-  zoomIn,
-  zoomOut,
-} from "./util";
+import { COMMON_SHORTCUTS } from "./actions";
 
 export class LookerElement<State extends BaseState> extends BaseElement<
   State,
@@ -20,34 +14,8 @@ export class LookerElement<State extends BaseState> extends BaseElement<
     return {
       keydown: ({ event, update, dispatchEvent }) => {
         const e = event as KeyboardEvent;
-        switch (e.key) {
-          case "-":
-            zoomOut(update);
-            return;
-          case "+":
-            zoomIn(update);
-            return;
-          case "ArrowDown":
-            update(
-              ({ rotate }) => ({ rotate: rotate + 1 }),
-              dispatchTooltipEvent(dispatchEvent)
-            );
-            return;
-          case "ArrowUp":
-            update(
-              ({ rotate }) => ({ rotate: Math.max(rotate - 1, 0) }),
-              dispatchTooltipEvent(dispatchEvent)
-            );
-            return;
-          case "Escape":
-            update({ showControls: false, showOptions: false });
-            return;
-          case "m":
-            toggleFullscreen(update);
-            return;
-          case "s":
-            toggleOptions(update);
-            return;
+        if (e.key in COMMON_SHORTCUTS) {
+          COMMON_SHORTCUTS[e.key].action(update, dispatchEvent);
         }
       },
       mouseenter: ({ update, dispatchEvent }) => {
