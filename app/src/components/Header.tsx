@@ -443,7 +443,7 @@ const TshirtForm = () => {
       />
       <Input
         key="helping"
-        placeholder={"Is FiftyOne helping your work?"}
+        placeholder={"How is FiftyOne helping your work?"}
         value={formState.helping ?? ""}
         onChange={setFormValue("helping")}
         maxLength={100}
