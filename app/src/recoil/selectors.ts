@@ -8,8 +8,6 @@ import {
   VALID_LABEL_TYPES,
   VALID_SCALAR_TYPES,
   makeLabelNameGroups,
-  labelTypeHasColor,
-  AGGS,
   VALID_LIST_TYPES,
   HIDDEN_LABEL_ATTRS,
   LABEL_LIST,

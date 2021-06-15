@@ -484,3 +484,44 @@
 .list-inline > li:not(:last-child) {
   padding-right: 2rem;
 }
+
+.button-primary {
+  background: var(--color-primary);
+  color: var(--text-primary-on-dark) !important;
+  border-color: var(--color-primary);
+  border-radius: 3px;
+  border-width: 2px;
+  border-style: solid;
+  cursor: pointer;
+
+  font-weight: 600;
+  font-size: 14px;
+
+  padding: 0.4rem 1.2em;
+}
+
+.button-primary:hover {
+  background: var(--color-primary-muted);
+  border-color: var(--color-primary-muted);
+  text-decoration: none;
+}
+
+.button-secondary {
+  color: var(--color-primary) !important;
+  border-color: var(--color-primary);
+  border-radius: 3px;
+  border-width: 2px; /* XXX ask */
+  border-style: solid;
+  cursor: pointer;
+  padding: 0.4em 1.4em;
+  font-size: 14px;
+
+  font-weight: 600; /* XXX ask */
+}
+
+.button-secondary:hover {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: var(--text-primary-on-dark) !important;
+  text-decoration: none;
+}
