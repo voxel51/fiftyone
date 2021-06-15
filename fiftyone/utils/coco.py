@@ -740,7 +740,7 @@ class COCOObject(object):
             iscrowd = int(detection.get_attribute_value("iscrowd"))
         else:
             try:
-                iscrowd = detection["iscrowd"]
+                iscrowd = int(detection["iscrowd"])
             except KeyError:
                 iscrowd = None
 
