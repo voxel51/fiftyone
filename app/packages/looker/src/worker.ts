@@ -4,146 +4,19 @@
 
 import { processMasks } from "./overlays";
 
+/** GLOBALS */
+
 const HIGH_WATER_MARK = 6;
 const CHUNK_SIZE = 30;
 
-interface FrameReader {
-  chunkSize: number;
-  frameNumber: number;
-  sampleId: string;
-  stream: ReadableStream<FrameChunk>;
-}
+let stream: FrameStream = null;
+let streamId: string = null;
 
-interface FrameChunk {
-  frames: any[];
-  buffers: ArrayBuffer[];
-}
-
-const createReader = ({
-  chunkSize,
-  frameCount,
-  frameNumber,
-  url,
-  sampleId,
-}: {
-  chunkSize: number;
-  frameCount: number;
-  frameNumber: number;
-  url: string;
-  sampleId: string;
-}): FrameReader => {
-  let cancelled = false;
-  return {
-    sampleId,
-    frameNumber,
-    chunkSize,
-    stream: new ReadableStream<FrameChunk>(
-      {
-        pull: (controller: ReadableStreamDefaultController) => {
-          if (frameNumber >= frameCount) {
-            controller.close();
-            return Promise.resolve();
-          }
-
-          let nextFrameChunkStart = frameNumber + chunkSize;
-          return new Promise((resolve, reject) => {
-            fetch(
-              url +
-                new URLSearchParams({
-                  frameNumber: frameNumber.toString(),
-                  numFrames: chunkSize.toString(),
-                  sampleId,
-                })
-            )
-              .then((response: Response) => response.json())
-              .then((data) => {
-                let buffers = [];
-                data.frames.forEach((frame) => {
-                  buffers = [...buffers, processMasks(frame)];
-                });
-                controller.enqueue({ frames: data.frames, buffers });
-                frameNumber = nextFrameChunkStart;
-                resolve();
-              })
-              .catch((error) => {
-                reject(error);
-              });
-          });
-        },
-        cancel: (reason) => {
-          cancelled = true;
-        },
-      },
-      new CountQueuingStrategy({ highWaterMark: HIGH_WATER_MARK })
-    ),
-  };
-};
-
-let reader: FrameReader = null;
-interface Frames {
-  [key: number]: any;
-}
-
-interface FramesResult {
-  frames: any[];
-  end: number;
-}
+/** END GLOBALS */
 
 interface ReaderMethod {
   method: string;
 }
-
-interface SetReader {
-  origin: string;
-  sampleId: string;
-  frameNumber: number;
-  frameCount: number;
-  force?: boolean;
-  uuid: string;
-}
-
-type SetReaderMethod = ReaderMethod & SetReader;
-
-const setReader = ({
-  origin,
-  sampleId,
-  frameNumber,
-  frameCount,
-  force,
-}: SetReader) => {
-  if (!reader || force || reader.sampleId !== sampleId) {
-    reader.stream && reader.stream.cancel();
-    reader = createReader({
-      chunkSize: CHUNK_SIZE,
-      frameCount: frameCount,
-      frameNumber: frameNumber,
-      sampleId,
-      url: `${origin}/frames`,
-    });
-  }
-
-  const stream = reader.stream.getReader();
-  const sendChunk = ({
-    done,
-    value,
-  }: {
-    done: boolean;
-    value?: FrameChunk;
-  }) => {
-    if (value) {
-      postMessage(
-        {
-          method: "frameChunk",
-          frames: value.frames,
-        },
-        buffers
-      );
-    }
-    !done && stream.read().then(sendChunk);
-  };
-
-  stream.read().then(sendChunk);
-};
 
 interface ProcessSample {
   origin: string;
@@ -176,15 +49,154 @@ const processSample = ({ sample, uuid }: ProcessSample) => {
   );
 };
 
-type Method = SetReaderMethod | ProcessSampleMethod;
+interface FrameStream {
+  chunkSize: number;
+  frameNumber: number;
+  sampleId: string;
+  reader: ReadableStreamDefaultReader<FrameChunkResponse>;
+  cancel: () => void;
+}
+
+interface FrameChunkResponse {
+  frames: any[];
+}
+
+const createReader = ({
+  chunkSize,
+  frameCount,
+  frameNumber,
+  url,
+  sampleId,
+}: {
+  chunkSize: number;
+  frameCount: number;
+  frameNumber: number;
+  url: string;
+  sampleId: string;
+}): FrameStream => {
+  let cancelled = false;
+
+  const stream = new ReadableStream<FrameChunkResponse>(
+    {
+      pull: (controller: ReadableStreamDefaultController) => {
+        if (frameNumber >= frameCount || cancelled) {
+          controller.close();
+          return Promise.resolve();
+        }
+
+        let nextFrameChunkStart = frameNumber + chunkSize;
+        return new Promise((resolve, reject) => {
+          fetch(
+            url +
+              new URLSearchParams({
+                frameNumber: frameNumber.toString(),
+                numFrames: chunkSize.toString(),
+                frameCount: frameCount.toString(),
+                sampleId,
+              })
+          )
+            .then((response: Response) => response.json())
+            .then((data) => {
+              controller.enqueue({ frames: data.frames });
+              frameNumber = nextFrameChunkStart;
+              resolve();
+            })
+            .catch((error) => {
+              reject(error);
+            });
+        });
+      },
+      cancel: () => {
+        cancelled = true;
+      },
+    },
+    new CountQueuingStrategy({ highWaterMark: HIGH_WATER_MARK })
+  );
+  return {
+    sampleId,
+    frameNumber,
+    chunkSize,
+    reader: stream.getReader(),
+    cancel: () => stream.cancel(),
+  };
+};
+
+const sendChunk = ({
+  done,
+  value,
+}: {
+  done: boolean;
+  value?: FrameChunkResponse;
+}) => {
+  if (value) {
+    let buffers: ArrayBuffer[] = [];
+    value.frames.forEach((frame) => {
+      buffers = [...buffers, ...processMasks(frame)];
+    });
+    postMessage(
+      {
+        method: "frameChunk",
+        frames: value.frames,
+      },
+      // @ts-ignore
+      buffers
+    );
+  }
+  !done && stream.reader.read().then(sendChunk);
+};
+
+interface RequestFrameChunk {
+  id: string;
+}
+
+const requestFrameChunk = ({ id }) => {
+  if (id === streamId && !stream.reader.closed) {
+    stream.reader.read().then(sendChunk);
+  }
+};
+
+interface SetStream {
+  origin: string;
+  sampleId: string;
+  frameNumber: number;
+  frameCount: number;
+  id: string;
+}
+
+type SetStreamMethod = ReaderMethod & SetStream;
+
+const setStream = ({
+  origin,
+  sampleId,
+  frameNumber,
+  frameCount,
+  id,
+}: SetStream) => {
+  stream && stream.cancel();
+  streamId = id;
+  stream = createReader({
+    chunkSize: CHUNK_SIZE,
+    frameCount: frameCount,
+    frameNumber: frameNumber,
+    sampleId,
+    url: `${origin}/frames`,
+  });
+
+  stream.reader.read().then(sendChunk);
+};
+
+type Method = SetStreamMethod | ProcessSampleMethod;
 
 onmessage = ({ data: { method, ...args } }: MessageEvent<Method>) => {
   switch (method) {
-    case "setReader":
-      setReader(args as SetReader);
-      return;
     case "processSample":
       processSample(args as ProcessSample);
+      return;
+    case "requestFrameChunk":
+      requestFrameChunk(args as RequestFrameChunk);
+      return;
+    case "setReader":
+      setStream(args as SetStream);
       return;
     default:
       throw new Error("unknown method");

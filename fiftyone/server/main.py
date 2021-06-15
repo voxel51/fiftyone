@@ -176,11 +176,14 @@ class FramesHandler(tornado.web.RequestHandler):
     async def get(self):
         sample_id = self.get_argument("sampleId", None)
         start_frame = self.get_argument("frameNumber", None)
+        frame_count = self.get_argument("frameCount", None)
 
         if sample_id is None or start_frame is None:
             raise ValueError("error")
 
-        end_frame = self.get_argument("numFrames", 30) + start_frame
+        end_frame = min(
+            self.get_argument("numFrames", 30) + start_frame, frame_count
+        )
         state = fos.StateDescription.from_dict(StateHandler.state)
         if state.view is not None:
             view = state.view
@@ -204,15 +207,10 @@ class FramesHandler(tornado.web.RequestHandler):
         results = results[0]["frames"]
 
         frames = {}
-        mn = 0
-        mx = 0
         for frame in results:
-            frame_number = frame["frame_number"]
             frames[frame["frame_number"]] = frame
-            mn = min([mn, frame_number])
-            mx = max([mx, frame_number])
 
-        self.write({"frames": frames, "range": [mn, mx]})
+        self.write({"frames": frames, "range": [start_frame, end_frame]})
 
 
 class TeamsHandler(RequestHandler):
