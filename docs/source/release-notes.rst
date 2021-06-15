@@ -127,6 +127,11 @@ FiftyOne 0.9.1
 --------------
 *Released May 12, 2021*
 
+App
+^^^
+- Partially fixed a bug that could cause the App to crash when selecting
+  samples when the ``Color by value`` setting is active
+
 .. _release-notes-v0.9.0:
 
 FiftyOne 0.9.0
