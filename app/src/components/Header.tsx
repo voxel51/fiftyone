@@ -14,7 +14,7 @@ import { useMachine } from "@xstate/react";
 import uuid from "uuid-v4";
 import { animated, useSpring } from "react-spring";
 import { ThemeContext } from "styled-components";
-import { Close } from "@material-ui/icons";
+import { Close, Group } from "@material-ui/icons";
 import { GitHub, MenuBook } from "@material-ui/icons";
 
 import { BestMatchDiv } from "./ViewBar/ViewStage/BestMatch";
@@ -335,20 +335,21 @@ const Input = styled.input`
   }
 `;
 
-const TshirtForm = () => {
+const TeamsForm = () => {
   const [formState, setFormState] = useState({
     email: "",
+    firstname: "",
+    lastname: "",
+    company: "",
+    role: "",
     discover: "",
-    helping: "",
-    improve: "",
-    tshirt: false,
   });
   const [submitText, setSubmitText] = useState("Submit");
-  const [submitted, setSubmitted] = useRecoilState(atoms.feedbackSubmitted);
+  const [submitted, setSubmitted] = useRecoilState(atoms.teamsSubmitted);
   const portalId = 4972700;
-  const formId = "b56682f6-c297-4cea-95c4-9e05a00528af";
+  const formId = "87aa5367-a8f1-4ed4-9e23-1fdf8448d807";
   const postUrl = `https://api.hsforms.com/submissions/v3/integration/submit/${portalId}/${formId}`;
-  const closeFeedback = useRecoilValue(atoms.closeFeedback);
+  const closeTeams = useRecoilValue(atoms.closeTeams);
   const theme = useTheme();
 
   const setFormValue = (name) => (e) =>
@@ -359,9 +360,8 @@ const TshirtForm = () => {
   const disabled =
     !(
       formState.email?.length &&
-      formState.helping?.length &&
-      formState.improve?.length &&
-      formState.discover?.length
+      formState.firstname?.length &&
+      formState.lastname?.length
     ) || submitted.submitted;
   const submit = () => {
     if (disabled) {
@@ -373,8 +373,8 @@ const TshirtForm = () => {
     const finalize = () => {
       setSubmitText("Submitted. Thank you!");
       setSubmitted({ ...submitted, submitted: true });
-      fetch(`${http}/feedback?submitted=true`, { method: "post" });
-      setTimeout(() => closeFeedback && closeFeedback.close(), 2000);
+      fetch(`${http}/teams?submitted=true`, { method: "post" });
+      setTimeout(() => closeTeams && closeTeams.close(), 2000);
     };
 
     fetch(postUrl, {
@@ -385,28 +385,28 @@ const TshirtForm = () => {
         submittedAt: Date.now(),
         fields: [
           {
+            name: "firstname",
+            value: formState.firstname,
+          },
+          {
+            name: "lastname",
+            value: formState.lastname,
+          },
+          {
             name: "email",
             value: formState.email,
           },
           {
-            name: "is_fiftyone_helping_your_work_how_so_",
-            value: formState.helping,
+            name: "company",
+            value: formState.company,
           },
           {
-            name: "how_could_we_improve_fiftyone_",
-            value: formState.improve,
+            name: "role",
+            value: formState.role,
           },
           {
             name: "app_how_did_you_hear_about_us",
             value: formState.discover,
-          },
-          {
-            name: "zoom_call_and_t_shirt",
-            value: formState.tshirt,
-          },
-          {
-            name: "app_context",
-            value: appContext,
           },
         ],
         context: { pageName: "FiftyOne App" },
@@ -428,11 +428,39 @@ const TshirtForm = () => {
   return (
     <>
       <Input
+        key="firstname"
+        placeholder={"First name"}
+        value={formState.firstname ?? ""}
+        maxLength={40}
+        onChange={setFormValue("firstname")}
+      />
+      <Input
+        key="lastname"
+        placeholder={"First name"}
+        value={formState.lastname ?? ""}
+        maxLength={40}
+        onChange={setFormValue("lastname")}
+      />
+      <Input
         key="email"
         placeholder={"Email"}
         type="email"
         value={formState.email ?? ""}
         onChange={setFormValue("email")}
+      />
+      <Input
+        key="company"
+        placeholder={"Company"}
+        value={formState.company ?? ""}
+        maxLength={100}
+        onChange={setFormValue("company")}
+      />
+      <Input
+        key="role"
+        placeholder={"Role"}
+        value={formState.role ?? ""}
+        maxLength={100}
+        onChange={setFormValue("role")}
       />
       <Input
         key="discover"
@@ -441,36 +469,6 @@ const TshirtForm = () => {
         maxLength={100}
         onChange={setFormValue("discover")}
       />
-      <Input
-        key="helping"
-        placeholder={"Is FiftyOne helping your work?"}
-        value={formState.helping ?? ""}
-        onChange={setFormValue("helping")}
-        maxLength={100}
-      />
-      <Input
-        key="improve"
-        placeholder={"How could we improve FiftyOne?"}
-        value={formState.improve ?? ""}
-        maxLength={100}
-        onChange={setFormValue("improve")}
-      />
-      <div style={{ display: "flex" }}>
-        <Checkbox
-          checked={formState.tshirt}
-          onChange={() =>
-            setFormState({ ...formState, tshirt: !formState.tshirt })
-          }
-          style={{
-            color: theme.brand,
-            paddingLeft: 0,
-            paddingTop: 0,
-          }}
-        />
-        <p style={{ color: theme.fontDark, marginTop: 4 }}>
-          I'm open to a Zoom call and a free t-shirt!
-        </p>
-      </div>
       <Button
         key="submit"
         onClick={submit}
@@ -593,44 +591,44 @@ const DatasetSelector = () => {
   );
 };
 
-const FeedbackButton = ({ addNotification }) => {
-  const [appFeedbackIsOpen, setAppFeedbackIsOpen] = useRecoilState(
-    atoms.appFeedbackIsOpen
+const TeamsButton = ({ addNotification }) => {
+  const [appTeamsIsOpen, setAppTeamsIsOpen] = useRecoilState(
+    atoms.appTeamsIsOpen
   );
-  const [feedbackSubmitted, setFeedbackSubmitted] = useRecoilState(
-    atoms.feedbackSubmitted
+  const [teamsSubmitted, setTeamsSubmitted] = useRecoilState(
+    atoms.teamsSubmitted
   );
-  const [closeFeedback, setCloseFeedback] = useRecoilState(atoms.closeFeedback);
-  const tshirtText = (
+  const [closeTeams, setCloseTeams] = useRecoilState(atoms.closeTeams);
+  const text = (
     <span>
-      We are super dedicated to making FiftyOne as valuable as possible for our
-      users. If you're willing to jump on a quick Zoom call with us to chat
-      about your use cases in more detail, let us know by checking the box
-      below. We'll <i>mail you a free t-shirt</i> for your trouble :)
+      FiftyOne will always be an open source tool free to all users, all 20,000
+      and counting. But your team may need more. We have begun deploying a team
+      based version of FiftyOne to early adopters. Would you like to join us in
+      this next stage?
     </span>
   );
   const theme = useContext(ThemeContext);
-  const showFeedbackButton = useRecoilValue(selectors.showFeedbackButton);
+  const showTeamsButton = useRecoilValue(selectors.showTeamsButton);
 
   const onClick = () => {
-    if (!appFeedbackIsOpen) {
-      setAppFeedbackIsOpen(true);
+    if (!appTeamsIsOpen) {
+      setAppTeamsIsOpen(true);
       const callback = addNotification.current({
-        kind: "We'd love your feedback",
-        message: tshirtText,
-        children: [<TshirtForm key="t-shirt" />],
-        onClose: () => setAppFeedbackIsOpen(false),
+        kind: "Get FiftyOne for your team!",
+        message: text,
+        children: [<TeamsForm key="teams" />],
+        onClose: () => setTeamsIsOpen(false),
       });
-      setCloseFeedback({ close: callback });
+      setCloseTeams({ close: callback });
     }
   };
 
-  return showFeedbackButton === "shown" ? (
+  return showTeamsButton === "shown" ? (
     <Button
       onClick={onClick}
       style={{ marginRight: "0.5rem", position: "relative" }}
     >
-      Want a free t-shirt?
+      Have a Team?
       <div
         style={{
           position: "absolute",
@@ -645,24 +643,15 @@ const FeedbackButton = ({ addNotification }) => {
           }}
           onClick={(e) => {
             e.stopPropagation();
-            setFeedbackSubmitted({ ...feedbackSubmitted, minimized: true });
-            fetch(`${http}/feedback`, { method: "post" });
-            closeFeedback && closeFeedback.close();
+            setTeamsSubmitted({ ...teamsSubmitted, minimized: true });
+            fetch(`${http}/teams`, { method: "post" });
+            closeTeams && closeTeams.close();
           }}
         />
       </div>
     </Button>
-  ) : showFeedbackButton === "minimized" ? (
-    <img
-      onClick={onClick}
-      style={{
-        cursor: "pointer",
-        marginRight: "0.5rem",
-        height: "1.5rem",
-        width: "1.5rem",
-      }}
-      src={"./t-shirt.svg"}
-    />
+  ) : showTeamsButton === "minimized" ? (
+    <Group />
   ) : null;
 };
 
@@ -684,7 +673,7 @@ const Header = ({ addNotification }) => {
       <RightDiv>
         <IconWrapper>
           <Suspense fallback={null}>
-            <FeedbackButton addNotification={addNotification} />
+            <TeamsButton addNotification={addNotification} />
           </Suspense>
           <ExternalLink
             title="Slack"

@@ -53,24 +53,24 @@ export const fiftyone = selector({
   },
 });
 
-export const showFeedbackButton = selector({
-  key: "showFeedbackButton",
+export const showTeamsButton = selector({
+  key: "showTeamsButton",
   get: ({ get }) => {
-    const feedback = get(fiftyone).feedback;
-    const localFeedback = get(atoms.feedbackSubmitted);
-    const storedFeedback = window.localStorage.getItem("fiftyone-feedback");
-    if (storedFeedback) {
-      window.localStorage.removeItem("fiftyone-feedback");
-      fetch(`${http}/feedback?submitted=true`, { method: "post" });
+    const teams = get(fiftyone).teams;
+    const localTeams = get(atoms.teamsSubmitted);
+    const storedTeams = window.localStorage.getItem("fiftyone-teams");
+    if (storedTeams) {
+      window.localStorage.removeItem("fiftyone-teams");
+      fetch(`${http}/teams?submitted=true`, { method: "post" });
     }
     if (
-      feedback.submitted ||
-      localFeedback.submitted ||
-      storedFeedback === "submitted"
+      teams.submitted ||
+      localTeams.submitted ||
+      storedTeams === "submitted"
     ) {
       return "hidden";
     }
-    if (feedback.minimized || localFeedback.minimized) {
+    if (teams.minimized || localTeams.minimized) {
       return "minimized";
     }
     return "shown";
