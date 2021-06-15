@@ -619,7 +619,7 @@ const TeamsButton = ({ addNotification }) => {
     if (!appTeamsIsOpen) {
       setAppTeamsIsOpen(true);
       const callback = addNotification.current({
-        kind: "Get FiftyOne for your team!",
+        kind: "Get FiftyOne for your team",
         message: text,
         children: [<TeamsForm key="teams" />],
         onClose: () => setAppTeamsIsOpen(false),

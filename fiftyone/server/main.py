@@ -169,7 +169,7 @@ class TeamsHandler(RequestHandler):
     """Returns whether the teams button should be minimized"""
 
     def post(self):
-        submitted = self.get_argument("submitted", False)
+        submitted = self.get_argument("submitted", "") == "true"
         etas.write_json({"submitted": submitted}, foc.TEAMS_PATH)
 
 
