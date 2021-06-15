@@ -776,9 +776,9 @@ class OpenImagesV6Dataset(ImageDetectionDataset):
         return fouo.OpenImagesV6DatasetImporter
 
 
-class YOLODataset(ImageDetectionDataset):
+class YOLOv4Dataset(ImageDetectionDataset):
     """A labeled dataset consisting of images and their associated object
-    detections saved in `YOLO format <https://github.com/AlexeyAB/darknet>`_.
+    detections saved in `YOLOv4 format <https://github.com/AlexeyAB/darknet>`_.
 
     Datasets of this type are read/written in the following format::
 
@@ -820,12 +820,75 @@ class YOLODataset(ImageDetectionDataset):
     def get_dataset_importer_cls(self):
         import fiftyone.utils.yolo as fouy
 
-        return fouy.YOLODatasetImporter
+        return fouy.YOLOv4DatasetImporter
 
     def get_dataset_exporter_cls(self):
         import fiftyone.utils.yolo as fouy
 
-        return fouy.YOLODatasetExporter
+        return fouy.YOLOv4DatasetExporter
+
+
+class YOLOv5Dataset(ImageDetectionDataset):
+    """A labeled dataset consisting of images and their associated object
+    detections saved in
+    `YOLOv5 format <https://github.com/ultralytics/yolov5>`_.
+
+    Datasets of this type are read/written in the following format::
+
+        <dataset_dir>/
+            dataset.yaml
+            images/
+                train/
+                    <uuid1>.<ext>
+                    <uuid2>.<ext>
+                    ...
+                val/
+                    <uuid3>.<ext>
+                    <uuid4>.<ext>
+                    ...
+            labels/
+                train/
+                    <uuid1>.txt
+                    <uuid2>.txt
+                    ...
+                val/
+                    <uuid3>.txt
+                    <uuid4>.txt
+                    ...
+
+    where ``dataset.yaml`` contains the following information::
+
+        train: ./images/train/
+        val: ./images/val/
+
+        # number of classes
+        nc: 80
+
+        # class names
+        names: ["list", "of", "classes", ...]
+
+    and the TXT files in ``labels/`` are space-delimited files where each row
+    corresponds to an object in the image of the same name, in the following
+    format::
+
+        <target> <x-center> <y-center> <width> <height>
+
+    where ``<target>`` is the zero-based integer index of the object class
+    label from ``names`` and the bounding box coordinates are expressed as
+    relative coordinates in ``[0, 1] x [0, 1]``.
+
+    Unlabeled images have no corresponding TXT file in ``labels/``.
+    """
+
+    def get_dataset_importer_cls(self):
+        import fiftyone.utils.yolo as fouy
+
+        return fouy.YOLOv5DatasetImporter
+
+    def get_dataset_exporter_cls(self):
+        import fiftyone.utils.yolo as fouy
+
+        return fouy.YOLOv5DatasetExporter
 
 
 class TFObjectDetectionDataset(ImageDetectionDataset):
