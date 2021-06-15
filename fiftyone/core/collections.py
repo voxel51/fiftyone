@@ -1222,7 +1222,7 @@ class SampleCollection(object):
         batch_size=None,
         num_workers=None,
         skip_failures=True,
-        **kwargs,
+        **trainer_kwargs,
     ):
         """Applies the :class:`FiftyOne model <fiftyone.core.models.Model>` or
         :class:`Lightning Flash model <flash:flash.core.model.Task>` to the
@@ -1259,9 +1259,10 @@ class SampleCollection(object):
                 raising an error if predictions cannot be generated for a
                 sample. Only applicable to :class:`fiftyone.core.models.Model`
                 instances
-            kwargs: additional kwargs used to construct a 
-                :class:`flash:flash.core.trainer.Trainer` for Flash
-                models
+            **trainer_kwargs: optional keyword arguments used to initialize the
+                :class:`flash:flash.core.trainer.Trainer` when using Flash
+                models. These can be used to, for example, configure the number
+                of GPUs to use and other distributed inference parameters
         """
         fomo.apply_model(
             self,
@@ -1272,7 +1273,7 @@ class SampleCollection(object):
             batch_size=batch_size,
             num_workers=num_workers,
             skip_failures=skip_failures,
-            **kwargs,
+            **trainer_kwargs,
         )
 
     def compute_embeddings(
@@ -1282,25 +1283,33 @@ class SampleCollection(object):
         batch_size=None,
         num_workers=None,
         skip_failures=True,
+        **trainer_kwargs,
     ):
         """Computes embeddings for the samples in the collection using the
-        given :class:`fiftyone.core.models.Model`.
+        given :class:`FiftyOne model <fiftyone.core.models.Model>` or
+        :class:`Lightning Flash model <flash:flash.core.model.Task>`.
 
         This method supports all the following cases:
 
-        -   Using an image model to compute embeddings for an image collection
-        -   Using an image model to compute frame embeddings for a video
-            collection
-        -   Using a video model to compute embeddings for a video collection
+        -   Using an image :class:`fiftyone.core.models.Model` to compute
+            embeddings for an image collection
+        -   Using an image :class:`fiftyone.core.models.Model` to compute frame
+            embeddings for a video collection
+        -   Using a video :class:`fiftyone.core.models.Model` to compute
+            embeddings for a video collection
+        -   Using an :class:`flash:flash.image.ImageEmbeder` to compute
+            embeddings for an image collection
 
-        The ``model`` must expose embeddings, i.e.,
+        When using a :class:`FiftyOne model <fiftyone.core.models.Model>`, the
+        model must expose embeddings, i.e.,
         :meth:`fiftyone.core.models.Model.has_embeddings` must return ``True``.
 
         If an ``embeddings_field`` is provided, the embeddings are saved to the
         samples; otherwise, the embeddings are returned in-memory.
 
         Args:
-            model: a :class:`fiftyone.core.models.Model`
+            model: a :class:`fiftyone.core.models.Model` or
+                :class:`flash:flash.core.model.Task`
             embeddings_field (None): the name of a field in which to store the
                 embeddings. When computing video frame embeddings, the
                 "frames." prefix is optional
@@ -1313,6 +1322,10 @@ class SampleCollection(object):
                 raising an error if embeddings cannot be generated for a
                 sample. Only applicable to :class:`fiftyone.core.models.Model`
                 instances
+            **trainer_kwargs: optional keyword arguments used to initialize the
+                :class:`flash:flash.core.trainer.Trainer` when using Flash
+                models. These can be used to, for example, configure the number
+                of GPUs to use and other distributed inference parameters
 
         Returns:
             one of the following:
@@ -1340,6 +1353,7 @@ class SampleCollection(object):
             batch_size=batch_size,
             num_workers=num_workers,
             skip_failures=skip_failures,
+            **trainer_kwargs,
         )
 
     def compute_patch_embeddings(

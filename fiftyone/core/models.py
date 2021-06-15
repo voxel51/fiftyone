@@ -55,7 +55,7 @@ def apply_model(
     batch_size=None,
     num_workers=None,
     skip_failures=True,
-    **kwargs,
+    **trainer_kwargs,
 ):
     """Applies the :class:`FiftyOne model <Model>` or
     :class:`Lightning Flash model <flash:flash.core.model.Task>` to the samples
@@ -87,9 +87,10 @@ def apply_model(
         skip_failures (True): whether to gracefully continue without raising an
             error if predictions cannot be generated for a sample. Only
             applicable to :class:`Model` instances
-        kwargs: additional kwargs used to construct a 
-            :class:`flash:flash.core.trainer.Trainer` for Flash
-            models
+        **trainer_kwargs: optional keyword arguments used to initialize the
+            :class:`flash:flash.core.trainer.Trainer` when using Flash models.
+            These can be used to, for example, configure the number of GPUs to
+            use and other distributed inference parameters
     """
     if _is_flash_model(model):
         return fouf.apply_flash_model(
@@ -100,7 +101,7 @@ def apply_model(
             store_logits=store_logits,
             batch_size=batch_size,
             num_workers=num_workers,
-            **kwargs,
+            **trainer_kwargs,
         )
 
     if not isinstance(model, Model):
@@ -619,6 +620,7 @@ def compute_embeddings(
     batch_size=None,
     num_workers=None,
     skip_failures=True,
+    **trainer_kwargs,
 ):
     """Computes embeddings for the samples in the collection using the given
     :class:`FiftyOne model <Model>` or
@@ -635,15 +637,15 @@ def compute_embeddings(
     -   Using an :class:`flash:flash.image.ImageEmbeder` to compute embeddings
         for an image collection
 
-    When ``model`` is a FiftyOne model, it must expose embeddings, i.e.,
-    :meth:`Model.has_embeddings` must return ``True``.
+    When using a :class:`FiftyOne model <Model>`, the model must expose
+    embeddings, i.e., :meth:`Model.has_embeddings` must return ``True``.
 
     If an ``embeddings_field`` is provided, the embeddings are saved to the
     samples; otherwise, the embeddings are returned in-memory.
 
     Args:
         samples: a :class:`fiftyone.core.collections.SampleCollection`
-        model: a :class:`Model` or :class:`flash:flash.image.ImageEmbeder`
+        model: a :class:`Model` or :class:`flash:flash.core.model.Task>`
         embeddings_field (None): the name of a field in which to store the
             embeddings. When computing video frame embeddings, the "frames."
             prefix is optional
@@ -653,7 +655,11 @@ def compute_embeddings(
             Only applicable for Torch-based models
         skip_failures (True): whether to gracefully continue without raising an
             error if embeddings cannot be generated for a sample. Only
-            applicable to :class:`fiftyone.core.models.Model` instances
+            applicable to :class:`Model` instances
+        **trainer_kwargs: optional keyword arguments used to initialize the
+            :class:`flash:flash.core.trainer.Trainer` when using Flash models.
+            These can be used to, for example, configure the number of GPUs to
+            use and other distributed inference parameters
 
     Returns:
         one of the following:
@@ -680,6 +686,7 @@ def compute_embeddings(
             embeddings_field=embeddings_field,
             batch_size=batch_size,
             num_workers=num_workers,
+            **trainer_kwargs,
         )
 
     if not isinstance(model, Model):

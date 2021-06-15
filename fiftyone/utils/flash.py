@@ -59,8 +59,10 @@ def apply_flash_model(
         batch_size (None): an optional batch size to use. If not provided, a
             default batch size is used
         num_workers (None): the number of workers for the data loader to use
-        trainer_kwargs: additional kwargs are passed into the Trainer()
-            constructor
+        **trainer_kwargs: optional keyword arguments used to initialize the
+            :class:`flash:flash.core.trainer.Trainer`. These can be used to,
+            for example, configure the number of GPUs to use and other
+            distributed inference parameters
     """
     serializer = _get_serializer(model, confidence_thresh, store_logits)
 
@@ -71,12 +73,14 @@ def apply_flash_model(
     with fou.SetAttributes(
         model, data_pipeline=data_pipeline, serializer=serializer
     ):
-        kwargs = dict(preprocess=model.preprocess, num_workers=num_workers)
+        data_kwargs = dict(
+            preprocess=model.preprocess, num_workers=num_workers,
+        )
         if batch_size is not None:
-            kwargs["batch_size"] = batch_size
+            data_kwargs["batch_size"] = batch_size
 
         datamodule = fi.ImageClassificationData.from_fiftyone(
-            predict_dataset=samples, **kwargs
+            predict_dataset=samples, **data_kwargs
         )
         predictions = flash.Trainer(**trainer_kwargs).predict(
             model, datamodule=datamodule
@@ -87,7 +91,12 @@ def apply_flash_model(
 
 
 def compute_flash_embeddings(
-    samples, model, embeddings_field=None, batch_size=None, num_workers=None
+    samples,
+    model,
+    embeddings_field=None,
+    batch_size=None,
+    num_workers=None,
+    **trainer_kwargs,
 ):
     """Computes embeddings for the samples in the collection using the given
     :class:`Lightning Flash model <flash:flash.core.model.Task>`.
@@ -106,6 +115,10 @@ def compute_flash_embeddings(
         batch_size (None): an optional batch size to use. If not provided, a
             default batch size is used
         num_workers (None): the number of workers for the data loader to use
+        **trainer_kwargs: optional keyword arguments used to initialize the
+            :class:`flash:flash.core.trainer.Trainer`. These can be used to,
+            for example, configure the number of GPUs to use and other
+            distributed inference parameters
 
     Returns:
         one of the following:
@@ -125,18 +138,18 @@ def compute_flash_embeddings(
     data_pipeline = model.data_pipeline
 
     with fou.SetAttributes(model, data_pipeline=data_pipeline):
-        # equivalent(?) but no progress bar...
-        # filepaths = samples.values("filepath")
-        # embeddings = model.predict(filepaths)
-
-        kwargs = dict(preprocess=model.preprocess, num_workers=num_workers)
+        data_kwargs = dict(
+            preprocess=model.preprocess, num_workers=num_workers,
+        )
         if batch_size is not None:
-            kwargs["batch_size"] = batch_size
+            data_kwargs["batch_size"] = batch_size
 
         datamodule = fi.ImageClassificationData.from_fiftyone(
-            predict_dataset=samples, **kwargs
+            predict_dataset=samples, **data_kwargs
         )
-        embeddings = flash.Trainer().predict(model, datamodule=datamodule)
+        embeddings = flash.Trainer(**trainer_kwargs).predict(
+            model, datamodule=datamodule
+        )
         embeddings = list(itertools.chain.from_iterable(embeddings))
 
         if embeddings_field is not None:
