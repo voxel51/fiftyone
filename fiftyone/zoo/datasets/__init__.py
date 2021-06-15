@@ -201,12 +201,23 @@ def load_zoo_dataset(
 
     dataset_type = info.get_dataset_type()
     dataset_importer_cls = dataset_type.get_dataset_importer_cls()
+
+    #
+    # For unlabeled (e.g., test) splits, some importers need to be explicitly
+    # told to generate samples for media with no corresponding labels entry.
+    #
+    # By convention, all such importers use `include_all_data` for this flag.
+    # If a new zoo dataset is added that requires a different customized
+    # parameter, we'd need to improve this logic here
+    #
+    kwargs["include_all_data"] = True
+
     importer_kwargs, unused_kwargs = fou.extract_kwargs_for_class(
         dataset_importer_cls, kwargs
     )
 
     for key, value in unused_kwargs.items():
-        if value is not None:
+        if key != "include_all_data" and value is not None:
             logger.warning(
                 "Ignoring unsupported parameter '%s' for importer type %s",
                 key,

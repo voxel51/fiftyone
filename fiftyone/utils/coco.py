@@ -180,7 +180,6 @@ class COCODetectionDatasetImporter(
             :class:`fiftyone.core.labels.Detections`
         tolerance (None): a tolerance, in pixels, when generating approximate
             polylines for instance masks. Typical values are 1-3 pixels
-        skip_unlabeled (False): whether to skip unlabeled images when importing
         shuffle (False): whether to randomly shuffle the order in which the
             samples are imported
         seed (None): a random seed to use when shuffling
@@ -196,7 +195,6 @@ class COCODetectionDatasetImporter(
         load_segmentations=True,
         return_polylines=False,
         tolerance=None,
-        skip_unlabeled=False,
         shuffle=False,
         seed=None,
         max_samples=None,
@@ -213,7 +211,6 @@ class COCODetectionDatasetImporter(
 
         super().__init__(
             dataset_dir=dataset_dir,
-            skip_unlabeled=skip_unlabeled,
             shuffle=shuffle,
             seed=seed,
             max_samples=max_samples,
@@ -324,10 +321,7 @@ class COCODetectionDatasetImporter(
         self._image_dicts_map = {i["file_name"]: i for i in images.values()}
         self._annotations = annotations
 
-        if self.skip_unlabeled:
-            filenames = list(self._image_dicts_map.keys())
-        else:
-            filenames = list(self._image_paths_map.keys())
+        filenames = sorted(self._image_dicts_map.keys())
 
         self._filenames = self._preprocess_list(filenames)
 

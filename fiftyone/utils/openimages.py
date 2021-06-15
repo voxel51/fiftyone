@@ -58,7 +58,6 @@ class OpenImagesDatasetImporter(foud.LabeledImageDatasetImporter):
             to the dataset's ``info`` dictionary
         version ("v6"): the Open Images dataset format version being used.
             Supported values are ``("v6")``
-        skip_unlabeled (False): whether to skip unlabeled images when importing
         shuffle (False): whether to randomly shuffle the order in which the
             samples are imported
         seed (None): a random seed to use when shuffling
@@ -76,14 +75,12 @@ class OpenImagesDatasetImporter(foud.LabeledImageDatasetImporter):
         image_ids_file=None,
         load_hierarchy=True,
         version="v6",
-        skip_unlabeled=False,
         shuffle=False,
         seed=None,
         max_samples=None,
     ):
         super().__init__(
             dataset_dir=dataset_dir,
-            skip_unlabeled=skip_unlabeled,
             shuffle=shuffle,
             seed=seed,
             max_samples=max_samples,
@@ -376,7 +373,6 @@ class OpenImagesV6DatasetImporter(OpenImagesDatasetImporter):
             ``image_ids`` is provided, this parameter is ignored
         load_hierarchy (True): optionally load the classes hiearchy and add it
             to the info of the dataset
-        skip_unlabeled (False): whether to skip unlabeled images when importing
         shuffle (False): whether to randomly shuffle the order in which the
             samples are imported
         seed (None): a random seed to use when shuffling
@@ -393,7 +389,6 @@ class OpenImagesV6DatasetImporter(OpenImagesDatasetImporter):
         image_ids=None,
         image_ids_file=None,
         load_hierarchy=True,
-        skip_unlabeled=False,
         shuffle=False,
         seed=None,
         max_samples=None,
@@ -407,7 +402,6 @@ class OpenImagesV6DatasetImporter(OpenImagesDatasetImporter):
             image_ids_file=image_ids_file,
             load_hierarchy=load_hierarchy,
             version="v6",
-            skip_unlabeled=skip_unlabeled,
             shuffle=shuffle,
             seed=seed,
             max_samples=max_samples,

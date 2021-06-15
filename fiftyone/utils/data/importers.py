@@ -469,11 +469,16 @@ def _build_parse_sample_fcn(
     return parse_sample, expand_schema
 
 
-def build_dataset_importer(dataset_type, **kwargs):
+def build_dataset_importer(
+    dataset_type, strip_none=True, warn_unused=True, **kwargs
+):
     """Builds the :class:`DatasetImporter` instance for the given parameters.
 
     Args:
         dataset_type: the :class:`fiftyone.types.dataset_types.Dataset` type
+        strip_none (True): whether to exclude None-valued items from ``kwargs``
+        warn_unused (True): whether to issue warnings for any non-None unused
+            parameters encountered
         **kwargs: keyword arguments to pass to the dataset importer's
             constructor via ``DatasetImporter(**kwargs)``
 
@@ -481,7 +486,7 @@ def build_dataset_importer(dataset_type, **kwargs):
         a tuple of:
 
         -   the :class:`DatasetImporter` instance
-        -   a dict of extra keyword arguments that were unused
+        -   a dict of unused keyword arguments
     """
     if dataset_type is None:
         raise ValueError(
@@ -494,7 +499,10 @@ def build_dataset_importer(dataset_type, **kwargs):
 
     dataset_importer_cls = dataset_type.get_dataset_importer_cls()
 
-    kwargs, other_kwargs = fou.extract_kwargs_for_class(
+    if strip_none:
+        kwargs = {k: v for k, v in kwargs.items() if v is not None}
+
+    kwargs, unused_kwargs = fou.extract_kwargs_for_class(
         dataset_importer_cls, kwargs
     )
 
@@ -503,12 +511,22 @@ def build_dataset_importer(dataset_type, **kwargs):
     except Exception as e:
         raise ValueError(
             "Failed to construct importer of type %s using the provided "
-            "parameters. You may need to supply mandatory arguments to the "
-            "constructor via `kwargs`. Please consult the documentation of %s "
-            "to learn more" % (dataset_importer_cls, dataset_importer_cls)
+            "parameters. See above for the error. You may need to supply "
+            "additional mandatory arguments. Please consult the documentation "
+            "of %s to learn more"
+            % (dataset_importer_cls, dataset_importer_cls)
         ) from e
 
-    return dataset_importer, other_kwargs
+    if warn_unused:
+        for key, value in unused_kwargs.items():
+            if value is not None:
+                logger.warning(
+                    "Ignoring unsupported parameter '%s' for importer type %s",
+                    key,
+                    dataset_importer_cls,
+                )
+
+    return dataset_importer, unused_kwargs
 
 
 def parse_dataset_info(dataset, info, overwrite=True):
@@ -984,29 +1002,12 @@ class LabeledImageDatasetImporter(DatasetImporter):
     Args:
         dataset_dir (None): the dataset directory. This may be optional for
             some importers
-        skip_unlabeled (False): whether to skip unlabeled images when importing
         shuffle (False): whether to randomly shuffle the order in which the
             samples are imported
         seed (None): a random seed to use when shuffling
         max_samples (None): a maximum number of samples to import. By default,
             all samples are imported
     """
-
-    def __init__(
-        self,
-        dataset_dir=None,
-        skip_unlabeled=False,
-        shuffle=False,
-        seed=None,
-        max_samples=None,
-    ):
-        super().__init__(
-            dataset_dir=dataset_dir,
-            shuffle=shuffle,
-            seed=seed,
-            max_samples=max_samples,
-        )
-        self.skip_unlabeled = skip_unlabeled
 
     def __next__(self):
         """Returns information about the next sample in the dataset.
@@ -1068,29 +1069,12 @@ class LabeledVideoDatasetImporter(DatasetImporter):
     Args:
         dataset_dir (None): the dataset directory. This may be optional for
             some importers
-        skip_unlabeled (False): whether to skip unlabeled videos when importing
         shuffle (False): whether to randomly shuffle the order in which the
             samples are imported
         seed (None): a random seed to use when shuffling
         max_samples (None): a maximum number of samples to import. By default,
             all samples are imported
     """
-
-    def __init__(
-        self,
-        dataset_dir=None,
-        skip_unlabeled=False,
-        shuffle=False,
-        seed=None,
-        max_samples=None,
-    ):
-        super().__init__(
-            dataset_dir=dataset_dir,
-            shuffle=shuffle,
-            seed=seed,
-            max_samples=max_samples,
-        )
-        self.skip_unlabeled = skip_unlabeled
 
     def __next__(self):
         """Returns information about the next sample in the dataset.
@@ -1313,7 +1297,8 @@ class LegacyFiftyOneDatasetImporter(GenericSampleDatasetImporter):
             dataset._doc.save()
 
     @staticmethod
-    def get_classes(dataset_dir):
+    def _get_classes(dataset_dir):
+        # Used only by dataset zoo
         metadata_path = os.path.join(dataset_dir, "metadata.json")
         if not os.path.isfile(metadata_path):
             return None
@@ -1331,12 +1316,9 @@ class LegacyFiftyOneDatasetImporter(GenericSampleDatasetImporter):
         return metadata.get("info", {}).get("classes", None)
 
     @staticmethod
-    def get_num_samples(dataset_dir):
-        data_dir = os.path.join(dataset_dir, "data")
-        if not os.path.isdir(data_dir):
-            return 0
-
-        return len(etau.list_files(data_dir))
+    def _get_num_samples(dataset_dir):
+        # Used only by dataset zoo
+        return len(etau.list_files(os.path.join(dataset_dir, "data")))
 
     def _import_frame_labels(self, sample, labels_path):
         frames_map = etas.load_json(labels_path).get("frames", {})
@@ -1536,7 +1518,8 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
         return sample_ids
 
     @staticmethod
-    def get_classes(dataset_dir):
+    def _get_classes(dataset_dir):
+        # Used only by dataset zoo
         metadata_path = os.path.join(dataset_dir, "metadata.json")
         metadata = etas.load_json(metadata_path)
 
@@ -1551,7 +1534,8 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
         return metadata.get("info", {}).get("classes", None)
 
     @staticmethod
-    def get_num_samples(dataset_dir):
+    def _get_num_samples(dataset_dir):
+        # Used only by dataset zoo
         samples_path = os.path.join(dataset_dir, "samples.json")
         samples = etas.load_json(samples_path).get("samples", [])
         return len(samples)
@@ -1673,7 +1657,8 @@ class ImageDirectoryImporter(UnlabeledImageDatasetImporter):
         self._num_samples = len(self._filepaths)
 
     @staticmethod
-    def get_num_samples(dataset_dir):
+    def _get_num_samples(dataset_dir):
+        # Used only by dataset zoo
         filepaths = etau.list_files(dataset_dir, recursive=True)
         filepaths = [p for p in filepaths if etai.is_image_mime_type(p)]
         return len(filepaths)
@@ -1754,7 +1739,8 @@ class VideoDirectoryImporter(UnlabeledVideoDatasetImporter):
         self._num_samples = len(self._filepaths)
 
     @staticmethod
-    def get_num_samples(dataset_dir):
+    def _get_num_samples(dataset_dir):
+        # Used only by dataset zoo
         filepaths = etau.list_files(dataset_dir, recursive=True)
         filepaths = [p for p in filepaths if etav.is_video_mime_type(p)]
         return len(filepaths)
@@ -1799,7 +1785,6 @@ class FiftyOneImageClassificationDatasetImporter(
         compute_metadata (False): whether to produce
             :class:`fiftyone.core.metadata.ImageMetadata` instances for each
             image when importing
-        skip_unlabeled (False): whether to skip unlabeled images when importing
         shuffle (False): whether to randomly shuffle the order in which the
             samples are imported
         seed (None): a random seed to use when shuffling
@@ -1813,7 +1798,6 @@ class FiftyOneImageClassificationDatasetImporter(
         data_path=None,
         labels_path=None,
         compute_metadata=False,
-        skip_unlabeled=False,
         shuffle=False,
         seed=None,
         max_samples=None,
@@ -1830,7 +1814,6 @@ class FiftyOneImageClassificationDatasetImporter(
 
         super().__init__(
             dataset_dir=dataset_dir,
-            skip_unlabeled=skip_unlabeled,
             shuffle=shuffle,
             seed=seed,
             max_samples=max_samples,
@@ -1899,10 +1882,6 @@ class FiftyOneImageClassificationDatasetImporter(
         self._sample_parser.classes = self._classes
 
         self._labels_map = labels.get("labels", {})
-        if self.skip_unlabeled:
-            self._labels_map = {
-                k: v for k, v in self._labels_map.items() if v is not None
-            }
 
         uuids = sorted(self._labels_map.keys())
         self._uuids = self._preprocess_list(uuids)
@@ -1913,13 +1892,15 @@ class FiftyOneImageClassificationDatasetImporter(
         return {"classes": self._classes}
 
     @staticmethod
-    def get_classes(dataset_dir):
+    def _get_classes(dataset_dir):
+        # Used only by dataset zoo
         labels_path = os.path.join(dataset_dir, "labels.json")
         labels = etas.read_json(labels_path)
         return labels.get("classes", None)
 
     @staticmethod
-    def get_num_samples(dataset_dir):
+    def _get_num_samples(dataset_dir):
+        # Used only by dataset zoo
         labels_path = os.path.join(dataset_dir, "labels.json")
         labels = etas.read_json(labels_path)
         return len(labels.get("labels", {}))
@@ -1936,7 +1917,8 @@ class ImageClassificationDirectoryTreeImporter(LabeledImageDatasetImporter):
         compute_metadata (False): whether to produce
             :class:`fiftyone.core.metadata.ImageMetadata` instances for each
             image when importing
-        skip_unlabeled (False): whether to skip unlabeled images when importing
+        unlabeled ("_unlabeled"): the name of the subdirectory containing
+            unlabeled images
         shuffle (False): whether to randomly shuffle the order in which the
             samples are imported
         seed (None): a random seed to use when shuffling
@@ -1948,20 +1930,20 @@ class ImageClassificationDirectoryTreeImporter(LabeledImageDatasetImporter):
         self,
         dataset_dir,
         compute_metadata=False,
-        skip_unlabeled=False,
+        unlabeled="_unlabeled",
         shuffle=False,
         seed=None,
         max_samples=None,
     ):
         super().__init__(
             dataset_dir=dataset_dir,
-            skip_unlabeled=skip_unlabeled,
             shuffle=shuffle,
             seed=seed,
             max_samples=max_samples,
         )
 
         self.compute_metadata = compute_metadata
+        self.unlabeled = unlabeled
 
         self._classes = None
         self._samples = None
@@ -2007,10 +1989,7 @@ class ImageClassificationDirectoryTreeImporter(LabeledImageDatasetImporter):
             if label.startswith("."):
                 continue
 
-            if label == "_unlabeled":
-                if self.skip_unlabeled:
-                    continue
-
+            if label == self.unlabeled:
                 label = None
             else:
                 classes.add(label)
@@ -2026,11 +2005,13 @@ class ImageClassificationDirectoryTreeImporter(LabeledImageDatasetImporter):
         return {"classes": self._classes}
 
     @staticmethod
-    def get_classes(dataset_dir):
+    def _get_classes(dataset_dir):
+        # Used only by dataset zoo
         return sorted(etau.list_subdirs(dataset_dir))
 
     @staticmethod
-    def get_num_samples(dataset_dir):
+    def _get_num_samples(dataset_dir):
+        # Used only by dataset zoo
         num_samples = 0
         for class_dir in etau.list_subdirs(dataset_dir, abs_paths=True):
             num_samples += len(etau.list_files(class_dir))
@@ -2049,7 +2030,8 @@ class VideoClassificationDirectoryTreeImporter(LabeledVideoDatasetImporter):
         compute_metadata (False): whether to produce
             :class:`fiftyone.core.metadata.VideoMetadata` instances for each
             video when importing
-        skip_unlabeled (False): whether to skip unlabeled videos when importing
+        unlabeled ("_unlabeled"): the name of the subdirectory containing
+            unlabeled images
         shuffle (False): whether to randomly shuffle the order in which the
             samples are imported
         seed (None): a random seed to use when shuffling
@@ -2061,20 +2043,20 @@ class VideoClassificationDirectoryTreeImporter(LabeledVideoDatasetImporter):
         self,
         dataset_dir,
         compute_metadata=False,
-        skip_unlabeled=False,
+        unlabeled="_unlabeled",
         shuffle=False,
         seed=None,
         max_samples=None,
     ):
         super().__init__(
             dataset_dir=dataset_dir,
-            skip_unlabeled=skip_unlabeled,
             shuffle=shuffle,
             seed=seed,
             max_samples=max_samples,
         )
 
         self.compute_metadata = compute_metadata
+        self.unlabeled = unlabeled
 
         self._classes = None
         self._samples = None
@@ -2124,10 +2106,7 @@ class VideoClassificationDirectoryTreeImporter(LabeledVideoDatasetImporter):
             if label.startswith("."):
                 continue
 
-            if label == "_unlabeled":
-                if self.skip_unlabeled:
-                    continue
-
+            if label == self.unlabeled:
                 label = None
             else:
                 classes.add(label)
@@ -2143,11 +2122,13 @@ class VideoClassificationDirectoryTreeImporter(LabeledVideoDatasetImporter):
         return {"classes": self._classes}
 
     @staticmethod
-    def get_classes(dataset_dir):
+    def _get_classes(dataset_dir):
+        # Used only by dataset zoo
         return sorted(etau.list_subdirs(dataset_dir))
 
     @staticmethod
-    def get_num_samples(dataset_dir):
+    def _get_num_samples(dataset_dir):
+        # Used only by dataset zoo
         num_samples = 0
         for class_dir in etau.list_subdirs(dataset_dir, abs_paths=True):
             num_samples += len(etau.list_files(class_dir))
@@ -2194,7 +2175,6 @@ class FiftyOneImageDetectionDatasetImporter(
         compute_metadata (False): whether to produce
             :class:`fiftyone.core.metadata.ImageMetadata` instances for each
             image when importing
-        skip_unlabeled (False): whether to skip unlabeled images when importing
         shuffle (False): whether to randomly shuffle the order in which the
             samples are imported
         seed (None): a random seed to use when shuffling
@@ -2208,7 +2188,6 @@ class FiftyOneImageDetectionDatasetImporter(
         data_path=None,
         labels_path=None,
         compute_metadata=False,
-        skip_unlabeled=False,
         shuffle=False,
         seed=None,
         max_samples=None,
@@ -2225,7 +2204,6 @@ class FiftyOneImageDetectionDatasetImporter(
 
         super().__init__(
             dataset_dir=dataset_dir,
-            skip_unlabeled=skip_unlabeled,
             shuffle=shuffle,
             seed=seed,
             max_samples=max_samples,
@@ -2296,13 +2274,7 @@ class FiftyOneImageDetectionDatasetImporter(
 
         self._classes = labels.get("classes", None)
         self._sample_parser.classes = self._classes
-
         self._labels_map = labels.get("labels", {})
-        if self.skip_unlabeled:
-            self._labels_map = {
-                k: v for k, v in self._labels_map.items() if v is not None
-            }
-
         self._has_labels = any(self._labels_map.values())
 
         uuids = sorted(self._labels_map.keys())
@@ -2313,13 +2285,15 @@ class FiftyOneImageDetectionDatasetImporter(
         return {"classes": self._classes}
 
     @staticmethod
-    def get_classes(dataset_dir):
+    def _get_classes(dataset_dir):
+        # Used only by dataset zoo
         labels_path = os.path.join(dataset_dir, "labels.json")
         labels = etas.read_json(labels_path)
         return labels.get("classes", None)
 
     @staticmethod
-    def get_num_samples(dataset_dir):
+    def _get_num_samples(dataset_dir):
+        # Used only by dataset zoo
         labels_path = os.path.join(dataset_dir, "labels.json")
         labels = etas.read_json(labels_path)
         return len(labels.get("labels", {}))
@@ -2365,7 +2339,9 @@ class ImageSegmentationDirectoryImporter(
         compute_metadata (False): whether to produce
             :class:`fiftyone.core.metadata.ImageMetadata` instances for each
             image when importing
-        skip_unlabeled (False): whether to skip unlabeled images when importing
+        include_all_data (False): whether to generate samples for all images in
+            the data directory (True) rather than only creating samples for
+            images with masks (False)
         shuffle (False): whether to randomly shuffle the order in which the
             samples are imported
         seed (None): a random seed to use when shuffling
@@ -2380,7 +2356,7 @@ class ImageSegmentationDirectoryImporter(
         labels_path=None,
         compute_metadata=False,
         force_grayscale=False,
-        skip_unlabeled=False,
+        include_all_data=False,
         shuffle=False,
         seed=None,
         max_samples=None,
@@ -2397,7 +2373,6 @@ class ImageSegmentationDirectoryImporter(
 
         super().__init__(
             dataset_dir=dataset_dir,
-            skip_unlabeled=skip_unlabeled,
             shuffle=shuffle,
             seed=seed,
             max_samples=max_samples,
@@ -2407,6 +2382,7 @@ class ImageSegmentationDirectoryImporter(
         self.labels_path = labels_path
         self.force_grayscale = force_grayscale
         self.compute_metadata = compute_metadata
+        self.include_all_data = include_all_data
 
         self._image_paths_map = None
         self._mask_paths_map = None
@@ -2462,16 +2438,17 @@ class ImageSegmentationDirectoryImporter(
             for p in etau.list_files(self.labels_path, abs_paths=True)
         }
 
-        if self.skip_unlabeled:
-            uuids = sorted(self._mask_paths_map.keys())
-        else:
-            uuids = sorted(self._image_paths_map.keys())
+        uuids = set(self._mask_paths_map.keys())
 
-        self._uuids = self._preprocess_list(uuids)
+        if self.include_all_data:
+            uuids.update(self._image_paths_map.keys())
+
+        self._uuids = self._preprocess_list(sorted(uuids))
         self._num_samples = len(self._uuids)
 
     @staticmethod
-    def get_num_samples(dataset_dir):
+    def _get_num_samples(dataset_dir):
+        # Used only by dataset zoo
         return len(etau.list_files(os.path.join(dataset_dir, "data")))
 
 
@@ -2495,7 +2472,6 @@ class FiftyOneImageLabelsDatasetImporter(LabeledImageDatasetImporter):
             :class:`fiftyone.core.labels.Classifications` instance
         skip_non_categorical (False): whether to skip non-categorical frame
             attributes (True) or cast them to strings (False)
-        skip_unlabeled (False): whether to skip unlabeled images when importing
         max_samples (None): a maximum number of samples to import. By default,
             all samples are imported
     """
@@ -2508,13 +2484,10 @@ class FiftyOneImageLabelsDatasetImporter(LabeledImageDatasetImporter):
         labels_dict=None,
         multilabel=False,
         skip_non_categorical=False,
-        skip_unlabeled=False,
         max_samples=None,
     ):
         super().__init__(
-            dataset_dir=dataset_dir,
-            skip_unlabeled=skip_unlabeled,
-            max_samples=max_samples,
+            dataset_dir=dataset_dir, max_samples=max_samples,
         )
 
         self.compute_metadata = compute_metadata
@@ -2548,11 +2521,11 @@ class FiftyOneImageLabelsDatasetImporter(LabeledImageDatasetImporter):
         ):
             raise StopIteration
 
-        image_path, label = self._parse_next_sample()
+        sample = next(self._iter_labeled_dataset)
 
-        if self.skip_unlabeled:
-            while label is None:
-                image_path, label = self._parse_next_sample()
+        self._sample_parser.with_sample(sample)
+        image_path = self._sample_parser.get_image_path()
+        label = self._sample_parser.get_label()
 
         if self.compute_metadata:
             image_metadata = fom.ImageMetadata.build_for(image_path)
@@ -2561,15 +2534,6 @@ class FiftyOneImageLabelsDatasetImporter(LabeledImageDatasetImporter):
 
         self._num_imported += 1
         return image_path, image_metadata, label
-
-    def _parse_next_sample(self):
-        sample = next(self._iter_labeled_dataset)
-
-        self._sample_parser.with_sample(sample)
-        image_path = self._sample_parser.get_image_path()
-        label = self._sample_parser.get_label()
-
-        return image_path, label
 
     @property
     def has_dataset_info(self):
@@ -2606,7 +2570,8 @@ class FiftyOneImageLabelsDatasetImporter(LabeledImageDatasetImporter):
         return {"description": self._description}
 
     @staticmethod
-    def get_num_samples(dataset_dir):
+    def _get_num_samples(dataset_dir):
+        # Used only by dataset zoo
         return len(etads.load_dataset(dataset_dir))
 
 
@@ -2630,7 +2595,6 @@ class FiftyOneVideoLabelsDatasetImporter(LabeledVideoDatasetImporter):
             :class:`fiftyone.core.labels.Classifications` instance
         skip_non_categorical (False): whether to skip non-categorical frame
             attributes (True) or cast them to strings (False)
-        skip_unlabeled (False): whether to skip unlabeled videos when importing
         max_samples (None): a maximum number of samples to import. By default,
             all samples are imported
     """
@@ -2643,14 +2607,9 @@ class FiftyOneVideoLabelsDatasetImporter(LabeledVideoDatasetImporter):
         labels_dict=None,
         multilabel=False,
         skip_non_categorical=False,
-        skip_unlabeled=False,
         max_samples=None,
     ):
-        super().__init__(
-            dataset_dir=dataset_dir,
-            skip_unlabeled=skip_unlabeled,
-            max_samples=max_samples,
-        )
+        super().__init__(dataset_dir=dataset_dir, max_samples=max_samples)
 
         self.compute_metadata = compute_metadata
         self.prefix = prefix
@@ -2683,11 +2642,11 @@ class FiftyOneVideoLabelsDatasetImporter(LabeledVideoDatasetImporter):
         ):
             raise StopIteration
 
-        video_path, frames = self._parse_next_sample()
+        sample = next(self._iter_labeled_dataset)
 
-        if self.skip_unlabeled:
-            while frames is None:
-                video_path, frames = self._parse_next_sample()
+        self._sample_parser.with_sample(sample)
+        video_path = self._sample_parser.get_video_path()
+        frames = self._sample_parser.get_frame_labels()
 
         if self.compute_metadata:
             video_metadata = fom.VideoMetadata.build_for(video_path)
@@ -2696,15 +2655,6 @@ class FiftyOneVideoLabelsDatasetImporter(LabeledVideoDatasetImporter):
 
         self._num_imported += 1
         return video_path, video_metadata, None, frames
-
-    def _parse_next_sample(self):
-        sample = next(self._iter_labeled_dataset)
-
-        self._sample_parser.with_sample(sample)
-        video_path = self._sample_parser.get_video_path()
-        frames = self._sample_parser.get_frame_labels()
-
-        return video_path, frames
 
     @property
     def has_dataset_info(self):
@@ -2740,7 +2690,8 @@ class FiftyOneVideoLabelsDatasetImporter(LabeledVideoDatasetImporter):
         return {"description": self._description}
 
     @staticmethod
-    def get_num_samples(dataset_dir):
+    def _get_num_samples(dataset_dir):
+        # Used only by dataset zoo
         return len(etads.load_dataset(dataset_dir))
 
 

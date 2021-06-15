@@ -191,7 +191,7 @@ def export_samples(
     )
 
     if dataset_exporter is None:
-        dataset_exporter, unused_kwargs = build_dataset_exporter(
+        dataset_exporter, _ = build_dataset_exporter(
             dataset_type,
             export_dir=export_dir,
             data_path=data_path,
@@ -199,15 +199,16 @@ def export_samples(
             export_media=export_media,
             **kwargs,
         )
+    else:
+        kwargs.update(
+            dict(
+                export_dir=export_dir,
+                data_path=data_path,
+                labels_path=labels_path,
+                export_media=export_media,
+            )
+        )
 
-        for key, value in unused_kwargs.items():
-            if value is not None:
-                logger.warning(
-                    "Ignoring unsupported parameter '%s' for exporter type %s",
-                    key,
-                    type(dataset_exporter),
-                )
-    elif kwargs:
         for key, value in kwargs.items():
             if value is not None:
                 logger.warning("Ignoring unsupported parameter '%s'", key)
@@ -362,11 +363,16 @@ def write_dataset(
         )
 
 
-def build_dataset_exporter(dataset_type, **kwargs):
+def build_dataset_exporter(
+    dataset_type, strip_none=True, warn_unused=True, **kwargs
+):
     """Builds the :class:`DatasetExporter` instance for the given parameters.
 
     Args:
         dataset_type: the :class:`fiftyone.types.dataset_types.Dataset` type
+        strip_none (True): whether to exclude None-valued items from ``kwargs``
+        warn_unused (True): whether to issue warnings for any non-None unused
+            parameters encountered
         **kwargs: keyword arguments to pass to the dataset exporter's
             constructor via ``DatasetExporter(**kwargs)``
 
@@ -374,7 +380,7 @@ def build_dataset_exporter(dataset_type, **kwargs):
         a tuple of:
 
         -   the :class:`DatasetExporter` instance
-        -   a dict of extra keyword arguments that were unused
+        -   a dict of unused keyword arguments
     """
     if dataset_type is None:
         raise ValueError(
@@ -387,6 +393,9 @@ def build_dataset_exporter(dataset_type, **kwargs):
 
     dataset_exporter_cls = dataset_type.get_dataset_exporter_cls()
 
+    if strip_none:
+        kwargs = {k: v for k, v in kwargs.items() if v is not None}
+
     kwargs, unused_kwargs = fou.extract_kwargs_for_class(
         dataset_exporter_cls, kwargs
     )
@@ -396,10 +405,20 @@ def build_dataset_exporter(dataset_type, **kwargs):
     except Exception as e:
         raise ValueError(
             "Failed to construct exporter of type %s using the provided "
-            "parameters. You may need to supply mandatory arguments to the "
-            "constructor via `kwargs`. Please consult the documentation of %s "
-            "to learn more" % (dataset_exporter_cls, dataset_exporter_cls)
+            "parameters. See above for the error. You may need to supply "
+            "additional mandatory arguments. Please consult the documentation "
+            "of %s to learn more"
+            % (dataset_exporter_cls, dataset_exporter_cls)
         ) from e
+
+    if warn_unused:
+        for key, value in unused_kwargs.items():
+            if value is not None:
+                logger.warning(
+                    "Ignoring unsupported parameter '%s' for exporter type %s",
+                    key,
+                    dataset_exporter_cls,
+                )
 
     return dataset_exporter, unused_kwargs
 
@@ -810,8 +829,8 @@ class MediaExporter(object):
 
         if export_mode not in supported_modes:
             raise ValueError(
-                "Unsupported media export mode %s. The supported values are %s"
-                % (export_mode, supported_modes)
+                "Unsupported media export mode `%s`. The supported values are "
+                "%s" % (export_mode, supported_modes)
             )
 
         if export_mode != False and export_path is None:
@@ -850,7 +869,7 @@ class MediaExporter(object):
         manifest_path = None
         manifest = None
 
-        if self.export_mode in {True, "move", "symlink"}:
+        if self.export_mode in {True, False, "move", "symlink"}:
             output_dir = self.export_path
         elif self.export_mode == "manifest":
             manifest_path = self.export_path
@@ -2424,31 +2443,26 @@ class FiftyOneImageLabelsDatasetExporter(LabeledImageDatasetExporter):
     def export_sample(self, image_or_path, labels, metadata=None):
         out_image_path, uuid = self._media_exporter.export(image_or_path)
 
-        new_image_filename = os.path.basename(out_image_path)
-        new_labels_filename = uuid + ".json"
+        out_image_filename = os.path.basename(out_image_path)
+        out_labels_filename = uuid + ".json"
 
         _image_labels = foe.to_image_labels(labels)
 
         if etau.is_str(image_or_path):
             image_labels_path = os.path.join(
-                self._labels_dir, new_labels_filename
+                self._labels_dir, out_labels_filename
             )
             _image_labels.write_json(
                 image_labels_path, pretty_print=self.pretty_print
             )
 
-            self._labeled_dataset.add_file(
-                image_or_path,
-                image_labels_path,
-                new_data_filename=new_image_filename,
-                new_labels_filename=new_labels_filename,
-            )
+            self._labeled_dataset.add_file(out_image_path, image_labels_path)
         else:
             self._labeled_dataset.add_data(
                 image_or_path,
                 _image_labels,
-                new_image_filename,
-                new_labels_filename,
+                out_image_filename,
+                out_labels_filename,
             )
 
     def close(self, *args):
@@ -2537,22 +2551,16 @@ class FiftyOneVideoLabelsDatasetExporter(LabeledVideoDatasetExporter):
     def export_sample(self, video_path, _, frames, metadata=None):
         out_video_path, uuid = self._media_exporter.export(video_path)
 
-        new_image_filename = os.path.basename(out_video_path)
-        new_labels_filename = uuid + ".json"
+        out_labels_filename = uuid + ".json"
 
         _video_labels = foe.to_video_labels(frames)
 
-        video_labels_path = os.path.join(self._labels_dir, new_labels_filename)
+        video_labels_path = os.path.join(self._labels_dir, out_labels_filename)
         _video_labels.write_json(
             video_labels_path, pretty_print=self.pretty_print
         )
 
-        self._labeled_dataset.add_file(
-            video_path,
-            video_labels_path,
-            new_data_filename=new_image_filename,
-            new_labels_filename=new_labels_filename,
-        )
+        self._labeled_dataset.add_file(out_video_path, video_labels_path)
 
     def close(self, *args):
         self._labeled_dataset.set_description(self._description)

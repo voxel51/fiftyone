@@ -188,7 +188,9 @@ class CVATImageDatasetImporter(
                 ``dataset_dir`` has no effect on the location of the labels
 
             If None, the parameter will default to ``labels.xml``
-        skip_unlabeled (False): whether to skip unlabeled images when importing
+        include_all_data (False): whether to generate samples for all images in
+            the data directory (True) rather than only creating samples for
+            images with label entries (False)
         shuffle (False): whether to randomly shuffle the order in which the
             samples are imported
         seed (None): a random seed to use when shuffling
@@ -201,7 +203,7 @@ class CVATImageDatasetImporter(
         dataset_dir=None,
         data_path=None,
         labels_path=None,
-        skip_unlabeled=False,
+        include_all_data=False,
         shuffle=False,
         seed=None,
         max_samples=None,
@@ -218,7 +220,6 @@ class CVATImageDatasetImporter(
 
         super().__init__(
             dataset_dir=dataset_dir,
-            skip_unlabeled=skip_unlabeled,
             shuffle=shuffle,
             seed=seed,
             max_samples=max_samples,
@@ -226,6 +227,7 @@ class CVATImageDatasetImporter(
 
         self.data_path = data_path
         self.labels_path = labels_path
+        self.include_all_data = include_all_data
 
         self._info = None
         self._image_paths_map = None
@@ -286,16 +288,14 @@ class CVATImageDatasetImporter(
             cvat_images = []
 
         self._info = info
-
-        # Index by filename
         self._cvat_images_map = {i.name: i for i in cvat_images}
 
-        filenames = list(self._image_paths_map.keys())
+        filenames = set(self._cvat_images_map.keys())
 
-        if self.skip_unlabeled:
-            filenames = [f for f in filenames if f in self._cvat_images_map]
+        if self.include_all_data:
+            filenames.update(self._image_paths_map.keys())
 
-        self._filenames = self._preprocess_list(filenames)
+        self._filenames = self._preprocess_list(sorted(filenames))
         self._num_samples = len(self._filenames)
 
     def get_dataset_info(self):
@@ -337,7 +337,9 @@ class CVATVideoDatasetImporter(
                 ``dataset_dir`` has no effect on the location of the labels
 
             If None, the parameter will default to ``labels/``
-        skip_unlabeled (False): whether to skip unlabeled videos when importing
+        include_all_data (False): whether to generate samples for all videos in
+            the data directory (True) rather than only creating samples for
+            videos with label entries (False)
         shuffle (False): whether to randomly shuffle the order in which the
             samples are imported
         seed (None): a random seed to use when shuffling
@@ -350,7 +352,7 @@ class CVATVideoDatasetImporter(
         dataset_dir=None,
         data_path=None,
         labels_path=None,
-        skip_unlabeled=False,
+        include_all_data=False,
         shuffle=False,
         seed=None,
         max_samples=None,
@@ -367,7 +369,6 @@ class CVATVideoDatasetImporter(
 
         super().__init__(
             dataset_dir=dataset_dir,
-            skip_unlabeled=skip_unlabeled,
             shuffle=shuffle,
             seed=seed,
             max_samples=max_samples,
@@ -375,6 +376,7 @@ class CVATVideoDatasetImporter(
 
         self.data_path = data_path
         self.labels_path = labels_path
+        self.include_all_data = include_all_data
 
         self._info = None
         self._cvat_task_labels = None
@@ -447,13 +449,13 @@ class CVATVideoDatasetImporter(
         else:
             self._labels_paths_map = {}
 
-        if self.skip_unlabeled:
-            uuids = sorted(self._labels_paths_map.keys())
-        else:
-            uuids = sorted(self._video_paths_map.keys())
+        uuids = set(self._labels_paths_map.keys())
+
+        if self.include_all_data:
+            uuids.update(self._video_paths_map.keys())
 
         self._info = None
-        self._uuids = self._preprocess_list(uuids)
+        self._uuids = self._preprocess_list(sorted(uuids))
         self._num_samples = len(self._uuids)
         self._cvat_task_labels = CVATTaskLabels()
 

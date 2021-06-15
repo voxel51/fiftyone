@@ -248,12 +248,17 @@ def _run_custom_imports(
         export_dir=export_dir, dataset_type=dataset_type, **kwargs
     )
 
-    # Test `skip_unlabeled` when importing
+    # Test unlabeled sample handling when importing
     if num_unlabeled is not None:
-        _dataset = fo.Dataset.from_dir(
-            export_dir, dataset_type, skip_unlabeled=True
-        )
-        assert len(_dataset) == len(sample_collection) - num_unlabeled
+        _dataset = fo.Dataset.from_dir(export_dir, dataset_type)
+
+        schema = _dataset.get_field_schema()
+        label_field = [f for f in schema if f.startswith("ground_truth")][0]
+
+        num_samples = len(_dataset)
+        num_labeled = len(_dataset.exists(label_field))
+
+        assert num_samples == num_labeled + num_unlabeled
 
     # Test `shuffle` and `max_samples` when importing
     if max_samples is not None:

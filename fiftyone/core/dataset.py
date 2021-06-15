@@ -2212,21 +2212,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             logger.info("Unpacking images to '%s'", images_dir)
             kwargs["images_dir"] = images_dir
 
-        dataset_importer, unused_kwargs = foud.build_dataset_importer(
+        dataset_importer, _ = foud.build_dataset_importer(
             dataset_type,
             dataset_dir=dataset_dir,
             data_path=data_path,
             labels_path=labels_path,
             **kwargs,
         )
-
-        for key, value in unused_kwargs.items():
-            if value is not None:
-                logger.warning(
-                    "Ignoring unsupported parameter '%s' for importer type %s",
-                    key,
-                    type(dataset_importer),
-                )
 
         return self.add_importer(
             dataset_importer,
@@ -2413,21 +2405,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             logger.info("Unpacking images to '%s'", images_dir)
             kwargs["images_dir"] = images_dir
 
-        dataset_importer, unused_kwargs = foud.build_dataset_importer(
+        dataset_importer, _ = foud.build_dataset_importer(
             dataset_type,
             dataset_dir=dataset_dir,
             data_path=data_path,
             labels_path=labels_path,
             **kwargs,
         )
-
-        for key, value in unused_kwargs.items():
-            if value is not None:
-                logger.warning(
-                    "Ignoring unsupported parameter '%s' for importer type %s",
-                    key,
-                    type(dataset_importer),
-                )
 
         return self.merge_importer(
             dataset_importer,
@@ -3060,7 +3044,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         tags=None,
         expand_schema=True,
         dataset_dir=None,
-        skip_unlabeled=False,
         image_format=None,
     ):
         """Ingests the given iterable of labeled image samples into the
@@ -3086,8 +3069,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 if the sample's schema is not a subset of the dataset schema
             dataset_dir (None): the directory in which the images will be
                 written. By default, :func:`get_default_dataset_dir` is used
-            skip_unlabeled (False): whether to skip unlabeled images when
-                importing
             image_format (None): the image format to use to write the images to
                 disk. By default, ``fiftyone.config.default_image_ext`` is used
 
@@ -3098,11 +3079,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             dataset_dir = get_default_dataset_dir(self.name)
 
         dataset_ingestor = foud.LabeledImageDatasetIngestor(
-            dataset_dir,
-            samples,
-            sample_parser,
-            skip_unlabeled=skip_unlabeled,
-            image_format=image_format,
+            dataset_dir, samples, sample_parser, image_format=image_format,
         )
 
         return self.add_importer(
@@ -3270,7 +3247,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         tags=None,
         expand_schema=True,
         dataset_dir=None,
-        skip_unlabeled=False,
     ):
         """Ingests the given iterable of labeled video samples into the
         dataset.
@@ -3293,8 +3269,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 if the sample's schema is not a subset of the dataset schema
             dataset_dir (None): the directory in which the videos will be
                 written. By default, :func:`get_default_dataset_dir` is used
-            skip_unlabeled (False): whether to skip unlabeled videos when
-                importing
 
         Returns:
             a list of IDs of the samples in the dataset
@@ -3303,7 +3277,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             dataset_dir = get_default_dataset_dir(self.name)
 
         dataset_ingestor = foud.LabeledVideoDatasetIngestor(
-            dataset_dir, samples, sample_parser, skip_unlabeled=skip_unlabeled,
+            dataset_dir, samples, sample_parser
         )
 
         return self.add_importer(

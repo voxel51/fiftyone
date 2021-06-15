@@ -339,9 +339,12 @@ class GeoJSONImageDatasetImporter(
             functions that parse the property values (e.g., into the
             appropriate) :class:`fiftyone.core.labels.Label` types). By
             default, all properies are stored as primitive field values
-        skip_unlabeled (False): whether to skip unlabeled images when importing
-        skip_missing_media (False): whether to skip features with no
-            ``filename`` or ``filepath`` property
+        skip_missing_media (False): whether to skip (True) or raise an error
+            (False) when features with no ``filename`` or ``filepath`` property
+            are encountered
+        include_all_data (False): whether to generate samples for all media in
+            the data directory (True) rather than only creating samples for
+            media with label entries (False)
         shuffle (False): whether to randomly shuffle the order in which the
             samples are imported
         seed (None): a random seed to use when shuffling
@@ -357,8 +360,8 @@ class GeoJSONImageDatasetImporter(
         location_field="location",
         multi_location=False,
         property_parsers=None,
-        skip_unlabeled=False,
         skip_missing_media=False,
+        include_all_data=False,
         shuffle=False,
         seed=None,
         max_samples=None,
@@ -385,8 +388,8 @@ class GeoJSONImageDatasetImporter(
         self.location_field = location_field
         self.multi_location = multi_location
         self.property_parsers = property_parsers
-        self.skip_unlabeled = skip_unlabeled
         self.skip_missing_media = skip_missing_media
+        self.include_all_data = include_all_data
 
         self._image_paths_map = None
         self._features_map = None
@@ -470,11 +473,12 @@ class GeoJSONImageDatasetImporter(
                 features_map[filepath] = feature
 
         filepaths = set(features_map.keys())
-        if not self.skip_unlabeled:
+
+        if self.include_all_data:
             filepaths.update(self._image_paths_map.values())
 
         self._features_map = features_map
-        self._filepaths = self._preprocess_list(list(filepaths))
+        self._filepaths = self._preprocess_list(sorted(filepaths))
         self._num_samples = len(self._filepaths)
 
 

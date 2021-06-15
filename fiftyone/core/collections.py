@@ -5312,6 +5312,7 @@ class SampleCollection(object):
 
             dataset_exporter, kwargs = foud.build_dataset_exporter(
                 dataset_type,
+                warn_unused=False,  # don't warn yet, might be patches kwargs
                 export_dir=export_dir,
                 data_path=data_path,
                 labels_path=labels_path,

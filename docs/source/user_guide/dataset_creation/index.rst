@@ -46,6 +46,7 @@ below to figure out which option is best for you.
         - :ref:`YOLODataset <YOLODataset-import>`
         - :ref:`KITTIDetectionDataset <KITTIDetectionDataset-import>`
         - :ref:`TFObjectDetectionDataset <TFObjectDetectionDataset-import>`
+        - :ref:`ImageSegmentationDirectory <ImageSegmentationDirectory-import>`
         - :ref:`CVATImageDataset <CVATImageDataset-import>`
         - :ref:`CVATVideoDataset <CVATVideoDataset-import>`
         - :ref:`FiftyOneImageLabelsDataset <FiftyOneImageLabelsDataset-import>`

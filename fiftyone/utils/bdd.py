@@ -185,7 +185,9 @@ class BDDDatasetImporter(
                 ``dataset_dir`` has no effect on the location of the labels
 
             If None, the parameter will default to ``labels.json``
-        skip_unlabeled (False): whether to skip unlabeled images when importing
+        include_all_data (False): whether to generate samples for all images in
+            the data directory (True) rather than only creating samples for
+            images with label entries (False)
         shuffle (False): whether to randomly shuffle the order in which the
             samples are imported
         seed (None): a random seed to use when shuffling
@@ -198,7 +200,7 @@ class BDDDatasetImporter(
         dataset_dir=None,
         data_path=None,
         labels_path=None,
-        skip_unlabeled=False,
+        include_all_data=False,
         shuffle=False,
         seed=None,
         max_samples=None,
@@ -215,7 +217,6 @@ class BDDDatasetImporter(
 
         super().__init__(
             dataset_dir=dataset_dir,
-            skip_unlabeled=skip_unlabeled,
             shuffle=shuffle,
             seed=seed,
             max_samples=max_samples,
@@ -223,6 +224,7 @@ class BDDDatasetImporter(
 
         self.data_path = data_path
         self.labels_path = labels_path
+        self.include_all_data = include_all_data
 
         self._image_paths_map = None
         self._anno_dict_map = None
@@ -279,16 +281,17 @@ class BDDDatasetImporter(
         else:
             self._anno_dict_map = {}
 
-        filenames = list(self._image_paths_map.keys())
+        filenames = set(self._anno_dict_map.keys())
 
-        if self.skip_unlabeled:
-            filenames = [f for f in filenames if f in self._anno_dict_map]
+        if self.include_all_data:
+            filenames.update(self._image_paths_map.keys())
 
-        self._filenames = self._preprocess_list(filenames)
+        self._filenames = self._preprocess_list(sorted(filenames))
         self._num_samples = len(self._filenames)
 
     @staticmethod
-    def get_num_samples(dataset_dir):
+    def _get_num_samples(dataset_dir):
+        # Used only by dataset zoo
         return len(etau.list_files(os.path.join(dataset_dir, "data")))
 
 

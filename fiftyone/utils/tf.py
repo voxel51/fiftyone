@@ -454,24 +454,14 @@ class TFRecordsLabeledImageDatasetImporter(foud.LabeledImageDatasetImporter):
         images_dir: the directory in which the images will be written
         image_format (None): the image format to use to write the images to
             disk. By default, ``fiftyone.config.default_image_ext`` is used
-        skip_unlabeled (False): whether to skip unlabeled images when importing
         max_samples (None): a maximum number of samples to import. By default,
             all samples are imported
     """
 
     def __init__(
-        self,
-        dataset_dir,
-        images_dir,
-        image_format=None,
-        skip_unlabeled=False,
-        max_samples=None,
+        self, dataset_dir, images_dir, image_format=None, max_samples=None,
     ):
-        super().__init__(
-            dataset_dir=dataset_dir,
-            skip_unlabeled=skip_unlabeled,
-            max_samples=max_samples,
-        )
+        super().__init__(dataset_dir=dataset_dir, max_samples=max_samples)
 
         self.images_dir = images_dir
         self.image_format = image_format
@@ -504,7 +494,6 @@ class TFRecordsLabeledImageDatasetImporter(foud.LabeledImageDatasetImporter):
             tf_dataset,
             self._sample_parser,
             image_format=self.image_format,
-            skip_unlabeled=self.skip_unlabeled,
             max_samples=self.max_samples,
         )
         self._dataset_ingestor.setup()
@@ -538,7 +527,6 @@ class TFImageClassificationDatasetImporter(
         images_dir: the directory in which the images will be written
         image_format (None): the image format to use to write the images to
             disk. By default, ``fiftyone.config.default_image_ext`` is used
-        skip_unlabeled (False): whether to skip unlabeled images when importing
         max_samples (None): a maximum number of samples to import. By default,
             all samples are imported
     """
@@ -566,7 +554,6 @@ class TFObjectDetectionDatasetImporter(TFRecordsLabeledImageDatasetImporter):
         images_dir: the directory in which the images will be written
         image_format (None): the image format to use to write the images to
             disk. By default, ``fiftyone.config.default_image_ext`` is used
-        skip_unlabeled (False): whether to skip unlabeled images when importing
         max_samples (None): a maximum number of samples to import. By default,
             all samples are imported
     """

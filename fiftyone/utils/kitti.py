@@ -92,7 +92,9 @@ class KITTIDetectionDatasetImporter(
                 ``dataset_dir`` has no effect on the location of the labels
 
             If None, the parameter will default to ``labels/``
-        skip_unlabeled (False): whether to skip unlabeled images when importing
+        include_all_data (False): whether to generate samples for all images in
+            the data directory (True) rather than only creating samples for
+            images with label entries (False)
         shuffle (False): whether to randomly shuffle the order in which the
             samples are imported
         seed (None): a random seed to use when shuffling
@@ -105,7 +107,7 @@ class KITTIDetectionDatasetImporter(
         dataset_dir=None,
         data_path=None,
         labels_path=None,
-        skip_unlabeled=False,
+        include_all_data=False,
         shuffle=False,
         seed=None,
         max_samples=None,
@@ -122,7 +124,6 @@ class KITTIDetectionDatasetImporter(
 
         super().__init__(
             dataset_dir=dataset_dir,
-            skip_unlabeled=skip_unlabeled,
             shuffle=shuffle,
             seed=seed,
             max_samples=max_samples,
@@ -130,6 +131,7 @@ class KITTIDetectionDatasetImporter(
 
         self.data_path = data_path
         self.labels_path = labels_path
+        self.include_all_data = include_all_data
 
         self._image_paths_map = None
         self._labels_paths_map = None
@@ -192,21 +194,18 @@ class KITTIDetectionDatasetImporter(
         else:
             self._labels_paths_map = {}
 
-        if self.skip_unlabeled:
-            uuids = sorted(self._labels_paths_map.keys())
-        else:
-            uuids = sorted(self._image_paths_map.keys())
+        uuids = set(self._labels_paths_map.keys())
 
-        self._uuids = self._preprocess_list(uuids)
+        if self.include_all_data:
+            uuids.update(self._image_paths_map.keys())
+
+        self._uuids = self._preprocess_list(sorted(uuids))
         self._num_samples = len(self._uuids)
 
     @staticmethod
-    def get_num_samples(dataset_dir):
-        data_dir = os.path.join(dataset_dir, "data")
-        if not os.path.isdir(data_dir):
-            return 0
-
-        return len(etau.list_files(data_dir))
+    def _get_num_samples(dataset_dir):
+        # Used only by dataset zoo
+        return len(etau.list_files(os.path.join(dataset_dir, "data")))
 
 
 class KITTIDetectionDatasetExporter(
