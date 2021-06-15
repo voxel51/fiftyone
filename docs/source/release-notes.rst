@@ -21,9 +21,8 @@ Core
 ^^^^
 - Improved the performance of importing data into FiftyOne by 2x or more!
 - Added a
-  :meth:`to_frames <fiftyone.core.collections.SampleCollection.to_frames>` view
-  stage that enables on-the-fly conversion of a video datasets into frames
-  views
+  :meth:`to_frames() <fiftyone.core.collections.SampleCollection.to_frames>` view
+  stage that enables on-the-fly conversion of video datasets into frames views
 - Added :meth:`last() <fiftyone.core.frame.Frames.last>`,
   :meth:`head() <fiftyone.core.frame.Frames.head>`, and
   :meth:`tail() <fiftyone.core.frame.Frames.tail>` methods to the
@@ -36,8 +35,8 @@ Core
   IDs or filter expressions, respectively
 - Added a new
   :meth:`match_labels() <fiftyone.core.collections.SampleCollection.match_labels>`
-  view stage that enables matching samples that have specific labels, but
-  without actually filtering the non-matching labels
+  view stage that enables matching samples that have specific labels without
+  actually filtering the non-matching labels
 - Added support for exporting image patches using
   :meth:`export() <fiftyone.core.collections.SampleCollection.export>` by
   specifying an image classification dataset type and including a spatial
@@ -46,8 +45,8 @@ Core
   into the corresponding multiple label field type |Detections| when using
   :meth:`export() <fiftyone.core.collections.SampleCollection.export>` to
   export in dataset formats that expect list-type fields
-- Added support for executing an aggregation on multiple fields via an
-  abbreviated syntax like
+- Added support for executing an aggregation on multiple fields via the
+  abbreviated syntax
   ``ids, filepaths = dataset.values(["id", "filepath"])``
 - Exposed the ``id`` field of all samples and frames in dataset schemas
 - Added support for merging the elements of list fields via
@@ -56,7 +55,7 @@ Core
 - Added a number of useful options to
   :meth:`Dataset.merge_samples() <fiftyone.core.dataset.Dataset.merge_samples>`,
   including ``fields``, ``omit_fields``, and ``merge_lists``
-- Greatly improved the efficiency of
+- Improved the efficiency of
   :meth:`Dataset.merge_samples() <fiftyone.core.dataset.Dataset.merge_samples>`
   when the ``overwrite=False`` option is provided
 - Added an optional ``bool`` flag to the
