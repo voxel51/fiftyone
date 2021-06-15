@@ -11,11 +11,11 @@ FiftyOne 0.9.4
 
 App
 ^^^
-- Added support for matching samples by ID to the Filters Sidebar
-- Fixed a bug that could cause the App to crash when selecting samples when the
-  ``Color by value`` setting is active
-- Fixed a bug that could cause the App to crash on some Windows machines by
-  ensuring the correct MIME type is set for JavaScript files
+- Added support for matching samples by ID in the Filters Sidebar
+- Fixed a bug that caused the App to crash when selecting samples with the
+  ``Color by value`` setting active
+- Fixed a bug that caused the App to crash on some Windows machines by ensuring
+  the correct MIME type is set for JavaScript files
 
 Core
 ^^^^
@@ -31,7 +31,7 @@ Core
 - Added new
   :meth:`exclude_fields() <fiftyone.core.collections.SampleCollection.exclude_fields>`,
   :meth:`select_frames() <fiftyone.core.collections.SampleCollection.select_frames>`, and
-  :meth:`match_frames() <fiftyone.core.collections.SampleCollection.match_frames>`,
+  :meth:`match_frames() <fiftyone.core.collections.SampleCollection.match_frames>`
   view stages that enable selecting specific frames of video collections via
   IDs or filter expressions, respectively
 - Added a new
@@ -47,7 +47,7 @@ Core
   :meth:`export() <fiftyone.core.collections.SampleCollection.export>` to
   export in dataset formats that expect list-type fields
 - Added support for executing an aggregation on multiple fields via an
-  abbreviated syntax, e.g.,
+  abbreviated syntax like
   ``ids, filepaths = dataset.values(["id", "filepath"])``
 - Exposed the ``id`` field of all samples and frames in dataset schemas
 - Added support for merging the elements of list fields via
@@ -70,7 +70,7 @@ Core
   that would cause views to contain empty label lists if the source dataset
   contains None-valued fields
 - Fixed a bug that prevented
-  :meth:``ViewExpression.contains() <fiftyone.core.expressions.ViewExpression.contains>`
+  :meth:`ViewExpression.contains() <fiftyone.core.expressions.ViewExpression.contains>`
   from accepting |ViewExpression| instances as arguments
 
 Utils
@@ -105,8 +105,9 @@ FiftyOne 0.9.3
 App
 ^^^
 - Fixed an issue that prevented some datasets and views that contain vector or
-  array data (e.g., ``logits``) from properly loading in the App
+  array data (e.g., logits) from properly loading in the App
 - Fixed a bug that prevented loading video datasets in the App in Google Colab
+  environments
 
 .. _release-notes-v0.9.2:
 
@@ -195,7 +196,7 @@ Core
   method
 - Brain results and evaluation results that are loaded via
   :meth:`load_evaluation_results() <fiftyone.core.collections.SampleCollection.load_evaluation_results>`
-   :meth:`load_brain_results() <fiftyone.core.collections.SampleCollection.load_brain_results>`
+  :meth:`load_brain_results() <fiftyone.core.collections.SampleCollection.load_brain_results>`
   are now cached on the |Dataset| object in-memory so that subsequent
   retrievals of the results in the same session will be instant
 
