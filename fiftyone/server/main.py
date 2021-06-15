@@ -187,7 +187,7 @@ class FramesHandler(tornado.web.RequestHandler):
         elif state.dataset is not None:
             view = state.dataset
 
-        view = view.select(sample_id)
+        view = view._stages.prepend(fosg.Select(sample_id))
         view = view.select_fields("frames")
         view = view.set_field(
             "frames",

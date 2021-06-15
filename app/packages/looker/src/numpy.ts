@@ -6,16 +6,8 @@ import pako from "pako";
 
 export { deserialize };
 
-type TypedArray =
-  | Uint8Array
-  | Int8Array
-  | Uint16Array
-  | Int16Array
-  | Uint32Array
-  | Int32Array;
-
 export interface NumpyResult {
-  data: TypedArray;
+  buffer: ArrayBuffer;
   shape: [number, number];
 }
 
@@ -127,7 +119,7 @@ function parse(array: Uint8Array): NumpyResult {
         );
   return {
     shape: header.shape,
-    data: typedData,
+    buffer: typedData.buffer,
   };
 }
 

@@ -42,35 +42,41 @@ export const POINTS_FROM_FO = {
 };
 
 const DESERIALIZE = {
-  Detection: (label) => {
+  Detection: (label, buffers) => {
     if (typeof label.mask === "string") {
       label.mask = deserialize(label.mask);
+      buffers.push(label.mask.buffer);
     }
   },
-  Detections: (labels) => {
+  Detections: (labels, buffers) => {
     labels.detections.forEach((label) => {
       if (typeof label.mask === "string") {
         label.mask = deserialize(label.mask);
+        buffers.push(label.mask.buffer);
       }
     });
   },
-  Segmentation: (label) => {
+  Segmentation: (label, buffers) => {
     if (typeof label.mask === "string") {
       label.mask = deserialize(label.mask);
+      buffers.push(label.mask.buffer);
     }
   },
 };
 
-export const processMasks = (sample: { [key: string]: any }): void => {
+export const processMasks = (sample: { [key: string]: any }): ArrayBuffer[] => {
+  let buffers: ArrayBuffer[] = [];
   for (const field in sample) {
     const label = sample[field];
     if (!label) {
       continue;
     }
     if (label._cls in DESERIALIZE) {
-      DESERIALIZE[label._cls](label);
+      DESERIALIZE[label._cls](label, buffers);
     }
   }
+
+  return buffers;
 };
 
 export const loadOverlays = <State extends BaseState>(sample: {

@@ -34,7 +34,6 @@ export default class DetectionOverlay<
   private static readonly intermediateCanvas: HTMLCanvasElement =
     typeof document !== "undefined" ? document.createElement("canvas") : null;
   private labelBoundingBox: BoundingBox;
-  private readonly mask: NumpyResult;
   private selected: boolean;
 
   constructor(field, label) {
@@ -42,11 +41,7 @@ export default class DetectionOverlay<
   }
 
   containsPoint(state: Readonly<State>): CONTAINS {
-    const [w, h] = state.config.dimensions;
-    const [_, __, ww, wh] = state.windowBBox;
-    const pad = (getRenderedScale([ww, wh], [w, h]) * state.strokeWidth) / 2;
-    let [bx, by, bw, bh] = this.label.bounding_box;
-    [bx, by, bw, bh] = [bx * w, by * h, bw * w + pad, bh * h + pad];
+    const [bx, by, bw, bh] = this.getDrawnBBox(state);
 
     const [px, py] = state.pixelCoordinates;
 
@@ -80,10 +75,8 @@ export default class DetectionOverlay<
   }
 
   getMouseDistance(state: Readonly<State>): number {
-    let [bx, by, bw, bh] = this.label.bounding_box;
-    const [w, h] = state.config.dimensions;
     const [px, py] = state.pixelCoordinates;
-    [bx, by, bw, bh] = [bx * w, by * h, bw * w, bh * h];
+    const [bx, by, bw, bh] = this.getDrawnBBox(state);
 
     if (this.isInHeader(state)) {
       return 0;
@@ -236,6 +229,14 @@ export default class DetectionOverlay<
     ctx.lineTo(...t(state, tlx, tly + h));
     ctx.closePath();
     ctx.stroke();
+  }
+
+  private getDrawnBBox(state: Readonly<State>): BoundingBox {
+    const [w, h] = state.config.dimensions;
+    const [_, __, ww, wh] = state.windowBBox;
+    const pad = getRenderedScale([ww, wh], [w, h]) * state.strokeWidth;
+    let [bx, by, bw, bh] = this.label.bounding_box;
+    return [bx * w - pad, by * h - pad, bw * w + pad * 2, bh * h + pad * 2];
   }
 }
 

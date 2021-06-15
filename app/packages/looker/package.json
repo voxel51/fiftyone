@@ -21,7 +21,8 @@
     "immutable": "^4.0.0-rc.12",
     "lru-cache": "^6.0.0",
     "mime-types": "^2.1.30",
-    "pako": "1.0.11"
+    "pako": "1.0.11",
+    "uuid": "^8.3.2"
   },
   "devDependencies": {
     "@fiftyone/prettier-config": "^0.1.0",

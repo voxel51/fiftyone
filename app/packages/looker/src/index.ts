@@ -2,6 +2,7 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 import LRU from "lru-cache";
+import { v4 as uuid } from "uuid";
 
 import {
   FONT_SIZE,
@@ -17,7 +18,7 @@ import {
 } from "./elements";
 import { LookerElement } from "./elements/common";
 import processOverlays from "./processOverlays";
-import { loadOverlays, processMasks } from "./overlays";
+import { loadOverlays } from "./overlays";
 import { CONTAINS, Overlay } from "./overlays/base";
 import {
   FrameState,
@@ -44,6 +45,8 @@ import { zoomToContent } from "./zoom";
 import "./style.css";
 
 export { zoomAspectRatio } from "./zoom";
+
+const labelsWorker = createWorker();
 
 export abstract class Looker<
   State extends BaseState = BaseState,
@@ -159,16 +162,19 @@ export abstract class Looker<
   }
 
   updateSample(sample: Sample) {
-    const worker = createWorker();
-    worker.onmessage = ({ data: { sample } }) => {
-      this.loadOverlays(sample);
-      this.updater({ overlaysPrepared: true });
-      worker.onmessage = null;
-    };
-    worker.postMessage({
+    const messageUUID = uuid();
+    labelsWorker.addEventListener("message", ({ data: { sample, uuid } }) => {
+      if (uuid === messageUUID) {
+        this.loadOverlays(sample);
+        this.updater({ overlaysPrepared: true });
+        labelsWorker.onmessage = null;
+      }
+    });
+    labelsWorker.postMessage({
       method: "processSample",
       origin: window.location.origin,
       sample,
+      uuid: messageUUID,
     });
   }
 
@@ -383,7 +389,6 @@ const attachReader = (() => {
   frameCache;
 
   const frameReader = createWorker();
-  let looker = null;
 
   return ({
     addFrames,
@@ -392,10 +397,22 @@ const attachReader = (() => {
     frameCount,
     force,
   }: AttachReaderOptions) => {
-    frameReader.onmessage = (event: MessageEvent) => {};
+    const subscription = uuid();
+    frameReader.onmessage = ({
+      data: { uuid, method, frames },
+    }: MessageEvent) => {
+      if (uuid === subscription && method === "frameChunk") {
+        frameCache.set();
+        addFrames({ frames });
+      }
+    };
     frameReader.postMessage({
+      method: "setReader",
       sampleId,
       frameCount,
+      frameNumber,
+      force,
+      uuid: subscription,
     });
   };
 })();

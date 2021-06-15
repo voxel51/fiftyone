@@ -11,13 +11,18 @@ export enum CONTAINS {
   BORDER = 2,
 }
 
+export interface BaseLabel {
+  _id: string;
+  _cls: string;
+  frame_number?: number;
+  tags: string[];
+  index?: number;
+}
+
 export interface PointInfo {
   color: string;
   field: string;
-  label: {
-    _id: string;
-    _cls: string;
-  };
+  label: BaseLabel;
   point?: Coordinates;
   target?: number;
   type: string;
@@ -27,14 +32,6 @@ export interface SelectData {
   field: string;
   id: string;
   frameNumber?: number;
-}
-
-export interface BaseLabel {
-  _id: string;
-  _cls: string;
-  frame_number?: number;
-  tags: string[];
-  index?: number;
 }
 
 export interface RegularLabel extends BaseLabel {

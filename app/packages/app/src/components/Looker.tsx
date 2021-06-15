@@ -146,20 +146,22 @@ const useTarget = (field, target) => {
   return getTarget(field, target);
 };
 
-const AttrInfo = ({ field, id, frameNumber, children = null }) => {
-  let entries = attrs.filter(([k, v]) => k !== "tags");
+const AttrInfo = ({ label, children = null }) => {
+  let entries = Object.entries(label).filter(
+    ([k, v]) => "tags" !== k && !k.startsWith("_")
+  );
   if (!entries || !entries.length) {
     return null;
   }
 
-  const defaults: [string, string | number | null] = entries.filter(([name]) =>
+  const defaults = entries.filter(([name]) =>
     ["label", "confidence"].includes(name)
   );
 
   const other = entries.filter(
     ([name]) => !["label", "confidence"].includes(name)
   );
-  const mapper = ([name, value]: [string, string | number | null]) => (
+  const mapper = ([name, value]) => (
     <ContentItem key={name} name={name} value={value} />
   );
 
@@ -172,72 +174,52 @@ const AttrInfo = ({ field, id, frameNumber, children = null }) => {
   );
 };
 
-const ClassificationInfo = ({ info }) => {
+const ClassificationInfo = ({ detail }) => {
   return (
-    <AttrBlock style={{ borderColor: info.color }}>
-      <AttrInfo
-        field={info.field}
-        id={info.label._id}
-        frameNumber={info.frameNumber}
-      />
+    <AttrBlock style={{ borderColor: detail.color }}>
+      <AttrInfo label={detail.label} />
     </AttrBlock>
   );
 };
 
-const DetectionInfo = ({ info }) => {
+const DetectionInfo = ({ detail }) => {
   return (
-    <AttrBlock style={{ borderColor: info.color }}>
-      <AttrInfo
-        field={info.field}
-        id={info.label._id}
-        frameNumber={info.frameNumber}
-      />
+    <AttrBlock style={{ borderColor: detail.color }}>
+      <AttrInfo label={detail.label} />
     </AttrBlock>
   );
 };
 
-const KeypointInfo = ({ info }) => {
+const KeypointInfo = ({ detail }) => {
   return (
-    <AttrBlock style={{ borderColor: info.color }}>
-      <AttrInfo
-        field={info.field}
-        id={info.label._id}
-        frameNumber={info.frameNumber}
-      >
+    <AttrBlock style={{ borderColor: detail.color }}>
+      <AttrInfo label={detail.label}>
         <ContentItem
           key={"# keypoints"}
           name={"# keypoints"}
-          value={info.numPoints}
+          value={detail.numPoints}
         />
       </AttrInfo>
     </AttrBlock>
   );
 };
 
-const SegmentationInfo = ({ info }) => {
-  const targetValue = useTarget(info.field, info.target);
+const SegmentationInfo = ({ detail }) => {
+  const targetValue = useTarget(detail.field, detail.target);
 
   return (
-    <AttrBlock style={{ borderColor: info.color }}>
+    <AttrBlock style={{ borderColor: detail.color }}>
       <ContentItem key={"target-value"} name={"label"} value={targetValue} />
-      <AttrInfo
-        field={info.field}
-        id={info.label._id}
-        frameNumber={info.frameNumber}
-      />
+      <AttrInfo label={detail.label} />
     </AttrBlock>
   );
 };
 
-const PolylineInfo = ({ info }) => {
+const PolylineInfo = ({ detail }) => {
   return (
-    <AttrBlock style={{ borderColor: info.color }}>
-      <AttrInfo
-        field={info.field}
-        id={info.label._id}
-        frameNumber={info.frameNumber}
-      >
-        <ContentItem key={"# points"} name={"# points"} value={info.points} />
+    <AttrBlock style={{ borderColor: detail.color }}>
+      <AttrInfo label={detail.label}>
+        <ContentItem key={"# points"} name={"# points"} value={detail.points} />
       </AttrInfo>
     </AttrBlock>
   );
@@ -323,8 +305,8 @@ const TooltipInfo = React.memo(
           >
             <ContentHeader key="header">{detail.field}</ContentHeader>
             <Border color={detail.color} id={detail.label._id} />
-            <TagInfo key={"tags"} tags={detail.label.tags} />
-            <Component key={"attrs"} info={detail} />
+            <TagInfo key={"tags"} tags={detail.label?.tags} />
+            <Component key={"attrs"} detail={detail} />
           </TooltipDiv>,
           document.body
         )

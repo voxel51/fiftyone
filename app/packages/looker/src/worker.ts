@@ -4,14 +4,19 @@
 
 import { processMasks } from "./overlays";
 
-const HIGH_WATER_MARK = 120;
+const HIGH_WATER_MARK = 6;
 const CHUNK_SIZE = 30;
 
 interface FrameReader {
   chunkSize: number;
   frameNumber: number;
   sampleId: string;
-  stream: ReadableStream;
+  stream: ReadableStream<FrameChunk>;
+}
+
+interface FrameChunk {
+  frames: any[];
+  buffers: ArrayBuffer[];
 }
 
 const createReader = ({
@@ -32,7 +37,7 @@ const createReader = ({
     sampleId,
     frameNumber,
     chunkSize,
-    stream: new ReadableStream(
+    stream: new ReadableStream<FrameChunk>(
       {
         pull: (controller: ReadableStreamDefaultController) => {
           if (frameNumber >= frameCount) {
@@ -52,10 +57,11 @@ const createReader = ({
             )
               .then((response: Response) => response.json())
               .then((data) => {
-                data.frames.array.forEach((frame) => {
-                  processMasks(frame);
-                  controller.enqueue(frame);
+                let buffers = [];
+                data.frames.forEach((frame) => {
+                  buffers = [...buffers, processMasks(frame)];
                 });
+                controller.enqueue({ frames: data.frames, buffers });
                 frameNumber = nextFrameChunkStart;
                 resolve();
               })
@@ -73,17 +79,14 @@ const createReader = ({
   };
 };
 
-let currentOrigin: string = null;
 let reader: FrameReader = null;
 interface Frames {
   [key: number]: any;
 }
 
-type FrameRange = [number, number];
-
 interface FramesResult {
-  frames: Frames;
-  range: FrameRange;
+  frames: any[];
+  end: number;
 }
 
 interface ReaderMethod {
@@ -96,6 +99,7 @@ interface SetReader {
   frameNumber: number;
   frameCount: number;
   force?: boolean;
+  uuid: string;
 }
 
 type SetReaderMethod = ReaderMethod & SetReader;
@@ -107,7 +111,6 @@ const setReader = ({
   frameCount,
   force,
 }: SetReader) => {
-  currentOrigin = origin;
   if (!reader || force || reader.sampleId !== sampleId) {
     reader.stream && reader.stream.cancel();
     reader = createReader({
@@ -120,11 +123,31 @@ const setReader = ({
   }
 
   const stream = reader.stream.getReader();
-  while (!stream.closed) {}
+  const sendChunk = ({
+    done,
+    value,
+  }: {
+    done: boolean;
+    value?: FrameChunk;
+  }) => {
+    if (value) {
+      postMessage(
+        {
+          method: "frameChunk",
+          frames: value.frames,
+        },
+        buffers
+      );
+    }
+    !done && stream.read().then(sendChunk);
+  };
+
+  stream.read().then(sendChunk);
 };
 
 interface ProcessSample {
   origin: string;
+  uuid: string;
   sample: {
     [key: string]: object;
     frames?: {
@@ -135,14 +158,22 @@ interface ProcessSample {
 
 type ProcessSampleMethod = ReaderMethod & ProcessSample;
 
-const processSample = ({ sample }: ProcessSample) => {
-  processMasks(sample);
-  sample.frames && sample.frames[1] && processMasks(sample.frames[1]);
+const processSample = ({ sample, uuid }: ProcessSample) => {
+  let buffers = processMasks(sample);
 
-  postMessage({
-    method: "processSample",
-    sample,
-  });
+  if (sample.frames && sample.frames[1]) {
+    buffers = [...buffers, ...processMasks(sample.frames[1])];
+  }
+
+  postMessage(
+    {
+      method: "processSample",
+      sample,
+      uuid,
+    },
+    // @ts-ignore
+    buffers
+  );
 };
 
 type Method = SetReaderMethod | ProcessSampleMethod;

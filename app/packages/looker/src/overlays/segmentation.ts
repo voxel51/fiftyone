@@ -28,8 +28,7 @@ export default class SegmentationOverlay<State extends BaseState>
     this.field = field;
     this.label = label;
     if (this.label.mask) {
-      this.imageColors = new Uint32Array(this.label.mask.data);
-      this.targets = new Uint32Array(this.label.mask.data);
+      this.targets = new Uint32Array(this.label.mask.buffer);
     }
   }
 
@@ -63,9 +62,9 @@ export default class SegmentationOverlay<State extends BaseState>
       this.selected = selected;
       const colors = getSegmentationColorArray(this.colorMap, selected);
 
-      for (let i = 0; i < this.label.mask.data.length; i++) {
-        if (this.label.mask.data[i]) {
-          maskImageRaw[i] = colors[this.label.mask.data[i]];
+      for (let i = 0; i < this.targets.length; i++) {
+        if (this.targets[i]) {
+          maskImageRaw[i] = colors[this.targets[i]];
         }
       }
       this.imageColors = imageColors;
@@ -89,8 +88,10 @@ export default class SegmentationOverlay<State extends BaseState>
     return {
       color: this.getColor(state, target),
       label: {
-        _id: this.label._id,
-        _cls: this.label._cls,
+        ...this.label,
+        mask: {
+          shape: this.label.mask.shape ? this.label.mask.shape : null,
+        },
       },
       field: this.field,
       target,
