@@ -128,8 +128,7 @@ FiftyOne 0.9.1
 
 App
 ^^^
-- Fixed a bug that caused the App to crash when selecting samples with the
-  ``Color by value`` setting active
+- Fixed a bug that caused the App to crash when choosing to ``Color by value``
 
 .. _release-notes-v0.9.0:
 
