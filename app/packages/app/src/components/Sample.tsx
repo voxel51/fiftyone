@@ -87,9 +87,9 @@ const SampleInfo = React.memo(({ sampleId }: { sampleId: string }) => {
       }
     } else if (
       scalars.includes(cur) &&
-      ![null, undefined].includes(sample[cur])
+      ![null, undefined].includes(sample[cur === "id" ? "_id" : cur])
     ) {
-      const value = prettify(sample[cur], false);
+      const value = prettify(sample[cur === "id" ? "_id" : cur], false);
       acc = [
         ...acc,
         <Tag

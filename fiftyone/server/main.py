@@ -83,9 +83,9 @@ class FiftyOneHandler(RequestHandler):
             dict
         """
         uid, _ = fou.get_user_id()
-        isfile = os.path.isfile(foc.FEEDBACK_PATH)
+        isfile = os.path.isfile(foc.TEAMS_PATH)
         if isfile:
-            submitted = etas.load_json(foc.FEEDBACK_PATH)["submitted"]
+            submitted = etas.load_json(foc.TEAMS_PATH)["submitted"]
         else:
             submitted = False
 
@@ -93,7 +93,7 @@ class FiftyOneHandler(RequestHandler):
             "version": foc.VERSION,
             "user_id": uid,
             "do_not_track": fo.config.do_not_track,
-            "feedback": {"submitted": submitted, "minimized": isfile},
+            "teams": {"submitted": submitted, "minimized": isfile},
             "dev_install": foc.DEV_INSTALL or foc.RC_INSTALL,
         }
 
@@ -215,12 +215,12 @@ class FramesHandler(tornado.web.RequestHandler):
         self.write({"frames": frames, "range": [mn, mx]})
 
 
-class FeedbackHandler(RequestHandler):
-    """Returns whether the feedback button should be minimized"""
+class TeamsHandler(RequestHandler):
+    """Returns whether the teams button should be minimized"""
 
     def post(self):
-        submitted = self.get_argument("submitted", False)
-        etas.write_json({"submitted": submitted}, foc.FEEDBACK_PATH)
+        submitted = self.get_argument("submitted", "") == "true"
+        etas.write_json({"submitted": submitted}, foc.TEAMS_PATH)
 
 
 def _catch_errors(func):
@@ -1393,7 +1393,6 @@ class Application(tornado.web.Application):
         rel_web_path = "static"
         web_path = os.path.join(server_path, rel_web_path)
         handlers = [
-            (r"/feedback", FeedbackHandler),
             (r"/fiftyone", FiftyOneHandler),
             (r"/frames", FramesHandler),
             (r"/filepath/(.*)", MediaHandler, {"path": ""},),
@@ -1402,6 +1401,7 @@ class Application(tornado.web.Application):
             (r"/reactivate", ReactivateHandler),
             (r"/stages", StagesHandler),
             (r"/state", StateHandler),
+            (r"/teams", TeamsHandler),
             (
                 r"/(.*)",
                 FileHandler,

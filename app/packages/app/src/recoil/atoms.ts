@@ -13,13 +13,13 @@ export const connected = atom({
   default: false,
 });
 
-export const closeFeedback = atom({
-  key: "closeFeedback",
+export const closeTeams = atom({
+  key: "closeTeams",
   default: null,
 });
 
-export const feedbackSubmitted = atom({
-  key: "feedbackSubmitted",
+export const teamsSubmitted = atom({
+  key: "teamsSubmitted",
   default: {
     submitted: false,
     minimized: false,
@@ -158,8 +158,8 @@ export const colorSeed = atomFamily<number, boolean>({
   default: 1,
 });
 
-export const appFeedbackIsOpen = atom({
-  key: "appFeedbackIsOpen",
+export const appTeamsIsOpen = atom({
+  key: "appTeamsIsOpen",
   default: false,
 });
 

@@ -605,7 +605,7 @@ const ScalarsCell = ({ modal }: ScalarsCellProps) => {
         filtering.filteredScalars(modal)
       )}
       entries={scalars
-        .filter((name) => !(name === "filepath" && modal))
+        .filter((name) => !(["filepath", "id"].includes(name) && modal))
         .map((name) => {
           return {
             name,
