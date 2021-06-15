@@ -607,9 +607,8 @@ const TeamsButton = ({ addNotification }) => {
       early adopters.
       <br />
       <br />
-      Are you interested in a team-based deployment of FiftyOne for your team?
-      Let us know how to contact you and our founders will reach out to make it
-      happen!
+      Are you interested in a team-based deployment of FiftyOne? Let us know how
+      to contact you and our founders will reach out to make it happen!
     </span>
   );
   const theme = useContext(ThemeContext);
