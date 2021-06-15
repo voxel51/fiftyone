@@ -5,9 +5,8 @@ FiftyOne Integrations
 
 .. default-role:: code
 
-FiftyOne is designed to fit into your existing workflows as easily as possible.
-To this end, FiftyOne has integrated with various existing datasets, tools, and
-services that you are likely using.
+FiftyOne integrates naturally with other ML tools that you know and love. Click
+on the cards below to see how!
 
 .. Integrations cards section -----------------------------------------------------
 
@@ -35,38 +34,46 @@ services that you are likely using.
 .. Add tutorial cards below
 
 .. customcarditem::
-    :header: PyTorch Lightning Flash
-    :description: Flash now supports FiftyOne datasets letting you train and evaluate Flash tasks on your FiftyOne datasets in minimal lines of code. 
+    :header: Lightning Flash
+    :description: Train Flash models on FiftyOne datasets and use the FiftyOne App to visualize and improve your Flash models, all with just a few lines of code.
     :link: lightning_flash.html
-    :image: https://raw.githubusercontent.com/PyTorchLightning/lightning-flash/master/docs/source/_static/images/logo.svg
+    :image: ../_static/images/integrations/lightning_flash.png
     :tags: Model-Training,Model-Evaluation
 
-..
+.. Upcoming integrations
+
     .. customcarditem::
-        :header: Google's Open Images Dataset
-        :description: FiftyOne is the easiest source for downloading and exploring Open Images.
+        :header: Open Images Dataset
+        :description: FiftyOne is the recommended tool for downloading and exploring Google's Open Images Dataset.
         :link: ../user_guide/dataset_zoo/datasets.html#dataset-zoo-open-images-v6
+        :image: ../_static/images/integrations/open_images.png
         :tags: Dataset
-    
+
     .. customcarditem::
-        :header: CVAT 
-        :description: Import and export image and video datasets in CVAT format.
-        :link: ../user_guide/dataset_creation/datasets.html#cvatimagedataset 
-        :tags: Annotation 
-    
+        :header: COCO Dataset
+        :description: FiftyOne is the recommended tool for downloading and exploring the COCO Dataset.
+        :link: ../user_guide/dataset_zoo/datasets.html#dataset-zoo-coco-2017
+        :tags: Dataset
+
     .. customcarditem::
-        :header: Labelbox 
-        :description: Download and upload your data directly to Labelbox.
-        :link: ../api/fiftyone.utils.labelbox.html 
+        :header: CVAT
+        :description: Use our CVAT integration to easily annotate and edit your FiftyOne datasets.
+        :link: ../user_guide/dataset_creation/datasets.html#cvatimagedataset
+        :tags: Annotation
+
+    .. customcarditem::
+        :header: Labelbox
+        :description: Use our Labelbox integration to easily annotate and edit your FiftyOne datasets.
+        :link: ../api/fiftyone.utils.labelbox.html
         :image: https://voxel51.com/images/integrations/labelbox-128.png
-        :tags: Annotation 
-    
+        :tags: Annotation
+
     .. customcarditem::
-        :header: Scale AI 
-        :description: Import and export labels to and from the Scale AI format.
-        :link: ../api/fiftyone.utils.scale.html 
+        :header: Scale AI
+        :description: Use our Scale integration to easily annotate and edit your FiftyOne datasets.
+        :link: ../api/fiftyone.utils.scale.html
         :image: https://voxel51.com/images/integrations/scale-128.png
-        :tags: Annotation 
+        :tags: Annotation
 
 .. End of integrations cards
 
@@ -86,4 +93,4 @@ services that you are likely using.
    :maxdepth: 1
    :hidden:
 
-   PyTorch Lightning Flash <lightning_flash.rst>
+    Lightning Flash <lightning_flash.rst>
