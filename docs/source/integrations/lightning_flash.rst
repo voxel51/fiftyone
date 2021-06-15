@@ -7,9 +7,9 @@ PyTorch Lightning Flash Integration
 
 We've collaborated with the
 `PyTorch Lightning Flash <https://github.com/PyTorchLightning/lightning-flash>`_
-team to make it easy to train :class:`Flash models <flash:flash.core.model.Task>`
-on your FiftyOne datasets and add predictions from Flash tasks to your
-:ref:`FiftyOne datasets <using-datasets>` for visualization and analysis, all
+team to make it easy to train :class:`Flash tasks <flash:flash.core.model.Task>`
+on your :ref:`FiftyOne datasets <using-datasets>` and add predictions from Flash 
+models to your datasets for visualization and analysis, all
 in just a few lines of code.
 
 The following Flash tasks are supported natively by FiftyOne:
@@ -17,20 +17,35 @@ The following Flash tasks are supported natively by FiftyOne:
 - :ref:`Image Classification <flash:image_classification>`
 - :ref:`Image Object Detection <flash:object_detection>`
 - :ref:`Image Semantic Segmentation <flash:semantic_segmentation>`
-- :ref:`Video Classification <flash:video_classification>`
 - :ref:`Image Embedding <flash:image_embedder>`
+- :ref:`Video Classification <flash:video_classification>`
 
 Support for future Flash tasks is on the horizon.
+
+.. _install-flash:
+
+Setup
+_____
+
+In order to utilize PyTorch Lightning Flash, you need to 
+`install the tool <https://lightning-flash.readthedocs.io/en/latest/installation.html>`_:
+
+.. code-block:: shell
+
+    pip install lightning-flash
+
 
 .. _flash-model-training:
 
 Model training
 ______________
 
-You can easily train or finetune Flash tasks on your
+You can easily train or finetune a Flash 
+:class:`Task<flash:flash.core.model.Task>`
+on your
 :ref:`FiftyOne datasets <using-datasets>` with just a few lines of code using
 Flash's builtin 
-:meth:`DataModule.from_fiftyone() <flash~flash.core.data_module.DataModule.from_fiftyone>`
+:meth:`DataModule.from_fiftyone() <flash:flash.core.data.data_module.DataModule.from_fiftyone>`
 method, which is implemented for each of the Flash tasks shown below:
 
 .. tabs::
@@ -409,18 +424,20 @@ and they will be passed along when constructing the
 Manually adding predictions
 ---------------------------
 
-In some cases, you may have loaded your data into Flash datamodules already and
-want to generate predictions with those. 
+In some cases, you may have loaded your FiftyOne dataset into a Flash 
+:class:`DataModule <flash:flash.core.data.data_module.DataModule>`
+already and want to generate predictions with those. 
 
-Flash models support different serializers, objects that reformat the output of
-models. Using FiftyOne serializers, you can return predictions as FiftyOne
-|Label| directly. All you need to do is set the model serializer to the
+Flash models support different 
+:class:`serializers <flash:flash.core.data.process.Serializer>`
+, objects that reformat the output of
+models. Using 
+:ref:`FiftyOne serializers <flash:fiftyone_labels>`, you can return predictions as FiftyOne
+|Label| objects directly. All you need to do is set the model serializer to the
 corresponding FiftyOne serializer for your task and generate predictions.
 FiftyOne serializers also support a :class:`return_filepath <flash:flash.core.classification.FiftyOneLabels>`
-flag that will return the coresponding filepath of every sample along
-with the FiftyOne labels. 
-
-There are a few different ways that this workflow may come about. 
+flag that will return the corresponding filepath of every sample along
+with the |Label| objects. 
 
 .. code-block:: python
     :linenos:
@@ -494,29 +511,28 @@ in only a few lines of code.
     )
     
     # 2 Load data into FiftyOne
-    predict_dataset = fo.Dataset.from_dir(
-        "data/hymenoptera_data/predict/",
-        fo.types.ImageDirectory,
-        max_samples=10,
+    dataset = fo.Dataset.from_dir(
+        "data/hymenoptera_data/test/",
+        fo.types.ImageClassificationDirectoryTree,
     )
     
     # 3 Load model
     embedder = ImageEmbedder(backbone="swav-imagenet", embedding_dim=128)
     
     # 4 Generate embeddings
-    filepaths = predict_dataset.values("filepath")
+    filepaths = dataset.values("filepath")
     embeddings = np.stack(embedder.predict(filepaths))
     
     # 5 Visualize in FiftyOne App
-    results = fob.compute_visualization(predict_dataset, embeddings=embeddings)
+    results = fob.compute_visualization(dataset, embeddings=embeddings)
     
-    session = fo.launch_app(predict_dataset)
+    session = fo.launch_app(dataset)
     
-    plot = results.visualize()
+    plot = results.visualize(labels="ground_truth.label")
     plot.show()
 
 
-.. image:: ../_static/images/homepage_embeddings.gif
+.. image:: ../images/integrations/flash_embeddings.png
    :alt: embeddings_example
    :align: center
 

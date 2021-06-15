@@ -41,31 +41,32 @@ services that you are likely using.
     :image: https://raw.githubusercontent.com/PyTorchLightning/lightning-flash/master/docs/source/_static/images/logo.svg
     :tags: Model-Training,Model-Evaluation
 
-.. customcarditem::
-    :header: Google's Open Images Dataset
-    :description: FiftyOne is the easiest source for downloading and exploring Open Images.
-    :link: ../user_guide/dataset_zoo/datasets.html#dataset-zoo-open-images-v6
-    :tags: Dataset
-
-.. customcarditem::
-    :header: CVAT 
-    :description: Import and export image and video datasets in CVAT format.
-    :link: ../user_guide/dataset_creation/datasets.html#cvatimagedataset 
-    :tags: Annotation 
-
-.. customcarditem::
-    :header: Labelbox 
-    :description: Download and upload your data directly to Labelbox.
-    :link: ../api/fiftyone.utils.labelbox.html 
-    :image: https://voxel51.com/images/integrations/labelbox-128.png
-    :tags: Annotation 
-
-.. customcarditem::
-    :header: Scale AI 
-    :description: Import and export labels to and from the Scale AI format.
-    :link: ../api/fiftyone.utils.scale.html 
-    :image: https://voxel51.com/images/integrations/scale-128.png
-    :tags: Annotation 
+..
+    .. customcarditem::
+        :header: Google's Open Images Dataset
+        :description: FiftyOne is the easiest source for downloading and exploring Open Images.
+        :link: ../user_guide/dataset_zoo/datasets.html#dataset-zoo-open-images-v6
+        :tags: Dataset
+    
+    .. customcarditem::
+        :header: CVAT 
+        :description: Import and export image and video datasets in CVAT format.
+        :link: ../user_guide/dataset_creation/datasets.html#cvatimagedataset 
+        :tags: Annotation 
+    
+    .. customcarditem::
+        :header: Labelbox 
+        :description: Download and upload your data directly to Labelbox.
+        :link: ../api/fiftyone.utils.labelbox.html 
+        :image: https://voxel51.com/images/integrations/labelbox-128.png
+        :tags: Annotation 
+    
+    .. customcarditem::
+        :header: Scale AI 
+        :description: Import and export labels to and from the Scale AI format.
+        :link: ../api/fiftyone.utils.scale.html 
+        :image: https://voxel51.com/images/integrations/scale-128.png
+        :tags: Annotation 
 
 .. End of integrations cards
 
