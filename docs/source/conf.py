@@ -179,6 +179,7 @@ html_context = {
     "link_fiftyone": "https://voxel51.com/fiftyone/",
     "link_fiftyone_tutorials": "https://voxel51.com/docs/fiftyone/tutorials/index.html",
     "link_fiftyone_examples": "https://github.com/voxel51/fiftyone-examples",
+    "link_fiftyone_quickstart": "https://colab.research.google.com/github/voxel51/fiftyone-examples/blob/master/examples/quickstart.ipynb",
     "link_home": "https://voxel51.com/",
     "link_ourstory": "https://voxel51.com/ourstory/",
     "link_press": "https://voxel51.com/press/",
