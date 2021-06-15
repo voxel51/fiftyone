@@ -780,7 +780,7 @@ def _get_seg_classes(dataset_dir, classes_map=None, download=True):
         dataset_dir, "segmentation_classes.csv", annot_link, download=download
     )
 
-    with open(seg_cls_txt, "r") as f:
+    with open(seg_cls_txt, "r", encoding="utf8") as f:
         seg_classes_oi = [l.rstrip("\n") for l in f]
 
     seg_classes = [classes_map[c] for c in seg_classes_oi]
@@ -840,7 +840,7 @@ def _parse_csv(filename, dataframe=False):
         data = pd.read_csv(filename)
 
     else:
-        with open(filename, "r", newline="") as csvfile:
+        with open(filename, "r", newline="", encoding="utf8") as csvfile:
             dialect = csv.Sniffer().sniff(csvfile.read(10240))
             csvfile.seek(0)
             if dialect.delimiter in _CSV_DELIMITERS:
@@ -867,7 +867,7 @@ def _parse_image_ids(
     else:
         id_file_ext = os.path.splitext(image_ids_file)[-1]
         if id_file_ext == ".txt":
-            with open(image_ids_file, "r") as f:
+            with open(image_ids_file, "r", encoding="utf8") as f:
                 _image_ids = [i for i in f.readlines()]
 
         elif id_file_ext == ".json":
