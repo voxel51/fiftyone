@@ -6,7 +6,6 @@ import React, {
   useState,
 } from "react";
 import styled from "styled-components";
-import { Checkbox } from "@material-ui/core";
 import { useRecoilState, useRecoilValue, useResetRecoilState } from "recoil";
 import AuosizeInput from "react-input-autosize";
 import { Machine, assign } from "xstate";
@@ -25,7 +24,7 @@ import ExternalLink from "./ExternalLink";
 import { Slack } from "../icons";
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
-import socket, { http, appContext } from "../shared/connection";
+import socket, { http } from "../shared/connection";
 import { useTheme } from "../utils/hooks";
 import { packageMessage } from "../utils/socket";
 
@@ -429,21 +428,21 @@ const TeamsForm = () => {
     <>
       <Input
         key="firstname"
-        placeholder={"First name"}
+        placeholder={"First name*"}
         value={formState.firstname ?? ""}
         maxLength={40}
         onChange={setFormValue("firstname")}
       />
       <Input
         key="lastname"
-        placeholder={"First name"}
+        placeholder={"Last name*"}
         value={formState.lastname ?? ""}
         maxLength={40}
         onChange={setFormValue("lastname")}
       />
       <Input
         key="email"
-        placeholder={"Email"}
+        placeholder={"Email*"}
         type="email"
         value={formState.email ?? ""}
         onChange={setFormValue("email")}
@@ -464,7 +463,7 @@ const TeamsForm = () => {
       />
       <Input
         key="discover"
-        placeholder={"How did you discover FiftyOne?"}
+        placeholder={"How did you hear about FiftyOne?"}
         value={formState.discover ?? ""}
         maxLength={100}
         onChange={setFormValue("discover")}
@@ -601,10 +600,16 @@ const TeamsButton = ({ addNotification }) => {
   const [closeTeams, setCloseTeams] = useRecoilState(atoms.closeTeams);
   const text = (
     <span>
-      FiftyOne will always be an open source tool free to all users, all 20,000
-      and counting. But your team may need more. We have begun deploying a team
-      based version of FiftyOne to early adopters. Would you like to join us in
-      this next stage?
+      FiftyOne is and will always be open source software that is freely
+      available to individual users, all 20,000 and counting. However, if you’re
+      part of a team, you may need more. That’s why we’ve begun deploying
+      team-based versions of FiftyOne with multi-user collaboration features to
+      early adopters.
+      <br />
+      <br />
+      Are you interested in a team-based deployment of FiftyOne for your team?
+      Let us know how to contact you and our founders will reach out to make it
+      happen!
     </span>
   );
   const theme = useContext(ThemeContext);
@@ -617,7 +622,7 @@ const TeamsButton = ({ addNotification }) => {
         kind: "Get FiftyOne for your team!",
         message: text,
         children: [<TeamsForm key="teams" />],
-        onClose: () => setTeamsIsOpen(false),
+        onClose: () => setAppTeamsIsOpen(false),
       });
       setCloseTeams({ close: callback });
     }
@@ -628,7 +633,7 @@ const TeamsButton = ({ addNotification }) => {
       onClick={onClick}
       style={{ marginRight: "0.5rem", position: "relative" }}
     >
-      Have a Team?
+      Have a team?
       <div
         style={{
           position: "absolute",
@@ -651,7 +656,10 @@ const TeamsButton = ({ addNotification }) => {
       </div>
     </Button>
   ) : showTeamsButton === "minimized" ? (
-    <Group />
+    <Group
+      style={{ cursor: "pointer", marginRight: "0.5em" }}
+      onClick={onClick}
+    />
   ) : null;
 };
 
