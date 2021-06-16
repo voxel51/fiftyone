@@ -33,6 +33,8 @@ import {
   Optional,
   BaseSample,
   FrameChunkResponse,
+  FrameSample,
+  VideoSample,
 } from "./state";
 import {
   createWorker,
@@ -369,14 +371,6 @@ export class ImageLooker extends Looker<ImageState> {
   }
 }
 
-interface FrameSample extends Object {
-  frame_number: number;
-}
-
-interface VideoSample extends BaseSample {
-  frames: { 1?: FrameSample };
-}
-
 interface AttachReaderOptions {
   addFrame: (frameNumber: number, frame: FrameSample) => void;
   getCurrentFrame: () => number;
@@ -416,12 +410,15 @@ const aquireReader = (() => {
           .forEach((_, i) => {
             streamCount += 1;
             const frameNumber = start + i;
-            const frame = frames[frameNumber] || {};
+            const frame = frames[frameNumber] || { frame_number: frameNumber };
             frameCache.set(`${sampleId}-${frameNumber}`, frame);
             addFrame(frameNumber, frame);
           });
 
-        if (streamCount < end - getCurrentFrame() && end < frameCount) {
+        const requestMore =
+          streamCount < end - getCurrentFrame() &&
+          streamCount < MAX_FRAME_CACHE_SIZE;
+        if (requestMore && end < frameCount) {
           frameReader.postMessage({
             method: "requestFrameChunk",
             uuid: subscription,
@@ -466,7 +463,7 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
       fragment: null,
       playing: false,
       frameNumber: 1,
-      buffering: true,
+      buffering: false,
       hasReader: false,
       ...this.getInitialBaseState(),
       config: { ...config },
@@ -504,10 +501,11 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
       }
     }
 
-    if (state.config.thumbnail && state.playing) {
+    if (state.config.thumbnail && state.playing && !state.buffering) {
+      console.log("HELLO");
       aquireReader({
         addFrame: (frameNumber, frame) =>
-          this.frameOverlays.set(frameNumber, new WeakRef(frame)),
+          this.frameOverlays.set(frameNumber, new WeakRef(loadOverlays(frame))),
         getCurrentFrame: () => this.frameNumber,
         sampleId: this.state.config.sampleId,
         frameCount: getFrameNumber(

@@ -168,6 +168,9 @@ export const getVideoElements: GetElements<VideoState> = (
       {
         node: common.HelpPanelElement,
       },
+      {
+        node: video.LoaderBar,
+      },
     ],
   };
 

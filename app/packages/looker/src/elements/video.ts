@@ -15,13 +15,33 @@ import {
 } from "./util";
 
 export class LoaderBar extends BaseElement<VideoState> {
+  private buffering: boolean;
+
+  isShown({ config: { thumbnail } }) {
+    return thumbnail;
+  }
+
   createHTMLElement() {
-    const element = document.createElement("img");
-    element.className = "looker-loader";
+    const element = document.createElement("div");
+    element.style.height = "5px";
+    element.style.position = "absolute";
+    element.style.bottom = "0";
+    element.style.width = "100%";
+    element.style.background = "rgb(225, 100, 40)";
     return element;
   }
 
-  renderSelf({ playing }) {
+  renderSelf({ buffering }) {
+    if (buffering === this.buffering) {
+      return this.element;
+    }
+    this.buffering = buffering;
+
+    if (buffering) {
+      this.element.style.display = "block";
+    } else {
+      this.element.style.display = "none";
+    }
     return this.element;
   }
 }

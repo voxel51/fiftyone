@@ -194,8 +194,17 @@ export const DEFAULT_VIDEO_OPTIONS = {
   loop: false,
 };
 
+export interface FrameSample {
+  [key: string]: any;
+  frame_number: number;
+}
+
+export interface VideoSample extends BaseSample {
+  frames: { 1?: FrameSample };
+}
+
 export interface FrameChunk {
-  frames: any[];
+  frames: FrameSample[];
   range: [number, number];
 }
 

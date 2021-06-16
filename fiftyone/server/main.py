@@ -204,11 +204,7 @@ class FramesHandler(tornado.web.RequestHandler):
             StateHandler.sample_collection(), view, 1, 0, detach_frames=False,
         )
 
-        results = results[0]["frames"]
-
-        frames = {}
-        for frame in results:
-            frames[frame["frame_number"]] = frame
+        frames = results[0]["frames"]
 
         self.write({"frames": frames, "range": [start_frame, end_frame]})
 

@@ -3,7 +3,7 @@
  */
 
 import { processMasks } from "./overlays";
-import { FrameChunk } from "./state";
+import { FrameChunk, FrameSample } from "./state";
 
 /** GLOBALS */
 
@@ -92,7 +92,7 @@ const createReader = ({
               })
           )
             .then((response: Response) => response.json())
-            .then(({ frames, range }) => {
+            .then(({ frames, range }: FrameChunk) => {
               controller.enqueue({ frames, range });
               frameNumber = range[1];
               resolve();
@@ -125,9 +125,15 @@ const getSendChunk = (id: string) => ({
 }) => {
   if (value) {
     let buffers: ArrayBuffer[] = [];
-    Object.entries(value.frames).forEach(([_, frame]) => {
-      buffers = [...buffers, ...processMasks(frame)];
-    });
+    value.frames
+      .map<FrameSample>((frame) => {
+        return Object.fromEntries(
+          Object.entries(frame).map(([k, v]) => ["frames." + k, v])
+        ) as FrameSample;
+      })
+      .forEach((frame) => {
+        buffers = [...buffers, ...processMasks(frame)];
+      });
     postMessage(
       {
         method: "frameChunk",
@@ -167,6 +173,7 @@ const setStream = ({
   frameCount,
   id,
 }: SetStream) => {
+  console.log("STREAM");
   stream && stream.cancel();
   streamId = id;
   stream = createReader({
