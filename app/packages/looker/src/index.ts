@@ -32,6 +32,7 @@ import {
   Coordinates,
   Optional,
   BaseSample,
+  FrameChunkResponse,
 } from "./state";
 import {
   createWorker,
@@ -43,6 +44,7 @@ import {
 import { zoomToContent } from "./zoom";
 
 import "./style.css";
+import { getFrameNumber } from "./elements/util";
 
 export { zoomAspectRatio } from "./zoom";
 
@@ -163,13 +165,14 @@ export abstract class Looker<
 
   updateSample(sample: Sample) {
     const messageUUID = uuid();
-    labelsWorker.addEventListener("message", ({ data: { sample, uuid } }) => {
+    const listener = ({ data: { sample, uuid } }) => {
       if (uuid === messageUUID) {
         this.loadOverlays(sample);
         this.updater({ overlaysPrepared: true });
-        labelsWorker.onmessage = null;
+        labelsWorker.removeEventListener("message", listener);
       }
-    });
+    };
+    labelsWorker.addEventListener("message", listener);
     labelsWorker.postMessage({
       method: "processSample",
       origin: window.location.origin,
@@ -375,35 +378,55 @@ interface VideoSample extends BaseSample {
 }
 
 interface AttachReaderOptions {
-  addFrames: (frames: { [frameNumber: number]: FrameSample }) => void;
+  addFrame: (frameNumber: number, frame: FrameSample) => void;
+  getCurrentFrame: () => number;
   sampleId: string;
   frameNumber: number;
   frameCount: number;
-  force?: boolean;
 }
 
-const attachReader = (() => {
+const aquireReader = (() => {
   const frameCache = new LRU<string, FrameSample>({
     max: MAX_FRAME_CACHE_SIZE,
   });
-  frameCache;
+  let streamCount: number = null;
 
   const frameReader = createWorker();
 
   return ({
-    addFrames,
-    sampleId,
+    addFrame,
     frameNumber,
     frameCount,
-    force,
+    getCurrentFrame,
+    sampleId,
   }: AttachReaderOptions) => {
     const subscription = uuid();
+    streamCount = 0;
     frameReader.onmessage = ({
-      data: { uuid, method, frames },
-    }: MessageEvent) => {
+      data: {
+        uuid,
+        method,
+        frames,
+        range: [start, end],
+      },
+    }: MessageEvent<FrameChunkResponse>) => {
       if (uuid === subscription && method === "frameChunk") {
-        frameCache.set();
-        addFrames({ frames });
+        Array(end - start + 1)
+          .fill(0)
+          .forEach((_, i) => {
+            streamCount += 1;
+            const frameNumber = start + i;
+            const frame = frames[frameNumber] || {};
+            frameCache.set(`${sampleId}-${frameNumber}`, frame);
+            addFrame(frameNumber, frame);
+          });
+
+        if (streamCount < end - getCurrentFrame() && end < frameCount) {
+          frameReader.postMessage({
+            method: "requestFrameChunk",
+            uuid: subscription,
+          });
+        }
       }
     };
     frameReader.postMessage({
@@ -411,7 +434,6 @@ const attachReader = (() => {
       sampleId,
       frameCount,
       frameNumber,
-      force,
       uuid: subscription,
     });
   };
@@ -480,6 +502,21 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
       if (frame !== undefined) {
         return [...overlays, ...frame];
       }
+    }
+
+    if (state.config.thumbnail && state.playing) {
+      aquireReader({
+        addFrame: (frameNumber, frame) =>
+          this.frameOverlays.set(frameNumber, new WeakRef(frame)),
+        getCurrentFrame: () => this.frameNumber,
+        sampleId: this.state.config.sampleId,
+        frameCount: getFrameNumber(
+          this.state.duration,
+          this.state.duration,
+          this.state.config.frameRate
+        ),
+        frameNumber: state.frameNumber,
+      });
     }
 
     state.frameNumber = prevState.frameNumber;

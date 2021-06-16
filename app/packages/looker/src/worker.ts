@@ -3,6 +3,7 @@
  */
 
 import { processMasks } from "./overlays";
+import { FrameChunk } from "./state";
 
 /** GLOBALS */
 
@@ -53,12 +54,8 @@ interface FrameStream {
   chunkSize: number;
   frameNumber: number;
   sampleId: string;
-  reader: ReadableStreamDefaultReader<FrameChunkResponse>;
+  reader: ReadableStreamDefaultReader<FrameChunk>;
   cancel: () => void;
-}
-
-interface FrameChunkResponse {
-  frames: any[];
 }
 
 const createReader = ({
@@ -76,7 +73,7 @@ const createReader = ({
 }): FrameStream => {
   let cancelled = false;
 
-  const stream = new ReadableStream<FrameChunkResponse>(
+  const stream = new ReadableStream<FrameChunk>(
     {
       pull: (controller: ReadableStreamDefaultController) => {
         if (frameNumber >= frameCount || cancelled) {
@@ -84,7 +81,6 @@ const createReader = ({
           return Promise.resolve();
         }
 
-        let nextFrameChunkStart = frameNumber + chunkSize;
         return new Promise((resolve, reject) => {
           fetch(
             url +
@@ -96,9 +92,9 @@ const createReader = ({
               })
           )
             .then((response: Response) => response.json())
-            .then((data) => {
-              controller.enqueue({ frames: data.frames });
-              frameNumber = nextFrameChunkStart;
+            .then(({ frames, range }) => {
+              controller.enqueue({ frames, range });
+              frameNumber = range[1];
               resolve();
             })
             .catch((error) => {
@@ -121,28 +117,27 @@ const createReader = ({
   };
 };
 
-const sendChunk = ({
-  done,
+const getSendChunk = (id: string) => ({
   value,
 }: {
   done: boolean;
-  value?: FrameChunkResponse;
+  value?: FrameChunk;
 }) => {
   if (value) {
     let buffers: ArrayBuffer[] = [];
-    value.frames.forEach((frame) => {
+    Object.entries(value.frames).forEach(([_, frame]) => {
       buffers = [...buffers, ...processMasks(frame)];
     });
     postMessage(
       {
         method: "frameChunk",
         frames: value.frames,
+        range: value.range,
       },
       // @ts-ignore
       buffers
     );
   }
-  !done && stream.reader.read().then(sendChunk);
 };
 
 interface RequestFrameChunk {
@@ -151,7 +146,7 @@ interface RequestFrameChunk {
 
 const requestFrameChunk = ({ id }) => {
   if (id === streamId && !stream.reader.closed) {
-    stream.reader.read().then(sendChunk);
+    stream.reader.read().then(getSendChunk(id));
   }
 };
 
@@ -182,7 +177,7 @@ const setStream = ({
     url: `${origin}/frames`,
   });
 
-  stream.reader.read().then(sendChunk);
+  stream.reader.read().then(getSendChunk(id));
 };
 
 type Method = SetStreamMethod | ProcessSampleMethod;

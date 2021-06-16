@@ -38,6 +38,7 @@ interface BaseConfig {
   thumbnail: boolean;
   src: string;
   dimensions: Dimensions;
+  sampleId: string;
 }
 
 export interface FrameConfig extends BaseConfig {
@@ -192,3 +193,13 @@ export const DEFAULT_VIDEO_OPTIONS = {
   autoplay: false,
   loop: false,
 };
+
+export interface FrameChunk {
+  frames: any[];
+  range: [number, number];
+}
+
+export interface FrameChunkResponse extends FrameChunk {
+  uuid: string;
+  method: string;
+}
