@@ -10,7 +10,6 @@ import {
   getFrameString,
   getTime,
   getTimeString,
-  ICONS,
   transformWindowElement,
 } from "./util";
 
@@ -27,7 +26,12 @@ export class LoaderBar extends BaseElement<VideoState> {
     element.style.position = "absolute";
     element.style.bottom = "0";
     element.style.width = "100%";
-    element.style.background = "rgb(225, 100, 40)";
+    element.style.backgroundImage = `linear-gradient(
+      130deg,
+      rgba(225, 100, 40, 0) 0%,
+      rgb(225, 100, 40) 50%,
+      rgba(225, 100, 40, 0) 100%
+    )`;
     return element;
   }
 
@@ -46,37 +50,100 @@ export class LoaderBar extends BaseElement<VideoState> {
   }
 }
 
-export class PlayButtonElement extends BaseElement<
-  VideoState,
-  HTMLImageElement
-> {
+export class PlayButtonElement extends BaseElement<VideoState, HTMLDivElement> {
   private playing: boolean;
+  private play: SVGElement;
+  private pause: SVGElement;
+  private buffering: SVGElement;
 
   getEvents(): Events<VideoState> {
     return {
       click: ({ event, update }) => {
         event.preventDefault();
         event.stopPropagation();
-        update(({ playing }) => ({ playing: !playing, showOptions: false }));
+        update(({ buffering, playing }) => {
+          if (buffering) {
+            return {};
+          }
+          if (playing) {
+            return { playing: !playing, showOptions: false };
+          }
+        });
       },
     };
   }
 
   createHTMLElement() {
-    const element = document.createElement("img");
-    element.className = "looker-clickable";
+    this.pause = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    this.pause.setAttribute("height", "24");
+    this.pause.setAttribute("width", "24");
+    this.pause.setAttribute("viewBox", "0 0 24 24");
+
+    let path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    path.setAttribute("fill", "rgb(238, 238, 238)");
+    path.setAttribute("d", "M6 19h4V5H6v14zm8-14v14h4V5h-4z");
+    this.pause.appendChild(path);
+
+    path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    path.setAttribute("fill", "none");
+    path.setAttribute("d", "M0 0h24v24H0z");
+    this.pause.appendChild(path);
+
+    this.play = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    this.pause.setAttribute("height", "24");
+    this.pause.setAttribute("width", "24");
+    this.pause.setAttribute("viewBox", "0 0 24 24");
+
+    path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    path.setAttribute("fill", "rgb(238, 238, 238)");
+    path.setAttribute("d", "M8 5v14l11-7z");
+    this.play.appendChild(path);
+    path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    path.setAttribute("fill", "none");
+    path.setAttribute("d", "M0 0h24v24H0z");
+
+    this.buffering = document.createElementNS(
+      "http://www.w3.org/2000/svg",
+      "svg"
+    );
+    this.buffering.setAttribute("class", "buffering-circle");
+    this.buffering.setAttribute("viewBox", "12 12 24 24");
+    const circle = document.createElementNS(
+      "http://www.w3.org/2000/svg",
+      "circle"
+    );
+    circle.setAttribute("cx", "24");
+    circle.setAttribute("cy", "24");
+    circle.setAttribute("r", "9");
+    circle.setAttribute("stroke-width", "2");
+    circle.setAttribute("stroke", "rgb(238, 238, 238)");
+    circle.setAttribute("fill", "none");
+    circle.setAttribute("class", "buffering-path");
+    this.buffering.appendChild(circle);
+
+    const element = document.createElement("div");
+    element.style.marginTop = "2px";
+    element.style.position = "relative";
+    element.style.height = "24px";
+    element.style.width = "24px";
     element.style.gridArea = "2 / 2 / 2 / 2";
     return element;
   }
 
   renderSelf({ playing }) {
     if (playing !== this.playing) {
-      if (playing) {
-        this.element.src = ICONS.pause;
+      this.element.innerHTML = "";
+      if (this.buffering) {
+        this.element.appendChild(this.buffering);
+        this.element.style.cursor = "default";
+      } else if (playing) {
+        this.element.appendChild(this.pause);
         this.element.title = "Pause (space)";
+        this.element.style.cursor = "pointer";
       } else {
-        this.element.src = ICONS.play;
+        this.element.appendChild(this.play);
         this.element.title = "Play (space)";
+        this.element.style.cursor = "pointer";
       }
       this.playing = playing;
     }
@@ -198,6 +265,7 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
           update(
             ({
               playing,
+              frameNumber,
               duration,
               locked,
               fragment,
@@ -223,8 +291,8 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
                 playing: resetToFragment ? (loop ? true : false) : playing,
               };
             },
-            ({ seeking, playing }) => {
-              if (!seeking && playing) {
+            ({ buffering, seeking, playing }) => {
+              if (!seeking && !buffering && playing) {
                 requestAnimationFrame(callback);
               }
             }
@@ -287,13 +355,10 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
     if (this.frameNumber !== frameNumber) {
       this.element.currentTime = getTime(frameNumber, frameRate);
     }
-    if ((seeking || buffering) && !this.element.paused) {
-      this.element.pause();
-    }
     if (loaded && playing && !seeking && !buffering && this.element.paused) {
       this.element.play();
     }
-    if (loaded && !playing && !this.element.paused) {
+    if (loaded && (!playing || seeking || buffering) && !this.element.paused) {
       this.element.pause();
     }
     transformWindowElement(state, this.element);
@@ -311,14 +376,11 @@ export function withVideoLookerEvents(): () => Events<VideoState> {
         }
       },
       mouseenter: ({ update }) => {
-        update(({ config: { thumbnail }, options: { requestFrames } }) => {
+        update(({ config: { thumbnail } }) => {
           if (thumbnail) {
-            if (requestFrames) {
-              requestFrames.request();
-            }
             return {
-              framesRequested: true,
               playing: true,
+              buffering: true,
             };
           }
           return {};

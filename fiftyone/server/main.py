@@ -174,15 +174,20 @@ class FramesHandler(tornado.web.RequestHandler):
         self.set_header("x-colab-notebook-cache-control", "no-cache")
 
     async def get(self):
+        # pylint: disable=no-value-for-parameter
         sample_id = self.get_argument("sampleId", None)
-        start_frame = self.get_argument("frameNumber", None)
-        frame_count = self.get_argument("frameCount", None)
+        # pylint: disable=no-value-for-parameter
+        start_frame = int(self.get_argument("frameNumber"))
+        # pylint: disable=no-value-for-parameter
+        frame_count = int(self.get_argument("frameCount"))
 
         if sample_id is None or start_frame is None:
             raise ValueError("error")
 
         end_frame = min(
-            self.get_argument("numFrames", 30) + start_frame, frame_count
+            # pylint: disable=no-value-for-parameter
+            int(self.get_argument("numFrames")) + start_frame,
+            frame_count,
         )
         state = fos.StateDescription.from_dict(StateHandler.state)
         if state.view is not None:
@@ -190,9 +195,10 @@ class FramesHandler(tornado.web.RequestHandler):
         elif state.dataset is not None:
             view = state.dataset
 
-        view = view._stages.prepend(fosg.Select(sample_id))
-        view = view.select_fields("frames")
-        view = view.set_field(
+        stage_dicts = view.view()._serialize()
+        frames_view = fov.DatasetView._build(view._dataset, stage_dicts)
+
+        frames_view = frames_view.set_field(
             "frames",
             F("frames").filter(
                 (F("frame_number") >= start_frame)
@@ -200,8 +206,12 @@ class FramesHandler(tornado.web.RequestHandler):
             ),
         )
 
-        results, _ = await _get_sample_data(
-            StateHandler.sample_collection(), view, 1, 0, detach_frames=False,
+        results, _ = await _get_samples(
+            StateHandler.sample_collection(),
+            frames_view,
+            1,
+            0,
+            detach_frames=False,
         )
 
         frames = results[0]["frames"]
@@ -1331,10 +1341,10 @@ async def _get_sample_data(col, view, page_length, page, detach_frames=True):
 
         if video:
             sample = r["sample"]
-            if "frames" in sample and sample["frames"]["frame_number"] == 1:
-                r["sample"]["frames"] = {1: r["sample"]["frames"]}
-            else:
-                r["sample"]["frames"] = {}
+            if "frames" in sample:
+                frames = sample["frames"]
+                if isinstance(frames, dict):
+                    sample["frames"] = {1: frames}
 
     return results, more
 

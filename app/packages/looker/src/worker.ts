@@ -2,13 +2,20 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 
+import { CHUNK_SIZE } from "./constants";
 import { processMasks } from "./overlays";
 import { FrameChunk, FrameSample } from "./state";
+
+const getUrl = (origin: string): string => {
+  if (import.meta.env.NODE_ENV === "development") {
+    origin = "http://localhost:5151";
+  }
+  return `${origin}/frames?`;
+};
 
 /** GLOBALS */
 
 const HIGH_WATER_MARK = 6;
-const CHUNK_SIZE = 30;
 
 let stream: FrameStream = null;
 let streamId: string = null;
@@ -62,13 +69,13 @@ const createReader = ({
   chunkSize,
   frameCount,
   frameNumber,
-  url,
+  origin,
   sampleId,
 }: {
   chunkSize: number;
   frameCount: number;
   frameNumber: number;
-  url: string;
+  origin: string;
   sampleId: string;
 }): FrameStream => {
   let cancelled = false;
@@ -83,7 +90,7 @@ const createReader = ({
 
         return new Promise((resolve, reject) => {
           fetch(
-            url +
+            getUrl(origin) +
               new URLSearchParams({
                 frameNumber: frameNumber.toString(),
                 numFrames: chunkSize.toString(),
@@ -117,7 +124,7 @@ const createReader = ({
   };
 };
 
-const getSendChunk = (id: string) => ({
+const getSendChunk = (uuid: string) => ({
   value,
 }: {
   done: boolean;
@@ -125,20 +132,22 @@ const getSendChunk = (id: string) => ({
 }) => {
   if (value) {
     let buffers: ArrayBuffer[] = [];
-    value.frames
-      .map<FrameSample>((frame) => {
-        return Object.fromEntries(
-          Object.entries(frame).map(([k, v]) => ["frames." + k, v])
-        ) as FrameSample;
-      })
-      .forEach((frame) => {
-        buffers = [...buffers, ...processMasks(frame)];
-      });
+    const frames = value.frames.map<FrameSample>((frame) => {
+      return Object.fromEntries(
+        Object.entries(frame).map(([k, v]) => ["frames." + k, v])
+      ) as FrameSample;
+    });
+
+    frames.forEach((frame) => {
+      buffers = [...buffers, ...processMasks(frame)];
+    });
+    console.log("sending chunk", value.range);
     postMessage(
       {
         method: "frameChunk",
-        frames: value.frames,
+        frames,
         range: value.range,
+        uuid,
       },
       // @ts-ignore
       buffers
@@ -147,12 +156,12 @@ const getSendChunk = (id: string) => ({
 };
 
 interface RequestFrameChunk {
-  id: string;
+  uuid: string;
 }
 
-const requestFrameChunk = ({ id }) => {
-  if (id === streamId && !stream.reader.closed) {
-    stream.reader.read().then(getSendChunk(id));
+const requestFrameChunk = ({ uuid }) => {
+  if (uuid === streamId && !stream.reader.closed) {
+    stream.reader.read().then(getSendChunk(uuid));
   }
 };
 
@@ -161,7 +170,7 @@ interface SetStream {
   sampleId: string;
   frameNumber: number;
   frameCount: number;
-  id: string;
+  uuid: string;
 }
 
 type SetStreamMethod = ReaderMethod & SetStream;
@@ -171,20 +180,19 @@ const setStream = ({
   sampleId,
   frameNumber,
   frameCount,
-  id,
+  uuid,
 }: SetStream) => {
-  console.log("STREAM");
   stream && stream.cancel();
-  streamId = id;
+  streamId = uuid;
   stream = createReader({
     chunkSize: CHUNK_SIZE,
     frameCount: frameCount,
     frameNumber: frameNumber,
     sampleId,
-    url: `${origin}/frames`,
+    origin,
   });
 
-  stream.reader.read().then(getSendChunk(id));
+  stream.reader.read().then(getSendChunk(uuid));
 };
 
 type Method = SetStreamMethod | ProcessSampleMethod;
@@ -197,7 +205,7 @@ onmessage = ({ data: { method, ...args } }: MessageEvent<Method>) => {
     case "requestFrameChunk":
       requestFrameChunk(args as RequestFrameChunk);
       return;
-    case "setReader":
+    case "setStream":
       setStream(args as SetStream);
       return;
     default:

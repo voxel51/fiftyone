@@ -410,6 +410,7 @@ const Looker = ({
           dimensions: [metadata.width, metadata.height],
           frameRate: metadata.frameRate,
           frameNumber: sample.frame_number,
+          sampleId,
         },
         {
           ...options,

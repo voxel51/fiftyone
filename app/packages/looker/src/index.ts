@@ -10,6 +10,7 @@ import {
   PAD,
   POINT_RADIUS,
   MAX_FRAME_CACHE_SIZE,
+  CHUNK_SIZE,
 } from "./constants";
 import {
   getFrameElements,
@@ -107,6 +108,7 @@ export abstract class Looker<
       const prevState = this.state;
       this.state = mergeUpdates(this.state, updates);
       this.pluckedOverlays = this.pluckOverlays(this.state, prevState);
+      this.pluckedOverlays.length && console.log(this.pluckedOverlays[0]);
       [this.currentOverlays, this.state.rotate] = processOverlays(
         this.state,
         this.pluckedOverlays
@@ -372,15 +374,16 @@ export class ImageLooker extends Looker<ImageState> {
 }
 
 interface AttachReaderOptions {
-  addFrame: (frameNumber: number, frame: FrameSample) => void;
+  addFrame: (frameNumber: number, frame: Overlay<VideoState>[]) => void;
   getCurrentFrame: () => number;
   sampleId: string;
   frameNumber: number;
   frameCount: number;
+  update: StateUpdate<VideoState>;
 }
 
 const aquireReader = (() => {
-  const frameCache = new LRU<string, FrameSample>({
+  const frameCache = new LRU<string, Overlay<VideoState>[]>({
     max: MAX_FRAME_CACHE_SIZE,
   });
   let streamCount: number = null;
@@ -393,17 +396,19 @@ const aquireReader = (() => {
     frameCount,
     getCurrentFrame,
     sampleId,
+    update,
   }: AttachReaderOptions) => {
     const subscription = uuid();
     streamCount = 0;
-    frameReader.onmessage = ({
-      data: {
-        uuid,
-        method,
-        frames,
-        range: [start, end],
-      },
-    }: MessageEvent<FrameChunkResponse>) => {
+    frameReader.onmessage = (message: MessageEvent<FrameChunkResponse>) => {
+      const {
+        data: {
+          uuid,
+          method,
+          frames,
+          range: [start, end],
+        },
+      } = message;
       if (uuid === subscription && method === "frameChunk") {
         Array(end - start + 1)
           .fill(0)
@@ -411,23 +416,27 @@ const aquireReader = (() => {
             streamCount += 1;
             const frameNumber = start + i;
             const frame = frames[frameNumber] || { frame_number: frameNumber };
-            frameCache.set(`${sampleId}-${frameNumber}`, frame);
-            addFrame(frameNumber, frame);
+            const overlays = loadOverlays(frame);
+            frameCache.set(`${sampleId}-${frameNumber}`, overlays);
+            addFrame(frameNumber, overlays);
           });
 
         const requestMore =
           streamCount < end - getCurrentFrame() &&
           streamCount < MAX_FRAME_CACHE_SIZE;
+
         if (requestMore && end < frameCount) {
           frameReader.postMessage({
             method: "requestFrameChunk",
             uuid: subscription,
           });
         }
+
+        update({ buffering: false });
       }
     };
     frameReader.postMessage({
-      method: "setReader",
+      method: "setStream",
       sampleId,
       frameCount,
       frameNumber,
@@ -435,6 +444,8 @@ const aquireReader = (() => {
     });
   };
 })();
+
+let lookerWithReader: VideoLooker = null;
 
 export class VideoLooker extends Looker<VideoState, VideoSample> {
   private sampleOverlays: Overlay<VideoState>[];
@@ -493,34 +504,39 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
 
   pluckOverlays(state: VideoState, prevState: Readonly<VideoState>) {
     const overlays = this.sampleOverlays;
+    let pluckedOverlays = this.pluckedOverlays;
     if (this.frameOverlays.has(state.frameNumber)) {
       const frame = this.frameOverlays.get(state.frameNumber).deref();
-
       if (frame !== undefined) {
-        return [...overlays, ...frame];
+        pluckedOverlays = [...overlays, ...frame];
+      }
+    }
+    const frameCount = getFrameNumber(
+      this.state.duration,
+      this.state.duration,
+      this.state.config.frameRate
+    );
+
+    if (state.config.thumbnail && state.playing && lookerWithReader !== this) {
+      aquireReader({
+        addFrame: (frameNumber, overlays) =>
+          this.frameOverlays.set(frameNumber, new WeakRef(overlays)),
+        getCurrentFrame: () => this.frameNumber,
+        sampleId: this.state.config.sampleId,
+        frameCount,
+        frameNumber: Math.max(state.frameNumber, 2),
+        update: this.updater,
+      });
+      lookerWithReader = this;
+
+      const bufferFrame = Math.min(frameCount, state.frameNumber + CHUNK_SIZE);
+      if (!this.frameOverlays.has(bufferFrame)) {
+        state.buffering = true;
+        state.frameNumber = prevState.frameNumber;
       }
     }
 
-    if (state.config.thumbnail && state.playing && !state.buffering) {
-      console.log("HELLO");
-      aquireReader({
-        addFrame: (frameNumber, frame) =>
-          this.frameOverlays.set(frameNumber, new WeakRef(loadOverlays(frame))),
-        getCurrentFrame: () => this.frameNumber,
-        sampleId: this.state.config.sampleId,
-        frameCount: getFrameNumber(
-          this.state.duration,
-          this.state.duration,
-          this.state.config.frameRate
-        ),
-        frameNumber: state.frameNumber,
-      });
-    }
-
-    state.frameNumber = prevState.frameNumber;
-    state.buffering = true;
-
-    return this.pluckedOverlays;
+    return pluckedOverlays;
   }
 
   getDefaultOptions() {

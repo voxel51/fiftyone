@@ -68,10 +68,6 @@ export interface VideoOptions extends BaseOptions {
   useFrameNumber: boolean;
   autoplay: boolean;
   loop: boolean;
-  requestFrames?: {
-    request: () => void;
-    cancel: () => void;
-  };
 }
 
 export interface TooltipOverlay {
