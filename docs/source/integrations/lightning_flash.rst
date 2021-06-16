@@ -72,7 +72,7 @@ method, which is implemented for each of the Flash tasks shown below.
             import fiftyone as fo
             import fiftyone.zoo as foz
 
-            # 1. Load your FiftyOne dataset
+            # 1 Load your FiftyOne dataset
 
             dataset = foz.load_zoo_dataset(
                 "cifar10", split="test", max_samples=40, shuffle=True
@@ -85,7 +85,7 @@ method, which is implemented for each of the Flash tasks shown below.
             val_dataset = dataset[25:30]
             predict_dataset = dataset[30:40]
 
-            # 2. Load the Datamodule
+            # 2 Create the Datamodule
             datamodule = ImageClassificationData.from_fiftyone(
                 train_dataset=train_dataset,
                 test_dataset=test_dataset,
@@ -96,33 +96,33 @@ method, which is implemented for each of the Flash tasks shown below.
                 num_workers=4,
             )
 
-            # 3. Build the model
+            # 3 Build the model
             model = ImageClassifier(
                 backbone="resnet18",
                 num_classes=datamodule.num_classes,
                 serializer=FiftyOneLabels(),
             )
 
-            # 4. Create the trainer
+            # 4 Create the trainer
             trainer = Trainer(max_epochs=1, limit_train_batches=1, limit_val_batches=1)
 
-            # 5. Finetune the model
+            # 5 Finetune the model
             trainer.finetune(
                 model,
                 datamodule=datamodule,
                 strategy=FreezeUnfreeze(unfreeze_epoch=1),
             )
 
-            # 6. Save it!
+            # 6 Save it!
             trainer.save_checkpoint("image_classification_model.pt")
 
-            # 7. Generate predictions
+            # 7 Generate predictions
 
             # For example purposes, we'll load a pretrained checkpoint
             model = ImageClassifier.load_from_checkpoint(
                 "https://flash-weights.s3.amazonaws.com/image_classification_model.pt"
             )
-            model.serializer = FiftyOneLabels()
+            model.serializer = FiftyOneLabels()  # output FiftyOne format
 
             predictions = trainer.predict(model, datamodule=datamodule)
             predictions = list(chain.from_iterable(predictions)) # flatten batches
@@ -130,7 +130,7 @@ method, which is implemented for each of the Flash tasks shown below.
             # Add predictions to FiftyOne dataset
             predict_dataset.set_values("flash_predictions", predictions)
 
-            # 8. Analyze predictions in the App
+            # 8 Analyze predictions in the App
             session = fo.launch_app(view=predict_dataset)
 
     .. tab:: Object detection
@@ -151,7 +151,7 @@ method, which is implemented for each of the Flash tasks shown below.
             import fiftyone as fo
             import fiftyone.zoo as foz
 
-            # 1. Load your FiftyOne dataset
+            # 1 Load your FiftyOne dataset
 
             dataset = foz.load_zoo_dataset("quickstart", max_samples=40, shuffle=True)
 
@@ -162,7 +162,7 @@ method, which is implemented for each of the Flash tasks shown below.
             val_dataset = dataset[25:30]
             predict_dataset = dataset[30:40]
 
-            # 2. Load the Datamodule
+            # 2 Create the Datamodule
             datamodule = ObjectDetectionData.from_fiftyone(
                 train_dataset=train_dataset,
                 test_dataset=test_dataset,
@@ -173,29 +173,29 @@ method, which is implemented for each of the Flash tasks shown below.
                 num_workers=4,
             )
 
-            # 3. Build the model
+            # 3 Build the model
             model = ObjectDetector(
                 model="retinanet",
                 num_classes=datamodule.num_classes,
                 serializer=FiftyOneDetectionLabels(),
             )
 
-            # 4. Create the trainer
+            # 4 Create the trainer
             trainer = Trainer(max_epochs=1, limit_train_batches=1, limit_val_batches=1)
 
-            # 5. Finetune the model
+            # 5 Finetune the model
             trainer.finetune(model, datamodule=datamodule)
 
-            # 6. Save it!
+            # 6 Save it!
             trainer.save_checkpoint("object_detection_model.pt")
 
-            # 7. Generate predictions
+            # 7 Generate predictions
 
             # For example purposes, we'll load a pretrained checkpoint
             model = ObjectDetector.load_from_checkpoint(
                 "https://flash-weights.s3.amazonaws.com/object_detection_model.pt"
             )
-            model.serializer = FiftyOneDetectionLabels()
+            model.serializer = FiftyOneDetectionLabels()  # output FiftyOne format
 
             predictions = trainer.predict(model, datamodule=datamodule)
             predictions = list(chain.from_iterable(predictions)) # flatten batches
@@ -203,7 +203,7 @@ method, which is implemented for each of the Flash tasks shown below.
             # Add predictions to FiftyOne dataset
             predict_dataset.set_values("flash_predictions", predictions)
 
-            # 8. Analyze predictions in the App
+            # 8 Analyze predictions in the App
             session = fo.launch_app(view=predict_dataset)
 
     .. tab:: Semantic segmentation
@@ -225,13 +225,9 @@ method, which is implemented for each of the Flash tasks shown below.
             import fiftyone as fo
             import fiftyone.zoo as foz
 
-            # 1. Load your FiftyOne dataset
-            # This is a Dataset with Semantic Segmentation Labels generated via CARLA
-            self-driving simulator.
-            # The data was generated as part of the Lyft Udacity Challenge.
-            # More info here:
-            https://www.kaggle.com/kumaresanmanickavelu/lyft-udacity-challenge
+            # 1 Load your FiftyOne dataset
 
+            # source: https://www.kaggle.com/kumaresanmanickavelu/lyft-udacity-challenge
             download_data(
                 "https://github.com/ongchinkiat/LyftPerceptionChallenge/releases/download/v0.1/carla-capture-20180513A.zip",
                 "data/"
@@ -254,7 +250,7 @@ method, which is implemented for each of the Flash tasks shown below.
             val_dataset = dataset[25:30]
             predict_dataset = dataset[30:40]
 
-            # 2. Load the Datamodule
+            # 2 Create the Datamodule
             datamodule = SemanticSegmentationData.from_fiftyone(
                 train_dataset=train_dataset,
                 test_dataset=test_dataset,
@@ -265,29 +261,29 @@ method, which is implemented for each of the Flash tasks shown below.
                 num_workers=4,
             )
 
-            # 3. Build the model
+            # 3 Build the model
             model = SemanticSegmentation(
                 backbone="fcn_resnet50",
                 num_classes=datamodule.num_classes,
                 serializer=FiftyOneSegmentationLabels(),
             )
 
-            # 4. Create the trainer
+            # 4 Create the trainer
             trainer = Trainer(max_epochs=1, fast_dev_run=1)
 
-            # 5. Finetune the model
+            # 5 Finetune the model
             trainer.finetune(model, datamodule=datamodule, strategy="freeze")
 
-            # 6. Save it!
+            # 6 Save it!
             trainer.save_checkpoint("semantic_segmentation_model.pt")
 
-            # 7. Generate predictions
+            # 7 Generate predictions
 
             # For example purposes, we'll load a pretrained checkpoint
             model = ObjectDetector.load_from_checkpoint(
                 "https://flash-weights.s3.amazonaws.com/semantic_segmentation_model.pt"
             )
-            model.serializer = FiftyOneSegmentationLabels()
+            model.serializer = FiftyOneSegmentationLabels()  # output FiftyOne format
 
             predictions = trainer.predict(model, datamodule=datamodule)
             predictions = list(chain.from_iterable(predictions)) # flatten batches
@@ -295,7 +291,7 @@ method, which is implemented for each of the Flash tasks shown below.
             # Add predictions to FiftyOne dataset
             predict_dataset.set_values("flash_predictions", predictions)
 
-            # 8. Analyze predictions in the App
+            # 8 Analyze predictions in the App
             session = fo.launch_app(view=predict_dataset)
 
     .. tab:: Video classification
@@ -316,10 +312,10 @@ method, which is implemented for each of the Flash tasks shown below.
 
             import fiftyone as fo
 
-            # 1. Download data
+            # 1 Download data
             download_data("https://pl-flash-data.s3.amazonaws.com/kinetics.zip")
 
-            # 2. Load data into FiftyOne
+            # 2 Load data into FiftyOne
             # Here we use different datasets for each split, but you can also use views
             # into the same dataset
 
@@ -343,7 +339,7 @@ method, which is implemented for each of the Flash tasks shown below.
                 max_samples=5,
             )
 
-            # 3. Finetune a model
+            # 3 Finetune a model
 
             classifier = VideoClassifier.load_from_checkpoint(
                 "https://flash-weights.s3.amazonaws.com/video_classification.pt",
@@ -367,7 +363,7 @@ method, which is implemented for each of the Flash tasks shown below.
             trainer.finetune(classifier, datamodule=datamodule)
             trainer.save_checkpoint("video_classification.pt")
 
-            # 4. Predict from checkpoint
+            # 4 Predict from checkpoint
 
             # For example purposes, we'll load a pretrained checkpoint
             classifier = VideoClassifier.load_from_checkpoint(
@@ -382,7 +378,7 @@ method, which is implemented for each of the Flash tasks shown below.
             # Add predictions to FiftyOne dataset
             predict_dataset.set_values("predictions", predictions)
 
-            # 5. Visualize in FiftyOne App
+            # 5 Visualize in FiftyOne App
             session = fo.launch_app(predict_dataset)
 
 .. _flash-model-predictions:
@@ -474,12 +470,11 @@ Flash models with FiftyOne serializers will directly return predictions as
     model = ObjectDetector.load_from_checkpoint(
         "https://flash-weights.s3.amazonaws.com/object_detection_model.pt"
     )
-    model.serializer = FiftyOneDetectionLabels()
+    model.serializer = FiftyOneDetectionLabels()  # output FiftyOne format
 
     # Option 1: predict with trainer (supports distributed inference)
     datamodule = ObjectDetectionData.from_fiftyone(predict_dataset=dataset)
-    trainer = Trainer()
-    predictions = trainer.predict(model, datamodule=datamodule)
+    predictions = Trainer().predict(model, datamodule=datamodule)
     predictions = list(chain.from_iterable(predictions)) # flatten batches
 
     # Option 2: predict with model
@@ -494,7 +489,7 @@ Flash models with FiftyOne serializers will directly return predictions as
 
 .. note::
 
-    FiftyOne serializers support an optional
+    FiftyOne serializers have an optional
     :class:`return_filepath <flash:flash.core.classification.FiftyOneLabels>`
     flag that supports returning dicts that contain both the |Label| objects
     and the ``filepath`` of the associated media.
@@ -547,9 +542,7 @@ Flash model's embeddings and execute powerful workflows like
     session = fo.launch_app(dataset)
 
     # 6 Visualize image embeddings
-
     results = fob.compute_visualization(dataset, embeddings=embeddings)
-
     plot = results.visualize(labels="ground_truth.label")
     plot.show()
 
