@@ -74,7 +74,9 @@ method, which is implemented for each of the Flash tasks shown below.
 
             # 1. Load your FiftyOne dataset
 
-            dataset = foz.load_zoo_dataset("cifar10", split="test", max_samples=40, shuffle=True)
+            dataset = foz.load_zoo_dataset(
+                "cifar10", split="test", max_samples=40, shuffle=True
+            )
 
             # Here we use views into one dataset, but you can also use a different dataset
             # for each split
@@ -116,8 +118,9 @@ method, which is implemented for each of the Flash tasks shown below.
 
             # 7. Generate predictions
 
+            # For example purposes, we'll load a pretrained checkpoint
             model = ImageClassifier.load_from_checkpoint(
-              "https://flash-weights.s3.amazonaws.com/image_classification_model.pt"
+                "https://flash-weights.s3.amazonaws.com/image_classification_model.pt"
             )
             model.serializer = FiftyOneLabels()
 
@@ -188,6 +191,7 @@ method, which is implemented for each of the Flash tasks shown below.
 
             # 7. Generate predictions
 
+            # For example purposes, we'll load a pretrained checkpoint
             model = ObjectDetector.load_from_checkpoint(
                 "https://flash-weights.s3.amazonaws.com/object_detection_model.pt"
             )
@@ -279,8 +283,9 @@ method, which is implemented for each of the Flash tasks shown below.
 
             # 7. Generate predictions
 
+            # For example purposes, we'll load a pretrained checkpoint
             model = ObjectDetector.load_from_checkpoint(
-              "https://flash-weights.s3.amazonaws.com/semantic_segmentation_model.pt"
+                "https://flash-weights.s3.amazonaws.com/semantic_segmentation_model.pt"
             )
             model.serializer = FiftyOneSegmentationLabels()
 
@@ -341,8 +346,8 @@ method, which is implemented for each of the Flash tasks shown below.
             # 3. Finetune a model
 
             classifier = VideoClassifier.load_from_checkpoint(
-              "https://flash-weights.s3.amazonaws.com/video_classification.pt",
-              pretrained=False,
+                "https://flash-weights.s3.amazonaws.com/video_classification.pt",
+                pretrained=False,
             )
 
             datamodule = VideoClassificationData.from_fiftyone(
@@ -364,9 +369,10 @@ method, which is implemented for each of the Flash tasks shown below.
 
             # 4. Predict from checkpoint
 
+            # For example purposes, we'll load a pretrained checkpoint
             classifier = VideoClassifier.load_from_checkpoint(
-              "https://flash-weights.s3.amazonaws.com/video_classification.pt",
-              pretrained=False,
+                "https://flash-weights.s3.amazonaws.com/video_classification.pt",
+                pretrained=False,
             )
             classifier.serializer = FiftyOneLabels()
 
@@ -416,7 +422,7 @@ your dataset.
 
     # Load your Flash model
     model = ObjectDetector.load_from_checkpoint(
-      "https://flash-weights.s3.amazonaws.com/object_detection_model.pt"
+        "https://flash-weights.s3.amazonaws.com/object_detection_model.pt"
     )
 
     # Predict!
@@ -464,19 +470,19 @@ Flash models with FiftyOne serializers will directly return predictions as
     # Load your dataset
     dataset = foz.load_zoo_dataset("quickstart", max_samples=5)
 
-    # Load the finetuned model
+    # Load your Flash model
     model = ObjectDetector.load_from_checkpoint(
-      "https://flash-weights.s3.amazonaws.com/object_detection_model.pt"
+        "https://flash-weights.s3.amazonaws.com/object_detection_model.pt"
     )
     model.serializer = FiftyOneDetectionLabels()
 
-    # Option 1: Predict with trainer (supports distributed inference)
+    # Option 1: predict with trainer (supports distributed inference)
     datamodule = ObjectDetectionData.from_fiftyone(predict_dataset=dataset)
     trainer = Trainer()
     predictions = trainer.predict(model, datamodule=datamodule)
     predictions = list(chain.from_iterable(predictions)) # flatten batches
 
-    # Option 2: Predict with model
+    # Option 2: predict with model
     filepaths = dataset.values("filepath")
     predictions = model.predict(filepaths)
 
