@@ -19,8 +19,8 @@ The following Flash tasks are supported natively by FiftyOne:
 - :ref:`Image classification <flash:image_classification>`
 - :ref:`Object detection <flash:object_detection>`
 - :ref:`Semantic segmentation <flash:semantic_segmentation>`
-- :ref:`Image embeddings <flash:image_embedder>`
 - :ref:`Video classification <flash:video_classification>`
+- :ref:`Image embeddings <flash:image_embedder>`
 
 .. note::
 
@@ -33,7 +33,7 @@ Setup
 _____
 
 In order to use the Lightning Flash integration, you'll need to
-`install it <https://lightning-flash.readthedocs.io/en/latest/installation.html>`_:
+`install Flash <https://lightning-flash.readthedocs.io/en/latest/installation.html>`_:
 
 .. code-block:: shell
 
@@ -55,7 +55,8 @@ method, which is implemented for each of the Flash tasks shown below.
 
     .. tab:: Image classification
 
-        The example below finetunes a Flash image classification task on a
+        The example below finetunes a Flash
+        :ref:`image classification task <flash:image_classification>` on a
         FiftyOne dataset with |Classification| ground truth labels:
 
         .. code-block:: python
@@ -131,8 +132,9 @@ method, which is implemented for each of the Flash tasks shown below.
 
     .. tab:: Object detection
 
-        This example below finetunes a Flash object detection task on a
-        FiftyOne dataset with |Detections| ground truth labels:
+        This example below finetunes a Flash
+        :ref:`object detection task <flash:object_detection>` on a FiftyOne
+        dataset with |Detections| ground truth labels:
 
         .. code-block:: python
             :linenos:
@@ -202,7 +204,8 @@ method, which is implemented for each of the Flash tasks shown below.
 
     .. tab:: Semantic segmentation
 
-        This example below finetunes a Flash semantic segmentation task on a
+        This example below finetunes a Flash
+        :ref:`semantic segmentation task <flash:semantic_segmentation>` on a
         FiftyOne dataset with |Segmentation| ground truth labels:
 
         .. code-block:: python
@@ -292,7 +295,8 @@ method, which is implemented for each of the Flash tasks shown below.
 
     .. tab:: Video classification
 
-        The example below finetunes a Flash video classification task on a
+        The example below finetunes a Flash
+        :ref:`video classification task <flash:video_classification>` on a
         FiftyOne dataset with |Classification| ground truth labels:
 
         .. code-block:: python
@@ -394,10 +398,10 @@ function, which natively accepts Flash models of any
 :ref:`supported type <lightning-flash>`.
 
 Behind the scenes, FiftyOne will construct the appropriate Flash
-:class:`Trainer <flash:flash.core.trainer.Trainer>` and FiftyOne-style
+:mod:`Trainer <flash:flash.core.trainer>` and FiftyOne-style
 :class:`Serializer <flash:flash.core.data.process.Serializer>` to perform the
-inference and output the predictions as FiftyOne |Label| instances that are
-added to your dataset.
+inference and output the predictions as |Label| instances that are added to
+your dataset.
 
 .. code-block:: python
     :linenos:
@@ -424,11 +428,11 @@ added to your dataset.
 .. note::
 
     When performing inference with Flash models, you can pass additional
-    arguments like ``num_gpus=8`` to
+    arguments like ``gpus=8`` to
     :meth:`apply_model() <fiftyone.core.collections.SampleCollection.apply_model>`,
     which are used to initialize the Flash
-    :class:`Trainer <flash:flash.core.trainer.Trainer>` to configure
-    distributed and/or parallelized inference per your needs!
+    :mod:`Trainer <flash:flash.core.trainer>` to configure distributed and/or
+    parallelized inference!
 
 Manually adding predictions
 ---------------------------
@@ -443,7 +447,7 @@ type.
 
 Flash models with FiftyOne serializers will directly return predictions as
 |Label| objects that you can easily add to your FiftyOne datasets via
-:meth:`set_values <fiftyone.core.collections.SampleCollection.set_values>`.
+:meth:`set_values() <fiftyone.core.collections.SampleCollection.set_values>`.
 
 .. code-block:: python
     :linenos:
