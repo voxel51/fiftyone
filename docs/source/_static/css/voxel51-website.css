@@ -626,3 +626,7 @@
 .text-tertiary-on-dark {
   color: var(--text-tertiary-on-dark);
 }
+
+.hs-form-iframe {
+  width: 100% !important;
+}
