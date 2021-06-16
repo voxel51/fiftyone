@@ -291,7 +291,7 @@ format when writing the dataset to disk.
     | :ref:`BDDDataset <BDDDataset-export>`                              | A labeled dataset consisting of images and their associated multitask predictions  |
     |                                                                    | saved in `Berkeley DeepDrive (BDD) format <https://bdd-data.berkeley.edu>`_.       |
     +--------------------------------------------------------------------+------------------------------------------------------------------------------------+
-    | :ref:`GeoJSONImageDataset <GeoJSONImageDataset-export>`            | An image dataset whose labels and location data are stored in                      |
+    | :ref:`GeoJSONDataset <GeoJSONDataset-export>`                      | An image or video dataset whose location data and labels are stored in             |
     |                                                                    | `GeoJSON format <https://en.wikipedia.org/wiki/GeoJSON>`_.                         |
     +--------------------------------------------------------------------+------------------------------------------------------------------------------------+
     | :ref:`FiftyOneDataset <FiftyOneDataset-export>`                    | A dataset consisting of an entire serialized |Dataset| and its associated source   |
@@ -1953,13 +1953,13 @@ follows:
             --label-field $LABEL_FIELD \
             --type fiftyone.types.BDDDataset
 
-.. _GeoJSONImageDataset-export:
+.. _GeoJSONDataset-export:
 
-GeoJSONImageDataset
--------------------
+GeoJSONDataset
+--------------
 
-The :class:`fiftyone.types.GeoJSONImageDataset <fiftyone.types.dataset_types.GeoJSONImageDataset>`
-type represents a dataset consisting of images and their associated
+The :class:`fiftyone.types.GeoJSONDataset <fiftyone.types.dataset_types.GeoJSONDataset>`
+type represents a dataset consisting of images or videos and their associated
 geolocation data and optional properties stored in
 `GeoJSON format <https://en.wikipedia.org/wiki/GeoJSON>`_.
 
@@ -2015,14 +2015,11 @@ the following format:
     }
 
 where the ``geometry`` field may contain any valid GeoJSON geometry object, and
-the ``filename`` property encodes the name of the corresponding image in the
-``data/`` folder.
+the ``filename`` property encodes the name of the corresponding media in the
+``data/`` folder. The ``filename`` property can also be an absolute path, which
+may or may not be in the ``data/`` folder.
 
-Alternatively, the ``filepath`` property may be specified rather than
-``filename``, in which case the path is interpreted as an absolute path to the
-corresponding image.
-
-Images with no location data will have a null ``geometry`` field.
+Samples with no location data will have a null ``geometry`` field.
 
 The ``properties`` field of each feature can contain additional labels for
 each sample.
@@ -2039,7 +2036,7 @@ format as follows:
 
         import fiftyone as fo
 
-        export_dir = "/path/for/geojson-image-dataset"
+        export_dir = "/path/for/geojson-dataset"
 
         # The Dataset or DatasetView to export
         dataset_or_view = fo.Dataset(...)
@@ -2047,7 +2044,7 @@ format as follows:
         # Export the dataset
         dataset_or_view.export(
             export_dir=export_dir,
-            dataset_type=fo.types.GeoJSONImageDataset,
+            dataset_type=fo.types.GeoJSONDataset,
         )
 
   .. group-tab:: CLI
@@ -2055,12 +2052,12 @@ format as follows:
     .. code-block:: shell
 
         NAME=my-dataset
-        EXPORT_DIR=/path/for/geojson-image-dataset
+        EXPORT_DIR=/path/for/geojson-dataset
 
         # Export the dataset
         fiftyone datasets export $NAME \
             --export-dir $EXPORT_DIR \
-            --type fiftyone.types.GeoJSONImageDataset
+            --type fiftyone.types.GeoJSONDataset
 
 .. _FiftyOneDataset-export:
 

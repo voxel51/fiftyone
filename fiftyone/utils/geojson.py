@@ -28,9 +28,9 @@ def load_location_data(
     """Loads geolocation data for the given samples from the given GeoJSON
     data.
 
-    The GeoJSON data must be a ``FeatureCollection`` whose features have either
-    their ``filename`` (name only) or ``filepath`` (absolute path) properties
-    populated, which are used to match the provided samples.
+    The GeoJSON data must be a ``FeatureCollection`` whose features have their
+    ``filename`` properties populated, which are used to match the provided
+    samples.
 
     Example GeoJSON data::
 
@@ -66,7 +66,7 @@ def load_location_data(
                         ]
                     },
                     "properties": {
-                        "filepath": "/path/to/b1c81faa-3df17267.jpg"
+                        "filename": "/path/to/b1c81faa-3df17267.jpg"
                     }
                 },
             ]
@@ -84,8 +84,7 @@ def load_location_data(
             :class:`fiftyone.core.labels.GeoLocation` field, that field is
             used, else a new "location" field is created
         skip_missing (True): whether to skip GeoJSON features with no
-            ``filename`` or ``filepath`` properties (True) or raise an error
-            (False)
+            ``filename`` properties (True) or raise an error (False)
     """
     if location_field is None:
         try:
@@ -114,14 +113,10 @@ def load_location_data(
     geometries = {}
     for feature in d.get("features", []):
         properties = feature["properties"]
-        if "filepath" in properties:
-            key = properties["filepath"]
-        elif "filename" in properties:
+        if "filename" in properties:
             key = properties["filename"]
         elif not skip_missing:
-            raise ValueError(
-                "Found feature with no `filename` or `filepath` property"
-            )
+            raise ValueError("Found feature with no `filename` property")
         else:
             continue
 
@@ -293,13 +288,13 @@ def extract_coordinates(d):
     return _parse_geometries(geometries)
 
 
-class GeoJSONImageDatasetImporter(
+class GeoJSONDatasetImporter(
     foud.GenericSampleDatasetImporter, foud.ImportPathsMixin
 ):
-    """Importer for image datasets whose labels and location data are stored in
-    GeoJSON format.
+    """Importer for image or video datasets whose location data and labels are
+    stored in GeoJSON format.
 
-    See :class:`fiftyone.types.dataset_types.GeoJSONImageDataset` for format
+    See :class:`fiftyone.types.dataset_types.GeoJSONDataset` for format
     details.
 
     Args:
@@ -340,8 +335,7 @@ class GeoJSONImageDatasetImporter(
             appropriate) :class:`fiftyone.core.labels.Label` types). By
             default, all properies are stored as primitive field values
         skip_missing_media (False): whether to skip (True) or raise an error
-            (False) when features with no ``filename`` or ``filepath`` property
-            are encountered
+            (False) when features with no ``filename`` property are encountered
         include_all_data (False): whether to generate samples for all media in
             the data directory (True) rather than only creating samples for
             media with label entries (False)
@@ -391,7 +385,7 @@ class GeoJSONImageDatasetImporter(
         self.skip_missing_media = skip_missing_media
         self.include_all_data = include_all_data
 
-        self._image_paths_map = None
+        self._media_paths_map = None
         self._features_map = None
         self._filepaths = None
         self._iter_filepaths = None
@@ -438,7 +432,7 @@ class GeoJSONImageDatasetImporter(
         return False
 
     def setup(self):
-        self._image_paths_map = self._load_data_map(self.data_path)
+        self._media_paths_map = self._load_data_map(self.data_path)
 
         features_map = {}
 
@@ -448,11 +442,13 @@ class GeoJSONImageDatasetImporter(
 
             for feature in geojson.get("features", []):
                 properties = feature["properties"]
-                if "filepath" in properties:
-                    filepath = properties.pop("filepath")
-                elif "filename" in properties:
+                if "filename" in properties:
                     filename = properties.pop("filename")
-                    filepath = self._image_paths_map.get(filename, None)
+                    if os.path.isabs(filename):
+                        filepath = filename
+                    else:
+                        filepath = self._media_paths_map.get(filename, None)
+
                     if filepath is None:
                         if self.skip_missing_media:
                             continue
@@ -466,8 +462,7 @@ class GeoJSONImageDatasetImporter(
                     continue
                 else:
                     raise ValueError(
-                        "Found feature with no `filepath` or `filename` "
-                        "property"
+                        "Found feature with no `filename` property"
                     )
 
                 features_map[filepath] = feature
@@ -475,20 +470,20 @@ class GeoJSONImageDatasetImporter(
         filepaths = set(features_map.keys())
 
         if self.include_all_data:
-            filepaths.update(self._image_paths_map.values())
+            filepaths.update(self._media_paths_map.values())
 
         self._features_map = features_map
         self._filepaths = self._preprocess_list(sorted(filepaths))
         self._num_samples = len(self._filepaths)
 
 
-class GeoJSONImageDatasetExporter(
+class GeoJSONDatasetExporter(
     foud.GenericSampleDatasetExporter, foud.ExportPathsMixin
 ):
-    """Exporter for image datasets whose labels and location data are stored in
-    GeoJSON format.
+    """Exporter for image or video datasets whose location data and labels are
+    stored in GeoJSON format.
 
-    See :class:`fiftyone.types.dataset_types.GeoJSONImageDataset` for format
+    See :class:`fiftyone.types.dataset_types.GeoJSONDataset` for format
     details.
 
     Args:
@@ -624,7 +619,7 @@ class GeoJSONImageDatasetExporter(
         out_filepath, _ = self._media_exporter.export(sample.filepath)
 
         if self.export_media == False:
-            properties["filepath"] = sample.filepath
+            properties["filename"] = sample.filepath
         else:
             properties["filename"] = os.path.basename(out_filepath)
 

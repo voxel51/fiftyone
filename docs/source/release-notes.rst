@@ -158,7 +158,7 @@ Core
       an interacive scatterplot of a dataset via its |GeoLocation| coordinates
     - Added |GeoLocation| and |GeoLocations| label types that can be used to store
       arbitrary GeoJSON location data on samples
-    - Added the :class:`GeoJSONImageDataset <fiftyone.types.dataset_types.GeoJSONImageDataset>`
+    - Added the :class:`GeoJSONDataset <fiftyone.types.dataset_types.GeoJSONDataset>`
       dataset type for importing and exporting datasets in GeoJSON format
     - Added :meth:`SampleCollection.geo_near() <fiftyone.core.collections.SampleCollection.geo_near>`
       and

@@ -627,7 +627,7 @@ class ImportPathsMixin(object):
         return labels_path
 
     @staticmethod
-    def _load_data_map(data_path, ignore_exts=False):
+    def _load_data_map(data_path, ignore_exts=False, recursive=False):
         """Helper function that parses either a data directory or a data
         manifest file into a UUID -> filepath map.
         """
@@ -642,15 +642,13 @@ class ImportPathsMixin(object):
         else:
             if os.path.isdir(data_path):
                 if ignore_exts:
-                    to_uuid = lambda p: os.path.splitext(os.path.basename(p))[
-                        0
-                    ]
+                    to_uuid = lambda p: os.path.splitext(p)[0]
                 else:
-                    to_uuid = lambda p: os.path.basename(p)
+                    to_uuid = lambda p: p
 
                 data_map = {
-                    to_uuid(p): p
-                    for p in etau.list_files(data_path, abs_paths=True)
+                    to_uuid(p): os.path.join(data_path, p)
+                    for p in etau.list_files(data_path, recursive=recursive)
                 }
             else:
                 logger.warning("Data directory '%s' does not exist", data_path)

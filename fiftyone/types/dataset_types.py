@@ -1371,9 +1371,9 @@ class BDDDataset(ImageLabelsDataset):
         return foub.BDDDatasetExporter
 
 
-class GeoJSONImageDataset(ImageLabelsDataset):
-    """An image dataset whose geolocation data and optional properties are
-    stored in `GeoJSON format <https://en.wikipedia.org/wiki/GeoJSON>`_.
+class GeoJSONDataset(LabeledDataset):
+    """An image or video dataset whose geolocation data and optional properties
+    are stored in `GeoJSON format <https://en.wikipedia.org/wiki/GeoJSON>`_.
 
     Datasets of this type are read/written in the following format::
 
@@ -1423,14 +1423,11 @@ class GeoJSONImageDataset(ImageLabelsDataset):
         }
 
     where the ``geometry`` field may contain any valid GeoJSON geometry object,
-    and the ``filename`` property encodes the name of the corresponding image
-    in the ``data/`` folder.
+    and the ``filename`` property encodes the name of the corresponding media
+    in the ``data/`` folder. The ``filename`` property can also be an absolute
+    path, which may or may not be in the ``data/`` folder.
 
-    You can also specify a ``filepath`` property rather than ``filename``, in
-    which case the path is interpreted as an absolute path to the corresponding
-    image, which may or may not be in ``data/`` folder.
-
-    Images with no location data will have a null ``geometry`` field.
+    Samples with no location data will have a null ``geometry`` field.
 
     The ``properties`` field of each feature can contain additional labels that
     can be imported/exported when working with datasets of this type.
@@ -1439,12 +1436,12 @@ class GeoJSONImageDataset(ImageLabelsDataset):
     def get_dataset_importer_cls(self):
         import fiftyone.utils.geojson as foug
 
-        return foug.GeoJSONImageDatasetImporter
+        return foug.GeoJSONDatasetImporter
 
     def get_dataset_exporter_cls(self):
         import fiftyone.utils.geojson as foug
 
-        return foug.GeoJSONImageDatasetExporter
+        return foug.GeoJSONDatasetExporter
 
 
 class FiftyOneVideoLabelsDataset(VideoLabelsDataset):

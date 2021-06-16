@@ -158,7 +158,7 @@ format when reading the dataset from disk.
     | :ref:`BDDDataset <BDDDataset-import>`                                                 | A labeled dataset consisting of images and their associated multitask predictions  |
     |                                                                                       | saved in `Berkeley DeepDrive (BDD) format <https://bdd-data.berkeley.edu>`_.       |
     +---------------------------------------------------------------------------------------+------------------------------------------------------------------------------------+
-    | :ref:`GeoJSONImageDataset <GeoJSONImageDataset-import>`                               | An image dataset whose labels and location data are stored in                      |
+    | :ref:`GeoJSONDataset <GeoJSONDataset-import>`                                         | An image or video dataset whose location data and labels are stored in             |
     |                                                                                       | `GeoJSON format <https://en.wikipedia.org/wiki/GeoJSON>`_.                         |
     +---------------------------------------------------------------------------------------+------------------------------------------------------------------------------------+
     | :ref:`FiftyOneVideoLabelsDataset <FiftyOneVideoLabelsDataset-import>`                 | A labeled dataset consisting of videos and their associated multitask predictions  |
@@ -1680,77 +1680,77 @@ where the labels XML files are stored in the following format:
 .. code-block:: xml
 
     <?xml version="1.0" encoding="utf-8"?>
-        <annotations>
-            <version>1.1</version>
-            <meta>
-                <task>
-                    <id>task-id</id>
-                    <name>task-name</name>
-                    <size>51</size>
-                    <mode>interpolation</mode>
-                    <overlap></overlap>
-                    <bugtracker></bugtracker>
-                    <flipped>False</flipped>
-                    <created>2017-11-20 11:51:51.000000+00:00</created>
-                    <updated>2017-11-20 11:51:51.000000+00:00</updated>
-                    <labels>
-                        <label>
-                            <name>car</name>
-                            <attributes>
-                                <attribute>
-                                    <name>type</name>
-                                    <values>coupe\\nsedan\\ntruck</values>
-                                </attribute>
-                                ...
-                            </attributes>
-                        </label>
-                        <label>
-                            <name>person</name>
-                            <attributes>
-                                <attribute>
-                                    <name>gender</name>
-                                    <values>male\\nfemale</values>
-                                </attribute>
-                                ...
-                            </attributes>
-                        </label>
-                        ...
-                    </labels>
-                </task>
-                <segments>
-                    <segment>
-                        <id>0</id>
-                        <start>0</start>
-                        <stop>50</stop>
-                        <url></url>
-                    </segment>
-                </segments>
-                <owner>
-                    <username></username>
-                    <email></email>
-                </owner>
-                <original_size>
-                    <width>640</width>
-                    <height>480</height>
-                </original_size>
-                <dumped>2017-11-20 11:51:51.000000+00:00</dumped>
-            </meta>
-            <track id="0" label="car">
-                <box frame="0" xtl="100" ytl="50" xbr="325" ybr="190" outside="0" occluded="0" keyframe="1">
-                    <attribute name="type">sedan</attribute>
+    <annotations>
+        <version>1.1</version>
+        <meta>
+            <task>
+                <id>task-id</id>
+                <name>task-name</name>
+                <size>51</size>
+                <mode>interpolation</mode>
+                <overlap></overlap>
+                <bugtracker></bugtracker>
+                <flipped>False</flipped>
+                <created>2017-11-20 11:51:51.000000+00:00</created>
+                <updated>2017-11-20 11:51:51.000000+00:00</updated>
+                <labels>
+                    <label>
+                        <name>car</name>
+                        <attributes>
+                            <attribute>
+                                <name>type</name>
+                                <values>coupe\\nsedan\\ntruck</values>
+                            </attribute>
+                            ...
+                        </attributes>
+                    </label>
+                    <label>
+                        <name>person</name>
+                        <attributes>
+                            <attribute>
+                                <name>gender</name>
+                                <values>male\\nfemale</values>
+                            </attribute>
+                            ...
+                        </attributes>
+                    </label>
                     ...
-                </box>
+                </labels>
+            </task>
+            <segments>
+                <segment>
+                    <id>0</id>
+                    <start>0</start>
+                    <stop>50</stop>
+                    <url></url>
+                </segment>
+            </segments>
+            <owner>
+                <username></username>
+                <email></email>
+            </owner>
+            <original_size>
+                <width>640</width>
+                <height>480</height>
+            </original_size>
+            <dumped>2017-11-20 11:51:51.000000+00:00</dumped>
+        </meta>
+        <track id="0" label="car">
+            <box frame="0" xtl="100" ytl="50" xbr="325" ybr="190" outside="0" occluded="0" keyframe="1">
+                <attribute name="type">sedan</attribute>
                 ...
-            </track>
+            </box>
             ...
-            <track id="10" label="person">
-                <box frame="45" xtl="300" ytl="25" xbr="375" ybr="400" outside="0" occluded="0" keyframe="1">
-                    <attribute name="gender">female</attribute>
-                    ...
-                </box>
+        </track>
+        ...
+        <track id="10" label="person">
+            <box frame="45" xtl="300" ytl="25" xbr="375" ybr="400" outside="0" occluded="0" keyframe="1">
+                <attribute name="gender">female</attribute>
                 ...
-            </track>
-        </annotations>
+            </box>
+            ...
+        </track>
+    </annotations>
 
 Unlabeled videos have no corresponding file in `labels/`.
 
@@ -2183,13 +2183,13 @@ as follows:
             --dataset-dir $DATASET_DIR \
             --type fiftyone.types.BDDDataset
 
-.. _GeoJSONImageDataset-import:
+.. _GeoJSONDataset-import:
 
-GeoJSONImageDataset
--------------------
+GeoJSONDataset
+--------------
 
-The :class:`fiftyone.types.GeoJSONImageDataset <fiftyone.types.dataset_types.GeoJSONImageDataset>`
-type represents a dataset consisting of images and their associated
+The :class:`fiftyone.types.GeoJSONDataset <fiftyone.types.dataset_types.GeoJSONDataset>`
+type represents a dataset consisting of images or videos and their associated
 geolocation data and optional properties stored in
 `GeoJSON format <https://en.wikipedia.org/wiki/GeoJSON>`_.
 
@@ -2245,20 +2245,17 @@ the following format:
     }
 
 where the ``geometry`` field may contain any valid GeoJSON geometry object, and
-the ``filename`` property encodes the name of the corresponding image in the
-``data/`` folder.
+the ``filename`` property encodes the name of the corresponding media in the
+``data/`` folder. The ``filename`` property can also be an absolute path, which
+may or may not be in the ``data/`` folder.
 
-You can also specify a ``filepath`` property rather than ``filename``, in which
-case the path is interpreted as an absolute path to the corresponding image,
-which may or may not be in ``data/`` folder.
-
-Images with no location data will have a null ``geometry`` field.
+Samples with no location data will have a null ``geometry`` field.
 
 The ``properties`` field of each feature can contain additional labels that
 can be imported when working with datasets of this type.
 
-You can create a FiftyOne dataset from a GeoJSON image dataset stored in the
-above format as follows:
+You can create a FiftyOne dataset from a GeoJSON dataset stored in the above
+format as follows:
 
 .. tabs::
 
@@ -2269,12 +2266,12 @@ above format as follows:
 
         import fiftyone as fo
 
-        name = "my-geojson-image-dataset"
-        dataset_dir = "/path/to/geojson-image-dataset"
+        name = "my-geojson-dataset"
+        dataset_dir = "/path/to/geojson-dataset"
 
         # Create the dataset
         dataset = fo.Dataset.from_dir(
-            dataset_dir, fo.types.GeoJSONImageDataset, name=name
+            dataset_dir, fo.types.GeoJSONDataset, name=name
         )
 
         # View summary info about the dataset
@@ -2287,14 +2284,14 @@ above format as follows:
 
     .. code-block:: shell
 
-        NAME=my-geojson-image-dataset
-        DATASET_DIR=/path/to/geojson-image-dataset
+        NAME=my-geojson-dataset
+        DATASET_DIR=/path/to/geojson-dataset
 
         # Create the dataset
         fiftyone datasets create \
             --name $NAME \
             --dataset-dir $DATASET_DIR \
-            --type fiftyone.types.GeoJSONImageDataset
+            --type fiftyone.types.GeoJSONDataset
 
         # View summary info about the dataset
         fiftyone datasets info $NAME
@@ -2302,17 +2299,17 @@ above format as follows:
         # Print the first few samples in the dataset
         fiftyone datasets head $NAME
 
-    To view a GeoJSON image dataset stored in the above format in the FiftyOne
-    App without creating a persistent FiftyOne dataset, you can execute:
+    To view a GeoJSON dataset stored in the above format in the FiftyOne App
+    without creating a persistent FiftyOne dataset, you can execute:
 
     .. code-block:: shell
 
-        DATASET_DIR=/path/to/geojson-image-dataset
+        DATASET_DIR=/path/to/geojson-dataset
 
         # View the dataset in the App
         fiftyone app view \
             --dataset-dir $DATASET_DIR \
-            --type fiftyone.types.GeoJSONImageDataset
+            --type fiftyone.types.GeoJSONDataset
 
 .. _FiftyOneDataset-import:
 

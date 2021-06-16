@@ -198,9 +198,11 @@ class VOCDetectionDatasetImporter(
             if _uuid not in self._image_paths_map:
                 _uuid = uuid
 
-            try:
-                image_path = self._image_paths_map[_uuid]
-            except KeyError:
+            if uuid in self._image_paths_map:
+                image_path = self._image_paths_map[uuid]
+            elif annotation.path and os.path.isfile(annotation.path):
+                image_path = annotation.path
+            else:
                 raise ValueError("No image found for sample '%s'" % _uuid)
 
             if annotation.metadata is None:

@@ -242,7 +242,10 @@ class BDDDatasetImporter(
     def __next__(self):
         filename = next(self._iter_filenames)
 
-        image_path = self._image_paths_map[filename]
+        if os.path.isabs(filename):
+            image_path = filename
+        else:
+            image_path = self._image_paths_map[filename]
 
         image_metadata = fom.ImageMetadata.build_for(image_path)
 
