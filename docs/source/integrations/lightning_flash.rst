@@ -521,9 +521,7 @@ Flash model's embeddings and execute powerful workflows like
     import fiftyone.brain as fob
 
     # 1 Download data
-    download_data(
-        "https://pl-flash-data.s3.amazonaws.com/hymenoptera_data.zip"
-    )
+    download_data("https://pl-flash-data.s3.amazonaws.com/hymenoptera_data.zip")
 
     # 2 Load data into FiftyOne
     dataset = fo.Dataset.from_dir(
