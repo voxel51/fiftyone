@@ -80,7 +80,7 @@ const createReader = ({
 }): FrameStream => {
   let cancelled = false;
 
-  const stream = new ReadableStream<FrameChunk>(
+  const privateStream = new ReadableStream<FrameChunk>(
     {
       pull: (controller: ReadableStreamDefaultController) => {
         if (frameNumber >= frameCount || cancelled) {
@@ -119,14 +119,13 @@ const createReader = ({
     sampleId,
     frameNumber,
     chunkSize,
-    reader: stream.getReader(),
+    reader: privateStream.getReader(),
     cancel: () => (cancelled = true),
   };
 };
 
 const getSendChunk = (uuid: string) => ({
   value,
-  done,
 }: {
   done: boolean;
   value?: FrameChunk;
@@ -138,6 +137,7 @@ const getSendChunk = (uuid: string) => ({
         Object.entries(frame).map(([k, v]) => ["frames." + k, v])
       ) as FrameSample;
     });
+    console.log("sending chunk", value.range);
 
     frames.forEach((frame) => {
       buffers = [...buffers, ...processMasks(frame)];

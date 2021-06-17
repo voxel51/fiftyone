@@ -51,7 +51,8 @@ export class LoaderBar extends BaseElement<VideoState> {
 }
 
 export class PlayButtonElement extends BaseElement<VideoState, HTMLDivElement> {
-  private playing: boolean;
+  private isPlaying: boolean;
+  private isBuffering: boolean;
   private play: SVGElement;
   private pause: SVGElement;
   private buffering: SVGElement;
@@ -65,10 +66,8 @@ export class PlayButtonElement extends BaseElement<VideoState, HTMLDivElement> {
           if (buffering) {
             return {};
           }
-          if (playing) {
-            return { playing: !playing, showOptions: false };
-          }
-          return {};
+
+          return { playing: !playing, showOptions: false };
         });
       },
     };
@@ -131,11 +130,12 @@ export class PlayButtonElement extends BaseElement<VideoState, HTMLDivElement> {
     return element;
   }
 
-  renderSelf({ playing }) {
-    if (playing !== this.playing) {
+  renderSelf({ playing, buffering }) {
+    if (playing !== this.isPlaying || this.isBuffering !== buffering) {
       this.element.innerHTML = "";
-      if (this.buffering) {
+      if (buffering) {
         this.element.appendChild(this.buffering);
+        this.element.title = "Loading labels";
         this.element.style.cursor = "default";
       } else if (playing) {
         this.element.appendChild(this.pause);
@@ -146,7 +146,8 @@ export class PlayButtonElement extends BaseElement<VideoState, HTMLDivElement> {
         this.element.title = "Play (space)";
         this.element.style.cursor = "pointer";
       }
-      this.playing = playing;
+      this.isPlaying = playing;
+      this.isBuffering = buffering;
     }
     return this.element;
   }

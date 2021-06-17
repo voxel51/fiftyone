@@ -34,7 +34,6 @@ import {
   Optional,
   BaseSample,
   FrameChunkResponse,
-  FrameSample,
   VideoSample,
 } from "./state";
 import {
@@ -105,9 +104,8 @@ export abstract class Looker<
       if (Object.keys(updates).length === 0 && !postUpdate) {
         return;
       }
-      const prevState = this.state;
       this.state = mergeUpdates(this.state, updates);
-      this.pluckedOverlays = this.pluckOverlays(this.state, prevState);
+      this.pluckedOverlays = this.pluckOverlays(this.state);
       [this.currentOverlays, this.state.rotate] = processOverlays(
         this.state,
         this.pluckedOverlays
@@ -188,10 +186,7 @@ export abstract class Looker<
 
   protected abstract loadOverlays(sample: BaseSample);
 
-  protected abstract pluckOverlays(
-    state: State,
-    prevState: Readonly<State>
-  ): Overlay<State>[];
+  protected abstract pluckOverlays(state: State): Overlay<State>[];
 
   protected abstract getDefaultOptions(): State["options"];
 
@@ -372,7 +367,7 @@ export class ImageLooker extends Looker<ImageState> {
   }
 }
 
-interface AttachReaderOptions {
+interface AcquireReaderOptions {
   addFrame: (frameNumber: number, frame: Overlay<VideoState>[]) => void;
   getCurrentFrame: () => number;
   sampleId: string;
@@ -397,7 +392,7 @@ const aquireReader = (() => {
     getCurrentFrame,
     sampleId,
     update,
-  }: AttachReaderOptions): (() => void) => {
+  }: AcquireReaderOptions): (() => void) => {
     const subscription = uuid();
     streamCount = 0;
     frameReader.onmessage = (message: MessageEvent<FrameChunkResponse>) => {
@@ -517,7 +512,7 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
     this.frameOverlays.set(1, new WeakRef(this.firstFrameOverlays));
   }
 
-  pluckOverlays(state: VideoState, prevState: Readonly<VideoState>) {
+  pluckOverlays(state: VideoState) {
     const overlays = this.sampleOverlays;
     let pluckedOverlays = this.pluckedOverlays;
     if (this.frameOverlays.has(state.frameNumber)) {
@@ -534,7 +529,8 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
 
     if (
       (!state.config.thumbnail || state.playing) &&
-      lookerWithReader !== this
+      lookerWithReader !== this &&
+      frameCount
     ) {
       this.requestFrames = aquireReader({
         addFrame: (frameNumber, overlays) =>
@@ -546,7 +542,7 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
         update: this.updater,
       });
       lookerWithReader = this;
-    } else if (lookerWithReader !== this) {
+    } else if (lookerWithReader !== this && frameCount) {
       this.state.playing = false;
       this.state.buffering = false;
     }
@@ -559,6 +555,8 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
       if (!this.frameOverlays.has(bufferFrame)) {
         this.state.buffering = true;
         this.requestFrames();
+      } else {
+        this.state.buffering = false;
       }
     }
 
