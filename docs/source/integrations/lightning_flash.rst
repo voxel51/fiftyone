@@ -280,7 +280,7 @@ method, which is implemented for each of the Flash tasks shown below.
             # 7 Generate predictions
 
             # For example purposes, we'll load a pretrained checkpoint
-            model = ObjectDetector.load_from_checkpoint(
+            model = SemanticSegmentation.load_from_checkpoint(
                 "https://flash-weights.s3.amazonaws.com/semantic_segmentation_model.pt"
             )
             model.serializer = FiftyOneSegmentationLabels()  # output FiftyOne format
