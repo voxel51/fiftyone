@@ -108,7 +108,6 @@ export abstract class Looker<
       const prevState = this.state;
       this.state = mergeUpdates(this.state, updates);
       this.pluckedOverlays = this.pluckOverlays(this.state, prevState);
-      this.pluckedOverlays.length && console.log(this.pluckedOverlays[0]);
       [this.currentOverlays, this.state.rotate] = processOverlays(
         this.state,
         this.pluckedOverlays
@@ -389,6 +388,7 @@ const aquireReader = (() => {
   let streamCount: number = null;
 
   const frameReader = createWorker();
+  let requestingFrames: boolean = false;
 
   return ({
     addFrame,
@@ -397,7 +397,7 @@ const aquireReader = (() => {
     getCurrentFrame,
     sampleId,
     update,
-  }: AttachReaderOptions) => {
+  }: AttachReaderOptions): (() => void) => {
     const subscription = uuid();
     streamCount = 0;
     frameReader.onmessage = (message: MessageEvent<FrameChunkResponse>) => {
@@ -415,7 +415,7 @@ const aquireReader = (() => {
           .forEach((_, i) => {
             streamCount += 1;
             const frameNumber = start + i;
-            const frame = frames[frameNumber] || { frame_number: frameNumber };
+            const frame = frames[i] || { frame_number: frameNumber };
             const overlays = loadOverlays(frame);
             frameCache.set(`${sampleId}-${frameNumber}`, overlays);
             addFrame(frameNumber, overlays);
@@ -426,15 +426,19 @@ const aquireReader = (() => {
           streamCount < MAX_FRAME_CACHE_SIZE;
 
         if (requestMore && end < frameCount) {
+          requestingFrames = true;
           frameReader.postMessage({
             method: "requestFrameChunk",
             uuid: subscription,
           });
+        } else {
+          requestingFrames = false;
         }
 
         update({ buffering: false });
       }
     };
+    requestingFrames = true;
     frameReader.postMessage({
       method: "setStream",
       sampleId,
@@ -442,6 +446,16 @@ const aquireReader = (() => {
       frameNumber,
       uuid: subscription,
     });
+
+    return () => {
+      if (!requestingFrames) {
+        frameReader.postMessage({
+          method: "requestFrameChunk",
+          uuid: subscription,
+        });
+      }
+      requestingFrames = true;
+    };
   };
 })();
 
@@ -451,6 +465,7 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
   private sampleOverlays: Overlay<VideoState>[];
   private frameOverlays: Map<number, WeakRef<Overlay<VideoState>[]>>;
   private firstFrameOverlays: Overlay<VideoState>[];
+  private requestFrames: () => void;
 
   constructor(sample, config, options) {
     super(sample, config, options);
@@ -517,8 +532,11 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
       this.state.config.frameRate
     );
 
-    if (state.config.thumbnail && state.playing && lookerWithReader !== this) {
-      aquireReader({
+    if (
+      (!state.config.thumbnail || state.playing) &&
+      lookerWithReader !== this
+    ) {
+      this.requestFrames = aquireReader({
         addFrame: (frameNumber, overlays) =>
           this.frameOverlays.set(frameNumber, new WeakRef(overlays)),
         getCurrentFrame: () => this.frameNumber,
@@ -528,11 +546,19 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
         update: this.updater,
       });
       lookerWithReader = this;
+    } else if (lookerWithReader !== this) {
+      this.state.playing = false;
+      this.state.buffering = false;
+    }
 
-      const bufferFrame = Math.min(frameCount, state.frameNumber + CHUNK_SIZE);
+    if (lookerWithReader === this) {
+      const bufferFrame = Math.min(
+        frameCount,
+        state.frameNumber + CHUNK_SIZE / 2
+      );
       if (!this.frameOverlays.has(bufferFrame)) {
-        state.buffering = true;
-        state.frameNumber = prevState.frameNumber;
+        this.state.buffering = true;
+        this.requestFrames();
       }
     }
 

@@ -68,6 +68,7 @@ export class PlayButtonElement extends BaseElement<VideoState, HTMLDivElement> {
           if (playing) {
             return { playing: !playing, showOptions: false };
           }
+          return {};
         });
       },
     };
@@ -265,7 +266,6 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
           update(
             ({
               playing,
-              frameNumber,
               duration,
               locked,
               fragment,
@@ -380,7 +380,6 @@ export function withVideoLookerEvents(): () => Events<VideoState> {
           if (thumbnail) {
             return {
               playing: true,
-              buffering: true,
             };
           }
           return {};

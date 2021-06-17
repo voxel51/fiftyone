@@ -198,7 +198,7 @@ class FramesHandler(tornado.web.RequestHandler):
         stage_dicts = view.view()._serialize()
         frames_view = fov.DatasetView._build(view._dataset, stage_dicts)
 
-        frames_view = frames_view.set_field(
+        frames_view = frames_view.select(sample_id).set_field(
             "frames",
             F("frames").filter(
                 (F("frame_number") >= start_frame)

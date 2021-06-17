@@ -120,12 +120,13 @@ const createReader = ({
     frameNumber,
     chunkSize,
     reader: stream.getReader(),
-    cancel: () => stream.cancel(),
+    cancel: () => (cancelled = true),
   };
 };
 
 const getSendChunk = (uuid: string) => ({
   value,
+  done,
 }: {
   done: boolean;
   value?: FrameChunk;
@@ -141,7 +142,6 @@ const getSendChunk = (uuid: string) => ({
     frames.forEach((frame) => {
       buffers = [...buffers, ...processMasks(frame)];
     });
-    console.log("sending chunk", value.range);
     postMessage(
       {
         method: "frameChunk",
@@ -160,7 +160,7 @@ interface RequestFrameChunk {
 }
 
 const requestFrameChunk = ({ uuid }) => {
-  if (uuid === streamId && !stream.reader.closed) {
+  if (uuid === streamId) {
     stream.reader.read().then(getSendChunk(uuid));
   }
 };
@@ -182,7 +182,9 @@ const setStream = ({
   frameCount,
   uuid,
 }: SetStream) => {
-  stream && stream.cancel();
+  if (stream) {
+    stream.cancel();
+  }
   streamId = uuid;
   stream = createReader({
     chunkSize: CHUNK_SIZE,

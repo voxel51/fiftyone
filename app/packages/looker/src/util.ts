@@ -10,8 +10,6 @@ import {
   BoundingBox,
   Coordinates,
   Dimensions,
-  FrameState,
-  ImageState,
   Optional,
 } from "./state";
 
