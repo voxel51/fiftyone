@@ -494,6 +494,49 @@ Flash models with FiftyOne serializers will directly return predictions as
     flag that supports returning dicts that contain both the |Label| objects
     and the ``filepath`` of the associated media.
 
+Specifying class names
+----------------------
+
+For most tasks in Flash, a
+:class:`Serializer <flash:flash.core.data.process.Serializer>` will also
+accept a list of string labels specifying the names of classes to be
+applied to predicitions. While this information is often contained in the
+metadata of the model, it can also be provided explicitly.
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    from flash.image import ObjectDetector
+    from flash.image.detection.serialization import FiftyOneDetectionLabels
+
+    # Load your dataset
+    dataset = foz.load_zoo_dataset("quickstart", max_samples=5)
+
+    # Load your Flash model
+    model = ObjectDetector.load_from_checkpoint(
+        "https://flash-weights.s3.amazonaws.com/object_detection_model.pt"
+    )
+
+    # Provide a list of labels to the serializer
+    labels = ["label_"+str(i) for i in range(100)] # generate random class names
+    model.serializer = FiftyOneDetectionLabels(labels=labels)  # output FiftyOne format
+
+    # Predict with model
+    filepaths = dataset.values("filepath")
+    predictions = model.predict(filepaths)
+
+    # Add predictions to dataset
+    dataset.set_values("flash_predictions", predictions)
+
+    print(dataset.distinct("flash_predictions.detections.label"))
+    # ['label_57', 'label_60']
+
+    # Visualize in the App
+    session = fo.launch_app(dataset)
+
 .. _flash-image-embeddings:
 
 Image embeddings
