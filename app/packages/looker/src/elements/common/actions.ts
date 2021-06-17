@@ -2,11 +2,13 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 
+import { FlushValues } from "pako";
 import { SCALE_FACTOR } from "../../constants";
 import { BaseState, StateUpdate, VideoState } from "../../state";
 import { clampScale } from "../../util";
 import { BaseElement, DispatchEvent, Events } from "../base";
 import { getFrameNumber } from "../util";
+import { dispatchTooltipEvent } from "./util";
 
 type Action<State extends BaseState> = (
   update: StateUpdate<State>,
@@ -172,19 +174,21 @@ export const nextFrame: Control<VideoState> = {
       ({
         frameNumber,
         duration,
-        locked,
-        fragment,
         playing,
         config: { frameRate },
+        config: { thumbnail },
       }) => {
-        if (!playing) {
+        if (playing || thumbnail) {
           return {};
         }
-        const limit =
-          locked && fragment
-            ? fragment[1]
-            : getFrameNumber(duration, duration, frameRate);
-        return { frameNumber: Math.max(limit, frameNumber + 1) };
+        const total = getFrameNumber(duration, duration, frameRate);
+
+        if (frameNumber === total) {
+          frameNumber = 1;
+        } else {
+          frameNumber += 1;
+        }
+        return { frameNumber };
       }
     );
   },
@@ -195,13 +199,21 @@ export const previousFrame: Control<VideoState> = {
   shortcut: ",",
   detail: "Seek to the previous frame",
   action: (update) => {
-    update(({ frameNumber, locked, fragment, playing }) => {
-      if (!playing) {
-        return {};
+    update(
+      ({
+        frameNumber,
+        duration,
+        playing,
+        config: { frameRate },
+        config: { thumbnail },
+      }) => {
+        if (playing || thumbnail) {
+          return {};
+        }
+
+        return { frameNumber: Math.max(1, frameNumber - 1) };
       }
-      const limit = locked && fragment ? fragment[0] : 1;
-      return { frameNumber: Math.max(limit, frameNumber - 1) };
-    });
+    );
   },
 };
 
@@ -210,12 +222,17 @@ export const playPause: Control<VideoState> = {
   shortcut: "Space",
   eventKey: " ",
   detail: "Play or pause the video",
-  action: (update) => {
+  action: (update, dispatchEvent) => {
     update(({ playing, config: { thumbnail } }) => {
+      if (playing) {
+        dispatchTooltipEvent(dispatchEvent, true);
+      }
+
       return thumbnail
         ? {}
         : {
             playing: !playing,
+            tooltipDisabled: !playing,
           };
     });
   },
@@ -228,18 +245,21 @@ export const VIDEO = {
 };
 
 export const VIDEO_SHORTCUTS = Object.fromEntries(
-  Object.entries(COMMON).map(([_, v]) => [v.eventKey || v.shortcut, v])
+  Object.entries(VIDEO).map(([_, v]) => [v.eventKey || v.shortcut, v])
 );
 
 export class HelpPanelElement<State extends BaseState> extends BaseElement<
   State
 > {
   private showHelp: boolean;
+  protected items: HTMLDivElement;
+
   getEvents(): Events<State> {
     return {
-      click: ({ event }) => {
+      click: ({ event, update }) => {
         event.stopPropagation();
         event.preventDefault();
+        update({ showHelp: false });
       },
       dblclick: ({ event }) => {
         event.stopPropagation();
@@ -251,11 +271,47 @@ export class HelpPanelElement<State extends BaseState> extends BaseElement<
   createHTMLElement() {
     const element = document.createElement("div");
     const header = document.createElement("div");
+    header.style.marginBottom = "0.5rem";
+    header.style.fontSize = "18px";
     header.style.paddingBottom = "0.5rem";
-    header.innerText = "Shortcuts";
+    header.style.borderBottom = "2px solid rgb(225, 100, 40)";
+    header.innerText = "Actions and shortcuts";
     element.appendChild(header);
     element.className = "looker-help-panel";
-    return element;
+
+    const container = document.createElement("div");
+    container.style.position = "absoulte";
+    container.style.top = "0";
+    container.style.left = "0";
+    container.style.height = "100%";
+    container.style.width = "100%";
+    container.style.display = "flex";
+    container.style.justifyContent = "center";
+    container.style.padding = "10px 20px 50px";
+
+    const vContainer = document.createElement("div");
+    vContainer.style.display = "flex";
+    vContainer.style.flexDirection = "column";
+    vContainer.style.justifyContent = "center";
+
+    vContainer.appendChild(element);
+
+    container.appendChild(vContainer);
+
+    const items = document.createElement("div");
+    items.style.padding = "1rem 0 0 0";
+    items.style.margin = "0";
+    items.style.display = "grid";
+    items.style.gridTemplateColumns = "1fr 1fr";
+    items.style.gridRowGap = "1rem";
+    items.style.gridColumnGap = "1rem";
+    this.items = items;
+
+    Object.values(COMMON).forEach(addItem(items));
+
+    element.appendChild(items);
+
+    return container;
   }
 
   isShown({ config: { thumbnail } }) {
@@ -271,12 +327,36 @@ export class HelpPanelElement<State extends BaseState> extends BaseElement<
     }
     if (showHelp) {
       this.element.style.opacity = "0.9";
-      this.element.classList.remove("looker-display-none");
+      this.element.style.display = "flex";
     } else {
       this.element.style.opacity = "0.0";
-      this.element.classList.add("looker-display-none");
+      this.element.style.display = "none";
     }
     this.showHelp = showHelp;
     return this.element;
   }
 }
+
+export class VideoHelpPanelElement<
+  State extends VideoState
+> extends HelpPanelElement<State> {
+  createHTMLElement() {
+    const element = super.createHTMLElement();
+
+    Object.values(VIDEO).forEach(addItem(this.items));
+
+    return element;
+  }
+}
+
+const addItem = (items) => (value) => {
+  const item = document.createElement("div");
+  item.innerHTML = `
+    <div class="looker-shortcut-item">
+      <div class="looker-shortcut-value">${value.shortcut}</div>
+      <div class="looker-shortcut-title">${value.title}</div>
+      <div class="looker-shortcut-detail">${value.detail}</div>
+    </div>
+  `;
+  items.appendChild(item);
+};

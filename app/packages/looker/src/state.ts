@@ -115,6 +115,7 @@ export interface BaseState {
   mouseIsOnOverlay: boolean;
   showHelp: boolean;
   overlaysPrepared: boolean;
+  tooltipDisabled: boolean;
 }
 
 export interface FrameState extends BaseState {
@@ -138,7 +139,7 @@ export interface VideoState extends BaseState {
   duration: number;
   fragment?: [number, number];
   buffering: boolean;
-  hasReader: boolean;
+  buffers: [number, number][];
 }
 
 export type Optional<T> = {
@@ -207,4 +208,6 @@ export interface FrameChunk {
 export interface FrameChunkResponse extends FrameChunk {
   uuid: string;
   method: string;
+  frames: FrameSample[];
+  range: [number, number];
 }

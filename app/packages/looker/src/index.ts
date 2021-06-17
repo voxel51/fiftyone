@@ -9,7 +9,7 @@ import {
   STROKE_WIDTH,
   PAD,
   POINT_RADIUS,
-  MAX_FRAME_CACHE_SIZE,
+  MAX_FRAME_CACHE_SIZE_BYTES,
   CHUNK_SIZE,
 } from "./constants";
 import {
@@ -225,6 +225,7 @@ export abstract class Looker<
       pointRadius: POINT_RADIUS,
       mouseIsOnOverlay: false,
       overlaysPrepared: false,
+      tooltipDisabled: false,
     };
   }
 
@@ -378,9 +379,17 @@ interface AcquireReaderOptions {
 
 const aquireReader = (() => {
   const frameCache = new LRU<string, Overlay<VideoState>[]>({
-    max: MAX_FRAME_CACHE_SIZE,
+    max: MAX_FRAME_CACHE_SIZE_BYTES,
+    length: (overlays) => {
+      let size = 0;
+      overlays.forEach((overlay) => {
+        size += overlay.getSizeBytes();
+      });
+      return size;
+    },
   });
-  let streamCount: number = null;
+  let streamSize = 0;
+  let streamCount = 0;
 
   const frameReader = createWorker();
   let requestingFrames: boolean = false;
@@ -394,6 +403,7 @@ const aquireReader = (() => {
     update,
   }: AcquireReaderOptions): (() => void) => {
     const subscription = uuid();
+    streamSize = 0;
     streamCount = 0;
     frameReader.onmessage = (message: MessageEvent<FrameChunkResponse>) => {
       const {
@@ -408,17 +418,20 @@ const aquireReader = (() => {
         Array(end - start + 1)
           .fill(0)
           .forEach((_, i) => {
-            streamCount += 1;
             const frameNumber = start + i;
             const frame = frames[i] || { frame_number: frameNumber };
             const overlays = loadOverlays(frame);
+            overlays.forEach((overlay) => {
+              streamSize += overlay.getSizeBytes();
+            });
+            streamCount += 1;
             frameCache.set(`${sampleId}-${frameNumber}`, overlays);
             addFrame(frameNumber, overlays);
           });
 
         const requestMore =
           streamCount < end - getCurrentFrame() &&
-          streamCount < MAX_FRAME_CACHE_SIZE;
+          streamSize < MAX_FRAME_CACHE_SIZE_BYTES;
 
         if (requestMore && end < frameCount) {
           requestingFrames = true;

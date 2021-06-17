@@ -322,7 +322,7 @@ export const defaultLookerOptions = selectorFamily({
     const showLabel = get(selectors.appConfig).show_label;
     const showConfidence = get(selectors.appConfig).show_confidence;
     const showTooltip = get(selectors.appConfig).show_tooltip;
-    const video = get(selectors.isVideoDataset) && !modal ? { loop: true } : {};
+    const video = get(selectors.isVideoDataset) ? { loop: !modal } : {};
     const zoom = get(selectors.isPatchesView) ? { zoom: true } : {};
     const colorByLabel = get(atoms.colorByLabel(modal));
     return {

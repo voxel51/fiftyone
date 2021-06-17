@@ -137,7 +137,6 @@ const getSendChunk = (uuid: string) => ({
         Object.entries(frame).map(([k, v]) => ["frames." + k, v])
       ) as FrameSample;
     });
-    console.log("sending chunk", value.range);
 
     frames.forEach((frame) => {
       buffers = [...buffers, ...processMasks(frame)];

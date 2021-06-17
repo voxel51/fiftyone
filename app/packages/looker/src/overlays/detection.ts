@@ -34,10 +34,14 @@ export default class DetectionOverlay<
   private static readonly intermediateCanvas: HTMLCanvasElement =
     typeof document !== "undefined" ? document.createElement("canvas") : null;
   private labelBoundingBox: BoundingBox;
+  private mask: Uint32Array;
   private selected: boolean;
 
   constructor(field, label) {
     super(field, label);
+    if (this.label.mask) {
+      this.mask = new Uint32Array(this.label.mask.buffer);
+    }
   }
 
   containsPoint(state: Readonly<State>): CONTAINS {
@@ -166,8 +170,8 @@ export default class DetectionOverlay<
         this.getColor(state),
         selected ? SELECTED_MASK_ALPHA : MASK_ALPHA
       );
-      for (let i = 0; i < this.label.mask.data.length; i++) {
-        if (this.label.mask.data[i]) {
+      for (let i = 0; i < this.mask.length; i++) {
+        if (this.mask[i]) {
           maskImageRaw[i] = bitColor;
         }
       }

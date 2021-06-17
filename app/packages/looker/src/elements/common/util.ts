@@ -4,19 +4,22 @@
 
 import { DispatchEvent } from "../base";
 
-export const dispatchTooltipEvent = (dispatchEvent: DispatchEvent) => {
+export const dispatchTooltipEvent = (
+  dispatchEvent: DispatchEvent,
+  nullify = false
+) => {
   return (state, overlays) => {
-    // @ts-ignore
-    if (state.playing || state.config.thumbnail) {
+    if (state.tooltipDisabled) {
       return;
     }
     if (!state.options.showTooltip) {
       return;
     }
     let detail =
-      overlays.length && overlays[0].containsPoint(state)
+      overlays.length && overlays[0].containsPoint(state) && !nullify
         ? overlays[0].getPointInfo(state)
         : null;
+
     // @ts-ignore
     if (state.frameNumber && detail) {
       // @ts-ignore

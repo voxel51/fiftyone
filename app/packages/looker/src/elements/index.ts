@@ -34,6 +34,9 @@ export const getFrameElements: GetElements<FrameState> = (
         node: common.CanvasElement,
       },
       {
+        node: common.HelpPanelElement,
+      },
+      {
         node: common.ControlsElement,
         children: [
           { node: frame.FrameNumberElement },
@@ -59,9 +62,6 @@ export const getFrameElements: GetElements<FrameState> = (
           { node: common.ShowTooltipOptionElement },
         ],
       },
-      {
-        node: common.HelpPanelElement,
-      },
     ],
   };
 
@@ -84,6 +84,9 @@ export const getImageElements: GetElements<ImageState> = (
       },
       {
         node: common.CanvasElement,
+      },
+      {
+        node: common.HelpPanelElement,
       },
       {
         node: common.ControlsElement,
@@ -110,9 +113,6 @@ export const getImageElements: GetElements<ImageState> = (
           { node: common.ShowTooltipOptionElement },
         ],
       },
-      {
-        node: common.HelpPanelElement,
-      },
     ],
   };
 
@@ -135,6 +135,9 @@ export const getVideoElements: GetElements<VideoState> = (
       },
       {
         node: common.CanvasElement,
+      },
+      {
+        node: common.VideoHelpPanelElement,
       },
       {
         node: common.ControlsElement,
@@ -164,9 +167,6 @@ export const getVideoElements: GetElements<VideoState> = (
           { node: common.ShowConfidenceOptionElement },
           { node: common.ShowTooltipOptionElement },
         ],
-      },
-      {
-        node: common.HelpPanelElement,
       },
       {
         node: video.LoaderBar,

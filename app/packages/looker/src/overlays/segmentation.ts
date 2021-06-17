@@ -7,7 +7,7 @@ import { NumpyResult } from "../numpy";
 import { BaseState, Coordinates } from "../state";
 import { ensureCanvasSize } from "../util";
 import { BaseLabel, CONTAINS, Overlay, PointInfo, SelectData } from "./base";
-import { t } from "./util";
+import { sizeBytes, t } from "./util";
 
 interface SegmentationLabel extends BaseLabel {
   mask?: NumpyResult;
@@ -116,6 +116,10 @@ export default class SegmentationOverlay<State extends BaseState>
 
   getPoints(): Coordinates[] {
     return getSegmentationPoints([]);
+  }
+
+  getSizeBytes(): number {
+    return sizeBytes(this.label);
   }
 
   private getIndex(state: Readonly<State>): number {

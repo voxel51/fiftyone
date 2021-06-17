@@ -4,8 +4,9 @@
 
 import { VideoState } from "../state";
 import { BaseElement, Events } from "./base";
-import { VIDEO_SHORTCUTS } from "./common/actions";
+import { playPause, VIDEO_SHORTCUTS } from "./common/actions";
 import {
+  getClampedTime,
   getFrameNumber,
   getFrameString,
   getTime,
@@ -32,6 +33,7 @@ export class LoaderBar extends BaseElement<VideoState> {
       rgb(225, 100, 40) 50%,
       rgba(225, 100, 40, 0) 100%
     )`;
+    element.classList.add("looker-loader");
     return element;
   }
 
@@ -59,16 +61,10 @@ export class PlayButtonElement extends BaseElement<VideoState, HTMLDivElement> {
 
   getEvents(): Events<VideoState> {
     return {
-      click: ({ event, update }) => {
+      click: ({ event, update, dispatchEvent }) => {
         event.preventDefault();
         event.stopPropagation();
-        update(({ buffering, playing }) => {
-          if (buffering) {
-            return {};
-          }
-
-          return { playing: !playing, showOptions: false };
-        });
+        playPause.action(update, dispatchEvent);
       },
     };
   }
@@ -78,6 +74,7 @@ export class PlayButtonElement extends BaseElement<VideoState, HTMLDivElement> {
     this.pause.setAttribute("height", "24");
     this.pause.setAttribute("width", "24");
     this.pause.setAttribute("viewBox", "0 0 24 24");
+    this.pause.style.marginTop = "-4px";
 
     let path = document.createElementNS("http://www.w3.org/2000/svg", "path");
     path.setAttribute("fill", "rgb(238, 238, 238)");
@@ -244,7 +241,12 @@ export class TimeElement extends BaseElement<VideoState> {
 
 export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
   private src: string;
-  private frameNumber: number;
+  private duration: number;
+  private frameRate: number;
+  private frameNumber: number = null;
+  private loop: boolean;
+
+  private requestCallback;
 
   getEvents(): Events<VideoState> {
     return {
@@ -252,7 +254,9 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
         dispatchEvent("error", { event });
       },
       loadeddata: ({ update, dispatchEvent }) => {
-        update(({ playing, options: { autoplay } }) => {
+        this.duration = this.element.duration;
+        update(({ playing, options: { autoplay }, config: { frameRate } }) => {
+          this.frameRate = frameRate;
           return {
             loaded: true,
             playing: autoplay || playing,
@@ -261,59 +265,62 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
         });
         dispatchEvent("load");
       },
-      play: ({ event, update }) => {
-        const target = event.target as HTMLVideoElement;
-        const callback = () => {
+      play: ({ update }) => {
+        const callback = (newFrameNumber: number) => {
           update(
             ({
               playing,
-              duration,
-              locked,
-              fragment,
-              config: { frameRate },
               options: { loop },
+              duration,
+              config: { frameRate },
             }) => {
-              let newFrameNumber = getFrameNumber(
-                target.currentTime,
-                duration,
-                frameRate
-              );
+              this.frameNumber = newFrameNumber;
 
-              const resetToFragment =
-                locked && fragment && newFrameNumber > fragment[1];
-              if (!resetToFragment) {
-                this.frameNumber = newFrameNumber;
-              } else if (loop) {
-                newFrameNumber = fragment[0];
+              if (
+                newFrameNumber === getFrameNumber(duration, duration, frameRate)
+              ) {
+                playing = loop;
               }
 
               return {
                 frameNumber: newFrameNumber,
-                playing: resetToFragment ? (loop ? true : false) : playing,
+                playing,
               };
             },
-            ({ buffering, seeking, playing }) => {
-              if (!seeking && !buffering && playing) {
-                requestAnimationFrame(callback);
+            ({ playing, seeking, buffering }) => {
+              if (playing && !seeking && !buffering) {
+                this.requestCallback(callback);
               }
             }
           );
         };
 
-        requestAnimationFrame(callback);
-      },
-      ended: ({ update }) => {
-        update(({ locked, fragment, options: { loop } }) => {
-          if (loop) {
+        update(
+          ({ frameNumber, duration, config: { frameRate }, options }) => {
+            frameNumber =
+              frameNumber === getFrameNumber(duration, duration, frameRate)
+                ? 1
+                : frameNumber;
+
             return {
-              frameNumber: locked && fragment ? fragment[0] : 1,
               playing: true,
+              frameNumber,
             };
-          } else {
-            return {
-              playing: false,
-            };
+          },
+          () => {
+            this.requestCallback(callback);
           }
+        );
+      },
+      pause: ({ update }) => {
+        this.requestCallback(() => {
+          update({
+            frameNumber: getFrameNumber(
+              this.element.currentTime,
+              this.duration,
+              this.frameRate
+            ),
+          });
         });
       },
       timeupdate: ({ dispatchEvent, update }) => {
@@ -337,11 +344,25 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
     element.preload = "metadata";
     element.muted = true;
     this.frameNumber = 1;
+
+    this.requestCallback = (callback: (frameNumber: number) => boolean) => {
+      requestAnimationFrame((time) => {
+        callback(
+          getFrameNumber(
+            this.element.currentTime,
+            this.duration,
+            this.frameRate
+          )
+        );
+      });
+    };
+
     return element;
   }
 
   renderSelf(state) {
     const {
+      options: { loop },
       config: { src, frameRate },
       frameNumber,
       seeking,
@@ -349,6 +370,11 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
       loaded,
       buffering,
     } = state;
+    if (this.loop !== loop) {
+      this.element.loop = loop;
+      this.loop = loop;
+    }
+
     if (this.src !== src) {
       this.src = src;
       this.element.setAttribute("src", src);
@@ -362,6 +388,7 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
     if (loaded && (!playing || seeking || buffering) && !this.element.paused) {
       this.element.pause();
     }
+
     transformWindowElement(state, this.element);
     return this.element;
   }

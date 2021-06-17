@@ -359,33 +359,16 @@
 }
 
 .looker-loader {
-  animation: shimmer 2s infinite;
-  background: linear-gradient(
-    90deg,
-    hsla(27, 95%, 49%, 0) 0%,
-    hsla(27, 95%, 49%, 0.9) 50%,
-    hsla(27, 95%, 49%, 0) 100%
-  );
-  background-size: 400% 100%;
+  animation: shimmer 5s infinite;
+  background-size: 200% 100%;
 }
 
 .looker-help-panel {
-  position: absolute;
-  left: 50%;
-  width: auto;
-  margin-left: -50%;
-  top: 4rem;
   padding: 1rem;
   line-height: 1;
-  opacity: 0;
-  z-index: 20;
-  display: flex;
-  flex-direction: row;
   font-weight: bold;
 
   color: #eee;
-
-  display: flex;
   background-color: hsl(210, 11%, 11%);
   border: 1px solid #191c1f;
   box-shadow: 0 8px 15px 0 rgba(0, 0, 0, 0.43);
@@ -487,4 +470,30 @@
   90% {
     stroke: rgb(238, 238, 238);
   }
+}
+
+.looker-shortcut-item {
+  margin: 0;
+  padding: 0;
+  display: flex;
+  font-size: 1rem;
+  justify-content: left;
+  column-gap: 1rem;
+  padding-bottom: 1rem;
+}
+
+.looker-shortcut-value {
+  font-weight: normal;
+  color: rgb(225, 100, 40);
+  width: 40px !important;
+}
+
+.looker-shortcut-title {
+  color: rgb(238, 238, 238);
+  font-weight: bold;
+}
+
+.looker-shortcut-detail {
+  font-weight: normal;
+  color: hsl(220, 2%, 68%);
 }

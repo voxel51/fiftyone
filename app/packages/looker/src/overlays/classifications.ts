@@ -13,6 +13,7 @@ import {
   RegularLabel,
   SelectData,
 } from "./base";
+import { sizeBytes } from "./util";
 
 interface ClassificationLabel extends RegularLabel {}
 
@@ -120,6 +121,14 @@ export default class ClassificationsOverlay<State extends BaseState>
 
   getPoints() {
     return getClassificationPoints([]);
+  }
+
+  getSizeBytes() {
+    let bytes = 100;
+    this.labels.forEach((label) => {
+      bytes += sizeBytes(label);
+    });
+    return bytes;
   }
 
   private getFiltered(state: Readonly<State>): ClassificationLabels {

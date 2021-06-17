@@ -3,6 +3,7 @@
  */
 
 import { BaseState, Coordinates } from "../state";
+import { sizeBytes } from "./util";
 
 // in numerical order (CONTAINS_BORDER takes precedence over CONTAINS_CONTENT)
 export enum CONTAINS {
@@ -17,6 +18,9 @@ export interface BaseLabel {
   frame_number?: number;
   tags: string[];
   index?: number;
+  mask?: {
+    shape: [number, number];
+  };
 }
 
 export interface PointInfo {
@@ -76,6 +80,7 @@ export interface Overlay<State extends BaseState> {
   getPointInfo(state: Readonly<State>): any;
   getSelectData(state: Readonly<State>): SelectData;
   getPoints(): Coordinates[];
+  getSizeBytes(): number;
 }
 
 export abstract class CoordinateOverlay<
@@ -112,6 +117,10 @@ export abstract class CoordinateOverlay<
   abstract getPointInfo(state: Readonly<State>): PointInfo;
 
   abstract getPoints(): Coordinates[];
+
+  getSizeBytes(): number {
+    return sizeBytes(this.label);
+  }
 
   getSelectData(state: Readonly<State>): SelectData {
     return {

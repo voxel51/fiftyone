@@ -377,7 +377,7 @@ export const mergeUpdates = <State extends BaseState>(
 
 export const createWorker = (): Worker => {
   return new Worker(new URL("./worker.js", import.meta.url), {
-    name: "reader",
+    name: "worker",
     type: "module",
   });
 };
