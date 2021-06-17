@@ -130,7 +130,7 @@ def load_zoo_dataset(
     download_if_necessary=True,
     drop_existing_dataset=False,
     overwrite=False,
-    cleanup=None,
+    cleanup=True,
     **kwargs,
 ):
     """Loads the dataset of the given name from the FiftyOne Dataset Zoo as
@@ -182,7 +182,7 @@ def load_zoo_dataset(
 
     if download_if_necessary:
         zoo_dataset_cls = _get_zoo_dataset_cls(name)
-        download_kwargs, kwargs = fou.extract_kwargs_for_class(
+        download_kwargs, _ = fou.extract_kwargs_for_class(
             zoo_dataset_cls, kwargs
         )
 
@@ -196,6 +196,7 @@ def load_zoo_dataset(
         )
         zoo_dataset = info.get_zoo_dataset()
     else:
+        download_kwargs = {}
         zoo_dataset, dataset_dir = _parse_dataset_details(name, dataset_dir)
         info = zoo_dataset.load_info(dataset_dir)
 
@@ -217,12 +218,18 @@ def load_zoo_dataset(
     )
 
     for key, value in unused_kwargs.items():
-        if key != "include_all_data" and value is not None:
-            logger.warning(
-                "Ignoring unsupported parameter '%s' for importer type %s",
-                key,
-                dataset_importer_cls,
-            )
+        if (
+            key in download_kwargs
+            or key == "include_all_data"
+            or value is None
+        ):
+            continue
+
+        logger.warning(
+            "Ignoring unsupported parameter '%s' for importer type %s",
+            key,
+            dataset_importer_cls,
+        )
 
     if dataset_name is None:
         dataset_name = zoo_dataset.name
@@ -249,7 +256,7 @@ def load_zoo_dataset(
         splits = zoo_dataset.supported_splits
 
     dataset = fo.Dataset(dataset_name)
-    label_field = zoo_dataset.default_label_field
+    label_field = zoo_dataset.label_field
 
     if splits:
         for split in splits:
@@ -783,9 +790,16 @@ class ZooDataset(object):
         return self.supported_splits is not None
 
     @property
-    def supports_partial_download(self):
-        """Whether the dataset supports downloading specified subsets of data
-        and/or labels.
+    def size(self):
+        """The number of samples in the dataset, or, if the dataset has splits,
+        a dict mapping split names to sample counts, or None if unknown.
+        """
+        return None
+
+    @property
+    def supports_partial_downloads(self):
+        """Whether the dataset supports downloading partial subsets of its
+        splits.
         """
         return False
 
@@ -797,8 +811,8 @@ class ZooDataset(object):
         return False
 
     @property
-    def default_label_field(self):
-        """The default name (or root name in the case of multiple label fields)
+    def label_field(self):
+        """The field name (or root name, in the case of multiple label fields)
         to use for label field(s) populated when loading this dataset.
         """
         return "ground_truth"
@@ -874,7 +888,7 @@ class ZooDataset(object):
         """Downloads the dataset and prepares it for use.
 
         If the requested splits have already been downloaded, they are not
-        re-downloaded.
+        re-downloaded unless ``overwrite`` is True.
 
         Args:
             dataset_dir (None): the directory in which to construct the
@@ -919,42 +933,21 @@ class ZooDataset(object):
         else:
             info = None
 
-        # Create scratch directory
         scratch_dir = os.path.join(dataset_dir, "tmp-download")
+        write_info = False
 
         # Download dataset, if necessary
-        write_info = False
         if splits:
-            # Handle splits that have already been downloaded
+            # Handle overwrites/already downloaded splits
             if info is not None:
-                _splits = []
-                for split in splits:
-                    split_dir = self.get_split_dir(dataset_dir, split)
-                    if os.path.isdir(split_dir):
-                        if overwrite:
-                            logger.info(
-                                "Overwriting existing directory '%s'",
-                                split_dir,
-                            )
-                            etau.delete_dir(split_dir)
-                        elif split in info.downloaded_splits:
-                            if not self.supports_partial_download:
-                                if self.requires_manual_download:
-                                    logger.info(
-                                        "Split '%s' already prepared", split
-                                    )
-                                else:
-                                    logger.info(
-                                        "Split '%s' already downloaded", split
-                                    )
+                download_splits = self._get_splits_to_download(
+                    splits, dataset_dir, info, overwrite=overwrite
+                )
+            else:
+                download_splits = splits
 
-                                continue
-
-                    _splits.append(split)
-
-                splits = _splits
-
-            for split in splits:
+            # Download necessary splits
+            for split in download_splits:
                 split_dir = self.get_split_dir(dataset_dir, split)
                 if self.requires_manual_download:
                     logger.info(
@@ -985,7 +978,8 @@ class ZooDataset(object):
 
                 write_info = True
         else:
-            if info is not None:
+            # Handle overwrites/already downloaded datasets
+            if self._is_dataset_ready(dataset_dir, info, overwrite=overwrite):
                 if self.requires_manual_download:
                     logger.info("Dataset already prepared")
                 else:
@@ -996,6 +990,7 @@ class ZooDataset(object):
                 else:
                     logger.info("Downloading dataset to '%s'", dataset_dir)
 
+                # Download dataset
                 (
                     dataset_type,
                     num_samples,
@@ -1019,6 +1014,25 @@ class ZooDataset(object):
 
         return info, dataset_dir
 
+    def _is_download_required(self, dataset_dir, split):
+        """Internal method that allows zoo datasets that support partial
+        downloads to check if an existing dataset or split directory contains
+        sufficient contents such that :meth:`_download_and_prepare` does not
+        need to be called.
+
+        Note that :meth:`download_and_prepare` will first use the
+        :class:`ZooDatasetInfo` to check if the split is fully downloaded and
+        only call this method if the download status remains unclear.
+
+        Args:
+            dataset_dir: the dataset or split directory
+            split: the split, or None if the dataset does not have splits
+
+        Returns:
+            True/False
+        """
+        return True
+
     def _download_and_prepare(self, dataset_dir, scratch_dir, split):
         """Internal implementation of downloading the dataset and preparing it
         for use in the given directory.
@@ -1041,6 +1055,76 @@ class ZooDataset(object):
         raise NotImplementedError(
             "subclasses must implement _download_and_prepare()"
         )
+
+    def _get_splits_to_download(
+        self, splits, dataset_dir, info, overwrite=False
+    ):
+        download_splits = []
+        for split in splits:
+            if self._is_split_ready(
+                dataset_dir, split, info, overwrite=overwrite
+            ):
+                if self.requires_manual_download:
+                    logger.info("Split '%s' already prepared", split)
+                else:
+                    logger.info("Split '%s' already downloaded", split)
+            else:
+                download_splits.append(split)
+
+        return download_splits
+
+    def _is_split_ready(self, dataset_dir, split, info, overwrite=False):
+        split_dir = self.get_split_dir(dataset_dir, split)
+
+        if not os.path.isdir(split_dir):
+            return False
+
+        if overwrite:
+            logger.info("Overwriting existing directory '%s'", split_dir)
+            etau.delete_dir(split_dir)
+            return False
+
+        if split not in info.downloaded_splits:
+            return False
+
+        if not self.supports_partial_downloads:
+            return True
+
+        try:
+            # `size` may not be available
+            if info.downloaded_splits[split].num_samples >= self.size[split]:
+                return True
+        except:
+            pass
+
+        return not self._is_download_required(split_dir, split)
+
+    def _is_dataset_ready(self, dataset_dir, info, overwrite=False):
+        if not os.path.isdir(dataset_dir):
+            return False
+
+        if overwrite:
+            logger.info("Overwriting existing directory '%s'", dataset_dir)
+            etau.delete_dir(dataset_dir)
+            return False
+
+        if info is None:
+            return False
+
+        if not self.supports_partial_downloads:
+            return True
+
+        if self.size is None or info.num_samples is None:
+            return False
+
+        try:
+            # `size` may not be available
+            if info.num_samples >= self.size:
+                return True
+        except:
+            pass
+
+        return not self._is_download_required(dataset_dir, None)
 
 
 class DeprecatedZooDataset(ZooDataset):

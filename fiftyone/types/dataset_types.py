@@ -515,7 +515,9 @@ class COCODetectionDataset(ImageDetectionDataset):
                 {
                     "id": 2,
                     "name": "cat",
-                    "supercategory": "animal"
+                    "supercategory": "animal",
+                    "keypoints": ["nose", "head", ...],
+                    "skeleton": [[12, 14], [14, 16], ...]
                 },
                 ...
             ],
@@ -537,6 +539,8 @@ class COCODetectionDataset(ImageDetectionDataset):
                     "category_id": 2,
                     "bbox": [260, 177, 231, 199],
                     "segmentation": [...],
+                    "keypoints": [224, 226, 2, ...],
+                    "num_keypoints": 10,
                     "area": 45969,
                     "iscrowd": 0
                 },

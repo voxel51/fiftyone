@@ -35,25 +35,29 @@ logger = logging.getLogger(__name__)
 class OpenImagesDatasetImporter(foud.LabeledImageDatasetImporter):
     """Base class for importing datasets in Open Images format.
 
+    See :class:`fiftyone.types.dataset_types.OpenImagesV6Dataset` for format
+    details.
+
     Args:
         dataset_dir: the dataset directory
-        label_types (None): a list of types of labels to load. Values are
+        label_types (None): a label type or list of label types to load. The
+            supported values are
             ``("detections", "classifications", "relationships", "segmentations")``.
-            By default, all labels are loaded but not every sample will include
-            each label type. If ``max_samples`` and ``label_types`` are both
-            specified, then every sample will include the specified label
-            types
+            By default, all label types are loaded
         classes (None): a list of strings specifying required classes to load.
-            Only samples containing at least one instance of a specified
-            classes will be downloaded. Use :meth:`get_classes` to see the
-            available classes
+            Only samples containing at least one instance of a specified class
+            will be loaded
         attrs (None): a list of strings for relationship attributes to load
-        image_ids (None): a list of specific image IDs to load. The IDs can be
-            specified either as ``<split>/<image-id>`` or ``<image-id>``
-        image_ids_file (None): the path to a newline separated text, JSON, or
-            CSV file containing a list of image IDs to load. The IDs can be
-            specified either as ``<split>/<image-id>`` or ``<image-id>``. If
-            ``image_ids`` is provided, this parameter is ignored
+        image_ids (None): an optional list of specific image IDs to load. Can
+            be provided in any of the following formats:
+
+            -   a list of ``<image-id>`` strings
+            -   a list of ``<split>/<image-id>`` strings
+            -   the path to a text (newline-separated), JSON, or CSV file
+                containing the list of image IDs to load in either of the first
+                two formats
+
+            If provided, takes precedence over ``classes`` and ``max_samples``
         load_hierarchy (True): whether to load the classes hiearchy and add it
             to the dataset's ``info`` dictionary
         version ("v6"): the Open Images dataset format version being used.
@@ -61,8 +65,10 @@ class OpenImagesDatasetImporter(foud.LabeledImageDatasetImporter):
         shuffle (False): whether to randomly shuffle the order in which the
             samples are imported
         seed (None): a random seed to use when shuffling
-        max_samples (None): a maximum number of samples to import. By
-            default, all samples are imported
+        max_samples (None): a maximum number of samples to import. If
+            ``max_samples`` and ``label_types`` are both specified, then every
+            sample will include the specified label types. By default, all
+            matching samples are imported
     """
 
     def __init__(
@@ -72,7 +78,6 @@ class OpenImagesDatasetImporter(foud.LabeledImageDatasetImporter):
         classes=None,
         attrs=None,
         image_ids=None,
-        image_ids_file=None,
         load_hierarchy=True,
         version="v6",
         shuffle=False,
@@ -90,7 +95,6 @@ class OpenImagesDatasetImporter(foud.LabeledImageDatasetImporter):
         self.classes = classes
         self.attrs = attrs
         self.image_ids = image_ids
-        self.image_ids_file = image_ids_file
         self.load_hierarchy = load_hierarchy
         self.version = version
 
@@ -190,7 +194,6 @@ class OpenImagesDatasetImporter(foud.LabeledImageDatasetImporter):
         attrs = self.attrs
         version = self.version
         image_ids = self.image_ids
-        image_ids_file = self.image_ids_file
 
         _verify_version(version)
 
@@ -210,7 +213,7 @@ class OpenImagesDatasetImporter(foud.LabeledImageDatasetImporter):
             attrs = []
 
         # Determine the image IDs to load
-        if not image_ids and not image_ids_file:
+        if not image_ids:
             if not label_types and not classes and not attrs:
                 # No IDs were provided and no labels are being loaded
                 # Load all image IDs
@@ -220,9 +223,7 @@ class OpenImagesDatasetImporter(foud.LabeledImageDatasetImporter):
                 # from the given labels later
                 specified_image_ids = None
         else:
-            specified_image_ids = _parse_image_ids(
-                image_ids, image_ids_file, dataset_dir,
-            )
+            specified_image_ids = _parse_image_ids(image_ids, dataset_dir)
             specified_image_ids = [s + ext for s in specified_image_ids]
             specified_image_ids = sorted(
                 list(set(specified_image_ids) & set(downloaded_ids))
@@ -354,30 +355,33 @@ class OpenImagesV6DatasetImporter(OpenImagesDatasetImporter):
 
     Args:
         dataset_dir: the dataset directory
-        label_types (None): a list of types of labels to load. Values are
+        label_types (None): a label type or list of label types to load. The
+            supported values are
             ``("detections", "classifications", "relationships", "segmentations")``.
-            By default, all labels are loaded but not every sample will include
-            each label type. If ``max_samples`` and ``label_types`` are both
-            specified, then every sample will include the specified label
-            types.
+            By default, all label types are loaded
         classes (None): a list of strings specifying required classes to load.
-            Only samples containing at least one instance of a specified
-            classes will be downloaded. Use :meth:`get_classes` to see the
-            available classes
+            Only samples containing at least one instance of a specified class
+            will be loaded
         attrs (None): a list of strings for relationship attributes to load
-        image_ids (None): a list of specific image IDs to load. The IDs can be
-            specified either as ``<split>/<image-id>`` or ``<image-id>``
-        image_ids_file (None): the path to a newline separated text, JSON, or
-            CSV file containing a list of image IDs to load. The IDs can be
-            specified either as ``<split>/<image-id>`` or ``<image-id>``. If
-            ``image_ids`` is provided, this parameter is ignored
+        image_ids (None): an optional list of specific image IDs to load. Can
+            be provided in any of the following formats:
+
+            -   a list of ``<image-id>`` strings
+            -   a list of ``<split>/<image-id>`` strings
+            -   the path to a text (newline-separated), JSON, or CSV file
+                containing the list of image IDs to load in either of the first
+                two formats
+
+            If provided, takes precedence over ``classes`` and ``max_samples``
         load_hierarchy (True): optionally load the classes hiearchy and add it
             to the info of the dataset
         shuffle (False): whether to randomly shuffle the order in which the
             samples are imported
         seed (None): a random seed to use when shuffling
-        max_samples (None): a maximum number of samples to import. By default,
-            all samples are imported
+        max_samples (None): a maximum number of samples to import. If
+            ``max_samples`` and ``label_types`` are both specified, then every
+            sample will include the specified label types. By default, all
+            matching samples are imported
     """
 
     def __init__(
@@ -387,7 +391,6 @@ class OpenImagesV6DatasetImporter(OpenImagesDatasetImporter):
         classes=None,
         attrs=None,
         image_ids=None,
-        image_ids_file=None,
         load_hierarchy=True,
         shuffle=False,
         seed=None,
@@ -399,7 +402,6 @@ class OpenImagesV6DatasetImporter(OpenImagesDatasetImporter):
             classes=classes,
             attrs=attrs,
             image_ids=image_ids,
-            image_ids_file=image_ids_file,
             load_hierarchy=load_hierarchy,
             version="v6",
             shuffle=shuffle,
@@ -409,62 +411,71 @@ class OpenImagesV6DatasetImporter(OpenImagesDatasetImporter):
 
 
 def download_open_images_split(
-    dataset_dir=None,
-    split=None,
+    dataset_dir,
+    split,
+    version="v6",
     label_types=None,
     classes=None,
     attrs=None,
     image_ids=None,
-    image_ids_file=None,
     num_workers=None,
-    version="v6",
     shuffle=None,
     seed=None,
     max_samples=None,
 ):
-    """Utility to download the
-    `Open Images dataset <https://storage.googleapis.com/openimages/web/index.html>`_
-    and store it in the :class:`FiftyOneDataset` format on disk.
+    """Utility that downloads full or partial splits of the
+    `Open Images dataset <https://storage.googleapis.com/openimages/web/index.html>`_.
 
-    This specifically downloads the subsets of annotations corresponding to the
-    600 boxable classes of Open Images.
+    See :class:`fiftyone.types.dataset_types.OpenImagesV6Dataset` for the
+    format in which ``dataset_dir`` will be arranged.
 
-    All download information can be found under the Open Images V6
-    `downloads page. <https://storage.googleapis.com/openimages/web/download.html>`_.
+    Any existing files are not re-downloaded.
+
+    This method specifically downloads the subsets of annotations corresponding
+    to the 600 boxable classes of Open Images.
+    `See here <https://storage.googleapis.com/openimages/web/download.html>`_
+    for other download options.
 
     Args:
-        dataset_dir (None): the directory to which the dataset will be
-            downloaded
-        split (None) a split to download, if applicable. Values are
-            ``("train", "validation", "test")``. If neither ``split`` nor
-            ``splits`` are provided, all available splits are downloaded
-        label_types (None): a list of types of labels to load. Values are
+        dataset_dir: the directory to download the dataset
+        split: the split to download. Supported values are
+            ``("train", "validation", "test")``
+        label_types (None): a label type or list of label types to load. The
+            supported values are
             ``("detections", "classifications", "relationships", "segmentations")``.
-            By default, all labels are loaded but not every sample will include
-            each label type. If ``max_samples`` and ``label_types`` are both
-            specified, then every sample will include the specified label
-            types
+            By default, all label types are loaded
         classes (None): a list of strings specifying required classes to load.
-            Only samples containing at least one instance of a specified
-            classes will be downloaded. Use :meth:`get_classes` to see the
-            available classes
+            Only samples containing at least one instance of a specified class
+            will be downloaded
         attrs (None): a list of strings for relationship attributes to load
-        image_ids (None): a list of specific image IDs to load. The IDs can be
-            specified either as ``<split>/<image-id>`` or ``<image-id>``
-        image_ids_file (None): the path to a newline separated text, JSON, or
-            CSV file containing a list of image IDs to load. The IDs can be
-            specified either as ``<split>/<image-id>`` or ``<image-id>``. If
-            ``image_ids`` is provided, this parameter is ignored
+        image_ids (None): an optional list of specific image IDs to load. Can
+            be provided in any of the following formats:
+
+            -   a list of ``<image-id>`` strings
+            -   a list of ``<split>/<image-id>`` strings
+            -   the path to a text (newline-separated), JSON, or CSV file
+                containing the list of image IDs to load in either of the first
+                two formats
+
+            If provided, takes precedence over ``classes`` and ``max_samples``
         num_workers (None): the number of processes to use when downloading
             individual images. By default, ``multiprocessing.cpu_count()`` is
             used
         version ("v6"): the version of the Open Images dataset to download.
             Supported values are ``("v6")``
-        shuffle (False): whether to randomly shuffle the order in which the
-            samples are imported
+        shuffle (False): whether to randomly shuffle the order in which samples
+            are chosen for partial downloads
         seed (None): a random seed to use when shuffling
-        max_samples (None): a maximum number of samples to import per split. By
-            default, all samples are imported
+        max_samples (None): a maximum number of samples to download per split.
+            If ``max_samples`` and ``label_types`` are both specified, then
+            every sample downloaded will include the specified label types. By
+            default, all matching samples are downloaded
+
+    Returns:
+        a tuple of:
+
+        -   num_samples: the total number of downloaded images
+        -   classes: the list of all classes
     """
     _verify_version(version)
 
@@ -478,7 +489,7 @@ def download_open_images_split(
         attrs = []
 
     # Determine the image IDs to load
-    if not image_ids and not image_ids_file:
+    if image_ids is None:
         downloaded_ids = _get_downloaded_ids(dataset_dir)
         if not label_types and not classes and not attrs:
             # No IDs were provided and no labels are being loaded
@@ -493,7 +504,7 @@ def download_open_images_split(
     else:
         downloaded_ids = []
         split_image_ids = _parse_image_ids(
-            image_ids, image_ids_file, dataset_dir, split=split, download=True
+            image_ids, dataset_dir, split=split, download=True
         )
 
     download = True
@@ -542,7 +553,6 @@ def download_open_images_split(
 def _setup(
     download, seed, max_samples, label_types, classes, attrs, dataset_dir,
 ):
-
     if seed is not None:
         random.seed(seed)
 
@@ -740,7 +750,7 @@ def _get_general_metadata_file(
 ):
     filepath = os.path.join(dataset_dir, "metadata", filename)
     if not os.path.exists(filepath):
-        for split in _DEFAULT_SPLITS:
+        for split in _SUPPORTED_SPLITS:
             split_filepath = os.path.join(
                 dataset_dir, split, "metadata", filename
             )
@@ -845,7 +855,6 @@ def _rename_subcategories(hierarchy, classes_map):
 def _parse_csv(filename, dataframe=False):
     if dataframe:
         data = pd.read_csv(filename)
-
     else:
         with open(filename, "r", newline="") as csvfile:
             dialect = csv.Sniffer().sniff(csvfile.read(10240))
@@ -860,65 +869,55 @@ def _parse_csv(filename, dataframe=False):
     return data
 
 
-def _parse_image_ids(
-    image_ids,
-    image_ids_file,
-    dataset_dir,
-    split=None,
-    download=False,
-    ext=".jpg",
-):
-    if image_ids:
-        # image_ids has precedence over image_ids_file
-        _image_ids = image_ids
+def _parse_image_ids(image_ids, dataset_dir, split=None, download=False):
+    # Load IDs from file
+    if etau.is_str(image_ids):
+        image_ids_path = image_ids
+        ext = os.path.splitext(image_ids_path)[-1]
+        if ext == ".txt":
+            with open(image_ids_path, "r") as f:
+                image_ids = [i for i in f.readlines()]
 
-    else:
-        id_file_ext = os.path.splitext(image_ids_file)[-1]
-        if id_file_ext == ".txt":
-            with open(image_ids_file, "r") as f:
-                _image_ids = [i for i in f.readlines()]
+        elif ext == ".json":
+            image_ids = etas.load_json(image_ids_path)
 
-        elif id_file_ext == ".json":
-            _image_ids = etas.load_json(image_ids_file)
-
-        elif id_file_ext == ".csv":
-            _image_ids = _parse_csv(image_ids_file)
-
-            if isinstance(_image_ids[0], list):
+        elif ext == ".csv":
+            image_ids = _parse_csv(image_ids_path)
+            if isinstance(image_ids[0], list):
                 # Flatten list
-                _image_ids = [i for lst in _image_ids for i in lst]
+                image_ids = [i for lst in image_ids for i in lst]
 
         else:
             raise ValueError(
-                "Image ID file extension must be .txt, .csv, or .json, "
-                "found %s" % id_file_ext
+                "Invalid image ID file '%s'. Supported formats are .txt, "
+                ".csv, and .json" % ext
             )
 
+    # Remove image extensions and trailing whitespace
+    image_ids = [os.path.splitext(i)[0] for i in image_ids]
+
     if split is None:
-        return [
-            os.path.basename(i).rstrip().replace(ext, "") for i in _image_ids
-        ]
+        # remove `split/` prefix
+        return [os.path.basename(i) for i in image_ids]
 
     split_image_ids = []
     unspecified_split_ids = []
 
     # Parse each provided ID into the given split
-    for i in _image_ids:
-        if "/" in i:
-            id_split, image_id = i.split("/")
-            if id_split not in _DEFAULT_SPLITS:
+    for image_id in image_ids:
+        if "/" in image_id:
+            _split, image_id = image_id.split("/")
+            if _split not in _SUPPORTED_SPLITS:
                 raise ValueError(
-                    "Split %s does not exist. Options are "
-                    "(train, test, validation)" % id_split
+                    "Invalid split '%s'. Supported splits are %s"
+                    % (_split, _SUPPORTED_SPLITS)
                 )
-            if id_split != split:
+
+            if _split != split:
                 continue
 
-            image_id = image_id.rstrip().replace(ext, "")
             split_image_ids.append(image_id)
-
         else:
-            image_id = i.rstrip().replace(ext, "")
             unspecified_split_ids.append(image_id)
 
     split_image_ids = _verify_image_ids(
@@ -934,34 +933,26 @@ def _parse_image_ids(
 
 def _parse_label_types(label_types):
     if label_types is None:
-        label_types = _DEFAULT_LABEL_TYPES
+        return _SUPPORTED_LABEL_TYPES
 
-    _label_types = []
-    for l in label_types:
-        if l not in _DEFAULT_LABEL_TYPES:
-            raise ValueError(
-                "Unrecognized label type '%s'. Supported values are %s"
-                % (l, _DEFAULT_LABEL_TYPES)
-            )
+    if etau.is_str(label_types):
+        label_types = [label_types]
 
-        _label_types.append(l)
+    bad_types = [l for l in label_types if l not in _SUPPORTED_LABEL_TYPES]
 
-    return _label_types
+    if len(bad_types) == 1:
+        raise ValueError(
+            "Unsupported label type '%s'. Supported types are %s"
+            % (bad_types[0], _SUPPORTED_LABEL_TYPES)
+        )
 
+    if len(bad_types) > 1:
+        raise ValueError(
+            "Unsupported label types %s. Supported types are %s"
+            % (bad_types, _SUPPORTED_LABEL_TYPES)
+        )
 
-def _parse_splits(split, splits):
-    _splits = []
-
-    if split:
-        _splits.append(split)
-
-    if splits:
-        _splits.extend(list(splits))
-
-    if not _splits:
-        _splits = _DEFAULT_SPLITS
-
-    return list(set(_splits))
+    return label_types
 
 
 def _verify_image_ids(
@@ -1567,10 +1558,19 @@ def _download_specific_images(
             len(inputs),
         )
 
-    with fou.ProgressBar(total=len(inputs)) as pb:
-        with multiprocessing.Pool(num_workers, _initialize_worker) as pool:
-            for _ in pool.imap_unordered(_do_s3_download, inputs):
-                pb.update()
+    if num_workers == 1:
+        s3_client = boto3.client(
+            "s3",
+            config=botocore.config.Config(signature_version=botocore.UNSIGNED),
+        )
+        with fou.ProgressBar() as pb:
+            for path, obj in pb(inputs):
+                s3_client.download_file(_BUCKET_NAME, obj, path)
+    else:
+        with fou.ProgressBar(total=len(inputs)) as pb:
+            with multiprocessing.Pool(num_workers, _initialize_worker) as pool:
+                for _ in pool.imap_unordered(_do_s3_download, inputs):
+                    pb.update()
 
 
 def _initialize_worker():
@@ -1691,14 +1691,14 @@ _BUCKET_NAME = "open-images-dataset"
 
 _CSV_DELIMITERS = [",", ";", ":", " ", "\t", "\n"]
 
-_DEFAULT_LABEL_TYPES = [
+_SUPPORTED_LABEL_TYPES = [
     "detections",
     "classifications",
     "relationships",
     "segmentations",
 ]
 
-_DEFAULT_SPLITS = [
+_SUPPORTED_SPLITS = [
     "train",
     "test",
     "validation",
