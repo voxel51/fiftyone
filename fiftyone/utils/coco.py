@@ -1404,8 +1404,8 @@ def download_coco_dataset_split(
                 num_available = num_existing + num_downloadable
                 if classes is not None and num_available < max_samples:
                     logger.warning(
-                        "Only found %d (<%d) images containing the target "
-                        "classes",
+                        "Only found %d (<%d) samples matching your "
+                        "requirements",
                         num_available,
                         max_samples,
                     )
@@ -1441,7 +1441,7 @@ def download_coco_dataset_split(
     #
 
     downloaded_filenames = etau.list_files(images_dir)
-    num_samples = len(downloaded_filenames)
+    num_samples = len(downloaded_filenames)  # total downloaded
 
     if num_samples >= split_size:
         logger.info("Writing annotations to '%s'", anno_path)

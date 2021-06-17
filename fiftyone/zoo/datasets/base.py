@@ -571,7 +571,7 @@ class COCO2014Dataset(FiftyOneDataset):
         # A split-independent location to store full annotation files so that
         # they never need to be redownloaded
         root_dir = os.path.dirname(os.path.normpath(dataset_dir))
-        raw_dir = os.path.join(root_dir, "_raw")
+        raw_dir = os.path.join(root_dir, "raw")
 
         # Download necessary data
         num_samples, classes = fouc.download_coco_dataset_split(
@@ -743,7 +743,7 @@ class COCO2017Dataset(FiftyOneDataset):
         # A split-independent location to store full annotation files so that
         # they never need to be redownloaded
         root_dir = os.path.dirname(os.path.normpath(dataset_dir))
-        raw_dir = os.path.join(root_dir, "_raw")
+        raw_dir = os.path.join(root_dir, "raw")
 
         # Download necessary data
         num_samples, classes = fouc.download_coco_dataset_split(
