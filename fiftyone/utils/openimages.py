@@ -453,7 +453,7 @@ def is_download_required(
             By default, all label types are loaded
         classes (None): a string or list of strings specifying required classes
             to load. Only samples containing at least one instance of a
-            specified class will be downloaded
+            specified class will be loaded
         attrs (None): a list of strings for relationship attributes to load
         image_ids (None): an optional list of specific image IDs to load. Can
             be provided in any of the following formats:
@@ -525,7 +525,7 @@ def download_open_images_split(
             By default, all label types are loaded
         classes (None): a string or list of strings specifying required classes
             to load. Only samples containing at least one instance of a
-            specified class will be downloaded
+            specified class will be loaded
         attrs (None): a list of strings for relationship attributes to load
         image_ids (None): an optional list of specific image IDs to load. Can
             be provided in any of the following formats:

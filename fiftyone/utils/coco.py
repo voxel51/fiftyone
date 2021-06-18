@@ -75,11 +75,12 @@ class COCODetectionDatasetImporter(
 
             If None, the parameter will default to ``labels.json``
         label_types (None): a label type or list of label types to load. The
-            supported values are ``("detections", "keypoints")``. By default,
-            only "detections" are loaded
-        classes (None): a list of strings specifying required classes to load.
-            Only samples containing at least one instance of a specified
-            classes will be loaded
+            supported values are
+            ``("detections", "segmentations", "keypoints")``. By default, only
+            "detections" are loaded
+        classes (None): a string or list of strings specifying required classes
+            to load. Only samples containing at least one instance of a
+            specified class will be loaded
         image_ids (None): an optional list of specific image IDs to load. Can
             be provided in any of the following formats:
 
@@ -90,11 +91,9 @@ class COCODetectionDatasetImporter(
                 two formats
 
             If provided, takes precedence over ``classes`` and ``max_samples``
-        load_segmentations (False): whether to load instance segmentation masks
-            for objects, if available
-        use_polylines (False): whether to represent objects as
+        use_polylines (False): whether to represent segmentations as
             :class:`fiftyone.core.labels.Polylines` instances rather than
-            :class:`fiftyone.core.labels.Detections`
+            :class:`fiftyone.core.labels.Detections` with dense masks
         tolerance (None): a tolerance, in pixels, when generating approximate
             polylines for instance masks. Typical values are 1-3 pixels
         shuffle (False): whether to randomly shuffle the order in which the
@@ -114,7 +113,6 @@ class COCODetectionDatasetImporter(
         label_types=None,
         classes=None,
         image_ids=None,
-        load_segmentations=False,
         use_polylines=False,
         tolerance=None,
         shuffle=False,
@@ -131,8 +129,7 @@ class COCODetectionDatasetImporter(
             default="labels.json",
         )
 
-        if label_types is None:
-            label_types = _parse_label_types(label_types)
+        label_types = _parse_label_types(label_types)
 
         super().__init__(
             dataset_dir=dataset_dir,
@@ -146,7 +143,6 @@ class COCODetectionDatasetImporter(
         self.label_types = label_types
         self.classes = classes
         self.image_ids = image_ids
-        self.load_segmentations = load_segmentations
         self.use_polylines = use_polylines
         self.tolerance = tolerance
 
@@ -195,6 +191,20 @@ class COCODetectionDatasetImporter(
         label = {}
 
         if "detections" in self.label_types:
+            obj = _coco_objects_to_detections(
+                coco_objects,
+                frame_size,
+                self._classes,
+                self._supercategory_map,
+                False,  # no segmentations
+            )
+
+            if scalar_label:
+                label = obj
+            else:
+                label["detections"] = obj
+
+        if "segmentations" in self.label_types:
             if self.use_polylines:
                 obj = _coco_objects_to_polylines(
                     coco_objects,
@@ -209,13 +219,13 @@ class COCODetectionDatasetImporter(
                     frame_size,
                     self._classes,
                     self._supercategory_map,
-                    self.load_segmentations,
+                    True,  # load segmentations
                 )
 
             if scalar_label:
                 label = obj
             else:
-                label["objects"] = obj
+                label["segmentations"] = obj
 
         if "keypoints" in self.label_types:
             keypoints = _coco_objects_to_keypoints(
@@ -244,6 +254,12 @@ class COCODetectionDatasetImporter(
             label_dict = {}
 
         if "detections" in self.label_types:
+            if scalar_label:
+                return fol.Detections
+
+            label_dict["detections"] = fol.Detections
+
+        if "segmentations" in self.label_types:
             if self.use_polylines:
                 obj_type = fol.Polylines
             else:
@@ -252,7 +268,7 @@ class COCODetectionDatasetImporter(
             if scalar_label:
                 return obj_type
 
-            label_dict["objects"] = obj_type
+            label_dict["segmentations"] = obj_type
 
         if "keypoints" in self.label_types:
             if scalar_label:
@@ -273,34 +289,43 @@ class COCODetectionDatasetImporter(
                 images,
                 annotations,
             ) = load_coco_detection_annotations(self.labels_path)
-        else:
-            info = {}
-            classes = None
-            supercategory_map = None
-            images = {}
-            annotations = None
 
-        if self.classes is not None or self.image_ids is not None:
-            images = _get_matching_images(
+            if classes is not None:
+                info["classes"] = classes
+
+            image_ids = _get_matching_image_ids(
                 classes,
                 images,
                 annotations,
                 image_ids=self.image_ids,
                 classes=self.classes,
+                shuffle=self.shuffle,
+                seed=self.seed,
+                max_samples=self.max_samples,
             )
 
-        if classes is not None:
-            info["classes"] = classes
+            filenames = [images[_id]["file_name"] for _id in image_ids]
+
+            _image_ids = set(image_ids)
+            image_dicts_map = {
+                i["file_name"]: i
+                for _id, i in images.items()
+                if _id in _image_ids
+            }
+        else:
+            info = {}
+            classes = None
+            supercategory_map = None
+            image_dicts_map = {}
+            annotations = None
+            filenames = []
 
         self._info = info
         self._classes = classes
         self._supercategory_map = supercategory_map
-        self._image_dicts_map = {i["file_name"]: i for i in images.values()}
+        self._image_dicts_map = image_dicts_map
         self._annotations = annotations
-
-        filenames = sorted(self._image_dicts_map.keys())
-
-        self._filenames = self._preprocess_list(filenames)
+        self._filenames = filenames
 
     def get_dataset_info(self):
         return self._info
@@ -677,14 +702,10 @@ class COCOObject(object):
         bounding_box = [x / width, y / height, w / width, h / height]
 
         mask = None
-        if load_segmentation:
-            try:
-                mask = _coco_segmentation_to_mask(
-                    self.segmentation, self.bbox, frame_size
-                )
-            except:
-                msg = "Failed to convert segmentation to mask; skipping mask"
-                warnings.warn(msg)
+        if load_segmentation and self.segmentation is not None:
+            mask = _coco_segmentation_to_mask(
+                self.segmentation, self.bbox, frame_size
+            )
 
         return fol.Detection(
             label=label, bounding_box=bounding_box, mask=mask, **attributes,
@@ -856,7 +877,7 @@ def load_coco_detection_annotations(json_path):
         -   info: a dict of dataset info
         -   classes: a list of classes
         -   supercategory_map: a dict mapping class labels to category dicts
-        -   images: a dict mapping image filenames to image dicts
+        -   images: a dict mapping image IDs to image dicts
         -   annotations: a dict mapping image IDs to list of
             :class:`COCOObject` instances, or ``None`` for unlabeled datasets
     """
@@ -968,9 +989,9 @@ def is_download_required(
         label_types (None): a label type or list of label types to load. The
             supported values are ``("detections", "keypoints")``. By default,
             only "detections" are loaded
-        classes (None): a list of strings specifying required classes to load.
-            Only samples containing at least one instance of a specified class
-            count towards ``max_samples``
+        classes (None): a string or list of strings specifying required classes
+            to load. Only samples containing at least one instance of a
+            specified class will be loaded
         image_ids (None): an optional list of specific image IDs to load. Can
             be provided in any of the following formats:
 
@@ -999,6 +1020,7 @@ def is_download_required(
         )
 
     if classes is not None and split == "test":
+        logger.warning("Test split is unlabeled; ignoring `classes`")
         classes = None
 
     anno_path = os.path.join(dataset_dir, "labels.json")
@@ -1041,10 +1063,10 @@ def is_download_required(
     # User only wants a certain number of images, so we can check if we have
     # downloaded enough images to meet their requirements
     if classes is not None:
-        matching_ids = _get_images_with_classes(
+        all_ids, any_ids = _get_images_with_classes(
             annotations, classes, all_classes
         )
-        num_matching = len(matching_ids)
+        num_matching = len(all_ids) + len(any_ids)
     else:
         num_matching = len(images)
 
@@ -1080,11 +1102,12 @@ def download_coco_dataset_split(
         year ("2017"): the dataset year to download. Supported values are
             ``("2014", "2017")``
         label_types (None): a label type or list of label types to load. The
-            supported values are ``("detections", "instances", "keypoints")``.
-            By default, only "detections" are loaded
-        classes (None): a list of strings specifying required classes to load.
-            Only samples containing at least one instance of a specified class
-            will be downloaded
+            supported values are
+            ``("detections", "segmentations", "keypoints")``. By default, only
+            "detections" are loaded
+        classes (None): a string or list of strings specifying required classes
+            to load. Only samples containing at least one instance of a
+            specified class will be loaded
         image_ids (None): an optional list of specific image IDs to load. Can
             be provided in any of the following formats:
 
@@ -1129,8 +1152,8 @@ def download_coco_dataset_split(
         )
 
     if classes is not None and split == "test":
-        classes = None
         logger.warning("Test split is unlabeled; ignoring `classes`")
+        classes = None
 
     if scratch_dir is None:
         scratch_dir = os.path.join(dataset_dir, "scratch")
@@ -1217,41 +1240,47 @@ def download_coco_dataset_split(
     else:
         # Partial image download
 
+        # Determine `existing_ids` and `download_ids`
         if image_ids is not None:
             # Download specific images
             image_ids = _parse_image_ids(image_ids, images, split=split)
-
-            # Determine IDs to download
             existing_ids, download_ids = _get_existing_ids(
                 images_dir, images, image_ids
             )
         else:
-            # Download specific number and/or classes
+            # Download images for specific label-types/classes/counts
 
             # Get available IDs
             if classes is not None:
-                all_ids = _get_images_with_classes(
+                all_ids, any_ids = _get_images_with_classes(
                     annotations, classes, all_classes
                 )
             else:
-                all_ids = list(images.keys())
+                all_ids = images.keys()
+                any_ids = []
 
-            if shuffle and max_samples is not None:
+            all_ids = sorted(all_ids)
+            any_ids = sorted(any_ids)
+
+            if shuffle:
                 if seed is not None:
                     random.seed(seed)
 
                 random.shuffle(all_ids)
+                random.shuffle(any_ids)
+
+            image_ids = all_ids + any_ids
 
             # Determine IDs to download
             existing_ids, downloadable_ids = _get_existing_ids(
-                images_dir, images, all_ids
+                images_dir, images, image_ids
             )
 
             if max_samples is not None:
                 num_existing = len(existing_ids)
                 num_downloadable = len(downloadable_ids)
                 num_available = num_existing + num_downloadable
-                if classes is not None and num_available < max_samples:
+                if num_available < max_samples:
                     logger.warning(
                         "Only found %d (<%d) samples matching your "
                         "requirements",
@@ -1359,27 +1388,51 @@ def _parse_label_types(label_types):
     return label_types
 
 
-def _get_matching_images(
-    all_classes, images, annotations, image_ids=None, classes=None,
+def _get_matching_image_ids(
+    all_classes,
+    images,
+    annotations,
+    image_ids=None,
+    classes=None,
+    shuffle=False,
+    seed=None,
+    max_samples=None,
 ):
     if image_ids is None and classes is None:
-        return images
-
-    if image_ids is not None:
-        image_ids = _parse_image_ids(image_ids, images)
+        all_ids = images.keys()
+        any_ids = []
+    elif image_ids is not None:
+        all_ids = _parse_image_ids(image_ids, images)
+        any_ids = []
     else:
-        image_ids = _get_images_with_classes(annotations, classes, all_classes)
+        all_ids, any_ids = _get_images_with_classes(
+            annotations, classes, all_classes
+        )
 
-    image_ids = set(image_ids)
-    return {k: v for k, v in images.items() if k in image_ids}
+    all_ids = sorted(all_ids)
+    any_ids = sorted(any_ids)
+
+    if shuffle:
+        if seed is not None:
+            random.seed(seed)
+
+        random.shuffle(all_ids)
+        random.shuffle(any_ids)
+
+    image_ids = all_ids + any_ids
+
+    if max_samples is not None:
+        return image_ids[:max_samples]
+
+    return image_ids
 
 
-def _get_existing_ids(images_dir, images, all_ids):
+def _get_existing_ids(images_dir, images, image_ids):
     filenames = set(etau.list_files(images_dir))
 
     existing_ids = []
     downloadable_ids = []
-    for _id in all_ids:
+    for _id in image_ids:
         if images[_id]["file_name"] in filenames:
             existing_ids.append(_id)
         else:
@@ -1419,6 +1472,9 @@ def _do_download(args):
 
 
 def _get_images_with_classes(annotations, target_classes, all_classes):
+    if etau.is_str(target_classes):
+        target_classes = [target_classes]
+
     bad_classes = [c for c in target_classes if c not in all_classes]
     if bad_classes:
         raise ValueError("Unsupported classes: %s" % bad_classes)
@@ -1426,12 +1482,16 @@ def _get_images_with_classes(annotations, target_classes, all_classes):
     labels_map_rev = _to_labels_map_rev(all_classes)
     class_ids = {labels_map_rev[c] for c in target_classes}
 
-    image_ids = []
+    all_ids = []
+    any_ids = []
     for image_id, coco_objects in annotations.items():
-        if any(o.category_id in class_ids for o in coco_objects):
-            image_ids.append(image_id)
+        oids = set(o.category_id for o in coco_objects)
+        if class_ids.issubset(oids):
+            all_ids.append(image_id)
+        elif class_ids & oids:
+            any_ids.append(image_id)
 
-    return image_ids
+    return all_ids, any_ids
 
 
 def _parse_image_ids(raw_image_ids, images, split=None):
@@ -1553,14 +1613,18 @@ def _coco_objects_to_detections(
 ):
     detections = []
     for coco_obj in coco_objects:
-        detections.append(
-            coco_obj.to_detection(
-                frame_size,
-                classes=classes,
-                supercategory_map=supercategory_map,
-                load_segmentation=load_segmentations,
-            )
+        detection = coco_obj.to_detection(
+            frame_size,
+            classes=classes,
+            supercategory_map=supercategory_map,
+            load_segmentation=load_segmentations,
         )
+
+        if load_segmentations and detection.mask is None:
+            msg = "Skipping object with no segmentation mask"
+            warnings.warn(msg)
+        else:
+            detections.append(detection)
 
     return fol.Detections(detections=detections)
 
@@ -1769,7 +1833,7 @@ _TEST_INFO_PATHS = {
     "2017": "annotations/image_info_test2017.json",
 }
 
-_SUPPORTED_LABEL_TYPES = ["detections", "instances", "keypoints"]
+_SUPPORTED_LABEL_TYPES = ["detections", "segmentations", "keypoints"]
 
 _SUPPORTED_SPLITS = ["train", "validation", "test"]
 
