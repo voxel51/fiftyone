@@ -11,6 +11,8 @@ export interface BaseSample {
   };
 }
 
+export type Buffers = [number, number][];
+
 interface BaseOptions {
   activeLabels: string[];
   colorByLabel: boolean;
@@ -68,6 +70,8 @@ export interface VideoOptions extends BaseOptions {
   useFrameNumber: boolean;
   autoplay: boolean;
   loop: boolean;
+  volume: number;
+  playbackRate: number;
 }
 
 export interface TooltipOverlay {
@@ -156,7 +160,7 @@ export type StateUpdate<State extends BaseState> = (
   ) => void
 ) => void;
 
-const DEFAULT_BASE_OPTIONS = {
+const DEFAULT_BASE_OPTIONS: BaseOptions = {
   activeLabels: [],
   colorByLabel: false,
   selectedLabels: [],
@@ -171,24 +175,26 @@ const DEFAULT_BASE_OPTIONS = {
   hasPrevious: false,
 };
 
-export const DEFAULT_FRAME_OPTIONS = {
+export const DEFAULT_FRAME_OPTIONS: FrameOptions = {
   ...DEFAULT_BASE_OPTIONS,
   useFrameNumber: true,
   zoom: false,
   zoomPad: 0.1,
 };
 
-export const DEFAULT_IMAGE_OPTIONS = {
+export const DEFAULT_IMAGE_OPTIONS: ImageOptions = {
   ...DEFAULT_BASE_OPTIONS,
   zoom: false,
   zoomPad: 0.1,
 };
 
-export const DEFAULT_VIDEO_OPTIONS = {
+export const DEFAULT_VIDEO_OPTIONS: VideoOptions = {
   ...DEFAULT_BASE_OPTIONS,
   useFrameNumber: false,
   autoplay: false,
   loop: false,
+  playbackRate: 1,
+  volume: 0,
 };
 
 export interface FrameSample {

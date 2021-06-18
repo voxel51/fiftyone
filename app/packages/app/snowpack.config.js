@@ -1,5 +1,6 @@
 /** @type {import("snowpack").SnowpackUserConfig } */
 module.exports = {
+  workspaceRoot: "../../",
   optimize: {
     bundle: true,
     minify: true,
@@ -8,7 +9,6 @@ module.exports = {
   mount: {
     src: "/",
     public: "/",
-    "../looker": "/@fiftyone/looker",
   },
   plugins: ["@snowpack/plugin-typescript", "@snowpack/plugin-react-refresh"],
   packageOptions: {

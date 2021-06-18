@@ -48,7 +48,7 @@
   z-index: 20;
   padding-bottom: 0.25rem;
   display: grid;
-  grid-template-columns: 0.5rem max-content max-content 1fr max-content max-content max-content max-content max-content 0.5rem;
+  grid-template-columns: 0.5rem max-content max-content 1fr max-content max-content max-content max-content max-content max-content 0.5rem;
   grid-gap: 0.25rem;
   justify-items: center;
   align-items: center;
@@ -156,9 +156,21 @@
   height: 80%;
 }
 
-/* seek bar stuff */
+.looker-playback-rate {
+  --progress: 0%;
+}
+
+.looker-volume {
+  --volume: 0%;
+}
+
 .looker-seek-bar {
   --progress: 0%;
+  --buffer-progress: 0%;
+}
+
+/* slider stuff */
+.looker input {
   width: 100%;
   border-radius: 8px;
   background: rgb(225, 100, 40);

@@ -378,10 +378,13 @@ interface AcquireReaderOptions {
 }
 
 const aquireReader = (() => {
-  const frameCache = new LRU<string, Overlay<VideoState>[]>({
+  const frameCache = new LRU<
+    { sampleId: string; frameNumber: number; uuid: string },
+    Overlay<VideoState>[]
+  >({
     max: MAX_FRAME_CACHE_SIZE_BYTES,
     length: (overlays) => {
-      let size = 0;
+      let size = 1;
       overlays.forEach((overlay) => {
         size += overlay.getSizeBytes();
       });
@@ -425,7 +428,10 @@ const aquireReader = (() => {
               streamSize += overlay.getSizeBytes();
             });
             streamCount += 1;
-            frameCache.set(`${sampleId}-${frameNumber}`, overlays);
+            frameCache.set(
+              { sampleId, frameNumber, uuid: subscription },
+              overlays
+            );
             addFrame(frameNumber, overlays);
           });
 
@@ -505,6 +511,7 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
         ...this.getDefaultOptions(),
         ...options,
       },
+      buffers: [],
     };
   }
 
@@ -555,6 +562,7 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
         update: this.updater,
       });
       lookerWithReader = this;
+      this.state.buffers = [];
     } else if (lookerWithReader !== this && frameCount) {
       this.state.playing = false;
       this.state.buffering = false;
@@ -565,7 +573,10 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
         frameCount,
         state.frameNumber + CHUNK_SIZE / 2
       );
-      if (!this.frameOverlays.has(bufferFrame)) {
+      if (
+        !this.frameOverlays.has(bufferFrame) ||
+        this.frameOverlays.get(bufferFrame).deref() === undefined
+      ) {
         this.state.buffering = true;
         this.requestFrames();
       } else {

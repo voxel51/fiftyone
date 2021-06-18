@@ -6,7 +6,6 @@ import { VideoState } from "../state";
 import { BaseElement, Events } from "./base";
 import { playPause, VIDEO_SHORTCUTS } from "./common/actions";
 import {
-  getClampedTime,
   getFrameNumber,
   getFrameString,
   getTime,
@@ -425,4 +424,39 @@ export function withVideoLookerEvents(): () => Events<VideoState> {
       },
     };
   };
+}
+
+export class VolumBarElement extends BaseElement<VideoState, HTMLInputElement> {
+  getEvents(): Events<VideoState> {
+    return {
+      click: ({ event }) => {
+        event.stopPropagation();
+      },
+      input: ({ update }) => {
+        const percent = this.element.valueAsNumber / 100;
+        update({
+          options: {
+            volume: percent,
+          },
+        });
+      },
+    };
+  }
+
+  createHTMLElement() {
+    const element = document.createElement("input");
+    element.setAttribute("type", "range");
+    element.setAttribute("min", "0");
+    element.setAttribute("max", "100");
+    element.className = "looker-volume";
+    element.style.gridArea = "2 / 4 / 2 / 5";
+    return element;
+  }
+
+  renderSelf({ options: { volume } }) {
+    this.element.style.display = "block";
+    this.element.style.setProperty("--volume", `${volume}%`);
+    this.element.value = volume;
+    return this.element;
+  }
 }

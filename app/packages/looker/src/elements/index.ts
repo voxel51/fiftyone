@@ -145,6 +145,7 @@ export const getVideoElements: GetElements<VideoState> = (
           { node: video.SeekBarElement },
           { node: video.PlayButtonElement },
           { node: video.TimeElement },
+          { node: video.VolumBarElement },
           { node: common.FullscreenButtonElement },
           { node: common.PlusElement },
           { node: common.MinusElement },

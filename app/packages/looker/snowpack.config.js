@@ -5,7 +5,4 @@ module.exports = {
   packageOptions: {
     external: ["react"],
   },
-  alias: {
-    "@fiftyone/looker": "../typescript-config",
-  },
 };
