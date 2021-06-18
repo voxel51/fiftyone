@@ -4,20 +4,13 @@ import { animated, useSpring } from "react-spring";
 import styled from "styled-components";
 
 import { activeLabelPaths, activeLabels } from "../Filters/utils";
-import {
-  labelCount,
-  sampleModalFilter,
-} from "../Filters/LabelFieldFilters.state";
+import { labelCount } from "../Filters/LabelFieldFilters.state";
 import * as atoms from "../../recoil/atoms";
 import * as selectors from "../../recoil/selectors";
 import { useTheme } from "../../utils/hooks";
 import { packageMessage } from "../../utils/socket";
 import socket from "../../shared/connection";
-import {
-  VALID_LABEL_TYPES,
-  VALID_LIST_TYPES,
-  LABEL_LIST,
-} from "../../utils/labels";
+import { VALID_LIST_TYPES, LABEL_LIST } from "../../utils/labels";
 
 export const SwitcherDiv = styled.div`
   border-bottom: 1px solid ${({ theme }) => theme.background};

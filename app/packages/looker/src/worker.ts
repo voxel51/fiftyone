@@ -132,19 +132,14 @@ const getSendChunk = (uuid: string) => ({
 }) => {
   if (value) {
     let buffers: ArrayBuffer[] = [];
-    const frames = value.frames.map<FrameSample>((frame) => {
-      return Object.fromEntries(
-        Object.entries(frame).map(([k, v]) => ["frames." + k, v])
-      ) as FrameSample;
-    });
 
-    frames.forEach((frame) => {
+    value.frames.forEach((frame) => {
       buffers = [...buffers, ...processMasks(frame)];
     });
     postMessage(
       {
         method: "frameChunk",
-        frames,
+        frames: value.frames,
         range: value.range,
         uuid,
       },

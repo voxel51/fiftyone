@@ -1,31 +1,15 @@
-import React from "react";
+import React, { MutableRefObject, useEffect, useRef, useState } from "react";
 import styled from "styled-components";
 import copy from "copy-to-clipboard";
 import { Checkbox, FormControlLabel } from "@material-ui/core";
-import { selectorFamily, SerializableParam, useRecoilValue } from "recoil";
+import { useRecoilValue } from "recoil";
 
 import { Button, ModalFooter, scrollbarStyles } from "./utils";
 import { sampleModalFilter } from "./Filters/LabelFieldFilters.state";
-import * as selectors from "../recoil/selectors";
-
-const modalSampleOrCurrentFrame = selectorFamily<
-  {},
-  { frameNumber?: number; filterJSON: boolean }
->({
-  key: "modalSampleOrCurrentFrame",
-  get: ({ frameNumber, filterJSON }) => ({ get }) => {
-    const sample = get(selectors.modalSample);
-    const filter = get(sampleModalFilter);
-    const op = (obj, prefix = null) => (filterJSON ? filter(obj, prefix) : obj);
-    let object = { ...op(sample) };
-    return Object.fromEntries(
-      Object.entries(object).filter(([k]) => !k.startsWith("_"))
-    );
-  },
-});
+import { FrameLooker, ImageLooker, VideoLooker } from "../../../looker";
 
 type Props = {
-  currentFrame?: number;
+  lookerRef: MutableRefObject<VideoLooker | ImageLooker | FrameLooker>;
   enableFilter: (enabled: boolean) => void;
   filterJSON: boolean;
 };
@@ -35,6 +19,11 @@ const Body = styled.div`
   flex-direction: column;
   width: 100%;
   height: 100%;
+
+  position: absolute;
+  top: 0;
+  left: 0;
+  background: ${({ theme }) => theme.backgroundDark};
 
   pre {
     margin: 0;
@@ -68,11 +57,19 @@ const Body = styled.div`
   }
 `;
 
-const JSONView = ({ currentFrame, enableFilter, filterJSON }: Props) => {
-  const object = useRecoilValue(
-    modalSampleOrCurrentFrame({ frameNumber: currentFrame, filterJSON })
-  );
-  const str = JSON.stringify(object, null, 4);
+const JSONView = ({ lookerRef, enableFilter, filterJSON }: Props) => {
+  const filter = useRecoilValue(sampleModalFilter);
+  const [copying, setCopying] = useState(false);
+  let [sample, setSample] = useState(null);
+
+  useEffect(() => {
+    lookerRef.current.getSample().then(setSample);
+  }, []);
+
+  if (filterJSON) {
+    sample = filter(sample);
+  }
+  const str = JSON.stringify(sample, null, 4);
 
   return (
     <Body>
@@ -92,7 +89,15 @@ const JSONView = ({ currentFrame, enableFilter, filterJSON }: Props) => {
               }
             />
           ) : null}
-          <Button onClick={() => copy(str)}>Copy JSON</Button>
+          <Button
+            onClick={() => {
+              setCopying(true);
+              setTimeout(() => setCopying(false), 1000);
+              copy(str);
+            }}
+          >
+            {copying ? "Copied!" : "Copy JSON"}
+          </Button>
         </div>
       </ModalFooter>
     </Body>

@@ -382,10 +382,12 @@ const usePlaceHolder = (
     const selection = useRecoilValue(
       modal ? selectors.selectedLabelIds : atoms.selectedSamples
     ).size;
-    let labelCount = useRecoilValue(labelAtoms.labelCount(modal));
 
     if (modal && labels) {
-      labelCount = selection > 0 ? selection : labelCount;
+      const labelCount =
+        selection > 0
+          ? selection
+          : useRecoilValue(labelAtoms.labelCount(modal));
       return [labelCount, labelsModalPlaceholder(selection, labelCount)];
     } else if (modal) {
       return [1, samplePlaceholder(elementNames)];
@@ -394,7 +396,9 @@ const usePlaceHolder = (
       const filteredSamples = useRecoilValue(selectors.filteredCount);
       const count = filteredSamples ?? totalSamples;
       const selectedLabelCount = useRecoilValue(numLabelsInSelectedSamples);
-      labelCount = selection ? selectedLabelCount : labelCount;
+      const labelCount = selection
+        ? selectedLabelCount
+        : useRecoilValue(labelAtoms.labelCount(modal));
       if (labels) {
         return [
           labelCount,

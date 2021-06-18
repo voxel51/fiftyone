@@ -12,6 +12,10 @@
   font-family: "Palanquin", sans-serif;
 }
 
+*::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
 input {
   font-family: "Palanquin", sans-serif;
 }

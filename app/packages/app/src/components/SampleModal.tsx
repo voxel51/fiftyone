@@ -18,6 +18,7 @@ import { useKeydownHandler, useTheme } from "../utils/hooks";
 import { formatMetadata } from "../utils/labels";
 import { showModalJSON } from "../recoil/utils";
 import Loading from "./Common/Loading";
+import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
 
 const modalSrc = selector<string | null>({
   key: "modalSrc",
@@ -239,7 +240,7 @@ const SampleModal = ({ onClose, sampleId }: Props, ref) => {
   const numSamples = useRecoilValue(selectors.currentSamplesSize);
   const showJSON = useRecoilValue(showModalJSON);
   const [enableJSONFilter, setEnableJSONFilter] = useState(true);
-  const lookerRef = useRef();
+  const lookerRef = useRef<VideoLooker & ImageLooker & FrameLooker>();
   const onSelectLabel = useOnSelectLabel();
 
   const onNext = useMemo(() => {
@@ -278,20 +279,20 @@ const SampleModal = ({ onClose, sampleId }: Props, ref) => {
     <Container style={{ zIndex: 10001 }} ref={ref}>
       <div className="looker-element">
         <Suspense fallback={<Loading />}>
-          {showJSON ? (
+          <Looker
+            key={`modal-${sampleSrc}`} // force re-render when this changes
+            sampleId={_id}
+            modal={true}
+            lookerRef={lookerRef}
+            onSelectLabel={onSelectLabel}
+            onNext={onNext}
+            onPrevious={onPrevious}
+          />
+          {showJSON && (
             <JSONView
               filterJSON={enableJSONFilter}
               enableFilter={setEnableJSONFilter}
-            />
-          ) : (
-            <Looker
-              key={`modal-${sampleSrc}`} // force re-render when this changes
-              sampleId={_id}
-              modal={true}
               lookerRef={lookerRef}
-              onSelectLabel={onSelectLabel}
-              onNext={onNext}
-              onPrevious={onPrevious}
             />
           )}
         </Suspense>
@@ -322,18 +323,16 @@ const SampleModal = ({ onClose, sampleId }: Props, ref) => {
             Fields
             <span className="push-right" />
           </h2>
-          {false && (
-            <Suspense fallback={<Loading />}>
-              <FieldsSidebar
-                modal={true}
-                style={{
-                  overflowY: "auto",
-                  overflowX: "hidden",
-                  height: "auto",
-                }}
-              />
-            </Suspense>
-          )}
+          <Suspense fallback={<Loading />}>
+            <FieldsSidebar
+              modal={true}
+              style={{
+                overflowY: "auto",
+                overflowX: "hidden",
+                height: "auto",
+              }}
+            />
+          </Suspense>
         </div>
       </div>
     </Container>

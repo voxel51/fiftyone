@@ -36,13 +36,13 @@ export class LoaderBar extends BaseElement<VideoState> {
     return element;
   }
 
-  renderSelf({ buffering }) {
-    if (buffering === this.buffering) {
+  renderSelf({ buffering, hovering }) {
+    if (buffering && hovering === this.buffering) {
       return this.element;
     }
-    this.buffering = buffering;
+    this.buffering = buffering && hovering;
 
-    if (buffering) {
+    if (this.buffering) {
       this.element.style.display = "block";
     } else {
       this.element.style.display = "none";
