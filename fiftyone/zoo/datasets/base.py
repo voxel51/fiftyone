@@ -1195,8 +1195,16 @@ class OpenImagesV6Dataset(FiftyOneDataset):
         return ""
 
     def _is_download_required(self, dataset_dir, split):
-        # @todo implement this
-        return True
+        return fouo.is_download_required(
+            dataset_dir,
+            split,
+            version="v6",
+            label_types=self.label_types,
+            classes=self.classes,
+            attrs=self.attrs,
+            image_ids=self.image_ids,
+            max_samples=self.max_samples,
+        )
 
     def _download_and_prepare(self, dataset_dir, _, split):
         # Download necessary data

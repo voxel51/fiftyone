@@ -1030,7 +1030,7 @@ def is_download_required(
         try:
             _parse_image_ids(image_ids, images, split=split)
             return False  # all IDs were found
-        except ValueError:
+        except:
             return True  # some IDs were not found
 
     if max_samples is None:
@@ -1080,8 +1080,8 @@ def download_coco_dataset_split(
         year ("2017"): the dataset year to download. Supported values are
             ``("2014", "2017")``
         label_types (None): a label type or list of label types to load. The
-            supported values are ``("detections", "keypoints")``. By default,
-            only "detections" are loaded
+            supported values are ``("detections", "instances", "keypoints")``.
+            By default, only "detections" are loaded
         classes (None): a list of strings specifying required classes to load.
             Only samples containing at least one instance of a specified class
             will be downloaded
@@ -1769,7 +1769,7 @@ _TEST_INFO_PATHS = {
     "2017": "annotations/image_info_test2017.json",
 }
 
-_SUPPORTED_LABEL_TYPES = ["detections", "keypoints"]
+_SUPPORTED_LABEL_TYPES = ["detections", "instances", "keypoints"]
 
 _SUPPORTED_SPLITS = ["train", "validation", "test"]
 
