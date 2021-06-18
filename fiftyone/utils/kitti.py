@@ -22,41 +22,6 @@ import fiftyone.utils.data as foud
 logger = logging.getLogger(__name__)
 
 
-class KITTIDetectionSampleParser(foud.ImageDetectionSampleParser):
-    """Parser for samples in
-    `KITTI detection format <http://www.cvlibs.net/datasets/kitti/eval_object.php>`_.
-
-    This implementation supports samples that are
-    ``(image_or_path, anno_txt_path)`` tuples, where:
-
-        - ``image_or_path`` is either an image that can be converted to numpy
-          format via ``np.asarray()`` or the path to an image on disk
-
-        - ``anno_txt_path`` is the path to a KITTI labels TXT file on disk. Or,
-          for unlabeled images, ``anno_txt_path`` can be ``None``.
-
-    See :class:`fiftyone.types.dataset_types.KITTIDetectionDataset` for more
-    format details.
-    """
-
-    def __init__(self):
-        super().__init__(
-            label_field=None,
-            bounding_box_field=None,
-            confidence_field=None,
-            attributes_field=None,
-            classes=None,
-            normalized=False,  # image required to convert to relative coords
-        )
-
-    def _parse_label(self, target, img=None):
-        if target is None:
-            return None
-
-        frame_size = etai.to_frame_size(img=img)
-        return load_kitti_detection_annotations(target, frame_size)
-
-
 class KITTIDetectionDatasetImporter(
     foud.LabeledImageDatasetImporter, foud.ImportPathsMixin
 ):

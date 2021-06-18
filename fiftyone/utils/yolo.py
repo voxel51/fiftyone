@@ -19,44 +19,6 @@ import fiftyone.utils.data as foud
 logger = logging.getLogger(__name__)
 
 
-class YOLOSampleParser(foud.ImageDetectionSampleParser):
-    """Parser for samples whose labels are in YOLO-style format.
-
-    This implementation supports samples that are
-    ``(image_or_path, anno_txt_path)`` tuples, where:
-
-        - ``image_or_path`` is either an image that can be converted to numpy
-          format via ``np.asarray()`` or the path to an image on disk
-
-        - ``anno_txt_path`` is the path to a YOLO labels TXT file on disk. Or,
-          for unlabeled images, ``anno_txt_path`` can be ``None``.
-
-    See :class:`fiftyone.types.dataset_types.YOLOv4Dataset` or
-    :class:`fiftyone.types.dataset_types.YOLOv5Dataset` for format details.
-
-    Args:
-        classes (None): a list of class label strings. If provided, it is
-            assumed that the ``target`` values are class IDs that should be
-            mapped to label strings via ``classes[target]``
-    """
-
-    def __init__(self, classes=None):
-        super().__init__(
-            label_field=None,
-            bounding_box_field=None,
-            confidence_field=None,
-            attributes_field=None,
-            classes=classes,
-            normalized=True,
-        )
-
-    def _parse_label(self, target, img=None):
-        if target is None:
-            return None
-
-        return load_yolo_annotations(target, self.classes)
-
-
 class YOLOv4DatasetImporter(
     foud.LabeledImageDatasetImporter, foud.ImportPathsMixin
 ):

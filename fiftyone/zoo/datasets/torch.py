@@ -5,6 +5,8 @@ FiftyOne Zoo Datasets provided by ``torchvision.datasets``.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import eta.core.utils as etau
+
 import fiftyone.core.labels as fol
 import fiftyone.core.utils as fou
 import fiftyone.types as fot
@@ -400,7 +402,7 @@ class VOC2007Dataset(TorchVisionDataset):
             )
 
         get_class_labels_fcn = _parse_voc_detection_labels
-        sample_parser = fouv.VOCDetectionSampleParser()
+        sample_parser = _VOCDetectionSampleParser()
         return _download_and_prepare(
             dataset_dir,
             scratch_dir,
@@ -461,7 +463,7 @@ class VOC2012Dataset(TorchVisionDataset):
             )
 
         get_class_labels_fcn = _parse_voc_detection_labels
-        sample_parser = fouv.VOCDetectionSampleParser()
+        sample_parser = _VOCDetectionSampleParser()
         return _download_and_prepare(
             dataset_dir,
             scratch_dir,
@@ -480,6 +482,29 @@ AVAILABLE_DATASETS = {
     "voc-2007": VOC2007Dataset,
     "voc-2012": VOC2012Dataset,
 }
+
+
+class _VOCDetectionSampleParser(foud.ImageDetectionSampleParser):
+    def __init__(self):
+        super().__init__(
+            label_field=None,
+            bounding_box_field=None,
+            confidence_field=None,
+            attributes_field=None,
+            classes=None,
+            normalized=True,  # True b/c image is not required to parse label
+        )
+
+    def _parse_label(self, target, img=None):
+        if target is None:
+            return None
+
+        if etau.is_str(target):
+            annotation = fouv.VOCAnnotation.from_xml(target)
+        else:
+            annotation = fouv.VOCAnnotation.from_dict(target)
+
+        return annotation.to_detections()
 
 
 def _download_and_prepare(
