@@ -8,6 +8,7 @@ import { MIN_PIXELS, SCALE_FACTOR } from "./constants";
 import {
   BaseState,
   BoundingBox,
+  Buffers,
   Coordinates,
   Dimensions,
   Optional,
@@ -380,4 +381,65 @@ export const createWorker = (): Worker => {
     name: "worker",
     type: "module",
   });
+};
+
+// In place
+export const removeFromBuffers = (
+  frameNumber: number,
+  buffers: Buffers
+): void => {
+  for (let i = 0; i < buffers.length; i++) {
+    const [start, end] = buffers[i];
+
+    if (frameNumber < start) {
+      continue;
+    }
+
+    if (frameNumber === start && start && end) {
+      buffers.splice(i, 1);
+    } else if (frameNumber === start) {
+      buffers[i] = [start + 1, end];
+    } else if (frameNumber === end) {
+      buffers[i] = [start, end - 1];
+    } else {
+      buffers[i] = [start, frameNumber - 1];
+      buffers.splice(i + 1, 0, [frameNumber + 1, end]);
+    }
+
+    break;
+  }
+};
+
+// In place
+export const addToBuffers = (
+  range: [number, number],
+  buffers: Buffers
+): void => {
+  let at = null;
+  let count = 0;
+  for (let i = 0; i < buffers.length; i++) {
+    const [start, end] = buffers[i];
+
+    if (range[0] > start) {
+      continue;
+    }
+
+    if (at === null) {
+      at = i;
+    }
+
+    count += 1;
+
+    if (end <= range[1]) {
+      continue;
+    }
+
+    break;
+  }
+
+  if (!at !== null) {
+    buffers.splice(at, count);
+  }
+
+  buffers.splice(at, 0, range);
 };

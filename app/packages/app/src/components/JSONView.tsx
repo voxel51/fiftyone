@@ -7,6 +7,7 @@ import { useRecoilValue } from "recoil";
 import { Button, ModalFooter, scrollbarStyles } from "./utils";
 import { sampleModalFilter } from "./Filters/LabelFieldFilters.state";
 import { FrameLooker, ImageLooker, VideoLooker } from "../../../looker";
+import Loading from "./Common/Loading";
 
 type Props = {
   lookerRef: MutableRefObject<VideoLooker | ImageLooker | FrameLooker>;
@@ -66,40 +67,50 @@ const JSONView = ({ lookerRef, enableFilter, filterJSON }: Props) => {
     lookerRef.current.getSample().then(setSample);
   }, []);
 
-  if (filterJSON) {
+  if (!sample) {
+    return null;
+  }
+
+  if (filterJSON && sample) {
     sample = filter(sample);
   }
   const str = JSON.stringify(sample, null, 4);
 
   return (
     <Body>
-      <pre>{str}</pre>
-      <ModalFooter>
-        <div className="controls">
-          {enableFilter ? (
-            <FormControlLabel
-              label="Filter"
-              classes={{ label: "label" }}
-              control={
-                <Checkbox
-                  checked={Boolean(filterJSON)}
-                  onChange={() => enableFilter(!filterJSON)}
-                  classes={{ root: "checkbox", checked: "checked" }}
+      {sample ? (
+        <>
+          <pre>{str}</pre>
+          <ModalFooter>
+            <div className="controls">
+              {enableFilter ? (
+                <FormControlLabel
+                  label="Filter"
+                  classes={{ label: "label" }}
+                  control={
+                    <Checkbox
+                      checked={Boolean(filterJSON)}
+                      onChange={() => enableFilter(!filterJSON)}
+                      classes={{ root: "checkbox", checked: "checked" }}
+                    />
+                  }
                 />
-              }
-            />
-          ) : null}
-          <Button
-            onClick={() => {
-              setCopying(true);
-              setTimeout(() => setCopying(false), 1000);
-              copy(str);
-            }}
-          >
-            {copying ? "Copied!" : "Copy JSON"}
-          </Button>
-        </div>
-      </ModalFooter>
+              ) : null}
+              <Button
+                onClick={() => {
+                  setCopying(true);
+                  setTimeout(() => setCopying(false), 1000);
+                  copy(str);
+                }}
+              >
+                {copying ? "Copied!" : "Copy JSON"}
+              </Button>
+            </div>
+          </ModalFooter>
+        </>
+      ) : (
+        <Loading />
+      )}
     </Body>
   );
 };

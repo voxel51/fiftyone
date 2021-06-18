@@ -195,13 +195,6 @@
   height: 4px;
   cursor: pointer;
   animate: 0.2s;
-  background: linear-gradient(
-    to right,
-    rgb(225, 100, 40) 0%,
-    rgb(225, 100, 40) var(--progress, 0%),
-    rgb(175, 175, 175) var(--progress, 0%),
-    rgb(175, 175, 175) 100%
-  );
 }
 .looker-controls input[type="range"]::-webkit-slider-thumb {
   height: 0;
@@ -508,4 +501,16 @@
 .looker-shortcut-detail {
   font-weight: normal;
   color: hsl(220, 2%, 68%);
+}
+
+input[type="range"].looker-seek-bar::-webkit-slider-runnable-track {
+  background: linear-gradient(
+    to right,
+    rgb(225, 100, 40) 0%,
+    rgb(225, 100, 40) var(--progress, 0%),
+    rgb(55, 55, 55) var(--progress, 0%),
+    rgb(55, 55, 55) var(--buffer-progress, 0%),
+    rgb(175, 175, 175) var(--buffer-progress, 0%),
+    rgb(175, 175, 175) 100%
+  );
 }

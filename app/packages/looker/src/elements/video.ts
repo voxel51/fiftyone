@@ -198,13 +198,23 @@ export class SeekBarElement extends BaseElement<VideoState, HTMLInputElement> {
     return element;
   }
 
-  renderSelf({ frameNumber, config: { frameRate, thumbnail }, duration }) {
+  renderSelf({
+    frameNumber,
+    config: { frameRate, thumbnail },
+    duration,
+    buffers,
+  }) {
     if (thumbnail) {
       return this.element;
     }
+    const frameCount = getFrameNumber(duration, duration, frameRate);
+    this.element.style.setProperty(
+      "--buffer-progress",
+      `${(buffers[buffers.length - 1][1] - 1) / frameCount}%`
+    );
+    console.log(buffers, (buffers[buffers.length - 1][1] - 1) / frameCount);
     if (duration !== null) {
-      const value =
-        ((frameNumber - 1) / Math.max(frameRate * duration - 1, 1)) * 100;
+      const value = ((frameNumber - 1) / frameCount) * 100;
       this.element.style.display = "block";
       this.element.style.setProperty("--progress", `${value}%`);
       //@ts-ignore

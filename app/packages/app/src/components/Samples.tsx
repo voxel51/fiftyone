@@ -25,7 +25,7 @@ const Row = styled.div`
   display: flex;
   justify-content: space-between;
   width: 100%;
-  margin-top: 6px;
+  margin: 6px 0;
 `;
 
 function Samples() {

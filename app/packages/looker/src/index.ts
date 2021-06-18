@@ -36,12 +36,15 @@ import {
   FrameChunkResponse,
   VideoSample,
   FrameSample,
+  Buffers,
 } from "./state";
 import {
+  addToBuffers,
   createWorker,
   getElementBBox,
   getFitRect,
   mergeUpdates,
+  removeFromBuffers,
   snapBox,
 } from "./util";
 import { zoomToContent } from "./zoom";
@@ -379,8 +382,12 @@ interface Frame {
   overlays: Overlay<VideoState>[];
 }
 
+type RemoveFrame = (frameNumber: numberZ) => void;
+
 interface AcquireReaderOptions {
   addFrame: (frameNumber: number, frame: Frame) => void;
+  addFrameBuffers: (range: [number, number]) => void;
+  removeFrame: RemoveFrame;
   getCurrentFrame: () => number;
   sampleId: string;
   frameNumber: number;
@@ -389,10 +396,7 @@ interface AcquireReaderOptions {
 }
 
 const aquireReader = (() => {
-  const frameCache = new LRU<
-    { sampleId: string; frameNumber: number; uuid: string },
-    Frame
-  >({
+  const frameCache = new LRU<WeakRef<RemoveFrame>, Frame>({
     max: MAX_FRAME_CACHE_SIZE_BYTES,
     length: (frame) => {
       let size = 1;
@@ -401,7 +405,12 @@ const aquireReader = (() => {
       });
       return size;
     },
+    dispose: (removeFrameRef, frame) => {
+      const removeFrame = removeFrameRef.deref();
+      removeFrame && removeFrame(frame.sample.frame_number);
+    },
   });
+
   let streamSize = 0;
   let streamCount = 0;
 
@@ -410,6 +419,8 @@ const aquireReader = (() => {
 
   return ({
     addFrame,
+    addFrameBuffers,
+    removeFrame,
     frameNumber,
     frameCount,
     getCurrentFrame,
@@ -429,6 +440,7 @@ const aquireReader = (() => {
         },
       } = message;
       if (uuid === subscription && method === "frameChunk") {
+        addFrameBuffers([start, end]);
         Array(end - start + 1)
           .fill(0)
           .forEach((_, i) => {
@@ -444,10 +456,7 @@ const aquireReader = (() => {
             });
             streamCount += 1;
             const frame = { sample: frameSample, overlays };
-            frameCache.set(
-              { sampleId, frameNumber, uuid: subscription },
-              frame
-            );
+            frameCache.set(new WeakRef(removeFrame), frame);
             addFrame(frameNumber, frame);
           });
 
@@ -527,7 +536,7 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
         ...this.getDefaultOptions(),
         ...options,
       },
-      buffers: [],
+      buffers: [[1, 1]] as Buffers,
     };
   }
 
@@ -579,6 +588,9 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
       this.requestFrames = aquireReader({
         addFrame: (frameNumber, frame) =>
           this.frames.set(frameNumber, new WeakRef(frame)),
+        addFrameBuffers: (range) => addToBuffers(range, this.state.buffers),
+        removeFrame: (frameNumber) =>
+          removeFromBuffers(frameNumber, this.state.buffers),
         getCurrentFrame: () => this.frameNumber,
         sampleId: this.state.config.sampleId,
         frameCount,
@@ -593,7 +605,10 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
     }
 
     if (lookerWithReader === this) {
-      const bufferFrame = Math.min(frameCount, state.frameNumber + CHUNK_SIZE);
+      const bufferFrame = Math.min(
+        frameCount,
+        state.frameNumber + CHUNK_SIZE / 2
+      );
       if (this.hasFrame(bufferFrame)) {
         this.state.buffering = false;
       } else {
@@ -613,13 +628,16 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
           resolve({
             ...this.sample,
             frames: {
-              [this.frameNumber]: this.frames.get(this.frameNumber),
+              [this.frameNumber]: this.frames.get(this.frameNumber).deref()
+                .sample,
             },
           });
           return;
         }
         setTimeout(resolver, 200);
       };
+
+      resolver();
     });
   }
 
