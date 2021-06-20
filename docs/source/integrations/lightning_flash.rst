@@ -220,7 +220,7 @@ method, which is implemented for each of the Flash tasks shown below.
             from flash import Trainer
             from flash.core.data.utils import download_data
             from flash.image import SemanticSegmentation, SemanticSegmentationData
-            from flash.image.segmentation.serialization import FiftyOneSegmentationLabels
+            from flash.image.segmentation.serialization import FiftyOneSegmentationLabels, SegmentationLabels
 
             import fiftyone as fo
             import fiftyone.zoo as foz
@@ -243,19 +243,12 @@ method, which is implemented for each of the Flash tasks shown below.
                 shuffle=True,
             )
 
-            # Here we use views into one dataset, but you can also create a
-            # different dataset for each split
-            train_dataset = dataset[:20]
-            test_dataset = dataset[20:25]
-            val_dataset = dataset[25:30]
-            predict_dataset = dataset[30:40]
-
             # 2 Create the Datamodule
             datamodule = SemanticSegmentationData.from_fiftyone(
-                train_dataset=train_dataset,
-                test_dataset=test_dataset,
-                val_dataset=val_dataset,
-                predict_dataset=predict_dataset,
+                train_dataset=dataset,
+                test_dataset=dataset,
+                val_dataset=dataset,
+                predict_dataset=dataset,
                 label_field="ground_truth",
                 batch_size=4,
                 num_workers=4,
@@ -267,7 +260,7 @@ method, which is implemented for each of the Flash tasks shown below.
             model = SemanticSegmentation(
                 backbone="resnet50",
                 num_classes=datamodule.num_classes,
-                serializer=FiftyOneSegmentationLabels(),
+                serializer=SegmentationLabels(),
             )
 
             # 4 Create the trainer
@@ -291,10 +284,10 @@ method, which is implemented for each of the Flash tasks shown below.
             predictions = list(chain.from_iterable(predictions)) # flatten batches
 
             # Add predictions to FiftyOne dataset
-            predict_dataset.set_values("flash_predictions", predictions)
+            dataset.set_values("flash_predictions", predictions)
 
             # 8 Analyze predictions in the App
-            session = fo.launch_app(view=predict_dataset)
+            session = fo.launch_app(view=dataset)
 
     .. tab:: Video classification
 
