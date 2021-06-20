@@ -259,11 +259,13 @@ method, which is implemented for each of the Flash tasks shown below.
                 label_field="ground_truth",
                 batch_size=4,
                 num_workers=4,
+                image_size=(200,200),
+                num_classes=21,
             )
 
             # 3 Build the model
             model = SemanticSegmentation(
-                backbone="fcn_resnet50",
+                backbone="resnet50",
                 num_classes=datamodule.num_classes,
                 serializer=FiftyOneSegmentationLabels(),
             )
