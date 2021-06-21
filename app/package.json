@@ -5,6 +5,7 @@
     "license": "Apache-2.0",
     "private": true,
     "scripts": {
+        "dev": "yarn workspace @fiftyone/app dev",
         "start": "yarn workspace @fiftyone/app start",
         "build": "yarn workspace @fiftyone/app build",
         "postinstall": "patch-package"
@@ -14,5 +15,8 @@
     },
     "workspaces": [
         "packages/*"
-    ]
+    ],
+    "resolutions": {
+        "@fiftyone/app": "portal:/home/ben/code/fiftyone/app/packages/app"
+    }
 }

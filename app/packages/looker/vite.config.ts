@@ -11,7 +11,7 @@ export default defineConfig({
       entry: resolve(__dirname, "src/index.ts"),
       name: "@fiftyone/looker",
       formats: ["es"],
-      fileName: "lookers",
+      fileName: "looker",
     },
     rollupOptions: {
       external: [],
@@ -20,7 +20,6 @@ export default defineConfig({
   plugins: [
     dts({
       outputDir: "types",
-      exclude: ["src/ignore"],
       staticImport: true,
       insertTypesEntry: true,
     }),

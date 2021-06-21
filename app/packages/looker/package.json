@@ -1,7 +1,7 @@
 {
   "name": "@fiftyone/looker",
   "version": "0.1.0",
-  "main": "lib/main.js",
+  "module": "dist/main.js",
   "description": "Media viewer that can render label overlays.",
   "prettier": "@fiftyone/prettier-config",
   "private": true,

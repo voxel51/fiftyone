@@ -5,7 +5,7 @@
   "prettier": "@fiftyone/prettier-config",
   "private": true,
   "scripts": {
-    "dev": "vite dev",
+    "dev": "vite",
     "build": "tsc && vite build",
     "start": "vite preview"
   },
