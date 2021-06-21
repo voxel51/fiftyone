@@ -3,6 +3,26 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+.. _release-notes-v0.10.0:
+
+FiftyOne 0.10.0
+---------------
+*Released June 21, 2021*
+
+Core
+^^^^
+- Updated the
+  :meth:`apply_model() <fiftyone.core.collections.SampleCollection.apply_model>` and
+  :meth:`compute_embeddings() <fiftyone.core.collections.SampleCollection.compute_embeddings>`
+  methods to natively support applying
+  `Lightning Flash <https://github.com/PyTorchLightning/lightning-flash>`_
+  models to FiftyOne datasets!
+
+Docs
+^^^^
+- Added a :ref:`new page <lightning-flash>` demonstrating how to use the
+  Lightning Flash integration
+
 .. _release-notes-v0.9.4:
 
 FiftyOne 0.9.4
