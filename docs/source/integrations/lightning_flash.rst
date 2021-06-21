@@ -287,7 +287,7 @@ method, which is implemented for each of the Flash tasks shown below.
             dataset.set_values("flash_predictions", predictions)
 
             # 8 Analyze predictions in the App
-            session = fo.launch_app(view=dataset)
+            session = fo.launch_app(dataset)
 
     .. tab:: Video classification
 
