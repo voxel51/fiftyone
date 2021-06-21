@@ -550,7 +550,6 @@ Flash model's embeddings and execute powerful workflows like
     :linenos:
 
     import numpy as np
-    import torch
 
     from flash.core.data.utils import download_data
     from flash.image import ImageEmbedder
@@ -568,7 +567,7 @@ Flash model's embeddings and execute powerful workflows like
     )
 
     # 3 Load model
-    embedder = ImageEmbedder(backbone="swav-imagenet", embedding_dim=128)
+    embedder = ImageEmbedder(backbone="resnet101", embedding_dim=128)
 
     # 4 Generate embeddings
     filepaths = dataset.values("filepath")

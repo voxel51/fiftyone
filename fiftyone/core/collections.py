@@ -1260,7 +1260,7 @@ class SampleCollection(object):
                 sample. Only applicable to :class:`fiftyone.core.models.Model`
                 instances
             **trainer_kwargs: optional keyword arguments used to initialize the
-                :class:`flash:flash.core.trainer.Trainer` when using Flash
+                :mod:`Trainer <flash:flash.core.trainer>` when using Flash
                 models. These can be used to, for example, configure the number
                 of GPUs to use and other distributed inference parameters
         """
@@ -1297,7 +1297,7 @@ class SampleCollection(object):
             embeddings for a video collection
         -   Using a video :class:`fiftyone.core.models.Model` to compute
             embeddings for a video collection
-        -   Using an :class:`flash:flash.image.ImageEmbeder` to compute
+        -   Using an :class:`flash:flash.image.ImageEmbedder` to compute
             embeddings for an image collection
 
         When using a :class:`FiftyOne model <fiftyone.core.models.Model>`, the
@@ -1323,7 +1323,7 @@ class SampleCollection(object):
                 sample. Only applicable to :class:`fiftyone.core.models.Model`
                 instances
             **trainer_kwargs: optional keyword arguments used to initialize the
-                :class:`flash:flash.core.trainer.Trainer` when using Flash
+                :mod:`Trainer <flash:flash.core.trainer>` when using Flash
                 models. These can be used to, for example, configure the number
                 of GPUs to use and other distributed inference parameters
 
