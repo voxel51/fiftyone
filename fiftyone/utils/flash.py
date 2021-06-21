@@ -14,7 +14,7 @@ import numpy as np
 import fiftyone.core.metadata as fom
 import fiftyone.core.utils as fou
 
-fou.ensure_lightning_flash()
+fou.ensure_import("flash>=0.4")
 import flash
 import flash.core.classification as fc
 import flash.image as fi

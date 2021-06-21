@@ -22,6 +22,7 @@ import fiftyone.core.context as foc
 import fiftyone.core.expressions as foe
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
+import fiftyone.core.utils as fou
 
 from .base import Plot, InteractivePlot, ResponsivePlot
 
@@ -1059,8 +1060,7 @@ def _check_plotly_jupyter_environment():
     # JupyterLab is different and I don't know how to distinguish Jupyter
     # notebooks from JupyterLab right now...
     #
-    error_level = fo.config.requirement_error_level
-    etau.ensure_package("ipywidgets>=7.5", error_level=error_level)
+    fou.ensure_package("ipywidgets>=7.5")
 
 
 class PlotlyNotebookPlot(PlotlyWidgetMixin, Plot):
