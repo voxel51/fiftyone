@@ -74,9 +74,24 @@ learn how!
     :image_title: PyTorch
 
 .. customimagelink::
+    :image_link: integrations/lightning_flash.html
+    :image_src: https://voxel51.com/images/integrations/pytorch-lightning-128.png
+    :image_title: PyTorch Lightning
+
+.. customimagelink::
     :image_link: recipes/adding_detections.html
     :image_src: https://voxel51.com/images/integrations/tensorflow-128.png
     :image_title: TensorFlow
+
+.. customimagelink::
+    :image_link: api/fiftyone.utils.coco.html
+    :image_src: https://voxel51.com/images/integrations/coco-128.png
+    :image_title: COCO
+
+.. customimagelink::
+    :image_link: tutorials/open_images.html
+    :image_src: https://voxel51.com/images/integrations/open-images-128.png
+    :image_title: Open Images
 
 .. customimagelink::
     :image_link: environments/index.html#notebooks
@@ -94,14 +109,19 @@ learn how!
     :image_title: Plotly
 
 .. customimagelink::
-    :image_link: api/fiftyone.utils.scale.html
-    :image_src: https://voxel51.com/images/integrations/scale-128.png
-    :image_title: Scale AI
+    :image_link: api/fiftyone.utils.cvat.html
+    :image_src: https://voxel51.com/images/integrations/cvat-128.png
+    :image_title: CVAT
 
 .. customimagelink::
     :image_link: api/fiftyone.utils.labelbox.html
     :image_src: https://voxel51.com/images/integrations/labelbox-128.png
     :image_title: Labelbox
+
+.. customimagelink::
+    :image_link: api/fiftyone.utils.scale.html
+    :image_src: https://voxel51.com/images/integrations/scale-128.png
+    :image_title: Scale AI
 
 .. customimagelink::
     :image_link: environments/index.html#google-cloud
