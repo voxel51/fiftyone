@@ -13,6 +13,8 @@ import multiprocessing
 import os
 import random
 
+import boto3
+import botocore
 import pandas as pd
 
 import eta.core.image as etai
@@ -24,9 +26,6 @@ import fiftyone as fo
 import fiftyone.core.labels as fol
 import fiftyone.core.utils as fou
 import fiftyone.utils.data as foud
-
-boto3 = fou.lazy_import("boto3", callback=fou.ensure_boto3)
-botocore = fou.lazy_import("botocore", callback=fou.ensure_boto3)
 
 
 logger = logging.getLogger(__name__)
