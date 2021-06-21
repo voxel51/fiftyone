@@ -28,6 +28,8 @@ import socket, { http } from "../shared/connection";
 import { useTheme } from "../utils/hooks";
 import { packageMessage } from "../utils/socket";
 
+import Logo from "../images/logo.png";
+
 const DatasetContainerInput = styled.div`
   font-size: 1.2rem;
   display: flex;
@@ -672,7 +674,7 @@ const Header = ({ addNotification }) => {
     <HeaderDiv>
       <LeftDiv>
         <TitleDiv onClick={() => socket.send(packageMessage("refresh", {}))}>
-          <LogoImg style={logoProps} src={"./logo.png"} />
+          <LogoImg style={logoProps} src={Logo} />
           <FiftyOneDiv className="fix-me">FiftyOne</FiftyOneDiv>
         </TitleDiv>
         <DatasetSelector />

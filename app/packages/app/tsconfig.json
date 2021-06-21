@@ -5,7 +5,8 @@
     "noImplicitAny": false,
     "sourceMap": true,
     "outDir": "dist",
-    "jsx": "preserve"
+    "jsx": "preserve",
+    "types": ["vite/client"]
   },
   "include": ["index.ts"],
   "references": [{ "path": "../looker" }]

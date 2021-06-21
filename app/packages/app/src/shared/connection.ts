@@ -98,10 +98,7 @@ export const handleId = new URLSearchParams(window.location.search).get(
 
 export const sessionId = uuid();
 
-const host =
-  import.meta.env.NODE_ENV === "development"
-    ? "localhost:5151"
-    : window.location.host;
+const host = import.meta.env.DEV ? "localhost:5151" : window.location.host;
 
 export const port = isElectron()
   ? parseInt(process.env.FIFTYONE_SERVER_PORT) || 5151

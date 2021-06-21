@@ -8,7 +8,7 @@ import { FrameChunk } from "./state";
 
 const getUrl = (origin: string): string => {
   // @ts-ignore
-  if (import.meta.env.NODE_ENV === "development") {
+  if (import.meta.env.DEV) {
     origin = "http://localhost:5151";
   }
   return `${origin}/frames?`;

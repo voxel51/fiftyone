@@ -1,0 +1,64 @@
+/**
+ * Copyright 2017-2021, Voxel51, Inc.
+ */
+
+@import url("https://fonts.googleapis.com/css2?family=Palanquin&display=swap");
+
+@keyframes shimmer {
+  0% {
+    background-position: -2000px 0;
+  }
+  100% {
+    background-position: 2000px 0;
+  }
+}
+
+.looker {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  font-family: "Palanquin", sans-serif;
+  font-weight: bold;
+  background-color: hsl(210, 11%, 15%);
+}
+
+.looker.fullscreen {
+  top: 0;
+  left: 0;
+  z-index: 20000;
+  position: fixed;
+}
+
+.looker.loading {
+  animation: shimmer 4s infinite;
+  background: linear-gradient(
+    110deg,
+    rgba(0, 0, 0, 0) 8%,
+    hsl(210, 11%, 11%) 18%,
+    rgba(0, 0, 0, 0) 33%
+  );
+  background-size: 400% 100%;
+}
+
+.mediaOrCanvas {
+  position: absolute;
+  margin: auto;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  transform-origin: 0px 0px;
+  object-fit: contain;
+  image-rendering: crisp-edges; /* STOP SMOOTHING, GIVE ME SPEED  */
+  image-rendering: -moz-crisp-edges; /* Firefox                        */
+  image-rendering: -o-crisp-edges; /* Opera                          */
+  image-rendering: -webkit-optimize-contrast; /* Chrome (and eventually Safari) */
+  image-rendering: pixelated; /* Chrome */
+  image-rendering: optimize-contrast; /* CSS3 Proposed                  */
+  -ms-interpolation-mode: nearest-neighbor; /* IE8+                           */
+}
+
+.mediaOrCanvasLoading {
+  opacity: 0;
+}

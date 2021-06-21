@@ -1,6 +1,7 @@
 {
   "extends": "@fiftyone/typescript-config",
   "compilerOptions": {
+    "allowSyntheticDefaultImports": true,
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true,
@@ -14,7 +15,8 @@
     "module": "esnext",
     "target": "esnext",
     "jsx": "preserve",
-    "composite": true
+    "composite": true,
+    "plugins": [{ "name": "typescript-plugin-css-modules" }]
   },
   "include": ["src"]
 }

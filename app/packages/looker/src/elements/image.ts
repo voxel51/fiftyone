@@ -6,6 +6,8 @@ import { ImageState } from "../state";
 import { BaseElement, Events } from "./base";
 import { transformWindowElement } from "./util";
 
+import { mediaOrCanvas } from "./index.modules.css";
+
 export class ImageElement extends BaseElement<ImageState, HTMLImageElement> {
   private src: string;
 
@@ -22,7 +24,7 @@ export class ImageElement extends BaseElement<ImageState, HTMLImageElement> {
 
   createHTMLElement() {
     const element = document.createElement("img");
-    element.className = "looker-image";
+    element.className = mediaOrCanvas;
     element.loading = "lazy";
     return element;
   }

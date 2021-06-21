@@ -1,27 +1,27 @@
-import { resolve } from "path";
-import { defineConfig } from "vite";
-import dts from "vite-plugin-dts";
+import { UserConfig } from "vite";
+import ts from "rollup-plugin-typescript2";
 
-export default defineConfig({
-  resolve: {
-    alias: [{ find: /^@\/(.+)/, replacement: resolve(__dirname, "$1") }],
-  },
+export default <UserConfig>{
+  plugins: [
+    {
+      apply: "build",
+      ...ts({
+        tsconfig: "./tsconfig.build.json",
+        useTsconfigDeclarationDir: true,
+      }),
+    },
+  ],
+  esbuild: false,
   build: {
     lib: {
-      entry: resolve(__dirname, "src/index.ts"),
-      name: "@fiftyone/looker",
+      entry: "src/index.ts",
       formats: ["es"],
-      fileName: "looker",
     },
-    rollupOptions: {
-      external: [],
+    minify: false,
+  },
+  css: {
+    modules: {
+      localsConvention: "camelCaseOnly",
     },
   },
-  plugins: [
-    dts({
-      outputDir: "types",
-      staticImport: true,
-      insertTypesEntry: true,
-    }),
-  ],
-});
+};

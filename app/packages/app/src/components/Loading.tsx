@@ -2,6 +2,8 @@ import React, { useState } from "react";
 import { animated, useSpring } from "react-spring";
 import styled from "styled-components";
 
+import Logo from "../images/logo.png";
+
 const LogoImg = animated(styled.img`
   width: 4rem;
   height: 4rem;
@@ -62,7 +64,7 @@ const Loading = React.memo(
           }}
           {...rest}
         >
-          <LogoImg style={props} src={"./logo.png"} />
+          <LogoImg style={props} src={Logo} />
           {text && <Text>{text}</Text>}
         </div>
       </Container>

@@ -1,6 +1,8 @@
 import React from "react";
 import styled from "styled-components";
 
+import Logo from "../images/logo.png";
+
 const ErrorContainer = styled.div`
   display: flex;
   align-items: center;
@@ -51,7 +53,7 @@ const Error = ({ resetErrorBoundary }) => {
   return (
     <ErrorContainer>
       <ErrorDiv>
-        <LogoImg src={"./logo.png"} />
+        <LogoImg src={Logo} />
         <ErrorMessage>
           <p>Oops! Something went wrong.</p>
           <p>If you just changed your view, try reverting your changes:</p>

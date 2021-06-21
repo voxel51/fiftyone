@@ -11,6 +11,8 @@ import {
   transformWindowElement,
 } from "./util";
 
+import { mediaOrCanvas } from "./index.module.css";
+
 export class FrameNumberElement extends BaseElement<FrameState> {
   createHTMLElement() {
     const element = document.createElement("div");
