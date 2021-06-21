@@ -634,8 +634,8 @@ def compute_embeddings(
         collection
     -   Using a video :class:`Model` to compute embeddings for a video
         collection
-    -   Using an :class:`flash:flash.image.ImageEmbedder` to compute embeddings
-        for an image collection
+    -   Using an :ref:`ImageEmbedder <flash:image_embedder>` to compute
+        embeddings for an image collection
 
     When using a :class:`FiftyOne model <Model>`, the model must expose
     embeddings, i.e., :meth:`Model.has_embeddings` must return ``True``.

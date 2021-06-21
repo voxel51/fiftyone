@@ -102,14 +102,14 @@ def compute_flash_embeddings(
     :class:`Lightning Flash model <flash:flash.core.model.Task>`.
 
     This method only supports applying an
-    :class:`flash:flash.image.ImageEmbedder` to an image collection.
+    :ref:`ImageEmbedder <flash:image_embedder>` to an image collection.
 
     If an ``embeddings_field`` is provided, the embeddings are saved to the
     samples; otherwise, the embeddings are returned in-memory.
 
     Args:
         samples: a :class:`fiftyone.core.collections.SampleCollection`
-        model: a :class:`flash:flash.image.ImageEmbedder`
+        model: a :class:`flash:flash.core.model.Task`
         embeddings_field (None): the name of a field in which to store the
             embeddings
         batch_size (None): an optional batch size to use. If not provided, a

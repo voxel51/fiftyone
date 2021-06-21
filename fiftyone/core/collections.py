@@ -1297,7 +1297,7 @@ class SampleCollection(object):
             embeddings for a video collection
         -   Using a video :class:`fiftyone.core.models.Model` to compute
             embeddings for a video collection
-        -   Using an :class:`flash:flash.image.ImageEmbedder` to compute
+        -   Using an :ref:`ImageEmbedder <flash:image_embedder>` to compute
             embeddings for an image collection
 
         When using a :class:`FiftyOne model <fiftyone.core.models.Model>`, the

@@ -492,11 +492,10 @@ Flash models with FiftyOne serializers will directly return predictions as
 Specifying class names
 ----------------------
 
-For most tasks in Flash, a
-:class:`Serializer <flash:flash.core.data.process.Serializer>` will also
-accept a list of string labels specifying the names of classes to be
-applied to predicitions. While this information is often contained in the
-metadata of the model, it can also be provided explicitly.
+Generally, Flash model checkpoints will contain the class label strings for the
+model. However, if necessary, you can also explicitly pass the labels to most
+:class:`Serializer <flash:flash.core.data.process.Serializer>` instances,
+FiftyOne-style serializers included:
 
 .. code-block:: python
     :linenos:
@@ -515,8 +514,8 @@ metadata of the model, it can also be provided explicitly.
         "https://flash-weights.s3.amazonaws.com/object_detection_model.pt"
     )
 
-    # Provide a list of labels to the serializer
-    labels = ["label_"+str(i) for i in range(100)] # generate random class names
+    # Configure serializer with class labels
+    labels = ["label_" + str(i) for i in range(100)] # example class labels
     model.serializer = FiftyOneDetectionLabels(labels=labels)  # output FiftyOne format
 
     # Predict with model
@@ -580,6 +579,12 @@ Flash model's embeddings and execute powerful workflows like
     results = fob.compute_visualization(dataset, embeddings=embeddings)
     plot = results.visualize(labels="ground_truth.label")
     plot.show()
+
+.. note::
+
+    You can also directly pass your Flash embedding model to
+    :meth:`compute_embeddings() <fiftyone.core.collections.SampleCollection.compute_embeddings>`
+    and let FiftyOne handle performing the inference!
 
 .. image:: ../images/integrations/flash_embeddings.png
    :alt: embeddings_example
