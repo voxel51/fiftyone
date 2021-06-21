@@ -74,6 +74,11 @@ learn how!
     :image_title: PyTorch
 
 .. customimagelink::
+    :image_link: integrations/lightning_flash.html
+    :image_src: https://voxel51.com/images/integrations/pytorch-lightning-128.png
+    :image_title: PyTorch Lightning
+
+.. customimagelink::
     :image_link: recipes/adding_detections.html
     :image_src: https://voxel51.com/images/integrations/tensorflow-128.png
     :image_title: TensorFlow
