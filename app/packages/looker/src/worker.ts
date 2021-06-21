@@ -4,9 +4,10 @@
 
 import { CHUNK_SIZE } from "./constants";
 import { processMasks } from "./overlays";
-import { FrameChunk, FrameSample } from "./state";
+import { FrameChunk } from "./state";
 
 const getUrl = (origin: string): string => {
+  // @ts-ignore
   if (import.meta.env.NODE_ENV === "development") {
     origin = "http://localhost:5151";
   }

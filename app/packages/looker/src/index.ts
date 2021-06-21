@@ -47,9 +47,9 @@ import {
   removeFromBuffers,
   snapBox,
 } from "./util";
+
 import { zoomToContent } from "./zoom";
 
-import "./style.css";
 import { getFrameNumber } from "./elements/util";
 
 export { zoomAspectRatio } from "./zoom";
@@ -382,7 +382,7 @@ interface Frame {
   overlays: Overlay<VideoState>[];
 }
 
-type RemoveFrame = (frameNumber: numberZ) => void;
+type RemoveFrame = (frameNumber: number) => void;
 
 interface AcquireReaderOptions {
   addFrame: (frameNumber: number, frame: Frame) => void;

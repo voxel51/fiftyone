@@ -14,6 +14,9 @@ import {
   Optional,
 } from "./state";
 
+// @ts-ignore
+import LookerWorker from "./worker?worker";
+
 /**
  * Shallow data-object comparison for equality
  */
@@ -376,11 +379,8 @@ export const mergeUpdates = <State extends BaseState>(
   return mergeWith(merger, state, updates);
 };
 
-export const createWorker = (): Worker => {
-  return new Worker(new URL("./worker.js", import.meta.url), {
-    name: "worker",
-    type: "module",
-  });
+export const createWorker = (): LookerWorker => {
+  return new LookerWorker();
 };
 
 // In place

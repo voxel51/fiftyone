@@ -212,7 +212,6 @@ export class SeekBarElement extends BaseElement<VideoState, HTMLInputElement> {
       "--buffer-progress",
       `${(buffers[buffers.length - 1][1] - 1) / frameCount}%`
     );
-    console.log(buffers, (buffers[buffers.length - 1][1] - 1) / frameCount);
     if (duration !== null) {
       const value = ((frameNumber - 1) / frameCount) * 100;
       this.element.style.display = "block";

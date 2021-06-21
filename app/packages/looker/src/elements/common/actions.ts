@@ -2,7 +2,6 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 
-import { FlushValues } from "pako";
 import { SCALE_FACTOR } from "../../constants";
 import { BaseState, StateUpdate, VideoState } from "../../state";
 import { clampScale } from "../../util";

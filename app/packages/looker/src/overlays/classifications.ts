@@ -89,6 +89,7 @@ export default class ClassificationsOverlay<State extends BaseState>
         }
       }
     }
+    return null;
   }
 
   draw(ctx: CanvasRenderingContext2D, state: Readonly<State>) {
@@ -169,6 +170,7 @@ export default class ClassificationsOverlay<State extends BaseState>
           }
           return 0;
         }
+        return -1;
       });
     }
     return result;

@@ -141,8 +141,11 @@ export const getTimeString = (
 export function withEvents<
   State extends BaseState,
   Element extends BaseElement<State>
->(Base: ElementConstructor<State, Element>, getEvents: () => Events<State>) {
-  //@ts-ignore
+>(
+  Base: ElementConstructor<State, Element>,
+  getEvents: () => Events<State>
+): ElementConstructor<State, Element> {
+  // @ts-ignore
   class WithElement<State> extends Base {
     getEvents() {
       const newEvents = super.getEvents();
@@ -164,6 +167,7 @@ export function withEvents<
     }
   }
 
+  // @ts-ignore
   return WithElement;
 }
 
