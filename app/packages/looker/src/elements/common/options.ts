@@ -5,7 +5,12 @@
 import { BaseState, VideoState } from "../../state";
 import { BaseElement, Events } from "../base";
 
-import { lookerOptionsPanel } from "./options.module.css";
+import {
+  lookerOptionsPanel,
+  lookerOptionsInput,
+  lookerCheckbox,
+  lookerLabel,
+} from "./options.module.css";
 
 export class OptionsPanelElement<State extends BaseState> extends BaseElement<
   State
@@ -49,10 +54,10 @@ export class OptionsPanelElement<State extends BaseState> extends BaseElement<
     }
     if (showOptions) {
       this.element.style.opacity = "0.9";
-      this.element.classList.remove("looker-display-none");
+      this.element.style.display = "none";
     } else {
       this.element.style.opacity = "0.0";
-      this.element.classList.add("looker-display-none");
+      this.element.style.display = "grid";
     }
     this.showOptions = showOptions;
     return this.element;
@@ -60,8 +65,8 @@ export class OptionsPanelElement<State extends BaseState> extends BaseElement<
 }
 
 export class UseFrameNumberOptionElement extends BaseElement<VideoState> {
-  checkbox: HTMLInputElement | null = null;
-  label: HTMLLabelElement | null = null;
+  checkbox?: HTMLInputElement;
+  label?: HTMLLabelElement;
 
   getEvents(): Events<VideoState> {
     return {
@@ -92,8 +97,8 @@ export class UseFrameNumberOptionElement extends BaseElement<VideoState> {
 export class OnlyShowHoveredOnLabelOptionElement<
   State extends BaseState
 > extends BaseElement<State> {
-  checkbox: HTMLInputElement | null = null;
-  label: HTMLLabelElement | null = null;
+  checkbox?: HTMLInputElement;
+  label?: HTMLLabelElement;
 
   getEvents(): Events<State> {
     return {
@@ -125,8 +130,8 @@ export class OnlyShowHoveredOnLabelOptionElement<
 export class ShowLabelOptionElement<
   State extends BaseState
 > extends BaseElement<State> {
-  checkbox: HTMLInputElement | null = null;
-  label: HTMLLabelElement | null = null;
+  checkbox?: HTMLInputElement;
+  label?: HTMLLabelElement;
 
   getEvents(): Events<State> {
     return {
@@ -158,8 +163,8 @@ export class ShowLabelOptionElement<
 export class ShowConfidenceOptionElement<
   State extends BaseState
 > extends BaseElement<State> {
-  checkbox: HTMLInputElement | null = null;
-  label: HTMLLabelElement | null = null;
+  checkbox?: HTMLInputElement;
+  label?: HTMLLabelElement;
 
   getEvents(): Events<State> {
     return {
@@ -191,8 +196,8 @@ export class ShowConfidenceOptionElement<
 export class ShowTooltipOptionElement<
   State extends BaseState
 > extends BaseElement<State> {
-  checkbox: HTMLInputElement;
-  label: HTMLLabelElement;
+  checkbox?: HTMLInputElement;
+  label?: HTMLLabelElement;
 
   getEvents(): Events<State> {
     return {
@@ -215,14 +220,15 @@ export class ShowTooltipOptionElement<
   }
 
   renderSelf({ options: { showTooltip } }: Readonly<State>) {
+    // @ts-ignore
     this.checkbox.checked = showTooltip;
     return this.element;
   }
 }
 
-const makeWrapper = function (children) {
+const makeWrapper = function (children: HTMLElement[]) {
   const wrapper = document.createElement("div");
-  wrapper.className = "looker-opt-input";
+  wrapper.classList.add(lookerOptionsInput);
   for (const child of children) {
     wrapper.appendChild(child);
   }
@@ -241,7 +247,7 @@ const makeCheckboxRow = function (
   checkbox.setAttribute("type", "checkbox");
   checkbox.checked = checked;
   const span = document.createElement("span");
-  span.className = "looker-checkbox";
+  span.classList.add(lookerCheckbox);
   label.appendChild(checkbox);
   label.appendChild(span);
 
