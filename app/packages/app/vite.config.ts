@@ -8,7 +8,4 @@ export default {
       parserPlugins: ["classProperties", "classPrivateProperties"],
     }),
   ],
-  define: {
-    "process.env": process.env,
-  },
 } as UserConfig;

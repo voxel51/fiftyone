@@ -1,5 +1,10 @@
 {
     "extends": "@fiftyone/typescript-config",
-    "compilerOptions": {},
+    "compilerOptions": {
+        "module": "commonjs",
+        "noImplicitAny": false,
+        "sourceMap": true,
+        "outDir": "dist"
+    },
     "include": ["src"]
 }

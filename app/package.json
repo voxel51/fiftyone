@@ -11,7 +11,9 @@
         "postinstall": "patch-package"
     },
     "devDependencies": {
-        "patch-package": "^6.4.7"
+        "patch-package": "^6.4.7",
+        "tsc-silent": "^1.2.1",
+        "typescript": "4.2.4"
     },
     "workspaces": [
         "packages/*"

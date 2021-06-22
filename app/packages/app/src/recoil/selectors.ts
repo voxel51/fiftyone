@@ -1,4 +1,4 @@
-import mime from "mime-types";
+import mime from "mime";
 import { selector, selectorFamily, SerializableParam } from "recoil";
 
 import * as atoms from "./atoms";
@@ -9,8 +9,6 @@ import {
   VALID_SCALAR_TYPES,
   makeLabelNameGroups,
   VALID_LIST_TYPES,
-  HIDDEN_LABEL_ATTRS,
-  LABEL_LIST,
 } from "../utils/labels";
 import { packageMessage } from "../utils/socket";
 import { viewsAreEqual } from "../utils/view";
@@ -993,7 +991,7 @@ export const sampleMimeType = selectorFamily<string, string>({
     const sample = get(atoms.sample(id));
     return (
       (sample.metadata && sample.metadata.mime_type) ||
-      mime.lookup(sample.filepath) ||
+      mime.getType(sample.filepath) ||
       "image/jpg"
     );
   },
