@@ -76,6 +76,7 @@ export abstract class Looker<
     config: State["config"],
     options: Optional<State["options"]>
   ) {
+    this.sample = sample;
     this.updateSample(sample);
     this.eventTarget = new EventTarget();
     this.updater = this.makeUpdate();

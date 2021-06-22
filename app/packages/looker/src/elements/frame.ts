@@ -25,7 +25,7 @@ export class FrameNumberElement extends BaseElement<FrameState> {
     duration,
     config: { frameRate, frameNumber },
     options: { useFrameNumber },
-  }) {
+  }: Readonly<FrameState>) {
     if (duration) {
       const timestamp = useFrameNumber
         ? getFrameString(frameNumber, duration, frameRate)
@@ -37,8 +37,8 @@ export class FrameNumberElement extends BaseElement<FrameState> {
 }
 
 export class FrameElement extends BaseElement<FrameState, HTMLVideoElement> {
-  private src: string;
-  private frameNumber: number;
+  private src: string = "";
+  private frameNumber: number = 1;
 
   getEvents(): Events<FrameState> {
     return {
@@ -65,7 +65,7 @@ export class FrameElement extends BaseElement<FrameState, HTMLVideoElement> {
     return element;
   }
 
-  renderSelf(state) {
+  renderSelf(state: Readonly<FrameState>) {
     const {
       config: { src, frameNumber, frameRate },
     } = state;

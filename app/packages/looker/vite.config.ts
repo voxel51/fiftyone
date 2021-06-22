@@ -1,27 +1,18 @@
 import { UserConfig } from "vite";
-import ts from "rollup-plugin-typescript2";
 
 export default <UserConfig>{
-  plugins: [
-    {
-      apply: "build",
-      ...ts({
-        tsconfig: "./tsconfig.build.json",
-        useTsconfigDeclarationDir: true,
-      }),
-    },
-  ],
-  esbuild: false,
+  esbuild: true,
   build: {
     lib: {
       entry: "src/index.ts",
       formats: ["es"],
     },
+    target: "es2015",
     minify: false,
   },
-  css: {
-    modules: {
-      localsConvention: "camelCaseOnly",
+  resolve: {
+    alias: {
+      "@fiftyone/looker": "@fiftyone/looker/src/index.ts",
     },
   },
 };

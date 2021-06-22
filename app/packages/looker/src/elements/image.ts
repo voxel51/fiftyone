@@ -6,10 +6,10 @@ import { ImageState } from "../state";
 import { BaseElement, Events } from "./base";
 import { transformWindowElement } from "./util";
 
-import { mediaOrCanvas } from "./media.modules.css";
+import { mediaOrCanvas } from "./media.module.css";
 
 export class ImageElement extends BaseElement<ImageState, HTMLImageElement> {
-  private src: string;
+  private src: string = "";
 
   getEvents(): Events<ImageState> {
     return {
@@ -29,7 +29,7 @@ export class ImageElement extends BaseElement<ImageState, HTMLImageElement> {
     return element;
   }
 
-  renderSelf(state) {
+  renderSelf(state: Readonly<ImageState>) {
     const {
       config: { src },
     } = state;

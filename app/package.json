@@ -11,12 +11,7 @@
         "postinstall": "patch-package"
     },
     "devDependencies": {
-        "patch-package": "^6.4.7",
-        "rollup": "^2.52.2",
-        "rollup-plugin-dts": "^3.0.2",
-        "rollup-plugin-typescript2": "^0.30.0",
-        "tslib": "^2.3.0",
-        "typescript-plugin-css-modules": "^3.4.0"
+        "patch-package": "^6.4.7"
     },
     "workspaces": [
         "packages/*"

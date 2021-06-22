@@ -1,3 +1,5 @@
+import path from "path";
+import { UserConfig } from "vite";
 import reactRefresh from "@vitejs/plugin-react-refresh";
 
 export default {
@@ -9,4 +11,4 @@ export default {
   define: {
     "process.env": process.env,
   },
-};
+} as UserConfig;
