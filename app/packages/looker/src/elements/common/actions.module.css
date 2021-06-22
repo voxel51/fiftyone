@@ -13,3 +13,29 @@
   box-shadow: 0 8px 15px 0 rgba(0, 0, 0, 0.43);
   border-radius: 3px;
 }
+
+.lookerShortcutItem {
+  margin: 0;
+  padding: 0;
+  display: flex;
+  font-size: 1rem;
+  justify-content: left;
+  column-gap: 1rem;
+  padding-bottom: 1rem;
+}
+
+.lookerShortcutValue {
+  font-weight: normal;
+  color: rgb(225, 100, 40);
+  width: 40px !important;
+}
+
+.lookerShortcutTitle {
+  color: rgb(238, 238, 238);
+  font-weight: bold;
+}
+
+.lookerChortcutDetail {
+  font-weight: normal;
+  color: hsl(220, 2%, 68%);
+}

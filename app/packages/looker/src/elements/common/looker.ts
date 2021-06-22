@@ -6,6 +6,8 @@ import { BaseState } from "../../state";
 import { BaseElement, Events } from "../base";
 import { COMMON_SHORTCUTS } from "./actions";
 
+import { looker, lookerFullscreen, lookerLoading } from "./looker.module.css";
+
 export class LookerElement<State extends BaseState> extends BaseElement<
   State,
   HTMLDivElement
@@ -43,7 +45,7 @@ export class LookerElement<State extends BaseState> extends BaseElement<
 
   createHTMLElement() {
     const element = document.createElement("div");
-    element.className = "looker loading";
+    element.className = `${looker} ${lookerLoading}`;
     element.tabIndex = -1;
     return element;
   }
@@ -58,19 +60,19 @@ export class LookerElement<State extends BaseState> extends BaseElement<
     if (
       loaded &&
       overlaysPrepared &&
-      this.element.classList.contains("loading")
+      this.element.classList.contains(lookerLoading)
     ) {
-      this.element.classList.remove("loading");
+      this.element.classList.remove(lookerLoading);
     }
     if (!thumbnail && hovering && this.element !== document.activeElement) {
       this.element.focus();
     }
 
-    const fullscreenClass = this.element.classList.contains("fullscreen");
+    const fullscreenClass = this.element.classList.contains(lookerFullscreen);
     if (fullscreen && !fullscreenClass) {
-      this.element.classList.add("fullscreen");
+      this.element.classList.add(lookerFullscreen);
     } else if (!fullscreen && fullscreenClass) {
-      this.element.classList.remove("fullscreen");
+      this.element.classList.remove(lookerFullscreen);
     }
 
     return this.element;

@@ -34,42 +34,8 @@
   line-height: 1.5;
 }
 
-.looker-controls button {
-  background: rgba(0, 0, 0, 0.5);
-  border: 0;
-  color: #eee;
-  -webkit-border-radius: 3px;
-  -moz-border-radius: 3px;
-  -o-border-radius: 3px;
-  border-radius: 3px;
-  margin: 3px;
-  min-width: max-content;
-  min-height: max-content;
-  width: 10%;
-  height: fit-content;
-  padding: 1%;
-}
-
 .looker-controls button:hover {
   cursor: pointer;
-}
-
-.looker-play-pause {
-  width: 15%;
-  height: 80%;
-}
-
-.looker-playback-rate {
-  --progress: 0%;
-}
-
-.looker-volume {
-  --volume: 0%;
-}
-
-.looker-seek-bar {
-  --progress: 0%;
-  --buffer-progress: 0%;
 }
 
 /* slider stuff */
@@ -146,15 +112,6 @@
   outline: none;
 }
 
-/* Hide the browser's default checkbox */
-.looker-options-panel input {
-  position: absolute;
-
-  cursor: pointer;
-  height: 0;
-  width: 0;
-}
-
 /* Create a custom checkbox */
 .looker-label input[type="radio"],
 .looker-label input[type="checkbox"] {
@@ -204,37 +161,6 @@
   height: 8px;
   border-radius: 50%;
   background: white;
-}
-
-.looker-loader {
-  animation: shimmer 5s infinite;
-  background-size: 200% 100%;
-}
-
-.looker-shortcut-item {
-  margin: 0;
-  padding: 0;
-  display: flex;
-  font-size: 1rem;
-  justify-content: left;
-  column-gap: 1rem;
-  padding-bottom: 1rem;
-}
-
-.looker-shortcut-value {
-  font-weight: normal;
-  color: rgb(225, 100, 40);
-  width: 40px !important;
-}
-
-.looker-shortcut-title {
-  color: rgb(238, 238, 238);
-  font-weight: bold;
-}
-
-.looker-shortcut-detail {
-  font-weight: normal;
-  color: hsl(220, 2%, 68%);
 }
 
 input[type="range"].looker-seek-bar::-webkit-slider-runnable-track {

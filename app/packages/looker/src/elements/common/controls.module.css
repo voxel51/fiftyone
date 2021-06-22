@@ -29,6 +29,22 @@
   box-shadow: 0 8px 15px 0 rgba(0, 0, 0, 0.43);
 }
 
+.lookerControls button {
+  background: rgba(0, 0, 0, 0.5);
+  border: 0;
+  color: #eee;
+  -webkit-border-radius: 3px;
+  -moz-border-radius: 3px;
+  -o-border-radius: 3px;
+  border-radius: 3px;
+  margin: 3px;
+  min-width: max-content;
+  min-height: max-content;
+  width: 10%;
+  height: fit-content;
+  padding: 1%;
+}
+
 .lookerArrow {
   position: absolute;
   width: 3rem;
@@ -77,6 +93,24 @@
     color 6s ease-in-out infinite;
   animation: dash 1.5s ease-in-out infinite, color 6s ease-in-out infinite;
   stroke-linecap: round;
+}
+
+.lookerPlayPause {
+  width: 15%;
+  height: 80%;
+}
+
+.lookerPlaybackRate {
+  --progress: 0%;
+}
+
+.lookerVolume {
+  --volume: 0%;
+}
+
+.lookerSeekBar {
+  --progress: 0%;
+  --buffer-progress: 0%;
 }
 
 @-webkit-keyframes rotate {

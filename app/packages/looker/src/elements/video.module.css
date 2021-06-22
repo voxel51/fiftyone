@@ -1,0 +1,8 @@
+/**
+ * Copyright 2017-2021, Voxel51, Inc.
+ */
+
+.lookerLoader {
+  animation: shimmer 5s infinite;
+  background-size: 200% 100%;
+}

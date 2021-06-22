@@ -15,9 +15,7 @@
   justify-content: center;
   align-items: center;
   font-weight: bold;
-
   color: #eee;
-
   display: grid;
   background-color: hsl(210, 11%, 11%);
   border: 1px solid #191c1f;
@@ -51,4 +49,12 @@
   margin: 0 0 1px;
   padding-left: 3px;
   line-height: 1.5;
+}
+
+/* Hide the browser's default checkbox */
+.lookerOptionsPanel input {
+  position: absolute;
+  cursor: pointer;
+  height: 0;
+  width: 0;
 }

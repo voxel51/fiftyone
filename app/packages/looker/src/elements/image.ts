@@ -6,7 +6,7 @@ import { ImageState } from "../state";
 import { BaseElement, Events } from "./base";
 import { transformWindowElement } from "./util";
 
-import { mediaOrCanvas } from "./index.modules.css";
+import { mediaOrCanvas } from "./media.modules.css";
 
 export class ImageElement extends BaseElement<ImageState, HTMLImageElement> {
   private src: string;

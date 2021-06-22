@@ -15,7 +15,6 @@
     "dev": "vite",
     "build": "yarn build:lib && yarn build:types",
     "build:lib": "vite build",
-    "build:types": "rollup --config ../../config/rollup.types.config.js",
     "serve": "vite preview"
   },
   "exports": {

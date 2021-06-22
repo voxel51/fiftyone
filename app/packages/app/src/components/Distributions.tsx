@@ -118,7 +118,7 @@ const Distribution = ({ distribution }) => {
           content={(point) => {
             const key = point?.payload[0]?.payload?.key;
             const count = point?.payload[0]?.payload?.count;
-            if (typeof count !== "number") return;
+            if (typeof count !== "number") return null;
             let title = `Value: ${key}`;
             if (map[key]) {
               title = `Range: [${map[key]

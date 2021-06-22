@@ -1,0 +1,41 @@
+/**
+ * Copyright 2017-2021, Voxel51, Inc.
+ */
+
+@import url("https://fonts.googleapis.com/css2?family=Palanquin&display=swap");
+
+@keyframes shimmer {
+  0% {
+    background-position: -2000px 0;
+  }
+  100% {
+    background-position: 2000px 0;
+  }
+}
+
+.looker {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  font-family: "Palanquin", sans-serif;
+  font-weight: bold;
+  background-color: hsl(210, 11%, 15%);
+}
+
+.lookerFullscreen {
+  top: 0;
+  left: 0;
+  z-index: 20000;
+  position: fixed;
+}
+
+.lookerLoading {
+  animation: shimmer 4s infinite;
+  background: linear-gradient(
+    110deg,
+    rgba(0, 0, 0, 0) 8%,
+    hsl(210, 11%, 11%) 18%,
+    rgba(0, 0, 0, 0) 33%
+  );
+  background-size: 400% 100%;
+}

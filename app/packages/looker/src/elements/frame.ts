@@ -11,7 +11,7 @@ import {
   transformWindowElement,
 } from "./util";
 
-import { mediaOrCanvas } from "./index.module.css";
+import { mediaOrCanvas } from "./media.module.css";
 
 export class FrameNumberElement extends BaseElement<FrameState> {
   createHTMLElement() {
@@ -59,6 +59,7 @@ export class FrameElement extends BaseElement<FrameState, HTMLVideoElement> {
 
   createHTMLElement() {
     const element = document.createElement("video");
+    element.classList.add(mediaOrCanvas);
     element.preload = "metadata";
     element.muted = true;
     return element;
