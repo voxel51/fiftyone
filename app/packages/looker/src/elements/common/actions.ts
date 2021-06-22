@@ -198,21 +198,13 @@ export const previousFrame: Control<VideoState> = {
   shortcut: ",",
   detail: "Seek to the previous frame",
   action: (update) => {
-    update(
-      ({
-        frameNumber,
-        duration,
-        playing,
-        config: { frameRate },
-        config: { thumbnail },
-      }) => {
-        if (playing || thumbnail) {
-          return {};
-        }
-
-        return { frameNumber: Math.max(1, frameNumber - 1) };
+    update(({ frameNumber, playing, config: { thumbnail } }) => {
+      if (playing || thumbnail) {
+        return {};
       }
-    );
+
+      return { frameNumber: Math.max(1, frameNumber - 1) };
+    });
   },
 };
 
@@ -313,11 +305,11 @@ export class HelpPanelElement<State extends BaseState> extends BaseElement<
     return container;
   }
 
-  isShown({ config: { thumbnail } }) {
+  isShown({ config: { thumbnail } }: Readonly<State>) {
     return !thumbnail;
   }
 
-  renderSelf({ showHelp, config: { thumbnail } }) {
+  renderSelf({ showHelp, config: { thumbnail } }: Readonly<State>) {
     if (thumbnail) {
       return this.element;
     }
@@ -348,7 +340,7 @@ export class VideoHelpPanelElement<
   }
 }
 
-const addItem = (items) => (value) => {
+const addItem = (items: HTMLDivElement) => (value: Control<VideoState>) => {
   const item = document.createElement("div");
   item.innerHTML = `
     <div class="looker-shortcut-item">

@@ -8,17 +8,19 @@ import { clampScale } from "../../util";
 import { BaseElement, Events } from "../base";
 import { dispatchTooltipEvent } from "./util";
 
+import { mediaOrCanvas } from "../media.module.css";
+
 export class CanvasElement<State extends BaseState> extends BaseElement<
   State,
   HTMLCanvasElement
 > {
-  private width: number;
-  private height: number;
-  private mousedownCoordinates: Coordinates;
-  private mousedown: boolean;
-  private hideControlsTimeout?: ReturnType<typeof setTimeout>;
+  private width: number = 0;
+  private height: number = 0;
+  private mousedownCoordinates?: Coordinates;
+  private mousedown: boolean = false;
+  private hideControlsTimeout: ReturnType<typeof setTimeout> | null = null;
   private start: Coordinates = [0, 0];
-  private wheelTimeout: ReturnType<typeof setTimeout>;
+  private wheelTimeout: ReturnType<typeof setTimeout> | null = null;
 
   getEvents(): Events<State> {
     return {
@@ -27,10 +29,13 @@ export class CanvasElement<State extends BaseState> extends BaseElement<
           if (state.config.thumbnail) {
             return;
           }
-          const moved =
-            Boolean(this.mousedownCoordinates) &&
-            (event.pageX !== this.mousedownCoordinates[0] ||
-              event.pageY !== this.mousedownCoordinates[1]);
+          let moved = false;
+          if (this.mousedownCoordinates) {
+            moved =
+              event.pageX !== this.mousedownCoordinates[0] ||
+              event.pageY !== this?.mousedownCoordinates[1];
+          }
+
           if (!moved && overlays.length) {
             const top = overlays[0];
             top.containsPoint(state) &&
@@ -164,6 +169,7 @@ export class CanvasElement<State extends BaseState> extends BaseElement<
 
   createHTMLElement() {
     const element = document.createElement("canvas");
+    element.classList.add(mediaOrCanvas);
     return element;
   }
 

@@ -14,9 +14,9 @@ import {
 } from "./util";
 
 export class LoaderBar extends BaseElement<VideoState> {
-  private buffering: boolean;
+  private buffering: boolean = false;
 
-  isShown({ config: { thumbnail } }) {
+  isShown({ config: { thumbnail } }: Readonly<VideoState>) {
     return thumbnail;
   }
 
@@ -36,7 +36,7 @@ export class LoaderBar extends BaseElement<VideoState> {
     return element;
   }
 
-  renderSelf({ buffering, hovering }) {
+  renderSelf({ buffering, hovering }: Readonly<VideoState>) {
     if (buffering && hovering === this.buffering) {
       return this.element;
     }
@@ -52,11 +52,20 @@ export class LoaderBar extends BaseElement<VideoState> {
 }
 
 export class PlayButtonElement extends BaseElement<VideoState, HTMLDivElement> {
-  private isPlaying: boolean;
-  private isBuffering: boolean;
-  private play: SVGElement;
-  private pause: SVGElement;
-  private buffering: SVGElement;
+  private isPlaying: boolean = false;
+  private isBuffering: boolean = false;
+  private play: SVGElement = document.createElementNS(
+    "http://www.w3.org/2000/svg",
+    "svg"
+  );
+  private pause: SVGElement = document.createElementNS(
+    "http://www.w3.org/2000/svg",
+    "svg"
+  );
+  private buffering: SVGElement = document.createElementNS(
+    "http://www.w3.org/2000/svg",
+    "svg"
+  );
 
   getEvents(): Events<VideoState> {
     return {
@@ -69,7 +78,6 @@ export class PlayButtonElement extends BaseElement<VideoState, HTMLDivElement> {
   }
 
   createHTMLElement() {
-    this.pause = document.createElementNS("http://www.w3.org/2000/svg", "svg");
     this.pause.setAttribute("height", "24");
     this.pause.setAttribute("width", "24");
     this.pause.setAttribute("viewBox", "0 0 24 24");
@@ -85,7 +93,6 @@ export class PlayButtonElement extends BaseElement<VideoState, HTMLDivElement> {
     path.setAttribute("d", "M0 0h24v24H0z");
     this.pause.appendChild(path);
 
-    this.play = document.createElementNS("http://www.w3.org/2000/svg", "svg");
     this.pause.setAttribute("height", "24");
     this.pause.setAttribute("width", "24");
     this.pause.setAttribute("viewBox", "0 0 24 24");
@@ -98,10 +105,6 @@ export class PlayButtonElement extends BaseElement<VideoState, HTMLDivElement> {
     path.setAttribute("fill", "none");
     path.setAttribute("d", "M0 0h24v24H0z");
 
-    this.buffering = document.createElementNS(
-      "http://www.w3.org/2000/svg",
-      "svg"
-    );
     this.buffering.setAttribute("class", "buffering-circle");
     this.buffering.setAttribute("viewBox", "12 12 24 24");
     const circle = document.createElementNS(
@@ -126,7 +129,7 @@ export class PlayButtonElement extends BaseElement<VideoState, HTMLDivElement> {
     return element;
   }
 
-  renderSelf({ playing, buffering }) {
+  renderSelf({ playing, buffering }: Readonly<VideoState>) {
     if (playing !== this.isPlaying || this.isBuffering !== buffering) {
       this.element.innerHTML = "";
       if (buffering) {
@@ -203,7 +206,7 @@ export class SeekBarElement extends BaseElement<VideoState, HTMLInputElement> {
     config: { frameRate, thumbnail },
     duration,
     buffers,
-  }) {
+  }: Readonly<VideoState>) {
     if (thumbnail) {
       return this.element;
     }
@@ -238,7 +241,7 @@ export class TimeElement extends BaseElement<VideoState> {
     duration,
     config: { frameRate },
     options: { useFrameNumber },
-  }) {
+  }: Readonly<VideoState>) {
     const timestamp = useFrameNumber
       ? getFrameString(frameNumber, duration, frameRate)
       : getTimeString(frameNumber, frameRate, duration);
@@ -248,13 +251,15 @@ export class TimeElement extends BaseElement<VideoState> {
 }
 
 export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
-  private src: string;
-  private duration: number;
-  private frameRate: number;
-  private frameNumber: number = null;
-  private loop: boolean;
+  private src: string = "";
+  private duration: number = 0;
+  private frameRate: number = 0;
+  private frameNumber: number = 1;
+  private loop: boolean = false;
 
-  private requestCallback;
+  private requestCallback: (
+    callback: (frameNumber: number) => void
+  ) => void = () => {};
 
   getEvents(): Events<VideoState> {
     return {
@@ -304,7 +309,7 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
         };
 
         update(
-          ({ frameNumber, duration, config: { frameRate }, options }) => {
+          ({ frameNumber, duration, config: { frameRate } }) => {
             frameNumber =
               frameNumber === getFrameNumber(duration, duration, frameRate)
                 ? 1
@@ -353,8 +358,8 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
     element.muted = true;
     this.frameNumber = 1;
 
-    this.requestCallback = (callback: (frameNumber: number) => boolean) => {
-      requestAnimationFrame((time) => {
+    this.requestCallback = (callback: (frameNumber: number) => void) => {
+      requestAnimationFrame(() => {
         callback(
           getFrameNumber(
             this.element.currentTime,
@@ -368,7 +373,7 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
     return element;
   }
 
-  renderSelf(state) {
+  renderSelf(state: Readonly<VideoState>) {
     const {
       options: { loop },
       config: { src, frameRate },
@@ -462,10 +467,10 @@ export class VolumBarElement extends BaseElement<VideoState, HTMLInputElement> {
     return element;
   }
 
-  renderSelf({ options: { volume } }) {
+  renderSelf({ options: { volume } }: Readonly<VideoState>) {
     this.element.style.display = "block";
     this.element.style.setProperty("--volume", `${volume}%`);
-    this.element.value = volume;
+    this.element.value = volume.toFixed(4);
     return this.element;
   }
 }

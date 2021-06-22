@@ -39,3 +39,12 @@
   );
   background-size: 400% 100%;
 }
+
+.looker input {
+  width: 100%;
+  border-radius: 8px;
+  background: rgb(225, 100, 40);
+  cursor: pointer;
+  -webkit-appearance: none;
+  margin-top: -5px;
+}

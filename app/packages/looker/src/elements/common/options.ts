@@ -5,10 +5,12 @@
 import { BaseState, VideoState } from "../../state";
 import { BaseElement, Events } from "../base";
 
+import { lookerOptionsPanel } from "./options.module.css";
+
 export class OptionsPanelElement<State extends BaseState> extends BaseElement<
   State
 > {
-  private showOptions: boolean;
+  private showOptions: boolean = false;
   getEvents(): Events<State> {
     return {
       click: ({ event }) => {
@@ -30,15 +32,15 @@ export class OptionsPanelElement<State extends BaseState> extends BaseElement<
 
   createHTMLElement() {
     const element = document.createElement("div");
-    element.className = "looker-options-panel";
+    element.classList.add(lookerOptionsPanel);
     return element;
   }
 
-  isShown({ config: { thumbnail } }) {
+  isShown({ config: { thumbnail } }: Readonly<State>) {
     return !thumbnail;
   }
 
-  renderSelf({ showOptions, config: { thumbnail } }) {
+  renderSelf({ showOptions, config: { thumbnail } }: Readonly<State>) {
     if (thumbnail) {
       return this.element;
     }
@@ -58,8 +60,8 @@ export class OptionsPanelElement<State extends BaseState> extends BaseElement<
 }
 
 export class UseFrameNumberOptionElement extends BaseElement<VideoState> {
-  checkbox: HTMLInputElement;
-  label: HTMLLabelElement;
+  checkbox: HTMLInputElement | null = null;
+  label: HTMLLabelElement | null = null;
 
   getEvents(): Events<VideoState> {
     return {
@@ -80,7 +82,8 @@ export class UseFrameNumberOptionElement extends BaseElement<VideoState> {
     return makeWrapper([this.label]);
   }
 
-  renderSelf({ options: { useFrameNumber } }) {
+  renderSelf({ options: { useFrameNumber } }: Readonly<VideoState>) {
+    // @ts-ignore
     this.checkbox.checked = useFrameNumber;
     return this.element;
   }
@@ -89,8 +92,8 @@ export class UseFrameNumberOptionElement extends BaseElement<VideoState> {
 export class OnlyShowHoveredOnLabelOptionElement<
   State extends BaseState
 > extends BaseElement<State> {
-  checkbox: HTMLInputElement;
-  label: HTMLLabelElement;
+  checkbox: HTMLInputElement | null = null;
+  label: HTMLLabelElement | null = null;
 
   getEvents(): Events<State> {
     return {
@@ -112,7 +115,8 @@ export class OnlyShowHoveredOnLabelOptionElement<
     return makeWrapper([this.label]);
   }
 
-  renderSelf({ options: { onlyShowHoveredLabel } }) {
+  renderSelf({ options: { onlyShowHoveredLabel } }: Readonly<State>) {
+    //@ts-ignore
     this.checkbox.checked = onlyShowHoveredLabel;
     return this.element;
   }
@@ -121,8 +125,8 @@ export class OnlyShowHoveredOnLabelOptionElement<
 export class ShowLabelOptionElement<
   State extends BaseState
 > extends BaseElement<State> {
-  checkbox: HTMLInputElement;
-  label: HTMLLabelElement;
+  checkbox: HTMLInputElement | null = null;
+  label: HTMLLabelElement | null = null;
 
   getEvents(): Events<State> {
     return {
@@ -144,7 +148,8 @@ export class ShowLabelOptionElement<
     return makeWrapper([this.label]);
   }
 
-  renderSelf({ options: { showLabel } }) {
+  renderSelf({ options: { showLabel } }: Readonly<State>) {
+    // @ts-ignore
     this.checkbox.checked = showLabel;
     return this.element;
   }
@@ -153,8 +158,8 @@ export class ShowLabelOptionElement<
 export class ShowConfidenceOptionElement<
   State extends BaseState
 > extends BaseElement<State> {
-  checkbox: HTMLInputElement;
-  label: HTMLLabelElement;
+  checkbox: HTMLInputElement | null = null;
+  label: HTMLLabelElement | null = null;
 
   getEvents(): Events<State> {
     return {
@@ -176,7 +181,8 @@ export class ShowConfidenceOptionElement<
     return makeWrapper([this.label]);
   }
 
-  renderSelf({ options: { showConfidence } }) {
+  renderSelf({ options: { showConfidence } }: Readonly<State>) {
+    // @ts-ignore
     this.checkbox.checked = showConfidence;
     return this.element;
   }
@@ -208,7 +214,7 @@ export class ShowTooltipOptionElement<
     return makeWrapper([this.label]);
   }
 
-  renderSelf({ options: { showTooltip } }) {
+  renderSelf({ options: { showTooltip } }: Readonly<State>) {
     this.checkbox.checked = showTooltip;
     return this.element;
   }
@@ -224,11 +230,11 @@ const makeWrapper = function (children) {
 };
 
 const makeCheckboxRow = function (
-  text,
-  checked
+  text: string,
+  checked: boolean
 ): [HTMLLabelElement, HTMLInputElement] {
   const label = document.createElement("label");
-  label.className = "looker-label";
+  label.classList.add(lookerLabel);
   label.innerHTML = text;
 
   const checkbox = document.createElement("input");

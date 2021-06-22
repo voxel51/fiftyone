@@ -45,7 +45,7 @@ export class LookerElement<State extends BaseState> extends BaseElement<
 
   createHTMLElement() {
     const element = document.createElement("div");
-    element.className = `${looker} ${lookerLoading}`;
+    element.classList.add(looker, lookerLoading);
     element.tabIndex = -1;
     return element;
   }
@@ -56,7 +56,7 @@ export class LookerElement<State extends BaseState> extends BaseElement<
     overlaysPrepared,
     hovering,
     config: { thumbnail },
-  }) {
+  }: Readonly<State>) {
     if (
       loaded &&
       overlaysPrepared &&

@@ -16,11 +16,17 @@ import {
   zoomOut,
 } from "./actions";
 
+import {
+  lookerArrow,
+  lookerClickable,
+  lookerControls,
+} from "./controls.module.css";
+
 export class NextElement<State extends BaseState> extends BaseElement<
   State,
   HTMLImageElement
 > {
-  private showControls: boolean;
+  private showControls: boolean = false;
   getEvents(): Events<State> {
     return {
       click: ({ update, event, dispatchEvent }) => {
@@ -39,17 +45,21 @@ export class NextElement<State extends BaseState> extends BaseElement<
 
   createHTMLElement() {
     const element = document.createElement("img");
-    element.className = "looker-arrow";
+    element.classList.add(lookerArrow);
     element.src = ICONS.arrowRight;
     element.style.right = "0.5rem";
     return element;
   }
 
-  isShown({ config: { thumbnail }, options: { hasNext } }) {
+  isShown({ config: { thumbnail }, options: { hasNext } }: Readonly<State>) {
     return !thumbnail && hasNext;
   }
 
-  renderSelf({ showControls, disableControls, config: { thumbnail } }) {
+  renderSelf({
+    showControls,
+    disableControls,
+    config: { thumbnail },
+  }: Readonly<State>) {
     if (thumbnail) {
       return this.element;
     }
@@ -73,7 +83,7 @@ export class PreviousElement<State extends BaseState> extends BaseElement<
   State,
   HTMLImageElement
 > {
-  private showControls: boolean;
+  private showControls: boolean = false;
   getEvents(): Events<State> {
     return {
       click: ({ update, event, dispatchEvent }) => {
@@ -93,16 +103,23 @@ export class PreviousElement<State extends BaseState> extends BaseElement<
   createHTMLElement() {
     const element = document.createElement("img");
     element.src = ICONS.arrowLeft;
-    element.className = "looker-arrow";
+    element.classList.add(lookerArrow);
     element.style.left = "0.5rem";
     return element;
   }
 
-  isShown({ config: { thumbnail }, options: { hasPrevious } }) {
+  isShown({
+    config: { thumbnail },
+    options: { hasPrevious },
+  }: Readonly<State>) {
     return !thumbnail && hasPrevious;
   }
 
-  renderSelf({ showControls, disableControls, config: { thumbnail } }) {
+  renderSelf({
+    showControls,
+    disableControls,
+    config: { thumbnail },
+  }: Readonly<State>) {
     if (thumbnail) {
       return this.element;
     }
@@ -125,7 +142,7 @@ export class PreviousElement<State extends BaseState> extends BaseElement<
 export class ControlsElement<State extends BaseState> extends BaseElement<
   State
 > {
-  private showControls: boolean;
+  private showControls: boolean = false;
 
   getEvents(): Events<State> {
     return {
@@ -144,15 +161,19 @@ export class ControlsElement<State extends BaseState> extends BaseElement<
 
   createHTMLElement() {
     const element = document.createElement("div");
-    element.className = "looker-controls";
+    element.classList.add(lookerControls);
     return element;
   }
 
-  isShown({ config: { thumbnail } }) {
+  isShown({ config: { thumbnail } }: Readonly<State>) {
     return !thumbnail;
   }
 
-  renderSelf({ showControls, disableControls, config: { thumbnail } }) {
+  renderSelf({
+    showControls,
+    disableControls,
+    config: { thumbnail },
+  }: Readonly<State>) {
     if (thumbnail) {
       return this.element;
     }
@@ -175,7 +196,7 @@ export class ControlsElement<State extends BaseState> extends BaseElement<
 export class FullscreenButtonElement<
   State extends BaseState
 > extends BaseElement<State, HTMLImageElement> {
-  private fullscreen: boolean;
+  private fullscreen: boolean = false;
 
   getEvents(): Events<State> {
     return {
@@ -189,12 +210,12 @@ export class FullscreenButtonElement<
 
   createHTMLElement() {
     const element = document.createElement("img");
-    element.className = "looker-clickable";
+    element.classList.add(lookerClickable);
     element.style.gridArea = "2 / 7 / 2 / 7";
     return element;
   }
 
-  renderSelf({ fullscreen }) {
+  renderSelf({ fullscreen }: Readonly<State>) {
     if (this.fullscreen !== fullscreen) {
       this.fullscreen = fullscreen;
       this.element.src = fullscreen ? ICONS.fullscreenExit : ICONS.fullscreen;
@@ -220,7 +241,7 @@ export class PlusElement<State extends BaseState> extends BaseElement<
 
   createHTMLElement() {
     const element = document.createElement("img");
-    element.className = "looker-clickable";
+    element.classList.add(lookerClickable);
     element.style.padding = "2px";
     element.src = ICONS.plus;
     element.title = "Zoom in (+)";
@@ -249,7 +270,7 @@ export class MinusElement<State extends BaseState> extends BaseElement<
 
   createHTMLElement() {
     const element = document.createElement("img");
-    element.className = "looker-clickable";
+    element.classList.add(lookerClickable);
     element.style.padding = "2px";
     element.src = ICONS.minus;
     element.title = "Zoom out (-)";
@@ -277,7 +298,7 @@ export class HelpButtonElement<State extends BaseState> extends BaseElement<
 
   createHTMLElement() {
     const element = document.createElement("img");
-    element.className = "looker-clickable";
+    element.classList.add(lookerClickable);
     element.style.padding = "2px";
     element.src = ICONS.help;
     element.title = "Help (?)";
@@ -305,7 +326,7 @@ export class OptionsButtonElement<State extends BaseState> extends BaseElement<
 
   createHTMLElement() {
     const element = document.createElement("img");
-    element.className = "looker-clickable";
+    element.classList.add(lookerClickable);
     element.style.padding = "2px";
     element.src = ICONS.options;
     element.title = "Settings (s)";
