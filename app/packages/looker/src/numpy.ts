@@ -111,11 +111,8 @@ function parse(array: Uint8Array): NumpyResult {
       .replace(/,\]/, "]")
   );
 
-  let ArrayType = null;
-  if (header.desc in DATA_TYPES) {
-    // @ts-ignore
-    const ArrayType = DATA_TYPES[header.descr];
-  }
+  const ArrayType = DATA_TYPES[header.descr];
+
   if (!ArrayType) {
     throw new Error(`Unsupported data type: "${header.descr}"`);
   }
@@ -124,11 +121,9 @@ function parse(array: Uint8Array): NumpyResult {
   const typedData =
     ArrayType === Uint8Array
       ? rawData
-      : // @ts-ignore
-        new ArrayType(
+      : new ArrayType(
           rawData.buffer,
           rawData.byteOffset,
-          // @ts-ignore
           rawData.byteLength / ArrayType.BYTES_PER_ELEMENT
         );
   return {

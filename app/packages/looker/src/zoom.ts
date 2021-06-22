@@ -101,7 +101,7 @@ export const zoomToContent = <State extends FrameState | ImageState>(
 
 export const zoomAspectRatio = (
   sample: {
-    [key: string]: { _cls?: string };
+    [key: string]: { _cls: string };
   },
   mediaAspectRatio: number
 ): number => {

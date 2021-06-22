@@ -5,6 +5,8 @@
 import { VideoState } from "../state";
 import { BaseElement, Events } from "./base";
 import { playPause, VIDEO_SHORTCUTS } from "./common/actions";
+import { lookerTime } from "./common/controls.module.css";
+import { mediaOrCanvas } from "./media.module.css";
 import {
   getFrameNumber,
   getFrameString,
@@ -12,6 +14,14 @@ import {
   getTimeString,
   transformWindowElement,
 } from "./util";
+
+import {
+  lookerLoader,
+  bufferingCircle,
+  bufferingPath,
+  lookerSeekBar,
+  lookerVolume,
+} from "./video.module.css";
 
 export class LoaderBar extends BaseElement<VideoState> {
   private buffering: boolean = false;
@@ -32,7 +42,7 @@ export class LoaderBar extends BaseElement<VideoState> {
       rgb(225, 100, 40) 50%,
       rgba(225, 100, 40, 0) 100%
     )`;
-    element.classList.add("looker-loader");
+    element.classList.add(lookerLoader);
     return element;
   }
 
@@ -54,18 +64,9 @@ export class LoaderBar extends BaseElement<VideoState> {
 export class PlayButtonElement extends BaseElement<VideoState, HTMLDivElement> {
   private isPlaying: boolean = false;
   private isBuffering: boolean = false;
-  private play: SVGElement = document.createElementNS(
-    "http://www.w3.org/2000/svg",
-    "svg"
-  );
-  private pause: SVGElement = document.createElementNS(
-    "http://www.w3.org/2000/svg",
-    "svg"
-  );
-  private buffering: SVGElement = document.createElementNS(
-    "http://www.w3.org/2000/svg",
-    "svg"
-  );
+  private play: SVGElement;
+  private pause: SVGElement;
+  private buffering: SVGElement;
 
   getEvents(): Events<VideoState> {
     return {
@@ -78,6 +79,7 @@ export class PlayButtonElement extends BaseElement<VideoState, HTMLDivElement> {
   }
 
   createHTMLElement() {
+    this.pause = document.createElementNS("http://www.w3.org/2000/svg", "svg");
     this.pause.setAttribute("height", "24");
     this.pause.setAttribute("width", "24");
     this.pause.setAttribute("viewBox", "0 0 24 24");
@@ -93,9 +95,10 @@ export class PlayButtonElement extends BaseElement<VideoState, HTMLDivElement> {
     path.setAttribute("d", "M0 0h24v24H0z");
     this.pause.appendChild(path);
 
-    this.pause.setAttribute("height", "24");
-    this.pause.setAttribute("width", "24");
-    this.pause.setAttribute("viewBox", "0 0 24 24");
+    this.play = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    this.play.setAttribute("height", "24");
+    this.play.setAttribute("width", "24");
+    this.play.setAttribute("viewBox", "0 0 24 24");
 
     path = document.createElementNS("http://www.w3.org/2000/svg", "path");
     path.setAttribute("fill", "rgb(238, 238, 238)");
@@ -105,7 +108,11 @@ export class PlayButtonElement extends BaseElement<VideoState, HTMLDivElement> {
     path.setAttribute("fill", "none");
     path.setAttribute("d", "M0 0h24v24H0z");
 
-    this.buffering.setAttribute("class", "buffering-circle");
+    this.buffering = document.createElementNS(
+      "http://www.w3.org/2000/svg",
+      "svg"
+    );
+    this.buffering.classList.add(bufferingCircle);
     this.buffering.setAttribute("viewBox", "12 12 24 24");
     const circle = document.createElementNS(
       "http://www.w3.org/2000/svg",
@@ -117,7 +124,7 @@ export class PlayButtonElement extends BaseElement<VideoState, HTMLDivElement> {
     circle.setAttribute("stroke-width", "2");
     circle.setAttribute("stroke", "rgb(238, 238, 238)");
     circle.setAttribute("fill", "none");
-    circle.setAttribute("class", "buffering-path");
+    circle.classList.add(bufferingPath);
     this.buffering.appendChild(circle);
 
     const element = document.createElement("div");
@@ -198,7 +205,7 @@ export class SeekBarElement extends BaseElement<VideoState, HTMLInputElement> {
     element.setAttribute("type", "range");
     element.setAttribute("min", "0");
     element.setAttribute("max", "100");
-    element.className = "looker-seek-bar";
+    element.classList.add(lookerSeekBar);
     element.style.gridArea = "1 / 1 / 1 / 11";
     return element;
   }
@@ -234,7 +241,7 @@ export class SeekBarElement extends BaseElement<VideoState, HTMLInputElement> {
 export class TimeElement extends BaseElement<VideoState> {
   createHTMLElement() {
     const element = document.createElement("div");
-    element.className = "looker-time";
+    element.classList.add(lookerTime);
     element.style.gridArea = "2 / 3 / 2 / 3";
     return element;
   }
@@ -360,6 +367,7 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
 
   createHTMLElement() {
     const element = document.createElement("video");
+    element.classList.add(mediaOrCanvas);
     element.preload = "metadata";
     element.muted = true;
     this.frameNumber = 1;
@@ -468,7 +476,7 @@ export class VolumBarElement extends BaseElement<VideoState, HTMLInputElement> {
     element.setAttribute("type", "range");
     element.setAttribute("min", "0");
     element.setAttribute("max", "100");
-    element.className = "looker-volume";
+    element.classList.add(lookerVolume);
     element.style.gridArea = "2 / 4 / 2 / 5";
     return element;
   }

@@ -12,11 +12,12 @@ import {
 } from "./util";
 
 import { mediaOrCanvas } from "./media.module.css";
+import { lookerTime } from "./common/controls.module.css";
 
 export class FrameNumberElement extends BaseElement<FrameState> {
   createHTMLElement() {
     const element = document.createElement("div");
-    element.className = "looker-time";
+    element.classList.add(lookerTime);
     element.style.gridArea = "2 / 3 / 2 / 3";
     return element;
   }

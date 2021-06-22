@@ -589,6 +589,7 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
       sample: firstFrameSample as FrameSample,
       overlays: firstFrameOverlays,
     };
+
     this.frames.set(1, new WeakRef(this.firstFrame));
   }
 

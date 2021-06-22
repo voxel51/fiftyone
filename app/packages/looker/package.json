@@ -23,7 +23,6 @@
     "color-string": "^1.5.5",
     "immutable": "^4.0.0-rc.12",
     "lru-cache": "^6.0.0",
-    "mime-types": "^2.1.30",
     "pako": "1.0.11",
     "uuid": "^8.3.2"
   },
