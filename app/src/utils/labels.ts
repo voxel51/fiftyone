@@ -442,16 +442,3 @@ export const listSampleLabels = (sample: { [key: string]: Label }) => {
   }
   return labels;
 };
-
-const IDS = {
-  sample_id: "_sample_id",
-  id: "_id",
-};
-
-export const handleKey = (key) => {
-  if (IDS.hasOwnProperty(key)) {
-    return IDS[key];
-  }
-
-  return key;
-};

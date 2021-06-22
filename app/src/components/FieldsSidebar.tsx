@@ -33,7 +33,7 @@ import { labelModalTagCounts } from "./Actions/utils";
 import * as fieldAtoms from "./Filters/utils";
 import * as labelAtoms from "./Filters/LabelFieldFilters.state";
 import * as selectors from "../recoil/selectors";
-import { FILTERABLE_TYPES, handleKey } from "../utils/labels";
+import { FILTERABLE_TYPES } from "../utils/labels";
 import { useTheme } from "../utils/hooks";
 import { PillButton } from "./utils";
 import { prettify } from "../utils/generic";
@@ -601,6 +601,7 @@ const ScalarsCell = ({ modal }: ScalarsCellProps) => {
   const count = useRecoilValue(countAtom);
   const colorByLabel = useRecoilValue(atoms.colorByLabel(modal));
   const theme = useTheme();
+  const dbFields = useRecoilValue(selectors.scalarsDbMap("sample"));
 
   return (
     <Cell
@@ -620,14 +621,14 @@ const ScalarsCell = ({ modal }: ScalarsCellProps) => {
             hasDropdown: !modal,
             selected: activeScalars.includes(name),
             color: colorByLabel ? theme.brand : colorMap(name),
-            title: modal ? prettify(count[handleKey(name)], false) : name,
+            title: modal ? prettify(count[dbFields[name]], false) : name,
             path: name,
             type: "values",
             data:
               count && subCount && !modal
                 ? makeData(subCount[name], count[name])
                 : modal
-                ? prettify(count[handleKey(name)])
+                ? prettify(count[dbFields[name]])
                 : null,
             totalCount: !modal && count ? count[name] : null,
             filteredCount: !modal && subCount ? subCount[name] : null,
