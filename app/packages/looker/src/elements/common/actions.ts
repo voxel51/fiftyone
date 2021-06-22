@@ -180,6 +180,7 @@ export const nextFrame: Control<VideoState> = {
         if (playing || thumbnail) {
           return {};
         }
+        duration = duration as number;
         const total = getFrameNumber(duration, duration, frameRate);
 
         if (frameNumber === total) {
@@ -242,8 +243,8 @@ export const VIDEO_SHORTCUTS = Object.fromEntries(
 export class HelpPanelElement<State extends BaseState> extends BaseElement<
   State
 > {
-  private showHelp: boolean;
-  protected items: HTMLDivElement;
+  private showHelp?: boolean;
+  protected items?: HTMLDivElement;
 
   getEvents(): Events<State> {
     return {
@@ -334,7 +335,7 @@ export class VideoHelpPanelElement<
   createHTMLElement() {
     const element = super.createHTMLElement();
 
-    Object.values(VIDEO).forEach(addItem(this.items));
+    Object.values(VIDEO).forEach(addItem(this.items as HTMLDivElement));
 
     return element;
   }

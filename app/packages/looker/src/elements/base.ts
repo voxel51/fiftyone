@@ -31,7 +31,7 @@ export abstract class BaseElement<
     dispatchEvent: (eventType: string, details?: any) => void,
     children?: BaseElement<State>[]
   ) {
-    this.children = children;
+    this.children = children || [];
     this.element = this.createHTMLElement();
     Object.entries(this.getEvents()).forEach(([eventType, handler]) => {
       this.element.addEventListener(

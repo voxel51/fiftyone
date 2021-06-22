@@ -161,6 +161,7 @@ export class SeekBarElement extends BaseElement<VideoState, HTMLInputElement> {
       input: ({ update }) => {
         const progress = this.element.valueAsNumber / 100;
         update(({ duration, config: { frameRate } }) => {
+          duration = duration as number;
           return {
             frameNumber: getFrameNumber(
               duration * progress,
@@ -178,6 +179,7 @@ export class SeekBarElement extends BaseElement<VideoState, HTMLInputElement> {
       mouseup: ({ update }) => {
         const progress = this.element.valueAsNumber / 100;
         update(({ duration, config: { frameRate } }) => {
+          duration = duration as number;
           return {
             frameNumber: getFrameNumber(
               duration * progress,
@@ -210,6 +212,7 @@ export class SeekBarElement extends BaseElement<VideoState, HTMLInputElement> {
     if (thumbnail) {
       return this.element;
     }
+    duration = duration as number;
     const frameCount = getFrameNumber(duration, duration, frameRate);
     this.element.style.setProperty(
       "--buffer-progress",
@@ -242,6 +245,7 @@ export class TimeElement extends BaseElement<VideoState> {
     config: { frameRate },
     options: { useFrameNumber },
   }: Readonly<VideoState>) {
+    duration = duration as number;
     const timestamp = useFrameNumber
       ? getFrameString(frameNumber, duration, frameRate)
       : getTimeString(frameNumber, frameRate, duration);
@@ -288,6 +292,7 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
               config: { frameRate },
             }) => {
               this.frameNumber = newFrameNumber;
+              duration = duration as number;
 
               if (
                 newFrameNumber === getFrameNumber(duration, duration, frameRate)
@@ -310,6 +315,7 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
 
         update(
           ({ frameNumber, duration, config: { frameRate } }) => {
+            duration = duration as number;
             frameNumber =
               frameNumber === getFrameNumber(duration, duration, frameRate)
                 ? 1
@@ -341,7 +347,7 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
           dispatchEvent("timeupdate", {
             frameNumber: getFrameNumber(
               this.element.currentTime,
-              duration,
+              duration as number,
               frameRate
             ),
           });

@@ -89,7 +89,6 @@ export default class ClassificationsOverlay<State extends BaseState>
         }
       }
     }
-    return null;
   }
 
   draw(ctx: CanvasRenderingContext2D, state: Readonly<State>) {
@@ -126,8 +125,10 @@ export default class ClassificationsOverlay<State extends BaseState>
 
   getSizeBytes() {
     let bytes = 100;
-    this.labels.forEach((label) => {
-      bytes += sizeBytes(label);
+    this.labels.forEach(([_, labels]) => {
+      labels.forEach((label) => {
+        bytes += sizeBytes(label);
+      });
     });
     return bytes;
   }
@@ -153,17 +154,28 @@ export default class ClassificationsOverlay<State extends BaseState>
 
     if (sort) {
       const store = Object.fromEntries(
-        state.options.activeLabels.map((a) => [a, []])
+        state.options.activeLabels.map<[string, ClassificationLabel[]]>((a) => [
+          a,
+          [],
+        ])
       );
       result.forEach(([field, label]) => {
         store[field].push(label);
       });
-      result = state.options.activeLabels.reduce((acc, field) => {
-        return [...acc, ...store[field].map((label) => [field, label])];
+      result = state.options.activeLabels.reduce<
+        [string, ClassificationLabel][]
+      >((acc, field) => {
+        return [
+          ...acc,
+          ...store[field].map<[string, ClassificationLabel]>((label) => [
+            field,
+            label,
+          ]),
+        ];
       }, []);
       result.sort((a, b) => {
         if (a[0] === b[0]) {
-          if (a[1].label < b[1].label) {
+          if (a[1].label && b[1].label && a[1].label < b[1].label) {
             return -1;
           } else if (a[1].label > b[1].label) {
             return 1;
@@ -233,7 +245,7 @@ export default class ClassificationsOverlay<State extends BaseState>
   ): string {
     let text = label.label && state.options.showLabel ? `${label.label}` : "";
 
-    if (state.options.showConfidence && !isNaN(label.confidence)) {
+    if (state.options.showConfidence && !isNaN(label.confidence as number)) {
       text.length && (text += " ");
       text += `(${Number(label.confidence).toFixed(2)})`;
     }

@@ -18,8 +18,8 @@ interface BaseOptions {
   colorByLabel: boolean;
   filter: {
     [key: string]: (label: { label?: string; confidence?: number }) => boolean;
-  } | null;
-  colorMap: ((key: string | number | null | undefined) => string) | null;
+  };
+  colorMap: (key: string | number | null | undefined) => string;
   selectedLabels: string[];
   showLabel: boolean;
   showConfidence: boolean;
@@ -140,8 +140,8 @@ export interface VideoState extends BaseState {
   playing: boolean;
   locked: boolean;
   frameNumber: number;
-  duration: number;
-  fragment?: [number, number];
+  duration: number | null;
+  fragment: [number, number] | null;
   buffering: boolean;
   buffers: [number, number][];
 }

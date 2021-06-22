@@ -12,7 +12,9 @@ const processOverlays = <State extends BaseState>(
   overlays: Overlay<State>[]
 ): [Overlay<State>[], number] => {
   const activeLabels = state.options.activeLabels;
-  const bins = Object.fromEntries(activeLabels.map((l) => [l, []]));
+  const bins = Object.fromEntries(
+    activeLabels.map<[string, Overlay<State>[]]>((l) => [l, []])
+  );
   let classifications = null;
 
   for (const overlay of overlays) {
@@ -21,7 +23,7 @@ const processOverlays = <State extends BaseState>(
       continue;
     }
 
-    if (!(overlay.field in bins)) continue;
+    if (!(overlay.field && overlay.field in bins)) continue;
 
     if (!overlay.isShown(state)) continue;
 

@@ -379,7 +379,7 @@ export const mergeUpdates = <State extends BaseState>(
   return mergeWith(merger, state, updates);
 };
 
-export const createWorker = (): LookerWorker => {
+export const createWorker = (): Worker => {
   return new LookerWorker();
 };
 

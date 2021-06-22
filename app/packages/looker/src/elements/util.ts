@@ -154,12 +154,12 @@ export function withEvents<
 
       Object.entries(events).forEach(([eventType, handler]) => {
         if (eventType in newEvents) {
+          // @ts-ignore
           const parentHandler = newEvents[eventType];
-          newEvents[eventType] = (options) => {
-            parentHandler(options);
-            if (eventType === "keydown") {
-            }
-            handler(options);
+          // @ts-ignore
+          newEvents[eventType] = (args) => {
+            parentHandler(args);
+            handler && handler(args);
           };
         }
       });

@@ -117,12 +117,12 @@ export abstract class Looker<
       );
       this.state = this.postProcess(this.lookerElement.element);
       this.state.mouseIsOnOverlay =
-        this.currentOverlays.length &&
+        Boolean(this.currentOverlays.length) &&
         this.currentOverlays[0].containsPoint(this.state) > CONTAINS.NONE;
       postUpdate && postUpdate(this.state, this.currentOverlays);
       this.lookerElement.render(this.state as Readonly<State>);
 
-      const ctx = this.canvas.getContext("2d");
+      const ctx = this.canvas.getContext("2d") as CanvasRenderingContext2D;
       ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
       ctx.lineWidth = this.state.strokeWidth;
       ctx.font = `bold ${this.state.fontSize.toFixed(2)}px Palanquin`;
@@ -139,11 +139,19 @@ export abstract class Looker<
     };
   }
 
-  addEventListener(eventType, handler, ...args) {
+  addEventListener(
+    eventType: string,
+    handler: EventListenerOrEventListenerObject | null,
+    ...args: any[]
+  ) {
     this.eventTarget.addEventListener(eventType, handler, ...args);
   }
 
-  removeEventListener(eventType, handler, ...args) {
+  removeEventListener(
+    eventType: string,
+    handler: EventListenerOrEventListenerObject | null,
+    ...args: any[]
+  ) {
     this.eventTarget.removeEventListener(eventType, handler, ...args);
   }
 
@@ -194,7 +202,7 @@ export abstract class Looker<
 
   protected abstract getElements(): LookerElement<State>;
 
-  protected abstract loadOverlays(sample: BaseSample);
+  protected abstract loadOverlays(sample: BaseSample): void;
 
   protected abstract pluckOverlays(state: State): Overlay<State>[];
 
@@ -291,7 +299,11 @@ export abstract class Looker<
 export class FrameLooker extends Looker<FrameState> {
   private overlays: Overlay<FrameState>[];
 
-  constructor(sample, config, options) {
+  constructor(
+    sample: BaseSample,
+    config: FrameState["config"],
+    options: FrameState["options"]
+  ) {
     super(sample, config, options);
     this.overlays = [];
   }
@@ -300,7 +312,10 @@ export class FrameLooker extends Looker<FrameState> {
     return getFrameElements(this.updater, this.getDispatchEvent());
   }
 
-  getInitialState(config, options) {
+  getInitialState(
+    config: FrameState["config"],
+    options: FrameState["options"]
+  ) {
     options = {
       ...this.getDefaultOptions(),
       ...options,
@@ -318,7 +333,7 @@ export class FrameLooker extends Looker<FrameState> {
     return DEFAULT_FRAME_OPTIONS;
   }
 
-  loadOverlays(sample) {
+  loadOverlays(sample: BaseSample) {
     this.overlays = loadOverlays(sample);
   }
 
@@ -326,7 +341,7 @@ export class FrameLooker extends Looker<FrameState> {
     return this.overlays;
   }
 
-  postProcess(element): FrameState {
+  postProcess(element: HTMLElement): FrameState {
     this.state.windowBBox = getElementBBox(element);
     this.state = zoomToContent(this.state, this.pluckedOverlays);
     return super.postProcess(element);
@@ -336,7 +351,11 @@ export class FrameLooker extends Looker<FrameState> {
 export class ImageLooker extends Looker<ImageState> {
   private overlays: Overlay<ImageState>[];
 
-  constructor(sample, config, options) {
+  constructor(
+    sample: BaseSample,
+    config: ImageState["config"],
+    options: ImageState["options"]
+  ) {
     super(sample, config, options);
     this.overlays = [];
   }
@@ -345,7 +364,10 @@ export class ImageLooker extends Looker<ImageState> {
     return getImageElements(this.updater, this.getDispatchEvent());
   }
 
-  getInitialState(config, options) {
+  getInitialState(
+    config: ImageState["config"],
+    options: ImageState["options"]
+  ) {
     options = {
       ...this.getDefaultOptions(),
       ...options,
@@ -363,7 +385,7 @@ export class ImageLooker extends Looker<ImageState> {
     return DEFAULT_IMAGE_OPTIONS;
   }
 
-  loadOverlays(sample) {
+  loadOverlays(sample: BaseSample) {
     this.overlays = loadOverlays(sample);
   }
 
@@ -371,7 +393,7 @@ export class ImageLooker extends Looker<ImageState> {
     return this.overlays;
   }
 
-  postProcess(element): ImageState {
+  postProcess(element: HTMLElement): ImageState {
     this.state.windowBBox = getElementBBox(element);
     this.state = zoomToContent(this.state, this.pluckedOverlays);
     return super.postProcess(element);
@@ -499,18 +521,20 @@ const aquireReader = (() => {
   };
 })();
 
-let lookerWithReader: VideoLooker = null;
+let lookerWithReader: VideoLooker | null = null;
 
 export class VideoLooker extends Looker<VideoState, VideoSample> {
-  private sampleOverlays: Overlay<VideoState>[];
-  private frames: Map<number, WeakRef<Frame>>;
-  private firstFrame: Frame;
-  private requestFrames: () => void;
+  private sampleOverlays: Overlay<VideoState>[] = [];
+  private frames: Map<number, WeakRef<Frame>> = new Map();
+  private firstFrame: Frame | null = null;
+  private requestFrames: (() => void) | null = null;
 
-  constructor(sample, config, options) {
+  constructor(
+    sample: VideoSample,
+    config: VideoState["config"],
+    options: VideoState["options"]
+  ) {
     super(sample, config, options);
-    this.sampleOverlays = [];
-    this.frames = new Map();
   }
 
   get frameNumber() {
@@ -521,7 +545,10 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
     return getVideoElements(this.updater, this.getDispatchEvent());
   }
 
-  getInitialState(config, options) {
+  getInitialState(
+    config: VideoState["config"],
+    options: VideoState["options"]
+  ): VideoState {
     return {
       duration: null,
       seeking: false,
@@ -530,7 +557,6 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
       playing: false,
       frameNumber: 1,
       buffering: false,
-      hasReader: false,
       ...this.getInitialBaseState(),
       config: { ...config },
       options: {
@@ -541,7 +567,7 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
     };
   }
 
-  loadOverlays(sample) {
+  loadOverlays(sample: VideoSample) {
     this.sampleOverlays = loadOverlays(
       Object.fromEntries(
         Object.entries(sample).filter(([fieldName]) => fieldName !== "frames")
@@ -560,7 +586,7 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
     );
 
     this.firstFrame = {
-      sample: firstFrameSample,
+      sample: firstFrameSample as FrameSample,
       overlays: firstFrameOverlays,
     };
     this.frames.set(1, new WeakRef(this.firstFrame));
@@ -570,21 +596,26 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
     const overlays = this.sampleOverlays;
     let pluckedOverlays = this.pluckedOverlays;
     if (this.hasFrame(state.frameNumber)) {
-      const frame = this.frames.get(state.frameNumber).deref();
+      const frame = this.frames.get(state.frameNumber)?.deref();
       if (frame !== undefined) {
         pluckedOverlays = [...overlays, ...frame.overlays];
       }
     }
-    const frameCount = getFrameNumber(
-      this.state.duration,
-      this.state.duration,
-      this.state.config.frameRate
-    );
+
+    let frameCount = null;
+
+    if (this.state.duration !== null) {
+      frameCount = getFrameNumber(
+        this.state.duration,
+        this.state.duration,
+        this.state.config.frameRate
+      );
+    }
 
     if (
       (!state.config.thumbnail || state.playing) &&
       lookerWithReader !== this &&
-      frameCount
+      frameCount !== null
     ) {
       this.requestFrames = aquireReader({
         addFrame: (frameNumber, frame) =>
@@ -629,6 +660,7 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
           resolve({
             ...this.sample,
             frames: {
+              // @ts-ignore
               [this.frameNumber]: this.frames.get(this.frameNumber).deref()
                 .sample,
             },
@@ -675,7 +707,7 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
     });
   }
 
-  postProcess(element): VideoState {
+  postProcess(element: HTMLElement): VideoState {
     this.state.windowBBox = getElementBBox(element);
     return super.postProcess(element);
   }
@@ -683,7 +715,7 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
   private hasFrame(frameNumber: number) {
     return (
       this.frames.has(frameNumber) &&
-      this.frames.get(frameNumber).deref() !== undefined
+      this.frames.get(frameNumber)?.deref() !== undefined
     );
   }
 }

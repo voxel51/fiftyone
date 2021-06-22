@@ -2,13 +2,15 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 
+import { Overlay } from "../../overlays/base";
+import { BaseState } from "../../state";
 import { DispatchEvent } from "../base";
 
-export const dispatchTooltipEvent = (
+export const dispatchTooltipEvent = <State extends BaseState>(
   dispatchEvent: DispatchEvent,
   nullify = false
 ) => {
-  return (state, overlays) => {
+  return (state: Readonly<State>, overlays: Readonly<Overlay<State>[]>) => {
     if (state.tooltipDisabled) {
       return;
     }

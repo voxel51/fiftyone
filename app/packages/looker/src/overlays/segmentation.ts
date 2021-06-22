@@ -19,10 +19,10 @@ export default class SegmentationOverlay<State extends BaseState>
     typeof document !== "undefined" ? document.createElement("canvas") : null;
   readonly field: string;
   private readonly label: SegmentationLabel;
-  private targets: Uint32Array;
-  private imageColors: Uint32Array;
-  private colorMap: (key: string | number) => string;
-  private selected: boolean;
+  private targets?: Uint32Array;
+  private imageColors?: Uint32Array;
+  private colorMap?: (key: string | number) => string;
+  private selected?: boolean;
 
   constructor(field: string, label: SegmentationLabel) {
     this.field = field;
@@ -56,8 +56,8 @@ export default class SegmentationOverlay<State extends BaseState>
       this.colorMap === state.options.colorMap &&
       this.selected === selected
     ) {
-      imageColors.set(this.imageColors);
-    } else {
+      this.imageColors && imageColors.set(this.imageColors);
+    } else if (this.targets) {
       this.colorMap = state.options.colorMap;
       this.selected = selected;
       const colors = getSegmentationColorArray(this.colorMap, selected);

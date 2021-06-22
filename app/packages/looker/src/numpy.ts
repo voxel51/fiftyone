@@ -46,10 +46,16 @@ const DATA_TYPES = {
  * assumes that no element actually requires more than 32 bits to store, which
  * should be a safe assumption for our purposes.
  */
-function convert64to32Array(TargetArrayType) {
+function convert64to32Array(
+  TargetArrayType: typeof Uint32Array | typeof Int32Array
+) {
   // we only need the 3-argument constructor to be implemented. For details:
   // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/TypedArray
-  const makeArray = function (buffer, byteOffset: number, length: number) {
+  const makeArray = function (
+    buffer: ArrayBuffer,
+    byteOffset: number,
+    length: number
+  ) {
     // view buffer as 32-bit type and copy the 4 lowest bytes out of every 8
     // bytes into a new array (assumes little-endian)
     const source = new TargetArrayType(buffer, byteOffset, length * 2);
@@ -104,17 +110,25 @@ function parse(array: Uint8Array): NumpyResult {
       .replace(/,}/, "}")
       .replace(/,\]/, "]")
   );
-  const ArrayType = DATA_TYPES[header.descr];
+
+  let ArrayType = null;
+  if (header.desc in DATA_TYPES) {
+    // @ts-ignore
+    const ArrayType = DATA_TYPES[header.descr];
+  }
   if (!ArrayType) {
     throw new Error(`Unsupported data type: "${header.descr}"`);
   }
   const rawData = array.slice(bodyIndex);
+
   const typedData =
     ArrayType === Uint8Array
       ? rawData
-      : new ArrayType(
+      : // @ts-ignore
+        new ArrayType(
           rawData.buffer,
           rawData.byteOffset,
+          // @ts-ignore
           rawData.byteLength / ArrayType.BYTES_PER_ELEMENT
         );
   return {

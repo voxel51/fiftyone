@@ -3,15 +3,16 @@
  */
 
 import { BaseState, Coordinates } from "../state";
+import { BaseLabel } from "./base";
 
 export const t = (state: BaseState, x: number, y: number): Coordinates => {
   const [ctlx, ctly, cw, ch] = state.canvasBBox;
   return [ctlx + cw * x, ctly + ch * y];
 };
 
-export const sizeBytes = (label) => {
+export const sizeBytes = (label: BaseLabel) => {
   let bytes = 0;
-  const sizer = (obj) => {
+  const sizer = (obj: any) => {
     if (obj instanceof ArrayBuffer) {
       bytes += obj.byteLength;
     } else if (obj !== null && obj !== undefined) {

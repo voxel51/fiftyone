@@ -18,8 +18,8 @@ const getUrl = (origin: string): string => {
 
 const HIGH_WATER_MARK = 6;
 
-let stream: FrameStream = null;
-let streamId: string = null;
+let stream: FrameStream | null = null;
+let streamId: string | null = null;
 
 /** END GLOBALS */
 
@@ -32,7 +32,7 @@ interface ProcessSample {
   uuid: string;
   sample: {
     [key: string]: object;
-    frames?: {
+    frames: {
       1: object;
     };
   };
@@ -154,9 +154,9 @@ interface RequestFrameChunk {
   uuid: string;
 }
 
-const requestFrameChunk = ({ uuid }) => {
+const requestFrameChunk = ({ uuid }: RequestFrameChunk) => {
   if (uuid === streamId) {
-    stream.reader.read().then(getSendChunk(uuid));
+    stream && stream.reader.read().then(getSendChunk(uuid));
   }
 };
 
