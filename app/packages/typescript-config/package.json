@@ -1,7 +1,0 @@
-{
-    "name": "@fiftyone/typescript-config",
-    "version": "0.1.0",
-    "main": "tsconfig.json",
-    "license": "Apache-2.0",
-    "private": true
-}

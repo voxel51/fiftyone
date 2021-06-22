@@ -45,7 +45,6 @@
   },
   "devDependencies": {
     "@fiftyone/prettier-config": "*",
-    "@fiftyone/typescript-config": "*",
     "@types/mime": "^2.0.3",
     "@types/react": "^17.0.0",
     "@types/react-dom": "^17.0.0",

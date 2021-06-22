@@ -1,5 +1,4 @@
 {
-  "extends": "@fiftyone/typescript-config",
   "compilerOptions": {
     "module": "es2020",
     "noImplicitAny": false,
