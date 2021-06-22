@@ -1,15 +1,18 @@
 {
     "name": "@fiftyone/desktop",
     "version": "0.13.1",
-    "main": "./dist/index.js",
+    "main": "./dist/main.js",
     "license": "Apache-2.0",
     "private": true,
     "scripts": {
-        "build": "yarn workspace @fiftyone/app build && tsc -p tsconfig.json",
-        "start": "yarn workspace @fiftyone/app build && cross-env DEBUG_APP=true electron ./dist/main.js",
-        "package-mac": "yarn build && electron-builder build --mac",
-        "package-linux": "yarn build && electron-builder build --linux",
-        "package-win": "yarn build && electron-builder build --win --x64"
+        "build-desktop": "yarn build-desktop-source && yarn pull-desktop-source && tsc -p tsconfig.json",
+        "build-desktop-source": "yarn workspace @fiftyone/app build",
+        "pull-desktop-source": "yarn workspace @fiftyone/app copy-to-desktop",
+        "start": "cross-env DEBUG_APP=true electron ./dist/main.js",
+        "package-mac": "electron-builder build --mac",
+        "package-linux": "electron-builder build --linux",
+        "package-win": "electron-builder build --win --x64",
+        "postinstall": "electron-builder install-app-deps"
     },
     "build": {
         "productName": "FiftyOne",
@@ -87,7 +90,6 @@
         "electron": "11.1.0",
         "electron-builder": "^22.3.6",
         "electron-devtools-installer": "^2.2.4",
-        "tsc-silent": "^1.2.1",
         "typescript": "4.2.4"
     }
 }
