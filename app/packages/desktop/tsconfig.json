@@ -1,5 +1,4 @@
 {
-    "extends": "@fiftyone/typescript-config",
     "compilerOptions": {
         "module": "commonjs",
         "noImplicitAny": false,
