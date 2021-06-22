@@ -13,7 +13,11 @@ import * as selectors from "../recoil/selectors";
 import socket, { http } from "../shared/connection";
 import { packageMessage } from "../utils/socket";
 import { useVideoData, useTheme } from "../utils/hooks";
-import { VALID_CLASS_TYPES, VALID_LIST_TYPES } from "../utils/labels";
+import {
+  handleKey,
+  VALID_CLASS_TYPES,
+  VALID_LIST_TYPES,
+} from "../utils/labels";
 import { prettify } from "../utils/generic";
 
 const SampleDiv = animated(styled.div`
@@ -163,9 +167,9 @@ const SampleInfo = React.memo(({ id }) => {
       }
     } else if (
       scalars.includes(cur) &&
-      ![null, undefined].includes(sample[cur === "id" ? "_id" : cur])
+      ![null, undefined].includes(sample[handleKey(cur)])
     ) {
-      const value = prettify(sample[cur === "id" ? "_id" : cur], false);
+      const value = prettify(sample[handleKey(cur)], false);
       acc = [
         ...acc,
         <Tag
