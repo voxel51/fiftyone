@@ -259,7 +259,7 @@ class YOLOv5DatasetImporter(
                 ``dataset_dir`` has no effect
 
             If None, the parameter will default to ``dataset.yaml``
-        split ("val"): the split to load. The supported values are
+        split ("val"): the split to load. Typical values are
             ``("train", "val")``
         shuffle (False): whether to randomly shuffle the order in which the
             samples are imported
@@ -277,13 +277,6 @@ class YOLOv5DatasetImporter(
         seed=None,
         max_samples=None,
     ):
-        supported_splits = ("train", "val")
-        if split not in supported_splits:
-            raise ValueError(
-                "Unsupported split '%s'. Supported values are %s"
-                % (split, supported_splits)
-            )
-
         yaml_path = self._parse_labels_path(
             dataset_dir=dataset_dir,
             labels_path=yaml_path,
@@ -347,6 +340,12 @@ class YOLOv5DatasetImporter(
 
     def setup(self):
         d = _read_yaml_file(self.yaml_path)
+
+        if self.split not in d:
+            raise ValueError(
+                "Dataset YAML '%s' does not contain split '%s'"
+                % (self.yaml_path, self.split)
+            )
 
         data = d[self.split]
         classes = d.get("names", None)
@@ -596,7 +595,7 @@ class YOLOv5DatasetExporter(
         export_dir (None): the directory to write the export. This has no
             effect if ``data_path``, ``objects_path``, and ``images_path`` are
             absolute paths
-        split ("val"): the split being exported. The supported values are
+        split ("val"): the split being exported. Typical values are
             ``("train", "val")``
         data_path (None): an optional parameter that enables explicit control
             over the location of the exported media. Can be any of the
@@ -664,13 +663,6 @@ class YOLOv5DatasetExporter(
         classes=None,
         image_format=None,
     ):
-        supported_splits = ("train", "val")
-        if split not in supported_splits:
-            raise ValueError(
-                "Unsupported split '%s'. Supported values are %s"
-                % (split, supported_splits)
-            )
-
         data_path, export_media = self._parse_data_path(
             export_dir=export_dir,
             data_path=data_path,
@@ -749,7 +741,7 @@ class YOLOv5DatasetExporter(
                 self._dynamic_classes = False
 
     def export_sample(self, image_or_path, detections, metadata=None):
-        out_image_path, uuid = self._media_exporter.export(image_or_path)
+        _, uuid = self._media_exporter.export(image_or_path)
 
         if detections is None:
             return
