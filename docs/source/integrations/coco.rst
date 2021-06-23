@@ -1,4 +1,4 @@
-.. _coco-integration:
+.. _coco:
 
 COCO Integration
 ================

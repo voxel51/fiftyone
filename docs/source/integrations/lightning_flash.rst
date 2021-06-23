@@ -5,14 +5,13 @@ Lightning Flash Integration
 
 .. default-role:: code
 
-We've collaborated with `Grid AI <https://www.grid.ai>`_, the team behind the
-amazing `PyTorch Lightning <https://github.com/PyTorchLightning/pytorch-lightning>`_
-and `Lightning Flash <https://github.com/PyTorchLightning/lightning-flash>`_
-projects, to make it easy to train
-:class:`Flash tasks <flash:flash.core.model.Task>` on your
-:ref:`FiftyOne datasets <using-datasets>` and add predictions from your Flash
-models to your FiftyOne datasets for visualization and analysis, all in just a
-few lines of code!
+We've collaborated with the
+`PyTorch Lightning <https://github.com/PyTorchLightning/pytorch-lightning>`_
+team to make it easy to train
+`Lightning Flash <https://github.com/PyTorchLightning/lightning-flash>`_ tasks
+on your :ref:`FiftyOne datasets <using-datasets>` and add predictions from your
+Flash models to your FiftyOne datasets for visualization and analysis, all in
+just a few lines of code!
 
 The following Flash tasks are supported natively by FiftyOne:
 

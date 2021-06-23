@@ -476,14 +476,15 @@ version of the dataset.
 
 .. note::
 
-    We partnered with the `COCO team <https://cocodataset.org/#download>`_
-    to make FiftyOne the recommended tool for downloading, visualizing, and
-    evaluating on the COCO dataset!
+    We've collaborated with the
+    `COCO team <https://cocodataset.org/#download>`_ to make FiftyOne the
+    recommended tool for downloading, visualizing, and evaluating on the COCO
+    dataset!
 
-    Check out :ref:`this guide <coco-integration>` for more details on using
-    FiftyOne to work with COCO.
+    Check out :ref:`this guide <coco>` for more details on using FiftyOne to
+    work with COCO.
 
-Notes:
+**Notes**
 
 -   COCO defines 91 classes but the data only uses 80 classes
 -   Some images from the train and validation sets don't have annotations
@@ -535,6 +536,9 @@ COCO-2014 by passing them to
     of strings. Alternatively, you can provide the path to a TXT
     (newline-separated), JSON, or CSV file containing the list of image IDs to
     load in either of the first two formats
+
+-   ``include_id``: whether to include the COCO ID of each sample in the loaded
+    labels. By default, this is False
 
 -   ``only_matching``: whether to only load labels that match the ``classes``
     or ``attrs`` requirements that you provide (True), or to load all labels
@@ -699,14 +703,15 @@ version of the dataset.
 
 .. note::
 
-    We partnered with the `COCO team <https://cocodataset.org/#download>`_
-    to make FiftyOne the recommended tool for downloading, visualizing, and
-    evaluating on the COCO dataset!
+    We've collaborated with the
+    `COCO team <https://cocodataset.org/#download>`_ to make FiftyOne the
+    recommended tool for downloading, visualizing, and evaluating on the COCO
+    dataset!
 
-    Check out :ref:`this guide <coco-integration>` for more details on using
-    FiftyOne to work with COCO.
+    Check out :ref:`this guide <coco>` for more details on using FiftyOne to
+    work with COCO.
 
-Notes:
+**Notes**
 
 -   COCO defines 91 classes but the data only uses 80 classes
 -   Some images from the train and validation sets don't have annotations
@@ -758,6 +763,9 @@ COCO-2017 by passing them to
     of strings. Alternatively, you can provide the path to a TXT
     (newline-separated), JSON, or CSV file containing the list of image IDs to
     load in either of the first two formats
+
+-   ``include_id``: whether to include the COCO ID of each sample in the loaded
+    labels. By default, this is False
 
 -   ``only_matching``: whether to only load labels that match the ``classes``
     or ``attrs`` requirements that you provide (True), or to load all labels
@@ -1381,13 +1389,13 @@ and visual relationship tasks across 601 object classes.
 
 .. note::
 
-    We partnered with the
+    We've collaborated with the
     `Open Images Team at Google <https://storage.googleapis.com/openimages/web/download.html>`_
     to make FiftyOne the recommended tool for downloading, visualizing, and
     evaluating on the Open Images Dataset!
 
-    Check out :ref:`this guide <open-images-integration>` for more details on
-    using FiftyOne to work with Open Images.
+    Check out :ref:`this guide <open-images>` for more details on using
+    FiftyOne to work with Open Images.
 
 **Details**
 
@@ -1450,6 +1458,9 @@ Images V6 by passing them to
     Alternatively, you can provide the path to a TXT (newline-separated), JSON,
     or CSV file containing the list of image IDs to load in either of the first
     two formats
+
+-   ``include_id``: whether to include the Open Images ID of each sample in the
+    loaded labels. By default, this is True
 
 -   ``only_matching``: whether to only load labels that match the ``classes``
     or ``attrs`` requirements that you provide (True), or to load all labels

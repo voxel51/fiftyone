@@ -42,17 +42,17 @@ on the cards below to see how!
 
 .. customcarditem::
     :header: Open Images Dataset
-    :description: FiftyOne is the recommended tool for downloading and exploring Google's Open Images Dataset.
+    :description: See why FiftyOne is the recommended tool for downloading, visualizing, and evaluating on Google's Open Images Dataset.
     :link: open_images.html
     :image: ../_static/images/integrations/open_images.png
-    :tags: Dataset
+    :tags: Dataset,Model-Evaluation
 
 .. customcarditem::
     :header: COCO Dataset
-    :description: FiftyOne is the recommended tool for downloading and exploring the COCO Dataset.
+    :description: See why FiftyOne is the recommended tool for downloading, visualizing, and evaluating on the COCO Dataset.
     :link: coco.html
     :image: ../_static/images/integrations/coco.png
-    :tags: Dataset
+    :tags: Dataset,Model-Evaluation
 
 .. Upcoming integrations
 

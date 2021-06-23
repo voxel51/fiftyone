@@ -1,4 +1,4 @@
-.. _open-images-integration:
+.. _open-images:
 
 Open Images Integration
 =======================
