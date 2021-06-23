@@ -23,14 +23,12 @@
     "color-string": "^1.5.5",
     "immutable": "^4.0.0-rc.12",
     "lru-cache": "^6.0.0",
-    "pako": "1.0.11",
     "uuid": "^8.3.2"
   },
   "devDependencies": {
     "@fiftyone/prettier-config": "*",
     "@types/color-string": "^1.5.0",
     "@types/lru-cache": "^5.1.0",
-    "@types/pako": "^1.0.1",
     "@types/uuid": "^8.3.0",
     "path": "^0.12.7",
     "prettier": "2.2.1",
