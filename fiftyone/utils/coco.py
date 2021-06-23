@@ -27,7 +27,7 @@ import fiftyone.core.utils as fou
 import fiftyone.utils.data as foud
 
 mask_utils = fou.lazy_import(
-    "pycocotools.mask", callback=fou.ensure_pycocotools
+    "pycocotools.mask", callback=lambda: fou.ensure_import("pycocotools")
 )
 
 

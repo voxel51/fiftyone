@@ -6,6 +6,7 @@ FiftyOne models.
 |
 """
 import contextlib
+import inspect
 import itertools
 import logging
 import warnings
@@ -29,11 +30,13 @@ import fiftyone.core.validation as fov
 tud = fou.lazy_import("torch.utils.data")
 
 foe = fou.lazy_import("fiftyone.core.eta_utils")
-fout = fou.lazy_import("fiftyone.utils.torch")
+fouf = fou.lazy_import("fiftyone.utils.flash")
 foup = fou.lazy_import("fiftyone.utils.patches")
+fout = fou.lazy_import("fiftyone.utils.torch")
 
 
 logger = logging.getLogger(__name__)
+
 
 _ALLOWED_PATCH_TYPES = (
     fol.Detection,
@@ -52,18 +55,23 @@ def apply_model(
     batch_size=None,
     num_workers=None,
     skip_failures=True,
+    **trainer_kwargs,
 ):
-    """Applies the given :class:`Model` to the samples in the collection.
+    """Applies the :class:`FiftyOne model <Model>` or
+    :class:`Lightning Flash model <flash:flash.core.model.Task>` to the samples
+    in the collection.
 
-    This method supports all the following cases:
+    This method supports all of the following cases:
 
-    -   Applying an image model to an image collection
-    -   Applying an image model to the frames of a video collection
-    -   Applying a video model to a video collection
+    -   Applying an image :class:`Model` to an image collection
+    -   Applying an image :class:`Model` to the frames of a video collection
+    -   Applying a video :class:`Model` to a video collection
+    -   Applying a :class:`flash:flash.core.model.Task` to an image or video
+        collection
 
     Args:
         samples: a :class:`fiftyone.core.collections.SampleCollection`
-        model: a :class:`Model`
+        model: a :class:`Model` or :class:`flash:flash.core.model.Task`
         label_field ("predictions"): the name of the field in which to store
             the model predictions. When performing inference on video frames,
             the "frames." prefix is optional
@@ -72,16 +80,34 @@ def apply_model(
         store_logits (False): whether to store logits for the model
             predictions. This is only supported when the provided ``model`` has
             logits, ``model.has_logits == True``
-        batch_size (None): an optional batch size to use. Only applicable for
-            image samples
+        batch_size (None): an optional batch size to use, if the model supports
+            batching
         num_workers (None): the number of workers to use when loading images.
-            Only applicable for Torch models
+            Only applicable for Torch-based models
         skip_failures (True): whether to gracefully continue without raising an
-            error if predictions cannot be generated for a sample
+            error if predictions cannot be generated for a sample. Only
+            applicable to :class:`Model` instances
+        **trainer_kwargs: optional keyword arguments used to initialize the
+            :mod:`Trainer <flash:flash.core.trainer>` when using Flash models.
+            These can be used to, for example, configure the number of GPUs to
+            use and other distributed inference parameters
     """
+    if _is_flash_model(model):
+        return fouf.apply_flash_model(
+            samples,
+            model,
+            label_field=label_field,
+            confidence_thresh=confidence_thresh,
+            store_logits=store_logits,
+            batch_size=batch_size,
+            num_workers=num_workers,
+            **trainer_kwargs,
+        )
+
     if not isinstance(model, Model):
         raise ValueError(
-            "Model must be a %s instance; found %s" % (Model, type(model))
+            "Model must be a %s or %s; found %s"
+            % (Model, _BASE_FLASH_TYPE, type(model))
         )
 
     if model.media_type == "video" and samples.media_type != fom.VIDEO:
@@ -181,6 +207,17 @@ def apply_model(
         return _apply_image_model_single(
             samples, model, label_field, confidence_thresh, skip_failures
         )
+
+
+_BASE_FLASH_TYPE = "flash.core.model.Task"
+
+
+def _is_flash_model(model):
+    for cls in inspect.getmro(type(model)):
+        if etau.get_class_name(cls) == _BASE_FLASH_TYPE:
+            return True
+
+    return False
 
 
 def _apply_image_model_single(
@@ -583,34 +620,46 @@ def compute_embeddings(
     batch_size=None,
     num_workers=None,
     skip_failures=True,
+    **trainer_kwargs,
 ):
     """Computes embeddings for the samples in the collection using the given
-    :class:`Model`.
+    :class:`FiftyOne model <Model>` or
+    :class:`Lightning Flash model <flash:flash.core.model.Task>`.
 
     This method supports all the following cases:
 
-    -   Using an image model to compute embeddings for an image collection
-    -   Using an image model to compute frame embeddings for a video collection
-    -   Using a video model to compute embeddings for a video collection
+    -   Using an image :class:`Model` to compute embeddings for an image
+        collection
+    -   Using an image :class:`Model` to compute frame embeddings for a video
+        collection
+    -   Using a video :class:`Model` to compute embeddings for a video
+        collection
+    -   Using an :ref:`ImageEmbedder <flash:image_embedder>` to compute
+        embeddings for an image collection
 
-    The ``model`` must expose embeddings, i.e., :meth:`Model.has_embeddings`
-    must return ``True``.
+    When using a :class:`FiftyOne model <Model>`, the model must expose
+    embeddings, i.e., :meth:`Model.has_embeddings` must return ``True``.
 
     If an ``embeddings_field`` is provided, the embeddings are saved to the
     samples; otherwise, the embeddings are returned in-memory.
 
     Args:
         samples: a :class:`fiftyone.core.collections.SampleCollection`
-        model: a :class:`Model`
+        model: a :class:`Model` or :class:`flash:flash.core.model.Task>`
         embeddings_field (None): the name of a field in which to store the
             embeddings. When computing video frame embeddings, the "frames."
             prefix is optional
-        batch_size (None): an optional batch size to use. Only applicable for
-            image samples
+        batch_size (None): an optional batch size to use, if the model supports
+            batching
         num_workers (None): the number of workers to use when loading images.
-            Only applicable for Torch models
+            Only applicable for Torch-based models
         skip_failures (True): whether to gracefully continue without raising an
-            error if embeddings cannot be generated for a sample
+            error if embeddings cannot be generated for a sample. Only
+            applicable to :class:`Model` instances
+        **trainer_kwargs: optional keyword arguments used to initialize the
+            :mod:`Trainer <flash:flash.core.trainer>` when using Flash models.
+            These can be used to, for example, configure the number of GPUs to
+            use and other distributed inference parameters
 
     Returns:
         one of the following:
@@ -630,9 +679,20 @@ def compute_embeddings(
             contain arrays of embeddings for all frames 1, 2, ... until the
             error occurred, or ``None`` if no embeddings were computed at all
     """
+    if _is_flash_model(model):
+        return fouf.compute_flash_embeddings(
+            samples,
+            model,
+            embeddings_field=embeddings_field,
+            batch_size=batch_size,
+            num_workers=num_workers,
+            **trainer_kwargs,
+        )
+
     if not isinstance(model, Model):
         raise ValueError(
-            "Model must be a %s instance; found %s" % (Model, type(model))
+            "Model must be a %s or %s; found %s"
+            % (Model, _BASE_FLASH_TYPE, type(model))
         )
 
     if not model.has_embeddings:
@@ -1136,7 +1196,8 @@ def compute_patch_embeddings(
             -   "image": use the whole image as a single patch
             -   "error": raise an error
 
-        batch_size (None): an optional batch size to use
+        batch_size (None): an optional batch size to use, if the model supports
+            batching
         num_workers (None): the number of workers to use when loading images.
             Only applicable for Torch models
         skip_failures (True): whether to gracefully continue without raising an

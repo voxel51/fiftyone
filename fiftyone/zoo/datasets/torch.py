@@ -394,7 +394,7 @@ class COCO2014Dataset(TorchVisionDataset):
 
     def _download_and_prepare(self, dataset_dir, scratch_dir, split):
         def download_fcn(download_dir):
-            fou.ensure_pycocotools()
+            fou.ensure_import("pycocotools")
             images_dir, anno_path = fouc.download_coco_dataset_split(
                 download_dir, split, year="2014", cleanup=True
             )
@@ -456,7 +456,7 @@ class COCO2017Dataset(TorchVisionDataset):
 
     def _download_and_prepare(self, dataset_dir, scratch_dir, split):
         def download_fcn(download_dir):
-            fou.ensure_pycocotools()
+            fou.ensure_import("pycocotools")
             images_dir, anno_path = fouc.download_coco_dataset_split(
                 download_dir, split, year="2017", cleanup=True
             )

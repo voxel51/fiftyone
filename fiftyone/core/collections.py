@@ -1222,18 +1222,26 @@ class SampleCollection(object):
         batch_size=None,
         num_workers=None,
         skip_failures=True,
+        **trainer_kwargs,
     ):
-        """Applies the :class:`fiftyone.core.models.Model` to the samples in
-        the collection.
+        """Applies the :class:`FiftyOne model <fiftyone.core.models.Model>` or
+        :class:`Lightning Flash model <flash:flash.core.model.Task>` to the
+        samples in the collection.
 
-        This method supports all the following cases:
+        This method supports all of the following cases:
 
-        -   Applying an image model to an image collection
-        -   Applying an image model to the frames of a video collection
-        -   Applying a video model to a video collection
+        -   Applying an image :class:`fiftyone.core.models.Model` to an image
+            collection
+        -   Applying an image :class:`fiftyone.core.models.Model` to the frames
+            of a video collection
+        -   Applying a video :class:`fiftyone.core.models.Model` to a video
+            collection
+        -   Applying a :class:`flash:flash.core.model.Task` to an image or
+            video collection
 
         Args:
-            model: a :class:`fiftyone.core.models.Model`
+            model: a :class:`fiftyone.core.models.Model` or
+                :class:`flash:flash.core.model.Task`
             label_field ("predictions"): the name of the field in which to
                 store the model predictions. When performing inference on video
                 frames, the "frames." prefix is optional
@@ -1242,13 +1250,19 @@ class SampleCollection(object):
             store_logits (False): whether to store logits for the model
                 predictions. This is only supported when the provided ``model``
                 has logits, ``model.has_logits == True``
-            batch_size (None): an optional batch size to use. Only applicable
-                for image samples
-            num_workers (None): the number of workers to use when loading
-                images. Only applicable for Torch models
+            batch_size (None): an optional batch size to use, if the model
+                supports batching
+            num_workers (None): the number of workers for the
+                :class:`torch:torch.utils.data.DataLoader` to use. Only
+                applicable for Torch-based models
             skip_failures (True): whether to gracefully continue without
                 raising an error if predictions cannot be generated for a
-                sample
+                sample. Only applicable to :class:`fiftyone.core.models.Model`
+                instances
+            **trainer_kwargs: optional keyword arguments used to initialize the
+                :mod:`Trainer <flash:flash.core.trainer>` when using Flash
+                models. These can be used to, for example, configure the number
+                of GPUs to use and other distributed inference parameters
         """
         fomo.apply_model(
             self,
@@ -1259,6 +1273,7 @@ class SampleCollection(object):
             batch_size=batch_size,
             num_workers=num_workers,
             skip_failures=skip_failures,
+            **trainer_kwargs,
         )
 
     def compute_embeddings(
@@ -1268,34 +1283,49 @@ class SampleCollection(object):
         batch_size=None,
         num_workers=None,
         skip_failures=True,
+        **trainer_kwargs,
     ):
         """Computes embeddings for the samples in the collection using the
-        given :class:`fiftyone.core.models.Model`.
+        given :class:`FiftyOne model <fiftyone.core.models.Model>` or
+        :class:`Lightning Flash model <flash:flash.core.model.Task>`.
 
         This method supports all the following cases:
 
-        -   Using an image model to compute embeddings for an image collection
-        -   Using an image model to compute frame embeddings for a video
-            collection
-        -   Using a video model to compute embeddings for a video collection
+        -   Using an image :class:`fiftyone.core.models.Model` to compute
+            embeddings for an image collection
+        -   Using an image :class:`fiftyone.core.models.Model` to compute frame
+            embeddings for a video collection
+        -   Using a video :class:`fiftyone.core.models.Model` to compute
+            embeddings for a video collection
+        -   Using an :ref:`ImageEmbedder <flash:image_embedder>` to compute
+            embeddings for an image collection
 
-        The ``model`` must expose embeddings, i.e.,
+        When using a :class:`FiftyOne model <fiftyone.core.models.Model>`, the
+        model must expose embeddings, i.e.,
         :meth:`fiftyone.core.models.Model.has_embeddings` must return ``True``.
 
         If an ``embeddings_field`` is provided, the embeddings are saved to the
         samples; otherwise, the embeddings are returned in-memory.
 
         Args:
-            model: a :class:`fiftyone.core.models.Model`
+            model: a :class:`fiftyone.core.models.Model` or
+                :class:`flash:flash.core.model.Task`
             embeddings_field (None): the name of a field in which to store the
                 embeddings. When computing video frame embeddings, the
                 "frames." prefix is optional
-            batch_size (None): an optional batch size to use. Only applicable
-                for image samples
-            num_workers (None): the number of workers to use when loading
-                images. Only applicable for Torch models
+            batch_size (None): an optional batch size to use, if the model
+                supports batching
+            num_workers (None): the number of workers for the
+                :class:`torch:torch.utils.data.DataLoader` to use. Only
+                applicable for Torch-based models
             skip_failures (True): whether to gracefully continue without
-                raising an error if embeddings cannot be generated for a sample
+                raising an error if embeddings cannot be generated for a
+                sample. Only applicable to :class:`fiftyone.core.models.Model`
+                instances
+            **trainer_kwargs: optional keyword arguments used to initialize the
+                :mod:`Trainer <flash:flash.core.trainer>` when using Flash
+                models. These can be used to, for example, configure the number
+                of GPUs to use and other distributed inference parameters
 
         Returns:
             one of the following:
@@ -1323,6 +1353,7 @@ class SampleCollection(object):
             batch_size=batch_size,
             num_workers=num_workers,
             skip_failures=skip_failures,
+            **trainer_kwargs,
         )
 
     def compute_patch_embeddings(
@@ -1381,9 +1412,11 @@ class SampleCollection(object):
                 -   "image": use the whole image as a single patch
                 -   "error": raise an error
 
-            batch_size (None): an optional batch size to use
-            num_workers (None): the number of workers to use when loading
-                images. Only applicable for Torch models
+            batch_size (None): an optional batch size to use, if the model
+                supports batching
+            num_workers (None): the number of workers for the
+                :class:`torch:torch.utils.data.DataLoader` to use. Only
+                applicable for Torch-based models
             skip_failures (True): whether to gracefully continue without
                 raising an error if embeddings cannot be generated for a sample
 

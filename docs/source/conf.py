@@ -133,6 +133,16 @@ nbsphinx_prolog = """
 # Path to the redirects file, relative to `source/`
 redirects_file = "redirects"
 
+# -- Options for intersphinx extension ---------------------------------------
+
+intersphinx_mapping = {
+    # including `python` autolinks things like (None) which is not desirable
+    # "python": ("https://docs.python.org/3", None),
+    "numpy": ("https://numpy.org/doc/stable/", None),
+    "torch": ("https://pytorch.org/docs/stable/", None),
+    "flash": ("https://lightning-flash.readthedocs.io/en/latest", None),
+}
+
 # -- Options for HTML output -------------------------------------------------
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
@@ -169,6 +179,7 @@ html_context = {
     "link_fiftyone": "https://voxel51.com/fiftyone/",
     "link_fiftyone_tutorials": "https://voxel51.com/docs/fiftyone/tutorials/index.html",
     "link_fiftyone_examples": "https://github.com/voxel51/fiftyone-examples",
+    "link_fiftyone_quickstart": "https://colab.research.google.com/github/voxel51/fiftyone-examples/blob/master/examples/quickstart.ipynb",
     "link_home": "https://voxel51.com/",
     "link_ourstory": "https://voxel51.com/ourstory/",
     "link_press": "https://voxel51.com/press/",
