@@ -128,6 +128,9 @@ const SampleInfo = React.memo(({ id }) => {
   const colorByLabel = useRecoilValue(atoms.colorByLabel(false));
   const labelTypes = useRecoilValue(selectors.labelTypesMap);
   const sample = useRecoilValue(atoms.sample(id));
+  const filters = useRecoilValue(labelFilters(false));
+
+  const dbFields = useRecoilValue(selectors.scalarsDbMap("sample"));
 
   const bubbles = activeFields.reduce((acc, cur) => {
     if (
@@ -163,9 +166,9 @@ const SampleInfo = React.memo(({ id }) => {
       }
     } else if (
       scalars.includes(cur) &&
-      ![null, undefined].includes(sample[cur === "id" ? "_id" : cur])
+      ![null, undefined].includes(sample[dbFields[cur]])
     ) {
-      const value = prettify(sample[cur === "id" ? "_id" : cur], false);
+      const value = prettify(sample[dbFields[cur]], false);
       acc = [
         ...acc,
         <Tag
@@ -189,6 +192,7 @@ const SampleInfo = React.memo(({ id }) => {
       acc = [
         ...acc,
         values
+          .filter((v) => filters[cur](v))
           .map((v) => prettify(v.label, false))
           .map((v) => (
             <Tag
