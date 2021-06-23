@@ -43,7 +43,8 @@ below to figure out which option is best for you.
         - :ref:`FiftyOneImageDetectionDataset <FiftyOneImageDetectionDataset-import>`
         - :ref:`COCODetectionDataset <COCODetectionDataset-import>`
         - :ref:`VOCDetectionDataset <VOCDetectionDataset-import>`
-        - :ref:`YOLODataset <YOLODataset-import>`
+        - :ref:`YOLOv4Dataset <YOLOv4Dataset-import>`
+        - :ref:`YOLOv5Dataset <YOLOv5Dataset-import>`
         - :ref:`KITTIDetectionDataset <KITTIDetectionDataset-import>`
         - :ref:`TFObjectDetectionDataset <TFObjectDetectionDataset-import>`
         - :ref:`ImageSegmentationDirectory <ImageSegmentationDirectory-import>`
@@ -52,6 +53,7 @@ below to figure out which option is best for you.
         - :ref:`FiftyOneImageLabelsDataset <FiftyOneImageLabelsDataset-import>`
         - :ref:`FiftyOneVideoLabelsDataset <FiftyOneVideoLabelsDataset-import>`
         - :ref:`BDDDataset <BDDDataset-import>`
+        - :ref:`GeoJSONDataset <GeoJSONDataset-import>`
         - :ref:`FiftyOneDataset <FiftyOneDataset-import>`
 
         If one of these formats matches your data, you can load it with the
