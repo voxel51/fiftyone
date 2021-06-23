@@ -879,6 +879,9 @@ where ``labels.json`` is a JSON file in the following format:
                 "category_id": 2,
                 "bbox": [260, 177, 231, 199],
                 "segmentation": [...],
+                "keypoints": [224, 226, 2, ...],
+                "num_keypoints": 10,
+                "score": 0.95,
                 "area": 45969,
                 "iscrowd": 0
             },

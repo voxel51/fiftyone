@@ -541,6 +541,7 @@ class COCODetectionDataset(ImageDetectionDataset):
                     "segmentation": [...],
                     "keypoints": [224, 226, 2, ...],
                     "num_keypoints": 10,
+                    "score": 0.95,
                     "area": 45969,
                     "iscrowd": 0
                 },

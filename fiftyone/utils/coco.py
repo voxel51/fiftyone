@@ -91,6 +91,13 @@ class COCODetectionDatasetImporter(
                 two formats
         include_id (False): whether to include the COCO ID of each sample in the
             loaded labels
+        extra_attrs (None): whether to load extra annotation attributes onto
+            the imported labels. Supported values are:
+
+            -   ``None``/``False``: do not load extra attributes
+            -   ``True``: load all extra attributes found
+            -   a name or list of names of specific attributes to load
+
         only_matching (False): whether to only load labels that match the
             ``classes`` requirement that you provide (True), or to load all
             labels for samples that match the requirements (False)
@@ -121,6 +128,7 @@ class COCODetectionDatasetImporter(
         classes=None,
         image_ids=None,
         include_id=False,
+        extra_attrs=None,
         only_matching=False,
         use_polylines=False,
         tolerance=None,
@@ -153,6 +161,7 @@ class COCODetectionDatasetImporter(
         self.classes = classes
         self.image_ids = image_ids
         self.include_id = include_id
+        self.extra_attrs = extra_attrs
         self.only_matching = only_matching
         self.use_polylines = use_polylines
         self.tolerance = tolerance
@@ -322,7 +331,9 @@ class COCODetectionDatasetImporter(
                 supercategory_map,
                 images,
                 annotations,
-            ) = load_coco_detection_annotations(self.labels_path)
+            ) = load_coco_detection_annotations(
+                self.labels_path, extra_attrs=self.extra_attrs
+            )
 
             if classes is not None:
                 info["classes"] = classes
@@ -369,6 +380,9 @@ class COCODetectionDatasetExporter(
     foud.LabeledImageDatasetExporter, foud.ExportPathsMixin
 ):
     """Exporter that writes COCO detection datasets to disk.
+
+    This class currently only supports exporting detections and instance
+    segmentations.
 
     See :class:`fiftyone.types.dataset_types.COCODetectionDataset` for format
     details.
@@ -426,6 +440,8 @@ class COCODetectionDatasetExporter(
         classes (None): the list of possible class labels. If not provided,
             this list will be extracted when :meth:`log_collection` is called,
             if possible
+        extra_attrs (None): an optional field name or list of field names of
+            extra label attributes to include in the exported annotations
         iscrowd ("iscrowd"): the name of a detection attribute that indicates
             whether an object is a crowd (only used if present)
         info (None): a dict of info as returned by
@@ -444,6 +460,7 @@ class COCODetectionDatasetExporter(
         export_media=None,
         image_format=None,
         classes=None,
+        extra_attrs=None,
         iscrowd="iscrowd",
         info=None,
         tolerance=None,
@@ -461,6 +478,9 @@ class COCODetectionDatasetExporter(
             default="labels.json",
         )
 
+        if etau.is_str(extra_attrs):
+            extra_attrs = [extra_attrs]
+
         super().__init__(export_dir=export_dir)
 
         self.data_path = data_path
@@ -468,6 +488,7 @@ class COCODetectionDatasetExporter(
         self.export_media = export_media
         self.image_format = image_format
         self.classes = classes
+        self.extra_attrs = extra_attrs
         self.iscrowd = iscrowd
         self.info = info
         self.tolerance = tolerance
@@ -550,6 +571,7 @@ class COCODetectionDatasetExporter(
                 detection,
                 metadata,
                 labels_map_rev=self._labels_map_rev,
+                extra_attrs=self.extra_attrs,
                 iscrowd=self.iscrowd,
                 tolerance=self.tolerance,
             )
@@ -608,27 +630,31 @@ class COCOObject(object):
     """An object in COCO detection format.
 
     Args:
-        id: the ID of the annotation
-        image_id: the ID of the image in which the annotation appears
-        category_id: the category ID of the object
-        bbox: a bounding box for the object in ``[xmin, ymin, width, height]``
-            format
+        id (None): the ID of the annotation
+        image_id (None): the ID of the image in which the annotation appears
+        category_id (None): the category ID of the object
+        bbox (None): a bounding box for the object in
+            ``[xmin, ymin, width, height]`` format
         segmentation (None): the segmentation data for the object
         keypoints (None): the keypoints data for the object
+        score (None): a confidence score for the object
         area (None): the area of the bounding box, in pixels
         iscrowd (None): whether the detection is a crowd
+        **attributes: additional custom attributes
     """
 
     def __init__(
         self,
-        id,
-        image_id,
-        category_id,
-        bbox,
+        id=None,
+        image_id=None,
+        category_id=None,
+        bbox=None,
         segmentation=None,
         keypoints=None,
+        score=None,
         area=None,
         iscrowd=None,
+        **attributes,
     ):
         self.id = id
         self.image_id = image_id
@@ -636,8 +662,10 @@ class COCOObject(object):
         self.bbox = bbox
         self.segmentation = segmentation
         self.keypoints = keypoints
+        self.score = score
         self.area = area
         self.iscrowd = iscrowd
+        self.attributes = attributes
 
     def to_polyline(
         self, frame_size, classes=None, supercategory_map=None, tolerance=None
@@ -664,6 +692,7 @@ class COCOObject(object):
         label, attributes = self._get_object_label_and_attributes(
             classes, supercategory_map
         )
+        attributes.update(self.attributes)
 
         points = _get_polygons_for_segmentation(
             self.segmentation, frame_size, tolerance
@@ -672,6 +701,7 @@ class COCOObject(object):
         return fol.Polyline(
             label=label,
             points=points,
+            confidence=self.score,
             closed=False,
             filled=True,
             **attributes,
@@ -702,7 +732,12 @@ class COCOObject(object):
 
             points.append((x / width, y / height))
 
-        return fol.Keypoint(label=label, points=points)
+        return fol.Keypoint(
+            label=label,
+            points=points,
+            confidence=self.score,
+            **self.attributes,
+        )
 
     def to_detection(
         self,
@@ -728,6 +763,7 @@ class COCOObject(object):
         label, attributes = self._get_object_label_and_attributes(
             classes, supercategory_map
         )
+        attributes.update(self.attributes)
 
         width, height = frame_size
         x, y, w, h = self.bbox
@@ -740,7 +776,11 @@ class COCOObject(object):
             )
 
         return fol.Detection(
-            label=label, bounding_box=bounding_box, mask=mask, **attributes,
+            label=label,
+            bounding_box=bounding_box,
+            mask=mask,
+            confidence=self.score,
+            **attributes,
         )
 
     def to_anno_dict(self):
@@ -749,22 +789,35 @@ class COCOObject(object):
         Returns:
             a COCO annotation dict
         """
-        if self.keypoints is not None:
-            num_keypoints = len(self.keypoints) // 3
-        else:
-            num_keypoints = None
-
-        return {
+        d = {
             "id": self.id,
             "image_id": self.image_id,
             "category_id": self.category_id,
-            "bbox": self.bbox,
-            "segmentation": self.segmentation,
-            "keypoints": self.keypoints,
-            "num_keypoints": num_keypoints,
-            "area": self.area,
-            "iscrowd": self.iscrowd,
         }
+
+        if self.bbox is not None:
+            d["bbox"] = self.bbox
+
+        if self.keypoints is not None:
+            d["keypoints"] = self.keypoints
+            d["num_keypoints"] = len(self.keypoints) // 3
+
+        if self.segmentation is not None:
+            d["segmentation"] = self.segmentation
+
+        if self.score is not None:
+            d["score"] = self.score
+
+        if self.area is not None:
+            d["area"] = self.area
+
+        if self.iscrowd is not None:
+            d["iscrowd"] = self.iscrowd
+
+        if self.attributes:
+            d.update(self.attributes)
+
+        return d
 
     @classmethod
     def from_detection(
@@ -773,6 +826,7 @@ class COCOObject(object):
         metadata,
         keypoint=None,
         labels_map_rev=None,
+        extra_attrs=None,
         iscrowd="iscrowd",
         tolerance=None,
     ):
@@ -787,6 +841,7 @@ class COCOObject(object):
                 containing keypoints to include for the object
             labels_map_rev (None): an optional dict mapping labels to category
                 IDs
+            extra_attrs (None): an optional list of extra attributes to include
             iscrowd ("iscrowd"): the name of the crowd attribute (used if
                 present)
             tolerance (None): a tolerance, in pixels, when generating
@@ -831,36 +886,62 @@ class COCOObject(object):
 
         keypoints = _make_coco_keypoints(keypoint, frame_size)
 
+        if extra_attrs:
+            attributes = {f: getattr(detection, f, None) for f in extra_attrs}
+        else:
+            attributes = {}
+
         return cls(
-            None,
-            None,
-            category_id,
-            bbox,
+            id=None,
+            image_id=None,
+            category_id=category_id,
+            bbox=bbox,
             segmentation=segmentation,
             keypoints=keypoints,
+            score=detection.confidence,
             area=area,
             iscrowd=_iscrowd,
+            **attributes,
         )
 
     @classmethod
-    def from_anno_dict(cls, d):
+    def from_anno_dict(cls, d, extra_attrs=None):
         """Creates a :class:`COCOObject` from a COCO annotation dict.
 
         Args:
             d: a COCO annotation dict
+            extra_attrs (None): whether to load extra annotation attributes.
+                Supported values are:
+
+                -   ``None``/``False``: do not load extra attributes
+                -   ``True``: load all extra attributes
+                -   a name or list of names of specific attributes to load
 
         Returns:
             a :class:`COCOObject`
         """
+        if extra_attrs is True:
+            return cls(**d)
+
+        if etau.is_str(extra_attrs):
+            extra_attrs = [extra_attrs]
+
+        if extra_attrs:
+            attributes = {f: d.get(f, None) for f in extra_attrs}
+        else:
+            attributes = {}
+
         return cls(
-            d["id"],
-            d["image_id"],
-            d["category_id"],
-            d["bbox"],
+            id=d.get("id", None),
+            image_id=d.get("image_id", None),
+            category_id=d.get("category_id", None),
+            bbox=d.get("bbox", None),
             segmentation=d.get("segmentation", None),
             keypoints=d.get("keypoints", None),
+            score=d.get("score", None),
             area=d.get("area", None),
             iscrowd=d.get("iscrowd", None),
+            **attributes,
         )
 
     def _get_label(self, classes):
@@ -885,16 +966,13 @@ class COCOObject(object):
         if supercategory is not None:
             attributes["supercategory"] = supercategory
 
-        if self.area is not None:
-            attributes["area"] = self.area
-
         if self.iscrowd is not None:
             attributes["iscrowd"] = self.iscrowd
 
         return label, attributes
 
 
-def load_coco_detection_annotations(json_path):
+def load_coco_detection_annotations(json_path, extra_attrs=None):
     """Loads the COCO annotations from the given JSON file.
 
     See :class:`fiftyone.types.dataset_types.COCODetectionDataset` for format
@@ -902,6 +980,12 @@ def load_coco_detection_annotations(json_path):
 
     Args:
         json_path: the path to the annotations JSON file
+        extra_attrs (None): whether to load extra annotation attributes.
+            Supported values are:
+
+            -   ``None``/``False``: do not load extra attributes
+            -   ``True``: load all extra attributes found
+            -   a name or list of names of specific attributes to load
 
     Returns:
         a tuple of
@@ -940,7 +1024,9 @@ def load_coco_detection_annotations(json_path):
     if _annotations is not None:
         annotations = defaultdict(list)
         for a in _annotations:
-            annotations[a["image_id"]].append(COCOObject.from_anno_dict(a))
+            annotations[a["image_id"]].append(
+                COCOObject.from_anno_dict(a, extra_attrs=extra_attrs)
+            )
 
         annotations = dict(annotations)
     else:
@@ -1228,7 +1314,7 @@ def _download_coco_dataset_split(
         _,
         images,
         annotations,
-    ) = load_coco_detection_annotations(full_anno_path)
+    ) = load_coco_detection_annotations(full_anno_path, extra_attrs=True)
 
     #
     # Download images to `images_dir`, if necessary
