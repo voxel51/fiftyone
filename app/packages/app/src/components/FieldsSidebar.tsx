@@ -595,6 +595,7 @@ const ScalarsCell = ({ modal }: ScalarsCellProps) => {
   const count = useRecoilValue(countAtom);
   const colorByLabel = useRecoilValue(atoms.colorByLabel(modal));
   const theme = useTheme();
+  const dbFields = useRecoilValue(selectors.scalarsDbMap("sample"));
 
   return (
     <Cell
@@ -614,14 +615,14 @@ const ScalarsCell = ({ modal }: ScalarsCellProps) => {
             hasDropdown: !modal,
             selected: activeScalars.includes(name),
             color: colorByLabel ? theme.brand : colorMap(name),
-            title: modal ? prettify(count[name], false) : name,
+            title: modal ? prettify(count[dbFields[name]], false) : name,
             path: name,
             type: "values",
             data:
               count && subCount && !modal
                 ? makeData(subCount[name], count[name])
                 : modal
-                ? prettify(count[name])
+                ? prettify(count[dbFields[name]])
                 : null,
             totalCount: !modal && count ? count[name] : null,
             filteredCount: !modal && subCount ? subCount[name] : null,

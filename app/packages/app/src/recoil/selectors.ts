@@ -25,6 +25,7 @@ export const deactivated = selector({
   get: ({ get }) => {
     const handle = handleId;
     const activeHandle = get(atoms.stateDescription)?.active_handle;
+
     const notebook = isNotebook;
     if (notebook) {
       return handle !== activeHandle && typeof activeHandle === "string";
@@ -724,6 +725,20 @@ export const scalarsMap = selectorFamily<{ [key: string]: string }, string>({
       (acc, cur, i) => ({
         ...acc,
         [cur]: types[i],
+      }),
+      {}
+    );
+  },
+});
+
+export const scalarsDbMap = selectorFamily<{ [key: string]: string }, string>({
+  key: "scalarsMap",
+  get: (dimension) => ({ get }) => {
+    const values = get(scalars(dimension));
+    return get(scalarNames(dimension)).reduce(
+      (acc, cur, i) => ({
+        ...acc,
+        [cur]: values[i].db_field,
       }),
       {}
     );
