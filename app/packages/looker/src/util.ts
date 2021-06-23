@@ -14,8 +14,7 @@ import {
   Optional,
 } from "./state";
 
-// @ts-ignore
-import LookerWorker from "./worker?worker";
+import LookerWorker from "./worker.ts?worker&inline";
 
 /**
  * Shallow data-object comparison for equality

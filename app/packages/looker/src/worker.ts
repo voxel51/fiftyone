@@ -3,8 +3,46 @@
  */
 
 import { CHUNK_SIZE } from "./constants";
-import { processMasks } from "./overlays";
+import { deserialize } from "./numpy";
 import { FrameChunk } from "./state";
+
+const DESERIALIZE = {
+  Detection: (label, buffers) => {
+    if (typeof label.mask === "string") {
+      label.mask = deserialize(label.mask);
+      buffers.push(label.mask.buffer);
+    }
+  },
+  Detections: (labels, buffers) => {
+    labels.detections.forEach((label) => {
+      if (typeof label.mask === "string") {
+        label.mask = deserialize(label.mask);
+        buffers.push(label.mask.buffer);
+      }
+    });
+  },
+  Segmentation: (label, buffers) => {
+    if (typeof label.mask === "string") {
+      label.mask = deserialize(label.mask);
+      buffers.push(label.mask.buffer);
+    }
+  },
+};
+
+const processMasks = (sample: { [key: string]: any }): ArrayBuffer[] => {
+  let buffers: ArrayBuffer[] = [];
+  for (const field in sample) {
+    const label = sample[field];
+    if (!label) {
+      continue;
+    }
+    if (label._cls in DESERIALIZE) {
+      DESERIALIZE[label._cls](label, buffers);
+    }
+  }
+
+  return buffers;
+};
 
 const getUrl = (origin: string): string => {
   // @ts-ignore

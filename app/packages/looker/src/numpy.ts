@@ -2,7 +2,7 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 
-import pako from "pako";
+import pako from "./pako.js";
 
 export { deserialize };
 
