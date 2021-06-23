@@ -19,7 +19,7 @@ News
 App
 ^^^
 - Fixed a bug that prevented ``sample_id`` fields from appearing in the App
-  when working with patches views
+  when working with frames and patches views
 
 Core
 ^^^^
