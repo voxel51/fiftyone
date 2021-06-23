@@ -38,6 +38,9 @@ Core
   `YOLOv5 format <https://github.com/ultralytics/yolov5>`_
 - Updated the :class:`GeoJSONDataset <fiftyone.types.dataset_types.GeoJSONDataset>`
   dataset type to support both image and video datasets
+- Added support for :class:`importing <fiftyone.utils.coco.COCODetectionDatasetImporter>`
+  and :class:`exporting <fiftyone.utils.coco.COCODetectionDatasetExporter>` extra
+  attributes in COCO format via a new ``extra_attrs`` parameter
 
 Zoo
 ^^^
