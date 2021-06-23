@@ -53,7 +53,7 @@
       "category": "Tool"
     },
     "directories": {
-      "buildResources": "public",
+      "buildResources": "resources",
       "output": "release"
     },
     "publish": {
