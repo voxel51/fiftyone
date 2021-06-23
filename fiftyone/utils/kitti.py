@@ -35,13 +35,13 @@ class KITTIDetectionDatasetImporter(
         data_path (None): an optional parameter that enables explicit control
             over the location of the media. Can be any of the following:
 
-            -   a folder name like "data" or "data/" specifying a subfolder of
-                ``dataset_dir`` where the media files reside
+            -   a folder name like ``"data"`` or ``"data/"`` specifying a
+                subfolder of ``dataset_dir`` where the media files reside
             -   an absolute directory path where the media files reside. In
                 this case, the ``dataset_dir`` has no effect on the location of
                 the data
-            -   a filename like "data.json" specifying the filename of the JSON
-                data manifest file in ``dataset_dir``
+            -   a filename like ``"data.json"`` specifying the filename of the
+                JSON data manifest file in ``dataset_dir``
             -   an absolute filepath specifying the location of the JSON data
                 manifest. In this case, ``dataset_dir`` has no effect on the
                 location of the data
@@ -51,7 +51,7 @@ class KITTIDetectionDatasetImporter(
         labels_path (None): an optional parameter that enables explicit control
             over the location of the labels. Can be any of the following:
 
-            -   a folder name like "labels" or "labels/" specifying the
+            -   a folder name like ``"labels"`` or ``"labels/"`` specifying the
                 location of the labels in ``dataset_dir``
             -   an absolute folder path to the labels. In this case,
                 ``dataset_dir`` has no effect on the location of the labels
@@ -188,14 +188,14 @@ class KITTIDetectionDatasetExporter(
             over the location of the exported media. Can be any of the
             following:
 
-            -   a folder name like "data" or "data/" specifying a subfolder of
-                ``export_dir`` in which to export the media
+            -   a folder name like ``"data"`` or ``"data/"`` specifying a
+                subfolder of ``export_dir`` in which to export the media
             -   an absolute directory path in which to export the media. In
                 this case, the ``export_dir`` has no effect on the location of
                 the data
-            -   a JSON filename like "data.json" specifying the filename of the
-                manifest file in ``export_dir`` generated when ``export_media``
-                is ``"manifest"``
+            -   a JSON filename like ``"data.json"`` specifying the filename of
+                the manifest file in ``export_dir`` generated when
+                ``export_media`` is ``"manifest"``
             -   an absolute filepath specifying the location to write the JSON
                 manifest file when ``export_media`` is ``"manifest"``. In this
                 case, ``export_dir`` has no effect on the location of the data
@@ -206,7 +206,7 @@ class KITTIDetectionDatasetExporter(
             over the location of the exported labels. Can be any of the
             following:
 
-            -   a folder name like "labels" or "labels/" specifying the
+            -   a folder name like ``"labels"`` or ``"labels/"`` specifying the
                 location in ``export_dir`` in which to export the labels
             -   an absolute folder path to which to export the labels. In this
                 case, the ``export_dir`` has no effect on the location of the

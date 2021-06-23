@@ -1758,13 +1758,13 @@ class FiftyOneImageClassificationDatasetImporter(
         data_path (None): an optional parameter that enables explicit control
             over the location of the media. Can be any of the following:
 
-            -   a folder name like "data" or "data/" specifying a subfolder of
-                ``dataset_dir`` where the media files reside
+            -   a folder name like ``"data"`` or ``"data"/`` specifying a
+                subfolder of ``dataset_dir`` where the media files reside
             -   an absolute directory path where the media files reside. In
                 this case, the ``dataset_dir`` has no effect on the location of
                 the data
-            -   a filename like "data.json" specifying the filename of the JSON
-                data manifest file in ``dataset_dir``
+            -   a filename like ``"data.json"`` specifying the filename of the
+                JSON data manifest file in ``dataset_dir``
             -   an absolute filepath specifying the location of the JSON data
                 manifest. In this case, ``dataset_dir`` has no effect on the
                 location of the data
@@ -1774,8 +1774,8 @@ class FiftyOneImageClassificationDatasetImporter(
         labels_path (None): an optional parameter that enables explicit control
             over the location of the labels. Can be any of the following:
 
-            -   a filename like "labels.json" specifying the location of the
-                labels in ``dataset_dir``
+            -   a filename like ``"labels.json"`` specifying the location of
+                the labels in ``dataset_dir``
             -   an absolute filepath to the labels. In this case,
                 ``dataset_dir`` has no effect on the location of the labels
 
@@ -2148,13 +2148,13 @@ class FiftyOneImageDetectionDatasetImporter(
         data_path (None): an optional parameter that enables explicit control
             over the location of the media. Can be any of the following:
 
-            -   a folder name like "data" or "data/" specifying a subfolder of
-                ``dataset_dir`` where the media files reside
+            -   a folder name like ``"data"`` or ``"data"/`` specifying a
+                subfolder of ``dataset_dir`` where the media files reside
             -   an absolute directory path where the media files reside. In
                 this case, the ``dataset_dir`` has no effect on the location of
                 the data
-            -   a filename like "data.json" specifying the filename of the JSON
-                data manifest file in ``dataset_dir``
+            -   a filename like ``"data.json"`` specifying the filename of the
+                JSON data manifest file in ``dataset_dir``
             -   an absolute filepath specifying the location of the JSON data
                 manifest. In this case, ``dataset_dir`` has no effect on the
                 location of the data
@@ -2164,8 +2164,8 @@ class FiftyOneImageDetectionDatasetImporter(
         labels_path (None): an optional parameter that enables explicit control
             over the location of the labels. Can be any of the following:
 
-            -   a filename like "labels.json" specifying the location of the
-                labels in ``dataset_dir``
+            -   a filename like ``"labels.json"`` specifying the location of
+                the labels in ``dataset_dir``
             -   an absolute filepath to the labels. In this case,
                 ``dataset_dir`` has no effect on the location of the labels
 
@@ -2310,13 +2310,13 @@ class ImageSegmentationDirectoryImporter(
         data_path (None): an optional parameter that enables explicit control
             over the location of the media. Can be any of the following:
 
-            -   a folder name like "data" or "data/" specifying a subfolder of
-                ``dataset_dir`` where the media files reside
+            -   a folder name like ``"data"`` or ``"data"/`` specifying a
+                subfolder of ``dataset_dir`` where the media files reside
             -   an absolute directory path where the media files reside. In
                 this case, the ``dataset_dir`` has no effect on the location of
                 the data
-            -   a filename like "data.json" specifying the filename of the JSON
-                data manifest file in ``dataset_dir``
+            -   a filename like ``"data.json"`` specifying the filename of the
+                JSON data manifest file in ``dataset_dir``
             -   an absolute filepath specifying the location of the JSON data
                 manifest. In this case, ``dataset_dir`` has no effect on the
                 location of the data
@@ -2326,7 +2326,7 @@ class ImageSegmentationDirectoryImporter(
         labels_path (None): an optional parameter that enables explicit control
             over the location of the labels. Can be any of the following:
 
-            -   a folder name like "labels" or "labels/" specifying the
+            -   a folder name like ``"labels"`` or ``"labels/"`` specifying the
                 location of the labels in ``dataset_dir``
             -   an absolute filepath to the labels. In this case,
                 ``dataset_dir`` has no effect on the location of the labels

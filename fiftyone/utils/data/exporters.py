@@ -117,14 +117,14 @@ def export_samples(
             over the location of the exported media for certain export formats.
             Can be any of the following:
 
-            -   a folder name like "data" or "data/" specifying a subfolder of
-                ``export_dir`` in which to export the media
+            -   a folder name like ``"data"`` or ``"data/"`` specifying a
+                subfolder of ``export_dir`` in which to export the media
             -   an absolute directory path in which to export the media. In
                 this case, the ``export_dir`` has no effect on the location of
                 the data
-            -   a filename like "data.json" specifying the filename of a JSON
-                manifest file in ``export_dir`` generated when ``export_media``
-                is ``"manifest"``
+            -   a filename like ``"data.json"`` specifying the filename of a
+                JSON manifest file in ``export_dir`` generated when
+                ``export_media`` is ``"manifest"``
             -   an absolute filepath specifying the location to write the JSON
                 manifest file when ``export_media`` is ``"manifest"``. In this
                 case, ``export_dir`` has no effect on the location of the data
@@ -138,9 +138,10 @@ def export_samples(
             exporting in certain labeled dataset formats. Can be any of the
             following:
 
-            -   a type-specific folder name like "labels" or "labels/" or a
-                filename like "labels.json" or "labels.xml" specifying the
-                location in ``export_dir`` in which to export the labels
+            -   a type-specific folder name like ``"labels"`` or ``"labels/"``
+                or a filename like ``"labels.json"`` or ``"labels.xml"``
+                specifying the location in ``export_dir`` in which to export
+                the labels
             -   an absolute directory or filepath in which to export the
                 labels. In this case, the ``export_dir`` has no effect on the
                 location of the labels
@@ -1748,14 +1749,14 @@ class FiftyOneImageClassificationDatasetExporter(
             over the location of the exported media. Can be any of the
             following:
 
-            -   a folder name like "data" or "data/" specifying a subfolder of
-                ``export_dir`` in which to export the media
+            -   a folder name like ``"data"`` or ``"data/"`` specifying a
+                subfolder of ``export_dir`` in which to export the media
             -   an absolute directory path in which to export the media. In
                 this case, the ``export_dir`` has no effect on the location of
                 the data
-            -   a JSON filename like "data.json" specifying the filename of the
-                manifest file in ``export_dir`` generated when ``export_media``
-                is ``"manifest"``
+            -   a JSON filename like ``"data.json"`` specifying the filename of
+                the manifest file in ``export_dir`` generated when
+                ``export_media`` is ``"manifest"``
             -   an absolute filepath specifying the location to write the JSON
                 manifest file when ``export_media`` is ``"manifest"``. In this
                 case, ``export_dir`` has no effect on the location of the data
@@ -1766,7 +1767,7 @@ class FiftyOneImageClassificationDatasetExporter(
             over the location of the exported labels. Can be any of the
             following:
 
-            -   a filename like "labels.json" specifying the location in
+            -   a filename like ``"labels.json"`` specifying the location in
                 ``export_dir`` in which to export the labels
             -   an absolute filepath to which to export the labels. In this
                 case, the ``export_dir`` has no effect on the location of the
@@ -2094,14 +2095,14 @@ class FiftyOneImageDetectionDatasetExporter(
             over the location of the exported media. Can be any of the
             following:
 
-            -   a folder name like "data" or "data/" specifying a subfolder of
-                ``export_dir`` in which to export the media
+            -   a folder name like ``"data"`` or ``"data/"`` specifying a
+                subfolder of ``export_dir`` in which to export the media
             -   an absolute directory path in which to export the media. In
                 this case, the ``export_dir`` has no effect on the location of
                 the data
-            -   a JSON filename like "data.json" specifying the filename of the
-                manifest file in ``export_dir`` generated when ``export_media``
-                is ``"manifest"``
+            -   a JSON filename like ``"data.json"`` specifying the filename of
+                the manifest file in ``export_dir`` generated when
+                ``export_media`` is ``"manifest"``
             -   an absolute filepath specifying the location to write the JSON
                 manifest file when ``export_media`` is ``"manifest"``. In this
                 case, ``export_dir`` has no effect on the location of the data
@@ -2112,7 +2113,7 @@ class FiftyOneImageDetectionDatasetExporter(
             over the location of the exported labels. Can be any of the
             following:
 
-            -   a filename like "labels.json" specifying the location in
+            -   a filename like ``"labels.json"`` specifying the location in
                 ``export_dir`` in which to export the labels
             -   an absolute filepath to which to export the labels. In this
                 case, the ``export_dir`` has no effect on the location of the
@@ -2253,14 +2254,14 @@ class ImageSegmentationDirectoryExporter(
             over the location of the exported media. Can be any of the
             following:
 
-            -   a folder name like "data" or "data/" specifying a subfolder of
-                ``export_dir`` in which to export the media
+            -   a folder name like ``"data"`` or ``"data/"`` specifying a
+                subfolder of ``export_dir`` in which to export the media
             -   an absolute directory path in which to export the media. In
                 this case, the ``export_dir`` has no effect on the location of
                 the data
-            -   a JSON filename like "data.json" specifying the filename of the
-                manifest file in ``export_dir`` generated when ``export_media``
-                is ``"manifest"``
+            -   a JSON filename like ``"data.json"`` specifying the filename of
+                the manifest file in ``export_dir`` generated when
+                ``export_media`` is ``"manifest"``
             -   an absolute filepath specifying the location to write the JSON
                 manifest file when ``export_media`` is ``"manifest"``. In this
                 case, ``export_dir`` has no effect on the location of the data
@@ -2271,7 +2272,7 @@ class ImageSegmentationDirectoryExporter(
             over the location of the exported labels. Can be any of the
             following:
 
-            -   a folder name like "labels" or "labels/" specifying the
+            -   a folder name like ``"labels"`` or ``"labels/"`` specifying the
                 location in ``export_dir`` in which to export the masks
             -   an absolute directory in which to export the masks. In this
                 case, the ``export_dir`` has no effect on the location of the

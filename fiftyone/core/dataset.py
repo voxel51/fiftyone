@@ -2147,13 +2147,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 control over the location of the exported media for certain
                 dataset types. Can be any of the following:
 
-                -   a folder name like "data" or "data/" specifying a subfolder
-                    of ``dataset_dir`` in which the media lies
+                -   a folder name like ``"data"`` or ``"data/"`` specifying a
+                    subfolder of ``dataset_dir`` in which the media lies
                 -   an absolute directory path in which the media lies. In this
                     case, the ``export_dir`` has no effect on the location of
                     the data
-                -   a filename like "data.json" specifying the filename of a
-                    JSON manifest file in ``dataset_dir`` that maps UUIDs to
+                -   a filename like ``"data.json"`` specifying the filename of
+                    a JSON manifest file in ``dataset_dir`` that maps UUIDs to
                     media filepaths. Files of this format are generated when
                     passing the ``export_media="manifest"`` option to
                     :meth:`fiftyone.core.collections.SampleCollection.export`
@@ -2167,9 +2167,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 importing certain labeled dataset formats. Can be any of the
                 following:
 
-                -   a type-specific folder name like "labels" or "labels/" or a
-                    filename like "labels.json" or "labels.xml" specifying the
-                    location in ``dataset_dir`` of the labels file(s)
+                -   a type-specific folder name like ``"labels"`` or
+                    ``"labels/"`` or a filename like ``"labels.json"`` or
+                    ``"labels.xml"`` specifying the location in ``dataset_dir``
+                    of the labels file(s)
                 -   an absolute directory or filepath containing the labels
                     file(s). In this case, ``dataset_dir`` has no effect on the
                     location of the labels
@@ -2311,13 +2312,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 control over the location of the exported media for certain
                 dataset types. Can be any of the following:
 
-                -   a folder name like "data" or "data/" specifying a subfolder
-                    of ``dataset_dir`` in which the media lies
+                -   a folder name like ``"data"`` or ``"data/"`` specifying a
+                    subfolder of ``dataset_dir`` in which the media lies
                 -   an absolute directory path in which the media lies. In this
                     case, the ``export_dir`` has no effect on the location of
                     the data
-                -   a filename like "data.json" specifying the filename of a
-                    JSON manifest file in ``dataset_dir`` that maps UUIDs to
+                -   a filename like ``"data.json"`` specifying the filename of
+                    a JSON manifest file in ``dataset_dir`` that maps UUIDs to
                     media filepaths. Files of this format are generated when
                     passing the ``export_media="manifest"`` option to
                     :meth:`fiftyone.core.collections.SampleCollection.export`
@@ -2331,9 +2332,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 importing certain labeled dataset formats. Can be any of the
                 following:
 
-                -   a type-specific folder name like "labels" or "labels/" or a
-                    filename like "labels.json" or "labels.xml" specifying the
-                    location in ``dataset_dir`` of the labels file(s)
+                -   a type-specific folder name like ``"labels"`` or
+                    ``"labels/"`` or a filename like ``"labels.json"`` or
+                    ``"labels.xml"`` specifying the location in ``dataset_dir``
+                    of the labels file(s)
                 -   an absolute directory or filepath containing the labels
                     file(s). In this case, ``dataset_dir`` has no effect on the
                     location of the labels
@@ -2470,13 +2472,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 control over the location of the exported media for certain
                 dataset types. Can be any of the following:
 
-                -   a folder name like "data" or "data/" specifying a subfolder
-                    of ``dataset_dir`` in which the media lies
+                -   a folder name like ``"data"`` or ``"data/"`` specifying a
+                    subfolder of ``dataset_dir`` in which the media lies
                 -   an absolute directory path in which the media lies. In this
                     case, the ``archive_path`` has no effect on the location of
                     the data
-                -   a filename like "data.json" specifying the filename of a
-                    JSON manifest file in ``archive_path`` that maps UUIDs to
+                -   a filename like ``"data.json"`` specifying the filename of
+                    a JSON manifest file in ``archive_path`` that maps UUIDs to
                     media filepaths. Files of this format are generated when
                     passing the ``export_media="manifest"`` option to
                     :meth:`fiftyone.core.collections.SampleCollection.export`
@@ -2490,9 +2492,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 importing certain labeled dataset formats. Can be any of the
                 following:
 
-                -   a type-specific folder name like "labels" or "labels/" or a
-                    filename like "labels.json" or "labels.xml" specifying the
-                    location in ``archive_path`` of the labels file(s)
+                -   a type-specific folder name like ``"labels"`` or
+                    ``"labels/"`` or a filename like ``"labels.json"`` or
+                    ``"labels.xml"`` specifying the location in
+                    ``archive_path`` of the labels file(s)
                 -   an absolute directory or filepath containing the labels
                     file(s). In this case, ``archive_path`` has no effect on
                     the location of the labels
@@ -2614,13 +2617,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 control over the location of the exported media for certain
                 dataset types. Can be any of the following:
 
-                -   a folder name like "data" or "data/" specifying a subfolder
-                    of ``dataset_dir`` in which the media lies
+                -   a folder name like ``"data"`` or ``"data/"`` specifying a
+                    subfolder of ``dataset_dir`` in which the media lies
                 -   an absolute directory path in which the media lies. In this
                     case, the ``archive_path`` has no effect on the location of
                     the data
-                -   a filename like "data.json" specifying the filename of a
-                    JSON manifest file in ``archive_path`` that maps UUIDs to
+                -   a filename like ``"data.json"`` specifying the filename of
+                    a JSON manifest file in ``archive_path`` that maps UUIDs to
                     media filepaths. Files of this format are generated when
                     passing the ``export_media="manifest"`` option to
                     :meth:`fiftyone.core.collections.SampleCollection.export`
@@ -2634,9 +2637,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 importing certain labeled dataset formats. Can be any of the
                 following:
 
-                -   a type-specific folder name like "labels" or "labels/" or a
-                    filename like "labels.json" or "labels.xml" specifying the
-                    location in ``archive_path`` of the labels file(s)
+                -   a type-specific folder name like ``"labels"`` or
+                    ``"labels/"`` or a filename like ``"labels.json"`` or
+                    ``"labels.xml"`` specifying the location in
+                    ``archive_path`` of the labels file(s)
                 -   an absolute directory or filepath containing the labels
                     file(s). In this case, ``archive_path`` has no effect on
                     the location of the labels
@@ -3328,13 +3332,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 control over the location of the exported media for certain
                 dataset types. Can be any of the following:
 
-                -   a folder name like "data" or "data/" specifying a subfolder
-                    of ``dataset_dir`` in which the media lies
+                -   a folder name like ``"data"`` or ``"data/"`` specifying a
+                    subfolder of ``dataset_dir`` in which the media lies
                 -   an absolute directory path in which the media lies. In this
                     case, the ``export_dir`` has no effect on the location of
                     the data
-                -   a filename like "data.json" specifying the filename of a
-                    JSON manifest file in ``dataset_dir`` that maps UUIDs to
+                -   a filename like ``"data.json"`` specifying the filename of
+                    a JSON manifest file in ``dataset_dir`` that maps UUIDs to
                     media filepaths. Files of this format are generated when
                     passing the ``export_media="manifest"`` option to
                     :meth:`fiftyone.core.collections.SampleCollection.export`
@@ -3348,9 +3352,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 importing certain labeled dataset formats. Can be any of the
                 following:
 
-                -   a type-specific folder name like "labels" or "labels/" or a
-                    filename like "labels.json" or "labels.xml" specifying the
-                    location in ``dataset_dir`` of the labels file(s)
+                -   a type-specific folder name like ``"labels"`` or
+                    ``"labels/"`` or a filename like ``"labels.json"`` or
+                    ``"labels.xml"`` specifying the location in ``dataset_dir``
+                    of the labels file(s)
                 -   an absolute directory or filepath containing the labels
                     file(s). In this case, ``dataset_dir`` has no effect on the
                     location of the labels
@@ -3424,13 +3429,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 control over the location of the exported media for certain
                 dataset types. Can be any of the following:
 
-                -   a folder name like "data" or "data/" specifying a subfolder
-                    of ``dataset_dir`` in which the media lies
+                -   a folder name like ``"data"`` or ``"data/"`` specifying a
+                    subfolder of ``dataset_dir`` in which the media lies
                 -   an absolute directory path in which the media lies. In this
                     case, the ``archive_path`` has no effect on the location of
                     the data
-                -   a filename like "data.json" specifying the filename of a
-                    JSON manifest file in ``archive_path`` that maps UUIDs to
+                -   a filename like ``"data.json"`` specifying the filename of
+                    a JSON manifest file in ``archive_path`` that maps UUIDs to
                     media filepaths. Files of this format are generated when
                     passing the ``export_media="manifest"`` option to
                     :meth:`fiftyone.core.collections.SampleCollection.export`
@@ -3444,9 +3449,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 importing certain labeled dataset formats. Can be any of the
                 following:
 
-                -   a type-specific folder name like "labels" or "labels/" or a
-                    filename like "labels.json" or "labels.xml" specifying the
-                    location in ``archive_path`` of the labels file(s)
+                -   a type-specific folder name like ``"labels"`` or
+                    ``"labels/"`` or a filename like ``"labels.json"`` or
+                    ``"labels.xml"`` specifying the location in
+                    ``archive_path`` of the labels file(s)
                 -   an absolute directory or filepath containing the labels
                     file(s). In this case, ``archive_path`` has no effect on
                     the location of the labels
