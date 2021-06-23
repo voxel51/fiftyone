@@ -7,6 +7,7 @@ Definition of the `fiftyone` command-line interface (CLI).
 """
 import argparse
 from collections import defaultdict
+import distutils
 import json
 import os
 import subprocess
@@ -2705,7 +2706,12 @@ class _ParseKwargsAction(argparse.Action):
             values = [values]
 
         for value in values:
-            key, val = value.split("=")
+            if "=" not in value:
+                key = value
+                val = "True"
+            else:
+                key, val = value.split("=")
+
             kwargs[key.replace("-", "_")] = _parse_kwargs_value(val)
 
         setattr(namespace, self.dest, kwargs)
@@ -2713,13 +2719,18 @@ class _ParseKwargsAction(argparse.Action):
 
 def _parse_kwargs_value(val):
     try:
+        return bool(distutils.util.strtobool(val))
+    except:
+        pass
+
+    try:
         return int(val)
-    except ValueError:
+    except:
         pass
 
     try:
         return float(val)
-    except ValueError:
+    except:
         pass
 
     if "," in val:
