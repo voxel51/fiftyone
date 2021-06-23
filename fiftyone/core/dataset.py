@@ -1652,7 +1652,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         if key_fcn is None:
             tmp = Dataset()
-            tmp.add_samples(samples)
+            tmp.add_samples(samples, num_samples=num_samples)
 
             self.merge_samples(
                 tmp,
@@ -2197,7 +2197,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             dataset_type = dataset_type()
 
         # If the input dataset contains TFRecords, they must be unpacked into a
-        # temporary directory during conversion
+        # directory during import
         if (
             isinstance(
                 dataset_type,
@@ -2390,7 +2390,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             dataset_type = dataset_type()
 
         # If the input dataset contains TFRecords, they must be unpacked into a
-        # temporary directory during conversion
+        # directory during import
         if (
             isinstance(
                 dataset_type,
