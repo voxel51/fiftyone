@@ -666,8 +666,8 @@ COCO-2014 by passing them to
             --split validation \
             --kwargs \
                 label_types=segmentations \
-                classes=cat,dog
-                max_samples=25 \
+                classes=cat,dog \
+                max_samples=25
 
         fiftyone app launch coco-2014-validation-25
 
@@ -893,8 +893,8 @@ COCO-2017 by passing them to
             --split validation \
             --kwargs \
                 label_types=segmentations \
-                classes=cat,dog
-                max_samples=25 \
+                classes=cat,dog \
+                max_samples=25
 
         fiftyone app launch coco-2017-validation-25
 
@@ -1500,6 +1500,9 @@ Images V6 by passing them to
     .. code-block:: python
         :linenos:
 
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
         #
         # Load 50 random samples from the validation split
         #
@@ -1587,8 +1590,8 @@ Images V6 by passing them to
             --split validation \
             --kwargs \
                 label_types=segmentations,classifications \
-                classes=Fedora,Piano
-                max_samples=25 \
+                classes=Fedora,Piano \
+                max_samples=25
 
         fiftyone app launch open-images-v6-validation-25
 

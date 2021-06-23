@@ -1249,7 +1249,7 @@ def _download_coco_dataset_split(
 
             if num_downloaded > 0:
                 logger.info(
-                    "Found %d (<%d) downloaded images; must download full "
+                    "Found %d (< %d) downloaded images; must download full "
                     "image zip",
                     num_downloaded,
                     split_size,
