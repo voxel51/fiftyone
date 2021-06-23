@@ -69,8 +69,8 @@ class YOLOv4DatasetImporter(
         data_path (None): an optional parameter that enables explicit control
             over the location of the media. Can be any of the following:
 
-            -   a folder name like "data" or "data/" specifying a subfolder of
-                ``dataset_dir`` where the media files reside
+            -   a folder name like ``"data"`` or ``"data/"`` specifying a
+                subfolder of ``dataset_dir`` where the media files reside
             -   an absolute directory path where the media files reside. In
                 this case, the ``dataset_dir`` has no effect on the location of
                 the data
@@ -81,7 +81,7 @@ class YOLOv4DatasetImporter(
             control over the location of the image listing file. Can be any of
             the following:
 
-            -   a filename like "images.txt" specifying the location of the
+            -   a filename like ``"images.txt"`` specifying the location of the
                 image listing file labels in ``dataset_dir``
             -   an absolute filepath to the image listing file. In this case,
                 ``dataset_dir`` has no effect on the location of the file
@@ -91,7 +91,7 @@ class YOLOv4DatasetImporter(
             control over the location of the object names file. Can be any of
             the following:
 
-            -   a filename like "obj.names" specifying the location of the
+            -   a filename like ``"obj.names"`` specifying the location of the
                 object names file labels in ``dataset_dir``
             -   an absolute filepath to the object names file. In this case,
                 ``dataset_dir`` has no effect on the location of the file
@@ -253,8 +253,8 @@ class YOLOv5DatasetImporter(
             over the location of the dataset YAML file. Can be any of the
             following:
 
-            -   a filename like "dataset.yaml" specifying the name of the YAML
-                file in ``dataset_dir``
+            -   a filename like ``"dataset.yaml"`` specifying the name of the
+                YAML file in ``dataset_dir``
             -   an absolute path to the YAML file. In this case,
                 ``dataset_dir`` has no effect
 
@@ -407,8 +407,9 @@ class YOLOv4DatasetExporter(
             over the location of the exported data and labels. Can be any of
             the following:
 
-            -   a folder name like "data" or "data/" specifying a subfolder of
-                ``export_dir`` in which to export the data and labels
+            -   a folder name like ``"data"`` or ``"data/"`` specifying a
+                subfolder of ``export_dir`` in which to export the data and
+                labels
             -   an absolute directory path in which to export the data and
                 labels. In this case, the ``export_dir`` has no effect on the
                 location of the data
@@ -419,7 +420,7 @@ class YOLOv4DatasetExporter(
             control over the location of the object names file. Can be any of
             the following:
 
-            -   a filename like "obj.names" specifying the location in
+            -   a filename like ``"obj.names"`` specifying the location in
                 ``export_dir`` in which to export the object names
             -   an absolute filepath to which to export the object names. In
                 this case, the ``export_dir`` has no effect on the location of
@@ -431,7 +432,7 @@ class YOLOv4DatasetExporter(
             over the location of the image listing file. Can be any of the
             following:
 
-            -   a filename like "images.txt" specifying the location in
+            -   a filename like ``"images.txt"`` specifying the location in
                 ``export_dir`` in which to export the image listing
             -   an absolute filepath to which to export the image listing. In
                 this case, the ``export_dir`` has no effect on the location of
@@ -601,8 +602,8 @@ class YOLOv5DatasetExporter(
             over the location of the exported media. Can be any of the
             following:
 
-            -   a folder name like "images" or "images/" specifying a subfolder
-                of ``export_dir`` in which to export the images
+            -   a folder name like ``"images"`` or ``"images/"`` specifying a
+                subfolder of ``export_dir`` in which to export the images
             -   an absolute directory path in which to export the images. In
                 this case, the ``export_dir`` has no effect on the location of
                 the images
@@ -613,7 +614,7 @@ class YOLOv5DatasetExporter(
             control over the location of the exported labels. Can be any of the
             following:
 
-            -   a folder name like "labels" or "labels/" specifying the
+            -   a folder name like ``"labels"`` or ``"labels/"`` specifying the
                 location in ``export_dir`` in which to export the labels
             -   an absolute folder path to which to export the labels. In this
                 case, the ``export_dir`` has no effect on the location of
@@ -625,7 +626,7 @@ class YOLOv5DatasetExporter(
             over the location of the dataset listing YAML file. Can be any of
             the following:
 
-            -   a filename like "dataset.yaml" specifying the location in
+            -   a filename like ``"dataset.yaml"`` specifying the location in
                 ``export_dir`` to write the YAML file
             -   an absolute filepath to which to write the YAML file. In this
                 case, the ``export_dir`` has no effect on the location of

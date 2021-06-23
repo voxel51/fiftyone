@@ -5223,13 +5223,13 @@ class SampleCollection(object):
                 control over the location of the exported media for certain
                 export formats. Can be any of the following:
 
-                -   a folder name like "data" or "data/" specifying a subfolder
-                    of ``export_dir`` in which to export the media
+                -   a folder name like ``"data"`` or ``"data/"`` specifying a
+                    subfolder of ``export_dir`` in which to export the media
                 -   an absolute directory path in which to export the media. In
                     this case, the ``export_dir`` has no effect on the location
                     of the data
-                -   a filename like "data.json" specifying the filename of a
-                    JSON manifest file in ``export_dir`` generated when
+                -   a filename like ``"data.json"`` specifying the filename of
+                    a JSON manifest file in ``export_dir`` generated when
                     ``export_media`` is ``"manifest"``
                 -   an absolute filepath specifying the location to write the
                     JSON manifest file when ``export_media`` is ``"manifest"``.
@@ -5245,9 +5245,10 @@ class SampleCollection(object):
                 applicable when exporting in certain labeled dataset formats.
                 Can be any of the following:
 
-                -   a type-specific folder name like "labels" or "labels/" or a
-                    filename like "labels.json" or "labels.xml" specifying the
-                    location in ``export_dir`` in which to export the labels
+                -   a type-specific folder name like ``"labels"`` or
+                    ``"labels/"`` or a filename like ``"labels.json"`` or
+                    ``"labels.xml"`` specifying the location in ``export_dir``
+                    in which to export the labels
                 -   an absolute directory or filepath in which to export the
                     labels. In this case, the ``export_dir`` has no effect on
                     the location of the labels
