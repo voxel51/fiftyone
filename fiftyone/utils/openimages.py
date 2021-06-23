@@ -7,6 +7,7 @@ dataset.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+from collections import defaultdict
 import csv
 import logging
 import multiprocessing
@@ -46,9 +47,11 @@ class OpenImagesV6DatasetImporter(foud.LabeledImageDatasetImporter):
             ``("detections", "classifications", "relationships", "segmentations")``.
             By default, all label types are loaded
         classes (None): a string or list of strings specifying required classes
-            to load. Only samples containing at least one instance of a
-            specified class will be loaded
-        attrs (None): a list of strings for relationship attributes to load
+            to load. If provided, only samples containing at least one instance
+            of a specified class will be loaded
+        attrs (None): a string or list of strings for relationship attributes
+            to load. If provided, only samples containing at least one instance
+            of a specified attribute will be loaded
         image_ids (None): an optional list of specific image IDs to load. Can
             be provided in any of the following formats:
 
@@ -57,8 +60,11 @@ class OpenImagesV6DatasetImporter(foud.LabeledImageDatasetImporter):
             -   the path to a text (newline-separated), JSON, or CSV file
                 containing the list of image IDs to load in either of the first
                 two formats
-
-            If provided, takes precedence over ``classes`` and ``max_samples``
+        include_id (True): whether to load the Open Images ID for each sample
+            along with the labels
+        only_matching (False): whether to only load labels that match the
+            ``classes`` or ``attrs`` requirements that you provide (True), or
+            to load all labels for samples that match the requirements (False)
         load_hierarchy (True): whether to load the classes hiearchy and add it
             to the dataset's ``info`` dictionary
         shuffle (False): whether to randomly shuffle the order in which the
@@ -77,6 +83,8 @@ class OpenImagesV6DatasetImporter(foud.LabeledImageDatasetImporter):
         classes=None,
         attrs=None,
         image_ids=None,
+        include_id=True,
+        only_matching=False,
         load_hierarchy=True,
         shuffle=False,
         seed=None,
@@ -93,6 +101,8 @@ class OpenImagesV6DatasetImporter(foud.LabeledImageDatasetImporter):
         self.classes = classes
         self.attrs = attrs
         self.image_ids = image_ids
+        self.include_id = include_id
+        self.only_matching = only_matching
         self.load_hierarchy = load_hierarchy
 
         self._data_dir = None
@@ -101,10 +111,10 @@ class OpenImagesV6DatasetImporter(foud.LabeledImageDatasetImporter):
         self._label_types = None
         self._classes_map = None
         self._attrs_map = None
-        self._lab_id_data = None
-        self._det_id_data = None
-        self._rel_id_data = None
-        self._seg_id_data = None
+        self._cls_data = None
+        self._det_data = None
+        self._rel_data = None
+        self._seg_data = None
         self._uuids = None
         self._iter_uuids = None
 
@@ -120,12 +130,13 @@ class OpenImagesV6DatasetImporter(foud.LabeledImageDatasetImporter):
 
         image_path = self._images_map[image_id]
 
+        # @todo return scalar labels if only one field is requested?
         labels = {}
 
         if "classifications" in self._label_types:
             # Add labels
-            pos_labels, neg_labels = _create_labels(
-                self._lab_id_data, image_id, self._classes_map
+            pos_labels, neg_labels = _create_classifications(
+                self._cls_data, image_id, self._classes_map
             )
             if pos_labels is not None:
                 labels["positive_labels"] = pos_labels
@@ -136,7 +147,7 @@ class OpenImagesV6DatasetImporter(foud.LabeledImageDatasetImporter):
         if "detections" in self._label_types:
             # Add detections
             detections = _create_detections(
-                self._det_id_data, image_id, self._classes_map
+                self._det_data, image_id, self._classes_map
             )
             if detections is not None:
                 labels["detections"] = detections
@@ -144,10 +155,7 @@ class OpenImagesV6DatasetImporter(foud.LabeledImageDatasetImporter):
         if "segmentations" in self._label_types:
             # Add segmentations
             segmentations = _create_segmentations(
-                self._seg_id_data,
-                image_id,
-                self._classes_map,
-                self.dataset_dir,
+                self._seg_data, image_id, self._classes_map, self.dataset_dir,
             )
             if segmentations is not None:
                 labels["segmentations"] = segmentations
@@ -155,12 +163,13 @@ class OpenImagesV6DatasetImporter(foud.LabeledImageDatasetImporter):
         if "relationships" in self._label_types:
             # Add relationships
             relationships = _create_relationships(
-                self._rel_id_data, image_id, self._classes_map, self._attrs_map
+                self._rel_data, image_id, self._classes_map, self._attrs_map
             )
             if relationships is not None:
                 labels["relationships"] = relationships
 
-        labels["open_images_id"] = image_id
+        if self.include_id:
+            labels["open_images_id"] = image_id
 
         return image_path, None, labels
 
@@ -171,6 +180,10 @@ class OpenImagesV6DatasetImporter(foud.LabeledImageDatasetImporter):
     @property
     def has_image_metadata(self):
         return False
+
+    @property
+    def _has_scalar_labels(self):
+        return (len(self.label_types) + int(self.include_id)) == 1
 
     @property
     def label_cls(self):
@@ -198,7 +211,7 @@ class OpenImagesV6DatasetImporter(foud.LabeledImageDatasetImporter):
             os.path.splitext(filename)[0]: os.path.join(data_dir, filename)
             for filename in etau.list_files(data_dir)
         }
-        available_ids = set(images_map.keys())
+        available_ids = list(images_map.keys())
 
         info = {}
 
@@ -219,26 +232,21 @@ class OpenImagesV6DatasetImporter(foud.LabeledImageDatasetImporter):
             attrs = []
 
         if image_ids:
-            # Load specific images (if available)
             image_ids = _parse_image_ids(image_ids, ignore_split=True)
-            valid_ids = set(image_ids) & available_ids
-        elif not label_types and not classes and not attrs:
-            # No requirements given; load all images
-            valid_ids = available_ids
+            image_ids = list(set(image_ids) & set(available_ids))
         else:
-            # Determine images to load from label requirements later
-            valid_ids = None
+            image_ids = available_ids
 
         (
-            guarantee_all_types,
             label_types,
             classes_map,
             all_classes,
-            oi_classes,
             classes,
+            oi_classes,
             attrs_map,
-            oi_attrs,
             all_attrs,
+            attrs,
+            oi_attrs,
             seg_classes,
         ) = _setup(
             dataset_dir,
@@ -251,53 +259,45 @@ class OpenImagesV6DatasetImporter(foud.LabeledImageDatasetImporter):
         )
 
         (
-            lab_id_data,
-            det_id_data,
-            rel_id_data,
-            seg_id_data,
+            cls_data,
+            det_data,
+            rel_data,
+            seg_data,
             _,
-            ids_any_labels,
-            ids_all_labels,
+            all_label_ids,
+            any_label_ids,
         ) = _get_all_label_data(
             dataset_dir,
+            image_ids,
             label_types,
             classes,
             oi_classes,
+            attrs=attrs,
             oi_attrs=oi_attrs,
-            download=False,
             seg_classes=seg_classes,
+            track_all_ids=max_samples is not None,
+            ids_only=False,
+            only_matching=self.only_matching,
+            download=False,
         )
 
-        # Restrict IDs based on label requirements, if necessary
-        if valid_ids is None:
-            ids_any_labels &= available_ids
-            ids_all_labels &= available_ids
-            if guarantee_all_types:
-                if max_samples and len(ids_all_labels) < max_samples:
-                    # Prioritize samples with all labels but also add samples
-                    # with any to reach max_samples
-                    ids_not_all = ids_any_labels - ids_all_labels
-                    ids_all_labels = sorted(ids_all_labels)
-                    ids_not_all = sorted(ids_not_all)
+        if max_samples is not None:
+            # Prioritize samples with all labels
+            ids_not_all = any_label_ids - all_label_ids
+            all_label_ids = sorted(all_label_ids)
+            ids_not_all = sorted(ids_not_all)
 
-                    if shuffle:
-                        random.shuffle(ids_all_labels)
-                        random.shuffle(ids_not_all)
-                        shuffle = False
+            if shuffle:
+                random.shuffle(all_label_ids)
+                random.shuffle(ids_not_all)
 
-                    valid_ids = ids_all_labels + ids_not_all
-                else:
-                    valid_ids = ids_all_labels
-            else:
-                valid_ids = ids_any_labels
-
-        valid_ids = list(valid_ids)
-
-        if shuffle:
-            random.shuffle(valid_ids)
-
-        if max_samples:
+            valid_ids = all_label_ids + ids_not_all
             valid_ids = valid_ids[:max_samples]
+        else:
+            valid_ids = sorted(any_label_ids)
+
+            if shuffle:
+                random.shuffle(valid_ids)
 
         if self.load_hierarchy:
             info["hierarchy"] = _get_hierarchy(dataset_dir, download=False)
@@ -317,10 +317,10 @@ class OpenImagesV6DatasetImporter(foud.LabeledImageDatasetImporter):
         self._label_types = label_types
         self._classes_map = classes_map
         self._attrs_map = attrs_map
-        self._lab_id_data = lab_id_data
-        self._det_id_data = det_id_data
-        self._rel_id_data = rel_id_data
-        self._seg_id_data = seg_id_data
+        self._cls_data = cls_data
+        self._det_data = det_data
+        self._rel_data = rel_data
+        self._seg_data = seg_data
         self._uuids = valid_ids
 
     def get_dataset_info(self):
@@ -452,9 +452,11 @@ def is_download_required(
             ``("detections", "classifications", "relationships", "segmentations")``.
             By default, all label types are loaded
         classes (None): a string or list of strings specifying required classes
-            to load. Only samples containing at least one instance of a
-            specified class will be loaded
-        attrs (None): a list of strings for relationship attributes to load
+            to load. If provided, only samples containing at least one instance
+            of a specified class will be loaded
+        attrs (None): a string or list of strings for relationship attributes
+            to load. If provided, only samples containing at least one instance
+            of a specified attribute will be loaded
         image_ids (None): an optional list of specific image IDs to load. Can
             be provided in any of the following formats:
 
@@ -463,13 +465,12 @@ def is_download_required(
             -   the path to a text (newline-separated), JSON, or CSV file
                 containing the list of image IDs to load in either of the first
                 two formats
-
-            If provided, takes precedence over ``classes`` and ``max_samples``
         max_samples (None): the maximum number of samples desired
 
     Returns:
         True/False
     """
+    logging.disable(logging.CRITICAL)
     try:
         _download_open_images_split(
             dataset_dir,
@@ -484,7 +485,9 @@ def is_download_required(
         )
         return False  # everything was downloaded
     except:
-        return True  # something(s) needs to be downloaded
+        return True  # something needs to be downloaded
+    finally:
+        logging.disable(logging.NOTSET)
 
 
 def download_open_images_split(
@@ -524,9 +527,11 @@ def download_open_images_split(
             ``("detections", "classifications", "relationships", "segmentations")``.
             By default, all label types are loaded
         classes (None): a string or list of strings specifying required classes
-            to load. Only samples containing at least one instance of a
-            specified class will be loaded
-        attrs (None): a list of strings for relationship attributes to load
+            to load. If provided, only samples containing at least one instance
+            of a specified class will be loaded
+        attrs (None): a string or list of strings for relationship attributes
+            to load. If provided, only samples containing at least one instance
+            of a specified attribute will be loaded
         image_ids (None): an optional list of specific image IDs to load. Can
             be provided in any of the following formats:
 
@@ -535,8 +540,6 @@ def download_open_images_split(
             -   the path to a text (newline-separated), JSON, or CSV file
                 containing the list of image IDs to load in either of the first
                 two formats
-
-            If provided, takes precedence over ``classes`` and ``max_samples``
         num_workers (None): the number of processes to use when downloading
             individual images. By default, ``multiprocessing.cpu_count()`` is
             used
@@ -588,41 +591,31 @@ def _download_open_images_split(
 
     label_types = _parse_label_types(label_types)
 
-    # No matter what classes or attributes you specify, they will not be loaded
-    # if you do not want to load labels
     if not label_types:
         classes = []
         attrs = []
 
-    # Determine the image IDs to load
-    if image_ids is None:
-        downloaded_ids = _get_downloaded_image_ids(dataset_dir)
-        if not label_types and not classes and not attrs:
-            # No IDs were provided and no labels are being loaded
-            # Load all image IDs
-            split_image_ids = _load_all_image_ids(
-                dataset_dir, split=split, download=download
-            )
-        else:
-            # No specific image IDs were given, load all relevant images from
-            # the given labels later
-            split_image_ids = None
-    else:
-        downloaded_ids = []
-        split_image_ids = _parse_and_verify_image_ids(
+    if image_ids is not None:
+        image_ids = _parse_and_verify_image_ids(
             image_ids, dataset_dir, split, download=download
         )
+    else:
+        image_ids = _load_all_image_ids(
+            dataset_dir, split=split, download=download
+        )
+
+    downloaded_ids = _get_downloaded_image_ids(dataset_dir)
 
     (
-        guarantee_all_types,
         label_types,
         classes_map,
         all_classes,
-        oi_classes,
         classes,
-        _,
+        oi_classes,
+        attrs_map,
+        all_attrs,
+        attrs,
         oi_attrs,
-        _,
         seg_classes,
     ) = _setup(
         dataset_dir,
@@ -639,8 +632,7 @@ def _download_open_images_split(
 
     num_samples = _download(
         label_types,
-        guarantee_all_types,
-        split_image_ids,
+        image_ids,
         downloaded_ids,
         oi_classes,
         oi_attrs,
@@ -648,6 +640,7 @@ def _download_open_images_split(
         dataset_dir,
         split,
         classes=classes,
+        attrs=attrs,
         max_samples=max_samples,
         shuffle=shuffle,
         num_workers=num_workers,
@@ -669,16 +662,11 @@ def _setup(
     if etau.is_str(classes):
         classes = [classes]
 
+    if etau.is_str(attrs):
+        attrs = [attrs]
+
     if seed is not None:
         random.seed(seed)
-
-    if max_samples and (label_types or classes or attrs):
-        # Only samples with every specified label type will be loaded
-        guarantee_all_types = True
-    else:
-        # Samples may not contain multiple label types, but will contain at
-        # least one
-        guarantee_all_types = False
 
     # Map of class IDs to class names
     classes_map = _get_classes_map(dataset_dir, download=download)
@@ -686,14 +674,7 @@ def _setup(
 
     all_classes = sorted(classes_map.values())
 
-    if classes is None:
-        if attrs is not None and "relationships" in label_types:
-            oi_classes = []
-            classes = []
-        else:
-            oi_classes = [classes_map_rev[c] for c in all_classes]
-            classes = all_classes
-    else:
+    if classes is not None:
         oi_classes = []
         missing_classes = []
         filtered_classes = []
@@ -707,14 +688,13 @@ def _setup(
         classes = filtered_classes
         if missing_classes:
             logger.warning(
-                "Found invalid classes: %s\n\nYou can view the available "
-                "classes via `get_classes()`\n",
-                ",".join(missing_classes),
+                "Ignoring invalid classes %s\nYou can view the available "
+                "classes via `get_classes()`",
+                missing_classes,
             )
+    else:
+        oi_classes = None
 
-    attrs_map = {}
-    oi_attrs = []
-    all_attrs = []
     if "relationships" in label_types:
         # Map of attribute IDs to attribute names
         attrs_map = _get_attrs_map(dataset_dir, download=download)
@@ -723,48 +703,48 @@ def _setup(
         all_attrs = sorted(attrs_map.values())
 
         if attrs is None:
-            if classes != all_classes:
-                oi_attrs = []
-                attrs = []
-            else:
-                oi_attrs = [attrs_map_rev[a] for a in all_attrs]
-                attrs = all_attrs
+            oi_attrs = [attrs_map_rev[a] for a in all_attrs]
         else:
+            oi_attrs = []
             missing_attrs = []
             filtered_attrs = []
             for a in attrs:
-                try:
+                if a in attrs_map_rev:
                     oi_attrs.append(attrs_map_rev[a])
                     filtered_attrs.append(a)
-                except:
+                else:
                     missing_attrs.append(a)
 
             attrs = filtered_attrs
             if missing_attrs:
                 logger.warning(
-                    "Found invalid attributes: %s\n\nYou can view the "
-                    "available attributes via `get_attributes()`\n",
-                    ",".join(missing_attrs),
+                    "Ignoring invalid attributes %s\nYou can view the "
+                    "available attributes via `get_attributes()`",
+                    missing_attrs,
                 )
     else:
-        attrs = []
+        attrs = None
+        attrs_map = None
+        oi_attrs = None
+        all_attrs = None
 
-    seg_classes = []
     if "segmentations" in label_types:
         seg_classes = _get_seg_classes(
             dataset_dir, classes_map=classes_map, download=download
         )
+    else:
+        seg_classes = None
 
     return (
-        guarantee_all_types,
         label_types,
         classes_map,
         all_classes,
-        oi_classes,
         classes,
+        oi_classes,
         attrs_map,
-        oi_attrs,
         all_attrs,
+        attrs,
+        oi_attrs,
         seg_classes,
     )
 
@@ -872,9 +852,9 @@ def _rename_subcategories(hierarchy, classes_map):
     return hierarchy
 
 
-def _parse_csv(filename, dataframe=False):
+def _parse_csv(filename, dataframe=False, index_col=None):
     if dataframe:
-        data = pd.read_csv(filename)
+        data = pd.read_csv(filename, index_col=index_col)
     else:
         with open(filename, "r", newline="") as csvfile:
             dialect = csv.Sniffer().sniff(csvfile.read(10240))
@@ -1018,182 +998,247 @@ def _get_downloaded_image_ids(dataset_dir):
     return [os.path.splitext(n)[0] for n in etau.list_files(data_dir)]
 
 
-def _get_label_data(
-    label_type,
-    dataset_dir,
-    oi_classes,
-    oi_attrs=None,
-    url=None,
-    download=True,
-    ids_only=False,
-):
-    csv_path = os.path.join(dataset_dir, "labels", label_type + ".csv")
-    _download_file_if_necessary(csv_path, url, quiet=0, download=download)
-
-    df = _parse_csv(csv_path, dataframe=True)
-
-    # Find intersection of ImageIDs with all annotations
-    # Only keep samples with at least one label relevant to specified classes
-    # or attributes
-
-    label_id_data = {}
-    relevant_ids = set()
-    oi_classes_attrs = set(oi_classes) | set(oi_attrs or [])
-    all_label_ids = df["ImageID"].unique()
-    relevant_df = df[df.isin(oi_classes_attrs).any(axis=1)]
-    relevant_ids = set(relevant_df["ImageID"].unique())
-
-    if ids_only:
-        # Only interested in downloading image ids, not loading annotations
-        del df
-        del relevant_df
-        return {}, relevant_ids
-
-    sorted_df = relevant_df.sort_values("ImageID")
-    label_id_data = {
-        "all_ids": all_label_ids,
-        "relevant_ids": relevant_ids,
-        "df": sorted_df,
-    }
-
-    del df
-    del relevant_df
-
-    return label_id_data, relevant_ids
-
-
 def _get_all_label_data(
     dataset_dir,
+    image_ids,
     label_types,
-    classes,
-    oi_classes,
+    classes=None,
+    oi_classes=None,
+    attrs=None,
     oi_attrs=None,
+    seg_classes=None,
+    track_all_ids=True,
+    ids_only=False,
+    only_matching=False,
     split=None,
     download=False,
-    seg_classes=None,
-    ids_only=False,
 ):
-    lab_id_data = {}
-    det_id_data = {}
-    rel_id_data = {}
-    seg_id_data = {}
+    cls_data = {}
+    det_data = {}
+    rel_data = {}
+    seg_data = {}
     seg_ids = set()
 
-    ids_all_labels = None
-    ids_any_labels = set()
-
-    if "detections" in label_types:
-        url = None
-        if download:
-            url = _ANNOTATION_DOWNLOAD_URLS[split]["boxes"]
-
-        det_id_data, det_ids = _get_label_data(
-            "detections",
-            dataset_dir,
-            oi_classes,
-            url=url,
-            download=download,
-            ids_only=ids_only,
-        )
-
-        if ids_all_labels is None:
-            ids_all_labels = det_ids
-        else:
-            ids_all_labels = ids_all_labels & det_ids
-
-        ids_any_labels = ids_any_labels | det_ids
+    if label_types:
+        all_label_ids = None
+        any_label_ids = None
+    else:
+        all_label_ids = set()
+        any_label_ids = set()
 
     if "classifications" in label_types:
         url = None
         if download:
             url = _ANNOTATION_DOWNLOAD_URLS[split]["labels"]
 
-        lab_id_data, lab_ids = _get_label_data(
-            "classifications",
+        cls_all_ids, cls_any_ids, cls_data = _get_label_data(
             dataset_dir,
-            oi_classes,
+            image_ids,
+            "classifications",
+            classes=classes,
+            oi_classes=oi_classes,
+            track_all_ids=track_all_ids,
+            ids_only=ids_only,
+            only_matching=only_matching,
             url=url,
             download=download,
-            ids_only=ids_only,
         )
 
-        if ids_all_labels is None:
-            ids_all_labels = lab_ids
-        else:
-            ids_all_labels = ids_all_labels & lab_ids
+        if all_label_ids is None:
+            all_label_ids = cls_all_ids
+        elif classes is not None:
+            all_label_ids &= cls_all_ids
 
-        ids_any_labels = ids_any_labels | lab_ids
+        if any_label_ids is None:
+            any_label_ids = cls_any_ids
+        elif classes is not None:
+            any_label_ids &= cls_any_ids
+
+    if "detections" in label_types:
+        url = None
+        if download:
+            url = _ANNOTATION_DOWNLOAD_URLS[split]["boxes"]
+
+        det_all_ids, det_any_ids, det_data = _get_label_data(
+            dataset_dir,
+            image_ids,
+            "detections",
+            classes=classes,
+            oi_classes=oi_classes,
+            url=url,
+            download=download,
+            track_all_ids=track_all_ids,
+            ids_only=ids_only,
+            only_matching=only_matching,
+        )
+
+        if all_label_ids is None:
+            all_label_ids = det_all_ids
+        elif classes is not None:
+            all_label_ids &= det_all_ids
+
+        if any_label_ids is None:
+            any_label_ids = det_any_ids
+        elif classes is not None:
+            any_label_ids &= det_any_ids
 
     if "relationships" in label_types:
         url = None
         if download:
             url = _ANNOTATION_DOWNLOAD_URLS[split]["relationships"]
 
-        rel_id_data, rel_ids = _get_label_data(
-            "relationships",
+        rel_all_ids, rel_any_ids, rel_data = _get_label_data(
             dataset_dir,
-            oi_classes,
-            oi_attrs=oi_attrs,
+            image_ids,
+            "relationships",
+            classes=attrs,
+            oi_classes=oi_attrs,
+            track_all_ids=track_all_ids,
+            ids_only=ids_only,
+            only_matching=only_matching,
             url=url,
             download=download,
-            ids_only=ids_only,
         )
 
-        if ids_all_labels is None:
-            ids_all_labels = rel_ids
-        else:
-            ids_all_labels = ids_all_labels & rel_ids
+        if all_label_ids is None:
+            all_label_ids = rel_all_ids
+        elif attrs is not None:
+            all_label_ids &= rel_all_ids
 
-        ids_any_labels = ids_any_labels | rel_ids
+        if any_label_ids is None:
+            any_label_ids = rel_any_ids
+        elif attrs is not None:
+            any_label_ids &= rel_any_ids
 
     if "segmentations" in label_types:
-        non_seg_classes = set(classes) - set(seg_classes)
-
-        # Notify which classes do not exist only when the user specified
-        # classes
-        if non_seg_classes and len(classes) != 601:
-            logger.warning(
-                "No segmentations exist for classes: %s\n\nYou can view the "
-                "available segmentation classes via "
-                "`get_segmentation_classes()`\n",
-                ",".join(list(non_seg_classes)),
-            )
+        if classes is not None:
+            non_seg_classes = sorted(set(classes) - set(seg_classes))
+            if non_seg_classes:
+                logger.warning(
+                    "No segmentations exist for classes %s\nYou can view the "
+                    "available segmentation classes via "
+                    "`get_segmentation_classes()`",
+                    non_seg_classes,
+                )
 
         url = None
         if download:
             url = _ANNOTATION_DOWNLOAD_URLS[split]["segmentations"]["mask_csv"]
 
-        seg_id_data, seg_ids = _get_label_data(
-            "segmentations",
+        seg_all_ids, seg_any_ids, seg_data = _get_label_data(
             dataset_dir,
-            oi_classes,
+            image_ids,
+            "segmentations",
+            classes=classes,
+            oi_classes=oi_classes,
+            track_all_ids=track_all_ids,
+            ids_only=ids_only,
+            only_matching=only_matching,
             url=url,
             download=download,
-            ids_only=ids_only,
         )
 
-        if ids_all_labels is None:
-            ids_all_labels = seg_ids
-        else:
-            ids_all_labels = ids_all_labels & seg_ids
+        seg_ids = seg_any_ids
 
-        ids_any_labels = ids_any_labels | seg_ids
+        if all_label_ids is None:
+            all_label_ids = seg_all_ids
+        elif classes is not None:
+            all_label_ids &= seg_all_ids
+
+        if any_label_ids is None:
+            any_label_ids = seg_any_ids
+        elif classes is not None:
+            any_label_ids &= seg_any_ids
 
     return (
-        lab_id_data,
-        det_id_data,
-        rel_id_data,
-        seg_id_data,
+        cls_data,
+        det_data,
+        rel_data,
+        seg_data,
         seg_ids,
-        ids_any_labels,
-        ids_all_labels,
+        all_label_ids,
+        any_label_ids,
     )
+
+
+def _get_label_data(
+    dataset_dir,
+    image_ids,
+    label_type,
+    classes=None,
+    oi_classes=None,
+    track_all_ids=True,
+    ids_only=False,
+    only_matching=False,
+    url=None,
+    download=True,
+):
+    csv_path = os.path.join(dataset_dir, "labels", label_type + ".csv")
+    _download_file_if_necessary(csv_path, url, quiet=0, download=download)
+
+    df = _parse_csv(csv_path, dataframe=True)
+
+    df.set_index("ImageID", drop=False, inplace=True)
+    df = df.loc[df.index.intersection(image_ids)]
+
+    if classes is not None:
+        # Restrict by classes
+        if label_type == "relationships":
+            cols = ["LabelName1", "LabelName2"]
+        else:
+            cols = ["LabelName"]
+
+        oi_classes = set(oi_classes)
+
+        if track_all_ids:
+            observed = defaultdict(set)
+            for image_id, labels in zip(df["ImageID"].values, df[cols].values):
+                observed[image_id].update(labels)
+
+            all_ids = set()
+            any_ids = set()
+            for image_id, observed_classes in observed.items():
+                if oi_classes.issubset(observed_classes):
+                    all_ids.add(image_id)
+
+                if oi_classes & observed_classes:
+                    any_ids.add(image_id)
+        else:
+            any_df = df[df[cols].isin(oi_classes).any(axis=1)]
+            all_ids = set()
+            any_ids = set(any_df["ImageID"].unique())
+    else:
+        # No class restriction
+        all_ids = set()
+        any_ids = set(df["ImageID"].unique())
+
+    if ids_only:
+        return all_ids, any_ids, {}
+
+    if classes is not None:
+        if only_matching:
+            # Only keep the specified labels
+            relevant_df = df[df[cols].isin(oi_classes).any(axis=1)].copy()
+        else:
+            # Keep all labels for the relevant image IDs
+            relevant_df = df.loc[df.index.intersection(any_ids)]
+    else:
+        relevant_df = df
+
+    relevant_df.sort_index(inplace=True)
+
+    data = {
+        "all_ids": set(df["ImageID"].unique()),
+        "relevant_ids": any_ids,
+        "df": relevant_df,
+    }
+
+    return all_ids, any_ids, data
 
 
 def _download(
     label_types,
-    guarantee_all_types,
-    split_image_ids,
+    image_ids,
     downloaded_ids,
     oi_classes,
     oi_attrs,
@@ -1201,67 +1246,80 @@ def _download(
     dataset_dir,
     split,
     classes=None,
+    attrs=None,
     max_samples=None,
     shuffle=False,
     num_workers=None,
     download=True,
 ):
-    (
-        _,
-        _,
-        _,
-        _,
-        seg_ids,
-        ids_any_labels,
-        ids_all_labels,
-    ) = _get_all_label_data(
+    (_, _, _, _, seg_ids, all_label_ids, any_label_ids,) = _get_all_label_data(
         dataset_dir,
+        image_ids,
         label_types,
-        classes,
-        oi_classes,
+        classes=classes,
+        oi_classes=oi_classes,
+        attrs=attrs,
         oi_attrs=oi_attrs,
+        seg_classes=seg_classes,
+        track_all_ids=max_samples is not None,
+        ids_only=True,
         split=split,
         download=download,
-        seg_classes=seg_classes,
-        ids_only=True,
     )
 
     downloaded_ids = set(downloaded_ids)
-    target_ids = split_image_ids
 
-    # Choose target IDs based on user requirements
-    if target_ids is None:
-        # No IDs specified, load all IDs relevant to given classes
-        if guarantee_all_types:
-            # When providing specific labels to load and max_samples, only load
-            # samples that include all labels
-            if max_samples and len(ids_all_labels) < max_samples:
-                # Prioritize samples with all labels but also add samples with
-                # any to reach max_samples
-                ids_not_all = ids_any_labels - ids_all_labels
+    # Make list of `target_ids`
+    if classes is not None or attrs is not None:
+        if max_samples is not None:
+            #
+            # Bias sampling to meet user requirements per the priorities below:
+            # (1) samples with all labels
+            # (2) already downloaded samples with relevant labels
+            # (3) non-downloaded samples with relevant labels
+            #
 
-                # Prioritize loading existing images first
-                non_existing_ids = ids_not_all - downloaded_ids
-                existing_ids = ids_not_all - non_existing_ids
+            ids_not_all = any_label_ids - all_label_ids
+            existing_ids = ids_not_all & downloaded_ids
+            non_existing_ids = ids_not_all - downloaded_ids
 
-                ids_all_labels = sorted(ids_all_labels)
-                non_existing_ids = sorted(non_existing_ids)
-                existing_ids = sorted(existing_ids)
+            all_label_ids = sorted(all_label_ids)
+            existing_ids = sorted(existing_ids)
+            non_existing_ids = sorted(non_existing_ids)
 
-                if shuffle:
-                    random.shuffle(ids_all_labels)
-                    random.shuffle(existing_ids)
-                    random.shuffle(non_existing_ids)
-                    shuffle = False
+            if shuffle:
+                random.shuffle(all_label_ids)
+                random.shuffle(existing_ids)
+                random.shuffle(non_existing_ids)
 
-                target_ids = ids_all_labels + existing_ids + non_existing_ids
-                target_ids = target_ids[:max_samples]
-            else:
-                target_ids = ids_all_labels
+            target_ids = all_label_ids + existing_ids + non_existing_ids
+            target_ids = target_ids[:max_samples]
         else:
-            target_ids = ids_any_labels
+            # Include all samples that meet any requirement
+            target_ids = sorted(any_label_ids)
 
-    target_ids = list(target_ids)
+            if shuffle:
+                random.shuffle(target_ids)
+    else:
+        if max_samples is not None:
+            # Bias sampling towards already-downloaded samples
+            image_ids = set(image_ids)
+            existing_ids = sorted(image_ids & downloaded_ids)
+            non_existing_ids = sorted(image_ids - downloaded_ids)
+
+            if shuffle:
+                random.shuffle(existing_ids)
+                random.shuffle(non_existing_ids)
+
+            target_ids = existing_ids + non_existing_ids
+            target_ids = target_ids[:max_samples]
+        else:
+            # Use all available samples
+            target_ids = sorted(image_ids)
+
+            if shuffle:
+                random.shuffle(target_ids)
+
     num_target = len(target_ids)
 
     if max_samples is not None and num_target < max_samples:
@@ -1270,24 +1328,6 @@ def _download(
             num_target,
             max_samples,
         )
-
-    if max_samples is not None and num_target > max_samples:
-        # Prioritize loading existing images first
-        target_ids = set(target_ids)
-        non_existing_ids = target_ids - downloaded_ids
-        existing_ids = target_ids - non_existing_ids
-
-        non_existing_ids = sorted(non_existing_ids)
-        existing_ids = sorted(existing_ids)
-
-        if shuffle:
-            random.shuffle(existing_ids)
-            random.shuffle(non_existing_ids)
-
-        target_ids = existing_ids + non_existing_ids
-        target_ids = target_ids[:max_samples]
-    elif shuffle:
-        random.shuffle(target_ids)
 
     all_ids = list(downloaded_ids | set(target_ids))
     num_samples = len(all_ids)  # total downloaded
@@ -1315,10 +1355,10 @@ def _get_dataframe_rows(df, image_id):
     return df[left:right]
 
 
-def _create_labels(lab_id_data, image_id, classes_map):
-    all_label_ids = lab_id_data["all_ids"]
-    relevant_ids = lab_id_data["relevant_ids"]
-    df = lab_id_data["df"]
+def _create_classifications(cls_data, image_id, classes_map):
+    all_label_ids = cls_data["all_ids"]
+    relevant_ids = cls_data["relevant_ids"]
+    df = cls_data["df"]
 
     if image_id not in all_label_ids:
         return None, None
@@ -1328,17 +1368,16 @@ def _create_labels(lab_id_data, image_id, classes_map):
         neg_labels = fol.Classifications()
         return pos_labels, neg_labels
 
-    def _generate_one_label(label, conf):
+    def _make_label(row):
         # [ImageID,Source,LabelName,Confidence]
-        label = classes_map[label]
-        conf = float(conf)
-        return fol.Classification(label=label, confidence=conf)
+        return fol.Classification(
+            label=classes_map[row["LabelName"]],
+            confidence=float(row["Confidence"]),
+        )
 
     matching_df = _get_dataframe_rows(df, image_id)
-    cls = [
-        _generate_one_label(row[0], row[1])
-        for row in zip(matching_df["LabelName"], matching_df["Confidence"])
-    ]
+    cls = [_make_label(row[1]) for row in matching_df.iterrows()]
+
     pos_cls = []
     neg_cls = []
     for c in cls:
@@ -1353,10 +1392,10 @@ def _create_labels(lab_id_data, image_id, classes_map):
     return pos_labels, neg_labels
 
 
-def _create_detections(det_id_data, image_id, classes_map):
-    all_label_ids = det_id_data["all_ids"]
-    relevant_ids = det_id_data["relevant_ids"]
-    df = det_id_data["df"]
+def _create_detections(det_data, image_id, classes_map):
+    all_label_ids = det_data["all_ids"]
+    relevant_ids = det_data["relevant_ids"]
+    df = det_data["df"]
 
     if image_id not in all_label_ids:
         return None
@@ -1364,18 +1403,17 @@ def _create_detections(det_id_data, image_id, classes_map):
     if image_id not in relevant_ids:
         return fol.Detections()
 
-    def _generate_one_label(row):
+    def _make_label(row):
         # ImageID,Source,LabelName,Confidence,XMin,XMax,YMin,YMax,IsOccluded,IsTruncated,IsGroupOf,IsDepiction,IsInside
 
-        # Convert to [top-left-x, top-left-y, width, height]
         xmin = float(row["XMin"])
         xmax = float(row["XMax"])
         ymin = float(row["YMin"])
         ymax = float(row["YMax"])
-        bbox = [xmin, ymin, xmax - xmin, ymax - ymin]
+        bounding_box = [xmin, ymin, xmax - xmin, ymax - ymin]
 
         return fol.Detection(
-            bounding_box=bbox,
+            bounding_box=bounding_box,
             label=classes_map[row["LabelName"]],
             IsOccluded=bool(int(row["IsOccluded"])),
             IsTruncated=bool(int(row["IsTruncated"])),
@@ -1385,14 +1423,14 @@ def _create_detections(det_id_data, image_id, classes_map):
         )
 
     matching_df = _get_dataframe_rows(df, image_id)
-    dets = [_generate_one_label(row[1]) for row in matching_df.iterrows()]
+    dets = [_make_label(row[1]) for row in matching_df.iterrows()]
     return fol.Detections(detections=dets)
 
 
-def _create_relationships(rel_id_data, image_id, classes_map, attrs_map):
-    all_label_ids = rel_id_data["all_ids"]
-    relevant_ids = rel_id_data["relevant_ids"]
-    df = rel_id_data["df"]
+def _create_relationships(rel_data, image_id, classes_map, attrs_map):
+    all_label_ids = rel_data["all_ids"]
+    relevant_ids = rel_data["relevant_ids"]
+    df = rel_data["df"]
 
     if image_id not in all_label_ids:
         return None
@@ -1400,7 +1438,7 @@ def _create_relationships(rel_id_data, image_id, classes_map, attrs_map):
     if image_id not in relevant_ids:
         return fol.Detections()
 
-    def _generate_one_label(row):
+    def _make_label(row):
         # ImageID,LabelName1,LabelName2,XMin1,XMax1,YMin1,YMax1,XMin2,XMax2,YMin2,YMax2,RelationshipLabel
 
         oi_label1 = row["LabelName1"]
@@ -1432,8 +1470,7 @@ def _create_relationships(rel_id_data, image_id, classes_map, attrs_map):
         xmax_int = max(xmax1, xmax2)
         ymax_int = max(ymax1, ymax2)
 
-        # Convert to [top-left-x, top-left-y, width, height]
-        bbox_int = [
+        bounding_box = [
             xmin_int,
             ymin_int,
             xmax_int - xmin_int,
@@ -1441,21 +1478,21 @@ def _create_relationships(rel_id_data, image_id, classes_map, attrs_map):
         ]
 
         return fol.Detection(
-            bounding_box=bbox_int,
+            bounding_box=bounding_box,
             label=label_rel,
             Label1=label1,
             Label2=label2,
         )
 
     matching_df = _get_dataframe_rows(df, image_id)
-    rels = [_generate_one_label(row[1]) for row in matching_df.iterrows()]
+    rels = [_make_label(row[1]) for row in matching_df.iterrows()]
     return fol.Detections(detections=rels)
 
 
-def _create_segmentations(seg_id_data, image_id, classes_map, dataset_dir):
-    all_label_ids = seg_id_data["all_ids"]
-    relevant_ids = seg_id_data["relevant_ids"]
-    df = seg_id_data["df"]
+def _create_segmentations(seg_data, image_id, classes_map, dataset_dir):
+    all_label_ids = seg_data["all_ids"]
+    relevant_ids = seg_data["relevant_ids"]
+    df = seg_data["df"]
 
     if image_id not in all_label_ids:
         return None
@@ -1463,8 +1500,9 @@ def _create_segmentations(seg_id_data, image_id, classes_map, dataset_dir):
     if image_id not in relevant_ids:
         return fol.Detections()
 
-    def _generate_one_label(row):
+    def _make_label(row):
         # MaskPath,ImageID,LabelName,BoxID,BoxXMin,BoxXMax,BoxYMin,BoxYMax,PredictedIoU,Clicks
+
         mask_path = row["MaskPath"]
         label = classes_map[row["LabelName"]]
         xmin = float(row["BoxXMin"])
@@ -1494,7 +1532,7 @@ def _create_segmentations(seg_id_data, image_id, classes_map, dataset_dir):
         return fol.Detection(bounding_box=bbox, label=label, mask=cropped_mask)
 
     matching_df = _get_dataframe_rows(df, image_id)
-    segs = [_generate_one_label(row[1]) for row in matching_df.iterrows()]
+    segs = [_make_label(row[1]) for row in matching_df.iterrows()]
     segs = [s for s in segs if s is not None]
     return fol.Detections(detections=segs)
 

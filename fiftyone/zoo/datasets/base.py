@@ -132,7 +132,6 @@ class BDD100KDataset(FiftyOneDataset):
                 self.source_dir, dataset_dir, copy_files=self.copy_files
             )
 
-        # Get metadata
         logger.info("Parsing dataset metadata")
         dataset_type = fot.BDDDataset()
         num_samples = foub.BDDDatasetImporter._get_num_samples(split_dir)
@@ -413,7 +412,6 @@ class CityscapesDataset(FiftyOneDataset):
                 person_annos=self.person_annos,
             )
 
-        # Get metadata
         logger.info("Parsing dataset metadata")
         dataset_type = fot.FiftyOneDataset()
         num_samples = foud.FiftyOneDatasetImporter._get_num_samples(split_dir)
@@ -480,12 +478,11 @@ class COCO2014Dataset(FiftyOneDataset):
 
     Args:
         label_types (None): a label type or list of label types to load. The
-            supported values are
-            ``("detections", "segmentations", "keypoints")``. By default, only
-            "detections" are loaded
+            supported values are ``("detections", "segmentations")``. By
+            default, only "detections" are loaded
         classes (None): a string or list of strings specifying required classes
-            to load. Only samples containing at least one instance of a
-            specified class will be loaded
+            to load. If provided, only samples containing at least one instance
+            of a specified class will be loaded
         image_ids (None): an optional list of specific image IDs to load. Can
             be provided in any of the following formats:
 
@@ -494,8 +491,6 @@ class COCO2014Dataset(FiftyOneDataset):
             -   the path to a text (newline-separated), JSON, or CSV file
                 containing the list of image IDs to load in either of the first
                 two formats
-
-            If provided, takes precedence over ``classes`` and ``max_samples``
         num_workers (None): the number of processes to use when downloading
             individual images. By default, ``multiprocessing.cpu_count()`` is
             used
@@ -546,17 +541,6 @@ class COCO2014Dataset(FiftyOneDataset):
     def size(self):
         return {"train": 82783, "test": 40775, "validation": 40504}
 
-    @property
-    def label_field(self):
-        if (
-            self.label_types is None
-            or etau.is_str(self.label_types)
-            or len(self.label_types) == 1
-        ):
-            return "ground_truth"
-
-        return ""
-
     def _is_download_required(self, dataset_dir, split):
         return fouc.is_download_required(
             dataset_dir,
@@ -566,15 +550,10 @@ class COCO2014Dataset(FiftyOneDataset):
             classes=self.classes,
             image_ids=self.image_ids,
             max_samples=self.max_samples,
+            raw_dir=self._get_raw_dir(dataset_dir),
         )
 
     def _download_and_prepare(self, dataset_dir, scratch_dir, split):
-        # A split-independent location to store full annotation files so that
-        # they never need to be redownloaded
-        root_dir = os.path.dirname(os.path.normpath(dataset_dir))
-        raw_dir = os.path.join(root_dir, "raw")
-
-        # Download necessary data
         num_samples, classes = fouc.download_coco_dataset_split(
             dataset_dir,
             split,
@@ -586,13 +565,19 @@ class COCO2014Dataset(FiftyOneDataset):
             shuffle=self.shuffle,
             seed=self.seed,
             max_samples=self.max_samples,
-            raw_dir=raw_dir,
+            raw_dir=self._get_raw_dir(dataset_dir),
             scratch_dir=scratch_dir,
         )
 
         dataset_type = fot.COCODetectionDataset()
 
         return dataset_type, num_samples, classes
+
+    def _get_raw_dir(self, dataset_dir):
+        # A split-independent location to store full annotation files so that
+        # they never need to be redownloaded
+        root_dir = os.path.dirname(os.path.normpath(dataset_dir))
+        return os.path.join(root_dir, "raw")
 
 
 class COCO2017Dataset(FiftyOneDataset):
@@ -653,12 +638,11 @@ class COCO2017Dataset(FiftyOneDataset):
 
     Args:
         label_types (None): a label type or list of label types to load. The
-            supported values are
-            ``("detections", "segmentations", "keypoints")``. By default, only
-            "detections" are loaded
+            supported values are ``("detections", "segmentations")``. By
+            default, only "detections" are loaded
         classes (None): a string or list of strings specifying required classes
-            to load. Only samples containing at least one instance of a
-            specified class will be loaded
+            to load. If provided, only samples containing at least one instance
+            of a specified class will be loaded
         image_ids (None): an optional list of specific image IDs to load. Can
             be provided in any of the following formats:
 
@@ -667,8 +651,6 @@ class COCO2017Dataset(FiftyOneDataset):
             -   the path to a text (newline-separated), JSON, or CSV file
                 containing the list of image IDs to load in either of the first
                 two formats
-
-            If provided, takes precedence over ``classes`` and ``max_samples``
         num_workers (None): the number of processes to use when downloading
             individual images. By default, ``multiprocessing.cpu_count()`` is
             used
@@ -719,17 +701,6 @@ class COCO2017Dataset(FiftyOneDataset):
     def supports_partial_downloads(self):
         return True
 
-    @property
-    def label_field(self):
-        if (
-            self.label_types is None
-            or etau.is_str(self.label_types)
-            or len(self.label_types) == 1
-        ):
-            return "ground_truth"
-
-        return ""
-
     def _is_download_required(self, dataset_dir, split):
         return fouc.is_download_required(
             dataset_dir,
@@ -739,15 +710,10 @@ class COCO2017Dataset(FiftyOneDataset):
             classes=self.classes,
             image_ids=self.image_ids,
             max_samples=self.max_samples,
+            raw_dir=self._get_raw_dir(dataset_dir),
         )
 
     def _download_and_prepare(self, dataset_dir, scratch_dir, split):
-        # A split-independent location to store full annotation files so that
-        # they never need to be redownloaded
-        root_dir = os.path.dirname(os.path.normpath(dataset_dir))
-        raw_dir = os.path.join(root_dir, "raw")
-
-        # Download necessary data
         num_samples, classes = fouc.download_coco_dataset_split(
             dataset_dir,
             split,
@@ -759,13 +725,19 @@ class COCO2017Dataset(FiftyOneDataset):
             shuffle=self.shuffle,
             seed=self.seed,
             max_samples=self.max_samples,
-            raw_dir=raw_dir,
+            raw_dir=self._get_raw_dir(dataset_dir),
             scratch_dir=scratch_dir,
         )
 
         dataset_type = fot.COCODetectionDataset()
 
         return dataset_type, num_samples, classes
+
+    def _get_raw_dir(self, dataset_dir):
+        # A split-independent location to store full annotation files so that
+        # they never need to be redownloaded
+        root_dir = os.path.dirname(os.path.normpath(dataset_dir))
+        return os.path.join(root_dir, "raw")
 
 
 class HMDB51Dataset(FiftyOneDataset):
@@ -827,7 +799,6 @@ class HMDB51Dataset(FiftyOneDataset):
                 cleanup=False,
             )
 
-        # Get metadata
         logger.info("Parsing dataset metadata")
         dataset_type = fot.VideoClassificationDirectoryTree()
         importer = foud.VideoClassificationDirectoryTreeImporter
@@ -985,7 +956,6 @@ class KITTIDataset(FiftyOneDataset):
 
         etau.move_dir(split_dir, dataset_dir)
 
-        # Get metadata
         logger.info("Parsing dataset metadata")
         dataset_type = fot.KITTIDetectionDataset()
         importer = fouk.KITTIDetectionDatasetImporter
@@ -1046,7 +1016,6 @@ class LabeledFacesInTheWildDataset(FiftyOneDataset):
                 dataset_dir, scratch_dir=scratch_dir, cleanup=False
             )
 
-        # Get metadata
         logger.info("Parsing dataset metadata")
         dataset_type = fot.ImageClassificationDirectoryTree()
         importer = foud.ImageClassificationDirectoryTreeImporter
@@ -1122,9 +1091,11 @@ class OpenImagesV6Dataset(FiftyOneDataset):
             ``("detections", "classifications", "relationships", "segmentations")``.
             By default, all label types are loaded
         classes (None): a string or list of strings specifying required classes
-            to load. Only samples containing at least one instance of a
-            specified class will be loaded
-        attrs (None): a list of strings for relationship attributes to load
+            to load. If provided, only samples containing at least one instance
+            of a specified class will be loaded
+        attrs (None): a string or list of strings for relationship attributes
+            to load. If provided, only samples containing at least one instance
+            of a specified attribute will be loaded
         image_ids (None): an optional list of specific image IDs to load. Can
             be provided in any of the following formats:
 
@@ -1133,8 +1104,6 @@ class OpenImagesV6Dataset(FiftyOneDataset):
             -   the path to a text (newline-separated), JSON, or CSV file
                 containing the list of image IDs to load in either of the first
                 two formats
-
-            If provided, takes precedence over ``classes`` and ``max_samples``
         num_workers (None): the number of processes to use when downloading
             individual images. By default, ``multiprocessing.cpu_count()`` is
             used
@@ -1194,7 +1163,7 @@ class OpenImagesV6Dataset(FiftyOneDataset):
 
     @property
     def label_field(self):
-        return ""
+        return ""  # don't add `ground_truth` prefix for Open Images
 
     def _is_download_required(self, dataset_dir, split):
         return fouo.is_download_required(
@@ -1209,7 +1178,6 @@ class OpenImagesV6Dataset(FiftyOneDataset):
         )
 
     def _download_and_prepare(self, dataset_dir, _, split):
-        # Download necessary data
         num_samples, classes = fouo.download_open_images_split(
             dataset_dir,
             split,
@@ -1468,7 +1436,6 @@ class UCF101Dataset(FiftyOneDataset):
                 cleanup=False,
             )
 
-        # Get metadata
         logger.info("Parsing dataset metadata")
         dataset_type = fot.VideoClassificationDirectoryTree()
         importer = foud.VideoClassificationDirectoryTreeImporter

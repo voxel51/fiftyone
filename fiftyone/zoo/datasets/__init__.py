@@ -1206,11 +1206,16 @@ def _migrate_zoo_dataset_info(d):
         migrated = True
 
     # @legacy dataset implementations
-    if zoo_dataset.endswith("tf.Caltech101Dataset"):
-        zoo_dataset = etau.get_class_name(DeprecatedZooDataset)
-        migrated = True
-
-    if zoo_dataset.endswith("tf.KITTIDataset"):
+    if zoo_dataset.endswith(
+        (
+            "tf.Caltech101Dataset",
+            "tf.KITTIDataset",
+            "tf.COCO2014Dataset",
+            "tf.COCO2017Dataset",
+            "torch.COCO2014Dataset",
+            "torch.COCO2017Dataset",
+        ),
+    ):
         zoo_dataset = etau.get_class_name(DeprecatedZooDataset)
         migrated = True
 

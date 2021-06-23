@@ -89,8 +89,11 @@ class COCODetectionDatasetImporter(
             -   the path to a text (newline-separated), JSON, or CSV file
                 containing the list of image IDs to load in either of the first
                 two formats
-
-            If provided, takes precedence over ``classes`` and ``max_samples``
+        include_id (False): whether to include the COCO ID of each sample in the
+            loaded labels
+        only_matching (False): whether to only load labels that match the
+            ``classes`` requirement that you provide (True), or to load all
+            labels for samples that match the requirements (False)
         use_polylines (False): whether to represent segmentations as
             :class:`fiftyone.core.labels.Polylines` instances rather than
             :class:`fiftyone.core.labels.Detections` with dense masks
@@ -113,6 +116,8 @@ class COCODetectionDatasetImporter(
         label_types=None,
         classes=None,
         image_ids=None,
+        include_id=False,
+        only_matching=False,
         use_polylines=False,
         tolerance=None,
         shuffle=False,
@@ -143,6 +148,8 @@ class COCODetectionDatasetImporter(
         self.label_types = label_types
         self.classes = classes
         self.image_ids = image_ids
+        self.include_id = include_id
+        self.only_matching = only_matching
         self.use_polylines = use_polylines
         self.tolerance = tolerance
 
@@ -187,8 +194,14 @@ class COCODetectionDatasetImporter(
         coco_objects = self._annotations.get(image_id, [])
         frame_size = (width, height)
 
-        scalar_label = len(self.label_types) == 1
-        label = {}
+        if self.classes is not None and self.only_matching:
+            coco_objects = _get_matching_objects(
+                coco_objects, self.classes, self._classes
+            )
+
+        scalar_label = self._has_scalar_labels
+        if not scalar_label:
+            label = {}
 
         if "detections" in self.label_types:
             obj = _coco_objects_to_detections(
@@ -201,7 +214,7 @@ class COCODetectionDatasetImporter(
 
             if scalar_label:
                 label = obj
-            else:
+            elif obj is not None:
                 label["detections"] = obj
 
         if "segmentations" in self.label_types:
@@ -224,7 +237,7 @@ class COCODetectionDatasetImporter(
 
             if scalar_label:
                 label = obj
-            else:
+            elif obj is not None:
                 label["segmentations"] = obj
 
         if "keypoints" in self.label_types:
@@ -234,8 +247,14 @@ class COCODetectionDatasetImporter(
 
             if scalar_label:
                 label = keypoints
-            else:
+            elif keypoints is not None:
                 label["keypoints"] = keypoints
+
+        if self.include_id:
+            if scalar_label:
+                label = image_id
+            else:
+                label["coco_id"] = image_id
 
         return image_path, image_metadata, label
 
@@ -248,8 +267,13 @@ class COCODetectionDatasetImporter(
         return True
 
     @property
+    def _has_scalar_labels(self):
+        return (len(self.label_types) + int(self.include_id)) == 1
+
+    @property
     def label_cls(self):
-        scalar_label = len(self.label_types) == 1
+        scalar_label = self._has_scalar_labels
+
         if not scalar_label:
             label_dict = {}
 
@@ -275,6 +299,12 @@ class COCODetectionDatasetImporter(
                 return fol.Keypoints
 
             label_dict["keypoints"] = fol.Keypoints
+
+        if self.include_id:
+            if scalar_label:
+                return int
+
+            label_dict["coco_id"] = int
 
         return label_dict
 
@@ -650,8 +680,6 @@ class COCOObject(object):
         Args:
             frame_size: the ``(width, height)`` of the image
             classes (None): the list of classes
-            supercategory_map (None): a dict mapping class names to category
-                dicts
 
         Returns:
             a :class:`fiftyone.core.labels.Keypoint`, or None if no keypoints
@@ -972,6 +1000,7 @@ def is_download_required(
     classes=None,
     image_ids=None,
     max_samples=None,
+    raw_dir=None,
 ):
     """Checks whether :meth:`download_coco_dataset_split` must be called in
     order for the given directory to contain enough samples to satisfy the
@@ -987,8 +1016,8 @@ def is_download_required(
         year ("2017"): the dataset year to download. Supported values are
             ``("2014", "2017")``
         label_types (None): a label type or list of label types to load. The
-            supported values are ``("detections", "keypoints")``. By default,
-            only "detections" are loaded
+            supported values are ``("detections", "segmentations")``. By
+            default, only "detections" are loaded
         classes (None): a string or list of strings specifying required classes
             to load. Only samples containing at least one instance of a
             specified class will be loaded
@@ -1000,77 +1029,31 @@ def is_download_required(
             -   the path to a text (newline-separated), JSON, or CSV file
                 containing the list of image IDs to load in either of the first
                 two formats
-
-            If provided, takes precedence over ``classes`` and ``max_samples``
         max_samples (None): the maximum number of samples desired
+        raw_dir (None): a directory in which full annotations files may be
+            stored to avoid re-downloads in the future
 
     Returns:
         True/False
     """
-    if year not in _IMAGE_DOWNLOAD_LINKS:
-        raise ValueError(
-            "Unsupported year '%s'; supported values are %s"
-            % (year, tuple(_IMAGE_DOWNLOAD_LINKS.keys()))
+    logging.disable(logging.CRITICAL)
+    try:
+        _download_coco_dataset_split(
+            dataset_dir,
+            split,
+            year=year,
+            label_types=label_types,
+            classes=classes,
+            image_ids=image_ids,
+            max_samples=max_samples,
+            raw_dir=raw_dir,
+            dry_run=True,
         )
-
-    if split not in _IMAGE_DOWNLOAD_LINKS[year]:
-        raise ValueError(
-            "Unsupported split '%s'; supported values are %s"
-            % (year, tuple(_IMAGE_DOWNLOAD_LINKS[year].keys()))
-        )
-
-    if classes is not None and split == "test":
-        logger.warning("Test split is unlabeled; ignoring `classes`")
-        classes = None
-
-    anno_path = os.path.join(dataset_dir, "labels.json")
-    images_dir = os.path.join(dataset_dir, "data")
-    split_size = _SPLIT_SIZES[year][split]
-
-    if not os.path.isfile(anno_path) or not os.path.isdir(images_dir):
-        return True
-
-    num_downloaded = len(etau.list_files(images_dir))
-    if num_downloaded >= split_size:
-        return False
-
-    if classes is None and image_ids is None and max_samples is None:
-        # User wants entire split, but not all images are downloaded
-        return True
-
-    (
-        _,
-        all_classes,
-        _,
-        images,
-        annotations,
-    ) = load_coco_detection_annotations(anno_path)
-
-    if image_ids is not None:
-        # User wants specific images, so we can explicitly check to see if
-        # they're downloaded
-        try:
-            _parse_image_ids(image_ids, images, split=split)
-            return False  # all IDs were found
-        except:
-            return True  # some IDs were not found
-
-    if max_samples is None:
-        # User wants all matching samples, but the entire split is not
-        # downloaded, so we have no way of knowing whether all data is there
-        return True
-
-    # User only wants a certain number of images, so we can check if we have
-    # downloaded enough images to meet their requirements
-    if classes is not None:
-        all_ids, any_ids = _get_images_with_classes(
-            annotations, classes, all_classes
-        )
-        num_matching = len(all_ids) + len(any_ids)
-    else:
-        num_matching = len(images)
-
-    return num_matching < max_samples
+        return False  # everything was downloaded
+    except:
+        return True  # something needs to be downloaded
+    finally:
+        logging.disable(logging.NOTSET)
 
 
 def download_coco_dataset_split(
@@ -1102,9 +1085,8 @@ def download_coco_dataset_split(
         year ("2017"): the dataset year to download. Supported values are
             ``("2014", "2017")``
         label_types (None): a label type or list of label types to load. The
-            supported values are
-            ``("detections", "segmentations", "keypoints")``. By default, only
-            "detections" are loaded
+            supported values are ``("detections", "segmentations")``. By
+            default, only "detections" are loaded
         classes (None): a string or list of strings specifying required classes
             to load. Only samples containing at least one instance of a
             specified class will be loaded
@@ -1116,8 +1098,6 @@ def download_coco_dataset_split(
             -   the path to a text (newline-separated), JSON, or CSV file
                 containing the list of image IDs to load in either of the first
                 two formats
-
-            If provided, takes precedence over ``classes`` and ``max_samples``
         num_workers (None): the number of processes to use when downloading
             individual images. By default, ``multiprocessing.cpu_count()`` is
             used
@@ -1128,8 +1108,8 @@ def download_coco_dataset_split(
             ``max_samples`` and ``label_types`` are both specified, then every
             sample will include the specified label types. By default, all
             matching samples are downloaded
-        raw_dir (None): a directory in which to store full annotations files,
-            to avoid re-downloads in the future
+        raw_dir (None): a directory in which full annotations files may be
+            stored to avoid re-downloads in the future
         scratch_dir (None): a scratch directory to use to download any
             necessary temporary files
 
@@ -1139,6 +1119,38 @@ def download_coco_dataset_split(
         -   num_samples: the total number of downloaded images
         -   classes: the list of all classes
     """
+    return _download_coco_dataset_split(
+        dataset_dir,
+        split,
+        year=year,
+        label_types=label_types,
+        classes=classes,
+        image_ids=image_ids,
+        num_workers=num_workers,
+        shuffle=shuffle,
+        seed=seed,
+        max_samples=max_samples,
+        raw_dir=raw_dir,
+        scratch_dir=scratch_dir,
+        dry_run=False,
+    )
+
+
+def _download_coco_dataset_split(
+    dataset_dir,
+    split,
+    year="2017",
+    label_types=None,
+    classes=None,
+    image_ids=None,
+    num_workers=None,
+    shuffle=None,
+    seed=None,
+    max_samples=None,
+    raw_dir=None,
+    scratch_dir=None,
+    dry_run=False,
+):
     if year not in _IMAGE_DOWNLOAD_LINKS:
         raise ValueError(
             "Unsupported year '%s'; supported values are %s"
@@ -1190,6 +1202,9 @@ def download_coco_dataset_split(
     full_anno_path = os.path.join(raw_dir, os.path.basename(rel_path))
 
     if not os.path.isfile(full_anno_path):
+        if dry_run:
+            raise ValueError("%s is not downloaded" % src_path)
+
         logger.info("Downloading %s to '%s'", anno_type, zip_path)
         etaw.download_file(src_path, path=zip_path)
 
@@ -1218,10 +1233,12 @@ def download_coco_dataset_split(
     unzip_images_dir = os.path.splitext(images_zip_path)[0]
 
     if classes is None and image_ids is None and max_samples is None:
-        # Download all images
-
+        # Full image download
         num_downloaded = len(etau.list_files(images_dir))
         if num_downloaded < split_size:
+            if dry_run:
+                raise ValueError("%s is not downloaded" % images_src_path)
+
             if num_downloaded > 0:
                 logger.info(
                     "Found %d (<%d) downloaded images; must download full "
@@ -1240,61 +1257,58 @@ def download_coco_dataset_split(
     else:
         # Partial image download
 
-        # Determine `existing_ids` and `download_ids`
         if image_ids is not None:
-            # Download specific images
+            # Start with specific images
             image_ids = _parse_image_ids(image_ids, images, split=split)
-            existing_ids, download_ids = _get_existing_ids(
-                images_dir, images, image_ids
+        else:
+            # Start with all images
+            image_ids = list(images.keys())
+
+        if classes is not None:
+            # Filter by specified classes
+            all_ids, any_ids = _get_images_with_classes(
+                image_ids, annotations, classes, all_classes
             )
         else:
-            # Download images for specific label-types/classes/counts
+            all_ids = image_ids
+            any_ids = []
 
-            # Get available IDs
-            if classes is not None:
-                all_ids, any_ids = _get_images_with_classes(
-                    annotations, classes, all_classes
+        all_ids = sorted(all_ids)
+        any_ids = sorted(any_ids)
+
+        if shuffle:
+            if seed is not None:
+                random.seed(seed)
+
+            random.shuffle(all_ids)
+            random.shuffle(any_ids)
+
+        image_ids = all_ids + any_ids
+
+        # Determine IDs to download
+        existing_ids, downloadable_ids = _get_existing_ids(
+            images_dir, images, image_ids
+        )
+
+        if max_samples is not None:
+            num_existing = len(existing_ids)
+            num_downloadable = len(downloadable_ids)
+            num_available = num_existing + num_downloadable
+            if num_available < max_samples:
+                logger.warning(
+                    "Only found %d (<%d) samples matching your "
+                    "requirements",
+                    num_available,
+                    max_samples,
                 )
+
+            if max_samples > num_existing:
+                num_download = max_samples - num_existing
+                download_ids = downloadable_ids[:num_download]
             else:
-                all_ids = images.keys()
-                any_ids = []
-
-            all_ids = sorted(all_ids)
-            any_ids = sorted(any_ids)
-
-            if shuffle:
-                if seed is not None:
-                    random.seed(seed)
-
-                random.shuffle(all_ids)
-                random.shuffle(any_ids)
-
-            image_ids = all_ids + any_ids
-
-            # Determine IDs to download
-            existing_ids, downloadable_ids = _get_existing_ids(
-                images_dir, images, image_ids
-            )
-
-            if max_samples is not None:
-                num_existing = len(existing_ids)
-                num_downloadable = len(downloadable_ids)
-                num_available = num_existing + num_downloadable
-                if num_available < max_samples:
-                    logger.warning(
-                        "Only found %d (<%d) samples matching your "
-                        "requirements",
-                        num_available,
-                        max_samples,
-                    )
-
-                if max_samples > num_existing:
-                    num_download = max_samples - num_existing
-                    download_ids = downloadable_ids[:num_download]
-                else:
-                    download_ids = []
-            else:
-                download_ids = downloadable_ids
+                download_ids = []
+        else:
+            download_ids = downloadable_ids
 
         # Download necessary images
         num_existing = len(existing_ids)
@@ -1312,7 +1326,13 @@ def download_coco_dataset_split(
             logger.info("Downloading %d images", num_download)
 
         if num_download > 0:
+            if dry_run:
+                raise ValueError("%d images must be downloaded" % num_download)
+
             _download_images(images_dir, download_ids, images, num_workers)
+
+    if dry_run:
+        return None, None
 
     #
     # Write usable annotations file to `anno_path`
@@ -1398,16 +1418,18 @@ def _get_matching_image_ids(
     seed=None,
     max_samples=None,
 ):
-    if image_ids is None and classes is None:
-        all_ids = images.keys()
-        any_ids = []
-    elif image_ids is not None:
-        all_ids = _parse_image_ids(image_ids, images)
-        any_ids = []
+    if image_ids is not None:
+        image_ids = _parse_image_ids(image_ids, images)
     else:
+        image_ids = list(images.keys())
+
+    if classes is not None:
         all_ids, any_ids = _get_images_with_classes(
-            annotations, classes, all_classes
+            image_ids, annotations, classes, all_classes
         )
+    else:
+        all_ids = image_ids
+        any_ids = []
 
     all_ids = sorted(all_ids)
     any_ids = sorted(any_ids)
@@ -1471,7 +1493,9 @@ def _do_download(args):
     etaw.download_file(url, path=path, quiet=True)
 
 
-def _get_images_with_classes(annotations, target_classes, all_classes):
+def _get_images_with_classes(
+    image_ids, annotations, target_classes, all_classes
+):
     if etau.is_str(target_classes):
         target_classes = [target_classes]
 
@@ -1484,7 +1508,11 @@ def _get_images_with_classes(annotations, target_classes, all_classes):
 
     all_ids = []
     any_ids = []
-    for image_id, coco_objects in annotations.items():
+    for image_id in image_ids:
+        coco_objects = annotations.get(image_id, None)
+        if not coco_objects:
+            continue
+
         oids = set(o.category_id for o in coco_objects)
         if class_ids.issubset(oids):
             all_ids.append(image_id)
@@ -1585,6 +1613,16 @@ def _make_images_list(images_dir):
 
 def _to_labels_map_rev(classes):
     return {c: i for i, c in enumerate(classes)}
+
+
+def _get_matching_objects(coco_objects, target_classes, all_classes):
+    if etau.is_str(target_classes):
+        target_classes = [target_classes]
+
+    labels_map_rev = _to_labels_map_rev(all_classes)
+    class_ids = {labels_map_rev[c] for c in target_classes}
+
+    return [obj for obj in coco_objects if obj.category_id in class_ids]
 
 
 def _coco_objects_to_polylines(
