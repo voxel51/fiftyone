@@ -107,12 +107,13 @@ def install_zoo_model_requirements(name, error_level=None):
             refer to a specific version of the model. If no version is
             specified, the latest version of the model is used. Call
             :func:`list_zoo_models` to see the available models
-        error_level (None): the error level to use. By default,
-            ``fo.config.requirement_error_level`` is used. Valid values are:
+        error_level (None): the error level to use, defined as:
 
-            0: raise error if a requirement install fails
-            1: log warning if a requirement install fails
-            2: ignore install fails
+            -   0: raise error if a requirement install fails
+            -   1: log warning if a requirement install fails
+            -   2: ignore install fails requirements
+
+            By default, ``fo.config.requirement_error_level`` is used
     """
     if error_level is None:
         error_level = fo.config.requirement_error_level
@@ -130,13 +131,14 @@ def ensure_zoo_model_requirements(name, error_level=None, log_success=True):
             refer to a specific version of the model. If no version is
             specified, the latest version of the model is used. Call
             :func:`list_zoo_models` to see the available models
-        error_level (None): the error level to use. By default,
-            ``fo.config.requirement_error_level`` is used. Valid values are:
+        error_level (None): the error level to use when installing/ensuring
+            requirements, defined as:
 
-            0: raise error if a requirement is not satisfied
-            1: log warning if a requirement is not satisifed
-            2: ignore unsatisifed requirements
+            -   0: raise error if a requirement is not satisfied
+            -   1: log warning if a requirement is not satisifed
+            -   2: ignore unsatisifed requirements
 
+            By default, ``fo.config.requirement_error_level`` is used
         log_success (True): whether to generate a log message when a
             requirement is satisifed
     """
@@ -169,13 +171,13 @@ def load_zoo_model(
         install_requirements: whether to install any requirements before
             loading the model. By default, this is False
         error_level (None): the error level to use when installing/ensuring
-            requirements. By default, ``fo.config.requirement_error_level`` is
-            used. Valid values are:
+            requirements, defined as:
 
-            0: raise error if a requirement is not satisfied
-            1: log warning if a requirement is not satisifed
-            2: ignore unsatisifed requirements
+            -   0: raise error if a requirement is not satisfied
+            -   1: log warning if a requirement is not satisifed
+            -   2: ignore unsatisifed requirements
 
+            By default, ``fo.config.requirement_error_level`` is used
         **kwargs: keyword arguments to inject into the model's ``Config``
             instance
 
@@ -315,7 +317,11 @@ class ZooModel(etam.Model):
         date_added (None): the datetime that the model was added to the zoo
     """
 
-    pass
+    _REQUIREMENT_ERROR_SUFFIX = (
+        "If you think this error is inaccurate, you can set "
+        "`fiftyone.config.requirement_error_level` to 1 (warning) or 2 (ignore).\n"
+        "See https://voxel51.com/docs/fiftyone/user_guide/config.html for details."
+    )
 
 
 class ZooModelsManifest(etam.ModelsManifest):

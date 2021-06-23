@@ -15,6 +15,8 @@ import os
 import random
 import warnings
 
+import boto3
+import botocore
 import pandas as pd
 
 import eta.core.image as etai
@@ -26,9 +28,6 @@ import fiftyone as fo
 import fiftyone.core.labels as fol
 import fiftyone.core.utils as fou
 import fiftyone.utils.data as foud
-
-boto3 = fou.lazy_import("boto3", callback=fou.ensure_boto3)
-botocore = fou.lazy_import("botocore", callback=fou.ensure_boto3)
 
 
 logger = logging.getLogger(__name__)
@@ -794,7 +793,7 @@ def _get_seg_classes(dataset_dir, classes_map=None, download=True):
         dataset_dir, "segmentation_classes.csv", url, download=download
     )
 
-    with open(seg_cls_txt, "r") as f:
+    with open(seg_cls_txt, "r", encoding="utf8") as f:
         seg_classes_oi = [l.rstrip("\n") for l in f]
 
     seg_classes = [classes_map[c] for c in seg_classes_oi]
@@ -856,7 +855,7 @@ def _parse_csv(filename, dataframe=False, index_col=None):
     if dataframe:
         data = pd.read_csv(filename, index_col=index_col)
     else:
-        with open(filename, "r", newline="") as csvfile:
+        with open(filename, "r", newline="", encoding="utf8") as csvfile:
             dialect = csv.Sniffer().sniff(csvfile.read(10240))
             csvfile.seek(0)
             if dialect.delimiter in _CSV_DELIMITERS:
