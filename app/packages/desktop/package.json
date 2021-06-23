@@ -9,7 +9,7 @@
     "build-desktop": "yarn build-desktop-source && yarn pull-desktop-source && tsc -p tsconfig.json",
     "build-desktop-source": "yarn workspace @fiftyone/app build",
     "pull-desktop-source": "yarn workspace @fiftyone/app copy-to-desktop",
-    "start": "cross-env DEBUG_APP=true electron ./dist/main.js",
+    "start-desktop": "cross-env DEBUG_APP=true electron ./dist/main.js",
     "package-mac": "electron-builder build --mac",
     "package-linux": "electron-builder build --linux",
     "package-win": "electron-builder build --win --x64",
