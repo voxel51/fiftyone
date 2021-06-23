@@ -424,14 +424,17 @@ class COCO2014Dataset(FiftyOneDataset):
     """COCO is a large-scale object detection, segmentation, and captioning
     dataset.
 
-    This version contains images, bounding boxes, segmentations, and keypoints
-    for the 2014 version of the dataset.
+    This version contains images, bounding boxes, and segmentations for the
+    2014 version of the dataset.
 
     This dataset supports partial downloads:
 
     -   You can specify subsets of data to download via the ``label_types``,
         ``classes``, and ``max_samples`` parameters
     -   You can specify specific images to load via the ``image_ids`` parameter
+
+    See :ref:`this page <dataset-zoo-coco-2014>` for more information about
+    partial downloads of this dataset.
 
     Full split stats:
 
@@ -452,23 +455,58 @@ class COCO2014Dataset(FiftyOneDataset):
         import fiftyone as fo
         import fiftyone.zoo as foz
 
-        # Load 50 samples from the validation split
+        #
+        # Load 50 random samples from the validation split
+        #
+        # By default, only detections are loaded
+        #
+
         dataset = foz.load_zoo_dataset(
-            "coco-2014", split="validation", max_samples=50
+            "coco-2014",
+            split="validation",
+            max_samples=50,
+            shuffle=True,
         )
 
         session = fo.launch_app(dataset)
 
-        # Load samples from specific label types and classes of interest
-        subset = foz.load_zoo_dataset(
+        #
+        # Load segmentations for 25 samples from the validation split that
+        # contain cats and dogs
+        #
+        # Images that contain all `classes` will be prioritized first, followed
+        # by images that contain at least one of the required `classes`. If
+        # there are not enough images matching `classes` in the split to meet
+        # `max_samples`, only the available images will be loaded.
+        #
+        # Images will only be downloaded if necessary
+        #
+
+        dataset = foz.load_zoo_dataset(
             "coco-2014",
             split="validation",
-            label_types=["detections"],
+            label_types=["segmentations"],
             classes=["cat", "dog"],
-            max_samples=50,
+            max_samples=25,
         )
 
-        session.dataset = subset
+        session.dataset = dataset
+
+        #
+        # Download the entire validation split and load both detections and
+        # segmentations
+        #
+        # Subsequent partial loads of the validation split will never require
+        # downloading any images
+        #
+
+        dataset = foz.load_zoo_dataset(
+            "coco-2014",
+            split="validation",
+            label_types=["detections", "segmentations"],
+        )
+
+        session.dataset = dataset
 
     Dataset size
         37.57 GB
@@ -497,10 +535,14 @@ class COCO2014Dataset(FiftyOneDataset):
         shuffle (False): whether to randomly shuffle the order in which samples
             are chosen for partial downloads
         seed (None): a random seed to use when shuffling
-        max_samples (None): a maximum number of samples to download per split.
-            If ``max_samples`` and ``label_types`` are both specified, then
-            every sample will include the specified label types. By default,
-            all matching samples are downloaded
+        max_samples (None): a maximum number of samples to load per split. If
+            ``label_types`` and/or ``classes`` are also specified, first
+            priority will be given to samples that contain all of the specified
+            label types and/or classes, followed by samples that contain at
+            least one of the specified labels types or classes. The actual
+            number of samples loaded may be less than this maximum value if the
+            dataset does not contain sufficient samples matching your
+            requirements. By default, all matching samples are loaded
     """
 
     def __init__(
@@ -527,7 +569,7 @@ class COCO2014Dataset(FiftyOneDataset):
 
     @property
     def tags(self):
-        return ("image", "detection", "segmentation", "keypoints")
+        return ("image", "detection", "segmentation")
 
     @property
     def supported_splits(self):
@@ -593,6 +635,9 @@ class COCO2017Dataset(FiftyOneDataset):
         ``classes``, and ``max_samples`` parameters
     -   You can specify specific images to load via the ``image_ids`` parameter
 
+    See :ref:`this page <dataset-zoo-coco-2017>` for more information about
+    partial downloads of this dataset.
+
     Full split stats:
 
     -   Train split: 118,287 images
@@ -612,23 +657,58 @@ class COCO2017Dataset(FiftyOneDataset):
         import fiftyone as fo
         import fiftyone.zoo as foz
 
-        # Load 50 samples from the validation split
+        #
+        # Load 50 random samples from the validation split
+        #
+        # By default, only detections are loaded
+        #
+
         dataset = foz.load_zoo_dataset(
-            "coco-2017", split="validation", max_samples=50
+            "coco-2017",
+            split="validation",
+            max_samples=50,
+            shuffle=True,
         )
 
         session = fo.launch_app(dataset)
 
-        # Load samples from specific label types and classes of interest
-        subset = foz.load_zoo_dataset(
+        #
+        # Load segmentations for 25 samples from the validation split that
+        # contain cats and dogs
+        #
+        # Images that contain all `classes` will be prioritized first, followed
+        # by images that contain at least one of the required `classes`. If
+        # there are not enough images matching `classes` in the split to meet
+        # `max_samples`, only the available images will be loaded.
+        #
+        # Images will only be downloaded if necessary
+        #
+
+        dataset = foz.load_zoo_dataset(
             "coco-2017",
             split="validation",
-            label_types=["detections"],
+            label_types=["segmentations"],
             classes=["cat", "dog"],
-            max_samples=50,
+            max_samples=25,
         )
 
-        session.dataset = subset
+        session.dataset = dataset
+
+        #
+        # Download the entire validation split and load both detections and
+        # segmentations
+        #
+        # Subsequent partial loads of the validation split will never require
+        # downloading any images
+        #
+
+        dataset = foz.load_zoo_dataset(
+            "coco-2017",
+            split="validation",
+            label_types=["detections", "segmentations"],
+        )
+
+        session.dataset = dataset
 
     Dataset size
         25.20 GB
@@ -657,10 +737,14 @@ class COCO2017Dataset(FiftyOneDataset):
         shuffle (False): whether to randomly shuffle the order in which samples
             are chosen for partial downloads
         seed (None): a random seed to use when shuffling
-        max_samples (None): a maximum number of samples to download per split.
-            If ``max_samples`` and ``label_types`` are both specified, then
-            every sample will include the specified label types. By default,
-            all matching samples are downloaded
+        max_samples (None): a maximum number of samples to load per split. If
+            ``label_types`` and/or ``classes`` are also specified, first
+            priority will be given to samples that contain all of the specified
+            label types and/or classes, followed by samples that contain at
+            least one of the specified labels types or classes. The actual
+            number of samples loaded may be less than this maximum value if the
+            dataset does not contain sufficient samples matching your
+            requirements. By default, all matching samples are loaded
     """
 
     def __init__(
@@ -687,7 +771,7 @@ class COCO2017Dataset(FiftyOneDataset):
 
     @property
     def tags(self):
-        return ("image", "detection", "segmentation", "keypoints")
+        return ("image", "detection", "segmentation")
 
     @property
     def supported_splits(self):
@@ -1042,6 +1126,9 @@ class OpenImagesV6Dataset(FiftyOneDataset):
         ``classes``, ``attrs``, and ``max_samples`` parameters
     -   You can specify specific images to load via the ``image_ids`` parameter
 
+    See :ref:`this page <dataset-zoo-open-images-v6>` for more information
+    about partial downloads of this dataset.
+
     Full split stats:
 
     -   Train split: 1,743,042 images (513 GB)
@@ -1053,31 +1140,61 @@ class OpenImagesV6Dataset(FiftyOneDataset):
     -   Not all images contain all types of labels
     -   All images have been rescaled so that their largest dimension is at
         most 1024 pixels
-    -   `Localized narratives <https://google.github.io/localized-narratives/>`_
-        are not included in this version of the dataset
 
     Example usage::
 
-        import fiftyone as fo
-        import fiftyone.zoo as foz
+        #
+        # Load 50 random samples from the validation split
+        #
+        # By default, all label types are loaded
+        #
 
-        # Load 50 samples from the validation split
         dataset = foz.load_zoo_dataset(
-            "open-images-v6", split="validation", max_samples=50
+            "open-images-v6",
+            split="validation",
+            max_samples=50,
+            shuffle=True,
         )
 
         session = fo.launch_app(dataset)
 
-        # Load samples from specific label types and classes of interest
-        subset = foz.load_zoo_dataset(
+        #
+        # Load detections and classifications for 25 samples from the
+        # validation split that contain fedoras and pianos
+        #
+        # Images that contain all `label_types` and `classes` will be
+        # prioritized first, followed by images that contain at least one of
+        # the required `classes`. If there are not enough images matching
+        # `classes` in the split to meet `max_samples`, only the available
+        # images will be loaded.
+        #
+        # Images will only be downloaded if necessary
+        #
+
+        dataset = foz.load_zoo_dataset(
             "open-images-v6",
             split="validation",
-            label_types=["detections", "relationships"],
+            label_types=["detections", "classifications"],
             classes=["Fedora", "Piano"],
-            max_samples=50,
+            max_samples=25,
         )
 
-        session.dataset = subset
+        session.dataset = dataset
+
+        #
+        # Download the entire validation split and load detections
+        #
+        # Subsequent partial loads of the validation split will never require
+        # downloading any images
+        #
+
+        dataset = foz.load_zoo_dataset(
+            "open-images-v6",
+            split="validation",
+            label_types=["detections"],
+        )
+
+        session.dataset = dataset
 
     Dataset size
         561 GB
@@ -1093,9 +1210,11 @@ class OpenImagesV6Dataset(FiftyOneDataset):
         classes (None): a string or list of strings specifying required classes
             to load. If provided, only samples containing at least one instance
             of a specified class will be loaded
-        attrs (None): a string or list of strings for relationship attributes
-            to load. If provided, only samples containing at least one instance
-            of a specified attribute will be loaded
+        attrs (None): a string or list of strings specifying required
+            relationship attributes to load. Only applicable when
+            ``label_types`` includes "relationships". If provided, only samples
+            containing at least one instance of a specified attribute will be
+            loaded
         image_ids (None): an optional list of specific image IDs to load. Can
             be provided in any of the following formats:
 
@@ -1110,10 +1229,15 @@ class OpenImagesV6Dataset(FiftyOneDataset):
         shuffle (False): whether to randomly shuffle the order in which samples
             are chosen for partial downloads
         seed (None): a random seed to use when shuffling
-        max_samples (None): a maximum number of samples to download per split.
-            If ``max_samples`` and ``label_types`` are both specified, then
-            every sample will include the specified label types. By default,
-            all matching samples are downloaded
+        max_samples (None): a maximum number of samples to load per split. If
+            ``label_types``, ``classes``, and/or ``attrs`` are also specified,
+            first priority will be given to samples that contain all of the
+            specified label types, classes, and/or attributes, followed by
+            samples that contain at least one of the specified labels types or
+            classes. The actual number of samples loaded may be less than this
+            maximum value if the dataset does not contain sufficient samples
+            matching your requirements. By default, all matching samples are
+            loaded
     """
 
     def __init__(

@@ -1627,8 +1627,11 @@ class DatasetZooDownloadCommand(Command):
             "--kwargs",
             nargs="+",
             metavar="KEY=VAL",
-            action=_StoreDictAction,
-            help="optional dataset-specific keyword argument(s)",
+            action=_ParseKwargsAction,
+            help=(
+                "optional dataset-specific keyword arguments for "
+                "`fiftyone.zoo.download_zoo_dataset()`"
+            ),
         )
 
     @staticmethod
@@ -1720,8 +1723,11 @@ class DatasetZooLoadCommand(Command):
             "--kwargs",
             nargs="+",
             metavar="KEY=VAL",
-            action=_StoreDictAction,
-            help="optional dataset-specific keyword argument(s)",
+            action=_ParseKwargsAction,
+            help=(
+                "additional dataset-specific keyword arguments for "
+                "`fiftyone.zoo.load_zoo_dataset()`"
+            ),
         )
 
     @staticmethod
@@ -1738,7 +1744,7 @@ class DatasetZooLoadCommand(Command):
             splits=splits,
             dataset_name=dataset_name,
             dataset_dir=dataset_dir,
-            **kwargs
+            **kwargs,
         )
         dataset.persistent = True
 
@@ -2680,23 +2686,6 @@ def _iter_subparsers(parser):
                 yield subparser
 
 
-def _parse_value(val):
-    try:
-        return int(val)
-    except ValueError:
-        pass
-
-    try:
-        return float(val)
-    except ValueError:
-        pass
-
-    if "," in val:
-        return [_parse_value(v) for v in val.split(",")]
-
-    return val
-
-
 class _RecursiveHelpAction(argparse._HelpAction):
     def __call__(self, parser, *args, **kwargs):
         self._recurse(parser)
@@ -2709,7 +2698,7 @@ class _RecursiveHelpAction(argparse._HelpAction):
             _RecursiveHelpAction._recurse(subparser)
 
 
-class _StoreDictAction(argparse.Action):
+class _ParseKwargsAction(argparse.Action):
     def __call__(self, parser, namespace, values, option_string=None):
         kwargs = {}
         if not isinstance(values, list):
@@ -2717,9 +2706,26 @@ class _StoreDictAction(argparse.Action):
 
         for value in values:
             key, val = value.split("=")
-            kwargs[key.replace("-", "_")] = _parse_value(val)
+            kwargs[key.replace("-", "_")] = _parse_kwargs_value(val)
 
         setattr(namespace, self.dest, kwargs)
+
+
+def _parse_kwargs_value(val):
+    try:
+        return int(val)
+    except ValueError:
+        pass
+
+    try:
+        return float(val)
+    except ValueError:
+        pass
+
+    if "," in val:
+        return [_parse_kwargs_value(v) for v in val.split(",")]
+
+    return val
 
 
 class _StoreSizeTupleAction(argparse.Action):

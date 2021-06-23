@@ -1339,7 +1339,8 @@ Download datasets from the FiftyOne Dataset Zoo.
       -d DATASET_DIR, --dataset-dir DATASET_DIR
                             a custom directory to which to download the dataset
       -k KEY=VAL [KEY=VAL ...], --kwargs KEY=VAL [KEY=VAL ...]
-                            optional dataset-specific keyword argument(s)
+                            optional dataset-specific keyword arguments for
+                            `fiftyone.zoo.download_zoo_dataset()`
 
 **Examples**
 
@@ -1402,7 +1403,8 @@ Load zoo datasets as persistent FiftyOne datasets.
                             a maximum number of samples to import. By default,
                             all samples are imported
       -k KEY=VAL [KEY=VAL ...], --kwargs KEY=VAL [KEY=VAL ...]
-                            optional dataset-specific keyword argument(s)
+                            optional dataset-specific keyword arguments for
+                            `fiftyone.zoo.load_zoo_dataset()`
 
 **Examples**
 

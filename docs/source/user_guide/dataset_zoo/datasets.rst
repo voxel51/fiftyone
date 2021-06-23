@@ -30,13 +30,9 @@ This page lists all of the datasets available in the Dataset Zoo.
     +--------------------------------------------------------------------+---------------------------------------------------------------------------+
     | :ref:`Cityscapes <dataset-zoo-cityscapes>`                         | image, multilabel, automotive, manual                                     |
     +--------------------------------------------------------------------+---------------------------------------------------------------------------+
-    | :ref:`COCO-2014 <dataset-zoo-coco-2014>`                           | image, detection                                                          |
+    | :ref:`COCO-2014 <dataset-zoo-coco-2014>`                           | image, detection, segmentation                                            |
     +--------------------------------------------------------------------+---------------------------------------------------------------------------+
-    | :ref:`COCO-2014 Segmentation <dataset-zoo-coco-2014-segmentation>` | image, detection, segmentation                                            |
-    +--------------------------------------------------------------------+---------------------------------------------------------------------------+
-    | :ref:`COCO-2017 <dataset-zoo-coco-2017>`                           | image, detection                                                          |
-    +--------------------------------------------------------------------+---------------------------------------------------------------------------+
-    | :ref:`COCO-2017 Segmentation <dataset-zoo-coco-2017-segmentation>` | image, detection, segmentation                                            |
+    | :ref:`COCO-2017 <dataset-zoo-coco-2017>`                           | image, detection, segmentation                                            |
     +--------------------------------------------------------------------+---------------------------------------------------------------------------+
     | :ref:`Fashion MNIST <dataset-zoo-fashion-mnist>`                   | image, classification                                                     |
     +--------------------------------------------------------------------+---------------------------------------------------------------------------+
@@ -52,7 +48,7 @@ This page lists all of the datasets available in the Dataset Zoo.
     +--------------------------------------------------------------------+---------------------------------------------------------------------------+
     | :ref:`MNIST <dataset-zoo-mnist>`                                   | image, classification                                                     |
     +--------------------------------------------------------------------+---------------------------------------------------------------------------+
-    | :ref:`Open Images V6 <dataset-zoo-open-images-v6>`                 | image, classification, detection, segmentation                            |
+    | :ref:`Open Images V6 <dataset-zoo-open-images-v6>`                 | image, classification, detection, segmentation, relationships             |
     +--------------------------------------------------------------------+---------------------------------------------------------------------------+
     | :ref:`Quickstart <dataset-zoo-quickstart>`                         | image, quickstart                                                         |
     +--------------------------------------------------------------------+---------------------------------------------------------------------------+
@@ -475,8 +471,17 @@ COCO-2014
 COCO is a large-scale object detection, segmentation, and captioning
 dataset.
 
-This version contains images, bounding boxes and labels for the 2014
+This version contains images, bounding boxes, and segmentations for the 2014
 version of the dataset.
+
+.. note::
+
+    We partnered with the `COCO team <https://cocodataset.org/#download>`_
+    to make FiftyOne the recommended tool for downloading, visualizing, and
+    evaluating on the COCO dataset!
+
+    Check out :ref:`this guide <coco-integration>` for more details on using
+    FiftyOne to work with COCO.
 
 Notes:
 
@@ -493,16 +498,71 @@ Notes:
 -   Dataset size: 37.57 GB
 -   Tags: ``image, detection``
 -   Supported splits: ``train, validation, test``
--   ZooDataset classes:
+-   ZooDataset class:
+    :class:`COCO2014Dataset <fiftyone.zoo.datasets.base.COCO2014Dataset>`
 
-    -   :class:`COCO2014Dataset <fiftyone.zoo.datasets.tf.COCO2014Dataset>` (TF backend)
-    -   :class:`COCO2014Dataset <fiftyone.zoo.datasets.torch.COCO2014Dataset>` (Torch backend)
+**Full split stats**
+
+-   Train split: 82,783 images
+-   Test split: 40,775 images
+-   Validation split: 40,504 images
+
+**Partial downloads**
+
+FiftyOne provides parameters that can be used to efficiently download specific
+subsets of the COCO dataset to suit your needs. When new subsets are specified,
+FiftyOne will use existing downloaded data first if possible before resorting
+to downloading additional data from the web.
+
+The following parameters are available to configure a partial download of
+COCO-2014 by passing them to
+:func:`load_zoo_dataset() <fiftyone.zoo.datasets.load_zoo_dataset>`:
+
+-   ``split`` and ``splits``: a string or list of strings, respectively,
+    specifying the splits to load. Supported values are
+    ``("train", "test", "validation")``
+
+-   ``label_types``: a label type or list of label types to load. Supported
+    values are ``("detections", "segmentations")``. By default, only
+    "detections" are loaded
+
+-   ``classes``: a string or list of strings specifying required classes to
+    load. If provided, only samples containing at least one instance of a
+    specified class will be loaded
+
+-   ``image_ids``: a list of specific image IDs to load. The IDs can be
+    specified either as ``<split>/<image-id>`` strings or ``<image-id>`` ints
+    of strings. Alternatively, you can provide the path to a TXT
+    (newline-separated), JSON, or CSV file containing the list of image IDs to
+    load in either of the first two formats
+
+-   ``only_matching``: whether to only load labels that match the ``classes``
+    or ``attrs`` requirements that you provide (True), or to load all labels
+    for samples that match the requirements (False). By default, this is False
+
+-   ``num_workers``: the number of processes to use when downloading individual
+    images
+
+-   ``shuffle``: whether to randomly shuffle the order in which samples are
+    chosen for partial downloads
+
+-   ``seed``: a random seed to use when shuffling
+
+-   ``max_samples``: a maximum number of samples to load per split. If
+    ``label_types`` and/or ``classes`` are also specified, first priority will
+    be given to samples that contain all of the specified label types and/or
+    classes, followed by samples that contain at least one of the specified
+    labels types or classes. The actual number of samples loaded may be less
+    than this maximum value if the dataset does not contain sufficient samples
+    matching your requirements. By default, all matching samples are loaded
 
 .. note::
 
-    You must have the
-    :ref:`Torch or TensorFlow backend(s) <dataset-zoo-ml-backend>` installed to
-    load this dataset.
+    See
+    :class:`COCO2014Dataset <fiftyone.zoo.datasets.base.COCO2014Dataset>` and
+    :class:`COCODetectionDatasetImporter <fiftyone.utils.coco.COCODetectionDatasetImporter>`
+    for complete descriptions of the optional keyword arguments that you can
+    pass to :func:`load_zoo_dataset() <fiftyone.zoo.datasets.load_zoo_dataset>`.
 
 **Example usage**
 
@@ -516,77 +576,114 @@ Notes:
         import fiftyone as fo
         import fiftyone.zoo as foz
 
-        dataset = foz.load_zoo_dataset("coco-2014", split="validation")
+        #
+        # Load 50 random samples from the validation split
+        #
+        # By default, only detections are loaded
+        #
+
+        dataset = foz.load_zoo_dataset(
+            "coco-2014",
+            split="validation",
+            max_samples=50,
+            shuffle=True,
+        )
 
         session = fo.launch_app(dataset)
+
+        #
+        # Load segmentations for 25 samples from the validation split that
+        # contain cats and dogs
+        #
+        # Images that contain all `classes` will be prioritized first, followed
+        # by images that contain at least one of the required `classes`. If
+        # there are not enough images matching `classes` in the split to meet
+        # `max_samples`, only the available images will be loaded.
+        #
+        # Images will only be downloaded if necessary
+        #
+
+        dataset = foz.load_zoo_dataset(
+            "coco-2014",
+            split="validation",
+            label_types=["segmentations"],
+            classes=["cat", "dog"],
+            max_samples=25,
+        )
+
+        session.dataset = dataset
+
+        #
+        # Download the entire validation split and load both detections and
+        # segmentations
+        #
+        # Subsequent partial loads of the validation split will never require
+        # downloading any images
+        #
+
+        dataset = foz.load_zoo_dataset(
+            "coco-2014",
+            split="validation",
+            label_types=["detections", "segmentations"],
+        )
+
+        session.dataset = dataset
 
   .. group-tab:: CLI
 
     .. code-block:: shell
 
-        fiftyone zoo datasets load coco-2014 --split validation
+        #
+        # Load 50 random samples from the validation split
+        #
+        # By default, only detections are loaded
+        #
+
+        fiftyone zoo datasets load coco-2014 \
+            --split validation \
+            --kwargs \
+                max_samples=50
+
+        fiftyone app launch coco-2014-validation-50
+
+        #
+        # Load segmentations for 25 samples from the validation split that
+        # contain cats and dogs
+        #
+        # Images that contain all `classes` will be prioritized first, followed
+        # by images that contain at least one of the required `classes`. If
+        # there are not enough images matching `classes` in the split to meet
+        # `max_samples`, only the available images will be loaded.
+        #
+        # Images will only be downloaded if necessary
+        #
+
+        fiftyone zoo datasets load coco-2014 \
+            --split validation \
+            --kwargs \
+                label_types=segmentations \
+                classes=cat,dog
+                max_samples=25 \
+
+        fiftyone app launch coco-2014-validation-25
+
+        #
+        # Download the entire validation split and load both detections and
+        # segmentations
+        #
+        # Subsequent partial loads of the validation split will never require
+        # downloading any images
+        #
+
+        fiftyone zoo datasets load coco-2014 \
+            --split validation \
+            --kwargs \
+                label_types=detections,segmentations
 
         fiftyone app launch coco-2014-validation
 
 .. image:: ../../images/dataset_zoo/coco-2014-validation.png
    :alt: coco-2014-validation
-   :align: center
-
-.. _dataset-zoo-coco-2014-segmentation:
-
-COCO-2014 Segmentation
-----------------------
-
-COCO is a large-scale object detection, segmentation, and captioning
-dataset.
-
-This version contains images, bounding boxes, segmentations, and labels for
-the 2014 version of the dataset.
-
-Notes:
-
--   COCO defines 91 classes but the data only uses 80 classes
--   Some images from the train and validation sets don't have annotations
--   The test set does not have annotations
--   COCO 2014 and 2017 uses the same images, but different train/val/test
-    splits
-
-**Details**
-
--   Dataset name: ``coco-2014-segmentation``
--   Dataset source: http://cocodataset.org/#home
--   Dataset size: 37.57 GB
--   Tags: ``image, detection, segmentation``
--   Supported splits: ``test, train, validation``
--   ZooDataset class:
-    :class:`COCO2014Dataset <fiftyone.zoo.datasets.base.COCO2014Dataset>`
-
-**Example usage**
-
-.. tabs::
-
-  .. group-tab:: Python
-
-    .. code-block:: python
-        :linenos:
-
-        import fiftyone as fo
-        import fiftyone.zoo as foz
-
-        dataset = foz.load_zoo_dataset("coco-2014-segmentation", split="validation")
-
-        session = fo.launch_app(dataset)
-
-  .. group-tab:: CLI
-
-    .. code-block:: shell
-
-        fiftyone zoo datasets load coco-2014-segmentation --split validation
-
-        fiftyone app launch coco-2014-segmentation-validation
-
-.. image:: ../../images/dataset_zoo/coco-2014-segmentation-validation.png
-   :alt: coco-2014-segmentation-validation
    :align: center
 
 .. _dataset-zoo-coco-2017:
@@ -599,6 +696,15 @@ dataset.
 
 This version contains images, bounding boxes and labels for the 2017
 version of the dataset.
+
+.. note::
+
+    We partnered with the `COCO team <https://cocodataset.org/#download>`_
+    to make FiftyOne the recommended tool for downloading, visualizing, and
+    evaluating on the COCO dataset!
+
+    Check out :ref:`this guide <coco-integration>` for more details on using
+    FiftyOne to work with COCO.
 
 Notes:
 
@@ -615,16 +721,71 @@ Notes:
 -   Dataset size: 25.20 GB
 -   Tags: ``image, detection``
 -   Supported splits: ``train, validation, test``
--   ZooDataset classes:
+-   ZooDataset class:
+    :class:`COCO2017Dataset <fiftyone.zoo.datasets.base.COCO2017Dataset>`
 
-    -   :class:`COCO2017Dataset <fiftyone.zoo.datasets.tf.COCO2017Dataset>` (TF backend)
-    -   :class:`COCO2017Dataset <fiftyone.zoo.datasets.torch.COCO2017Dataset>` (Torch backend)
+**Full split stats**
+
+-   Train split: 118,287 images
+-   Test split: 40,670 images
+-   Validation split: 5,000 images
+
+**Partial downloads**
+
+FiftyOne provides parameters that can be used to efficiently download specific
+subsets of the COCO dataset to suit your needs. When new subsets are specified,
+FiftyOne will use existing downloaded data first if possible before resorting
+to downloading additional data from the web.
+
+The following parameters are available to configure a partial download of
+COCO-2017 by passing them to
+:func:`load_zoo_dataset() <fiftyone.zoo.datasets.load_zoo_dataset>`:
+
+-   ``split`` and ``splits``: a string or list of strings, respectively,
+    specifying the splits to load. Supported values are
+    ``("train", "test", "validation")``
+
+-   ``label_types``: a label type or list of label types to load. Supported
+    values are ``("detections", "segmentations")``. By default, only
+    "detections" are loaded
+
+-   ``classes``: a string or list of strings specifying required classes to
+    load. If provided, only samples containing at least one instance of a
+    specified class will be loaded
+
+-   ``image_ids``: a list of specific image IDs to load. The IDs can be
+    specified either as ``<split>/<image-id>`` strings or ``<image-id>`` ints
+    of strings. Alternatively, you can provide the path to a TXT
+    (newline-separated), JSON, or CSV file containing the list of image IDs to
+    load in either of the first two formats
+
+-   ``only_matching``: whether to only load labels that match the ``classes``
+    or ``attrs`` requirements that you provide (True), or to load all labels
+    for samples that match the requirements (False). By default, this is False
+
+-   ``num_workers``: the number of processes to use when downloading individual
+    images
+
+-   ``shuffle``: whether to randomly shuffle the order in which samples are
+    chosen for partial downloads
+
+-   ``seed``: a random seed to use when shuffling
+
+-   ``max_samples``: a maximum number of samples to load per split. If
+    ``label_types`` and/or ``classes`` are also specified, first priority will
+    be given to samples that contain all of the specified label types and/or
+    classes, followed by samples that contain at least one of the specified
+    labels types or classes. The actual number of samples loaded may be less
+    than this maximum value if the dataset does not contain sufficient samples
+    matching your requirements. By default, all matching samples are loaded
 
 .. note::
 
-    You must have the
-    :ref:`Torch or TensorFlow backend(s) <dataset-zoo-ml-backend>` installed to
-    load this dataset.
+    See
+    :class:`COCO2017Dataset <fiftyone.zoo.datasets.base.COCO2017Dataset>` and
+    :class:`COCODetectionDatasetImporter <fiftyone.utils.coco.COCODetectionDatasetImporter>`
+    for complete descriptions of the optional keyword arguments that you can
+    pass to :func:`load_zoo_dataset() <fiftyone.zoo.datasets.load_zoo_dataset>`.
 
 **Example usage**
 
@@ -638,77 +799,114 @@ Notes:
         import fiftyone as fo
         import fiftyone.zoo as foz
 
-        dataset = foz.load_zoo_dataset("coco-2017", split="validation")
+        #
+        # Load 50 random samples from the validation split
+        #
+        # By default, only detections are loaded
+        #
+
+        dataset = foz.load_zoo_dataset(
+            "coco-2017",
+            split="validation",
+            max_samples=50,
+            shuffle=True,
+        )
 
         session = fo.launch_app(dataset)
+
+        #
+        # Load segmentations for 25 samples from the validation split that
+        # contain cats and dogs
+        #
+        # Images that contain all `classes` will be prioritized first, followed
+        # by images that contain at least one of the required `classes`. If
+        # there are not enough images matching `classes` in the split to meet
+        # `max_samples`, only the available images will be loaded.
+        #
+        # Images will only be downloaded if necessary
+        #
+
+        dataset = foz.load_zoo_dataset(
+            "coco-2017",
+            split="validation",
+            label_types=["segmentations"],
+            classes=["cat", "dog"],
+            max_samples=25,
+        )
+
+        session.dataset = dataset
+
+        #
+        # Download the entire validation split and load both detections and
+        # segmentations
+        #
+        # Subsequent partial loads of the validation split will never require
+        # downloading any images
+        #
+
+        dataset = foz.load_zoo_dataset(
+            "coco-2017",
+            split="validation",
+            label_types=["detections", "segmentations"],
+        )
+
+        session.dataset = dataset
 
   .. group-tab:: CLI
 
     .. code-block:: shell
 
-        fiftyone zoo datasets load coco-2017 --split validation
+        #
+        # Load 50 random samples from the validation split
+        #
+        # By default, only detections are loaded
+        #
+
+        fiftyone zoo datasets load coco-2017 \
+            --split validation \
+            --kwargs \
+                max_samples=50
+
+        fiftyone app launch coco-2017-validation-50
+
+        #
+        # Load segmentations for 25 samples from the validation split that
+        # contain cats and dogs
+        #
+        # Images that contain all `classes` will be prioritized first, followed
+        # by images that contain at least one of the required `classes`. If
+        # there are not enough images matching `classes` in the split to meet
+        # `max_samples`, only the available images will be loaded.
+        #
+        # Images will only be downloaded if necessary
+        #
+
+        fiftyone zoo datasets load coco-2017 \
+            --split validation \
+            --kwargs \
+                label_types=segmentations \
+                classes=cat,dog
+                max_samples=25 \
+
+        fiftyone app launch coco-2017-validation-25
+
+        #
+        # Download the entire validation split and load both detections and
+        # segmentations
+        #
+        # Subsequent partial loads of the validation split will never require
+        # downloading any images
+        #
+
+        fiftyone zoo datasets load coco-2017 \
+            --split validation \
+            --kwargs \
+                label_types=detections,segmentations
 
         fiftyone app launch coco-2017-validation
 
 .. image:: ../../images/dataset_zoo/coco-2017-validation.png
    :alt: coco-2017-validation
-   :align: center
-
-.. _dataset-zoo-coco-2017-segmentation:
-
-COCO-2017 Segmentation
-----------------------
-
-COCO is a large-scale object detection, segmentation, and captioning
-dataset.
-
-This version contains images, bounding boxes, segmentations, and labels for
-the 2017 version of the dataset.
-
-Notes:
-
--   COCO defines 91 classes but the data only uses 80 classes
--   Some images from the train and validation sets don't have annotations
--   The test set does not have annotations
--   COCO 2014 and 2017 uses the same images, but different train/val/test
-    splits
-
-**Details**
-
--   Dataset name: ``coco-2017-segmentation``
--   Dataset source: http://cocodataset.org/#home
--   Dataset size: 25.20 GB
--   Tags: ``image, detection, segmentation``
--   Supported splits: ``test, train, validation``
--   ZooDataset class:
-    :class:`COCO2017Dataset <fiftyone.zoo.datasets.base.COCO2017Dataset>`
-
-**Example usage**
-
-.. tabs::
-
-  .. group-tab:: Python
-
-    .. code-block:: python
-        :linenos:
-
-        import fiftyone as fo
-        import fiftyone.zoo as foz
-
-        dataset = foz.load_zoo_dataset("coco-2017-segmentation", split="validation")
-
-        session = fo.launch_app(dataset)
-
-  .. group-tab:: CLI
-
-    .. code-block:: shell
-
-        fiftyone zoo datasets load coco-2017-segmentation --split validation
-
-        fiftyone app launch coco-2017-segmentation-validation
-
-.. image:: ../../images/dataset_zoo/coco-2017-segmentation-validation.png
-   :alt: coco-2017-segmentation-validation
    :align: center
 
 .. _dataset-zoo-fashion-mnist:
@@ -1181,6 +1379,16 @@ are annotated and available via this zoo dataset.
 The dataset contains annotations for classification, detection, segmentation,
 and visual relationship tasks across 601 object classes.
 
+.. note::
+
+    We partnered with the
+    `Open Images Team at Google <https://storage.googleapis.com/openimages/web/download.html>`_
+    to make FiftyOne the recommended tool for downloading, visualizing, and
+    evaluating on the Open Images Dataset!
+
+    Check out :ref:`this guide <open-images-integration>` for more details on
+    using FiftyOne to work with Open Images.
+
 **Details**
 
 -   Dataset name: ``open-images-v6``
@@ -1196,8 +1404,6 @@ and visual relationship tasks across 601 object classes.
 -   Not all images contain all types of labels
 -   All images have been rescaled so that their largest side is at most
     1024 pixels
--   `Localized narratives <https://google.github.io/localized-narratives/>`_
-    are not included in this version of the dataset
 
 **Full split stats**
 
@@ -1219,46 +1425,60 @@ Images V6 by passing them to
 
 -   ``split`` and ``splits``: a string or list of strings, respectively,
     specifying the splits to load. Supported values are
-    ``("test", "train", "validation")``
+    ``("train", "test", "validation")``
 
--   ``label_types``: a list of types of labels to load. Supported values are
-    ``("detections", "classifications", "relationships", "segmentations")``.
-    By default, all labels are loaded but not every sample will include each
-    label type. If ``max_samples`` and ``label_types`` are both specified, then
-    every sample will include the specified label types
+-   ``label_types``: a label type or list of label types to load. Supported
+    values are ``("detections", "classifications", "relationships", "segmentations")``.
+    By default, all labels are loaded
 
--   ``classes``: a list of strings specifying required classes to load. Only
-    samples containing at least one instance of a specified class will be
-    downloaded. You can use :func:`get_classes() <fiftyone.utils.openimages.get_classes>`
-    to see the available classes and
+-   ``classes``: a string or list of strings specifying required classes to
+    load. If provided, only samples containing at least one instance of a
+    specified class will be loaded. You can use
+    :func:`get_classes() <fiftyone.utils.openimages.get_classes>` and
     :func:`get_segmentation_classes() <fiftyone.utils.openimages.get_segmentation_classes>`
-    to see the available segmentation classes
+    to see the available classes and segmentation classes, respectively
 
--   ``attrs``: a list of strings for relationship attributes to load. This
-    parameter is only applicable if ``"relationships"`` is in ``label_types``.
-    You can use
+-   ``attrs``: a string or list of strings specifying required relationship
+    attributes to load. This parameter is only applicable if ``label_types``
+    contains ``"relationships"``. If provided, only samples containing at least
+    one instance of a specified attribute will be loaded. You can use
     :func:`get_attributes() <fiftyone.utils.openimages.get_attributes>`
     to see the available attributes
 
 -   ``image_ids``: a list of specific image IDs to load. The IDs can be
-    specified either as ``<split>/<image-id>`` or ``<image-id>``
+    specified either as ``<split>/<image-id>`` or ``<image-id>`` strings.
+    Alternatively, you can provide the path to a TXT (newline-separated), JSON,
+    or CSV file containing the list of image IDs to load in either of the first
+    two formats
 
--   ``image_ids_file``: the path to a newline separated ``.txt``, ``.json``,
-    or ``.csv`` file containing a list of image IDs to load
+-   ``only_matching``: whether to only load labels that match the ``classes``
+    or ``attrs`` requirements that you provide (True), or to load all labels
+    for samples that match the requirements (False). By default, this is False
 
--   ``shuffle``: boolean dictating whether to randomly shuffle the order in
-    which the samples are imported
+-   ``num_workers``: the number of processes to use when downloading individual
+    images
+
+-   ``shuffle``: whether to randomly shuffle the order in which samples are
+    chosen for partial downloads
 
 -   ``seed``: a random seed to use when shuffling
 
--   ``max_samples``: a maximum number of samples to import
+-   ``max_samples``: a maximum number of samples to load per split. If
+    ``label_types``, ``classes``, and/or ``attrs`` are also specified, first
+    priority will be given to samples that contain all of the specified label
+    types, classes, and/or attributes, followed by samples that contain at
+    least one of the specified labels types or classes. The actual number of
+    samples loaded may be less than this maximum value if the dataset does not
+    contain sufficient samples matching your requirements. By default, all
+    matching samples are loaded
 
 .. note::
 
     See
     :class:`OpenImagesV6Dataset <fiftyone.zoo.datasets.base.OpenImagesV6Dataset>`
+    and :class:`OpenImagesV6DatasetImporter <fiftyone.utils.openimages.OpenImagesV6DatasetImporter>`
     for complete descriptions of the optional keyword arguments that you can
-    pass to :func:`load_zoo_dataset() <fiftyone.zoo.datasets.load_zoo_dataset>`
+    pass to :func:`load_zoo_dataset() <fiftyone.zoo.datasets.load_zoo_dataset>`.
 
 **Example usage**
 
@@ -1269,39 +1489,109 @@ Images V6 by passing them to
     .. code-block:: python
         :linenos:
 
-        import fiftyone as fo
-        import fiftyone.zoo as foz
+        #
+        # Load 50 random samples from the validation split
+        #
+        # By default, all label types are loaded
+        #
 
-        # Load 50 samples from the validation split
         dataset = foz.load_zoo_dataset(
-            "open-images-v6", split="validation", max_samples=50
+            "open-images-v6",
+            split="validation",
+            max_samples=50,
+            shuffle=True,
         )
 
         session = fo.launch_app(dataset)
 
-        # Load samples from specific label types and classes of interest
-        subset = foz.load_zoo_dataset(
+        #
+        # Load detections and classifications for 25 samples from the
+        # validation split that contain fedoras and pianos
+        #
+        # Images that contain all `label_types` and `classes` will be
+        # prioritized first, followed by images that contain at least one of
+        # the required `classes`. If there are not enough images matching
+        # `classes` in the split to meet `max_samples`, only the available
+        # images will be loaded.
+        #
+        # Images will only be downloaded if necessary
+        #
+
+        dataset = foz.load_zoo_dataset(
             "open-images-v6",
             split="validation",
-            label_types=["detections", "relationships"],
+            label_types=["detections", "classifications"],
             classes=["Fedora", "Piano"],
-            max_samples=50,
+            max_samples=25,
         )
 
-        session.dataset = subset
+        session.dataset = dataset
+
+        #
+        # Download the entire validation split and load detections
+        #
+        # Subsequent partial loads of the validation split will never require
+        # downloading any images
+        #
+
+        dataset = foz.load_zoo_dataset(
+            "open-images-v6",
+            split="validation",
+            label_types=["detections"],
+        )
+
+        session.dataset = dataset
 
   .. group-tab:: CLI
 
     .. code-block:: shell
 
+        #
+        # Load 50 random samples from the validation split
+        #
+        # By default, all label types are loaded
+        #
+
         fiftyone zoo datasets load open-images-v6 \
             --split validation \
             --kwargs \
-                max_samples=50 \
-                label_types=segmentations,classifications \
-                classes=Fedora,Piano
+                max_samples=50
 
         fiftyone app launch open-images-v6-validation-50
+
+        #
+        # Load detections and classifications for 25 samples from the
+        # validation split that contain fedoras and pianos
+        #
+        # Images that contain all `label_types` and `classes` will be
+        # prioritized first, followed by images that contain at least one of
+        # the required `classes`. If there are not enough images matching
+        # `classes` in the split to meet `max_samples`, only the available
+        # images will be loaded.
+        #
+        # Images will only be downloaded if necessary
+        #
+
+        fiftyone zoo datasets load open-images-v6 \
+            --split validation \
+            --kwargs \
+                label_types=segmentations,classifications \
+                classes=Fedora,Piano
+                max_samples=25 \
+
+        fiftyone app launch open-images-v6-validation-25
+
+        #
+        # Download the entire validation split and load detections
+        #
+        # Subsequent partial loads of the validation split will never require
+        # downloading any images
+        #
+
+        fiftyone zoo datasets load open-images-v6 \
+            --split validation
+
+        fiftyone app launch open-images-v6-validation
 
 .. image:: ../../images/dataset_zoo/open-images-v6.png
    :alt: open-images-v6

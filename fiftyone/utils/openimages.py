@@ -48,9 +48,11 @@ class OpenImagesV6DatasetImporter(foud.LabeledImageDatasetImporter):
         classes (None): a string or list of strings specifying required classes
             to load. If provided, only samples containing at least one instance
             of a specified class will be loaded
-        attrs (None): a string or list of strings for relationship attributes
-            to load. If provided, only samples containing at least one instance
-            of a specified attribute will be loaded
+        attrs (None): a string or list of strings specifying required
+            relationship attributes to load. Only applicable when
+            ``label_types`` includes "relationships". If provided, only samples
+            containing at least one instance of a specified attribute will be
+            loaded
         image_ids (None): an optional list of specific image IDs to load. Can
             be provided in any of the following formats:
 
@@ -69,10 +71,15 @@ class OpenImagesV6DatasetImporter(foud.LabeledImageDatasetImporter):
         shuffle (False): whether to randomly shuffle the order in which the
             samples are imported
         seed (None): a random seed to use when shuffling
-        max_samples (None): a maximum number of samples to import. If
-            ``max_samples`` and ``label_types`` are both specified, then every
-            sample will include the specified label types. By default, all
-            matching samples are imported
+        max_samples (None): a maximum number of samples to load. If
+            ``label_types``, ``classes``, and/or ``attrs`` are also specified,
+            first priority will be given to samples that contain all of the
+            specified label types, classes, and/or attributes, followed by
+            samples that contain at least one of the specified labels types or
+            classes. The actual number of samples loaded may be less than this
+            maximum value if the dataset does not contain sufficient samples
+            matching your requirements. By default, all matching samples are
+            loaded
     """
 
     def __init__(
@@ -453,9 +460,11 @@ def is_download_required(
         classes (None): a string or list of strings specifying required classes
             to load. If provided, only samples containing at least one instance
             of a specified class will be loaded
-        attrs (None): a string or list of strings for relationship attributes
-            to load. If provided, only samples containing at least one instance
-            of a specified attribute will be loaded
+        attrs (None): a string or list of strings specifying required
+            relationship attributes to load. Only applicable when
+            ``label_types`` includes "relationships". If provided, only samples
+            containing at least one instance of a specified attribute will be
+            loaded
         image_ids (None): an optional list of specific image IDs to load. Can
             be provided in any of the following formats:
 
@@ -528,9 +537,11 @@ def download_open_images_split(
         classes (None): a string or list of strings specifying required classes
             to load. If provided, only samples containing at least one instance
             of a specified class will be loaded
-        attrs (None): a string or list of strings for relationship attributes
-            to load. If provided, only samples containing at least one instance
-            of a specified attribute will be loaded
+        attrs (None): a string or list of strings specifying required
+            relationship attributes to load. Only applicable when
+            ``label_types`` includes "relationships". If provided, only samples
+            containing at least one instance of a specified attribute will be
+            loaded
         image_ids (None): an optional list of specific image IDs to load. Can
             be provided in any of the following formats:
 
@@ -545,10 +556,15 @@ def download_open_images_split(
         shuffle (False): whether to randomly shuffle the order in which samples
             are chosen for partial downloads
         seed (None): a random seed to use when shuffling
-        max_samples (None): a maximum number of samples to download per split.
-            If ``max_samples`` and ``label_types`` are both specified, then
-            every sample downloaded will include the specified label types. By
-            default, all matching samples are downloaded
+        max_samples (None): a maximum number of samples to load per split. If
+            ``label_types``, ``classes``, and/or ``attrs`` are also specified,
+            first priority will be given to samples that contain all of the
+            specified label types, classes, and/or attributes, followed by
+            samples that contain at least one of the specified labels types or
+            classes. The actual number of samples loaded may be less than this
+            maximum value if the dataset does not contain sufficient samples
+            matching your requirements. By default, all matching samples are
+            loaded
 
     Returns:
         a tuple of:

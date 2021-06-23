@@ -102,10 +102,14 @@ class COCODetectionDatasetImporter(
         shuffle (False): whether to randomly shuffle the order in which the
             samples are imported
         seed (None): a random seed to use when shuffling
-        max_samples (None): a maximum number of samples to import. If
-            ``max_samples`` and ``label_types`` are both specified, then every
-            sample will include the specified label types. By default, all
-            matching samples are imported
+        max_samples (None): a maximum number of samples to load. If
+            ``label_types`` and/or ``classes`` are also specified, first
+            priority will be given to samples that contain all of the specified
+            label types and/or classes, followed by samples that contain at
+            least one of the specified labels types or classes. The actual
+            number of samples loaded may be less than this maximum value if the
+            dataset does not contain sufficient samples matching your
+            requirements. By default, all matching samples are loaded
     """
 
     def __init__(
@@ -1104,10 +1108,14 @@ def download_coco_dataset_split(
         shuffle (False): whether to randomly shuffle the order in which samples
             are chosen for partial downloads
         seed (None): a random seed to use when shuffling
-        max_samples (None): a maximum number of samples to download. If
-            ``max_samples`` and ``label_types`` are both specified, then every
-            sample will include the specified label types. By default, all
-            matching samples are downloaded
+        max_samples (None): a maximum number of samples to load. If
+            ``label_types`` and/or ``classes`` are also specified, first
+            priority will be given to samples that contain all of the specified
+            label types and/or classes, followed by samples that contain at
+            least one of the specified labels types or classes. The actual
+            number of samples loaded may be less than this maximum value if the
+            dataset does not contain sufficient samples matching your
+            requirements. By default, all matching samples are loaded
         raw_dir (None): a directory in which full annotations files may be
             stored to avoid re-downloads in the future
         scratch_dir (None): a scratch directory to use to download any
