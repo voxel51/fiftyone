@@ -84,12 +84,12 @@ learn how!
     :image_title: TensorFlow
 
 .. customimagelink::
-    :image_link: api/fiftyone.utils.coco.html
+    :image_link: integrations/coco.html
     :image_src: https://voxel51.com/images/integrations/coco-128.png
     :image_title: COCO
 
 .. customimagelink::
-    :image_link: tutorials/open_images.html
+    :image_link: integrations/open_images.html
     :image_src: https://voxel51.com/images/integrations/open-images-128.png
     :image_title: Open Images
 
