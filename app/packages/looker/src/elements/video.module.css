@@ -48,9 +48,10 @@
 .lookerSeekBar {
   --progress: 0%;
   --buffer-progress: 0%;
+  grid-area: 1 / 1 / 1 / 12;
 }
 
-input[type="range"].looker-seek-bar::-webkit-slider-runnable-track {
+input[type="range"].lookerSeekBar::-webkit-slider-runnable-track {
   background: linear-gradient(
     to right,
     rgb(225, 100, 40) 0%,

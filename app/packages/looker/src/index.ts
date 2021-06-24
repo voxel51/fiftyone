@@ -122,6 +122,10 @@ export abstract class Looker<
       postUpdate && postUpdate(this.state, this.currentOverlays);
       this.lookerElement.render(this.state as Readonly<State>);
 
+      if (!this.state.loaded) {
+        return;
+      }
+
       const ctx = this.canvas.getContext("2d") as CanvasRenderingContext2D;
       ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
       ctx.lineWidth = this.state.strokeWidth;

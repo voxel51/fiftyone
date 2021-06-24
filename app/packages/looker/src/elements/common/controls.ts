@@ -196,7 +196,7 @@ export class ControlsElement<State extends BaseState> extends BaseElement<
 export class FullscreenButtonElement<
   State extends BaseState
 > extends BaseElement<State, HTMLImageElement> {
-  private fullscreen: boolean = false;
+  private fullscreen: boolean;
 
   getEvents(): Events<State> {
     return {
@@ -211,7 +211,7 @@ export class FullscreenButtonElement<
   createHTMLElement() {
     const element = document.createElement("img");
     element.classList.add(lookerClickable);
-    element.style.gridArea = "2 / 7 / 2 / 7";
+    element.style.gridArea = "2 / 8 / 2 / 8";
     return element;
   }
 
@@ -245,7 +245,7 @@ export class PlusElement<State extends BaseState> extends BaseElement<
     element.style.padding = "2px";
     element.src = ICONS.plus;
     element.title = "Zoom in (+)";
-    element.style.gridArea = "2 / 6 / 2 / 6";
+    element.style.gridArea = "2 / 7 / 2 / 7";
     return element;
   }
 
@@ -274,7 +274,7 @@ export class MinusElement<State extends BaseState> extends BaseElement<
     element.style.padding = "2px";
     element.src = ICONS.minus;
     element.title = "Zoom out (-)";
-    element.style.gridArea = "2 / 5 / 2 / 5";
+    element.style.gridArea = "2 / 6 / 2 / 6";
     return element;
   }
 
@@ -302,7 +302,7 @@ export class HelpButtonElement<State extends BaseState> extends BaseElement<
     element.style.padding = "2px";
     element.src = ICONS.help;
     element.title = "Help (?)";
-    element.style.gridArea = "2 / 8 / 2 / 8";
+    element.style.gridArea = "2 / 9 / 2 / 9";
     return element;
   }
 
@@ -330,7 +330,7 @@ export class OptionsButtonElement<State extends BaseState> extends BaseElement<
     element.style.padding = "2px";
     element.src = ICONS.options;
     element.title = "Settings (s)";
-    element.style.gridArea = "2 / 9 / 2 / 9";
+    element.style.gridArea = "2 / 10 / 2 / 10";
     return element;
   }
 

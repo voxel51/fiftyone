@@ -11,7 +11,7 @@ import {
   transformWindowElement,
 } from "./util";
 
-import { mediaOrCanvas } from "./media.module.css";
+import { mediaOrCanvas, mediaLoading } from "./media.module.css";
 import { lookerTime } from "./common/controls.module.css";
 
 export class FrameNumberElement extends BaseElement<FrameState> {
@@ -40,6 +40,7 @@ export class FrameNumberElement extends BaseElement<FrameState> {
 export class FrameElement extends BaseElement<FrameState, HTMLVideoElement> {
   private src: string = "";
   private frameNumber: number = 1;
+  private loaded: boolean = false;
 
   getEvents(): Events<FrameState> {
     return {
@@ -60,7 +61,7 @@ export class FrameElement extends BaseElement<FrameState, HTMLVideoElement> {
 
   createHTMLElement() {
     const element = document.createElement("video");
-    element.classList.add(mediaOrCanvas);
+    element.classList.add(mediaOrCanvas, mediaLoading);
     element.preload = "metadata";
     element.muted = true;
     return element;
@@ -68,16 +69,24 @@ export class FrameElement extends BaseElement<FrameState, HTMLVideoElement> {
 
   renderSelf(state: Readonly<FrameState>) {
     const {
+      loaded,
       config: { src, frameNumber, frameRate },
     } = state;
     if (this.src !== src) {
       this.src = src;
       this.element.setAttribute("src", src);
     }
+
     if (this.frameNumber !== frameNumber) {
       this.frameNumber = frameNumber;
       this.element.currentTime = getTime(frameNumber, frameRate);
     }
+
+    if (this.loaded !== loaded) {
+      this.element.classList.remove(mediaLoading);
+      this.loaded = loaded;
+    }
+
     transformWindowElement(state, this.element);
     return this.element;
   }

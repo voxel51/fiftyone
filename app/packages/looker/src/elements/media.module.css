@@ -21,6 +21,6 @@
   -ms-interpolation-mode: nearest-neighbor; /* IE8+                           */
 }
 
-.mediaOrCanvasLoading {
+.mediaLoading {
   opacity: 0;
 }

@@ -6,7 +6,7 @@ import { VideoState } from "../state";
 import { BaseElement, Events } from "./base";
 import { playPause, VIDEO_SHORTCUTS } from "./common/actions";
 import { lookerTime } from "./common/controls.module.css";
-import { mediaOrCanvas } from "./media.module.css";
+import { mediaLoading, mediaOrCanvas } from "./media.module.css";
 import {
   getFrameNumber,
   getFrameString,
@@ -206,7 +206,6 @@ export class SeekBarElement extends BaseElement<VideoState, HTMLInputElement> {
     element.setAttribute("min", "0");
     element.setAttribute("max", "100");
     element.classList.add(lookerSeekBar);
-    element.style.gridArea = "1 / 1 / 1 / 11";
     return element;
   }
 
@@ -219,13 +218,13 @@ export class SeekBarElement extends BaseElement<VideoState, HTMLInputElement> {
     if (thumbnail) {
       return this.element;
     }
-    duration = duration as number;
-    const frameCount = getFrameNumber(duration, duration, frameRate);
-    this.element.style.setProperty(
-      "--buffer-progress",
-      `${(buffers[buffers.length - 1][1] - 1) / frameCount}%`
-    );
     if (duration !== null) {
+      const frameCount = getFrameNumber(duration, duration, frameRate);
+      console.log(buffers);
+      this.element.style.setProperty(
+        "--buffer-progress",
+        `${(buffers[buffers.length - 1][1] - 1) / frameCount}%`
+      );
       const value = ((frameNumber - 1) / frameCount) * 100;
       this.element.style.display = "block";
       this.element.style.setProperty("--progress", `${value}%`);
@@ -267,6 +266,7 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
   private frameRate: number = 0;
   private frameNumber: number = 1;
   private loop: boolean = false;
+  private loaded: boolean = false;
 
   private requestCallback: (callback: (frameNumber: number) => void) => void;
 
@@ -365,7 +365,7 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
 
   createHTMLElement() {
     const element = document.createElement("video");
-    element.classList.add(mediaOrCanvas);
+    element.classList.add(mediaOrCanvas, mediaLoading);
     element.preload = "metadata";
     element.muted = true;
     this.frameNumber = 1;
@@ -404,6 +404,12 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
       this.src = src;
       this.element.setAttribute("src", src);
     }
+
+    if (this.loaded !== loaded) {
+      this.element.classList.remove(mediaLoading);
+      this.loaded = loaded;
+    }
+
     if (this.frameNumber !== frameNumber) {
       this.element.currentTime = getTime(frameNumber, frameRate);
     }
