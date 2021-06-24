@@ -631,7 +631,7 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
         update: this.updater,
       });
       lookerWithReader = this;
-      this.state.buffers = [];
+      this.state.buffers = [[1, 1]];
     } else if (lookerWithReader !== this && frameCount) {
       this.state.playing = false;
       this.state.buffering = false;

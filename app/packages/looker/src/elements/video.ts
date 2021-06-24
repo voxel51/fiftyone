@@ -268,9 +268,7 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
   private frameNumber: number = 1;
   private loop: boolean = false;
 
-  private requestCallback: (
-    callback: (frameNumber: number) => void
-  ) => void = () => {};
+  private requestCallback: (callback: (frameNumber: number) => void) => void;
 
   getEvents(): Events<VideoState> {
     return {
