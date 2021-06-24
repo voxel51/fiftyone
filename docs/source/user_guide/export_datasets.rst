@@ -842,7 +842,7 @@ where `labels.json` is a JSON file in the following format:
         ],
         "images": [
             {
-                "id": 0,
+                "id": 1,
                 "license": null,
                 "file_name": "<filename0>.<ext>",
                 "height": 480,
@@ -853,8 +853,8 @@ where `labels.json` is a JSON file in the following format:
         ],
         "annotations": [
             {
-                "id": 0,
-                "image_id": 0,
+                "id": 1,
+                "image_id": 1,
                 "category_id": 2,
                 "bbox": [260, 177, 231, 199],
                 "segmentation": [...],

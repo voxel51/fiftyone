@@ -707,7 +707,9 @@ When running COCO-style evaluation using
 -   Ground truth objects can have an ``iscrowd`` attribute that indicates
     whether the annotation contains a crowd of objects. Multiple predictions
     can be matched to crowd ground truth objects. The name of this attribute
-    can be customized via the ``iscrowd`` attribute
+    can be customized by passing the optional ``iscrowd`` attribute of
+    |COCOEvaluationConfig| to
+    :meth:`evaluate_detections() <fiftyone.core.collections.SampleCollection.evaluate_detections>`
 
 When you specify an ``eval_key`` parameter, a number of helpful fields will be
 populated on each sample and its predicted/ground truth objects:
@@ -1218,11 +1220,12 @@ exploring your model's predictions in the :ref:`FiftyOne App <fiftyone-app>`!
 In order to compute the official Open Images mAP for a model, your dataset
 **must** include the appropriate positive and negative sample-level labels, and
 you must provide the class hierarchy. Fortunately, when you load the Open
-Images dataset via the
-:ref:`Fiftyone Dataset Zoo <dataset-zoo-open-images-v6>`, all of the necessary
-information is automatically loaded for you!
+Images dataset
+:ref:`from the FiftyOne Dataset Zoo <dataset-zoo-open-images-v6>`, all of the
+necessary information is automatically loaded for you!
 
-The example snippet below loads the Open Images V6 dataset and runs the
+The example snippet below loads the
+:ref:`Open Images V6 <dataset-zoo-open-images-v6>` dataset and runs the
 official Open Images evaluation protocol on some mock model predictions:
 
 .. code-block:: python

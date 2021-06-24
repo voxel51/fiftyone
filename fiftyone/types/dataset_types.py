@@ -523,7 +523,7 @@ class COCODetectionDataset(ImageDetectionDataset):
             ],
             "images": [
                 {
-                    "id": 0,
+                    "id": 1,
                     "license": null,
                     "file_name": "<filename0>.<ext>",
                     "height": 480,
@@ -534,8 +534,8 @@ class COCODetectionDataset(ImageDetectionDataset):
             ],
             "annotations": [
                 {
-                    "id": 0,
-                    "image_id": 0,
+                    "id": 1,
+                    "image_id": 1,
                     "category_id": 2,
                     "bbox": [260, 177, 231, 199],
                     "segmentation": [...],
