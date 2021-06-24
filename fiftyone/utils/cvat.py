@@ -781,7 +781,7 @@ class CVATVideoDatasetExporter(
             name=name_with_ext,
         )
 
-    def close(self):
+    def close(self, *args):
         self._media_exporter.close()
 
 

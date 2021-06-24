@@ -526,10 +526,8 @@ def _make_label_coersion_functions(
         #
 
         for export_type in export_types:
-            single_label_type = fol._LABEL_LIST_TO_SINGLE_MAP.get(
-                export_type, None
-            )
-            if issubclass(label_type, single_label_type):
+            single_type = fol._LABEL_LIST_TO_SINGLE_MAP.get(export_type, None)
+            if single_type is not None and issubclass(label_type, single_type):
                 logger.info(
                     "Dataset exporter expects labels in %s format, but found "
                     "%s. Wrapping field '%s' as single-label lists...",
@@ -1673,7 +1671,7 @@ class ImageDirectoryExporter(UnlabeledImageDatasetExporter):
     def export_sample(self, image_or_path, metadata=None):
         self._media_exporter.export(image_or_path)
 
-    def close(self):
+    def close(self, *args):
         self._media_exporter.close()
 
 
@@ -1724,7 +1722,7 @@ class VideoDirectoryExporter(UnlabeledVideoDatasetExporter):
     def export_sample(self, video_path, metadata=None):
         self._media_exporter.export(video_path)
 
-    def close(self):
+    def close(self, *args):
         self._media_exporter.close()
 
 
@@ -2353,7 +2351,7 @@ class ImageSegmentationDirectoryExporter(
         out_mask_path = os.path.join(self.labels_path, uuid + self.mask_format)
         etai.write(segmentation.mask, out_mask_path)
 
-    def close(self):
+    def close(self, *args):
         self._media_exporter.close()
 
 

@@ -295,7 +295,7 @@ class KITTIDetectionDatasetExporter(
 
         self._writer.write(detections, metadata, out_anno_path)
 
-    def close(self):
+    def close(self, *args):
         self._media_exporter.close()
 
 
