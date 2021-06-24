@@ -206,7 +206,7 @@ class YOLOv4DatasetImporter(
             )
 
             image_paths_map = {
-                path: os.path.splitext(os.path.basename(path))[0]
+                os.path.splitext(os.path.basename(path))[0]: path
                 for path in etau.list_files(self.data_path, abs_paths=True)
                 if not path.endswith(".txt")
             }
@@ -365,7 +365,7 @@ class YOLOv5DatasetImporter(
                 image_paths.extend(etau.list_files(data_dir, abs_paths=True))
 
         image_paths_map = {
-            p: os.path.splitext(os.path.basename(p))[0] for p in image_paths
+            os.path.splitext(os.path.basename(p))[0]: p for p in image_paths
         }
 
         uuids = sorted(image_paths_map.keys())
@@ -485,7 +485,7 @@ class YOLOv4DatasetExporter(
         images_path = self._parse_labels_path(
             export_dir=export_dir,
             labels_path=images_path,
-            default="labels.txt",
+            default="images.txt",
         )
 
         super().__init__(export_dir=export_dir)
@@ -555,10 +555,10 @@ class YOLOv4DatasetExporter(
     def export_sample(self, image_or_path, detections, metadata=None):
         out_image_path, _ = self._media_exporter.export(image_or_path)
 
+        self._images.append(os.path.relpath(out_image_path, self._rel_dir))
+
         if detections is None:
             return
-
-        self._images.append(os.path.relpath(out_image_path, self._rel_dir))
 
         out_labels_path = os.path.splitext(out_image_path)[0] + ".txt"
 

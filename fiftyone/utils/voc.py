@@ -488,10 +488,14 @@ class VOCAnnotation(object):
 
         if "size" in annotation:
             size = annotation["size"]
+            width = size.get("width", None)
+            height = size.get("height", None)
+            depth = size.get("depth", None)
+
             metadata = fom.ImageMetadata(
-                width=int(size["width"]),
-                height=int(size["height"]),
-                num_channels=int(size["depth"]),
+                width=int(width) if width else None,
+                height=int(height) if height else None,
+                num_channels=int(depth) if depth else None,
             )
         else:
             metadata = None
@@ -739,9 +743,9 @@ class VOCAnnotationWriter(object):
                 "path": annotation.path,
                 "filename": annotation.filename,
                 "folder": annotation.folder,
-                "width": metadata.width,
-                "height": metadata.height,
-                "depth": metadata.num_channels,
+                "width": metadata.width or "",
+                "height": metadata.height or "",
+                "depth": metadata.num_channels or "",
                 "database": None,
                 "segmented": annotation.segmented,
                 "objects": annotation.objects,

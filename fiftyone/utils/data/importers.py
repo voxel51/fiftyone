@@ -1963,7 +1963,8 @@ class ImageClassificationDirectoryTreeImporter(LabeledImageDatasetImporter):
         else:
             image_metadata = None
 
-        label = fol.Classification(label=label)
+        if label is not None:
+            label = fol.Classification(label=label)
 
         return image_path, image_metadata, label
 
@@ -2076,7 +2077,8 @@ class VideoClassificationDirectoryTreeImporter(LabeledVideoDatasetImporter):
         else:
             video_metadata = None
 
-        label = fol.Classification(label=label)
+        if label is not None:
+            label = fol.Classification(label=label)
 
         return video_path, video_metadata, label, None
 
