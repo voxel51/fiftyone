@@ -440,14 +440,17 @@ class COCODetectionDatasetExporter(
         classes (None): the list of possible class labels. If not provided,
             this list will be extracted when :meth:`log_collection` is called,
             if possible
-        extra_attrs (None): an optional field name or list of field names of
-            extra label attributes to include in the exported annotations
-        iscrowd ("iscrowd"): the name of a detection attribute that indicates
-            whether an object is a crowd (only used if present)
         info (None): a dict of info as returned by
             :meth:`load_coco_detection_annotations`. If not provided, this info
             will be extracted when :meth:`log_collection` is called, if
             possible
+        extra_attrs (None): an optional field name or list of field names of
+            extra label attributes to include in the exported annotations
+        iscrowd ("iscrowd"): the name of a detection attribute that indicates
+            whether an object is a crowd (only used if present)
+        num_decimals (None): an optional number of decimal places at which to
+            round bounding box pixel coordinates. By default, no rounding is
+            done
         tolerance (None): a tolerance, in pixels, when generating approximate
             polylines for instance masks. Typical values are 1-3 pixels
     """
@@ -460,9 +463,10 @@ class COCODetectionDatasetExporter(
         export_media=None,
         image_format=None,
         classes=None,
+        info=None,
         extra_attrs=None,
         iscrowd="iscrowd",
-        info=None,
+        num_decimals=None,
         tolerance=None,
     ):
         data_path, export_media = self._parse_data_path(
@@ -488,9 +492,10 @@ class COCODetectionDatasetExporter(
         self.export_media = export_media
         self.image_format = image_format
         self.classes = classes
+        self.info = info
         self.extra_attrs = extra_attrs
         self.iscrowd = iscrowd
-        self.info = info
+        self.num_decimals = num_decimals
         self.tolerance = tolerance
 
         self._labels_map_rev = None
@@ -573,6 +578,7 @@ class COCODetectionDatasetExporter(
                 labels_map_rev=self._labels_map_rev,
                 extra_attrs=self.extra_attrs,
                 iscrowd=self.iscrowd,
+                num_decimals=self.num_decimals,
                 tolerance=self.tolerance,
             )
             obj.id = self._anno_id
@@ -828,6 +834,7 @@ class COCOObject(object):
         labels_map_rev=None,
         extra_attrs=None,
         iscrowd="iscrowd",
+        num_decimals=None,
         tolerance=None,
     ):
         """Creates a :class:`COCOObject` from a
@@ -844,6 +851,9 @@ class COCOObject(object):
             extra_attrs (None): an optional list of extra attributes to include
             iscrowd ("iscrowd"): the name of the crowd attribute (used if
                 present)
+            num_decimals (None): an optional number of decimal places at which
+                to round bounding box pixel coordinates. By default, no
+                rounding is done
             tolerance (None): a tolerance, in pixels, when generating
                 approximate polylines for instance masks. Typical values are
                 1-3 pixels
@@ -859,7 +869,12 @@ class COCOObject(object):
         width = metadata.width
         height = metadata.height
         x, y, w, h = detection.bounding_box
+
         bbox = [x * width, y * height, w * width, h * height]
+
+        if num_decimals is not None:
+            bbox = [round(p, num_decimals) for p in bbox]
+
         area = bbox[2] * bbox[3]
 
         try:
