@@ -511,8 +511,6 @@ class COCODetectionDatasetExporter(
         return fol.Detections
 
     def setup(self):
-        self._data_dir = os.path.join(self.export_dir, "data")
-        self._labels_path = os.path.join(self.export_dir, "labels.json")
         self._image_id = 0
         self._anno_id = 0
         self._images = []
