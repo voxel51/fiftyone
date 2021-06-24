@@ -250,7 +250,11 @@ def _run_custom_imports(
 
     # Test unlabeled sample handling when importing
     if num_unlabeled is not None:
-        _dataset = fo.Dataset.from_dir(export_dir, dataset_type)
+        # Some formats require `include_all_data` in order to load unlabeled
+        # samples. If the format doesn't support this flag, it will be ignored
+        _dataset = fo.Dataset.from_dir(
+            export_dir, dataset_type, include_all_data=True
+        )
 
         schema = _dataset.get_field_schema()
         label_field = [f for f in schema if f.startswith("ground_truth")][0]
@@ -647,7 +651,7 @@ def test_custom_classification_dataset_imports(basedir):
         max_samples=100,
     )
 
-    # Remove labeles from some samples
+    # Remove labels from some samples
     for s in cdataset.take(10):
         s.ground_truth = None
         s.save()
@@ -683,9 +687,10 @@ def test_custom_detection_dataset_imports(basedir):
         dataset_name="detection-dataset",
         shuffle=True,
         max_samples=100,
+        num_workers=1,  # pytest crashes without this
     )
 
-    # Remove labeles from some samples
+    # Remove labels from some samples
     for s in ddataset.take(10):
         s.ground_truth = None
         s.save()
@@ -725,16 +730,18 @@ def test_custom_multitask_image_dataset_imports(basedir):
 
     # Load a small multitask image dataset
     idataset = foz.load_zoo_dataset(
-        "coco-2017",
+        "open-images-v6",
         split="validation",
+        label_types=["classifications", "detections"],
         dataset_name="image-labels-dataset",
         shuffle=True,
         max_samples=100,
+        num_workers=1,  # pytest crashes without this
     )
 
-    # Remove labeles from some samples
+    # Remove labels from some samples
     for s in idataset.take(10):
-        s.ground_truth = None
+        s.detections = None
         s.save()
 
     # Test custom imports
@@ -752,6 +759,7 @@ def test_custom_generic_dataset_imports(basedir):
     # Types of generic datasets to test
     dataset_types = [
         fo.types.dataset_types.LegacyFiftyOneDataset,
+        fo.types.dataset_types.FiftyOneDataset,
     ]
 
     # Load a small generic dataset

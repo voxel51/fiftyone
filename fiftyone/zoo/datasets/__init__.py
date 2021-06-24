@@ -158,10 +158,10 @@ def load_zoo_dataset(
             ``splits`` are provided, all available splits are loaded. Consult
             the documentation for the :class:`ZooDataset` you specified to see
             the supported splits
-        label_field (None): an optional label field (or prefix, if the dataset
-            contains multiple label fields) to use when loading labeled zoo
-            datasets. The default is ``"ground_truth"`` if the dataset contains
-            a single label field and ``""`` otherwise
+        label_field (None): the label field (or prefix, if the dataset contains
+            multiple label fields) in which to store the dataset's labels. By
+            default, this is ``"ground_truth"`` if the dataset contains a
+            single label field and ``""`` otherwise
         dataset_name (None): an optional name to give the returned
             :class:`fiftyone.core.dataset.Dataset`. By default, a name will be
             constructed based on the dataset and split(s) you are loading
@@ -276,7 +276,7 @@ def load_zoo_dataset(
     else:
         logger.info("Loading '%s'", zoo_dataset.name)
         dataset_importer, _label_field = _build_importer(
-            dataset_type, split_dir, label_field, **importer_kwargs
+            dataset_type, dataset_dir, label_field, **importer_kwargs
         )
         dataset.add_importer(dataset_importer, label_field=_label_field)
 
@@ -295,8 +295,13 @@ def _build_importer(dataset_type, dataset_dir, label_field, **kwargs):
     )
 
     if label_field is None:
+        try:
+            label_cls = dataset_importer.label_cls
+        except AttributeError:
+            label_cls = None
+
         # If we're importing multiple fields, don't add a prefix, for brevity
-        if isinstance(dataset_importer.label_cls, dict):
+        if isinstance(label_cls, dict):
             label_field = ""
         else:
             label_field = "ground_truth"
