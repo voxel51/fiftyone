@@ -1,6 +1,8 @@
 {
-  "name": "@fiftyone/desktop",
+  "name": "FiftyOne",
   "version": "0.13.1",
+  "description": "Explore, Analyze, Curate",
+  "author": "Voxel51, Inc.",
   "main": "./dist/main.js",
   "license": "Apache-2.0",
   "private": true,
@@ -10,17 +12,17 @@
     "build-desktop-source": "yarn workspace @fiftyone/app build",
     "pull-desktop-source": "yarn workspace @fiftyone/app copy-to-desktop",
     "start-desktop": "cross-env DEBUG_APP=true electron ./dist/main.js",
-    "package-mac": "electron-builder build --mac",
-    "package-linux": "electron-builder build --linux",
-    "package-win": "electron-builder build --win --x64",
-    "postinstall": "electron-builder install-app-deps"
+    "package-mac": "yarn build-desktop electron-builder build --mac",
+    "package-linux": "cross-env DEBUG=electron-builder electron-builder build --linux",
+    "package-win": "yarn build-desktop && electron-builder build --win --x64"
   },
   "build": {
     "productName": "FiftyOne",
     "appId": "com.voxel51.FiftyOne",
     "files": [
       "dist/",
-      "package.json"
+      "package.json",
+      "resources/**/*"
     ],
     "dmg": {
       "contents": [
@@ -50,7 +52,8 @@
       "target": [
         "AppImage"
       ],
-      "category": "Tool"
+      "category": "Tool",
+      "icon": "resources/icons.icns"
     },
     "directories": {
       "buildResources": "resources",
@@ -88,8 +91,8 @@
     "@babel/preset-typescript": "^7.9.0",
     "@babel/register": "^7.9.0",
     "cross-env": "^7.0.3",
-    "electron": "11.1.0",
-    "electron-builder": "^22.3.6",
+    "electron": "13.1.4",
+    "electron-builder": "^22.11.7",
     "electron-devtools-installer": "^2.2.4",
     "typescript": "4.2.4"
   }

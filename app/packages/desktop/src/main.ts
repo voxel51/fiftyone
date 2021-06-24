@@ -35,16 +35,9 @@ const createWindow = async () => {
     height: 728,
     webPreferences: {
       nodeIntegration: true,
+      contextIsolation: false,
     },
-    icon: "",
   };
-
-  if (process.env.APPDIR) {
-    windowOpts.icon = path.join(
-      process.env.APPDIR,
-      "usr/share/icons/hicolor/256x256/apps/fiftyone.png"
-    );
-  }
 
   mainWindow = new BrowserWindow(windowOpts);
 
