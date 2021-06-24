@@ -54,10 +54,10 @@ export class OptionsPanelElement<State extends BaseState> extends BaseElement<
     }
     if (showOptions) {
       this.element.style.opacity = "0.9";
-      this.element.style.display = "none";
+      this.element.style.display = "grid";
     } else {
       this.element.style.opacity = "0.0";
-      this.element.style.display = "grid";
+      this.element.style.display = "none";
     }
     this.showOptions = showOptions;
     return this.element;

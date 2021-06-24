@@ -9,6 +9,18 @@ import { BaseElement, DispatchEvent, Events } from "../base";
 import { getFrameNumber } from "../util";
 import { dispatchTooltipEvent } from "./util";
 
+import {
+  lookerHelpPanel,
+  lookerHelpPanelContainer,
+  lookerHelpPanelHeader,
+  lookerHelpPanelItems,
+  lookerHelpPanelVerticalContainer,
+  lookerShortcutItem,
+  lookerShortcutValue,
+  lookerShortcutTitle,
+  lookerShortcutDetail,
+} from "./actions.module.css";
+
 type Action<State extends BaseState> = (
   update: StateUpdate<State>,
   dispatchEvent: DispatchEvent
@@ -90,20 +102,35 @@ export const help: Control = {
 };
 
 export const zoomIn: Control = {
-  title: "Zoom in",
+  title: "Zoom (scroll) in",
   shortcut: "+",
   detail: "Zoom in on the sample",
   action: (update) => {
     update(
-      ({ scale, windowBBox: [_, __, ww, wh], config: { dimensions } }) => ({
-        scale: clampScale([ww, wh], dimensions, scale * SCALE_FACTOR),
-      })
+      ({
+        scale,
+        windowBBox: [_, __, ww, wh],
+        config: { dimensions },
+        pan: [px, py],
+      }) => {
+        const x = ww / 2;
+        const y = wh / 2;
+
+        const xs = (x - px) / scale;
+        const ys = (y - py) / scale;
+
+        const newScale = clampScale([ww, wh], dimensions, scale * SCALE_FACTOR);
+        return {
+          scale: newScale,
+          pan: [x - xs * newScale, y - ys * newScale],
+        };
+      }
     );
   },
 };
 
 export const zoomOut: Control = {
-  title: "Zoom out",
+  title: "Zoom (scroll)  out",
   shortcut: "-",
   detail: "Zoom out on the sample",
   action: (update) => {
@@ -263,40 +290,23 @@ export class HelpPanelElement<State extends BaseState> extends BaseElement<
   createHTMLElement() {
     const element = document.createElement("div");
     const header = document.createElement("div");
-    header.style.marginBottom = "0.5rem";
-    header.style.fontSize = "18px";
-    header.style.paddingBottom = "0.5rem";
-    header.style.borderBottom = "2px solid rgb(225, 100, 40)";
     header.innerText = "Actions and shortcuts";
+    header.classList.add(lookerHelpPanelHeader);
     element.appendChild(header);
-    element.className = "looker-help-panel";
+    element.classList.add(lookerHelpPanel);
 
     const container = document.createElement("div");
-    container.style.position = "absoulte";
-    container.style.top = "0";
-    container.style.left = "0";
-    container.style.height = "100%";
-    container.style.width = "100%";
-    container.style.display = "flex";
-    container.style.justifyContent = "center";
-    container.style.padding = "10px 20px 50px";
+    container.classList.add(lookerHelpPanelContainer);
 
     const vContainer = document.createElement("div");
-    vContainer.style.display = "flex";
-    vContainer.style.flexDirection = "column";
-    vContainer.style.justifyContent = "center";
+    vContainer.classList.add(lookerHelpPanelVerticalContainer);
 
     vContainer.appendChild(element);
 
     container.appendChild(vContainer);
 
     const items = document.createElement("div");
-    items.style.padding = "1rem 0 0 0";
-    items.style.margin = "0";
-    items.style.display = "grid";
-    items.style.gridTemplateColumns = "1fr 1fr";
-    items.style.gridRowGap = "1rem";
-    items.style.gridColumnGap = "1rem";
+    items.classList.add(lookerHelpPanelItems);
     this.items = items;
 
     Object.values(COMMON).forEach(addItem(items));
@@ -343,12 +353,23 @@ export class VideoHelpPanelElement<
 
 const addItem = (items: HTMLDivElement) => (value: Control<VideoState>) => {
   const item = document.createElement("div");
-  item.innerHTML = `
-    <div class="looker-shortcut-item">
-      <div class="looker-shortcut-value">${value.shortcut}</div>
-      <div class="looker-shortcut-title">${value.title}</div>
-      <div class="looker-shortcut-detail">${value.detail}</div>
-    </div>
-  `;
+  item.classList.add(lookerShortcutItem);
+
+  const shortcut = document.createElement("div");
+  shortcut.classList.add(lookerShortcutValue);
+  shortcut.innerHTML = value.shortcut;
+
+  const title = document.createElement("div");
+  title.classList.add(lookerShortcutTitle);
+  title.innerText = value.title;
+
+  const detail = document.createElement("div");
+  detail.classList.add(lookerShortcutDetail);
+  detail.innerText = value.detail;
+
+  item.appendChild(shortcut);
+  item.appendChild(title);
+  item.appendChild(detail);
+
   items.appendChild(item);
 };

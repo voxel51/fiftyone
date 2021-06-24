@@ -83,7 +83,6 @@ export class PlayButtonElement extends BaseElement<VideoState, HTMLDivElement> {
     this.pause.setAttribute("height", "24");
     this.pause.setAttribute("width", "24");
     this.pause.setAttribute("viewBox", "0 0 24 24");
-    this.pause.style.marginTop = "-4px";
 
     let path = document.createElementNS("http://www.w3.org/2000/svg", "path");
     path.setAttribute("fill", "rgb(238, 238, 238)");
@@ -220,12 +219,11 @@ export class SeekBarElement extends BaseElement<VideoState, HTMLInputElement> {
     }
     if (duration !== null) {
       const frameCount = getFrameNumber(duration, duration, frameRate);
-      console.log(buffers);
       this.element.style.setProperty(
         "--buffer-progress",
-        `${(buffers[buffers.length - 1][1] - 1) / frameCount}%`
+        `${(buffers[buffers.length - 1][1] - 1) / (frameCount - 1)}%`
       );
-      const value = ((frameNumber - 1) / frameCount) * 100;
+      const value = ((frameNumber - 1) / (frameCount - 1)) * 100;
       this.element.style.display = "block";
       this.element.style.setProperty("--progress", `${value}%`);
       //@ts-ignore

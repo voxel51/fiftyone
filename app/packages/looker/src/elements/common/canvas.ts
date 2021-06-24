@@ -8,7 +8,7 @@ import { clampScale } from "../../util";
 import { BaseElement, Events } from "../base";
 import { dispatchTooltipEvent } from "./util";
 
-import { mediaOrCanvas } from "../media.module.css";
+import { mediaLoading, mediaOrCanvas } from "../media.module.css";
 
 export class CanvasElement<State extends BaseState> extends BaseElement<
   State,
@@ -21,6 +21,7 @@ export class CanvasElement<State extends BaseState> extends BaseElement<
   private hideControlsTimeout: ReturnType<typeof setTimeout> | null = null;
   private start: Coordinates = [0, 0];
   private wheelTimeout: ReturnType<typeof setTimeout> | null = null;
+  private loaded: boolean = true;
 
   getEvents(): Events<State> {
     return {
@@ -169,11 +170,12 @@ export class CanvasElement<State extends BaseState> extends BaseElement<
 
   createHTMLElement() {
     const element = document.createElement("canvas");
-    element.classList.add(mediaOrCanvas);
+    element.classList.add(mediaOrCanvas, mediaLoading);
     return element;
   }
 
   renderSelf({
+    loaded,
     config: { thumbnail },
     panning,
     windowBBox: [_, __, width, height],
@@ -195,6 +197,12 @@ export class CanvasElement<State extends BaseState> extends BaseElement<
     } else {
       this.element.style.cursor = "default";
     }
+
+    if (this.loaded !== loaded) {
+      this.element.classList.remove(mediaLoading);
+      this.loaded = loaded;
+    }
+
     return this.element;
   }
 
