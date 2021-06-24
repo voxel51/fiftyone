@@ -511,8 +511,6 @@ class COCODetectionDatasetExporter(
         return fol.Detections
 
     def setup(self):
-        self._data_dir = os.path.join(self.export_dir, "data")
-        self._labels_path = os.path.join(self.export_dir, "labels.json")
         self._image_id = 0
         self._anno_id = 0
         self._images = []
@@ -861,15 +859,8 @@ class COCOObject(object):
         width = metadata.width
         height = metadata.height
         x, y, w, h = detection.bounding_box
-        bbox = [
-            x * width,
-            y * height,
-            w * width,
-            h * height,
-        ]
-
-        # Round to one decimal place, as recommended by COCO authors
-        area = round(bbox[2] * bbox[3], 1)
+        bbox = [x * width, y * height, w * width, h * height]
+        area = bbox[2] * bbox[3]
 
         try:
             _iscrowd = int(detection[iscrowd])
