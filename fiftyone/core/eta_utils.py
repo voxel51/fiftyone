@@ -448,7 +448,7 @@ def to_image_labels(labels):
         return image_labels
 
     if not isinstance(labels, dict):
-        labels = {labels: labels}
+        labels = {"labels": labels}
 
     for name, label in labels.items():
         if isinstance(label, fol.ImageLabel):

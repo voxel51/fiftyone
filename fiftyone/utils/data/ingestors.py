@@ -116,17 +116,15 @@ class UnlabeledImageDatasetIngestor(
         sample_parser,
         image_format=None,
         max_samples=None,
-        **kwargs
     ):
-        for arg in kwargs:
-            logger.warning("Ignoring unsupported parameter '%s'", arg)
-
         UnlabeledImageDatasetImporter.__init__(
-            self, dataset_dir, max_samples=max_samples
+            self, dataset_dir=dataset_dir, max_samples=max_samples
         )
         ImageIngestor.__init__(self, dataset_dir, image_format=image_format)
+
         self.samples = samples
         self.sample_parser = sample_parser
+
         self._iter_samples = None
         self._num_samples = None
         self._num_imported = None
@@ -161,6 +159,7 @@ class UnlabeledImageDatasetIngestor(
             image_metadata = None
 
         self._num_imported += 1
+
         return image_path, image_metadata
 
     @property
@@ -213,7 +212,6 @@ class LabeledImageDatasetIngestor(LabeledImageDatasetImporter, ImageIngestor):
         image_format (None): the image format to use when writing in-memory
             images to disk. By default, ``fiftyone.config.default_image_ext``
             is used
-        skip_unlabeled (False): whether to skip unlabeled images when importing
         max_samples (None): a maximum number of samples to import. By default,
             all samples are imported
     """
@@ -224,22 +222,16 @@ class LabeledImageDatasetIngestor(LabeledImageDatasetImporter, ImageIngestor):
         samples,
         sample_parser,
         image_format=None,
-        skip_unlabeled=False,
         max_samples=None,
-        **kwargs
     ):
-        for arg in kwargs:
-            logger.warning("Ignoring unsupported parameter '%s'", arg)
-
         LabeledImageDatasetImporter.__init__(
-            self,
-            dataset_dir,
-            skip_unlabeled=skip_unlabeled,
-            max_samples=max_samples,
+            self, dataset_dir=dataset_dir, max_samples=max_samples
         )
         ImageIngestor.__init__(self, dataset_dir, image_format=image_format)
+
         self.samples = samples
         self.sample_parser = sample_parser
+
         self._iter_samples = None
         self._num_samples = None
         self._num_imported = None
@@ -262,16 +254,6 @@ class LabeledImageDatasetIngestor(LabeledImageDatasetImporter, ImageIngestor):
         ):
             raise StopIteration
 
-        image_path, image_metadata, label = self._parse_next_sample()
-
-        if self.skip_unlabeled:
-            while label is None:
-                image_path, image_metadata, label = self._parse_next_sample()
-
-        self._num_imported += 1
-        return image_path, image_metadata, label
-
-    def _parse_next_sample(self):
         sample = next(self._iter_samples)
 
         self.sample_parser.with_sample(sample)
@@ -284,6 +266,8 @@ class LabeledImageDatasetIngestor(LabeledImageDatasetImporter, ImageIngestor):
             image_metadata = None
 
         label = self.sample_parser.get_label()
+
+        self._num_imported += 1
 
         return image_path, image_metadata, label
 
@@ -359,18 +343,15 @@ class UnlabeledVideoDatasetIngestor(
             all samples are imported
     """
 
-    def __init__(
-        self, dataset_dir, samples, sample_parser, max_samples=None, **kwargs
-    ):
-        for arg in kwargs:
-            logger.warning("Ignoring unsupported parameter '%s'", arg)
-
+    def __init__(self, dataset_dir, samples, sample_parser, max_samples=None):
         UnlabeledVideoDatasetImporter.__init__(
-            self, dataset_dir, max_samples=max_samples
+            self, dataset_dir=dataset_dir, max_samples=max_samples
         )
         VideoIngestor.__init__(self, dataset_dir)
+
         self.samples = samples
         self.sample_parser = sample_parser
+
         self._iter_samples = None
         self._num_samples = None
         self._num_imported = None
@@ -405,6 +386,7 @@ class UnlabeledVideoDatasetIngestor(
             video_metadata = None
 
         self._num_imported += 1
+
         return video_path, video_metadata
 
     @property
@@ -444,32 +426,21 @@ class LabeledVideoDatasetIngestor(LabeledVideoDatasetImporter, VideoIngestor):
         sample_parser: an
             :class:`fiftyone.utils.data.parsers.LabeledVideoSampleParser` to
             use to parse the samples
-        skip_unlabeled (False): whether to skip unlabeled videos when importing
         max_samples (None): a maximum number of samples to import. By default,
             all samples are imported
     """
 
     def __init__(
-        self,
-        dataset_dir,
-        samples,
-        sample_parser,
-        skip_unlabeled=False,
-        max_samples=None,
-        **kwargs
+        self, dataset_dir, samples, sample_parser, max_samples=None,
     ):
-        for arg in kwargs:
-            logger.warning("Ignoring unsupported parameter '%s'", arg)
-
         LabeledVideoDatasetImporter.__init__(
-            self,
-            dataset_dir,
-            skip_unlabeled=skip_unlabeled,
-            max_samples=max_samples,
+            self, dataset_dir=dataset_dir, max_samples=max_samples
         )
         VideoIngestor.__init__(self, dataset_dir)
+
         self.samples = samples
         self.sample_parser = sample_parser
+
         self._iter_samples = None
         self._num_samples = None
         self._num_imported = None
@@ -492,21 +463,6 @@ class LabeledVideoDatasetIngestor(LabeledVideoDatasetImporter, VideoIngestor):
         ):
             raise StopIteration
 
-        video_path, video_metadata, label, frames = self._parse_next_sample()
-
-        if self.skip_unlabeled:
-            while label is None and frames is None:
-                (
-                    video_path,
-                    video_metadata,
-                    label,
-                    frames,
-                ) = self._parse_next_sample()
-
-        self._num_imported += 1
-        return video_path, video_metadata, label, frames
-
-    def _parse_next_sample(self):
         sample = next(self._iter_samples)
 
         self.sample_parser.with_sample(sample)
@@ -520,6 +476,8 @@ class LabeledVideoDatasetIngestor(LabeledVideoDatasetImporter, VideoIngestor):
 
         label = self.sample_parser.get_label()
         frames = self.sample_parser.get_frame_labels()
+
+        self._num_imported += 1
 
         return video_path, video_metadata, label, frames
 

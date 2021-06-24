@@ -5,14 +5,13 @@ Lightning Flash Integration
 
 .. default-role:: code
 
-We've collaborated with `Grid AI <https://www.grid.ai>`_, the team behind the
-amazing `PyTorch Lightning <https://github.com/PyTorchLightning/pytorch-lightning>`_
-and `Lightning Flash <https://github.com/PyTorchLightning/lightning-flash>`_
-projects, to make it easy to train
-:class:`Flash tasks <flash:flash.core.model.Task>` on your
-:ref:`FiftyOne datasets <using-datasets>` and add predictions from your Flash
-models to your FiftyOne datasets for visualization and analysis, all in just a
-few lines of code!
+We've collaborated with the
+`PyTorch Lightning <https://github.com/PyTorchLightning/pytorch-lightning>`_
+team to make it easy to train
+`Lightning Flash <https://github.com/PyTorchLightning/lightning-flash>`_ tasks
+on your :ref:`FiftyOne datasets <using-datasets>` and add predictions from your
+Flash models to your FiftyOne datasets for visualization and analysis, all in
+just a few lines of code!
 
 The following Flash tasks are supported natively by FiftyOne:
 
@@ -38,6 +37,30 @@ In order to use the Lightning Flash integration, you'll need to
 .. code-block:: shell
 
     pip install lightning-flash
+
+Depending on the type of Flash tasks that you intend to use, you will also need
+to install some package extras:
+
+.. code-block:: shell
+
+    # Required to use image tasks
+    pip install 'lightning-flash[image]'
+
+    # Required to use video tasks
+    pip install 'lightning-flash[video]'
+
+You can always proceed without these initially, as you'll be prompted to
+install the appropriate extras when you use a feature that requires them.
+
+.. note::
+
+    Flash video tasks require Python 3.7 or later, due to their dependence on
+    `pytorchvideo <https://github.com/facebookresearch/pytorchvideo>`_.
+
+    In addition, it is currently recommended that you use Python 3.7 or later
+    for image tasks as well, as you may
+    `encounter issues <https://github.com/PyTorchLightning/lightning-flash/issues/451>`_
+    trying to use Flash image tasks on Python 3.6.
 
 .. _flash-model-training:
 
@@ -492,11 +515,10 @@ Flash models with FiftyOne serializers will directly return predictions as
 Specifying class names
 ----------------------
 
-For most tasks in Flash, a
-:class:`Serializer <flash:flash.core.data.process.Serializer>` will also
-accept a list of string labels specifying the names of classes to be
-applied to predicitions. While this information is often contained in the
-metadata of the model, it can also be provided explicitly.
+Generally, Flash model checkpoints will contain the class label strings for the
+model. However, if necessary, you can also explicitly pass the labels to most
+:class:`Serializer <flash:flash.core.data.process.Serializer>` instances,
+FiftyOne-style serializers included:
 
 .. code-block:: python
     :linenos:
@@ -515,8 +537,8 @@ metadata of the model, it can also be provided explicitly.
         "https://flash-weights.s3.amazonaws.com/object_detection_model.pt"
     )
 
-    # Provide a list of labels to the serializer
-    labels = ["label_"+str(i) for i in range(100)] # generate random class names
+    # Configure serializer with class labels
+    labels = ["label_" + str(i) for i in range(100)] # example class labels
     model.serializer = FiftyOneDetectionLabels(labels=labels)  # output FiftyOne format
 
     # Predict with model
@@ -550,7 +572,6 @@ Flash model's embeddings and execute powerful workflows like
     :linenos:
 
     import numpy as np
-    import torch
 
     from flash.core.data.utils import download_data
     from flash.image import ImageEmbedder
@@ -568,7 +589,7 @@ Flash model's embeddings and execute powerful workflows like
     )
 
     # 3 Load model
-    embedder = ImageEmbedder(backbone="swav-imagenet", embedding_dim=128)
+    embedder = ImageEmbedder(backbone="resnet101", embedding_dim=128)
 
     # 4 Generate embeddings
     filepaths = dataset.values("filepath")
@@ -581,6 +602,12 @@ Flash model's embeddings and execute powerful workflows like
     results = fob.compute_visualization(dataset, embeddings=embeddings)
     plot = results.visualize(labels="ground_truth.label")
     plot.show()
+
+.. note::
+
+    You can also directly pass your Flash embedding model to
+    :meth:`compute_embeddings() <fiftyone.core.collections.SampleCollection.compute_embeddings>`
+    and let FiftyOne handle performing the inference!
 
 .. image:: ../images/integrations/flash_embeddings.png
    :alt: embeddings_example

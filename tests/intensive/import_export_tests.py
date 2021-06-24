@@ -248,12 +248,17 @@ def _run_custom_imports(
         export_dir=export_dir, dataset_type=dataset_type, **kwargs
     )
 
-    # Test `skip_unlabeled` when importing
+    # Test unlabeled sample handling when importing
     if num_unlabeled is not None:
-        _dataset = fo.Dataset.from_dir(
-            export_dir, dataset_type, skip_unlabeled=True
-        )
-        assert len(_dataset) == len(sample_collection) - num_unlabeled
+        _dataset = fo.Dataset.from_dir(export_dir, dataset_type)
+
+        schema = _dataset.get_field_schema()
+        label_field = [f for f in schema if f.startswith("ground_truth")][0]
+
+        num_samples = len(_dataset)
+        num_labeled = len(_dataset.exists(label_field))
+
+        assert num_samples == num_labeled + num_unlabeled
 
     # Test `shuffle` and `max_samples` when importing
     if max_samples is not None:
@@ -328,9 +333,15 @@ def test_detection_datasets(basedir, img):
     dataset.export(export_dir, dataset_type=dataset_type)
     dataset2 = fo.Dataset.from_dir(export_dir, dataset_type)
 
-    # YOLODataset
-    export_dir = os.path.join(basedir, "yolo")
-    dataset_type = fo.types.YOLODataset
+    # YOLOv4Dataset
+    export_dir = os.path.join(basedir, "yolov4")
+    dataset_type = fo.types.YOLOv4Dataset
+    dataset.export(export_dir, dataset_type=dataset_type)
+    dataset2 = fo.Dataset.from_dir(export_dir, dataset_type)
+
+    # YOLOv5Dataset
+    export_dir = os.path.join(basedir, "yolov5")
+    dataset_type = fo.types.YOLOv5Dataset
     dataset.export(export_dir, dataset_type=dataset_type)
     dataset2 = fo.Dataset.from_dir(export_dir, dataset_type)
 
@@ -536,9 +547,17 @@ def test_labeled_datasets_with_no_labels(basedir, img):
     )
     fo.Dataset.from_dir(export_dir, dataset_type)
 
-    # YOLODataset
-    export_dir = os.path.join(basedir, "YOLODataset")
-    dataset_type = fo.types.YOLODataset
+    # YOLOv4Dataset
+    export_dir = os.path.join(basedir, "YOLOv4Dataset")
+    dataset_type = fo.types.YOLOv4Dataset
+    dataset.export(
+        export_dir, label_field="ground_truth", dataset_type=dataset_type
+    )
+    fo.Dataset.from_dir(export_dir, dataset_type)
+
+    # YOLOv5Dataset
+    export_dir = os.path.join(basedir, "YOLOv5Dataset")
+    dataset_type = fo.types.YOLOv5Dataset
     dataset.export(
         export_dir, label_field="ground_truth", dataset_type=dataset_type
     )
@@ -651,7 +670,8 @@ def test_custom_detection_dataset_imports(basedir):
         fo.types.COCODetectionDataset,
         fo.types.VOCDetectionDataset,
         fo.types.KITTIDetectionDataset,
-        fo.types.YOLODataset,
+        fo.types.YOLOv4Dataset,
+        fo.types.YOLOv5Dataset,
         fo.types.TFObjectDetectionDataset,
         fo.types.CVATImageDataset,
     ]

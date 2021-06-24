@@ -46,6 +46,13 @@ import fiftyone.core.context as foc
 logger = logging.getLogger(__name__)
 
 
+_REQUIREMENT_ERROR_SUFFIX = (
+    "If you think this error is inaccurate, you can set "
+    "`fiftyone.config.requirement_error_level` to 1 (warning) or 2 (ignore).\n"
+    "See https://voxel51.com/docs/fiftyone/user_guide/config.html for details."
+)
+
+
 def extract_kwargs_for_class(cls, kwargs):
     """Extracts keyword arguments for a class from the given dictionary of
     arguments.
@@ -261,139 +268,209 @@ def fill_patterns(string):
     return etau.fill_patterns(string, available_patterns())
 
 
-def ensure_boto3(error_msg=None):
-    """Verifies that boto3 is installed and importable.
+def ensure_package(
+    requirement_str, error_level=None, error_msg=None, log_success=False
+):
+    """Verifies that the given package is installed.
+
+    This function uses ``pkg_resources.get_distribution`` to locate the package
+    by its pip name and does not actually import the module.
+
+    Therefore, unlike :meth:`ensure_import`, ``requirement_str`` should refer
+    to the package name (e.g., "tensorflow-gpu"), not the module name
+    (e.g., "tensorflow").
 
     Args:
-        error_msg (None): an optional custom error message to print
+        requirement_str: a PEP 440 compliant package requirement, like
+            "tensorflow", "tensorflow<2", "tensorflow==2.3.0", or
+            "tensorflow>=1.13,<1.15". This can also be an iterable of multiple
+            requirements, all of which must be installed, or this can be a
+            single "|"-delimited string specifying multiple requirements, at
+            least one of which must be installed
+        error_level (None): the error level to use, defined as:
 
-    Raises:
-        ImportError: if ``boto3`` could not be imported
+            -   0: raise error if requirement is not satisfied
+            -   1: log warning if requirement is not satisifed
+            -   2: ignore unsatisifed requirements
+
+            By default, ``fiftyone.config.requirement_error_level`` is used
+        error_msg (None): an optional custom error message to use
+        log_success (False): whether to generate a log message if the
+            requirement is satisifed
+
+    Returns:
+        True/False whether the requirement is satisifed
     """
-    _ensure_import("boto3", error_msg=error_msg)
+    if error_level is None:
+        error_level = fo.config.requirement_error_level
+
+    return etau.ensure_package(
+        requirement_str,
+        error_level=error_level,
+        error_msg=error_msg,
+        error_suffix=_REQUIREMENT_ERROR_SUFFIX,
+        log_success=log_success,
+    )
 
 
-def ensure_lightning_flash(error_msg=None):
-    """Verifies that Lightning Flash is installed and importable.
+def ensure_import(
+    requirement_str, error_level=None, error_msg=None, log_success=False
+):
+    """Verifies that the given requirement is installed and importable.
+
+    This function imports the specified module and optionally enforces any
+    version requirements included in ``requirement_str``.
+
+    Therefore, unlike :meth:`ensure_package`, ``requirement_str`` should refer
+    to the module name (e.g., "tensorflow"), not the package name (e.g.,
+    "tensorflow-gpu").
 
     Args:
-        error_msg (None): an optional custom error message to print
+        requirement_str: a PEP 440-like module requirement, like "tensorflow",
+            "tensorflow<2", "tensorflow==2.3.0", or "tensorflow>=1.13,<1.15".
+            This can also be an iterable of multiple requirements, all of which
+            must be installed, or this can be a single "|"-delimited string
+            specifying multiple requirements, at least one of which must be
+            installed
+        error_level (None): the error level to use, defined as:
 
-    Raises:
-        ImportError: if ``lightning-flash`` could not be imported
+            -   0: raise error if requirement is not satisfied
+            -   1: log warning if requirement is not satisifed
+            -   2: ignore unsatisifed requirements
+
+            By default, ``fiftyone.config.requirement_error_level`` is used
+        error_msg (None): an optional custom error message to use
+        log_success (False): whether to generate a log message if the
+            requirement is satisifed
+
+    Returns:
+        True/False whether the requirement is satisifed
     """
-    _ensure_import("flash", error_msg=error_msg)
+    if error_level is None:
+        error_level = fo.config.requirement_error_level
+
+    return etau.ensure_import(
+        requirement_str,
+        error_level=error_level,
+        error_msg=error_msg,
+        error_suffix=_REQUIREMENT_ERROR_SUFFIX,
+        log_success=log_success,
+    )
 
 
-def ensure_tf(eager=False, error_msg=None):
-    """Verifies that TensorFlow is installed and importable.
+def ensure_tf(eager=False, error_level=None, error_msg=None):
+    """Verifies that ``tensorflow`` is installed and importable.
 
     Args:
         eager (False): whether to require that TF is executing eagerly. If
             True and TF is not currently executing eagerly, this method will
             attempt to enable it
+        error_level (None): the error level to use, defined as:
+
+            -   0: raise error if requirement is not satisfied
+            -   1: log warning if requirement is not satisifed
+            -   2: ignore unsatisifed requirements
+
+            By default, ``fiftyone.config.requirement_error_level`` is used
         error_msg (None): an optional custom error message to print
 
-    Raises:
-        ImportError: if ``tensorflow`` could not be imported
+    Returns:
+        True/False whether the requirement is satisifed
     """
-    _ensure_import("tensorflow", error_msg=error_msg)
+    if error_level is None:
+        error_level = fo.config.requirement_error_level
 
-    if not eager:
-        return
+    success = ensure_import(
+        "tensorflow", error_level=error_level, error_msg=error_msg
+    )
 
-    import tensorflow as tf
+    if not success or not eager:
+        return success
 
     try:
-        if tf.executing_eagerly():
-            return
+        import tensorflow as tf
 
-        try:
-            # pylint: disable=no-member
-            tf.compat.v1.enable_eager_execution()
-        except AttributeError:
-            # pylint: disable=no-member
-            tf.enable_eager_execution()
+        if not tf.executing_eagerly():
+            try:
+                # pylint: disable=no-member
+                tf.compat.v1.enable_eager_execution()
+            except AttributeError:
+                # pylint: disable=no-member
+                tf.enable_eager_execution()
     except Exception as e:
-        raise ValueError(
-            "The requested operation requires that TensorFlow's eager "
-            "execution mode is activated. We tried to enable it but "
-            "encountered an error"
-        ) from e
+        if error_msg is None:
+            error_msg = (
+                "The requested operation requires that TensorFlow's eager "
+                "execution mode is activated. We tried to enable it but "
+                "encountered an error."
+            )
+
+        error_msg += "\n\n" + _REQUIREMENT_ERROR_SUFFIX
+
+        etau.handle_error(ValueError(error_msg), error_level, base_error=e)
+
+        return False
+
+    return True
 
 
-def ensure_tfds(error_msg=None):
-    """Verifies that the ``tensorflow_datasets`` package is installed and
+def ensure_tfds(error_level=None, error_msg=None):
+    """Verifies that ``tensorflow_datasets`` is installed and importable.
+
+    Args:
+        error_level (None): the error level to use, defined as:
+
+            -   0: raise error if requirement is not satisfied
+            -   1: log warning if requirement is not satisifed
+            -   2: ignore unsatisifed requirements
+
+            By default, ``fiftyone.config.requirement_error_level`` is used
+        error_msg (None): an optional custom error message to print
+
+    Returns:
+        True/False whether the requirement is satisifed
+    """
+    if error_level is None:
+        error_level = fo.config.requirement_error_level
+
+    success1 = ensure_import(
+        "tensorflow>=1.15", error_level=error_level, error_msg=error_msg
+    )
+    success2 = ensure_import(
+        "tensorflow_datasets", error_level=error_level, error_msg=error_msg
+    )
+
+    return success1 & success2
+
+
+def ensure_torch(error_level=None, error_msg=None):
+    """Verifies that ``torch`` and ``torchvision`` are installed and
     importable.
 
     Args:
+        error_level (None): the error level to use, defined as:
+
+            -   0: raise error if requirement is not satisfied
+            -   1: log warning if requirement is not satisifed
+            -   2: ignore unsatisifed requirements
+
+            By default, ``fiftyone.config.requirement_error_level`` is used
         error_msg (None): an optional custom error message to print
 
-    Raises:
-        ImportError: if ``tensorflow_datasets`` could not be imported
+    Returns:
+        True/False whether the requirement is satisifed
     """
-    _ensure_import("tensorflow", min_version="1.15", error_msg=error_msg)
-    _ensure_import("tensorflow_datasets", error_msg=error_msg)
+    if error_level is None:
+        error_level = fo.config.requirement_error_level
 
+    success1 = ensure_import(
+        "torch", error_level=error_level, error_msg=error_msg
+    )
+    success2 = ensure_import(
+        "torchvision", error_level=error_level, error_msg=error_msg
+    )
 
-def ensure_torch(error_msg=None):
-    """Verifies that PyTorch is installed and importable.
-
-    Args:
-        error_msg (None): an optional custom error message to print
-
-    Raises:
-        ImportError: if ``torch`` or ``torchvision`` could not be imported
-    """
-    _ensure_import("torch", error_msg=error_msg)
-    _ensure_import("torchvision", error_msg=error_msg)
-
-
-def ensure_pycocotools(error_msg=None):
-    """Verifies that pycocotools is installed and importable.
-
-    Args:
-        error_msg (None): an optional custom error message to print
-
-    Raises:
-        ImportError: if ``pycocotools`` could not be imported
-    """
-    _ensure_import("pycocotools", error_msg=error_msg)
-
-
-def _ensure_import(module_name, min_version=None, error_msg=None):
-    has_min_ver = min_version is not None
-
-    if has_min_ver:
-        min_version = packaging.version.parse(min_version)
-
-    try:
-        mod = importlib.import_module(module_name)
-    except ImportError as e:
-        if has_min_ver:
-            module_str = "%s>=%s" % (module_name, min_version)
-        else:
-            module_str = module_name
-
-        if error_msg is not None:
-            raise ImportError(error_msg) from e
-
-        raise ImportError(
-            "The requested operation requires that '%s' is installed on your "
-            "machine" % module_str,
-            name=module_name,
-        ) from e
-
-    if has_min_ver:
-        # @todo not all modules have `__version__`
-        mod_version = packaging.version.parse(mod.__version__)
-        if mod_version < min_version:
-            raise ImportError(
-                "The requested operation requires that '%s>=%s' is installed "
-                "on your machine; found '%s==%s'"
-                % (module_name, min_version, module_name, mod_version),
-                name=module_name,
-            )
+    return success1 & success2
 
 
 def lazy_import(module_name, callback=None):
@@ -763,14 +840,20 @@ class UniqueFilenameMaker(object):
     directory are generated.
 
     Args:
-        output_dir (""): the directory in which to generate output paths
-        default_ext (""): the file extension to use when generating default
+        output_dir (None): a directory in which to generate output paths
+        default_ext (None): the file extension to use when generating default
             output paths
         ignore_exts (False): whether to omit file extensions when checking for
             duplicate filenames
     """
 
-    def __init__(self, output_dir="", default_ext="", ignore_exts=False):
+    def __init__(self, output_dir=None, default_ext=None, ignore_exts=False):
+        if output_dir is None:
+            output_dir = ""
+
+        if default_ext is None:
+            default_ext = ""
+
         self.output_dir = output_dir
         self.default_ext = default_ext
         self.ignore_exts = ignore_exts

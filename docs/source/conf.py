@@ -191,11 +191,7 @@ html_context = {
     "link_voxel51_slack": "https://join.slack.com/t/fiftyone-users/shared_invite/zt-gtpmm76o-9AjvzNPBOzevBySKzt02gg",
     "link_voxel51_twitter": "https://twitter.com/voxel51",
     "link_voxel51_medium": "https://medium.com/voxel51/",
-    # Banner - set to None or empty string to disable
-    # "banner_link": "https://voxel51.com/docs/fiftyone/tutorials/open_images.html",
-    # "banner_message": "FiftyOne is now the official resource for <b>Google's Open Images</b> dataset and evaluation!",
-    "banner_link": None,
-    "banner_message": None,
+    "banner_link": "https://voxel51.com/docs/fiftyone/integrations/coco.html",
 }
 
 # -- Custom app setup --------------------------------------------------------

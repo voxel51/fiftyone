@@ -88,7 +88,7 @@ def apply_model(
             error if predictions cannot be generated for a sample. Only
             applicable to :class:`Model` instances
         **trainer_kwargs: optional keyword arguments used to initialize the
-            :class:`flash:flash.core.trainer.Trainer` when using Flash models.
+            :mod:`Trainer <flash:flash.core.trainer>` when using Flash models.
             These can be used to, for example, configure the number of GPUs to
             use and other distributed inference parameters
     """
@@ -634,8 +634,8 @@ def compute_embeddings(
         collection
     -   Using a video :class:`Model` to compute embeddings for a video
         collection
-    -   Using an :class:`flash:flash.image.ImageEmbeder` to compute embeddings
-        for an image collection
+    -   Using an :ref:`ImageEmbedder <flash:image_embedder>` to compute
+        embeddings for an image collection
 
     When using a :class:`FiftyOne model <Model>`, the model must expose
     embeddings, i.e., :meth:`Model.has_embeddings` must return ``True``.
@@ -657,7 +657,7 @@ def compute_embeddings(
             error if embeddings cannot be generated for a sample. Only
             applicable to :class:`Model` instances
         **trainer_kwargs: optional keyword arguments used to initialize the
-            :class:`flash:flash.core.trainer.Trainer` when using Flash models.
+            :mod:`Trainer <flash:flash.core.trainer>` when using Flash models.
             These can be used to, for example, configure the number of GPUs to
             use and other distributed inference parameters
 
@@ -1184,8 +1184,8 @@ def compute_patch_embeddings(
         force_square (False): whether to minimally manipulate the patch
             bounding boxes into squares prior to extraction
         alpha (None): an optional expansion/contraction to apply to the patches
-            before extracting them, in ``[-1, \infty)``. If provided, the
-            length and width of the box are expanded (or contracted, when
+            before extracting them, in ``[-1, inf)``. If provided, the length
+            and width of the box are expanded (or contracted, when
             ``alpha < 0``) by ``(100 * alpha)%``. For example, set
             ``alpha = 1.1`` to expand the boxes by 10%, and set ``alpha = 0.9``
             to contract the boxes by 10%

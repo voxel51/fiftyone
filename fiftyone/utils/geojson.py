@@ -16,8 +16,7 @@ import fiftyone.core.labels as fol
 import fiftyone.core.sample as fos
 import fiftyone.core.utils as fou
 import fiftyone.core.validation as fov
-from fiftyone.utils.data.exporters import GenericSampleDatasetExporter
-from fiftyone.utils.data.importers import GenericSampleDatasetImporter
+import fiftyone.utils.data as foud
 
 
 logger = logging.getLogger(__name__)
@@ -29,9 +28,9 @@ def load_location_data(
     """Loads geolocation data for the given samples from the given GeoJSON
     data.
 
-    The GeoJSON data must be a ``FeatureCollection`` whose features have either
-    their ``filename`` (name only) or ``filepath`` (absolute path) properties
-    populated, which are used to match the provided samples.
+    The GeoJSON data must be a ``FeatureCollection`` whose features have their
+    ``filename`` properties populated, which are used to match the provided
+    samples.
 
     Example GeoJSON data::
 
@@ -67,7 +66,7 @@ def load_location_data(
                         ]
                     },
                     "properties": {
-                        "filepath": "/path/to/b1c81faa-3df17267.jpg"
+                        "filename": "/path/to/b1c81faa-3df17267.jpg"
                     }
                 },
             ]
@@ -85,8 +84,7 @@ def load_location_data(
             :class:`fiftyone.core.labels.GeoLocation` field, that field is
             used, else a new "location" field is created
         skip_missing (True): whether to skip GeoJSON features with no
-            ``filename`` or ``filepath`` properties (True) or raise an error
-            (False)
+            ``filename`` properties (True) or raise an error (False)
     """
     if location_field is None:
         try:
@@ -115,14 +113,10 @@ def load_location_data(
     geometries = {}
     for feature in d.get("features", []):
         properties = feature["properties"]
-        if "filepath" in properties:
-            key = properties["filepath"]
-        elif "filename" in properties:
+        if "filename" in properties:
             key = properties["filename"]
         elif not skip_missing:
-            raise ValueError(
-                "Found feature with no `filename` or `filepath` property"
-            )
+            raise ValueError("Found feature with no `filename` property")
         else:
             continue
 
@@ -294,15 +288,42 @@ def extract_coordinates(d):
     return _parse_geometries(geometries)
 
 
-class GeoJSONImageDatasetImporter(GenericSampleDatasetImporter):
-    """Importer for image datasets whose labels and location data are stored in
-    GeoJSON format.
+class GeoJSONDatasetImporter(
+    foud.GenericSampleDatasetImporter, foud.ImportPathsMixin
+):
+    """Importer for image or video datasets whose location data and labels are
+    stored in GeoJSON format.
 
-    See :class:`fiftyone.types.dataset_types.GeoJSONImageDataset` for format
+    See :class:`fiftyone.types.dataset_types.GeoJSONDataset` for format
     details.
 
     Args:
-        dataset_dir: the dataset directory
+        dataset_dir (None): the dataset directory
+        data_path (None): an optional parameter that enables explicit control
+            over the location of the media. Can be any of the following:
+
+            -   a folder name like ``"data"`` or ``"data/"`` specifying a
+                subfolder of ``dataset_dir`` where the media files reside
+            -   an absolute directory path where the media files reside. In
+                this case, the ``dataset_dir`` has no effect on the location of
+                the data
+            -   a filename like ``"data.json"`` specifying the filename of the
+                JSON data manifest file in ``dataset_dir``
+            -   an absolute filepath specifying the location of the JSON data
+                manifest. In this case, ``dataset_dir`` has no effect on the
+                location of the data
+
+            If None, this parameter will default to whichever of ``data/`` or
+            ``data.json`` exists in the dataset directory
+        labels_path (None): an optional parameter that enables explicit control
+            over the location of the labels. Can be any of the following:
+
+            -   a filename like ``"labels.json"`` specifying the location of
+                the labels in ``dataset_dir``
+            -   an absolute filepath to the labels. In this case,
+                ``dataset_dir`` has no effect on the location of the labels
+
+            If None, the parameter will default to ``labels.json``
         location_field ("location"): the name of the field in which to store
             the location data
         multi_location (False): whether this GeoJSON may contain multiple
@@ -313,9 +334,11 @@ class GeoJSONImageDatasetImporter(GenericSampleDatasetImporter):
             functions that parse the property values (e.g., into the
             appropriate) :class:`fiftyone.core.labels.Label` types). By
             default, all properies are stored as primitive field values
-        skip_unlabeled (False): whether to skip unlabeled images when importing
-        skip_missing_media (False): whether to skip features with no
-            ``filename`` or ``filepath`` property
+        skip_missing_media (False): whether to skip (True) or raise an error
+            (False) when features with no ``filename`` property are encountered
+        include_all_data (False): whether to generate samples for all media in
+            the data directory (True) rather than only creating samples for
+            media with label entries (False)
         shuffle (False): whether to randomly shuffle the order in which the
             samples are imported
         seed (None): a random seed to use when shuffling
@@ -325,25 +348,44 @@ class GeoJSONImageDatasetImporter(GenericSampleDatasetImporter):
 
     def __init__(
         self,
-        dataset_dir,
+        dataset_dir=None,
+        data_path=None,
+        labels_path=None,
         location_field="location",
         multi_location=False,
         property_parsers=None,
-        skip_unlabeled=False,
         skip_missing_media=False,
+        include_all_data=False,
         shuffle=False,
         seed=None,
         max_samples=None,
     ):
-        super().__init__(
-            dataset_dir, shuffle=shuffle, seed=seed, max_samples=max_samples
+        data_path = self._parse_data_path(
+            dataset_dir=dataset_dir, data_path=data_path, default="data/",
         )
+
+        labels_path = self._parse_labels_path(
+            dataset_dir=dataset_dir,
+            labels_path=labels_path,
+            default="labels.json",
+        )
+
+        super().__init__(
+            dataset_dir=dataset_dir,
+            shuffle=shuffle,
+            seed=seed,
+            max_samples=max_samples,
+        )
+
+        self.data_path = data_path
+        self.labels_path = labels_path
         self.location_field = location_field
         self.multi_location = multi_location
         self.property_parsers = property_parsers
-        self.skip_unlabeled = skip_unlabeled
         self.skip_missing_media = skip_missing_media
-        self._data_dir = None
+        self.include_all_data = include_all_data
+
+        self._media_paths_map = None
         self._features_map = None
         self._filepaths = None
         self._iter_filepaths = None
@@ -390,49 +432,110 @@ class GeoJSONImageDatasetImporter(GenericSampleDatasetImporter):
         return False
 
     def setup(self):
-        self._data_dir = os.path.join(self.dataset_dir, "data")
-        json_path = os.path.join(self.dataset_dir, "labels.json")
-
-        geojson = etas.load_json(json_path)
-        _ensure_type(geojson, "FeatureCollection")
+        self._media_paths_map = self._load_data_map(self.data_path)
 
         features_map = {}
-        for feature in geojson.get("features", []):
-            properties = feature["properties"]
-            if "filepath" in properties:
-                filepath = properties.pop("filepath")
-            elif "filename" in properties:
-                filepath = os.path.join(
-                    self._data_dir, properties.pop("filename")
-                )
-            elif self.skip_missing_media:
-                continue
-            else:
-                raise ValueError(
-                    "Found feature with no ``filepath`` or ``filename`` "
-                    "property"
-                )
 
-            features_map[filepath] = feature
+        if self.labels_path is not None and os.path.isfile(self.labels_path):
+            geojson = etas.load_json(self.labels_path)
+            _ensure_type(geojson, "FeatureCollection")
+
+            for feature in geojson.get("features", []):
+                properties = feature["properties"]
+                if "filename" in properties:
+                    filename = properties.pop("filename")
+                    if os.path.isabs(filename):
+                        filepath = filename
+                    else:
+                        filepath = self._media_paths_map.get(filename, None)
+
+                    if filepath is None:
+                        if self.skip_missing_media:
+                            continue
+
+                        raise ValueError(
+                            "Could not locate media for feature with "
+                            "filename=%s" % filename
+                        )
+
+                elif self.skip_missing_media:
+                    continue
+                else:
+                    raise ValueError(
+                        "Found feature with no `filename` property"
+                    )
+
+                features_map[filepath] = feature
 
         filepaths = set(features_map.keys())
-        if not self.skip_unlabeled and os.path.isdir(self._data_dir):
-            filepaths.update(etau.list_files(self._data_dir, abs_paths=True))
+
+        if self.include_all_data:
+            filepaths.update(self._media_paths_map.values())
 
         self._features_map = features_map
-        self._filepaths = self._preprocess_list(list(filepaths))
+        self._filepaths = self._preprocess_list(sorted(filepaths))
         self._num_samples = len(self._filepaths)
 
 
-class GeoJSONImageDatasetExporter(GenericSampleDatasetExporter):
-    """Exporter for image datasets whose labels and location data are stored in
-    GeoJSON format.
+class GeoJSONDatasetExporter(
+    foud.GenericSampleDatasetExporter, foud.ExportPathsMixin
+):
+    """Exporter for image or video datasets whose location data and labels are
+    stored in GeoJSON format.
 
-    See :class:`fiftyone.types.dataset_types.GeoJSONImageDataset` for format
+    See :class:`fiftyone.types.dataset_types.GeoJSONDataset` for format
     details.
 
     Args:
-        export_dir: the directory to write the export
+        export_dir (None): the directory to write the export. This has no
+            effect if ``data_path`` and ``labels_path`` are absolute paths
+        data_path (None): an optional parameter that enables explicit control
+            over the location of the exported media. Can be any of the
+            following:
+
+            -   a folder name like ``"data"`` or ``"data/"`` specifying a
+                subfolder of ``export_dir`` in which to export the media
+            -   an absolute directory path in which to export the media. In
+                this case, the ``export_dir`` has no effect on the location of
+                the data
+            -   a JSON filename like ``"data.json"`` specifying the filename of
+                the manifest file in ``export_dir`` generated when
+                ``export_media`` is ``"manifest"``
+            -   an absolute filepath specifying the location to write the JSON
+                manifest file when ``export_media`` is ``"manifest"``. In this
+                case, ``export_dir`` has no effect on the location of the data
+
+            If None, the default value of this parameter will be chosen based
+            on the value of the ``export_media`` parameter
+        labels_path (None): an optional parameter that enables explicit control
+            over the location of the exported labels. Can be any of the
+            following:
+
+            -   a filename like ``"labels.json"`` specifying the location in
+                ``export_dir`` in which to export the labels
+            -   an absolute filepath to which to export the labels. In this
+                case, the ``export_dir`` has no effect on the location of the
+                labels
+
+            If None, the labels will be exported into ``export_dir`` using the
+            default filename
+        export_media (None): controls how to export the raw media. The
+            supported values are:
+
+            -   ``True``: copy all media files into the output directory
+            -   ``False``: don't export media
+            -   ``"move"``: move all media files into the output directory
+            -   ``"symlink"``: create symlinks to the media files in the output
+                directory
+            -   ``"manifest"``: create a ``data.json`` in the output directory
+                that maps UUIDs used in the labels files to the filepaths of
+                the source media, rather than exporting the actual media
+
+            If None, the default value of this parameter will be chosen based
+            on the value of the ``data_path`` parameter
+        image_format (None): the image format to use when writing in-memory
+            images to disk. By default, ``fiftyone.config.default_image_ext``
+            is used
         location_field (None): the name of the field containing the location
             data for each sample. Can be any of the following:
 
@@ -448,40 +551,57 @@ class GeoJSONImageDatasetExporter(GenericSampleDatasetExporter):
             the sample. By default, no properties are written
         omit_none_fields (True): whether to omit ``None``-valued Sample fields
             from the output properties
-        copy_media (True): whether to copy the source media into the export
-            directory (True) or simply embed the input filepaths in the output
-            JSON (False)
         pretty_print (False): whether to render the JSON in human readable
             format with newlines and indentations
     """
 
     def __init__(
         self,
-        export_dir,
+        export_dir=None,
+        data_path=None,
+        labels_path=None,
+        export_media=None,
+        image_format=None,
         location_field=None,
         property_makers=None,
         omit_none_fields=True,
-        copy_media=True,
         pretty_print=False,
     ):
-        super().__init__(export_dir)
+        data_path, export_media = self._parse_data_path(
+            export_dir=export_dir,
+            data_path=data_path,
+            export_media=export_media,
+            default="data/",
+        )
+
+        labels_path = self._parse_labels_path(
+            export_dir=export_dir,
+            labels_path=labels_path,
+            default="labels.json",
+        )
+
+        super().__init__(export_dir=export_dir)
+
+        self.data_path = data_path
+        self.labels_path = labels_path
+        self.export_media = export_media
+        self.image_format = image_format
         self.location_field = location_field
         self.property_makers = property_makers
         self.omit_none_fields = omit_none_fields
-        self.copy_media = copy_media
         self.pretty_print = pretty_print
-        self._data_dir = None
-        self._labels_path = None
+
         self._features = []
         self._location_field = None
-        self._filename_maker = None
+        self._media_exporter = None
 
     def setup(self):
-        self._data_dir = os.path.join(self.export_dir, "data")
-        self._labels_path = os.path.join(self.export_dir, "labels.json")
-        self._filename_maker = fou.UniqueFilenameMaker(
-            output_dir=self._data_dir
+        self._media_exporter = foud.ImageExporter(
+            self.export_media,
+            export_path=self.data_path,
+            default_ext=self.image_format,
         )
+        self._media_exporter.setup()
 
     def log_collection(self, sample_collection):
         if self.location_field is None:
@@ -496,14 +616,12 @@ class GeoJSONImageDatasetExporter(GenericSampleDatasetExporter):
                 if value is not None or not self.omit_none_fields:
                     properties[key] = fn(value)
 
-        if self.copy_media:
-            out_filepath = self._filename_maker.get_output_path(
-                sample.filepath
-            )
-            etau.copy_file(sample.filepath, out_filepath)
-            properties["filename"] = os.path.basename(out_filepath)
+        out_filepath, _ = self._media_exporter.export(sample.filepath)
+
+        if self.export_media == False:
+            properties["filename"] = sample.filepath
         else:
-            properties["filepath"] = sample.filepath
+            properties["filename"] = os.path.basename(out_filepath)
 
         location = sample[self.location_field]
         if location is not None:
@@ -518,8 +636,9 @@ class GeoJSONImageDatasetExporter(GenericSampleDatasetExporter):
     def close(self, *args):
         features = {"type": "FeatureCollection", "features": self._features}
         etas.write_json(
-            features, self._labels_path, pretty_print=self.pretty_print
+            features, self.labels_path, pretty_print=self.pretty_print
         )
+        self._media_exporter.close()
 
 
 def _to_geo_primitive(label):
