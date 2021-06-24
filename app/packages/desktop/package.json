@@ -13,7 +13,7 @@
     "pull-desktop-source": "yarn workspace @fiftyone/app copy-to-desktop",
     "start-desktop": "cross-env DEBUG_APP=true electron ./dist/main.js",
     "package-mac": "yarn build-desktop electron-builder build --mac",
-    "package-linux": "cross-env DEBUG=electron-builder electron-builder build --linux",
+    "package-linux": "yarn build-desktop && electron-builder build --linux",
     "package-win": "yarn build-desktop && electron-builder build --win --x64"
   },
   "build": {
@@ -52,8 +52,7 @@
       "target": [
         "AppImage"
       ],
-      "category": "Tool",
-      "icon": "resources/icons.icns"
+      "category": "Tool"
     },
     "directories": {
       "buildResources": "resources",

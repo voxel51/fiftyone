@@ -96,6 +96,8 @@ class CustomBdistWheel(bdist_wheel):
                 "..",
                 "..",
                 "app",
+                "packages",
+                "desktop",
                 "release",
             )
         bin_dir = os.path.join(
