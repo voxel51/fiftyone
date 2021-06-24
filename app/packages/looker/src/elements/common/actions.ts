@@ -79,7 +79,8 @@ export const rotatePrevious: Control = {
   shortcut: "&#8595;",
   eventKey: "ArrowUp",
   detail: "Rotate the bottom label to the back",
-  action: () => {},
+  action: (update) =>
+    update(({ rotate }) => ({ rotate: Math.max(0, rotate - 1) })),
 };
 
 export const rotateNext: Control = {
@@ -87,7 +88,7 @@ export const rotateNext: Control = {
   shortcut: "&#8593;",
   eventKey: "ArrowDown",
   detail: "Rotate the current label to the back",
-  action: () => {},
+  action: (update) => update(({ rotate }) => ({ rotate: rotate + 1 })),
 };
 
 export const help: Control = {
@@ -135,9 +136,24 @@ export const zoomOut: Control = {
   detail: "Zoom out on the sample",
   action: (update) => {
     update(
-      ({ scale, windowBBox: [_, __, ww, wh], config: { dimensions } }) => ({
-        scale: clampScale([ww, wh], dimensions, scale / SCALE_FACTOR),
-      })
+      ({
+        scale,
+        windowBBox: [_, __, ww, wh],
+        config: { dimensions },
+        pan: [px, py],
+      }) => {
+        const x = ww / 2;
+        const y = wh / 2;
+
+        const xs = (x - px) / scale;
+        const ys = (y - py) / scale;
+
+        const newScale = clampScale([ww, wh], dimensions, scale / SCALE_FACTOR);
+        return {
+          scale: newScale,
+          pan: [x - xs * newScale, y - ys * newScale],
+        };
+      }
     );
   },
 };

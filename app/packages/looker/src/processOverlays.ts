@@ -62,6 +62,8 @@ const processOverlays = <State extends BaseState>(
   if (state.rotate !== 0) {
     [contained, newRotate] = rotate(contained, state.rotate);
   }
+
+  console.log(state.rotate, newRotate);
   if (state.options.onlyShowHoveredLabel) {
     return [contained.length ? [contained[0]] : [], newRotate];
   }
