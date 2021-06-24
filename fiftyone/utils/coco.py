@@ -354,8 +354,8 @@ class COCODetectionDatasetExporter(foud.LabeledImageDatasetExporter):
     def setup(self):
         self._data_dir = os.path.join(self.export_dir, "data")
         self._labels_path = os.path.join(self.export_dir, "labels.json")
-        self._image_id = -1
-        self._anno_id = -1
+        self._image_id = 0
+        self._anno_id = 0
         self._images = []
         self._annotations = []
         self._classes = set()
@@ -624,10 +624,10 @@ class COCOObject(object):
         height = metadata.height
         x, y, w, h = detection.bounding_box
         bbox = [
-            round(x * width, 1),
-            round(y * height, 1),
-            round(w * width, 1),
-            round(h * height, 1),
+            x * width,
+            y * height,
+            w * width,
+            h * height,
         ]
 
         if detection.has_attribute("area"):
