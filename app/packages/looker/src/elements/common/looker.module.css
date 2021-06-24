@@ -13,6 +13,11 @@
   }
 }
 
+.lookerLoader {
+  animation: shimmer 5s infinite;
+  background-size: 200% 100%;
+}
+
 .looker {
   position: relative;
   width: 100%;
@@ -46,5 +51,4 @@
   background: rgb(225, 100, 40);
   cursor: pointer;
   -webkit-appearance: none;
-  margin-top: -5px;
 }

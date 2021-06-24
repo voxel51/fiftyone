@@ -16,12 +16,14 @@ import {
 } from "./util";
 
 import {
-  lookerLoader,
   bufferingCircle,
   bufferingPath,
   lookerSeekBar,
   lookerVolume,
+  lookerPlaybackRate,
 } from "./video.module.css";
+
+import { lookerLoader } from "./common/looker.module.css";
 
 export class LoaderBar extends BaseElement<VideoState> {
   private buffering: boolean = false;
@@ -217,12 +219,23 @@ export class SeekBarElement extends BaseElement<VideoState, HTMLInputElement> {
     if (thumbnail) {
       return this.element;
     }
+
     if (duration !== null) {
       const frameCount = getFrameNumber(duration, duration, frameRate);
-      this.element.style.setProperty(
-        "--buffer-progress",
-        `${(buffers[buffers.length - 1][1] - 1) / (frameCount - 1)}%`
-      );
+      let bufferValue = 100;
+
+      if (frameCount - 1 > 0) {
+        let bufferIndex = 0;
+
+        for (let i = 0; i < buffers.length; i++) {
+          if (buffers[i][0] <= frameNumber && buffers[i][1] >= frameNumber) {
+            bufferIndex = i;
+            break;
+          }
+        }
+        bufferValue = ((buffers[bufferIndex][1] - 1) / (frameCount - 1)) * 100;
+      }
+      this.element.style.setProperty("--buffer-progress", `${bufferValue}%`);
       const value = ((frameNumber - 1) / (frameCount - 1)) * 100;
       this.element.style.display = "block";
       this.element.style.setProperty("--progress", `${value}%`);
@@ -265,6 +278,8 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
   private frameNumber: number = 1;
   private loop: boolean = false;
   private loaded: boolean = false;
+  private playbackRate: number = 1;
+  private volume: number = 0;
 
   private requestCallback: (callback: (frameNumber: number) => void) => void;
 
@@ -385,7 +400,7 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
 
   renderSelf(state: Readonly<VideoState>) {
     const {
-      options: { loop },
+      options: { loop, volume, playbackRate },
       config: { src, frameRate },
       frameNumber,
       seeking,
@@ -416,6 +431,16 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
     }
     if (loaded && (!playing || seeking || buffering) && !this.element.paused) {
       this.element.pause();
+    }
+
+    if (this.playbackRate !== playbackRate) {
+      this.element.playbackRate = playbackRate;
+      this.playbackRate = playbackRate;
+    }
+
+    if (this.volume !== volume) {
+      this.element.volume = volume;
+      this.volume = volume;
     }
 
     transformWindowElement(state, this.element);
@@ -463,7 +488,7 @@ export class VolumBarElement extends BaseElement<VideoState, HTMLInputElement> {
         event.stopPropagation();
       },
       input: ({ update }) => {
-        const percent = this.element.valueAsNumber / 100;
+        const percent = this.element.valueAsNumber;
         update({
           options: {
             volume: percent,
@@ -477,16 +502,55 @@ export class VolumBarElement extends BaseElement<VideoState, HTMLInputElement> {
     const element = document.createElement("input");
     element.setAttribute("type", "range");
     element.setAttribute("min", "0");
-    element.setAttribute("max", "100");
+    element.setAttribute("max", "1");
+    element.setAttribute("step", "0.01");
     element.classList.add(lookerVolume);
-    element.style.gridArea = "2 / 4 / 2 / 5";
     return element;
   }
 
   renderSelf({ options: { volume } }: Readonly<VideoState>) {
     this.element.style.display = "block";
-    this.element.style.setProperty("--volume", `${volume}%`);
+    this.element.style.setProperty("--volume", `${volume * 100}%`);
     this.element.value = volume.toFixed(4);
+    return this.element;
+  }
+}
+
+export class PlaybackRateElement extends BaseElement<
+  VideoState,
+  HTMLInputElement
+> {
+  getEvents(): Events<VideoState> {
+    return {
+      click: ({ event }) => {
+        event.stopPropagation();
+      },
+      input: ({ update }) => {
+        update({
+          options: {
+            playbackRate: this.element.valueAsNumber,
+          },
+        });
+      },
+    };
+  }
+
+  createHTMLElement() {
+    const element = document.createElement("input");
+    element.setAttribute("type", "range");
+    element.setAttribute("min", "0.2");
+    element.setAttribute("max", "5");
+    element.classList.add(lookerPlaybackRate);
+    return element;
+  }
+
+  renderSelf({ options: { playbackRate } }: Readonly<VideoState>) {
+    this.element.style.display = "block";
+    this.element.style.setProperty(
+      "--playback",
+      `${(playbackRate / 5) * 100}%`
+    );
+    this.element.value = playbackRate.toFixed(4);
     return this.element;
   }
 }

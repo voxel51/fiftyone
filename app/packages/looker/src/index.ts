@@ -247,7 +247,7 @@ export abstract class Looker<
       pointRadius: POINT_RADIUS,
       mouseIsOnOverlay: false,
       overlaysPrepared: false,
-      tooltipDisabled: false,
+      disableOverlays: false,
     };
   }
 
@@ -625,7 +625,8 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
       this.requestFrames = aquireReader({
         addFrame: (frameNumber, frame) =>
           this.frames.set(frameNumber, new WeakRef(frame)),
-        addFrameBuffers: (range) => addToBuffers(range, this.state.buffers),
+        addFrameBuffers: (range) =>
+          (this.state.buffers = addToBuffers(range, this.state.buffers)),
         removeFrame: (frameNumber) =>
           removeFromBuffers(frameNumber, this.state.buffers),
         getCurrentFrame: () => this.frameNumber,

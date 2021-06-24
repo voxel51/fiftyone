@@ -11,12 +11,15 @@ export const dispatchTooltipEvent = <State extends BaseState>(
   nullify = false
 ) => {
   return (state: Readonly<State>, overlays: Readonly<Overlay<State>[]>) => {
-    if (state.tooltipDisabled) {
+    if (
+      (!state.options.showTooltip ||
+        state.config.thumbnail ||
+        state.disableOverlays) &&
+      !nullify
+    ) {
       return;
     }
-    if (!state.options.showTooltip) {
-      return;
-    }
+
     let detail =
       overlays.length && overlays[0].containsPoint(state) && !nullify
         ? overlays[0].getPointInfo(state)

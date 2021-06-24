@@ -140,7 +140,7 @@ const createReader = ({
             .then((response: Response) => response.json())
             .then(({ frames, range }: FrameChunk) => {
               controller.enqueue({ frames, range });
-              frameNumber = range[1];
+              frameNumber = range[1] + 1;
               resolve();
             })
             .catch((error) => {

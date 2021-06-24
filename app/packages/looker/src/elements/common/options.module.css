@@ -15,7 +15,7 @@
   justify-content: center;
   align-items: center;
   font-weight: bold;
-  color: #eee;
+  color: rgb(238, 238, 238);
   display: grid;
   background-color: hsl(210, 11%, 11%);
   border: 1px solid #191c1f;

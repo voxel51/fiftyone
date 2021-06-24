@@ -27,7 +27,7 @@ export class CanvasElement<State extends BaseState> extends BaseElement<
     return {
       click: ({ event, update, dispatchEvent }) => {
         update({ showOptions: false }, (state, overlays) => {
-          if (state.config.thumbnail) {
+          if (state.config.thumbnail || state.disableOverlays) {
             return;
           }
           let moved = false;
@@ -180,6 +180,7 @@ export class CanvasElement<State extends BaseState> extends BaseElement<
     panning,
     windowBBox: [_, __, width, height],
     mouseIsOnOverlay,
+    disableOverlays,
   }: Readonly<State>) {
     if (this.width !== width) {
       this.element.width = width;
@@ -190,7 +191,7 @@ export class CanvasElement<State extends BaseState> extends BaseElement<
     if (panning) {
       this.element.style.cursor !== "all-scroll" &&
         (this.element.style.cursor = "all-scroll");
-    } else if (!thumbnail && mouseIsOnOverlay) {
+    } else if (!thumbnail && mouseIsOnOverlay && !disableOverlays) {
       this.element.style.cursor = "pointer";
     } else if (thumbnail) {
       this.element.style.cursor = "unset";

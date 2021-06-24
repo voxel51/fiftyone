@@ -10,7 +10,7 @@
   z-index: 20;
   padding-bottom: 0.25rem;
   display: grid;
-  grid-template-columns: 0.5rem max-content max-content 1fr max-content max-content max-content max-content max-content max-content 0.5rem;
+  grid-template-columns: 0.5rem max-content max-content 1fr max-content max-content max-content max-content max-content max-content max-content 0.5rem;
   grid-gap: 0.25rem;
   justify-items: center;
   align-items: center;
@@ -78,15 +78,15 @@
   height: 4px;
   cursor: pointer;
   animate: 0.2s;
-  background: rgb(175, 175, 175);
+  background: rgb(238, 238, 238);
   outline: 0;
   border: none;
   background: linear-gradient(
     to right,
     rgb(225, 100, 40) 0%,
     rgb(225, 100, 40) var(--progress, 0%),
-    rgb(175, 175, 175) var(--progress, 0%),
-    rgb(175, 175, 175) 100%
+    rgb(238, 238, 238) var(--progress, 0%),
+    rgb(238, 238, 238) 100%
   );
 }
 .lookerControls input[type="range"]::-moz-range-thumb {
@@ -98,7 +98,7 @@
 .lookerControls input[type="range"]:hover::-moz-range-runnable-track {
   animate: 0.2s;
   height: 6px;
-  background: rgb(200, 200, 200);
+  background: rgb(238, 238, 238);
 }
 .lookerControls *:hover,
 .lookerControls *:active {

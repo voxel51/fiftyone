@@ -2,11 +2,6 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 
-.lookerLoader {
-  animation: shimmer 5s infinite;
-  background-size: 200% 100%;
-}
-
 .bufferingCircle {
   width: 100%;
   height: 100%;
@@ -38,17 +33,20 @@
 }
 
 .lookerPlaybackRate {
-  --progress: 0%;
+  --playback: 0%;
+  grid-area: 2 / 6 / 2 / 6;
 }
 
 .lookerVolume {
   --volume: 0%;
+  grid-area: 2 / 5 / 2 / 5;
 }
 
 .lookerSeekBar {
   --progress: 0%;
   --buffer-progress: 0%;
-  grid-area: 1 / 1 / 1 / 12;
+  grid-area: 1 / 1 / 1 / 13;
+  margin-top: -5px;
 }
 
 input[type="range"].lookerSeekBar::-webkit-slider-runnable-track {
@@ -56,10 +54,30 @@ input[type="range"].lookerSeekBar::-webkit-slider-runnable-track {
     to right,
     rgb(225, 100, 40) 0%,
     rgb(225, 100, 40) var(--progress, 0%),
-    rgb(55, 55, 55) var(--progress, 0%),
-    rgb(55, 55, 55) var(--buffer-progress, 0%),
-    rgb(175, 175, 175) var(--buffer-progress, 0%),
-    rgb(175, 175, 175) 100%
+    rgb(138, 138, 138) var(--progress, 0%),
+    rgb(138, 138, 138) var(--buffer-progress, 0%),
+    rgb(238, 238, 238) var(--buffer-progress, 0%),
+    rgb(238, 238, 238) 100%
+  );
+}
+
+input[type="range"].lookerVolume::-webkit-slider-runnable-track {
+  background: linear-gradient(
+    to right,
+    rgb(225, 100, 40) 0%,
+    rgb(225, 100, 40) var(--volume, 0%),
+    rgb(238, 238, 238) var(--volume, 0%),
+    rgb(238, 238, 238) 100%
+  );
+}
+
+input[type="range"].lookerPlaybackRate::-webkit-slider-runnable-track {
+  background: linear-gradient(
+    to right,
+    rgb(225, 100, 40) 0%,
+    rgb(225, 100, 40) var(--playback, 0%),
+    rgb(238, 238, 238) var(--playback, 0%),
+    rgb(238, 238, 238) 100%
   );
 }
 

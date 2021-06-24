@@ -258,18 +258,18 @@ export const playPause: Control<VideoState> = {
   eventKey: " ",
   detail: "Play or pause the video",
   action: (update, dispatchEvent) => {
-    update(({ playing, config: { thumbnail } }) => {
-      if (playing) {
-        dispatchTooltipEvent(dispatchEvent, true);
-      }
-
-      return thumbnail
-        ? {}
-        : {
-            playing: !playing,
-            tooltipDisabled: !playing,
-          };
-    });
+    update(
+      ({ playing, config: { thumbnail } }) => {
+        return thumbnail
+          ? {}
+          : {
+              playing: !playing,
+              disableOverlays: !playing,
+            };
+      },
+      (state, overlays) =>
+        dispatchTooltipEvent(dispatchEvent, state.playing)(state, overlays)
+    );
   },
 };
 

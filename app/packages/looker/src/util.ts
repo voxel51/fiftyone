@@ -8,6 +8,7 @@ import { MIN_PIXELS, SCALE_FACTOR } from "./constants";
 import {
   BaseState,
   BoundingBox,
+  BufferRange,
   Buffers,
   Coordinates,
   Dimensions,
@@ -382,63 +383,52 @@ export const createWorker = (): Worker => {
   return new LookerWorker();
 };
 
-// In place
 export const removeFromBuffers = (
   frameNumber: number,
   buffers: Buffers
-): void => {
-  for (let i = 0; i < buffers.length; i++) {
-    const [start, end] = buffers[i];
+): Buffers => {
+  return buffers.reduce((acc, cur) => {
+    if (cur[0] <= frameNumber && cur[1] >= frameNumber) {
+      if (cur[0] === cur[1]) {
+        return acc;
+      }
 
-    if (frameNumber < start) {
-      continue;
+      if (cur[0] === frameNumber) {
+        return [...acc, [frameNumber + 1, cur[1]]];
+      }
+
+      if (cur[1] === frameNumber) {
+        return [...acc, [cur[0], frameNumber - 1]];
+      }
+
+      return [...acc, [cur[0], frameNumber - 1], [frameNumber + 1, cur[1]]];
     }
 
-    if (frameNumber === start && start && end) {
-      buffers.splice(i, 1);
-    } else if (frameNumber === start) {
-      buffers[i] = [start + 1, end];
-    } else if (frameNumber === end) {
-      buffers[i] = [start, end - 1];
-    } else {
-      buffers[i] = [start, frameNumber - 1];
-      buffers.splice(i + 1, 0, [frameNumber + 1, end]);
-    }
-
-    break;
-  }
+    return [...acc, cur];
+  }, []);
 };
 
-// In place
-export const addToBuffers = (
-  range: [number, number],
-  buffers: Buffers
-): void => {
-  let at = null;
-  let count = 0;
-  for (let i = 0; i < buffers.length; i++) {
-    const [start, end] = buffers[i];
+export const addToBuffers = (range: BufferRange, buffers: Buffers): Buffers => {
+  buffers = [...buffers];
+  buffers.push(range);
 
-    if (range[0] > start) {
-      continue;
+  buffers.sort((a, b) => {
+    return a[0] - b[0];
+  });
+
+  let i = 0;
+
+  while (i < buffers.length - 1) {
+    var current = buffers[i],
+      next = buffers[i + 1];
+
+    if (current[1] >= next[0] - 1) {
+      current[1] = Math.max(current[1], next[1]);
+      buffers.splice(i + 1, 1);
+    } else {
+      i++;
     }
-
-    if (at === null) {
-      at = i;
-    }
-
-    count += 1;
-
-    if (end <= range[1]) {
-      continue;
-    }
-
-    break;
   }
 
-  if (!at !== null) {
-    buffers.splice(at, count);
-  }
-
-  buffers.splice(at, 0, range);
+  return buffers;
 };

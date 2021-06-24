@@ -11,7 +11,8 @@ export interface BaseSample {
   };
 }
 
-export type Buffers = [number, number][];
+export type BufferRange = [number, number];
+export type Buffers = BufferRange[];
 
 interface BaseOptions {
   activeLabels: string[];
@@ -119,7 +120,7 @@ export interface BaseState {
   mouseIsOnOverlay: boolean;
   showHelp: boolean;
   overlaysPrepared: boolean;
-  tooltipDisabled: boolean;
+  disableOverlays: boolean;
 }
 
 export interface FrameState extends BaseState {
@@ -143,7 +144,7 @@ export interface VideoState extends BaseState {
   duration: number | null;
   fragment: [number, number] | null;
   buffering: boolean;
-  buffers: [number, number][];
+  buffers: Buffers;
 }
 
 export type Optional<T> = {
