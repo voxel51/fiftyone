@@ -115,7 +115,6 @@ class OpenImagesV6DatasetImporter(foud.LabeledImageDatasetImporter):
         self.only_matching = only_matching
         self.load_hierarchy = load_hierarchy
 
-        self._data_dir = None
         self._images_map = None
         self._info = None
         self._classes_map = None
@@ -234,7 +233,6 @@ class OpenImagesV6DatasetImporter(foud.LabeledImageDatasetImporter):
 
         info = {}
 
-        self._data_dir = data_dir
         self._images_map = images_map
         self._info = info
 
@@ -293,19 +291,28 @@ class OpenImagesV6DatasetImporter(foud.LabeledImageDatasetImporter):
         )
 
         if max_samples is not None:
-            # Prioritize samples with all labels
-            ids_not_all = any_label_ids - all_label_ids
+            if self.classes is None and self.attrs is None:
+                # No requirements were provided, so always make all samples
+                # available
+                extra_ids = set(image_ids) - set(any_label_ids)
+            else:
+                extra_ids = set()
+
+            # Prioritize samples with all labels, then any, then extras
+            not_all_ids = any_label_ids - all_label_ids
             all_label_ids = sorted(all_label_ids)
-            ids_not_all = sorted(ids_not_all)
+            not_all_ids = sorted(not_all_ids)
+            extra_ids = sorted(extra_ids)
 
             if shuffle:
                 random.shuffle(all_label_ids)
-                random.shuffle(ids_not_all)
+                random.shuffle(not_all_ids)
+                random.shuffle(extra_ids)
 
-            valid_ids = all_label_ids + ids_not_all
+            valid_ids = all_label_ids + not_all_ids + extra_ids
             valid_ids = valid_ids[:max_samples]
         else:
-            valid_ids = sorted(any_label_ids)
+            valid_ids = sorted(image_ids)
 
             if shuffle:
                 random.shuffle(valid_ids)
@@ -704,7 +711,7 @@ def _setup(
         if missing_classes:
             logger.warning(
                 "Ignoring invalid classes %s\nYou can view the available "
-                "classes via `get_classes()`",
+                "classes via `fiftyone.utils.openimages.get_classes()`",
                 missing_classes,
             )
     else:
@@ -734,7 +741,8 @@ def _setup(
             if missing_attrs:
                 logger.warning(
                     "Ignoring invalid attributes %s\nYou can view the "
-                    "available attributes via `get_attributes()`",
+                    "available attributes via "
+                    "`fiftyone.utils.openimages.get_attributes()`",
                     missing_attrs,
                 )
     else:
@@ -1041,7 +1049,7 @@ def _get_all_label_data(
     if "classifications" in label_types:
         url = None
         if download:
-            url = _ANNOTATION_DOWNLOAD_URLS[split]["labels"]
+            url = _ANNOTATION_DOWNLOAD_URLS[split]["classifications"]
 
         cls_all_ids, cls_any_ids, cls_data = _get_label_data(
             dataset_dir,
@@ -1069,7 +1077,7 @@ def _get_all_label_data(
     if "detections" in label_types:
         url = None
         if download:
-            url = _ANNOTATION_DOWNLOAD_URLS[split]["boxes"]
+            url = _ANNOTATION_DOWNLOAD_URLS[split]["detections"]
 
         det_all_ids, det_any_ids, det_data = _get_label_data(
             dataset_dir,
@@ -1297,9 +1305,9 @@ def _download(
             # (3) non-downloaded samples with relevant labels
             #
 
-            ids_not_all = any_label_ids - all_label_ids
-            existing_ids = ids_not_all & downloaded_ids
-            non_existing_ids = ids_not_all - downloaded_ids
+            not_all_ids = any_label_ids - all_label_ids
+            existing_ids = not_all_ids & downloaded_ids
+            non_existing_ids = not_all_ids - downloaded_ids
 
             all_label_ids = sorted(all_label_ids)
             existing_ids = sorted(existing_ids)
@@ -1577,8 +1585,6 @@ def _download_file_if_necessary(
         if os.path.isdir(unzipped_dir):
             return
 
-        os.makedirs(unzipped_dir)
-
     if not os.path.isfile(filepath):
         if not download:
             raise ValueError("File '%s' is not downloaded" % filepath)
@@ -1691,36 +1697,12 @@ _ANNOTATION_DOWNLOAD_URLS = {
         "hierarchy": "https://storage.googleapis.com/openimages/2018_04/bbox_labels_600_hierarchy.json",
         "segmentation_classes": "https://storage.googleapis.com/openimages/v5/classes-segmentation.txt",
     },
-    "test": {
-        "boxes": "https://storage.googleapis.com/openimages/v5/test-annotations-bbox.csv",
-        "segmentations": {
-            "mask_csv": "https://storage.googleapis.com/openimages/v5/test-annotations-object-segmentation.csv",
-            "mask_data": {
-                "0": "https://storage.googleapis.com/openimages/v5/test-masks/test-masks-0.zip",
-                "1": "https://storage.googleapis.com/openimages/v5/test-masks/test-masks-1.zip",
-                "2": "https://storage.googleapis.com/openimages/v5/test-masks/test-masks-2.zip",
-                "3": "https://storage.googleapis.com/openimages/v5/test-masks/test-masks-3.zip",
-                "4": "https://storage.googleapis.com/openimages/v5/test-masks/test-masks-4.zip",
-                "5": "https://storage.googleapis.com/openimages/v5/test-masks/test-masks-5.zip",
-                "6": "https://storage.googleapis.com/openimages/v5/test-masks/test-masks-6.zip",
-                "7": "https://storage.googleapis.com/openimages/v5/test-masks/test-masks-7.zip",
-                "8": "https://storage.googleapis.com/openimages/v5/test-masks/test-masks-8.zip",
-                "9": "https://storage.googleapis.com/openimages/v5/test-masks/test-masks-9.zip",
-                "A": "https://storage.googleapis.com/openimages/v5/test-masks/test-masks-a.zip",
-                "B": "https://storage.googleapis.com/openimages/v5/test-masks/test-masks-b.zip",
-                "C": "https://storage.googleapis.com/openimages/v5/test-masks/test-masks-c.zip",
-                "D": "https://storage.googleapis.com/openimages/v5/test-masks/test-masks-d.zip",
-                "E": "https://storage.googleapis.com/openimages/v5/test-masks/test-masks-e.zip",
-                "F": "https://storage.googleapis.com/openimages/v5/test-masks/test-masks-f.zip",
-            },
-        },
-        "relationships": "https://storage.googleapis.com/openimages/v6/oidv6-test-annotations-vrd.csv",
-        "labels": "https://storage.googleapis.com/openimages/v5/test-annotations-human-imagelabels-boxable.csv",
-        "image_ids": "https://storage.googleapis.com/openimages/2018_04/test/test-images-with-rotation.csv",
-        "num_images": 125436,
-    },
     "train": {
-        "boxes": "https://storage.googleapis.com/openimages/v6/oidv6-train-annotations-bbox.csv",
+        "num_images": 1743042,
+        "image_ids": "https://storage.googleapis.com/openimages/2018_04/train/train-images-boxable-with-rotation.csv",
+        "classifications": "https://storage.googleapis.com/openimages/v5/train-annotations-human-imagelabels-boxable.csv",
+        "detections": "https://storage.googleapis.com/openimages/v6/oidv6-train-annotations-bbox.csv",
+        "relationships": "https://storage.googleapis.com/openimages/v6/oidv6-train-annotations-vrd.csv",
         "segmentations": {
             "mask_csv": "https://storage.googleapis.com/openimages/v5/train-annotations-object-segmentation.csv",
             "mask_data": {
@@ -1742,13 +1724,41 @@ _ANNOTATION_DOWNLOAD_URLS = {
                 "F": "https://storage.googleapis.com/openimages/v5/train-masks/train-masks-f.zip",
             },
         },
-        "relationships": "https://storage.googleapis.com/openimages/v6/oidv6-train-annotations-vrd.csv",
-        "labels": "https://storage.googleapis.com/openimages/v5/train-annotations-human-imagelabels-boxable.csv",
-        "image_ids": "https://storage.googleapis.com/openimages/2018_04/train/train-images-boxable-with-rotation.csv",
-        "num_images": 1743042,
+    },
+    "test": {
+        "num_images": 125436,
+        "image_ids": "https://storage.googleapis.com/openimages/2018_04/test/test-images-with-rotation.csv",
+        "classifications": "https://storage.googleapis.com/openimages/v5/test-annotations-human-imagelabels-boxable.csv",
+        "detections": "https://storage.googleapis.com/openimages/v5/test-annotations-bbox.csv",
+        "relationships": "https://storage.googleapis.com/openimages/v6/oidv6-test-annotations-vrd.csv",
+        "segmentations": {
+            "mask_csv": "https://storage.googleapis.com/openimages/v5/test-annotations-object-segmentation.csv",
+            "mask_data": {
+                "0": "https://storage.googleapis.com/openimages/v5/test-masks/test-masks-0.zip",
+                "1": "https://storage.googleapis.com/openimages/v5/test-masks/test-masks-1.zip",
+                "2": "https://storage.googleapis.com/openimages/v5/test-masks/test-masks-2.zip",
+                "3": "https://storage.googleapis.com/openimages/v5/test-masks/test-masks-3.zip",
+                "4": "https://storage.googleapis.com/openimages/v5/test-masks/test-masks-4.zip",
+                "5": "https://storage.googleapis.com/openimages/v5/test-masks/test-masks-5.zip",
+                "6": "https://storage.googleapis.com/openimages/v5/test-masks/test-masks-6.zip",
+                "7": "https://storage.googleapis.com/openimages/v5/test-masks/test-masks-7.zip",
+                "8": "https://storage.googleapis.com/openimages/v5/test-masks/test-masks-8.zip",
+                "9": "https://storage.googleapis.com/openimages/v5/test-masks/test-masks-9.zip",
+                "A": "https://storage.googleapis.com/openimages/v5/test-masks/test-masks-a.zip",
+                "B": "https://storage.googleapis.com/openimages/v5/test-masks/test-masks-b.zip",
+                "C": "https://storage.googleapis.com/openimages/v5/test-masks/test-masks-c.zip",
+                "D": "https://storage.googleapis.com/openimages/v5/test-masks/test-masks-d.zip",
+                "E": "https://storage.googleapis.com/openimages/v5/test-masks/test-masks-e.zip",
+                "F": "https://storage.googleapis.com/openimages/v5/test-masks/test-masks-f.zip",
+            },
+        },
     },
     "validation": {
-        "boxes": "https://storage.googleapis.com/openimages/v5/validation-annotations-bbox.csv",
+        "num_images": 41620,
+        "image_ids": "https://storage.googleapis.com/openimages/2018_04/validation/validation-images-with-rotation.csv",
+        "classifications": "https://storage.googleapis.com/openimages/v5/validation-annotations-human-imagelabels-boxable.csv",
+        "detections": "https://storage.googleapis.com/openimages/v5/validation-annotations-bbox.csv",
+        "relationships": "https://storage.googleapis.com/openimages/v6/oidv6-validation-annotations-vrd.csv",
         "segmentations": {
             "mask_csv": "https://storage.googleapis.com/openimages/v5/validation-annotations-object-segmentation.csv",
             "mask_data": {
@@ -1770,10 +1780,6 @@ _ANNOTATION_DOWNLOAD_URLS = {
                 "F": "https://storage.googleapis.com/openimages/v5/validation-masks/validation-masks-f.zip",
             },
         },
-        "relationships": "https://storage.googleapis.com/openimages/v6/oidv6-validation-annotations-vrd.csv",
-        "labels": "https://storage.googleapis.com/openimages/v5/validation-annotations-human-imagelabels-boxable.csv",
-        "image_ids": "https://storage.googleapis.com/openimages/2018_04/validation/validation-images-with-rotation.csv",
-        "num_images": 41620,
     },
 }
 
@@ -1782,8 +1788,8 @@ _BUCKET_NAME = "open-images-dataset"
 _CSV_DELIMITERS = [",", ";", ":", " ", "\t", "\n"]
 
 _SUPPORTED_LABEL_TYPES = [
-    "detections",
     "classifications",
+    "detections",
     "relationships",
     "segmentations",
 ]
