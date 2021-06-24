@@ -1285,10 +1285,6 @@ class OpenImagesV6Dataset(FiftyOneDataset):
     def size(self):
         return {"train": 1743042, "test": 125436, "validation": 41620}
 
-    @property
-    def label_field(self):
-        return ""  # don't add `ground_truth` prefix for Open Images
-
     def _is_download_required(self, dataset_dir, split):
         return fouo.is_download_required(
             dataset_dir,

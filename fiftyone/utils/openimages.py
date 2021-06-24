@@ -96,6 +96,11 @@ class OpenImagesV6DatasetImporter(foud.LabeledImageDatasetImporter):
         seed=None,
         max_samples=None,
     ):
+        label_types = _parse_label_types(label_types)
+
+        if include_id:
+            label_types.append("open_images_id")
+
         super().__init__(
             dataset_dir=dataset_dir,
             shuffle=shuffle,
@@ -107,14 +112,12 @@ class OpenImagesV6DatasetImporter(foud.LabeledImageDatasetImporter):
         self.classes = classes
         self.attrs = attrs
         self.image_ids = image_ids
-        self.include_id = include_id
         self.only_matching = only_matching
         self.load_hierarchy = load_hierarchy
 
         self._data_dir = None
         self._images_map = None
         self._info = None
-        self._label_types = None
         self._classes_map = None
         self._attrs_map = None
         self._cls_data = None
@@ -136,48 +139,50 @@ class OpenImagesV6DatasetImporter(foud.LabeledImageDatasetImporter):
 
         image_path = self._images_map[image_id]
 
-        # @todo return scalar labels if only one field is requested?
-        labels = {}
+        label = {}
 
-        if "classifications" in self._label_types:
+        if "classifications" in self.label_types:
             # Add labels
             pos_labels, neg_labels = _create_classifications(
                 self._cls_data, image_id, self._classes_map
             )
             if pos_labels is not None:
-                labels["positive_labels"] = pos_labels
+                label["positive_labels"] = pos_labels
 
             if neg_labels is not None:
-                labels["negative_labels"] = neg_labels
+                label["negative_labels"] = neg_labels
 
-        if "detections" in self._label_types:
+        if "detections" in self.label_types:
             # Add detections
             detections = _create_detections(
                 self._det_data, image_id, self._classes_map
             )
             if detections is not None:
-                labels["detections"] = detections
+                label["detections"] = detections
 
-        if "segmentations" in self._label_types:
+        if "segmentations" in self.label_types:
             # Add segmentations
             segmentations = _create_segmentations(
                 self._seg_data, image_id, self._classes_map, self.dataset_dir,
             )
             if segmentations is not None:
-                labels["segmentations"] = segmentations
+                label["segmentations"] = segmentations
 
-        if "relationships" in self._label_types:
+        if "relationships" in self.label_types:
             # Add relationships
             relationships = _create_relationships(
                 self._rel_data, image_id, self._classes_map, self._attrs_map
             )
             if relationships is not None:
-                labels["relationships"] = relationships
+                label["relationships"] = relationships
 
-        if self.include_id:
-            labels["open_images_id"] = image_id
+        if "open_images_id" in self.label_types:
+            label["open_images_id"] = image_id
 
-        return image_path, None, labels
+        if self._has_scalar_labels:
+            label = next(iter(label.values())) if label else None
+
+        return image_path, None, label
 
     @property
     def has_dataset_info(self):
@@ -189,17 +194,25 @@ class OpenImagesV6DatasetImporter(foud.LabeledImageDatasetImporter):
 
     @property
     def _has_scalar_labels(self):
-        return (len(self.label_types) + int(self.include_id)) == 1
+        return (
+            len(self.label_types) == 1
+            and self.label_types[0] != "classifications"
+        )
 
     @property
     def label_cls(self):
-        return {
+        types = {
             "classifications": fol.Classifications,
             "detections": fol.Detections,
             "segmentations": fol.Detections,
             "relationships": fol.Detections,
             "open_images_id": str,
         }
+
+        if self._has_scalar_labels:
+            return types[self.label_types[0]]
+
+        return {k: v for k, v in types.items() if k in self.label_types}
 
     def setup(self):
         dataset_dir = self.dataset_dir
@@ -228,14 +241,6 @@ class OpenImagesV6DatasetImporter(foud.LabeledImageDatasetImporter):
         if not available_ids:
             self._uuids = []
             return
-
-        label_types = _parse_label_types(label_types)
-
-        # No matter what classes or attributes you specify, they will not be
-        # loaded if you do not want to load labels
-        if not label_types:
-            classes = []
-            attrs = []
 
         if image_ids:
             image_ids = _parse_image_ids(image_ids, ignore_split=True)
@@ -320,7 +325,6 @@ class OpenImagesV6DatasetImporter(foud.LabeledImageDatasetImporter):
         info["classes_map"] = classes_map
         info["classes"] = all_classes
 
-        self._label_types = label_types
         self._classes_map = classes_map
         self._attrs_map = attrs_map
         self._cls_data = cls_data
@@ -605,10 +609,6 @@ def _download_open_images_split(
     _verify_version(version)
 
     label_types = _parse_label_types(label_types)
-
-    if not label_types:
-        classes = []
-        attrs = []
 
     if image_ids is not None:
         image_ids = _parse_and_verify_image_ids(
@@ -955,6 +955,8 @@ def _parse_label_types(label_types):
 
     if etau.is_str(label_types):
         label_types = [label_types]
+    else:
+        label_types = list(label_types)
 
     bad_types = [l for l in label_types if l not in _SUPPORTED_LABEL_TYPES]
 
@@ -1033,13 +1035,8 @@ def _get_all_label_data(
     rel_data = {}
     seg_data = {}
     seg_ids = set()
-
-    if label_types:
-        all_label_ids = None
-        any_label_ids = None
-    else:
-        all_label_ids = set()
-        any_label_ids = set()
+    all_label_ids = None
+    any_label_ids = None
 
     if "classifications" in label_types:
         url = None
@@ -1165,6 +1162,12 @@ def _get_all_label_data(
         elif classes is not None:
             any_label_ids &= seg_any_ids
 
+    if all_label_ids is None:
+        all_label_ids = set()
+
+    if any_label_ids is None:
+        any_label_ids = set()
+
     return (
         cls_data,
         det_data,
@@ -1267,7 +1270,7 @@ def _download(
     num_workers=None,
     download=True,
 ):
-    (_, _, _, _, seg_ids, all_label_ids, any_label_ids,) = _get_all_label_data(
+    _, _, _, _, seg_ids, all_label_ids, any_label_ids = _get_all_label_data(
         dataset_dir,
         image_ids,
         label_types,

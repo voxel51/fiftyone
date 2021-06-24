@@ -148,6 +148,9 @@ class COCODetectionDatasetImporter(
 
         label_types = _parse_label_types(label_types)
 
+        if include_id:
+            label_types.append("coco_id")
+
         super().__init__(
             dataset_dir=dataset_dir,
             shuffle=shuffle,
@@ -160,7 +163,6 @@ class COCODetectionDatasetImporter(
         self.label_types = label_types
         self.classes = classes
         self.image_ids = image_ids
-        self.include_id = include_id
         self.extra_attrs = extra_attrs
         self.only_matching = only_matching
         self.use_polylines = use_polylines
@@ -212,27 +214,22 @@ class COCODetectionDatasetImporter(
                 coco_objects, self.classes, self._classes
             )
 
-        scalar_label = self._has_scalar_labels
-        if not scalar_label:
-            label = {}
+        label = {}
 
         if "detections" in self.label_types:
-            obj = _coco_objects_to_detections(
+            detections = _coco_objects_to_detections(
                 coco_objects,
                 frame_size,
                 self._classes,
                 self._supercategory_map,
                 False,  # no segmentations
             )
-
-            if scalar_label:
-                label = obj
-            elif obj is not None:
-                label["detections"] = obj
+            if detections is not None:
+                label["detections"] = detections
 
         if "segmentations" in self.label_types:
             if self.use_polylines:
-                obj = _coco_objects_to_polylines(
+                segmentations = _coco_objects_to_polylines(
                     coco_objects,
                     frame_size,
                     self._classes,
@@ -240,7 +237,7 @@ class COCODetectionDatasetImporter(
                     self.tolerance,
                 )
             else:
-                obj = _coco_objects_to_detections(
+                segmentations = _coco_objects_to_detections(
                     coco_objects,
                     frame_size,
                     self._classes,
@@ -248,26 +245,22 @@ class COCODetectionDatasetImporter(
                     True,  # load segmentations
                 )
 
-            if scalar_label:
-                label = obj
-            elif obj is not None:
-                label["segmentations"] = obj
+            if segmentations is not None:
+                label["segmentations"] = segmentations
 
         if "keypoints" in self.label_types:
             keypoints = _coco_objects_to_keypoints(
                 coco_objects, frame_size, self._classes
             )
 
-            if scalar_label:
-                label = keypoints
-            elif keypoints is not None:
+            if keypoints is not None:
                 label["keypoints"] = keypoints
 
-        if self.include_id:
-            if scalar_label:
-                label = image_id
-            else:
-                label["coco_id"] = image_id
+        if "coco_id" in self.label_types:
+            label["coco_id"] = image_id
+
+        if self._has_scalar_labels:
+            label = next(iter(label.values())) if label else None
 
         return image_path, image_metadata, label
 
@@ -281,45 +274,22 @@ class COCODetectionDatasetImporter(
 
     @property
     def _has_scalar_labels(self):
-        return (len(self.label_types) + int(self.include_id)) == 1
+        return len(self.label_types) == 1
 
     @property
     def label_cls(self):
-        scalar_label = self._has_scalar_labels
+        seg_type = fol.Polylines if self.use_polylines else fol.Detections
+        types = {
+            "detections": fol.Detections,
+            "segmentations": seg_type,
+            "keypoints": fol.Keypoints,
+            "coco_id": int,
+        }
 
-        if not scalar_label:
-            label_dict = {}
+        if self._has_scalar_labels:
+            return types[self.label_types[0]]
 
-        if "detections" in self.label_types:
-            if scalar_label:
-                return fol.Detections
-
-            label_dict["detections"] = fol.Detections
-
-        if "segmentations" in self.label_types:
-            if self.use_polylines:
-                obj_type = fol.Polylines
-            else:
-                obj_type = fol.Detections
-
-            if scalar_label:
-                return obj_type
-
-            label_dict["segmentations"] = obj_type
-
-        if "keypoints" in self.label_types:
-            if scalar_label:
-                return fol.Keypoints
-
-            label_dict["keypoints"] = fol.Keypoints
-
-        if self.include_id:
-            if scalar_label:
-                return int
-
-            label_dict["coco_id"] = int
-
-        return label_dict
+        return {k: v for k, v in types.items() if k in self.label_types}
 
     def setup(self):
         self._image_paths_map = self._load_data_map(self.data_path)
@@ -1492,6 +1462,8 @@ def _parse_label_types(label_types):
 
     if etau.is_str(label_types):
         label_types = [label_types]
+    else:
+        label_types = list(label_types)
 
     bad_types = [l for l in label_types if l not in _SUPPORTED_LABEL_TYPES]
 
