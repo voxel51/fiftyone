@@ -378,7 +378,7 @@ class VOCDetectionDatasetExporter(
         )
         self._writer.write(annotation, out_anno_path)
 
-    def close(self):
+    def close(self, *args):
         self._media_exporter.close()
 
 
