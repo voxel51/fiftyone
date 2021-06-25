@@ -38,6 +38,185 @@ mask_utils = fou.lazy_import(
 logger = logging.getLogger(__name__)
 
 
+def add_coco_labels(
+    sample_collection,
+    label_field,
+    labels_or_path,
+    label_type="detections",
+    coco_id_field="coco_id",
+    classes=None,
+    extra_attrs=None,
+    use_polylines=False,
+    tolerance=None,
+):
+    """Adds the given COCO labels to the collection.
+
+    The ``labels_or_path`` argument can be either a list of COCO annotations in
+    the format below, or the path to a JSON file containing such data on disk.
+
+    When ``label_type="detections"``, the labels should have format::
+
+        [
+            {
+                "id": 1,
+                "image_id": 1,
+                "category_id": 2,
+                "bbox": [260, 177, 231, 199],
+
+                # optional
+                "score": 0.95,
+                "area": 45969,
+                "iscrowd": 0,
+
+                # extra attrs
+                ...
+            },
+            ...
+        ]
+
+    When ``label_type="segmentations"``, the labels should have format::
+
+        [
+            {
+                "id": 1,
+                "image_id": 1,
+                "category_id": 2,
+                "bbox": [260, 177, 231, 199],
+                "segmentation": [...],
+
+                # optional
+                "score": 0.95,
+                "area": 45969,
+                "iscrowd": 0,
+
+                # extra attrs
+                ...
+            },
+            ...
+        ]
+
+    When ``label_type="keypoints"``, the labels should have format::
+
+        [
+            {
+                "id": 1,
+                "image_id": 1,
+                "category_id": 2,
+                "keypoints": [224, 226, 2, ...],
+                "num_keypoints": 10,
+
+                # extra attrs
+                ...
+            },
+            ...
+        ]
+
+    See `this page <https://cocodataset.org/#format-data>`_ for more
+    information about the COCO data format.
+
+    Args:
+        sample_collection: a
+            :class:`fiftyone.core.collections.SampleCollection`
+        label_field: the label field in which to store the labels. The field
+            will be created if necessary
+        labels_or_path: a list of COCO annotations or the path to a JSON file
+            containing such data on disk
+        label_type ("detections"): the type of labels to load. Supported values
+            are ``("detections", "segmentations", "keypoints")``
+        coco_id_field ("coco_id"): the field of ``sample_collection``
+            containing the COCO IDs for the samples
+        classes (None): the list of class label strings. If not provided, these
+            must be available from
+            :meth:`classes <fiftyone.core.collections.SampleCollection.classes>` or
+            :meth:`default_classes <fiftyone.core.collections.SampleCollection.default_classes>`
+        extra_attrs (None): whether to load extra annotation attributes onto
+            the imported labels. Supported values are:
+
+            -   ``None``/``False``: do not load extra attributes
+            -   ``True``: load all extra attributes found
+            -   a name or list of names of specific attributes to load
+        use_polylines (False): whether to represent segmentations as
+            :class:`fiftyone.core.labels.Polylines` instances rather than
+            :class:`fiftyone.core.labels.Detections` with dense masks
+        tolerance (None): a tolerance, in pixels, when generating approximate
+            polylines for instance masks. Typical values are 1-3 pixels
+    """
+    if classes is None:
+        if label_field in sample_collection.classes:
+            classes = sample_collection.classes[label_field]
+        elif sample_collection.default_classes:
+            classes = sample_collection.default_classes
+
+    if not classes:
+        raise ValueError(
+            "You must provide `classes` in order to load COCO labels"
+        )
+
+    if etau.is_str(labels_or_path):
+        labels = etas.load_json(labels_or_path)
+    else:
+        labels = labels_or_path
+
+    coco_objects_map = defaultdict(list)
+    for d in labels:
+        coco_obj = COCOObject.from_anno_dict(d, extra_attrs=extra_attrs)
+        coco_objects_map[coco_obj.image_id].append(coco_obj)
+
+    id_map = {
+        k: v for k, v in zip(*sample_collection.values([coco_id_field, "id"]))
+    }
+
+    coco_ids = sorted(coco_objects_map.keys())
+
+    bad_ids = set(coco_ids) - set(id_map.keys())
+    if bad_ids:
+        coco_ids = [_id for _id in coco_ids if _id not in bad_ids]
+        logger.warning(
+            "Ignoring labels with %d nonexistent COCO IDs: %s",
+            len(bad_ids),
+            sorted(bad_ids),
+        )
+
+    view = sample_collection.select(
+        [id_map[coco_id] for coco_id in coco_ids], ordered=True
+    )
+    view.compute_metadata()
+
+    heights, widths = view.values(["metadata.height", "metadata.width"])
+
+    labels = []
+    for coco_id, height, width in zip(coco_ids, heights, widths):
+        coco_objects = coco_objects_map[coco_id]
+        frame_size = (height, width)
+
+        if label_type == "detections":
+            _labels = _coco_objects_to_detections(
+                coco_objects, frame_size, classes, None, False
+            )
+        elif label_type == "segmentations":
+            if use_polylines:
+                _labels = _coco_objects_to_polylines(
+                    coco_objects, frame_size, classes, None, tolerance
+                )
+            else:
+                _labels = _coco_objects_to_detections(
+                    coco_objects, frame_size, classes, None, True
+                )
+        elif label_type == "keypoints":
+            _labels = _coco_objects_to_keypoints(
+                coco_objects, frame_size, classes
+            )
+        else:
+            raise ValueError(
+                "Unsupported label_type='%s'. Supported values are %s"
+                % (label_type, ("detections", "segmentations", "keypoints"))
+            )
+
+        labels.append(_labels)
+
+    view.set_values(label_field, labels)
+
+
 class COCODetectionDatasetImporter(
     foud.LabeledImageDatasetImporter, foud.ImportPathsMixin
 ):
