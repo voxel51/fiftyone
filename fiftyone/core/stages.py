@@ -422,7 +422,7 @@ class ExcludeBy(ViewStage):
     @classmethod
     def _params(cls):
         return [
-            {"name": "field", "type": "field|str", "placeholder": "field",},
+            {"name": "field", "type": "field|str", "placeholder": "field"},
             {
                 "name": "values",
                 "type": "json",
@@ -3834,7 +3834,7 @@ class SelectBy(ViewStage):
     @classmethod
     def _params(cls):
         return [
-            {"name": "field", "type": "field|str", "placeholder": "field",},
+            {"name": "field", "type": "field|str", "placeholder": "field"},
             {
                 "name": "values",
                 "type": "json",
