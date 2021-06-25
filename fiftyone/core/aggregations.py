@@ -475,7 +475,7 @@ class CountValues(Aggregation):
         if self._first is None:
             return {}
 
-        return 0, {}
+        return 0, []
 
     def parse_result(self, d):
         """Parses the output of :meth:`to_mongo`.
@@ -486,12 +486,11 @@ class CountValues(Aggregation):
         Returns:
             a dict mapping values to counts
         """
-        result = {i["k"]: i["count"] for i in d["result"]}
 
         if self._first is None:
-            return result
+            return {i["k"]: i["count"] for i in d["result"]}
 
-        return d["count"], result
+        return d["count"], [[i["k"], i["count"]] for i in d["result"]]
 
     def to_mongo(self, sample_collection):
         path, pipeline, _, id_to_str = _parse_field_and_expr(
