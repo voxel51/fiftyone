@@ -28,6 +28,7 @@ const ResultDiv = styled(ItemAction)`
   text-overflow: ellipsis;
   margin: 0;
   justify-content: space-between;
+  flex-direction: row;
 `;
 
 const ScrollResultsContainer = styled.div`
@@ -89,7 +90,7 @@ type ResultValue = [string | null, number];
 interface ResultsProps {
   results: ResultValue[];
   highlight: string;
-  onSelect: (result: ResultValue) => void;
+  onSelect: (value: string | null) => void;
   active: ResultValue;
   alignRight?: boolean;
 }
@@ -103,7 +104,7 @@ const Results = React.memo(
             key={result[0]}
             result={result}
             highlight={highlight}
-            onClick={() => onSelect(result)}
+            onClick={() => onSelect(result[0])}
             active={active === result}
             maxLen={34}
           />

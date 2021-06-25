@@ -42,7 +42,7 @@ const NamedStringFilterHeader = styled.div`
   justify-content: space-between;
 `;
 
-const CHECKBOX_LIMIT = 15;
+const CHECKBOX_LIMIT = 20;
 
 interface ExcludeOptionProps {
   excludeAtom: RecoilState<boolean>;
@@ -77,7 +77,7 @@ const ExcludeOption = ({
 };
 
 interface WrapperProps {
-  results: string[];
+  results: [string, number][];
   selectedValuesAtom: RecoilState<string[]>;
   excludeAtom: RecoilState<boolean>;
   name: string;
@@ -97,21 +97,24 @@ const Wrapper = ({
   const [selected, setSelected] = useRecoilState(selectedValuesAtom);
   const selectedSet = new Set(selected);
   const setExcluded = useSetRecoilState(excludeAtom);
-
-  let allValues = selected;
+  const counts = Object.fromEntries(results);
+  let allValues: [string, number][] = selected.map<[string, number]>((value) =>
+    counts[value] ? [value, counts[value]] : [value, 0]
+  );
 
   if (count <= CHECKBOX_LIMIT) {
-    allValues = [...allValues, ...results];
+    allValues = [...allValues, ...results.filter(([v]) => !selectedSet.has(v))];
   }
 
   return (
     <>
-      {[...new Set(allValues)].sort().map((value) => (
+      {[...new Set(allValues)].sort().map(([value, count]) => (
         <Checkbox
           key={value}
           color={color}
           value={selectedSet.has(value)}
           name={value}
+          count={count}
           maxLen={31}
           setValue={(checked: boolean) => {
             if (checked) {
@@ -227,7 +230,7 @@ const ResultsWrapper = ({
 interface Props {
   totalAtom: RecoilValueReadOnly<{
     count: number;
-    results: string[];
+    results: [string, number][];
   }>;
   selectedValuesAtom: RecoilState<string[]>;
   excludeAtom: RecoilState<boolean>;
