@@ -14,7 +14,11 @@ import {
   settings,
   zoomIn,
   zoomOut,
+  zoomToContent,
+  resetZoom,
 } from "./actions";
+import zoomToContentIcon from "../../icons/zoomToContent.svg";
+import resetZoomIcon from "../../icons/resetZoom.svg";
 
 import {
   lookerArrow,
@@ -211,7 +215,7 @@ export class FullscreenButtonElement<
   createHTMLElement() {
     const element = document.createElement("img");
     element.classList.add(lookerClickable);
-    element.style.gridArea = "2 / 9 / 2 / 9";
+    element.style.gridArea = "2 / 11 / 2 / 11";
     return element;
   }
 
@@ -245,7 +249,7 @@ export class PlusElement<State extends BaseState> extends BaseElement<
     element.style.padding = "2px";
     element.src = ICONS.plus;
     element.title = "Zoom in (+)";
-    element.style.gridArea = "2 / 8 / 2 / 8";
+    element.style.gridArea = "2 / 10 / 2 / 10";
     return element;
   }
 
@@ -274,7 +278,7 @@ export class MinusElement<State extends BaseState> extends BaseElement<
     element.style.padding = "2px";
     element.src = ICONS.minus;
     element.title = "Zoom out (-)";
-    element.style.gridArea = "2 / 7 / 2 / 7";
+    element.style.gridArea = "2 / 9 / 2 / 9";
     return element;
   }
 
@@ -302,7 +306,7 @@ export class HelpButtonElement<State extends BaseState> extends BaseElement<
     element.style.padding = "2px";
     element.src = ICONS.help;
     element.title = "Help (?)";
-    element.style.gridArea = "2 / 10 / 2 / 10";
+    element.style.gridArea = "2 / 12 / 2 / 12";
     return element;
   }
 
@@ -330,11 +334,73 @@ export class OptionsButtonElement<State extends BaseState> extends BaseElement<
     element.style.padding = "2px";
     element.src = ICONS.options;
     element.title = "Settings (s)";
-    element.style.gridArea = "2 / 11 / 2 / 11";
+    element.style.gridArea = "2 / 13 / 2 / 13";
     return element;
   }
 
   renderSelf() {
+    return this.element;
+  }
+}
+
+export class ZoomToContentButtonElement<
+  State extends BaseState
+> extends BaseElement<State> {
+  private disabled: boolean;
+
+  getEvents(): Events<State> {
+    return {
+      click: ({ event, update, dispatchEvent }) => {
+        event.stopPropagation();
+        event.preventDefault();
+        zoomToContent.action(update, dispatchEvent);
+      },
+    };
+  }
+
+  createHTMLElement() {
+    const element = document.createElement("img");
+    element.style.padding = "2px";
+    element.src = zoomToContentIcon;
+    element.title = "Zoom to content (z)";
+    element.style.gridArea = "2 / 7 / 2 / 7";
+    return element;
+  }
+
+  renderSelf({ disableOverlays }) {
+    if (this.disabled !== disableOverlays) {
+      this.element.style.opacity = disableOverlays ? "0.5" : "1";
+      this.element.style.cursor = disableOverlays ? "unset" : "pointer";
+      this.disabled = disableOverlays;
+    }
+
+    return this.element;
+  }
+}
+
+export class ResetZoomButtonElement<
+  State extends BaseState
+> extends BaseElement<State, HTMLImageElement> {
+  getEvents(): Events<State> {
+    return {
+      click: ({ event, update, dispatchEvent }) => {
+        event.stopPropagation();
+        event.preventDefault();
+        resetZoom.action(update, dispatchEvent);
+      },
+    };
+  }
+
+  createHTMLElement() {
+    const element = document.createElement("img");
+    element.classList.add(lookerClickable);
+    element.style.gridArea = "2 / 8 / 2 / 8";
+    element.src = resetZoomIcon;
+    element.title = `Reset zoom (r)`;
+    return element;
+  }
+
+  renderSelf(state: Readonly<State>) {
     return this.element;
   }
 }

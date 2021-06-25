@@ -100,9 +100,9 @@ export const getClampedTime = (
 export const getTime = (frameNumber: number, frameRate: number): number => {
   frameNumber -= 1;
 
-  // offset by 1/100 of a frame to avoid browser issues where being *exactly*
+  // offset by 1/4 of a frame to avoid browser issues where being *exactly*
   // on a frame boundary sometimes renders the previous frame
-  return (frameNumber + 0.05) * (1 / frameRate);
+  return (frameNumber + 0.01) / frameRate;
 };
 
 export const getFrameString = (

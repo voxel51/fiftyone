@@ -198,13 +198,7 @@ class FramesHandler(tornado.web.RequestHandler):
         stage_dicts = view.view()._serialize()
         frames_view = fov.DatasetView._build(view._dataset, stage_dicts)
 
-        frames_view = frames_view.select(sample_id).set_field(
-            "frames",
-            F("frames").filter(
-                (F("frame_number") >= start_frame)
-                & (F("frame_number") <= end_frame)
-            ),
-        )
+        frames_view = frames_view.select(sample_id)
 
         results, _ = await _get_samples(
             StateHandler.sample_collection(),
@@ -212,6 +206,7 @@ class FramesHandler(tornado.web.RequestHandler):
             1,
             0,
             detach_frames=False,
+            frames=[start_frame, end_frame],
         )
 
         frames = results[0]["frames"]
@@ -561,9 +556,6 @@ class StateHandler(tornado.websocket.WebSocketHandler):
 
         view = get_extended_view(view, state.filters, count_label_tags=True)
         view = view.skip((page - 1) * page_length)
-
-        if view.media_type == fom.VIDEO:
-            view = view.set_field("frames", F("frames")[0])
 
         results, more = await _get_sample_data(
             cls.sample_collection(),
@@ -1309,7 +1301,18 @@ async def _numeric_histograms(coll, view, schema, prefix=""):
     return aggregations, fields, ticks
 
 
-async def _get_samples(col, view, page_length, page, detach_frames=True):
+async def _get_samples(
+    col, view, page_length, page, detach_frames=True, frames=[1, 1]
+):
+    if view.media_type == fom.VIDEO:
+        view = view.set_field(
+            "frames",
+            F("frames").filter(
+                (F("frame_number") >= frames[0])
+                & (F("frame_number") <= frames[1])
+            ),
+        )
+
     pipeline = view._pipeline(attach_frames=True, detach_frames=detach_frames)
 
     samples = await foo.aggregate(col, pipeline).to_list(page_length + 1)
@@ -1329,7 +1332,6 @@ async def _get_sample_data(col, view, page_length, page, detach_frames=True):
     )
 
     results = [{"sample": s} for s in samples]
-    video = view.media_type == fom.VIDEO
     metadata = {}
 
     for r in results:
@@ -1338,13 +1340,6 @@ async def _get_sample_data(col, view, page_length, page, detach_frames=True):
             metadata[filepath] = fosu.read_metadata(filepath)
 
         r.update(metadata[filepath])
-
-        if video:
-            sample = r["sample"]
-            if "frames" in sample:
-                frames = sample["frames"]
-                if isinstance(frames, dict):
-                    sample["frames"] = {1: frames}
 
     return results, more
 

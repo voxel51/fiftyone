@@ -29,7 +29,10 @@
 
 .lookerPlaybackRate,
 .lookerVolume {
-  width: 80px;
+  display: flex;
+  justify-content: space-between;
+  width: 100px;
+  position: relative;
 }
 
 .lookerPlayPause {
@@ -38,19 +41,29 @@
 }
 
 .lookerPlaybackRate {
+  grid-area: 2 / 3 / 2 / 3;
+}
+
+.lookerPlaybackRate input {
   --playback: 0%;
-  grid-area: 2 / 6 / 2 / 6;
+  margin-top: 12px;
+  width: 65px;
 }
 
 .lookerVolume {
+  grid-area: 2 / 6 / 2 / 6;
+}
+
+.lookerVolume > input {
   --volume: 0%;
-  grid-area: 2 / 5 / 2 / 5;
+  width: 65px;
+  margin-top: 12px;
 }
 
 .lookerSeekBar {
   --progress: 0%;
   --buffer-progress: 0%;
-  grid-area: 1 / 1 / 1 / 13;
+  grid-area: 1 / 1 / 1 / 15;
   margin-top: -5px;
   width: 100%;
 }
@@ -68,8 +81,8 @@ input[type="range"].lookerSeekBar::-webkit-slider-runnable-track {
   );
 }
 
-input[type="range"].lookerVolume::-webkit-slider-runnable-track {
-  width: 80px;
+.lookerVolume > input[type="range"]::-webkit-slider-runnable-track {
+  width: 45px;
   background: linear-gradient(
     to right,
     rgb(225, 100, 40) 0%,
@@ -79,8 +92,8 @@ input[type="range"].lookerVolume::-webkit-slider-runnable-track {
   );
 }
 
-input[type="range"].lookerPlaybackRate::-webkit-slider-runnable-track {
-  width: 80px;
+.lookerPlaybackRate > input[type="range"]::-webkit-slider-runnable-track {
+  width: 45px;
   background: linear-gradient(
     to right,
     rgb(225, 100, 40) 0%,

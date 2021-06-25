@@ -7,6 +7,7 @@ import {
   Dimensions,
   FrameState,
   ImageState,
+  VideoState,
 } from "./state";
 import { getContainingBox, mergeUpdates, snapBox } from "./util";
 
@@ -40,63 +41,62 @@ const adjustBox = (
   };
 };
 
-export const zoomToContent = <State extends FrameState | ImageState>(
+export const zoomToContent = <
+  State extends FrameState | ImageState | VideoState
+>(
   state: Readonly<State>,
   currentOverlays: Overlay<State>[]
 ): State => {
-  if (state.options.zoom && state.canZoom) {
-    const points = currentOverlays.map((o) => o.getPoints()).flat();
-    let [iw, ih] = state.config.dimensions;
-    let [w, h] = [iw, ih];
-    const iAR = w / h;
-    const {
-      center: [cw, ch],
-      box: [_, __, bw, bh],
-    } = adjustBox([w, h], getContainingBox(points));
+  const points = currentOverlays.map((o) => o.getPoints()).flat();
+  let [iw, ih] = state.config.dimensions;
+  let [w, h] = [iw, ih];
+  const iAR = w / h;
+  const {
+    center: [cw, ch],
+    box: [_, __, bw, bh],
+  } = adjustBox([w, h], getContainingBox(points));
 
-    const [___, ____, ww, wh] = state.windowBBox;
-    let wAR = ww / wh;
+  const [___, ____, ww, wh] = state.windowBBox;
+  let wAR = ww / wh;
 
-    let scale = 1;
-    let pan: Coordinates = [0, 0];
-    const squeeze = 1 - state.options.zoomPad;
+  let scale = 1;
+  let pan: Coordinates = [0, 0];
+  const squeeze = 1 - state.options.zoomPad;
 
-    if (wAR < iAR) {
-      scale = Math.max(1, 1 / bw);
+  if (wAR < iAR) {
+    scale = Math.max(1, 1 / bw);
+    w = ww * scale;
+    h = w / iAR;
+    if (!state.config.thumbnail && bh * h > wh) {
+      scale = Math.max(1, (wh * scale) / (bh * h));
       w = ww * scale;
       h = w / iAR;
-      if (!state.config.thumbnail && bh * h > wh) {
-        scale = Math.max(1, (wh * scale) / (bh * h));
-        w = ww * scale;
-        h = w / iAR;
-      }
-    } else {
-      scale = Math.max(1, 1 / bh);
+    }
+  } else {
+    scale = Math.max(1, 1 / bh);
+    h = wh * scale;
+    w = h * iAR;
+    if (!state.config.thumbnail && bw * w > ww) {
+      scale = Math.max(1, (ww * scale) / (bw * w));
       h = wh * scale;
       w = h * iAR;
-      if (!state.config.thumbnail && bw * w > ww) {
-        scale = Math.max(1, (ww * scale) / (bw * w));
-        h = wh * scale;
-        w = h * iAR;
-      }
     }
-
-    const marginX = (scale * ww - w) / 2;
-    const marginY = (scale * wh - h) / 2;
-    pan = [-w * cw - marginX + ww / 2, -h * ch - marginY + wh / 2];
-
-    // Scale down and reposition for a centered patch with padding
-    if (w * squeeze > ww && h * squeeze > wh) {
-      scale = squeeze * scale;
-      pan[0] = pan[0] * squeeze + (bw * w * (1 - squeeze)) / 2;
-      pan[1] = pan[1] * squeeze + (bh * h * (1 - squeeze)) / 2;
-    }
-
-    pan = snapBox(scale, pan, [ww, wh], [iw, ih]);
-
-    return mergeUpdates(state, { scale: scale, pan });
   }
-  return state;
+
+  const marginX = (scale * ww - w) / 2;
+  const marginY = (scale * wh - h) / 2;
+  pan = [-w * cw - marginX + ww / 2, -h * ch - marginY + wh / 2];
+
+  // Scale down and reposition for a centered patch with padding
+  if (w * squeeze > ww && h * squeeze > wh) {
+    scale = squeeze * scale;
+    pan[0] = pan[0] * squeeze + (bw * w * (1 - squeeze)) / 2;
+    pan[1] = pan[1] * squeeze + (bh * h * (1 - squeeze)) / 2;
+  }
+
+  pan = snapBox(scale, pan, [ww, wh], [iw, ih]);
+
+  return mergeUpdates(state, { scale: scale, pan });
 };
 
 export const zoomAspectRatio = (

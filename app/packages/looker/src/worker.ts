@@ -70,9 +70,7 @@ interface ProcessSample {
   uuid: string;
   sample: {
     [key: string]: object;
-    frames: {
-      1: object;
-    };
+    frames: any[];
   };
 }
 
@@ -81,8 +79,13 @@ type ProcessSampleMethod = ReaderMethod & ProcessSample;
 const processSample = ({ sample, uuid }: ProcessSample) => {
   let buffers = processMasks(sample);
 
-  if (sample.frames && sample.frames[1]) {
-    buffers = [...buffers, ...processMasks(sample.frames[1])];
+  if (sample.frames.length) {
+    buffers = [
+      ...buffers,
+      ...sample.frames
+        .map<ArrayBuffer[]>((frame) => processMasks(frame))
+        .flat(),
+    ];
   }
 
   postMessage(

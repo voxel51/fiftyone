@@ -80,7 +80,6 @@ export class CanvasElement<State extends BaseState> extends BaseElement<
           }
           newState.pan = this.getPan([event.pageX, event.pageY]);
           newState.panning = true;
-          newState.canZoom = false;
           return newState;
         }, dispatchTooltipEvent(dispatchEvent));
       },
@@ -111,7 +110,7 @@ export class CanvasElement<State extends BaseState> extends BaseElement<
       },
       dblclick: ({ update }) => {
         update(({ config: { thumbnail } }) => {
-          return thumbnail ? {} : { scale: 1, pan: [0, 0], canZoom: true };
+          return thumbnail ? {} : { scale: 1, pan: [0, 0] };
         });
       },
       wheel: ({ event, update, dispatchEvent }) => {
@@ -154,7 +153,6 @@ export class CanvasElement<State extends BaseState> extends BaseElement<
             return {
               pan: [x - xs * newScale, y - ys * newScale],
               scale: newScale,
-              canZoom: false,
               cursorCoordinates: [
                 (<MouseEvent>event).pageX,
                 (<MouseEvent>event).pageY,

@@ -233,7 +233,6 @@ export abstract class Looker<
       pan: <Coordinates>[0, 0],
       rotate: 0,
       panning: false,
-      canZoom: false,
       strokeWidth: STROKE_WIDTH,
       fontSize: FONT_SIZE,
       wheeling: false,
@@ -247,6 +246,8 @@ export abstract class Looker<
       mouseIsOnOverlay: false,
       overlaysPrepared: false,
       disableOverlays: false,
+      zoomToContent: false,
+      setZoom: true,
     };
   }
 
@@ -326,7 +327,6 @@ export class FrameLooker extends Looker<FrameState> {
     return {
       duration: null,
       ...this.getInitialBaseState(),
-      canZoom: options.zoom,
       config: { ...config },
       options,
     };
@@ -346,7 +346,22 @@ export class FrameLooker extends Looker<FrameState> {
 
   postProcess(element: HTMLElement): FrameState {
     this.state.windowBBox = getElementBBox(element);
-    this.state = zoomToContent(this.state, this.pluckedOverlays);
+    if (this.state.setZoom) {
+      if (this.state.options.zoom) {
+        this.state = zoomToContent(this.state, this.pluckedOverlays);
+      } else {
+        this.state.pan = [0, 0];
+        this.state.scale = 1;
+      }
+
+      this.state.setZoom = false;
+    }
+
+    if (this.state.zoomToContent) {
+      this.state = zoomToContent(this.state, this.currentOverlays);
+      this.state.zoomToContent = false;
+    }
+
     return super.postProcess(element);
   }
 }
@@ -378,7 +393,6 @@ export class ImageLooker extends Looker<ImageState> {
 
     return {
       ...this.getInitialBaseState(),
-      canZoom: options.zoom,
       config: { ...config },
       options,
     };
@@ -398,7 +412,23 @@ export class ImageLooker extends Looker<ImageState> {
 
   postProcess(element: HTMLElement): ImageState {
     this.state.windowBBox = getElementBBox(element);
-    this.state = zoomToContent(this.state, this.pluckedOverlays);
+
+    if (this.state.setZoom) {
+      if (this.state.options.zoom) {
+        this.state = zoomToContent(this.state, this.pluckedOverlays);
+      } else {
+        this.state.pan = [0, 0];
+        this.state.scale = 1;
+      }
+
+      this.state.setZoom = false;
+    }
+
+    if (this.state.zoomToContent) {
+      this.state = zoomToContent(this.state, this.currentOverlays);
+      this.state.zoomToContent = false;
+    }
+
     return super.postProcess(element);
   }
 }
@@ -422,20 +452,23 @@ interface AcquireReaderOptions {
 }
 
 const aquireReader = (() => {
-  const frameCache = new LRU<WeakRef<RemoveFrame>, Frame>({
-    max: MAX_FRAME_CACHE_SIZE_BYTES,
-    length: (frame) => {
-      let size = 1;
-      frame.overlays.forEach((overlay) => {
-        size += overlay.getSizeBytes();
-      });
-      return size;
-    },
-    dispose: (removeFrameRef, frame) => {
-      const removeFrame = removeFrameRef.deref();
-      removeFrame && removeFrame(frame.sample.frame_number);
-    },
-  });
+  const createCache = () =>
+    new LRU<WeakRef<RemoveFrame>, Frame>({
+      max: MAX_FRAME_CACHE_SIZE_BYTES,
+      length: (frame) => {
+        let size = 1;
+        frame.overlays.forEach((overlay) => {
+          size += overlay.getSizeBytes();
+        });
+        return size;
+      },
+      dispose: (removeFrameRef, frame) => {
+        const removeFrame = removeFrameRef.deref();
+        removeFrame && removeFrame(frame.sample.frame_number);
+      },
+    });
+
+  let frameCache = createCache();
 
   let streamSize = 0;
   let streamCount = 0;
@@ -452,7 +485,7 @@ const aquireReader = (() => {
     getCurrentFrame,
     sampleId,
     update,
-  }: AcquireReaderOptions): (() => void) => {
+  }: AcquireReaderOptions): [() => void, () => void] => {
     const subscription = uuid();
     streamSize = 0;
     streamCount = 0;
@@ -512,15 +545,18 @@ const aquireReader = (() => {
       uuid: subscription,
     });
 
-    return () => {
-      if (!requestingFrames) {
-        frameReader.postMessage({
-          method: "requestFrameChunk",
-          uuid: subscription,
-        });
-      }
-      requestingFrames = true;
-    };
+    return [
+      () => {
+        if (!requestingFrames) {
+          frameReader.postMessage({
+            method: "requestFrameChunk",
+            uuid: subscription,
+          });
+        }
+        requestingFrames = true;
+      },
+      () => (frameCache = createCache()),
+    ];
   };
 })();
 
@@ -531,6 +567,7 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
   private frames: Map<number, WeakRef<Frame>> = new Map();
   private firstFrame: Frame | null = null;
   private requestFrames: (() => void) | null = null;
+  private invalidateCache: (() => void) | null = null;
 
   constructor(
     sample: VideoSample,
@@ -577,14 +614,10 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
       )
     );
 
-    const firstFrameSample =
-      sample.frames && sample.frames[1] ? sample.frames[1] : {};
+    const firstFrameSample = sample.frames[0] || { frame_number: 1 };
     const firstFrameOverlays = loadOverlays(
       Object.fromEntries(
-        Object.entries(sample?.frames[1] || {}).map(([k, v]) => [
-          "frames." + k,
-          v,
-        ])
+        Object.entries(firstFrameSample).map(([k, v]) => ["frames." + k, v])
       )
     );
 
@@ -621,7 +654,7 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
       lookerWithReader !== this &&
       frameCount !== null
     ) {
-      this.requestFrames = aquireReader({
+      [this.requestFrames, this.invalidateCache] = aquireReader({
         addFrame: (frameNumber, frame) =>
           this.frames.set(frameNumber, new WeakRef(frame)),
         addFrameBuffers: (range) =>
@@ -664,11 +697,7 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
         if (this.hasFrame(this.frameNumber)) {
           resolve({
             ...this.sample,
-            frames: {
-              // @ts-ignore
-              [this.frameNumber]: this.frames.get(this.frameNumber).deref()
-                .sample,
-            },
+            frames: [this.frames.get(this.frameNumber).deref().sample],
           });
           return;
         }
@@ -714,6 +743,17 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
 
   postProcess(element: HTMLElement): VideoState {
     this.state.windowBBox = getElementBBox(element);
+    if (this.state.setZoom) {
+      this.state.pan = [0, 0];
+      this.state.scale = 1;
+
+      this.state.setZoom = false;
+    }
+
+    if (this.state.zoomToContent) {
+      this.state = zoomToContent(this.state, this.currentOverlays);
+      this.state.zoomToContent = false;
+    }
     return super.postProcess(element);
   }
 

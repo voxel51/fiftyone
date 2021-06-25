@@ -30,6 +30,7 @@ interface BaseOptions {
   hasNext: boolean;
   hasPrevious: boolean;
   fullscreen: boolean;
+  zoomPad: number;
 }
 
 export type BoundingBox = [number, number, number, number];
@@ -60,12 +61,10 @@ export interface VideoConfig extends BaseConfig {
 export interface FrameOptions extends BaseOptions {
   useFrameNumber: boolean;
   zoom: boolean;
-  zoomPad: number;
 }
 
 export interface ImageOptions extends BaseOptions {
   zoom: boolean;
-  zoomPad: number;
 }
 
 export interface VideoOptions extends BaseOptions {
@@ -105,7 +104,6 @@ export interface BaseState {
   pan: Coordinates;
   panning: boolean;
   rotate: number;
-  canZoom: boolean;
   strokeWidth: number;
   fontSize: number;
   wheeling: boolean;
@@ -121,6 +119,8 @@ export interface BaseState {
   showHelp: boolean;
   overlaysPrepared: boolean;
   disableOverlays: boolean;
+  zoomToContent: boolean;
+  setZoom: boolean;
 }
 
 export interface FrameState extends BaseState {
@@ -175,19 +175,18 @@ const DEFAULT_BASE_OPTIONS: BaseOptions = {
   hasNext: false,
   hasPrevious: false,
   fullscreen: false,
+  zoomPad: 0.1,
 };
 
 export const DEFAULT_FRAME_OPTIONS: FrameOptions = {
   ...DEFAULT_BASE_OPTIONS,
   useFrameNumber: true,
   zoom: false,
-  zoomPad: 0.1,
 };
 
 export const DEFAULT_IMAGE_OPTIONS: ImageOptions = {
   ...DEFAULT_BASE_OPTIONS,
   zoom: false,
-  zoomPad: 0.1,
 };
 
 export const DEFAULT_VIDEO_OPTIONS: VideoOptions = {
@@ -205,7 +204,7 @@ export interface FrameSample {
 }
 
 export interface VideoSample extends BaseSample {
-  frames: { 1?: FrameSample };
+  frames: [FrameSample];
 }
 
 export interface FrameChunk {

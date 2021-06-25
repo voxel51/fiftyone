@@ -4,8 +4,13 @@
 
 import { VideoState } from "../state";
 import { BaseElement, Events } from "./base";
-import { playPause, VIDEO_SHORTCUTS } from "./common/actions";
-import { lookerTime } from "./common/controls.module.css";
+import {
+  muteUnmute,
+  playPause,
+  resetPlaybackRate,
+  VIDEO_SHORTCUTS,
+} from "./common/actions";
+import { lookerClickable, lookerTime } from "./common/controls.module.css";
 import { mediaLoading, mediaOrCanvas } from "./media.module.css";
 import {
   getFrameNumber,
@@ -22,8 +27,12 @@ import {
   lookerVolume,
   lookerPlaybackRate,
 } from "./video.module.css";
+import volumeOff from "../icons/volumeOff.svg";
+import volumeOn from "../icons/volume.svg";
+import playbackRateIcon from "../icons/playbackRate.svg";
 
 import { lookerLoader } from "./common/looker.module.css";
+import { dispatchTooltipEvent } from "./common/util";
 
 export class LoaderBar extends BaseElement<VideoState> {
   private buffering: boolean = false;
@@ -252,7 +261,7 @@ export class TimeElement extends BaseElement<VideoState> {
   createHTMLElement() {
     const element = document.createElement("div");
     element.classList.add(lookerTime);
-    element.style.gridArea = "2 / 3 / 2 / 3";
+    element.style.gridArea = "2 / 4 / 2 / 4";
     return element;
   }
 
@@ -300,7 +309,7 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
         });
         dispatchEvent("load");
       },
-      play: ({ update }) => {
+      play: ({ update, dispatchEvent }) => {
         const callback = (newFrameNumber: number) => {
           update(
             ({
@@ -343,23 +352,29 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
               playing: true,
               frameNumber,
               disableOverlays: true,
+              rotate: 0,
             };
           },
-          () => {
+          (state, overlays) => {
+            dispatchTooltipEvent(dispatchEvent, state.playing)(state, overlays);
             this.requestCallback(callback);
           }
         );
       },
-      pause: ({ update }) => {
+      pause: ({ update, dispatchEvent }) => {
         this.requestCallback(() => {
-          update({
-            frameNumber: getFrameNumber(
-              this.element.currentTime,
-              this.duration,
-              this.frameRate
-            ),
-            disableOverlays: false,
-          });
+          update(
+            {
+              frameNumber: getFrameNumber(
+                this.element.currentTime,
+                this.duration,
+                this.frameRate
+              ),
+              disableOverlays: false,
+            },
+            (state, overlays) =>
+              dispatchTooltipEvent(dispatchEvent, false)(state, overlays)
+          );
         });
       },
       timeupdate: ({ dispatchEvent, update }) => {
@@ -425,9 +440,6 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
       this.loaded = loaded;
     }
 
-    if (this.frameNumber !== frameNumber) {
-      this.element.currentTime = getTime(frameNumber, frameRate);
-    }
     if (loaded && playing && !seeking && !buffering && this.element.paused) {
       this.element.play();
     }
@@ -443,6 +455,11 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
     if (this.volume !== volume) {
       this.element.volume = volume;
       this.volume = volume;
+    }
+
+    if (this.frameNumber !== frameNumber) {
+      // @ts-ignore
+      this.element.currentTime = getTime(frameNumber, frameRate);
     }
 
     transformWindowElement(state, this.element);
@@ -483,7 +500,28 @@ export function withVideoLookerEvents(): () => Events<VideoState> {
   };
 }
 
-export class VolumBarElement extends BaseElement<VideoState, HTMLInputElement> {
+class VolumeBarContainerElement extends BaseElement<
+  VideoState,
+  HTMLDivElement
+> {
+  getEvents(): Events<VideoState> {
+    return {};
+  }
+
+  createHTMLElement() {
+    const element = document.createElement("div");
+    element.classList.add(lookerVolume);
+    return element;
+  }
+
+  renderSelf() {
+    return this.element;
+  }
+}
+
+class VolumBarElement extends BaseElement<VideoState, HTMLInputElement> {
+  private volume: number;
+
   getEvents(): Events<VideoState> {
     return {
       click: ({ event }) => {
@@ -506,22 +544,87 @@ export class VolumBarElement extends BaseElement<VideoState, HTMLInputElement> {
     element.setAttribute("min", "0");
     element.setAttribute("max", "1");
     element.setAttribute("step", "0.01");
-    element.classList.add(lookerVolume);
     return element;
   }
 
   renderSelf({ options: { volume } }: Readonly<VideoState>) {
-    this.element.style.display = "block";
-    this.element.style.setProperty("--volume", `${volume * 100}%`);
-    this.element.value = volume.toFixed(4);
+    if (this.volume !== volume) {
+      this.element.style.display = "block";
+      this.element.style.setProperty("--volume", `${volume * 100}%`);
+      this.element.value = volume.toFixed(4);
+      this.element.title = `Volume ${(volume * 100).toFixed(0)}%`;
+
+      this.volume = volume;
+    }
     return this.element;
   }
 }
 
-export class PlaybackRateElement extends BaseElement<
+class VolumeIconElement extends BaseElement<VideoState, HTMLImageElement> {
+  private muted: boolean;
+
+  getEvents(): Events<VideoState> {
+    return {
+      click: ({ event, update, dispatchEvent }) => {
+        event.stopPropagation();
+        event.preventDefault();
+        muteUnmute.action(update, dispatchEvent);
+      },
+    };
+  }
+
+  createHTMLElement() {
+    const element = document.createElement("img");
+    element.classList.add(lookerClickable);
+    element.style.padding = "2px";
+    return element;
+  }
+
+  renderSelf({ options: { volume } }) {
+    if ((volume === 0) === this.muted) {
+      return this.element;
+    }
+
+    this.muted = volume === 0;
+    if (this.muted) {
+      this.element.title = "Unmute (m)";
+      this.element.src = volumeOff;
+    } else {
+      this.element.title = "Mute (m)";
+      this.element.src = volumeOn;
+    }
+
+    return this.element;
+  }
+}
+
+export const VOLUME = {
+  node: VolumeBarContainerElement,
+  children: [{ node: VolumeIconElement }, { node: VolumBarElement }],
+};
+
+class PlaybackRateContainerElement extends BaseElement<
   VideoState,
-  HTMLInputElement
+  HTMLDivElement
 > {
+  getEvents(): Events<VideoState> {
+    return {};
+  }
+
+  createHTMLElement() {
+    const element = document.createElement("div");
+    element.classList.add(lookerPlaybackRate);
+    return element;
+  }
+
+  renderSelf() {
+    return this.element;
+  }
+}
+
+class PlaybackRateBarElement extends BaseElement<VideoState, HTMLInputElement> {
+  private playbackRate: number;
+
   getEvents(): Events<VideoState> {
     return {
       click: ({ event }) => {
@@ -543,17 +646,63 @@ export class PlaybackRateElement extends BaseElement<
     element.setAttribute("min", "0.1");
     element.setAttribute("max", "2");
     element.setAttribute("step", "0.1");
-    element.classList.add(lookerPlaybackRate);
     return element;
   }
 
-  renderSelf({ options: { playbackRate } }: Readonly<VideoState>) {
+  renderSelf({
+    options: { playbackRate },
+    config: { frameRate },
+  }: Readonly<VideoState>) {
     this.element.style.display = "block";
-    this.element.style.setProperty(
-      "--playback",
-      `${(playbackRate / 2) * 100}%`
-    );
-    this.element.value = playbackRate.toFixed(4);
+
+    if (this.playbackRate !== playbackRate) {
+      this.element.title = `${playbackRate.toFixed(1)}x ${(
+        frameRate * playbackRate
+      ).toFixed(2)} fps`;
+      this.element.style.setProperty(
+        "--playback",
+        `${(playbackRate / 2) * 100}%`
+      );
+      this.element.value = playbackRate.toFixed(4);
+      this.playbackRate = playbackRate;
+    }
+
     return this.element;
   }
 }
+
+class PlaybackRateIconElement extends BaseElement<
+  VideoState,
+  HTMLImageElement
+> {
+  getEvents(): Events<VideoState> {
+    return {
+      click: ({ event, update, dispatchEvent }) => {
+        event.stopPropagation();
+        event.preventDefault();
+        resetPlaybackRate.action(update, dispatchEvent);
+      },
+    };
+  }
+
+  createHTMLElement() {
+    const element = document.createElement("img");
+    element.classList.add(lookerClickable);
+    element.style.padding = "2px";
+    element.title = "Reset playback rate (p)";
+    element.src = playbackRateIcon;
+    return element;
+  }
+
+  renderSelf() {
+    return this.element;
+  }
+}
+
+export const PLAYBACK_RATE = {
+  node: PlaybackRateContainerElement,
+  children: [
+    { node: PlaybackRateIconElement },
+    { node: PlaybackRateBarElement },
+  ],
+};

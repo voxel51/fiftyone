@@ -7,7 +7,6 @@ import { BaseState, StateUpdate, VideoState } from "../../state";
 import { clampScale } from "../../util";
 import { BaseElement, DispatchEvent, Events } from "../base";
 import { getFrameNumber } from "../util";
-import { dispatchTooltipEvent } from "./util";
 
 import {
   lookerHelpPanel,
@@ -20,6 +19,7 @@ import {
   lookerShortcutTitle,
   lookerShortcutDetail,
 } from "./actions.module.css";
+import { dispatchTooltipEvent } from "./util";
 
 type Action<State extends BaseState> = (
   update: StateUpdate<State>,
@@ -79,8 +79,18 @@ export const rotatePrevious: Control = {
   shortcut: "&#8595;",
   eventKey: "ArrowUp",
   detail: "Rotate the bottom label to the back",
-  action: (update) =>
-    update(({ rotate }) => ({ rotate: Math.max(0, rotate - 1) })),
+  action: (update, dispatchEvent) =>
+    update(
+      ({ disableOverlays, rotate }) => {
+        if (!disableOverlays) {
+          return { rotate: Math.max(0, rotate - 1) };
+        }
+        return {};
+      },
+      (state, overlays) => {
+        dispatchTooltipEvent(dispatchEvent)(state, overlays);
+      }
+    ),
 };
 
 export const rotateNext: Control = {
@@ -88,7 +98,20 @@ export const rotateNext: Control = {
   shortcut: "&#8593;",
   eventKey: "ArrowDown",
   detail: "Rotate the current label to the back",
-  action: (update) => update(({ rotate }) => ({ rotate: rotate + 1 })),
+  action: (update, dispatchEvent) =>
+    update(
+      ({ disableOverlays, rotate }) => {
+        if (!disableOverlays) {
+          return {
+            rotate: rotate + 1,
+          };
+        }
+        return {};
+      },
+      (state, overlays) => {
+        dispatchTooltipEvent(dispatchEvent)(state, overlays);
+      }
+    ),
 };
 
 export const help: Control = {
@@ -158,6 +181,24 @@ export const zoomOut: Control = {
   },
 };
 
+export const zoomToContent: Control = {
+  title: "Zoom to content",
+  shortcut: "z",
+  detail: "Zoom in on visible labels",
+  action: (update) => {
+    update(({ disableOverlays }) => ({ zoomToContent: !disableOverlays }));
+  },
+};
+
+export const resetZoom: Control = {
+  title: "Reset zoom",
+  shortcut: "r",
+  detail: "Reset zoom to default",
+  action: (update) => {
+    update({ setZoom: true });
+  },
+};
+
 export const settings: Control = {
   title: "Settings",
   shortcut: "s",
@@ -205,6 +246,8 @@ export const COMMON = {
   help,
   zoomIn,
   zoomOut,
+  zoomToContent,
+  resetZoom,
   settings,
   fullscreen,
 };
@@ -229,8 +272,8 @@ export const nextFrame: Control<VideoState> = {
         if (playing || thumbnail) {
           return {};
         }
-        duration = duration as number;
         const total = getFrameNumber(duration, duration, frameRate);
+        let old = frameNumber;
 
         if (frameNumber === total) {
           frameNumber = 1;
@@ -252,7 +295,6 @@ export const previousFrame: Control<VideoState> = {
       if (playing || thumbnail) {
         return {};
       }
-
       return { frameNumber: Math.max(1, frameNumber - 1) };
     });
   },
@@ -263,22 +305,49 @@ export const playPause: Control<VideoState> = {
   shortcut: "Space",
   eventKey: " ",
   detail: "Play or pause the video",
-  action: (update, dispatchEvent) => {
-    update(
-      ({ playing, config: { thumbnail } }) => {
-        return thumbnail
-          ? {}
-          : {
-              playing: !playing,
-            };
-      },
-      (state, overlays) =>
-        dispatchTooltipEvent(dispatchEvent, state.playing)(state, overlays)
-    );
+  action: (update) => {
+    update(({ playing, config: { thumbnail } }) => {
+      return thumbnail
+        ? {}
+        : {
+            playing: !playing,
+          };
+    });
+  },
+};
+
+export const muteUnmute: Control<VideoState> = {
+  title: "Mute / unmute",
+  shortcut: "m",
+  detail: "Mute or unmute the video",
+  action: (update) => {
+    update(({ options: { volume }, config: { thumbnail } }) => {
+      return thumbnail
+        ? {}
+        : {
+            options: { volume: volume === 0 ? 0.5 : 0 },
+          };
+    });
+  },
+};
+
+export const resetPlaybackRate: Control<VideoState> = {
+  title: "Reset playback rate",
+  shortcut: "p",
+  detail: "Reset the video's playback rate",
+  action: (update) => {
+    update(({ config: { thumbnail } }) => {
+      return thumbnail
+        ? {}
+        : {
+            options: { playbackRate: 1 },
+          };
+    });
   },
 };
 
 export const VIDEO = {
+  muteUnmute,
   playPause,
   nextFrame,
   previousFrame,
