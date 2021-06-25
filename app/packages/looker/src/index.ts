@@ -543,6 +543,7 @@ const aquireReader = (() => {
       frameCount,
       frameNumber,
       uuid: subscription,
+      origin: window.location.origin,
     });
 
     return [
