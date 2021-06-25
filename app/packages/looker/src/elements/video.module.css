@@ -27,6 +27,11 @@
   stroke-linecap: round;
 }
 
+.lookerPlaybackRate,
+.lookerVolume {
+  width: 80px;
+}
+
 .lookerPlayPause {
   width: 15%;
   height: 80%;
@@ -47,9 +52,11 @@
   --buffer-progress: 0%;
   grid-area: 1 / 1 / 1 / 13;
   margin-top: -5px;
+  width: 100%;
 }
 
 input[type="range"].lookerSeekBar::-webkit-slider-runnable-track {
+  width: 100%;
   background: linear-gradient(
     to right,
     rgb(225, 100, 40) 0%,
@@ -62,6 +69,7 @@ input[type="range"].lookerSeekBar::-webkit-slider-runnable-track {
 }
 
 input[type="range"].lookerVolume::-webkit-slider-runnable-track {
+  width: 80px;
   background: linear-gradient(
     to right,
     rgb(225, 100, 40) 0%,
@@ -72,6 +80,7 @@ input[type="range"].lookerVolume::-webkit-slider-runnable-track {
 }
 
 input[type="range"].lookerPlaybackRate::-webkit-slider-runnable-track {
+  width: 80px;
   background: linear-gradient(
     to right,
     rgb(225, 100, 40) 0%,

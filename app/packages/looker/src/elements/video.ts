@@ -342,6 +342,7 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
             return {
               playing: true,
               frameNumber,
+              disableOverlays: true,
             };
           },
           () => {
@@ -357,6 +358,7 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
               this.duration,
               this.frameRate
             ),
+            disableOverlays: false,
           });
         });
       },
@@ -538,8 +540,9 @@ export class PlaybackRateElement extends BaseElement<
   createHTMLElement() {
     const element = document.createElement("input");
     element.setAttribute("type", "range");
-    element.setAttribute("min", "0.2");
-    element.setAttribute("max", "5");
+    element.setAttribute("min", "0.1");
+    element.setAttribute("max", "2");
+    element.setAttribute("step", "0.1");
     element.classList.add(lookerPlaybackRate);
     return element;
   }
@@ -548,7 +551,7 @@ export class PlaybackRateElement extends BaseElement<
     this.element.style.display = "block";
     this.element.style.setProperty(
       "--playback",
-      `${(playbackRate / 5) * 100}%`
+      `${(playbackRate / 2) * 100}%`
     );
     this.element.value = playbackRate.toFixed(4);
     return this.element;

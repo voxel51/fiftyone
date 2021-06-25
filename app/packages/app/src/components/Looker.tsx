@@ -1,13 +1,18 @@
 import React, { useState, useRef, MutableRefObject, useEffect } from "react";
 import ReactDOM from "react-dom";
 import styled from "styled-components";
-import { selectorFamily, useRecoilValue, useRecoilCallback } from "recoil";
+import {
+  selectorFamily,
+  useRecoilValue,
+  useRecoilCallback,
+  useRecoilState,
+} from "recoil";
 import { animated, useSpring } from "react-spring";
 
 import * as labelAtoms from "./Filters/utils";
 import { ContentDiv, ContentHeader } from "./utils";
 import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
-import { useEventHandler } from "../utils/hooks";
+import { useEventHandler, useTheme } from "../utils/hooks";
 
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
@@ -325,6 +330,7 @@ export const defaultLookerOptions = selectorFamily({
     const video = get(selectors.isVideoDataset) ? { loop: !modal } : {};
     const zoom = get(selectors.isPatchesView) ? { zoom: true } : {};
     const colorByLabel = get(atoms.colorByLabel(modal));
+
     return {
       colorByLabel,
       showLabel,
@@ -353,6 +359,7 @@ export const lookerOptions = selectorFamily<
         ...options,
         ...get(atoms.savedLookerOptions),
         selectedLabels: [...get(selectors.selectedLabelIds)],
+        fullscreen: get(atoms.fullscreen),
       };
     }
     return options;
@@ -366,6 +373,14 @@ export const useLookerOptionsUpdate = () => {
         atoms.savedLookerOptions
       );
       set(atoms.savedLookerOptions, { ...currentOptions, ...event.detail });
+    }
+  );
+};
+
+export const useFullscreen = () => {
+  return useRecoilCallback(
+    ({ snapshot, set }) => async (event: CustomEvent) => {
+      set(atoms.fullscreen, event.detail);
     }
   );
 };
@@ -396,6 +411,7 @@ const Looker = ({
   const options = useRecoilValue(lookerOptions(modal));
   const metadata = useRecoilValue(atoms.sampleMetadata(sampleId));
   const ref = useRef<any>();
+  const theme = useTheme();
   const bindMove = useMove((s) => ref.current && ref.current(s));
   const lookerConstructor = useRecoilValue(lookerType(sampleId));
   const initialRef = useRef<boolean>(true);
@@ -431,10 +447,10 @@ const Looker = ({
   lookerRef && (lookerRef.current = looker);
 
   modal && useEventHandler(looker, "options", useLookerOptionsUpdate());
+  modal && useEventHandler(looker, "fullscreen", useFullscreen());
   onNext && useEventHandler(looker, "next", onNext);
   onPrevious && useEventHandler(looker, "previous", onPrevious);
   onSelectLabel && useEventHandler(looker, "select", onSelectLabel);
-
   useEffect(() => {
     initialRef.current = false;
   }, []);
@@ -445,7 +461,12 @@ const Looker = ({
         ref={(node) => {
           node ? looker.attach(node) : looker.detach();
         }}
-        style={{ width: "100%", height: "100%", ...style }}
+        style={{
+          width: "100%",
+          height: "100%",
+          background: theme.backgroundDark,
+          ...style,
+        }}
         onClick={onClick}
         {...bindMove()}
       />

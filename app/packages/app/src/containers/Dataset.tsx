@@ -14,6 +14,7 @@ import {
   useScreenshot,
   useSampleUpdate,
   useGA,
+  useTheme,
 } from "../utils/hooks";
 import Loading from "../components/Loading";
 import { useClearModal } from "../recoil/utils";
@@ -37,6 +38,11 @@ const Body = styled.div`
 
 function Dataset() {
   const [modal, setModal] = useRecoilState(atoms.modal);
+  const theme = useTheme();
+
+  const fullscreen = useRecoilValue(atoms.fullscreen)
+    ? { background: theme.backgroundDark }
+    : {};
   const hasDataset = useRecoilValue(selectors.hasDataset);
   const currentSamples = useRecoilValue(selectors.currentSamples);
   const clearModal = useClearModal();
@@ -69,7 +75,7 @@ function Dataset() {
   return (
     <>
       {modal.visible ? (
-        <ModalWrapper key={0}>
+        <ModalWrapper key={0} style={fullscreen}>
           <SampleModal
             onClose={clearModal}
             ref={ref}

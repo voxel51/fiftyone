@@ -51,11 +51,11 @@ export class LookerElement<State extends BaseState> extends BaseElement<
   }
 
   renderSelf({
-    fullscreen,
     loaded,
     overlaysPrepared,
     hovering,
     config: { thumbnail },
+    options: { fullscreen },
   }: Readonly<State>) {
     if (
       loaded &&

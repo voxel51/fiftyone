@@ -1,11 +1,19 @@
 import { atom, atomFamily, SerializableParam } from "recoil";
 
-export const modal = atom<{ visible: boolean; sampleId: string }>({
+export const modal = atom<{
+  visible: boolean;
+  sampleId: string;
+}>({
   key: "modal",
   default: {
     visible: false,
     sampleId: null,
   },
+});
+
+export const fullscreen = atom<boolean>({
+  key: "fullscreen",
+  default: false,
 });
 
 export const connected = atom({

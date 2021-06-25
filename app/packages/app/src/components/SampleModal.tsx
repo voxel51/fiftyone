@@ -49,7 +49,7 @@ const Container = styled.div`
   width: 90vw;
   height: 80vh;
   max-height: 80vh;
-  background-color: ${({ theme }) => theme.background};
+  background-color: ${({ theme }) => theme.backgroundDark};
 
   h2 {
     margin: 0.5rem -1rem;
@@ -78,19 +78,6 @@ const Container = styled.div`
     top: 1em;
     right: 1em;
     background-color: ${({ theme }) => theme.backgroundTransparent};
-  }
-
-  .looker-element {
-    position: relative;
-    width: 100%;
-    height: 100%;
-    max-height: 100%;
-    max-width: 100%;
-    overflow: hidden;
-
-    .looker-options-panel {
-      z-index: 1500;
-    }
   }
 
   .nav-button {
@@ -126,6 +113,7 @@ const Container = styled.div`
     max-height: 100%;
     overflow-y: scroll;
     height: 100%;
+    background: ${({ theme }) => theme.background};
     border-left: 2px solid ${({ theme }) => theme.border};
     scrollbar-width: none;
     @-moz-document url-prefix() {
@@ -174,6 +162,16 @@ const Container = styled.div`
 
   .select-objects-wrapper {
     margin-top: -1em;
+  }
+
+  .looker-element {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    max-height: 100%;
+    max-width: 100%;
+    overflow: hidden;
+    background: ${({ theme }) => theme.backgroundDark};
   }
 `;
 
@@ -235,6 +233,7 @@ const SampleModal = ({ onClose, sampleId }: Props, ref) => {
   const { filepath, _media_type, metadata, _id } = useRecoilValue(
     atoms.sample(sampleId)
   );
+  const fullscreen = useRecoilValue(atoms.fullscreen);
   const sampleSrc = useRecoilValue(modalSrc);
   const [index, setIndex] = useRecoilState(modalIndex);
   const numSamples = useRecoilValue(selectors.currentSamplesSize);
@@ -277,7 +276,7 @@ const SampleModal = ({ onClose, sampleId }: Props, ref) => {
 
   return (
     <Container style={{ zIndex: 10001 }} ref={ref}>
-      <div className="looker-element">
+      <div className={`looker-element`}>
         <Suspense fallback={<Loading />}>
           <Looker
             key={`modal-${sampleSrc}`} // force re-render when this changes
@@ -297,44 +296,46 @@ const SampleModal = ({ onClose, sampleId }: Props, ref) => {
           )}
         </Suspense>
       </div>
-      <div className="sidebar">
-        <ModalFooter
-          style={{
-            width: "100%",
-            borderTop: "none",
-            borderBottom: `2px solid ${theme.border}`,
-            position: "relative",
-          }}
-        >
-          <Actions modal={true} lookerRef={lookerRef} />
-        </ModalFooter>
-        <div className="sidebar-content">
-          <h2>
-            Metadata
-            <span className="push-right" />
-          </h2>
-          <Row name="id" value={_id} />
-          <Row name="filepath" value={filepath} />
-          <Row name="media type" value={_media_type} />
-          {formatMetadata(metadata).map(({ name, value }) => (
-            <Row key={"metadata-" + name} name={name} value={value} />
-          ))}
-          <h2>
-            Fields
-            <span className="push-right" />
-          </h2>
-          <Suspense fallback={<Loading />}>
-            <FieldsSidebar
-              modal={true}
-              style={{
-                overflowY: "auto",
-                overflowX: "hidden",
-                height: "auto",
-              }}
-            />
-          </Suspense>
+      {!fullscreen && (
+        <div className={`sidebar`}>
+          <ModalFooter
+            style={{
+              width: "100%",
+              borderTop: "none",
+              borderBottom: `2px solid ${theme.border}`,
+              position: "relative",
+            }}
+          >
+            <Actions modal={true} lookerRef={lookerRef} />
+          </ModalFooter>
+          <div className="sidebar-content">
+            <h2>
+              Metadata
+              <span className="push-right" />
+            </h2>
+            <Row name="id" value={_id} />
+            <Row name="filepath" value={filepath} />
+            <Row name="media type" value={_media_type} />
+            {formatMetadata(metadata).map(({ name, value }) => (
+              <Row key={"metadata-" + name} name={name} value={value} />
+            ))}
+            <h2>
+              Fields
+              <span className="push-right" />
+            </h2>
+            <Suspense fallback={<Loading />}>
+              <FieldsSidebar
+                modal={true}
+                style={{
+                  overflowY: "auto",
+                  overflowX: "hidden",
+                  height: "auto",
+                }}
+              />
+            </Suspense>
+          </div>
         </div>
-      </div>
+      )}
     </Container>
   );
 };

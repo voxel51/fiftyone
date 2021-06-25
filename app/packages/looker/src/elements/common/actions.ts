@@ -184,9 +184,15 @@ export const fullscreen: Control = {
   title: "Fullscreen",
   shortcut: "f",
   detail: "Toggle fullscreen mode",
-  action: (update) => {
-    update(({ fullscreen, config: { thumbnail } }) =>
-      thumbnail ? {} : { fullscreen: !fullscreen }
+  action: (update, dispatchEvent) => {
+    update(
+      ({ config: { thumbnail }, options: { fullscreen } }) =>
+        thumbnail ? {} : { options: { fullscreen: !fullscreen } },
+      ({ config: { thumbnail }, options: { fullscreen } }) => {
+        if (!thumbnail) {
+          dispatchEvent("fullscreen", fullscreen);
+        }
+      }
     );
   },
 };
@@ -264,7 +270,6 @@ export const playPause: Control<VideoState> = {
           ? {}
           : {
               playing: !playing,
-              disableOverlays: !playing,
             };
       },
       (state, overlays) =>

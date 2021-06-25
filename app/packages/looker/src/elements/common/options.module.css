@@ -16,7 +16,7 @@
   align-items: center;
   font-weight: bold;
   color: rgb(238, 238, 238);
-  display: grid;
+  display: none;
   background-color: hsl(210, 11%, 11%);
   border: 1px solid #191c1f;
   box-shadow: 0 8px 15px 0 rgba(0, 0, 0, 0.43);

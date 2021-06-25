@@ -215,7 +215,7 @@ export class FullscreenButtonElement<
     return element;
   }
 
-  renderSelf({ fullscreen }: Readonly<State>) {
+  renderSelf({ options: { fullscreen } }: Readonly<State>) {
     if (this.fullscreen !== fullscreen) {
       this.fullscreen = fullscreen;
       this.element.src = fullscreen ? ICONS.fullscreenExit : ICONS.fullscreen;

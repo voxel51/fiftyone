@@ -29,6 +29,7 @@ interface BaseOptions {
   smoothMasks: boolean;
   hasNext: boolean;
   hasPrevious: boolean;
+  fullscreen: boolean;
 }
 
 export type BoundingBox = [number, number, number, number];
@@ -114,7 +115,6 @@ export interface BaseState {
   transformedMediaBBox: BoundingBox;
   canvasBBox: BoundingBox;
   textPad: number;
-  fullscreen: boolean;
   pointRadius: number;
   relativeCoordinates: Coordinates;
   mouseIsOnOverlay: boolean;
@@ -174,6 +174,7 @@ const DEFAULT_BASE_OPTIONS: BaseOptions = {
   smoothMasks: true,
   hasNext: false,
   hasPrevious: false,
+  fullscreen: false,
 };
 
 export const DEFAULT_FRAME_OPTIONS: FrameOptions = {

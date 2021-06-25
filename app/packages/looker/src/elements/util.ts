@@ -84,16 +84,9 @@ export const getFrameNumber = (
 
   // account for exact end of video
   if (time === duration) {
-    time -= frameDuration / 2;
+    time -= frameDuration;
   }
   return Math.round(time * frameRate + FRAME_ZERO_OFFSET);
-};
-
-const round = (value: number, decimals: number): number => {
-  console.log(
-    Number(Math.round(value + Number(`e${decimals}`)) + `e-${decimals}`)
-  );
-  return Number(Math.round(value + Number(`e${decimals}`)) + `e-${decimals}`);
 };
 
 export const getClampedTime = (
@@ -109,7 +102,7 @@ export const getTime = (frameNumber: number, frameRate: number): number => {
 
   // offset by 1/100 of a frame to avoid browser issues where being *exactly*
   // on a frame boundary sometimes renders the previous frame
-  return (frameNumber + 0.01) * (1 / frameRate);
+  return (frameNumber + 0.05) * (1 / frameRate);
 };
 
 export const getFrameString = (

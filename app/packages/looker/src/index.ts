@@ -243,7 +243,6 @@ export abstract class Looker<
       mediaBBox: null,
       canvasBBox: null,
       textPad: PAD,
-      fullscreen: false,
       pointRadius: POINT_RADIUS,
       mouseIsOnOverlay: false,
       overlaysPrepared: false,

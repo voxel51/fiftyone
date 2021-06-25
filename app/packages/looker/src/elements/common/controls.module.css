@@ -47,7 +47,6 @@
 }
 
 .lookerControls input[type="range"] {
-  width: 100%;
   height: 4px;
   cursor: pointer;
   animate: 0.2s;
@@ -59,7 +58,6 @@
   border: none;
 }
 .lookerControls input[type="range"]::-webkit-slider-runnable-track {
-  width: 100%;
   height: 4px;
   cursor: pointer;
   animate: 0.2s;
@@ -74,7 +72,6 @@
   height: 6px;
 }
 .lookerControls input[type="range"]::-moz-range-runnable-track {
-  width: 100%;
   height: 4px;
   cursor: pointer;
   animate: 0.2s;

@@ -13,7 +13,8 @@ export const showModalJSON = atom({
 export const useSetModal = () => {
   return useRecoilCallback(
     ({ set, snapshot }) => async (sampleId: string) => {
-      set(atoms.modal, { visible: true, sampleId: sampleId });
+      const { fullscreen } = await snapshot.getPromise(atoms.modal);
+      set(atoms.modal, { visible: true, sampleId: sampleId, fullscreen });
       const filters = await snapshot.getPromise(labelFilters(false));
       set(labelFilters(true), filters);
     },
