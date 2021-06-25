@@ -163,7 +163,7 @@ const useOnSelect = (selectedAtom: RecoilState<string[]>, callbacks) => {
 };
 
 interface ResultsWrapperProps {
-  results: string[];
+  results: [string, number][];
   color: string;
   shown: boolean;
   onSelect: (value: string) => void;
@@ -261,11 +261,13 @@ const StringFilter = React.memo(
       const [search, setSearch] = useState("");
       const [active, setActive] = useState(undefined);
       const [subCount, setSubCount] = useState(null);
-      const [searchResults, setSearchResults] = useState<string[]>(null);
+      const [searchResults, setSearchResults] = useState<[string, number][]>(
+        null
+      );
       const currentPromise = useRef<
         Promise<{
           count: number;
-          results: string[];
+          results: [string, number][];
         }>
       >();
 
@@ -286,7 +288,7 @@ const StringFilter = React.memo(
         if (focused) {
           const promise = new Promise<{
             count: number;
-            results: string[];
+            results: [string, number][];
           }>((resolve) => {
             const listener = wrap(({ count, results }) => {
               socket.removeEventListener("message", listener);
@@ -294,7 +296,7 @@ const StringFilter = React.memo(
             });
             socket.addEventListener("message", listener);
             socket.send(
-              packageMessage("distinct", {
+              packageMessage("count_values", {
                 path,
                 search,
                 selected,

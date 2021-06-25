@@ -89,9 +89,9 @@ export const totalAtom = selectorFamily<
   key: "stringFieldTotal",
   get: (path) => ({ get }) => {
     const hasNone = get(hasNoneField(path));
-    const data = (get(selectors.datasetStats) ?? []).reduce(
+    const data = (get(selectors.extendedDatasetStats) ?? []).reduce(
       (acc, cur) => {
-        if (cur.name === path && cur._CLS === AGGS.DISTINCT) {
+        if (cur.name === path && cur._CLS === AGGS.COUNT_VALUES) {
           return {
             count: cur.result[0],
             results: cur.result[1],
@@ -99,13 +99,16 @@ export const totalAtom = selectorFamily<
         }
         return acc;
       },
-      { count: 0, results: [] }
+      { count: 0, results: {} }
     );
 
-    if (hasNone) {
+    if (hasNone && false) {
       data.count = data.count + 1;
       data.results = [...data.results, null].sort();
     }
+
+    data.results = Object.entries(data.results).sort((a, b) => a[1] - b[1]);
+
     return data;
   },
 });

@@ -24,9 +24,10 @@ export const ResultsContainer = styled.div`
 const ResultDiv = styled(ItemAction)`
   white-space: nowrap;
   overflow: hidden;
-  display: block;
+  display: flex;
   text-overflow: ellipsis;
   margin: 0;
+  justify-content: space-between;
 `;
 
 const ScrollResultsContainer = styled.div`
@@ -55,28 +56,35 @@ interface ResultProps {
 }
 
 const Result = React.memo(
-  ({ active, highlight, result, onClick, maxLen }: ResultProps) => {
+  ({
+    active,
+    highlight,
+    result: [value, count],
+    onClick,
+    maxLen,
+  }: ResultProps) => {
     const props = useHighlightHover(
       false,
       active ? active : null,
-      result === null ? highlight : null
+      value === null ? highlight : null
     );
 
-    const text = result === null ? "None" : result;
+    const text = value === null ? "None" : value;
 
     return (
       <ResultDiv
-        title={result === null ? "None" : result}
+        title={value === null ? "None" : value}
         {...props}
         onClick={onClick}
       >
-        {maxLen ? summarizeLongStr(text, maxLen, "middle") : text}
+        <span>{maxLen ? summarizeLongStr(text, maxLen, "middle") : text}</span>
+        <span>{count}</span>
       </ResultDiv>
     );
   }
 );
 
-type ResultValue = string | null;
+type ResultValue = [string | null, number];
 
 interface ResultsProps {
   results: ResultValue[];
@@ -92,7 +100,7 @@ const Results = React.memo(
       <ScrollResultsContainer>
         {results.map((result) => (
           <Result
-            key={result}
+            key={result[0]}
             result={result}
             highlight={highlight}
             onClick={() => onSelect(result)}
