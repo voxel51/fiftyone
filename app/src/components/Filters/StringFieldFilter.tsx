@@ -89,7 +89,7 @@ export const totalAtom = selectorFamily<
   key: "stringFieldTotal",
   get: (path) => ({ get }) => {
     const hasNone = get(hasNoneField(path));
-    const data = (get(selectors.datasetStats) ?? []).reduce(
+    const data = (get(selectors.extendedDatasetStats) ?? []).reduce(
       (acc, cur) => {
         if (cur.name === path && cur._CLS === AGGS.DISTINCT) {
           return {
