@@ -79,7 +79,7 @@ type ProcessSampleMethod = ReaderMethod & ProcessSample;
 const processSample = ({ sample, uuid }: ProcessSample) => {
   let buffers = processMasks(sample);
 
-  if (sample.frames.length) {
+  if (sample.frames && sample.frames.length) {
     buffers = [
       ...buffers,
       ...sample.frames

@@ -346,7 +346,7 @@ export class FrameLooker extends Looker<FrameState> {
 
   postProcess(element: HTMLElement): FrameState {
     this.state.windowBBox = getElementBBox(element);
-    if (this.state.setZoom) {
+    if (this.state.setZoom && this.pluckedOverlays.length) {
       if (this.state.options.zoom) {
         this.state = zoomToContent(this.state, this.pluckedOverlays);
       } else {
@@ -413,7 +413,7 @@ export class ImageLooker extends Looker<ImageState> {
   postProcess(element: HTMLElement): ImageState {
     this.state.windowBBox = getElementBBox(element);
 
-    if (this.state.setZoom) {
+    if (this.state.setZoom && this.pluckedOverlays.length) {
       if (this.state.options.zoom) {
         this.state = zoomToContent(this.state, this.pluckedOverlays);
       } else {
