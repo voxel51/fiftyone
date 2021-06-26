@@ -16,17 +16,6 @@ from decorators import drop_datasets
 
 class DatasetTests(unittest.TestCase):
     @drop_datasets
-    def test_order(self):
-        d = fo.Dataset()
-        s = fo.Sample(filepath="image.jpeg")
-        s["number"] = 0
-        s["numbers"] = [0, 1]
-        d.add_sample(s)
-        results = d.aggregate([fo.Count("number"), fo.Count("numbers")])
-        self.assertEqual(results[0], 1)
-        self.assertEqual(results[1], 2)
-
-    @drop_datasets
     def test_bounds(self):
         d = fo.Dataset()
         d.add_sample_field("numbers", fo.ListField, subfield=fo.IntField())
@@ -512,6 +501,81 @@ class DatasetTests(unittest.TestCase):
             self.assertEqual(len(_frame_label_oids), 4)
             for oid in _frame_label_oids:
                 self.assertIsInstance(oid, ObjectId)
+
+    @drop_datasets
+    def test_order(self):
+        d = fo.Dataset()
+        s = fo.Sample(filepath="image.jpeg")
+        s["number"] = 0
+        s["numbers"] = [0, 1]
+        d.add_sample(s)
+        results = d.aggregate([fo.Count("number"), fo.Count("numbers")])
+        self.assertEqual(results[0], 1)
+        self.assertEqual(results[1], 2)
+
+    @drop_datasets
+    def test_batching(self):
+        dataset = fo.Dataset()
+        for i in range(5):
+            sample = fo.Sample(
+                filepath="video%d.mp4" % i,
+                cls=fo.Classification(label=i * str(i)),
+                det=fo.Detections(
+                    detections=[
+                        fo.Detection(label=ii * str(ii)) for ii in range(i)
+                    ]
+                ),
+            )
+            for j in range(1, 5):
+                sample.frames[j] = fo.Frame(
+                    cls=fo.Classification(label=(i + j) * str(i + j)),
+                    det=fo.Detections(
+                        detections=[
+                            fo.Detection(label=ij * str(ij))
+                            for ij in range(i + j)
+                        ]
+                    ),
+                )
+
+            dataset.add_sample(sample)
+
+        stages = [
+            fo.Count(),
+            fo.Count("frames"),
+            fo.Distinct("cls.label"),
+            fo.Distinct("frames.cls.label"),
+            fo.Values("id"),
+            fo.Values("cls.label"),
+            fo.Values("cls.label", expr=F().strlen()),
+            fo.Values(F("cls.label").strlen()),
+            fo.Values("det.detections.label"),
+            fo.Values("det.detections[].label"),
+            fo.Values("det.detections.label", unwind=True),
+            fo.Values("frames.id"),
+            fo.Values("frames.cls.label"),
+            fo.Values("frames.cls.label", expr=F().strlen()),
+            fo.Values(F("frames.cls.label").strlen()),
+            fo.Values("frames.det.detections.label"),
+            fo.Values("frames[].det.detections[].label"),
+            fo.Values("frames.det.detections.label", unwind=True),
+        ]
+
+        results = dataset.aggregate(stages)
+        self.assertEqual(len(stages), len(results))
+
+        fields = [
+            "id",
+            "cls.label",
+            "det.detections.label",
+            "det.detections[].label",
+            "frames.id",
+            "frames.cls.label",
+            "frames.det.detections.label",
+            "frames[].det.detections[].label",
+        ]
+
+        results = dataset.values(fields)
+        self.assertEqual(len(fields), len(results))
 
 
 if __name__ == "__main__":
