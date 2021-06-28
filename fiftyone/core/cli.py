@@ -441,7 +441,7 @@ class DatasetsCreateCommand(Command):
         # Create a dataset from a random subset of the data on disk
         fiftyone datasets create \\
             --name <name> --dataset-dir <dataset-dir> --type <type> \\
-            --shuffle --max-samples <max-samples>
+            --kwargs max_samples=50 shuffle=True
 
         # Create a dataset from the given samples JSON file
         fiftyone datasets create --json-path <json-path>
@@ -471,26 +471,14 @@ class DatasetsCreateCommand(Command):
             help="the fiftyone.types.Dataset type of the dataset",
         )
         parser.add_argument(
-            "--shuffle",
-            action="store_true",
+            "-k",
+            "--kwargs",
+            nargs="+",
+            metavar="KEY=VAL",
+            action=_ParseKwargsAction,
             help=(
-                "whether to randomly shuffle the order in which the samples "
-                "are imported"
-            ),
-        )
-        parser.add_argument(
-            "--seed",
-            metavar="SEED",
-            type=int,
-            help="a random seed to use when shuffling",
-        )
-        parser.add_argument(
-            "--max-samples",
-            metavar="MAX_SAMPLES",
-            type=int,
-            help=(
-                "a maximum number of samples to import. By default, all "
-                "samples are imported"
+                "additional type-specific keyword arguments for "
+                "`fiftyone.core.dataset.Dataset.from_dir()`"
             ),
         )
 
@@ -500,9 +488,9 @@ class DatasetsCreateCommand(Command):
         dataset_dir = args.dataset_dir
         json_path = args.json_path
         dataset_type = etau.get_class(args.type) if args.type else None
+        kwargs = args.kwargs or {}
 
         if dataset_dir:
-            kwargs = _parse_dataset_import_kwargs(args)
             dataset = fod.Dataset.from_dir(
                 dataset_dir, dataset_type, name=name, **kwargs
             )
@@ -622,6 +610,11 @@ class DatasetsExportCommand(Command):
 
         # Export the dataset to disk in JSON format
         fiftyone datasets export <name> --json-path <json-path>
+
+        # Perform a customized export of a dataset
+        fiftyone datasets export <name> \\
+            --type <type> \\
+            --kwargs labels_path="/path/for/labels.json"
     """
 
     @staticmethod
@@ -653,29 +646,44 @@ class DatasetsExportCommand(Command):
             metavar="TYPE",
             help="the fiftyone.types.Dataset type in which to export",
         )
+        parser.add_argument(
+            "-k",
+            "--kwargs",
+            nargs="+",
+            metavar="KEY=VAL",
+            action=_ParseKwargsAction,
+            help=(
+                "additional type-specific keyword arguments for "
+                "`fiftyone.core.collections.SampleCollection.export()`"
+            ),
+        )
 
     @staticmethod
     def execute(parser, args):
         name = args.name
         export_dir = args.export_dir
         json_path = args.json_path
-        label_field = args.label_field
         dataset_type = etau.get_class(args.type) if args.type else None
+        label_field = args.label_field
+        kwargs = args.kwargs or {}
 
         dataset = fod.load_dataset(name)
 
-        if export_dir:
-            dataset.export(
-                export_dir, label_field=label_field, dataset_type=dataset_type
-            )
-            print("Dataset '%s' exported to '%s'" % (name, export_dir))
-        elif json_path:
+        if json_path:
             dataset.write_json(json_path)
             print("Dataset '%s' exported to '%s'" % (name, json_path))
         else:
-            raise ValueError(
-                "Either `export_dir` or `json_path` must be provided"
+            dataset.export(
+                export_dir=export_dir,
+                dataset_type=dataset_type,
+                label_field=label_field,
+                **kwargs,
             )
+
+            if export_dir:
+                print("Dataset '%s' exported to '%s'" % (name, export_dir))
+            else:
+                print("Dataset '%s' export complete" % name)
 
 
 class DatasetsDrawCommand(Command):
@@ -983,14 +991,14 @@ class AppViewCommand(Command):
         # View a dataset stored in JSON format on disk in the App
         fiftyone app view --json-path <json-path>
 
-        # View a random subset of the data stored on disk in the App
-        fiftyone app view ... --shuffle --max-samples <max-samples>
-
         # View the dataset in a remote App session
         fiftyone app view ... --remote
 
         # View the dataset using the desktop App
         fiftyone app view ... --desktop
+
+        # View a random subset of the data stored on disk in the App
+        fiftyone app view ... --kwargs max_samples=50 shuffle=True
     """
 
     @staticmethod
@@ -1050,29 +1058,6 @@ class AppViewCommand(Command):
             help="the path to a samples JSON file to view",
         )
         parser.add_argument(
-            "--shuffle",
-            action="store_true",
-            help=(
-                "whether to randomly shuffle the order in which the samples "
-                "are imported"
-            ),
-        )
-        parser.add_argument(
-            "--seed",
-            metavar="SEED",
-            type=int,
-            help="a random seed to use when shuffling",
-        )
-        parser.add_argument(
-            "--max-samples",
-            metavar="MAX_SAMPLES",
-            type=int,
-            help=(
-                "a maximum number of samples to import. By default, all "
-                "samples are imported"
-            ),
-        )
-        parser.add_argument(
             "-p",
             "--port",
             metavar="PORT",
@@ -1092,6 +1077,17 @@ class AppViewCommand(Command):
             action="store_true",
             help="whether to launch a desktop App instance",
         )
+        parser.add_argument(
+            "-k",
+            "--kwargs",
+            nargs="+",
+            metavar="KEY=VAL",
+            action=_ParseKwargsAction,
+            help=(
+                "additional type-specific keyword arguments for "
+                "`fiftyone.core.dataset.Dataset.from_dir()`"
+            ),
+        )
 
     @staticmethod
     def execute(parser, args):
@@ -1100,7 +1096,7 @@ class AppViewCommand(Command):
             name = args.zoo_dataset
             splits = args.splits
             dataset_dir = args.dataset_dir
-            kwargs = _parse_dataset_import_kwargs(args)
+            kwargs = args.kwargs or {}
 
             dataset = fozd.load_zoo_dataset(
                 name, splits=splits, dataset_dir=dataset_dir, **kwargs
@@ -1110,7 +1106,7 @@ class AppViewCommand(Command):
             name = args.name
             dataset_dir = args.dataset_dir
             dataset_type = etau.get_class(args.type)
-            kwargs = _parse_dataset_import_kwargs(args)
+            kwargs = args.kwargs or {}
 
             dataset = fod.Dataset.from_dir(
                 dataset_dir, dataset_type, name=name, **kwargs
@@ -1664,12 +1660,13 @@ class DatasetZooLoadCommand(Command):
         # Load the zoo dataset from a custom directory
         fiftyone zoo datasets load <name> --dataset-dir <dataset-dir>
 
-        # Load a random subset of the zoo dataset
-        fiftyone zoo datasets load <name> --shuffle --max-samples <max-samples>
-
         # Load a zoo dataset that requires custom keyword arguments
         fiftyone zoo datasets load <name> \\
             --kwargs source_dir=/path/to/source_files
+
+        # Load a random subset of a zoo dataset
+        fiftyone zoo datasets load <name> \\
+            --kwargs max_samples=50 shuffle=True
     """
 
     @staticmethod
@@ -1697,29 +1694,6 @@ class DatasetZooLoadCommand(Command):
             help="a custom directory in which the dataset is downloaded",
         )
         parser.add_argument(
-            "--shuffle",
-            action="store_true",
-            help=(
-                "whether to randomly shuffle the order in which the samples "
-                "are imported"
-            ),
-        )
-        parser.add_argument(
-            "--seed",
-            metavar="SEED",
-            type=int,
-            help="a random seed to use when shuffling",
-        )
-        parser.add_argument(
-            "--max-samples",
-            metavar="MAX_SAMPLES",
-            type=int,
-            help=(
-                "a maximum number of samples to import. By default, all "
-                "samples are imported"
-            ),
-        )
-        parser.add_argument(
             "-k",
             "--kwargs",
             nargs="+",
@@ -1737,8 +1711,7 @@ class DatasetZooLoadCommand(Command):
         splits = args.splits
         dataset_name = args.dataset_name
         dataset_dir = args.dataset_dir
-        kwargs = _parse_dataset_import_kwargs(args)
-        kwargs.update(args.kwargs or {})
+        kwargs = args.kwargs or {}
 
         dataset = fozd.load_zoo_dataset(
             name,
@@ -2642,21 +2615,6 @@ class TransformVideosCommand(Command):
             delete_originals=args.delete_originals,
             verbose=args.verbose,
         )
-
-
-def _parse_dataset_import_kwargs(args):
-    kwargs = {}
-
-    if args.shuffle:
-        kwargs["shuffle"] = args.shuffle
-
-    if args.seed is not None:
-        kwargs["seed"] = args.seed
-
-    if args.max_samples is not None:
-        kwargs["max_samples"] = args.max_samples
-
-    return kwargs
 
 
 def _print_dict_as_json(d):
