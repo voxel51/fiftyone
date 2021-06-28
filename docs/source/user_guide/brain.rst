@@ -89,7 +89,7 @@ These representations can be visualized via
 in the plot, the corresponding samples/labels are automatically selected in the
 App, and vice versa.
 
-.. image:: ../images/brain/brain-mnist.png
+.. image:: /images/brain/brain-mnist.png
    :alt: mnist
    :align: center
 
@@ -166,7 +166,7 @@ more applications specific to your use case when you try it out on your data!
 .. note::
 
     Check out the
-    :doc:`image embeddings tutorial <../tutorials/image_embeddings>` to see
+    :doc:`image embeddings tutorial </tutorials/image_embeddings>` to see
     example uses of the Brain's embeddings-powered visualization methods to
     uncover hidden structure in datasets.
 
@@ -230,7 +230,7 @@ Each block in the example code below denotes a separate cell in a
     # Connect to session
     session.plots.attach(plot)
 
-.. image:: ../images/brain/brain-visualization.gif
+.. image:: /images/brain/brain-visualization.gif
    :alt: visualization
    :align: center
 
@@ -324,7 +324,7 @@ order of least similarity (``reverse``):
 
     # In the App... select some image(s) and use the similarity menu to sort
 
-.. image:: ../images/brain/brain-image-similarity.gif
+.. image:: /images/brain/brain-image-similarity.gif
    :alt: image-similarity
    :align: center
 
@@ -413,7 +413,7 @@ return (``k``) and whether to sort in order of least similarity (``reverse``):
     # In the App... convert to ground truth patches view, select some patch(es),
     # and use the similarity menu to sort!
 
-.. image:: ../images/brain/brain-object-similarity.gif
+.. image:: /images/brain/brain-object-similarity.gif
    :alt: object-similarity
    :align: center
 
@@ -474,7 +474,7 @@ Here are a few of the many possible applications:
 .. note::
 
     Check out the
-    :doc:`image uniqueness tutorial <../tutorials/uniqueness>` to see example
+    :doc:`image uniqueness tutorial </tutorials/uniqueness>` to see example
     uses of the Brain's visual similarity methods to identify near-duplicate
     images and mine target scenarios in a dataset.
 
@@ -541,11 +541,11 @@ most other samples are more unique.
 
 .. note::
 
-    Check out the :doc:`uniqueness tutorial <../tutorials/uniqueness>` to see
+    Check out the :doc:`uniqueness tutorial </tutorials/uniqueness>` to see
     an example use case of the Brain's uniqueness method to detect
     near-duplicate images in a dataset.
 
-.. image:: ../images/brain/brain-uniqueness.gif
+.. image:: /images/brain/brain-uniqueness.gif
    :alt: uniqueness
    :align: center
 
@@ -600,7 +600,7 @@ datasets.
         .. note::
 
             Check out the
-            :doc:`label mistakes tutorial <../tutorials/classification_mistakes>`
+            :doc:`label mistakes tutorial </tutorials/classification_mistakes>`
             to see an example use case of the Brain's mistakenness method on
             a classification dataset.
 
@@ -681,11 +681,11 @@ datasets.
         .. note::
 
             Check out the
-            :doc:`detection mistakes tutorials <../tutorials/detection_mistakes>`
+            :doc:`detection mistakes tutorials </tutorials/detection_mistakes>`
             to see an example use case of the Brain's mistakenness method on a
             detection dataset.
 
-.. image:: ../images/brain/brain-mistakenness.png
+.. image:: /images/brain/brain-mistakenness.png
    :alt: mistakenness
    :align: center
 
@@ -731,11 +731,11 @@ demonstrated empirical value in many model training exercises.
 .. note::
 
     Check out the
-    :doc:`classification evaluation tutorial <../tutorials/evaluate_classifications>`
+    :doc:`classification evaluation tutorial </tutorials/evaluate_classifications>`
     to see example uses of the Brain's hardness method to uncover annotation
     mistakes in a dataset.
 
-.. image:: ../images/brain/brain-hardness.png
+.. image:: /images/brain/brain-hardness.png
    :alt: hardness
    :align: center
 

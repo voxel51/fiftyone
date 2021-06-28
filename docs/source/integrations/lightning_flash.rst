@@ -565,7 +565,7 @@ vectors for your image datasets, then use can easily leverage FiftyOne's
 :ref:`dimensionality reduction <brain-embeddings-visualization>` and
 :ref:`interactive plotting <embeddings-plots>` capabilities to visualize your
 Flash model's embeddings and execute powerful workflows like
-:doc:`cluster analysis <../tutorials/image_embeddings>` and
+:doc:`cluster analysis </tutorials/image_embeddings>` and
 :ref:`similarity search <app-similarity>`, all in only a few lines of code!
 
 .. code-block:: python
@@ -609,6 +609,6 @@ Flash model's embeddings and execute powerful workflows like
     :meth:`compute_embeddings() <fiftyone.core.collections.SampleCollection.compute_embeddings>`
     and let FiftyOne handle performing the inference!
 
-.. image:: ../images/integrations/flash_embeddings.png
+.. image:: /images/integrations/flash_embeddings.png
    :alt: embeddings_example
    :align: center
