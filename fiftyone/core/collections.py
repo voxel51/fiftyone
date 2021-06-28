@@ -6362,8 +6362,12 @@ def _parse_field_name(
         field_name
     )
 
-    if is_frame_field and not field_name:
-        return "frames", True, [], [], False
+    if is_frame_field:
+        if not field_name:
+            return "frames", True, [], [], False
+
+        prefix = sample_collection._FRAMES_PREFIX
+        unwind_list_fields = {f[len(prefix) :] for f in unwind_list_fields}
 
     # Validate root field, if requested
     if not allow_missing and not is_id_field:
@@ -6407,17 +6411,25 @@ def _parse_field_name(
             elif path not in unwind_list_fields:
                 other_list_fields.add(path)
 
+    if is_frame_field:
+        if auto_unwind:
+            unwind_list_fields.discard("")
+        else:
+            prefix = sample_collection._FRAMES_PREFIX
+            field_name = prefix + field_name
+            unwind_list_fields = {
+                prefix + f if f else "frames" for f in unwind_list_fields
+            }
+            other_list_fields = {
+                prefix + f if f else "frames" for f in other_list_fields
+            }
+            if "frames" not in unwind_list_fields:
+                other_list_fields.add("frames")
+
     # Sorting is important here because one must unwind field `x` before
     # embedded field `x.y`
     unwind_list_fields = sorted(unwind_list_fields)
     other_list_fields = sorted(other_list_fields)
-
-    if is_frame_field and not auto_unwind:
-        prefix = sample_collection._FRAMES_PREFIX
-        field_name = prefix + field_name
-        unwind_list_fields = [prefix + f for f in unwind_list_fields]
-        other_list_fields = [prefix + f for f in other_list_fields]
-        other_list_fields.insert(0, "frames")
 
     return (
         field_name,

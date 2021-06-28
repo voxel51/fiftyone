@@ -130,11 +130,11 @@ class Aggregation(object):
             True/False
         """
         if self._field_name is not None:
-            return sample_collection._is_frame_field(self._field_name)
+            return _is_frame_path(sample_collection, self._field_name)
 
         if self._expr is not None:
             field_name, _ = _extract_prefix_from_expr(self._expr)
-            return sample_collection._is_frame_field(field_name)
+            return _is_frame_path(sample_collection, field_name)
 
         return False
 
@@ -1436,6 +1436,13 @@ class Values(Aggregation):
         return pipeline
 
 
+def _is_frame_path(sample_collection, field_name):
+    # Remove array references
+    path = "".join(field_name.split("[]"))
+
+    return sample_collection._is_frame_field(path)
+
+
 def _transform_values(values, fcn, level=1):
     if values is None:
         return None
@@ -1551,6 +1558,8 @@ def _parse_field_and_expr(
             )
         else:
             pipeline.append({"$project": {path: True}})
+    elif unwind_list_fields:
+        pipeline.append({"$project": {path: True}})
 
     for list_field in unwind_list_fields:
         pipeline.append({"$unwind": "$" + list_field})
