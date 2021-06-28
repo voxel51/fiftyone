@@ -9,6 +9,13 @@ FiftyOne 0.11.0
 ---------------
 *Released June 28, 2021*
 
+News
+^^^^
+- With support from the `COCO team <https://cocodataset.org/#download>`_
+  FiftyOne is now the recommended tool for downloading, visualizing, and
+  evaluating on the COCO dataset! Check out :ref:`this guide <coco>` for more
+  details
+
 App
 ^^^
 - Fixed a bug that prevented ``sample_id`` fields from appearing in the App
