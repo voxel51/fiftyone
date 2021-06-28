@@ -7,14 +7,7 @@ FiftyOne Release Notes
 
 FiftyOne 0.11.0
 ---------------
-*Released June 24, 2021*
-
-News
-^^^^
-- We've collaborated with the `COCO team <https://cocodataset.org/#download>`_
-  to make FiftyOne the recommended tool for downloading, visualizing, and
-  evaluating on the COCO dataset! Check out :ref:`this guide <coco>` for more
-  details
+*Released June 28, 2021*
 
 App
 ^^^
