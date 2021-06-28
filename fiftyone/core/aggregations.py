@@ -13,7 +13,6 @@ import eta.core.utils as etau
 
 import fiftyone.core.expressions as foe
 from fiftyone.core.expressions import ViewField as F
-import fiftyone.core.fields as fof
 import fiftyone.core.media as fom
 
 
@@ -64,6 +63,21 @@ class Aggregation(object):
     def _has_big_result(self):
         """Whether the aggregation's result is returned across multiple
         documents.
+
+        This property affects the data passed to :meth:`to_mongo` at runtime.
+        """
+        return False
+
+    @property
+    def _is_big_batchable(self):
+        """Whether the aggregation has big results and its pipeline is defined
+        by a single ``$project`` stage and thus can be combined with other such
+        aggregations.
+
+        :class:`Aggregation` classes for which :meth:`_is_big_batchable` may be
+        ``True`` must accept an optional ``big_field`` parameter in their
+        :meth:`to_mongo` method that specifies the field name to use in its
+        ``$project`` stage.
         """
         return False
 
@@ -84,7 +98,8 @@ class Aggregation(object):
         """Parses the output of :meth:`to_mongo`.
 
         Args:
-            d: the result dict
+            d: the result dict, or, when :meth:`_is_big_batchable` is True, the
+                iterable of result dicts
 
         Returns:
             the aggregation result
@@ -93,6 +108,9 @@ class Aggregation(object):
 
     def default_result(self):
         """Returns the default result for this aggregation.
+
+        Default results are used when aggregations are applied to empty
+        collections.
 
         Returns:
             the aggregation result
@@ -112,11 +130,11 @@ class Aggregation(object):
             True/False
         """
         if self._field_name is not None:
-            return sample_collection._is_frame_field(self._field_name)
+            return _is_frame_path(sample_collection, self._field_name)
 
         if self._expr is not None:
             field_name, _ = _extract_prefix_from_expr(self._expr)
-            return sample_collection._is_frame_field(field_name)
+            return _is_frame_path(sample_collection, field_name)
 
         return False
 
@@ -1332,6 +1350,7 @@ class Values(Aggregation):
         self._unwind = unwind
         self._allow_missing = _allow_missing
         self._big_result = _big_result
+        self._big_field = None
         self._raw = _raw
         self._parse_fcn = None
         self._num_list_fields = None
@@ -1339,6 +1358,16 @@ class Values(Aggregation):
     @property
     def _has_big_result(self):
         return self._big_result
+
+    @property
+    def _is_big_batchable(self):
+        return (
+            self._big_result
+            and not self._unwind
+            and self._expr is None
+            and self._field_name is not None
+            and "[]" not in self._field_name
+        )
 
     def default_result(self):
         """Returns the default result for this aggregation.
@@ -1358,7 +1387,7 @@ class Values(Aggregation):
             the list of field values
         """
         if self._big_result:
-            values = [di["value"] for di in d]
+            values = [di[self._big_field] for di in d]
         else:
             values = d["values"]
 
@@ -1371,7 +1400,7 @@ class Values(Aggregation):
 
         return values
 
-    def to_mongo(self, sample_collection):
+    def to_mongo(self, sample_collection, big_field="values"):
         path, pipeline, list_fields, id_to_str = _parse_field_and_expr(
             sample_collection,
             self._field_name,
@@ -1389,6 +1418,7 @@ class Values(Aggregation):
             if field_type is not None:
                 parse_fcn = field_type.to_python
 
+        self._big_field = big_field
         self._parse_fcn = parse_fcn
         self._num_list_fields = len(list_fields)
 
@@ -1399,10 +1429,18 @@ class Values(Aggregation):
                 id_to_str,
                 self._missing_value,
                 self._big_result,
+                big_field,
             )
         )
 
         return pipeline
+
+
+def _is_frame_path(sample_collection, field_name):
+    # Remove array references
+    path = "".join(field_name.split("[]"))
+
+    return sample_collection._is_frame_field(path)
 
 
 def _transform_values(values, fcn, level=1):
@@ -1416,7 +1454,7 @@ def _transform_values(values, fcn, level=1):
 
 
 def _make_extract_values_pipeline(
-    path, list_fields, id_to_str, missing_value, big_result
+    path, list_fields, id_to_str, missing_value, big_result, big_field
 ):
     if not list_fields:
         root = path
@@ -1424,6 +1462,9 @@ def _make_extract_values_pipeline(
         root = list_fields[0]
 
     expr = F().to_string() if id_to_str else F()
+
+    # This is important, even if `missing_value` is None, since we need to
+    # insert `None` for documents with missing fields
     expr = (F() != None).if_else(expr, missing_value)
 
     if list_fields:
@@ -1437,16 +1478,13 @@ def _make_extract_values_pipeline(
             inner_list_field = list_field2[len(list_field1) + 1 :]
             expr = _extract_list_values(inner_list_field, expr)
 
-    pipeline = [{"$set": {root: expr.to_mongo(prefix="$" + root)}}]
-
     if big_result:
-        pipeline.append({"$project": {"value": "$" + root}})
-    else:
-        pipeline.append(
-            {"$group": {"_id": None, "values": {"$push": "$" + root}}}
-        )
+        return [{"$project": {big_field: expr.to_mongo(prefix="$" + root)}}]
 
-    return pipeline
+    return [
+        {"$project": {"value": expr.to_mongo(prefix="$" + root)}},
+        {"$group": {"_id": None, "values": {"$push": "$value"}}},
+    ]
 
 
 def _extract_list_values(subfield, expr):
@@ -1509,20 +1547,38 @@ def _parse_field_and_expr(
     if expr is not None:
         id_to_str = False  # we have no way of knowing what type expr outputs
 
-    if is_frame_field and auto_unwind:
-        pipeline.extend(
-            [{"$unwind": "$frames"}, {"$replaceRoot": {"newRoot": "$frames"}}]
-        )
+    if auto_unwind:
+        if is_frame_field:
+            pipeline.extend(
+                [
+                    {"$project": {"frames." + path: True}},
+                    {"$unwind": "$frames"},
+                    {"$replaceRoot": {"newRoot": "$frames"}},
+                ]
+            )
+        else:
+            pipeline.append({"$project": {path: True}})
+    elif unwind_list_fields:
+        pipeline.append({"$project": {path: True}})
+
+    #
+    # @todo remove this restriction?
+    #
+    # `$unwind` cannot be used here. We would need to use a `set_field()` like
+    # approach to manually unwind the nested array field
+    #
+    if unwind_list_fields and other_list_fields:
+        for ufield in unwind_list_fields:
+            for ofield in other_list_fields:
+                if ufield.startswith(ofield + "."):
+                    raise ValueError(
+                        "Cannot unwind nested array field '%s' without also "
+                        "unwinding higher-level array field '%s'"
+                        % (ufield, ofield)
+                    )
 
     for list_field in unwind_list_fields:
         pipeline.append({"$unwind": "$" + list_field})
-
-    if other_list_fields:
-        root = other_list_fields[0]
-    else:
-        root = path
-
-    pipeline.append({"$project": {root: True}})
 
     return path, pipeline, other_list_fields, id_to_str
 

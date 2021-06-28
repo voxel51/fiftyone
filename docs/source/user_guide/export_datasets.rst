@@ -58,38 +58,38 @@ a |DatasetView| into any format of your choice via the basic recipe below.
 
     The :meth:`export() <fiftyone.core.collections.SampleCollection.export>`
     method also provides additional parameters that you can use to configure
-    the export, such as the `export_media` parameter, which allows you to
-    configure whether to copy, move, symlink, or omit the media files from
-    the export:
+    the export. For example, you can use the ``data_path`` and ``labels_path``
+    parameters to independently customize the location of the exported media
+    and labels, including labels-only exports:
 
     .. code-block:: python
         :linenos:
 
-        #
-        # Variation #1
-        #
+        # Export **only** labels in the `ground_truth` field in COCO format
+        dataset_or_view.export(
+            dataset_type=fo.types.COCODetectionDataset,
+            labels_path="/path/for/export.json",
+            label_field="ground_truth",
+        )
+
+    Or you can use the `export_media` parameter to configure whether to copy,
+    move, symlink, or omit the media files from the export:
+
+    .. code-block:: python
+        :linenos:
+
         # Export the labels in the `ground_truth` field in COCO format, and
-        # write a `data.json` file describing the locations of the source media
-        # rather than exporting the actual media
-        #
+        # move (rather than copy) the source media to the output directory
         dataset_or_view.export(
             export_dir="/path/for/export",
             dataset_type=fo.types.COCODetectionDataset,
             label_field="ground_truth",
-            export_media=False,
+            export_media="move",
         )
 
-        #
-        # Variation #2
-        #
-        # Directly export **only** labels in the `ground_truth` field in COCO
-        # format
-        #
-        dataset_or_view.export(
-            labels_path="/path/for/export.json",
-            dataset_type=fo.types.COCODetectionDataset,
-            label_field="ground_truth",
-        )
+    In general, you can pass any parameter for the |DatasetExporter| of the
+    format you're writing to
+    :meth:`export() <fiftyone.core.collections.SampleCollection.export>`.
 
   .. group-tab:: CLI
 
