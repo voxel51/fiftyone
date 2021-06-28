@@ -1118,7 +1118,8 @@ class OpenImagesV6Dataset(FiftyOneDataset):
     which are annotated and available via this zoo dataset.
 
     The dataset contains annotations for classification, detection,
-    segmentation, and visual relationship tasks across 601 object classes.
+    segmentation, and visual relationship tasks for the 600 boxable object
+    classes.
 
     This dataset supports partial downloads:
 

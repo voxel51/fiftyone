@@ -376,8 +376,8 @@ def get_attributes(version="v6", dataset_dir=None):
 
 
 def get_classes(version="v6", dataset_dir=None):
-    """Gets the 601 boxable classes that exist in classifications, detections,
-    and relationships in the Open Images dataset.
+    """Gets the boxable classes that exist in classifications, detections, and
+    relationships in the Open Images dataset.
 
     This method can be called in isolation without downloading the dataset.
 

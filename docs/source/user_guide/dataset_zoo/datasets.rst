@@ -583,6 +583,7 @@ COCO-2014 by passing them to
         #
         # Load 50 random samples from the validation split
         #
+        # Only the required images will be downloaded (if necessary).
         # By default, only detections are loaded
         #
 
@@ -640,6 +641,7 @@ COCO-2014 by passing them to
         #
         # Load 50 random samples from the validation split
         #
+        # Only the required images will be downloaded (if necessary).
         # By default, only detections are loaded
         #
 
@@ -698,7 +700,7 @@ COCO-2017
 COCO is a large-scale object detection, segmentation, and captioning
 dataset.
 
-This version contains images, bounding boxes and labels for the 2017
+This version contains images, bounding boxes, and segmentations for the 2017
 version of the dataset.
 
 .. note::
@@ -810,6 +812,7 @@ COCO-2017 by passing them to
         #
         # Load 50 random samples from the validation split
         #
+        # Only the required images will be downloaded (if necessary).
         # By default, only detections are loaded
         #
 
@@ -867,6 +870,7 @@ COCO-2017 by passing them to
         #
         # Load 50 random samples from the validation split
         #
+        # Only the required images will be downloaded (if necessary).
         # By default, only detections are loaded
         #
 
@@ -1385,7 +1389,7 @@ Open Images V6 is a dataset of ~9 million images, roughly 2 million of which
 are annotated and available via this zoo dataset.
 
 The dataset contains annotations for classification, detection, segmentation,
-and visual relationship tasks across 601 object classes.
+and visual relationship tasks for the 600 boxable classes.
 
 .. note::
 
@@ -1506,6 +1510,7 @@ Images V6 by passing them to
         #
         # Load 50 random samples from the validation split
         #
+        # Only the required images will be downloaded (if necessary).
         # By default, all label types are loaded
         #
 
@@ -1563,6 +1568,7 @@ Images V6 by passing them to
         #
         # Load 50 random samples from the validation split
         #
+        # Only the required images will be downloaded (if necessary).
         # By default, all label types are loaded
         #
 
