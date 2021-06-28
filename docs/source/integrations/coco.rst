@@ -12,7 +12,7 @@ natively in FiftyOne!
 .. note::
 
     Check out :doc:`this tutorial </tutorials/evaluate_detections>` to see how
-    you can use FiftyOne to evaluate a model on COCO!
+    you can use FiftyOne to evaluate a model on COCO.
 
 .. image:: /images/dataset_zoo/coco-2017-validation.png
    :alt: coco-2017-validation
@@ -24,8 +24,8 @@ Loading the COCO dataset
 ________________________
 
 The FiftyOne Dataset Zoo provides support for loading both the
-:ref:`COCO 2014 <dataset-zoo-coco-2014>` and
-:ref:`COCO 2017 <dataset-zoo-coco-2017>` datasets.
+:ref:`COCO-2014 <dataset-zoo-coco-2014>` and
+:ref:`COCO-2017 <dataset-zoo-coco-2017>` datasets.
 
 Like all other zoo datasets, you can use
 :func:`load_zoo_dataset() <fiftyone.zoo.datasets.load_zoo_dataset>` to download
@@ -37,7 +37,7 @@ and load a COCO split into FiftyOne:
     import fiftyone as fo
     import fiftyone.zoo as foz
 
-    # Download and load the validation split of COCO 2017
+    # Download and load the validation split of COCO-2017
     dataset = foz.load_zoo_dataset("coco-2017", split="validation")
 
     session = fo.launch_app(dataset)

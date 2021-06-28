@@ -13,7 +13,7 @@ natively in FiftyOne!
 .. note::
 
     Check out :doc:`this tutorial </tutorials/open_images>` to see how you can
-    use FiftyOne to download and evaluate models on Open Images!
+    use FiftyOne to download and evaluate models on Open Images.
 
 .. image:: /images/dataset_zoo/open-images-v6.png
    :alt: open-images-v6
