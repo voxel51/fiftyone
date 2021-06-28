@@ -5655,8 +5655,8 @@ class SampleCollection(object):
         :class:`fiftyone.core.aggregations.Aggregation` instances.
 
         Note that it is best practice to group aggregations into a single call
-        to :meth:`aggregate() <aggregate>`, as this will be more efficient than
-        performing multiple aggregations in series.
+        to :meth:`aggregate`, as this will be more efficient than performing
+        multiple aggregations in series.
 
         Args:
             aggregations: an :class:`fiftyone.core.aggregations.Aggregation` or
@@ -5675,21 +5675,35 @@ class SampleCollection(object):
         if scalar_result:
             aggregations = [aggregations]
 
-        # Partition into big and facet-able aggregations
-        big_aggs, facet_aggs = self._parse_aggregations(aggregations)
+        # Partition aggregations by type
+        big_aggs, batch_aggs, facet_aggs = self._parse_aggregations(
+            aggregations, allow_big=True
+        )
 
         # Placeholder to store results
         results = [None] * len(aggregations)
 
         # Run big aggregations
         for idx, aggregation in big_aggs.items():
-            pipeline, attach_frames = self._build_pipeline(aggregation)
+            pipeline, attach_frames = self._build_big_pipeline(aggregation)
 
             result = self._aggregate(
                 pipeline=pipeline, attach_frames=attach_frames
             )
 
             results[idx] = self._parse_big_results(aggregation, result)
+
+        # Run batched big aggregations
+        if batch_aggs:
+            pipeline, attach_frames = self._build_batch_pipeline(batch_aggs)
+
+            result = self._aggregate(
+                pipeline=pipeline, attach_frames=attach_frames
+            )
+            result = list(result)
+
+            for idx, aggregation in batch_aggs.items():
+                results[idx] = self._parse_big_results(aggregation, result)
 
         # Run faceted aggregations
         if facet_aggs:
@@ -5713,17 +5727,11 @@ class SampleCollection(object):
         if scalar_result:
             aggregations = [aggregations]
 
-        # Partition into big and facet-able aggregations
-        big_aggs, facet_aggs = self._parse_aggregations(aggregations)
+        _, _, facet_aggs = self._parse_aggregations(
+            aggregations, allow_big=False
+        )
 
-        # Placeholder to store results
         results = [None] * len(aggregations)
-
-        if big_aggs:
-            raise ValueError(
-                "This method does not support aggregations that return big "
-                "results"
-            )
 
         if facet_aggs:
             pipeline, attach_frames = self._build_faceted_pipeline(facet_aggs)
@@ -5740,27 +5748,53 @@ class SampleCollection(object):
 
         return results[0] if scalar_result else results
 
-    def _parse_aggregations(self, aggregations):
+    def _parse_aggregations(self, aggregations, allow_big=True):
         big_aggs = {}
+        batch_aggs = {}
         facet_aggs = {}
         for idx, aggregation in enumerate(aggregations):
-            if aggregation._has_big_result:
+            if aggregation._is_big_batchable:
+                batch_aggs[idx] = aggregation
+            elif aggregation._has_big_result:
                 big_aggs[idx] = aggregation
             else:
                 facet_aggs[idx] = aggregation
 
-        return big_aggs, facet_aggs
+        if not allow_big and (big_aggs or batch_aggs):
+            raise ValueError(
+                "This method does not support aggregations that return big "
+                "results"
+            )
 
-    def _build_pipeline(self, aggregation):
-        pipeline = aggregation.to_mongo(self)
+        return big_aggs, batch_aggs, facet_aggs
+
+    def _build_big_pipeline(self, aggregation, big_field="values"):
+        pipeline = aggregation.to_mongo(self, big_field=big_field)
         attach_frames = aggregation._needs_frames(self)
         return pipeline, attach_frames
 
-    def _parse_big_results(self, aggregation, result):
-        if result:
-            return aggregation.parse_result(result)
+    def _build_batch_pipeline(self, aggs_map):
+        project = {}
+        attach_frames = False
+        for idx, aggregation in aggs_map.items():
+            big_field = "value%d" % idx
+            _pipeline, _attach_frames = self._build_big_pipeline(
+                aggregation, big_field=big_field
+            )
+            attach_frames |= _attach_frames
 
-        return aggregation.default_result()
+            try:
+                assert len(_pipeline) == 1
+                project[big_field] = _pipeline[0]["$project"][big_field]
+            except:
+                raise ValueError(
+                    "Batchable aggregations must have pipelines with a single "
+                    "$project stage; found %s" % _pipeline
+                )
+
+        pipeline = [{"$project": project}]
+
+        return pipeline, attach_frames
 
     def _build_faceted_pipeline(self, aggs_map):
         facets = {}
@@ -5773,6 +5807,12 @@ class SampleCollection(object):
         facet_pipeline = [{"$facet": facets}]
 
         return facet_pipeline, attach_frames
+
+    def _parse_big_results(self, aggregation, result):
+        if result:
+            return aggregation.parse_result(result)
+
+        return aggregation.default_result()
 
     def _parse_faceted_results(self, aggs_map, result, results):
         for idx, aggregation in aggs_map.items():
@@ -6423,8 +6463,12 @@ def _parse_field_name(
         field_name
     )
 
-    if is_frame_field and not field_name:
-        return "frames", True, [], [], False
+    if is_frame_field:
+        if not field_name:
+            return "frames", True, [], [], False
+
+        prefix = sample_collection._FRAMES_PREFIX
+        unwind_list_fields = {f[len(prefix) :] for f in unwind_list_fields}
 
     # Validate root field, if requested
     if not allow_missing and not is_id_field:
@@ -6468,17 +6512,25 @@ def _parse_field_name(
             elif path not in unwind_list_fields:
                 other_list_fields.add(path)
 
+    if is_frame_field:
+        if auto_unwind:
+            unwind_list_fields.discard("")
+        else:
+            prefix = sample_collection._FRAMES_PREFIX
+            field_name = prefix + field_name
+            unwind_list_fields = {
+                prefix + f if f else "frames" for f in unwind_list_fields
+            }
+            other_list_fields = {
+                prefix + f if f else "frames" for f in other_list_fields
+            }
+            if "frames" not in unwind_list_fields:
+                other_list_fields.add("frames")
+
     # Sorting is important here because one must unwind field `x` before
     # embedded field `x.y`
     unwind_list_fields = sorted(unwind_list_fields)
     other_list_fields = sorted(other_list_fields)
-
-    if is_frame_field and not auto_unwind:
-        prefix = sample_collection._FRAMES_PREFIX
-        field_name = prefix + field_name
-        unwind_list_fields = [prefix + f for f in unwind_list_fields]
-        other_list_fields = [prefix + f for f in other_list_fields]
-        other_list_fields.insert(0, "frames")
 
     return (
         field_name,
