@@ -18,49 +18,81 @@ Basic recipe
 
 The interface for creating a FiftyOne |Dataset| from your own dataset is
 conveniently exposed via the Python library and the CLI. The basic recipe is
-that you simply specify the path to the dataset on disk and the type of dataset
+that you simply specify the path(s) to the data on disk and the type of dataset
 that you're loading.
 
 .. tabs::
 
   .. group-tab:: Python
 
-    You can export a |Dataset| from disk via the
+    You can import a |Dataset| from disk via the
     :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>` factory
-    method:
+    method.
+
+    If your data is stored in the
+    :ref:`canoncial format <supported-import-formats>` of the type you're
+    importing, then you can load it by providing the ``dataset_dir`` and
+    ``dataset_type`` parameters:
 
     .. code-block:: python
         :linenos:
 
         import fiftyone as fo
 
-        # A name for the dataset
-        name = "my-dataset"
-
         # The directory containing the dataset to import
         dataset_dir = "/path/to/dataset"
 
         # The type of the dataset being imported
-        # Any subclass of `fiftyone.types.Dataset` is supported
         dataset_type = fo.types.COCODetectionDataset  # for example
 
         # Import the dataset!
-        dataset = fo.Dataset.from_dir(dataset_dir, dataset_type, name=name)
+        dataset = fo.Dataset.from_dir(
+            dataset_dir=dataset_dir,
+            dataset_type=dataset_type,
+        )
 
-    You can also provide additional arguments to
-    :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>` to
-    customize the import behavior:
+    Alternatively, when importing labeled datasets in formats such as
+    :ref:`COCO <COCODetectionDataset-import>`, you may find it more natural to
+    provide the ``data_path`` and ``labels_path`` parameters to independently
+    specify the location of the source media on disk and the annotations file
+    containing the labels to import:
+
+    .. code-block:: python
+        :linenos:
+
+        # The type of the dataset being imported
+        dataset_type = fo.types.COCODetectionDataset  # for example
+
+        # The directory containing the source images
+        data_path = "/path/to/images"
+
+        # The path to the COCO labels JSON file
+        labels_path = "/path/to/coco-labels.json"
+
+        # Import the dataset!
+        dataset = fo.Dataset.from_dir(
+            dataset_type=dataset_type,
+            data_path=data_path,
+            labels_path=labels_path,
+        )
+
+    The :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>`
+    method also supports additional arguments that you can use to import a
+    subset of a dataset:
 
     .. code-block:: python
         :linenos:
 
         # Import a random subset of 10 samples from the dataset
         dataset = fo.Dataset.from_dir(
-            dataset_dir, dataset_type, shuffle=True, max_samples=10
+            ...,
+            shuffle=True,
+            max_samples=10,
         )
 
-    The additional arguments are passed directly to the |DatasetImporter| that
-    performs the actual import.
+    In general, you can pass any parameter for the |DatasetImporter| of the
+    format you're importing to
+    :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>`.
 
   .. group-tab:: CLI
 
