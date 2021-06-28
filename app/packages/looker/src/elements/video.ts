@@ -276,7 +276,7 @@ export class TimeElement extends BaseElement<VideoState> {
 
 export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
   private src: string = "";
-  private duration: number = 0;
+  private duration: number = null;
   private frameRate: number = 0;
   private frameNumber: number = 1;
   private loop: boolean = false;
@@ -290,17 +290,40 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
       error: ({ event, dispatchEvent }) => {
         dispatchEvent("error", { event });
       },
-      loadeddata: ({ update, dispatchEvent }) => {
-        this.duration = this.element.duration;
-        update(({ playing, options: { autoplay }, config: { frameRate } }) => {
-          this.frameRate = frameRate;
-          return {
-            loaded: true,
-            playing: autoplay || playing,
-            duration: this.element.duration,
-          };
-        });
-        dispatchEvent("load");
+      loadedmetadata: ({}) => {
+        this.element.currentTime = 0;
+      },
+      seeked: ({ update, dispatchEvent }) => {
+        if (this.duration === null) {
+          this.duration = this.element.duration;
+          requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+              update(
+                ({
+                  loaded,
+                  playing,
+                  options: { autoplay },
+                  config: { frameRate },
+                }) => {
+                  if (!loaded) {
+                    this.frameRate = frameRate;
+                    return {
+                      loaded: true,
+                      playing: autoplay || playing,
+                      duration: this.element.duration,
+                    };
+                  }
+                  return {};
+                }
+              );
+              dispatchEvent("load");
+            });
+          });
+        } else {
+          requestAnimationFrame(() => {
+            update(({ frameNumber }) => ({ frameNumber }));
+          });
+        }
       },
       play: ({ update, dispatchEvent }) => {
         const callback = (newFrameNumber: number) => {
@@ -380,7 +403,7 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
             ),
           });
 
-          return { loaded: true };
+          return {};
         });
       },
     };
