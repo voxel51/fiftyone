@@ -79,7 +79,7 @@ const ExcludeOption = ({
 interface WrapperProps {
   results: [string, number][];
   selectedValuesAtom: RecoilState<string[]>;
-  excludeAtom: RecoilState<boolean>;
+  excludeAtom?: RecoilState<boolean>;
   name: string;
   valueName: string;
   color: string;
@@ -96,7 +96,7 @@ const Wrapper = ({
 }: WrapperProps) => {
   const [selected, setSelected] = useRecoilState(selectedValuesAtom);
   const selectedSet = new Set(selected);
-  const setExcluded = useSetRecoilState(excludeAtom);
+  const setExcluded = excludeAtom ? useSetRecoilState(excludeAtom) : null;
   const counts = Object.fromEntries(results);
   let allValues: [string, number][] = selected.map<[string, number]>((value) =>
     counts[value] ? [value, counts[value]] : [value, 0]
@@ -115,7 +115,7 @@ const Wrapper = ({
           value={selectedSet.has(value)}
           name={value}
           count={count}
-          maxLen={31}
+          maxLen={28 - String(count).length}
           setValue={(checked: boolean) => {
             if (checked) {
               selectedSet.add(value);
@@ -129,7 +129,7 @@ const Wrapper = ({
       {Boolean(selectedSet.size) && (
         <>
           <PopoutSectionTitle />
-          {count > 3 && (
+          {count > 3 && excludeAtom && (
             <ExcludeOption
               excludeAtom={excludeAtom}
               valueName={valueName}
@@ -173,7 +173,6 @@ interface ResultsWrapperProps {
   onMouseEnter: () => void;
   onMouseLeave: () => void;
   subCount: number;
-  alignRight?: boolean;
   active: string | null;
 }
 
@@ -186,7 +185,6 @@ const ResultsWrapper = ({
   onMouseLeave,
   subCount,
   active,
-  alignRight,
 }: ResultsWrapperProps) => {
   const theme = useTheme();
   return (
@@ -202,7 +200,6 @@ const ResultsWrapper = ({
               onSelect={onSelect}
               results={results}
               highlight={color}
-              alignRight={alignRight}
             />
           )}
           <PopoutSectionTitle />
@@ -233,8 +230,8 @@ interface Props {
     results: [string, number][];
   }>;
   selectedValuesAtom: RecoilState<string[]>;
-  excludeAtom: RecoilState<boolean>;
-  hasNoneAtom: RecoilValueReadOnly<boolean>;
+  excludeAtom?: RecoilState<boolean>;
+  noneCountAtom: RecoilValueReadOnly<number>;
   name?: string;
   valueName: string;
   color: string;
@@ -251,14 +248,14 @@ const StringFilter = React.memo(
         selectedValuesAtom,
         excludeAtom,
         totalAtom,
-        hasNoneAtom,
+        noneCountAtom,
         path,
       }: Props,
       ref
     ) => {
       const selected = useRecoilValue(selectedValuesAtom);
       const { count, results } = useRecoilValue(totalAtom);
-      const hasNone = useRecoilValue(hasNoneAtom);
+      const none = useRecoilValue(noneCountAtom);
       const [focused, setFocused] = useState(false);
       const [hovering, setHovering] = useState(false);
       const [search, setSearch] = useState("");
@@ -314,10 +311,9 @@ const StringFilter = React.memo(
             if (currentPromise.current !== promise) {
               return;
             }
-            if (hasNone) {
-              results.push(null);
+            if (none) {
+              results.push([null, none]);
               count++;
-              results.sort();
             }
             setSearchResults(results);
             setSubCount(count);
@@ -364,7 +360,7 @@ const StringFilter = React.memo(
                     if (active !== undefined) {
                       onSelect(active);
                     }
-                    if (results && results.includes(search)) {
+                    if (results && results.map(([v]) => v).includes(search)) {
                       onSelect(search);
                     }
                   }}
@@ -386,7 +382,6 @@ const StringFilter = React.memo(
                   }}
                   active={active}
                   subCount={subCount}
-                  alignRight={path === "filepath"}
                   onMouseEnter={() => setHovering(true)}
                   onMouseLeave={() => setHovering(false)}
                 />

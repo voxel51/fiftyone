@@ -51,7 +51,7 @@ const ScrollResultsContainer = styled.div`
 interface ResultProps {
   result: ResultValue;
   highlight: string;
-  active: boolean;
+  active: boolean | null;
   onClick: () => void;
   maxLen?: number;
 }
@@ -91,7 +91,7 @@ interface ResultsProps {
   results: ResultValue[];
   highlight: string;
   onSelect: (value: string | null) => void;
-  active: ResultValue;
+  active: string | null;
   alignRight?: boolean;
 }
 
@@ -105,8 +105,8 @@ const Results = React.memo(
             result={result}
             highlight={highlight}
             onClick={() => onSelect(result[0])}
-            active={active === result}
-            maxLen={34}
+            active={active === result[0]}
+            maxLen={32 - String(result[1]).length}
           />
         ))}
       </ScrollResultsContainer>

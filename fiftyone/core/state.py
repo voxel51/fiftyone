@@ -282,7 +282,10 @@ class DatasetStatistics(object):
 
                 if _meets_type(field, (fof.IntField, fof.FloatField)):
                     aggregations.append(foa.Bounds(field_name))
-                elif _meets_type(field, (fof.StringField, fof.ObjectIdField)):
+                elif _meets_type(
+                    field,
+                    (fof.BooleanField, fof.StringField, fof.ObjectIdField),
+                ):
                     aggregations.append(
                         foa.CountValues(field_name, _first=200)
                     )

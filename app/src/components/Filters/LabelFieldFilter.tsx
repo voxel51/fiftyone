@@ -3,7 +3,7 @@ import { useRecoilCallback, useRecoilValue } from "recoil";
 import { animated } from "react-spring";
 import styled from "styled-components";
 
-import { hasNoneField, useExpand } from "./utils";
+import { noneCount, useExpand } from "./utils";
 import { NamedRangeSlider } from "./RangeSlider";
 import StringFilter from "./StringFilter";
 import { CONFIDENCE_LABELS } from "../../utils/labels";
@@ -96,16 +96,15 @@ const LabelFilter = ({ expanded, entry, modal }: Props) => {
             selectedValuesAtom={selectedLabels(lPath)}
             totalAtom={stringField.totalAtom(lPath)}
             excludeAtom={exclude(lPath)}
-            hasNoneAtom={hasNoneField(lPath)}
+            noneCountAtom={noneCount(lPath)}
             path={lPath}
           />
           {CONFIDENCE_LABELS.includes(entry.labelType) && (
             <NamedRangeSlider
               color={entry.color}
               name={"Confidence"}
-              valueName={"confidence"}
               noneAtom={noConfidence({ path: cPath, defaultRange: [0, 1] })}
-              hasNoneAtom={hasNoneField(cPath)}
+              noneCountAtom={noneCount(cPath)}
               boundsAtom={numericField.boundsAtom({
                 path: cPath,
                 defaultRange: [0, 1],

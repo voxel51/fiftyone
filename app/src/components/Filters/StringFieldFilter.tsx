@@ -11,24 +11,23 @@ import { animated } from "react-spring";
 import * as selectors from "../../recoil/selectors";
 import StringFilter from "./StringFilter";
 import { AGGS } from "../../utils/labels";
-import { useExpand, hasNoneField } from "./utils";
+import { useExpand, noneCount } from "./utils";
 
 export const LIST_LIMIT = 200;
 
-type StringFilter = {
+interface StringFilter {
   values: string[];
   exclude: boolean;
-  _CLS: string;
-};
+  _CLS: "str";
+}
 
 type Value = string | null;
 
 const getFilter = (get: GetRecoilValue, path: string): StringFilter => {
   return {
-    ...{
-      values: [],
-      exclude: false,
-    },
+    values: [],
+    exclude: false,
+    _CLS: "str",
     ...get(selectors.filterStage(path)),
   };
 };
@@ -46,7 +45,6 @@ const setFilter = (
   const filter = {
     ...getFilter(get, path),
     [key]: value,
-    _CLS: "str",
   };
   if (filter.values.length === 0) {
     filter.exclude = false;
@@ -83,12 +81,12 @@ export const excludeModalAtom = atomFamily<boolean, string>({
 });
 
 export const totalAtom = selectorFamily<
-  { count: number; results: string[] },
+  { count: number; results: [string, number][] },
   string
 >({
   key: "stringFieldTotal",
   get: (path) => ({ get }) => {
-    const hasNone = get(hasNoneField(path));
+    const none = get(noneCount(path));
     const data = (get(selectors.datasetStats) ?? []).reduce(
       (acc, cur) => {
         if (cur.name === path && cur._CLS === AGGS.COUNT_VALUES) {
@@ -102,9 +100,9 @@ export const totalAtom = selectorFamily<
       { count: 0, results: [] }
     );
 
-    if (hasNone && false) {
+    if (none > 0) {
       data.count = data.count + 1;
-      data.results = [...data.results, null].sort();
+      data.results = [...data.results, [null, none]];
     }
 
     return data;
@@ -134,7 +132,7 @@ const StringFieldFilter = ({ expanded, entry }) => {
         selectedValuesAtom={selectedValuesAtom(entry.path)}
         excludeAtom={excludeAtom(entry.path)}
         totalAtom={totalAtom(entry.path)}
-        hasNoneAtom={hasNoneField(entry.path)}
+        noneCountAtom={noneCount(entry.path)}
         path={entry.path}
         ref={ref}
       />

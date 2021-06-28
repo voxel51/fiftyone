@@ -11,7 +11,7 @@ import {
 
 import * as selectors from "../../recoil/selectors";
 import { NamedRangeSlider, Range } from "./RangeSlider";
-import { hasNoneField, useExpand } from "./utils";
+import { noneCount, useExpand } from "./utils";
 import { AGGS, FRAME_NUMBER_FIELD, INT_FIELD } from "../../utils/labels";
 
 type NumericFilter = {
@@ -194,7 +194,7 @@ const NumericFieldFilter = ({ expanded, entry }) => {
       <NamedRangeSlider
         color={entry.color}
         boundsAtom={boundsAtom({ path: entry.path })}
-        hasNoneAtom={hasNoneField(entry.path)}
+        noneCountAtom={noneCount(entry.path)}
         valueAtom={rangeAtom({ path: entry.path })}
         noneAtom={noneAtom({ path: entry.path })}
         int={[INT_FIELD, FRAME_NUMBER_FIELD].includes(type)}
