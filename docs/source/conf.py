@@ -191,7 +191,7 @@ html_context = {
     "link_voxel51_slack": "https://join.slack.com/t/fiftyone-users/shared_invite/zt-gtpmm76o-9AjvzNPBOzevBySKzt02gg",
     "link_voxel51_twitter": "https://twitter.com/voxel51",
     "link_voxel51_medium": "https://medium.com/voxel51/",
-    "banner_link": "https://voxel51.com/docs/fiftyone/integrations/lightning_flash.html",
+    "banner_link": "https://voxel51.com/docs/fiftyone/integrations/coco.html",
 }
 
 # -- Custom app setup --------------------------------------------------------
