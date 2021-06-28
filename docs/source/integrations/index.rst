@@ -49,7 +49,7 @@ on the cards below to see how!
 
 .. customcarditem::
     :header: COCO Dataset
-    :description: See how FiftyOne makes downloading, visualizing, and evaluating on the COCO dataset (or COCO-formatted data of your own) a breeze.
+    :description: See how FiftyOne makes downloading, visualizing, and evaluating on the COCO dataset (or your own COCO-formatted data) a breeze.
     :link: coco.html
     :image: ../_static/images/integrations/coco.png
     :tags: Dataset,Model-Evaluation
