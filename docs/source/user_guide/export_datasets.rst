@@ -47,12 +47,49 @@ a |DatasetView| into any format of your choice via the basic recipe below.
 
         # Export the dataset!
         dataset_or_view.export(
-            export_dir=export_dir, dataset_type=dataset_type, label_field=label_field
+            export_dir=export_dir,
+            dataset_type=dataset_type,
+            label_field=label_field,
         )
 
     Note the `label_field` argument in the above example, which specifies the
-    particular label field that you wish to export. This is necessary your
+    particular label field that you wish to export. This is necessary if your
     FiftyOne dataset contains multiple label fields.
+
+    The :meth:`export() <fiftyone.core.collections.SampleCollection.export>`
+    method also provides additional parameters that you can use to configure
+    the export. For example, you can use the ``data_path`` and ``labels_path``
+    parameters to independently customize the location of the exported media
+    and labels, including labels-only exports:
+
+    .. code-block:: python
+        :linenos:
+
+        # Export **only** labels in the `ground_truth` field in COCO format
+        dataset_or_view.export(
+            dataset_type=fo.types.COCODetectionDataset,
+            labels_path="/path/for/export.json",
+            label_field="ground_truth",
+        )
+
+    Or you can use the `export_media` parameter to configure whether to copy,
+    move, symlink, or omit the media files from the export:
+
+    .. code-block:: python
+        :linenos:
+
+        # Export the labels in the `ground_truth` field in COCO format, and
+        # move (rather than copy) the source media to the output directory
+        dataset_or_view.export(
+            export_dir="/path/for/export",
+            dataset_type=fo.types.COCODetectionDataset,
+            label_field="ground_truth",
+            export_media="move",
+        )
+
+    In general, you can pass any parameter for the |DatasetExporter| of the
+    format you're writing to
+    :meth:`export() <fiftyone.core.collections.SampleCollection.export>`.
 
   .. group-tab:: CLI
 
@@ -227,8 +264,11 @@ format when writing the dataset to disk.
     | :ref:`KITTIDetectionDataset <KITTIDetectionDataset-export>`        | A labeled dataset consisting of images and their associated object detections      |
     |                                                                    | saved in `KITTI format <http://www.cvlibs.net/datasets/kitti/eval\_object.php>`_.  |
     +--------------------------------------------------------------------+------------------------------------------------------------------------------------+
-    | :ref:`YOLODataset <YOLODataset-export>`                            | A labeled dataset consisting of images and their associated object detections      |
-    |                                                                    | saved in `YOLO format <https://github.com/AlexeyAB/darknet>`_.                     |
+    | :ref:`YOLOv4Dataset <YOLOv4Dataset-export>`                        | A labeled dataset consisting of images and their associated object detections      |
+    |                                                                    | saved in `YOLOv4 format <https://github.com/AlexeyAB/darknet>`_.                   |
+    +--------------------------------------------------------------------+------------------------------------------------------------------------------------+
+    | :ref:`YOLOv5Dataset <YOLOv5Dataset-export>`                        | A labeled dataset consisting of images and their associated object detections      |
+    |                                                                    | saved in `YOLOv5 format <https://github.com/ultralytics/yolov5>`_.                 |
     +--------------------------------------------------------------------+------------------------------------------------------------------------------------+
     | :ref:`TFObjectDetectionDataset <TFObjectDetectionDataset-export>`  | A labeled dataset consisting of images and their associated object detections      |
     |                                                                    | stored as TFRecords in `TF Object Detection API format \                           |
@@ -254,7 +294,7 @@ format when writing the dataset to disk.
     | :ref:`BDDDataset <BDDDataset-export>`                              | A labeled dataset consisting of images and their associated multitask predictions  |
     |                                                                    | saved in `Berkeley DeepDrive (BDD) format <https://bdd-data.berkeley.edu>`_.       |
     +--------------------------------------------------------------------+------------------------------------------------------------------------------------+
-    | :ref:`GeoJSONImageDataset <GeoJSONImageDataset-export>`            | An image dataset whose labels and location data are stored in                      |
+    | :ref:`GeoJSONDataset <GeoJSONDataset-export>`                      | An image or video dataset whose location data and labels are stored in             |
     |                                                                    | `GeoJSON format <https://en.wikipedia.org/wiki/GeoJSON>`_.                         |
     +--------------------------------------------------------------------+------------------------------------------------------------------------------------+
     | :ref:`FiftyOneDataset <FiftyOneDataset-export>`                    | A dataset consisting of an entire serialized |Dataset| and its associated source   |
@@ -1087,15 +1127,15 @@ format as follows:
             --label-field $LABEL_FIELD \
             --type fiftyone.types.KITTIDetectionDataset
 
-.. _YOLODataset-export:
+.. _YOLOv4Dataset-export:
 
-YOLODataset
------------
+YOLOv4Dataset
+-------------
 
-The :class:`fiftyone.types.YOLODataset <fiftyone.types.dataset_types.YOLODataset>`
+The :class:`fiftyone.types.YOLOv4Dataset <fiftyone.types.dataset_types.YOLOv4Dataset>`
 type represents a labeled dataset consisting of images and their associated
 object detections saved in
-`YOLO format <https://github.com/AlexeyAB/darknet>`_.
+`YOLOv4 format <https://github.com/AlexeyAB/darknet>`_.
 
 Datasets of this type are exported in the following format:
 
@@ -1141,7 +1181,7 @@ relative coordinates in `[0, 1] x [0, 1]`.
 
 Unlabeled images have no corresponding TXT file in `data/`.
 
-You can export a FiftyOne dataset as a YOLO dataset in the above format as
+You can export a FiftyOne dataset as a YOLOv4 dataset in the above format as
 follows:
 
 .. tabs::
@@ -1153,7 +1193,7 @@ follows:
 
         import fiftyone as fo
 
-        export_dir = "/path/for/yolo-dataset"
+        export_dir = "/path/for/yolov4-dataset"
         label_field = "ground_truth"  # for example
 
         # The Dataset or DatasetView to export
@@ -1162,7 +1202,7 @@ follows:
         # Export the dataset
         dataset_or_view.export(
             export_dir=export_dir,
-            dataset_type=fo.types.YOLODataset,
+            dataset_type=fo.types.YOLOv4Dataset,
             label_field=label_field,
         )
 
@@ -1171,14 +1211,115 @@ follows:
     .. code-block:: shell
 
         NAME=my-dataset
-        EXPORT_DIR=/path/for/yolo-dataset
+        EXPORT_DIR=/path/for/yolov4-dataset
         LABEL_FIELD=ground_truth  # for example
 
         # Export the dataset
         fiftyone datasets export $NAME \
             --export-dir $EXPORT_DIR \
             --label-field $LABEL_FIELD \
-            --type fiftyone.types.YOLODataset
+            --type fiftyone.types.YOLOv4Dataset
+
+.. _YOLOv5Dataset-export:
+
+YOLOv5Dataset
+-------------
+
+The :class:`fiftyone.types.YOLOv5Dataset <fiftyone.types.dataset_types.YOLOv5Dataset>`
+type represents a labeled dataset consisting of images and their associated
+object detections saved in
+`YOLOv5 format <https://github.com/ultralytics/yolov5>`_.
+
+Datasets of this type are exported in the following format:
+
+.. code-block:: text
+
+    <dataset_dir>/
+        dataset.yaml
+        images/
+            train/
+                <uuid1>.<ext>
+                <uuid2>.<ext>
+                ...
+            val/
+                <uuid3>.<ext>
+                <uuid4>.<ext>
+                ...
+        labels/
+            train/
+                <uuid1>.txt
+                <uuid2>.txt
+                ...
+            val/
+                <uuid3>.txt
+                <uuid4>.txt
+                ...
+
+where `dataset.yaml` contains the following information:
+
+.. code-block:: text
+
+    train: ./images/train/
+    val: ./images/val/
+
+    # number of classes
+    nc: 80
+
+    # class names
+    names: ["list", "of", "classes", ...]
+
+and the TXT files in `labels/` are space-delimited files where each row
+corresponds to an object in the image of the same name, in the following
+format:
+
+.. code-block:: text
+
+    <target> <x-center> <y-center> <width> <height>
+
+where `<target>` is the zero-based integer index of the object class label from
+`names` and the bounding box coordinates are expressed as
+relative coordinates in `[0, 1] x [0, 1]`.
+
+Unlabeled images have no corresponding TXT file in `labels/`.
+
+You can export a FiftyOne dataset as a YOLOv5 dataset in the above format as
+follows:
+
+.. tabs::
+
+  .. group-tab:: Python
+
+    .. code-block:: python
+        :linenos:
+
+        import fiftyone as fo
+
+        export_dir = "/path/for/yolov5-dataset"
+        label_field = "ground_truth"  # for example
+
+        # The Dataset or DatasetView to export
+        dataset_or_view = fo.Dataset(...)
+
+        # Export the dataset
+        dataset_or_view.export(
+            export_dir=export_dir,
+            dataset_type=fo.types.YOLOv5Dataset,
+            label_field=label_field,
+        )
+
+  .. group-tab:: CLI
+
+    .. code-block:: shell
+
+        NAME=my-dataset
+        EXPORT_DIR=/path/for/yolov5-dataset
+        LABEL_FIELD=ground_truth  # for example
+
+        # Export the dataset
+        fiftyone datasets export $NAME \
+            --export-dir $EXPORT_DIR \
+            --label-field $LABEL_FIELD \
+            --type fiftyone.types.YOLOv5Dataset
 
 .. _TFObjectDetectionDataset-export:
 
@@ -1916,13 +2057,13 @@ follows:
             --label-field $LABEL_FIELD \
             --type fiftyone.types.BDDDataset
 
-.. _GeoJSONImageDataset-export:
+.. _GeoJSONDataset-export:
 
-GeoJSONImageDataset
--------------------
+GeoJSONDataset
+--------------
 
-The :class:`fiftyone.types.GeoJSONImageDataset <fiftyone.types.dataset_types.GeoJSONImageDataset>`
-type represents a dataset consisting of images and their associated
+The :class:`fiftyone.types.GeoJSONDataset <fiftyone.types.dataset_types.GeoJSONDataset>`
+type represents a dataset consisting of images or videos and their associated
 geolocation data and optional properties stored in
 `GeoJSON format <https://en.wikipedia.org/wiki/GeoJSON>`_.
 
@@ -1978,14 +2119,11 @@ the following format:
     }
 
 where the ``geometry`` field may contain any valid GeoJSON geometry object, and
-the ``filename`` property encodes the name of the corresponding image in the
-``data/`` folder.
+the ``filename`` property encodes the name of the corresponding media in the
+``data/`` folder. The ``filename`` property can also be an absolute path, which
+may or may not be in the ``data/`` folder.
 
-Alternatively, the ``filepath`` property may be specified rather than
-``filename``, in which case the path is interpreted as an absolute path to the
-corresponding image.
-
-Images with no location data will have a null ``geometry`` field.
+Samples with no location data will have a null ``geometry`` field.
 
 The ``properties`` field of each feature can contain additional labels for
 each sample.
@@ -2002,7 +2140,7 @@ format as follows:
 
         import fiftyone as fo
 
-        export_dir = "/path/for/geojson-image-dataset"
+        export_dir = "/path/for/geojson-dataset"
 
         # The Dataset or DatasetView to export
         dataset_or_view = fo.Dataset(...)
@@ -2010,7 +2148,7 @@ format as follows:
         # Export the dataset
         dataset_or_view.export(
             export_dir=export_dir,
-            dataset_type=fo.types.GeoJSONImageDataset,
+            dataset_type=fo.types.GeoJSONDataset,
         )
 
   .. group-tab:: CLI
@@ -2018,12 +2156,12 @@ format as follows:
     .. code-block:: shell
 
         NAME=my-dataset
-        EXPORT_DIR=/path/for/geojson-image-dataset
+        EXPORT_DIR=/path/for/geojson-dataset
 
         # Export the dataset
         fiftyone datasets export $NAME \
             --export-dir $EXPORT_DIR \
-            --type fiftyone.types.GeoJSONImageDataset
+            --type fiftyone.types.GeoJSONDataset
 
 .. _FiftyOneDataset-export:
 

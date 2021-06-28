@@ -135,7 +135,7 @@ class BDD100KDataset(FiftyOneDataset):
         # Get metadata
         logger.info("Parsing dataset metadata")
         dataset_type = fot.BDDDataset()
-        num_samples = foub.BDDDatasetImporter.get_num_samples(split_dir)
+        num_samples = foub.BDDDatasetImporter._get_num_samples(split_dir)
         logger.info("Found %d samples", num_samples)
 
         return dataset_type, num_samples, None
@@ -205,8 +205,8 @@ class Caltech101Dataset(FiftyOneDataset):
         logger.info("Parsing dataset metadata")
         dataset_type = fot.ImageClassificationDirectoryTree()
         importer = foud.ImageClassificationDirectoryTreeImporter
-        classes = importer.get_classes(dataset_dir)
-        num_samples = importer.get_num_samples(dataset_dir)
+        classes = importer._get_classes(dataset_dir)
+        num_samples = importer._get_num_samples(dataset_dir)
         logger.info("Found %d samples", num_samples)
 
         return dataset_type, num_samples, classes
@@ -300,8 +300,8 @@ class Caltech256Dataset(FiftyOneDataset):
         logger.info("Parsing dataset metadata")
         dataset_type = fot.ImageClassificationDirectoryTree()
         importer = foud.ImageClassificationDirectoryTreeImporter
-        classes = importer.get_classes(dataset_dir)
-        num_samples = importer.get_num_samples(dataset_dir)
+        classes = importer._get_classes(dataset_dir)
+        num_samples = importer._get_num_samples(dataset_dir)
         logger.info("Found %d samples", num_samples)
 
         return dataset_type, num_samples, classes
@@ -416,7 +416,7 @@ class CityscapesDataset(FiftyOneDataset):
         # Get metadata
         logger.info("Parsing dataset metadata")
         dataset_type = fot.FiftyOneDataset()
-        num_samples = foud.FiftyOneDatasetImporter.get_num_samples(split_dir)
+        num_samples = foud.FiftyOneDatasetImporter._get_num_samples(split_dir)
         logger.info("Found %d samples", num_samples)
 
         return dataset_type, num_samples, None
@@ -619,8 +619,8 @@ class HMDB51Dataset(FiftyOneDataset):
         logger.info("Parsing dataset metadata")
         dataset_type = fot.VideoClassificationDirectoryTree()
         importer = foud.VideoClassificationDirectoryTreeImporter
-        classes = importer.get_classes(split_dir)
-        num_samples = importer.get_num_samples(split_dir)
+        classes = importer._get_classes(split_dir)
+        num_samples = importer._get_num_samples(split_dir)
         logger.info("Found %d samples", num_samples)
 
         return dataset_type, num_samples, classes
@@ -714,8 +714,8 @@ class ImageNetSampleDataset(FiftyOneDataset):
         logger.info("Parsing dataset metadata")
         dataset_type = fot.FiftyOneImageClassificationDataset()
         importer = foud.FiftyOneImageClassificationDatasetImporter
-        classes = importer.get_classes(dataset_dir)
-        num_samples = importer.get_num_samples(dataset_dir)
+        classes = importer._get_classes(dataset_dir)
+        num_samples = importer._get_num_samples(dataset_dir)
         logger.info("Found %d samples", num_samples)
 
         return dataset_type, num_samples, classes
@@ -777,7 +777,7 @@ class KITTIDataset(FiftyOneDataset):
         logger.info("Parsing dataset metadata")
         dataset_type = fot.KITTIDetectionDataset()
         importer = fouk.KITTIDetectionDatasetImporter
-        num_samples = importer.get_num_samples(dataset_dir)
+        num_samples = importer._get_num_samples(dataset_dir)
         logger.info("Found %d samples", num_samples)
 
         return dataset_type, num_samples, None
@@ -839,10 +839,10 @@ class LabeledFacesInTheWildDataset(FiftyOneDataset):
         dataset_type = fot.ImageClassificationDirectoryTree()
         importer = foud.ImageClassificationDirectoryTreeImporter
         classes = sorted(
-            importer.get_classes(os.path.join(dataset_dir, "train"))
-            + importer.get_classes(os.path.join(dataset_dir, "test"))
+            importer._get_classes(os.path.join(dataset_dir, "train"))
+            + importer._get_classes(os.path.join(dataset_dir, "test"))
         )
-        num_samples = importer.get_num_samples(split_dir)
+        num_samples = importer._get_num_samples(split_dir)
         logger.info("Found %d samples", num_samples)
 
         return dataset_type, num_samples, classes
@@ -976,10 +976,6 @@ class OpenImagesV6Dataset(FiftyOneDataset):
     def supports_partial_download(self):
         return True
 
-    @property
-    def default_label_field(self):
-        return ""
-
     def _download_and_prepare(self, dataset_dir, scratch_dir, split):
         num_samples, classes = fouo.download_open_images_split(
             dataset_dir=dataset_dir,
@@ -1050,8 +1046,8 @@ class QuickstartDataset(FiftyOneDataset):
         logger.info("Parsing dataset metadata")
         dataset_type = fot.FiftyOneDataset()
         importer = foud.FiftyOneDatasetImporter
-        classes = importer.get_classes(dataset_dir)
-        num_samples = importer.get_num_samples(dataset_dir)
+        classes = importer._get_classes(dataset_dir)
+        num_samples = importer._get_num_samples(dataset_dir)
         logger.info("Found %d samples", num_samples)
 
         return dataset_type, num_samples, classes
@@ -1105,8 +1101,8 @@ class QuickstartGeoDataset(FiftyOneDataset):
         logger.info("Parsing dataset metadata")
         dataset_type = fot.FiftyOneDataset()
         importer = foud.FiftyOneDatasetImporter
-        classes = importer.get_classes(dataset_dir)
-        num_samples = importer.get_num_samples(dataset_dir)
+        classes = importer._get_classes(dataset_dir)
+        num_samples = importer._get_num_samples(dataset_dir)
         logger.info("Found %d samples", num_samples)
 
         return dataset_type, num_samples, classes
@@ -1158,7 +1154,7 @@ class QuickstartVideoDataset(FiftyOneDataset):
 
         logger.info("Parsing dataset metadata")
         dataset_type = fot.FiftyOneVideoLabelsDataset()
-        num_samples = foud.FiftyOneVideoLabelsDatasetImporter.get_num_samples(
+        num_samples = foud.FiftyOneVideoLabelsDatasetImporter._get_num_samples(
             dataset_dir
         )
         logger.info("Found %d samples", num_samples)
@@ -1244,8 +1240,8 @@ class UCF101Dataset(FiftyOneDataset):
         logger.info("Parsing dataset metadata")
         dataset_type = fot.VideoClassificationDirectoryTree()
         importer = foud.VideoClassificationDirectoryTreeImporter
-        classes = importer.get_classes(split_dir)
-        num_samples = importer.get_num_samples(split_dir)
+        classes = importer._get_classes(split_dir)
+        num_samples = importer._get_num_samples(split_dir)
         logger.info("Found %d samples", num_samples)
 
         return dataset_type, num_samples, classes

@@ -776,9 +776,9 @@ class OpenImagesV6Dataset(ImageDetectionDataset):
         return fouo.OpenImagesV6DatasetImporter
 
 
-class YOLODataset(ImageDetectionDataset):
+class YOLOv4Dataset(ImageDetectionDataset):
     """A labeled dataset consisting of images and their associated object
-    detections saved in `YOLO format <https://github.com/AlexeyAB/darknet>`_.
+    detections saved in `YOLOv4 format <https://github.com/AlexeyAB/darknet>`_.
 
     Datasets of this type are read/written in the following format::
 
@@ -820,12 +820,75 @@ class YOLODataset(ImageDetectionDataset):
     def get_dataset_importer_cls(self):
         import fiftyone.utils.yolo as fouy
 
-        return fouy.YOLODatasetImporter
+        return fouy.YOLOv4DatasetImporter
 
     def get_dataset_exporter_cls(self):
         import fiftyone.utils.yolo as fouy
 
-        return fouy.YOLODatasetExporter
+        return fouy.YOLOv4DatasetExporter
+
+
+class YOLOv5Dataset(ImageDetectionDataset):
+    """A labeled dataset consisting of images and their associated object
+    detections saved in
+    `YOLOv5 format <https://github.com/ultralytics/yolov5>`_.
+
+    Datasets of this type are read/written in the following format::
+
+        <dataset_dir>/
+            dataset.yaml
+            images/
+                train/
+                    <uuid1>.<ext>
+                    <uuid2>.<ext>
+                    ...
+                val/
+                    <uuid3>.<ext>
+                    <uuid4>.<ext>
+                    ...
+            labels/
+                train/
+                    <uuid1>.txt
+                    <uuid2>.txt
+                    ...
+                val/
+                    <uuid3>.txt
+                    <uuid4>.txt
+                    ...
+
+    where ``dataset.yaml`` contains the following information::
+
+        train: ./images/train/
+        val: ./images/val/
+
+        # number of classes
+        nc: 80
+
+        # class names
+        names: ["list", "of", "classes", ...]
+
+    and the TXT files in ``labels/`` are space-delimited files where each row
+    corresponds to an object in the image of the same name, in the following
+    format::
+
+        <target> <x-center> <y-center> <width> <height>
+
+    where ``<target>`` is the zero-based integer index of the object class
+    label from ``names`` and the bounding box coordinates are expressed as
+    relative coordinates in ``[0, 1] x [0, 1]``.
+
+    Unlabeled images have no corresponding TXT file in ``labels/``.
+    """
+
+    def get_dataset_importer_cls(self):
+        import fiftyone.utils.yolo as fouy
+
+        return fouy.YOLOv5DatasetImporter
+
+    def get_dataset_exporter_cls(self):
+        import fiftyone.utils.yolo as fouy
+
+        return fouy.YOLOv5DatasetExporter
 
 
 class TFObjectDetectionDataset(ImageDetectionDataset):
@@ -1308,9 +1371,9 @@ class BDDDataset(ImageLabelsDataset):
         return foub.BDDDatasetExporter
 
 
-class GeoJSONImageDataset(ImageLabelsDataset):
-    """An image dataset whose geolocation data and optional properties are
-    stored in `GeoJSON format <https://en.wikipedia.org/wiki/GeoJSON>`_.
+class GeoJSONDataset(LabeledDataset):
+    """An image or video dataset whose geolocation data and optional properties
+    are stored in `GeoJSON format <https://en.wikipedia.org/wiki/GeoJSON>`_.
 
     Datasets of this type are read/written in the following format::
 
@@ -1360,14 +1423,11 @@ class GeoJSONImageDataset(ImageLabelsDataset):
         }
 
     where the ``geometry`` field may contain any valid GeoJSON geometry object,
-    and the ``filename`` property encodes the name of the corresponding image
-    in the ``data/`` folder.
+    and the ``filename`` property encodes the name of the corresponding media
+    in the ``data/`` folder. The ``filename`` property can also be an absolute
+    path, which may or may not be in the ``data/`` folder.
 
-    You can also specify a ``filepath`` property rather than ``filename``, in
-    which case the path is interpreted as an absolute path to the corresponding
-    image, which may or may not be in ``data/`` folder.
-
-    Images with no location data will have a null ``geometry`` field.
+    Samples with no location data will have a null ``geometry`` field.
 
     The ``properties`` field of each feature can contain additional labels that
     can be imported/exported when working with datasets of this type.
@@ -1376,12 +1436,12 @@ class GeoJSONImageDataset(ImageLabelsDataset):
     def get_dataset_importer_cls(self):
         import fiftyone.utils.geojson as foug
 
-        return foug.GeoJSONImageDatasetImporter
+        return foug.GeoJSONDatasetImporter
 
     def get_dataset_exporter_cls(self):
         import fiftyone.utils.geojson as foug
 
-        return foug.GeoJSONImageDatasetExporter
+        return foug.GeoJSONDatasetExporter
 
 
 class FiftyOneVideoLabelsDataset(VideoLabelsDataset):

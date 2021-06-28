@@ -57,7 +57,6 @@ class OpenImagesDatasetImporter(foud.LabeledImageDatasetImporter):
             to the dataset's ``info`` dictionary
         version ("v6"): the Open Images dataset format version being used.
             Supported values are ``("v6")``
-        skip_unlabeled (False): whether to skip unlabeled images when importing
         shuffle (False): whether to randomly shuffle the order in which the
             samples are imported
         seed (None): a random seed to use when shuffling
@@ -75,18 +74,17 @@ class OpenImagesDatasetImporter(foud.LabeledImageDatasetImporter):
         image_ids_file=None,
         load_hierarchy=True,
         version="v6",
-        skip_unlabeled=False,
         shuffle=False,
         seed=None,
         max_samples=None,
     ):
         super().__init__(
-            dataset_dir,
-            skip_unlabeled=skip_unlabeled,
+            dataset_dir=dataset_dir,
             shuffle=shuffle,
             seed=seed,
             max_samples=max_samples,
         )
+
         self.label_types = label_types
         self.classes = classes
         self.attrs = attrs
@@ -94,6 +92,7 @@ class OpenImagesDatasetImporter(foud.LabeledImageDatasetImporter):
         self.image_ids_file = image_ids_file
         self.load_hierarchy = load_hierarchy
         self.version = version
+
         self._data_dir = None
         self._info = None
         self._classes = None
@@ -125,6 +124,7 @@ class OpenImagesDatasetImporter(foud.LabeledImageDatasetImporter):
             )
             if pos_labels is not None:
                 labels["positive_labels"] = pos_labels
+
             if neg_labels is not None:
                 labels["negative_labels"] = neg_labels
 
@@ -319,8 +319,10 @@ class OpenImagesDatasetImporter(foud.LabeledImageDatasetImporter):
 
         if attrs_map:
             self._info["attributes_map"] = attrs_map
+
         if all_attrs:
             self._info["attributes"] = all_attrs
+
         if seg_classes:
             self._info["segmentation_classes"] = seg_classes
 
@@ -370,7 +372,6 @@ class OpenImagesV6DatasetImporter(OpenImagesDatasetImporter):
             ``image_ids`` is provided, this parameter is ignored
         load_hierarchy (True): optionally load the classes hiearchy and add it
             to the info of the dataset
-        skip_unlabeled (False): whether to skip unlabeled images when importing
         shuffle (False): whether to randomly shuffle the order in which the
             samples are imported
         seed (None): a random seed to use when shuffling
@@ -387,7 +388,6 @@ class OpenImagesV6DatasetImporter(OpenImagesDatasetImporter):
         image_ids=None,
         image_ids_file=None,
         load_hierarchy=True,
-        skip_unlabeled=False,
         shuffle=False,
         seed=None,
         max_samples=None,
@@ -401,7 +401,6 @@ class OpenImagesV6DatasetImporter(OpenImagesDatasetImporter):
             image_ids_file=image_ids_file,
             load_hierarchy=load_hierarchy,
             version="v6",
-            skip_unlabeled=skip_unlabeled,
             shuffle=shuffle,
             seed=seed,
             max_samples=max_samples,
@@ -493,7 +492,7 @@ def download_open_images_split(
     else:
         downloaded_ids = []
         split_image_ids = _parse_image_ids(
-            image_ids, image_ids_file, dataset_dir, split=split, download=True,
+            image_ids, image_ids_file, dataset_dir, split=split, download=True
         )
 
     download = True
@@ -580,6 +579,7 @@ def _setup(
                 filtered_classes.append(c)
             except:
                 missing_classes.append(c)
+
         classes = filtered_classes
         if missing_classes:
             logger.warning(
@@ -666,6 +666,7 @@ def get_attributes(dataset_dir=None, version="v6"):
 
     if not dataset_dir:
         dataset_dir = os.path.join(fo.config.dataset_zoo_dir, "open-images")
+
     try:
         attrs_map = _get_attrs_map(dataset_dir, download=False)
     except FileNotFoundError:
@@ -694,11 +695,13 @@ def get_classes(dataset_dir=None, version="v6"):
 
     if not dataset_dir:
         dataset_dir = os.path.join(fo.config.dataset_zoo_dir, "open-images")
+
     try:
         classes_map = _get_classes_map(dataset_dir, download=False)
     except FileNotFoundError:
         with etau.TempDir() as tmp_dir:
-            classes_map = _get_classes_map(dataset_dir=tmp_dir, download=True,)
+            classes_map = _get_classes_map(dataset_dir=tmp_dir, download=True)
+
     return sorted(list(classes_map.values()))
 
 
@@ -721,11 +724,13 @@ def get_segmentation_classes(dataset_dir=None, version="v6"):
 
     if not dataset_dir:
         dataset_dir = os.path.join(fo.config.dataset_zoo_dir, "open-images")
+
     try:
         seg_classes = _get_seg_classes(dataset_dir, download=False)
     except FileNotFoundError:
         with etau.TempDir() as tmp_dir:
-            seg_classes = _get_seg_classes(dataset_dir=tmp_dir, download=True,)
+            seg_classes = _get_seg_classes(dataset_dir=tmp_dir, download=True)
+
     return seg_classes
 
 
@@ -771,7 +776,7 @@ def _get_classes_map(dataset_dir, download=True):
 def _get_seg_classes(dataset_dir, classes_map=None, download=True):
     if not classes_map:
         classes_map = _get_classes_map(
-            dataset_dir=dataset_dir, download=download,
+            dataset_dir=dataset_dir, download=download
         )
 
     annot_link = _ANNOTATION_DOWNLOAD_LINKS["general"]["segmentation_classes"]
@@ -800,7 +805,7 @@ def _get_hierarchy(dataset_dir, classes_map=None, download=True):
 
             if classes_map is None:
                 classes_map = _get_classes_map(
-                    dataset_dir=tmp_dir, download=download,
+                    dataset_dir=tmp_dir, download=download
                 )
 
             # Not included in standard classes
@@ -823,12 +828,14 @@ def _rename_subcategories(hierarchy, classes_map):
         subs = []
         for sub in hierarchy["Subcategory"]:
             subs.append(_rename_subcategories(sub, classes_map))
+
         hierarchy["Subcategory"] = subs
 
     if "Part" in hierarchy.keys():
         parts = []
         for part in hierarchy["Part"]:
             parts.append(_rename_subcategories(part, classes_map))
+
         hierarchy["Part"] = parts
 
     return hierarchy
@@ -846,6 +853,7 @@ def _parse_csv(filename, dataframe=False):
                 reader = csv.reader(csvfile, dialect)
             else:
                 reader = csv.reader(csvfile)
+
             data = [row for row in reader]
 
     return data

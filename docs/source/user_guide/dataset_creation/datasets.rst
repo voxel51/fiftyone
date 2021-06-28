@@ -18,49 +18,81 @@ Basic recipe
 
 The interface for creating a FiftyOne |Dataset| from your own dataset is
 conveniently exposed via the Python library and the CLI. The basic recipe is
-that you simply specify the path to the dataset on disk and the type of dataset
+that you simply specify the path(s) to the data on disk and the type of dataset
 that you're loading.
 
 .. tabs::
 
   .. group-tab:: Python
 
-    You can export a |Dataset| from disk via the
+    You can import a |Dataset| from disk via the
     :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>` factory
-    method:
+    method.
+
+    If your data is stored in the
+    :ref:`canoncial format <supported-import-formats>` of the type you're
+    importing, then you can load it by providing the ``dataset_dir`` and
+    ``dataset_type`` parameters:
 
     .. code-block:: python
         :linenos:
 
         import fiftyone as fo
 
-        # A name for the dataset
-        name = "my-coco-dataset"
-
         # The directory containing the dataset to import
         dataset_dir = "/path/to/dataset"
 
         # The type of the dataset being imported
-        # Any subclass of `fiftyone.types.Dataset` is supported
         dataset_type = fo.types.COCODetectionDataset  # for example
 
         # Import the dataset!
-        dataset = fo.Dataset.from_dir(dataset_dir, dataset_type, name=name)
+        dataset = fo.Dataset.from_dir(
+            dataset_dir=dataset_dir,
+            dataset_type=dataset_type,
+        )
 
-    You can also provide additional arguments to
-    :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>` to
-    customize the import behavior:
+    Alternatively, when importing labeled datasets in formats such as
+    :ref:`COCO <COCODetectionDataset-import>`, you may find it more natural to
+    provide the ``data_path`` and ``labels_path`` parameters to independently
+    specify the location of the source media on disk and the annotations file
+    containing the labels to import:
+
+    .. code-block:: python
+        :linenos:
+
+        # The type of the dataset being imported
+        dataset_type = fo.types.COCODetectionDataset  # for example
+
+        # The directory containing the source images
+        data_path = "/path/to/images"
+
+        # The path to the COCO labels JSON file
+        labels_path = "/path/to/coco-labels.json"
+
+        # Import the dataset!
+        dataset = fo.Dataset.from_dir(
+            dataset_type=dataset_type,
+            data_path=data_path,
+            labels_path=labels_path,
+        )
+
+    The :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>`
+    method also supports additional arguments that you can use to import a
+    subset of a dataset:
 
     .. code-block:: python
         :linenos:
 
         # Import a random subset of 10 samples from the dataset
         dataset = fo.Dataset.from_dir(
-            dataset_dir, dataset_type, shuffle=True, max_samples=10
+            ...,
+            shuffle=True,
+            max_samples=10,
         )
 
-    The additional arguments are passed directly to the |DatasetImporter| that
-    performs the actual import.
+    In general, you can pass any parameter for the |DatasetImporter| of the
+    format you're importing to
+    :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>`.
 
   .. group-tab:: CLI
 
@@ -70,7 +102,7 @@ that you're loading.
     .. code-block:: shell
 
         # A name for the dataset
-        NAME=my-coco-dataset
+        NAME=my-dataset
 
         # The directory containing the dataset to import
         DATASET_DIR=/path/to/dataset
@@ -135,8 +167,11 @@ format when reading the dataset from disk.
     | :ref:`KITTIDetectionDataset <KITTIDetectionDataset-import>`                           | A labeled dataset consisting of images and their associated object detections      |
     |                                                                                       | saved in `KITTI format <http://www.cvlibs.net/datasets/kitti/eval\_object.php>`_.  |
     +---------------------------------------------------------------------------------------+------------------------------------------------------------------------------------+
-    | :ref:`YOLODataset <YOLODataset-import>`                                               | A labeled dataset consisting of images and their associated object detections      |
-    |                                                                                       | saved in `YOLO format <https://github.com/AlexeyAB/darknet>`_.                     |
+    | :ref:`YOLOv4Dataset <YOLOv4Dataset-import>`                                           | A labeled dataset consisting of images and their associated object detections      |
+    |                                                                                       | saved in `YOLOv4 format <https://github.com/AlexeyAB/darknet>`_.                   |
+    +---------------------------------------------------------------------------------------+------------------------------------------------------------------------------------+
+    | :ref:`YOLOv5Dataset <YOLOv5Dataset-import>`                                           | A labeled dataset consisting of images and their associated object detections      |
+    |                                                                                       | saved in `YOLOv5 format <https://github.com/ultralytics/yolov5>`_.                 |
     +---------------------------------------------------------------------------------------+------------------------------------------------------------------------------------+
     | :ref:`TFObjectDetectionDataset <TFObjectDetectionDataset-import>`                     | A labeled dataset consisting of images and their associated object detections      |
     |                                                                                       | stored as TFRecords in `TF Object Detection API format \                           |
@@ -158,7 +193,7 @@ format when reading the dataset from disk.
     | :ref:`BDDDataset <BDDDataset-import>`                                                 | A labeled dataset consisting of images and their associated multitask predictions  |
     |                                                                                       | saved in `Berkeley DeepDrive (BDD) format <https://bdd-data.berkeley.edu>`_.       |
     +---------------------------------------------------------------------------------------+------------------------------------------------------------------------------------+
-    | :ref:`GeoJSONImageDataset <GeoJSONImageDataset-import>`                               | An image dataset whose labels and location data are stored in                      |
+    | :ref:`GeoJSONDataset <GeoJSONDataset-import>`                                         | An image or video dataset whose location data and labels are stored in             |
     |                                                                                       | `GeoJSON format <https://en.wikipedia.org/wiki/GeoJSON>`_.                         |
     +---------------------------------------------------------------------------------------+------------------------------------------------------------------------------------+
     | :ref:`FiftyOneVideoLabelsDataset <FiftyOneVideoLabelsDataset-import>`                 | A labeled dataset consisting of videos and their associated multitask predictions  |
@@ -202,7 +237,7 @@ You can create a FiftyOne dataset from a directory of images as follows:
 
         import fiftyone as fo
 
-        name = "my-images-dir"
+        name = "my-dataset"
         dataset_dir = "/path/to/images-dir"
 
         # Create the dataset
@@ -218,7 +253,7 @@ You can create a FiftyOne dataset from a directory of images as follows:
 
     .. code:: shell
 
-      NAME=my-images-dir
+      NAME=my-dataset
       DATASET_DIR=/path/to/images-dir
 
       # Create the dataset
@@ -275,7 +310,7 @@ You can create a FiftyOne dataset from a directory of videos as follows:
 
         import fiftyone as fo
 
-        name = "my-videos-dir"
+        name = "my-dataset"
         dataset_dir = "/path/to/videos-dir"
 
         # Create the dataset
@@ -291,7 +326,7 @@ You can create a FiftyOne dataset from a directory of videos as follows:
 
     .. code:: shell
 
-      NAME=my-videos-dir
+      NAME=my-dataset
       DATASET_DIR=/path/to/videos-dir
 
       # Create the dataset
@@ -373,7 +408,7 @@ in the above format as follows:
 
         import fiftyone as fo
 
-        name = "my-image-classification-dataset"
+        name = "my-dataset"
         dataset_dir = "/path/to/image-classification-dataset"
 
         # Create the dataset
@@ -391,7 +426,7 @@ in the above format as follows:
 
     .. code-block:: shell
 
-        NAME=my-image-classification-dataset
+        NAME=my-dataset
         DATASET_DIR=/path/to/image-classification-dataset
 
         # Create the dataset
@@ -456,7 +491,7 @@ stored in the above format as follows:
 
         import fiftyone as fo
 
-        name = "my-image-classification-dir-tree"
+        name = "my-dataset"
         dataset_dir = "/path/to/image-classification-dir-tree"
 
         # Create the dataset
@@ -474,7 +509,7 @@ stored in the above format as follows:
 
     .. code-block:: shell
 
-        NAME=my-image-classification-dir-tree
+        NAME=my-dataset
         DATASET_DIR=/path/to/image-classification-dir-tree
 
         # Create the dataset
@@ -539,7 +574,7 @@ stored in the above format as follows:
 
         import fiftyone as fo
 
-        name = "my-video-classification-dir-tree"
+        name = "my-dataset"
         dataset_dir = "/path/to/video-classification-dir-tree"
 
         # Create the dataset
@@ -557,7 +592,7 @@ stored in the above format as follows:
 
     .. code-block:: shell
 
-        NAME=my-video-classification-dir-tree
+        NAME=my-dataset
         DATASET_DIR=/path/to/video-classification-dir-tree
 
         # Create the dataset
@@ -635,7 +670,7 @@ as a directory of TFRecords in the above format as follows:
 
         import fiftyone as fo
 
-        name = "my-tf-image-classification-dataset"
+        name = "my-dataset"
         dataset_dir = "/path/to/tf-image-classification-dataset"
         images_dir = "/path/for/images"
 
@@ -661,7 +696,7 @@ as a directory of TFRecords in the above format as follows:
 
     .. code-block:: shell
 
-        NAME=my-tf-image-classification-dataset
+        NAME=my-dataset
         DATASET_DIR=/path/to/tf-image-classification-dataset
         IMAGES_DIR=/path/for/images
 
@@ -768,7 +803,7 @@ above format as follows:
 
         import fiftyone as fo
 
-        name = "my-image-detection-dataset"
+        name = "my-dataset"
         dataset_dir = "/path/to/image-detection-dataset"
 
         # Create the dataset
@@ -786,7 +821,7 @@ above format as follows:
 
     .. code-block:: shell
 
-        NAME=my-image-detection-dataset
+        NAME=my-dataset
         DATASET_DIR=/path/to/image-detection-dataset
 
         # Create the dataset
@@ -900,7 +935,7 @@ above format as follows:
 
         import fiftyone as fo
 
-        name = "my-coco-detection-dataset"
+        name = "my-dataset"
         dataset_dir = "/path/to/coco-detection-dataset"
 
         # Create the dataset
@@ -918,7 +953,7 @@ above format as follows:
 
     .. code-block:: shell
 
-        NAME=my-coco-detection-dataset
+        NAME=my-dataset
         DATASET_DIR=/path/to/coco-detection-dataset
 
         # Create the dataset
@@ -1029,7 +1064,7 @@ above format as follows:
 
         import fiftyone as fo
 
-        name = "my-voc-detection-dataset"
+        name = "my-dataset"
         dataset_dir = "/path/to/voc-detection-dataset"
 
         # Create the dataset
@@ -1047,7 +1082,7 @@ above format as follows:
 
     .. code-block:: shell
 
-        NAME=my-voc-detection-dataset
+        NAME=my-dataset
         DATASET_DIR=/path/to/voc-detection-dataset
 
         # Create the dataset
@@ -1150,7 +1185,7 @@ above format as follows:
 
         import fiftyone as fo
 
-        name = "my-kitti-detection-dataset"
+        name = "my-dataset"
         dataset_dir = "/path/to/kitti-detection-dataset"
 
         # Create the dataset
@@ -1168,7 +1203,7 @@ above format as follows:
 
     .. code-block:: shell
 
-        NAME=my-kitti-detection-dataset
+        NAME=my-dataset
         DATASET_DIR=/path/to/kitti-detection-dataset
 
         # Create the dataset
@@ -1196,15 +1231,15 @@ above format as follows:
             --dataset-dir $DATASET_DIR \
             --type fiftyone.types.KITTIDetectionDataset
 
-.. _YOLODataset-import:
+.. _YOLOv4Dataset-import:
 
-YOLODataset
------------
+YOLOv4Dataset
+-------------
 
-The :class:`fiftyone.types.YOLODataset <fiftyone.types.dataset_types.YOLODataset>`
+The :class:`fiftyone.types.YOLOv4Dataset <fiftyone.types.dataset_types.YOLOv4Dataset>`
 type represents a labeled dataset consisting of images and their associated
 object detections saved in
-`YOLO format <https://github.com/AlexeyAB/darknet>`_.
+`YOLOv4 format <https://github.com/AlexeyAB/darknet>`_.
 
 Datasets of this type are read in the following format:
 
@@ -1250,7 +1285,7 @@ relative coordinates in `[0, 1] x [0, 1]`.
 
 Unlabeled images have no corresponding TXT file in `data/`.
 
-You can create a FiftyOne dataset from a YOLO dataset stored in the above
+You can create a FiftyOne dataset from a YOLOv4 dataset stored in the above
 format as follows:
 
 .. tabs::
@@ -1262,12 +1297,12 @@ format as follows:
 
         import fiftyone as fo
 
-        name = "my-yolo-dataset"
-        dataset_dir = "/path/to/yolo-dataset"
+        name = "my-dataset"
+        dataset_dir = "/path/to/yolov4-dataset"
 
         # Create the dataset
         dataset = fo.Dataset.from_dir(
-            dataset_dir, fo.types.YOLODataset, name=name
+            dataset_dir, fo.types.YOLOv4Dataset, name=name
         )
 
         # View summary info about the dataset
@@ -1280,14 +1315,14 @@ format as follows:
 
     .. code-block:: shell
 
-        NAME=my-yolo-dataset
-        DATASET_DIR=/path/to/yolo-dataset
+        NAME=my-dataset
+        DATASET_DIR=/path/to/yolov4-dataset
 
         # Create the dataset
         fiftyone datasets create \
             --name $NAME \
             --dataset-dir $DATASET_DIR \
-            --type fiftyone.types.YOLODataset
+            --type fiftyone.types.YOLOv4Dataset
 
         # View summary info about the dataset
         fiftyone datasets info $NAME
@@ -1295,17 +1330,136 @@ format as follows:
         # Print the first few samples in the dataset
         fiftyone datasets head $NAME
 
-    To view a YOLO dataset stored in the above format in the FiftyOne App
+    To view a YOLOv4 dataset stored in the above format in the FiftyOne App
     without creating a persistent FiftyOne dataset, you can execute:
 
     .. code-block:: shell
 
-        DATASET_DIR=/path/to/yolo-dataset
+        DATASET_DIR=/path/to/yolov4-dataset
 
         # View the dataset in the App
         fiftyone app view \
             --dataset-dir $DATASET_DIR \
-            --type fiftyone.types.YOLODataset
+            --type fiftyone.types.YOLOv4Dataset
+
+.. _YOLOv5Dataset-import:
+
+YOLOv5Dataset
+-------------
+
+The :class:`fiftyone.types.YOLOv5Dataset <fiftyone.types.dataset_types.YOLOv5Dataset>`
+type represents a labeled dataset consisting of images and their associated
+object detections saved in
+`YOLOv5 format <https://github.com/ultralytics/yolov5>`_.
+
+Datasets of this type are read in the following format:
+
+.. code-block:: text
+
+    <dataset_dir>/
+        dataset.yaml
+        images/
+            train/
+                <uuid1>.<ext>
+                <uuid2>.<ext>
+                ...
+            val/
+                <uuid3>.<ext>
+                <uuid4>.<ext>
+                ...
+        labels/
+            train/
+                <uuid1>.txt
+                <uuid2>.txt
+                ...
+            val/
+                <uuid3>.txt
+                <uuid4>.txt
+                ...
+
+where `dataset.yaml` contains the following information:
+
+.. code-block:: text
+
+    train: ./images/train/
+    val: ./images/val/
+
+    # number of classes
+    nc: 80
+
+    # class names
+    names: ["list", "of", "classes", ...]
+
+and the TXT files in `labels/` are space-delimited files where each row
+corresponds to an object in the image of the same name, in the following
+format:
+
+.. code-block:: text
+
+    <target> <x-center> <y-center> <width> <height>
+
+where `<target>` is the zero-based integer index of the object class label from
+`names` and the bounding box coordinates are expressed as
+relative coordinates in `[0, 1] x [0, 1]`.
+
+Unlabeled images have no corresponding TXT file in `labels/`.
+
+You can create a FiftyOne dataset from a YOLOv5 dataset stored in the above
+format as follows:
+
+.. tabs::
+
+  .. group-tab:: Python
+
+    .. code-block:: python
+        :linenos:
+
+        import fiftyone as fo
+
+        name = "my-dataset"
+        dataset_dir = "/path/to/yolov5-dataset"
+
+        # Create the dataset
+        dataset = fo.Dataset.from_dir(
+            dataset_dir, fo.types.YOLOv5Dataset, name=name
+        )
+
+        # View summary info about the dataset
+        print(dataset)
+
+        # Print the first few samples in the dataset
+        print(dataset.head())
+
+  .. group-tab:: CLI
+
+    .. code-block:: shell
+
+        NAME=my-dataset
+        DATASET_DIR=/path/to/yolov5-dataset
+
+        # Create the dataset
+        fiftyone datasets create \
+            --name $NAME \
+            --dataset-dir $DATASET_DIR \
+            --type fiftyone.types.YOLOv5Dataset
+
+        # View summary info about the dataset
+        fiftyone datasets info $NAME
+
+        # Print the first few samples in the dataset
+        fiftyone datasets head $NAME
+
+    To view a YOLOv5 dataset stored in the above format in the FiftyOne App
+    without creating a persistent FiftyOne dataset, you can execute:
+
+    .. code-block:: shell
+
+        DATASET_DIR=/path/to/yolov5-dataset
+
+        # View the dataset in the App
+        fiftyone app view \
+            --dataset-dir $DATASET_DIR \
+            --type fiftyone.types.YOLOv5Dataset
 
 .. _TFObjectDetectionDataset-import:
 
@@ -1378,7 +1532,7 @@ directory of TFRecords in the above format as follows:
 
         import fiftyone as fo
 
-        name = "my-tf-object-detection-dataset"
+        name = "my-dataset"
         dataset_dir = "/path/to/tf-object-detection-dataset"
         images_dir = "/path/for/images"
 
@@ -1404,7 +1558,7 @@ directory of TFRecords in the above format as follows:
 
     .. code-block:: shell
 
-        NAME=my-tf-object-detection-dataset
+        NAME=my-dataset
         DATASET_DIR=/path/to/tf-object-detection-dataset
         IMAGES_DIR=/path/for/images
 
@@ -1477,7 +1631,7 @@ the above format as follows:
 
         import fiftyone as fo
 
-        name = "my-image-segmentation-dataset"
+        name = "my-dataset"
         dataset_dir = "/path/to/image-segmentation-dataset"
 
         # Create the dataset
@@ -1495,7 +1649,7 @@ the above format as follows:
 
     .. code-block:: shell
 
-        NAME=my-image-segmentation-dataset
+        NAME=my-dataset
         DATASET_DIR=/path/to/image-segmentation-dataset
 
         # Create the dataset
@@ -1606,7 +1760,7 @@ format as follows:
 
         import fiftyone as fo
 
-        name = "my-cvat-image-dataset"
+        name = "my-dataset"
         dataset_dir = "/path/to/cvat-image-dataset"
 
         # Create the dataset
@@ -1624,7 +1778,7 @@ format as follows:
 
     .. code-block:: shell
 
-        NAME=my-cvat-image-dataset
+        NAME=my-dataset
         DATASET_DIR=/path/to/cvat-image-dataset
 
         # Create the dataset
@@ -1680,77 +1834,77 @@ where the labels XML files are stored in the following format:
 .. code-block:: xml
 
     <?xml version="1.0" encoding="utf-8"?>
-        <annotations>
-            <version>1.1</version>
-            <meta>
-                <task>
-                    <id>task-id</id>
-                    <name>task-name</name>
-                    <size>51</size>
-                    <mode>interpolation</mode>
-                    <overlap></overlap>
-                    <bugtracker></bugtracker>
-                    <flipped>False</flipped>
-                    <created>2017-11-20 11:51:51.000000+00:00</created>
-                    <updated>2017-11-20 11:51:51.000000+00:00</updated>
-                    <labels>
-                        <label>
-                            <name>car</name>
-                            <attributes>
-                                <attribute>
-                                    <name>type</name>
-                                    <values>coupe\\nsedan\\ntruck</values>
-                                </attribute>
-                                ...
-                            </attributes>
-                        </label>
-                        <label>
-                            <name>person</name>
-                            <attributes>
-                                <attribute>
-                                    <name>gender</name>
-                                    <values>male\\nfemale</values>
-                                </attribute>
-                                ...
-                            </attributes>
-                        </label>
-                        ...
-                    </labels>
-                </task>
-                <segments>
-                    <segment>
-                        <id>0</id>
-                        <start>0</start>
-                        <stop>50</stop>
-                        <url></url>
-                    </segment>
-                </segments>
-                <owner>
-                    <username></username>
-                    <email></email>
-                </owner>
-                <original_size>
-                    <width>640</width>
-                    <height>480</height>
-                </original_size>
-                <dumped>2017-11-20 11:51:51.000000+00:00</dumped>
-            </meta>
-            <track id="0" label="car">
-                <box frame="0" xtl="100" ytl="50" xbr="325" ybr="190" outside="0" occluded="0" keyframe="1">
-                    <attribute name="type">sedan</attribute>
+    <annotations>
+        <version>1.1</version>
+        <meta>
+            <task>
+                <id>task-id</id>
+                <name>task-name</name>
+                <size>51</size>
+                <mode>interpolation</mode>
+                <overlap></overlap>
+                <bugtracker></bugtracker>
+                <flipped>False</flipped>
+                <created>2017-11-20 11:51:51.000000+00:00</created>
+                <updated>2017-11-20 11:51:51.000000+00:00</updated>
+                <labels>
+                    <label>
+                        <name>car</name>
+                        <attributes>
+                            <attribute>
+                                <name>type</name>
+                                <values>coupe\\nsedan\\ntruck</values>
+                            </attribute>
+                            ...
+                        </attributes>
+                    </label>
+                    <label>
+                        <name>person</name>
+                        <attributes>
+                            <attribute>
+                                <name>gender</name>
+                                <values>male\\nfemale</values>
+                            </attribute>
+                            ...
+                        </attributes>
+                    </label>
                     ...
-                </box>
+                </labels>
+            </task>
+            <segments>
+                <segment>
+                    <id>0</id>
+                    <start>0</start>
+                    <stop>50</stop>
+                    <url></url>
+                </segment>
+            </segments>
+            <owner>
+                <username></username>
+                <email></email>
+            </owner>
+            <original_size>
+                <width>640</width>
+                <height>480</height>
+            </original_size>
+            <dumped>2017-11-20 11:51:51.000000+00:00</dumped>
+        </meta>
+        <track id="0" label="car">
+            <box frame="0" xtl="100" ytl="50" xbr="325" ybr="190" outside="0" occluded="0" keyframe="1">
+                <attribute name="type">sedan</attribute>
                 ...
-            </track>
+            </box>
             ...
-            <track id="10" label="person">
-                <box frame="45" xtl="300" ytl="25" xbr="375" ybr="400" outside="0" occluded="0" keyframe="1">
-                    <attribute name="gender">female</attribute>
-                    ...
-                </box>
+        </track>
+        ...
+        <track id="10" label="person">
+            <box frame="45" xtl="300" ytl="25" xbr="375" ybr="400" outside="0" occluded="0" keyframe="1">
+                <attribute name="gender">female</attribute>
                 ...
-            </track>
-        </annotations>
+            </box>
+            ...
+        </track>
+    </annotations>
 
 Unlabeled videos have no corresponding file in `labels/`.
 
@@ -1766,7 +1920,7 @@ format as follows:
 
         import fiftyone as fo
 
-        name = "my-cvat-video-dataset"
+        name = "my-dataset"
         dataset_dir = "/path/to/cvat-video-dataset"
 
         # Create the dataset
@@ -1784,7 +1938,7 @@ format as follows:
 
     .. code-block:: shell
 
-        NAME=my-cvat-video-dataset
+        NAME=my-dataset
         DATASET_DIR=/path/to/cvat-video-dataset
 
         # Create the dataset
@@ -1873,7 +2027,7 @@ above format as follows:
 
         import fiftyone as fo
 
-        name = "my-image-labels-dataset"
+        name = "my-dataset"
         dataset_dir = "/path/to/image-labels-dataset"
 
         # Create the dataset
@@ -1891,7 +2045,7 @@ above format as follows:
 
     .. code-block:: shell
 
-        NAME=my-image-labels-dataset
+        NAME=my-dataset
         DATASET_DIR=/path/to/image-labels-dataset
 
         # Create the dataset
@@ -1980,7 +2134,7 @@ above format as follows:
 
         import fiftyone as fo
 
-        name = "my-video-labels-dataset"
+        name = "my-dataset"
         dataset_dir = "/path/to/video-labels-dataset"
 
         # Create the dataset
@@ -1998,7 +2152,7 @@ above format as follows:
 
     .. code-block:: shell
 
-        NAME=my-video-labels-dataset
+        NAME=my-dataset
         DATASET_DIR=/path/to/video-labels-dataset
 
         # Create the dataset
@@ -2140,7 +2294,7 @@ as follows:
 
         import fiftyone as fo
 
-        name = "my-bdd-dataset"
+        name = "my-dataset"
         dataset_dir = "/path/to/bdd-dataset"
 
         # Create the dataset
@@ -2156,7 +2310,7 @@ as follows:
 
     .. code-block:: shell
 
-        NAME=my-bdd-dataset
+        NAME=my-dataset
         DATASET_DIR=/path/to/bdd-dataset
 
         # Create the dataset
@@ -2183,13 +2337,13 @@ as follows:
             --dataset-dir $DATASET_DIR \
             --type fiftyone.types.BDDDataset
 
-.. _GeoJSONImageDataset-import:
+.. _GeoJSONDataset-import:
 
-GeoJSONImageDataset
--------------------
+GeoJSONDataset
+--------------
 
-The :class:`fiftyone.types.GeoJSONImageDataset <fiftyone.types.dataset_types.GeoJSONImageDataset>`
-type represents a dataset consisting of images and their associated
+The :class:`fiftyone.types.GeoJSONDataset <fiftyone.types.dataset_types.GeoJSONDataset>`
+type represents a dataset consisting of images or videos and their associated
 geolocation data and optional properties stored in
 `GeoJSON format <https://en.wikipedia.org/wiki/GeoJSON>`_.
 
@@ -2245,20 +2399,17 @@ the following format:
     }
 
 where the ``geometry`` field may contain any valid GeoJSON geometry object, and
-the ``filename`` property encodes the name of the corresponding image in the
-``data/`` folder.
+the ``filename`` property encodes the name of the corresponding media in the
+``data/`` folder. The ``filename`` property can also be an absolute path, which
+may or may not be in the ``data/`` folder.
 
-You can also specify a ``filepath`` property rather than ``filename``, in which
-case the path is interpreted as an absolute path to the corresponding image,
-which may or may not be in ``data/`` folder.
-
-Images with no location data will have a null ``geometry`` field.
+Samples with no location data will have a null ``geometry`` field.
 
 The ``properties`` field of each feature can contain additional labels that
 can be imported when working with datasets of this type.
 
-You can create a FiftyOne dataset from a GeoJSON image dataset stored in the
-above format as follows:
+You can create a FiftyOne dataset from a GeoJSON dataset stored in the above
+format as follows:
 
 .. tabs::
 
@@ -2269,12 +2420,12 @@ above format as follows:
 
         import fiftyone as fo
 
-        name = "my-geojson-image-dataset"
-        dataset_dir = "/path/to/geojson-image-dataset"
+        name = "my-dataset"
+        dataset_dir = "/path/to/geojson-dataset"
 
         # Create the dataset
         dataset = fo.Dataset.from_dir(
-            dataset_dir, fo.types.GeoJSONImageDataset, name=name
+            dataset_dir, fo.types.GeoJSONDataset, name=name
         )
 
         # View summary info about the dataset
@@ -2287,14 +2438,14 @@ above format as follows:
 
     .. code-block:: shell
 
-        NAME=my-geojson-image-dataset
-        DATASET_DIR=/path/to/geojson-image-dataset
+        NAME=my-dataset
+        DATASET_DIR=/path/to/geojson-dataset
 
         # Create the dataset
         fiftyone datasets create \
             --name $NAME \
             --dataset-dir $DATASET_DIR \
-            --type fiftyone.types.GeoJSONImageDataset
+            --type fiftyone.types.GeoJSONDataset
 
         # View summary info about the dataset
         fiftyone datasets info $NAME
@@ -2302,17 +2453,17 @@ above format as follows:
         # Print the first few samples in the dataset
         fiftyone datasets head $NAME
 
-    To view a GeoJSON image dataset stored in the above format in the FiftyOne
-    App without creating a persistent FiftyOne dataset, you can execute:
+    To view a GeoJSON dataset stored in the above format in the FiftyOne App
+    without creating a persistent FiftyOne dataset, you can execute:
 
     .. code-block:: shell
 
-        DATASET_DIR=/path/to/geojson-image-dataset
+        DATASET_DIR=/path/to/geojson-dataset
 
         # View the dataset in the App
         fiftyone app view \
             --dataset-dir $DATASET_DIR \
-            --type fiftyone.types.GeoJSONImageDataset
+            --type fiftyone.types.GeoJSONDataset
 
 .. _FiftyOneDataset-import:
 
@@ -2364,7 +2515,7 @@ follows:
 
         import fiftyone as fo
 
-        name = "my-fiftyone-dataset"
+        name = "my-dataset"
         dataset_dir = "/path/to/fiftyone-dataset"
 
         # Create the dataset
@@ -2380,7 +2531,7 @@ follows:
 
     .. code-block:: shell
 
-        NAME=my-fiftyone-dataset
+        NAME=my-dataset
         DATASET_DIR=/path/to/fiftyone-dataset
 
         # Create the dataset

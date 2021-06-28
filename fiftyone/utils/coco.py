@@ -21,7 +21,6 @@ import eta.core.serial as etas
 import eta.core.utils as etau
 import eta.core.web as etaw
 
-import fiftyone as fo
 import fiftyone.core.labels as fol
 import fiftyone.core.metadata as fom
 import fiftyone.core.utils as fou
@@ -139,14 +138,41 @@ class COCODetectionSampleParser(foud.LabeledImageTupleSampleParser):
         )
 
 
-class COCODetectionDatasetImporter(foud.LabeledImageDatasetImporter):
+class COCODetectionDatasetImporter(
+    foud.LabeledImageDatasetImporter, foud.ImportPathsMixin
+):
     """Importer for COCO detection datasets stored on disk.
 
     See :class:`fiftyone.types.dataset_types.COCODetectionDataset` for format
     details.
 
     Args:
-        dataset_dir: the dataset directory
+        dataset_dir (None): the dataset directory
+        data_path (None): an optional parameter that enables explicit control
+            over the location of the media. Can be any of the following:
+
+            -   a folder name like ``"data"`` or ``"data/"`` specifying a
+                subfolder of ``dataset_dir`` where the media files reside
+            -   an absolute directory path where the media files reside. In
+                this case, the ``dataset_dir`` has no effect on the location of
+                the data
+            -   a filename like ``"data.json"`` specifying the filename of the
+                JSON data manifest file in ``dataset_dir``
+            -   an absolute filepath specifying the location of the JSON data
+                manifest. In this case, ``dataset_dir`` has no effect on the
+                location of the data
+
+            If None, this parameter will default to whichever of ``data/`` or
+            ``data.json`` exists in the dataset directory
+        labels_path (None): an optional parameter that enables explicit control
+            over the location of the labels. Can be any of the following:
+
+            -   a filename like ``"labels.json"`` specifying the location of
+                the labels in ``dataset_dir``
+            -   an absolute filepath to the labels. In this case,
+                ``dataset_dir`` has no effect on the location of the labels
+
+            If None, the parameter will default to ``labels.json``
         load_segmentations (True): whether to load segmentation masks, if
             available
         return_polylines (False): whether to return
@@ -154,7 +180,6 @@ class COCODetectionDatasetImporter(foud.LabeledImageDatasetImporter):
             :class:`fiftyone.core.labels.Detections`
         tolerance (None): a tolerance, in pixels, when generating approximate
             polylines for instance masks. Typical values are 1-3 pixels
-        skip_unlabeled (False): whether to skip unlabeled images when importing
         shuffle (False): whether to randomly shuffle the order in which the
             samples are imported
         seed (None): a random seed to use when shuffling
@@ -164,30 +189,44 @@ class COCODetectionDatasetImporter(foud.LabeledImageDatasetImporter):
 
     def __init__(
         self,
-        dataset_dir,
+        dataset_dir=None,
+        data_path=None,
+        labels_path=None,
         load_segmentations=True,
         return_polylines=False,
         tolerance=None,
-        skip_unlabeled=False,
         shuffle=False,
         seed=None,
         max_samples=None,
     ):
+        data_path = self._parse_data_path(
+            dataset_dir=dataset_dir, data_path=data_path, default="data/",
+        )
+
+        labels_path = self._parse_labels_path(
+            dataset_dir=dataset_dir,
+            labels_path=labels_path,
+            default="labels.json",
+        )
+
         super().__init__(
-            dataset_dir,
-            skip_unlabeled=skip_unlabeled,
+            dataset_dir=dataset_dir,
             shuffle=shuffle,
             seed=seed,
             max_samples=max_samples,
         )
+
+        self.data_path = data_path
+        self.labels_path = labels_path
         self.load_segmentations = load_segmentations
         self.return_polylines = return_polylines
         self.tolerance = tolerance
-        self._data_dir = None
+
         self._info = None
         self._classes = None
         self._supercategory_map = None
-        self._images_map = None
+        self._image_paths_map = None
+        self._image_dicts_map = None
         self._annotations = None
         self._filenames = None
         self._iter_filenames = None
@@ -202,9 +241,12 @@ class COCODetectionDatasetImporter(foud.LabeledImageDatasetImporter):
     def __next__(self):
         filename = next(self._iter_filenames)
 
-        image_path = os.path.join(self._data_dir, filename)
+        if os.path.isabs(filename):
+            image_path = filename
+        else:
+            image_path = self._image_paths_map[filename]
 
-        image_dict = self._images_map.get(filename, None)
+        image_dict = self._image_dicts_map.get(filename, None)
         if image_dict is None:
             image_metadata = fom.ImageMetadata.build_for(image_path)
             return image_path, image_metadata, None
@@ -256,17 +298,16 @@ class COCODetectionDatasetImporter(foud.LabeledImageDatasetImporter):
         return fol.Detections
 
     def setup(self):
-        self._data_dir = os.path.join(self.dataset_dir, "data")
+        self._image_paths_map = self._load_data_map(self.data_path)
 
-        labels_path = os.path.join(self.dataset_dir, "labels.json")
-        if os.path.isfile(labels_path):
+        if self.labels_path is not None and os.path.isfile(self.labels_path):
             (
                 info,
                 classes,
                 supercategory_map,
                 images,
                 annotations,
-            ) = load_coco_detection_annotations(labels_path)
+            ) = load_coco_detection_annotations(self.labels_path)
         else:
             info = {}
             classes = None
@@ -280,13 +321,10 @@ class COCODetectionDatasetImporter(foud.LabeledImageDatasetImporter):
         self._info = info
         self._classes = classes
         self._supercategory_map = supercategory_map
-        self._images_map = {i["file_name"]: i for i in images.values()}
+        self._image_dicts_map = {i["file_name"]: i for i in images.values()}
         self._annotations = annotations
 
-        if self.skip_unlabeled:
-            filenames = self._images_map.keys()
-        else:
-            filenames = etau.list_files(self._data_dir, abs_paths=False)
+        filenames = sorted(self._image_dicts_map.keys())
 
         self._filenames = self._preprocess_list(filenames)
 
@@ -294,14 +332,64 @@ class COCODetectionDatasetImporter(foud.LabeledImageDatasetImporter):
         return self._info
 
 
-class COCODetectionDatasetExporter(foud.LabeledImageDatasetExporter):
+class COCODetectionDatasetExporter(
+    foud.LabeledImageDatasetExporter, foud.ExportPathsMixin
+):
     """Exporter that writes COCO detection datasets to disk.
 
     See :class:`fiftyone.types.dataset_types.COCODetectionDataset` for format
     details.
 
     Args:
-        export_dir: the directory to write the export
+        export_dir (None): the directory to write the export. This has no
+            effect if ``data_path`` and ``labels_path`` are absolute paths
+        data_path (None): an optional parameter that enables explicit control
+            over the location of the exported media. Can be any of the
+            following:
+
+            -   a folder name like ``"data"`` or ``"data/"`` specifying a
+                subfolder of ``export_dir`` in which to export the media
+            -   an absolute directory path in which to export the media. In
+                this case, the ``export_dir`` has no effect on the location of
+                the data
+            -   a JSON filename like ``"data.json"`` specifying the filename of
+                the manifest file in ``export_dir`` generated when
+                ``export_media`` is ``"manifest"``
+            -   an absolute filepath specifying the location to write the JSON
+                manifest file when ``export_media`` is ``"manifest"``. In this
+                case, ``export_dir`` has no effect on the location of the data
+
+            If None, the default value of this parameter will be chosen based
+            on the value of the ``export_media`` parameter
+        labels_path (None): an optional parameter that enables explicit control
+            over the location of the exported labels. Can be any of the
+            following:
+
+            -   a filename like ``"labels.json"`` specifying the location in
+                ``export_dir`` in which to export the labels
+            -   an absolute filepath to which to export the labels. In this
+                case, the ``export_dir`` has no effect on the location of the
+                labels
+
+            If None, the labels will be exported into ``export_dir`` using the
+            default filename
+        export_media (None): controls how to export the raw media. The
+            supported values are:
+
+            -   ``True``: copy all media files into the output directory
+            -   ``False``: don't export media
+            -   ``"move"``: move all media files into the output directory
+            -   ``"symlink"``: create symlinks to the media files in the output
+                directory
+            -   ``"manifest"``: create a ``data.json`` in the output directory
+                that maps UUIDs used in the labels files to the filepaths of
+                the source media, rather than exporting the actual media
+
+            If None, the default value of this parameter will be chosen based
+            on the value of the ``data_path`` parameter
+        image_format (None): the image format to use when writing in-memory
+            images to disk. By default, ``fiftyone.config.default_image_ext``
+            is used
         classes (None): the list of possible class labels. If not provided,
             this list will be extracted when :meth:`log_collection` is called,
             if possible
@@ -309,39 +397,52 @@ class COCODetectionDatasetExporter(foud.LabeledImageDatasetExporter):
             :meth:`load_coco_detection_annotations`. If not provided, this info
             will be extracted when :meth:`log_collection` is called, if
             possible
-        image_format (None): the image format to use when writing in-memory
-            images to disk. By default, ``fiftyone.config.default_image_ext``
-            is used
         tolerance (None): a tolerance, in pixels, when generating approximate
             polylines for instance masks. Typical values are 1-3 pixels
     """
 
     def __init__(
         self,
-        export_dir,
+        export_dir=None,
+        data_path=None,
+        labels_path=None,
+        export_media=None,
+        image_format=None,
         classes=None,
         info=None,
-        image_format=None,
         tolerance=None,
     ):
-        if image_format is None:
-            image_format = fo.config.default_image_ext
+        data_path, export_media = self._parse_data_path(
+            export_dir=export_dir,
+            data_path=data_path,
+            export_media=export_media,
+            default="data/",
+        )
 
-        super().__init__(export_dir)
+        labels_path = self._parse_labels_path(
+            export_dir=export_dir,
+            labels_path=labels_path,
+            default="labels.json",
+        )
+
+        super().__init__(export_dir=export_dir)
+
+        self.data_path = data_path
+        self.labels_path = labels_path
+        self.export_media = export_media
+        self.image_format = image_format
         self.classes = classes
         self.info = info
-        self.image_format = image_format
         self.tolerance = tolerance
+
         self._labels_map_rev = None
-        self._data_dir = None
-        self._labels_path = None
         self._image_id = None
         self._anno_id = None
         self._images = None
         self._annotations = None
         self._classes = None
-        self._filename_maker = None
         self._has_labels = None
+        self._media_exporter = None
 
     @property
     def requires_image_metadata(self):
@@ -352,18 +453,21 @@ class COCODetectionDatasetExporter(foud.LabeledImageDatasetExporter):
         return fol.Detections
 
     def setup(self):
-        self._data_dir = os.path.join(self.export_dir, "data")
-        self._labels_path = os.path.join(self.export_dir, "labels.json")
         self._image_id = -1
         self._anno_id = -1
         self._images = []
         self._annotations = []
         self._classes = set()
-        self._filename_maker = fou.UniqueFilenameMaker(
-            output_dir=self._data_dir, default_ext=self.image_format
-        )
         self._has_labels = False
+
         self._parse_classes()
+
+        self._media_exporter = foud.ImageExporter(
+            self.export_media,
+            export_path=self.data_path,
+            default_ext=self.image_format,
+        )
+        self._media_exporter.setup()
 
     def log_collection(self, sample_collection):
         if self.classes is None:
@@ -381,9 +485,7 @@ class COCODetectionDatasetExporter(foud.LabeledImageDatasetExporter):
             self.info = sample_collection.info
 
     def export_sample(self, image_or_path, detections, metadata=None):
-        out_image_path = self._export_image_or_path(
-            image_or_path, self._filename_maker
-        )
+        out_image_path, _ = self._media_exporter.export(image_or_path)
 
         if metadata is None:
             metadata = fom.ImageMetadata.build_for(out_image_path)
@@ -418,7 +520,6 @@ class COCODetectionDatasetExporter(foud.LabeledImageDatasetExporter):
             self._annotations.append(obj.to_anno_dict())
 
     def close(self, *args):
-        # Populate observed category IDs, if necessary
         if self.classes is None:
             classes = sorted(self._classes)
             labels_map_rev = _to_labels_map_rev(classes)
@@ -456,7 +557,9 @@ class COCODetectionDatasetExporter(foud.LabeledImageDatasetExporter):
         if self._has_labels:
             labels["annotations"] = self._annotations
 
-        etas.write_json(labels, self._labels_path)
+        etas.write_json(labels, self.labels_path)
+
+        self._media_exporter.close()
 
     def _parse_classes(self):
         if self.classes is not None:
@@ -640,7 +743,7 @@ class COCOObject(object):
             iscrowd = int(detection.get_attribute_value("iscrowd"))
         else:
             try:
-                iscrowd = detection["iscrowd"]
+                iscrowd = int(detection["iscrowd"])
             except KeyError:
                 iscrowd = None
 

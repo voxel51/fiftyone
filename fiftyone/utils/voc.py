@@ -13,7 +13,6 @@ import jinja2
 
 import eta.core.utils as etau
 
-import fiftyone as fo
 import fiftyone.constants as foc
 import fiftyone.core.labels as fol
 import fiftyone.core.metadata as fom
@@ -90,15 +89,44 @@ class VOCDetectionSampleParser(foud.ImageDetectionSampleParser):
         return annotation.to_detections()
 
 
-class VOCDetectionDatasetImporter(foud.LabeledImageDatasetImporter):
+class VOCDetectionDatasetImporter(
+    foud.LabeledImageDatasetImporter, foud.ImportPathsMixin
+):
     """Importer for VOC detection datasets stored on disk.
 
     See :class:`fiftyone.types.dataset_types.VOCDetectionDataset` for format
     details.
 
     Args:
-        dataset_dir: the dataset directory
-        skip_unlabeled (False): whether to skip unlabeled images when importing
+        dataset_dir (None): the dataset directory
+        data_path (None): an optional parameter that enables explicit control
+            over the location of the media. Can be any of the following:
+
+            -   a folder name like ``"data"`` or ``"data/"`` specifying a
+                subfolder of ``dataset_dir`` where the media files reside
+            -   an absolute directory path where the media files reside. In
+                this case, the ``dataset_dir`` has no effect on the location of
+                the data
+            -   a filename like ``"data.json"`` specifying the filename of the
+                JSON data manifest file in ``dataset_dir``
+            -   an absolute filepath specifying the location of the JSON data
+                manifest. In this case, ``dataset_dir`` has no effect on the
+                location of the data
+
+            If None, this parameter will default to whichever of ``data/`` or
+            ``data.json`` exists in the dataset directory
+        labels_path (None): an optional parameter that enables explicit control
+            over the location of the labels. Can be any of the following:
+
+            -   a folder name like ``"labels"`` or ``"labels/"`` specifying the
+                location of the labels in ``dataset_dir``
+            -   an absolute folder path to the labels. In this case,
+                ``dataset_dir`` has no effect on the location of the labels
+
+            If None, the parameter will default to ``labels/``
+        include_all_data (False): whether to generate samples for all images in
+            the data directory (True) rather than only creating samples for
+            images with label entries (False)
         shuffle (False): whether to randomly shuffle the order in which the
             samples are imported
         seed (None): a random seed to use when shuffling
@@ -108,21 +136,37 @@ class VOCDetectionDatasetImporter(foud.LabeledImageDatasetImporter):
 
     def __init__(
         self,
-        dataset_dir,
-        skip_unlabeled=False,
+        dataset_dir=None,
+        data_path=None,
+        labels_path=None,
+        include_all_data=False,
         shuffle=False,
         seed=None,
         max_samples=None,
     ):
+        data_path = self._parse_data_path(
+            dataset_dir=dataset_dir, data_path=data_path, default="data/",
+        )
+
+        labels_path = self._parse_labels_path(
+            dataset_dir=dataset_dir,
+            labels_path=labels_path,
+            default="labels/",
+        )
+
         super().__init__(
-            dataset_dir,
-            skip_unlabeled=skip_unlabeled,
+            dataset_dir=dataset_dir,
             shuffle=shuffle,
             seed=seed,
             max_samples=max_samples,
         )
-        self._uuids_to_image_paths = None
-        self._uuids_to_labels_paths = None
+
+        self.data_path = data_path
+        self.labels_path = labels_path
+        self.include_all_data = include_all_data
+
+        self._image_paths_map = None
+        self._labels_paths_map = None
         self._uuids = None
         self._iter_uuids = None
         self._num_samples = None
@@ -137,7 +181,7 @@ class VOCDetectionDatasetImporter(foud.LabeledImageDatasetImporter):
     def __next__(self):
         uuid = next(self._iter_uuids)
 
-        labels_path = self._uuids_to_labels_paths.get(uuid, None)
+        labels_path = self._labels_paths_map.get(uuid, None)
         if labels_path:
             # Labeled image
 
@@ -151,12 +195,14 @@ class VOCDetectionDatasetImporter(foud.LabeledImageDatasetImporter):
             else:
                 _uuid = None
 
-            if _uuid not in self._uuids_to_image_paths:
+            if _uuid not in self._image_paths_map:
                 _uuid = uuid
 
-            try:
-                image_path = self._uuids_to_image_paths[_uuid]
-            except KeyError:
+            if uuid in self._image_paths_map:
+                image_path = self._image_paths_map[uuid]
+            elif annotation.path and os.path.isfile(annotation.path):
+                image_path = annotation.path
+            else:
                 raise ValueError("No image found for sample '%s'" % _uuid)
 
             if annotation.metadata is None:
@@ -167,7 +213,7 @@ class VOCDetectionDatasetImporter(foud.LabeledImageDatasetImporter):
             detections = annotation.to_detections()
         else:
             # Unlabeled image
-            image_path = self._uuids_to_image_paths[uuid]
+            image_path = self._image_paths_map[uuid]
             image_metadata = fom.ImageMetadata.build_for(image_path)
             detections = None
 
@@ -186,63 +232,115 @@ class VOCDetectionDatasetImporter(foud.LabeledImageDatasetImporter):
         return fol.Detections
 
     def setup(self):
-        to_uuid = lambda p: os.path.splitext(os.path.basename(p))[0]
+        self._image_paths_map = self._load_data_map(
+            self.data_path, ignore_exts=True
+        )
 
-        data_dir = os.path.join(self.dataset_dir, "data")
-        if os.path.isdir(data_dir):
-            self._uuids_to_image_paths = {
-                to_uuid(p): p
-                for p in etau.list_files(data_dir, abs_paths=True)
+        if self.labels_path is not None and os.path.isdir(self.labels_path):
+            self._labels_paths_map = {
+                os.path.splitext(os.path.basename(p))[0]: p
+                for p in etau.list_files(self.labels_path, abs_paths=True)
             }
         else:
-            self._uuids_to_image_paths = {}
+            self._labels_paths_map = {}
 
-        labels_dir = os.path.join(self.dataset_dir, "labels")
-        if os.path.isdir(labels_dir):
-            self._uuids_to_labels_paths = {
-                to_uuid(p): p
-                for p in etau.list_files(labels_dir, abs_paths=True)
-            }
-        else:
-            self._uuids_to_labels_paths = {}
+        uuids = set(self._labels_paths_map.keys())
 
-        if self.skip_unlabeled:
-            uuids = sorted(self._uuids_to_labels_paths.keys())
-        else:
-            # Allow uuid to missing from `_uuids_to_image_paths` since we will
-            # try to use filepath from labels, if present
-            uuids = sorted(
-                set(self._uuids_to_image_paths.keys())
-                | set(self._uuids_to_labels_paths.keys())
-            )
+        if self.include_all_data:
+            uuids.update(self._image_paths_map.keys())
 
-        self._uuids = self._preprocess_list(uuids)
+        self._uuids = self._preprocess_list(sorted(uuids))
         self._num_samples = len(self._uuids)
 
 
-class VOCDetectionDatasetExporter(foud.LabeledImageDatasetExporter):
+class VOCDetectionDatasetExporter(
+    foud.LabeledImageDatasetExporter, foud.ExportPathsMixin
+):
     """Exporter that writes VOC detection datasets to disk.
 
     See :class:`fiftyone.types.dataset_types.VOCDetectionDataset` for format
     details.
 
     Args:
-        export_dir: the directory to write the export
+        export_dir (None): the directory to write the export. This has no
+            effect if ``data_path`` and ``labels_path`` are absolute paths
+        data_path (None): an optional parameter that enables explicit control
+            over the location of the exported media. Can be any of the
+            following:
+
+            -   a folder name like ``"data"`` or ``"data/"`` specifying a
+                subfolder of ``export_dir`` in which to export the media
+            -   an absolute directory path in which to export the media. In
+                this case, the ``export_dir`` has no effect on the location of
+                the data
+            -   a JSON filename like ``"data.json"`` specifying the filename of
+                the manifest file in ``export_dir`` generated when
+                ``export_media`` is ``"manifest"``
+            -   an absolute filepath specifying the location to write the JSON
+                manifest file when ``export_media`` is ``"manifest"``. In this
+                case, ``export_dir`` has no effect on the location of the data
+
+            If None, the default value of this parameter will be chosen based
+            on the value of the ``export_media`` parameter
+        labels_path (None): an optional parameter that enables explicit control
+            over the location of the exported labels. Can be any of the
+            following:
+
+            -   a folder name like ``"labels"`` or ``"labels/"`` specifying the
+                location in ``export_dir`` in which to export the labels
+            -   an absolute folder path to which to export the labels. In this
+                case, the ``export_dir`` has no effect on the location of the
+                labels
+
+            If None, the labels will be exported into ``export_dir`` using the
+            default folder name
+        export_media (None): controls how to export the raw media. The
+            supported values are:
+
+            -   ``True``: copy all media files into the output directory
+            -   ``False``: don't export media
+            -   ``"move"``: move all media files into the output directory
+            -   ``"symlink"``: create symlinks to the media files in the output
+                directory
+            -   ``"manifest"``: create a ``data.json`` in the output directory
+                that maps UUIDs used in the labels files to the filepaths of
+                the source media, rather than exporting the actual media
+
+            If None, the default value of this parameter will be chosen based
+            on the value of the ``data_path`` parameter
         image_format (None): the image format to use when writing in-memory
             images to disk. By default, ``fiftyone.config.default_image_ext``
             is used
     """
 
-    def __init__(self, export_dir, image_format=None):
-        if image_format is None:
-            image_format = fo.config.default_image_ext
+    def __init__(
+        self,
+        export_dir=None,
+        data_path=None,
+        labels_path=None,
+        export_media=None,
+        image_format=None,
+    ):
+        data_path, export_media = self._parse_data_path(
+            export_dir=export_dir,
+            data_path=data_path,
+            export_media=export_media,
+            default="data/",
+        )
 
-        super().__init__(export_dir)
+        labels_path = self._parse_labels_path(
+            export_dir=export_dir, labels_path=labels_path, default="labels/",
+        )
+
+        super().__init__(export_dir=export_dir)
+
+        self.data_path = data_path
+        self.labels_path = labels_path
+        self.export_media = export_media
         self.image_format = image_format
-        self._data_dir = None
-        self._labels_dir = None
-        self._filename_maker = None
+
         self._writer = None
+        self._media_exporter = None
 
     @property
     def requires_image_metadata(self):
@@ -253,36 +351,35 @@ class VOCDetectionDatasetExporter(foud.LabeledImageDatasetExporter):
         return fol.Detections
 
     def setup(self):
-        self._data_dir = os.path.join(self.export_dir, "data")
-        self._labels_dir = os.path.join(self.export_dir, "labels")
-        self._filename_maker = fou.UniqueFilenameMaker(
-            output_dir=self._data_dir,
+        self._writer = VOCAnnotationWriter()
+        self._media_exporter = foud.ImageExporter(
+            self.export_media,
+            export_path=self.data_path,
             default_ext=self.image_format,
             ignore_exts=True,
         )
-        self._writer = VOCAnnotationWriter()
+        self._media_exporter.setup()
 
-        etau.ensure_dir(self._data_dir)
-        etau.ensure_dir(self._labels_dir)
+        etau.ensure_dir(self.labels_path)
 
     def export_sample(self, image_or_path, detections, metadata=None):
-        out_image_path = self._export_image_or_path(
-            image_or_path, self._filename_maker
-        )
+        if metadata is None and detections is not None:
+            metadata = fom.ImageMetadata.build_for(image_or_path)
+
+        out_image_path, uuid = self._media_exporter.export(image_or_path)
 
         if detections is None:
             return
 
-        name = os.path.splitext(os.path.basename(out_image_path))[0]
-        out_anno_path = os.path.join(self._labels_dir, name + ".xml")
-
-        if metadata is None:
-            metadata = fom.ImageMetadata.build_for(out_image_path)
+        out_anno_path = os.path.join(self.labels_path, uuid + ".xml")
 
         annotation = VOCAnnotation.from_labeled_image(
             out_image_path, metadata, detections
         )
         self._writer.write(annotation, out_anno_path)
+
+    def close(self, *args):
+        self._media_exporter.close()
 
 
 class VOCAnnotation(object):
@@ -391,10 +488,14 @@ class VOCAnnotation(object):
 
         if "size" in annotation:
             size = annotation["size"]
+            width = size.get("width", None)
+            height = size.get("height", None)
+            depth = size.get("depth", None)
+
             metadata = fom.ImageMetadata(
-                width=int(size["width"]),
-                height=int(size["height"]),
-                num_channels=int(size["depth"]),
+                width=int(width) if width else None,
+                height=int(height) if height else None,
+                num_channels=int(depth) if depth else None,
             )
         else:
             metadata = None
@@ -642,9 +743,9 @@ class VOCAnnotationWriter(object):
                 "path": annotation.path,
                 "filename": annotation.filename,
                 "folder": annotation.folder,
-                "width": metadata.width,
-                "height": metadata.height,
-                "depth": metadata.num_channels,
+                "width": metadata.width or "",
+                "height": metadata.height or "",
+                "depth": metadata.num_channels or "",
                 "database": None,
                 "segmented": annotation.segmented,
                 "objects": annotation.objects,

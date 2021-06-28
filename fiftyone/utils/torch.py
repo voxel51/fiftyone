@@ -8,6 +8,7 @@ PyTorch utilities.
 import logging
 import itertools
 import multiprocessing
+import sys
 
 import cv2
 import numpy as np
@@ -877,10 +878,11 @@ def recommend_num_workers():
     Returns:
         the recommended ``num_workers``
     """
-    if not torch.cuda.is_available() and torch.__version__.startswith("1.7"):
-        # There is a parallelism bug in torch==1.7 on CPU that prevents us from
+    if sys.platform == "darwin" and not torch.cuda.is_available():
+        # There is a parallelism bug on macOS with CPU that prevents us from
         # using `num_workers > 0`
         # https://stackoverflow.com/q/64772335
+        # https://github.com/pytorch/pytorch/issues/46409
         return 0
 
     try:
@@ -1068,8 +1070,8 @@ class TorchImagePatchesDataset(Dataset):
         force_square (False): whether to minimally manipulate the patch
             bounding boxes into squares prior to extraction
         alpha (None): an optional expansion/contraction to apply to the patches
-            before extracting them, in ``[-1, \infty)``. If provided, the
-            length and width of the box are expanded (or contracted, when
+            before extracting them, in ``[-1, inf)``. If provided, the length
+            and width of the box are expanded (or contracted, when
             ``alpha < 0``) by ``(100 * alpha)%``. For example, set
             ``alpha = 1.1`` to expand the boxes by 10%, and set ``alpha = 0.9``
             to contract the boxes by 10%

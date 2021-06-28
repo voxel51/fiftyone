@@ -840,14 +840,20 @@ class UniqueFilenameMaker(object):
     directory are generated.
 
     Args:
-        output_dir (""): the directory in which to generate output paths
-        default_ext (""): the file extension to use when generating default
+        output_dir (None): a directory in which to generate output paths
+        default_ext (None): the file extension to use when generating default
             output paths
         ignore_exts (False): whether to omit file extensions when checking for
             duplicate filenames
     """
 
-    def __init__(self, output_dir="", default_ext="", ignore_exts=False):
+    def __init__(self, output_dir=None, default_ext=None, ignore_exts=False):
+        if output_dir is None:
+            output_dir = ""
+
+        if default_ext is None:
+            default_ext = ""
+
         self.output_dir = output_dir
         self.default_ext = default_ext
         self.ignore_exts = ignore_exts

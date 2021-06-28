@@ -17,6 +17,7 @@ import eta.core.utils as etau
 
 import fiftyone as fo
 import fiftyone.core.utils as fou
+import fiftyone.utils.data as foud
 
 
 logger = logging.getLogger(__name__)
@@ -75,7 +76,7 @@ def download_zoo_dataset(
     dataset_dir=None,
     overwrite=False,
     cleanup=True,
-    **kwargs
+    **kwargs,
 ):
     """Downloads the dataset of the given name from the FiftyOne Dataset Zoo.
 
@@ -125,13 +126,14 @@ def load_zoo_dataset(
     name,
     split=None,
     splits=None,
+    label_field=None,
     dataset_name=None,
     dataset_dir=None,
     download_if_necessary=True,
     drop_existing_dataset=False,
     overwrite=False,
     cleanup=None,
-    **kwargs
+    **kwargs,
 ):
     """Loads the dataset of the given name from the FiftyOne Dataset Zoo as
     a :class:`fiftyone.core.dataset.Dataset`.
@@ -156,6 +158,10 @@ def load_zoo_dataset(
             ``splits`` are provided, all available splits are loaded. Consult
             the documentation for the :class:`ZooDataset` you specified to see
             the supported splits
+        label_field (None): the label field (or prefix, if the dataset contains
+            multiple label fields) in which to store the dataset's labels. By
+            default, this is ``"ground_truth"`` if the dataset contains one
+            label field and ``""`` otherwise
         dataset_name (None): an optional name to give the returned
             :class:`fiftyone.core.dataset.Dataset`. By default, a name will be
             constructed based on the dataset and split(s) you are loading
@@ -182,7 +188,7 @@ def load_zoo_dataset(
 
     if download_if_necessary:
         zoo_dataset_cls = _get_zoo_dataset_cls(name)
-        download_kwargs, _ = fou.extract_kwargs_for_class(
+        download_kwargs, kwargs = fou.extract_kwargs_for_class(
             zoo_dataset_cls, kwargs
         )
 
@@ -192,7 +198,7 @@ def load_zoo_dataset(
             dataset_dir=dataset_dir,
             overwrite=overwrite,
             cleanup=cleanup,
-            **download_kwargs
+            **download_kwargs,
         )
         zoo_dataset = info.get_zoo_dataset()
     else:
@@ -200,16 +206,37 @@ def load_zoo_dataset(
         info = zoo_dataset.load_info(dataset_dir)
 
     dataset_type = info.get_dataset_type()
-    dataset_importer = dataset_type.get_dataset_importer_cls()
-    importer_kwargs, _ = fou.extract_kwargs_for_class(dataset_importer, kwargs)
+    dataset_importer_cls = dataset_type.get_dataset_importer_cls()
+
+    #
+    # For unlabeled (e.g., test) splits, some importers need to be explicitly
+    # told to generate samples for media with no corresponding labels entry.
+    #
+    # By convention, all such importers use `include_all_data` for this flag.
+    # If a new zoo dataset is added that requires a different customized
+    # parameter, we'd need to improve this logic here
+    #
+    kwargs["include_all_data"] = True
+
+    importer_kwargs, unused_kwargs = fou.extract_kwargs_for_class(
+        dataset_importer_cls, kwargs
+    )
+
+    for key, value in unused_kwargs.items():
+        if key != "include_all_data" and value is not None:
+            logger.warning(
+                "Ignoring unsupported parameter '%s' for importer type %s",
+                key,
+                dataset_importer_cls,
+            )
 
     if dataset_name is None:
         dataset_name = zoo_dataset.name
         if splits is not None:
             dataset_name += "-" + "-".join(splits)
 
-        if "max_samples" in kwargs:
-            dataset_name += "-%s" % kwargs["max_samples"]
+        if "max_samples" in importer_kwargs:
+            dataset_name += "-%s" % importer_kwargs["max_samples"]
 
     if fo.dataset_exists(dataset_name):
         if not drop_existing_dataset:
@@ -228,29 +255,23 @@ def load_zoo_dataset(
         splits = zoo_dataset.supported_splits
 
     dataset = fo.Dataset(dataset_name)
-    label_field = zoo_dataset.default_label_field
 
     if splits:
         for split in splits:
-            split_dir = zoo_dataset.get_split_dir(dataset_dir, split)
-            tags = [split]
-
             logger.info("Loading '%s' split '%s'", zoo_dataset.name, split)
-            dataset.add_dir(
-                split_dir,
-                dataset_type,
-                tags=tags,
-                label_field=label_field,
-                **importer_kwargs
+            split_dir = zoo_dataset.get_split_dir(dataset_dir, split)
+            dataset_importer, _label_field = _build_importer(
+                dataset_type, split_dir, label_field, **importer_kwargs
+            )
+            dataset.add_importer(
+                dataset_importer, label_field=_label_field, tags=[split]
             )
     else:
         logger.info("Loading '%s'", zoo_dataset.name)
-        dataset.add_dir(
-            dataset_dir,
-            dataset_type,
-            label_field=label_field,
-            **importer_kwargs
+        dataset_importer, _label_field = _build_importer(
+            dataset_type, dataset_dir, label_field, **importer_kwargs
         )
+        dataset.add_importer(dataset_importer, label_field=_label_field)
 
     if info.classes is not None:
         dataset.default_classes = info.classes
@@ -259,6 +280,26 @@ def load_zoo_dataset(
     logger.info("Dataset '%s' created", dataset.name)
 
     return dataset
+
+
+def _build_importer(dataset_type, dataset_dir, label_field, **kwargs):
+    dataset_importer, _ = foud.build_dataset_importer(
+        dataset_type, dataset_dir=dataset_dir, **kwargs
+    )
+
+    if label_field is None:
+        try:
+            label_cls = dataset_importer.label_cls
+        except AttributeError:
+            label_cls = None
+
+        # If we're importing multiple fields, don't add a prefix, for brevity
+        if isinstance(label_cls, dict):
+            label_field = ""
+        else:
+            label_field = "ground_truth"
+
+    return dataset_importer, label_field
 
 
 def find_zoo_dataset(name, split=None):
@@ -774,13 +815,6 @@ class ZooDataset(object):
         by the user before the dataset can be loaded.
         """
         return False
-
-    @property
-    def default_label_field(self):
-        """The default name (or root name in the case of multiple label fields)
-        to use for label field(s) populated when loading this dataset.
-        """
-        return "ground_truth"
 
     def has_tag(self, tag):
         """Whether the dataset has the given tag.

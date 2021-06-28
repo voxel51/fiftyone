@@ -310,7 +310,7 @@ Core
       an interacive scatterplot of a dataset via its |GeoLocation| coordinates
     - Added |GeoLocation| and |GeoLocations| label types that can be used to store
       arbitrary GeoJSON location data on samples
-    - Added the :class:`GeoJSONImageDataset <fiftyone.types.dataset_types.GeoJSONImageDataset>`
+    - Added the :class:`GeoJSONDataset <fiftyone.types.dataset_types.GeoJSONDataset>`
       dataset type for importing and exporting datasets in GeoJSON format
     - Added :meth:`SampleCollection.geo_near() <fiftyone.core.collections.SampleCollection.geo_near>`
       and
@@ -1031,9 +1031,9 @@ Core
   :class:`segmentation masks <fiftyone.core.labels.Segmentation>` on samples
 - Added support for setting an `index` attribute on |Detection| instances that
   defines a unique identifier for an object (e.g., across frames of a video)
-- Added support for :ref:`importing <YOLODataset-import>` and
-  :ref:`exporting <YOLODataset-export>` datasets in
-  `YOLO format <https://github.com/AlexeyAB/darknet>`_
+- Added support for :ref:`importing <YOLOv4Dataset-import>` and
+  :ref:`exporting <YOLOv4Dataset-export>` datasets in
+  `YOLOv4 format <https://github.com/AlexeyAB/darknet>`_
 - Added support for :ref:`importing <CVATVideoDataset-import>` and
   :ref:`exporting <CVATVideoDataset-export>` datasets in
   `CVAT video format <https://github.com/openvinotoolkit/cvat/blob/develop/cvat/apps/documentation/xml_format.md>`_
