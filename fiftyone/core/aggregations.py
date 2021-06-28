@@ -1561,6 +1561,22 @@ def _parse_field_and_expr(
     elif unwind_list_fields:
         pipeline.append({"$project": {path: True}})
 
+    #
+    # @todo remove this restriction?
+    #
+    # `$unwind` cannot be used here. We would need to use a `set_field()` like
+    # approach to manually unwind the nested array field
+    #
+    if unwind_list_fields and other_list_fields:
+        for ufield in unwind_list_fields:
+            for ofield in other_list_fields:
+                if ufield.startswith(ofield + "."):
+                    raise ValueError(
+                        "Cannot unwind nested array field '%s' without also "
+                        "unwinding higher-level array field '%s'"
+                        % (ufield, ofield)
+                    )
+
     for list_field in unwind_list_fields:
         pipeline.append({"$unwind": "$" + list_field})
 
