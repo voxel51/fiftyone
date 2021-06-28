@@ -340,6 +340,97 @@ class Exclude(ViewStage):
         ]
 
 
+class ExcludeBy(ViewStage):
+    """Excludes the samples with the given field values from a collection.
+
+    This stage is typically used to work with categorical fields (strings,
+    ints, and bools). If you want to exclude samples based on floating point
+    fields, use :class:`Match`.
+
+    Examples::
+
+        import fiftyone as fo
+
+        dataset = fo.Dataset()
+        dataset.add_samples(
+            [
+                fo.Sample(filepath="image%d.jpg" % i, int=i, str=str(i))
+                for i in range(10)
+            ]
+        )
+
+        #
+        # Create a view excluding samples whose `int` field have the given
+        # values
+        #
+
+        stage = fo.ExcludeBy("int", [1, 9, 3, 7, 5])
+        view = dataset.add_stage(stage)
+        print(view.head(5))
+
+        #
+        # Create a view excluding samples whose `str` field have the given
+        # values
+        #
+
+        stage = fo.ExcludeBy("str", ["1", "9", "3", "7", "5"])
+        view = dataset.add_stage(stage)
+        print(view.head(5))
+
+    Args:
+        field: a field or ``embedded.field.name``
+        values: a value or iterable of values to exclude by
+    """
+
+    def __init__(self, field, values):
+        if etau.is_container(values):
+            values = list(values)
+        else:
+            values = [values]
+
+        self._field = field
+        self._values = values
+
+    @property
+    def field(self):
+        """The field whose values to exclude by."""
+        return self._field
+
+    @property
+    def values(self):
+        """The list of values to exclude by."""
+        return self._values
+
+    def to_mongo(self, sample_collection):
+        field_name, is_id_field, _ = sample_collection._handle_id_fields(
+            self._field
+        )
+
+        if is_id_field:
+            values = [
+                value if isinstance(value, ObjectId) else ObjectId(value)
+                for value in self._values
+            ]
+        else:
+            values = self._values
+
+        return [{"$match": {field_name: {"$not": {"$in": values}}}}]
+
+    def _kwargs(self):
+        return [["field", self._field], ["values", self._values]]
+
+    @classmethod
+    def _params(cls):
+        return [
+            {"name": "field", "type": "field|str", "placeholder": "field"},
+            {
+                "name": "values",
+                "type": "json",
+                "placeholder": "list,of,values",
+            },
+        ]
+
+
 class ExcludeFields(ViewStage):
     """Excludes the fields with the given names from the samples in a
     collection.
@@ -3633,6 +3724,131 @@ class Select(ViewStage):
         ]
 
 
+class SelectBy(ViewStage):
+    """Selects the samples with the given field values from a collection.
+
+    This stage is typically used to work with categorical fields (strings,
+    ints, and bools). If you want to select samples based on floating point
+    fields, use :class:`Match`.
+
+    Examples::
+
+        import fiftyone as fo
+
+        dataset = fo.Dataset()
+        dataset.add_samples(
+            [
+                fo.Sample(filepath="image%d.jpg" % i, int=i, str=str(i))
+                for i in range(100)
+            ]
+        )
+
+        #
+        # Create a view containing samples whose `int` field have the given
+        # values
+        #
+
+        stage = fo.SelectBy("int", [1, 51, 11, 41, 21, 31])
+        view = dataset.add_stage(stage)
+        print(view.head(6))
+
+        #
+        # Create a view containing samples whose `str` field have the given
+        # values, in order
+        #
+
+        stage = fo.SelectBy(
+            "str", ["1", "51", "11", "41", "21", "31"], ordered=True
+        )
+        view = dataset.add_stage(stage)
+        print(view.head(6))
+
+    Args:
+        field: a field or ``embedded.field.name``
+        values: a value or iterable of values to select by
+        ordered (False): whether to sort the samples in the returned view to
+            match the order of the provided values
+    """
+
+    def __init__(self, field, values, ordered=False):
+        if etau.is_container(values):
+            values = list(values)
+        else:
+            values = [values]
+
+        self._field = field
+        self._values = values
+        self._ordered = ordered
+
+    @property
+    def field(self):
+        """The field whose values to select by."""
+        return self._field
+
+    @property
+    def values(self):
+        """The list of values to select by."""
+        return self._values
+
+    @property
+    def ordered(self):
+        """Whether to sort the samples in the same order as the IDs."""
+        return self._ordered
+
+    def to_mongo(self, sample_collection):
+        field_name, is_id_field, _ = sample_collection._handle_id_fields(
+            self._field
+        )
+
+        if is_id_field:
+            values = [
+                value if isinstance(value, ObjectId) else ObjectId(value)
+                for value in self._values
+            ]
+        else:
+            values = self._values
+
+        if not self._ordered:
+            return [{"$match": {field_name: {"$in": values}}}]
+
+        return [
+            {
+                "$set": {
+                    "_select_order": {
+                        "$indexOfArray": [values, "$" + field_name]
+                    }
+                }
+            },
+            {"$match": {"_select_order": {"$gt": -1}}},
+            {"$sort": {"_select_order": 1}},
+            {"$unset": "_select_order"},
+        ]
+
+    def _kwargs(self):
+        return [
+            ["field", self._field],
+            ["values", self._values],
+            ["ordered", self._ordered],
+        ]
+
+    @classmethod
+    def _params(cls):
+        return [
+            {"name": "field", "type": "field|str", "placeholder": "field"},
+            {
+                "name": "values",
+                "type": "json",
+                "placeholder": "list,of,values",
+            },
+            {
+                "name": "ordered",
+                "type": "bool",
+                "default": "False",
+                "placeholder": "ordered (default=False)",
+            },
+        ]
+
+
 class SelectFields(ViewStage):
     """Selects only the fields with the given names from the samples in the
     collection. All other fields are excluded.
@@ -5350,6 +5566,7 @@ _repr.maxother = 30
 # Simple registry for the server to grab available view stages
 _STAGES = [
     Exclude,
+    ExcludeBy,
     ExcludeFields,
     ExcludeFrames,
     ExcludeLabels,
@@ -5372,6 +5589,7 @@ _STAGES = [
     Mongo,
     Shuffle,
     Select,
+    SelectBy,
     SelectFields,
     SelectFrames,
     SelectLabels,

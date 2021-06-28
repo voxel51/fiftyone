@@ -1943,6 +1943,52 @@ class SampleCollection(object):
         return self._add_view_stage(fos.Exclude(sample_ids))
 
     @view_stage
+    def exclude_by(self, field, values):
+        """Excludes the samples with the given field values from the
+        collection.
+
+        This stage is typically used to work with categorical fields (strings,
+        ints, and bools). If you want to exclude samples based on floating
+        point fields, use :meth:`match`.
+
+        Examples::
+
+            import fiftyone as fo
+
+            dataset = fo.Dataset()
+            dataset.add_samples(
+                [
+                    fo.Sample(filepath="image%d.jpg" % i, int=i, str=str(i))
+                    for i in range(10)
+                ]
+            )
+
+            #
+            # Create a view excluding samples whose `int` field have the given
+            # values
+            #
+
+            view = dataset.exclude_by("int", [1, 9, 3, 7, 5])
+            print(view.head(5))
+
+            #
+            # Create a view excluding samples whose `str` field have the given
+            # values
+            #
+
+            view = dataset.exclude_by("str", ["1", "9", "3", "7", "5"])
+            print(view.head(5))
+
+        Args:
+            field: a field or ``embedded.field.name``
+            values: a value or iterable of values to exclude by
+
+        Returns:
+            a :class:`fiftyone.core.view.DatasetView`
+        """
+        return self._add_view_stage(fos.ExcludeBy(field, values))
+
+    @view_stage
     def exclude_fields(self, field_names, _allow_missing=False):
         """Excludes the fields with the given names from the samples in the
         collection.
@@ -3612,6 +3658,57 @@ class SampleCollection(object):
             a :class:`fiftyone.core.view.DatasetView`
         """
         return self._add_view_stage(fos.Select(sample_ids, ordered=ordered))
+
+    @view_stage
+    def select_by(self, field, values, ordered=False):
+        """Selects the samples with the given field values from the collection.
+
+        This stage is typically used to work with categorical fields (strings,
+        ints, and bools). If you want to select samples based on floating point
+        fields, use :meth:`match`.
+
+        Examples::
+
+            import fiftyone as fo
+
+            dataset = fo.Dataset()
+            dataset.add_samples(
+                [
+                    fo.Sample(filepath="image%d.jpg" % i, int=i, str=str(i))
+                    for i in range(100)
+                ]
+            )
+
+            #
+            # Create a view containing samples whose `int` field have the given
+            # values
+            #
+
+            view = dataset.select_by("int", [1, 51, 11, 41, 21, 31])
+            print(view.head(6))
+
+            #
+            # Create a view containing samples whose `str` field have the given
+            # values, in order
+            #
+
+            view = dataset.select_by(
+                "str", ["1", "51", "11", "41", "21", "31"], ordered=True
+            )
+            print(view.head(6))
+
+        Args:
+            field: a field or ``embedded.field.name``
+            values: a value or iterable of values to select by
+            ordered (False): whether to sort the samples in the returned view
+                to match the order of the provided values
+
+        Returns:
+            a :class:`fiftyone.core.view.DatasetView`
+        """
+        return self._add_view_stage(
+            fos.SelectBy(field, values, ordered=ordered)
+        )
 
     @view_stage
     def select_fields(self, field_names=None, _allow_missing=False):
@@ -5830,6 +5927,9 @@ class SampleCollection(object):
         return _parse_field_name(
             self, field_name, auto_unwind, omit_terminal_lists, allow_missing
         )
+
+    def _handle_id_fields(self, field_name):
+        return _handle_id_fields(self, field_name)
 
     def _handle_frame_field(self, field_name):
         is_frame_field = self._is_frame_field(field_name)
