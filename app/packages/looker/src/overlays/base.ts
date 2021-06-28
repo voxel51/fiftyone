@@ -75,7 +75,7 @@ export interface Overlay<State extends BaseState> {
   getMouseDistance(state: Readonly<State>): number;
   getPointInfo(state: Readonly<State>): any;
   getSelectData(state: Readonly<State>): SelectData;
-  getPoints(): Coordinates[];
+  getPoints(state: Readonly<State>): Coordinates[];
   getSizeBytes(): number;
 }
 
@@ -112,7 +112,7 @@ export abstract class CoordinateOverlay<
 
   abstract getPointInfo(state: Readonly<State>): PointInfo;
 
-  abstract getPoints(): Coordinates[];
+  abstract getPoints(state: Readonly<State>): Coordinates[];
 
   getSizeBytes(): number {
     return sizeBytes(this.label);

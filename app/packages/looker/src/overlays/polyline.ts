@@ -23,10 +23,6 @@ interface PolylineLabel extends RegularLabel {
 export default class PolylineOverlay<
   State extends BaseState
 > extends CoordinateOverlay<State, PolylineLabel> {
-  constructor(field: string, label: PolylineLabel) {
-    super(field, label);
-  }
-
   containsPoint(state: Readonly<State>): CONTAINS {
     const tolerance = state.strokeWidth * TOLERANCE;
     const minDistance = this.getMouseDistance(state);

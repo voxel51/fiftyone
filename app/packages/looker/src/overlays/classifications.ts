@@ -119,8 +119,11 @@ export default class ClassificationsOverlay<State extends BaseState>
     this.labelBoundingBoxes = newBoxes;
   }
 
-  getPoints() {
-    return getClassificationPoints([]);
+  getPoints(state: Readonly<State>) {
+    if (this.getFilteredAndFlat(state).length) {
+      return getClassificationPoints([]);
+    }
+    return [];
   }
 
   getSizeBytes() {

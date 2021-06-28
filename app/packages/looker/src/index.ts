@@ -63,6 +63,7 @@ export abstract class Looker<
   private eventTarget: EventTarget;
   protected lookerElement: LookerElement<State>;
   private resizeObserver: ResizeObserver;
+  private imageSource: CanvasImageSource;
 
   protected currentOverlays: Overlay<State>[];
   protected pluckedOverlays: Overlay<State>[];
@@ -85,8 +86,10 @@ export abstract class Looker<
     this.currentOverlays = [];
     this.lookerElement = this.getElements();
     this.canvas = this.lookerElement.children[1].element as HTMLCanvasElement;
+    this.imageSource = this.lookerElement.children[0]
+      .element as CanvasImageSource;
     this.resizeObserver = new ResizeObserver(() =>
-      requestAnimationFrame(() => this.updater(({ loaded }) => ({ loaded })))
+      requestAnimationFrame(() => this.updater({ setZoom: true }))
     );
   }
 
@@ -128,14 +131,30 @@ export abstract class Looker<
 
       const ctx = this.canvas.getContext("2d") as CanvasRenderingContext2D;
       ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+
       ctx.lineWidth = this.state.strokeWidth;
       ctx.font = `bold ${this.state.fontSize.toFixed(2)}px Palanquin`;
       ctx.textAlign = "left";
       ctx.textBaseline = "bottom";
       ctx.imageSmoothingEnabled = false;
       ctx.setTransform(1, 0, 0, 1, 0, 0);
+
       ctx.translate(...this.state.pan);
       ctx.scale(this.state.scale, this.state.scale);
+
+      const [tlx, tly, w, h] = this.state.canvasBBox;
+      ctx.drawImage(
+        this.imageSource,
+        0,
+        0,
+        this.state.config.dimensions[0],
+        this.state.config.dimensions[1],
+        tlx,
+        tly,
+        w,
+        h
+      );
+
       const numOverlays = this.currentOverlays.length;
       for (let index = numOverlays - 1; index >= 0; index--) {
         this.currentOverlays[index].draw(ctx, this.state);
@@ -354,7 +373,7 @@ export class FrameLooker extends Looker<FrameState> {
         this.state.scale = 1;
       }
 
-      this.state.setZoom = false;
+      this.state.setZoom = true;
     }
 
     if (this.state.zoomToContent) {

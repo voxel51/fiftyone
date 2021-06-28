@@ -26,7 +26,7 @@ export const FROM_FO = {
   Keypoint: fromLabel(KeypointOverlay),
   Keypoints: fromLabelList(KeypointOverlay, "keypoints"),
   Polyline: fromLabel(PolylineOverlay),
-  Poylines: fromLabelList(PolylineOverlay, "polylines"),
+  Polylines: fromLabelList(PolylineOverlay, "polylines"),
   Segmentation: fromLabel(SegmentationOverlay),
 };
 

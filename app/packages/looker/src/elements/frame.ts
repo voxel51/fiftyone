@@ -4,14 +4,9 @@
 
 import { FrameState } from "../state";
 import { BaseElement, Events } from "./base";
-import {
-  getFrameString,
-  getTime,
-  getTimeString,
-  transformWindowElement,
-} from "./util";
+import { getFrameString, getTime, getTimeString } from "./util";
 
-import { mediaOrCanvas, mediaLoading } from "./media.module.css";
+import { mediaOrCanvas, invisible } from "./media.module.css";
 import { lookerTime } from "./common/controls.module.css";
 
 export class FrameNumberElement extends BaseElement<FrameState> {
@@ -40,7 +35,6 @@ export class FrameNumberElement extends BaseElement<FrameState> {
 export class FrameElement extends BaseElement<FrameState, HTMLVideoElement> {
   private src: string = "";
   private frameNumber: number = 1;
-  private loaded: boolean = false;
 
   getEvents(): Events<FrameState> {
     return {
@@ -61,7 +55,7 @@ export class FrameElement extends BaseElement<FrameState, HTMLVideoElement> {
 
   createHTMLElement() {
     const element = document.createElement("video");
-    element.classList.add(mediaOrCanvas, mediaLoading);
+    element.classList.add(mediaOrCanvas, invisible);
     element.preload = "metadata";
     element.muted = true;
     return element;
@@ -69,7 +63,6 @@ export class FrameElement extends BaseElement<FrameState, HTMLVideoElement> {
 
   renderSelf(state: Readonly<FrameState>) {
     const {
-      loaded,
       config: { src, frameNumber, frameRate },
     } = state;
     if (this.src !== src) {
@@ -82,12 +75,6 @@ export class FrameElement extends BaseElement<FrameState, HTMLVideoElement> {
       this.element.currentTime = getTime(frameNumber, frameRate);
     }
 
-    if (this.loaded !== loaded) {
-      this.element.classList.remove(mediaLoading);
-      this.loaded = loaded;
-    }
-
-    transformWindowElement(state, this.element);
     return this.element;
   }
 }

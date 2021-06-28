@@ -170,17 +170,3 @@ export function withEvents<
   // @ts-ignore
   return WithElement;
 }
-
-export const transformWindowElement = (
-  { pan: [x, y], scale }: Readonly<BaseState>,
-  element: HTMLElement
-): void => {
-  element.style.transform =
-    "translate3d(" +
-    Math.round(x) +
-    "px, " +
-    Math.round(y) +
-    "px, 0px) scale(" +
-    scale +
-    ")";
-};

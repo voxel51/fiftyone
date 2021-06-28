@@ -8,7 +8,7 @@ import { clampScale } from "../../util";
 import { BaseElement, Events } from "../base";
 import { dispatchTooltipEvent } from "./util";
 
-import { mediaLoading, mediaOrCanvas } from "../media.module.css";
+import { invisible, mediaOrCanvas } from "../media.module.css";
 
 export class CanvasElement<State extends BaseState> extends BaseElement<
   State,
@@ -168,7 +168,7 @@ export class CanvasElement<State extends BaseState> extends BaseElement<
 
   createHTMLElement() {
     const element = document.createElement("canvas");
-    element.classList.add(mediaOrCanvas, mediaLoading);
+    element.classList.add(mediaOrCanvas, invisible);
     return element;
   }
 
@@ -198,7 +198,7 @@ export class CanvasElement<State extends BaseState> extends BaseElement<
     }
 
     if (this.loaded !== loaded) {
-      this.element.classList.remove(mediaLoading);
+      this.element.classList.remove(invisible);
       this.loaded = loaded;
     }
 

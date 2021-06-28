@@ -45,9 +45,9 @@ export const zoomToContent = <
   State extends FrameState | ImageState | VideoState
 >(
   state: Readonly<State>,
-  currentOverlays: Overlay<State>[]
+  overlays: Overlay<State>[]
 ): State => {
-  const points = currentOverlays.map((o) => o.getPoints()).flat();
+  const points = overlays.map((o) => o.getPoints(state)).flat();
   let [iw, ih] = state.config.dimensions;
   let [w, h] = [iw, ih];
   const iAR = w / h;

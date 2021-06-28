@@ -11,14 +11,8 @@ import {
   VIDEO_SHORTCUTS,
 } from "./common/actions";
 import { lookerClickable, lookerTime } from "./common/controls.module.css";
-import { mediaLoading, mediaOrCanvas } from "./media.module.css";
-import {
-  getFrameNumber,
-  getFrameString,
-  getTime,
-  getTimeString,
-  transformWindowElement,
-} from "./util";
+import { invisible, mediaOrCanvas } from "./media.module.css";
+import { getFrameNumber, getFrameString, getTime, getTimeString } from "./util";
 
 import {
   bufferingCircle,
@@ -286,7 +280,6 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
   private frameRate: number = 0;
   private frameNumber: number = 1;
   private loop: boolean = false;
-  private loaded: boolean = false;
   private playbackRate: number = 1;
   private volume: number = 0;
 
@@ -387,7 +380,7 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
             ),
           });
 
-          return {};
+          return { loaded: true };
         });
       },
     };
@@ -395,7 +388,7 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
 
   createHTMLElement() {
     const element = document.createElement("video");
-    element.classList.add(mediaOrCanvas, mediaLoading);
+    element.classList.add(mediaOrCanvas, invisible);
     element.preload = "metadata";
     element.muted = true;
     this.frameNumber = 1;
@@ -435,11 +428,6 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
       this.element.setAttribute("src", src);
     }
 
-    if (this.loaded !== loaded) {
-      this.element.classList.remove(mediaLoading);
-      this.loaded = loaded;
-    }
-
     if (loaded && playing && !seeking && !buffering && this.element.paused) {
       this.element.play();
     }
@@ -462,7 +450,6 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
       this.element.currentTime = getTime(frameNumber, frameRate);
     }
 
-    transformWindowElement(state, this.element);
     return this.element;
   }
 }
