@@ -58,11 +58,9 @@ a |DatasetView| into any format of your choice via the basic recipe below.
 
     The :meth:`export() <fiftyone.core.collections.SampleCollection.export>`
     method also provides additional parameters that you can use to configure
-    the export.
-
-    For example, you can use the ``data_path`` and ``labels_path`` parameters
-    to independently customize the location of the exported media and labels,
-    including labels-only exports:
+    the export. For example, you can use the ``data_path`` and ``labels_path``
+    parameters to independently customize the location of the exported media
+    and labels, including labels-only exports:
 
     .. code-block:: python
         :linenos:
