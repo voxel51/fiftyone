@@ -5687,6 +5687,7 @@ class SampleCollection(object):
             attach_frames |= _attach_frames
 
             try:
+                assert len(_pipeline) == 1
                 project[big_field] = _pipeline[0]["$project"][big_field]
             except:
                 raise ValueError(
