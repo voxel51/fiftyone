@@ -19,7 +19,7 @@ FIFTYONE_CONFIG_DIR = os.path.join(os.path.expanduser("~"), ".fiftyone")
 FIFTYONE_CONFIG_PATH = os.path.join(FIFTYONE_CONFIG_DIR, "config.json")
 FIFTYONE_APP_CONFIG_PATH = os.path.join(FIFTYONE_CONFIG_DIR, "app_config.json")
 BASE_DIR = os.path.dirname(FIFTYONE_DIR)
-FEEDBACK_PATH = os.path.join(FIFTYONE_CONFIG_DIR, "var", "feedback.json")
+TEAMS_PATH = os.path.join(FIFTYONE_CONFIG_DIR, "var", "teams.json")
 RESOURCES_DIR = os.path.join(FIFTYONE_DIR, "resources")
 
 # Package metadata

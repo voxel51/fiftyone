@@ -265,13 +265,13 @@ pass the parser along with an iterable of samples to the appropriate
             :linenos:
 
             import fiftyone as fo
-            import fiftyone.utils.bdd as foub
+            import fiftyone.utils.data as foud
 
             dataset = fo.Dataset()
 
             # An iterable of samples and a LabeledImageSampleParser to parse them
             samples = ...
-            sample_parser = foub.BDDSampleParser  # for example
+            sample_parser = foud.ImageClassificationSampleParser  # for example
 
             # Add the labeled image samples to the dataset
             dataset.add_labeled_images(samples, sample_parser)
@@ -400,32 +400,30 @@ to add an iterable of samples that can be parsed via a specified
 
 **Example**
 
-FiftyOne provides a
-:class:`BDDSampleParser <fiftyone.utils.bdd.BDDSampleParser>` that handles
-samples that contain ``(image_or_path, anno_or_path)`` tuples, where:
+FiftyOne provides an
+:class:`ImageClassificationSampleParser <fiftyone.utils.data.parsers.ImageClassificationSampleParser>`
+that handles samples that contain ``(image_or_path, target)`` tuples, where:
 
 - ``image_or_path`` is either an image that can be converted to numpy
   format via ``np.asarray()`` or the path to an image on disk
 
-- ``anno_or_path`` is a dict of
-  :class:`BDD annotations <fiftyone.utils.bdd.BDDSampleParser>` or the path to
-  such a JSON file on disk
+- ``target`` is either a class ID or a label string
 
-The snippet below adds an iterable of BDD samples in the above format to a
-dataset:
+The snippet below adds an iterable of image classification data in the above
+format to a dataset:
 
 .. code-block:: python
     :linenos:
 
     import fiftyone as fo
-    import fiftyone.utils.bdd as foub
+    import fiftyone.utils.data as foud
 
     dataset = fo.Dataset()
 
-    # An iterable of `(image_or_path, anno_or_path)` tuples and the
+    # An iterable of `(image_or_path, target)` tuples and the
     # LabeledImageSampleParser to use to parse them
     samples = ...
-    sample_parser = foub.BDDSampleParser
+    sample_parser = foud.ImageClassificationSampleParser
 
     # Add labeled images to the dataset
     dataset.add_labeled_images(samples, sample_parser)
@@ -598,14 +596,14 @@ appropriate |Dataset| method.
             :linenos:
 
             import fiftyone as fo
-            import fiftyone.utils.bdd as foub
+            import fiftyone.utils.data as foud
 
             dataset = fo.Dataset()
 
             # The iterable of samples and the LabeledImageSampleParser to use
             # to parse them
             samples = ...
-            sample_parser = foub.BDDSampleParser  # for example
+            sample_parser = foud.ImageClassificationSampleParser  # for example
 
             # A directory in which the images will be written; If `None`, a default directory
             # based on the dataset's `name` will be used
@@ -726,32 +724,30 @@ and then written to the backing directory.
 
 **Example**
 
-FiftyOne provides a
-:class:`BDDSampleParser <fiftyone.utils.bdd.BDDSampleParser>` that handles
-samples that contain ``(image_or_path, anno_or_path)`` tuples, where:
+FiftyOne provides an
+:class:`ImageClassificationSampleParser <fiftyone.utils.data.parsers.ImageClassificationSampleParser>`
+that handles samples that contain ``(image_or_path, target)`` tuples, where:
 
 - ``image_or_path`` is either an image that can be converted to numpy
   format via ``np.asarray()`` or the path to an image on disk
 
-- ``anno_or_path`` is a dict of
-  :class:`BDD annotations <fiftyone.utils.bdd.BDDSampleParser>` or the path to
-  such a JSON file on disk
+- ``target`` is either a class ID or a label string
 
-The snippet below ingests an iterable of BDD samples in the above format into
-a FiftyOne dataset:
+The snippet below ingests an iterable of image classification data in the above
+format intoa a FiftyOne dataset:
 
 .. code-block:: python
     :linenos:
 
     import fiftyone as fo
-    import fiftyone.utils.bdd as foub
+    import fiftyone.utils.data as foud
 
     dataset = fo.Dataset()
 
-    # An iterable of `(image_or_path, anno_or_path)` tuples and the
+    # An iterable of `(image_or_path, target)` tuples and the
     # LabeledImageSampleParser to use to parse them
     samples = ...
-    sample_parser = foub.BDDSampleParser  # for example
+    sample_parser = foud.ImageClassificationSampleParser  # for example
 
     # A directory in which the images will be written; If `None`, a default directory
     # based on the dataset's `name` will be used
@@ -897,24 +893,6 @@ You can use a |SampleParser| to
 +------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------+
 | :class:`TFObjectDetectionSampleParser                                  | Parser for image detection samples stored in                                                                    |
 | <fiftyone.utils.tf.TFObjectDetectionSampleParser>`                     | `TF Object Detection API format <https://github.com/tensorflow/models/blob/master/research/object_detection>`_. |
-+------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------+
-| :class:`COCODetectionSampleParser                                      | Parser for samples in `COCO Object Detection Format <https://cocodataset.org/#format-data>`_.                   |
-| <fiftyone.utils.coco.COCODetectionSampleParser>`                       |                                                                                                                 |
-+------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------+
-| :class:`VOCDetectionSampleParser                                       | Parser for samples in `VOC detection format <http://host.robots.ox.ac.uk/pascal/VOC>`_.                         |
-| <fiftyone.utils.voc.VOCDetectionSampleParser>`                         |                                                                                                                 |
-+------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------+
-| :class:`KITTIDetectionSampleParser                                     | Parser for samples in `KITTI detection format <http://www.cvlibs.net/datasets/kitti/eval_object.php>`_.         |
-| <fiftyone.utils.kitti.KITTIDetectionSampleParser>`                     |                                                                                                                 |
-+------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------+
-| :class:`YOLOSampleParser                                               | Parser for samples in `YOLO format <https://github.com/AlexeyAB/darknet>`_.                                     |
-| <fiftyone.utils.yolo.YOLOSampleParser>`                                |                                                                                                                 |
-+------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------+
-| :class:`CVATImageSampleParser                                          | Parser for samples in `CVAT image format <https://github.com/opencv/cvat>`_.                                    |
-| <fiftyone.utils.cvat.CVATImageSampleParser>`                           |                                                                                                                 |
-+------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------+
-| :class:`BDDSampleParser                                                | Parser for samples in `Berkeley DeepDrive (BDD) format <https://bdd-data.berkeley.edu>`_.                       |
-| <fiftyone.utils.bdd.BDDSampleParser>`                                  |                                                                                                                 |
 +------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------+
 
 .. _custom-sample-parser:

@@ -17,9 +17,8 @@ that you can download and load into FiftyOne via a few simple commands.
 
     If you do not have the proper packages installed when attempting to
     download a zoo dataset, you will receive an error message that will help
-    you resolve the issue.
-
-    See :ref:`customizing your ML backend <dataset-zoo-ml-backend>` for more
+    you resolve the issue. See
+    :ref:`customizing your ML backend <dataset-zoo-ml-backend>` for more
     information about configuring the backend behavior of the Dataset Zoo.
 
 Available datasets
@@ -36,8 +35,12 @@ the zoo!
 API reference
 -------------
 
-Check out the :ref:`API reference <dataset-zoo-api>` for complete instructions
-for using the Dataset Zoo library.
+The Dataset Zoo can be accessed via Python library and the CLI. Consult the
+API reference below to see how to download, load, and manage zoo datasets.
+
+.. custombutton::
+    :button_text: Check out the API refernece
+    :button_link: api.html
 
 .. _dataset-zoo-basic-recipe:
 
@@ -55,8 +58,9 @@ visualizing it in the App is shown below.
     Use :meth:`load_zoo_dataset() <fiftyone.zoo.datasets.load_zoo_dataset>` to
     load a zoo dataset into a FiftyOne dataset.
 
-    For example, the code sample below loads the validation split of the
-    COCO-2017 dataset from the zoo and visualizes it in the FiftyOne App:
+    For example, the code sample below loads the validation split of
+    :ref:`COCO-2017 <dataset-zoo-coco-2017>` from the zoo and visualizes it in
+    the FiftyOne App:
 
     .. code-block:: python
         :linenos:
@@ -87,8 +91,9 @@ visualizing it in the App is shown below.
     Use :ref:`fiftyone zoo datasets load <cli-fiftyone-zoo-datasets-load>` to
     load a zoo dataset into a FiftyOne dataset.
 
-    For example, the code sample below loads the validation split of the
-    COCO-2017 dataset from the zoo and visualizes it in the FiftyOne App:
+    For example, the code sample below loads the validation split of
+    :ref:`COCO-2017 <dataset-zoo-coco-2017>` from the zoo and visualizes it in
+    the FiftyOne App:
 
     .. code-block:: shell
 
@@ -104,7 +109,7 @@ visualizing it in the App is shown below.
         # Visualize the dataset in the App
         fiftyone app launch coco-2017-validation-example
 
-.. image:: ../../images/dataset_zoo_coco_2017.png
+.. image:: /images/dataset_zoo_coco_2017.png
    :alt: Dataset Zoo
    :align: center
 

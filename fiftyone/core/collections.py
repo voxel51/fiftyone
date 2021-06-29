@@ -1220,18 +1220,26 @@ class SampleCollection(object):
         batch_size=None,
         num_workers=None,
         skip_failures=True,
+        **trainer_kwargs,
     ):
-        """Applies the :class:`fiftyone.core.models.Model` to the samples in
-        the collection.
+        """Applies the :class:`FiftyOne model <fiftyone.core.models.Model>` or
+        :class:`Lightning Flash model <flash:flash.core.model.Task>` to the
+        samples in the collection.
 
-        This method supports all the following cases:
+        This method supports all of the following cases:
 
-        -   Applying an image model to an image collection
-        -   Applying an image model to the frames of a video collection
-        -   Applying a video model to a video collection
+        -   Applying an image :class:`fiftyone.core.models.Model` to an image
+            collection
+        -   Applying an image :class:`fiftyone.core.models.Model` to the frames
+            of a video collection
+        -   Applying a video :class:`fiftyone.core.models.Model` to a video
+            collection
+        -   Applying a :class:`flash:flash.core.model.Task` to an image or
+            video collection
 
         Args:
-            model: a :class:`fiftyone.core.models.Model`
+            model: a :class:`fiftyone.core.models.Model` or
+                :class:`flash:flash.core.model.Task`
             label_field ("predictions"): the name of the field in which to
                 store the model predictions. When performing inference on video
                 frames, the "frames." prefix is optional
@@ -1240,13 +1248,19 @@ class SampleCollection(object):
             store_logits (False): whether to store logits for the model
                 predictions. This is only supported when the provided ``model``
                 has logits, ``model.has_logits == True``
-            batch_size (None): an optional batch size to use. Only applicable
-                for image samples
-            num_workers (None): the number of workers to use when loading
-                images. Only applicable for Torch models
+            batch_size (None): an optional batch size to use, if the model
+                supports batching
+            num_workers (None): the number of workers for the
+                :class:`torch:torch.utils.data.DataLoader` to use. Only
+                applicable for Torch-based models
             skip_failures (True): whether to gracefully continue without
                 raising an error if predictions cannot be generated for a
-                sample
+                sample. Only applicable to :class:`fiftyone.core.models.Model`
+                instances
+            **trainer_kwargs: optional keyword arguments used to initialize the
+                :mod:`Trainer <flash:flash.core.trainer>` when using Flash
+                models. These can be used to, for example, configure the number
+                of GPUs to use and other distributed inference parameters
         """
         fomo.apply_model(
             self,
@@ -1257,6 +1271,7 @@ class SampleCollection(object):
             batch_size=batch_size,
             num_workers=num_workers,
             skip_failures=skip_failures,
+            **trainer_kwargs,
         )
 
     def compute_embeddings(
@@ -1266,34 +1281,49 @@ class SampleCollection(object):
         batch_size=None,
         num_workers=None,
         skip_failures=True,
+        **trainer_kwargs,
     ):
         """Computes embeddings for the samples in the collection using the
-        given :class:`fiftyone.core.models.Model`.
+        given :class:`FiftyOne model <fiftyone.core.models.Model>` or
+        :class:`Lightning Flash model <flash:flash.core.model.Task>`.
 
         This method supports all the following cases:
 
-        -   Using an image model to compute embeddings for an image collection
-        -   Using an image model to compute frame embeddings for a video
-            collection
-        -   Using a video model to compute embeddings for a video collection
+        -   Using an image :class:`fiftyone.core.models.Model` to compute
+            embeddings for an image collection
+        -   Using an image :class:`fiftyone.core.models.Model` to compute frame
+            embeddings for a video collection
+        -   Using a video :class:`fiftyone.core.models.Model` to compute
+            embeddings for a video collection
+        -   Using an :ref:`ImageEmbedder <flash:image_embedder>` to compute
+            embeddings for an image collection
 
-        The ``model`` must expose embeddings, i.e.,
+        When using a :class:`FiftyOne model <fiftyone.core.models.Model>`, the
+        model must expose embeddings, i.e.,
         :meth:`fiftyone.core.models.Model.has_embeddings` must return ``True``.
 
         If an ``embeddings_field`` is provided, the embeddings are saved to the
         samples; otherwise, the embeddings are returned in-memory.
 
         Args:
-            model: a :class:`fiftyone.core.models.Model`
+            model: a :class:`fiftyone.core.models.Model` or
+                :class:`flash:flash.core.model.Task`
             embeddings_field (None): the name of a field in which to store the
                 embeddings. When computing video frame embeddings, the
                 "frames." prefix is optional
-            batch_size (None): an optional batch size to use. Only applicable
-                for image samples
-            num_workers (None): the number of workers to use when loading
-                images. Only applicable for Torch models
+            batch_size (None): an optional batch size to use, if the model
+                supports batching
+            num_workers (None): the number of workers for the
+                :class:`torch:torch.utils.data.DataLoader` to use. Only
+                applicable for Torch-based models
             skip_failures (True): whether to gracefully continue without
-                raising an error if embeddings cannot be generated for a sample
+                raising an error if embeddings cannot be generated for a
+                sample. Only applicable to :class:`fiftyone.core.models.Model`
+                instances
+            **trainer_kwargs: optional keyword arguments used to initialize the
+                :mod:`Trainer <flash:flash.core.trainer>` when using Flash
+                models. These can be used to, for example, configure the number
+                of GPUs to use and other distributed inference parameters
 
         Returns:
             one of the following:
@@ -1321,6 +1351,7 @@ class SampleCollection(object):
             batch_size=batch_size,
             num_workers=num_workers,
             skip_failures=skip_failures,
+            **trainer_kwargs,
         )
 
     def compute_patch_embeddings(
@@ -1367,11 +1398,11 @@ class SampleCollection(object):
             force_square (False): whether to minimally manipulate the patch
                 bounding boxes into squares prior to extraction
             alpha (None): an optional expansion/contraction to apply to the
-                patches before extracting them, in ``[-1, \infty)``. If
-                provided, the length and width of the box are expanded (or
-                contracted, when ``alpha < 0``) by ``(100 * alpha)%``. For
-                example, set ``alpha = 1.1`` to expand the boxes by 10%, and
-                set ``alpha = 0.9`` to contract the boxes by 10%
+                patches before extracting them, in ``[-1, inf)``. If provided,
+                the length and width of the box are expanded (or contracted,
+                when ``alpha < 0``) by ``(100 * alpha)%``. For example, set
+                ``alpha = 1.1`` to expand the boxes by 10%, and set
+                ``alpha = 0.9`` to contract the boxes by 10%
             handle_missing ("skip"): how to handle images with no patches.
                 Supported values are:
 
@@ -1379,9 +1410,11 @@ class SampleCollection(object):
                 -   "image": use the whole image as a single patch
                 -   "error": raise an error
 
-            batch_size (None): an optional batch size to use
-            num_workers (None): the number of workers to use when loading
-                images. Only applicable for Torch models
+            batch_size (None): an optional batch size to use, if the model
+                supports batching
+            num_workers (None): the number of workers for the
+                :class:`torch:torch.utils.data.DataLoader` to use. Only
+                applicable for Torch-based models
             skip_failures (True): whether to gracefully continue without
                 raising an error if embeddings cannot be generated for a sample
 
@@ -1906,6 +1939,52 @@ class SampleCollection(object):
             a :class:`fiftyone.core.view.DatasetView`
         """
         return self._add_view_stage(fos.Exclude(sample_ids))
+
+    @view_stage
+    def exclude_by(self, field, values):
+        """Excludes the samples with the given field values from the
+        collection.
+
+        This stage is typically used to work with categorical fields (strings,
+        ints, and bools). If you want to exclude samples based on floating
+        point fields, use :meth:`match`.
+
+        Examples::
+
+            import fiftyone as fo
+
+            dataset = fo.Dataset()
+            dataset.add_samples(
+                [
+                    fo.Sample(filepath="image%d.jpg" % i, int=i, str=str(i))
+                    for i in range(10)
+                ]
+            )
+
+            #
+            # Create a view excluding samples whose `int` field have the given
+            # values
+            #
+
+            view = dataset.exclude_by("int", [1, 9, 3, 7, 5])
+            print(view.head(5))
+
+            #
+            # Create a view excluding samples whose `str` field have the given
+            # values
+            #
+
+            view = dataset.exclude_by("str", ["1", "9", "3", "7", "5"])
+            print(view.head(5))
+
+        Args:
+            field: a field or ``embedded.field.name``
+            values: a value or iterable of values to exclude by
+
+        Returns:
+            a :class:`fiftyone.core.view.DatasetView`
+        """
+        return self._add_view_stage(fos.ExcludeBy(field, values))
 
     @view_stage
     def exclude_fields(self, field_names, _allow_missing=False):
@@ -3579,6 +3658,57 @@ class SampleCollection(object):
         return self._add_view_stage(fos.Select(sample_ids, ordered=ordered))
 
     @view_stage
+    def select_by(self, field, values, ordered=False):
+        """Selects the samples with the given field values from the collection.
+
+        This stage is typically used to work with categorical fields (strings,
+        ints, and bools). If you want to select samples based on floating point
+        fields, use :meth:`match`.
+
+        Examples::
+
+            import fiftyone as fo
+
+            dataset = fo.Dataset()
+            dataset.add_samples(
+                [
+                    fo.Sample(filepath="image%d.jpg" % i, int=i, str=str(i))
+                    for i in range(100)
+                ]
+            )
+
+            #
+            # Create a view containing samples whose `int` field have the given
+            # values
+            #
+
+            view = dataset.select_by("int", [1, 51, 11, 41, 21, 31])
+            print(view.head(6))
+
+            #
+            # Create a view containing samples whose `str` field have the given
+            # values, in order
+            #
+
+            view = dataset.select_by(
+                "str", ["1", "51", "11", "41", "21", "31"], ordered=True
+            )
+            print(view.head(6))
+
+        Args:
+            field: a field or ``embedded.field.name``
+            values: a value or iterable of values to select by
+            ordered (False): whether to sort the samples in the returned view
+                to match the order of the provided values
+
+        Returns:
+            a :class:`fiftyone.core.view.DatasetView`
+        """
+        return self._add_view_stage(
+            fos.SelectBy(field, values, ordered=ordered)
+        )
+
+    @view_stage
     def select_fields(self, field_names=None, _allow_missing=False):
         """Selects only the fields with the given names from the samples in the
         collection. All other fields are excluded.
@@ -5102,6 +5232,9 @@ class SampleCollection(object):
         self,
         export_dir=None,
         dataset_type=None,
+        data_path=None,
+        labels_path=None,
+        export_media=None,
         dataset_exporter=None,
         label_field=None,
         label_prefix=None,
@@ -5114,8 +5247,27 @@ class SampleCollection(object):
     ):
         """Exports the samples in the collection to disk.
 
-        Provide either ``export_dir`` and ``dataset_type`` or
-        ``dataset_exporter`` to perform an export.
+        You can perform exports with this method via the following basic
+        patterns:
+
+        (a) Provide ``export_dir`` and ``dataset_type`` to export the content
+            to a directory in the default layout for the specified format, as
+            documented in :ref:`this page <exporting-datasets>`
+
+        (b) Provide ``dataset_type`` along with ``data_path``, ``labels_path``,
+            and/or ``export_media`` to directly specify where to export the
+            source media and/or labels (if applicable) in your desired format.
+            This syntax provides the flexibility to, for example, perform
+            workflows like labels-only exports
+
+        (c) Provide a ``dataset_exporter`` to which to feed samples to perform
+            a fully-customized export
+
+        In all workflows, the remaining parameters of this method can be
+        provided to further configure the export.
+
+        See :ref:`this page <exporting-datasets>` for more information about
+        the available export formats and examples of using this method.
 
         See :ref:`this guide <custom-dataset-exporter>` for more details about
         exporting datasets in custom formats by defining your own
@@ -5149,8 +5301,10 @@ class SampleCollection(object):
 
         Args:
             export_dir (None): the directory to which to export the samples in
-                format ``dataset_type``. This can also be an archive path with
-                one of the following extensions::
+                format ``dataset_type``. This parameter may be omitted if you
+                have provided appropriate values for the ``data_path`` and/or
+                ``labels_path`` parameters. Alternatively, this can also be an
+                archive path with one of the following extensions::
 
                     .zip, .tar, .tar.gz, .tgz, .tar.bz, .tbz
 
@@ -5160,9 +5314,68 @@ class SampleCollection(object):
             dataset_type (None): the
                 :class:`fiftyone.types.dataset_types.Dataset` type to write. If
                 not specified, the default type for ``label_field`` is used
+            data_path (None): an optional parameter that enables explicit
+                control over the location of the exported media for certain
+                export formats. Can be any of the following:
+
+                -   a folder name like ``"data"`` or ``"data/"`` specifying a
+                    subfolder of ``export_dir`` in which to export the media
+                -   an absolute directory path in which to export the media. In
+                    this case, the ``export_dir`` has no effect on the location
+                    of the data
+                -   a filename like ``"data.json"`` specifying the filename of
+                    a JSON manifest file in ``export_dir`` generated when
+                    ``export_media`` is ``"manifest"``
+                -   an absolute filepath specifying the location to write the
+                    JSON manifest file when ``export_media`` is ``"manifest"``.
+                    In this case, ``export_dir`` has no effect on the location
+                    of the data
+
+                If None, a default value of this parameter will be chosen based
+                on the value of the ``export_media`` parameter. Note that this
+                parameter is not applicable to certain export formats such as
+                binary types like TF records
+            labels_path (None): an optional parameter that enables explicit
+                control over the location of the exported labels. Only
+                applicable when exporting in certain labeled dataset formats.
+                Can be any of the following:
+
+                -   a type-specific folder name like ``"labels"`` or
+                    ``"labels/"`` or a filename like ``"labels.json"`` or
+                    ``"labels.xml"`` specifying the location in ``export_dir``
+                    in which to export the labels
+                -   an absolute directory or filepath in which to export the
+                    labels. In this case, the ``export_dir`` has no effect on
+                    the location of the labels
+
+                For labeled datasets, the default value of this parameter will
+                be chosen based on the export format so that the labels will be
+                exported into ``export_dir``
+            export_media (None): controls how to export the raw media. The
+                supported values are:
+
+                -   ``True``: copy all media files into the output directory
+                -   ``False``: don't export media. This option is only useful
+                    when exporting labeled datasets whose label format stores
+                    sufficient information to locate the associated media
+                -   ``"move"``: move all media files into the output directory
+                -   ``"symlink"``: create symlinks to the media files in the
+                    output directory
+                -   ``"manifest"``: create a ``data.json`` in the output
+                    directory that maps UUIDs used in the labels files to the
+                    filepaths of the source media, rather than exporting the
+                    actual media
+
+                If None, an appropriate default value of this parameter will be
+                chosen based on the value of the ``data_path`` parameter. Note
+                that some dataset formats may not support certain values for
+                this parameter (e.g., when exporting in binary formats such as
+                TF records, "symlink" is not an option)
             dataset_exporter (None): a
                 :class:`fiftyone.utils.data.exporters.DatasetExporter` to use
-                to export the samples
+                to export the samples. When provided, parameters such as
+                ``export_dir``, ``dataset_type``, ``data_path``, and
+                ``labels_path`` have no effect
             label_field (None): the name of the label field to export. Only
                 applicable to labeled image datasets or labeled video datasets
                 with sample-level labels. If none of ``label_field``,
@@ -5200,11 +5413,14 @@ class SampleCollection(object):
                 dicts to pass to the exporter. Only applicable for labeled
                 video datasets. This parameter can only be used when the
                 exporter can handle dictionaries of frame-level labels
-            overwrite (False): when an ``export_dir`` is provided, whether to
-                delete the existing directory before performing the export
+            overwrite (False): whether to delete existing directories before
+                performing the export (True) or to merge the export with
+                existing files and directories (False). Not applicable when a
+                ``dataset_exporter`` was provided
             **kwargs: optional keyword arguments to pass to the dataset
-                exporter's constructor via
-                ``DatasetExporter(export_dir, **kwargs)``
+                exporter's constructor. If you are exporting image patches,
+                this can also contain keyword arguments for
+                :class:`fiftyone.utils.patches.ImagePatchesExtractor`
         """
         if export_dir is not None and etau.is_archive(export_dir):
             archive_path = export_dir
@@ -5217,38 +5433,21 @@ class SampleCollection(object):
                 "Either `dataset_type` or `dataset_exporter` must be provided"
             )
 
-        if dataset_type is not None and inspect.isclass(dataset_type):
-            dataset_type = dataset_type()
-
-        # If no dataset exporter was provided, construct one based on the
-        # dataset type
+        # If no dataset exporter was provided, construct one
         if dataset_exporter is None:
-            if os.path.isdir(export_dir):
-                if overwrite:
-                    etau.delete_dir(export_dir)
-                else:
-                    logger.warning(
-                        "Directory '%s' already exists; export will be merged "
-                        "with existing files",
-                        export_dir,
-                    )
+            _handle_existing_dirs(
+                export_dir, data_path, labels_path, overwrite
+            )
 
-            dataset_exporter_cls = dataset_type.get_dataset_exporter_cls()
-
-            try:
-                dataset_exporter = dataset_exporter_cls(export_dir, **kwargs)
-            except Exception as e:
-                exporter_name = dataset_exporter_cls.__name__
-                raise ValueError(
-                    "Failed to construct exporter using syntax "
-                    "%s(export_dir, **kwargs); you may need to supply "
-                    "mandatory arguments to the constructor via `kwargs`. "
-                    "Please consult the documentation of `%s` to learn more"
-                    % (
-                        exporter_name,
-                        etau.get_class_name(dataset_exporter_cls),
-                    )
-                ) from e
+            dataset_exporter, kwargs = foud.build_dataset_exporter(
+                dataset_type,
+                warn_unused=False,  # don't warn yet, might be patches kwargs
+                export_dir=export_dir,
+                data_path=data_path,
+                labels_path=labels_path,
+                export_media=export_media,
+                **kwargs,
+            )
 
         # Get label field(s) to export
         if isinstance(dataset_exporter, foud.LabeledImageDatasetExporter):
@@ -5297,12 +5496,13 @@ class SampleCollection(object):
             label_field_or_dict = label_field
             frame_labels_field_or_dict = frame_labels_field
 
-        # Export the dataset
+        # Perform the export
         foud.export_samples(
             self,
             dataset_exporter=dataset_exporter,
             label_field_or_dict=label_field_or_dict,
             frame_labels_field_or_dict=frame_labels_field_or_dict,
+            **kwargs,
         )
 
         # Archive, if requested
@@ -5523,8 +5723,8 @@ class SampleCollection(object):
         :class:`fiftyone.core.aggregations.Aggregation` instances.
 
         Note that it is best practice to group aggregations into a single call
-        to :meth:`aggregate() <aggregate>`, as this will be more efficient than
-        performing multiple aggregations in series.
+        to :meth:`aggregate`, as this will be more efficient than performing
+        multiple aggregations in series.
 
         Args:
             aggregations: an :class:`fiftyone.core.aggregations.Aggregation` or
@@ -5543,21 +5743,35 @@ class SampleCollection(object):
         if scalar_result:
             aggregations = [aggregations]
 
-        # Partition into big and facet-able aggregations
-        big_aggs, facet_aggs = self._parse_aggregations(aggregations)
+        # Partition aggregations by type
+        big_aggs, batch_aggs, facet_aggs = self._parse_aggregations(
+            aggregations, allow_big=True
+        )
 
         # Placeholder to store results
         results = [None] * len(aggregations)
 
         # Run big aggregations
         for idx, aggregation in big_aggs.items():
-            pipeline, attach_frames = self._build_pipeline(aggregation)
+            pipeline, attach_frames = self._build_big_pipeline(aggregation)
 
             result = self._aggregate(
                 pipeline=pipeline, attach_frames=attach_frames
             )
 
             results[idx] = self._parse_big_results(aggregation, result)
+
+        # Run batched big aggregations
+        if batch_aggs:
+            pipeline, attach_frames = self._build_batch_pipeline(batch_aggs)
+
+            result = self._aggregate(
+                pipeline=pipeline, attach_frames=attach_frames
+            )
+            result = list(result)
+
+            for idx, aggregation in batch_aggs.items():
+                results[idx] = self._parse_big_results(aggregation, result)
 
         # Run faceted aggregations
         if facet_aggs:
@@ -5581,17 +5795,11 @@ class SampleCollection(object):
         if scalar_result:
             aggregations = [aggregations]
 
-        # Partition into big and facet-able aggregations
-        big_aggs, facet_aggs = self._parse_aggregations(aggregations)
+        _, _, facet_aggs = self._parse_aggregations(
+            aggregations, allow_big=False
+        )
 
-        # Placeholder to store results
         results = [None] * len(aggregations)
-
-        if big_aggs:
-            raise ValueError(
-                "This method does not support aggregations that return big "
-                "results"
-            )
 
         if facet_aggs:
             pipeline, attach_frames = self._build_faceted_pipeline(facet_aggs)
@@ -5608,27 +5816,53 @@ class SampleCollection(object):
 
         return results[0] if scalar_result else results
 
-    def _parse_aggregations(self, aggregations):
+    def _parse_aggregations(self, aggregations, allow_big=True):
         big_aggs = {}
+        batch_aggs = {}
         facet_aggs = {}
         for idx, aggregation in enumerate(aggregations):
-            if aggregation._has_big_result:
+            if aggregation._is_big_batchable:
+                batch_aggs[idx] = aggregation
+            elif aggregation._has_big_result:
                 big_aggs[idx] = aggregation
             else:
                 facet_aggs[idx] = aggregation
 
-        return big_aggs, facet_aggs
+        if not allow_big and (big_aggs or batch_aggs):
+            raise ValueError(
+                "This method does not support aggregations that return big "
+                "results"
+            )
 
-    def _build_pipeline(self, aggregation):
-        pipeline = aggregation.to_mongo(self)
+        return big_aggs, batch_aggs, facet_aggs
+
+    def _build_big_pipeline(self, aggregation, big_field="values"):
+        pipeline = aggregation.to_mongo(self, big_field=big_field)
         attach_frames = aggregation._needs_frames(self)
         return pipeline, attach_frames
 
-    def _parse_big_results(self, aggregation, result):
-        if result:
-            return aggregation.parse_result(result)
+    def _build_batch_pipeline(self, aggs_map):
+        project = {}
+        attach_frames = False
+        for idx, aggregation in aggs_map.items():
+            big_field = "value%d" % idx
+            _pipeline, _attach_frames = self._build_big_pipeline(
+                aggregation, big_field=big_field
+            )
+            attach_frames |= _attach_frames
 
-        return aggregation.default_result()
+            try:
+                assert len(_pipeline) == 1
+                project[big_field] = _pipeline[0]["$project"][big_field]
+            except:
+                raise ValueError(
+                    "Batchable aggregations must have pipelines with a single "
+                    "$project stage; found %s" % _pipeline
+                )
+
+        pipeline = [{"$project": project}]
+
+        return pipeline, attach_frames
 
     def _build_faceted_pipeline(self, aggs_map):
         facets = {}
@@ -5641,6 +5875,12 @@ class SampleCollection(object):
         facet_pipeline = [{"$facet": facets}]
 
         return facet_pipeline, attach_frames
+
+    def _parse_big_results(self, aggregation, result):
+        if result:
+            return aggregation.parse_result(result)
+
+        return aggregation.default_result()
 
     def _parse_faceted_results(self, aggs_map, result, results):
         for idx, aggregation in aggs_map.items():
@@ -5795,6 +6035,9 @@ class SampleCollection(object):
         return _parse_field_name(
             self, field_name, auto_unwind, omit_terminal_lists, allow_missing
         )
+
+    def _handle_id_fields(self, field_name):
+        return _handle_id_fields(self, field_name)
 
     def _handle_frame_field(self, field_name):
         is_frame_field = self._is_frame_field(field_name)
@@ -6288,8 +6531,12 @@ def _parse_field_name(
         field_name
     )
 
-    if is_frame_field and not field_name:
-        return "frames", True, [], [], False
+    if is_frame_field:
+        if not field_name:
+            return "frames", True, [], [], False
+
+        prefix = sample_collection._FRAMES_PREFIX
+        unwind_list_fields = {f[len(prefix) :] for f in unwind_list_fields}
 
     # Validate root field, if requested
     if not allow_missing and not is_id_field:
@@ -6333,17 +6580,25 @@ def _parse_field_name(
             elif path not in unwind_list_fields:
                 other_list_fields.add(path)
 
+    if is_frame_field:
+        if auto_unwind:
+            unwind_list_fields.discard("")
+        else:
+            prefix = sample_collection._FRAMES_PREFIX
+            field_name = prefix + field_name
+            unwind_list_fields = {
+                prefix + f if f else "frames" for f in unwind_list_fields
+            }
+            other_list_fields = {
+                prefix + f if f else "frames" for f in other_list_fields
+            }
+            if "frames" not in unwind_list_fields:
+                other_list_fields.add("frames")
+
     # Sorting is important here because one must unwind field `x` before
     # embedded field `x.y`
     unwind_list_fields = sorted(unwind_list_fields)
     other_list_fields = sorted(other_list_fields)
-
-    if is_frame_field and not auto_unwind:
-        prefix = sample_collection._FRAMES_PREFIX
-        field_name = prefix + field_name
-        unwind_list_fields = [prefix + f for f in unwind_list_fields]
-        other_list_fields = [prefix + f for f in other_list_fields]
-        other_list_fields.insert(0, "frames")
 
     return (
         field_name,
@@ -6564,3 +6819,53 @@ def _get_non_none_value(values):
             return value
 
     return None
+
+
+def _handle_existing_dirs(export_dir, data_path, labels_path, overwrite):
+    if export_dir is not None and os.path.isdir(export_dir):
+        if overwrite:
+            etau.delete_dir(export_dir)
+        else:
+            logger.warning(
+                "Directory '%s' already exists; export will be merged with "
+                "existing files",
+                export_dir,
+            )
+
+    if data_path is not None:
+        if os.path.isabs(data_path) or export_dir is None:
+            _data_path = data_path
+        else:
+            _data_path = os.path.join(export_dir, data_path)
+
+        if os.path.isdir(_data_path):
+            if overwrite:
+                etau.delete_dir(_data_path)
+            else:
+                logger.warning(
+                    "Directory '%s' already exists; export will be merged "
+                    "with existing files",
+                    _data_path,
+                )
+        elif os.path.isfile(_data_path):
+            if overwrite:
+                etau.delete_file(_data_path)
+
+    if labels_path is not None:
+        if os.path.isabs(labels_path) or export_dir is None:
+            _labels_path = labels_path
+        else:
+            _labels_path = os.path.join(export_dir, labels_path)
+
+        if os.path.isdir(_labels_path):
+            if overwrite:
+                etau.delete_dir(_labels_path)
+            else:
+                logger.warning(
+                    "Directory '%s' already exists; export will be merged "
+                    "with existing files",
+                    _labels_path,
+                )
+        elif os.path.isfile(_labels_path):
+            if overwrite:
+                etau.delete_file(_labels_path)

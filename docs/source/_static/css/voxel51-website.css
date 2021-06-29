@@ -43,6 +43,8 @@
 
   --padding-x: 10rem;
   --padding-y: 10rem;
+
+  --bg-modal: rgba(33, 37, 41, 0.75);
 }
 
 .banner {
@@ -72,7 +74,7 @@
   color: var(--text-primary-on-light);
 }
 
-.google-gray {
+.gray {
   color: var(--gray-dark1);
 }
 
@@ -82,7 +84,7 @@
   white-space: nowrap;
 }
 
-@media screen and (max-device-width: 850px) {
+@media screen and (max-width: 850px) {
   .banner > div > span {
     font-size: 15px;
     line-height: 18px;
@@ -163,14 +165,80 @@
   text-decoration: underline;
 }
 
-@media only screen and (min-device-width: 850px) {
+/* modal classes */
+
+.modal {
+  display: none; /* Hidden by default */
+  position: fixed; /* Stay in place */
+  z-index: 1000; /* Sit on top */
+  left: 0;
+  top: 0;
+  width: 100%; /* Full width */
+  height: 100%; /* Full height */
+  background-color: var(--bg-dark-primary);
+  background-color: var(--bg-modal);
+  justify-content: center;
+  flex-direction: column;
+}
+
+/* Modal Content/Box */
+.modal-content {
+  background-color: var(--bg-light-primary);
+  padding: 3rem;
+  border: 2px solid var(--gray-light1);
+  border-radius: 3px;
+  width: auto; /* Could be more or less, depending on screen size */
+  max-width: 80%;
+  width: 600px;
+  height: auto;
+  margin: auto;
+  max-height: 90%;
+  overflow-y: auto;
+}
+
+/* The Close Button */
+.modal-close {
+  color: var(--text-primary-on-light);
+  float: right;
+  font-size: --fontsize-body;
+  font-weight: bold;
+}
+
+.modal-close:hover,
+.modal-close:focus {
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.modal p {
+  color: rgb(108, 117, 125);
+  font-size: 18px;
+}
+
+.modal h2 {
+  color: var(--text-primary);
+  font-weight: 700;
+  font-size: 40px;
+  line-height: 52px;
+  margin-block-start: 0;
+  margin-block-end: 0rem;
+}
+
+@media only screen and (min-width: 850px) {
   .mobile_only {
     display: none;
   }
 }
 
+@media only screen and (min-width: 850px) and (max-width: 1240px) {
+  #try-fiftyone,
+  #octocat {
+    display: none;
+  }
+}
+
 /* mobile responsive nav elements all here */
-@media only screen and (min-device-width: 320px) and (max-device-width: 850px) {
+@media only screen and (min-width: 320px) and (max-width: 850px) {
   /* navs do not stay at top in mobile mode */
   .desktop_only {
     display: none;
@@ -409,7 +477,7 @@
 }
 
 /* Use Media Query for Mobile to Change Footer Completely */
-@media only screen and (min-device-width: 320px) and (max-device-width: 850px) {
+@media only screen and (min-width: 320px) and (max-width: 850px) {
   .footer {
     display: grid;
     grid-template-columns: 100%;
@@ -483,4 +551,82 @@
 
 .list-inline > li:not(:last-child) {
   padding-right: 2rem;
+}
+
+.button-primary {
+  background: var(--color-primary);
+  color: var(--text-primary-on-dark) !important;
+  border-color: var(--color-primary);
+  border-radius: 3px;
+  border-width: 2px;
+  border-style: solid;
+  cursor: pointer;
+
+  font-weight: 600;
+  font-size: 14px;
+
+  padding: 0.4rem 1.2em;
+}
+
+.button-primary:hover {
+  background: var(--color-primary-muted);
+  border-color: var(--color-primary-muted);
+  text-decoration: none;
+}
+
+.button-secondary {
+  color: var(--color-primary) !important;
+  border-color: var(--color-primary);
+  border-radius: 3px;
+  border-width: 2px; /* XXX ask */
+  border-style: solid;
+  cursor: pointer;
+  padding: 0.4em 1.4em;
+  font-size: 14px;
+
+  font-weight: 600; /* XXX ask */
+}
+
+.button-secondary:hover {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: var(--text-primary-on-dark) !important;
+  text-decoration: none;
+}
+
+.text-brand {
+  color: var(--color-primary);
+}
+
+.text-primary {
+  color: var(--text-primary);
+}
+
+.text-primary-on-light {
+  color: var(--text-primary);
+}
+
+.text-primary-on-dark {
+  color: var(--text-primary-on-dark);
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.6);
+}
+
+.text-secondary-on-light {
+  color: var(--text-secondary-on-light);
+}
+
+.text-secondary-on-dark {
+  color: var(--text-secondary-on-dark);
+}
+
+.text-tertiary-on-light {
+  color: var(--text-tertiary-on-light);
+}
+
+.text-tertiary-on-dark {
+  color: var(--text-tertiary-on-dark);
+}
+
+.hs-form-iframe {
+  width: 100% !important;
 }

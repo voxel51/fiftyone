@@ -124,6 +124,7 @@ from .core.plots import (
 from .core.sample import Sample
 from .core.stages import (
     Exclude,
+    ExcludeBy,
     ExcludeFields,
     ExcludeFrames,
     ExcludeLabels,
@@ -146,6 +147,7 @@ from .core.stages import (
     Mongo,
     Shuffle,
     Select,
+    SelectBy,
     SelectFields,
     SelectFrames,
     SelectLabels,

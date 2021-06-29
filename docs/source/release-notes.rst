@@ -3,11 +3,231 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+.. _release-notes-v0.11.0:
+
+FiftyOne 0.11.0
+---------------
+*Released June 29, 2021*
+
+News
+^^^^
+- With support from the `COCO team <https://cocodataset.org/#download>`_,
+  FiftyOne is now a recommended tool for downloading, visualizing, and
+  evaluating on the COCO dataset! Check out :ref:`this guide <coco>` for more
+  details
+
+App
+^^^
+- Fixed a bug that prevented ``sample_id`` fields from appearing in the App
+  when working with frames and patches views
+
+Core
+^^^^
+- Added various new parameters to methods like
+  :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>` and
+  :meth:`SampleCollection.export() <fiftyone.core.collections.SampleCollection.export>`,
+  including ``data_path``, ``labels_path``, and ``export_media`` that allow for
+  customizing the import and export of datasets. For example, you can now
+  perform labels-only imports and exports
+- Added new
+  :meth:`Dataset.merge_dir() <fiftyone.core.dataset.Dataset.merge_dir>` and
+  :meth:`Dataset.merge_importer() <fiftyone.core.dataset.Dataset.merge_importer>`
+  methods for merging datasets from disk into existing FiftyOne datasets
+- Added support for :ref:`importing <YOLOv5Dataset-import>` and
+  :ref:`exporting <YOLOv5Dataset-export>` datasets in
+  `YOLOv5 format <https://github.com/ultralytics/yolov5>`_
+- Updated the :class:`GeoJSONDataset <fiftyone.types.dataset_types.GeoJSONDataset>`
+  dataset type to support both image and video datasets
+- Added support for :class:`importing <fiftyone.utils.coco.COCODetectionDatasetImporter>`
+  and :class:`exporting <fiftyone.utils.coco.COCODetectionDatasetExporter>` extra
+  attributes in COCO format via a new ``extra_attrs`` parameter
+
+Zoo
+^^^
+- Added support for partial downloads and loading segmentations to the
+  :ref:`COCO-2014 <dataset-zoo-coco-2014>` and
+  :ref:`COCO-2017 <dataset-zoo-coco-2017>` datasets
+- When performing partial downloads on the
+  :ref:`Open Images v6 Dataset <dataset-zoo-open-images-v6>` involving a subset
+  of the available classes, all labels for matching samples will now be loaded
+  by default
+
+Docs
+^^^^
+- Added a :ref:`new page <coco>` demonstrating how to use FiftyOne to download,
+  visualize, and evaluate on the COCO dataset
+- Added a :ref:`new page <open-images>` demonstrating how to use FiftyOne to
+  download, visualize, and evaluate on the Open Images dataset
+
+.. _release-notes-v0.10.0:
+
+FiftyOne 0.10.0
+---------------
+*Released June 21, 2021*
+
+News
+^^^^
+- We've collaborated with the
+  `PyTorch Lightning <https://github.com/PyTorchLightning/pytorch-lightning>`_
+  team to make it easy to train
+  `Lightning Flash <https://github.com/PyTorchLightning/lightning-flash>`_
+  tasks on your FiftyOne datasets. Check out
+  :ref:`this guide <lightning-flash>` for more details
+
+Core
+^^^^
+- Updated the
+  :meth:`apply_model() <fiftyone.core.collections.SampleCollection.apply_model>` and
+  :meth:`compute_embeddings() <fiftyone.core.collections.SampleCollection.compute_embeddings>`
+  methods to natively support applying
+  `Lightning Flash <https://github.com/PyTorchLightning/lightning-flash>`_
+  models to FiftyOne datasets!
+
+Docs
+^^^^
+- Added a :ref:`new page <lightning-flash>` demonstrating how to use the
+  Lightning Flash integration
+
+.. _release-notes-v0.9.4:
+
+FiftyOne 0.9.4
+--------------
+*Released June 15, 2021*
+
+App
+^^^
+- Added support for matching samples by ID in the Filters Sidebar
+- Fixed a bug that caused the App to crash when selecting samples with the
+  ``Color by value`` setting active
+- Fixed a bug that caused the App to crash on some Windows machines by ensuring
+  the correct MIME type is set for JavaScript files
+
+Core
+^^^^
+- Improved the performance of importing data into FiftyOne by 2x or more!
+- Added a
+  :meth:`to_frames() <fiftyone.core.collections.SampleCollection.to_frames>` view
+  stage that enables on-the-fly conversion of video datasets into frames views
+- Added :meth:`last() <fiftyone.core.frame.Frames.last>`,
+  :meth:`head() <fiftyone.core.frame.Frames.head>`, and
+  :meth:`tail() <fiftyone.core.frame.Frames.tail>` methods to the
+  :class:`Frames <fiftyone.core.frame.Frames>` class
+- Added new
+  :meth:`exclude_fields() <fiftyone.core.collections.SampleCollection.exclude_fields>`,
+  :meth:`select_frames() <fiftyone.core.collections.SampleCollection.select_frames>`, and
+  :meth:`match_frames() <fiftyone.core.collections.SampleCollection.match_frames>`
+  view stages that enable selecting specific frames of video collections via
+  IDs or filter expressions, respectively
+- Added a new
+  :meth:`match_labels() <fiftyone.core.collections.SampleCollection.match_labels>`
+  view stage that enables matching samples that have specific labels without
+  actually filtering the non-matching labels
+- Added support for exporting image patches using
+  :meth:`export() <fiftyone.core.collections.SampleCollection.export>` by
+  specifying an image classification dataset type and including a spatial
+  ``label_field`` that defines the image patches to extract
+- Added support for automatically coercing single label fields like |Detection|
+  into the corresponding multiple label field type |Detections| when using
+  :meth:`export() <fiftyone.core.collections.SampleCollection.export>` to
+  export in dataset formats that expect list-type fields
+- Added support for executing an aggregation on multiple fields via the
+  abbreviated syntax
+  ``ids, filepaths = dataset.values(["id", "filepath"])``
+- Exposed the ``id`` field of all samples and frames in dataset schemas
+- Added support for merging the elements of list fields via
+  :meth:`Dataset.merge_samples() <fiftyone.core.dataset.Dataset.merge_samples>` and
+  :meth:`Document.merge() <fiftyone.core.document.Document.merge>`
+- Added a number of useful options to
+  :meth:`Dataset.merge_samples() <fiftyone.core.dataset.Dataset.merge_samples>`,
+  including ``fields``, ``omit_fields``, and ``merge_lists``
+- Improved the efficiency of
+  :meth:`Dataset.merge_samples() <fiftyone.core.dataset.Dataset.merge_samples>`
+  when the ``overwrite=False`` option is provided
+- Added an optional ``bool`` flag to the
+  :meth:`match_tags() <fiftyone.core.collections.SampleCollection.match_tags>`
+  view stage that allows for optionally matching samples without the specified
+  tags
+- Added support for computing filehashes via the ``hashlib`` module to
+  :meth:`compute_filehash() <fiftyone.core.utils.compute_filehash>`
+- Fixed a bug in
+  :meth:`limit_labels() <fiftyone.core.collections.SampleCollection.limit_labels>`
+  that would cause views to contain empty label lists if the source dataset
+  contains None-valued fields
+- Fixed a bug that prevented
+  :meth:`ViewExpression.contains() <fiftyone.core.expressions.ViewExpression.contains>`
+  from accepting |ViewExpression| instances as arguments
+
+Utils
+^^^^^
+- Updated the :meth:`import_from_labelbox() <fiftyone.utils.labelbox.import_from_labelbox>`
+  method to use the correct label ID ("DataRow ID", not "ID")
+- Added an optional ``edges`` argument to
+  :meth:`scatterplot() <fiftyone.core.plots.plotly.scatterplot>` and
+  :meth:`location_scatterplot() <fiftyone.core.plots.plotly.scatterplot>` that
+  enables drawing undirected edges between scatterpoints
+
+Zoo
+^^^
+- Fixed a string encoding issue that prevented some Windows users from loading
+  the :ref:`Open Images V6 <dataset-zoo-open-images-v6>` dataset
+- Updated the :ref:`vgg16-imagenet-tf1 <model-zoo-vgg16-imagenet-tf1>` model
+  (formerly named `vgg16-imagenet-tf`) to reflect the fact that it only
+  supports TensorFlow 1.X
+
+Docs
+^^^^
+- Added example usages of
+  :meth:`to_frames() <fiftyone.core.collections.SampleCollection.to_frames>`
+  to the :ref:`user guide <frame-views>`
+
+.. _release-notes-v0.9.3:
+
+FiftyOne 0.9.3
+--------------
+*Released May 18, 2021*
+
+App
+^^^
+- Fixed an issue that prevented some datasets and views that contain vector or
+  array data (e.g., logits) from properly loading in the App
+- Fixed a bug that prevented loading video datasets in the App in Google Colab
+  environments
+
+.. _release-notes-v0.9.2:
+
+FiftyOne 0.9.2
+--------------
+*Released May 16, 2021*
+
+Zoo
+^^^
+- Fixed a multiprocessing bug that prevented Mac users running Python 3.8 or
+  later from loading the :ref:`Open Images V6 <dataset-zoo-open-images-v6>`
+  dataset
+
+.. _release-notes-v0.9.1:
+
+FiftyOne 0.9.1
+--------------
+*Released May 12, 2021*
+
+App
+^^^
+- Fixed a bug that caused the App to crash when choosing to ``Color by value``
+
 .. _release-notes-v0.9.0:
 
 FiftyOne 0.9.0
 --------------
 *Released May 12, 2021*
+
+News
+^^^^
+- We've collaborated with the
+  `Open Images Team at Google <https://storage.googleapis.com/openimages/web/download.html>`_
+  to make FiftyOne a recommended tool for downloading, visualizing, and
+  evaluating on the Open Images Dataset! Check out
+  :ref:`this guide <open-images>` for more details
 
 App
 ^^^
@@ -70,6 +290,11 @@ Core
   in favor of a single
   :meth:`Dataset.delete_samples() <fiftyone.core.dataset.Dataset.delete_samples>`
   method
+- Brain results and evaluation results that are loaded via
+  :meth:`load_evaluation_results() <fiftyone.core.collections.SampleCollection.load_evaluation_results>`
+  :meth:`load_brain_results() <fiftyone.core.collections.SampleCollection.load_brain_results>`
+  are now cached on the |Dataset| object in-memory so that subsequent
+  retrievals of the results in the same session will be instant
 
 Zoo
 ^^^
@@ -158,7 +383,7 @@ Core
       an interacive scatterplot of a dataset via its |GeoLocation| coordinates
     - Added |GeoLocation| and |GeoLocations| label types that can be used to store
       arbitrary GeoJSON location data on samples
-    - Added the :class:`GeoJSONImageDataset <fiftyone.types.dataset_types.GeoJSONImageDataset>`
+    - Added the :class:`GeoJSONDataset <fiftyone.types.dataset_types.GeoJSONDataset>`
       dataset type for importing and exporting datasets in GeoJSON format
     - Added :meth:`SampleCollection.geo_near() <fiftyone.core.collections.SampleCollection.geo_near>`
       and
@@ -879,9 +1104,9 @@ Core
   :class:`segmentation masks <fiftyone.core.labels.Segmentation>` on samples
 - Added support for setting an `index` attribute on |Detection| instances that
   defines a unique identifier for an object (e.g., across frames of a video)
-- Added support for :ref:`importing <YOLODataset-import>` and
-  :ref:`exporting <YOLODataset-export>` datasets in
-  `YOLO format <https://github.com/AlexeyAB/darknet>`_
+- Added support for :ref:`importing <YOLOv4Dataset-import>` and
+  :ref:`exporting <YOLOv4Dataset-export>` datasets in
+  `YOLOv4 format <https://github.com/AlexeyAB/darknet>`_
 - Added support for :ref:`importing <CVATVideoDataset-import>` and
   :ref:`exporting <CVATVideoDataset-export>` datasets in
   `CVAT video format <https://github.com/openvinotoolkit/cvat/blob/develop/cvat/apps/documentation/xml_format.md>`_

@@ -1125,29 +1125,18 @@ def _plot_map_background(ax, locations, api_key, map_type, show_scale_bar):
 
 def _ensure_salem():
     # pip installing `salem` does not automatically install these...
-    required_packages = [
-        "salem",
-        "pyproj",
-        "netCDF4",
-        "xarray",
-        "shapely",
-        "descartes",
-        "pandas",
-        "motionless",
-    ]
-
-    missing_packages = []
-    for pkg in required_packages:
-        try:
-            etau.ensure_package(pkg)
-        except:
-            missing_packages.append(pkg)
-
-    if missing_packages:
-        raise ImportError(
-            "The requested operation requires that the following packages are "
-            "installed on your machine: %s" % (tuple(missing_packages),)
-        )
+    fou.ensure_package(
+        [
+            "salem",
+            "pyproj",
+            "netCDF4",
+            "xarray",
+            "shapely",
+            "descartes",
+            "pandas",
+            "motionless",
+        ]
+    )
 
 
 salem = fou.lazy_import("salem", callback=_ensure_salem)

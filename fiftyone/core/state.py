@@ -198,7 +198,7 @@ class DatasetStatistics(object):
 
         schema = collection.get_field_schema()
         for field_name, field in schema.items():
-            if field_name not in ("metadata" "tags"):
+            if field_name not in ("metadata", "tags"):
                 result.append((field_name, field))
 
         if collection.media_type == fom.VIDEO:

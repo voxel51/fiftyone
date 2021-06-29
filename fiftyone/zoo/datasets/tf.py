@@ -371,146 +371,6 @@ class ImageNet2012Dataset(TFDSDataset):
         )
 
 
-class COCO2014Dataset(TFDSDataset):
-    """COCO is a large-scale object detection, segmentation, and captioning
-    dataset.
-
-    This version contains images, bounding boxes and labels for the 2014
-    version of the dataset.
-
-    Notes:
-
-    -   COCO defines 91 classes but the data only uses 80 classes
-    -   Some images from the train and validation sets don't have annotations
-    -   The test set does not have annotations
-    -   COCO 2014 and 2017 uses the same images, but different train/val/test
-        splits
-
-    Example usage::
-
-        import fiftyone as fo
-        import fiftyone.zoo as foz
-
-        dataset = foz.load_zoo_dataset("coco-2014", split="validation")
-
-        session = fo.launch_app(dataset)
-
-    Dataset size
-        37.57 GB
-
-    Source
-        http://cocodataset.org/#home
-    """
-
-    @property
-    def name(self):
-        return "coco-2014"
-
-    @property
-    def tags(self):
-        return ("image", "detection")
-
-    @property
-    def supported_splits(self):
-        return ("train", "validation", "test")
-
-    def _download_and_prepare(self, dataset_dir, scratch_dir, split):
-        def download_fcn(download_dir):
-            return tfds.load(
-                "coco/2014",
-                split=split,
-                data_dir=download_dir,
-                download=True,
-                with_info=True,
-            )
-
-        get_class_labels_fcn = lambda info: info.features["objects"][
-            "label"
-        ].names
-        get_num_samples_fcn = lambda info: info.splits[split].num_examples
-        sample_parser = _TFDSImageDetectionSampleParser(
-            bounding_box_field="bbox", normalized=True,
-        )
-        return _download_and_prepare(
-            dataset_dir,
-            scratch_dir,
-            download_fcn,
-            get_class_labels_fcn,
-            get_num_samples_fcn,
-            sample_parser,
-        )
-
-
-class COCO2017Dataset(TFDSDataset):
-    """COCO is a large-scale object detection, segmentation, and captioning
-    dataset.
-
-    This version contains images, bounding boxes and labels for the 2017
-    version of the dataset.
-
-    Notes:
-
-    -   COCO defines 91 classes but the data only uses 80 classes
-    -   Some images from the train and validation sets don't have annotations
-    -   The test set does not have annotations
-    -   COCO 2014 and 2017 uses the same images, but different train/val/test
-        splits
-
-    Example usage::
-
-        import fiftyone as fo
-        import fiftyone.zoo as foz
-
-        dataset = foz.load_zoo_dataset("coco-2017", split="validation")
-
-        session = fo.launch_app(dataset)
-
-    Dataset size
-        25.20 GB
-
-    Source
-        http://cocodataset.org/#home
-    """
-
-    @property
-    def name(self):
-        return "coco-2017"
-
-    @property
-    def tags(self):
-        return ("image", "detection")
-
-    @property
-    def supported_splits(self):
-        return ("train", "validation", "test")
-
-    def _download_and_prepare(self, dataset_dir, scratch_dir, split):
-        def download_fcn(download_dir):
-            return tfds.load(
-                "coco/2017",
-                split=split,
-                data_dir=download_dir,
-                download=True,
-                with_info=True,
-            )
-
-        get_class_labels_fcn = lambda info: info.features["objects"][
-            "label"
-        ].names
-        get_num_samples_fcn = lambda info: info.splits[split].num_examples
-        sample_parser = _TFDSImageDetectionSampleParser(
-            bounding_box_field="bbox", normalized=True,
-        )
-        return _download_and_prepare(
-            dataset_dir,
-            scratch_dir,
-            download_fcn,
-            get_class_labels_fcn,
-            get_num_samples_fcn,
-            sample_parser,
-        )
-
-
 class VOC2007Dataset(TFDSDataset):
     """The dataset for the PASCAL Visual Object Classes Challenge 2007
     (VOC2007) for the detection competition.
@@ -649,8 +509,6 @@ AVAILABLE_DATASETS = {
     "cifar10": CIFAR10Dataset,
     "cifar100": CIFAR100Dataset,
     "imagenet-2012": ImageNet2012Dataset,
-    "coco-2014": COCO2014Dataset,
-    "coco-2017": COCO2017Dataset,
     "voc-2007": VOC2007Dataset,
     "voc-2012": VOC2012Dataset,
 }
@@ -768,10 +626,7 @@ def _download_and_prepare(
 
     # Write the formatted dataset to `dataset_dir`
     foud.write_dataset(
-        samples,
-        sample_parser,
-        dataset_exporter=dataset_exporter,
-        num_samples=num_samples,
+        samples, sample_parser, dataset_exporter, num_samples=num_samples
     )
 
     return dataset_type, num_samples, classes

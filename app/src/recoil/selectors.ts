@@ -8,8 +8,6 @@ import {
   VALID_LABEL_TYPES,
   VALID_SCALAR_TYPES,
   makeLabelNameGroups,
-  labelTypeHasColor,
-  AGGS,
   VALID_LIST_TYPES,
   HIDDEN_LABEL_ATTRS,
   LABEL_LIST,
@@ -29,6 +27,7 @@ export const deactivated = selector({
   get: ({ get }) => {
     const handle = handleId;
     const activeHandle = get(atoms.stateDescription)?.active_handle;
+
     const notebook = isNotebook;
     if (notebook) {
       return handle !== activeHandle && typeof activeHandle === "string";
@@ -53,24 +52,24 @@ export const fiftyone = selector({
   },
 });
 
-export const showFeedbackButton = selector({
-  key: "showFeedbackButton",
+export const showTeamsButton = selector({
+  key: "showTeamsButton",
   get: ({ get }) => {
-    const feedback = get(fiftyone).feedback;
-    const localFeedback = get(atoms.feedbackSubmitted);
-    const storedFeedback = window.localStorage.getItem("fiftyone-feedback");
-    if (storedFeedback) {
-      window.localStorage.removeItem("fiftyone-feedback");
-      fetch(`${http}/feedback?submitted=true`, { method: "post" });
+    const teams = get(fiftyone).teams;
+    const localTeams = get(atoms.teamsSubmitted);
+    const storedTeams = window.localStorage.getItem("fiftyone-teams");
+    if (storedTeams) {
+      window.localStorage.removeItem("fiftyone-teams");
+      fetch(`${http}/teams?submitted=true`, { method: "post" });
     }
     if (
-      feedback.submitted ||
-      localFeedback.submitted ||
-      storedFeedback === "submitted"
+      teams.submitted ||
+      localTeams.submitted ||
+      storedTeams === "submitted"
     ) {
       return "hidden";
     }
-    if (feedback.minimized || localFeedback.minimized) {
+    if (teams.minimized || localTeams.minimized) {
       return "minimized";
     }
     return "shown";
@@ -681,6 +680,20 @@ export const scalarsMap = selectorFamily<{ [key: string]: string }, string>({
       (acc, cur, i) => ({
         ...acc,
         [cur]: types[i],
+      }),
+      {}
+    );
+  },
+});
+
+export const scalarsDbMap = selectorFamily<{ [key: string]: string }, string>({
+  key: "scalarsMap",
+  get: (dimension) => ({ get }) => {
+    const values = get(scalars(dimension));
+    return get(scalarNames(dimension)).reduce(
+      (acc, cur, i) => ({
+        ...acc,
+        [cur]: values[i].db_field,
       }),
       {}
     );

@@ -87,7 +87,7 @@ Examples of |InteractivePlot| types include
 :ref:`location scatterplots <geolocation-plots>`, and
 :ref:`interactive heatmaps <confusion-matrix-plots>`.
 
-.. image:: ../images/plots/mnist-interactive1.gif
+.. image:: /images/plots/mnist-interactive1.gif
    :alt: interactive-plots
    :align: center
 
@@ -103,7 +103,7 @@ More view plot types are being continually added to the library over time.
 Current varieties include |CategoricalHistogram|, |NumericalHistogram|, and
 |ViewGrid|.
 
-.. image:: ../images/plots/view-plots.gif
+.. image:: /images/plots/view-plots.gif
    :alt: view-plots
    :align: center
 
@@ -233,7 +233,7 @@ ground truth label:
     plot = results.visualize(labels="ground_truth.label")
     plot.show(height=720)
 
-.. image:: ../images/plots/mnist-scatterplot.png
+.. image:: /images/plots/mnist-scatterplot.png
    :alt: mnist-scatterplot
    :align: center
 
@@ -311,7 +311,7 @@ To give a taste of the possible interactions, let's hide all zero digit images
 and select the other digits near the zero cluster; this isolates the non-zero
 digit images in the App that are likely to be confused as zeros:
 
-.. image:: ../images/plots/mnist-interactive1.gif
+.. image:: /images/plots/mnist-interactive1.gif
    :alt: mnist-interactive1
    :align: center
 
@@ -319,7 +319,7 @@ Alternatively, let's hide all classes except the zero digits, and then select
 the zero digits that are *not* in the zero cluster; this isolates the zero
 digit images in the App that are likely to be confused as other digits:
 
-.. image:: ../images/plots/mnist-interactive2.gif
+.. image:: /images/plots/mnist-interactive2.gif
    :alt: mnist-interactive2
    :align: center
 
@@ -389,7 +389,7 @@ contains |GeoLocation| data in its ``location`` field:
     )
     plot.show()
 
-.. image:: ../images/plots/location-scatterplot.gif
+.. image:: /images/plots/location-scatterplot.gif
    :alt: location-scatterplot
    :align: center
 
@@ -409,7 +409,7 @@ as a density plot:
     )
     plot.show()
 
-.. image:: ../images/plots/location-densityplot.gif
+.. image:: /images/plots/location-densityplot.gif
    :alt: location-densityplot
    :align: center
 
@@ -472,7 +472,7 @@ notebook:
     # Connect to session
     session.plots.attach(plot)
 
-.. image:: ../images/plots/location-scatterplot-interactive.gif
+.. image:: /images/plots/location-scatterplot-interactive.gif
    :alt: location-scatterplot-interactive
    :align: center
 
@@ -543,7 +543,7 @@ notebook:
     # Connect to session
     session.plots.attach(plot)
 
-.. image:: ../images/plots/detection-evaluation.gif
+.. image:: /images/plots/detection-evaluation.gif
    :alt: detection-evaluation
    :align: center
 
@@ -601,7 +601,7 @@ notebook:
     # Connect to session
     session.plots.attach(plot)
 
-.. image:: ../images/plots/view-plots.gif
+.. image:: /images/plots/view-plots.gif
    :alt: view-plots
    :align: center
 
@@ -893,7 +893,7 @@ matplotlib-powered plot types support interactivity, but you must
     plot = results.plot_confusion_matrix(classes=classes)
     plot.show(height=512)
 
-.. image:: ../images/plots/plotly-backend.png
+.. image:: /images/plots/plotly-backend.png
    :alt: plotly-backend
    :align: center
 
@@ -908,7 +908,7 @@ matplotlib-powered plot types support interactivity, but you must
     )
     plt.show(block=False)
 
-.. image:: ../images/plots/matplotlib-backend.png
+.. image:: /images/plots/matplotlib-backend.png
    :alt: matplotlib-backend
    :align: center
 
