@@ -48,19 +48,19 @@ export default class PolylineOverlay<
         continue;
       }
 
-      if (selected) {
-        this.strokePath(ctx, state, path, DASH_COLOR, false, false);
-      }
+      this.strokePath(ctx, state, path, color, this.label.filled, selected);
 
-      this.strokePath(
-        ctx,
-        state,
-        path,
-        color,
-        this.label.filled,
-        selected,
-        selected ? DASH_LENGTH : null
-      );
+      if (selected) {
+        this.strokePath(
+          ctx,
+          state,
+          path,
+          DASH_COLOR,
+          false,
+          false,
+          state.dashLength
+        );
+      }
     }
   }
 

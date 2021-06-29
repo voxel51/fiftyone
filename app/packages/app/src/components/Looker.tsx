@@ -448,8 +448,8 @@ const Looker = ({
 
   modal && useEventHandler(looker, "options", useLookerOptionsUpdate());
   modal && useEventHandler(looker, "fullscreen", useFullscreen());
-  onNext && useEventHandler(looker, "next", onNext);
-  onPrevious && useEventHandler(looker, "previous", onPrevious);
+  useEventHandler(looker, "next", onNext);
+  useEventHandler(looker, "previous", onPrevious);
   onSelectLabel && useEventHandler(looker, "select", onSelectLabel);
   useEffect(() => {
     initialRef.current = false;

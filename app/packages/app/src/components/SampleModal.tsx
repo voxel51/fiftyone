@@ -266,10 +266,6 @@ const SampleModal = ({ onClose, sampleId }: Props, ref) => {
       return;
     } else if (e.key == "Escape" && onClose) {
       onClose();
-    } else if (e.key == "ArrowLeft" && onPrevious) {
-      onPrevious();
-    } else if (e.key == "ArrowRight" && onNext) {
-      onNext();
     }
   });
   const theme = useTheme();

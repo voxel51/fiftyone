@@ -66,16 +66,12 @@ export default class DetectionOverlay<
     !state.config.thumbnail && this.drawLabelText(ctx, state);
 
     const selected = this.isSelected(state);
-    if (selected) {
-      this.strokeRect(ctx, state, DASH_COLOR);
-    }
 
-    this.strokeRect(
-      ctx,
-      state,
-      this.getColor(state),
-      selected ? DASH_LENGTH : null
-    );
+    this.strokeRect(ctx, state, this.getColor(state));
+
+    if (selected) {
+      this.strokeRect(ctx, state, DASH_COLOR, state.dashLength);
+    }
   }
 
   getMouseDistance(state: Readonly<State>): number {

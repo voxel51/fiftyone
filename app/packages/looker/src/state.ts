@@ -114,6 +114,7 @@ export interface BaseState {
   canvasBBox: BoundingBox;
   textPad: number;
   pointRadius: number;
+  dashLength: number;
   relativeCoordinates: Coordinates;
   mouseIsOnOverlay: boolean;
   showHelp: boolean;

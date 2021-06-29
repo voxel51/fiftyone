@@ -202,19 +202,44 @@ export const resetZoom: Control = {
 export const settings: Control = {
   title: "Settings",
   shortcut: "s",
-  detail: "Show the settings panel",
+  detail: "Toggle the settings panel",
   action: (update) => {
-    update(({ showOptions, loaded, config: { thumbnail } }) => {
+    update(({ showOptions, config: { thumbnail } }) => {
       if (thumbnail) {
         return {};
       } else if (showOptions) {
         return {
           showOptions: false,
+          disableControls: false,
         };
       } else {
         return {
-          showControls: loaded,
-          showOptions: loaded,
+          disableControls: false,
+          showControls: true,
+          showOptions: true,
+        };
+      }
+    });
+  },
+};
+
+export const controlsToggle: Control = {
+  title: "Controls",
+  shortcut: "c",
+  detail: "Toggle controls",
+  action: (update) => {
+    update(({ config: { thumbnail }, showControls }) => {
+      if (thumbnail) {
+        return {};
+      } else if (showControls) {
+        return {
+          showControls: false,
+          disableControls: false,
+        };
+      } else {
+        return {
+          disableControls: false,
+          showControls: true,
         };
       }
     });
@@ -248,6 +273,7 @@ export const COMMON = {
   zoomOut,
   zoomToContent,
   resetZoom,
+  controlsToggle,
   settings,
   fullscreen,
 };

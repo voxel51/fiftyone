@@ -320,28 +320,15 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
             });
           });
         } else {
-          requestAnimationFrame(() => {
-            update(({ frameNumber }) => ({ frameNumber }));
-          });
+          update(({ frameNumber }) => ({ frameNumber }));
         }
       },
       play: ({ update, dispatchEvent }) => {
         const callback = (newFrameNumber: number) => {
           update(
-            ({
-              playing,
-              options: { loop },
-              duration,
-              config: { frameRate },
-            }) => {
+            ({ playing, duration }) => {
               this.frameNumber = newFrameNumber;
               duration = duration as number;
-
-              if (
-                newFrameNumber === getFrameNumber(duration, duration, frameRate)
-              ) {
-                playing = loop;
-              }
 
               return {
                 frameNumber: newFrameNumber,
@@ -377,24 +364,32 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
           }
         );
       },
+      ended: ({ update }) => {
+        update(({ frameNumber, options: { loop } }) => ({
+          frameNumber,
+          playing: loop,
+        }));
+      },
       pause: ({ update, dispatchEvent }) => {
         this.requestCallback(() => {
-          update(
-            {
-              frameNumber: getFrameNumber(
-                this.element.currentTime,
-                this.duration,
-                this.frameRate
-              ),
-              disableOverlays: false,
-            },
-            (state, overlays) =>
-              dispatchTooltipEvent(dispatchEvent, false)(state, overlays)
-          );
+          requestAnimationFrame(() => {
+            update(
+              {
+                frameNumber: getFrameNumber(
+                  this.element.currentTime,
+                  this.duration,
+                  this.frameRate
+                ),
+                disableOverlays: false,
+              },
+              (state, overlays) =>
+                dispatchTooltipEvent(dispatchEvent, false)(state, overlays)
+            );
+          });
         });
       },
       timeupdate: ({ dispatchEvent, update }) => {
-        update(({ duration, config: { frameRate } }) => {
+        update(({ duration, config: { frameRate }, frameNumber }) => {
           dispatchEvent("timeupdate", {
             frameNumber: getFrameNumber(
               this.element.currentTime,
@@ -403,7 +398,7 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
             ),
           });
 
-          return {};
+          return { frameNumber };
         });
       },
     };
@@ -469,7 +464,6 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
     }
 
     if (this.frameNumber !== frameNumber) {
-      // @ts-ignore
       this.element.currentTime = getTime(frameNumber, frameRate);
     }
 

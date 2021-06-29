@@ -34,21 +34,23 @@ export class FrameNumberElement extends BaseElement<FrameState> {
 
 export class FrameElement extends BaseElement<FrameState, HTMLVideoElement> {
   private src: string = "";
-  private frameNumber: number = 1;
 
   getEvents(): Events<FrameState> {
     return {
       error: ({ event, dispatchEvent }) => {
         dispatchEvent("error", { event });
       },
-      loadeddata: ({ update, dispatchEvent }) => {
-        update(({}) => {
+      loadedmetadata: ({ update }) => {
+        update(({ config: { frameNumber, frameRate } }) => {
+          this.element.currentTime = getTime(frameNumber, frameRate);
           return {
-            loaded: true,
             duration: this.element.duration,
           };
         });
-        dispatchEvent("load");
+      },
+      seeked: ({ update, dispatchEvent }) => {
+        update({ loaded: true });
+        dispatchEvent("loaded");
       },
     };
   }
@@ -63,16 +65,11 @@ export class FrameElement extends BaseElement<FrameState, HTMLVideoElement> {
 
   renderSelf(state: Readonly<FrameState>) {
     const {
-      config: { src, frameNumber, frameRate },
+      config: { src },
     } = state;
     if (this.src !== src) {
       this.src = src;
       this.element.setAttribute("src", src);
-    }
-
-    if (this.frameNumber !== frameNumber) {
-      this.frameNumber = frameNumber;
-      this.element.currentTime = getTime(frameNumber, frameRate);
     }
 
     return this.element;

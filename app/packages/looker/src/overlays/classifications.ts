@@ -2,7 +2,7 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 
-import { TEXT_COLOR } from "../constants";
+import { DASH_COLOR, TEXT_COLOR } from "../constants";
 import { BaseState, BoundingBox, Coordinates } from "../state";
 import { getRenderedScale } from "../util";
 import {
@@ -13,7 +13,7 @@ import {
   RegularLabel,
   SelectData,
 } from "./base";
-import { sizeBytes } from "./util";
+import { sizeBytes, t } from "./util";
 
 interface ClassificationLabel extends RegularLabel {}
 
@@ -228,6 +228,18 @@ export default class ClassificationsOverlay<State extends BaseState>
     ctx.fillStyle = TEXT_COLOR;
     ctx.fillText(text, tlx + state.textPad, tly + h - state.textPad);
 
+    this.strokeBorder(ctx, state, [tlx, tly, w, h], color);
+
+    if (this.isSelected(state, label)) {
+      this.strokeBorder(
+        ctx,
+        state,
+        [tlx, tly, w, h],
+        DASH_COLOR,
+        state.dashLength
+      );
+    }
+
     tlx -= cx;
     tly -= cy;
 
@@ -254,6 +266,25 @@ export default class ClassificationsOverlay<State extends BaseState>
     }
 
     return text;
+  }
+
+  private strokeBorder(
+    ctx: CanvasRenderingContext2D,
+    state: Readonly<State>,
+    [tlx, tly, w, h]: BoundingBox,
+    color: string,
+    dash?: number
+  ) {
+    ctx.beginPath();
+    ctx.lineWidth = state.strokeWidth;
+    ctx.strokeStyle = color;
+    ctx.setLineDash(dash ? [dash] : []);
+    ctx.moveTo(tlx, tly);
+    ctx.lineTo(tlx + w, tly);
+    ctx.lineTo(tlx + w, tly + h);
+    ctx.lineTo(tlx, tly + h);
+    ctx.closePath();
+    ctx.stroke();
   }
 }
 

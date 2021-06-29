@@ -11,6 +11,7 @@ import {
   POINT_RADIUS,
   MAX_FRAME_CACHE_SIZE_BYTES,
   CHUNK_SIZE,
+  DASH_LENGTH,
 } from "./constants";
 import {
   getFrameElements,
@@ -37,6 +38,7 @@ import {
   VideoSample,
   FrameSample,
   Buffers,
+  BoundingBox,
 } from "./state";
 import {
   addToBuffers,
@@ -89,7 +91,7 @@ export abstract class Looker<
     this.imageSource = this.lookerElement.children[0]
       .element as CanvasImageSource;
     this.resizeObserver = new ResizeObserver(() =>
-      requestAnimationFrame(() => this.updater({ setZoom: true }))
+      requestAnimationFrame(() => this.updater(({ loaded }) => ({ loaded })))
     );
   }
 
@@ -253,6 +255,7 @@ export abstract class Looker<
       rotate: 0,
       panning: false,
       strokeWidth: STROKE_WIDTH,
+      dashLength: DASH_LENGTH,
       fontSize: FONT_SIZE,
       wheeling: false,
       transformedWindowBBox: null,
@@ -312,10 +315,19 @@ export abstract class Looker<
     this.state.fontSize = FONT_SIZE / this.state.scale;
     this.state.pointRadius = POINT_RADIUS / this.state.scale;
     this.state.strokeWidth = STROKE_WIDTH / this.state.scale;
+    this.state.dashLength = DASH_LENGTH / this.state.scale;
     this.state.config.thumbnail && (this.state.strokeWidth /= 2);
     this.state.textPad = PAD / this.state.scale;
 
     return this.state;
+  }
+
+  protected hasResized(previousWindowBBox: BoundingBox): boolean {
+    return Boolean(
+      !previousWindowBBox ||
+        !this.state.windowBBox ||
+        previousWindowBBox.some((v, i) => v !== this.state.windowBBox[i])
+    );
   }
 }
 
@@ -364,7 +376,12 @@ export class FrameLooker extends Looker<FrameState> {
   }
 
   postProcess(element: HTMLElement): FrameState {
+    const previousWindowBBox = this.state.windowBBox;
     this.state.windowBBox = getElementBBox(element);
+    if (!this.state.setZoom) {
+      this.state.setZoom = this.hasResized(previousWindowBBox);
+    }
+
     if (this.state.setZoom && this.pluckedOverlays.length) {
       if (this.state.options.zoom) {
         this.state = zoomToContent(this.state, this.pluckedOverlays);
@@ -373,7 +390,7 @@ export class FrameLooker extends Looker<FrameState> {
         this.state.scale = 1;
       }
 
-      this.state.setZoom = true;
+      this.state.setZoom = false;
     }
 
     if (this.state.zoomToContent) {
@@ -430,7 +447,11 @@ export class ImageLooker extends Looker<ImageState> {
   }
 
   postProcess(element: HTMLElement): ImageState {
+    const previousWindowBBox = this.state.windowBBox;
     this.state.windowBBox = getElementBBox(element);
+    if (!this.state.setZoom) {
+      this.state.setZoom = this.hasResized(previousWindowBBox);
+    }
 
     if (this.state.setZoom && this.pluckedOverlays.length) {
       if (this.state.options.zoom) {
@@ -762,7 +783,12 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
   }
 
   postProcess(element: HTMLElement): VideoState {
+    const previousWindowBBox = this.state.windowBBox;
     this.state.windowBBox = getElementBBox(element);
+    if (!this.state.setZoom) {
+      this.state.setZoom = this.hasResized(previousWindowBBox);
+    }
+
     if (this.state.setZoom) {
       this.state.pan = [0, 0];
       this.state.scale = 1;
