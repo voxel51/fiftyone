@@ -373,8 +373,7 @@ Tools for creating FiftyOne datasets.
 .. code-block:: text
 
     fiftyone datasets create [-h] [-n NAME] [-d DATASET_DIR] [-j JSON_PATH]
-                             [-t TYPE] [--shuffle] [--seed SEED]
-                             [--max-samples MAX_SAMPLES]
+                             [-t TYPE] [-k KEY=VAL [KEY=VAL ...]]
 
 **Arguments**
 
@@ -388,12 +387,9 @@ Tools for creating FiftyOne datasets.
       -j JSON_PATH, --json-path JSON_PATH
                             the path to a samples JSON file to load
       -t TYPE, --type TYPE  the fiftyone.types.Dataset type of the dataset
-      --shuffle             whether to randomly shuffle the order in which the
-                            samples are imported
-      --seed SEED           a random seed to use when shuffling
-      --max-samples MAX_SAMPLES
-                            a maximum number of samples to import. By default,
-                            all samples are imported
+      -k KEY=VAL [KEY=VAL ...], --kwargs KEY=VAL [KEY=VAL ...]
+                            additional type-specific keyword arguments for
+                            `fiftyone.core.dataset.Dataset.from_dir()`
 
 **Examples**
 
@@ -408,7 +404,7 @@ Tools for creating FiftyOne datasets.
     # Create a dataset from a random subset of the data on disk
     fiftyone datasets create \
         --name <name> --dataset-dir <dataset-dir> --type <type> \
-        --shuffle --max-samples <max-samples>
+        --kwargs max_samples=50 shuffle=True
 
 .. code-block:: shell
 
@@ -522,8 +518,10 @@ Export FiftyOne datasets to disk in supported formats.
 
 .. code-block:: text
 
-    fiftyone datasets export [-h] [-d EXPORT_DIR] [-j JSON_PATH] [-f LABEL_FIELD]
-                             [-t TYPE] NAME
+    fiftyone datasets export [-h] [-d EXPORT_DIR] [-j JSON_PATH]
+                             [-f LABEL_FIELD] [-t TYPE]
+                             [-k KEY=VAL [KEY=VAL ...]]
+                             NAME
 
 **Arguments**
 
@@ -541,6 +539,9 @@ Export FiftyOne datasets to disk in supported formats.
       -f LABEL_FIELD, --label-field LABEL_FIELD
                             the name of the label field to export
       -t TYPE, --type TYPE  the fiftyone.types.Dataset type in which to export
+      -k KEY=VAL [KEY=VAL ...], --kwargs KEY=VAL [KEY=VAL ...]
+                            additional type-specific keyword arguments for
+                            `fiftyone.core.collections.SampleCollection.export()`
 
 **Examples**
 
@@ -554,6 +555,13 @@ Export FiftyOne datasets to disk in supported formats.
 
     # Export the dataset to disk in JSON format
     fiftyone datasets export <name> --json-path <json-path>
+
+.. code-block:: shell
+
+    # Perform a customized export of a dataset
+    fiftyone datasets export <name> \
+        --type <type> \
+        --kwargs labels_path=/path/for/labels.json
 
 .. _cli-fiftyone-datasets-draw:
 
@@ -1005,9 +1013,8 @@ View datasets in the FiftyOne App without persisting them to the database.
     fiftyone app view [-h] [-n NAME] [-d DATASET_DIR] [-t TYPE] [-z NAME]
                       [-s SPLITS [SPLITS ...]] [--images-dir IMAGES_DIR]
                       [--images-patt IMAGES_PATT] [--videos-dir VIDEOS_DIR]
-                      [--videos-patt VIDEOS_PATT] [-j JSON_PATH]
-                      [--shuffle] [--seed SEED] [--max-samples MAX_SAMPLES]
-                      [-p PORT] [-r]
+                      [--videos-patt VIDEOS_PATT] [-j JSON_PATH] [-p PORT]
+                      [-r] [-a] [-k KEY=VAL [KEY=VAL ...]]
 
 **Arguments**
 
@@ -1027,17 +1034,18 @@ View datasets in the FiftyOne App without persisting them to the database.
                             the path to a directory of images
       --images-patt IMAGES_PATT
                             a glob pattern of images
+      --videos-dir VIDEOS_DIR
+                            the path to a directory of videos
+      --videos-patt VIDEOS_PATT
+                            a glob pattern of videos
       -j JSON_PATH, --json-path JSON_PATH
                             the path to a samples JSON file to view
-      --shuffle             whether to randomly shuffle the order in which the
-                            samples are imported
-      --seed SEED           a random seed to use when shuffling
-      --max-samples MAX_SAMPLES
-                            a maximum number of samples to import. By default,
-                            all samples are imported
       -p PORT, --port PORT  the port number to use
       -r, --remote          whether to launch a remote App session
       -a, --desktop         whether to launch a desktop App instance
+      -k KEY=VAL [KEY=VAL ...], --kwargs KEY=VAL [KEY=VAL ...]
+                            additional type-specific keyword arguments for
+                            `fiftyone.core.dataset.Dataset.from_dir()`
 
 **Examples**
 
@@ -1078,11 +1086,6 @@ View datasets in the FiftyOne App without persisting them to the database.
 
 .. code-block:: shell
 
-    # View a random subset of the data stored on disk in the App
-    fiftyone app view ... --shuffle --max-samples <max-samples>
-
-.. code-block:: shell
-
     # View the dataset in a remote App session
     fiftyone app view ... --remote
 
@@ -1090,6 +1093,11 @@ View datasets in the FiftyOne App without persisting them to the database.
 
     # View the dataset using the desktop App
     fiftyone app view ... --desktop
+
+.. code-block:: shell
+
+    # View a random subset of the data stored on disk in the App
+    fiftyone app view ... --kwargs max_samples=50 shuffle=True
 
 .. _cli-fiftyone-app-connect:
 
@@ -1339,7 +1347,8 @@ Download datasets from the FiftyOne Dataset Zoo.
       -d DATASET_DIR, --dataset-dir DATASET_DIR
                             a custom directory to which to download the dataset
       -k KEY=VAL [KEY=VAL ...], --kwargs KEY=VAL [KEY=VAL ...]
-                            optional dataset-specific keyword argument(s)
+                            optional dataset-specific keyword arguments for
+                            `fiftyone.zoo.download_zoo_dataset()`
 
 **Examples**
 
@@ -1375,8 +1384,6 @@ Load zoo datasets as persistent FiftyOne datasets.
 
     fiftyone zoo datasets load [-h] [-s SPLITS [SPLITS ...]]
                                [-n DATASET_NAME] [-d DATASET_DIR]
-                               [--shuffle] [--seed SEED]
-                               [--max-samples MAX_SAMPLES]
                                [-k KEY=VAL [KEY=VAL ...]]
                                NAME
 
@@ -1395,14 +1402,9 @@ Load zoo datasets as persistent FiftyOne datasets.
                             a custom name to give the FiftyOne dataset
       -d DATASET_DIR, --dataset-dir DATASET_DIR
                             a custom directory in which the dataset is downloaded
-      --shuffle             whether to randomly shuffle the order in which the
-                            samples are imported
-      --seed SEED           a random seed to use when shuffling
-      --max-samples MAX_SAMPLES
-                            a maximum number of samples to import. By default,
-                            all samples are imported
       -k KEY=VAL [KEY=VAL ...], --kwargs KEY=VAL [KEY=VAL ...]
-                            optional dataset-specific keyword argument(s)
+                            additional dataset-specific keyword arguments for
+                            `fiftyone.zoo.load_zoo_dataset()`
 
 **Examples**
 
@@ -1428,14 +1430,15 @@ Load zoo datasets as persistent FiftyOne datasets.
 
 .. code-block:: shell
 
-    # Load a random subset of the zoo dataset
-    fiftyone zoo datasets load <name> --shuffle --max-samples <max-samples>
-
-.. code-block:: shell
-
     # Load a zoo dataset that requires custom keyword arguments
     fiftyone zoo datasets load <name> \
         --kwargs source_dir=/path/to/source_files
+
+.. code-block:: shell
+
+    # Load a random subset of a zoo dataset
+    fiftyone zoo datasets load <name> \
+        --kwargs max_samples=50 shuffle=True
 
 .. _cli-fiftyone-zoo-datasets-delete:
 

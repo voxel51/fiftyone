@@ -60,25 +60,22 @@ that you're loading.
     .. code-block:: python
         :linenos:
 
-        # The type of the dataset being imported
-        dataset_type = fo.types.COCODetectionDataset  # for example
-
         # The directory containing the source images
         data_path = "/path/to/images"
 
         # The path to the COCO labels JSON file
         labels_path = "/path/to/coco-labels.json"
 
-        # Import the dataset!
+        # Import the dataset
         dataset = fo.Dataset.from_dir(
-            dataset_type=dataset_type,
+            dataset_type=fo.types.COCODetectionDataset,
             data_path=data_path,
             labels_path=labels_path,
         )
 
-    The :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>`
-    method also supports additional arguments that you can use to import a
-    subset of a dataset:
+    In general, you can pass any parameter for the |DatasetImporter| of the
+    format you're importing to
+    :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>`:
 
     .. code-block:: python
         :linenos:
@@ -86,18 +83,19 @@ that you're loading.
         # Import a random subset of 10 samples from the dataset
         dataset = fo.Dataset.from_dir(
             ...,
-            shuffle=True,
             max_samples=10,
+            shuffle=True,
         )
-
-    In general, you can pass any parameter for the |DatasetImporter| of the
-    format you're importing to
-    :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>`.
 
   .. group-tab:: CLI
 
     You can import a dataset from disk into FiftyOne
-    :ref:`via the CLI <cli-fiftyone-datasets-create>`:
+    :ref:`via the CLI <cli-fiftyone-datasets-create>`.
+
+    If your data is stored in the
+    :ref:`canoncial format <supported-import-formats>` of the type you're
+    importing, then you can load it by providing the ``--dataset-dir`` and
+    ``--type`` options:
 
     .. code-block:: shell
 
@@ -114,16 +112,40 @@ that you're loading.
         # Import the dataset!
         fiftyone datasets create --name $NAME --dataset-dir $DATASET_DIR --type $TYPE
 
-    You can also provide
-    :ref:`additional arguments <cli-fiftyone-datasets-create>` to customize the
-    import behavior:
+    Alternatively, when importing labeled datasets in formats such as
+    :ref:`COCO <COCODetectionDataset-import>`, you may find it more natural to
+    provide the ``data_path`` and ``labels_path`` parameters via the
+    :ref:`kwargs option <cli-fiftyone-datasets-create>` to independently
+    specify the location of the source media on disk and the annotations file
+    containing the labels to import:
+
+    .. code-block:: shell
+
+        # The directory containing the source images
+        DATA_PATH=/path/to/images
+
+        # The path to the COCO labels JSON file
+        LABELS_PATH=/path/to/coco-labels.json
+
+        # Import the dataset
+        fiftyone datasets create --name my-dataset \
+            --type fiftyone.types.COCODetectionDataset \
+            --kwargs \
+                data_path=$DATA_PATH \
+                labels_path=$LABELS_PATH
+
+    In general, you can pass any parameter for the |DatasetImporter| of the
+    format you're importing via the
+    :ref:`kwargs option <cli-fiftyone-datasets-create>`:
 
     .. code-block:: shell
 
         # Import a random subset of 10 samples from the dataset
         fiftyone datasets create \
             --name $NAME --dataset-dir $DATASET_DIR --type $TYPE \
-            --shuffle --max-samples 10
+            --kwargs \
+                max_samples=10 \
+                shuffle=True
 
 .. _supported-import-formats:
 
@@ -895,7 +917,7 @@ where ``labels.json`` is a JSON file in the following format:
         ],
         "images": [
             {
-                "id": 0,
+                "id": 1,
                 "license": null,
                 "file_name": "<filename0>.<ext>",
                 "height": 480,
@@ -906,11 +928,14 @@ where ``labels.json`` is a JSON file in the following format:
         ],
         "annotations": [
             {
-                "id": 0,
-                "image_id": 0,
+                "id": 1,
+                "image_id": 1,
                 "category_id": 2,
                 "bbox": [260, 177, 231, 199],
                 "segmentation": [...],
+                "keypoints": [224, 226, 2, ...],
+                "num_keypoints": 10,
+                "score": 0.95,
                 "area": 45969,
                 "iscrowd": 0
             },

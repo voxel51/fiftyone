@@ -7,10 +7,14 @@ Utilities for working with datasets in
 |
 """
 from collections import defaultdict
+import csv
 from datetime import datetime
 from itertools import groupby
 import logging
+import multiprocessing
 import os
+import random
+import shutil
 import warnings
 
 import numpy as np
@@ -34,108 +38,183 @@ mask_utils = fou.lazy_import(
 logger = logging.getLogger(__name__)
 
 
-class COCODetectionSampleParser(foud.LabeledImageTupleSampleParser):
-    """Parser for samples in
-    `COCO Object Detection Format <https://cocodataset.org/#format-data>`_.
+def add_coco_labels(
+    sample_collection,
+    label_field,
+    labels_or_path,
+    label_type="detections",
+    coco_id_field="coco_id",
+    classes=None,
+    extra_attrs=None,
+    use_polylines=False,
+    tolerance=None,
+):
+    """Adds the given COCO labels to the collection.
 
-    This implementation supports samples that are
-    ``(image_or_path, anno_dict_or_path)`` tuples, where:
+    The ``labels_or_path`` argument can be either a list of COCO annotations in
+    the format below, or the path to a JSON file containing such data on disk.
 
-        - ``image_or_path`` is either an image that can be converted to numpy
-          format via ``np.asarray()`` or the path to an image on disk
+    When ``label_type="detections"``, the labels should have format::
 
-        - ``anno_dict_or_path`` is a list of detections in the following
-          format::
+        [
+            {
+                "id": 1,
+                "image_id": 1,
+                "category_id": 2,
+                "bbox": [260, 177, 231, 199],
 
-            [
-                {
-                    "id": 354728
-                    "image_id": 183709,
-                    "category_id": 3,
-                    "bbox": [45.03, 236.82, 54.79, 30.91],
-                    "segmentation": [...],
-                    "area": 1193.6559000000002,
-                    "iscrowd": 0,
-                },
+                # optional
+                "score": 0.95,
+                "area": 45969,
+                "iscrowd": 0,
+
+                # extra attrs
                 ...
-            ]
+            },
+            ...
+        ]
 
-          or the path to such a JSON file on disk. It is assumed that all
-          detections correspond to the image in the sample. For unlabeled
-          images, ``anno_dict_or_path`` can be ``None``.
+    When ``label_type="segmentations"``, the labels should have format::
 
-    See :class:`fiftyone.types.dataset_types.COCODetectionDataset` for format
-    details.
+        [
+            {
+                "id": 1,
+                "image_id": 1,
+                "category_id": 2,
+                "bbox": [260, 177, 231, 199],
+                "segmentation": [...],
+
+                # optional
+                "score": 0.95,
+                "area": 45969,
+                "iscrowd": 0,
+
+                # extra attrs
+                ...
+            },
+            ...
+        ]
+
+    When ``label_type="keypoints"``, the labels should have format::
+
+        [
+            {
+                "id": 1,
+                "image_id": 1,
+                "category_id": 2,
+                "keypoints": [224, 226, 2, ...],
+                "num_keypoints": 10,
+
+                # extra attrs
+                ...
+            },
+            ...
+        ]
+
+    See `this page <https://cocodataset.org/#format-data>`_ for more
+    information about the COCO data format.
 
     Args:
-        classes (None): a list of class label strings. If not provided, the
-            ``category_id`` of the annotations will be used as labels
-        supercategory_map (None): a dict mapping class labels to
-            supercategories. If provided, ``supercategory`` attributes will be
-            added to all parsed detections
-        load_segmentations (True): whether to load segmentation masks, if
-            available
-        return_polylines (False): whether to return
+        sample_collection: a
+            :class:`fiftyone.core.collections.SampleCollection`
+        label_field: the label field in which to store the labels. The field
+            will be created if necessary
+        labels_or_path: a list of COCO annotations or the path to a JSON file
+            containing such data on disk
+        label_type ("detections"): the type of labels to load. Supported values
+            are ``("detections", "segmentations", "keypoints")``
+        coco_id_field ("coco_id"): the field of ``sample_collection``
+            containing the COCO IDs for the samples
+        classes (None): the list of class label strings. If not provided, these
+            must be available from
+            :meth:`classes <fiftyone.core.collections.SampleCollection.classes>` or
+            :meth:`default_classes <fiftyone.core.collections.SampleCollection.default_classes>`
+        extra_attrs (None): whether to load extra annotation attributes onto
+            the imported labels. Supported values are:
+
+            -   ``None``/``False``: do not load extra attributes
+            -   ``True``: load all extra attributes found
+            -   a name or list of names of specific attributes to load
+        use_polylines (False): whether to represent segmentations as
             :class:`fiftyone.core.labels.Polylines` instances rather than
-            :class:`fiftyone.core.labels.Detections`
+            :class:`fiftyone.core.labels.Detections` with dense masks
         tolerance (None): a tolerance, in pixels, when generating approximate
             polylines for instance masks. Typical values are 1-3 pixels
     """
+    if classes is None:
+        if label_field in sample_collection.classes:
+            classes = sample_collection.classes[label_field]
+        elif sample_collection.default_classes:
+            classes = sample_collection.default_classes
 
-    def __init__(
-        self,
-        classes=None,
-        supercategory_map=None,
-        load_segmentations=True,
-        return_polylines=False,
-        tolerance=None,
-    ):
-        super().__init__()
-        self.classes = classes
-        self.supercategory_map = supercategory_map
-        self.load_segmentations = load_segmentations
-        self.return_polylines = return_polylines
-        self.tolerance = tolerance
+    if not classes:
+        raise ValueError(
+            "You must provide `classes` in order to load COCO labels"
+        )
 
-    @property
-    def label_cls(self):
-        if self.return_polylines:
-            return fol.Polylines
+    if etau.is_str(labels_or_path):
+        labels = etas.load_json(labels_or_path)
+    else:
+        labels = labels_or_path
 
-        return fol.Detections
+    coco_objects_map = defaultdict(list)
+    for d in labels:
+        coco_obj = COCOObject.from_anno_dict(d, extra_attrs=extra_attrs)
+        coco_objects_map[coco_obj.image_id].append(coco_obj)
 
-    def get_label(self):
-        anno_dict = self.current_sample[1]
-        img = self._current_image
+    id_map = {
+        k: v for k, v in zip(*sample_collection.values([coco_id_field, "id"]))
+    }
 
-        return self._parse_anno_dict(anno_dict, img)
+    coco_ids = sorted(coco_objects_map.keys())
 
-    def _parse_anno_dict(self, anno_dict, img):
-        if anno_dict is None:
-            return None
+    bad_ids = set(coco_ids) - set(id_map.keys())
+    if bad_ids:
+        coco_ids = [_id for _id in coco_ids if _id not in bad_ids]
+        logger.warning(
+            "Ignoring labels with %d nonexistent COCO IDs: %s",
+            len(bad_ids),
+            sorted(bad_ids),
+        )
 
-        if etau.is_str(anno_dict):
-            anno_dict = etas.load_json(anno_dict)
+    view = sample_collection.select(
+        [id_map[coco_id] for coco_id in coco_ids], ordered=True
+    )
+    view.compute_metadata()
 
-        frame_size = etai.to_frame_size(img=img)
-        coco_objects = [COCOObject.from_anno_dict(d) for d in anno_dict]
+    heights, widths = view.values(["metadata.height", "metadata.width"])
 
-        if self.return_polylines:
-            return _coco_objects_to_polylines(
-                coco_objects,
-                frame_size,
-                self.classes,
-                self.supercategory_map,
-                self.tolerance,
+    labels = []
+    for coco_id, height, width in zip(coco_ids, heights, widths):
+        coco_objects = coco_objects_map[coco_id]
+        frame_size = (height, width)
+
+        if label_type == "detections":
+            _labels = _coco_objects_to_detections(
+                coco_objects, frame_size, classes, None, False
+            )
+        elif label_type == "segmentations":
+            if use_polylines:
+                _labels = _coco_objects_to_polylines(
+                    coco_objects, frame_size, classes, None, tolerance
+                )
+            else:
+                _labels = _coco_objects_to_detections(
+                    coco_objects, frame_size, classes, None, True
+                )
+        elif label_type == "keypoints":
+            _labels = _coco_objects_to_keypoints(
+                coco_objects, frame_size, classes
+            )
+        else:
+            raise ValueError(
+                "Unsupported label_type='%s'. Supported values are %s"
+                % (label_type, ("detections", "segmentations", "keypoints"))
             )
 
-        return _coco_objects_to_detections(
-            coco_objects,
-            frame_size,
-            self.classes,
-            self.supercategory_map,
-            self.load_segmentations,
-        )
+        labels.append(_labels)
+
+    view.set_values(label_field, labels)
 
 
 class COCODetectionDatasetImporter(
@@ -173,18 +252,49 @@ class COCODetectionDatasetImporter(
                 ``dataset_dir`` has no effect on the location of the labels
 
             If None, the parameter will default to ``labels.json``
-        load_segmentations (True): whether to load segmentation masks, if
-            available
-        return_polylines (False): whether to return
+        label_types (None): a label type or list of label types to load. The
+            supported values are
+            ``("detections", "segmentations", "keypoints")``. By default, only
+            "detections" are loaded
+        classes (None): a string or list of strings specifying required classes
+            to load. Only samples containing at least one instance of a
+            specified class will be loaded
+        image_ids (None): an optional list of specific image IDs to load. Can
+            be provided in any of the following formats:
+
+            -   a list of ``<image-id>`` ints or strings
+            -   a list of ``<split>/<image-id>`` strings
+            -   the path to a text (newline-separated), JSON, or CSV file
+                containing the list of image IDs to load in either of the first
+                two formats
+        include_id (False): whether to include the COCO ID of each sample in the
+            loaded labels
+        extra_attrs (None): whether to load extra annotation attributes onto
+            the imported labels. Supported values are:
+
+            -   ``None``/``False``: do not load extra attributes
+            -   ``True``: load all extra attributes found
+            -   a name or list of names of specific attributes to load
+
+        only_matching (False): whether to only load labels that match the
+            ``classes`` requirement that you provide (True), or to load all
+            labels for samples that match the requirements (False)
+        use_polylines (False): whether to represent segmentations as
             :class:`fiftyone.core.labels.Polylines` instances rather than
-            :class:`fiftyone.core.labels.Detections`
+            :class:`fiftyone.core.labels.Detections` with dense masks
         tolerance (None): a tolerance, in pixels, when generating approximate
             polylines for instance masks. Typical values are 1-3 pixels
         shuffle (False): whether to randomly shuffle the order in which the
             samples are imported
         seed (None): a random seed to use when shuffling
-        max_samples (None): a maximum number of samples to import. By default,
-            all samples are imported
+        max_samples (None): a maximum number of samples to load. If
+            ``label_types`` and/or ``classes`` are also specified, first
+            priority will be given to samples that contain all of the specified
+            label types and/or classes, followed by samples that contain at
+            least one of the specified labels types or classes. The actual
+            number of samples loaded may be less than this maximum value if the
+            dataset does not contain sufficient samples matching your
+            requirements. By default, all matching samples are loaded
     """
 
     def __init__(
@@ -192,8 +302,13 @@ class COCODetectionDatasetImporter(
         dataset_dir=None,
         data_path=None,
         labels_path=None,
-        load_segmentations=True,
-        return_polylines=False,
+        label_types=None,
+        classes=None,
+        image_ids=None,
+        include_id=False,
+        extra_attrs=None,
+        only_matching=False,
+        use_polylines=False,
         tolerance=None,
         shuffle=False,
         seed=None,
@@ -209,6 +324,11 @@ class COCODetectionDatasetImporter(
             default="labels.json",
         )
 
+        label_types = _parse_label_types(label_types)
+
+        if include_id:
+            label_types.append("coco_id")
+
         super().__init__(
             dataset_dir=dataset_dir,
             shuffle=shuffle,
@@ -218,8 +338,12 @@ class COCODetectionDatasetImporter(
 
         self.data_path = data_path
         self.labels_path = labels_path
-        self.load_segmentations = load_segmentations
-        self.return_polylines = return_polylines
+        self.label_types = label_types
+        self.classes = classes
+        self.image_ids = image_ids
+        self.extra_attrs = extra_attrs
+        self.only_matching = only_matching
+        self.use_polylines = use_polylines
         self.tolerance = tolerance
 
         self._info = None
@@ -263,22 +387,58 @@ class COCODetectionDatasetImporter(
         coco_objects = self._annotations.get(image_id, [])
         frame_size = (width, height)
 
-        if self.return_polylines:
-            label = _coco_objects_to_polylines(
+        if self.classes is not None and self.only_matching:
+            coco_objects = _get_matching_objects(
+                coco_objects, self.classes, self._classes
+            )
+
+        label = {}
+
+        if "detections" in self.label_types:
+            detections = _coco_objects_to_detections(
                 coco_objects,
                 frame_size,
                 self._classes,
                 self._supercategory_map,
-                self.tolerance,
+                False,  # no segmentations
             )
-        else:
-            label = _coco_objects_to_detections(
-                coco_objects,
-                frame_size,
-                self._classes,
-                self._supercategory_map,
-                self.load_segmentations,
+            if detections is not None:
+                label["detections"] = detections
+
+        if "segmentations" in self.label_types:
+            if self.use_polylines:
+                segmentations = _coco_objects_to_polylines(
+                    coco_objects,
+                    frame_size,
+                    self._classes,
+                    self._supercategory_map,
+                    self.tolerance,
+                )
+            else:
+                segmentations = _coco_objects_to_detections(
+                    coco_objects,
+                    frame_size,
+                    self._classes,
+                    self._supercategory_map,
+                    True,  # load segmentations
+                )
+
+            if segmentations is not None:
+                label["segmentations"] = segmentations
+
+        if "keypoints" in self.label_types:
+            keypoints = _coco_objects_to_keypoints(
+                coco_objects, frame_size, self._classes
             )
+
+            if keypoints is not None:
+                label["keypoints"] = keypoints
+
+        if "coco_id" in self.label_types:
+            label["coco_id"] = image_id
+
+        if self._has_scalar_labels:
+            label = next(iter(label.values())) if label else None
 
         return image_path, image_metadata, label
 
@@ -291,11 +451,23 @@ class COCODetectionDatasetImporter(
         return True
 
     @property
-    def label_cls(self):
-        if self.return_polylines:
-            return fol.Polylines
+    def _has_scalar_labels(self):
+        return len(self.label_types) == 1
 
-        return fol.Detections
+    @property
+    def label_cls(self):
+        seg_type = fol.Polylines if self.use_polylines else fol.Detections
+        types = {
+            "detections": fol.Detections,
+            "segmentations": seg_type,
+            "keypoints": fol.Keypoints,
+            "coco_id": int,
+        }
+
+        if self._has_scalar_labels:
+            return types[self.label_types[0]]
+
+        return {k: v for k, v in types.items() if k in self.label_types}
 
     def setup(self):
         self._image_paths_map = self._load_data_map(self.data_path)
@@ -307,26 +479,46 @@ class COCODetectionDatasetImporter(
                 supercategory_map,
                 images,
                 annotations,
-            ) = load_coco_detection_annotations(self.labels_path)
+            ) = load_coco_detection_annotations(
+                self.labels_path, extra_attrs=self.extra_attrs
+            )
+
+            if classes is not None:
+                info["classes"] = classes
+
+            image_ids = _get_matching_image_ids(
+                classes,
+                images,
+                annotations,
+                image_ids=self.image_ids,
+                classes=self.classes,
+                shuffle=self.shuffle,
+                seed=self.seed,
+                max_samples=self.max_samples,
+            )
+
+            filenames = [images[_id]["file_name"] for _id in image_ids]
+
+            _image_ids = set(image_ids)
+            image_dicts_map = {
+                i["file_name"]: i
+                for _id, i in images.items()
+                if _id in _image_ids
+            }
         else:
             info = {}
             classes = None
             supercategory_map = None
-            images = {}
+            image_dicts_map = {}
             annotations = None
-
-        if classes is not None:
-            info["classes"] = classes
+            filenames = []
 
         self._info = info
         self._classes = classes
         self._supercategory_map = supercategory_map
-        self._image_dicts_map = {i["file_name"]: i for i in images.values()}
+        self._image_dicts_map = image_dicts_map
         self._annotations = annotations
-
-        filenames = sorted(self._image_dicts_map.keys())
-
-        self._filenames = self._preprocess_list(filenames)
+        self._filenames = filenames
 
     def get_dataset_info(self):
         return self._info
@@ -336,6 +528,9 @@ class COCODetectionDatasetExporter(
     foud.LabeledImageDatasetExporter, foud.ExportPathsMixin
 ):
     """Exporter that writes COCO detection datasets to disk.
+
+    This class currently only supports exporting detections and instance
+    segmentations.
 
     See :class:`fiftyone.types.dataset_types.COCODetectionDataset` for format
     details.
@@ -397,6 +592,13 @@ class COCODetectionDatasetExporter(
             :meth:`load_coco_detection_annotations`. If not provided, this info
             will be extracted when :meth:`log_collection` is called, if
             possible
+        extra_attrs (None): an optional field name or list of field names of
+            extra label attributes to include in the exported annotations
+        iscrowd ("iscrowd"): the name of a detection attribute that indicates
+            whether an object is a crowd (only used if present)
+        num_decimals (None): an optional number of decimal places at which to
+            round bounding box pixel coordinates. By default, no rounding is
+            done
         tolerance (None): a tolerance, in pixels, when generating approximate
             polylines for instance masks. Typical values are 1-3 pixels
     """
@@ -410,6 +612,9 @@ class COCODetectionDatasetExporter(
         image_format=None,
         classes=None,
         info=None,
+        extra_attrs=None,
+        iscrowd="iscrowd",
+        num_decimals=None,
         tolerance=None,
     ):
         data_path, export_media = self._parse_data_path(
@@ -425,6 +630,9 @@ class COCODetectionDatasetExporter(
             default="labels.json",
         )
 
+        if etau.is_str(extra_attrs):
+            extra_attrs = [extra_attrs]
+
         super().__init__(export_dir=export_dir)
 
         self.data_path = data_path
@@ -433,6 +641,9 @@ class COCODetectionDatasetExporter(
         self.image_format = image_format
         self.classes = classes
         self.info = info
+        self.extra_attrs = extra_attrs
+        self.iscrowd = iscrowd
+        self.num_decimals = num_decimals
         self.tolerance = tolerance
 
         self._labels_map_rev = None
@@ -453,8 +664,8 @@ class COCODetectionDatasetExporter(
         return fol.Detections
 
     def setup(self):
-        self._image_id = -1
-        self._anno_id = -1
+        self._image_id = 0
+        self._anno_id = 0
         self._images = []
         self._annotations = []
         self._classes = set()
@@ -513,6 +724,9 @@ class COCODetectionDatasetExporter(
                 detection,
                 metadata,
                 labels_map_rev=self._labels_map_rev,
+                extra_attrs=self.extra_attrs,
+                iscrowd=self.iscrowd,
+                num_decimals=self.num_decimals,
                 tolerance=self.tolerance,
             )
             obj.id = self._anno_id
@@ -570,33 +784,42 @@ class COCOObject(object):
     """An object in COCO detection format.
 
     Args:
-        id: the ID of the annotation
-        image_id: the ID of the image in which the annotation appears
-        category_id: the category ID of the object
-        bbox: a bounding box for the object in ``[xmin, ymin, width, height]``
-            format
+        id (None): the ID of the annotation
+        image_id (None): the ID of the image in which the annotation appears
+        category_id (None): the category ID of the object
+        bbox (None): a bounding box for the object in
+            ``[xmin, ymin, width, height]`` format
         segmentation (None): the segmentation data for the object
+        keypoints (None): the keypoints data for the object
+        score (None): a confidence score for the object
         area (None): the area of the bounding box, in pixels
         iscrowd (None): whether the detection is a crowd
+        **attributes: additional custom attributes
     """
 
     def __init__(
         self,
-        id,
-        image_id,
-        category_id,
-        bbox,
+        id=None,
+        image_id=None,
+        category_id=None,
+        bbox=None,
         segmentation=None,
+        keypoints=None,
+        score=None,
         area=None,
         iscrowd=None,
+        **attributes,
     ):
         self.id = id
         self.image_id = image_id
         self.category_id = category_id
         self.bbox = bbox
         self.segmentation = segmentation
+        self.keypoints = keypoints
+        self.score = score
         self.area = area
         self.iscrowd = iscrowd
+        self.attributes = attributes
 
     def to_polyline(
         self, frame_size, classes=None, supercategory_map=None, tolerance=None
@@ -607,21 +830,23 @@ class COCOObject(object):
         Args:
             frame_size: the ``(width, height)`` of the image
             classes (None): the list of classes
-            supercategory_map (None): a dict mapping class names to
-                supercategories
+            supercategory_map (None): a dict mapping class names to category
+                dicts
             tolerance (None): a tolerance, in pixels, when generating
                 approximate polylines for instance masks. Typical values are
                 1-3 pixels
 
         Returns:
-            a :class:`fiftyone.core.labels.Polyline`
+            a :class:`fiftyone.core.labels.Polyline`, or None if no
+            segmentation data is available
         """
         if self.segmentation is None:
-            return []
+            return None
 
-        label, attributes = self._get_label_and_attributes(
+        label, attributes = self._get_object_label_and_attributes(
             classes, supercategory_map
         )
+        attributes.update(self.attributes)
 
         points = _get_polygons_for_segmentation(
             self.segmentation, frame_size, tolerance
@@ -630,9 +855,42 @@ class COCOObject(object):
         return fol.Polyline(
             label=label,
             points=points,
+            confidence=self.score,
             closed=False,
             filled=True,
-            attributes=attributes,
+            **attributes,
+        )
+
+    def to_keypoints(self, frame_size, classes=None):
+        """Returns a :class:`fiftyone.core.labels.Keypoint` representation of
+        the object.
+
+        Args:
+            frame_size: the ``(width, height)`` of the image
+            classes (None): the list of classes
+
+        Returns:
+            a :class:`fiftyone.core.labels.Keypoint`, or None if no keypoints
+            data is available
+        """
+        if self.keypoints is None:
+            return None
+
+        width, height = frame_size
+        label = self._get_label(classes)
+
+        points = []
+        for x, y, v in fou.iter_batches(self.keypoints, 3):
+            if v == 0:
+                continue
+
+            points.append((x / width, y / height))
+
+        return fol.Keypoint(
+            label=label,
+            points=points,
+            confidence=self.score,
+            **self.attributes,
         )
 
     def to_detection(
@@ -648,38 +906,35 @@ class COCOObject(object):
         Args:
             frame_size: the ``(width, height)`` of the image
             classes (None): the list of classes
-            supercategory_map (None): a dict mapping class names to
-                supercategories
+            supercategory_map (None): a dict mapping class names to category
+                dicts
             load_segmentation (False): whether to load the segmentation mask
                 for the object, if available
 
         Returns:
             a :class:`fiftyone.core.labels.Detection`
         """
-        label, attributes = self._get_label_and_attributes(
+        label, attributes = self._get_object_label_and_attributes(
             classes, supercategory_map
         )
+        attributes.update(self.attributes)
 
         width, height = frame_size
         x, y, w, h = self.bbox
         bounding_box = [x / width, y / height, w / width, h / height]
 
         mask = None
-        if load_segmentation:
-            try:
-                mask = _coco_segmentation_to_mask(
-                    self.segmentation, self.bbox, frame_size
-                )
-            except:
-                warnings.warn(
-                    "Failed to convert segmentation to mask; skipping mask"
-                )
+        if load_segmentation and self.segmentation is not None:
+            mask = _coco_segmentation_to_mask(
+                self.segmentation, self.bbox, frame_size
+            )
 
         return fol.Detection(
             label=label,
             bounding_box=bounding_box,
             mask=mask,
-            attributes=attributes,
+            confidence=self.score,
+            **attributes,
         )
 
     def to_anno_dict(self):
@@ -688,19 +943,47 @@ class COCOObject(object):
         Returns:
             a COCO annotation dict
         """
-        return {
+        d = {
             "id": self.id,
             "image_id": self.image_id,
             "category_id": self.category_id,
-            "bbox": self.bbox,
-            "segmentation": self.segmentation,
-            "area": self.area,
-            "iscrowd": self.iscrowd,
         }
+
+        if self.bbox is not None:
+            d["bbox"] = self.bbox
+
+        if self.keypoints is not None:
+            d["keypoints"] = self.keypoints
+            d["num_keypoints"] = len(self.keypoints) // 3
+
+        if self.segmentation is not None:
+            d["segmentation"] = self.segmentation
+
+        if self.score is not None:
+            d["score"] = self.score
+
+        if self.area is not None:
+            d["area"] = self.area
+
+        if self.iscrowd is not None:
+            d["iscrowd"] = self.iscrowd
+
+        if self.attributes:
+            d.update(self.attributes)
+
+        return d
 
     @classmethod
     def from_detection(
-        cls, detection, metadata, labels_map_rev=None, tolerance=None
+        cls,
+        detection,
+        metadata,
+        keypoint=None,
+        labels_map_rev=None,
+        extra_attrs=None,
+        iscrowd="iscrowd",
+        num_decimals=None,
+        tolerance=None,
     ):
         """Creates a :class:`COCOObject` from a
         :class:`fiftyone.core.labels.Detection`.
@@ -709,8 +992,16 @@ class COCOObject(object):
             detection: a :class:`fiftyone.core.labels.Detection`
             metadata: a :class:`fiftyone.core.metadata.ImageMetadata` for the
                 image
+            keypoint (None): an optional :class:`fiftyone.core.labels.Keypoint`
+                containing keypoints to include for the object
             labels_map_rev (None): an optional dict mapping labels to category
                 IDs
+            extra_attrs (None): an optional list of extra attributes to include
+            iscrowd ("iscrowd"): the name of the crowd attribute (used if
+                present)
+            num_decimals (None): an optional number of decimal places at which
+                to round bounding box pixel coordinates. By default, no
+                rounding is done
             tolerance (None): a tolerance, in pixels, when generating
                 approximate polylines for instance masks. Typical values are
                 1-3 pixels
@@ -726,63 +1017,96 @@ class COCOObject(object):
         width = metadata.width
         height = metadata.height
         x, y, w, h = detection.bounding_box
-        bbox = [
-            round(x * width, 1),
-            round(y * height, 1),
-            round(w * width, 1),
-            round(h * height, 1),
-        ]
 
-        if detection.has_attribute("area"):
-            area = detection.get_attribute_value("area")
-        else:
-            # Round to one decimal place, as recommended by COCO authors
-            area = round(bbox[2] * bbox[3], 1)
+        bbox = [x * width, y * height, w * width, h * height]
 
-        if detection.has_attribute("iscrowd"):
-            iscrowd = int(detection.get_attribute_value("iscrowd"))
-        else:
-            try:
-                iscrowd = int(detection["iscrowd"])
-            except KeyError:
-                iscrowd = None
+        if num_decimals is not None:
+            bbox = [round(p, num_decimals) for p in bbox]
+
+        area = bbox[2] * bbox[3]
+
+        try:
+            _iscrowd = int(detection[iscrowd])
+        except KeyError:
+            # @todo remove Attribute usage
+            if detection.has_attribute(iscrowd):
+                _iscrowd = int(detection.get_attribute_value(iscrowd))
+            else:
+                _iscrowd = None
 
         frame_size = (width, height)
+
         segmentation = _make_coco_segmentation(
-            detection, frame_size, iscrowd, tolerance
+            detection, frame_size, _iscrowd, tolerance
         )
 
+        keypoints = _make_coco_keypoints(keypoint, frame_size)
+
+        if extra_attrs:
+            attributes = {f: getattr(detection, f, None) for f in extra_attrs}
+        else:
+            attributes = {}
+
         return cls(
-            None,
-            None,
-            category_id,
-            bbox,
+            id=None,
+            image_id=None,
+            category_id=category_id,
+            bbox=bbox,
             segmentation=segmentation,
+            keypoints=keypoints,
+            score=detection.confidence,
             area=area,
-            iscrowd=iscrowd,
+            iscrowd=_iscrowd,
+            **attributes,
         )
 
     @classmethod
-    def from_anno_dict(cls, d):
+    def from_anno_dict(cls, d, extra_attrs=None):
         """Creates a :class:`COCOObject` from a COCO annotation dict.
 
         Args:
             d: a COCO annotation dict
+            extra_attrs (None): whether to load extra annotation attributes.
+                Supported values are:
+
+                -   ``None``/``False``: do not load extra attributes
+                -   ``True``: load all extra attributes
+                -   a name or list of names of specific attributes to load
 
         Returns:
             a :class:`COCOObject`
         """
+        if extra_attrs is True:
+            return cls(**d)
+
+        if etau.is_str(extra_attrs):
+            extra_attrs = [extra_attrs]
+
+        if extra_attrs:
+            attributes = {f: d.get(f, None) for f in extra_attrs}
+        else:
+            attributes = {}
+
         return cls(
-            d["id"],
-            d["image_id"],
-            d["category_id"],
-            d["bbox"],
+            id=d.get("id", None),
+            image_id=d.get("image_id", None),
+            category_id=d.get("category_id", None),
+            bbox=d.get("bbox", None),
             segmentation=d.get("segmentation", None),
+            keypoints=d.get("keypoints", None),
+            score=d.get("score", None),
             area=d.get("area", None),
             iscrowd=d.get("iscrowd", None),
+            **attributes,
         )
 
-    def _get_label_and_attributes(self, classes, supercategory_map):
+    def _get_label(self, classes):
+        if classes:
+            return classes[self.category_id]
+
+        return str(self.category_id)
+
+    def _get_object_label_and_attributes(self, classes, supercategory_map):
         if classes:
             label = classes[self.category_id]
         else:
@@ -790,26 +1114,21 @@ class COCOObject(object):
 
         attributes = {}
 
-        if supercategory_map is not None:
-            supercategory = supercategory_map.get(label, None)
+        if supercategory_map is not None and label in supercategory_map:
+            supercategory = supercategory_map[label].get("supercategory", None)
         else:
             supercategory = None
 
         if supercategory is not None:
-            attributes["supercategory"] = fol.CategoricalAttribute(
-                value=supercategory
-            )
-
-        if self.area is not None:
-            attributes["area"] = fol.NumericAttribute(value=self.area)
+            attributes["supercategory"] = supercategory
 
         if self.iscrowd is not None:
-            attributes["iscrowd"] = fol.NumericAttribute(value=self.iscrowd)
+            attributes["iscrowd"] = self.iscrowd
 
         return label, attributes
 
 
-def load_coco_detection_annotations(json_path):
+def load_coco_detection_annotations(json_path, extra_attrs=None):
     """Loads the COCO annotations from the given JSON file.
 
     See :class:`fiftyone.types.dataset_types.COCODetectionDataset` for format
@@ -817,14 +1136,20 @@ def load_coco_detection_annotations(json_path):
 
     Args:
         json_path: the path to the annotations JSON file
+        extra_attrs (None): whether to load extra annotation attributes.
+            Supported values are:
+
+            -   ``None``/``False``: do not load extra attributes
+            -   ``True``: load all extra attributes found
+            -   a name or list of names of specific attributes to load
 
     Returns:
         a tuple of
 
         -   info: a dict of dataset info
         -   classes: a list of classes
-        -   supercategory_map: a dict mapping class labels to supercategories
-        -   images: a dict mapping image filenames to image dicts
+        -   supercategory_map: a dict mapping class labels to category dicts
+        -   images: a dict mapping image IDs to image dicts
         -   annotations: a dict mapping image IDs to list of
             :class:`COCOObject` instances, or ``None`` for unlabeled datasets
     """
@@ -855,7 +1180,9 @@ def load_coco_detection_annotations(json_path):
     if _annotations is not None:
         annotations = defaultdict(list)
         for a in _annotations:
-            annotations[a["image_id"]].append(COCOObject.from_anno_dict(a))
+            annotations[a["image_id"]].append(
+                COCOObject.from_anno_dict(a, extra_attrs=extra_attrs)
+            )
 
         annotations = dict(annotations)
     else:
@@ -878,7 +1205,9 @@ def parse_coco_categories(categories):
                 {
                     "id": 2,
                     "name": "cat",
-                    "supercategory": "animal"
+                    "supercategory": "animal",
+                    "keypoints": ["nose", "head", ...],
+                    "skeleton": [[12, 14], [14, 16], ...]
                 },
                 ...
             ]
@@ -887,29 +1216,109 @@ def parse_coco_categories(categories):
         a tuple of
 
         -   classes: a list of classes
-        -   supercategory_map: a dict mapping class labels to supercategories
+        -   supercategory_map: a dict mapping class labels to category dicts
     """
-    id_map = {
-        c["id"]: (c.get("name", None), c.get("supercategory", None))
-        for c in categories
-    }
+    cat_map = {c["id"]: c for c in categories}
 
     classes = []
     supercategory_map = {}
-    for idx in range(max(id_map) + 1):
-        name, supercategory = id_map.get(idx, (None, None))
-        if name is None:
-            name = str(idx)
+    for cat_id in range(max(cat_map) + 1):
+        category = cat_map.get(cat_id, None)
+        try:
+            name = category["name"]
+        except:
+            name = str(cat_id)
 
         classes.append(name)
-        supercategory_map[name] = supercategory
+        if category is not None:
+            supercategory_map[name] = category
 
     return classes, supercategory_map
 
 
-def download_coco_dataset_split(dataset_dir, split, year="2017", cleanup=True):
-    """Downloads and extracts the given split of the COCO dataset to the
-    specified directory.
+def is_download_required(
+    dataset_dir,
+    split,
+    year="2017",
+    label_types=None,
+    classes=None,
+    image_ids=None,
+    max_samples=None,
+    raw_dir=None,
+):
+    """Checks whether :meth:`download_coco_dataset_split` must be called in
+    order for the given directory to contain enough samples to satisfy the
+    given requirements.
+
+    See :class:`fiftyone.types.dataset_types.COCODetectionDataset` for the
+    format in which ``dataset_dir`` must be arranged.
+
+    Args:
+        dataset_dir: the directory to download the dataset
+        split: the split to download. Supported values are
+            ``("train", "validation", "test")``
+        year ("2017"): the dataset year to download. Supported values are
+            ``("2014", "2017")``
+        label_types (None): a label type or list of label types to load. The
+            supported values are ``("detections", "segmentations")``. By
+            default, only "detections" are loaded
+        classes (None): a string or list of strings specifying required classes
+            to load. Only samples containing at least one instance of a
+            specified class will be loaded
+        image_ids (None): an optional list of specific image IDs to load. Can
+            be provided in any of the following formats:
+
+            -   a list of ``<image-id>`` ints or strings
+            -   a list of ``<split>/<image-id>`` strings
+            -   the path to a text (newline-separated), JSON, or CSV file
+                containing the list of image IDs to load in either of the first
+                two formats
+        max_samples (None): the maximum number of samples desired
+        raw_dir (None): a directory in which full annotations files may be
+            stored to avoid re-downloads in the future
+
+    Returns:
+        True/False
+    """
+    logging.disable(logging.CRITICAL)
+    try:
+        _download_coco_dataset_split(
+            dataset_dir,
+            split,
+            year=year,
+            label_types=label_types,
+            classes=classes,
+            image_ids=image_ids,
+            max_samples=max_samples,
+            raw_dir=raw_dir,
+            dry_run=True,
+        )
+        return False  # everything was downloaded
+    except:
+        return True  # something needs to be downloaded
+    finally:
+        logging.disable(logging.NOTSET)
+
+
+def download_coco_dataset_split(
+    dataset_dir,
+    split,
+    year="2017",
+    label_types=None,
+    classes=None,
+    image_ids=None,
+    num_workers=None,
+    shuffle=None,
+    seed=None,
+    max_samples=None,
+    raw_dir=None,
+    scratch_dir=None,
+):
+    """Utility that downloads full or partial splits of the
+    `COCO dataset <https://cocodataset.org>`_.
+
+    See :class:`fiftyone.types.dataset_types.COCODetectionDataset` for the
+    format in which ``dataset_dir`` will be arranged.
 
     Any existing files are not re-downloaded.
 
@@ -919,15 +1328,77 @@ def download_coco_dataset_split(dataset_dir, split, year="2017", cleanup=True):
             ``("train", "validation", "test")``
         year ("2017"): the dataset year to download. Supported values are
             ``("2014", "2017")``
-        cleanup (True): whether to cleanup the zip files after extraction
+        label_types (None): a label type or list of label types to load. The
+            supported values are ``("detections", "segmentations")``. By
+            default, only "detections" are loaded
+        classes (None): a string or list of strings specifying required classes
+            to load. Only samples containing at least one instance of a
+            specified class will be loaded
+        image_ids (None): an optional list of specific image IDs to load. Can
+            be provided in any of the following formats:
+
+            -   a list of ``<image-id>`` ints or strings
+            -   a list of ``<split>/<image-id>`` strings
+            -   the path to a text (newline-separated), JSON, or CSV file
+                containing the list of image IDs to load in either of the first
+                two formats
+        num_workers (None): the number of processes to use when downloading
+            individual images. By default, ``multiprocessing.cpu_count()`` is
+            used
+        shuffle (False): whether to randomly shuffle the order in which samples
+            are chosen for partial downloads
+        seed (None): a random seed to use when shuffling
+        max_samples (None): a maximum number of samples to load. If
+            ``label_types`` and/or ``classes`` are also specified, first
+            priority will be given to samples that contain all of the specified
+            label types and/or classes, followed by samples that contain at
+            least one of the specified labels types or classes. The actual
+            number of samples loaded may be less than this maximum value if the
+            dataset does not contain sufficient samples matching your
+            requirements. By default, all matching samples are loaded
+        raw_dir (None): a directory in which full annotations files may be
+            stored to avoid re-downloads in the future
+        scratch_dir (None): a scratch directory to use to download any
+            necessary temporary files
 
     Returns:
-        a tuple of
+        a tuple of:
 
-        -   images_dir: the path to the directory containing the extracted
-            images
-        -   anno_path: the path to the annotations JSON file
+        -   num_samples: the total number of downloaded images
+        -   classes: the list of all classes
     """
+    return _download_coco_dataset_split(
+        dataset_dir,
+        split,
+        year=year,
+        label_types=label_types,
+        classes=classes,
+        image_ids=image_ids,
+        num_workers=num_workers,
+        shuffle=shuffle,
+        seed=seed,
+        max_samples=max_samples,
+        raw_dir=raw_dir,
+        scratch_dir=scratch_dir,
+        dry_run=False,
+    )
+
+
+def _download_coco_dataset_split(
+    dataset_dir,
+    split,
+    year="2017",
+    label_types=None,
+    classes=None,
+    image_ids=None,
+    num_workers=None,
+    shuffle=None,
+    seed=None,
+    max_samples=None,
+    raw_dir=None,
+    scratch_dir=None,
+    dry_run=False,
+):
     if year not in _IMAGE_DOWNLOAD_LINKS:
         raise ValueError(
             "Unsupported year '%s'; supported values are %s"
@@ -940,60 +1411,431 @@ def download_coco_dataset_split(dataset_dir, split, year="2017", cleanup=True):
             % (year, tuple(_IMAGE_DOWNLOAD_LINKS[year].keys()))
         )
 
+    if classes is not None and split == "test":
+        logger.warning("Test split is unlabeled; ignoring `classes`")
+        classes = None
+
+    if scratch_dir is None:
+        scratch_dir = os.path.join(dataset_dir, "scratch")
+
+    anno_path = os.path.join(dataset_dir, "labels.json")
+    images_dir = os.path.join(dataset_dir, "data")
+    split_size = _SPLIT_SIZES[year][split]
+
+    etau.ensure_dir(images_dir)
+
     #
-    # Download images
+    # Download annotations to `raw_dir`, if necessary
+    #
+
+    if raw_dir is None:
+        raw_dir = os.path.join(dataset_dir, "raw")
+
+    etau.ensure_dir(raw_dir)
+
+    if split != "test":
+        src_path = _ANNOTATION_DOWNLOAD_LINKS[year]
+        rel_path = _ANNOTATION_PATHS[year][split]
+        subdir = "trainval"
+        anno_type = "annotations"
+    else:
+        src_path = _TEST_INFO_DOWNLOAD_LINKS[year]
+        rel_path = _TEST_INFO_PATHS[year]
+        subdir = "test"
+        anno_type = "test info"
+
+    zip_path = os.path.join(scratch_dir, os.path.basename(src_path))
+    unzip_dir = os.path.join(scratch_dir, subdir)
+    content_dir = os.path.join(unzip_dir, os.path.dirname(rel_path))
+    full_anno_path = os.path.join(raw_dir, os.path.basename(rel_path))
+
+    if not os.path.isfile(full_anno_path):
+        if dry_run:
+            raise ValueError("%s is not downloaded" % src_path)
+
+        logger.info("Downloading %s to '%s'", anno_type, zip_path)
+        etaw.download_file(src_path, path=zip_path)
+
+        logger.info("Extracting %s to '%s'", anno_type, full_anno_path)
+        etau.extract_zip(zip_path, outdir=unzip_dir, delete_zip=False)
+        _merge_dir(content_dir, raw_dir)
+    else:
+        logger.info("Found %s at '%s'", anno_type, full_anno_path)
+
+    (
+        _,
+        all_classes,
+        _,
+        images,
+        annotations,
+    ) = load_coco_detection_annotations(full_anno_path, extra_attrs=True)
+
+    #
+    # Download images to `images_dir`, if necessary
     #
 
     images_src_path = _IMAGE_DOWNLOAD_LINKS[year][split]
     images_zip_path = os.path.join(
-        dataset_dir, os.path.basename(images_src_path)
+        scratch_dir, os.path.basename(images_src_path)
     )
-    images_dir = os.path.join(
-        dataset_dir, os.path.splitext(os.path.basename(images_src_path))[0]
-    )
+    unzip_images_dir = os.path.splitext(images_zip_path)[0]
 
-    if not os.path.isdir(images_dir):
-        logger.info("Downloading images zip to '%s'", images_zip_path)
-        etaw.download_file(images_src_path, path=images_zip_path)
-        logger.info("Extracting images to '%s'", images_dir)
-        etau.extract_zip(images_zip_path, delete_zip=cleanup)
+    if classes is None and image_ids is None and max_samples is None:
+        # Full image download
+        num_downloaded = len(etau.list_files(images_dir))
+        if num_downloaded < split_size:
+            if dry_run:
+                raise ValueError("%s is not downloaded" % images_src_path)
+
+            if num_downloaded > 0:
+                logger.info(
+                    "Found %d (< %d) downloaded images; must download full "
+                    "image zip",
+                    num_downloaded,
+                    split_size,
+                )
+
+            logger.info("Downloading images to '%s'", images_zip_path)
+            etaw.download_file(images_src_path, path=images_zip_path)
+            logger.info("Extracting images to '%s'", images_dir)
+            etau.extract_zip(images_zip_path, delete_zip=False)
+            etau.move_dir(unzip_images_dir, images_dir)
+        else:
+            logger.info("Images already downloaded")
     else:
-        logger.info("Image folder '%s' already exists", images_dir)
+        # Partial image download
 
-    #
-    # Download annotations
-    #
+        if image_ids is not None:
+            # Start with specific images
+            image_ids = _parse_image_ids(image_ids, images, split=split)
+        else:
+            # Start with all images
+            image_ids = list(images.keys())
 
-    anno_path = os.path.join(dataset_dir, _ANNOTATION_PATHS[year][split])
+        if classes is not None:
+            # Filter by specified classes
+            all_ids, any_ids = _get_images_with_classes(
+                image_ids, annotations, classes, all_classes
+            )
+        else:
+            all_ids = image_ids
+            any_ids = []
 
-    if split == "test":
-        # Test split has no annotations, so we must populate the labels file
-        # manually
-        images = _make_images_list(images_dir)
+        all_ids = sorted(all_ids)
+        any_ids = sorted(any_ids)
 
-        labels = {
-            "info": {},
-            "licenses": [],
-            "categories": [],
-            "images": images,
-            "annotations": [],
-        }
-        etas.write_json(labels, anno_path)
-    else:
-        anno_src_path = _ANNOTATION_DOWNLOAD_LINKS[year]
-        anno_zip_path = os.path.join(
-            dataset_dir, os.path.basename(anno_src_path)
+        if shuffle:
+            if seed is not None:
+                random.seed(seed)
+
+            random.shuffle(all_ids)
+            random.shuffle(any_ids)
+
+        image_ids = all_ids + any_ids
+
+        # Determine IDs to download
+        existing_ids, downloadable_ids = _get_existing_ids(
+            images_dir, images, image_ids
         )
 
-        if not os.path.isfile(anno_path):
-            logger.info("Downloading annotations zip to '%s'", anno_zip_path)
-            etaw.download_file(anno_src_path, path=anno_zip_path)
-            logger.info("Extracting annotations to '%s'", anno_path)
-            etau.extract_zip(anno_zip_path, delete_zip=cleanup)
-        else:
-            logger.info("Annotations file '%s' already exists", anno_path)
+        if max_samples is not None:
+            num_existing = len(existing_ids)
+            num_downloadable = len(downloadable_ids)
+            num_available = num_existing + num_downloadable
+            if num_available < max_samples:
+                logger.warning(
+                    "Only found %d (<%d) samples matching your "
+                    "requirements",
+                    num_available,
+                    max_samples,
+                )
 
-    return images_dir, anno_path
+            if max_samples > num_existing:
+                num_download = max_samples - num_existing
+                download_ids = downloadable_ids[:num_download]
+            else:
+                download_ids = []
+        else:
+            download_ids = downloadable_ids
+
+        # Download necessary images
+        num_existing = len(existing_ids)
+        num_download = len(download_ids)
+        if num_existing > 0:
+            if num_download > 0:
+                logger.info(
+                    "%d images found; downloading the remaining %d",
+                    num_existing,
+                    num_download,
+                )
+            else:
+                logger.info("Sufficient images already downloaded")
+        elif num_download > 0:
+            logger.info("Downloading %d images", num_download)
+
+        if num_download > 0:
+            if dry_run:
+                raise ValueError("%d images must be downloaded" % num_download)
+
+            _download_images(images_dir, download_ids, images, num_workers)
+
+    if dry_run:
+        return None, None
+
+    #
+    # Write usable annotations file to `anno_path`
+    #
+
+    downloaded_filenames = etau.list_files(images_dir)
+    num_samples = len(downloaded_filenames)  # total downloaded
+
+    if num_samples >= split_size:
+        logger.info("Writing annotations to '%s'", anno_path)
+        etau.copy_file(full_anno_path, anno_path)
+    else:
+        logger.info(
+            "Writing annotations for %d downloaded samples to '%s'",
+            num_samples,
+            anno_path,
+        )
+        _write_partial_annotations(
+            full_anno_path, anno_path, split, downloaded_filenames
+        )
+
+    return num_samples, all_classes
+
+
+def _merge_dir(indir, outdir):
+    etau.ensure_dir(outdir)
+    for filename in os.listdir(indir):
+        inpath = os.path.join(indir, filename)
+        outpath = os.path.join(outdir, filename)
+        shutil.move(inpath, outpath)
+
+
+def _write_partial_annotations(inpath, outpath, split, filenames):
+    d = etas.load_json(inpath)
+
+    id_map = {i["file_name"]: i["id"] for i in d["images"]}
+    filenames = set(filenames)
+    image_ids = {id_map[f] for f in filenames}
+
+    d["images"] = [i for i in d["images"] if i["file_name"] in filenames]
+
+    if split != "test":
+        d["annotations"] = [
+            a for a in d["annotations"] if a["image_id"] in image_ids
+        ]
+    else:
+        d.pop("annotations", None)
+
+    etas.write_json(d, outpath)
+
+
+def _parse_label_types(label_types):
+    if label_types is None:
+        return ["detections"]
+
+    if etau.is_str(label_types):
+        label_types = [label_types]
+    else:
+        label_types = list(label_types)
+
+    bad_types = [l for l in label_types if l not in _SUPPORTED_LABEL_TYPES]
+
+    if len(bad_types) == 1:
+        raise ValueError(
+            "Unsupported label type '%s'. Supported types are %s"
+            % (bad_types[0], _SUPPORTED_LABEL_TYPES)
+        )
+
+    if len(bad_types) > 1:
+        raise ValueError(
+            "Unsupported label types %s. Supported types are %s"
+            % (bad_types, _SUPPORTED_LABEL_TYPES)
+        )
+
+    return label_types
+
+
+def _get_matching_image_ids(
+    all_classes,
+    images,
+    annotations,
+    image_ids=None,
+    classes=None,
+    shuffle=False,
+    seed=None,
+    max_samples=None,
+):
+    if image_ids is not None:
+        image_ids = _parse_image_ids(image_ids, images)
+    else:
+        image_ids = list(images.keys())
+
+    if classes is not None:
+        all_ids, any_ids = _get_images_with_classes(
+            image_ids, annotations, classes, all_classes
+        )
+    else:
+        all_ids = image_ids
+        any_ids = []
+
+    all_ids = sorted(all_ids)
+    any_ids = sorted(any_ids)
+
+    if shuffle:
+        if seed is not None:
+            random.seed(seed)
+
+        random.shuffle(all_ids)
+        random.shuffle(any_ids)
+
+    image_ids = all_ids + any_ids
+
+    if max_samples is not None:
+        return image_ids[:max_samples]
+
+    return image_ids
+
+
+def _get_existing_ids(images_dir, images, image_ids):
+    filenames = set(etau.list_files(images_dir))
+
+    existing_ids = []
+    downloadable_ids = []
+    for _id in image_ids:
+        if images[_id]["file_name"] in filenames:
+            existing_ids.append(_id)
+        else:
+            downloadable_ids.append(_id)
+
+    return existing_ids, downloadable_ids
+
+
+def _download_images(images_dir, image_ids, images, num_workers):
+    if num_workers is None or num_workers < 1:
+        num_workers = multiprocessing.cpu_count()
+
+    tasks = []
+    for image_id in image_ids:
+        image_dict = images[image_id]
+        url = image_dict["coco_url"]
+        path = os.path.join(images_dir, image_dict["file_name"])
+        tasks.append((url, path))
+
+    if not tasks:
+        return
+
+    if num_workers == 1:
+        with fou.ProgressBar() as pb:
+            for task in pb(tasks):
+                _do_download(task)
+    else:
+        with fou.ProgressBar(total=len(tasks)) as pb:
+            with multiprocessing.Pool(num_workers) as pool:
+                for _ in pool.imap_unordered(_do_download, tasks):
+                    pb.update()
+
+
+def _do_download(args):
+    url, path = args
+    etaw.download_file(url, path=path, quiet=True)
+
+
+def _get_images_with_classes(
+    image_ids, annotations, target_classes, all_classes
+):
+    if etau.is_str(target_classes):
+        target_classes = [target_classes]
+
+    bad_classes = [c for c in target_classes if c not in all_classes]
+    if bad_classes:
+        raise ValueError("Unsupported classes: %s" % bad_classes)
+
+    labels_map_rev = _to_labels_map_rev(all_classes)
+    class_ids = {labels_map_rev[c] for c in target_classes}
+
+    all_ids = []
+    any_ids = []
+    for image_id in image_ids:
+        coco_objects = annotations.get(image_id, None)
+        if not coco_objects:
+            continue
+
+        oids = set(o.category_id for o in coco_objects)
+        if class_ids.issubset(oids):
+            all_ids.append(image_id)
+        elif class_ids & oids:
+            any_ids.append(image_id)
+
+    return all_ids, any_ids
+
+
+def _parse_image_ids(raw_image_ids, images, split=None):
+    # Load IDs from file
+    if etau.is_str(raw_image_ids):
+        image_ids_path = raw_image_ids
+        ext = os.path.splitext(image_ids_path)[-1]
+        if ext == ".txt":
+            raw_image_ids = _load_image_ids_txt(image_ids_path)
+        elif ext == ".json":
+            raw_image_ids = _load_image_ids_json(image_ids_path)
+        elif ext == ".csv":
+            raw_image_ids = _load_image_ids_csv(image_ids_path)
+        else:
+            raise ValueError(
+                "Invalid image ID file '%s'. Supported formats are .txt, "
+                ".csv, and .json" % ext
+            )
+
+    image_ids = []
+    for raw_id in raw_image_ids:
+        if etau.is_str(raw_id):
+            if "/" in raw_id:
+                _split, raw_id = raw_id.split("/")
+                if split and _split != split:
+                    continue
+
+            raw_id = int(raw_id.strip())
+
+        image_ids.append(raw_id)
+
+    # Validate that IDs exist
+    invalid_ids = [_id for _id in image_ids if _id not in images]
+    if invalid_ids:
+        raise ValueError(
+            "Found %d invalid IDs, ex: %s" % (len(invalid_ids), invalid_ids[0])
+        )
+
+    return image_ids
+
+
+def _load_image_ids_txt(txt_path):
+    with open(txt_path, "r") as f:
+        return [l.strip() for l in f.readlines()]
+
+
+def _load_image_ids_csv(csv_path):
+    with open(csv_path, "r", newline="") as f:
+        dialect = csv.Sniffer().sniff(f.read(10240))
+        f.seek(0)
+        if dialect.delimiter in _CSV_DELIMITERS:
+            reader = csv.reader(f, dialect)
+        else:
+            reader = csv.reader(f)
+
+        image_ids = [row for row in reader]
+
+    if isinstance(image_ids[0], list):
+        # Flatten list
+        image_ids = [_id for ids in image_ids for _id in ids]
+
+    return image_ids
+
+
+def _load_image_ids_json(json_path):
+    return [_id for _id in etas.load_json(json_path)]
 
 
 def _make_images_list(images_dir):
@@ -1019,40 +1861,18 @@ def _make_images_list(images_dir):
     return images
 
 
-_IMAGE_DOWNLOAD_LINKS = {
-    "2014": {
-        "train": "http://images.cocodataset.org/zips/train2014.zip",
-        "validation": "http://images.cocodataset.org/zips/val2014.zip",
-        "test": "http://images.cocodataset.org/zips/test2014.zip",
-    },
-    "2017": {
-        "train": "http://images.cocodataset.org/zips/train2017.zip",
-        "validation": "http://images.cocodataset.org/zips/val2017.zip",
-        "test": "http://images.cocodataset.org/zips/test2017.zip",
-    },
-}
-
-_ANNOTATION_DOWNLOAD_LINKS = {
-    "2014": "http://images.cocodataset.org/annotations/annotations_trainval2014.zip",
-    "2017": "http://images.cocodataset.org/annotations/annotations_trainval2017.zip",
-}
-
-_ANNOTATION_PATHS = {
-    "2014": {
-        "train": "annotations/instances_train2014.json",
-        "validation": "annotations/instances_val2014.json",
-        "test": "annotations/instances_test2014.json",
-    },
-    "2017": {
-        "train": "annotations/instances_train2017.json",
-        "validation": "annotations/instances_val2017.json",
-        "test": "annotations/instances_test2017.json",
-    },
-}
-
-
 def _to_labels_map_rev(classes):
     return {c: i for i, c in enumerate(classes)}
+
+
+def _get_matching_objects(coco_objects, target_classes, all_classes):
+    if etau.is_str(target_classes):
+        target_classes = [target_classes]
+
+    labels_map_rev = _to_labels_map_rev(all_classes)
+    class_ids = {labels_map_rev[c] for c in target_classes}
+
+    return [obj for obj in coco_objects if obj.category_id in class_ids]
 
 
 def _coco_objects_to_polylines(
@@ -1060,14 +1880,18 @@ def _coco_objects_to_polylines(
 ):
     polylines = []
     for coco_obj in coco_objects:
-        polylines.append(
-            coco_obj.to_polyline(
-                frame_size,
-                classes=classes,
-                supercategory_map=supercategory_map,
-                tolerance=tolerance,
-            )
+        polyline = coco_obj.to_polyline(
+            frame_size,
+            classes=classes,
+            supercategory_map=supercategory_map,
+            tolerance=tolerance,
         )
+
+        if polyline is not None:
+            polylines.append(polyline)
+        else:
+            msg = "Skipping object with no segmentation mask"
+            warnings.warn(msg)
 
     return fol.Polylines(polylines=polylines)
 
@@ -1077,16 +1901,28 @@ def _coco_objects_to_detections(
 ):
     detections = []
     for coco_obj in coco_objects:
-        detections.append(
-            coco_obj.to_detection(
-                frame_size,
-                classes=classes,
-                supercategory_map=supercategory_map,
-                load_segmentation=load_segmentations,
-            )
+        detection = coco_obj.to_detection(
+            frame_size,
+            classes=classes,
+            supercategory_map=supercategory_map,
+            load_segmentation=load_segmentations,
         )
 
+        if load_segmentations and detection.mask is None:
+            msg = "Skipping object with no segmentation mask"
+            warnings.warn(msg)
+        else:
+            detections.append(detection)
+
     return fol.Detections(detections=detections)
+
+
+def _coco_objects_to_keypoints(coco_objects, frame_size, classes):
+    keypoints = []
+    for coco_obj in coco_objects:
+        keypoints.append(coco_obj.to_keypoints(frame_size, classes=classes))
+
+    return fol.Keypoints(keypoints=keypoints)
 
 
 #
@@ -1168,6 +2004,22 @@ def _make_coco_segmentation(detection, frame_size, iscrowd, tolerance):
     return _mask_to_polygons(mask, tolerance)
 
 
+def _make_coco_keypoints(keypoint, frame_size):
+    if keypoint is None:
+        return None
+
+    width, height = frame_size
+
+    # @todo true COCO format would set v = 1/2 based on whether the keypoints
+    # lie within the object's segmentation, but we'll be lazy for now
+
+    keypoints = []
+    for x, y in keypoint.points:
+        keypoints.extend((int(x * width), int(y * height), 2))
+
+    return keypoints
+
+
 def _mask_to_rle(mask):
     counts = []
     for i, (value, elements) in enumerate(groupby(mask.ravel(order="F"))):
@@ -1212,3 +2064,65 @@ def _close_contour(contour):
         contour = np.vstack((contour, contour[0]))
 
     return contour
+
+
+_IMAGE_DOWNLOAD_LINKS = {
+    "2014": {
+        "train": "http://images.cocodataset.org/zips/train2014.zip",
+        "validation": "http://images.cocodataset.org/zips/val2014.zip",
+        "test": "http://images.cocodataset.org/zips/test2014.zip",
+    },
+    "2017": {
+        "train": "http://images.cocodataset.org/zips/train2017.zip",
+        "validation": "http://images.cocodataset.org/zips/val2017.zip",
+        "test": "http://images.cocodataset.org/zips/test2017.zip",
+    },
+}
+
+_SPLIT_SIZES = {
+    "2014": {"train": 82783, "test": 40775, "validation": 40504},
+    "2017": {"train": 118287, "test": 40670, "validation": 5000},
+}
+
+_ANNOTATION_DOWNLOAD_LINKS = {
+    "2014": "http://images.cocodataset.org/annotations/annotations_trainval2014.zip",
+    "2017": "http://images.cocodataset.org/annotations/annotations_trainval2017.zip",
+}
+
+_ANNOTATION_PATHS = {
+    "2014": {
+        "train": "annotations/instances_train2014.json",
+        "validation": "annotations/instances_val2014.json",
+    },
+    "2017": {
+        "train": "annotations/instances_train2017.json",
+        "validation": "annotations/instances_val2017.json",
+    },
+}
+
+_KEYPOINTS_PATHS = {
+    "2014": {
+        "train": "annotations/person_keypoints_train2014.json",
+        "validation": "annotations/person_keypoints_val2014.json",
+    },
+    "2017": {
+        "train": "annotations/person_keypoints_train2017.json",
+        "validation": "annotations/person_keypoints_val2017.json",
+    },
+}
+
+_TEST_INFO_DOWNLOAD_LINKS = {
+    "2014": "http://images.cocodataset.org/annotations/image_info_test2014.zip",
+    "2017": "http://images.cocodataset.org/annotations/image_info_test2017.zip",
+}
+
+_TEST_INFO_PATHS = {
+    "2014": "annotations/image_info_test2014.json",
+    "2017": "annotations/image_info_test2017.json",
+}
+
+_SUPPORTED_LABEL_TYPES = ["detections", "segmentations", "keypoints"]
+
+_SUPPORTED_SPLITS = ["train", "validation", "test"]
+
+_CSV_DELIMITERS = [",", ";", ":", " ", "\t", "\n"]

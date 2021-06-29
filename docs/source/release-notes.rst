@@ -3,11 +3,76 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+.. _release-notes-v0.11.0:
+
+FiftyOne 0.11.0
+---------------
+*Released June 29, 2021*
+
+News
+^^^^
+- With support from the `COCO team <https://cocodataset.org/#download>`_,
+  FiftyOne is now a recommended tool for downloading, visualizing, and
+  evaluating on the COCO dataset! Check out :ref:`this guide <coco>` for more
+  details
+
+App
+^^^
+- Fixed a bug that prevented ``sample_id`` fields from appearing in the App
+  when working with frames and patches views
+
+Core
+^^^^
+- Added various new parameters to methods like
+  :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>` and
+  :meth:`SampleCollection.export() <fiftyone.core.collections.SampleCollection.export>`,
+  including ``data_path``, ``labels_path``, and ``export_media`` that allow for
+  customizing the import and export of datasets. For example, you can now
+  perform labels-only imports and exports
+- Added new
+  :meth:`Dataset.merge_dir() <fiftyone.core.dataset.Dataset.merge_dir>` and
+  :meth:`Dataset.merge_importer() <fiftyone.core.dataset.Dataset.merge_importer>`
+  methods for merging datasets from disk into existing FiftyOne datasets
+- Added support for :ref:`importing <YOLOv5Dataset-import>` and
+  :ref:`exporting <YOLOv5Dataset-export>` datasets in
+  `YOLOv5 format <https://github.com/ultralytics/yolov5>`_
+- Updated the :class:`GeoJSONDataset <fiftyone.types.dataset_types.GeoJSONDataset>`
+  dataset type to support both image and video datasets
+- Added support for :class:`importing <fiftyone.utils.coco.COCODetectionDatasetImporter>`
+  and :class:`exporting <fiftyone.utils.coco.COCODetectionDatasetExporter>` extra
+  attributes in COCO format via a new ``extra_attrs`` parameter
+
+Zoo
+^^^
+- Added support for partial downloads and loading segmentations to the
+  :ref:`COCO-2014 <dataset-zoo-coco-2014>` and
+  :ref:`COCO-2017 <dataset-zoo-coco-2017>` datasets
+- When performing partial downloads on the
+  :ref:`Open Images v6 Dataset <dataset-zoo-open-images-v6>` involving a subset
+  of the available classes, all labels for matching samples will now be loaded
+  by default
+
+Docs
+^^^^
+- Added a :ref:`new page <coco>` demonstrating how to use FiftyOne to download,
+  visualize, and evaluate on the COCO dataset
+- Added a :ref:`new page <open-images>` demonstrating how to use FiftyOne to
+  download, visualize, and evaluate on the Open Images dataset
+
 .. _release-notes-v0.10.0:
 
 FiftyOne 0.10.0
 ---------------
 *Released June 21, 2021*
+
+News
+^^^^
+- We've collaborated with the
+  `PyTorch Lightning <https://github.com/PyTorchLightning/pytorch-lightning>`_
+  team to make it easy to train
+  `Lightning Flash <https://github.com/PyTorchLightning/lightning-flash>`_
+  tasks on your FiftyOne datasets. Check out
+  :ref:`this guide <lightning-flash>` for more details
 
 Core
 ^^^^
@@ -155,6 +220,14 @@ App
 FiftyOne 0.9.0
 --------------
 *Released May 12, 2021*
+
+News
+^^^^
+- We've collaborated with the
+  `Open Images Team at Google <https://storage.googleapis.com/openimages/web/download.html>`_
+  to make FiftyOne a recommended tool for downloading, visualizing, and
+  evaluating on the Open Images Dataset! Check out
+  :ref:`this guide <open-images>` for more details
 
 App
 ^^^

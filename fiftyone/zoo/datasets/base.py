@@ -132,7 +132,6 @@ class BDD100KDataset(FiftyOneDataset):
                 self.source_dir, dataset_dir, copy_files=self.copy_files
             )
 
-        # Get metadata
         logger.info("Parsing dataset metadata")
         dataset_type = fot.BDDDataset()
         num_samples = foub.BDDDatasetImporter._get_num_samples(split_dir)
@@ -413,7 +412,6 @@ class CityscapesDataset(FiftyOneDataset):
                 person_annos=self.person_annos,
             )
 
-        # Get metadata
         logger.info("Parsing dataset metadata")
         dataset_type = fot.FiftyOneDataset()
         num_samples = foud.FiftyOneDatasetImporter._get_num_samples(split_dir)
@@ -426,8 +424,23 @@ class COCO2014Dataset(FiftyOneDataset):
     """COCO is a large-scale object detection, segmentation, and captioning
     dataset.
 
-    This version contains images, bounding boxes, segmentations, and labels for
-    the 2014 version of the dataset.
+    This version contains images, bounding boxes, and segmentations for the
+    2014 version of the dataset.
+
+    This dataset supports partial downloads:
+
+    -   You can specify subsets of data to download via the ``label_types``,
+        ``classes``, and ``max_samples`` parameters
+    -   You can specify specific images to load via the ``image_ids`` parameter
+
+    See :ref:`this page <dataset-zoo-coco-2014>` for more information about
+    partial downloads of this dataset.
+
+    Full split stats:
+
+    -   Train split: 82,783 images
+    -   Test split: 40,775 images
+    -   Validation split: 40,504 images
 
     Notes:
 
@@ -442,20 +455,117 @@ class COCO2014Dataset(FiftyOneDataset):
         import fiftyone as fo
         import fiftyone.zoo as foz
 
-        dataset = foz.load_zoo_dataset("coco-2014-segmentation", split="validation")
+        #
+        # Load 50 random samples from the validation split
+        #
+        # By default, only detections are loaded
+        #
+
+        dataset = foz.load_zoo_dataset(
+            "coco-2014",
+            split="validation",
+            max_samples=50,
+            shuffle=True,
+        )
 
         session = fo.launch_app(dataset)
+
+        #
+        # Load segmentations for 25 samples from the validation split that
+        # contain cats and dogs
+        #
+        # Images that contain all `classes` will be prioritized first, followed
+        # by images that contain at least one of the required `classes`. If
+        # there are not enough images matching `classes` in the split to meet
+        # `max_samples`, only the available images will be loaded.
+        #
+        # Images will only be downloaded if necessary
+        #
+
+        dataset = foz.load_zoo_dataset(
+            "coco-2014",
+            split="validation",
+            label_types=["segmentations"],
+            classes=["cat", "dog"],
+            max_samples=25,
+        )
+
+        session.dataset = dataset
+
+        #
+        # Download the entire validation split and load both detections and
+        # segmentations
+        #
+        # Subsequent partial loads of the validation split will never require
+        # downloading any images
+        #
+
+        dataset = foz.load_zoo_dataset(
+            "coco-2014",
+            split="validation",
+            label_types=["detections", "segmentations"],
+        )
+
+        session.dataset = dataset
 
     Dataset size
         37.57 GB
 
     Source
         http://cocodataset.org/#home
+
+    Args:
+        label_types (None): a label type or list of label types to load. The
+            supported values are ``("detections", "segmentations")``. By
+            default, only "detections" are loaded
+        classes (None): a string or list of strings specifying required classes
+            to load. If provided, only samples containing at least one instance
+            of a specified class will be loaded
+        image_ids (None): an optional list of specific image IDs to load. Can
+            be provided in any of the following formats:
+
+            -   a list of ``<image-id>`` ints or strings
+            -   a list of ``<split>/<image-id>`` strings
+            -   the path to a text (newline-separated), JSON, or CSV file
+                containing the list of image IDs to load in either of the first
+                two formats
+        num_workers (None): the number of processes to use when downloading
+            individual images. By default, ``multiprocessing.cpu_count()`` is
+            used
+        shuffle (False): whether to randomly shuffle the order in which samples
+            are chosen for partial downloads
+        seed (None): a random seed to use when shuffling
+        max_samples (None): a maximum number of samples to load per split. If
+            ``label_types`` and/or ``classes`` are also specified, first
+            priority will be given to samples that contain all of the specified
+            label types and/or classes, followed by samples that contain at
+            least one of the specified labels types or classes. The actual
+            number of samples loaded may be less than this maximum value if the
+            dataset does not contain sufficient samples matching your
+            requirements. By default, all matching samples are loaded
     """
+
+    def __init__(
+        self,
+        label_types=None,
+        classes=None,
+        image_ids=None,
+        num_workers=None,
+        shuffle=None,
+        seed=None,
+        max_samples=None,
+    ):
+        self.label_types = label_types
+        self.classes = classes
+        self.image_ids = image_ids
+        self.num_workers = num_workers
+        self.shuffle = shuffle
+        self.seed = seed
+        self.max_samples = max_samples
 
     @property
     def name(self):
-        return "coco-2014-segmentation"
+        return "coco-2014"
 
     @property
     def tags(self):
@@ -465,36 +575,74 @@ class COCO2014Dataset(FiftyOneDataset):
     def supported_splits(self):
         return ("train", "validation", "test")
 
+    @property
+    def supports_partial_downloads(self):
+        return True
+
+    @property
+    def size(self):
+        return {"train": 82783, "test": 40775, "validation": 40504}
+
+    def _is_download_required(self, dataset_dir, split):
+        return fouc.is_download_required(
+            dataset_dir,
+            split,
+            year="2014",
+            label_types=self.label_types,
+            classes=self.classes,
+            image_ids=self.image_ids,
+            max_samples=self.max_samples,
+            raw_dir=self._get_raw_dir(dataset_dir),
+        )
+
     def _download_and_prepare(self, dataset_dir, scratch_dir, split):
-        # Download dataset
-        images_dir, anno_path = fouc.download_coco_dataset_split(
-            scratch_dir, split, year="2014", cleanup=True
+        num_samples, classes = fouc.download_coco_dataset_split(
+            dataset_dir,
+            split,
+            year="2014",
+            label_types=self.label_types,
+            classes=self.classes,
+            image_ids=self.image_ids,
+            num_workers=self.num_workers,
+            shuffle=self.shuffle,
+            seed=self.seed,
+            max_samples=self.max_samples,
+            raw_dir=self._get_raw_dir(dataset_dir),
+            scratch_dir=scratch_dir,
         )
 
-        # Build dataset
-        logger.info("Organizing dataset")
-        data_dir = os.path.join(dataset_dir, "data")
-        labels_path = os.path.join(dataset_dir, "labels.json")
-        etau.move_dir(images_dir, data_dir)
-        etau.move_file(anno_path, labels_path)
-
-        logger.info("Parsing dataset metadata")
         dataset_type = fot.COCODetectionDataset()
-        _, classes, _, images, _ = fouc.load_coco_detection_annotations(
-            labels_path
-        )
-        num_samples = len(images)
-        logger.info("Found %d samples", num_samples)
 
         return dataset_type, num_samples, classes
+
+    def _get_raw_dir(self, dataset_dir):
+        # A split-independent location to store full annotation files so that
+        # they never need to be redownloaded
+        root_dir = os.path.dirname(os.path.normpath(dataset_dir))
+        return os.path.join(root_dir, "raw")
 
 
 class COCO2017Dataset(FiftyOneDataset):
     """COCO is a large-scale object detection, segmentation, and captioning
     dataset.
 
-    This version contains images, bounding boxes, segmentations, and labels for
-    the 2017 version of the dataset.
+    This version contains images, bounding boxes, segmentations, and keypoints
+    for the 2017 version of the dataset.
+
+    This dataset supports partial downloads:
+
+    -   You can specify subsets of data to download via the ``label_types``,
+        ``classes``, and ``max_samples`` parameters
+    -   You can specify specific images to load via the ``image_ids`` parameter
+
+    See :ref:`this page <dataset-zoo-coco-2017>` for more information about
+    partial downloads of this dataset.
+
+    Full split stats:
+
+    -   Train split: 118,287 images
+    -   Test split: 40,670 images
+    -   Validation split: 5,000 images
 
     Notes:
 
@@ -509,20 +657,117 @@ class COCO2017Dataset(FiftyOneDataset):
         import fiftyone as fo
         import fiftyone.zoo as foz
 
-        dataset = foz.load_zoo_dataset("coco-2017-segmentation", split="validation")
+        #
+        # Load 50 random samples from the validation split
+        #
+        # By default, only detections are loaded
+        #
+
+        dataset = foz.load_zoo_dataset(
+            "coco-2017",
+            split="validation",
+            max_samples=50,
+            shuffle=True,
+        )
 
         session = fo.launch_app(dataset)
+
+        #
+        # Load segmentations for 25 samples from the validation split that
+        # contain cats and dogs
+        #
+        # Images that contain all `classes` will be prioritized first, followed
+        # by images that contain at least one of the required `classes`. If
+        # there are not enough images matching `classes` in the split to meet
+        # `max_samples`, only the available images will be loaded.
+        #
+        # Images will only be downloaded if necessary
+        #
+
+        dataset = foz.load_zoo_dataset(
+            "coco-2017",
+            split="validation",
+            label_types=["segmentations"],
+            classes=["cat", "dog"],
+            max_samples=25,
+        )
+
+        session.dataset = dataset
+
+        #
+        # Download the entire validation split and load both detections and
+        # segmentations
+        #
+        # Subsequent partial loads of the validation split will never require
+        # downloading any images
+        #
+
+        dataset = foz.load_zoo_dataset(
+            "coco-2017",
+            split="validation",
+            label_types=["detections", "segmentations"],
+        )
+
+        session.dataset = dataset
 
     Dataset size
         25.20 GB
 
     Source
         http://cocodataset.org/#home
+
+    Args:
+        label_types (None): a label type or list of label types to load. The
+            supported values are ``("detections", "segmentations")``. By
+            default, only "detections" are loaded
+        classes (None): a string or list of strings specifying required classes
+            to load. If provided, only samples containing at least one instance
+            of a specified class will be loaded
+        image_ids (None): an optional list of specific image IDs to load. Can
+            be provided in any of the following formats:
+
+            -   a list of ``<image-id>`` ints or strings
+            -   a list of ``<split>/<image-id>`` strings
+            -   the path to a text (newline-separated), JSON, or CSV file
+                containing the list of image IDs to load in either of the first
+                two formats
+        num_workers (None): the number of processes to use when downloading
+            individual images. By default, ``multiprocessing.cpu_count()`` is
+            used
+        shuffle (False): whether to randomly shuffle the order in which samples
+            are chosen for partial downloads
+        seed (None): a random seed to use when shuffling
+        max_samples (None): a maximum number of samples to load per split. If
+            ``label_types`` and/or ``classes`` are also specified, first
+            priority will be given to samples that contain all of the specified
+            label types and/or classes, followed by samples that contain at
+            least one of the specified labels types or classes. The actual
+            number of samples loaded may be less than this maximum value if the
+            dataset does not contain sufficient samples matching your
+            requirements. By default, all matching samples are loaded
     """
+
+    def __init__(
+        self,
+        label_types=None,
+        classes=None,
+        image_ids=None,
+        num_workers=None,
+        shuffle=None,
+        seed=None,
+        max_samples=None,
+    ):
+        self.label_types = label_types
+        self.classes = classes
+        self.image_ids = image_ids
+        self.num_workers = num_workers
+        self.shuffle = shuffle
+        self.seed = seed
+        self.max_samples = max_samples
 
     @property
     def name(self):
-        return "coco-2017-segmentation"
+        return "coco-2017"
 
     @property
     def tags(self):
@@ -532,28 +777,51 @@ class COCO2017Dataset(FiftyOneDataset):
     def supported_splits(self):
         return ("train", "validation", "test")
 
+    @property
+    def size(self):
+        return {"train": 118287, "test": 40670, "validation": 5000}
+
+    @property
+    def supports_partial_downloads(self):
+        return True
+
+    def _is_download_required(self, dataset_dir, split):
+        return fouc.is_download_required(
+            dataset_dir,
+            split,
+            year="2017",
+            label_types=self.label_types,
+            classes=self.classes,
+            image_ids=self.image_ids,
+            max_samples=self.max_samples,
+            raw_dir=self._get_raw_dir(dataset_dir),
+        )
+
     def _download_and_prepare(self, dataset_dir, scratch_dir, split):
-        # Download dataset
-        images_dir, anno_path = fouc.download_coco_dataset_split(
-            scratch_dir, split, year="2017", cleanup=True
+        num_samples, classes = fouc.download_coco_dataset_split(
+            dataset_dir,
+            split,
+            year="2017",
+            label_types=self.label_types,
+            classes=self.classes,
+            image_ids=self.image_ids,
+            num_workers=self.num_workers,
+            shuffle=self.shuffle,
+            seed=self.seed,
+            max_samples=self.max_samples,
+            raw_dir=self._get_raw_dir(dataset_dir),
+            scratch_dir=scratch_dir,
         )
 
-        # Build dataset
-        logger.info("Organizing dataset")
-        data_dir = os.path.join(dataset_dir, "data")
-        labels_path = os.path.join(dataset_dir, "labels.json")
-        etau.move_dir(images_dir, data_dir)
-        etau.move_file(anno_path, labels_path)
-
-        logger.info("Parsing dataset metadata")
         dataset_type = fot.COCODetectionDataset()
-        _, classes, _, images, _ = fouc.load_coco_detection_annotations(
-            labels_path
-        )
-        num_samples = len(images)
-        logger.info("Found %d samples", num_samples)
 
         return dataset_type, num_samples, classes
+
+    def _get_raw_dir(self, dataset_dir):
+        # A split-independent location to store full annotation files so that
+        # they never need to be redownloaded
+        root_dir = os.path.dirname(os.path.normpath(dataset_dir))
+        return os.path.join(root_dir, "raw")
 
 
 class HMDB51Dataset(FiftyOneDataset):
@@ -615,7 +883,6 @@ class HMDB51Dataset(FiftyOneDataset):
                 cleanup=False,
             )
 
-        # Get metadata
         logger.info("Parsing dataset metadata")
         dataset_type = fot.VideoClassificationDirectoryTree()
         importer = foud.VideoClassificationDirectoryTreeImporter
@@ -773,7 +1040,6 @@ class KITTIDataset(FiftyOneDataset):
 
         etau.move_dir(split_dir, dataset_dir)
 
-        # Get metadata
         logger.info("Parsing dataset metadata")
         dataset_type = fot.KITTIDetectionDataset()
         importer = fouk.KITTIDetectionDatasetImporter
@@ -834,7 +1100,6 @@ class LabeledFacesInTheWildDataset(FiftyOneDataset):
                 dataset_dir, scratch_dir=scratch_dir, cleanup=False
             )
 
-        # Get metadata
         logger.info("Parsing dataset metadata")
         dataset_type = fot.ImageClassificationDirectoryTree()
         importer = foud.ImageClassificationDirectoryTreeImporter
@@ -853,14 +1118,17 @@ class OpenImagesV6Dataset(FiftyOneDataset):
     which are annotated and available via this zoo dataset.
 
     The dataset contains annotations for classification, detection,
-    segmentation, and visual relationship tasks across 601 object classes.
+    segmentation, and visual relationship tasks for the 600 boxable object
+    classes.
 
     This dataset supports partial downloads:
 
-    -   You can specify subsets of data to download via the ``classes``,
-        ``attributes``, ``label_types``, and ``max_samples`` parameters
-    -   You can specify specific images to load by their ID using ``image_ids``
-        or ``image_ids_file`` parameters
+    -   You can specify subsets of data to download via the``label_types``,
+        ``classes``, ``attrs``, and ``max_samples`` parameters
+    -   You can specify specific images to load via the ``image_ids`` parameter
+
+    See :ref:`this page <dataset-zoo-open-images-v6>` for more information
+    about partial downloads of this dataset.
 
     Full split stats:
 
@@ -873,31 +1141,61 @@ class OpenImagesV6Dataset(FiftyOneDataset):
     -   Not all images contain all types of labels
     -   All images have been rescaled so that their largest dimension is at
         most 1024 pixels
-    -   `Localized narratives <https://google.github.io/localized-narratives/>`_
-        are not included in this version of the dataset
 
     Example usage::
 
-        import fiftyone as fo
-        import fiftyone.zoo as foz
+        #
+        # Load 50 random samples from the validation split
+        #
+        # By default, all label types are loaded
+        #
 
-        # Load 50 samples from the validation split
         dataset = foz.load_zoo_dataset(
-            "open-images-v6", split="validation", max_samples=50
+            "open-images-v6",
+            split="validation",
+            max_samples=50,
+            shuffle=True,
         )
 
         session = fo.launch_app(dataset)
 
-        # Load samples from specific label types and classes of interest
-        subset = foz.load_zoo_dataset(
+        #
+        # Load detections and classifications for 25 samples from the
+        # validation split that contain fedoras and pianos
+        #
+        # Images that contain all `label_types` and `classes` will be
+        # prioritized first, followed by images that contain at least one of
+        # the required `classes`. If there are not enough images matching
+        # `classes` in the split to meet `max_samples`, only the available
+        # images will be loaded.
+        #
+        # Images will only be downloaded if necessary
+        #
+
+        dataset = foz.load_zoo_dataset(
             "open-images-v6",
             split="validation",
-            label_types=["detections", "relationships"],
+            label_types=["detections", "classifications"],
             classes=["Fedora", "Piano"],
-            max_samples=50,
+            max_samples=25,
         )
 
-        session.dataset = subset
+        session.dataset = dataset
+
+        #
+        # Download the entire validation split and load detections
+        #
+        # Subsequent partial loads of the validation split will never require
+        # downloading any images
+        #
+
+        dataset = foz.load_zoo_dataset(
+            "open-images-v6",
+            split="validation",
+            label_types=["detections"],
+        )
+
+        session.dataset = dataset
 
     Dataset size
         561 GB
@@ -906,31 +1204,41 @@ class OpenImagesV6Dataset(FiftyOneDataset):
         https://storage.googleapis.com/openimages/web/index.html
 
     Args:
-        label_types (None): a list of label types to load. Supported values are
+        label_types (None): a label type or list of label types to load. The
+            supported values are
             ``("detections", "classifications", "relationships", "segmentations")``.
-            By default, all label types are loaded. Note that not every sample
-            will include each label type. If ``max_samples`` and
-            ``label_types`` are both specified, then every sample will include
-            the specified label types
-        classes (None): a list of strings specifying required classes to load.
-            Only samples containing at least one instance of a specified
-            classes will be downloaded. You can retrieve the available classes
-            via :meth:`fiftyone.utils.openimages.get_classes`
-        attrs (None): a list of strings for relationship attributes to load
-        image_ids (None): a list of specific image IDs to load. The IDs can be
-            specified either as ``<split>/<image-id>`` or ``<image-id>``
-        image_ids_file (None): the path to a newline separated text, JSON, or
-            CSV file containing a list of image IDs to load. The IDs can be
-            specified either as ``<split>/<image-id>`` or ``<image-id>``. If
-            ``image_ids`` is provided, this parameter is ignored
+            By default, all label types are loaded
+        classes (None): a string or list of strings specifying required classes
+            to load. If provided, only samples containing at least one instance
+            of a specified class will be loaded
+        attrs (None): a string or list of strings specifying required
+            relationship attributes to load. Only applicable when
+            ``label_types`` includes "relationships". If provided, only samples
+            containing at least one instance of a specified attribute will be
+            loaded
+        image_ids (None): an optional list of specific image IDs to load. Can
+            be provided in any of the following formats:
+
+            -   a list of ``<image-id>`` strings
+            -   a list of ``<split>/<image-id>`` strings
+            -   the path to a text (newline-separated), JSON, or CSV file
+                containing the list of image IDs to load in either of the first
+                two formats
         num_workers (None): the number of processes to use when downloading
             individual images. By default, ``multiprocessing.cpu_count()`` is
             used
-        max_samples (None): a maximum number of samples to download and import
-            per split. By default, all samples are imported
+        shuffle (False): whether to randomly shuffle the order in which samples
+            are chosen for partial downloads
         seed (None): a random seed to use when shuffling
-        shuffle (False): whether to randomly shuffle the order in which the
-            samples are imported
+        max_samples (None): a maximum number of samples to load per split. If
+            ``label_types``, ``classes``, and/or ``attrs`` are also specified,
+            first priority will be given to samples that contain all of the
+            specified label types, classes, and/or attributes, followed by
+            samples that contain at least one of the specified labels types or
+            classes. The actual number of samples loaded may be less than this
+            maximum value if the dataset does not contain sufficient samples
+            matching your requirements. By default, all matching samples are
+            loaded
     """
 
     def __init__(
@@ -939,21 +1247,19 @@ class OpenImagesV6Dataset(FiftyOneDataset):
         classes=None,
         attrs=None,
         image_ids=None,
-        image_ids_file=None,
         num_workers=None,
-        max_samples=None,
-        seed=None,
         shuffle=None,
+        seed=None,
+        max_samples=None,
     ):
         self.label_types = label_types
         self.classes = classes
         self.attrs = attrs
         self.image_ids = image_ids
-        self.image_ids_file = image_ids_file
         self.num_workers = num_workers
-        self.max_samples = max_samples
-        self.seed = seed
         self.shuffle = shuffle
+        self.seed = seed
+        self.max_samples = max_samples
 
     @property
     def name(self):
@@ -973,26 +1279,41 @@ class OpenImagesV6Dataset(FiftyOneDataset):
         return ("train", "test", "validation")
 
     @property
-    def supports_partial_download(self):
+    def supports_partial_downloads(self):
         return True
 
-    def _download_and_prepare(self, dataset_dir, scratch_dir, split):
-        num_samples, classes = fouo.download_open_images_split(
-            dataset_dir=dataset_dir,
-            split=split,
+    @property
+    def size(self):
+        return {"train": 1743042, "test": 125436, "validation": 41620}
+
+    def _is_download_required(self, dataset_dir, split):
+        return fouo.is_download_required(
+            dataset_dir,
+            split,
+            version="v6",
             label_types=self.label_types,
             classes=self.classes,
             attrs=self.attrs,
             image_ids=self.image_ids,
-            image_ids_file=self.image_ids_file,
-            num_workers=self.num_workers,
+            max_samples=self.max_samples,
+        )
+
+    def _download_and_prepare(self, dataset_dir, _, split):
+        num_samples, classes = fouo.download_open_images_split(
+            dataset_dir,
+            split,
             version="v6",
+            label_types=self.label_types,
+            classes=self.classes,
+            attrs=self.attrs,
+            image_ids=self.image_ids,
+            num_workers=self.num_workers,
             shuffle=self.shuffle,
             seed=self.seed,
             max_samples=self.max_samples,
         )
+
         dataset_type = fot.OpenImagesV6Dataset()
-        logger.info("Found %d samples", num_samples)
 
         return dataset_type, num_samples, classes
 
@@ -1236,7 +1557,6 @@ class UCF101Dataset(FiftyOneDataset):
                 cleanup=False,
             )
 
-        # Get metadata
         logger.info("Parsing dataset metadata")
         dataset_type = fot.VideoClassificationDirectoryTree()
         importer = foud.VideoClassificationDirectoryTreeImporter
@@ -1252,8 +1572,8 @@ AVAILABLE_DATASETS = {
     "caltech101": Caltech101Dataset,
     "caltech256": Caltech256Dataset,
     "cityscapes": CityscapesDataset,
-    "coco-2014-segmentation": COCO2014Dataset,
-    "coco-2017-segmentation": COCO2017Dataset,
+    "coco-2014": COCO2014Dataset,
+    "coco-2017": COCO2017Dataset,
     "hmdb51": HMDB51Dataset,
     "imagenet-sample": ImageNetSampleDataset,
     "kitti": KITTIDataset,

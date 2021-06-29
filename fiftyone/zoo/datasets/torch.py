@@ -5,6 +5,8 @@ FiftyOne Zoo Datasets provided by ``torchvision.datasets``.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import eta.core.utils as etau
+
 import fiftyone.core.labels as fol
 import fiftyone.core.utils as fou
 import fiftyone.types as fot
@@ -349,130 +351,6 @@ class ImageNet2012Dataset(TorchVisionDataset):
         )
 
 
-class COCO2014Dataset(TorchVisionDataset):
-    """COCO is a large-scale object detection, segmentation, and captioning
-    dataset.
-
-    This version contains images, bounding boxes and labels for the 2014
-    version of the dataset.
-
-    Example usage::
-
-        import fiftyone as fo
-        import fiftyone.zoo as foz
-
-        dataset = foz.load_zoo_dataset("coco-2014", split="validation")
-
-        session = fo.launch_app(dataset)
-
-    Notes:
-
-    -   COCO defines 91 classes but the data only uses 80 classes
-    -   Some images from the train and validation sets don't have annotations
-    -   The test set does not have annotations
-    -   COCO 2014 and 2017 uses the same images, but different train/val/test
-        splits
-
-    Dataset size
-        37.57 GB
-
-    Source
-        http://cocodataset.org/#home
-    """
-
-    @property
-    def name(self):
-        return "coco-2014"
-
-    @property
-    def tags(self):
-        return ("image", "detection")
-
-    @property
-    def supported_splits(self):
-        return ("train", "validation", "test")
-
-    def _download_and_prepare(self, dataset_dir, scratch_dir, split):
-        def download_fcn(download_dir):
-            fou.ensure_import("pycocotools")
-            images_dir, anno_path = fouc.download_coco_dataset_split(
-                download_dir, split, year="2014", cleanup=True
-            )
-            return torchvision.datasets.CocoDetection(images_dir, anno_path)
-
-        get_class_labels_fcn = _parse_coco_detection_labels_map
-        sample_parser = fouc.COCODetectionSampleParser()
-        return _download_and_prepare(
-            dataset_dir,
-            scratch_dir,
-            download_fcn,
-            get_class_labels_fcn,
-            sample_parser,
-        )
-
-
-class COCO2017Dataset(TorchVisionDataset):
-    """COCO is a large-scale object detection, segmentation, and captioning
-    dataset.
-
-    This version contains images, bounding boxes and labels for the 2017
-    version of the dataset.
-
-    Example usage::
-
-        import fiftyone as fo
-        import fiftyone.zoo as foz
-
-        dataset = foz.load_zoo_dataset("coco-2017", split="validation")
-
-        session = fo.launch_app(dataset)
-
-    Notes:
-
-    -   COCO defines 91 classes but the data only uses 80 classes
-    -   Some images from the train and validation sets don't have annotations
-    -   The test set does not have annotations
-    -   COCO 2014 and 2017 uses the same images, but different train/val/test
-        splits
-
-    Dataset size
-        25.20 GB
-
-    Source
-        http://cocodataset.org/#home
-    """
-
-    @property
-    def name(self):
-        return "coco-2017"
-
-    @property
-    def tags(self):
-        return ("image", "detection")
-
-    @property
-    def supported_splits(self):
-        return ("train", "validation", "test")
-
-    def _download_and_prepare(self, dataset_dir, scratch_dir, split):
-        def download_fcn(download_dir):
-            fou.ensure_import("pycocotools")
-            images_dir, anno_path = fouc.download_coco_dataset_split(
-                download_dir, split, year="2017", cleanup=True
-            )
-            return torchvision.datasets.CocoDetection(images_dir, anno_path)
-
-        get_class_labels_fcn = _parse_coco_detection_labels_map
-        sample_parser = fouc.COCODetectionSampleParser()
-        return _download_and_prepare(
-            dataset_dir,
-            scratch_dir,
-            download_fcn,
-            get_class_labels_fcn,
-            sample_parser,
-        )
-
-
 class VOC2007Dataset(TorchVisionDataset):
     """The dataset for the PASCAL Visual Object Classes Challenge 2007
     (VOC2007) for the classification and detection competitions.
@@ -524,7 +402,7 @@ class VOC2007Dataset(TorchVisionDataset):
             )
 
         get_class_labels_fcn = _parse_voc_detection_labels
-        sample_parser = fouv.VOCDetectionSampleParser()
+        sample_parser = _VOCDetectionSampleParser()
         return _download_and_prepare(
             dataset_dir,
             scratch_dir,
@@ -585,7 +463,7 @@ class VOC2012Dataset(TorchVisionDataset):
             )
 
         get_class_labels_fcn = _parse_voc_detection_labels
-        sample_parser = fouv.VOCDetectionSampleParser()
+        sample_parser = _VOCDetectionSampleParser()
         return _download_and_prepare(
             dataset_dir,
             scratch_dir,
@@ -601,11 +479,32 @@ AVAILABLE_DATASETS = {
     "cifar10": CIFAR10Dataset,
     "cifar100": CIFAR100Dataset,
     "imagenet-2012": ImageNet2012Dataset,
-    "coco-2014": COCO2014Dataset,
-    "coco-2017": COCO2017Dataset,
     "voc-2007": VOC2007Dataset,
     "voc-2012": VOC2012Dataset,
 }
+
+
+class _VOCDetectionSampleParser(foud.ImageDetectionSampleParser):
+    def __init__(self):
+        super().__init__(
+            label_field=None,
+            bounding_box_field=None,
+            confidence_field=None,
+            attributes_field=None,
+            classes=None,
+            normalized=True,  # True b/c image is not required to parse label
+        )
+
+    def _parse_label(self, target, img=None):
+        if target is None:
+            return None
+
+        if etau.is_str(target):
+            annotation = fouv.VOCAnnotation.from_xml(target)
+        else:
+            annotation = fouv.VOCAnnotation.from_dict(target)
+
+        return annotation.to_detections()
 
 
 def _download_and_prepare(

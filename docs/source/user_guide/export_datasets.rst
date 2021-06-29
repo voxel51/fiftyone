@@ -93,7 +93,8 @@ a |DatasetView| into any format of your choice via the basic recipe below.
 
   .. group-tab:: CLI
 
-    You can export a FiftyOne dataset :doc:`via the CLI </cli/index>`:
+    You can export a FiftyOne dataset
+    :ref:`via the CLI <cli-fiftyone-datasets-export>`:
 
     .. code-block:: shell
 
@@ -112,11 +113,46 @@ a |DatasetView| into any format of your choice via the basic recipe below.
         TYPE=fiftyone.types.COCODetectionDataset  # for example
 
         # Export the dataset!
-        fiftyone datasets export $NAME --export-dir $EXPORT_DIR --label-field $LABEL_FIELD --type $TYPE
+        fiftyone datasets export $NAME \
+            --export-dir $EXPORT_DIR \
+            --type $TYPE \
+            --label-field $LABEL_FIELD
 
     Note the `LABEL_FIELD` argument in the above example, which specifies the
     particular label field that you wish to export. This is necessary your
     FiftyOne dataset contains multiple label fields.
+
+    You can use the :ref:`kwargs option <cli-fiftyone-datasets-export>` to
+    provide additional parameters to configure the export. For example, you can
+    use the ``data_path`` and ``labels_path`` parameters to independently
+    customize the location of the exported media and labels, including
+    labels-only exports:
+
+    .. code-block:: shell
+
+        # Export **only** labels in the `ground_truth` field in COCO format
+        fiftyone datasets export $NAME \
+            --type fiftyone.types.COCODetectionDataset \
+            --label-field ground_truth \
+            --kwargs labels_path=/path/for/labels.json
+
+    Or you can use the `export_media` parameter to configure whether to copy,
+    move, symlink, or omit the media files from the export:
+
+    .. code-block:: python
+        :linenos:
+
+        # Export the labels in the `ground_truth` field in COCO format, and
+        # move (rather than copy) the source media to the output directory
+        fiftyone datasets export $NAME \
+            --export-dir /path/for/export \
+            --type fiftyone.types.COCODetectionDataset \
+            --label-field ground_truth \
+            --kwargs export_media=move
+
+    In general, you can pass any parameter for the |DatasetExporter| of the
+    format you're writing via the
+    :ref:`kwargs option <cli-fiftyone-datasets-export>`.
 
 .. _export-label-coercion:
 
@@ -842,7 +878,7 @@ where `labels.json` is a JSON file in the following format:
         ],
         "images": [
             {
-                "id": 0,
+                "id": 1,
                 "license": null,
                 "file_name": "<filename0>.<ext>",
                 "height": 480,
@@ -853,11 +889,14 @@ where `labels.json` is a JSON file in the following format:
         ],
         "annotations": [
             {
-                "id": 0,
-                "image_id": 0,
+                "id": 1,
+                "image_id": 1,
                 "category_id": 2,
                 "bbox": [260, 177, 231, 199],
                 "segmentation": [...],
+                "keypoints": [224, 226, 2, ...],
+                "num_keypoints": 10,
+                "score": 0.95,
                 "area": 45969,
                 "iscrowd": 0
             },

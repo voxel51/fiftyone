@@ -234,7 +234,7 @@ aggregation to compute the histograms of numeric fields of a collection:
     plot_hist(counts, edges)
     plt.show(block=False)
 
-.. image:: ../images/histogram_values_uniqueness.png
+.. image:: /images/histogram_values_uniqueness.png
    :alt: histogram-values
    :align: center
 

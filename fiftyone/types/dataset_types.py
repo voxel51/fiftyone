@@ -515,13 +515,15 @@ class COCODetectionDataset(ImageDetectionDataset):
                 {
                     "id": 2,
                     "name": "cat",
-                    "supercategory": "animal"
+                    "supercategory": "animal",
+                    "keypoints": ["nose", "head", ...],
+                    "skeleton": [[12, 14], [14, 16], ...]
                 },
                 ...
             ],
             "images": [
                 {
-                    "id": 0,
+                    "id": 1,
                     "license": null,
                     "file_name": "<filename0>.<ext>",
                     "height": 480,
@@ -532,11 +534,14 @@ class COCODetectionDataset(ImageDetectionDataset):
             ],
             "annotations": [
                 {
-                    "id": 0,
-                    "image_id": 0,
+                    "id": 1,
+                    "image_id": 1,
                     "category_id": 2,
                     "bbox": [260, 177, 231, 199],
                     "segmentation": [...],
+                    "keypoints": [224, 226, 2, ...],
+                    "num_keypoints": 10,
+                    "score": 0.95,
                     "area": 45969,
                     "iscrowd": 0
                 },

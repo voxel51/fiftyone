@@ -110,7 +110,7 @@ COCO-2017 dataset from the :ref:`Dataset Zoo <dataset-zoo>`:
     # Visualize predictions in the App
     session = fo.launch_app(view=samples)
 
-.. image:: ../../images/model_zoo_predictions_coco_2017.png
+.. image:: /images/model_zoo_predictions_coco_2017.png
    :alt: Model Zoo Predictions
    :align: center
 
