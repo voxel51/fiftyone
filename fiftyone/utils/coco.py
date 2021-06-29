@@ -222,7 +222,6 @@ class COCODetectionDatasetImporter(
 ):
     """Importer for COCO detection datasets stored on disk.
 
-    This class can be configured
     See :class:`fiftyone.types.dataset_types.COCODetectionDataset` for format
     details.
 
@@ -1231,8 +1230,6 @@ def parse_coco_categories(categories):
             name = str(cat_id)
 
         classes.append(name)
-
-        # @todo insert empty dicts for missing categories?
         if category is not None:
             supercategory_map[name] = category
 

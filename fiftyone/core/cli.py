@@ -613,7 +613,7 @@ class DatasetsExportCommand(Command):
         # Perform a customized export of a dataset
         fiftyone datasets export <name> \\
             --type <type> \\
-            --kwargs labels_path="/path/for/labels.json"
+            --kwargs labels_path=/path/for/labels.json
     """
 
     @staticmethod

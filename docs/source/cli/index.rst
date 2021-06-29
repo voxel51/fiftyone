@@ -561,7 +561,7 @@ Export FiftyOne datasets to disk in supported formats.
     # Perform a customized export of a dataset
     fiftyone datasets export <name> \
         --type <type> \
-        --kwargs labels_path="/path/for/labels.json"
+        --kwargs labels_path=/path/for/labels.json
 
 .. _cli-fiftyone-datasets-draw:
 
