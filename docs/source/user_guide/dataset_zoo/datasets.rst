@@ -476,10 +476,9 @@ version of the dataset.
 
 .. note::
 
-    We've collaborated with the
-    `COCO team <https://cocodataset.org/#download>`_ to make FiftyOne the
-    recommended tool for downloading, visualizing, and evaluating on the COCO
-    dataset!
+    With support from the `COCO team <https://cocodataset.org/#download>`_,
+    FiftyOne is a recommended tool for downloading, visualizing, and evaluating
+    on the COCO dataset!
 
     Check out :ref:`this guide <coco>` for more details on using FiftyOne to
     work with COCO.
@@ -705,10 +704,9 @@ version of the dataset.
 
 .. note::
 
-    We've collaborated with the
-    `COCO team <https://cocodataset.org/#download>`_ to make FiftyOne the
-    recommended tool for downloading, visualizing, and evaluating on the COCO
-    dataset!
+    With support from the `COCO team <https://cocodataset.org/#download>`_,
+    FiftyOne is a recommended tool for downloading, visualizing, and evaluating
+    on the COCO dataset!
 
     Check out :ref:`this guide <coco>` for more details on using FiftyOne to
     work with COCO.
@@ -1395,7 +1393,7 @@ and visual relationship tasks for the 600 boxable classes.
 
     We've collaborated with the
     `Open Images Team at Google <https://storage.googleapis.com/openimages/web/download.html>`_
-    to make FiftyOne the recommended tool for downloading, visualizing, and
+    to make FiftyOne a recommended tool for downloading, visualizing, and
     evaluating on the Open Images Dataset!
 
     Check out :ref:`this guide <open-images>` for more details on using

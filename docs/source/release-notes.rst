@@ -7,12 +7,12 @@ FiftyOne Release Notes
 
 FiftyOne 0.11.0
 ---------------
-*Released June 28, 2021*
+*Released June 29, 2021*
 
 News
 ^^^^
 - With support from the `COCO team <https://cocodataset.org/#download>`_,
-  FiftyOne is now the recommended tool for downloading, visualizing, and
+  FiftyOne is now a recommended tool for downloading, visualizing, and
   evaluating on the COCO dataset! Check out :ref:`this guide <coco>` for more
   details
 
@@ -225,7 +225,7 @@ News
 ^^^^
 - We've collaborated with the
   `Open Images Team at Google <https://storage.googleapis.com/openimages/web/download.html>`_
-  to make FiftyOne the recommended tool for downloading, visualizing, and
+  to make FiftyOne a recommended tool for downloading, visualizing, and
   evaluating on the Open Images Dataset! Check out
   :ref:`this guide <open-images>` for more details
 

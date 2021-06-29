@@ -42,7 +42,7 @@ on the cards below to see how!
 
 .. customcarditem::
     :header: Open Images Dataset
-    :description: See why FiftyOne is the recommended tool for downloading, visualizing, and evaluating on Google's Open Images Dataset.
+    :description: See why FiftyOne is a recommended tool for downloading, visualizing, and evaluating on Google's Open Images Dataset.
     :link: open_images.html
     :image: ../_static/images/integrations/open_images.png
     :tags: Dataset,Model-Evaluation
@@ -54,7 +54,7 @@ on the cards below to see how!
     :image: ../_static/images/integrations/coco.png
     :tags: Dataset,Model-Evaluation
 
-.. Upcoming integrations
+.. Upcoming integrations :)
 
     .. customcarditem::
         :header: CVAT
