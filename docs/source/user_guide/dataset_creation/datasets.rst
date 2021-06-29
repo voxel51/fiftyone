@@ -83,8 +83,8 @@ that you're loading.
         # Import a random subset of 10 samples from the dataset
         dataset = fo.Dataset.from_dir(
             ...,
-            shuffle=True,
             max_samples=10,
+            shuffle=True,
         )
 
   .. group-tab:: CLI

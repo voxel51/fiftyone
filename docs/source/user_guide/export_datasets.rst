@@ -94,7 +94,7 @@ a |DatasetView| into any format of your choice via the basic recipe below.
   .. group-tab:: CLI
 
     You can export a FiftyOne dataset
-    :ref:`via the CLI <cli-fiftyone-datasets-export>`.
+    :ref:`via the CLI <cli-fiftyone-datasets-export>`:
 
     .. code-block:: shell
 
@@ -113,7 +113,10 @@ a |DatasetView| into any format of your choice via the basic recipe below.
         TYPE=fiftyone.types.COCODetectionDataset  # for example
 
         # Export the dataset!
-        fiftyone datasets export $NAME --export-dir $EXPORT_DIR --label-field $LABEL_FIELD --type $TYPE
+        fiftyone datasets export $NAME \
+            --export-dir $EXPORT_DIR \
+            --type $TYPE \
+            --label-field $LABEL_FIELD
 
     Note the `LABEL_FIELD` argument in the above example, which specifies the
     particular label field that you wish to export. This is necessary your

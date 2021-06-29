@@ -490,15 +490,14 @@ class DatasetsCreateCommand(Command):
         dataset_type = etau.get_class(args.type) if args.type else None
         kwargs = args.kwargs or {}
 
-        if dataset_dir:
-            dataset = fod.Dataset.from_dir(
-                dataset_dir, dataset_type, name=name, **kwargs
-            )
-        elif json_path:
+        if json_path:
             dataset = fod.Dataset.from_json(json_path, name=name)
         else:
-            raise ValueError(
-                "Either `dataset_dir` or `json_path` must be provided"
+            dataset = fod.Dataset.from_dir(
+                dataset_dir=dataset_dir,
+                dataset_type=dataset_type,
+                name=name,
+                **kwargs,
             )
 
         dataset.persistent = True
@@ -1101,16 +1100,6 @@ class AppViewCommand(Command):
             dataset = fozd.load_zoo_dataset(
                 name, splits=splits, dataset_dir=dataset_dir, **kwargs
             )
-        elif args.dataset_dir:
-            # View a dataset from a directory
-            name = args.name
-            dataset_dir = args.dataset_dir
-            dataset_type = etau.get_class(args.type)
-            kwargs = args.kwargs or {}
-
-            dataset = fod.Dataset.from_dir(
-                dataset_dir, dataset_type, name=name, **kwargs
-            )
         elif args.images_dir:
             # View a directory of images
             name = args.name
@@ -1137,9 +1126,17 @@ class AppViewCommand(Command):
             json_path = args.json_path
             dataset = fod.Dataset.from_json(json_path, name=name)
         else:
-            raise ValueError(
-                "Either `zoo_dataset`, `dataset_dir`, or `json_path` must be "
-                "provided"
+            # View a dataset from disk
+            name = args.name
+            dataset_dir = args.dataset_dir
+            dataset_type = etau.get_class(args.type)
+            kwargs = args.kwargs or {}
+
+            dataset = fod.Dataset.from_dir(
+                dataset_dir=dataset_dir,
+                dataset_type=dataset_type,
+                name=name,
+                **kwargs,
             )
 
         # If desktop wasn't explicitly requested, fallback to default
