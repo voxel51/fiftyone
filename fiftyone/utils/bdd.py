@@ -277,7 +277,9 @@ class BDDDatasetImporter(
         }
 
     def setup(self):
-        self._image_paths_map = self._load_data_map(self.data_path)
+        self._image_paths_map = self._load_data_map(
+            self.data_path, recursive=True
+        )
 
         if self.labels_path is not None and os.path.isfile(self.labels_path):
             self._anno_dict_map = load_bdd_annotations(self.labels_path)

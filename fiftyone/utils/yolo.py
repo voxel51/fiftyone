@@ -168,9 +168,9 @@ class YOLOv4DatasetImporter(
             )
 
             image_paths_map = {
-                os.path.splitext(os.path.basename(path))[0]: path
-                for path in etau.list_files(self.data_path, abs_paths=True)
-                if not path.endswith(".txt")
+                os.path.splitext(p)[0]: os.path.join(self.data_path, p)
+                for p in etau.list_files(self.data_path)
+                if not p.endswith(".txt")
             }
 
         uuids = sorted(image_paths_map.keys())

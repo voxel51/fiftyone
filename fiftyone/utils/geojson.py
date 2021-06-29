@@ -432,7 +432,9 @@ class GeoJSONDatasetImporter(
         return False
 
     def setup(self):
-        self._media_paths_map = self._load_data_map(self.data_path)
+        self._media_paths_map = self._load_data_map(
+            self.data_path, recursive=True
+        )
 
         features_map = {}
 

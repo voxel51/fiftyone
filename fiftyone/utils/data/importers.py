@@ -1868,7 +1868,7 @@ class FiftyOneImageClassificationDatasetImporter(
         self._sample_parser = FiftyOneImageClassificationSampleParser()
 
         self._image_paths_map = self._load_data_map(
-            self.data_path, ignore_exts=True
+            self.data_path, ignore_exts=True, recursive=True
         )
 
         if self.labels_path is not None and os.path.isfile(self.labels_path):
@@ -1993,7 +1993,9 @@ class ImageClassificationDirectoryTreeImporter(LabeledImageDatasetImporter):
             else:
                 classes.add(label)
 
-            for path in etau.list_files(class_dir, abs_paths=True):
+            for path in etau.list_files(
+                class_dir, abs_paths=True, recursive=True
+            ):
                 samples.append((path, label))
 
         self._samples = self._preprocess_list(samples)
@@ -2013,7 +2015,7 @@ class ImageClassificationDirectoryTreeImporter(LabeledImageDatasetImporter):
         # Used only by dataset zoo
         num_samples = 0
         for class_dir in etau.list_subdirs(dataset_dir, abs_paths=True):
-            num_samples += len(etau.list_files(class_dir))
+            num_samples += len(etau.list_files(class_dir, recursive=True))
 
         return num_samples
 
@@ -2111,7 +2113,9 @@ class VideoClassificationDirectoryTreeImporter(LabeledVideoDatasetImporter):
             else:
                 classes.add(label)
 
-            for path in etau.list_files(class_dir, abs_paths=True):
+            for path in etau.list_files(
+                class_dir, abs_paths=True, recursive=True
+            ):
                 samples.append((path, label))
 
         self._samples = self._preprocess_list(samples)
@@ -2131,7 +2135,7 @@ class VideoClassificationDirectoryTreeImporter(LabeledVideoDatasetImporter):
         # Used only by dataset zoo
         num_samples = 0
         for class_dir in etau.list_subdirs(dataset_dir, abs_paths=True):
-            num_samples += len(etau.list_files(class_dir))
+            num_samples += len(etau.list_files(class_dir, recursive=True))
 
         return num_samples
 
@@ -2264,7 +2268,7 @@ class FiftyOneImageDetectionDatasetImporter(
         self._sample_parser = FiftyOneImageDetectionSampleParser()
 
         self._image_paths_map = self._load_data_map(
-            self.data_path, ignore_exts=True
+            self.data_path, ignore_exts=True, recursive=True
         )
 
         if self.labels_path is not None and os.path.isfile(self.labels_path):
@@ -2430,12 +2434,12 @@ class ImageSegmentationDirectoryImporter(
 
     def setup(self):
         self._image_paths_map = self._load_data_map(
-            self.data_path, ignore_exts=True
+            self.data_path, ignore_exts=True, recursive=True
         )
 
         self._mask_paths_map = {
-            os.path.splitext(os.path.basename(p))[0]: p
-            for p in etau.list_files(self.labels_path, abs_paths=True)
+            os.path.splitext(p)[0]: os.path.join(self.labels_path, p)
+            for p in etau.list_files(self.labels_path, recursive=True)
         }
 
         uuids = set(self._mask_paths_map.keys())
