@@ -204,7 +204,7 @@ def load_zoo_dataset(
     else:
         download_kwargs = {}
         zoo_dataset, dataset_dir = _parse_dataset_details(name, dataset_dir)
-        info = zoo_dataset.load_info(dataset_dir)
+        info = zoo_dataset.load_info(dataset_dir, warn_deprecated=True)
 
     dataset_type = info.get_dataset_type()
     dataset_importer_cls = dataset_type.get_dataset_importer_cls()
@@ -681,13 +681,15 @@ class ZooDatasetInfo(etas.Serializable):
         return info
 
     @classmethod
-    def from_json(cls, json_path, upgrade=False):
+    def from_json(cls, json_path, upgrade=False, warn_deprecated=False):
         """Loads a :class:`ZooDatasetInfo` from a JSON file on disk.
 
         Args:
             json_path: path to JSON file
             upgrade (False): whether to upgrade the JSON file on disk if any
                 migrations were necessary
+            warn_deprecated (False): whether to issue a warning if the dataset
+                has a deprecated format
 
         Returns:
             a :class:`ZooDatasetInfo`
@@ -699,6 +701,20 @@ class ZooDatasetInfo(etas.Serializable):
             logger.info("Migrating ZooDatasetInfo at '%s'", json_path)
             etau.move_file(json_path, json_path + ".bak")
             info.write_json(json_path, pretty_print=True)
+
+        if warn_deprecated:
+            zoo_dataset_cls = etau.get_class(info.zoo_dataset)
+            if issubclass(zoo_dataset_cls, DeprecatedZooDataset):
+                dataset_dir = os.path.dirname(json_path)
+                logger.warning(
+                    "You are loading a previously downloaded zoo dataset that "
+                    "has been upgraded in this version of FiftyOne. We "
+                    "recommend that you discard your existing download by "
+                    "deleting the '%s' directory and then re-download the "
+                    "dataset to ensure that all import/download features are "
+                    "available to you",
+                    dataset_dir,
+                )
 
         return info
 
@@ -853,17 +869,23 @@ class ZooDataset(object):
         return self.has_splits and (split in self.supported_splits)
 
     @staticmethod
-    def load_info(dataset_dir):
+    def load_info(dataset_dir, upgrade=True, warn_deprecated=False):
         """Loads the :class:`ZooDatasetInfo` from the given dataset directory.
 
         Args:
             dataset_dir: the directory in which to construct the dataset
+            upgrade (True): whether to upgrade the JSON file on disk if any
+                migrations were necessary
+            warn_deprecated (False): whether to issue a warning if the dataset
+                has a deprecated format
 
         Returns:
             the :class:`ZooDatasetInfo` for the dataset
         """
         info_path = ZooDataset.get_info_path(dataset_dir)
-        return ZooDatasetInfo.from_json(info_path, upgrade=True)
+        return ZooDatasetInfo.from_json(
+            info_path, upgrade=upgrade, warn_deprecated=warn_deprecated
+        )
 
     @staticmethod
     def get_split_dir(dataset_dir, split):
@@ -942,7 +964,9 @@ class ZooDataset(object):
         # Load existing ZooDatasetInfo, if available
         info_path = self.get_info_path(dataset_dir)
         if os.path.isfile(info_path):
-            info = ZooDatasetInfo.from_json(info_path, upgrade=True)
+            info = ZooDatasetInfo.from_json(
+                info_path, upgrade=True, warn_deprecated=True
+            )
         else:
             info = None
 
@@ -1174,7 +1198,7 @@ class DeprecatedZooDataset(ZooDataset):
     def _download_and_prepare(self, *args, **kwargs):
         raise ValueError(
             "The zoo dataset you are trying to download is no longer "
-            "available."
+            "available via this source. "
         )
 
 
