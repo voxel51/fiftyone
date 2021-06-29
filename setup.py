@@ -95,7 +95,7 @@ setup(
         "xmltodict",
         "universal-analytics-python3>=1.0.1,<2",
         # internal packages
-        "voxel51-eta>=0.5,<0.6",
+        "voxel51-eta>=0.5.1,<0.6",
         # ETA dependency - restricted to a maximum version known to provide
         # wheels here because it tends to publish sdists several hours before
         # wheels. When users install FiftyOne in this window, they will need to
