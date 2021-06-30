@@ -206,7 +206,7 @@ def _catch_errors(func):
 
 _notebook_clients = {}
 _deactivated_clients = set()
-_DISCONNECT_TIMEOUT = 2  # seconds
+_DISCONNECT_TIMEOUT = 1  # seconds
 
 
 class PollingHandler(tornado.web.RequestHandler):
