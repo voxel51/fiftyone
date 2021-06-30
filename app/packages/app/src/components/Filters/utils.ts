@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { useSpring } from "react-spring";
 import { atomFamily, selector, selectorFamily } from "recoil";
 import useMeasure from "react-use-measure";
@@ -61,10 +60,10 @@ export const unsupportedFields = selector<string[]>({
   },
 });
 
-export const hasNoneField = selectorFamily<boolean, string>({
-  key: "hasNoneField",
+export const noneCount = selectorFamily<number, string>({
+  key: "noneCount",
   get: (path) => ({ get }) => {
-    return get(selectors.noneFieldCounts)[path] > 0;
+    return get(selectors.noneFieldCounts)[path];
   },
 });
 

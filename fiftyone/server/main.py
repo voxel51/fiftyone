@@ -955,8 +955,8 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         _write_message(message, app=True, only=only)
 
     @classmethod
-    async def on_distinct(
-        cls, self, path, uuid=None, selected=[], search="", limit=10
+    async def on_count_values(
+        cls, self, path, uuid=None, selected=[], search="", limit=200
     ):
         state = fos.StateDescription.from_dict(StateHandler.state)
         col = cls.sample_collection()
@@ -968,7 +968,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         view = _get_search_view(view, path, search, selected)
 
         count, first = await view._async_aggregate(
-            col, foa.Distinct(path, _first=limit)
+            col, foa.CountValues(path, _first=limit)
         )
 
         message = {

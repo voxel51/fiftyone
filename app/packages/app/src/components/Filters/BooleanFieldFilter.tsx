@@ -10,22 +10,22 @@ import { animated } from "react-spring";
 
 import * as selectors from "../../recoil/selectors";
 import BooleanFilter from "./BooleanFilter";
-import { hasNoneField, useExpand } from "./utils";
+import { noneCount, useExpand } from "./utils";
+import StringFilter from "./StringFilter";
 
-type BooleanFilter = {
+interface BooleanFilter {
   false: boolean;
   true: boolean;
   none: boolean;
-  _CLS: string;
-};
+  _CLS: "bool";
+}
 
 const getFilter = (get: GetRecoilValue, path: string): BooleanFilter => {
   return {
-    ...{
-      true: false,
-      false: false,
-      none: false,
-    },
+    _CLS: "bool",
+    true: false,
+    false: false,
+    none: false,
     ...get(selectors.filterStage(path)),
   };
 };
@@ -43,7 +43,6 @@ const setFilter = (
   const filter = {
     ...getFilter(get, path),
     [key]: value,
-    _CLS: "bool",
   };
   if (meetsDefault(filter)) {
     set(selectors.filterStage(path), null);
@@ -103,16 +102,17 @@ export const fieldIsFiltered = selectorFamily<
 
 const BooleanFieldFilter = ({ expanded, entry }) => {
   const [ref, props] = useExpand(expanded);
+  return null;
 
   return (
     <animated.div style={props}>
-      <BooleanFilter
-        name={"Boolean"}
+      <StringFilter
+        valueName={entry.path}
         color={entry.color}
-        hasNoneAtom={hasNoneField(entry.path)}
-        trueAtom={trueAtom(entry.path)}
-        falseAtom={falseAtom(entry.path)}
-        noneAtom={noneAtom(entry.path)}
+        selectedValuesAtom={selectedValuesAtom(entry.path)}
+        totalAtom={totalAtom(entry.path)}
+        noneCountAtom={noneCount(entry.path)}
+        path={entry.path}
         ref={ref}
       />
     </animated.div>

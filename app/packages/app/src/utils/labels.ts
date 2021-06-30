@@ -79,8 +79,8 @@ export const LABEL_LIST = {
 export const AGGS = {
   BOUNDS: "Bounds",
   COUNT: "Count",
+  COUNT_VALUES: "CountValues",
   DISTINCT: "Distinct",
-  DISTINCT_COUNT: "DistinctCount",
 };
 
 export const BOOLEAN_FIELD = "fiftyone.core.fields.BooleanField";

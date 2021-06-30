@@ -41,7 +41,7 @@ const NamedStringFilterHeader = styled.div`
   justify-content: space-between;
 `;
 
-const CHECKBOX_LIMIT = 15;
+const CHECKBOX_LIMIT = 20;
 
 interface ExcludeOptionProps {
   excludeAtom: RecoilState<boolean>;
@@ -76,9 +76,9 @@ const ExcludeOption = ({
 };
 
 interface WrapperProps {
-  results: string[];
+  results: [string, number][];
   selectedValuesAtom: RecoilState<string[]>;
-  excludeAtom: RecoilState<boolean>;
+  excludeAtom?: RecoilState<boolean>;
   name: string;
   valueName: string;
   color: string;
@@ -95,23 +95,26 @@ const Wrapper = ({
 }: WrapperProps) => {
   const [selected, setSelected] = useRecoilState(selectedValuesAtom);
   const selectedSet = new Set(selected);
-  const setExcluded = useSetRecoilState(excludeAtom);
-
-  let allValues = selected;
+  const setExcluded = excludeAtom ? useSetRecoilState(excludeAtom) : null;
+  const counts = Object.fromEntries(results);
+  let allValues: [string, number][] = selected.map<[string, number]>((value) =>
+    counts[value] ? [value, counts[value]] : [value, 0]
+  );
 
   if (count <= CHECKBOX_LIMIT) {
-    allValues = [...allValues, ...results];
+    allValues = [...allValues, ...results.filter(([v]) => !selectedSet.has(v))];
   }
 
   return (
     <>
-      {[...new Set(allValues)].sort().map((value) => (
+      {[...new Set(allValues)].sort().map(([value, count]) => (
         <Checkbox
           key={value}
           color={color}
           value={selectedSet.has(value)}
           name={value}
-          maxLen={31}
+          count={count}
+          maxLen={28 - String(count).length}
           setValue={(checked: boolean) => {
             if (checked) {
               selectedSet.add(value);
@@ -125,7 +128,7 @@ const Wrapper = ({
       {Boolean(selectedSet.size) && (
         <>
           <PopoutSectionTitle />
-          {count > 3 && (
+          {count > 3 && excludeAtom && (
             <ExcludeOption
               excludeAtom={excludeAtom}
               valueName={valueName}
@@ -162,14 +165,13 @@ const useOnSelect = (selectedAtom: RecoilState<string[]>, callbacks) => {
 };
 
 interface ResultsWrapperProps {
-  results: string[];
+  results: [string, number][];
   color: string;
   shown: boolean;
   onSelect: (value: string) => void;
   onMouseEnter: () => void;
   onMouseLeave: () => void;
   subCount: number;
-  alignRight?: boolean;
   active: string | null;
 }
 
@@ -182,7 +184,6 @@ const ResultsWrapper = ({
   onMouseLeave,
   subCount,
   active,
-  alignRight,
 }: ResultsWrapperProps) => {
   const theme = useTheme();
   return (
@@ -198,7 +199,6 @@ const ResultsWrapper = ({
               onSelect={onSelect}
               results={results}
               highlight={color}
-              alignRight={alignRight}
             />
           )}
           <PopoutSectionTitle />
@@ -226,11 +226,11 @@ const ResultsWrapper = ({
 interface Props {
   totalAtom: RecoilValueReadOnly<{
     count: number;
-    results: string[];
+    results: [string, number][];
   }>;
   selectedValuesAtom: RecoilState<string[]>;
-  excludeAtom: RecoilState<boolean>;
-  hasNoneAtom: RecoilValueReadOnly<boolean>;
+  excludeAtom?: RecoilState<boolean>;
+  noneCountAtom: RecoilValueReadOnly<number>;
   name?: string;
   valueName: string;
   color: string;
@@ -247,24 +247,26 @@ const StringFilter = React.memo(
         selectedValuesAtom,
         excludeAtom,
         totalAtom,
-        hasNoneAtom,
+        noneCountAtom,
         path,
       }: Props,
       ref
     ) => {
       const selected = useRecoilValue(selectedValuesAtom);
       const { count, results } = useRecoilValue(totalAtom);
-      const hasNone = useRecoilValue(hasNoneAtom);
+      const none = useRecoilValue(noneCountAtom);
       const [focused, setFocused] = useState(false);
       const [hovering, setHovering] = useState(false);
       const [search, setSearch] = useState("");
       const [active, setActive] = useState(undefined);
       const [subCount, setSubCount] = useState(null);
-      const [searchResults, setSearchResults] = useState<string[]>(null);
+      const [searchResults, setSearchResults] = useState<[string, number][]>(
+        null
+      );
       const currentPromise = useRef<
         Promise<{
           count: number;
-          results: string[];
+          results: [string, number][];
         }>
       >();
 
@@ -285,7 +287,7 @@ const StringFilter = React.memo(
         if (focused) {
           const promise = new Promise<{
             count: number;
-            results: string[];
+            results: [string, number][];
           }>((resolve) => {
             const listener = wrap(({ count, results }) => {
               socket.removeEventListener("message", listener);
@@ -293,7 +295,7 @@ const StringFilter = React.memo(
             });
             socket.addEventListener("message", listener);
             socket.send(
-              packageMessage("distinct", {
+              packageMessage("count_values", {
                 path,
                 search,
                 selected,
@@ -308,10 +310,9 @@ const StringFilter = React.memo(
             if (currentPromise.current !== promise) {
               return;
             }
-            if (hasNone) {
-              results.push(null);
+            if (none) {
+              results.push([null, none]);
               count++;
-              results.sort();
             }
             setSearchResults(results);
             setSubCount(count);
@@ -358,7 +359,7 @@ const StringFilter = React.memo(
                     if (active !== undefined) {
                       onSelect(active);
                     }
-                    if (results && results.includes(search)) {
+                    if (results && results.map(([v]) => v).includes(search)) {
                       onSelect(search);
                     }
                   }}
@@ -380,7 +381,6 @@ const StringFilter = React.memo(
                   }}
                   active={active}
                   subCount={subCount}
-                  alignRight={path === "filepath"}
                   onMouseEnter={() => setHovering(true)}
                   onMouseLeave={() => setHovering(false)}
                 />

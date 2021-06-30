@@ -24,9 +24,11 @@ export const ResultsContainer = styled.div`
 const ResultDiv = styled(ItemAction)`
   white-space: nowrap;
   overflow: hidden;
-  display: block;
+  display: flex;
   text-overflow: ellipsis;
   margin: 0;
+  justify-content: space-between;
+  flex-direction: row;
 `;
 
 const ScrollResultsContainer = styled.div`
@@ -49,40 +51,47 @@ const ScrollResultsContainer = styled.div`
 interface ResultProps {
   result: ResultValue;
   highlight: string;
-  active: boolean;
+  active: boolean | null;
   onClick: () => void;
   maxLen?: number;
 }
 
 const Result = React.memo(
-  ({ active, highlight, result, onClick, maxLen }: ResultProps) => {
+  ({
+    active,
+    highlight,
+    result: [value, count],
+    onClick,
+    maxLen,
+  }: ResultProps) => {
     const props = useHighlightHover(
       false,
       active ? active : null,
-      result === null ? highlight : null
+      value === null ? highlight : null
     );
 
-    const text = result === null ? "None" : result;
+    const text = value === null ? "None" : value;
 
     return (
       <ResultDiv
-        title={result === null ? "None" : result}
+        title={value === null ? "None" : value}
         {...props}
         onClick={onClick}
       >
-        {maxLen ? summarizeLongStr(text, maxLen, "middle") : text}
+        <span>{maxLen ? summarizeLongStr(text, maxLen, "middle") : text}</span>
+        <span>{count}</span>
       </ResultDiv>
     );
   }
 );
 
-type ResultValue = string | null;
+type ResultValue = [string | null, number];
 
 interface ResultsProps {
   results: ResultValue[];
   highlight: string;
-  onSelect: (result: ResultValue) => void;
-  active: ResultValue;
+  onSelect: (value: string | null) => void;
+  active: string | null;
   alignRight?: boolean;
 }
 
@@ -92,12 +101,12 @@ const Results = React.memo(
       <ScrollResultsContainer>
         {results.map((result) => (
           <Result
-            key={result}
+            key={result[0]}
             result={result}
             highlight={highlight}
-            onClick={() => onSelect(result)}
-            active={active === result}
-            maxLen={34}
+            onClick={() => onSelect(result[0])}
+            active={active === result[0]}
+            maxLen={32 - String(result[1]).length}
           />
         ))}
       </ScrollResultsContainer>

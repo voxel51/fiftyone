@@ -14,6 +14,7 @@ interface CheckboxProps {
   value: boolean;
   setValue: (value: boolean) => void;
   maxLen?: number;
+  count: number;
 }
 
 const StyledCheckboxContainer = styled.div`
@@ -35,10 +36,12 @@ const CheckboxName = styled.div`
   max-width: 100%;
   overflow: hidden;
   white-space: nowrap;
+  display: flex;
+  justify-content: space-between;
 `;
 
 const Checkbox = React.memo(
-  ({ color, name, value, setValue, maxLen = null }: CheckboxProps) => {
+  ({ color, name, value, setValue, maxLen = null, count }: CheckboxProps) => {
     const theme = useTheme();
     color = color ?? theme.brand;
     const props = useHighlightHover(false);
@@ -60,7 +63,10 @@ const Checkbox = React.memo(
             disableRipple={true}
           />
           <CheckboxName style={name === null ? { color: color } : {}}>
-            {maxLen ? summarizeLongStr(text, maxLen, "middle") : text}
+            <span>
+              {maxLen ? summarizeLongStr(text, maxLen, "middle") : text}
+            </span>
+            <span>{count}</span>
           </CheckboxName>
         </StyledCheckbox>
       </StyledCheckboxContainer>

@@ -263,7 +263,7 @@ class DatasetStatistics(object):
                 tags_path = "%s.tags" % path
                 aggregations.extend(
                     [
-                        foa.Distinct(label_path, _first=200),
+                        foa.CountValues(label_path, _first=200),
                         foa.Bounds(confidence_path),
                         foa.CountValues(tags_path),
                     ]
@@ -282,8 +282,13 @@ class DatasetStatistics(object):
 
                 if _meets_type(field, (fof.IntField, fof.FloatField)):
                     aggregations.append(foa.Bounds(field_name))
-                elif _meets_type(field, (fof.StringField, fof.ObjectIdField)):
-                    aggregations.append(foa.Distinct(field_name, _first=15))
+                elif _meets_type(
+                    field,
+                    (fof.BooleanField, fof.StringField, fof.ObjectIdField),
+                ):
+                    aggregations.append(
+                        foa.CountValues(field_name, _first=200)
+                    )
 
         return aggregations, exists_aggregations
 
