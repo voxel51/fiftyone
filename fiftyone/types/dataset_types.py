@@ -228,8 +228,24 @@ class ImageDirectory(UnlabeledImageDataset):
             <filename2>.<ext>
             ...
 
-    When reading datasets of this type, subfolders are recursively traversed,
-    and files with non-image MIME types are omitted.
+    where files with non-image MIME types are omitted.
+
+    By default, the dataset may contain nested subfolders of images, which are
+    recursively listed.
+
+    .. note::
+
+        See :class:`fiftyone.utils.data.importers.ImageDirectoryImporter` for
+        parameters that can be passed to methods like
+        :meth:`fiftyone.core.dataset.Dataset.from_dir` to customize the import
+        of datasets of this type.
+
+    .. note::
+
+        See :class:`fiftyone.utils.data.exporters.ImageDirectoryExporter` for
+        parameters that can be passed to methods like
+        :meth:`fiftyone.core.collections.SampleCollection.export`
+        to customize the export of datasets of this type.
     """
 
     def get_dataset_importer_cls(self):
@@ -253,8 +269,24 @@ class VideoDirectory(UnlabeledImageDataset):
             <filename2>.<ext>
             ...
 
-    When reading datasets of this type, subfolders are recursively traversed,
-    and files with non-video MIME types are omitted.
+    where files with non-video MIME types are omitted.
+
+    By default, the dataset may contain nested subfolders of videos, which are
+    recursively listed.
+
+    .. note::
+
+        See :class:`fiftyone.utils.data.importers.VideoDirectoryImporter` for
+        parameters that can be passed to methods like
+        :meth:`fiftyone.core.dataset.Dataset.from_dir` to customize the import
+        of datasets of this type.
+
+    .. note::
+
+        See :class:`fiftyone.utils.data.exporters.VideoDirectoryExporter` for
+        parameters that can be passed to methods like
+        :meth:`fiftyone.core.collections.SampleCollection.export`
+        to customize the export of datasets of this type.
     """
 
     def get_dataset_importer_cls(self):
@@ -302,6 +334,24 @@ class FiftyOneImageClassificationDataset(ImageClassificationDataset):
     the label strings.
 
     The target value in ``labels`` for unlabeled images is ``None``.
+
+    The UUIDs can also be relative paths like ``path/to/uuid``, in which case
+    the images in ``data/`` should be arranged in nested subfolders with the
+    corresponding names.
+
+    .. note::
+
+        See :class:`fiftyone.utils.data.importers.FiftyOneImageClassificationDatasetImporter`
+        for parameters that can be passed to methods like
+        :meth:`fiftyone.core.dataset.Dataset.from_dir` to customize the import
+        of datasets of this type.
+
+    .. note::
+
+        See :class:`fiftyone.utils.data.exporters.FiftyOneImageClassificationDatasetExporter`
+        for parameters that can be passed to methods like
+        :meth:`fiftyone.core.collections.SampleCollection.export`
+        to customize the export of datasets of this type.
     """
 
     def get_dataset_importer_cls(self):
@@ -333,6 +383,22 @@ class ImageClassificationDirectoryTree(ImageClassificationDataset):
             ...
 
     Unlabeled images are stored in a subdirectory named ``_unlabeled``.
+
+    Each class folder may contain nested subfolders of images.
+
+    .. note::
+
+        See :class:`fiftyone.utils.data.importers.ImageClassificationDirectoryTreeImporter`
+        for parameters that can be passed to methods like
+        :meth:`fiftyone.core.dataset.Dataset.from_dir` to customize the import
+        of datasets of this type.
+
+    .. note::
+
+        See :class:`fiftyone.utils.data.exporters.ImageClassificationDirectoryTreeExporter`
+        for parameters that can be passed to methods like
+        :meth:`fiftyone.core.collections.SampleCollection.export`
+        to customize the export of datasets of this type.
     """
 
     def get_dataset_importer_cls(self):
@@ -363,6 +429,22 @@ class VideoClassificationDirectoryTree(VideoClassificationDataset):
             ...
 
     Unlabeled videos are stored in a subdirectory named ``_unlabeled``.
+
+    Each class folder may contain nested subfolders of videos.
+
+    .. note::
+
+        See :class:`fiftyone.utils.data.importers.VideoClassificationDirectoryTreeImporter`
+        for parameters that can be passed to methods like
+        :meth:`fiftyone.core.dataset.Dataset.from_dir` to customize the import
+        of datasets of this type.
+
+    .. note::
+
+        See :class:`fiftyone.utils.data.exporters.VideoClassificationDirectoryTreeExporter`
+        for parameters that can be passed to methods like
+        :meth:`fiftyone.core.collections.SampleCollection.export`
+        to customize the export of datasets of this type.
     """
 
     def get_dataset_importer_cls(self):
@@ -406,6 +488,20 @@ class TFImageClassificationDataset(ImageClassificationDataset):
         }
 
     For unlabeled samples, the TFRecords do not contain ``label`` features.
+
+    .. note::
+
+        See :class:`fiftyone.utils.tf.TFImageClassificationDatasetImporter`
+        for parameters that can be passed to methods like
+        :meth:`fiftyone.core.dataset.Dataset.from_dir` to customize the import
+        of datasets of this type.
+
+    .. note::
+
+        See :class:`fiftyone.utils.tf.TFImageClassificationDatasetExporter`
+        for parameters that can be passed to methods like
+        :meth:`fiftyone.core.collections.SampleCollection.export`
+        to customize the export of datasets of this type.
     """
 
     def get_dataset_importer_cls(self):
@@ -471,6 +567,24 @@ class FiftyOneImageDetectionDataset(ImageDetectionDataset):
     the label strings.
 
     The target value in ``labels`` for unlabeled images is ``None``.
+
+    The UUIDs can also be relative paths like ``path/to/uuid``, in which case
+    the images in ``data/`` should be arranged in nested subfolders with the
+    corresponding names.
+
+    .. note::
+
+        See :class:`fiftyone.utils.data.importers.FiftyOneImageDetectionDatasetImporter`
+        for parameters that can be passed to methods like
+        :meth:`fiftyone.core.dataset.Dataset.from_dir` to customize the import
+        of datasets of this type.
+
+    .. note::
+
+        See :class:`fiftyone.utils.data.exporters.FiftyOneImageDetectionDatasetExporter`
+        for parameters that can be passed to methods like
+        :meth:`fiftyone.core.collections.SampleCollection.export`
+        to customize the export of datasets of this type.
     """
 
     def get_dataset_importer_cls(self):
@@ -554,6 +668,29 @@ class COCODetectionDataset(ImageDetectionDataset):
 
     For unlabeled datasets, ``labels.json`` does not contain an ``annotations``
     field.
+
+    The ``file_name`` attribute of the labels file encodes the location of the
+    corresponding images, which can be any of the following:
+
+    -   the filename of an image in the ``data/`` folder
+    -   a relative path like ``data/sub/folder/filename.ext`` specifying the
+        relative path to the image in a nested subfolder of ``data/``
+    -   an absolute path to an image, which may or may not be in the ``data/``
+        folder
+
+    .. note::
+
+        See :class:`fiftyone.utils.coco.COCODetectionDatasetImporter` for
+        parameters that can be passed to methods like
+        :meth:`fiftyone.core.dataset.Dataset.from_dir` to customize the import
+        of datasets of this type.
+
+    .. note::
+
+        See :class:`fiftyone.utils.coco.COCODetectionDatasetExporter` for
+        parameters that can be passed to methods like
+        :meth:`fiftyone.core.collections.SampleCollection.export`
+        to customize the export of datasets of this type.
     """
 
     def get_dataset_importer_cls(self):
@@ -631,6 +768,23 @@ class VOCDetectionDataset(ImageDetectionDataset):
     attributes (like ``pose`` in the above example) are left empty.
 
     Unlabeled images have no corresponding file in ``labels/``.
+
+    The ``data/`` and ``labels/`` files may contain nested subfolders of
+    parallelly organized images and masks.
+
+    .. note::
+
+        See :class:`fiftyone.utils.voc.VOCDetectionDatasetImporter` for
+        parameters that can be passed to methods like
+        :meth:`fiftyone.core.dataset.Dataset.from_dir` to customize the import
+        of datasets of this type.
+
+    .. note::
+
+        See :class:`fiftyone.utils.voc.VOCDetectionDatasetExporter` for
+        parameters that can be passed to methods like
+        :meth:`fiftyone.core.collections.SampleCollection.export`
+        to customize the export of datasets of this type.
     """
 
     def get_dataset_importer_cls(self):
@@ -712,6 +866,23 @@ class KITTIDetectionDataset(ImageDetectionDataset):
     columns may be omitted.
 
     Unlabeled images have no corresponding file in ``labels/``.
+
+    The ``data/`` and ``labels/`` files may contain nested subfolders of
+    parallelly organized images and masks.
+
+    .. note::
+
+        See :class:`fiftyone.utils.kitti.KITTIDetectionDatasetImporter` for
+        parameters that can be passed to methods like
+        :meth:`fiftyone.core.dataset.Dataset.from_dir` to customize the import
+        of datasets of this type.
+
+    .. note::
+
+        See :class:`fiftyone.utils.kitti.KITTIDetectionDatasetExporter` for
+        parameters that can be passed to methods like
+        :meth:`fiftyone.core.collections.SampleCollection.export`
+        to customize the export of datasets of this type.
     """
 
     def get_dataset_importer_cls(self):
@@ -773,6 +944,13 @@ class OpenImagesV6Dataset(ImageDetectionDataset):
     See
     `this page <https://storage.googleapis.com/openimages/web/download.html>`_
     for a full specification of this dataset format.
+
+    .. note::
+
+        See :class:`fiftyone.utils.openimages.OpenImagesV6DatasetImporter` for
+        parameters that can be passed to methods like
+        :meth:`fiftyone.core.dataset.Dataset.from_dir` to customize the import
+        of datasets of this type.
     """
 
     def get_dataset_importer_cls(self):
@@ -809,7 +987,12 @@ class YOLOv4Dataset(ImageDetectionDataset):
         data/<uuid2>.<ext>
         ...
 
-    and the TXT files in ``data/`` are space-delimited files where each row
+    The image paths in ``images.txt`` can be specified as either relative (to
+    the location of file) or as absolute paths. Alternatively, this file can be
+    omitted, in which case the ``data/`` directory is listed to determine the
+    available images.
+
+    The TXT files in ``data/`` are space-delimited files where each row
     corresponds to an object in the image of the same name, in the following
     format::
 
@@ -820,6 +1003,22 @@ class YOLOv4Dataset(ImageDetectionDataset):
     relative coordinates in ``[0, 1] x [0, 1]``.
 
     Unlabeled images have no corresponding TXT file in ``data/``.
+
+    The ``data/`` folder may contain nested subfolders.
+
+    .. note::
+
+        See :class:`fiftyone.utils.yolo.YOLOv4DatasetImporter` for parameters
+        that can be passed to methods like
+        :meth:`fiftyone.core.dataset.Dataset.from_dir` to customize the import
+        of datasets of this type.
+
+    .. note::
+
+        See :class:`fiftyone.utils.yolo.YOLOv4DatasetExporter` for parameters
+        that can be passed to methods like
+        :meth:`fiftyone.core.collections.SampleCollection.export`
+        to customize the export of datasets of this type.
     """
 
     def get_dataset_importer_cls(self):
@@ -872,7 +1071,14 @@ class YOLOv5Dataset(ImageDetectionDataset):
         # class names
         names: ["list", "of", "classes", ...]
 
-    and the TXT files in ``labels/`` are space-delimited files where each row
+    See `this page <https://docs.ultralytics.com/tutorials/train-custom-datasets>`_
+    for a full description of the possible format of ``dataset.yaml``.
+    In particular, the dataset may contain one or more splits with arbitrary
+    names, as the specific split being imported or exported is specified by the
+    ``split`` argument to :class:`fiftyone.utils.yolo.YOLOv5DatasetImporter`
+    and :class:`fiftyone.utils.yolo.YOLOv5DatasetExporter`, respectively.
+
+    The TXT files in ``labels/`` are space-delimited files where each row
     corresponds to an object in the image of the same name, in the following
     format::
 
@@ -883,6 +1089,23 @@ class YOLOv5Dataset(ImageDetectionDataset):
     relative coordinates in ``[0, 1] x [0, 1]``.
 
     Unlabeled images have no corresponding TXT file in ``labels/``.
+
+    The image and labels directories for a given split may contain nested
+    subfolders of parallelly organized images and labels.
+
+    .. note::
+
+        See :class:`fiftyone.utils.yolo.YOLOv5DatasetImporter` for parameters
+        that can be passed to methods like
+        :meth:`fiftyone.core.dataset.Dataset.from_dir` to customize the import
+        of datasets of this type.
+
+    .. note::
+
+        See :class:`fiftyone.utils.yolo.YOLOv5DatasetExporter` for parameters
+        that can be passed to methods like
+        :meth:`fiftyone.core.collections.SampleCollection.export`
+        to customize the export of datasets of this type.
     """
 
     def get_dataset_importer_cls(self):
@@ -939,6 +1162,20 @@ class TFObjectDetectionDataset(ImageDetectionDataset):
 
     The TFRecords for unlabeled samples do not contain ``image/object/*``
     features.
+
+    .. note::
+
+        See :class:`fiftyone.utils.tf.TFObjectDetectionDatasetImporter` for
+        parameters that can be passed to methods like
+        :meth:`fiftyone.core.dataset.Dataset.from_dir` to customize the import
+        of datasets of this type.
+
+    .. note::
+
+        See :class:`fiftyone.utils.tf.TFObjectDetectionDatasetExporter` for
+        parameters that can be passed to methods like
+        :meth:`fiftyone.core.collections.SampleCollection.export`
+        to customize the export of datasets of this type.
     """
 
     def get_dataset_importer_cls(self):
@@ -971,6 +1208,23 @@ class ImageSegmentationDirectory(ImageSegmentationDataset):
     where ``labels/`` contains the semantic segmentations stored as images.
 
     Unlabeled images have no corresponding file in ``labels/``.
+
+    The ``data/`` and ``labels/`` files may contain nested subfolders of
+    parallelly organized images and masks.
+
+    .. note::
+
+        See :class:`fiftyone.utils.data.importers.ImageSegmentationDirectoryImporter`
+        for parameters that can be passed to methods like
+        :meth:`fiftyone.core.dataset.Dataset.from_dir` to customize the import
+        of datasets of this type.
+
+    .. note::
+
+        See :class:`fiftyone.utils.data.exporters.ImageSegmentationDirectoryExporter`
+        for parameters that can be passed to methods like
+        :meth:`fiftyone.core.collections.SampleCollection.export`
+        to customize the export of datasets of this type.
     """
 
     def get_dataset_importer_cls(self):
@@ -1080,6 +1334,29 @@ class CVATImageDataset(ImageLabelsDataset):
         </annotations>
 
     Unlabeled images have no corresponding ``image`` tag in ``labels.xml``.
+
+    The ``name`` field of the ``<image>`` tags in the labels file encodes the
+    location of the corresponding images, which can be any of the following:
+
+    -   the filename of an image in the ``data/`` folder
+    -   a relative path like ``data/sub/folder/filename.ext`` specifying the
+        relative path to the image in a nested subfolder of ``data/``
+    -   an absolute path to an image, which may or may not be in the ``data/``
+        folder
+
+    .. note::
+
+        See :class:`fiftyone.utils.cvat.CVATImageDatasetImporter` for
+        parameters that can be passed to methods like
+        :meth:`fiftyone.core.dataset.Dataset.from_dir` to customize the import
+        of datasets of this type.
+
+    .. note::
+
+        See :class:`fiftyone.utils.cvat.CVATImageDatasetExporter` for
+        parameters that can be passed to methods like
+        :meth:`fiftyone.core.collections.SampleCollection.export`
+        to customize the export of datasets of this type.
     """
 
     def get_dataset_importer_cls(self):
@@ -1201,6 +1478,23 @@ class CVATVideoDataset(VideoLabelsDataset):
         </annotations>
 
     Unlabeled videos have no corresponding XML file in ``labels/``.
+
+    The ``data/`` and ``labels/`` files may contain nested subfolders of
+    parallelly organized images and labels.
+
+    .. note::
+
+        See :class:`fiftyone.utils.cvat.CVATVideoDatasetImporter` for
+        parameters that can be passed to methods like
+        :meth:`fiftyone.core.dataset.Dataset.from_dir` to customize the import
+        of datasets of this type.
+
+    .. note::
+
+        See :class:`fiftyone.utils.cvat.CVATVideoDatasetExporter` for
+        parameters that can be passed to methods like
+        :meth:`fiftyone.core.collections.SampleCollection.export`
+        to customize the export of datasets of this type.
     """
 
     def get_dataset_importer_cls(self):
@@ -1257,6 +1551,20 @@ class FiftyOneImageLabelsDataset(ImageLabelsDataset):
 
     For unlabeled images, an empty ``eta.core.image.ImageLabels`` file is
     stored.
+
+    .. note::
+
+        See :class:`fiftyone.utils.data.importers.FiftyOneImageLabelsDatasetImporter`
+        for parameters that can be passed to methods like
+        :meth:`fiftyone.core.dataset.Dataset.from_dir` to customize the import
+        of datasets of this type.
+
+    .. note::
+
+        See :class:`fiftyone.utils.data.importers.FiftyOneImageLabelsDatasetExporter`
+        for parameters that can be passed to methods like
+        :meth:`fiftyone.core.collections.SampleCollection.export`
+        to customize the export of datasets of this type.
     """
 
     def get_dataset_importer_cls(self):
@@ -1363,6 +1671,29 @@ class BDDDataset(ImageLabelsDataset):
         ]
 
     Unlabeled images have no corresponding entry in ``labels.json``.
+
+    The ``name`` attribute of the labels file encodes the location of the
+    corresponding images, which can be any of the following:
+
+    -   the filename of an image in the ``data/`` folder
+    -   a relative path like ``data/sub/folder/filename.ext`` specifying the
+        relative path to the image in a nested subfolder of ``data/``
+    -   an absolute path to an image, which may or may not be in the ``data/``
+        folder
+
+    .. note::
+
+        See :class:`fiftyone.utils.bdd.BDDDatasetImporter` for parameters that
+        can be passed to methods like
+        :meth:`fiftyone.core.dataset.Dataset.from_dir` to customize the import
+        of datasets of this type.
+
+    .. note::
+
+        See :class:`fiftyone.utils.bdd.BDDDatasetExporter` for parameters that
+        can be passed to methods like
+        :meth:`fiftyone.core.collections.SampleCollection.export`
+        to customize the export of datasets of this type.
     """
 
     def get_dataset_importer_cls(self):
@@ -1428,14 +1759,33 @@ class GeoJSONDataset(LabeledDataset):
         }
 
     where the ``geometry`` field may contain any valid GeoJSON geometry object,
-    and the ``filename`` property encodes the name of the corresponding media
-    in the ``data/`` folder. The ``filename`` property can also be an absolute
-    path, which may or may not be in the ``data/`` folder.
+    and the ``filename`` property encodes the name of the corresponding media,
+    which can be any of the following:
+
+    -   the filename of an image in the ``data/`` folder
+    -   a relative path like ``data/sub/folder/filename.ext`` specifying the
+        relative path to the image in a nested subfolder of ``data/``
+    -   an absolute path to an image, which may or may not be in the ``data/``
+        folder
 
     Samples with no location data will have a null ``geometry`` field.
 
     The ``properties`` field of each feature can contain additional labels that
     can be imported/exported when working with datasets of this type.
+
+    .. note::
+
+        See :class:`fiftyone.utils.geojson.GeoJSONDatasetImporter` for
+        parameters that can be passed to methods like
+        :meth:`fiftyone.core.dataset.Dataset.from_dir` to customize the import
+        of datasets of this type.
+
+    .. note::
+
+        See :class:`fiftyone.utils.geojson.GeoJSONDatasetExporter` for
+        parameters that can be passed to methods like
+        :meth:`fiftyone.core.collections.SampleCollection.export`
+        to customize the export of datasets of this type.
     """
 
     def get_dataset_importer_cls(self):
@@ -1492,6 +1842,20 @@ class FiftyOneVideoLabelsDataset(VideoLabelsDataset):
 
     For unlabeled videos, an empty ``eta.core.image.VideoLabels`` file is
     stored.
+
+    .. note::
+
+        See :class:`fiftyone.utils.data.importers.FiftyOneVideoLabelsDatasetImporter`
+        for parameters that can be passed to methods like
+        :meth:`fiftyone.core.dataset.Dataset.from_dir` to customize the import
+        of datasets of this type.
+
+    .. note::
+
+        See :class:`fiftyone.utils.data.exporters.FiftyOneVideoLabelsDatasetExporter`
+        for parameters that can be passed to methods like
+        :meth:`fiftyone.core.collections.SampleCollection.export`
+        to customize the export of datasets of this type.
     """
 
     def get_dataset_importer_cls(self):
@@ -1538,6 +1902,20 @@ class FiftyOneDataset(Dataset):
     Video datasets have an additional ``frames.json`` file that contains a
     serialized representation of the frame labels for each video in the
     dataset.
+
+    .. note::
+
+        See :class:`fiftyone.utils.data.importers.FiftyOneDatasetImporter` for
+        parameters that can be passed to methods like
+        :meth:`fiftyone.core.dataset.Dataset.from_dir` to customize the import
+        of datasets of this type.
+
+    .. note::
+
+        See :class:`fiftyone.utils.data.exporters.FiftyOneDatasetExporter` for
+        parameters that can be passed to methods like
+        :meth:`fiftyone.core.collections.SampleCollection.export`
+        to customize the export of datasets of this type.
     """
 
     def get_dataset_importer_cls(self):
@@ -1584,6 +1962,20 @@ class LegacyFiftyOneDataset(Dataset):
     Video datasets have an additional ``frames/`` directory that contains a
     serialized representation of the frame labels for each video in the
     dataset.
+
+    .. note::
+
+        See :class:`fiftyone.utils.data.importers.LegacyFiftyOneDatasetImporter` for
+        parameters that can be passed to methods like
+        :meth:`fiftyone.core.dataset.Dataset.from_dir` to customize the import
+        of datasets of this type.
+
+    .. note::
+
+        See :class:`fiftyone.utils.data.exporters.LegacyFiftyOneDatasetExporter` for
+        parameters that can be passed to methods like
+        :meth:`fiftyone.core.collections.SampleCollection.export`
+        to customize the export of datasets of this type.
     """
 
     def get_dataset_importer_cls(self):
