@@ -103,38 +103,32 @@ class YOLOv4DatasetImporter(
         self.images_path = images_path
         self.objects_path = objects_path
 
-        self._classes = None
         self._info = None
-        self._image_paths_map = None
+        self._classes = None
+        self._filepaths = None
         self._labels_paths_map = None
-        self._uuids = None
-        self._iter_uuids = None
+        self._iter_filepaths = None
         self._num_samples = None
 
     def __iter__(self):
-        self._iter_uuids = iter(self._uuids)
+        self._iter_filepaths = iter(self._filepaths)
         return self
 
     def __len__(self):
         return self._num_samples
 
     def __next__(self):
-        uuid = next(self._iter_uuids)
+        filepath = next(self._iter_filepaths)
 
-        try:
-            image_path = self._image_paths_map[uuid]
-        except KeyError:
-            raise ValueError("No image found for sample '%s'" % uuid)
-
-        labels_path = self._labels_paths_map.get(uuid, None)
+        labels_path = self._labels_paths_map.get(filepath, None)
         if labels_path:
             # Labeled image
-            detections = load_yolo_annotations(labels_path, self._classes)
+            label = load_yolo_annotations(labels_path, self._classes)
         else:
             # Unlabeled image
-            detections = None
+            label = None
 
-        return image_path, None, detections
+        return filepath, None, label
 
     @property
     def has_dataset_info(self):
@@ -152,13 +146,12 @@ class YOLOv4DatasetImporter(
         if self.images_path is not None and os.path.exists(self.images_path):
             root_dir = os.path.dirname(self.images_path)
 
-            image_paths_map = {}
+            image_paths = []
             for path in _read_file_lines(self.images_path):
-                uuid = os.path.splitext(os.path.basename(path))[0]
-                if os.path.isabs(path):
-                    image_paths_map[uuid] = path
-                else:
-                    image_paths_map[uuid] = os.path.join(root_dir, path)
+                if not os.path.isabs(path):
+                    path = os.path.join(root_dir, path)
+
+                image_paths.append(path)
         else:
             logger.warning(
                 "Images file '%s' not found. Listing data directory '%s' "
@@ -167,22 +160,19 @@ class YOLOv4DatasetImporter(
                 self.data_path,
             )
 
-            image_paths_map = {
-                os.path.splitext(p)[0]: os.path.join(self.data_path, p)
-                for p in etau.list_files(self.data_path)
+            image_paths = [
+                p
+                for p in etau.list_files(
+                    self.data_path, abs_paths=True, recursive=True
+                )
                 if not p.endswith(".txt")
-            }
-
-        uuids = sorted(image_paths_map.keys())
+            ]
 
         labels_paths_map = {}
-        for uuid, image_path in image_paths_map.items():
+        for image_path in image_paths:
             labels_path = os.path.splitext(image_path)[0] + ".txt"
             if os.path.exists(labels_path):
-                labels_paths_map[uuid] = labels_path
-
-        self._image_paths_map = image_paths_map
-        self._labels_paths_map = labels_paths_map
+                labels_paths_map[image_path] = labels_path
 
         if self.objects_path is not None and os.path.exists(self.objects_path):
             classes = _read_file_lines(self.objects_path)
@@ -193,10 +183,11 @@ class YOLOv4DatasetImporter(
         if classes is not None:
             info["classes"] = classes
 
-        self._classes = classes
         self._info = info
-        self._uuids = self._preprocess_list(uuids)
-        self._num_samples = len(self._uuids)
+        self._classes = classes
+        self._filepaths = self._preprocess_list(sorted(image_paths))
+        self._labels_paths_map = labels_paths_map
+        self._num_samples = len(self._filepaths)
 
     def get_dataset_info(self):
         return self._info
@@ -255,38 +246,32 @@ class YOLOv5DatasetImporter(
         self.yaml_path = yaml_path
         self.split = split
 
-        self._classes = None
         self._info = None
-        self._image_paths_map = None
+        self._classes = None
+        self._filepaths = None
         self._labels_paths_map = None
-        self._uuids = None
-        self._iter_uuids = None
+        self._iter_filepaths = None
         self._num_samples = None
 
     def __iter__(self):
-        self._iter_uuids = iter(self._uuids)
+        self._iter_filepaths = iter(self._filepaths)
         return self
 
     def __len__(self):
         return self._num_samples
 
     def __next__(self):
-        uuid = next(self._iter_uuids)
+        filepath = next(self._iter_filepaths)
 
-        try:
-            image_path = self._image_paths_map[uuid]
-        except KeyError:
-            raise ValueError("No image found for sample '%s'" % uuid)
-
-        labels_path = self._labels_paths_map.get(uuid, None)
+        labels_path = self._labels_paths_map.get(filepath, None)
         if labels_path:
             # Labeled image
-            detections = load_yolo_annotations(labels_path, self._classes)
+            label = load_yolo_annotations(labels_path, self._classes)
         else:
             # Unlabeled image
-            detections = None
+            label = None
 
-        return image_path, None, detections
+        return filepath, None, label
 
     @property
     def has_dataset_info(self):
@@ -324,31 +309,25 @@ class YOLOv5DatasetImporter(
             image_paths = []
             for data_dir in data_dirs:
                 data_dir = _parse_yolo_v5_data_path(data_dir, self.yaml_path)
-                image_paths.extend(etau.list_files(data_dir, abs_paths=True))
-
-        image_paths_map = {
-            os.path.splitext(os.path.basename(p))[0]: p for p in image_paths
-        }
-
-        uuids = sorted(image_paths_map.keys())
+                image_paths.extend(
+                    etau.list_files(data_dir, abs_paths=True, recursive=True)
+                )
 
         labels_paths_map = {}
-        for uuid, image_path in image_paths_map.items():
+        for image_path in image_paths:
             labels_path = _get_yolo_v5_labels_path(image_path)
             if os.path.exists(labels_path):
-                labels_paths_map[uuid] = labels_path
-
-        self._image_paths_map = image_paths_map
-        self._labels_paths_map = labels_paths_map
+                labels_paths_map[image_path] = labels_path
 
         info = {}
         if classes is not None:
             info["classes"] = classes
 
-        self._classes = classes
         self._info = info
-        self._uuids = self._preprocess_list(uuids)
-        self._num_samples = len(self._uuids)
+        self._classes = classes
+        self._labels_paths_map = labels_paths_map
+        self._filepaths = self._preprocess_list(sorted(image_paths))
+        self._num_samples = len(self._filepaths)
 
     def get_dataset_info(self):
         return self._info
