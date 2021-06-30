@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import { useRecoilCallback, useRecoilValue } from "recoil";
 import styled from "styled-components";
 import { animated, useSpring } from "react-spring";
@@ -15,6 +15,7 @@ import { useTheme } from "../utils/hooks";
 import { useSetModal } from "../recoil/utils";
 import { VALID_CLASS_TYPES, VALID_LIST_TYPES } from "../utils/labels";
 import { prettify } from "../utils/generic";
+import { VideoLooker } from "@fiftyone/looker";
 
 const SampleDiv = styled.div`
   position: relative;
@@ -236,6 +237,7 @@ const Selector = React.memo(
 const Sample = ({ sampleId }: { sampleId: string }) => {
   const [hovering, setHovering] = useState(false);
   const isSelected = useRecoilValue(atoms.isSelectedSample(sampleId));
+  const lookerRef = useRef<VideoLooker>();
 
   const selectorSpring = useSpring({
     opacity: hovering || isSelected ? 1 : 0,
@@ -251,6 +253,9 @@ const Sample = ({ sampleId }: { sampleId: string }) => {
       if (hasSelected) {
         selectSample(event);
       } else {
+        lookerRef.current &&
+          lookerRef.current.pause &&
+          lookerRef.current.pause();
         setModal(sampleId);
       }
     },
@@ -258,28 +263,23 @@ const Sample = ({ sampleId }: { sampleId: string }) => {
   );
 
   return (
-    <SampleDiv className="sample">
-      <div
+    <SampleDiv
+      className="sample"
+      onMouseEnter={() => setHovering(true)}
+      onMouseLeave={() => setHovering(false)}
+    >
+      <Selector key={sampleId} sampleId={sampleId} spring={selectorSpring} />
+      <SampleInfo sampleId={sampleId} />
+      <Looker
+        onClick={onClick}
         style={{
-          position: "relative",
-          width: "100%",
-          height: "100%",
+          position: "absolute",
+          cursor: "pointer",
         }}
-        onMouseEnter={() => setHovering(true)}
-        onMouseLeave={() => setHovering(false)}
-      >
-        <Selector key={sampleId} sampleId={sampleId} spring={selectorSpring} />
-        <SampleInfo sampleId={sampleId} />
-        <Looker
-          onClick={onClick}
-          style={{
-            position: "absolute",
-            cursor: "pointer",
-          }}
-          sampleId={sampleId}
-          modal={false}
-        />
-      </div>
+        sampleId={sampleId}
+        modal={false}
+        lookerRef={lookerRef}
+      />
     </SampleDiv>
   );
 };

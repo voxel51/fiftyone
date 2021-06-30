@@ -66,12 +66,13 @@ export abstract class Looker<
   protected lookerElement: LookerElement<State>;
   private resizeObserver: ResizeObserver;
   private imageSource: CanvasImageSource;
+  private readonly canvas: HTMLCanvasElement;
+  private ctx: CanvasRenderingContext2D;
 
   protected currentOverlays: Overlay<State>[];
   protected pluckedOverlays: Overlay<State>[];
   protected sample: Sample;
   protected state: State;
-  protected readonly canvas: HTMLCanvasElement;
   protected readonly updater: StateUpdate<State>;
 
   constructor(
@@ -88,6 +89,7 @@ export abstract class Looker<
     this.currentOverlays = [];
     this.lookerElement = this.getElements();
     this.canvas = this.lookerElement.children[1].element as HTMLCanvasElement;
+    this.ctx = this.canvas.getContext("2d");
     this.imageSource = this.lookerElement.children[0]
       .element as CanvasImageSource;
     this.resizeObserver = new ResizeObserver(() =>
@@ -127,13 +129,11 @@ export abstract class Looker<
       postUpdate && postUpdate(this.state, this.currentOverlays);
       this.lookerElement.render(this.state as Readonly<State>);
 
-      if (!this.state.loaded) {
+      if (!this.state.loaded || this.imageSource.seeking) {
         return;
       }
 
-      const ctx = this.canvas.getContext("2d") as CanvasRenderingContext2D;
-      ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-
+      const ctx = this.ctx;
       ctx.lineWidth = this.state.strokeWidth;
       ctx.font = `bold ${this.state.fontSize.toFixed(2)}px Palanquin`;
       ctx.textAlign = "left";

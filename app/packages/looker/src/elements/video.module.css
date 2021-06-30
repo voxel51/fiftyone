@@ -81,6 +81,19 @@ input[type="range"].lookerSeekBar::-webkit-slider-runnable-track {
   );
 }
 
+input[type="range"].lookerSeekBar::-moz-range-track {
+  width: 100%;
+  background: linear-gradient(
+    to right,
+    rgb(225, 100, 40) 0%,
+    rgb(225, 100, 40) var(--progress, 0%),
+    rgb(138, 138, 138) var(--progress, 0%),
+    rgb(138, 138, 138) var(--buffer-progress, 0%),
+    rgb(238, 238, 238) var(--buffer-progress, 0%),
+    rgb(238, 238, 238) 100%
+  );
+}
+
 .lookerVolume > input[type="range"]::-webkit-slider-runnable-track {
   width: 45px;
   background: linear-gradient(
@@ -92,7 +105,29 @@ input[type="range"].lookerSeekBar::-webkit-slider-runnable-track {
   );
 }
 
+.lookerVolume > input[type="range"]::-moz-range-track {
+  width: 45px;
+  background: linear-gradient(
+    to right,
+    rgb(225, 100, 40) 0%,
+    rgb(225, 100, 40) var(--volume, 0%),
+    rgb(238, 238, 238) var(--volume, 0%),
+    rgb(238, 238, 238) 100%
+  );
+}
+
 .lookerPlaybackRate > input[type="range"]::-webkit-slider-runnable-track {
+  width: 45px;
+  background: linear-gradient(
+    to right,
+    rgb(225, 100, 40) 0%,
+    rgb(225, 100, 40) var(--playback, 0%),
+    rgb(238, 238, 238) var(--playback, 0%),
+    rgb(238, 238, 238) 100%
+  );
+}
+
+.lookerPlaybackRate > input[type="range"]::-moz-range-track {
   width: 45px;
   background: linear-gradient(
     to right,
