@@ -120,7 +120,7 @@ For example, you can draw an annotated version of an image sample with
     # Render the annotated image
     foua.draw_labeled_image(sample, outpath)
 
-.. image:: ../images/draw_labels_example1.jpg
+.. image:: /images/draw_labels_example1.jpg
    :alt: image-annotated.jpg
    :align: center
 
@@ -161,6 +161,6 @@ predictions:
     # Render the annotated image
     foua.draw_labeled_image(sample, outpath, annotation_config=annotation_config)
 
-.. image:: ../images/draw_labels_example2.jpg
+.. image:: /images/draw_labels_example2.jpg
    :alt: image-annotated.jpg
    :align: center

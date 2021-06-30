@@ -45,16 +45,41 @@ def export_samples(
     samples,
     export_dir=None,
     dataset_type=None,
+    data_path=None,
+    labels_path=None,
+    export_media=None,
     dataset_exporter=None,
     label_field_or_dict=None,
     frame_labels_field_or_dict=None,
     num_samples=None,
-    **kwargs
+    **kwargs,
 ):
-    """Exports the given samples to disk as a dataset in the specified format.
+    """Exports the given samples to disk.
 
-    Provide either ``export_dir`` and ``dataset_type`` or ``dataset_exporter``
-    to perform the export.
+    You can perform exports with this method via the following basic patterns:
+
+    (a) Provide ``export_dir`` and ``dataset_type`` to export the content to a
+        directory in the default layout for the specified format, as documented
+        in :ref:`this page <exporting-datasets>`
+
+    (b) Provide ``dataset_type`` along with ``data_path``, ``labels_path``,
+        and/or ``export_media`` to directly specify where to export the source
+        media and/or labels (if applicable) in your desired format. This syntax
+        provides the flexibility to, for example, perform workflows like
+        labels-only exports
+
+    (c) Provide a ``dataset_exporter`` to which to feed samples to perform a
+        fully-customized export
+
+    In all workflows, the remaining parameters of this method can be provided
+    to further configure the export.
+
+    See :ref:`this page <exporting-datasets>` for more information about the
+    available export formats and examples of using this method.
+
+    See :ref:`this guide <custom-dataset-exporter>` for more details about
+    exporting datasets in custom formats by defining your own
+    :class:`fiftyone.utils.data.exporters.DatasetExporter`.
 
     This method will automatically coerce the data to match the requested
     export in the following cases:
@@ -88,9 +113,63 @@ def export_samples(
             format ``dataset_type``
         dataset_type (None): the :class:`fiftyone.types.dataset_types.Dataset`
             type to write
-        dataset_exporter (None): a
-            :class:`fiftyone.utils.data.exporters.DatasetExporter` to use to
-            write the dataset
+        data_path (None): an optional parameter that enables explicit control
+            over the location of the exported media for certain export formats.
+            Can be any of the following:
+
+            -   a folder name like ``"data"`` or ``"data/"`` specifying a
+                subfolder of ``export_dir`` in which to export the media
+            -   an absolute directory path in which to export the media. In
+                this case, the ``export_dir`` has no effect on the location of
+                the data
+            -   a filename like ``"data.json"`` specifying the filename of a
+                JSON manifest file in ``export_dir`` generated when
+                ``export_media`` is ``"manifest"``
+            -   an absolute filepath specifying the location to write the JSON
+                manifest file when ``export_media`` is ``"manifest"``. In this
+                case, ``export_dir`` has no effect on the location of the data
+
+            If None, a default value of this parameter will be chosen based on
+            the value of the ``export_media`` parameter. Note that this
+            parameter is not applicable to certain export formats such as
+            binary types like TF records
+        labels_path (None): an optional parameter that enables explicit control
+            over the location of the exported labels. Only applicable when
+            exporting in certain labeled dataset formats. Can be any of the
+            following:
+
+            -   a type-specific folder name like ``"labels"`` or ``"labels/"``
+                or a filename like ``"labels.json"`` or ``"labels.xml"``
+                specifying the location in ``export_dir`` in which to export
+                the labels
+            -   an absolute directory or filepath in which to export the
+                labels. In this case, the ``export_dir`` has no effect on the
+                location of the labels
+
+            For labeled datasets, the default value of this parameter will be
+            chosen based on the export format so that the labels will be
+            exported into ``export_dir``
+        export_media (None): controls how to export the raw media. The
+            supported values are:
+
+            -   ``True``: copy all media files into the output directory
+            -   ``False``: don't export media. This option is only useful when
+                exporting labeled datasets whose label format stores sufficient
+                information to locate the associated media
+            -   ``"move"``: move all media files into the output directory
+            -   ``"symlink"``: create symlinks to the media files in the output
+                directory
+            -   ``"manifest"``: create a ``data.json`` in the output directory
+                that maps UUIDs used in the labels files to the filepaths of
+                the source media, rather than exporting the actual media
+
+            If None, an appropriate default value of this parameter will be
+            chosen based on the value of the ``data_path`` parameter. Note that
+            some dataset formats may not support certain values for this
+            parameter (e.g., when exporting in binary formats such as TF
+            records, "symlink" is not an option)
+        dataset_exporter (None): a :class:`DatasetExporter` to use to write the
+            dataset
         label_field_or_dict (None): the name of the label field to export, or
             a dictionary mapping field names to output keys describing the
             label fields to export. Only applicable if ``dataset_exporter`` is
@@ -104,18 +183,38 @@ def export_samples(
         num_samples (None): the number of samples in ``samples``. If omitted,
             this is computed (if possible) via ``len(samples)``
         **kwargs: optional keyword arguments to pass to the dataset exporter's
-            constructor via ``DatasetExporter(export_dir, **kwargs)``. If you
-            are exporting image patches, this can also contain keyword
-            arguments for :class:`fiftyone.utils.patches.ImagePatchesExtractor`
+            constructor. If you are exporting image patches, this can also
+            contain keyword arguments for
+            :class:`fiftyone.utils.patches.ImagePatchesExtractor`
     """
     found_patches, patches_kwargs, kwargs = _check_for_patches_export(
         samples, dataset_exporter, label_field_or_dict, kwargs
     )
 
+    if dataset_exporter is None:
+        dataset_exporter, _ = build_dataset_exporter(
+            dataset_type,
+            export_dir=export_dir,
+            data_path=data_path,
+            labels_path=labels_path,
+            export_media=export_media,
+            **kwargs,
+        )
+    else:
+        kwargs.update(
+            dict(
+                export_dir=export_dir,
+                data_path=data_path,
+                labels_path=labels_path,
+                export_media=export_media,
+            )
+        )
+
+        for key, value in kwargs.items():
+            if value is not None:
+                logger.warning("Ignoring unsupported parameter '%s'", key)
+
     sample_collection = samples
-    dataset_exporter = _get_dataset_exporter(
-        export_dir, dataset_type, dataset_exporter, **kwargs
-    )
 
     if isinstance(dataset_exporter, BatchDatasetExporter):
         _write_batch_dataset(dataset_exporter, samples)
@@ -191,7 +290,7 @@ def export_samples(
     write_dataset(
         samples,
         sample_parser,
-        dataset_exporter=dataset_exporter,
+        dataset_exporter,
         num_samples=num_samples,
         sample_collection=sample_collection,
     )
@@ -200,29 +299,18 @@ def export_samples(
 def write_dataset(
     samples,
     sample_parser,
-    dataset_dir=None,
-    dataset_type=None,
-    dataset_exporter=None,
+    dataset_exporter,
     num_samples=None,
     sample_collection=None,
-    **kwargs
 ):
     """Writes the samples to disk as a dataset in the specified format.
-
-    Provide either ``dataset_dir`` and ``dataset_type`` or ``dataset_exporter``
-    to perform the write.
 
     Args:
         samples: an iterable of samples that can be parsed by ``sample_parser``
         sample_parser: a :class:`fiftyone.utils.data.parsers.SampleParser` to
             use to parse the samples
-        dataset_dir (None): the directory to which to write the dataset in
-            format ``dataset_type``
-        dataset_type (None): the :class:`fiftyone.types.dataset_types.Dataset`
-            type to write
-        dataset_exporter (None): a
-            :class:`fiftyone.utils.data.exporters.DatasetExporter` to use to
-            write the dataset
+        dataset_exporter: a :class:`DatasetExporter` to use to write the
+            dataset
         num_samples (None): the number of samples in ``samples``. If omitted,
             this is computed (if possible) via ``len(samples)``
         sample_collection (None): the
@@ -231,13 +319,7 @@ def write_dataset(
             :class:`fiftyone.core.collections.SampleCollection`, this parameter
             defaults to ``samples``. This parameter is optional and is only
             passed to :meth:`DatasetExporter.log_collection`
-        **kwargs: optional keyword arguments to pass to
-            ``dataset_type.get_dataset_exporter_cls(dataset_dir, **kwargs)``
     """
-    dataset_exporter = _get_dataset_exporter(
-        dataset_dir, dataset_type, dataset_exporter, **kwargs
-    )
-
     if num_samples is None:
         try:
             num_samples = len(samples)
@@ -280,6 +362,66 @@ def write_dataset(
         raise ValueError(
             "Unsupported DatasetExporter %s" % type(dataset_exporter)
         )
+
+
+def build_dataset_exporter(
+    dataset_type, strip_none=True, warn_unused=True, **kwargs
+):
+    """Builds the :class:`DatasetExporter` instance for the given parameters.
+
+    Args:
+        dataset_type: the :class:`fiftyone.types.dataset_types.Dataset` type
+        strip_none (True): whether to exclude None-valued items from ``kwargs``
+        warn_unused (True): whether to issue warnings for any non-None unused
+            parameters encountered
+        **kwargs: keyword arguments to pass to the dataset exporter's
+            constructor via ``DatasetExporter(**kwargs)``
+
+    Returns:
+        a tuple of:
+
+        -   the :class:`DatasetExporter` instance
+        -   a dict of unused keyword arguments
+    """
+    if dataset_type is None:
+        raise ValueError(
+            "You must provide a `dataset_type` in order to build a dataset "
+            "exporter"
+        )
+
+    if inspect.isclass(dataset_type):
+        dataset_type = dataset_type()
+
+    dataset_exporter_cls = dataset_type.get_dataset_exporter_cls()
+
+    if strip_none:
+        kwargs = {k: v for k, v in kwargs.items() if v is not None}
+
+    kwargs, unused_kwargs = fou.extract_kwargs_for_class(
+        dataset_exporter_cls, kwargs
+    )
+
+    try:
+        dataset_exporter = dataset_exporter_cls(**kwargs)
+    except Exception as e:
+        raise ValueError(
+            "Failed to construct exporter of type %s using the provided "
+            "parameters. See above for the error. You may need to supply "
+            "additional mandatory arguments. Please consult the documentation "
+            "of %s to learn more"
+            % (dataset_exporter_cls, dataset_exporter_cls)
+        ) from e
+
+    if warn_unused:
+        for key, value in unused_kwargs.items():
+            if value is not None:
+                logger.warning(
+                    "Ignoring unsupported parameter '%s' for exporter type %s",
+                    key,
+                    dataset_exporter_cls,
+                )
+
+    return dataset_exporter, unused_kwargs
 
 
 def _check_for_patches_export(
@@ -384,10 +526,8 @@ def _make_label_coersion_functions(
         #
 
         for export_type in export_types:
-            single_label_type = fol._LABEL_LIST_TO_SINGLE_MAP.get(
-                export_type, None
-            )
-            if issubclass(label_type, single_label_type):
+            single_type = fol._LABEL_LIST_TO_SINGLE_MAP.get(export_type, None)
+            if single_type is not None and issubclass(label_type, single_type):
                 logger.info(
                     "Dataset exporter expects labels in %s format, but found "
                     "%s. Wrapping field '%s' as single-label lists...",
@@ -455,33 +595,6 @@ def _classification_to_detections(label):
             )
         ]
     )
-
-
-def _get_dataset_exporter(
-    export_dir, dataset_type, dataset_exporter, **kwargs
-):
-    if dataset_type is not None:
-        if inspect.isclass(dataset_type):
-            dataset_type = dataset_type()
-
-        if not isinstance(
-            dataset_type,
-            (
-                fot.UnlabeledImageDataset,
-                fot.LabeledImageDataset,
-                fot.UnlabeledVideoDataset,
-                fot.LabeledVideoDataset,
-            ),
-        ):
-            raise ValueError(
-                "Unsupported `dataset_type` %s" % type(dataset_type)
-            )
-
-    if dataset_exporter is None:
-        dataset_exporter_cls = dataset_type.get_dataset_exporter_cls()
-        dataset_exporter = dataset_exporter_cls(export_dir, **kwargs)
-
-    return dataset_exporter
 
 
 def _write_batch_dataset(dataset_exporter, samples):
@@ -608,6 +721,250 @@ def _write_video_dataset(
                     )
 
 
+class ExportPathsMixin(object):
+    """Mixin for :class:`DatasetExporter` classes that provides convenience
+    methods for parsing the ``data_path``, ``labels_path``, and
+    ``export_media`` parameters supported by many exporters.
+    """
+
+    @staticmethod
+    def _parse_data_path(
+        export_dir=None, data_path=None, export_media=None, default=None,
+    ):
+        """Helper function that computes default values for the ``data_path``
+        and ``export_media`` parameters supported by many exporters.
+        """
+        if data_path is None:
+            if export_media == "manifest" and default is not None:
+                data_path = os.path.normpath(default) + ".json"
+            elif export_dir is not None:
+                data_path = default
+
+        if data_path is not None:
+            data_path = os.path.expanduser(data_path)
+
+            if not os.path.isabs(data_path) and export_dir is not None:
+                export_dir = os.path.abspath(os.path.expanduser(export_dir))
+                data_path = os.path.join(export_dir, data_path)
+
+        if export_media is None:
+            if data_path is None:
+                export_media = False
+            elif data_path.endswith(".json"):
+                export_media = "manifest"
+            else:
+                export_media = True
+
+        return data_path, export_media
+
+    @staticmethod
+    def _parse_labels_path(export_dir=None, labels_path=None, default=None):
+        """Helper function that computes default values for the ``labels_path``
+        parameter supported by many exporters.
+        """
+        if labels_path is None:
+            labels_path = default
+
+        if labels_path is not None:
+            labels_path = os.path.expanduser(labels_path)
+
+            if not os.path.isabs(labels_path) and export_dir is not None:
+                export_dir = os.path.abspath(os.path.expanduser(export_dir))
+                labels_path = os.path.join(export_dir, labels_path)
+
+        return labels_path
+
+
+class MediaExporter(object):
+    """Base class for :class:`DatasetExporter` utilities that provide support
+    for populating a directory or manifest of media files.
+
+    This class is designed for populating a single, flat directory or manifest
+    of media files, and automatically takes care of things like name clashes.
+
+    The export strategy used is defined by the ``export_mode`` parameter, and
+    users can restrict the available options via the ``supported_modes``
+    parameter.
+
+    Args:
+        export_mode: the export mode to use. The supported values are:
+
+            -   ``True``: copy all media files into the output directory
+            -   ``False``: don't export media. This option is only useful when
+                exporting labeled datasets whose label format stores sufficient
+                information to locate the associated media
+            -   ``"move"``: move all media files into the output directory
+            -   ``"symlink"``: create symlinks to the media files in the output
+                directory
+            -   ``"manifest"``: create a ``data.json`` in the output directory
+                that maps UUIDs used in the labels files to the filepaths of
+                the source media, rather than exporting the actual media
+        export_path (None): the location to export the media. Can be any of the
+            following:
+
+            -   When ``export_media`` is True, "move", or "symlink", a
+                directory in which to export the media
+            -   When ``export_mode`` is "manifest", the path to write a JSON
+                file mapping UUIDs to input filepaths
+            -   When ``export_media`` is False, this parameter has no effect
+        supported_modes (None): an optional tuple specifying a subset of the
+            ``export_mode`` values that are allowed
+        default_ext (None): the file extension to use when generating default
+            output paths
+        ignore_exts (False): whether to omit file extensions when generating
+            UUIDs for files
+    """
+
+    def __init__(
+        self,
+        export_mode,
+        export_path=None,
+        supported_modes=None,
+        default_ext=None,
+        ignore_exts=False,
+    ):
+        if supported_modes is None:
+            supported_modes = (True, False, "move", "symlink", "manifest")
+
+        if export_mode not in supported_modes:
+            raise ValueError(
+                "Unsupported media export mode `%s`. The supported values are "
+                "%s" % (export_mode, supported_modes)
+            )
+
+        if export_mode != False and export_path is None:
+            raise ValueError(
+                "An export path must be provided for export mode %s"
+                % export_mode
+            )
+
+        self.export_mode = export_mode
+        self.export_path = export_path
+        self.supported_modes = supported_modes
+        self.default_ext = default_ext
+        self.ignore_exts = ignore_exts
+
+        self._filename_maker = None
+        self._manifest = None
+        self._manifest_path = None
+
+    def _write_media(self, media, outpath):
+        raise NotImplementedError("subclass must implement _write_media()")
+
+    def _get_uuid(self, media_path):
+        filename = os.path.basename(media_path)
+        if self.ignore_exts:
+            return os.path.splitext(filename)[0]
+
+        return filename
+
+    def setup(self):
+        """Performs necessary setup to begin exporting media.
+
+        :class:`DatasetExporter` classes using this class should invoke this
+        method in :meth:`DatasetExporter.setup`.
+        """
+        output_dir = None
+        manifest_path = None
+        manifest = None
+
+        if self.export_mode in {True, False, "move", "symlink"}:
+            output_dir = self.export_path
+        elif self.export_mode == "manifest":
+            manifest_path = self.export_path
+            manifest = {}
+
+        self._filename_maker = fou.UniqueFilenameMaker(
+            output_dir=output_dir,
+            default_ext=self.default_ext,
+            ignore_exts=self.ignore_exts,
+        )
+        self._manifest_path = manifest_path
+        self._manifest = manifest
+
+    def export(self, media_or_path):
+        """Exports the given media.
+
+        Args:
+            media_or_path: the media or path to the media on disk
+
+        Returns:
+            a tuple of:
+
+            -   the path to the exported media
+            -   the UUID of the exported media
+        """
+        if etau.is_str(media_or_path):
+            media_path = media_or_path
+            outpath = self._filename_maker.get_output_path(media_path)
+            uuid = self._get_uuid(outpath)
+
+            if self.export_mode == True:
+                etau.copy_file(media_path, outpath)
+            if self.export_mode == "move":
+                etau.move_file(media_path, outpath)
+            elif self.export_mode == "symlink":
+                etau.symlink_file(media_path, outpath)
+            elif self.export_mode == "manifest":
+                outpath = None
+                self._manifest[uuid] = media_path
+        else:
+            media = media_or_path
+            outpath = self._filename_maker.get_output_path()
+            uuid = self._get_uuid(outpath)
+
+            if self.export_mode == True:
+                self._write_media(media, outpath)
+            elif self.export_mode != False:
+                raise ValueError(
+                    "Cannot export in-memory media when 'export_mode=%s'"
+                    % self.export_mode
+                )
+
+        return outpath, uuid
+
+    def close(self):
+        """Performs any necessary actions to complete an export.
+
+        :class:`DatasetExporter` classes implementing this mixin should invoke
+        this method in :meth:`DatasetExporter.close`.
+        """
+        if self.export_mode == "manifest":
+            etas.write_json(self._manifest, self._manifest_path)
+
+
+class ImageExporter(MediaExporter):
+    """Utility class for :class:`DatasetExporter` instances that export images.
+
+    See :class:`MediaExporter` for details.
+    """
+
+    def __init__(self, *args, default_ext=None, **kwargs):
+        if default_ext is None:
+            default_ext = fo.config.default_image_ext
+
+        super().__init__(*args, default_ext=default_ext, **kwargs)
+
+    def _write_media(self, img, outpath):
+        etai.write(img, outpath)
+
+
+class VideoExporter(MediaExporter):
+    """Utility class for :class:`DatasetExporter` instances that export videos.
+
+    See :class:`MediaExporter` for details.
+    """
+
+    def __init__(self, *args, default_ext=None, **kwargs):
+        if default_ext is None:
+            default_ext = fo.config.default_video_ext
+
+        super().__init__(*args, default_ext=default_ext, **kwargs)
+
+    def _write_media(self, media, outpath):
+        raise ValueError("Only video paths can be exported")
+
+
 class DatasetExporter(object):
     """Base interface for exporting datsets.
 
@@ -615,11 +972,15 @@ class DatasetExporter(object):
     for information about implementing/using dataset exporters.
 
     Args:
-        export_dir: the directory to write the export
+        export_dir (None): the directory to write the export. This may be
+            optional for some exporters
     """
 
-    def __init__(self, export_dir):
-        self.export_dir = os.path.abspath(os.path.expanduser(export_dir))
+    def __init__(self, export_dir=None):
+        if export_dir is not None:
+            export_dir = os.path.abspath(os.path.expanduser(export_dir))
+
+        self.export_dir = export_dir
 
     def __enter__(self):
         self.setup()
@@ -693,13 +1054,14 @@ class BatchDatasetExporter(DatasetExporter):
     handle aggregating over the samples themselves.
 
     Args:
-        export_dir: the directory to write the export
+        export_dir (None): the directory to write the export. This may be
+            optional for some exporters
     """
 
     def export_sample(self, *args, **kwargs):
         raise ValueError(
             "Use export_samples() to perform exports with %s instances"
-            % self.__class__
+            % type(self)
         )
 
     def export_samples(self, sample_collection):
@@ -712,70 +1074,6 @@ class BatchDatasetExporter(DatasetExporter):
         raise NotImplementedError("subclass must implement export_samples()")
 
 
-class ExportsImages(object):
-    """Mixin for :class:`DatasetExporter` classes that export images."""
-
-    @staticmethod
-    def _is_image_path(image_or_path):
-        """Determines whether the input is the path to an image on disk
-
-        Args:
-            image_or_path: an image or the path to the image on disk
-
-        Returns:
-            True/False
-        """
-        return etau.is_str(image_or_path)
-
-    @staticmethod
-    def _export_image_or_path(image_or_path, filename_maker):
-        """Exports the image, using the given
-        :class:`fiftyone.core.utils.UniqueFilenameMaker` to generate the output
-        path for the image.
-
-        Args:
-            image_or_path: an image or the path to the image on disk
-            filename_maker: a :class:`fiftyone.core.utils.UniqueFilenameMaker`
-                to use to generate the output image path
-
-        Returns:
-            the path to the exported image
-        """
-        if ExportsImages._is_image_path(image_or_path):
-            image_path = image_or_path
-            out_image_path = filename_maker.get_output_path(image_path)
-            etau.copy_file(image_path, out_image_path)
-        else:
-            img = image_or_path
-            out_image_path = filename_maker.get_output_path()
-            etai.write(img, out_image_path)
-
-        return out_image_path
-
-
-class ExportsVideos(object):
-    """Mixin for :class:`DatasetExporter` classes that export videos."""
-
-    @staticmethod
-    def _export_video(video_path, filename_maker):
-        """Exports the video, using the given
-        :class:`fiftyone.core.utils.UniqueFilenameMaker` to generate the output
-        path for the video.
-
-        Args:
-            video_path: the path to a video on disk
-            filename_maker: a :class:`fiftyone.core.utils.UniqueFilenameMaker`
-                to use to generate the output video path
-
-        Returns:
-            the path to the exported video
-        """
-        out_video_path = filename_maker.get_output_path(video_path)
-        etau.copy_file(video_path, out_video_path)
-
-        return out_video_path
-
-
 class GenericSampleDatasetExporter(DatasetExporter):
     """Interface for exporting datasets of arbitrary
     :class:`fiftyone.core.sample.Sample` instances.
@@ -784,7 +1082,8 @@ class GenericSampleDatasetExporter(DatasetExporter):
     for information about implementing/using dataset exporters.
 
     Args:
-        export_dir: the directory to write the export
+        export_dir (None): the directory to write the export. This may be
+            optional for some exporters
     """
 
     def export_sample(self, sample):
@@ -796,14 +1095,15 @@ class GenericSampleDatasetExporter(DatasetExporter):
         raise NotImplementedError("subclass must implement export_sample()")
 
 
-class UnlabeledImageDatasetExporter(DatasetExporter, ExportsImages):
+class UnlabeledImageDatasetExporter(DatasetExporter):
     """Interface for exporting datasets of unlabeled image samples.
 
     See `this page <https://voxel51.com/docs/fiftyone/user_guide/export_datasets.html#writing-a-custom-datasetexporter>`_
     for information about implementing/using dataset exporters.
 
     Args:
-        export_dir: the directory to write the export
+        export_dir (None): the directory to write the export. This may be
+            optional for some exporters
     """
 
     @property
@@ -828,14 +1128,15 @@ class UnlabeledImageDatasetExporter(DatasetExporter, ExportsImages):
         raise NotImplementedError("subclass must implement export_sample()")
 
 
-class UnlabeledVideoDatasetExporter(DatasetExporter, ExportsVideos):
+class UnlabeledVideoDatasetExporter(DatasetExporter):
     """Interface for exporting datasets of unlabeled video samples.
 
     See `this page <https://voxel51.com/docs/fiftyone/user_guide/export_datasets.html#writing-a-custom-datasetexporter>`_
     for information about implementing/using dataset exporters.
 
     Args:
-        export_dir: the directory to write the export
+        export_dir (None): the directory to write the export. This may be
+            optional for some exporters
     """
 
     @property
@@ -860,14 +1161,15 @@ class UnlabeledVideoDatasetExporter(DatasetExporter, ExportsVideos):
         raise NotImplementedError("subclass must implement export_sample()")
 
 
-class LabeledImageDatasetExporter(DatasetExporter, ExportsImages):
+class LabeledImageDatasetExporter(DatasetExporter):
     """Interface for exporting datasets of labeled image samples.
 
     See `this page <https://voxel51.com/docs/fiftyone/user_guide/export_datasets.html#writing-a-custom-datasetexporter>`_
     for information about implementing/using dataset exporters.
 
     Args:
-        export_dir: the directory to write the export
+        export_dir (None): the directory to write the export. This may be
+            optional for some exporters
     """
 
     @property
@@ -913,14 +1215,15 @@ class LabeledImageDatasetExporter(DatasetExporter, ExportsImages):
         raise NotImplementedError("subclass must implement export_sample()")
 
 
-class LabeledVideoDatasetExporter(DatasetExporter, ExportsVideos):
+class LabeledVideoDatasetExporter(DatasetExporter):
     """Interface for exporting datasets of labeled video samples.
 
     See `this page <https://voxel51.com/docs/fiftyone/user_guide/export_datasets.html#writing-a-custom-datasetexporter>`_
     for information about implementing/using dataset exporters.
 
     Args:
-        export_dir: the directory to write the export
+        export_dir (None): the directory to write the export. This may be
+            optional for some exporters
     """
 
     @property
@@ -999,12 +1302,16 @@ class LegacyFiftyOneDatasetExporter(GenericSampleDatasetExporter):
 
     Args:
         export_dir: the directory to write the export
-        export_media (True): whether to export media files using the method
-            defined by ``move_media`` (True), or to export only labels and
-            metadata (False)
-        move_media (False): whether to move (True) or copy (False) the source
-            media into its output destination. Only applicable if
-            ``export_media`` is True
+        export_media (None): defines how to export the raw media contained
+            in the dataset. The supported values are:
+
+            -   ``True`` (default): copy all media files into the export
+                directory
+            -   ``False``: don't export media
+            -   ``"move"``: move media files into the export directory
+            -   ``"symlink"``: create symlinks to each media file in the export
+                directory
+
         relative_filepaths (True): whether to store relative (True) or absolute
             (False) filepaths to media files on disk in the output dataset
         pretty_print (False): whether to render the JSON in human readable
@@ -1014,16 +1321,19 @@ class LegacyFiftyOneDatasetExporter(GenericSampleDatasetExporter):
     def __init__(
         self,
         export_dir,
-        export_media=True,
-        move_media=False,
+        export_media=None,
         relative_filepaths=True,
         pretty_print=False,
     ):
-        super().__init__(export_dir)
+        if export_media is None:
+            export_media = True
+
+        super().__init__(export_dir=export_dir)
+
         self.export_media = export_media
-        self.move_media = move_media
         self.relative_filepaths = relative_filepaths
         self.pretty_print = pretty_print
+
         self._data_dir = None
         self._eval_dir = None
         self._brain_dir = None
@@ -1044,9 +1354,13 @@ class LegacyFiftyOneDatasetExporter(GenericSampleDatasetExporter):
         self._samples_path = os.path.join(self.export_dir, "samples.json")
         self._metadata = {}
         self._samples = []
-        self._filename_maker = fou.UniqueFilenameMaker(
-            output_dir=self._data_dir
-        )
+
+        if self.export_media != False:
+            output_dir = self._data_dir
+        else:
+            output_dir = None
+
+        self._filename_maker = fou.UniqueFilenameMaker(output_dir=output_dir)
 
     def log_collection(self, sample_collection):
         self._is_video_dataset = sample_collection.media_type == fomm.VIDEO
@@ -1105,18 +1419,16 @@ class LegacyFiftyOneDatasetExporter(GenericSampleDatasetExporter):
     def export_sample(self, sample):
         sd = sample.to_dict()
 
-        if self.export_media:
-            out_filepath = self._filename_maker.get_output_path(
-                sample.filepath
-            )
-            if self.move_media:
-                etau.move_file(sample.filepath, out_filepath)
-            else:
-                etau.copy_file(sample.filepath, out_filepath)
-            sd["filepath"] = out_filepath
+        out_filepath = self._filename_maker.get_output_path(sample.filepath)
 
-        else:
-            out_filepath = sample.filepath
+        if self.export_media == True:
+            etau.copy_file(sample.filepath, out_filepath)
+        elif self.export_media == "move":
+            etau.move_file(sample.filepath, out_filepath)
+        elif self.export_media == "symlink":
+            etau.symlink_file(sample.filepath, out_filepath)
+
+        sd["filepath"] = out_filepath
 
         if self.relative_filepaths:
             sd["filepath"] = os.path.relpath(out_filepath, self.export_dir)
@@ -1155,25 +1467,34 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
 
     Args:
         export_dir: the directory to write the export
-        include_media (True): whether to include the source media in the export
-        move_media (False): whether to move (True) or copy (False) the source
-            media into its output destination
+        export_media (None): defines how to export the raw media contained
+            in the dataset. The supported values are:
+
+            -   ``True`` (default): copy all media files into the export
+                directory
+            -   ``False``: don't export media
+            -   ``"move"``: move media files into the export directory
+            -   ``"symlink"``: create symlinks to each media file in the export
+                directory
+
         rel_dir (None): a relative directory to remove from the ``filepath`` of
             each sample, if possible. The path is converted to an absolute path
             (if necessary) via ``os.path.abspath(os.path.expanduser(rel_dir))``.
             The typical use case for this argument is that your source data
             lives in a single directory and you wish to serialize relative,
             rather than absolute, paths to the data within that directory.
-            Only applicable when ``include_media`` is False
+            Only applicable when ``export_media`` is False
     """
 
-    def __init__(
-        self, export_dir, include_media=True, move_media=False, rel_dir=None
-    ):
-        super().__init__(export_dir)
-        self.include_media = include_media
-        self.move_media = move_media
+    def __init__(self, export_dir, export_media=None, rel_dir=None):
+        if export_media is None:
+            export_media = True
+
+        super().__init__(export_dir=export_dir)
+
+        self.export_media = export_media
         self.rel_dir = rel_dir
+
         self._data_dir = None
         self._eval_dir = None
         self._brain_dir = None
@@ -1189,7 +1510,8 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
         self._metadata_path = os.path.join(self.export_dir, "metadata.json")
         self._samples_path = os.path.join(self.export_dir, "samples.json")
         self._frames_path = os.path.join(self.export_dir, "frames.json")
-        if self.include_media:
+
+        if self.export_media != False:
             self._filename_maker = fou.UniqueFilenameMaker(
                 output_dir=self._data_dir
             )
@@ -1199,10 +1521,10 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
 
         inpaths = sample_collection.values("filepath")
 
-        if self.include_media:
+        if self.export_media != False:
             if self.rel_dir is not None:
                 logger.warning(
-                    "Ignoring `rel_dir` since `include_media` is True"
+                    "Ignoring `rel_dir` since `export_media` is True"
                 )
 
             outpaths = [
@@ -1267,9 +1589,18 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
         if export_runs and sample_collection.has_brain_runs:
             _export_brain_results(sample_collection, self._brain_dir)
 
-        if self.include_media:
+        if self.export_media == True:
+            mode = "copy"
+        elif self.export_media == "move":
+            mode = "move"
+        elif self.export_media == "symlink":
+            mode = "symlink"
+        else:
+            mode = None
+
+        if mode is not None:
             logger.info("Exporting media...")
-            fomm.export_media(inpaths, outpaths, move_media=self.move_media)
+            fomm.export_media(inpaths, outpaths, mode=mode)
 
 
 def _export_evaluation_results(sample_collection, eval_dir):
@@ -1294,37 +1625,54 @@ class ImageDirectoryExporter(UnlabeledImageDatasetExporter):
     See :class:`fiftyone.types.dataset_types.ImageDirectory` for format
     details.
 
-    If the path to an image is provided, the image is directly copied to its
-    destination, maintaining the original filename, unless a name conflict
-    would occur, in which case an index of the form ``"-%d" % count`` is
-    appended to the base filename.
+    The filenames of input image paths will be maintained in the export
+    directory, unless a name conflict would occur, in which case an index of
+    the form ``"-%d" % count`` is appended to the base filename.
 
     Args:
         export_dir: the directory to write the export
+        export_media (None): defines how to export the raw media contained
+            in the dataset. The supported values are:
+
+            -   ``True`` (default): copy all media files into the export
+                directory
+            -   ``"move"``: move media files into the export directory
+            -   ``"symlink"``: create symlinks to each media file in the export
+                directory
         image_format (None): the image format to use when writing in-memory
             images to disk. By default, ``fiftyone.config.default_image_ext``
             is used
     """
 
-    def __init__(self, export_dir, image_format=None):
-        if image_format is None:
-            image_format = fo.config.default_image_ext
+    def __init__(self, export_dir, export_media=None, image_format=None):
+        if export_media is None:
+            export_media = True
 
-        super().__init__(export_dir)
+        super().__init__(export_dir=export_dir)
+
+        self.export_media = export_media
         self.image_format = image_format
-        self._filename_maker = None
+
+        self._media_exporter = None
 
     @property
     def requires_image_metadata(self):
         return False
 
     def setup(self):
-        self._filename_maker = fou.UniqueFilenameMaker(
-            output_dir=self.export_dir, default_ext=self.image_format
+        self._media_exporter = ImageExporter(
+            self.export_media,
+            export_path=self.export_dir,
+            supported_modes=(True, "move", "symlink"),
+            default_ext=self.image_format,
         )
+        self._media_exporter.setup()
 
     def export_sample(self, image_or_path, metadata=None):
-        self._export_image_or_path(image_or_path, self._filename_maker)
+        self._media_exporter.export(image_or_path)
+
+    def close(self, *args):
+        self._media_exporter.close()
 
 
 class VideoDirectoryExporter(UnlabeledVideoDatasetExporter):
@@ -1333,33 +1681,54 @@ class VideoDirectoryExporter(UnlabeledVideoDatasetExporter):
     See :class:`fiftyone.types.dataset_types.VideoDirectory` for format
     details.
 
-    If the path to a video is provided, the video is directly copied to its
-    destination, maintaining the original filename, unless a name conflict
-    would occur, in which case an index of the form ``"-%d" % count`` is
-    appended to the base filename.
+    The filenames of the input videos will be maintained in the export
+    directory, unless a name conflict would occur, in which case an index of
+    the form ``"-%d" % count`` is appended to the base filename.
 
     Args:
         export_dir: the directory to write the export
+        export_media (None): defines how to export the raw media contained
+            in the dataset. The supported values are:
+
+            -   ``True`` (default): copy all media files into the export
+                directory
+            -   ``"move"``: move media files into the export directory
+            -   ``"symlink"``: create symlinks to each media file in the export
+                directory
     """
 
-    def __init__(self, export_dir):
-        super().__init__(export_dir)
-        self._filename_maker = None
+    def __init__(self, export_dir, export_media=None):
+        if export_media is None:
+            export_media = True
+
+        super().__init__(export_dir=export_dir)
+
+        self.export_media = export_media
+
+        self._media_exporter = None
 
     @property
     def requires_video_metadata(self):
         return False
 
     def setup(self):
-        self._filename_maker = fou.UniqueFilenameMaker(
-            output_dir=self.export_dir
+        self._media_exporter = ImageExporter(
+            self.export_media,
+            export_path=self.export_dir,
+            supported_modes=(True, "move", "symlink"),
         )
+        self._media_exporter.setup()
 
     def export_sample(self, video_path, metadata=None):
-        self._export_video(video_path, self._filename_maker)
+        self._media_exporter.export(video_path)
+
+    def close(self, *args):
+        self._media_exporter.close()
 
 
-class FiftyOneImageClassificationDatasetExporter(LabeledImageDatasetExporter):
+class FiftyOneImageClassificationDatasetExporter(
+    LabeledImageDatasetExporter, ExportPathsMixin
+):
     """Exporter that writes an image classification dataset to disk in
     FiftyOne's default format.
 
@@ -1372,7 +1741,52 @@ class FiftyOneImageClassificationDatasetExporter(LabeledImageDatasetExporter):
     appended to the base filename.
 
     Args:
-        export_dir: the directory to write the export
+        export_dir (None): the directory to write the export. This has no
+            effect if ``data_path`` and ``labels_path`` are absolute paths
+        data_path (None): an optional parameter that enables explicit control
+            over the location of the exported media. Can be any of the
+            following:
+
+            -   a folder name like ``"data"`` or ``"data/"`` specifying a
+                subfolder of ``export_dir`` in which to export the media
+            -   an absolute directory path in which to export the media. In
+                this case, the ``export_dir`` has no effect on the location of
+                the data
+            -   a JSON filename like ``"data.json"`` specifying the filename of
+                the manifest file in ``export_dir`` generated when
+                ``export_media`` is ``"manifest"``
+            -   an absolute filepath specifying the location to write the JSON
+                manifest file when ``export_media`` is ``"manifest"``. In this
+                case, ``export_dir`` has no effect on the location of the data
+
+            If None, the default value of this parameter will be chosen based
+            on the value of the ``export_media`` parameter
+        labels_path (None): an optional parameter that enables explicit control
+            over the location of the exported labels. Can be any of the
+            following:
+
+            -   a filename like ``"labels.json"`` specifying the location in
+                ``export_dir`` in which to export the labels
+            -   an absolute filepath to which to export the labels. In this
+                case, the ``export_dir`` has no effect on the location of the
+                labels
+
+            If None, the labels will be exported into ``export_dir`` using the
+            default filename
+        export_media (None): controls how to export the raw media. The
+            supported values are:
+
+            -   ``True``: copy all media files into the output directory
+            -   ``False``: don't export media
+            -   ``"move"``: move all media files into the output directory
+            -   ``"symlink"``: create symlinks to the media files in the output
+                directory
+            -   ``"manifest"``: create a ``data.json`` in the output directory
+                that maps UUIDs used in the labels files to the filepaths of
+                the source media, rather than exporting the actual media
+
+            If None, the default value of this parameter will be chosen based
+            on the value of the ``data_path`` parameter
         classes (None): the list of possible class labels. If not provided,
             this list will be extracted when :meth:`log_collection` is called,
             if possible
@@ -1384,20 +1798,40 @@ class FiftyOneImageClassificationDatasetExporter(LabeledImageDatasetExporter):
     """
 
     def __init__(
-        self, export_dir, classes=None, image_format=None, pretty_print=False
+        self,
+        export_dir=None,
+        data_path=None,
+        labels_path=None,
+        export_media=None,
+        classes=None,
+        image_format=None,
+        pretty_print=False,
     ):
-        if image_format is None:
-            image_format = fo.config.default_image_ext
+        data_path, export_media = self._parse_data_path(
+            export_dir=export_dir,
+            data_path=data_path,
+            export_media=export_media,
+            default="data/",
+        )
 
-        super().__init__(export_dir)
+        labels_path = self._parse_labels_path(
+            export_dir=export_dir,
+            labels_path=labels_path,
+            default="labels.json",
+        )
+
+        super().__init__(export_dir=export_dir)
+
+        self.data_path = data_path
+        self.labels_path = labels_path
+        self.export_media = export_media
         self.classes = classes
         self.image_format = image_format
         self.pretty_print = pretty_print
-        self._data_dir = None
-        self._labels_path = None
+
         self._labels_dict = None
         self._labels_map_rev = None
-        self._filename_maker = None
+        self._media_exporter = None
 
     @property
     def requires_image_metadata(self):
@@ -1408,15 +1842,16 @@ class FiftyOneImageClassificationDatasetExporter(LabeledImageDatasetExporter):
         return fol.Classification
 
     def setup(self):
-        self._data_dir = os.path.join(self.export_dir, "data")
-        self._labels_path = os.path.join(self.export_dir, "labels.json")
         self._labels_dict = {}
-        self._filename_maker = fou.UniqueFilenameMaker(
-            output_dir=self._data_dir,
+        self._parse_classes()
+
+        self._media_exporter = ImageExporter(
+            self.export_media,
+            export_path=self.data_path,
             default_ext=self.image_format,
             ignore_exts=True,
         )
-        self._parse_classes()
+        self._media_exporter.setup()
 
     def log_collection(self, sample_collection):
         if self.classes is None:
@@ -1431,11 +1866,8 @@ class FiftyOneImageClassificationDatasetExporter(LabeledImageDatasetExporter):
                 self._parse_classes()
 
     def export_sample(self, image_or_path, classification, metadata=None):
-        out_image_path = self._export_image_or_path(
-            image_or_path, self._filename_maker
-        )
-        name = os.path.splitext(os.path.basename(out_image_path))[0]
-        self._labels_dict[name] = _parse_classification(
+        _, uuid = self._media_exporter.export(image_or_path)
+        self._labels_dict[uuid] = _parse_classification(
             classification, labels_map_rev=self._labels_map_rev
         )
 
@@ -1445,8 +1877,9 @@ class FiftyOneImageClassificationDatasetExporter(LabeledImageDatasetExporter):
             "labels": self._labels_dict,
         }
         etas.write_json(
-            labels, self._labels_path, pretty_print=self.pretty_print
+            labels, self.labels_path, pretty_print=self.pretty_print
         )
+        self._media_exporter.close()
 
     def _parse_classes(self):
         if self.classes is not None:
@@ -1459,24 +1892,44 @@ class ImageClassificationDirectoryTreeExporter(LabeledImageDatasetExporter):
     See :class:`fiftyone.types.dataset_types.ImageClassificationDirectoryTree`
     for format details.
 
-    If the path to an image is provided, the image is directly copied to its
-    destination, maintaining the original filename, unless a name conflict
+    The filenames of the input images are maintained, unless a name conflict
     would occur, in which case an index of the form ``"-%d" % count`` is
     appended to the base filename.
 
     Args:
         export_dir: the directory to write the export
+        export_media (None): controls how to export the raw media. The
+            supported values are:
+
+            -   ``True`` (default): copy all media files into the output
+                directory
+            -   ``"move"``: move all media files into the output directory
+            -   ``"symlink"``: create symlinks to the media files in the output
+                directory
         image_format (None): the image format to use when writing in-memory
             images to disk. By default, ``fiftyone.config.default_image_ext``
             is used
     """
 
-    def __init__(self, export_dir, image_format=None):
+    def __init__(self, export_dir, export_media=None, image_format=None):
+        if export_media is None:
+            export_media = True
+
+        supported_modes = (True, "move", "symlink")
+        if export_media not in supported_modes:
+            raise ValueError(
+                "Unsupported export_media=%s for %s. The supported values "
+                "are %s" % (export_media, type(self), supported_modes)
+            )
+
         if image_format is None:
             image_format = fo.config.default_image_ext
 
-        super().__init__(export_dir)
+        super().__init__(export_dir=export_dir)
+
+        self.export_media = export_media
         self.image_format = image_format
+
         self._class_counts = None
         self._filename_counts = None
         self._default_filename_patt = (
@@ -1497,7 +1950,7 @@ class ImageClassificationDirectoryTreeExporter(LabeledImageDatasetExporter):
         etau.ensure_dir(self.export_dir)
 
     def export_sample(self, image_or_path, classification, metadata=None):
-        is_image_path = self._is_image_path(image_or_path)
+        is_image_path = etau.is_str(image_or_path)
 
         _label = _parse_classification(classification)
         if _label is None:
@@ -1525,7 +1978,12 @@ class ImageClassificationDirectoryTreeExporter(LabeledImageDatasetExporter):
         out_image_path = os.path.join(self.export_dir, _label, filename)
 
         if is_image_path:
-            etau.copy_file(image_path, out_image_path)
+            if self.export_media == "move":
+                etau.move_file(image_path, out_image_path)
+            elif self.export_media == "symlink":
+                etau.symlink_file(image_path, out_image_path)
+            else:
+                etau.copy_file(image_path, out_image_path)
         else:
             etai.write(img, out_image_path)
 
@@ -1536,17 +1994,38 @@ class VideoClassificationDirectoryTreeExporter(LabeledVideoDatasetExporter):
     See :class:`fiftyone.types.dataset_types.VideoClassificationDirectoryTree`
     for format details.
 
-    The source videos are directly copied to their export destination,
-    maintaining the original filename, unless a name conflict would occur, in
-    which case an index of the form ``"-%d" % count`` is appended to the base
-    filename.
+    The filenames of the input images are maintained, unless a name conflict
+    would occur, in which case an index of the form ``"-%d" % count`` is
+    appended to the base filename.
 
     Args:
         export_dir: the directory to write the export
+        export_media (None): controls how to export the raw media. The
+            supported values are:
+
+            -   ``True`` (default): copy all media files into the output
+                directory
+            -   ``False``: don't export media
+            -   ``"move"``: move all media files into the output directory
+            -   ``"symlink"``: create symlinks to the media files in the output
+                directory
     """
 
-    def __init__(self, export_dir):
-        super().__init__(export_dir)
+    def __init__(self, export_dir, export_media=None):
+        if export_media is None:
+            export_media = True
+
+        supported_modes = (True, "move", "symlink")
+        if export_media not in supported_modes:
+            raise ValueError(
+                "Unsupported export_media=%s for %s. The supported values are "
+                "%s" % (export_media, type(self), supported_modes)
+            )
+
+        super().__init__(export_dir=export_dir)
+
+        self.export_media = export_media
+
         self._class_counts = None
         self._filename_counts = None
 
@@ -1585,10 +2064,17 @@ class VideoClassificationDirectoryTreeExporter(LabeledVideoDatasetExporter):
 
         out_video_path = os.path.join(self.export_dir, _label, filename)
 
-        etau.copy_file(video_path, out_video_path)
+        if self.export_media == "move":
+            etau.move_file(video_path, out_video_path)
+        elif self.export_media == "symlink":
+            etau.symlink_file(video_path, out_video_path)
+        else:
+            etau.copy_file(video_path, out_video_path)
 
 
-class FiftyOneImageDetectionDatasetExporter(LabeledImageDatasetExporter):
+class FiftyOneImageDetectionDatasetExporter(
+    LabeledImageDatasetExporter, ExportPathsMixin
+):
     """Exporter that writes an image detection dataset to disk in FiftyOne's
     default format.
 
@@ -1601,7 +2087,52 @@ class FiftyOneImageDetectionDatasetExporter(LabeledImageDatasetExporter):
     appended to the base filename.
 
     Args:
-        export_dir: the directory to write the export
+        export_dir (None): the directory to write the export. This has no
+            effect if ``data_path`` and ``labels_path`` are absolute paths
+        data_path (None): an optional parameter that enables explicit control
+            over the location of the exported media. Can be any of the
+            following:
+
+            -   a folder name like ``"data"`` or ``"data/"`` specifying a
+                subfolder of ``export_dir`` in which to export the media
+            -   an absolute directory path in which to export the media. In
+                this case, the ``export_dir`` has no effect on the location of
+                the data
+            -   a JSON filename like ``"data.json"`` specifying the filename of
+                the manifest file in ``export_dir`` generated when
+                ``export_media`` is ``"manifest"``
+            -   an absolute filepath specifying the location to write the JSON
+                manifest file when ``export_media`` is ``"manifest"``. In this
+                case, ``export_dir`` has no effect on the location of the data
+
+            If None, the default value of this parameter will be chosen based
+            on the value of the ``export_media`` parameter
+        labels_path (None): an optional parameter that enables explicit control
+            over the location of the exported labels. Can be any of the
+            following:
+
+            -   a filename like ``"labels.json"`` specifying the location in
+                ``export_dir`` in which to export the labels
+            -   an absolute filepath to which to export the labels. In this
+                case, the ``export_dir`` has no effect on the location of the
+                labels
+
+            If None, the labels will be exported into ``export_dir`` using the
+            default filename
+        export_media (None): controls how to export the raw media. The
+            supported values are:
+
+            -   ``True``: copy all media files into the output directory
+            -   ``False``: don't export media
+            -   ``"move"``: move all media files into the output directory
+            -   ``"symlink"``: create symlinks to the media files in the output
+                directory
+            -   ``"manifest"``: create a ``data.json`` in the output directory
+                that maps UUIDs used in the labels files to the filepaths of
+                the source media, rather than exporting the actual media
+
+            If None, the default value of this parameter will be chosen based
+            on the value of the ``data_path`` parameter
         classes (None): the list of possible class labels. If not provided,
             this list will be extracted when :meth:`log_collection` is called,
             if possible
@@ -1613,20 +2144,40 @@ class FiftyOneImageDetectionDatasetExporter(LabeledImageDatasetExporter):
     """
 
     def __init__(
-        self, export_dir, classes=None, image_format=None, pretty_print=False
+        self,
+        export_dir=None,
+        data_path=None,
+        labels_path=None,
+        export_media=None,
+        classes=None,
+        image_format=None,
+        pretty_print=False,
     ):
-        if image_format is None:
-            image_format = fo.config.default_image_ext
+        data_path, export_media = self._parse_data_path(
+            export_dir=export_dir,
+            data_path=data_path,
+            export_media=export_media,
+            default="data/",
+        )
 
-        super().__init__(export_dir)
+        labels_path = self._parse_labels_path(
+            export_dir=export_dir,
+            labels_path=labels_path,
+            default="labels.json",
+        )
+
+        super().__init__(export_dir=export_dir)
+
+        self.data_path = data_path
+        self.labels_path = labels_path
+        self.export_media = export_media
         self.classes = classes
         self.image_format = image_format
         self.pretty_print = pretty_print
-        self._data_dir = None
-        self._labels_path = None
+
         self._labels_dict = None
         self._labels_map_rev = None
-        self._filename_maker = None
+        self._media_exporter = None
 
     @property
     def requires_image_metadata(self):
@@ -1637,15 +2188,16 @@ class FiftyOneImageDetectionDatasetExporter(LabeledImageDatasetExporter):
         return fol.Detections
 
     def setup(self):
-        self._data_dir = os.path.join(self.export_dir, "data")
-        self._labels_path = os.path.join(self.export_dir, "labels.json")
         self._labels_dict = {}
-        self._filename_maker = fou.UniqueFilenameMaker(
-            output_dir=self._data_dir,
+        self._parse_classes()
+
+        self._media_exporter = ImageExporter(
+            self.export_media,
+            export_path=self.data_path,
             default_ext=self.image_format,
             ignore_exts=True,
         )
-        self._parse_classes()
+        self._media_exporter.setup()
 
     def log_collection(self, sample_collection):
         if self.classes is None:
@@ -1660,11 +2212,8 @@ class FiftyOneImageDetectionDatasetExporter(LabeledImageDatasetExporter):
                 self._parse_classes()
 
     def export_sample(self, image_or_path, detections, metadata=None):
-        out_image_path = self._export_image_or_path(
-            image_or_path, self._filename_maker
-        )
-        name = os.path.splitext(os.path.basename(out_image_path))[0]
-        self._labels_dict[name] = _parse_detections(
+        _, uuid = self._media_exporter.export(image_or_path)
+        self._labels_dict[uuid] = _parse_detections(
             detections, labels_map_rev=self._labels_map_rev
         )
 
@@ -1674,15 +2223,18 @@ class FiftyOneImageDetectionDatasetExporter(LabeledImageDatasetExporter):
             "labels": self._labels_dict,
         }
         etas.write_json(
-            labels, self._labels_path, pretty_print=self.pretty_print
+            labels, self.labels_path, pretty_print=self.pretty_print
         )
+        self._media_exporter.close()
 
     def _parse_classes(self):
         if self.classes is not None:
             self._labels_map_rev = _to_labels_map_rev(self.classes)
 
 
-class ImageSegmentationDirectoryExporter(LabeledImageDatasetExporter):
+class ImageSegmentationDirectoryExporter(
+    LabeledImageDatasetExporter, ExportPathsMixin
+):
     """Exporter that writes an image segmentation dataset to disk.
 
     See :class:`fiftyone.types.dataset_types.ImageSegmentationDirectory` for
@@ -1694,7 +2246,52 @@ class ImageSegmentationDirectoryExporter(LabeledImageDatasetExporter):
     appended to the base filename.
 
     Args:
-        export_dir: the directory to write the export
+        export_dir (None): the directory to write the export. This has no
+            effect if ``data_path`` and ``labels_path`` are absolute paths
+        data_path (None): an optional parameter that enables explicit control
+            over the location of the exported media. Can be any of the
+            following:
+
+            -   a folder name like ``"data"`` or ``"data/"`` specifying a
+                subfolder of ``export_dir`` in which to export the media
+            -   an absolute directory path in which to export the media. In
+                this case, the ``export_dir`` has no effect on the location of
+                the data
+            -   a JSON filename like ``"data.json"`` specifying the filename of
+                the manifest file in ``export_dir`` generated when
+                ``export_media`` is ``"manifest"``
+            -   an absolute filepath specifying the location to write the JSON
+                manifest file when ``export_media`` is ``"manifest"``. In this
+                case, ``export_dir`` has no effect on the location of the data
+
+            If None, the default value of this parameter will be chosen based
+            on the value of the ``export_media`` parameter
+        labels_path (None): an optional parameter that enables explicit control
+            over the location of the exported labels. Can be any of the
+            following:
+
+            -   a folder name like ``"labels"`` or ``"labels/"`` specifying the
+                location in ``export_dir`` in which to export the masks
+            -   an absolute directory in which to export the masks. In this
+                case, the ``export_dir`` has no effect on the location of the
+                masks
+
+            If None, the masks will be exported into ``export_dir`` using the
+            default folder name
+        export_media (None): controls how to export the raw media. The
+            supported values are:
+
+            -   ``True``: copy all media files into the output directory
+            -   ``False``: don't export media
+            -   ``"move"``: move all media files into the output directory
+            -   ``"symlink"``: create symlinks to the media files in the output
+                directory
+            -   ``"manifest"``: create a ``data.json`` in the output directory
+                that maps UUIDs used in the labels files to the filepaths of
+                the source media, rather than exporting the actual media
+
+            If None, the default value of this parameter will be chosen based
+            on the value of the ``data_path`` parameter
         image_format (None): the image format to use when writing in-memory
             images to disk. By default, ``fiftyone.config.default_image_ext``
             is used
@@ -1702,16 +2299,35 @@ class ImageSegmentationDirectoryExporter(LabeledImageDatasetExporter):
             disk
     """
 
-    def __init__(self, export_dir, image_format=None, mask_format=".png"):
-        if image_format is None:
-            image_format = fo.config.default_image_ext
+    def __init__(
+        self,
+        export_dir=None,
+        data_path=None,
+        labels_path=None,
+        export_media=None,
+        image_format=None,
+        mask_format=".png",
+    ):
+        data_path, export_media = self._parse_data_path(
+            export_dir=export_dir,
+            data_path=data_path,
+            export_media=export_media,
+            default="data/",
+        )
 
-        super().__init__(export_dir)
+        labels_path = self._parse_labels_path(
+            export_dir=export_dir, labels_path=labels_path, default="labels/",
+        )
+
+        super().__init__(export_dir=export_dir)
+
+        self.data_path = data_path
+        self.labels_path = labels_path
+        self.export_media = export_media
         self.image_format = image_format
         self.mask_format = mask_format
-        self._data_dir = None
-        self._labels_dir = None
-        self._filename_maker = None
+
+        self._media_exporter = None
 
     @property
     def requires_image_metadata(self):
@@ -1722,22 +2338,21 @@ class ImageSegmentationDirectoryExporter(LabeledImageDatasetExporter):
         return fol.Segmentation
 
     def setup(self):
-        self._data_dir = os.path.join(self.export_dir, "data")
-        self._labels_dir = os.path.join(self.export_dir, "labels")
-        self._filename_maker = fou.UniqueFilenameMaker(
-            output_dir=self._data_dir,
+        self._media_exporter = ImageExporter(
+            self.export_media,
+            export_path=self.data_path,
             default_ext=self.image_format,
             ignore_exts=True,
         )
+        self._media_exporter.setup()
 
     def export_sample(self, image_or_path, segmentation, metadata=None):
-        out_image_path = self._export_image_or_path(
-            image_or_path, self._filename_maker
-        )
-        name = os.path.splitext(os.path.basename(out_image_path))[0]
-
-        out_mask_path = os.path.join(self._labels_dir, name + self.mask_format)
+        _, uuid = self._media_exporter.export(image_or_path)
+        out_mask_path = os.path.join(self.labels_path, uuid + self.mask_format)
         etai.write(segmentation.mask, out_mask_path)
+
+    def close(self, *args):
+        self._media_exporter.close()
 
 
 class FiftyOneImageLabelsDatasetExporter(LabeledImageDatasetExporter):
@@ -1754,6 +2369,15 @@ class FiftyOneImageLabelsDatasetExporter(LabeledImageDatasetExporter):
 
     Args:
         export_dir: the directory to write the export
+        export_media (None): controls how to export the raw media. The
+            supported values are:
+
+            -   ``True`` (default): copy all media files into the output
+                directory
+            -   ``False``: don't export media
+            -   ``"move"``: move all media files into the output directory
+            -   ``"symlink"``: create symlinks to the media files in the output
+                directory
         image_format (None): the image format to use when writing in-memory
             images to disk. By default, ``fiftyone.config.default_image_ext``
             is used
@@ -1761,18 +2385,27 @@ class FiftyOneImageLabelsDatasetExporter(LabeledImageDatasetExporter):
             format with newlines and indentations
     """
 
-    def __init__(self, export_dir, image_format=None, pretty_print=False):
-        if image_format is None:
-            image_format = fo.config.default_image_ext
+    def __init__(
+        self,
+        export_dir,
+        export_media=None,
+        image_format=None,
+        pretty_print=False,
+    ):
+        if export_media is None:
+            export_media = True
 
-        super().__init__(export_dir)
+        super().__init__(export_dir=export_dir)
+
+        self.export_media = export_media
         self.image_format = image_format
         self.pretty_print = pretty_print
+
         self._labeled_dataset = None
         self._data_dir = None
         self._labels_dir = None
-        self._filename_maker = None
         self._description = None
+        self._media_exporter = None
 
     @property
     def requires_image_metadata(self):
@@ -1793,53 +2426,48 @@ class FiftyOneImageLabelsDatasetExporter(LabeledImageDatasetExporter):
         )
         self._data_dir = self._labeled_dataset.data_dir
         self._labels_dir = self._labeled_dataset.labels_dir
-        self._filename_maker = fou.UniqueFilenameMaker(
-            output_dir=self._data_dir,
+
+        self._media_exporter = ImageExporter(
+            self.export_media,
+            export_path=self._data_dir,
+            supported_modes=(True, False, "move", "symlink"),
             default_ext=self.image_format,
             ignore_exts=True,
         )
+        self._media_exporter.setup()
 
     def log_collection(self, sample_collection):
         self._description = sample_collection.info.get("description", None)
 
     def export_sample(self, image_or_path, labels, metadata=None):
-        is_image_path = self._is_image_path(image_or_path)
+        out_image_path, uuid = self._media_exporter.export(image_or_path)
 
-        if is_image_path:
-            image_path = image_or_path
-            out_image_path = self._filename_maker.get_output_path(image_path)
-        else:
-            img = image_or_path
-            out_image_path = self._filename_maker.get_output_path()
-
-        name, ext = os.path.splitext(os.path.basename(out_image_path))
-        new_image_filename = name + ext
-        new_labels_filename = name + ".json"
+        out_image_filename = os.path.basename(out_image_path)
+        out_labels_filename = uuid + ".json"
 
         _image_labels = foe.to_image_labels(labels)
 
         if etau.is_str(image_or_path):
             image_labels_path = os.path.join(
-                self._labels_dir, new_labels_filename
+                self._labels_dir, out_labels_filename
             )
             _image_labels.write_json(
                 image_labels_path, pretty_print=self.pretty_print
             )
 
-            self._labeled_dataset.add_file(
-                image_path,
-                image_labels_path,
-                new_data_filename=new_image_filename,
-                new_labels_filename=new_labels_filename,
-            )
+            self._labeled_dataset.add_file(out_image_path, image_labels_path)
         else:
             self._labeled_dataset.add_data(
-                img, _image_labels, new_image_filename, new_labels_filename,
+                image_or_path,
+                _image_labels,
+                out_image_filename,
+                out_labels_filename,
             )
 
     def close(self, *args):
         self._labeled_dataset.set_description(self._description)
         self._labeled_dataset.write_manifest()
+        self._media_exporter.close()
 
 
 class FiftyOneVideoLabelsDatasetExporter(LabeledVideoDatasetExporter):
@@ -1856,18 +2484,33 @@ class FiftyOneVideoLabelsDatasetExporter(LabeledVideoDatasetExporter):
 
     Args:
         export_dir: the directory to write the export
+        export_media (None): controls how to export the raw media. The
+            supported values are:
+
+            -   ``True`` (default): copy all media files into the output
+                directory
+            -   ``False``: don't export media
+            -   ``"move"``: move all media files into the output directory
+            -   ``"symlink"``: create symlinks to the media files in the output
+                directory
         pretty_print (False): whether to render the JSON in human readable
             format with newlines and indentations
     """
 
-    def __init__(self, export_dir, pretty_print=False):
-        super().__init__(export_dir)
+    def __init__(self, export_dir, export_media=None, pretty_print=False):
+        if export_media is None:
+            export_media = True
+
+        super().__init__(export_dir=export_dir)
+
+        self.export_media = export_media
         self.pretty_print = pretty_print
+
         self._labeled_dataset = None
         self._data_dir = None
         self._labels_dir = None
-        self._filename_maker = None
         self._description = None
+        self._media_exporter = None
 
     @property
     def requires_video_metadata(self):
@@ -1892,37 +2535,36 @@ class FiftyOneVideoLabelsDatasetExporter(LabeledVideoDatasetExporter):
         )
         self._data_dir = self._labeled_dataset.data_dir
         self._labels_dir = self._labeled_dataset.labels_dir
-        self._filename_maker = fou.UniqueFilenameMaker(
-            output_dir=self._data_dir, ignore_exts=True,
+
+        self._media_exporter = VideoExporter(
+            self.export_media,
+            export_path=self._data_dir,
+            supported_modes=(True, False, "move", "symlink"),
+            ignore_exts=True,
         )
+        self._media_exporter.setup()
 
     def log_collection(self, sample_collection):
         self._description = sample_collection.info.get("description", None)
 
     def export_sample(self, video_path, _, frames, metadata=None):
-        out_video_path = self._filename_maker.get_output_path(video_path)
+        out_video_path, uuid = self._media_exporter.export(video_path)
 
-        name, ext = os.path.splitext(os.path.basename(out_video_path))
-        new_image_filename = name + ext
-        new_labels_filename = name + ".json"
+        out_labels_filename = uuid + ".json"
 
         _video_labels = foe.to_video_labels(frames)
 
-        video_labels_path = os.path.join(self._labels_dir, new_labels_filename)
+        video_labels_path = os.path.join(self._labels_dir, out_labels_filename)
         _video_labels.write_json(
             video_labels_path, pretty_print=self.pretty_print
         )
 
-        self._labeled_dataset.add_file(
-            video_path,
-            video_labels_path,
-            new_data_filename=new_image_filename,
-            new_labels_filename=new_labels_filename,
-        )
+        self._labeled_dataset.add_file(out_video_path, video_labels_path)
 
     def close(self, *args):
         self._labeled_dataset.set_description(self._description)
         self._labeled_dataset.write_manifest()
+        self._media_exporter.close()
 
 
 def _parse_classification(classification, labels_map_rev=None):

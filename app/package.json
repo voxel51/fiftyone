@@ -1,9 +1,10 @@
 {
     "name": "@fiftyone/fiftyone",
-    "version": "0.1.0",
-    "main": "index.js",
+    "productName": "FiftyOne",
+    "version": "0.14.0",
     "license": "Apache-2.0",
     "private": true,
+    "main": "index.js",
     "scripts": {
         "dev": "yarn workspace @fiftyone/app dev",
         "start": "yarn workspace @fiftyone/app start",

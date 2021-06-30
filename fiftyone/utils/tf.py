@@ -12,6 +12,7 @@ import os
 
 import eta.core.utils as etau
 
+import fiftyone as fo
 import fiftyone.core.labels as fol
 import fiftyone.core.metadata as fom
 import fiftyone.core.utils as fou
@@ -453,26 +454,15 @@ class TFRecordsLabeledImageDatasetImporter(foud.LabeledImageDatasetImporter):
         images_dir: the directory in which the images will be written
         image_format (None): the image format to use to write the images to
             disk. By default, ``fiftyone.config.default_image_ext`` is used
-        skip_unlabeled (False): whether to skip unlabeled images when importing
         max_samples (None): a maximum number of samples to import. By default,
             all samples are imported
     """
 
     def __init__(
-        self,
-        dataset_dir,
-        images_dir,
-        image_format=None,
-        skip_unlabeled=False,
-        max_samples=None,
-        **kwargs
+        self, dataset_dir, images_dir, image_format=None, max_samples=None,
     ):
-        for arg in kwargs:
-            logger.warning("Ignoring unsupported parameter '%s'", arg)
+        super().__init__(dataset_dir=dataset_dir, max_samples=max_samples)
 
-        super().__init__(
-            dataset_dir, skip_unlabeled=skip_unlabeled, max_samples=max_samples
-        )
         self.images_dir = images_dir
         self.image_format = image_format
 
@@ -496,7 +486,7 @@ class TFRecordsLabeledImageDatasetImporter(foud.LabeledImageDatasetImporter):
         return self._sample_parser.has_image_metadata
 
     def setup(self):
-        tf_records_patt = os.path.join(self.dataset_dir, "*")
+        tf_records_patt = os.path.join(self.dataset_dir, "*record*")
         tf_dataset = from_tf_records(tf_records_patt)
 
         self._dataset_ingestor = foud.LabeledImageDatasetIngestor(
@@ -504,7 +494,6 @@ class TFRecordsLabeledImageDatasetImporter(foud.LabeledImageDatasetImporter):
             tf_dataset,
             self._sample_parser,
             image_format=self.image_format,
-            skip_unlabeled=self.skip_unlabeled,
             max_samples=self.max_samples,
         )
         self._dataset_ingestor.setup()
@@ -538,7 +527,6 @@ class TFImageClassificationDatasetImporter(
         images_dir: the directory in which the images will be written
         image_format (None): the image format to use to write the images to
             disk. By default, ``fiftyone.config.default_image_ext`` is used
-        skip_unlabeled (False): whether to skip unlabeled images when importing
         max_samples (None): a maximum number of samples to import. By default,
             all samples are imported
     """
@@ -566,7 +554,6 @@ class TFObjectDetectionDatasetImporter(TFRecordsLabeledImageDatasetImporter):
         images_dir: the directory in which the images will be written
         image_format (None): the image format to use to write the images to
             disk. By default, ``fiftyone.config.default_image_ext`` is used
-        skip_unlabeled (False): whether to skip unlabeled images when importing
         max_samples (None): a maximum number of samples to import. By default,
             all samples are imported
     """
@@ -588,13 +575,22 @@ class TFRecordsDatasetExporter(foud.LabeledImageDatasetExporter):
         export_dir: the directory to write the export
         num_shards (None): an optional number of shards to split the records
             into (using a round robin strategy)
+        image_format (None): the image format to use when writing in-memory
+            images to disk. By default, ``fiftyone.config.default_image_ext``
+            is used
     """
 
-    def __init__(self, export_dir, num_shards=None):
-        super().__init__(export_dir)
+    def __init__(self, export_dir, num_shards=None, image_format=None):
+        if image_format is None:
+            image_format = fo.config.default_image_ext
+
+        super().__init__(export_dir=export_dir)
+
         self.num_shards = num_shards
-        self._filename_maker = None
+        self.image_format = image_format
+
         self._example_generator = None
+        self._filename_maker = None
         self._tf_records_writer = None
 
     @property
@@ -603,16 +599,19 @@ class TFRecordsDatasetExporter(foud.LabeledImageDatasetExporter):
 
     def setup(self):
         tf_records_path = os.path.join(self.export_dir, "tf.records")
-        self._filename_maker = fou.UniqueFilenameMaker()
+
         self._example_generator = self._make_example_generator()
+        self._filename_maker = fou.UniqueFilenameMaker(
+            default_ext=self.image_format
+        )
         self._tf_records_writer = TFRecordsWriter(
             tf_records_path, num_shards=self.num_shards
         )
         self._tf_records_writer.__enter__()
 
     def export_sample(self, image_or_path, label, metadata=None):
-        if self._is_image_path(image_or_path):
-            filename = self._filename_maker.get_output_path(image_or_path)
+        if etau.is_str(image_or_path):
+            filename = image_or_path
         else:
             filename = self._filename_maker.get_output_path()
 
@@ -644,6 +643,9 @@ class TFImageClassificationDatasetExporter(TFRecordsDatasetExporter):
         export_dir: the directory to write the export
         num_shards (None): an optional number of shards to split the records
             into (using a round robin strategy)
+        image_format (None): the image format to use when writing in-memory
+            images to disk. By default, ``fiftyone.config.default_image_ext``
+            is used
     """
 
     @property
@@ -663,14 +665,22 @@ class TFObjectDetectionDatasetExporter(TFRecordsDatasetExporter):
 
     Args:
         export_dir: the directory to write the export
-        classes (None): the list of possible class labels. If omitted, the
-            class list is dynamically generated as samples are processed
         num_shards (None): an optional number of shards to split the records
             into (using a round robin strategy)
+        image_format (None): the image format to use when writing in-memory
+            images to disk. By default, ``fiftyone.config.default_image_ext``
+            is used
+        classes (None): the list of possible class labels. If omitted, the
+            class list is dynamically generated as samples are processed
     """
 
-    def __init__(self, export_dir, classes=None, num_shards=None):
-        super().__init__(export_dir, num_shards=num_shards)
+    def __init__(
+        self, export_dir, num_shards=None, image_format=None, classes=None
+    ):
+        super().__init__(
+            export_dir, num_shards=num_shards, image_format=image_format
+        )
+
         self.classes = classes
 
     @property

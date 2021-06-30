@@ -9,7 +9,7 @@ The FiftyOne App is a powerful graphical user interface that enables you to
 visualize, browse, and interact directly with your
 :ref:`FiftyOne Datasets <using-datasets>`.
 
-.. image:: ../images/app/app-filters.gif
+.. image:: /images/app/app-filters.gif
    :alt: app-filters
    :align: center
 
@@ -74,7 +74,7 @@ would like to run the App as a desktop application.
         # Blocks execution until the App is closed
         session.wait()
 
-.. image:: ../images/app/app-empty.gif
+.. image:: /images/app/app-empty.gif
    :alt: app-empty
    :align: center
 
@@ -95,7 +95,7 @@ session object:
     # View the dataset in the App
     session.dataset = dataset
 
-.. image:: ../images/app/app-scroll.gif
+.. image:: /images/app/app-scroll.gif
    :alt: app-scroll
    :align: center
 
@@ -115,7 +115,7 @@ first 10 samples in the dataset sorted by their `uniqueness` field:
 
     session.view = dataset.sort_by("uniqueness").limit(10)
 
-.. image:: ../images/app/app-views1.gif
+.. image:: /images/app/app-views1.gif
    :alt: app-views1
    :align: center
 
@@ -239,7 +239,7 @@ ______
 Any labels, tags, and scalar fields can be overlaid on the samples in the App
 by toggling the corresponding display options on the lefthand side of the App.
 
-.. image:: ../images/app/app-fields.gif
+.. image:: /images/app/app-fields.gif
     :alt: app-fields
     :align: center
 
@@ -250,7 +250,7 @@ Click a sample to open an expanded view of the sample. This modal also
 contains information about the fields of the |Sample| and allows you to access
 the raw JSON description of the sample.
 
-.. image:: ../images/app/app-expanded.gif
+.. image:: /images/app/app-expanded.gif
     :alt: app-expanded
     :align: center
 
@@ -273,7 +273,7 @@ only those samples and/or labels that match the filter.
     convert your filters to an equivalent set of stage(s) in the
     :ref:`view bar <app-create-view>`!
 
-.. image:: ../images/app/app-filters.gif
+.. image:: /images/app/app-filters.gif
    :alt: app-filters
    :align: center
 
@@ -293,7 +293,7 @@ the App.
     :meth:`Session.view <fiftyone.core.session.Session.view>` property of the
     App's session object.
 
-.. image:: ../images/app/app-views2.gif
+.. image:: /images/app/app-views2.gif
     :alt: app-views2
     :align: center
 
@@ -325,7 +325,7 @@ you've added to your dataset. For example, if you computed
 :ref:`uniqueness <brain-image-uniqueness>` on your dataset, a histogram of
 uniqueness values will be displayed under the `Scalars` tab.
 
-.. image:: ../images/app/app-stats.gif
+.. image:: /images/app/app-stats.gif
     :alt: app-stats
     :align: center
 
@@ -341,7 +341,7 @@ One common workflow is to select samples visually in the App and then access
 the data for the selected samples in Python. To perform this workflow, first
 select some samples in the App:
 
-.. image:: ../images/app/app-selection.gif
+.. image:: /images/app/app-selection.gif
     :alt: app-selection
     :align: center
 
@@ -386,7 +386,7 @@ creating a |DatasetView| that includes/excludes the selected labels.
 To perform this workflow, open the expanded sample modal by clicking on
 a sample in the App. Then click on individual labels to select them:
 
-.. image:: ../images/app/app-label-selection.gif
+.. image:: /images/app/app-label-selection.gif
     :alt: app-label-selection
     :align: center
 
@@ -468,7 +468,7 @@ You can also use the tag menu to remove existing tags.
     unless you have selected individual samples, in which case the operation
     will only apply to the **selected samples**.
 
-.. image:: ../images/app/app-tagging-samples.gif
+.. image:: /images/app/app-tagging-samples.gif
     :alt: app-tagging-samples
     :align: center
 
@@ -484,7 +484,7 @@ the top-right corner of the modal.
     individual labels, in which case the operation will only apply to the
     **selected labels**. The latter may span multiple samples.
 
-.. image:: ../images/app/app-tagging-expanded.gif
+.. image:: /images/app/app-tagging-expanded.gif
     :alt: app-tagging-expanded
     :align: center
 
@@ -526,7 +526,7 @@ view bar and your view will be updated to show the patches.
     Switching to patches view will create patches for **only** the contents of
     your current view.
 
-.. image:: ../images/app/app-object-patches.gif
+.. image:: /images/app/app-object-patches.gif
     :alt: object-patches
     :align: center
 
@@ -572,7 +572,7 @@ patches!
     information about running evaluations and using evaluation patches views
     to analyze object detection models.
 
-.. image:: ../images/app/app-evaluation-patches.gif
+.. image:: /images/app/app-evaluation-patches.gif
     :alt: evaluation-patches
     :align: center
 
@@ -636,7 +636,7 @@ In the menu, you can optionally specify a maximum number of matches to return
 (``k``) and whether to sort in order of least similarity rather than most
 similarity (``reverse``).
 
-.. image:: ../images/brain/brain-image-similarity.gif
+.. image:: /images/brain/brain-image-similarity.gif
     :alt: image-similarity
     :align: center
 
@@ -672,7 +672,7 @@ In the menu, you can optionally specify a maximum number of matches to return
 (``k``) and whether to sort in order of least similarity rather than most
 similarity (``reverse``).
 
-.. image:: ../images/brain/brain-object-similarity.gif
+.. image:: /images/brain/brain-object-similarity.gif
     :alt: object-similarity
     :align: center
 
@@ -680,7 +680,7 @@ You can also sort by visual similarity to an object from the expanded sample
 modal in the App by selecting an object and then using the similarity menu that
 appears in the upper-right corner of the modal:
 
-.. image:: ../images/brain/brain-object-similarity-modal.gif
+.. image:: /images/brain/brain-object-similarity-modal.gif
     :alt: object-similarity-modal
     :align: center
 

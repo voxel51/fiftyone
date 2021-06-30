@@ -234,7 +234,7 @@ aggregation to compute the histograms of numeric fields of a collection:
     plot_hist(counts, edges)
     plt.show(block=False)
 
-.. image:: ../images/histogram_values_uniqueness.png
+.. image:: /images/histogram_values_uniqueness.png
    :alt: histogram-values
    :align: center
 
@@ -382,12 +382,22 @@ The example below demonstrates this capability:
         ]
     )
 
+    #
     # Count the number of keypoints in the dataset
-    count = dataset.count("keypoints.points[]")
+    #
+    # The `points` list attribute is declared on the `Keypoint` class, so it is
+    # automatically unwound
+    #
+    count = dataset.count("keypoints.points")
     print(count)
     # 5
 
-    # Compute the values in the custom `friends` field of the predictions
+    #
+    # Compute the values in the `friends` field of the predictions
+    #
+    # The `friends` list attribute is a dynamic custom attribute, so we must
+    # explicitly request that it be unwound
+    #
     counts = dataset.count_values("classes.friends[]")
     print(counts)
     # {'dog': 1, 'squirrel': 2, 'rabbit': 1}
@@ -398,24 +408,23 @@ The example below demonstrates this capability:
     dataset's schema without requiring you to explicitly specify this via the
     ``[]`` syntax. This includes the following cases:
 
-    **Top-level lists:** When you write an aggregation that refers to a
+    **Top-level list fields:** When you write an aggregation that refers to a
     top-level list field of a dataset; i.e., ``list_field`` is automatically
     coerced to ``list_field[]``, if necessary.
 
-    **Label lists:** When you write an aggregation that refers to the list
-    field of a |Label| class, such as the
-    :attr:`Detections.detections <fiftyone.core.labels.Detections.detections>`
-    attribute; i.e., ``ground_truth.detections.label`` is automatically
-    coerced to ``ground_truth.detections[].label``, if necessary.
-
     **Frame fields:** When you write an aggregation that refers to a
-    frame-level field of a video dataset; i.e..,
+    frame-level field of a video dataset; i.e.,
     ``frames.classification.label`` is automatically coerced to
     ``frames[].classifcation.label`` if necessary.
 
-    **Tags fields:** When you write an aggregation that refers to the ``tags``
-    attribute of a |Sample| or |Label| object; i.e., ``classification.tags`` is
-    automatically coerced to ``classification.tags[]``, if necessary.
+    **Embedded list fields:** When you write an aggregation that refers to a
+    list attribute that is declared on a |Sample|, |Frame|, or |Label| class,
+    such as the
+    :attr:`Classification.tags <fiftyone.core.labels.Classification.tags>`,
+    :attr:`Detections.detections <fiftyone.core.labels.Detections.detections>`,
+    or :attr:`Keypoint.points <fiftyone.core.labels.Keypoint.points>`
+    attributes; i.e., ``ground_truth.detections.label`` is automatically
+    coerced to ``ground_truth.detections[].label``, if necessary.
 
 .. _aggregations-expressions:
 

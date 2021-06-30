@@ -53,6 +53,7 @@ const SampleInfo = React.memo(({ sampleId }: { sampleId: string }) => {
   const colorByLabel = useRecoilValue(atoms.colorByLabel(false));
   const labelTypes = useRecoilValue(selectors.labelTypesMap);
   const sample = useRecoilValue(atoms.sample(sampleId));
+  const filters = useRecoilValue(labelFilters(false));
 
   const dbFields = useRecoilValue(selectors.scalarsDbMap("sample"));
 
@@ -116,6 +117,7 @@ const SampleInfo = React.memo(({ sampleId }: { sampleId: string }) => {
       acc = [
         ...acc,
         values
+          .filter((v) => filters[cur](v))
           .map((v) => prettify(v.label, false))
           .map((v) => (
             <Tag

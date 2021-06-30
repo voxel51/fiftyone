@@ -7,7 +7,7 @@ FiftyOne Basics
 
 This page provides a brief overview of FiftyOne's basic concepts.
 
-.. image:: ../images/datasets-hero.png
+.. image:: /images/datasets-hero.png
    :alt: datasets-hero
    :align: center
 
@@ -379,7 +379,7 @@ datasets to perform the analysis that you need.
 
     session = fo.launch_app(view=similar_cats)
 
-.. image:: ../images/cats-similar.png
+.. image:: /images/cats-similar.png
    :alt: cats-similar
    :align: center
 

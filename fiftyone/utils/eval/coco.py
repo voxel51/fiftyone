@@ -119,7 +119,7 @@ class COCOEvaluation(DetectionEvaluation):
             eval_key (None): the evaluation key for this evaluation
 
         Returns:
-            a list of matched 
+            a list of matched
             ``(gt_label, pred_label, iou, pred_confidence, gt_id, pred_id)``
             tuples
         """
@@ -643,13 +643,14 @@ def _compute_iou(preds, gts, iscrowd):
 
 def _make_iscrowd_fcn(iscrowd_attr):
     def _iscrowd(detection):
-        if iscrowd_attr in detection.attributes:
-            return bool(detection.attributes[iscrowd_attr].value)
-
         try:
             return bool(detection[iscrowd_attr])
         except KeyError:
-            return False
+            # @todo remove Attribute usage
+            if iscrowd_attr in detection.attributes:
+                return bool(detection.attributes[iscrowd_attr].value)
+            else:
+                return False
 
     return _iscrowd
 

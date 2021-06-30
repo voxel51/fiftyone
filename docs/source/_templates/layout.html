@@ -9,19 +9,14 @@
 />
 {% endblock %} {% block custom_header %}
 <div class="container-fluid header-holder tutorials-header" id="header-holder">
-  <a
-    class="banner"
-    href="https://voxel51.com/docs/fiftyone/integrations/lightning_flash.html"
-  >
+  <a class="banner" href="{{banner_link}}">
     <div>
       <span>
-        We are collaborating with the
-        <b class="gray">PyTorch Lightning</b>&nbsp;team to support training and
-        evaluating Flash models in&nbsp;<span
-          ><b style="color: var(--gray-dark3)">Fifty</b
-          ><b style="color: var(--color-primary)">One</b></span
-        >!
-      </span>
+        With support from the COCO team,
+        <span><b class="text-secondary-on-dark">Fifty</b><b class="text-brand">One</b></span>
+        is now a recommended tool for the
+        <b class="gray">COCO dataset and evaluation</b>!</span
+      >
     </div>
   </a>
 
@@ -211,7 +206,7 @@ endblock %} {% block custom_footer %}
 <script
   charset="utf-8"
   type="text/javascript"
-  src="//js.hsforms.net/forms/v2.js"
+  src="https://js.hsforms.net/forms/v2.js"
 ></script>
 <script>
   hbspt.forms.create({

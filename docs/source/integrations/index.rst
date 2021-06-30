@@ -40,20 +40,21 @@ on the cards below to see how!
     :image: ../_static/images/integrations/lightning_flash.png
     :tags: Model-Training,Model-Evaluation
 
-.. Upcoming integrations
+.. customcarditem::
+    :header: Open Images Dataset
+    :description: See why FiftyOne is a recommended tool for downloading, visualizing, and evaluating on Google's Open Images Dataset.
+    :link: open_images.html
+    :image: ../_static/images/integrations/open_images.png
+    :tags: Dataset,Model-Evaluation
 
-    .. customcarditem::
-        :header: Open Images Dataset
-        :description: FiftyOne is the recommended tool for downloading and exploring Google's Open Images Dataset.
-        :link: ../user_guide/dataset_zoo/datasets.html#dataset-zoo-open-images-v6
-        :image: ../_static/images/integrations/open_images.png
-        :tags: Dataset
+.. customcarditem::
+    :header: COCO Dataset
+    :description: See how FiftyOne makes downloading, visualizing, and evaluating on the COCO dataset (or your own COCO-formatted data) a breeze.
+    :link: coco.html
+    :image: ../_static/images/integrations/coco.png
+    :tags: Dataset,Model-Evaluation
 
-    .. customcarditem::
-        :header: COCO Dataset
-        :description: FiftyOne is the recommended tool for downloading and exploring the COCO Dataset.
-        :link: ../user_guide/dataset_zoo/datasets.html#dataset-zoo-coco-2017
-        :tags: Dataset
+.. Upcoming integrations :)
 
     .. customcarditem::
         :header: CVAT
@@ -94,3 +95,5 @@ on the cards below to see how!
    :hidden:
 
     Lightning Flash <lightning_flash.rst>
+    Open Images <open_images.rst>
+    COCO <coco.rst>

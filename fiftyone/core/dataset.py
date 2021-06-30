@@ -20,7 +20,7 @@ from bson import ObjectId
 from deprecated import deprecated
 import mongoengine.errors as moe
 import numpy as np
-from pymongo import UpdateMany, UpdateOne
+from pymongo import InsertOne, ReplaceOne, UpdateMany, UpdateOne
 from pymongo.errors import CursorNotFound, BulkWriteError
 
 import eta.core.serial as etas
@@ -1429,6 +1429,37 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         return [str(d["_id"]) for d in dicts]
 
+    def _upsert_samples_batch(self, samples, expand_schema, validate):
+        if self.media_type is None and samples:
+            self.media_type = samples[0].media_type
+
+        if expand_schema:
+            self._expand_schema(samples)
+
+        if validate:
+            self._validate_samples(samples)
+
+        dicts = []
+        ops = []
+        for sample in samples:
+            d = sample.to_mongo_dict(include_id=True)
+            dicts.append(d)
+
+            if sample.id:
+                ops.append(ReplaceOne({"_id": sample._id}, d, upsert=True))
+            else:
+                d.pop("_id", None)
+                ops.append(InsertOne(d))  # adds `_id` to dict
+
+        foo.bulk_write(ops, self._sample_collection, ordered=False)
+
+        for sample, d in zip(samples, dicts):
+            doc = self._sample_dict_to_doc(d)
+            sample._set_backing_doc(doc, dataset=self)
+
+            if self.media_type == fom.VIDEO:
+                sample.frames.save()
+
     def _bulk_write(self, ops, frames=False, ordered=False):
         if frames:
             coll = self._frame_collection
@@ -1487,11 +1518,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         expand_schema=True,
         include_info=True,
         overwrite_info=False,
+        num_samples=None,
     ):
         """Merges the given samples into this dataset.
 
         By default, samples with the same absolute ``filepath`` are merged, but
-        can customize this behavior via the ``key_field`` and ``key_fcn``
+        you can customize this behavior via the ``key_field`` and ``key_fcn``
         parameters. For example, you could set
         ``key_fcn = lambda sample: os.path.basename(sample.filepath)`` to merge
         samples with the same base filename.
@@ -1518,8 +1550,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             as a whole rather than merging their elements
         -   Whether to merge (a) only specific fields or (b) all but certain
             fields
-        -   Mapping input collection fields to different field names of this
-            dataset
+        -   Mapping input fields to different field names of this dataset
 
         Args:
             samples: a :class:`fiftyone.core.collections.SampleCollection` or
@@ -1568,6 +1599,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 information. Only applicable when ``samples`` is a
                 :class:`fiftyone.core.collections.SampleCollection` and
                 ``include_info`` is True
+            num_samples (None): the number of samples in ``samples``. If not
+                provided, this is computed via ``len(samples)``, if possible.
+                This value is optional and is used only for progress tracking
         """
         if fields is not None:
             if etau.is_str(fields):
@@ -1592,9 +1626,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 overwrite_info=overwrite_info,
             )
 
-        # Use efficient implementation when possible
+            expand_schema = False
+
+        # If we're merging a collection, use aggregation pipelines
         if isinstance(samples, foc.SampleCollection) and key_fcn is None:
-            _merge_samples(
+            _merge_samples_pipeline(
                 samples,
                 self,
                 key_field,
@@ -1607,62 +1643,47 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             )
             return
 
+        #
+        # If we're not merging a collection but the merge key is a field, it's
+        # faster to import into a temporary dataset and then do a merge that
+        # leverages aggregation pipelines, because this avoids the need to
+        # load samples from `self` into memory
+        #
+
         if key_fcn is None:
-            id_map = {k: v for k, v in zip(*self.values([key_field, "id"]))}
-            key_fcn = lambda sample: sample[key_field]
-        else:
-            id_map = {}
-            logger.info("Indexing dataset...")
-            with fou.ProgressBar() as pb:
-                for sample in pb(self):
-                    id_map[key_fcn(sample)] = sample.id
+            tmp = Dataset()
+            tmp.add_samples(samples, num_samples=num_samples)
 
-        # When inserting new samples, `filepath` cannot be excluded
-        if insert_new:
-            if isinstance(fields, dict):
-                insert_fields = fields.copy()
-                insert_fields["filepath"] = "filepath"
-            elif fields is not None:
-                insert_fields = fields.copy()
-                if "filepath" not in insert_fields:
-                    insert_fields = ["filepath"] + insert_fields
-            else:
-                insert_fields = None
+            self.merge_samples(
+                tmp,
+                key_field=key_field,
+                skip_existing=skip_existing,
+                insert_new=insert_new,
+                fields=fields,
+                omit_fields=omit_fields,
+                merge_lists=merge_lists,
+                overwrite=overwrite,
+                expand_schema=expand_schema,
+                include_info=False,
+            )
+            tmp.delete()
 
-            insert_omit_fields = omit_fields
-            if insert_omit_fields is not None:
-                insert_omit_fields = [
-                    f for f in insert_omit_fields if f != "filepath"
-                ]
+            return
 
-        logger.info("Merging samples...")
-        with fou.ProgressBar() as pb:
-            for sample in pb(samples):
-                key = key_fcn(sample)
-                if key in id_map:
-                    if not skip_existing:
-                        existing_sample = self[id_map[key]]
-                        existing_sample.merge(
-                            sample,
-                            fields=fields,
-                            omit_fields=omit_fields,
-                            merge_lists=merge_lists,
-                            overwrite=overwrite,
-                            expand_schema=expand_schema,
-                        )
-                        existing_sample.save()
-
-                elif insert_new:
-                    if (
-                        insert_fields is not None
-                        or insert_omit_fields is not None
-                    ):
-                        sample = sample.copy(
-                            fields=insert_fields,
-                            omit_fields=insert_omit_fields,
-                        )
-
-                    self.add_sample(sample, expand_schema=expand_schema)
+        _merge_samples_python(
+            self,
+            samples,
+            key_field=key_field,
+            key_fcn=key_fcn,
+            skip_existing=skip_existing,
+            insert_new=insert_new,
+            fields=fields,
+            omit_fields=omit_fields,
+            merge_lists=merge_lists,
+            overwrite=overwrite,
+            expand_schema=expand_schema,
+            num_samples=num_samples,
+        )
 
     def delete_samples(self, samples_or_ids):
         """Deletes the given sample(s) from the dataset.
@@ -2083,8 +2104,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     def add_dir(
         self,
-        dataset_dir,
-        dataset_type,
+        dataset_dir=None,
+        dataset_type=None,
+        data_path=None,
+        labels_path=None,
         label_field="ground_truth",
         tags=None,
         expand_schema=True,
@@ -2093,14 +2116,68 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     ):
         """Adds the contents of the given directory to the dataset.
 
-        See :doc:`this guide </user_guide/dataset_creation/datasets>` for
-        descriptions of available dataset types.
+        You can perform imports with this method via the following basic
+        patterns:
+
+        (a) Provide ``dataset_dir`` and ``dataset_type`` to import the contents
+            of a directory that is organized in the default layout for the
+            dataset type as documented in
+            :ref:`this guide <loading-datasets-from-disk>`
+
+        (b) Provide ``dataset_type`` along with ``data_path``, ``labels_path``,
+            or other type-specific parameters to perform a customized import.
+            This syntax provides the flexibility to, for example, perform
+            labels-only imports or imports where the source media lies in a
+            different location than the labels
+
+        In either workflow, the remaining parameters of this method can be
+        provided to further configure the import.
+
+        See :ref:`this guide <loading-datasets-from-disk>` for example usages
+        of this method and descriptions of the available dataset types.
 
         Args:
-            dataset_dir: the dataset directory
+            dataset_dir (None): the dataset directory. This can be omitted for
+                certain dataset formats if you provide arguments such as
+                ``data_path`` and ``labels_path``
             dataset_type (None): the
                 :class:`fiftyone.types.dataset_types.Dataset` type of the
-                dataset in ``dataset_dir``
+                dataset
+            data_path (None): an optional parameter that enables explicit
+                control over the location of the exported media for certain
+                dataset types. Can be any of the following:
+
+                -   a folder name like ``"data"`` or ``"data/"`` specifying a
+                    subfolder of ``dataset_dir`` in which the media lies
+                -   an absolute directory path in which the media lies. In this
+                    case, the ``export_dir`` has no effect on the location of
+                    the data
+                -   a filename like ``"data.json"`` specifying the filename of
+                    a JSON manifest file in ``dataset_dir`` that maps UUIDs to
+                    media filepaths. Files of this format are generated when
+                    passing the ``export_media="manifest"`` option to
+                    :meth:`fiftyone.core.collections.SampleCollection.export`
+                -   an absolute filepath to a JSON manifest file. In this case,
+                    ``dataset_dir`` has no effect on the location of the data
+
+                By default, it is assumed that the data can be located in the
+                default location within ``dataset_dir`` for the dataset type
+            labels_path (None): an optional parameter that enables explicit
+                control over the location of the labels. Only applicable when
+                importing certain labeled dataset formats. Can be any of the
+                following:
+
+                -   a type-specific folder name like ``"labels"`` or
+                    ``"labels/"`` or a filename like ``"labels.json"`` or
+                    ``"labels.xml"`` specifying the location in ``dataset_dir``
+                    of the labels file(s)
+                -   an absolute directory or filepath containing the labels
+                    file(s). In this case, ``dataset_dir`` has no effect on the
+                    location of the labels
+
+                For labeled datasets, this parameter defaults to the location
+                in ``dataset_dir`` of the labels for the default layout of the
+                dataset type being imported
             label_field ("ground_truth"): the name (or root name) of the
                 field(s) to use for the labels (if applicable)
             tags (None): an optional tag or iterable of tags to attach to each
@@ -2112,8 +2189,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 any) to the dataset's ``info``
             **kwargs: optional keyword arguments to pass to the constructor of
                 the :class:`fiftyone.utils.data.importers.DatasetImporter` for
-                the specified ``dataset_type`` via the syntax
-                ``DatasetImporter(dataset_dir, **kwargs)``
+                the specified ``dataset_type``
 
         Returns:
             a list of IDs of the samples that were added to the dataset
@@ -2122,7 +2198,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             dataset_type = dataset_type()
 
         # If the input dataset contains TFRecords, they must be unpacked into a
-        # temporary directory during conversion
+        # directory during import
         if (
             isinstance(
                 dataset_type,
@@ -2137,19 +2213,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             logger.info("Unpacking images to '%s'", images_dir)
             kwargs["images_dir"] = images_dir
 
-        dataset_importer_cls = dataset_type.get_dataset_importer_cls()
-
-        try:
-            dataset_importer = dataset_importer_cls(dataset_dir, **kwargs)
-        except Exception as e:
-            importer_name = dataset_importer_cls.__name__
-            raise ValueError(
-                "Failed to construct importer using syntax "
-                "%s(dataset_dir, **kwargs); you may need to supply mandatory "
-                "arguments to the constructor via `kwargs`. Please consult "
-                "the documentation of `%s` to learn more"
-                % (importer_name, etau.get_class_name(dataset_importer_cls))
-            ) from e
+        dataset_importer, _ = foud.build_dataset_importer(
+            dataset_type,
+            dataset_dir=dataset_dir,
+            data_path=data_path,
+            labels_path=labels_path,
+            **kwargs,
+        )
 
         return self.add_importer(
             dataset_importer,
@@ -2159,25 +2229,229 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             add_info=add_info,
         )
 
-    def add_archive(
+    def merge_dir(
         self,
-        archive_path,
-        dataset_type,
-        cleanup=True,
+        dataset_dir=None,
+        dataset_type=None,
+        data_path=None,
+        labels_path=None,
         label_field="ground_truth",
         tags=None,
+        key_field="filepath",
+        key_fcn=None,
+        skip_existing=False,
+        insert_new=True,
+        fields=None,
+        omit_fields=None,
+        merge_lists=True,
+        overwrite=True,
         expand_schema=True,
         add_info=True,
         **kwargs,
     ):
+        """Merges the contents of the given directory into the dataset.
+
+        You can perform imports with this method via the following basic
+        patterns:
+
+        (a) Provide ``dataset_dir`` and ``dataset_type`` to import the contents
+            of a directory that is organized in the default layout for the
+            dataset type as documented in
+            :ref:`this guide <loading-datasets-from-disk>`
+
+        (b) Provide ``dataset_type`` along with ``data_path``, ``labels_path``,
+            or other type-specific parameters to perform a customized import.
+            This syntax provides the flexibility to, for example, perform
+            labels-only imports or imports where the source media lies in a
+            different location than the labels
+
+        In either workflow, the remaining parameters of this method can be
+        provided to further configure the import.
+
+        See :ref:`this guide <loading-datasets-from-disk>` for example usages
+        of this method and descriptions of the available dataset types.
+
+        By default, samples with the same absolute ``filepath`` are merged, but
+        you can customize this behavior via the ``key_field`` and ``key_fcn``
+        parameters. For example, you could set
+        ``key_fcn = lambda sample: os.path.basename(sample.filepath)`` to merge
+        samples with the same base filename.
+
+        The behavior of this method is highly customizable. By default, all
+        top-level fields from the imported samples are merged in, overwriting
+        any existing values for those fields, with the exception of list fields
+        (e.g., ``tags``) and label list fields (e.g.,
+        :class:`fiftyone.core.labels.Detections` fields), in which case the
+        elements of the lists themselves are merged. In the case of label list
+        fields, labels with the same ``id`` in both collections are updated
+        rather than duplicated.
+
+        To avoid confusion between missing fields and fields whose value is
+        ``None``, ``None``-valued fields are always treated as missing while
+        merging.
+
+        This method can be configured in numerous ways, including:
+
+        -   Whether existing samples should be modified or skipped
+        -   Whether new samples should be added or omitted
+        -   Whether new fields can be added to the dataset schema
+        -   Whether list fields should be treated as ordinary fields and merged
+            as a whole rather than merging their elements
+        -   Whether to merge (a) only specific fields or (b) all but certain
+            fields
+        -   Mapping input fields to different field names of this dataset
+
+        Args:
+            dataset_dir (None): the dataset directory. This can be omitted for
+                certain dataset formats if you provide arguments such as
+                ``data_path`` and ``labels_path``
+            dataset_type (None): the
+                :class:`fiftyone.types.dataset_types.Dataset` type of the
+                dataset
+            data_path (None): an optional parameter that enables explicit
+                control over the location of the exported media for certain
+                dataset types. Can be any of the following:
+
+                -   a folder name like ``"data"`` or ``"data/"`` specifying a
+                    subfolder of ``dataset_dir`` in which the media lies
+                -   an absolute directory path in which the media lies. In this
+                    case, the ``export_dir`` has no effect on the location of
+                    the data
+                -   a filename like ``"data.json"`` specifying the filename of
+                    a JSON manifest file in ``dataset_dir`` that maps UUIDs to
+                    media filepaths. Files of this format are generated when
+                    passing the ``export_media="manifest"`` option to
+                    :meth:`fiftyone.core.collections.SampleCollection.export`
+                -   an absolute filepath to a JSON manifest file. In this case,
+                    ``dataset_dir`` has no effect on the location of the data
+
+                By default, it is assumed that the data can be located in the
+                default location within ``dataset_dir`` for the dataset type
+            labels_path (None): an optional parameter that enables explicit
+                control over the location of the labels. Only applicable when
+                importing certain labeled dataset formats. Can be any of the
+                following:
+
+                -   a type-specific folder name like ``"labels"`` or
+                    ``"labels/"`` or a filename like ``"labels.json"`` or
+                    ``"labels.xml"`` specifying the location in ``dataset_dir``
+                    of the labels file(s)
+                -   an absolute directory or filepath containing the labels
+                    file(s). In this case, ``dataset_dir`` has no effect on the
+                    location of the labels
+
+                For labeled datasets, this parameter defaults to the location
+                in ``dataset_dir`` of the labels for the default layout of the
+                dataset type being imported
+            label_field ("ground_truth"): the name (or root name) of the
+                field(s) to use for the labels (if applicable)
+            tags (None): an optional tag or iterable of tags to attach to each
+                sample
+            key_field ("filepath"): the sample field to use to decide whether
+                to join with an existing sample
+            key_fcn (None): a function that accepts a
+                :class:`fiftyone.core.sample.Sample` instance and computes a
+                key to decide if two samples should be merged. If a ``key_fcn``
+                is provided, ``key_field`` is ignored
+            skip_existing (False): whether to skip existing samples (True) or
+                merge them (False)
+            insert_new (True): whether to insert new samples (True) or skip
+                them (False)
+            fields (None): an optional field or iterable of fields to which to
+                restrict the merge. If provided, fields other than these are
+                omitted from ``samples`` when merging or adding samples. One
+                exception is that ``filepath`` is always included when adding
+                new samples, since the field is required. This can also be a
+                dict mapping field names of the input collection to field names
+                of this dataset
+            omit_fields (None): an optional field or iterable of fields to
+                exclude from the merge. If provided, these fields are omitted
+                from imported samples, if present. One exception is that
+                ``filepath`` is always included when adding new samples, since
+                the field is required
+            merge_lists (True): whether to merge the elements of list fields
+                (e.g., ``tags``) and label list fields (e.g.,
+                :class:`fiftyone.core.labels.Detections` fields) rather than
+                merging the entire top-level field like other field types. For
+                label lists fields, existing :class:`fiftyone.core.label.Label`
+                elements are either replaced (when ``overwrite`` is True) or
+                kept (when ``overwrite`` is False) when their ``id`` matches a
+                label from the provided samples
+            overwrite (True): whether to overwrite (True) or skip (False)
+                existing fields and label elements
+            expand_schema (True): whether to dynamically add new fields
+                encountered to the dataset schema. If False, an error is raised
+                if a sample's schema is not a subset of the dataset schema
+            add_info (True): whether to add dataset info from the importer
+                (if any) to the dataset
+            **kwargs: optional keyword arguments to pass to the constructor of
+                the :class:`fiftyone.utils.data.importers.DatasetImporter` for
+                the specified ``dataset_type``
+        """
+        if inspect.isclass(dataset_type):
+            dataset_type = dataset_type()
+
+        # If the input dataset contains TFRecords, they must be unpacked into a
+        # directory during import
+        if (
+            isinstance(
+                dataset_type,
+                (
+                    fot.TFImageClassificationDataset,
+                    fot.TFObjectDetectionDataset,
+                ),
+            )
+            and "images_dir" not in kwargs
+        ):
+            images_dir = get_default_dataset_dir(self.name)
+            logger.info("Unpacking images to '%s'", images_dir)
+            kwargs["images_dir"] = images_dir
+
+        dataset_importer, _ = foud.build_dataset_importer(
+            dataset_type,
+            dataset_dir=dataset_dir,
+            data_path=data_path,
+            labels_path=labels_path,
+            **kwargs,
+        )
+
+        return self.merge_importer(
+            dataset_importer,
+            label_field=label_field,
+            tags=tags,
+            key_field=key_field,
+            key_fcn=key_fcn,
+            skip_existing=skip_existing,
+            insert_new=insert_new,
+            fields=fields,
+            omit_fields=omit_fields,
+            merge_lists=merge_lists,
+            overwrite=overwrite,
+            expand_schema=expand_schema,
+            add_info=add_info,
+        )
+
+    def add_archive(
+        self,
+        archive_path,
+        dataset_type=None,
+        data_path=None,
+        labels_path=None,
+        label_field="ground_truth",
+        tags=None,
+        expand_schema=True,
+        add_info=True,
+        cleanup=True,
+        **kwargs,
+    ):
         """Adds the contents of the given archive to the dataset.
 
-        If the archive does not exist but a dataset with the same root name
+        If the archive does not exist but a directory with the same root name
         does exist, it is assumed that this directory contains the extracted
         contents of the archive.
 
-        See :doc:`this guide </user_guide/dataset_creation/datasets>` for
-        descriptions of available dataset types.
+        See :ref:`this guide <loading-datasets-from-disk>` for example usages
+        of this method and descriptions of the available dataset types.
 
         .. note::
 
@@ -2194,7 +2468,41 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             dataset_type (None): the
                 :class:`fiftyone.types.dataset_types.Dataset` type of the
                 dataset in ``archive_path``
-            cleanup (True): whether to delete the archive after extracting it
+            data_path (None): an optional parameter that enables explicit
+                control over the location of the exported media for certain
+                dataset types. Can be any of the following:
+
+                -   a folder name like ``"data"`` or ``"data/"`` specifying a
+                    subfolder of ``dataset_dir`` in which the media lies
+                -   an absolute directory path in which the media lies. In this
+                    case, the ``archive_path`` has no effect on the location of
+                    the data
+                -   a filename like ``"data.json"`` specifying the filename of
+                    a JSON manifest file in ``archive_path`` that maps UUIDs to
+                    media filepaths. Files of this format are generated when
+                    passing the ``export_media="manifest"`` option to
+                    :meth:`fiftyone.core.collections.SampleCollection.export`
+                -   an absolute filepath to a JSON manifest file. In this case,
+                    ``archive_path`` has no effect on the location of the data
+
+                By default, it is assumed that the data can be located in the
+                default location within ``archive_path`` for the dataset type
+            labels_path (None): an optional parameter that enables explicit
+                control over the location of the labels. Only applicable when
+                importing certain labeled dataset formats. Can be any of the
+                following:
+
+                -   a type-specific folder name like ``"labels"`` or
+                    ``"labels/"`` or a filename like ``"labels.json"`` or
+                    ``"labels.xml"`` specifying the location in
+                    ``archive_path`` of the labels file(s)
+                -   an absolute directory or filepath containing the labels
+                    file(s). In this case, ``archive_path`` has no effect on
+                    the location of the labels
+
+                For labeled datasets, this parameter defaults to the location
+                in ``archive_path`` of the labels for the default layout of the
+                dataset type being imported
             label_field ("ground_truth"): the name (or root name) of the
                 field(s) to use for the labels (if applicable)
             tags (None): an optional tag or iterable of tags to attach to each
@@ -2204,10 +2512,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 if a sample's schema is not a subset of the dataset schema
             add_info (True): whether to add dataset info from the importer (if
                 any) to the dataset's ``info``
+            cleanup (True): whether to delete the archive after extracting it
             **kwargs: optional keyword arguments to pass to the constructor of
                 the :class:`fiftyone.utils.data.importers.DatasetImporter` for
-                the specified ``dataset_type`` via the syntax
-                ``DatasetImporter(dataset_dir, **kwargs)``
+                the specified ``dataset_type``
 
         Returns:
             a list of IDs of the samples that were added to the dataset
@@ -2219,10 +2527,194 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             )
 
         return self.add_dir(
-            dataset_dir,
-            dataset_type,
+            dataset_dir=dataset_dir,
+            dataset_type=dataset_type,
+            data_path=data_path,
+            labels_path=labels_path,
             label_field=label_field,
             tags=tags,
+            expand_schema=expand_schema,
+            add_info=add_info,
+            **kwargs,
+        )
+
+    def merge_archive(
+        self,
+        archive_path,
+        dataset_type=None,
+        data_path=None,
+        labels_path=None,
+        label_field="ground_truth",
+        tags=None,
+        key_field="filepath",
+        key_fcn=None,
+        skip_existing=False,
+        insert_new=True,
+        fields=None,
+        omit_fields=None,
+        merge_lists=True,
+        overwrite=True,
+        expand_schema=True,
+        add_info=True,
+        cleanup=True,
+        **kwargs,
+    ):
+        """Merges the contents of the given archive into the dataset.
+
+        If the archive does not exist but a directory with the same root name
+        does exist, it is assumed that this directory contains the extracted
+        contents of the archive.
+
+        See :ref:`this guide <loading-datasets-from-disk>` for example usages
+        of this method and descriptions of the available dataset types.
+
+        .. note::
+
+            The following archive formats are explicitly supported::
+
+                .zip, .tar, .tar.gz, .tgz, .tar.bz, .tbz
+
+            If an archive *not* in the above list is found, extraction will be
+            attempted via the ``patool`` package, which supports many formats
+            but may require that additional system packages be installed.
+
+        By default, samples with the same absolute ``filepath`` are merged, but
+        you can customize this behavior via the ``key_field`` and ``key_fcn``
+        parameters. For example, you could set
+        ``key_fcn = lambda sample: os.path.basename(sample.filepath)`` to merge
+        samples with the same base filename.
+
+        The behavior of this method is highly customizable. By default, all
+        top-level fields from the imported samples are merged in, overwriting
+        any existing values for those fields, with the exception of list fields
+        (e.g., ``tags``) and label list fields (e.g.,
+        :class:`fiftyone.core.labels.Detections` fields), in which case the
+        elements of the lists themselves are merged. In the case of label list
+        fields, labels with the same ``id`` in both collections are updated
+        rather than duplicated.
+
+        To avoid confusion between missing fields and fields whose value is
+        ``None``, ``None``-valued fields are always treated as missing while
+        merging.
+
+        This method can be configured in numerous ways, including:
+
+        -   Whether existing samples should be modified or skipped
+        -   Whether new samples should be added or omitted
+        -   Whether new fields can be added to the dataset schema
+        -   Whether list fields should be treated as ordinary fields and merged
+            as a whole rather than merging their elements
+        -   Whether to merge (a) only specific fields or (b) all but certain
+            fields
+        -   Mapping input fields to different field names of this dataset
+
+        Args:
+            archive_path: the path to an archive of a dataset directory
+            dataset_type (None): the
+                :class:`fiftyone.types.dataset_types.Dataset` type of the
+                dataset in ``archive_path``
+            data_path (None): an optional parameter that enables explicit
+                control over the location of the exported media for certain
+                dataset types. Can be any of the following:
+
+                -   a folder name like ``"data"`` or ``"data/"`` specifying a
+                    subfolder of ``dataset_dir`` in which the media lies
+                -   an absolute directory path in which the media lies. In this
+                    case, the ``archive_path`` has no effect on the location of
+                    the data
+                -   a filename like ``"data.json"`` specifying the filename of
+                    a JSON manifest file in ``archive_path`` that maps UUIDs to
+                    media filepaths. Files of this format are generated when
+                    passing the ``export_media="manifest"`` option to
+                    :meth:`fiftyone.core.collections.SampleCollection.export`
+                -   an absolute filepath to a JSON manifest file. In this case,
+                    ``archive_path`` has no effect on the location of the data
+
+                By default, it is assumed that the data can be located in the
+                default location within ``archive_path`` for the dataset type
+            labels_path (None): an optional parameter that enables explicit
+                control over the location of the labels. Only applicable when
+                importing certain labeled dataset formats. Can be any of the
+                following:
+
+                -   a type-specific folder name like ``"labels"`` or
+                    ``"labels/"`` or a filename like ``"labels.json"`` or
+                    ``"labels.xml"`` specifying the location in
+                    ``archive_path`` of the labels file(s)
+                -   an absolute directory or filepath containing the labels
+                    file(s). In this case, ``archive_path`` has no effect on
+                    the location of the labels
+
+                For labeled datasets, this parameter defaults to the location
+                in ``archive_path`` of the labels for the default layout of the
+                dataset type being imported
+            label_field ("ground_truth"): the name (or root name) of the
+                field(s) to use for the labels (if applicable)
+            tags (None): an optional tag or iterable of tags to attach to each
+                sample
+            key_field ("filepath"): the sample field to use to decide whether
+                to join with an existing sample
+            key_fcn (None): a function that accepts a
+                :class:`fiftyone.core.sample.Sample` instance and computes a
+                key to decide if two samples should be merged. If a ``key_fcn``
+                is provided, ``key_field`` is ignored
+            skip_existing (False): whether to skip existing samples (True) or
+                merge them (False)
+            insert_new (True): whether to insert new samples (True) or skip
+                them (False)
+            fields (None): an optional field or iterable of fields to which to
+                restrict the merge. If provided, fields other than these are
+                omitted from ``samples`` when merging or adding samples. One
+                exception is that ``filepath`` is always included when adding
+                new samples, since the field is required. This can also be a
+                dict mapping field names of the input collection to field names
+                of this dataset
+            omit_fields (None): an optional field or iterable of fields to
+                exclude from the merge. If provided, these fields are omitted
+                from imported samples, if present. One exception is that
+                ``filepath`` is always included when adding new samples, since
+                the field is required
+            merge_lists (True): whether to merge the elements of list fields
+                (e.g., ``tags``) and label list fields (e.g.,
+                :class:`fiftyone.core.labels.Detections` fields) rather than
+                merging the entire top-level field like other field types. For
+                label lists fields, existing :class:`fiftyone.core.label.Label`
+                elements are either replaced (when ``overwrite`` is True) or
+                kept (when ``overwrite`` is False) when their ``id`` matches a
+                label from the provided samples
+            overwrite (True): whether to overwrite (True) or skip (False)
+                existing fields and label elements
+            expand_schema (True): whether to dynamically add new fields
+                encountered to the dataset schema. If False, an error is raised
+                if a sample's schema is not a subset of the dataset schema
+            add_info (True): whether to add dataset info from the importer
+                (if any) to the dataset
+            cleanup (True): whether to delete the archive after extracting it
+            **kwargs: optional keyword arguments to pass to the constructor of
+                the :class:`fiftyone.utils.data.importers.DatasetImporter` for
+                the specified ``dataset_type``
+        """
+        dataset_dir = etau.split_archive(archive_path)[0]
+        if os.path.isfile(archive_path) or not os.path.isdir(dataset_dir):
+            etau.extract_archive(
+                archive_path, outdir=dataset_dir, delete_archive=cleanup
+            )
+
+        return self.merge_dir(
+            dataset_dir=dataset_dir,
+            dataset_type=dataset_type,
+            data_path=data_path,
+            labels_path=labels_path,
+            label_field=label_field,
+            tags=tags,
+            key_field=key_field,
+            key_fcn=key_fcn,
+            skip_existing=skip_existing,
+            insert_new=insert_new,
+            fields=fields,
+            omit_fields=omit_fields,
+            merge_lists=merge_lists,
+            overwrite=overwrite,
             expand_schema=expand_schema,
             add_info=add_info,
             **kwargs,
@@ -2246,8 +2738,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Args:
             dataset_importer: a
                 :class:`fiftyone.utils.data.importers.DatasetImporter`
-            label_field ("ground_truth"): the name (or root name) of the
-                field(s) to use for the labels (if applicable)
+            label_field (None): the name (or root name) of the field(s) to use
+                for the labels. Only applicable if ``dataset_importer`` is a
+                :class:`fiftyone.utils.data.importers.LabeledImageDatasetImporter`
             tags (None): an optional tag or iterable of tags to attach to each
                 sample
             expand_schema (True): whether to dynamically add new sample fields
@@ -2268,7 +2761,124 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             add_info=add_info,
         )
 
-    def add_images(self, samples, sample_parser=None, tags=None):
+    def merge_importer(
+        self,
+        dataset_importer,
+        label_field="ground_truth",
+        tags=None,
+        key_field="filepath",
+        key_fcn=None,
+        skip_existing=False,
+        insert_new=True,
+        fields=None,
+        omit_fields=None,
+        merge_lists=True,
+        overwrite=True,
+        expand_schema=True,
+        add_info=True,
+    ):
+        """Merges the samples from the given
+        :class:`fiftyone.utils.data.importers.DatasetImporter` into the
+        dataset.
+
+        See :ref:`this guide <custom-dataset-importer>` for more details about
+        importing datasets in custom formats by defining your own
+        :class:`DatasetImporter <fiftyone.utils.data.importers.DatasetImporter>`.
+
+        By default, samples with the same absolute ``filepath`` are merged, but
+        you can customize this behavior via the ``key_field`` and ``key_fcn``
+        parameters. For example, you could set
+        ``key_fcn = lambda sample: os.path.basename(sample.filepath)`` to merge
+        samples with the same base filename.
+
+        The behavior of this method is highly customizable. By default, all
+        top-level fields from the imported samples are merged in, overwriting
+        any existing values for those fields, with the exception of list fields
+        (e.g., ``tags``) and label list fields (e.g.,
+        :class:`fiftyone.core.labels.Detections` fields), in which case the
+        elements of the lists themselves are merged. In the case of label list
+        fields, labels with the same ``id`` in both collections are updated
+        rather than duplicated.
+
+        To avoid confusion between missing fields and fields whose value is
+        ``None``, ``None``-valued fields are always treated as missing while
+        merging.
+
+        This method can be configured in numerous ways, including:
+
+        -   Whether existing samples should be modified or skipped
+        -   Whether new samples should be added or omitted
+        -   Whether new fields can be added to the dataset schema
+        -   Whether list fields should be treated as ordinary fields and merged
+            as a whole rather than merging their elements
+        -   Whether to merge (a) only specific fields or (b) all but certain
+            fields
+        -   Mapping input fields to different field names of this dataset
+
+        Args:
+            dataset_importer: a
+                :class:`fiftyone.utils.data.importers.DatasetImporter`
+            label_field (None): the name (or root name) of the field(s) to use
+                for the labels. Only applicable if ``dataset_importer`` is a
+                :class:`fiftyone.utils.data.importers.LabeledImageDatasetImporter`
+            tags (None): an optional tag or iterable of tags to attach to each
+                sample
+            key_field ("filepath"): the sample field to use to decide whether
+                to join with an existing sample
+            key_fcn (None): a function that accepts a
+                :class:`fiftyone.core.sample.Sample` instance and computes a
+                key to decide if two samples should be merged. If a ``key_fcn``
+                is provided, ``key_field`` is ignored
+            skip_existing (False): whether to skip existing samples (True) or
+                merge them (False)
+            insert_new (True): whether to insert new samples (True) or skip
+                them (False)
+            fields (None): an optional field or iterable of fields to which to
+                restrict the merge. If provided, fields other than these are
+                omitted from ``samples`` when merging or adding samples. One
+                exception is that ``filepath`` is always included when adding
+                new samples, since the field is required. This can also be a
+                dict mapping field names of the input collection to field names
+                of this dataset
+            omit_fields (None): an optional field or iterable of fields to
+                exclude from the merge. If provided, these fields are omitted
+                from imported samples, if present. One exception is that
+                ``filepath`` is always included when adding new samples, since
+                the field is required
+            merge_lists (True): whether to merge the elements of list fields
+                (e.g., ``tags``) and label list fields (e.g.,
+                :class:`fiftyone.core.labels.Detections` fields) rather than
+                merging the entire top-level field like other field types. For
+                label lists fields, existing :class:`fiftyone.core.label.Label`
+                elements are either replaced (when ``overwrite`` is True) or
+                kept (when ``overwrite`` is False) when their ``id`` matches a
+                label from the provided samples
+            overwrite (True): whether to overwrite (True) or skip (False)
+                existing fields and label elements
+            expand_schema (True): whether to dynamically add new fields
+                encountered to the dataset schema. If False, an error is raised
+                if a sample's schema is not a subset of the dataset schema
+            add_info (True): whether to add dataset info from the importer
+                (if any) to the dataset
+        """
+        return foud.merge_samples(
+            self,
+            dataset_importer,
+            label_field=label_field,
+            tags=tags,
+            key_field=key_field,
+            key_fcn=key_fcn,
+            skip_existing=skip_existing,
+            insert_new=insert_new,
+            fields=fields,
+            omit_fields=omit_fields,
+            merge_lists=merge_lists,
+            overwrite=overwrite,
+            expand_schema=expand_schema,
+            add_info=add_info,
+        )
+
+    def add_images(self, paths_or_samples, sample_parser=None, tags=None):
         """Adds the given images to the dataset.
 
         This operation does not read the images.
@@ -2278,13 +2888,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         :class:`UnlabeledImageSampleParser <fiftyone.utils.data.parsers.UnlabeledImageSampleParser>`.
 
         Args:
-            samples: an iterable of data. If no ``sample_parser`` is provided,
-                this must be an iterable of image paths. If a ``sample_parser``
-                is provided, this can be an arbitrary iterable whose elements
-                can be parsed by the sample parser
+            paths_or_samples: an iterable of data. If no ``sample_parser`` is
+                provided, this must be an iterable of image paths. If a
+                ``sample_parser`` is provided, this can be an arbitrary
+                iterable whose elements can be parsed by the sample parser
             sample_parser (None): a
                 :class:`fiftyone.utils.data.parsers.UnlabeledImageSampleParser`
-                instance to use to parse ``samples``
+                instance to use to parse the samples
             tags (None): an optional tag or iterable of tags to attach to each
                 sample
 
@@ -2294,7 +2904,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if sample_parser is None:
             sample_parser = foud.ImageSampleParser()
 
-        return foud.add_images(self, samples, sample_parser, tags=tags)
+        return foud.add_images(
+            self, paths_or_samples, sample_parser, tags=tags
+        )
 
     def add_labeled_images(
         self,
@@ -2318,7 +2930,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             samples: an iterable of data
             sample_parser: a
                 :class:`fiftyone.utils.data.parsers.LabeledImageSampleParser`
-                instance to use to parse ``samples``
+                instance to use to parse the samples
             label_field ("ground_truth"): the name (or root name) of the
                 field(s) to use for the labels (if applicable)
             tags (None): an optional tag or iterable of tags to attach to each
@@ -2381,7 +2993,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     def ingest_images(
         self,
-        samples,
+        paths_or_samples,
         sample_parser=None,
         tags=None,
         dataset_dir=None,
@@ -2396,13 +3008,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         :class:`UnlabeledImageSampleParser <fiftyone.utils.data.parsers.UnlabeledImageSampleParser>`.
 
         Args:
-            samples: an iterable of data. If no ``sample_parser`` is
+            paths_or_samples: an iterable of data. If no ``sample_parser`` is
                 provided, this must be an iterable of image paths. If a
                 ``sample_parser`` is provided, this can be an arbitrary
                 iterable whose elements can be parsed by the sample parser
             sample_parser (None): a
                 :class:`fiftyone.utils.data.parsers.UnlabeledImageSampleParser`
-                instance to use to parse ``samples``
+                instance to use to parse the samples
             tags (None): an optional tag or iterable of tags to attach to each
                 sample
             dataset_dir (None): the directory in which the images will be
@@ -2420,7 +3032,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             dataset_dir = get_default_dataset_dir(self.name)
 
         dataset_ingestor = foud.UnlabeledImageDatasetIngestor(
-            dataset_dir, samples, sample_parser, image_format=image_format,
+            dataset_dir,
+            paths_or_samples,
+            sample_parser,
+            image_format=image_format,
         )
 
         return self.add_importer(dataset_ingestor, tags=tags)
@@ -2433,7 +3048,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         tags=None,
         expand_schema=True,
         dataset_dir=None,
-        skip_unlabeled=False,
         image_format=None,
     ):
         """Ingests the given iterable of labeled image samples into the
@@ -2449,7 +3063,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             samples: an iterable of data
             sample_parser: a
                 :class:`fiftyone.utils.data.parsers.LabeledImageSampleParser`
-                instance to use to parse ``samples``
+                instance to use to parse the samples
             label_field ("ground_truth"): the name (or root name) of the
                 field(s) to use for the labels (if applicable)
             tags (None): an optional tag or iterable of tags to attach to each
@@ -2459,8 +3073,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 if the sample's schema is not a subset of the dataset schema
             dataset_dir (None): the directory in which the images will be
                 written. By default, :func:`get_default_dataset_dir` is used
-            skip_unlabeled (False): whether to skip unlabeled images when
-                importing
             image_format (None): the image format to use to write the images to
                 disk. By default, ``fiftyone.config.default_image_ext`` is used
 
@@ -2471,11 +3083,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             dataset_dir = get_default_dataset_dir(self.name)
 
         dataset_ingestor = foud.LabeledImageDatasetIngestor(
-            dataset_dir,
-            samples,
-            sample_parser,
-            skip_unlabeled=skip_unlabeled,
-            image_format=image_format,
+            dataset_dir, samples, sample_parser, image_format=image_format,
         )
 
         return self.add_importer(
@@ -2485,7 +3093,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             expand_schema=expand_schema,
         )
 
-    def add_videos(self, samples, sample_parser=None, tags=None):
+    def add_videos(self, paths_or_samples, sample_parser=None, tags=None):
         """Adds the given videos to the dataset.
 
         This operation does not read the videos.
@@ -2495,13 +3103,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         :class:`UnlabeledVideoSampleParser <fiftyone.utils.data.parsers.UnlabeledVideoSampleParser>`.
 
         Args:
-            samples: an iterable of data. If no ``sample_parser`` is provided,
-                this must be an iterable of video paths. If a ``sample_parser``
-                is provided, this can be an arbitrary iterable whose elements
-                can be parsed by the sample parser
+            paths_or_samples: an iterable of data. If no ``sample_parser`` is
+                provided, this must be an iterable of video paths. If a
+                ``sample_parser`` is provided, this can be an arbitrary
+                iterable whose elements can be parsed by the sample parser
             sample_parser (None): a
-                :class:`fiftyone.utils.data.parsers.UnlabeledImageSampleParser`
-                instance to use to parse ``samples``
+                :class:`fiftyone.utils.data.parsers.UnlabeledVideoSampleParser`
+                instance to use to parse the samples
             tags (None): an optional tag or iterable of tags to attach to each
                 sample
 
@@ -2511,7 +3119,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if sample_parser is None:
             sample_parser = foud.VideoSampleParser()
 
-        return foud.add_videos(self, samples, sample_parser, tags=tags)
+        return foud.add_videos(
+            self, paths_or_samples, sample_parser, tags=tags
+        )
 
     def add_labeled_videos(
         self,
@@ -2534,7 +3144,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             samples: an iterable of data
             sample_parser: a
                 :class:`fiftyone.utils.data.parsers.LabeledVideoSampleParser`
-                instance to use to parse ``samples``
+                instance to use to parse the samples
             label_field ("ground_truth"): the name (or root name) of the
                 frame field(s) to use for the labels
             tags (None): an optional tag or iterable of tags to attach to each
@@ -2596,7 +3206,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return self.add_videos(video_paths, sample_parser, tags=tags)
 
     def ingest_videos(
-        self, samples, sample_parser=None, tags=None, dataset_dir=None,
+        self, paths_or_samples, sample_parser=None, tags=None, dataset_dir=None
     ):
         """Ingests the given iterable of videos into the dataset.
 
@@ -2607,13 +3217,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         :class:`UnlabeledVideoSampleParser <fiftyone.utils.data.parsers.UnlabeledVideoSampleParser>`.
 
         Args:
-            samples: an iterable of data. If no ``sample_parser`` is provided,
-                this must be an iterable of video paths. If a ``sample_parser``
-                is provided, this can be an arbitrary iterable whose elements
-                can be parsed by the sample parser
+            paths_or_samples: an iterable of data. If no ``sample_parser`` is
+                provided, this must be an iterable of video paths. If a
+                ``sample_parser`` is provided, this can be an arbitrary
+                iterable whose elements can be parsed by the sample parser
             sample_parser (None): a
-                :class:`fiftyone.utils.data.parsers.UnlabeledImageSampleParser`
-                instance to use to parse ``samples``
+                :class:`fiftyone.utils.data.parsers.UnlabeledVideoSampleParser`
+                instance to use to parse the samples
             tags (None): an optional tag or iterable of tags to attach to each
                 sample
             dataset_dir (None): the directory in which the videos will be
@@ -2629,7 +3239,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             dataset_dir = get_default_dataset_dir(self.name)
 
         dataset_ingestor = foud.UnlabeledVideoDatasetIngestor(
-            dataset_dir, samples, sample_parser
+            dataset_dir, paths_or_samples, sample_parser
         )
 
         return self.add_importer(dataset_ingestor, tags=tags)
@@ -2641,7 +3251,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         tags=None,
         expand_schema=True,
         dataset_dir=None,
-        skip_unlabeled=False,
     ):
         """Ingests the given iterable of labeled video samples into the
         dataset.
@@ -2656,7 +3265,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             samples: an iterable of data
             sample_parser: a
                 :class:`fiftyone.utils.data.parsers.LabeledVideoSampleParser`
-                instance to use to parse ``samples``
+                instance to use to parse the samples
             tags (None): an optional tag or iterable of tags to attach to each
                 sample
             expand_schema (True): whether to dynamically add new sample fields
@@ -2664,8 +3273,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 if the sample's schema is not a subset of the dataset schema
             dataset_dir (None): the directory in which the videos will be
                 written. By default, :func:`get_default_dataset_dir` is used
-            skip_unlabeled (False): whether to skip unlabeled videos when
-                importing
 
         Returns:
             a list of IDs of the samples in the dataset
@@ -2674,7 +3281,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             dataset_dir = get_default_dataset_dir(self.name)
 
         dataset_ingestor = foud.LabeledVideoDatasetIngestor(
-            dataset_dir, samples, sample_parser, skip_unlabeled=skip_unlabeled,
+            dataset_dir, samples, sample_parser
         )
 
         return self.add_importer(
@@ -2684,8 +3291,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     @classmethod
     def from_dir(
         cls,
-        dataset_dir,
-        dataset_type,
+        dataset_dir=None,
+        dataset_type=None,
+        data_path=None,
+        labels_path=None,
         name=None,
         label_field="ground_truth",
         tags=None,
@@ -2693,13 +3302,67 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     ):
         """Creates a :class:`Dataset` from the contents of the given directory.
 
-        See :doc:`this guide </user_guide/dataset_creation/datasets>` for
-        descriptions of available dataset types.
+        You can create datasets with this method via the following basic
+        patterns:
+
+        (a) Provide ``dataset_dir`` and ``dataset_type`` to import the contents
+            of a directory that is organized in the default layout for the
+            dataset type as documented in
+            :ref:`this guide <loading-datasets-from-disk>`
+
+        (b) Provide ``dataset_type`` along with ``data_path``, ``labels_path``,
+            or other type-specific parameters to perform a customized
+            import. This syntax provides the flexibility to, for example,
+            perform labels-only imports or imports where the source media lies
+            in a different location than the labels
+
+        In either workflow, the remaining parameters of this method can be
+        provided to further configure the import.
+
+        See :ref:`this guide <loading-datasets-from-disk>` for example usages
+        of this method and descriptions of the available dataset types.
 
         Args:
-            dataset_dir: the dataset directory
-            dataset_type: the :class:`fiftyone.types.dataset_types.Dataset`
-                type of the dataset in ``dataset_dir``
+            dataset_dir (None): the dataset directory. This can be omitted if
+                you provide arguments such as ``data_path`` and ``labels_path``
+            dataset_type (None): the
+                :class:`fiftyone.types.dataset_types.Dataset` type of the
+                dataset
+            data_path (None): an optional parameter that enables explicit
+                control over the location of the exported media for certain
+                dataset types. Can be any of the following:
+
+                -   a folder name like ``"data"`` or ``"data/"`` specifying a
+                    subfolder of ``dataset_dir`` in which the media lies
+                -   an absolute directory path in which the media lies. In this
+                    case, the ``export_dir`` has no effect on the location of
+                    the data
+                -   a filename like ``"data.json"`` specifying the filename of
+                    a JSON manifest file in ``dataset_dir`` that maps UUIDs to
+                    media filepaths. Files of this format are generated when
+                    passing the ``export_media="manifest"`` option to
+                    :meth:`fiftyone.core.collections.SampleCollection.export`
+                -   an absolute filepath to a JSON manifest file. In this case,
+                    ``dataset_dir`` has no effect on the location of the data
+
+                By default, it is assumed that the data can be located in the
+                default location within ``dataset_dir`` for the dataset type
+            labels_path (None): an optional parameter that enables explicit
+                control over the location of the labels. Only applicable when
+                importing certain labeled dataset formats. Can be any of the
+                following:
+
+                -   a type-specific folder name like ``"labels"`` or
+                    ``"labels/"`` or a filename like ``"labels.json"`` or
+                    ``"labels.xml"`` specifying the location in ``dataset_dir``
+                    of the labels file(s)
+                -   an absolute directory or filepath containing the labels
+                    file(s). In this case, ``dataset_dir`` has no effect on the
+                    location of the labels
+
+                For labeled datasets, this parameter defaults to the location
+                in ``dataset_dir`` of the labels for the default layout of the
+                dataset type being imported
             name (None): a name for the dataset. By default,
                 :func:`get_default_dataset_name` is used
             label_field ("ground_truth"): the name (or root name) of the
@@ -2708,16 +3371,17 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 sample
             **kwargs: optional keyword arguments to pass to the constructor of
                 the :class:`fiftyone.utils.data.importers.DatasetImporter` for
-                the specified ``dataset_type`` via the syntax
-                ``DatasetImporter(dataset_dir, **kwargs)``
+                the specified ``dataset_type``
 
         Returns:
             a :class:`Dataset`
         """
         dataset = cls(name)
         dataset.add_dir(
-            dataset_dir,
-            dataset_type,
+            dataset_dir=dataset_dir,
+            dataset_type=dataset_type,
+            data_path=data_path,
+            labels_path=labels_path,
             label_field=label_field,
             tags=tags,
             **kwargs,
@@ -2728,21 +3392,23 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def from_archive(
         cls,
         archive_path,
-        dataset_type,
-        cleanup=True,
+        dataset_type=None,
+        data_path=None,
+        labels_path=None,
         name=None,
         label_field="ground_truth",
         tags=None,
+        cleanup=True,
         **kwargs,
     ):
         """Creates a :class:`Dataset` from the contents of the given archive.
 
-        If the archive does not exist but a dataset with the same root name
+        If the archive does not exist but a directory with the same root name
         does exist, it is assumed that this directory contains the extracted
         contents of the archive.
 
-        See :doc:`this guide </user_guide/dataset_creation/datasets>` for
-        descriptions of available dataset types.
+        See :ref:`this guide <loading-datasets-from-disk>` for example usages
+        of this method and descriptions of the available dataset types.
 
         .. note::
 
@@ -2756,19 +3422,54 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         Args:
             archive_path: the path to an archive of a dataset directory
-            dataset_type: the :class:`fiftyone.types.dataset_types.Dataset`
-                type of the dataset in ``archive_path``
-            cleanup (True): whether to delete the archive after extracting it
+            dataset_type (None): the
+                :class:`fiftyone.types.dataset_types.Dataset` type of the
+                dataset in ``archive_path``
+            data_path (None): an optional parameter that enables explicit
+                control over the location of the exported media for certain
+                dataset types. Can be any of the following:
+
+                -   a folder name like ``"data"`` or ``"data/"`` specifying a
+                    subfolder of ``dataset_dir`` in which the media lies
+                -   an absolute directory path in which the media lies. In this
+                    case, the ``archive_path`` has no effect on the location of
+                    the data
+                -   a filename like ``"data.json"`` specifying the filename of
+                    a JSON manifest file in ``archive_path`` that maps UUIDs to
+                    media filepaths. Files of this format are generated when
+                    passing the ``export_media="manifest"`` option to
+                    :meth:`fiftyone.core.collections.SampleCollection.export`
+                -   an absolute filepath to a JSON manifest file. In this case,
+                    ``archive_path`` has no effect on the location of the data
+
+                By default, it is assumed that the data can be located in the
+                default location within ``archive_path`` for the dataset type
+            labels_path (None): an optional parameter that enables explicit
+                control over the location of the labels. Only applicable when
+                importing certain labeled dataset formats. Can be any of the
+                following:
+
+                -   a type-specific folder name like ``"labels"`` or
+                    ``"labels/"`` or a filename like ``"labels.json"`` or
+                    ``"labels.xml"`` specifying the location in
+                    ``archive_path`` of the labels file(s)
+                -   an absolute directory or filepath containing the labels
+                    file(s). In this case, ``archive_path`` has no effect on
+                    the location of the labels
+
+                For labeled datasets, this parameter defaults to the location
+                in ``archive_path`` of the labels for the default layout of the
+                dataset type being imported
             name (None): a name for the dataset. By default,
                 :func:`get_default_dataset_name` is used
             label_field ("ground_truth"): the name (or root name) of the
                 field(s) to use for the labels (if applicable)
             tags (None): an optional tag or iterable of tags to attach to each
                 sample
+            cleanup (True): whether to delete the archive after extracting it
             **kwargs: optional keyword arguments to pass to the constructor of
                 the :class:`fiftyone.utils.data.importers.DatasetImporter` for
-                the specified ``dataset_type`` via the syntax
-                ``DatasetImporter(dataset_dir, **kwargs)``
+                the specified ``dataset_type``
 
         Returns:
             a :class:`Dataset`
@@ -2776,10 +3477,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         dataset = cls(name)
         dataset.add_archive(
             archive_path,
-            dataset_type,
-            cleanup=cleanup,
+            dataset_type=dataset_type,
+            data_path=data_path,
+            labels_path=labels_path,
             label_field=label_field,
             tags=tags,
+            cleanup=cleanup,
             **kwargs,
         )
         return dataset
@@ -2816,7 +3519,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return dataset
 
     @classmethod
-    def from_images(cls, samples, sample_parser, name=None, tags=None):
+    def from_images(
+        cls, paths_or_samples, sample_parser=None, name=None, tags=None
+    ):
         """Creates a :class:`Dataset` from the given images.
 
         This operation does not read the images.
@@ -2827,10 +3532,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         to load image samples into FiftyOne.
 
         Args:
-            samples: an iterable of data
-            sample_parser: a
+            paths_or_samples: an iterable of data. If no ``sample_parser`` is
+                provided, this must be an iterable of image paths. If a
+                ``sample_parser`` is provided, this can be an arbitrary
+                iterable whose elements can be parsed by the sample parser
+            sample_parser (None): a
                 :class:`fiftyone.utils.data.parsers.UnlabeledImageSampleParser`
-                instance to use to parse ``samples``
+                instance to use to parse the samples
             name (None): a name for the dataset. By default,
                 :func:`get_default_dataset_name` is used
             tags (None): an optional tag or iterable of tags to attach to each
@@ -2840,7 +3548,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             a :class:`Dataset`
         """
         dataset = cls(name)
-        dataset.add_images(samples, sample_parser, tags=tags)
+        dataset.add_images(
+            paths_or_samples, sample_parser=sample_parser, tags=tags
+        )
         return dataset
 
     @classmethod
@@ -2866,7 +3576,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             samples: an iterable of data
             sample_parser: a
                 :class:`fiftyone.utils.data.parsers.LabeledImageSampleParser`
-                instance to use to parse ``samples``
+                instance to use to parse the samples
             name (None): a name for the dataset. By default,
                 :func:`get_default_dataset_name` is used
             label_field ("ground_truth"): the name (or root name) of the
@@ -2926,7 +3636,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return dataset
 
     @classmethod
-    def from_videos(cls, samples, sample_parser, name=None, tags=None):
+    def from_videos(
+        cls, paths_or_samples, sample_parser=None, name=None, tags=None
+    ):
         """Creates a :class:`Dataset` from the given videos.
 
         This operation does not read/decode the videos.
@@ -2937,10 +3649,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         to load video samples into FiftyOne.
 
         Args:
-            samples: an iterable of data
-            sample_parser: a
+            paths_or_samples: an iterable of data. If no ``sample_parser`` is
+                provided, this must be an iterable of video paths. If a
+                ``sample_parser`` is provided, this can be an arbitrary
+                iterable whose elements can be parsed by the sample parser
+            sample_parser (None): a
                 :class:`fiftyone.utils.data.parsers.UnlabeledVideoSampleParser`
-                instance to use to parse ``samples``
+                instance to use to parse the samples
             name (None): a name for the dataset. By default,
                 :func:`get_default_dataset_name` is used
             tags (None): an optional tag or iterable of tags to attach to each
@@ -2950,7 +3665,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             a :class:`Dataset`
         """
         dataset = cls(name)
-        dataset.add_videos(samples, sample_parser, tags=tags)
+        dataset.add_videos(
+            paths_or_samples, sample_parser=sample_parser, tags=tags
+        )
         return dataset
 
     @classmethod
@@ -2971,7 +3688,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             samples: an iterable of data
             sample_parser: a
                 :class:`fiftyone.utils.data.parsers.LabeledVideoSampleParser`
-                instance to use to parse ``samples``
+                instance to use to parse the samples
             name (None): a name for the dataset. By default,
                 :func:`get_default_dataset_name` is used
             tags (None): an optional tag or iterable of tags to attach to each
@@ -4002,7 +4719,123 @@ def _ensure_index(dataset, field, unique=False):
     return new, dropped
 
 
-def _merge_samples(
+def _merge_samples_python(
+    dataset,
+    samples,
+    key_field=None,
+    key_fcn=None,
+    skip_existing=False,
+    insert_new=True,
+    fields=None,
+    omit_fields=None,
+    merge_lists=True,
+    overwrite=True,
+    expand_schema=True,
+    num_samples=None,
+):
+    if num_samples is None:
+        try:
+            num_samples = len(samples)
+        except:
+            pass
+
+    if key_fcn is None:
+        id_map = {k: v for k, v in zip(*dataset.values([key_field, "id"]))}
+        key_fcn = lambda sample: sample[key_field]
+    else:
+        id_map = {}
+        logger.info("Indexing dataset...")
+        with fou.ProgressBar() as pb:
+            for sample in pb(dataset):
+                id_map[key_fcn(sample)] = sample.id
+
+    _samples = _make_merge_samples_generator(
+        dataset,
+        samples,
+        key_fcn,
+        id_map,
+        skip_existing=skip_existing,
+        insert_new=insert_new,
+        fields=fields,
+        omit_fields=omit_fields,
+        merge_lists=merge_lists,
+        overwrite=overwrite,
+        expand_schema=expand_schema,
+    )
+
+    # Dynamically size batches so that they are as large as possible while
+    # still achieving a nice frame rate on the progress bar
+    target_latency = 0.2  # in seconds
+    batcher = fou.DynamicBatcher(
+        _samples, target_latency, init_batch_size=1, max_batch_beta=2.0
+    )
+
+    logger.info("Merging samples...")
+    with fou.ProgressBar(total=num_samples) as pb:
+        for batch in batcher:
+            dataset._upsert_samples_batch(batch, expand_schema, True)
+            pb.update(count=len(batch))
+
+
+def _make_merge_samples_generator(
+    dataset,
+    samples,
+    key_fcn,
+    id_map,
+    skip_existing=False,
+    insert_new=True,
+    fields=None,
+    omit_fields=None,
+    merge_lists=True,
+    overwrite=True,
+    expand_schema=True,
+):
+    # When inserting new samples, `filepath` cannot be excluded
+    if insert_new:
+        if isinstance(fields, dict):
+            insert_fields = fields.copy()
+            insert_fields["filepath"] = "filepath"
+        elif fields is not None:
+            insert_fields = fields.copy()
+            if "filepath" not in insert_fields:
+                insert_fields = ["filepath"] + insert_fields
+        else:
+            insert_fields = None
+
+        insert_omit_fields = omit_fields
+        if insert_omit_fields is not None:
+            insert_omit_fields = [
+                f for f in insert_omit_fields if f != "filepath"
+            ]
+
+    for sample in samples:
+        key = key_fcn(sample)
+        if key in id_map:
+            if not skip_existing:
+                existing_sample = dataset[id_map[key]]
+                existing_sample.merge(
+                    sample,
+                    fields=fields,
+                    omit_fields=omit_fields,
+                    merge_lists=merge_lists,
+                    overwrite=overwrite,
+                    expand_schema=expand_schema,
+                )
+
+                yield existing_sample
+
+        elif insert_new:
+            if insert_fields is not None or insert_omit_fields is not None:
+                sample = sample.copy(
+                    fields=insert_fields, omit_fields=insert_omit_fields
+                )
+            elif sample._in_db:
+                sample = sample.copy()
+
+            yield sample
+
+
+def _merge_samples_pipeline(
     src_collection,
     dst_dataset,
     key_field,
@@ -4017,8 +4850,9 @@ def _merge_samples(
     # Prepare for merge
     #
 
-    if key_field == "id":
-        key_field = "_id"
+    db_fields_map = src_collection._get_db_fields_map()
+
+    key_field = db_fields_map.get(key_field, key_field)
 
     is_video = dst_dataset.media_type == fom.VIDEO
     src_dataset = src_collection._dataset
@@ -4107,8 +4941,6 @@ def _merge_samples(
         src_collection._get_default_sample_fields(include_private=True)
     )
     default_fields.discard("id")
-
-    db_fields_map = src_collection._get_db_fields_map()
 
     sample_pipeline = src_collection._pipeline(detach_frames=True)
 
