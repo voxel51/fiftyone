@@ -136,6 +136,7 @@ export const zoomIn: Control = {
         windowBBox: [_, __, ww, wh],
         config: { dimensions },
         pan: [px, py],
+        options: { zoomPad },
       }) => {
         const x = ww / 2;
         const y = wh / 2;
@@ -143,7 +144,12 @@ export const zoomIn: Control = {
         const xs = (x - px) / scale;
         const ys = (y - py) / scale;
 
-        const newScale = clampScale([ww, wh], dimensions, scale * SCALE_FACTOR);
+        const newScale = clampScale(
+          [ww, wh],
+          dimensions,
+          scale * SCALE_FACTOR,
+          zoomPad
+        );
         return {
           scale: newScale,
           pan: [x - xs * newScale, y - ys * newScale],
@@ -164,6 +170,7 @@ export const zoomOut: Control = {
         windowBBox: [_, __, ww, wh],
         config: { dimensions },
         pan: [px, py],
+        options: { zoomPad },
       }) => {
         const x = ww / 2;
         const y = wh / 2;
@@ -171,7 +178,12 @@ export const zoomOut: Control = {
         const xs = (x - px) / scale;
         const ys = (y - py) / scale;
 
-        const newScale = clampScale([ww, wh], dimensions, scale / SCALE_FACTOR);
+        const newScale = clampScale(
+          [ww, wh],
+          dimensions,
+          scale / SCALE_FACTOR,
+          zoomPad
+        );
         return {
           scale: newScale,
           pan: [x - xs * newScale, y - ys * newScale],

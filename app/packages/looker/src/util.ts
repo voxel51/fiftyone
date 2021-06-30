@@ -311,10 +311,10 @@ export const snapBox = (
   const swh = wh * scale;
   const ar = iw / ih;
   if (ww / wh < ar) {
-    iw = sww;
+    iw = sww * 1.1;
     ih = iw / ar;
   } else {
-    ih = swh;
+    ih = swh * 1.1;
     iw = ih * ar;
   }
 
@@ -352,7 +352,8 @@ export const snapBox = (
 export const clampScale = (
   [ww, wh]: Dimensions,
   [iw, ih]: Dimensions,
-  scale: number
+  scale: number,
+  pad: number
 ): number => {
   const renderedScale = getRenderedScale([ww, wh], [iw, ih]);
 
@@ -364,7 +365,7 @@ export const clampScale = (
     scale = (wh * wh) / (ih * renderedScale * MIN_PIXELS);
   }
 
-  return Math.max(scale, 1 / SCALE_FACTOR);
+  return Math.max(scale, 1 - pad);
 };
 
 export const mergeUpdates = <State extends BaseState>(

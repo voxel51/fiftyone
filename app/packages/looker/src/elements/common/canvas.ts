@@ -120,6 +120,7 @@ export class CanvasElement<State extends BaseState> extends BaseElement<
             pan: [px, py],
             scale,
             windowBBox: [tlx, tly, width, height],
+            options: { zoomPad },
           }) => {
             if (thumbnail) {
               return {};
@@ -134,7 +135,8 @@ export class CanvasElement<State extends BaseState> extends BaseElement<
             const newScale = clampScale(
               [width, height],
               dimensions,
-              event.deltaY < 0 ? scale * SCALE_FACTOR : scale / SCALE_FACTOR
+              event.deltaY < 0 ? scale * SCALE_FACTOR : scale / SCALE_FACTOR,
+              zoomPad
             );
 
             if (scale === newScale) {
