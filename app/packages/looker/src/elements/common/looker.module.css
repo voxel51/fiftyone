@@ -34,20 +34,7 @@
   position: fixed;
 }
 
-.lookerLoading {
-  animation: shimmer 4s infinite;
-  background: linear-gradient(
-    110deg,
-    rgba(0, 0, 0, 0) 8%,
-    hsl(210, 11%, 11%) 18%,
-    rgba(0, 0, 0, 0) 33%
-  );
-  background-size: 400% 100%;
-}
-
 .looker input {
-  border-radius: 8px;
-  background: rgb(225, 100, 40);
   cursor: pointer;
   -webkit-appearance: none;
 }

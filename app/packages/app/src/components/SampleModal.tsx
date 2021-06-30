@@ -116,9 +116,6 @@ const Container = styled.div`
     background: ${({ theme }) => theme.background};
     border-left: 2px solid ${({ theme }) => theme.border};
     scrollbar-width: none;
-    @-moz-document url-prefix() {
-      padding-right: 16px;
-    }
 
     .sidebar-content {
       padding-left: 1rem;

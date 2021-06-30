@@ -15,10 +15,8 @@ import {
   zoomIn,
   zoomOut,
   zoomToContent,
-  resetZoom,
 } from "./actions";
 import zoomToContentIcon from "../../icons/zoomToContent.svg";
-import resetZoomIcon from "../../icons/resetZoom.svg";
 
 import {
   lookerArrow,
@@ -374,33 +372,6 @@ export class ZoomToContentButtonElement<
       this.disabled = disableOverlays;
     }
 
-    return this.element;
-  }
-}
-
-export class ResetZoomButtonElement<
-  State extends BaseState
-> extends BaseElement<State, HTMLImageElement> {
-  getEvents(): Events<State> {
-    return {
-      click: ({ event, update, dispatchEvent }) => {
-        event.stopPropagation();
-        event.preventDefault();
-        resetZoom.action(update, dispatchEvent);
-      },
-    };
-  }
-
-  createHTMLElement() {
-    const element = document.createElement("img");
-    element.classList.add(lookerClickable);
-    element.style.gridArea = "2 / 8 / 2 / 8";
-    element.src = resetZoomIcon;
-    element.title = `Reset zoom (r)`;
-    return element;
-  }
-
-  renderSelf(state: Readonly<State>) {
     return this.element;
   }
 }

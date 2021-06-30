@@ -16,6 +16,6 @@ export const RADIUS = 12;
 export const STROKE_WIDTH = 3;
 export const FONT_SIZE = 16;
 export const MIN_PIXELS = 16;
-export const SCALE_FACTOR = 1.15;
+export const SCALE_FACTOR = 1.09;
 export const MAX_FRAME_CACHE_SIZE_BYTES = 1e9;
 export const CHUNK_SIZE = 60;

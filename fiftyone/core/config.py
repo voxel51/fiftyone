@@ -238,6 +238,12 @@ class AppConfig(EnvConfig):
             env_var="FIFTYONE_APP_SHOW_TOOLTIP",
             default=True,
         )
+        self.use_frame_number = self.parse_bool(
+            d,
+            "use_frame_number",
+            env_var="FIFTYONE_APP_USE_FRAME_NUMBER",
+            default=True,
+        )
 
         self._validate()
 

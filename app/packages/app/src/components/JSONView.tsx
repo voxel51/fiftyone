@@ -1,4 +1,4 @@
-import React, { MutableRefObject, useEffect, useRef, useState } from "react";
+import React, { MutableRefObject, useEffect, useState } from "react";
 import styled from "styled-components";
 import copy from "copy-to-clipboard";
 import { Checkbox, FormControlLabel } from "@material-ui/core";
@@ -8,6 +8,7 @@ import { Button, ModalFooter, scrollbarStyles } from "./utils";
 import { sampleModalFilter } from "./Filters/LabelFieldFilters.state";
 import { FrameLooker, ImageLooker, VideoLooker } from "../../../looker";
 import Loading from "./Common/Loading";
+import * as selectors from "../recoil/selectors";
 
 type Props = {
   lookerRef: MutableRefObject<VideoLooker | ImageLooker | FrameLooker>;
@@ -61,6 +62,10 @@ const Body = styled.div`
 const JSONView = ({ lookerRef, enableFilter, filterJSON }: Props) => {
   const filter = useRecoilValue(sampleModalFilter);
   const [copying, setCopying] = useState(false);
+  const isVideo =
+    useRecoilValue(selectors.isRootView) &&
+    useRecoilValue(selectors.isVideoDataset);
+
   let [sample, setSample] = useState(null);
 
   useEffect(() => {
@@ -73,7 +78,9 @@ const JSONView = ({ lookerRef, enableFilter, filterJSON }: Props) => {
 
   if (filterJSON && sample) {
     sample = filter(sample);
-    sample.frames[0] = filter(sample.frames[0], "frames.");
+    if (isVideo) {
+      sample.frames[0] = filter(sample.frames[0], "frames.");
+    }
   }
   const str = JSON.stringify(sample, null, 4);
 

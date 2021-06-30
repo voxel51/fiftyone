@@ -63,12 +63,15 @@ export function createElementsTree<
   return new root.node(update, dispatchEvent, children);
 }
 
-const secondsToHhmmss = function (number: number): string {
+const stringifyNumber = function (
+  number: number,
+  pad: boolean = false
+): string {
   let str = "";
-  if (number == 0) {
-    str = "00";
-  } else if (number < 10) {
+  if (pad) {
     str += "0" + number;
+  } else if (number == 0) {
+    str = "0";
   } else {
     str = `${number}`;
   }
@@ -84,9 +87,9 @@ export const getFrameNumber = (
 
   // account for exact end of video
   if (time === duration) {
-    time -= frameDuration;
+    time -= 0.1 * frameDuration;
   }
-  return Math.round(time * frameRate + FRAME_ZERO_OFFSET);
+  return Math.floor(time * frameRate + FRAME_ZERO_OFFSET);
 };
 
 export const getClampedTime = (
@@ -100,7 +103,7 @@ export const getClampedTime = (
 export const getTime = (frameNumber: number, frameRate: number): number => {
   frameNumber -= 1;
 
-  return (frameNumber + 0.005) / frameRate;
+  return (frameNumber + 0.01) / frameRate;
 };
 
 export const getFrameString = (
@@ -127,13 +130,19 @@ export const getTimeString = (
   const minutes = Math.floor(time / 60);
   const seconds = time % 60;
 
-  const mmss =
-    secondsToHhmmss(minutes) + ":" + secondsToHhmmss(+seconds.toFixed(1));
-
   if (renderHours) {
-    return secondsToHhmmss(hours) + ":" + mmss;
+    return (
+      stringifyNumber(hours) +
+      ":" +
+      stringifyNumber(minutes, true) +
+      ":" +
+      stringifyNumber(+seconds.toFixed(1), true)
+    );
   }
-  return mmss;
+
+  return (
+    stringifyNumber(minutes) + ":" + stringifyNumber(+seconds.toFixed(0), true)
+  );
 };
 
 export function withEvents<

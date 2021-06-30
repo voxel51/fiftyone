@@ -17,7 +17,7 @@ const Container = styled.div`
   height: 100%;
 
   &:first {
-    margin-top: -6px;
+    margin-top: -3px;
   }
 `;
 
@@ -25,7 +25,7 @@ const Row = styled.div`
   display: flex;
   justify-content: space-between;
   width: 100%;
-  margin: 6px 0;
+  margin: 3px 0;
 `;
 
 function Samples() {
@@ -49,7 +49,7 @@ function Samples() {
         useWindow={false}
       >
         {rows.map((r, i) => {
-          const adjustedWidth = bounds.width - 16 - (r.samples.length - 1) * 6;
+          const adjustedWidth = bounds.width - 16 - (r.samples.length - 1) * 3;
           const height = adjustedWidth / r.aspectRatio;
           return (
             <React.Fragment key={i}>

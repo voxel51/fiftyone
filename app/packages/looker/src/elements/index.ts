@@ -41,7 +41,6 @@ export const getFrameElements: GetElements<FrameState> = (
         children: [
           { node: frame.FrameNumberElement },
           { node: common.ZoomToContentButtonElement },
-          { node: common.ResetZoomButtonElement },
           { node: common.FullscreenButtonElement },
           { node: common.PlusElement },
           { node: common.MinusElement },
@@ -94,7 +93,6 @@ export const getImageElements: GetElements<ImageState> = (
         node: common.ControlsElement,
         children: [
           { node: common.ZoomToContentButtonElement },
-          { node: common.ResetZoomButtonElement },
           { node: common.FullscreenButtonElement },
           { node: common.PlusElement },
           { node: common.MinusElement },
@@ -152,7 +150,6 @@ export const getVideoElements: GetElements<VideoState> = (
           video.VOLUME,
           video.PLAYBACK_RATE,
           { node: common.ZoomToContentButtonElement },
-          { node: common.ResetZoomButtonElement },
           { node: common.FullscreenButtonElement },
           { node: common.PlusElement },
           { node: common.MinusElement },

@@ -33,6 +33,7 @@
   background: rgba(0, 0, 0, 0.5);
   border: 0;
   color: #eee;
+  border-radius: 8px;
 
   -webkit-border-radius: 3px;
   -moz-border-radius: 3px;

@@ -277,6 +277,7 @@ export class TimeElement extends BaseElement<VideoState> {
 export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
   private src: string = "";
   private duration: number = null;
+  private frameCount: number;
   private frameRate: number = 0;
   private frameNumber: number = 1;
   private loop: boolean = false;
@@ -290,43 +291,47 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
       error: ({ event, dispatchEvent }) => {
         dispatchEvent("error", { event });
       },
-      loadedmetadata: ({}) => {
+      loadedmetadata: ({ update }) => {
         this.element.currentTime = 0;
+        update(({ config: { frameRate } }) => {
+          this.frameRate = frameRate;
+          const duration = this.element.duration;
+          this.frameCount = getFrameNumber(duration, duration, frameRate);
+          return { duration };
+        });
       },
       seeked: ({ update, dispatchEvent }) => {
         if (this.duration === null) {
           this.duration = this.element.duration;
           requestAnimationFrame(() => {
             requestAnimationFrame(() => {
-              update(
-                ({
-                  loaded,
-                  playing,
-                  options: { autoplay },
-                  config: { frameRate },
-                }) => {
-                  if (!loaded) {
-                    this.frameRate = frameRate;
-                    return {
-                      loaded: true,
-                      playing: autoplay || playing,
-                      duration: this.element.duration,
-                    };
-                  }
-                  return {};
+              update(({ loaded, playing, options: { autoplay } }) => {
+                if (!loaded) {
+                  return {
+                    loaded: true,
+                    playing: autoplay || playing,
+                  };
                 }
-              );
+                return {};
+              });
               dispatchEvent("load");
             });
+          });
+        } else {
+          requestAnimationFrame(() => {
+            update(({ frameNumber }) => ({ frameNumber }));
           });
         }
       },
       play: ({ update, dispatchEvent }) => {
         const callback = (newFrameNumber: number) => {
           update(
-            ({ playing, duration }) => {
+            ({ playing, options: { loop } }) => {
               this.frameNumber = newFrameNumber;
-              duration = duration as number;
+
+              if (newFrameNumber === this.frameCount) {
+                playing = loop;
+              }
 
               return {
                 frameNumber: newFrameNumber,
@@ -362,23 +367,25 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
           }
         );
       },
-      ended: ({ update }) => {
-        requestAnimationFrame(() => {
-          update(({ frameNumber, options: { loop } }) => ({
-            frameNumber,
-            playing: loop,
-          }));
-        });
-      },
       pause: ({ update, dispatchEvent }) => {
-        this.requestCallback(() => {
+        this.requestCallback((frameNumber) => {
+          this.frameNumber = null;
           update(
             {
               disableOverlays: false,
+              frameNumber,
             },
             (state, overlays) =>
               dispatchTooltipEvent(dispatchEvent, false)(state, overlays)
           );
+        });
+      },
+      ended: ({ update }) => {
+        requestAnimationFrame(() => {
+          update(({ options: { loop } }) => ({
+            frameNumber: loop ? 1 : this.frameCount,
+            playing: loop,
+          }));
         });
       },
       timeupdate: ({ dispatchEvent, update }) => {
@@ -386,7 +393,7 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
           dispatchEvent("timeupdate", {
             frameNumber: getFrameNumber(
               this.element.currentTime,
-              duration as number,
+              duration,
               frameRate
             ),
           });
@@ -405,10 +412,11 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
     this.frameNumber = 1;
 
     this.requestCallback = (callback: (frameNumber: number) => void) => {
-      requestAnimationFrame(() => {
+      requestAnimationFrame((stamp) => {
         callback(
           getFrameNumber(
-            this.element.currentTime,
+            this.element.currentTime +
+              (window.performance.now() - stamp) / 1000,
             this.duration,
             this.frameRate
           )

@@ -58,6 +58,8 @@ export { zoomAspectRatio } from "./zoom";
 
 const labelsWorker = createWorker();
 
+type ImageSource = HTMLImageElement | HTMLVideoElement;
+
 export abstract class Looker<
   State extends BaseState = BaseState,
   Sample extends BaseSample = BaseSample
@@ -65,12 +67,12 @@ export abstract class Looker<
   private eventTarget: EventTarget;
   protected lookerElement: LookerElement<State>;
   private resizeObserver: ResizeObserver;
-  private imageSource: CanvasImageSource;
   private readonly canvas: HTMLCanvasElement;
   private ctx: CanvasRenderingContext2D;
 
   protected currentOverlays: Overlay<State>[];
   protected pluckedOverlays: Overlay<State>[];
+  protected imageSource: ImageSource;
   protected sample: Sample;
   protected state: State;
   protected readonly updater: StateUpdate<State>;
@@ -90,8 +92,7 @@ export abstract class Looker<
     this.lookerElement = this.getElements();
     this.canvas = this.lookerElement.children[1].element as HTMLCanvasElement;
     this.ctx = this.canvas.getContext("2d");
-    this.imageSource = this.lookerElement.children[0]
-      .element as CanvasImageSource;
+    this.imageSource = this.lookerElement.children[0].element as ImageSource;
     this.resizeObserver = new ResizeObserver(() =>
       requestAnimationFrame(() => this.updater(({ loaded }) => ({ loaded })))
     );
@@ -128,12 +129,11 @@ export abstract class Looker<
         this.currentOverlays[0].containsPoint(this.state) > CONTAINS.NONE;
       postUpdate && postUpdate(this.state, this.currentOverlays);
       this.lookerElement.render(this.state as Readonly<State>);
-
-      if (!this.state.loaded || this.imageSource.seeking) {
+      const ctx = this.ctx;
+      if (!this.state.loaded) {
         return;
       }
 
-      const ctx = this.ctx;
       ctx.lineWidth = this.state.strokeWidth;
       ctx.font = `bold ${this.state.fontSize.toFixed(2)}px Palanquin`;
       ctx.textAlign = "left";
@@ -223,6 +223,10 @@ export abstract class Looker<
 
   getSample(): Promise<Sample> {
     return Promise.resolve(this.sample);
+  }
+
+  protected get waiting() {
+    return false;
   }
 
   protected abstract getElements(): LookerElement<State>;
@@ -607,6 +611,7 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
   private sampleOverlays: Overlay<VideoState>[] = [];
   private frames: Map<number, WeakRef<Frame>> = new Map();
   private firstFrame: Frame | null = null;
+  protected imageSource: HTMLVideoElement;
   private requestFrames: (() => void) | null = null;
   private invalidateCache: (() => void) | null = null;
 
@@ -620,6 +625,10 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
 
   get frameNumber() {
     return this.state.frameNumber;
+  }
+
+  get waiting() {
+    return this.imageSource.seeking;
   }
 
   getElements() {
