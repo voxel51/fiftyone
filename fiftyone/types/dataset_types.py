@@ -237,14 +237,14 @@ class ImageDirectory(UnlabeledImageDataset):
 
         See :class:`fiftyone.utils.data.importers.ImageDirectoryImporter` for
         parameters that can be passed to methods like
-        :meth:`fiftyone.core.dataset.Dataset.from_dir` to customize the import
-        of datasets of this type.
+        :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>` to
+        customize the import of datasets of this type.
 
     .. note::
 
         See :class:`fiftyone.utils.data.exporters.ImageDirectoryExporter` for
         parameters that can be passed to methods like
-        :meth:`fiftyone.core.collections.SampleCollection.export`
+        :meth:`SampleCollection.export() <fiftyone.core.collections.SampleCollection.export>`
         to customize the export of datasets of this type.
     """
 
@@ -278,14 +278,14 @@ class VideoDirectory(UnlabeledImageDataset):
 
         See :class:`fiftyone.utils.data.importers.VideoDirectoryImporter` for
         parameters that can be passed to methods like
-        :meth:`fiftyone.core.dataset.Dataset.from_dir` to customize the import
-        of datasets of this type.
+        :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>` to
+        customize the import of datasets of this type.
 
     .. note::
 
         See :class:`fiftyone.utils.data.exporters.VideoDirectoryExporter` for
         parameters that can be passed to methods like
-        :meth:`fiftyone.core.collections.SampleCollection.export`
+        :meth:`SampleCollection.export() <fiftyone.core.collections.SampleCollection.export>`
         to customize the export of datasets of this type.
     """
 
@@ -343,14 +343,14 @@ class FiftyOneImageClassificationDataset(ImageClassificationDataset):
 
         See :class:`fiftyone.utils.data.importers.FiftyOneImageClassificationDatasetImporter`
         for parameters that can be passed to methods like
-        :meth:`fiftyone.core.dataset.Dataset.from_dir` to customize the import
-        of datasets of this type.
+        :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>` to
+        customize the import of datasets of this type.
 
     .. note::
 
         See :class:`fiftyone.utils.data.exporters.FiftyOneImageClassificationDatasetExporter`
         for parameters that can be passed to methods like
-        :meth:`fiftyone.core.collections.SampleCollection.export`
+        :meth:`SampleCollection.export() <fiftyone.core.collections.SampleCollection.export>`
         to customize the export of datasets of this type.
     """
 
@@ -390,14 +390,14 @@ class ImageClassificationDirectoryTree(ImageClassificationDataset):
 
         See :class:`fiftyone.utils.data.importers.ImageClassificationDirectoryTreeImporter`
         for parameters that can be passed to methods like
-        :meth:`fiftyone.core.dataset.Dataset.from_dir` to customize the import
-        of datasets of this type.
+        :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>` to
+        customize the import of datasets of this type.
 
     .. note::
 
         See :class:`fiftyone.utils.data.exporters.ImageClassificationDirectoryTreeExporter`
         for parameters that can be passed to methods like
-        :meth:`fiftyone.core.collections.SampleCollection.export`
+        :meth:`SampleCollection.export() <fiftyone.core.collections.SampleCollection.export>`
         to customize the export of datasets of this type.
     """
 
@@ -436,14 +436,14 @@ class VideoClassificationDirectoryTree(VideoClassificationDataset):
 
         See :class:`fiftyone.utils.data.importers.VideoClassificationDirectoryTreeImporter`
         for parameters that can be passed to methods like
-        :meth:`fiftyone.core.dataset.Dataset.from_dir` to customize the import
-        of datasets of this type.
+        :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>` to
+        customize the import of datasets of this type.
 
     .. note::
 
         See :class:`fiftyone.utils.data.exporters.VideoClassificationDirectoryTreeExporter`
         for parameters that can be passed to methods like
-        :meth:`fiftyone.core.collections.SampleCollection.export`
+        :meth:`SampleCollection.export() <fiftyone.core.collections.SampleCollection.export>`
         to customize the export of datasets of this type.
     """
 
@@ -493,14 +493,14 @@ class TFImageClassificationDataset(ImageClassificationDataset):
 
         See :class:`fiftyone.utils.tf.TFImageClassificationDatasetImporter`
         for parameters that can be passed to methods like
-        :meth:`fiftyone.core.dataset.Dataset.from_dir` to customize the import
-        of datasets of this type.
+        :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>` to
+        customize the import of datasets of this type.
 
     .. note::
 
         See :class:`fiftyone.utils.tf.TFImageClassificationDatasetExporter`
         for parameters that can be passed to methods like
-        :meth:`fiftyone.core.collections.SampleCollection.export`
+        :meth:`SampleCollection.export() <fiftyone.core.collections.SampleCollection.export>`
         to customize the export of datasets of this type.
     """
 
@@ -576,14 +576,14 @@ class FiftyOneImageDetectionDataset(ImageDetectionDataset):
 
         See :class:`fiftyone.utils.data.importers.FiftyOneImageDetectionDatasetImporter`
         for parameters that can be passed to methods like
-        :meth:`fiftyone.core.dataset.Dataset.from_dir` to customize the import
-        of datasets of this type.
+        :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>` to
+        customize the import of datasets of this type.
 
     .. note::
 
         See :class:`fiftyone.utils.data.exporters.FiftyOneImageDetectionDatasetExporter`
         for parameters that can be passed to methods like
-        :meth:`fiftyone.core.collections.SampleCollection.export`
+        :meth:`SampleCollection.export() <fiftyone.core.collections.SampleCollection.export>`
         to customize the export of datasets of this type.
     """
 
@@ -682,14 +682,14 @@ class COCODetectionDataset(ImageDetectionDataset):
 
         See :class:`fiftyone.utils.coco.COCODetectionDatasetImporter` for
         parameters that can be passed to methods like
-        :meth:`fiftyone.core.dataset.Dataset.from_dir` to customize the import
-        of datasets of this type.
+        :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>` to
+        customize the import of datasets of this type.
 
     .. note::
 
         See :class:`fiftyone.utils.coco.COCODetectionDatasetExporter` for
         parameters that can be passed to methods like
-        :meth:`fiftyone.core.collections.SampleCollection.export`
+        :meth:`SampleCollection.export() <fiftyone.core.collections.SampleCollection.export>`
         to customize the export of datasets of this type.
     """
 
@@ -776,14 +776,14 @@ class VOCDetectionDataset(ImageDetectionDataset):
 
         See :class:`fiftyone.utils.voc.VOCDetectionDatasetImporter` for
         parameters that can be passed to methods like
-        :meth:`fiftyone.core.dataset.Dataset.from_dir` to customize the import
-        of datasets of this type.
+        :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>` to
+        customize the import of datasets of this type.
 
     .. note::
 
         See :class:`fiftyone.utils.voc.VOCDetectionDatasetExporter` for
         parameters that can be passed to methods like
-        :meth:`fiftyone.core.collections.SampleCollection.export`
+        :meth:`SampleCollection.export() <fiftyone.core.collections.SampleCollection.export>`
         to customize the export of datasets of this type.
     """
 
@@ -874,14 +874,14 @@ class KITTIDetectionDataset(ImageDetectionDataset):
 
         See :class:`fiftyone.utils.kitti.KITTIDetectionDatasetImporter` for
         parameters that can be passed to methods like
-        :meth:`fiftyone.core.dataset.Dataset.from_dir` to customize the import
-        of datasets of this type.
+        :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>` to
+        customize the import of datasets of this type.
 
     .. note::
 
         See :class:`fiftyone.utils.kitti.KITTIDetectionDatasetExporter` for
         parameters that can be passed to methods like
-        :meth:`fiftyone.core.collections.SampleCollection.export`
+        :meth:`SampleCollection.export() <fiftyone.core.collections.SampleCollection.export>`
         to customize the export of datasets of this type.
     """
 
@@ -949,8 +949,8 @@ class OpenImagesV6Dataset(ImageDetectionDataset):
 
         See :class:`fiftyone.utils.openimages.OpenImagesV6DatasetImporter` for
         parameters that can be passed to methods like
-        :meth:`fiftyone.core.dataset.Dataset.from_dir` to customize the import
-        of datasets of this type.
+        :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>` to
+        customize the import of datasets of this type.
     """
 
     def get_dataset_importer_cls(self):
@@ -1010,14 +1010,14 @@ class YOLOv4Dataset(ImageDetectionDataset):
 
         See :class:`fiftyone.utils.yolo.YOLOv4DatasetImporter` for parameters
         that can be passed to methods like
-        :meth:`fiftyone.core.dataset.Dataset.from_dir` to customize the import
-        of datasets of this type.
+        :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>` to
+        customize the import of datasets of this type.
 
     .. note::
 
         See :class:`fiftyone.utils.yolo.YOLOv4DatasetExporter` for parameters
         that can be passed to methods like
-        :meth:`fiftyone.core.collections.SampleCollection.export`
+        :meth:`SampleCollection.export() <fiftyone.core.collections.SampleCollection.export>`
         to customize the export of datasets of this type.
     """
 
@@ -1097,14 +1097,14 @@ class YOLOv5Dataset(ImageDetectionDataset):
 
         See :class:`fiftyone.utils.yolo.YOLOv5DatasetImporter` for parameters
         that can be passed to methods like
-        :meth:`fiftyone.core.dataset.Dataset.from_dir` to customize the import
-        of datasets of this type.
+        :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>` to
+        customize the import of datasets of this type.
 
     .. note::
 
         See :class:`fiftyone.utils.yolo.YOLOv5DatasetExporter` for parameters
         that can be passed to methods like
-        :meth:`fiftyone.core.collections.SampleCollection.export`
+        :meth:`SampleCollection.export() <fiftyone.core.collections.SampleCollection.export>`
         to customize the export of datasets of this type.
     """
 
@@ -1167,14 +1167,14 @@ class TFObjectDetectionDataset(ImageDetectionDataset):
 
         See :class:`fiftyone.utils.tf.TFObjectDetectionDatasetImporter` for
         parameters that can be passed to methods like
-        :meth:`fiftyone.core.dataset.Dataset.from_dir` to customize the import
-        of datasets of this type.
+        :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>` to
+        customize the import of datasets of this type.
 
     .. note::
 
         See :class:`fiftyone.utils.tf.TFObjectDetectionDatasetExporter` for
         parameters that can be passed to methods like
-        :meth:`fiftyone.core.collections.SampleCollection.export`
+        :meth:`SampleCollection.export() <fiftyone.core.collections.SampleCollection.export>`
         to customize the export of datasets of this type.
     """
 
@@ -1216,14 +1216,14 @@ class ImageSegmentationDirectory(ImageSegmentationDataset):
 
         See :class:`fiftyone.utils.data.importers.ImageSegmentationDirectoryImporter`
         for parameters that can be passed to methods like
-        :meth:`fiftyone.core.dataset.Dataset.from_dir` to customize the import
-        of datasets of this type.
+        :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>` to
+        customize the import of datasets of this type.
 
     .. note::
 
         See :class:`fiftyone.utils.data.exporters.ImageSegmentationDirectoryExporter`
         for parameters that can be passed to methods like
-        :meth:`fiftyone.core.collections.SampleCollection.export`
+        :meth:`SampleCollection.export() <fiftyone.core.collections.SampleCollection.export>`
         to customize the export of datasets of this type.
     """
 
@@ -1348,14 +1348,14 @@ class CVATImageDataset(ImageLabelsDataset):
 
         See :class:`fiftyone.utils.cvat.CVATImageDatasetImporter` for
         parameters that can be passed to methods like
-        :meth:`fiftyone.core.dataset.Dataset.from_dir` to customize the import
-        of datasets of this type.
+        :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>` to
+        customize the import of datasets of this type.
 
     .. note::
 
         See :class:`fiftyone.utils.cvat.CVATImageDatasetExporter` for
         parameters that can be passed to methods like
-        :meth:`fiftyone.core.collections.SampleCollection.export`
+        :meth:`SampleCollection.export() <fiftyone.core.collections.SampleCollection.export>`
         to customize the export of datasets of this type.
     """
 
@@ -1486,14 +1486,14 @@ class CVATVideoDataset(VideoLabelsDataset):
 
         See :class:`fiftyone.utils.cvat.CVATVideoDatasetImporter` for
         parameters that can be passed to methods like
-        :meth:`fiftyone.core.dataset.Dataset.from_dir` to customize the import
-        of datasets of this type.
+        :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>` to
+        customize the import of datasets of this type.
 
     .. note::
 
         See :class:`fiftyone.utils.cvat.CVATVideoDatasetExporter` for
         parameters that can be passed to methods like
-        :meth:`fiftyone.core.collections.SampleCollection.export`
+        :meth:`SampleCollection.export() <fiftyone.core.collections.SampleCollection.export>`
         to customize the export of datasets of this type.
     """
 
@@ -1556,14 +1556,14 @@ class FiftyOneImageLabelsDataset(ImageLabelsDataset):
 
         See :class:`fiftyone.utils.data.importers.FiftyOneImageLabelsDatasetImporter`
         for parameters that can be passed to methods like
-        :meth:`fiftyone.core.dataset.Dataset.from_dir` to customize the import
-        of datasets of this type.
+        :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>` to
+        customize the import of datasets of this type.
 
     .. note::
 
         See :class:`fiftyone.utils.data.importers.FiftyOneImageLabelsDatasetExporter`
         for parameters that can be passed to methods like
-        :meth:`fiftyone.core.collections.SampleCollection.export`
+        :meth:`SampleCollection.export() <fiftyone.core.collections.SampleCollection.export>`
         to customize the export of datasets of this type.
     """
 
@@ -1685,14 +1685,14 @@ class BDDDataset(ImageLabelsDataset):
 
         See :class:`fiftyone.utils.bdd.BDDDatasetImporter` for parameters that
         can be passed to methods like
-        :meth:`fiftyone.core.dataset.Dataset.from_dir` to customize the import
-        of datasets of this type.
+        :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>` to
+        customize the import of datasets of this type.
 
     .. note::
 
         See :class:`fiftyone.utils.bdd.BDDDatasetExporter` for parameters that
         can be passed to methods like
-        :meth:`fiftyone.core.collections.SampleCollection.export`
+        :meth:`SampleCollection.export() <fiftyone.core.collections.SampleCollection.export>`
         to customize the export of datasets of this type.
     """
 
@@ -1777,14 +1777,14 @@ class GeoJSONDataset(LabeledDataset):
 
         See :class:`fiftyone.utils.geojson.GeoJSONDatasetImporter` for
         parameters that can be passed to methods like
-        :meth:`fiftyone.core.dataset.Dataset.from_dir` to customize the import
-        of datasets of this type.
+        :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>` to
+        customize the import of datasets of this type.
 
     .. note::
 
         See :class:`fiftyone.utils.geojson.GeoJSONDatasetExporter` for
         parameters that can be passed to methods like
-        :meth:`fiftyone.core.collections.SampleCollection.export`
+        :meth:`SampleCollection.export() <fiftyone.core.collections.SampleCollection.export>`
         to customize the export of datasets of this type.
     """
 
@@ -1847,14 +1847,14 @@ class FiftyOneVideoLabelsDataset(VideoLabelsDataset):
 
         See :class:`fiftyone.utils.data.importers.FiftyOneVideoLabelsDatasetImporter`
         for parameters that can be passed to methods like
-        :meth:`fiftyone.core.dataset.Dataset.from_dir` to customize the import
-        of datasets of this type.
+        :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>` to
+        customize the import of datasets of this type.
 
     .. note::
 
         See :class:`fiftyone.utils.data.exporters.FiftyOneVideoLabelsDatasetExporter`
         for parameters that can be passed to methods like
-        :meth:`fiftyone.core.collections.SampleCollection.export`
+        :meth:`SampleCollection.export() <fiftyone.core.collections.SampleCollection.export>`
         to customize the export of datasets of this type.
     """
 
@@ -1907,14 +1907,14 @@ class FiftyOneDataset(Dataset):
 
         See :class:`fiftyone.utils.data.importers.FiftyOneDatasetImporter` for
         parameters that can be passed to methods like
-        :meth:`fiftyone.core.dataset.Dataset.from_dir` to customize the import
-        of datasets of this type.
+        :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>` to
+        customize the import of datasets of this type.
 
     .. note::
 
         See :class:`fiftyone.utils.data.exporters.FiftyOneDatasetExporter` for
         parameters that can be passed to methods like
-        :meth:`fiftyone.core.collections.SampleCollection.export`
+        :meth:`SampleCollection.export() <fiftyone.core.collections.SampleCollection.export>`
         to customize the export of datasets of this type.
     """
 
@@ -1967,14 +1967,14 @@ class LegacyFiftyOneDataset(Dataset):
 
         See :class:`fiftyone.utils.data.importers.LegacyFiftyOneDatasetImporter` for
         parameters that can be passed to methods like
-        :meth:`fiftyone.core.dataset.Dataset.from_dir` to customize the import
-        of datasets of this type.
+        :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>` to
+        customize the import of datasets of this type.
 
     .. note::
 
         See :class:`fiftyone.utils.data.exporters.LegacyFiftyOneDatasetExporter` for
         parameters that can be passed to methods like
-        :meth:`fiftyone.core.collections.SampleCollection.export`
+        :meth:`SampleCollection.export() <fiftyone.core.collections.SampleCollection.export>`
         to customize the export of datasets of this type.
     """
 
