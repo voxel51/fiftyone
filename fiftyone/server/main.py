@@ -206,6 +206,7 @@ def _catch_errors(func):
 
 _notebook_clients = {}
 _deactivated_clients = set()
+_DISCONNECT_TIMEOUT = 2  # seconds
 
 
 class PollingHandler(tornado.web.RequestHandler):
@@ -421,8 +422,13 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         """
         StateHandler.clients.remove(self)
         StateHandler.app_clients.discard(self)
-        if not StateHandler.app_clients:
-            _write_message({"type": "close"}, session=True)
+
+        async def close_wait():
+            await asyncio.sleep(_DISCONNECT_TIMEOUT)
+            if not StateHandler.app_clients:
+                _write_message({"type": "close"}, session=True)
+
+        tornado.ioloop.IOLoop.current().add_callback(close_wait)
 
     @_catch_errors
     async def on_message(self, message):
