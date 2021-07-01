@@ -179,8 +179,8 @@ const Wrapper = ({
   );
 };
 
-const useOnSelect = (selectedAtom: RecoilState<string[]>, callbacks) => {
-  return useRecoilCallback(({ snapshot, set }) => async (value: string) => {
+const useOnSelect = (selectedAtom: RecoilState<Value[]>, callbacks) => {
+  return useRecoilCallback(({ snapshot, set }) => async (value: Value) => {
     const selected = new Set(await snapshot.getPromise(selectedAtom));
     selected.add(value);
     set(selectedAtom, [...selected].sort());
@@ -192,7 +192,7 @@ interface ResultsWrapperProps {
   results: [Value, number][];
   color: string;
   shown: boolean;
-  onSelect: (value: string) => void;
+  onSelect: (value: Value) => void;
   onMouseEnter: () => void;
   onMouseLeave: () => void;
   subCount: number;
@@ -219,6 +219,7 @@ const ResultsWrapper = ({
         >
           {results && (
             <Results
+              color={color}
               active={active}
               onSelect={onSelect}
               results={results}
@@ -252,7 +253,7 @@ interface Props {
     count: number;
     results: [Value, [number, number]][];
   }>;
-  selectedValuesAtom: RecoilState<string[]>;
+  selectedValuesAtom: RecoilState<Value[]>;
   excludeAtom?: RecoilState<boolean>;
   name?: string;
   valueName: string;

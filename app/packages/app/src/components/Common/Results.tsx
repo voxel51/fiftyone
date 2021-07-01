@@ -65,6 +65,7 @@ const Result = React.memo(
     result: [value, count],
     onClick,
     maxLen,
+    color,
   }: ResultProps) => {
     const props = useHighlightHover(
       false,
@@ -72,7 +73,7 @@ const Result = React.memo(
       value === null ? highlight : null
     );
 
-    const [text, coloring] = getValueString(name);
+    const [text, coloring] = getValueString(value);
 
     return (
       <ResultDiv
@@ -80,7 +81,9 @@ const Result = React.memo(
         {...props}
         onClick={onClick}
       >
-        <span>{maxLen ? summarizeLongStr(text, maxLen, "middle") : text}</span>
+        <span style={coloring ? { color } : {}}>
+          {maxLen ? summarizeLongStr(text, maxLen, "middle") : text}
+        </span>
         <span>{count.toLocaleString()}</span>
       </ResultDiv>
     );
@@ -95,10 +98,17 @@ interface ResultsProps {
   onSelect: (value: Value) => void;
   active: string | null;
   alignRight?: boolean;
+  color: string;
 }
 
 const Results = React.memo(
-  ({ onSelect, results, highlight, active = undefined }: ResultsProps) => {
+  ({
+    color,
+    onSelect,
+    results,
+    highlight,
+    active = undefined,
+  }: ResultsProps) => {
     return (
       <ScrollResultsContainer>
         {results.map((result) => (
@@ -109,6 +119,7 @@ const Results = React.memo(
             onClick={() => onSelect(result[0])}
             active={active === result[0]}
             maxLen={32 - result[1].toLocaleString().length}
+            color={color}
           />
         ))}
       </ScrollResultsContainer>
