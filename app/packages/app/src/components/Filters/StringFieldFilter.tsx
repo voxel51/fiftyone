@@ -9,8 +9,8 @@ import {
 import { animated } from "react-spring";
 
 import * as selectors from "../../recoil/selectors";
-import StringFilter from "./StringFilter";
-import { useExpand, noneCount } from "./utils";
+import CategoricalFilter from "./CategoricalFilter";
+import { useExpand, countsAtom, Value } from "./utils";
 
 export const LIST_LIMIT = 200;
 
@@ -19,8 +19,6 @@ interface StringFilter {
   exclude: boolean;
   _CLS: "str";
 }
-
-type Value = string | null;
 
 const getFilter = (get: GetRecoilValue, path: string): StringFilter => {
   return {
@@ -104,18 +102,21 @@ export const fieldIsFiltered = selectorFamily<
   },
 });
 
-const StringFieldFilter = ({ expanded, entry }) => {
+const StringFieldFilter = ({ expanded, entry, modal }) => {
   const [ref, props] = useExpand(expanded);
 
   return (
     <animated.div style={props}>
-      <StringFilter
+      <CategoricalFilter
         valueName={entry.path}
         color={entry.color}
-        selectedValuesAtom={selectedValuesAtom(entry.path)}
+        selectedValuesAtom={
+          modal
+            ? selectedValuesModalAtom(entry.path)
+            : selectedValuesAtom(entry.path)
+        }
         excludeAtom={excludeAtom(entry.path)}
-        countsAtom={countsAtom(entry.path)}
-        noneCountAtom={noneCount(entry.path)}
+        countsAtom={countsAtom({ modal, path: entry.path })}
         path={entry.path}
         ref={ref}
       />

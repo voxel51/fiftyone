@@ -9,9 +9,8 @@ import {
 import { animated } from "react-spring";
 
 import * as selectors from "../../recoil/selectors";
-import BooleanFilter from "./BooleanFilter";
-import { useExpand, countsAtom } from "./utils";
-import StringFilter from "./StringFilter";
+import { useExpand, countsAtom, Value } from "./utils";
+import CategoricalFilter from "./CategoricalFilter";
 
 interface BooleanFilter {
   false: boolean;
@@ -114,15 +113,70 @@ export const modalFilter = selectorFamily<BooleanFilter | null, string>({
   },
 });
 
+const selectedValuesAtom = selectorFamily<
+  Value[],
+  { modal: boolean; path: string }
+>({
+  key: "booleanSelectedValues",
+  get: ({ modal, path }) => ({ get }) => {
+    const values: Value[] = [];
+
+    if (get(modal ? noneModalAtom(path) : noneAtom(path))) {
+      values.push(null);
+    }
+
+    if (get(modal ? falseModalAtom(path) : falseAtom(path))) {
+      values.push(false);
+    }
+
+    if (get(modal ? trueModalAtom(path) : trueAtom(path))) {
+      values.push(true);
+    }
+
+    return values;
+  },
+  set: ({ path, modal }) => ({ get, set }, values) => {
+    const noneA = modal ? noneModalAtom(path) : noneAtom(path);
+    const falseA = modal ? falseModalAtom(path) : falseAtom(path);
+    const trueA = modal ? trueModalAtom(path) : trueAtom(path);
+
+    const currentNone = get(noneA);
+    const currentFalse = get(falseA);
+    const currentTrue = get(trueA);
+
+    if (!Array.isArray(values)) {
+      currentNone && set(noneA, false);
+      currentFalse && set(falseA, false);
+      currentTrue && set(trueA, false);
+      return;
+    }
+
+    const newNone = values.includes(null);
+    if (newNone !== currentNone) {
+      set(noneA, newNone);
+    }
+
+    const newFalse = values.includes(false);
+    if (newFalse !== currentFalse) {
+      set(falseA, newFalse);
+    }
+
+    const newTrue = values.includes(true);
+    if (newTrue !== currentTrue) {
+      set(trueA, newTrue);
+    }
+  },
+});
+
 const BooleanFieldFilter = ({ expanded, entry, modal }) => {
   const [ref, props] = useExpand(expanded);
 
   return (
     <animated.div style={props}>
-      <StringFilter
+      <CategoricalFilter
         valueName={entry.path}
         color={entry.color}
-        selectedValuesAtom={selectedValuesAtom(entry.path)}
+        selectedValuesAtom={selectedValuesAtom({ path: entry.path, modal })}
         countsAtom={countsAtom({ path: entry.path, modal })}
         path={entry.path}
         ref={ref}

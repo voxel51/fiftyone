@@ -229,6 +229,7 @@ type NamedProps = {
   valueAtom: RecoilState<Range>;
   boundsAtom: RecoilValueReadOnly<Range>;
   noneCountAtom: RecoilValueReadOnly<number>;
+  noneSubCountAtom: RecoilValueReadOnly<number>;
   noneAtom: RecoilState<boolean>;
   name?: string;
   int?: boolean;
@@ -242,10 +243,17 @@ const isDefaultRange = (range, bounds) => {
 export const NamedRangeSlider = React.memo(
   React.forwardRef(
     (
-      { noneCountAtom, name, noneAtom, ...rangeSliderProps }: NamedProps,
+      {
+        noneCountAtom,
+        noneSubCountAtom,
+        name,
+        noneAtom,
+        ...rangeSliderProps
+      }: NamedProps,
       ref
     ) => {
       const none = useRecoilValue(noneCountAtom);
+      const subcountNone = useRecoilValue(noneSubCountAtom);
       const hasNone = none > 0;
       const [includeNone, setIncludeNone] = useRecoilState(noneAtom);
       const [range, setRange] = useRecoilState(rangeSliderProps.valueAtom);
@@ -270,10 +278,11 @@ export const NamedRangeSlider = React.memo(
             {hasNone && hasBounds && hasDefaultRange && (
               <Checkbox
                 color={rangeSliderProps.color}
-                name={"None"}
+                name={null}
                 value={includeNone}
                 setValue={setIncludeNone}
                 count={none}
+                subCount={subcountNone}
               />
             )}
             {(!hasDefaultRange || !includeNone) && (

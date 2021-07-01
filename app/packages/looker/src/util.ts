@@ -305,16 +305,17 @@ export const snapBox = (
   scale: number,
   pan: Coordinates,
   [ww, wh]: Dimensions,
-  [iw, ih]: Dimensions
+  [iw, ih]: Dimensions,
+  pad = true
 ): Coordinates => {
   const sww = ww * scale;
   const swh = wh * scale;
   const ar = iw / ih;
   if (ww / wh < ar) {
-    iw = sww * 1.1;
+    iw = sww * (pad ? 1.1 : 1);
     ih = iw / ar;
   } else {
-    ih = swh * 1.1;
+    ih = swh * (pad ? 1.1 : 1);
     iw = ih * ar;
   }
 

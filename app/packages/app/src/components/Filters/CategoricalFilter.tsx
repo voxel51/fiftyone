@@ -20,6 +20,7 @@ import { ItemAction } from "../Actions/ItemAction";
 import socket from "../../shared/connection";
 import { packageMessage } from "../../utils/socket";
 import { useTheme } from "../../utils/hooks";
+import { Value } from "./utils";
 
 const StringFilterContainer = styled.div`
   background: ${({ theme }) => theme.backgroundDark};
@@ -76,8 +77,8 @@ const ExcludeOption = ({
 };
 
 const nullSort = (
-  [a]: [string, [number, number]],
-  [b]: [string, [number, number]]
+  [a]: [Value, [number, number]],
+  [b]: [Value, [number, number]]
 ): number => {
   if (a === b) {
     return 0;
@@ -97,8 +98,8 @@ const nullSort = (
 };
 
 interface WrapperProps {
-  results: [string, [number, number]][];
-  selectedValuesAtom: RecoilState<string[]>;
+  results: [Value, [number, number]][];
+  selectedValuesAtom: RecoilState<Value[]>;
   excludeAtom?: RecoilState<boolean>;
   name: string;
   valueName: string;
@@ -118,7 +119,7 @@ const Wrapper = ({
   const selectedSet = new Set(selected);
   const setExcluded = excludeAtom ? useSetRecoilState(excludeAtom) : null;
   const counts = Object.fromEntries(results);
-  let allValues: [string, [number, number]][] = selected.map<
+  let allValues: [Value, [number, number]][] = selected.map<
     [string, [number, number]]
   >((value) => (counts[value] ? [value, counts[value]] : [value, [0, 0]]));
 
@@ -132,7 +133,7 @@ const Wrapper = ({
         .sort(nullSort)
         .map(([value, [subCount, count]]) => (
           <Checkbox
-            key={value}
+            key={String(value)}
             color={color}
             value={selectedSet.has(value)}
             name={value}
@@ -188,7 +189,7 @@ const useOnSelect = (selectedAtom: RecoilState<string[]>, callbacks) => {
 };
 
 interface ResultsWrapperProps {
-  results: [string, number][];
+  results: [Value, number][];
   color: string;
   shown: boolean;
   onSelect: (value: string) => void;
@@ -249,7 +250,7 @@ const ResultsWrapper = ({
 interface Props {
   countsAtom: RecoilValueReadOnly<{
     count: number;
-    results: [string, [number, number]][];
+    results: [Value, [number, number]][];
   }>;
   selectedValuesAtom: RecoilState<string[]>;
   excludeAtom?: RecoilState<boolean>;
@@ -330,6 +331,7 @@ const StringFilter = React.memo(
             if (currentPromise.current !== promise) {
               return;
             }
+            results.length && setActive(results[0]);
             setSearchResults(results);
             setSubCount(count);
           });

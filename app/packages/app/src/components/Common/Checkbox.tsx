@@ -7,10 +7,11 @@ import { useHighlightHover } from "../Actions/utils";
 import { ItemAction } from "../Actions/ItemAction";
 import { useTheme } from "../../utils/hooks";
 import { summarizeLongStr } from "../../utils/generic";
+import { getValueString, Value } from "../Filters/utils";
 
 interface CheckboxProps {
   color?: string;
-  name: string;
+  name: Value;
   value: boolean;
   setValue: (value: boolean) => void;
   count: number;
@@ -40,12 +41,12 @@ const CheckboxName = styled.div`
   justify-content: space-between;
 `;
 
-const makeCountStr = (count, subCount) => {
-  if (subCount !== count) {
+const makeCountStr = (subCount, count) => {
+  if (typeof subCount === "number" && subCount !== count) {
     return `${subCount.toLocaleString()} of ${count.toLocaleString()}`;
   }
 
-  return count.toLocalString();
+  return count.toLocaleString();
 };
 
 const Checkbox = React.memo(
@@ -54,15 +55,15 @@ const Checkbox = React.memo(
     color = color ?? theme.brand;
     const props = useHighlightHover(false);
 
-    const text = name === null ? "None" : name;
+    const [text, coloring] = getValueString(name);
     const countStr = makeCountStr(subCount, count);
 
     return (
-      <StyledCheckboxContainer title={name}>
+      <StyledCheckboxContainer title={text}>
         <StyledCheckbox {...props} onClick={() => setValue(!value)}>
           <MaterialCheckbox
             checked={value}
-            title={name === null ? "None" : name}
+            title={text}
             style={{ color, padding: "0 0.5rem 0 0" }}
             onChange={(e) => {
               e.preventDefault();
@@ -71,8 +72,8 @@ const Checkbox = React.memo(
             }}
             disableRipple={true}
           />
-          <CheckboxName style={name === null ? { color: color } : {}}>
-            <span>
+          <CheckboxName>
+            <span style={coloring ? { color } : {}}>
               {summarizeLongStr(text, 28 - countStr.length, "middle")}
             </span>
             <span>{countStr}</span>

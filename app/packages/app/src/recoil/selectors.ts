@@ -308,6 +308,10 @@ export const noneFilteredFieldCounts = selector<{ [key: string]: number }>({
       return {};
     }
 
+    if (Object.entries(currentFilters).length === 0) {
+      return get(noneFieldCounts);
+    }
+
     return raw.stats.none.reduce((acc, cur) => {
       acc[cur.name] = cur.result;
       return acc;

@@ -94,7 +94,7 @@ export const zoomToContent = <
     pan[1] = pan[1] * squeeze + (bh * h * (1 - squeeze)) / 2;
   }
 
-  pan = snapBox(scale, pan, [ww, wh], [iw, ih]);
+  pan = snapBox(scale, pan, [ww, wh], [iw, ih], !state.config.thumbnail);
 
   return mergeUpdates(state, { scale: scale, pan });
 };

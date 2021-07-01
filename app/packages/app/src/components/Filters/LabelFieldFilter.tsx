@@ -3,9 +3,9 @@ import { useRecoilCallback, useRecoilValue } from "recoil";
 import { animated } from "react-spring";
 import styled from "styled-components";
 
-import { noneCount, useExpand } from "./utils";
+import { countsAtom, noneCount, useExpand } from "./utils";
 import { NamedRangeSlider } from "./RangeSlider";
-import StringFilter from "./StringFilter";
+import CategoricalFilter from "./CategoricalFilter";
 import { CONFIDENCE_LABELS } from "../../utils/labels";
 import { getPathExtension } from "./LabelFieldFilters.state";
 import * as atoms from "../../recoil/atoms";
@@ -89,14 +89,13 @@ const LabelFilter = ({ expanded, entry, modal }: Props) => {
       <div ref={ref}>
         <div style={{ margin: 3 }}>
           {modal && <HiddenLabelFilter entry={entry} />}
-          <StringFilter
+          <CategoricalFilter
             color={entry.color}
             name={"Labels"}
             valueName={"label"}
             selectedValuesAtom={selectedLabels(lPath)}
-            totalAtom={stringField.totalAtom(lPath)}
+            countsAtom={countsAtom({ modal, path: lPath })}
             excludeAtom={exclude(lPath)}
-            noneCountAtom={noneCount(lPath)}
             path={lPath}
           />
           {CONFIDENCE_LABELS.includes(entry.labelType) && (
@@ -104,7 +103,12 @@ const LabelFilter = ({ expanded, entry, modal }: Props) => {
               color={entry.color}
               name={"Confidence"}
               noneAtom={noConfidence({ path: cPath, defaultRange: [0, 1] })}
-              noneCountAtom={noneCount(cPath)}
+              noneCountAtom={noneCount({ path: cPath, modal, filtered: false })}
+              noneSubCountAtom={noneCount({
+                path: cPath,
+                modal,
+                filtered: true,
+              })}
               boundsAtom={numericField.boundsAtom({
                 path: cPath,
                 defaultRange: [0, 1],

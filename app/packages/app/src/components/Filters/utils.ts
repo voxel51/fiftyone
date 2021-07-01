@@ -14,6 +14,8 @@ import {
 } from "../../utils/labels";
 import { request } from "../../utils/socket";
 
+export type Value = string | null | false | true;
+
 const COUNT_CLS = "Count";
 
 export const catchLabelCount = (
@@ -161,18 +163,27 @@ export const noneCount = selectorFamily<
 });
 
 export const countsAtom = selectorFamily<
-  { count: number; results: [string, [number, number]][] },
+  { count: number; results: [Value, [number, number]][] },
   { path: string; modal: boolean }
 >({
-  key: "stringFieldCounts",
+  key: "categoricalFieldCounts",
   get: ({ path, modal }) => ({ get }) => {
     const none = get(noneCount({ path, modal, filtered: false }));
     const noneFiltered = get(noneCount({ path, modal, filtered: true }));
 
+    if (modal) {
+    }
+
     let subCounts = {};
-    (get(selectors.extendedDatasetStats) ?? []).forEach((cur) => {
+    (
+      get(
+        get(selectors.hasFilters)
+          ? selectors.extendedDatasetStats
+          : selectors.datasetStats
+      ) ?? []
+    ).forEach((cur) => {
       if (cur.name === path && cur._CLS === AGGS.COUNT_VALUES) {
-        subCounts = Object.fromEntries(cur.results);
+        subCounts = Object.fromEntries(cur.result[1]);
       }
     });
 
@@ -181,7 +192,10 @@ export const countsAtom = selectorFamily<
         if (cur.name === path && cur._CLS === AGGS.COUNT_VALUES) {
           return {
             count: cur.result[0],
-            results: [subCounts[cur.name] ?? cur.result[1], cur.result[1]],
+            results: cur.result[1].map(([value, count]) => [
+              value,
+              [subCounts.hasOwnProperty(value) ? subCounts[value] : 0, count],
+            ]),
           };
         }
         return acc;
@@ -337,3 +351,14 @@ export const activeLabelTags = selectorFamily<string[], boolean>({
     }
   },
 });
+
+const NONSTRING_VALUES: any[] = [false, true, null];
+const STRING_VALUES = ["False", "True", "None"];
+
+export const getValueString = (value: Value): [string, boolean] => {
+  if (NONSTRING_VALUES.includes(value)) {
+    return [STRING_VALUES[NONSTRING_VALUES.indexOf(value)], true];
+  }
+
+  return [value as string, false];
+};

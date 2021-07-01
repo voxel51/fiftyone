@@ -214,9 +214,22 @@ const NumericFieldFilter = ({ expanded, entry, modal }) => {
       <NamedRangeSlider
         color={entry.color}
         boundsAtom={boundsAtom({ path: entry.path })}
-        noneCountAtom={noneCount(entry.path)}
-        valueAtom={rangeAtom({ path: entry.path })}
-        noneAtom={noneAtom({ path: entry.path })}
+        noneCountAtom={noneCount({ modal, path: entry.path, filtered: false })}
+        noneSubCountAtom={noneCount({
+          modal,
+          path: entry.path,
+          filtered: true,
+        })}
+        valueAtom={
+          modal
+            ? rangeModalAtom({ path: entry.path })
+            : rangeAtom({ path: entry.path })
+        }
+        noneAtom={
+          modal
+            ? noneModalAtom({ path: entry.path })
+            : noneAtom({ path: entry.path })
+        }
         int={[INT_FIELD, FRAME_NUMBER_FIELD].includes(type)}
         ref={ref}
       />

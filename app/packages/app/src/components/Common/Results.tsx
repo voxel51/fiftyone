@@ -4,6 +4,7 @@ import { summarizeLongStr } from "../../utils/generic";
 
 import { useHighlightHover } from "../Actions/utils";
 import { ItemAction } from "../Actions/ItemAction";
+import { getValueString, Value } from "../Filters/utils";
 
 export const ResultsContainer = styled.div`
   background-color: ${({ theme }) => theme.backgroundDark};
@@ -54,6 +55,7 @@ interface ResultProps {
   active: boolean | null;
   onClick: () => void;
   maxLen?: number;
+  color: string;
 }
 
 const Result = React.memo(
@@ -70,7 +72,7 @@ const Result = React.memo(
       value === null ? highlight : null
     );
 
-    const text = value === null ? "None" : value;
+    const [text, coloring] = getValueString(name);
 
     return (
       <ResultDiv
@@ -85,12 +87,12 @@ const Result = React.memo(
   }
 );
 
-type ResultValue = [string | null, number];
+type ResultValue = [Value, number];
 
 interface ResultsProps {
   results: ResultValue[];
   highlight: string;
-  onSelect: (value: string | null) => void;
+  onSelect: (value: Value) => void;
   active: string | null;
   alignRight?: boolean;
 }
@@ -101,7 +103,7 @@ const Results = React.memo(
       <ScrollResultsContainer>
         {results.map((result) => (
           <Result
-            key={result[0]}
+            key={String(result[0])}
             result={result}
             highlight={highlight}
             onClick={() => onSelect(result[0])}
