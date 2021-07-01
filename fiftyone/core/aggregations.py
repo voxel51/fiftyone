@@ -508,7 +508,10 @@ class CountValues(Aggregation):
         if self._first is None:
             return {i["k"]: i["count"] for i in d["result"]}
 
-        return d["count"], [[i["k"], i["count"]] for i in d["result"]]
+        return (
+            d["count"],
+            [[i["k"], i["count"]] for i in d["result"] if i["k"] is not None],
+        )
 
     def to_mongo(self, sample_collection):
         path, pipeline, _, id_to_str = _parse_field_and_expr(

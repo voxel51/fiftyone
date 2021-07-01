@@ -1,14 +1,97 @@
 import { useSpring } from "react-spring";
 import { atomFamily, selector, selectorFamily } from "recoil";
 import useMeasure from "react-use-measure";
+import { v4 as uuid } from "uuid";
 
+import * as atoms from "../../recoil/atoms";
 import * as selectors from "../../recoil/selectors";
 import {
+  AGGS,
   BOOLEAN_FIELD,
   OBJECT_ID_FIELD,
   STRING_FIELD,
   VALID_NUMERIC_TYPES,
 } from "../../utils/labels";
+import { request } from "../../utils/socket";
+
+const COUNT_CLS = "Count";
+
+export const catchLabelCount = (
+  names: string[],
+  prefix: string,
+  cur: { name: string; _CLS: string; result: number },
+  acc: { [key: string]: number }
+): void => {
+  if (
+    cur.name &&
+    names.includes(cur.name.slice(prefix.length).split(".")[0]) &&
+    cur._CLS === COUNT_CLS
+  ) {
+    acc[cur.name.slice(prefix.length).split(".")[0]] = cur.result;
+  }
+};
+
+export const modalFrameStats = selector({
+  key: "modalFrameStats",
+  get: async ({ get }) => {
+    const id = uuid();
+    const data = await request({
+      type: "frame_statistics",
+      uuid: id,
+      args: {
+        sample_id: get(atoms.modal).sampleId,
+      },
+    });
+
+    return data.stats;
+  },
+});
+
+export const modalFrameLabelCounts = selector({
+  key: "modalFrameLabelCounts",
+  get: ({ get }) => {
+    const stats = get(modalFrameStats).main;
+    const names = get(selectors.labelNames("frame"));
+    if (stats === null) {
+      return null;
+    }
+    return stats.reduce((acc, cur) => {
+      catchLabelCount(names, "frames.", cur, acc);
+      return acc;
+    }, {});
+  },
+});
+
+export const modalFilteredFrameStats = selector({
+  key: "modalFilteredFrameStats",
+  get: async ({ get }) => {
+    const id = uuid();
+    const data = await request({
+      type: "frame_statistics",
+      uuid: id,
+      args: {
+        sample_id: get(atoms.modal).sampleId,
+      },
+    });
+
+    return data.stats;
+  },
+});
+
+export const modalFilteredFrameLabelCounts = selector({
+  key: "modalFilteredFrameLabelCounts",
+  get: ({ get }) => {
+    const stats = get(modalFilteredFrameStats).main;
+    const names = get(selectors.labelNames("frame"));
+    if (stats === null) {
+      return null;
+    }
+    return stats.reduce((acc, cur) => {
+      catchLabelCount(names, "frames.", cur, acc);
+      return acc;
+    }, {});
+  },
+});
 
 export const isBooleanField = selectorFamily<boolean, string>({
   key: "isBooleanField",
@@ -60,10 +143,58 @@ export const unsupportedFields = selector<string[]>({
   },
 });
 
-export const noneCount = selectorFamily<number, string>({
+export const noneCount = selectorFamily<
+  number,
+  { path: string; modal: boolean; filtered: boolean }
+>({
   key: "noneCount",
-  get: (path) => ({ get }) => {
+  get: ({ path, modal, filtered }) => ({ get }) => {
+    if (modal) {
+    }
+
+    if (filtered) {
+      return get(selectors.noneFilteredFieldCounts)[path];
+    }
+
     return get(selectors.noneFieldCounts)[path];
+  },
+});
+
+export const countsAtom = selectorFamily<
+  { count: number; results: [string, [number, number]][] },
+  { path: string; modal: boolean }
+>({
+  key: "stringFieldCounts",
+  get: ({ path, modal }) => ({ get }) => {
+    const none = get(noneCount({ path, modal, filtered: false }));
+    const noneFiltered = get(noneCount({ path, modal, filtered: true }));
+
+    let subCounts = {};
+    (get(selectors.extendedDatasetStats) ?? []).forEach((cur) => {
+      if (cur.name === path && cur._CLS === AGGS.COUNT_VALUES) {
+        subCounts = Object.fromEntries(cur.results);
+      }
+    });
+
+    const data = (get(selectors.datasetStats) ?? []).reduce(
+      (acc, cur) => {
+        if (cur.name === path && cur._CLS === AGGS.COUNT_VALUES) {
+          return {
+            count: cur.result[0],
+            results: [subCounts[cur.name] ?? cur.result[1], cur.result[1]],
+          };
+        }
+        return acc;
+      },
+      { count: 0, results: [] }
+    );
+
+    if (none > 0) {
+      data.count = data.count + 1;
+      data.results = [...data.results, [null, [noneFiltered, none]]];
+    }
+
+    return data;
   },
 });
 
@@ -108,8 +239,6 @@ export const activeLabels = selectorFamily<
   },
   set: ({ modal, frames }) => ({ get, set }, value) => {
     if (Array.isArray(value)) {
-      const prevActiveLabels = get(activeLabels({ modal, frames }));
-
       let active = get(activeFields(modal)).filter((v) =>
         get(isLabelField(v)) &&
         (frames ? v.startsWith("frames.") : !v.startsWith("frames."))

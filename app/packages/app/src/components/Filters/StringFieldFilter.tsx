@@ -10,7 +10,6 @@ import { animated } from "react-spring";
 
 import * as selectors from "../../recoil/selectors";
 import StringFilter from "./StringFilter";
-import { AGGS } from "../../utils/labels";
 import { useExpand, noneCount } from "./utils";
 
 export const LIST_LIMIT = 200;
@@ -80,32 +79,16 @@ export const excludeModalAtom = atomFamily<boolean, string>({
   default: false,
 });
 
-export const totalAtom = selectorFamily<
-  { count: number; results: [string, number][] },
-  string
->({
-  key: "stringFieldTotal",
+export const modalFilter = selectorFamily<StringFilter | null, string>({
+  key: "stringFieldModalFilter",
   get: (path) => ({ get }) => {
-    const none = get(noneCount(path));
-    const data = (get(selectors.datasetStats) ?? []).reduce(
-      (acc, cur) => {
-        if (cur.name === path && cur._CLS === AGGS.COUNT_VALUES) {
-          return {
-            count: cur.result[0],
-            results: cur.result[1],
-          };
-        }
-        return acc;
-      },
-      { count: 0, results: [] }
-    );
+    const filter: StringFilter = {
+      _CLS: "str",
+      values: get(selectedValuesModalAtom(path)),
+      exclude: get(excludeModalAtom(path)),
+    };
 
-    if (none > 0) {
-      data.count = data.count + 1;
-      data.results = [...data.results, [null, none]];
-    }
-
-    return data;
+    return meetsDefault(filter) ? null : filter;
   },
 });
 
@@ -131,7 +114,7 @@ const StringFieldFilter = ({ expanded, entry }) => {
         color={entry.color}
         selectedValuesAtom={selectedValuesAtom(entry.path)}
         excludeAtom={excludeAtom(entry.path)}
-        totalAtom={totalAtom(entry.path)}
+        countsAtom={countsAtom(entry.path)}
         noneCountAtom={noneCount(entry.path)}
         path={entry.path}
         ref={ref}

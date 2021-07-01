@@ -79,7 +79,7 @@ const Result = React.memo(
         onClick={onClick}
       >
         <span>{maxLen ? summarizeLongStr(text, maxLen, "middle") : text}</span>
-        <span>{count}</span>
+        <span>{count.toLocaleString()}</span>
       </ResultDiv>
     );
   }
@@ -106,7 +106,7 @@ const Results = React.memo(
             highlight={highlight}
             onClick={() => onSelect(result[0])}
             active={active === result[0]}
-            maxLen={32 - String(result[1]).length}
+            maxLen={32 - result[1].toLocaleString().length}
           />
         ))}
       </ScrollResultsContainer>

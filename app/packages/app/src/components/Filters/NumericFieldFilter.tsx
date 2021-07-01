@@ -186,7 +186,27 @@ export const fieldIsFiltered = selectorFamily<
   },
 });
 
-const NumericFieldFilter = ({ expanded, entry }) => {
+export const modalFilter = selectorFamily<
+  NumericFilter | null,
+  {
+    path: string;
+    defaultRange?: Range;
+  }
+>({
+  key: "booleanFieldModalFilter",
+  get: (params) => ({ get }) => {
+    const filter: NumericFilter = {
+      _CLS: "numeric",
+      range: get(rangeModalAtom(params)),
+      none: get(noneModalAtom(params)),
+    };
+    const bounds = get(boundsAtom(params));
+
+    return meetsDefault(filter, bounds) ? null : filter;
+  },
+});
+
+const NumericFieldFilter = ({ expanded, entry, modal }) => {
   const [ref, props] = useExpand(expanded);
   const type = useRecoilValue(selectors.fieldType(entry.path));
   return (

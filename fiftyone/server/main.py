@@ -744,15 +744,15 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         )
 
     @staticmethod
-    async def on_frame_statistics(caller, sample_id, uuid, extended=False):
+    async def on_frame_statistics(caller, sample_id, uuid, filters=None):
         state = fos.StateDescription.from_dict(StateHandler.state)
         if state.view is not None:
             view = state.view
         else:
             view = state.dataset
 
-        if extended:
-            view = get_extended_view(view, state.filters)
+        if filters is not None:
+            view = get_extended_view(view, filters)
 
         view = view.select(sample_id)
 

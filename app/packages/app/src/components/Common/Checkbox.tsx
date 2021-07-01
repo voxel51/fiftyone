@@ -13,8 +13,8 @@ interface CheckboxProps {
   name: string;
   value: boolean;
   setValue: (value: boolean) => void;
-  maxLen?: number;
   count: number;
+  subCount: number;
 }
 
 const StyledCheckboxContainer = styled.div`
@@ -40,13 +40,22 @@ const CheckboxName = styled.div`
   justify-content: space-between;
 `;
 
+const makeCountStr = (count, subCount) => {
+  if (subCount !== count) {
+    return `${subCount.toLocaleString()} of ${count.toLocaleString()}`;
+  }
+
+  return count.toLocalString();
+};
+
 const Checkbox = React.memo(
-  ({ color, name, value, setValue, maxLen = null, count }: CheckboxProps) => {
+  ({ color, name, value, setValue, subCount, count }: CheckboxProps) => {
     const theme = useTheme();
     color = color ?? theme.brand;
     const props = useHighlightHover(false);
 
     const text = name === null ? "None" : name;
+    const countStr = makeCountStr(subCount, count);
 
     return (
       <StyledCheckboxContainer title={name}>
@@ -64,9 +73,9 @@ const Checkbox = React.memo(
           />
           <CheckboxName style={name === null ? { color: color } : {}}>
             <span>
-              {maxLen ? summarizeLongStr(text, maxLen, "middle") : text}
+              {summarizeLongStr(text, 28 - countStr.length, "middle")}
             </span>
-            <span>{count}</span>
+            <span>{countStr}</span>
           </CheckboxName>
         </StyledCheckbox>
       </StyledCheckboxContainer>

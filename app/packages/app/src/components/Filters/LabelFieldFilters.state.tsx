@@ -1,13 +1,7 @@
 import { atomFamily, selector, selectorFamily } from "recoil";
 
 import { Range } from "./RangeSlider";
-import {
-  activeFields,
-  activeLabels,
-  isBooleanField,
-  isNumericField,
-  isStringField,
-} from "./utils";
+import * as utils from "./utils";
 import * as booleanField from "./BooleanFieldFilter";
 import * as numericField from "./NumericFieldFilter";
 import * as stringField from "./StringFieldFilter";
@@ -18,8 +12,6 @@ import {
   RESERVED_FIELDS,
   VALID_LIST_TYPES,
 } from "../../utils/labels";
-
-const COUNT_CLS = "Count";
 
 export const modalFilterIncludeLabels = atomFamily<string[], string>({
   key: "modalFilterIncludeLabels",
@@ -55,7 +47,7 @@ export const getPathExtension = (type: string): string => {
 export const labelFilters = selectorFamily<LabelFilters, boolean>({
   key: "labelFilters",
   get: (modal) => ({ get }) => {
-    const labels = get(activeFields(true));
+    const labels = get(utils.activeFields(true));
     const filters = {};
     const typeMap = get(selectors.labelTypesMap);
     const hiddenLabels = modal ? get(atoms.hiddenLabels) : null;
@@ -121,8 +113,8 @@ export const labelFilters = selectorFamily<LabelFilters, boolean>({
   set: () => ({ get, set }, _) => {
     const paths = get(selectors.labelTypesMap);
     set(
-      activeFields(true),
-      get(activeFields(false)).filter(
+      utils.activeFields(true),
+      get(utils.activeFields(false)).filter(
         (f) => !f.startsWith("tags.") && !f.startsWith("_label_tags.")
       )
     );
@@ -171,9 +163,9 @@ export const sampleModalFilter = selector({
   get: ({ get }) => {
     const filters = get(labelFilters(true));
 
-    const labels = get(activeFields(true));
+    const labels = get(utils.activeFields(true));
     const hiddenLabels = get(atoms.hiddenLabels);
-    const fields = get(activeFields(false));
+    const fields = get(utils.activeFields(false));
     return (sample, prefix = null, allFields = false) => {
       return Object.entries(sample).reduce((acc, [key, value]) => {
         if (value && hiddenLabels[value.id ?? value._id]) {
@@ -230,11 +222,11 @@ export const fieldIsFiltered = selectorFamily<
   key: "fieldIsFiltered",
   get: ({ path, modal }) => ({ get }) => {
     const isArgs = { path, modal };
-    if (get(isBooleanField(path))) {
+    if (get(utils.isBooleanField(path))) {
       return get(booleanField.fieldIsFiltered(isArgs));
-    } else if (get(isNumericField(path))) {
+    } else if (get(utils.isNumericField(path))) {
       return get(numericField.fieldIsFiltered(isArgs));
-    } else if (get(isStringField(path))) {
+    } else if (get(utils.isStringField(path))) {
       return get(stringField.fieldIsFiltered(isArgs));
     }
     if (path.startsWith("_label_tags.")) {
@@ -270,21 +262,6 @@ export const fieldIsFiltered = selectorFamily<
   },
 });
 
-const catchLabelCount = (
-  names: string[],
-  prefix: string,
-  cur: { name: string; _CLS: string; result: number },
-  acc: { [key: string]: number }
-): void => {
-  if (
-    cur.name &&
-    names.includes(cur.name.slice(prefix.length).split(".")[0]) &&
-    cur._CLS === COUNT_CLS
-  ) {
-    acc[cur.name.slice(prefix.length).split(".")[0]] = cur.result;
-  }
-};
-
 interface Counts {
   [key: string]: number | null;
 }
@@ -301,7 +278,7 @@ export const labelSampleCounts = selectorFamily<Counts | null, string>({
       return null;
     }
     return stats.reduce((acc, cur) => {
-      catchLabelCount(names, prefix, cur, acc);
+      utils.catchLabelCount(names, prefix, cur, acc);
       return acc;
     }, {});
   },
@@ -319,22 +296,7 @@ export const filteredLabelSampleCounts = selectorFamily<Counts | null, string>({
       return null;
     }
     return stats.reduce((acc, cur) => {
-      catchLabelCount(names, prefix, cur, acc);
-      return acc;
-    }, {});
-  },
-});
-
-export const modalFrameLabelCounts = selector({
-  key: "modalFrameLabelCounts",
-  get: ({ get }) => {
-    const stats = get(selectors.modalFrameStats).main;
-    const names = get(selectors.labelNames("frame"));
-    if (stats === null) {
-      return null;
-    }
-    return stats.reduce((acc, cur) => {
-      catchLabelCount(names, "frames.", cur, acc);
+      utils.catchLabelCount(names, prefix, cur, acc);
       return acc;
     }, {});
   },
@@ -344,7 +306,7 @@ export const labelSampleModalCounts = selectorFamily<Counts | null, string>({
   key: "labelSampleModalCounts",
   get: (dimension) => ({ get }) => {
     if (dimension === "frame") {
-      return get(modalFrameLabelCounts);
+      return get(utils.modalFrameLabelCounts);
     }
 
     const labels = get(selectors.labelNames(dimension));
@@ -354,21 +316,6 @@ export const labelSampleModalCounts = selectorFamily<Counts | null, string>({
     return labels.reduce((acc, path) => {
       if (!(path in acc)) acc[path] = null;
       acc[path] += sampleCountResolver(sample[path], types[path]);
-      return acc;
-    }, {});
-  },
-});
-
-export const modalFilteredFrameLabelCounts = selector({
-  key: "modalFilteredFrameLabelCounts",
-  get: ({ get }) => {
-    const stats = get(selectors.modalFilteredFrameStats).main;
-    const names = get(selectors.labelNames("frame"));
-    if (stats === null) {
-      return null;
-    }
-    return stats.reduce((acc, cur) => {
-      catchLabelCount(names, "frames.", cur, acc);
       return acc;
     }, {});
   },
@@ -401,7 +348,7 @@ export const filteredLabelSampleModalCounts = selectorFamily<
   key: "filteredLabelSampleModalCounts",
   get: (dimension) => ({ get }) => {
     if (dimension === "frame") {
-      return get(modalFilteredFrameLabelCounts);
+      return get(utils.modalFilteredFrameLabelCounts);
     }
 
     const labels = get(selectors.labelNames(dimension));
@@ -423,8 +370,8 @@ export const filteredLabelSampleModalCounts = selectorFamily<
 export const labelCount = selectorFamily<number | null, boolean>({
   key: "labelCount",
   get: (modal) => ({ get }) => {
-    const labels = get(activeLabels({ modal, frames: false }));
-    const frameLabels = get(activeLabels({ modal, frames: true }));
+    const labels = get(utils.activeLabels({ modal, frames: false }));
+    const frameLabels = get(utils.activeLabels({ modal, frames: true }));
     const hasFilters = Object.keys(get(selectors.filterStages)).length > 0;
 
     const [counts, frameCounts] = modal
@@ -495,7 +442,9 @@ export const modalLabels = selector<atoms.SelectedLabel[]>({
   get: ({ get }) => {
     const sample = get(selectors.modalSample);
     const filter = get(sampleModalFilter);
-    const activeFields = get(activeLabels({ modal: true, frames: false }));
+    const activeFields = get(
+      utils.activeLabels({ modal: true, frames: false })
+    );
     const labels = [];
     addLabels({ activeFields, filter, labels, sample, obj: sample });
     return labels;

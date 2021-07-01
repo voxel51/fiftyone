@@ -75,8 +75,29 @@ const ExcludeOption = ({
   );
 };
 
+const nullSort = (
+  [a]: [string, [number, number]],
+  [b]: [string, [number, number]]
+): number => {
+  if (a === b) {
+    return 0;
+  }
+  if (a === null) {
+    return 1;
+  }
+  if (b === null) {
+    return -1;
+  }
+  if (a > b) {
+    return 1;
+  }
+  if (a < b) {
+    return -1;
+  }
+};
+
 interface WrapperProps {
-  results: [string, number][];
+  results: [string, [number, number]][];
   selectedValuesAtom: RecoilState<string[]>;
   excludeAtom?: RecoilState<boolean>;
   name: string;
@@ -97,9 +118,9 @@ const Wrapper = ({
   const selectedSet = new Set(selected);
   const setExcluded = excludeAtom ? useSetRecoilState(excludeAtom) : null;
   const counts = Object.fromEntries(results);
-  let allValues: [string, number][] = selected.map<[string, number]>((value) =>
-    counts[value] ? [value, counts[value]] : [value, 0]
-  );
+  let allValues: [string, [number, number]][] = selected.map<
+    [string, [number, number]]
+  >((value) => (counts[value] ? [value, counts[value]] : [value, [0, 0]]));
 
   if (count <= CHECKBOX_LIMIT) {
     allValues = [...allValues, ...results.filter(([v]) => !selectedSet.has(v))];
@@ -107,24 +128,26 @@ const Wrapper = ({
 
   return (
     <>
-      {[...new Set(allValues)].sort().map(([value, count]) => (
-        <Checkbox
-          key={value}
-          color={color}
-          value={selectedSet.has(value)}
-          name={value}
-          count={count}
-          maxLen={28 - String(count).length}
-          setValue={(checked: boolean) => {
-            if (checked) {
-              selectedSet.add(value);
-            } else {
-              selectedSet.delete(value);
-            }
-            setSelected([...selectedSet].sort());
-          }}
-        />
-      ))}
+      {[...new Set(allValues)]
+        .sort(nullSort)
+        .map(([value, [subCount, count]]) => (
+          <Checkbox
+            key={value}
+            color={color}
+            value={selectedSet.has(value)}
+            name={value}
+            count={count}
+            subCount={subCount}
+            setValue={(checked: boolean) => {
+              if (checked) {
+                selectedSet.add(value);
+              } else {
+                selectedSet.delete(value);
+              }
+              setSelected([...selectedSet].sort());
+            }}
+          />
+        ))}
       {Boolean(selectedSet.size) && (
         <>
           <PopoutSectionTitle />
@@ -224,13 +247,12 @@ const ResultsWrapper = ({
 };
 
 interface Props {
-  totalAtom: RecoilValueReadOnly<{
+  countsAtom: RecoilValueReadOnly<{
     count: number;
-    results: [string, number][];
+    results: [string, [number, number]][];
   }>;
   selectedValuesAtom: RecoilState<string[]>;
   excludeAtom?: RecoilState<boolean>;
-  noneCountAtom: RecoilValueReadOnly<number>;
   name?: string;
   valueName: string;
   color: string;
@@ -246,15 +268,13 @@ const StringFilter = React.memo(
         color,
         selectedValuesAtom,
         excludeAtom,
-        totalAtom,
-        noneCountAtom,
+        countsAtom,
         path,
       }: Props,
       ref
     ) => {
       const selected = useRecoilValue(selectedValuesAtom);
-      const { count, results } = useRecoilValue(totalAtom);
-      const none = useRecoilValue(noneCountAtom);
+      const { count, results } = useRecoilValue(countsAtom);
       const [focused, setFocused] = useState(false);
       const [hovering, setHovering] = useState(false);
       const [search, setSearch] = useState("");
@@ -309,10 +329,6 @@ const StringFilter = React.memo(
             clearTimeout(clear);
             if (currentPromise.current !== promise) {
               return;
-            }
-            if (none) {
-              results.push([null, none]);
-              count++;
             }
             setSearchResults(results);
             setSubCount(count);

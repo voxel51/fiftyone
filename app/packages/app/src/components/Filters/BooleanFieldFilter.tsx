@@ -10,7 +10,7 @@ import { animated } from "react-spring";
 
 import * as selectors from "../../recoil/selectors";
 import BooleanFilter from "./BooleanFilter";
-import { noneCount, useExpand } from "./utils";
+import { useExpand, countsAtom } from "./utils";
 import StringFilter from "./StringFilter";
 
 interface BooleanFilter {
@@ -100,9 +100,22 @@ export const fieldIsFiltered = selectorFamily<
   },
 });
 
-const BooleanFieldFilter = ({ expanded, entry }) => {
+export const modalFilter = selectorFamily<BooleanFilter | null, string>({
+  key: "booleanFieldModalFilter",
+  get: (path) => ({ get }) => {
+    const filter: BooleanFilter = {
+      _CLS: "bool",
+      false: get(falseModalAtom(path)),
+      true: get(trueModalAtom(path)),
+      none: get(noneModalAtom(path)),
+    };
+
+    return meetsDefault(filter) ? null : filter;
+  },
+});
+
+const BooleanFieldFilter = ({ expanded, entry, modal }) => {
   const [ref, props] = useExpand(expanded);
-  return null;
 
   return (
     <animated.div style={props}>
@@ -110,8 +123,7 @@ const BooleanFieldFilter = ({ expanded, entry }) => {
         valueName={entry.path}
         color={entry.color}
         selectedValuesAtom={selectedValuesAtom(entry.path)}
-        totalAtom={totalAtom(entry.path)}
-        noneCountAtom={noneCount(entry.path)}
+        countsAtom={countsAtom({ path: entry.path, modal })}
         path={entry.path}
         ref={ref}
       />

@@ -1,6 +1,5 @@
 import mime from "mime";
 import { selector, selectorFamily, SerializableParam } from "recoil";
-import { v4 as uuid } from "uuid";
 
 import * as atoms from "./atoms";
 import { generateColorMap } from "../utils/colors";
@@ -11,7 +10,7 @@ import {
   makeLabelNameGroups,
   VALID_LIST_TYPES,
 } from "../utils/labels";
-import { packageMessage, request } from "../utils/socket";
+import { packageMessage } from "../utils/socket";
 import { viewsAreEqual } from "../utils/view";
 import { darkTheme } from "../shared/colors";
 import socket, { handleId, isNotebook, http } from "../shared/connection";
@@ -290,6 +289,29 @@ export const noneFieldCounts = selector<{ [key: string]: number }>({
       }, {});
     }
     return {};
+  },
+});
+
+export const noneFilteredFieldCounts = selector<{ [key: string]: number }>({
+  key: "noneFilteredFieldCounts",
+  get: ({ get }) => {
+    const raw = get(atoms.extendedDatasetStatsRaw);
+    const currentView = get(view);
+    if (!raw.view) {
+      return {};
+    }
+    if (!viewsAreEqual(raw.view, currentView)) {
+      return {};
+    }
+    const currentFilters = get(filterStages);
+    if (!filtersAreEqual(raw.filters, currentFilters)) {
+      return {};
+    }
+
+    return raw.stats.none.reduce((acc, cur) => {
+      acc[cur.name] = cur.result;
+      return acc;
+    }, {});
   },
 });
 
@@ -1069,39 +1091,5 @@ export const similarityKeys = selector<{
         },
         { patches: [], samples: [] }
       );
-  },
-});
-
-export const modalFrameStats = selector({
-  key: "modalFrameStats",
-  get: async ({ get }) => {
-    const id = uuid();
-    const data = await request({
-      type: "frame_statistics",
-      uuid: id,
-      args: {
-        extended: false,
-        sample_id: get(atoms.modal).sampleId,
-      },
-    });
-
-    return data.stats;
-  },
-});
-
-export const modalFilteredFrameStats = selector({
-  key: "modalFilteredFrameStats",
-  get: async ({ get }) => {
-    const id = uuid();
-    const data = await request({
-      type: "frame_statistics",
-      uuid: id,
-      args: {
-        extended: true,
-        sample_id: get(atoms.modal).sampleId,
-      },
-    });
-
-    return data.stats;
   },
 });
