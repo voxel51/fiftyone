@@ -111,9 +111,13 @@ export const activeLabels = selectorFamily<
       const prevActiveLabels = get(activeLabels({ modal, frames }));
 
       let active = get(activeFields(modal)).filter((v) =>
-        get(isLabelField(v)) ? value.includes(v) : true
+        get(isLabelField(v)) &&
+        (frames ? v.startsWith("frames.") : !v.startsWith("frames."))
+          ? value.includes(v)
+          : true
       );
-      if (value.length && prevActiveLabels.length < value.length) {
+
+      if (value.length) {
         active = [value[0], ...active.filter((v) => v !== value[0])];
       }
       set(activeFields(modal), active);

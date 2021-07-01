@@ -325,9 +325,28 @@ export const filteredLabelSampleCounts = selectorFamily<Counts | null, string>({
   },
 });
 
+export const modalFrameLabelCounts = selector({
+  key: "modalFrameLabelCounts",
+  get: ({ get }) => {
+    const stats = get(selectors.modalFrameStats).main;
+    const names = get(selectors.labelNames("frame"));
+    if (stats === null) {
+      return null;
+    }
+    return stats.reduce((acc, cur) => {
+      catchLabelCount(names, "frames.", cur, acc);
+      return acc;
+    }, {});
+  },
+});
+
 export const labelSampleModalCounts = selectorFamily<Counts | null, string>({
   key: "labelSampleModalCounts",
   get: (dimension) => ({ get }) => {
+    if (dimension === "frame") {
+      return get(modalFrameLabelCounts);
+    }
+
     const labels = get(selectors.labelNames(dimension));
     const types = get(selectors.labelTypesMap);
     const sample = get(selectors.modalSample) || {};
@@ -335,6 +354,21 @@ export const labelSampleModalCounts = selectorFamily<Counts | null, string>({
     return labels.reduce((acc, path) => {
       if (!(path in acc)) acc[path] = null;
       acc[path] += sampleCountResolver(sample[path], types[path]);
+      return acc;
+    }, {});
+  },
+});
+
+export const modalFilteredFrameLabelCounts = selector({
+  key: "modalFilteredFrameLabelCounts",
+  get: ({ get }) => {
+    const stats = get(selectors.modalFilteredFrameStats).main;
+    const names = get(selectors.labelNames("frame"));
+    if (stats === null) {
+      return null;
+    }
+    return stats.reduce((acc, cur) => {
+      catchLabelCount(names, "frames.", cur, acc);
       return acc;
     }, {});
   },
@@ -366,6 +400,10 @@ export const filteredLabelSampleModalCounts = selectorFamily<
 >({
   key: "filteredLabelSampleModalCounts",
   get: (dimension) => ({ get }) => {
+    if (dimension === "frame") {
+      return get(modalFilteredFrameLabelCounts);
+    }
+
     const labels = get(selectors.labelNames(dimension));
     const types = get(selectors.labelTypesMap);
     const filter = get(sampleModalFilter);

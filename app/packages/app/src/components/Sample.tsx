@@ -16,6 +16,7 @@ import { useSetModal } from "../recoil/utils";
 import { VALID_CLASS_TYPES, VALID_LIST_TYPES } from "../utils/labels";
 import { prettify } from "../utils/generic";
 import { VideoLooker } from "@fiftyone/looker";
+import { labelFilters } from "./Filters/LabelFieldFilters.state";
 
 const SampleDiv = styled.div`
   position: relative;
@@ -117,7 +118,7 @@ const SampleInfo = React.memo(({ sampleId }: { sampleId: string }) => {
       acc = [
         ...acc,
         values
-          .filter((v) => filters[cur](v))
+          .filter((v) => filters[cur] && filters[cur](v))
           .map((v) => prettify(v.label, false))
           .map((v) => (
             <Tag

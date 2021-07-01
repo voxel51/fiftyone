@@ -1,5 +1,6 @@
 import mime from "mime";
 import { selector, selectorFamily, SerializableParam } from "recoil";
+import { v4 as uuid } from "uuid";
 
 import * as atoms from "./atoms";
 import { generateColorMap } from "../utils/colors";
@@ -10,7 +11,7 @@ import {
   makeLabelNameGroups,
   VALID_LIST_TYPES,
 } from "../utils/labels";
-import { packageMessage } from "../utils/socket";
+import { packageMessage, request } from "../utils/socket";
 import { viewsAreEqual } from "../utils/view";
 import { darkTheme } from "../shared/colors";
 import socket, { handleId, isNotebook, http } from "../shared/connection";
@@ -1068,5 +1069,39 @@ export const similarityKeys = selector<{
         },
         { patches: [], samples: [] }
       );
+  },
+});
+
+export const modalFrameStats = selector({
+  key: "modalFrameStats",
+  get: async ({ get }) => {
+    const id = uuid();
+    const data = await request({
+      type: "frame_statistics",
+      uuid: id,
+      args: {
+        extended: false,
+        sample_id: get(atoms.modal).sampleId,
+      },
+    });
+
+    return data.stats;
+  },
+});
+
+export const modalFilteredFrameStats = selector({
+  key: "modalFilteredFrameStats",
+  get: async ({ get }) => {
+    const id = uuid();
+    const data = await request({
+      type: "frame_statistics",
+      uuid: id,
+      args: {
+        extended: true,
+        sample_id: get(atoms.modal).sampleId,
+      },
+    });
+
+    return data.stats;
   },
 });

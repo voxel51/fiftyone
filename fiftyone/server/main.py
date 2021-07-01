@@ -690,15 +690,6 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         await self.on_update(self, StateHandler.state)
 
     @staticmethod
-    async def on_get_video_data(self, _id):
-        """Gets the frame labels for video samples.
-
-        Args:
-            _id: a sample _id
-        """
-        pass
-
-    @staticmethod
     async def on_tag(
         caller, changes, target_labels=False, active_labels=None,
     ):
@@ -751,6 +742,55 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         _write_message(
             {"type": "all_tags", "sample": sample, "label": label}, only=caller
         )
+
+    @staticmethod
+    async def on_frame_statistics(caller, sample_id, uuid, extended=False):
+        state = fos.StateDescription.from_dict(StateHandler.state)
+        if state.view is not None:
+            view = state.view
+        else:
+            view = state.dataset
+
+        if extended:
+            view = get_extended_view(view, state.filters)
+
+        view = view.select(sample_id)
+
+        frame_fields = [
+            "frames." + field for field in view.get_frame_field_schema()
+        ]
+        view = view.select_fields(frame_fields)
+
+        data = {"main": [], "none": []}
+
+        if frame_fields:
+            stats = fos.DatasetStatistics(view)
+            aggs = stats.aggregations
+            exists_aggs = stats.exists_aggregations
+            num_aggs = len(aggs)
+
+            results = await view._async_aggregate(
+                StateHandler.sample_collection(), aggs + exists_aggs
+            )
+            aggs_results = results[:num_aggs]
+            exists_results = results[num_aggs:]
+
+            for a, r, k in [
+                (aggs, aggs_results, "main"),
+                (exists_aggs, exists_results, "none"),
+            ]:
+                for agg, result in zip(a, r):
+                    data[k].append(
+                        {
+                            "_CLS": agg.__class__.__name__,
+                            "name": agg.field_name,
+                            "result": result,
+                        }
+                    )
+
+        message = {"type": "frame_statistics", "stats": data, "uuid": uuid}
+
+        _write_message(message, app=True, only=caller)
 
     @staticmethod
     async def on_save_filters(caller, add_stages=[], with_selected=False):
