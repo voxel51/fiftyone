@@ -263,7 +263,9 @@ const SampleTagsCell = ({ modal }: TagsCellProps) => {
     <Cell
       label={`${element} tags`}
       icon={<Note />}
-      pills={makeClearMatchTags(theme.font, matchedTags, setMatchedTags)}
+      pills={
+        !modal && makeClearMatchTags(theme.font, matchedTags, setMatchedTags)
+      }
       entries={tags
         .filter((t) => count[t])
         .map((name) => {
