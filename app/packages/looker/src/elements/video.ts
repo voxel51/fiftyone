@@ -12,7 +12,12 @@ import {
 } from "./common/actions";
 import { lookerClickable, lookerTime } from "./common/controls.module.css";
 import { invisible, mediaOrCanvas } from "./media.module.css";
-import { getFrameNumber, getFrameString, getTime, getTimeString } from "./util";
+import {
+  getFrameNumber,
+  getFrameString,
+  getFullTimeString,
+  getTime,
+} from "./util";
 
 import {
   bufferingCircle,
@@ -20,6 +25,7 @@ import {
   lookerSeekBar,
   lookerVolume,
   lookerPlaybackRate,
+  lookerThumb,
 } from "./video.module.css";
 import volumeOff from "../icons/volumeOff.svg";
 import volumeOn from "../icons/volume.svg";
@@ -163,6 +169,29 @@ export class PlayButtonElement extends BaseElement<VideoState, HTMLDivElement> {
   }
 }
 
+export class SeekBarThumbElement extends BaseElement<
+  VideoState,
+  HTMLDivElement
+> {
+  getEvents() {
+    return {
+      drag: ({}) => {
+        console.log("dragging");
+      },
+    };
+  }
+
+  createHTMLElement() {
+    const element = document.createElement("div");
+    element.classList.add(lookerThumb);
+    return element;
+  }
+
+  renderSelf({}) {
+    return this.element;
+  }
+}
+
 export class SeekBarElement extends BaseElement<VideoState, HTMLInputElement> {
   getEvents(): Events<VideoState> {
     return {
@@ -255,7 +284,7 @@ export class TimeElement extends BaseElement<VideoState> {
   createHTMLElement() {
     const element = document.createElement("div");
     element.classList.add(lookerTime);
-    element.style.gridArea = "2 / 4 / 2 / 4";
+    element.style.gridArea = "2 / 5 / 2 / 5";
     return element;
   }
 
@@ -265,10 +294,14 @@ export class TimeElement extends BaseElement<VideoState> {
     config: { frameRate },
     options: { useFrameNumber },
   }: Readonly<VideoState>) {
-    duration = duration as number;
+    if (typeof duration !== "number") {
+      this.element.innerHTML = "";
+      return this.element;
+    }
+
     const timestamp = useFrameNumber
       ? getFrameString(frameNumber, duration, frameRate)
-      : getTimeString(frameNumber, frameRate, duration);
+      : getFullTimeString(frameNumber, frameRate, duration);
     this.element.innerHTML = timestamp;
     return this.element;
   }

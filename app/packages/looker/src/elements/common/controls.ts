@@ -148,10 +148,6 @@ export class ControlsElement<State extends BaseState> extends BaseElement<
 
   getEvents(): Events<State> {
     return {
-      click: ({ event, update, dispatchEvent }) => {
-        event.stopPropagation();
-        controls.action(update, dispatchEvent);
-      },
       mouseenter: ({ update }) => {
         update({ hoveringControls: true });
       },

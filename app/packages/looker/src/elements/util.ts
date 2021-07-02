@@ -70,7 +70,7 @@ const stringifyNumber = function (
   let str = "";
   if (pad) {
     str += "0" + number;
-  } else if (number == 0) {
+  } else if (number === 0) {
     str = "0";
   } else {
     str = `${number}`;
@@ -136,13 +136,25 @@ export const getTimeString = (
       ":" +
       stringifyNumber(minutes, true) +
       ":" +
-      stringifyNumber(+seconds.toFixed(1), true)
+      stringifyNumber(+seconds.toFixed(0), true)
     );
   }
 
   return (
     stringifyNumber(minutes) + ":" + stringifyNumber(+seconds.toFixed(0), true)
   );
+};
+
+export const getFullTimeString = (
+  frameNumber: number,
+  frameRate: number,
+  duration: number
+): string => {
+  return `${getTimeString(frameNumber, frameRate, duration)} / ${getTimeString(
+    getFrameNumber(duration, duration, frameRate),
+    frameRate,
+    duration
+  )}`;
 };
 
 export function withEvents<

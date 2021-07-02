@@ -25,6 +25,11 @@
   font-family: "Palanquin", sans-serif;
   font-weight: bold;
   background-color: hsl(210, 11%, 15%);
+  outline: none;
+}
+
+.looker * {
+  outline: none;
 }
 
 .lookerFullscreen {
