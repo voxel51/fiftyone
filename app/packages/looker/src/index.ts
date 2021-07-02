@@ -411,7 +411,8 @@ export class FrameLooker extends Looker<FrameState> {
     const previousWindowBBox = this.state.windowBBox;
     this.state.windowBBox = getElementBBox(element);
     if (!this.state.setZoom) {
-      this.state.setZoom = this.hasResized(previousWindowBBox);
+      this.state.setZoom =
+        this.hasResized(previousWindowBBox) && !this.state.options.fullscreen;
     }
 
     if (this.state.setZoom && this.pluckedOverlays.length) {
@@ -499,7 +500,8 @@ export class ImageLooker extends Looker<ImageState> {
     const previousWindowBBox = this.state.windowBBox;
     this.state.windowBBox = getElementBBox(element);
     if (!this.state.setZoom) {
-      this.state.setZoom = this.hasResized(previousWindowBBox);
+      this.state.setZoom =
+        this.hasResized(previousWindowBBox) && !this.state.options.fullscreen;
     }
 
     if (this.state.setZoom && this.pluckedOverlays.length) {
@@ -851,8 +853,14 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
   postProcess(element: HTMLElement): VideoState {
     const previousWindowBBox = this.state.windowBBox;
     this.state.windowBBox = getElementBBox(element);
+    if (this.state.seeking) {
+      this.state.disableOverlays = true;
+    } else if (!this.state.playing && !this.state.buffering) {
+      this.state.disableOverlays = false;
+    }
     if (!this.state.setZoom) {
-      this.state.setZoom = this.hasResized(previousWindowBBox);
+      this.state.setZoom =
+        this.hasResized(previousWindowBBox) && !this.state.options.fullscreen;
     }
 
     if (this.state.setZoom) {

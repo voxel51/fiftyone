@@ -81,7 +81,7 @@
 .lookerSeekBar {
   --progress: 0%;
   --buffer-progress: 0%;
-  grid-area: 1 / 1 / 1 / 15;
+  grid-area: 1 / 1 / 1 / 16;
   margin-top: -5px;
   width: 100%;
 }
@@ -97,6 +97,10 @@
   top: -11px;
   cursor: pointer;
   overflow: visible;
+  -webkit-transition: width 0.1s linear;
+  -moz-transition: width 0.1s linear;
+  -o-transition: width 0.1s linear;
+  transition: width 0.1s linear;
 }
 
 .lookerThumbSeeking {

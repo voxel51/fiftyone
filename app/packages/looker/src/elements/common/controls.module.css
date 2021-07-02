@@ -29,6 +29,13 @@
   box-shadow: 0 8px 15px 0 rgba(0, 0, 0, 0.43);
 }
 
+.lookerControls * {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
 .lookerControls img,
 .lookerControls svg {
   -webkit-transition: 0.2s ease-in-out;
@@ -81,7 +88,6 @@
   -webkit-appearance: none;
 }
 .lookerControls input[type="range"]:hover::-webkit-slider-runnable-track {
-  animate: 0.2s;
   height: 6px;
 }
 .lookerControls input[type="range"]::-moz-range-runnable-track {
@@ -106,9 +112,7 @@
   border: none;
 }
 .lookerControls input[type="range"]:hover::-moz-range-runnable-track {
-  animate: 0.2s;
   height: 6px;
-  background: rgb(238, 238, 238);
 }
 .lookerControls *:hover,
 .lookerControls *:active {

@@ -6,7 +6,6 @@ import { BaseState } from "../../state";
 import { BaseElement, Events } from "../base";
 import { ICONS } from "../util";
 import {
-  controls,
   fullscreen,
   help,
   next,
@@ -14,9 +13,9 @@ import {
   settings,
   zoomIn,
   zoomOut,
-  zoomToContent,
+  cropToContent,
 } from "./actions";
-import zoomToContentIcon from "../../icons/zoomToContent.svg";
+import cropIcon from "../../icons/crop.svg";
 
 import {
   lookerArrow,
@@ -243,7 +242,7 @@ export class PlusElement<State extends BaseState> extends BaseElement<
     element.style.padding = "2px";
     element.src = ICONS.plus;
     element.title = "Zoom in (+)";
-    element.style.gridArea = "2 / 10 / 2 / 10";
+    element.style.gridArea = "2 / 9 / 2 / 9";
     return element;
   }
 
@@ -272,7 +271,7 @@ export class MinusElement<State extends BaseState> extends BaseElement<
     element.style.padding = "2px";
     element.src = ICONS.minus;
     element.title = "Zoom out (-)";
-    element.style.gridArea = "2 / 9 / 2 / 9";
+    element.style.gridArea = "2 / 8 / 2 / 8";
     return element;
   }
 
@@ -337,7 +336,7 @@ export class OptionsButtonElement<State extends BaseState> extends BaseElement<
   }
 }
 
-export class ZoomToContentButtonElement<
+export class CropToContentButtonElement<
   State extends BaseState
 > extends BaseElement<State> {
   private disabled: boolean;
@@ -347,7 +346,7 @@ export class ZoomToContentButtonElement<
       click: ({ event, update, dispatchEvent }) => {
         event.stopPropagation();
         event.preventDefault();
-        zoomToContent.action(update, dispatchEvent);
+        cropToContent.action(update, dispatchEvent);
       },
     };
   }
@@ -355,9 +354,9 @@ export class ZoomToContentButtonElement<
   createHTMLElement() {
     const element = document.createElement("img");
     element.style.padding = "2px";
-    element.src = zoomToContentIcon;
-    element.title = "Zoom to content (z)";
-    element.style.gridArea = "2 / 7 / 2 / 7";
+    element.src = cropIcon;
+    element.title = `${cropToContent.title} (${cropToContent})`;
+    element.style.gridArea = "2 / 10 / 2 / 10";
     return element;
   }
 

@@ -184,6 +184,9 @@ export class SeekBarThumbElement extends BaseElement<
       mousedown: ({ update }) => {
         update({ seeking: true, seekBarHovering: true });
       },
+      mouseleave: ({ update }) => {
+        update(({ seeking }) => ({ seekBarHovering: seeking }));
+      },
     };
   }
 
@@ -203,7 +206,10 @@ export class SeekBarThumbElement extends BaseElement<
     if (duration !== null) {
       const frameCount = getFrameNumber(duration, duration, frameRate);
       const value = ((frameNumber - 1) / (frameCount - 1)) * 100;
-      this.element.style.setProperty("--progress", `${value}%`);
+      this.element.style.setProperty(
+        "--progress",
+        `${Math.max(0, value - 0.5)}%`
+      );
       //@ts-ignore
       this.element.value = value;
     }
@@ -231,6 +237,9 @@ export class SeekBarElement extends BaseElement<VideoState, HTMLInputElement> {
       },
       mouseenter: ({ update }) => {
         update({ seekBarHovering: true });
+      },
+      mouseleave: ({ update }) => {
+        update(({ seeking }) => ({ seekBarHovering: seeking }));
       },
     };
   }
@@ -561,7 +570,7 @@ export function withVideoLookerEvents(): () => Events<VideoState> {
               frameNumber: Math.min(
                 Math.max(
                   0,
-                  Math.round(((event.clientX - left) / width) * frameCount)
+                  Math.round(((event.clientX + 6 - left) / width) * frameCount)
                 ),
                 frameCount
               ),
@@ -582,7 +591,7 @@ export function withVideoLookerEvents(): () => Events<VideoState> {
               frameNumber: Math.min(
                 Math.max(
                   0,
-                  Math.round(((event.clientX - left) / width) * frameCount)
+                  Math.round(((event.clientX + 6 - left) / width) * frameCount)
                 ),
                 frameCount
               ),

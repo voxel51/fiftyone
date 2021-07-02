@@ -253,10 +253,10 @@ export const zoomOut: Control = {
   },
 };
 
-export const zoomToContent: Control = {
-  title: "Zoom to content",
+export const cropToContent: Control = {
+  title: "Crop to content",
   shortcut: "z",
-  detail: "Zoom in on visible labels",
+  detail: "Crop on visible labels",
   action: (update) => {
     update(({ disableOverlays }) => ({ zoomToContent: !disableOverlays }));
   },
@@ -344,7 +344,7 @@ export const COMMON = {
   help,
   zoomIn,
   zoomOut,
-  zoomToContent,
+  cropToContent,
   resetZoom,
   controlsToggle,
   settings,
