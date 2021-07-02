@@ -372,7 +372,7 @@ export const nextFrame: Control<VideoState> = {
         }
         const total = getFrameNumber(duration, duration, frameRate);
 
-        return { frameNumber: Math.max(total, frameNumber + 1) };
+        return { frameNumber: Math.min(total, frameNumber + 1) };
       }
     );
   },
@@ -448,7 +448,7 @@ const seekTo: Control<VideoState> = {
     update(({ duration, config: { frameRate } }) => {
       const total = getFrameNumber(duration, duration, frameRate);
       return {
-        frameNumber: (parseInt(eventKey, 10) / 10) * total,
+        frameNumber: Math.round((parseInt(eventKey, 10) / 10) * total),
       };
     });
   },
