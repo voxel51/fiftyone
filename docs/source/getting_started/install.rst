@@ -232,9 +232,9 @@ Here's the workflow for downgrading to an older version of FiftyOne:
     pip install fiftyone==$VERSION
 
 If you are reading this after encountering an error resulting from downgrading
-your ``fiftyone`` package without first running ``fiftyone migrate``, don't
-worry, you simply need to reinstall the newer version of FiftyOne and then
-follow these instructions.
+your ``fiftyone`` package without first running
+:ref:`fiftyone migrate <cli-fiftyone-migrate>`, don't worry, you simply need to
+reinstall the newer version of FiftyOne and then follow these instructions.
 
 .. note::
 
