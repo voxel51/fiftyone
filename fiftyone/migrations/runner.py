@@ -210,11 +210,12 @@ class MigrationRunner(object):
         head_ver = Version(head)
         dest_ver = Version(destination)
         if head_ver > pkg_ver or dest_ver > pkg_ver:
-            raise ValueError(
-                "Cannot migrate from v%s to v%s using fiftyone==%s. See "
-                "https://voxel51.com/docs/fiftyone/getting_started/install.html#downgrading-fiftyone "
-                "for information about downgrading FiftyOne"
-                % (head_ver, dest_ver, pkg_ver)
+            raise EnvironmentError(
+                "You must have fiftyone>=%s installed in order to migrate "
+                "from v%s to v%s, but you are currently running fiftyone==%s."
+                "\n\nSee https://voxel51.com/docs/fiftyone/getting_started/install.html#downgrading-fiftyone "
+                "for information about downgrading FiftyOne."
+                % (max(head_ver, dest_ver), head_ver, dest_ver, pkg_ver)
             )
 
         if _revisions is None:
