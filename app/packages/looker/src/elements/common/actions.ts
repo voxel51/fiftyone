@@ -23,16 +23,64 @@ import { dispatchTooltipEvent } from "./util";
 
 type Action<State extends BaseState> = (
   update: StateUpdate<State>,
-  dispatchEvent: DispatchEvent
+  dispatchEvent: DispatchEvent,
+  eventKey: string
 ) => void;
 
 interface Control<State extends BaseState = BaseState> {
-  eventKey?: string;
+  eventKeys?: string | string[];
   title: string;
   shortcut: string;
   detail: string;
   action: Action<State>;
 }
+
+interface ControlMap<State extends BaseState> {
+  [key: string]: Control<State>;
+}
+
+const readActions = <State extends BaseState>(
+  actions: ControlMap<State>
+): ControlMap<State> => {
+  return Object.fromEntries(
+    Object.entries(actions).reduce((acc, [_, v]) => {
+      if (Array.isArray(v.eventKeys)) {
+        return [...acc, ...v.eventKeys.map((key) => [key, v])];
+      }
+
+      return [...acc, [v.eventKeys || v.shortcut, v]];
+    }, [])
+  );
+};
+
+const escape: Control = {
+  title: "Escape window",
+  shortcut: "Escape",
+  detail: "Escape",
+  action: (update, dispatchEvent, eventKey) => {
+    update(
+      ({
+        showHelp,
+        showOptions,
+        options: { fullscreen: fullscreenSetting },
+      }) => {
+        if (showHelp) {
+          return { showHelp: false };
+        }
+
+        if (showOptions) {
+          return { showOptions: false };
+        }
+
+        if (fullscreenSetting) {
+          fullscreen.action(update, dispatchEvent, eventKey);
+        }
+
+        dispatchEvent("close");
+      }
+    );
+  },
+};
 
 export const controls: Control = {
   title: "Show controls",
@@ -57,7 +105,7 @@ export const controls: Control = {
 export const next: Control = {
   title: "Next sample",
   shortcut: "&#8594;",
-  eventKey: "ArrowRight",
+  eventKeys: "ArrowRight",
   detail: "Go to the next sample",
   action: (_, dispatchEvent) => {
     dispatchEvent("next");
@@ -67,7 +115,7 @@ export const next: Control = {
 export const previous: Control = {
   title: "Previous sample",
   shortcut: "&#8592;",
-  eventKey: "ArrowLeft",
+  eventKeys: "ArrowLeft",
   detail: "Go to the previous sample",
   action: (_, dispatchEvent) => {
     dispatchEvent("previous");
@@ -77,7 +125,7 @@ export const previous: Control = {
 export const rotatePrevious: Control = {
   title: "Rotate label forward",
   shortcut: "&#8595;",
-  eventKey: "ArrowUp",
+  eventKeys: "ArrowUp",
   detail: "Rotate the bottom label to the back",
   action: (update, dispatchEvent) =>
     update(
@@ -96,7 +144,7 @@ export const rotatePrevious: Control = {
 export const rotateNext: Control = {
   title: "Rotate label backward",
   shortcut: "&#8593;",
-  eventKey: "ArrowDown",
+  eventKeys: "ArrowDown",
   detail: "Rotate the current label to the back",
   action: (update, dispatchEvent) =>
     update(
@@ -127,6 +175,7 @@ export const help: Control = {
 
 export const zoomIn: Control = {
   title: "Zoom (scroll) in",
+  eventKeys: ["+", "="],
   shortcut: "+",
   detail: "Zoom in on the sample",
   action: (update) => {
@@ -161,6 +210,7 @@ export const zoomIn: Control = {
 
 export const zoomOut: Control = {
   title: "Zoom (scroll)  out",
+  eventKeys: ["-", "_"],
   shortcut: "-",
   detail: "Zoom out on the sample",
   action: (update) => {
@@ -290,13 +340,12 @@ export const COMMON = {
   fullscreen,
 };
 
-export const COMMON_SHORTCUTS = Object.fromEntries(
-  Object.entries(COMMON).map(([_, v]) => [v.eventKey || v.shortcut, v])
-);
+export const COMMON_SHORTCUTS = readActions(COMMON);
 
 export const nextFrame: Control<VideoState> = {
   title: "Next frame",
-  shortcut: ".",
+  eventKeys: [".", ">"],
+  shortcut: ">",
   detail: "Seek to the next frame",
   action: (update) => {
     update(
@@ -311,7 +360,6 @@ export const nextFrame: Control<VideoState> = {
           return {};
         }
         const total = getFrameNumber(duration, duration, frameRate);
-        let old = frameNumber;
 
         if (frameNumber === total) {
           frameNumber = 1;
@@ -326,6 +374,7 @@ export const nextFrame: Control<VideoState> = {
 
 export const previousFrame: Control<VideoState> = {
   title: "Previous frame",
+  eventKeys: [",", "<"],
   shortcut: ",",
   detail: "Seek to the previous frame",
   action: (update) => {
@@ -341,7 +390,7 @@ export const previousFrame: Control<VideoState> = {
 export const playPause: Control<VideoState> = {
   title: "Play / pause",
   shortcut: "Space",
-  eventKey: " ",
+  eventKeys: " ",
   detail: "Play or pause the video",
   action: (update) => {
     update(({ playing, config: { thumbnail } }) => {
@@ -384,16 +433,30 @@ export const resetPlaybackRate: Control<VideoState> = {
   },
 };
 
+const seekTo: Control<VideoState> = {
+  title: "Seek to",
+  detail: "Seek to 0%, 10%, 20%... of the video",
+  shortcut: "0-9",
+  eventKeys: ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"],
+  action: (update, _, eventKey) => {
+    update(({ duration, config: { frameRate } }) => {
+      const total = getFrameNumber(duration, duration, frameRate);
+      return {
+        frameNumber: (parseInt(eventKey, 10) / 10) * total,
+      };
+    });
+  },
+};
+
 export const VIDEO = {
   muteUnmute,
   playPause,
   nextFrame,
   previousFrame,
+  seekTo,
 };
 
-export const VIDEO_SHORTCUTS = Object.fromEntries(
-  Object.entries(VIDEO).map(([_, v]) => [v.eventKey || v.shortcut, v])
-);
+export const VIDEO_SHORTCUTS = readActions(VIDEO);
 
 export class HelpPanelElement<State extends BaseState> extends BaseElement<
   State

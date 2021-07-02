@@ -42,6 +42,10 @@ const CheckboxName = styled.div`
 `;
 
 const makeCountStr = (subCount, count) => {
+  if (subCount === undefined) {
+    return "";
+  }
+
   if (typeof subCount === "number" && subCount !== count) {
     return `${subCount.toLocaleString()} of ${count.toLocaleString()}`;
   }

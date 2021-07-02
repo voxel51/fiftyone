@@ -479,7 +479,7 @@ export function withVideoLookerEvents(): () => Events<VideoState> {
       keydown: ({ event, update, dispatchEvent }) => {
         const e = event as KeyboardEvent;
         if (e.key in VIDEO_SHORTCUTS) {
-          VIDEO_SHORTCUTS[e.key].action(update, dispatchEvent);
+          VIDEO_SHORTCUTS[e.key].action(update, dispatchEvent, e.key);
         }
       },
       mouseenter: ({ update }) => {

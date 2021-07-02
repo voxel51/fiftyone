@@ -6,7 +6,7 @@ import { BaseState } from "../../state";
 import { BaseElement, Events } from "../base";
 import { COMMON_SHORTCUTS } from "./actions";
 
-import { looker, lookerFullscreen, lookerLoading } from "./looker.module.css";
+import { looker, lookerFullscreen } from "./looker.module.css";
 
 export class LookerElement<State extends BaseState> extends BaseElement<
   State,
@@ -17,7 +17,7 @@ export class LookerElement<State extends BaseState> extends BaseElement<
       keydown: ({ event, update, dispatchEvent }) => {
         const e = event as KeyboardEvent;
         if (e.key in COMMON_SHORTCUTS) {
-          COMMON_SHORTCUTS[e.key].action(update, dispatchEvent);
+          COMMON_SHORTCUTS[e.key].action(update, dispatchEvent, e.key);
         }
       },
       mouseenter: ({ update, dispatchEvent }) => {

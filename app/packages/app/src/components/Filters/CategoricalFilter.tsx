@@ -385,7 +385,10 @@ const StringFilter = React.memo(
                   placeholder={
                     results === null ? "Loading..." : `+ filter by ${valueName}`
                   }
-                  onFocus={() => setFocused(true)}
+                  onFocus={() => {
+                    results.length && setActive(results[0][0]);
+                    setFocused(true);
+                  }}
                   onBlur={() => !hovering && setFocused(false)}
                 />
                 <ResultsWrapper

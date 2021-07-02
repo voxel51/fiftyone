@@ -73,14 +73,18 @@ const Input = React.memo(
             }
           }}
           onKeyPress={(e: React.KeyboardEvent<HTMLInputElement>) => {
+            console.log(e.key);
             e.key === "Enter" && onEnter && onEnter();
           }}
           onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
+            e.key === "Escape" && e.currentTarget.blur();
             onKeyDown && onKeyDown(e);
           }}
           style={disabled ? { color: theme.fontDark } : {}}
           disabled={disabled}
-          onFocus={onFocus}
+          onFocus={(e: React.FocusEvent<HTMLInputElement>) => {
+            onFocus();
+          }}
           onBlur={onBlur}
         />
       </StyledInputContainer>
