@@ -253,18 +253,6 @@ const SampleModal = ({ onClose, sampleId }: Props, ref) => {
     return null;
   }, [index]);
 
-  useKeydownHandler((e) => {
-    if (
-      document.activeElement &&
-      ((document.activeElement.tagName.toLowerCase() === "input" &&
-        !["checkbox", "radio"].includes(document.activeElement.type)) ||
-        document.activeElement.getAttribute("role") === "slider")
-    ) {
-      return;
-    } else if (e.key == "Escape" && onClose) {
-      onClose();
-    }
-  });
   const theme = useTheme();
 
   return (
@@ -279,6 +267,7 @@ const SampleModal = ({ onClose, sampleId }: Props, ref) => {
             onSelectLabel={onSelectLabel}
             onNext={onNext}
             onPrevious={onPrevious}
+            onClose={onClose}
           />
           {showJSON && (
             <JSONView

@@ -24,7 +24,7 @@ import { dispatchTooltipEvent } from "./util";
 type Action<State extends BaseState> = (
   update: StateUpdate<State>,
   dispatchEvent: DispatchEvent,
-  eventKey: string
+  eventKey?: string
 ) => void;
 
 interface Control<State extends BaseState = BaseState> {
@@ -55,11 +55,12 @@ const readActions = <State extends BaseState>(
 
 const escape: Control = {
   title: "Escape window",
-  shortcut: "Escape",
-  detail: "Escape",
+  shortcut: "Esc",
+  detail: "Escape help -> settings -> zoom -> fullscreen -> close",
   action: (update, dispatchEvent, eventKey) => {
     update(
       ({
+        hasDefaultZoom,
         showHelp,
         showOptions,
         options: { fullscreen: fullscreenSetting },
@@ -72,11 +73,19 @@ const escape: Control = {
           return { showOptions: false };
         }
 
+        if (!hasDefaultZoom) {
+          return {
+            setZoom: true,
+          };
+        }
+
         if (fullscreenSetting) {
           fullscreen.action(update, dispatchEvent, eventKey);
+          return {};
         }
 
         dispatchEvent("close");
+        return {};
       }
     );
   },
@@ -164,6 +173,7 @@ export const rotateNext: Control = {
 
 export const help: Control = {
   title: "Display help",
+  eventKeys: ["/", "?"],
   shortcut: "?",
   detail: "Display this help window",
   action: (update) => {
@@ -326,6 +336,7 @@ export const fullscreen: Control = {
 };
 
 export const COMMON = {
+  escape,
   next,
   previous,
   rotateNext,
@@ -361,12 +372,7 @@ export const nextFrame: Control<VideoState> = {
         }
         const total = getFrameNumber(duration, duration, frameRate);
 
-        if (frameNumber === total) {
-          frameNumber = 1;
-        } else {
-          frameNumber += 1;
-        }
-        return { frameNumber };
+        return { frameNumber: Math.max(total, frameNumber + 1) };
       }
     );
   },
@@ -481,7 +487,7 @@ export class HelpPanelElement<State extends BaseState> extends BaseElement<
   createHTMLElement() {
     const element = document.createElement("div");
     const header = document.createElement("div");
-    header.innerText = "Actions and shortcuts";
+    header.innerText = "Help";
     header.classList.add(lookerHelpPanelHeader);
     element.appendChild(header);
     element.classList.add(lookerHelpPanel);

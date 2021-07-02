@@ -122,6 +122,7 @@ export interface BaseState {
   disableOverlays: boolean;
   zoomToContent: boolean;
   setZoom: boolean;
+  hasDefaultZoom: boolean;
 }
 
 export interface FrameState extends BaseState {

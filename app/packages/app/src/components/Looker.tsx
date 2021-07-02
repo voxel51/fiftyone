@@ -388,6 +388,7 @@ export const useFullscreen = () => {
 interface LookerProps {
   lookerRef?: MutableRefObject<any>;
   modal: boolean;
+  onClose: EventCallback;
   onClick?: React.MouseEventHandler<HTMLDivElement>;
   onNext?: EventCallback;
   onPrevious?: EventCallback;
@@ -399,6 +400,7 @@ interface LookerProps {
 const Looker = ({
   lookerRef,
   modal,
+  onClose,
   onClick,
   onNext,
   onPrevious,
@@ -450,6 +452,7 @@ const Looker = ({
   modal && useEventHandler(looker, "fullscreen", useFullscreen());
   useEventHandler(looker, "next", onNext);
   useEventHandler(looker, "previous", onPrevious);
+  onClose && useEventHandler(looker, "close", onClose);
   onSelectLabel && useEventHandler(looker, "select", onSelectLabel);
   useEffect(() => {
     initialRef.current = false;

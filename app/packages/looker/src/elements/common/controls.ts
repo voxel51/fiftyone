@@ -221,7 +221,7 @@ export class FullscreenButtonElement<
     if (this.fullscreen !== fullscreen) {
       this.fullscreen = fullscreen;
       this.element.src = fullscreen ? ICONS.fullscreenExit : ICONS.fullscreen;
-      this.element.title = `${fullscreen ? "Minimize" : "Maximize"} (m)`;
+      this.element.title = `Toggle fullscreen (f)`;
     }
     return this.element;
   }

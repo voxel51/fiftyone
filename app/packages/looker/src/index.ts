@@ -229,6 +229,11 @@ export abstract class Looker<
     return false;
   }
 
+  protected abstract hasDefaultZoom(
+    state: State,
+    overlays: Overlay<State>[]
+  ): boolean;
+
   protected abstract getElements(): LookerElement<State>;
 
   protected abstract loadOverlays(sample: BaseSample): void;
@@ -274,6 +279,7 @@ export abstract class Looker<
       disableOverlays: false,
       zoomToContent: false,
       setZoom: true,
+      hasDefaultZoom: true,
     };
   }
 
@@ -323,6 +329,11 @@ export abstract class Looker<
     this.state.config.thumbnail && (this.state.strokeWidth /= 2);
     this.state.textPad = PAD / this.state.scale;
 
+    this.state.hasDefaultZoom = this.hasDefaultZoom(
+      this.state,
+      this.pluckedOverlays
+    );
+
     return this.state;
   }
 
@@ -369,6 +380,23 @@ export class FrameLooker extends Looker<FrameState> {
 
   getDefaultOptions() {
     return DEFAULT_FRAME_OPTIONS;
+  }
+
+  hasDefaultZoom(state: FrameState, overlays: Overlay<FrameState>[]): boolean {
+    let pan = [0, 0];
+    let scale = 1;
+
+    if (state.options.zoom) {
+      const zoomState = zoomToContent(state, overlays);
+      pan = zoomState.pan;
+      scale = zoomState.scale;
+    }
+
+    return (
+      scale === state.scale &&
+      pan[0] === state.pan[0] &&
+      pan[1] === state.pan[1]
+    );
   }
 
   loadOverlays(sample: BaseSample) {
@@ -440,6 +468,23 @@ export class ImageLooker extends Looker<ImageState> {
 
   getDefaultOptions() {
     return DEFAULT_IMAGE_OPTIONS;
+  }
+
+  hasDefaultZoom(state: ImageState, overlays: Overlay<ImageState>[]): boolean {
+    let pan = [0, 0];
+    let scale = 1;
+
+    if (state.options.zoom) {
+      const zoomState = zoomToContent(state, overlays);
+      pan = zoomState.pan;
+      scale = zoomState.scale;
+    }
+
+    return (
+      scale === state.scale &&
+      pan[0] === state.pan[0] &&
+      pan[1] === state.pan[1]
+    );
   }
 
   loadOverlays(sample: BaseSample) {
@@ -655,6 +700,17 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
       },
       buffers: [[1, 1]] as Buffers,
     };
+  }
+
+  hasDefaultZoom(state: VideoState, overlays: Overlay<VideoState>[]): boolean {
+    let pan = [0, 0];
+    let scale = 1;
+
+    return (
+      scale === state.scale &&
+      pan[0] === state.pan[0] &&
+      pan[1] === state.pan[1]
+    );
   }
 
   loadOverlays(sample: VideoSample) {
