@@ -162,25 +162,22 @@ export function withEvents<
   Element extends BaseElement<State>
 >(
   Base: ElementConstructor<State, Element>,
-  getEvents: () => Events<State>
+  addEvents: () => Events<State>
 ): ElementConstructor<State, Element> {
   // @ts-ignore
   class WithElement<State> extends Base {
     getEvents() {
       const newEvents = super.getEvents();
-      getEvents.bind(this);
-      const events = getEvents();
+      const events = addEvents();
 
       Object.entries(events).forEach(([eventType, handler]) => {
-        if (eventType in newEvents) {
-          // @ts-ignore
-          const parentHandler = newEvents[eventType];
-          // @ts-ignore
-          newEvents[eventType] = (args) => {
-            parentHandler(args);
-            handler && handler(args);
-          };
-        }
+        // @ts-ignore
+        const parentHandler = newEvents[eventType];
+        // @ts-ignore
+        newEvents[eventType] = (args) => {
+          parentHandler && parentHandler(args);
+          handler && handler(args);
+        };
       });
       return newEvents;
     }

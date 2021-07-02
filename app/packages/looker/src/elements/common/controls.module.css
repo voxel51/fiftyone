@@ -29,6 +29,19 @@
   box-shadow: 0 8px 15px 0 rgba(0, 0, 0, 0.43);
 }
 
+.lookerControls img,
+.lookerControls svg {
+  -webkit-transition: 0.2s ease-in-out;
+  -moz-transition: 0.2s ease-in-out;
+  -o-transition: 0.2s ease-in-out;
+  transition: 0.2s ease-in-out;
+}
+
+.lookerControls img:hover,
+.lookerControls svg:hover {
+  transform: translate(0, -1px);
+}
+
 .lookerControls button {
   background: rgba(0, 0, 0, 0.5);
   border: 0;

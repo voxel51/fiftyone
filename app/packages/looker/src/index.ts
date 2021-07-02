@@ -699,6 +699,7 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
         ...options,
       },
       buffers: [[1, 1]] as Buffers,
+      seekBarHovering: false,
     };
   }
 

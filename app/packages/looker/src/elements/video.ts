@@ -26,6 +26,7 @@ import {
   lookerVolume,
   lookerPlaybackRate,
   lookerThumb,
+  lookerThumbSeeking,
 } from "./video.module.css";
 import volumeOff from "../icons/volumeOff.svg";
 import volumeOn from "../icons/volume.svg";
@@ -173,10 +174,15 @@ export class SeekBarThumbElement extends BaseElement<
   VideoState,
   HTMLDivElement
 > {
-  getEvents() {
+  private active: boolean;
+
+  getEvents(): Events<VideoState> {
     return {
-      drag: ({}) => {
-        console.log("dragging");
+      mouseenter: ({ update }) => {
+        update({ seekBarHovering: true });
+      },
+      mousedown: ({ update }) => {
+        update({ seeking: true, seekBarHovering: true });
       },
     };
   }
@@ -187,7 +193,30 @@ export class SeekBarThumbElement extends BaseElement<
     return element;
   }
 
-  renderSelf({}) {
+  renderSelf({
+    seeking,
+    seekBarHovering,
+    frameNumber,
+    duration,
+    config: { frameRate },
+  }) {
+    if (duration !== null) {
+      const frameCount = getFrameNumber(duration, duration, frameRate);
+      const value = ((frameNumber - 1) / (frameCount - 1)) * 100;
+      this.element.style.setProperty("--progress", `${value}%`);
+      //@ts-ignore
+      this.element.value = value;
+    }
+
+    const active = seeking || seekBarHovering;
+    if (active !== this.active) {
+      this.active = active;
+
+      active
+        ? this.element.classList.add(lookerThumbSeeking)
+        : this.element.classList.remove(lookerThumbSeeking);
+    }
+
     return this.element;
   }
 }
@@ -195,40 +224,13 @@ export class SeekBarThumbElement extends BaseElement<
 export class SeekBarElement extends BaseElement<VideoState, HTMLInputElement> {
   getEvents(): Events<VideoState> {
     return {
-      click: ({ event }) => {
-        event.stopPropagation();
-      },
-      input: ({ update }) => {
-        const progress = this.element.valueAsNumber / 100;
-        update(({ duration, config: { frameRate } }) => {
-          duration = duration as number;
-          return {
-            frameNumber: getFrameNumber(
-              duration * progress,
-              duration,
-              frameRate
-            ),
-          };
-        });
-      },
-      mousedown: ({ update }) =>
+      mousedown: ({ update }) => {
         update({
-          locked: false,
           seeking: true,
-        }),
-      mouseup: ({ update }) => {
-        const progress = this.element.valueAsNumber / 100;
-        update(({ duration, config: { frameRate } }) => {
-          duration = duration as number;
-          return {
-            frameNumber: getFrameNumber(
-              duration * progress,
-              duration,
-              frameRate
-            ),
-            seeking: false,
-          };
         });
+      },
+      mouseenter: ({ update }) => {
+        update({ seekBarHovering: true });
       },
     };
   }
@@ -532,7 +534,10 @@ export function withVideoLookerEvents(): () => Events<VideoState> {
               playing: false,
             };
           }
-          return {};
+          return {
+            seeking: false,
+            seekBarHovering: false,
+          };
         });
       },
       mouseout: ({ update }) => {
@@ -540,6 +545,47 @@ export function withVideoLookerEvents(): () => Events<VideoState> {
           if (thumbnail) {
             return {
               playing: false,
+            };
+          }
+          return {};
+        });
+      },
+      mousemove: ({ event, update }) => {
+        update(({ seeking, duration, config: { frameRate } }) => {
+          if (duration && seeking) {
+            const element = event.currentTarget as HTMLDivElement;
+            const { width, left } = element.getBoundingClientRect();
+            const frameCount = getFrameNumber(duration, duration, frameRate);
+
+            return {
+              frameNumber: Math.min(
+                Math.max(
+                  0,
+                  Math.round(((event.clientX - left) / width) * frameCount)
+                ),
+                frameCount
+              ),
+            };
+          }
+          return {};
+        });
+      },
+      mouseup: ({ event, update }) => {
+        update(({ seeking, duration, config: { frameRate } }) => {
+          if (seeking && duration) {
+            const element = event.currentTarget as HTMLDivElement;
+            const { width, left } = element.getBoundingClientRect();
+            const frameCount = getFrameNumber(duration, duration, frameRate);
+
+            return {
+              seeking: false,
+              frameNumber: Math.min(
+                Math.max(
+                  0,
+                  Math.round(((event.clientX - left) / width) * frameCount)
+                ),
+                frameCount
+              ),
             };
           }
           return {};

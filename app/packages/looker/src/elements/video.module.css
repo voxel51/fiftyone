@@ -87,13 +87,21 @@
 }
 
 .lookerThumb {
-  width: 8px;
-  height: 8px;
-  border-radius: 4px;
+  --progress: 0%;
+  width: 0;
+  height: 0;
+  border-radius: 8px;
   background: rgb(225, 100, 40);
   position: absolute;
-  left: 0;
-  bottom: 0;
+  left: var(--progress);
+  top: -11px;
+  cursor: pointer;
+  overflow: visible;
+}
+
+.lookerThumbSeeking {
+  width: 16px;
+  height: 16px;
 }
 
 input[type="range"].lookerSeekBar::-webkit-slider-runnable-track {

@@ -147,6 +147,7 @@ export interface VideoState extends BaseState {
   fragment: [number, number] | null;
   buffering: boolean;
   buffers: Buffers;
+  seekBarHovering: boolean;
 }
 
 export type Optional<T> = {

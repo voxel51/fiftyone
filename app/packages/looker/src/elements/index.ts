@@ -145,6 +145,7 @@ export const getVideoElements: GetElements<VideoState> = (
         node: common.ControlsElement,
         children: [
           { node: video.SeekBarElement },
+          { node: video.SeekBarThumbElement },
           { node: video.PlayButtonElement },
           { node: video.TimeElement },
           video.PLAYBACK_RATE,
