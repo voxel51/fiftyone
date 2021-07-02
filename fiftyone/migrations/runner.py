@@ -177,7 +177,7 @@ def migrate_dataset_if_necessary(name, destination=None, verbose=False):
 
     if Version(destination) >= Version("0.6.2"):
         conn = foo.get_db_conn()
-        dataset_doc = conn.datasets.update_one(
+        conn.datasets.update_one(
             {"name": name}, {"$set": {"version": destination}}
         )
     else:
@@ -205,6 +205,17 @@ class MigrationRunner(object):
 
         if destination is None:
             destination = foc.VERSION
+
+        pkg_ver = Version(foc.VERSION)
+        head_ver = Version(head)
+        dest_ver = Version(destination)
+        if head_ver > pkg_ver or dest_ver > pkg_ver:
+            raise ValueError(
+                "Cannot migrate from v%s to v%s using fiftyone==%s. See "
+                "https://voxel51.com/docs/fiftyone/getting_started/install.html#downgrading-fiftyone "
+                "for information about downgrading FiftyOne"
+                % (head_ver, dest_ver, pkg_ver)
+            )
 
         if _revisions is None:
             _revisions = _get_all_revisions()
