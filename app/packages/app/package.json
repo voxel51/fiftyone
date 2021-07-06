@@ -12,7 +12,7 @@
     },
     "dependencies": {
         "@fiftyone/looker": "*",
-        "@material-ui/core": "^4.11.0",
+        "@material-ui/core": "4.11.4",
         "@material-ui/icons": "^4.9.1",
         "@xstate/react": "1.3.3",
         "classnames": "^2.2.6",
