@@ -22,7 +22,7 @@ import { packageMessage } from "../../utils/socket";
 import { useTheme } from "../../utils/hooks";
 import { Value } from "./utils";
 
-const StringFilterContainer = styled.div`
+const CategoricalFilterContainer = styled.div`
   background: ${({ theme }) => theme.backgroundDark};
   border: 1px solid #191c1f;
   border-radius: 2px;
@@ -31,13 +31,13 @@ const StringFilterContainer = styled.div`
   padding: 0.25rem 0.5rem;
 `;
 
-const NamedStringFilterContainer = styled.div`
+const NamedCategoricalFilterContainer = styled.div`
   padding-bottom: 0.5rem;
   margin: 3px;
   font-weight: bold;
 `;
 
-const NamedStringFilterHeader = styled.div`
+const NamedCategoricalFilterHeader = styled.div`
   display: flex;
   justify-content: space-between;
 `;
@@ -261,7 +261,7 @@ interface Props {
   path: string;
 }
 
-const StringFilter = React.memo(
+const CategoricalFilter = React.memo(
   React.forwardRef(
     (
       {
@@ -340,11 +340,11 @@ const StringFilter = React.memo(
       }, [focused, search, selected]);
 
       return (
-        <NamedStringFilterContainer ref={ref}>
-          <NamedStringFilterHeader>
+        <NamedCategoricalFilterContainer ref={ref}>
+          <NamedCategoricalFilterHeader>
             {name && <>{name}</>}
-          </NamedStringFilterHeader>
-          <StringFilterContainer>
+          </NamedCategoricalFilterHeader>
+          <CategoricalFilterContainer>
             {count > CHECKBOX_LIMIT && (
               <>
                 <Input
@@ -418,11 +418,11 @@ const StringFilter = React.memo(
               valueName={valueName}
               count={count}
             />
-          </StringFilterContainer>
-        </NamedStringFilterContainer>
+          </CategoricalFilterContainer>
+        </NamedCategoricalFilterContainer>
       );
     }
   )
 );
 
-export default StringFilter;
+export default CategoricalFilter;

@@ -162,8 +162,16 @@ export const noneCount = selectorFamily<
   },
 });
 
+const modalCountsAtom = selectorFamily<
+  string,
+  { count: number; results: [Value, [number | null, number]][] }
+>({
+  key: "categoricalModalFieldCounts",
+  get: (path) => ({ get }) => {},
+});
+
 export const countsAtom = selectorFamily<
-  { count: number; results: [Value, [number, number]][] },
+  { count: number; results: [Value, [number | null, number]][] },
   { path: string; modal: boolean }
 >({
   key: "categoricalFieldCounts",
@@ -174,18 +182,22 @@ export const countsAtom = selectorFamily<
     if (modal) {
     }
 
-    let subCounts = {};
-    (
-      get(
-        get(selectors.hasFilters)
-          ? selectors.extendedDatasetStats
-          : selectors.datasetStats
-      ) ?? []
-    ).forEach((cur) => {
-      if (cur.name === path && cur._CLS === AGGS.COUNT_VALUES) {
-        subCounts = Object.fromEntries(cur.result[1]);
-      }
-    });
+    let subCounts = null;
+
+    const extendedStats = get(
+      get(selectors.hasFilters)
+        ? selectors.extendedDatasetStats
+        : selectors.datasetStats
+    );
+    if (extendedStats) {
+      subCounts = {};
+      extendedStats.forEach((cur) => {
+        if (cur.name === path && cur._CLS === AGGS.COUNT_VALUES) {
+          subCounts = Object.fromEntries(cur.result[1]);
+        }
+      });
+    }
+    console.log(extendedStats);
 
     const data = (get(selectors.datasetStats) ?? []).reduce(
       (acc, cur) => {
@@ -194,7 +206,14 @@ export const countsAtom = selectorFamily<
             count: cur.result[0],
             results: cur.result[1].map(([value, count]) => [
               value,
-              [subCounts.hasOwnProperty(value) ? subCounts[value] : 0, count],
+              [
+                subCounts
+                  ? subCounts.hasOwnProperty(value)
+                    ? subCounts[value]
+                    : 0
+                  : null,
+                count,
+              ],
             ]),
           };
         }
