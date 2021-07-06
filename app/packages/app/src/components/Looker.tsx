@@ -123,6 +123,10 @@ const ContentItem = ({
   value?: number | string;
   style?: object;
 }) => {
+  if (typeof value === "object") {
+    return null;
+  }
+
   return (
     <ContentItemDiv style={style}>
       <ContentValue>
@@ -134,8 +138,6 @@ const ContentItem = ({
               return value;
             case "boolean":
               return value ? "True" : "False";
-            case "object":
-              return Array.isArray(value) ? "[...]" : "{...}";
             default:
               return "None";
           }
@@ -310,7 +312,9 @@ const TooltipInfo = React.memo(
           >
             <ContentHeader key="header">{detail.field}</ContentHeader>
             <Border color={detail.color} id={detail.label._id} />
-            <TagInfo key={"tags"} tags={detail.label?.tags} />
+            {detail.label.tags && detail.label.tags.length > 0 && (
+              <TagInfo key={"tags"} tags={detail.label?.tags} />
+            )}
             <Component key={"attrs"} detail={detail} />
           </TooltipDiv>,
           document.body
