@@ -1011,6 +1011,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         asc=False,
         count=True,
         limit=200,
+        sample_id=None,
     ):
         state = fos.StateDescription.from_dict(StateHandler.state)
         col = cls.sample_collection()
@@ -1020,6 +1021,9 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             view = state.dataset
 
         view = _get_search_view(view, path, search, selected)
+
+        if sample_id is not None:
+            view = view.select(sample_id)
 
         sort_by = "count" if count else "_id"
 

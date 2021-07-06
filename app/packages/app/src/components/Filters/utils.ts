@@ -166,12 +166,14 @@ export const noneCount = selectorFamily<
 const modalCountsAtom = selectorFamily<
   {
     count: number;
-    results: [Value, [number, number]];
+    results: [Value, [number, number]][];
   },
   string
 >({
   key: "categoricalModalFieldCounts",
-  get: (path) => ({ get }) => {
+  get: (path) => async ({ get }) => {
+    const video = get(selectors.isRootView) && get(selectors.isVideoDataset);
+    const sorting = get(atoms.sortFilterResults(true));
     const filter = get(sampleModalFilter);
     let target = get(selectors.modalSample);
     let filteredTarget = filter(target, "", true);
@@ -182,6 +184,25 @@ const modalCountsAtom = selectorFamily<
 
     let keys = path.split(".").slice(0, -1);
     const key = path.split(".").slice(-1)[0];
+
+    if (video && path.startsWith("frames.")) {
+      const id = uuid();
+      const data = (await request({
+        type: "count_values",
+        uuid: id,
+        responseType: id,
+        args: {
+          path,
+          sample_id: get(atoms.modal).sampleId,
+          ...sorting,
+        },
+      })) as { count: number; results: [Value, [number, number]][] };
+
+      return {
+        count: data.count,
+        results: data.results,
+      };
+    }
 
     keys.forEach((key) => {
       target = target[key];
