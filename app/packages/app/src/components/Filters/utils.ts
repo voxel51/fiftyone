@@ -190,17 +190,16 @@ const modalCountsAtom = selectorFamily<
       const data = (await request({
         type: "count_values",
         uuid: id,
-        responseType: id,
         args: {
           path,
           sample_id: get(atoms.modal).sampleId,
           ...sorting,
         },
-      })) as { count: number; results: [Value, [number, number]][] };
+      })) as { count: number; results: [Value, number][] };
 
       return {
         count: data.count,
-        results: data.results,
+        results: data.results.map(([v, c]) => [v, [c, c]]),
       };
     }
 

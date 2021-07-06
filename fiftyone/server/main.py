@@ -1033,9 +1033,10 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         )
 
         message = {
-            "type": uuid,
+            "type": "count_values",
             "count": count,
             "results": first,
+            "uuid": uuid,
         }
         _write_message(message, app=True, only=self)
 

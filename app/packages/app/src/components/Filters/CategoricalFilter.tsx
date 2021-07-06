@@ -340,7 +340,7 @@ const CategoricalFilter = React.memo(
         const clear = setTimeout(() => setSearchResults(null), 200);
         const wrap = (handler) => ({ data }) => {
           data = JSON.parse(data);
-          data.type === id && handler(data);
+          data.uuid === id && handler(data);
         };
         if (focused) {
           const promise = new Promise<{
