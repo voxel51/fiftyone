@@ -100,9 +100,9 @@ const NotebookInstructions = () => {
 };
 
 const SetupContainer = styled.div`
-  max-width: 840px;
+  width: 800px;
   padding: 3rem 1rem;
-  margin: auto;
+  margin: 0 auto;
 `;
 
 const Title = styled.div`
@@ -138,7 +138,7 @@ const Tab = animated(styled.div`
   border-bottom-style: solid;
 `);
 
-function Setup() {
+const Setup = () => {
   const theme = useTheme();
   const [activeTab, setActiveTab] = useState<string>("local");
   const localProps = useSpring({
@@ -175,6 +175,6 @@ function Setup() {
       )}
     </SetupContainer>
   );
-}
+};
 
 export default Setup;

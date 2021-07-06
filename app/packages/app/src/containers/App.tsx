@@ -94,11 +94,9 @@ function App() {
       resetKeys={[reset]}
     >
       <Header addNotification={addNotification} />
-      {connected && (
-        <Suspense fallback={<Setup />}>
-          <Dataset />
-        </Suspense>
-      )}
+      <Suspense fallback={<Setup />}>
+        <Dataset />
+      </Suspense>
       <NotificationHub children={(add) => (addNotification.current = add)} />
     </ErrorBoundary>
   );
