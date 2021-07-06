@@ -1,4 +1,4 @@
-import React, { useLayoutEffect, useRef } from "react";
+import React, { useEffect, useRef } from "react";
 import styled from "styled-components";
 import { summarizeLongStr } from "../../utils/generic";
 
@@ -73,12 +73,18 @@ const Result = React.memo(
       value === null ? highlight : null
     );
     const ref = useRef<HTMLDivElement>();
+    const wasActive = useRef(false);
 
     const [text, coloring] = getValueString(value);
 
-    useLayoutEffect(() => {
-      active && ref.current && ref.current.scrollIntoView(false);
-    });
+    useEffect(() => {
+      if (active && ref.current && !wasActive.current) {
+        ref.current.scrollIntoView(true);
+        wasActive.current = true;
+      } else if (!active) {
+        wasActive.current = false;
+      }
+    }, [active]);
 
     return (
       <ResultDiv

@@ -319,6 +319,7 @@ const CategoricalFilter = React.memo(
       const [searchResults, setSearchResults] = useState<[string, number][]>(
         null
       );
+      const sampleId = modal ? useRecoilValue(atoms.modal).sampleId : null;
 
       const currentPromise = useRef<
         Promise<{
@@ -358,6 +359,7 @@ const CategoricalFilter = React.memo(
                 selected,
                 limit: LIST_LIMIT,
                 uuid: id,
+                sample_id: sampleId,
                 ...sorting,
               })
             );

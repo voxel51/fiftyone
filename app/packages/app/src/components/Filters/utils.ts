@@ -13,6 +13,7 @@ import {
   VALID_NUMERIC_TYPES,
 } from "../../utils/labels";
 import { request } from "../../utils/socket";
+import { sampleModalFilter } from "./LabelFieldFilters.state";
 
 export type Value = string | null | false | true;
 
@@ -163,11 +164,68 @@ export const noneCount = selectorFamily<
 });
 
 const modalCountsAtom = selectorFamily<
-  string,
-  { count: number; results: [Value, [number | null, number]][] }
+  {
+    count: number;
+    results: [Value, [number, number]];
+  },
+  string
 >({
   key: "categoricalModalFieldCounts",
-  get: (path) => ({ get }) => {},
+  get: (path) => ({ get }) => {
+    const filter = get(sampleModalFilter);
+    let target = get(selectors.modalSample);
+    let filteredTarget = filter(target, "", true);
+    let nullCount = 0,
+      nullFilteredCount = 0;
+    const counts = {},
+      filteredCounts = {};
+
+    let keys = path.split(".").slice(0, -1);
+    const key = path.split(".").slice(-1)[0];
+
+    keys.forEach((key) => {
+      target = target[key];
+      filteredTarget = filteredTarget[key];
+    });
+
+    const add = (v, filtered = false) => {
+      const c = filtered ? filteredCounts : counts;
+      if (!v[key]) {
+        if (!filtered) {
+          nullCount++;
+        } else {
+          nullFilteredCount++;
+        }
+      } else {
+        v[key] in c ? c[v[key]]++ : (c[v[key]] = 1);
+      }
+    };
+    let count = 0;
+    if (Array.isArray(target)) {
+      count = target.length;
+      target.forEach((v) => add(v, false));
+      Array.isArray(filteredTarget) &&
+        filteredTarget.forEach((v) => add(v, true));
+    } else {
+      add(target, false);
+      add(filteredTarget, true);
+      target[key] !== null && target[key] !== undefined && (count = 1);
+    }
+    const results: [Value, [number, number]][] = [
+      ...Object.entries(counts as { [key: string]: number }).map<
+        [Value, [number, number]]
+      >(([v, c]) => [v, [filteredCounts[v] ?? 0, c]]),
+    ];
+
+    if (nullCount) {
+      results.push([null, [nullFilteredCount, nullCount]]);
+    }
+
+    return {
+      results,
+      count,
+    };
+  },
 });
 
 export const countsAtom = selectorFamily<
@@ -176,11 +234,12 @@ export const countsAtom = selectorFamily<
 >({
   key: "categoricalFieldCounts",
   get: ({ path, modal }) => ({ get }) => {
+    if (modal) {
+      return get(modalCountsAtom(path));
+    }
+
     const none = get(noneCount({ path, modal, filtered: false }));
     const noneFiltered = get(noneCount({ path, modal, filtered: true }));
-
-    if (modal) {
-    }
 
     let subCounts = null;
 
@@ -221,7 +280,7 @@ export const countsAtom = selectorFamily<
       { count: 0, results: [] }
     );
 
-    if (none > 0) {
+    if (none > 0 && !modal) {
       data.count = data.count + 1;
       data.results = [...data.results, [null, [noneFiltered, none]]];
     }
