@@ -197,7 +197,6 @@ export const countsAtom = selectorFamily<
         }
       });
     }
-    console.log(extendedStats);
 
     const data = (get(selectors.datasetStats) ?? []).reduce(
       (acc, cur) => {

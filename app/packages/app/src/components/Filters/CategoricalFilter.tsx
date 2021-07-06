@@ -77,25 +77,52 @@ const ExcludeOption = ({
   );
 };
 
-const nullSort = (
-  [a]: [Value, [number, number]],
-  [b]: [Value, [number, number]]
-): number => {
+const genSort = (a, b, asc) => {
   if (a === b) {
     return 0;
   }
+
   if (a === null) {
     return 1;
   }
+
   if (b === null) {
     return -1;
   }
+
   if (a > b) {
-    return 1;
+    return asc ? 1 : -1;
   }
-  if (a < b) {
-    return -1;
-  }
+
+  return asc ? -1 : 1;
+};
+
+const nullSort = ({
+  count,
+  asc,
+}: atoms.SortResults): ((
+  a: [Value, [number, number]],
+  b: [Value, [number, number]]
+) => number) => {
+  return (aa, bb): number => {
+    const a = [aa[0], ...aa[1]];
+    const b = [bb[0], ...bb[1]];
+
+    if (!count) {
+      a.reverse();
+      b.reverse();
+    }
+
+    let result = 0;
+    a.forEach((ai, i) => {
+      result = genSort(ai, b[i], asc);
+      if (result !== 0) {
+        return result;
+      }
+    });
+
+    return result;
+  };
 };
 
 interface WrapperProps {
@@ -106,6 +133,7 @@ interface WrapperProps {
   valueName: string;
   color: string;
   count: number;
+  modal: boolean;
 }
 
 const Wrapper = ({
@@ -115,10 +143,12 @@ const Wrapper = ({
   selectedValuesAtom,
   excludeAtom,
   valueName,
+  modal,
 }: WrapperProps) => {
   const [selected, setSelected] = useRecoilState(selectedValuesAtom);
   const selectedSet = new Set(selected);
   const setExcluded = excludeAtom ? useSetRecoilState(excludeAtom) : null;
+  const sorting = useRecoilValue(atoms.sortFilterResults(modal));
   const counts = Object.fromEntries(results);
   let allValues: [Value, [number, number]][] = selected.map<
     [string, [number, number]]
@@ -131,7 +161,7 @@ const Wrapper = ({
   return (
     <>
       {[...new Set(allValues)]
-        .sort(nullSort)
+        .sort(nullSort(sorting))
         .map(([value, [subCount, count]]) => (
           <Checkbox
             key={String(value)}
@@ -421,6 +451,7 @@ const CategoricalFilter = React.memo(
               selectedValuesAtom={selectedValuesAtom}
               excludeAtom={excludeAtom}
               valueName={valueName}
+              modal={modal}
               count={count}
             />
           </CategoricalFilterContainer>

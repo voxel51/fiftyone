@@ -11,7 +11,7 @@ export const modal = atom<{
   },
 });
 
-interface SortResults {
+export interface SortResults {
   count: boolean;
   asc: boolean;
 }

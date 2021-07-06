@@ -43,14 +43,14 @@ const ColorBy = ({ modal }) => {
         active={colorByLabel ? "value" : "field"}
         options={[
           {
-            text: "value",
-            title: "color by value",
-            onClick: () => !colorByLabel && setColorByLabel(true),
-          },
-          {
             text: "field",
             title: "color by field",
             onClick: () => colorByLabel && setColorByLabel(false),
+          },
+          {
+            text: "value",
+            title: "color by value",
+            onClick: () => !colorByLabel && setColorByLabel(true),
           },
         ]}
       />
@@ -82,15 +82,15 @@ const SortFilterResults = ({ modal }) => {
         ]}
       />
       <TabOption
-        active={asc ? "asc" : "desc"}
+        active={asc ? "ascending" : "descending"}
         options={[
           {
-            text: "ASC",
+            text: "ascending",
             title: "Ascending",
             onClick: () => !asc && setSortFilterResults({ count, asc: true }),
           },
           {
-            text: "DESC",
+            text: "descending",
             title: "Descending",
             onClick: () => asc && setSortFilterResults({ count, asc: false }),
           },
@@ -109,6 +109,7 @@ const Options = ({ modal, bounds }: OptionsProps) => {
     <Popout modal={modal} bounds={bounds}>
       <ColorBy modal={modal} />
       <RefreshButton modal={modal} />
+      <SortFilterResults modal={modal} />
     </Popout>
   );
 };
