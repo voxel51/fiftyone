@@ -14,8 +14,8 @@ interface CheckboxProps {
   name: Value;
   value: boolean;
   setValue: (value: boolean) => void;
-  count: number;
-  subCount: number;
+  count?: number;
+  subCount?: number;
 }
 
 const StyledCheckboxContainer = styled.div`
@@ -41,8 +41,8 @@ const CheckboxName = styled.div`
   justify-content: space-between;
 `;
 
-const makeCountStr = (subCount, count) => {
-  if (subCount === undefined) {
+const makeCountStr = (subCount = null, count = null) => {
+  if (subCount === undefined || count === null) {
     return "";
   }
 
@@ -80,7 +80,7 @@ const Checkbox = React.memo(
             <span style={coloring ? { color } : {}}>
               {summarizeLongStr(text, 28 - countStr.length, "middle")}
             </span>
-            <span>{countStr}</span>
+            {count && <span>{countStr}</span>}
           </CheckboxName>
         </StyledCheckbox>
       </StyledCheckboxContainer>

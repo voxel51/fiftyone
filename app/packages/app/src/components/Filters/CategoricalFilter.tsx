@@ -101,14 +101,14 @@ const nullSort = ({
   count,
   asc,
 }: atoms.SortResults): ((
-  a: [Value, [number, number]],
-  b: [Value, [number, number]]
+  aa: [Value, [number, number]],
+  bb: [Value, [number, number]]
 ) => number) => {
   return (aa, bb): number => {
-    const a = [aa[0], ...aa[1]];
-    const b = [bb[0], ...bb[1]];
+    let a = [aa[0], ...[...aa[1]].reverse()];
+    let b = [bb[0], ...[...bb[1]].reverse()];
 
-    if (!count) {
+    if (count) {
       a.reverse();
       b.reverse();
     }
@@ -319,6 +319,7 @@ const CategoricalFilter = React.memo(
       const [searchResults, setSearchResults] = useState<[string, number][]>(
         null
       );
+
       const currentPromise = useRef<
         Promise<{
           count: number;
@@ -367,7 +368,7 @@ const CategoricalFilter = React.memo(
             if (currentPromise.current !== promise) {
               return;
             }
-            results.length && setActive(results[0]);
+            results.length && setActive(results[0][0]);
             setSearchResults(results);
             setSubCount(count);
           });
@@ -397,15 +398,19 @@ const CategoricalFilter = React.memo(
                       if (active === undefined) {
                         setActive(searchResults[0]);
                       } else {
-                        const index = searchResults.indexOf(active);
+                        const index = searchResults
+                          .map((r) => r[0])
+                          .indexOf(active);
                         if (index < searchResults.length - 1) {
-                          setActive(searchResults[index + 1]);
+                          setActive(searchResults[index + 1][0]);
                         }
                       }
                     } else if (event.key === "ArrowUp") {
-                      const index = searchResults.indexOf(active);
+                      const index = searchResults
+                        .map((r) => r[0])
+                        .indexOf(active);
                       if (index > 0) {
-                        setActive(searchResults[index - 1]);
+                        setActive(searchResults[index - 1][0]);
                       }
                     }
                   }}

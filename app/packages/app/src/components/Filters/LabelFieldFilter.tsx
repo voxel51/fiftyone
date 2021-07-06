@@ -96,6 +96,7 @@ const LabelFilter = ({ expanded, entry, modal }: Props) => {
             selectedValuesAtom={selectedLabels(lPath)}
             countsAtom={countsAtom({ modal, path: lPath })}
             excludeAtom={exclude(lPath)}
+            modal={modal}
             path={lPath}
           />
           {CONFIDENCE_LABELS.includes(entry.labelType) && (

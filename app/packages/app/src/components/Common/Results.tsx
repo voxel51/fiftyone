@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useLayoutEffect, useRef } from "react";
 import styled from "styled-components";
 import { summarizeLongStr } from "../../utils/generic";
 
@@ -72,14 +72,20 @@ const Result = React.memo(
       active ? active : null,
       value === null ? highlight : null
     );
+    const ref = useRef<HTMLDivElement>();
 
     const [text, coloring] = getValueString(value);
+
+    useLayoutEffect(() => {
+      active && ref.current && ref.current.scrollIntoView(false);
+    });
 
     return (
       <ResultDiv
         title={value === null ? "None" : value}
         {...props}
         onClick={onClick}
+        ref={ref}
       >
         <span style={coloring ? { color } : {}}>
           {maxLen ? summarizeLongStr(text, maxLen, "middle") : text}

@@ -6,6 +6,7 @@ import Popout from "./Popout";
 import { PopoutSectionTitle, TabOption } from "../utils";
 import * as atoms from "../../recoil/atoms";
 import { Button } from "../FieldsSidebar";
+import Checkbox from "../Common/Checkbox";
 
 export const RefreshButton = ({ modal }) => {
   const [colorSeed, setColorSeed] = useRecoilState(
@@ -81,20 +82,10 @@ const SortFilterResults = ({ modal }) => {
           },
         ]}
       />
-      <TabOption
-        active={asc ? "ascending" : "descending"}
-        options={[
-          {
-            text: "ascending",
-            title: "Ascending",
-            onClick: () => !asc && setSortFilterResults({ count, asc: true }),
-          },
-          {
-            text: "descending",
-            title: "Descending",
-            onClick: () => asc && setSortFilterResults({ count, asc: false }),
-          },
-        ]}
+      <Checkbox
+        name={"Reverse"}
+        value={!asc}
+        setValue={(value) => setSortFilterResults({ count, asc: !value })}
       />
     </>
   );
