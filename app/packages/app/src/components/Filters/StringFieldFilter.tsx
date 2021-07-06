@@ -118,6 +118,7 @@ const StringFieldFilter = ({ expanded, entry, modal }) => {
         excludeAtom={excludeAtom(entry.path)}
         countsAtom={countsAtom({ modal, path: entry.path })}
         path={entry.path}
+        modal={modal}
         ref={ref}
       />
     </animated.div>

@@ -11,6 +11,19 @@ export const modal = atom<{
   },
 });
 
+interface SortResults {
+  count: boolean;
+  asc: boolean;
+}
+
+export const sortFilterResults = atomFamily<SortResults, boolean>({
+  key: "sortFilterResults",
+  default: {
+    count: true,
+    asc: false,
+  },
+});
+
 export const fullscreen = atom<boolean>({
   key: "fullscreen",
   default: false,

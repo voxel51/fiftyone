@@ -10,6 +10,7 @@ import {
 import styled from "styled-components";
 import { v4 as uuid } from "uuid";
 
+import * as atoms from "../../recoil/atoms";
 import Checkbox from "../Common/Checkbox";
 import Input from "../Common/Input";
 import Results, { ResultsContainer } from "../Common/Results";
@@ -259,6 +260,7 @@ interface Props {
   valueName: string;
   color: string;
   path: string;
+  modal: boolean;
 }
 
 const CategoricalFilter = React.memo(
@@ -272,6 +274,7 @@ const CategoricalFilter = React.memo(
         excludeAtom,
         countsAtom,
         path,
+        modal,
       }: Props,
       ref
     ) => {
@@ -282,6 +285,7 @@ const CategoricalFilter = React.memo(
       const [search, setSearch] = useState("");
       const [active, setActive] = useState(undefined);
       const [subCount, setSubCount] = useState(null);
+      const sorting = useRecoilValue(atoms.sortFilterResults(modal));
       const [searchResults, setSearchResults] = useState<[string, number][]>(
         null
       );
@@ -323,6 +327,7 @@ const CategoricalFilter = React.memo(
                 selected,
                 limit: LIST_LIMIT,
                 uuid: id,
+                ...sorting,
               })
             );
           });

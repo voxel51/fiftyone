@@ -58,6 +58,48 @@ const ColorBy = ({ modal }) => {
   );
 };
 
+const SortFilterResults = ({ modal }) => {
+  const [{ count, asc }, setSortFilterResults] = useRecoilState(
+    atoms.sortFilterResults(modal)
+  );
+
+  return (
+    <>
+      <PopoutSectionTitle>Sort filter results by</PopoutSectionTitle>
+      <TabOption
+        active={count ? "count" : "value"}
+        options={[
+          {
+            text: "count",
+            title: "sort by count",
+            onClick: () => !count && setSortFilterResults({ count: true, asc }),
+          },
+          {
+            text: "value",
+            title: "sort by value",
+            onClick: () => count && setSortFilterResults({ count: false, asc }),
+          },
+        ]}
+      />
+      <TabOption
+        active={asc ? "asc" : "desc"}
+        options={[
+          {
+            text: "ASC",
+            title: "Ascending",
+            onClick: () => !asc && setSortFilterResults({ count, asc: true }),
+          },
+          {
+            text: "DESC",
+            title: "Descending",
+            onClick: () => asc && setSortFilterResults({ count, asc: false }),
+          },
+        ]}
+      />
+    </>
+  );
+};
+
 type OptionsProps = {
   modal: boolean;
 };

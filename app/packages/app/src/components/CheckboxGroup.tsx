@@ -245,9 +245,15 @@ const Entry = React.memo(({ entry, onCheck, modal }: EntryProps) => {
           />
         }
       />
-      {isNumeric && <NumericFieldFilter expanded={expanded} entry={entry} />}
-      {isString && <StringFieldFilter expanded={expanded} entry={entry} />}
-      {isBoolean && <BooleanFieldFilter expanded={expanded} entry={entry} />}
+      {isNumeric && (
+        <NumericFieldFilter expanded={expanded} entry={entry} modal={modal} />
+      )}
+      {isString && (
+        <StringFieldFilter expanded={expanded} entry={entry} modal={modal} />
+      )}
+      {isBoolean && (
+        <BooleanFieldFilter expanded={expanded} entry={entry} modal={modal} />
+      )}
       {entry.labelType && labelTypeIsFilterable(entry.labelType) ? (
         <LabelFieldFilter expanded={expanded} entry={entry} modal={modal} />
       ) : null}

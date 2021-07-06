@@ -179,6 +179,7 @@ const BooleanFieldFilter = ({ expanded, entry, modal }) => {
         selectedValuesAtom={selectedValuesAtom({ path: entry.path, modal })}
         countsAtom={countsAtom({ path: entry.path, modal })}
         path={entry.path}
+        modal={modal}
         ref={ref}
       />
     </animated.div>
