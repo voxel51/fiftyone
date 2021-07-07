@@ -5,6 +5,7 @@ Data annotation utilities.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import getpass
 import logging
 
 import eta.core.annotations as etaa
@@ -15,6 +16,8 @@ import eta.core.video as etav
 import fiftyone as fo
 import fiftyone.core.labels as fol
 import fiftyone.core.utils as fou
+
+fouc = fou.lazy_import("fiftyone.utils.cvat")
 
 
 logger = logging.getLogger(__name__)
@@ -231,3 +234,56 @@ def _to_video_labels(sample, label_fields=None):
         )
 
     return video_labels
+
+
+def annotate(samples, backend="cvat", label_field="ground_truth", **kwargs):
+    """Exports the samples and a label field to the given annotation
+    backend.
+
+    Args:
+        samples: a :class:`fiftyone.core.collections.SampleCollection`
+        backend ("cvat"): the name of the annotation backend to which to
+            export the samples. Options are ("cvat")
+        label_field: a string indicating the label field to export to the
+            annotation backend. A value of `None` indicates exporting only
+            the media.
+        **kwargs: additional arguments to send to the annotation backend
+
+    Returns:
+        annotation_tool: the
+            :class:`fiftyone.utils.annotations.BaseAnnotationTool` used to
+            upload and annotate the given samples
+    """
+    if backend == "cvat":
+        annotation_tool = fouc.annotate(
+            samples, label_field=label_field, **kwargs
+        )
+    else:
+        logger.warning("Unsupported annotation backend %s" % backend)
+
+    return annotation_tool
+
+
+class BaseAnnotationTool(object):
+    """Basic interface for connecting to annotation tool, sending samples for
+    annotation, and importing them back into the collection.
+    """
+
+    def upload_samples(self):
+        """Upload samples into annotation tool"""
+        raise NotImplementedError("subclass must implement upload_samples()")
+
+    def download_annotations(self):
+        """Download annotations from the annotation tool"""
+        pass
+
+    def launch_annotator(self):
+        """Open the uploaded annotations in the annotation tool"""
+        pass
+
+
+def get_username_password(host=""):
+    return {
+        "username": input("%s Username: " % host),
+        "password": getpass.getpass(prompt="%s Password: " % host),
+    }

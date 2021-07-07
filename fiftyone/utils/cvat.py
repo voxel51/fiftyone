@@ -12,7 +12,10 @@ from datetime import datetime
 import itertools
 import logging
 import os
+import requests
+import urllib3
 import warnings
+import webbrowser
 
 import jinja2
 
@@ -23,11 +26,16 @@ import eta.core.utils as etau
 import fiftyone.constants as foc
 import fiftyone.core.labels as fol
 import fiftyone.core.metadata as fom
+import fiftyone.types as fot
 import fiftyone.core.utils as fou
+import fiftyone.utils.annotations as foua
 import fiftyone.utils.data as foud
 
 
 logger = logging.getLogger(__name__)
+
+
+_MAX_TASKS_MESSAGE = "The user has the maximum number of tasks"
 
 
 class CVATImageSampleParser(foud.LabeledImageTupleSampleParser):
@@ -2555,6 +2563,165 @@ class CVATVideoAnnotationWriter(object):
             }
         )
         etau.write_file(xml_str, xml_path)
+
+
+class CVATAnnotationTool(foua.BaseAnnotationTool):
+    """Basic interface for connecting to CVAT, sending samples for
+    annotation, and importing them back into the collection.
+    """
+
+    def __init__(
+        self, uri="cvat.org", https=True, port=None,
+    ):
+        self._uri = uri
+        self._port = "" if port is None else "%d:" % port
+        self._protocol = "https" if https else "http"
+
+        urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+        auth = foua.get_username_password("CVAT")
+        self._session = requests.Session()
+        response = self._session.post(self.login_uri, auth, verify=False)
+        response.raise_for_status()
+        if "csrftoken" in response.cookies:
+            self._session.headers["X-CSRFToken"] = response.cookies[
+                "csrftoken"
+            ]
+
+    @property
+    def base_uri(self):
+        return "%s://%s%s" % (self._protocol, self._uri, self._port)
+
+    @property
+    def base_api_uri(self):
+        return "%s/api/v1" % self.base_uri
+
+    @property
+    def login_uri(self):
+        return "%s/auth/login" % self.base_api_uri
+
+    @property
+    def tasks_uri(self):
+        return "%s/tasks" % self.base_api_uri
+
+    def task_uri(self, task_id):
+        return "%s/%d" % (self.tasks_uri, task_id)
+
+    def task_data_uri(self, task_id):
+        return "%s/data" % self.task_uri(task_id)
+
+    def task_annotation_uri(
+        self, task_id, annot_filepath, annot_format="CVAT 1.1",
+    ):
+        return "%s/annotations?format=%s&filename=%s" % (
+            self.task_uri(task_id),
+            annot_format,
+            annot_filepath,
+        )
+
+    def jobs_uri(self, task_id):
+        return "%s/jobs" % self.task_uri(task_id)
+
+    def job_uri(self, task_id, job_id):
+        return "%s/%d" % (self.jobs_uri(task_id), job_id)
+
+    def base_job_uri(self, task_id, job_id):
+        return "%s/tasks/%d/jobs/%d" % (self.base_uri, task_id, job_id)
+
+    def upload_samples(
+        self, samples, label_field="ground_truth", classes=None
+    ):
+        """Upload samples into annotation tool.
+        
+        Args:
+            samples: a :class:`fiftyone.core.collections.SampleCollection` to
+                upload to CVAT
+            classes: list of class strings to use for annotation
+        """
+        if classes is None:
+            if label_field in samples.classes:
+                classes = samples.classes[label_field]
+            elif samples.default_classes:
+                classes = samples.default_classes
+            else:
+                label_path = samples._dataset._get_label_field_path(
+                    label_field, "label"
+                )[1]
+                classes = samples._dataset.distinct(label_path)
+
+        labels = [{"name": c, "attributes": []} for c in classes]
+
+        paths = samples.values("filepath")
+        data_task_create = {
+            "name": "FiftyOne_annotation",
+            "image_quality": 75,
+            "labels": labels,
+        }
+
+        task_creation_resp = self._session.post(
+            self.tasks_uri, verify=False, json=data_task_create,
+        )
+
+        task_json = task_creation_resp.json()
+        if _MAX_TASKS_MESSAGE in task_json:
+            logger.warning(
+                "You have reached the maximum number of tasks in "
+                "CVAT, please delete a task to create a new one"
+            )
+            return None, None
+
+        task_id = task_json["id"]
+
+        data_files = {"image_quality": 75}
+        files = {
+            "client_files[%d]" % i: open(p, "rb") for i, p in enumerate(paths)
+        }
+        files_resp = self._session.post(
+            self.task_data_uri(task_id),
+            verify=False,
+            data=data_files,
+            files=files,
+        )
+
+        job_resp = self._session.get(self.jobs_uri(task_id))
+        job_id = job_resp.json()[0]["id"]
+
+        with etau.TempDir() as tmp:
+            samples.export(
+                tmp,
+                label_field=label_field,
+                dataset_type=fot.CVATImageDataset,
+                export_media=False,
+            )
+            annot_filepath = os.path.join(tmp, "labels.xml")
+
+            annotation_file = {
+                "annotation_file": open(annot_filepath, "rb"),
+            }
+            self._session.put(
+                self.task_annotation_uri(task_id, annot_filepath),
+                files=annotation_file,
+            )
+
+        return task_id, job_id
+
+    def download_annotations(self):
+        """Download annotations from the annotation tool"""
+        pass
+
+    def launch_annotator(self, url=None):
+        """Open the uploaded annotations in the annotation tool"""
+        if url is None:
+            url = self.base_uri
+        webbrowser.open(url, new=2)
+
+
+def annotate(
+    samples, label_field="ground_truth", uri="cvat.org", https=True, **kwargs,
+):
+    tool = CVATAnnotationTool(uri=uri, https=https)
+    task_id, job_id = tool.upload_samples(samples, label_field=label_field)
+    tool.launch_annotator(url=tool.base_job_uri(task_id, job_id))
+    return tool
 
 
 def load_cvat_image_annotations(xml_path):

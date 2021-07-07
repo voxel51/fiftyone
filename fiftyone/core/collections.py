@@ -5511,6 +5511,40 @@ class SampleCollection(object):
         if archive_path is not None:
             etau.make_archive(export_dir, archive_path, cleanup=True)
 
+    def annotate(self, backend="cvat", label_field="ground_truth", **kwargs):
+        """Exports the samples and a label field to the given annotation
+        backend.
+
+        Args:
+            backend ("cvat"): the name of the annotation backend to which to
+                export the samples. Options are ("cvat")
+            label_field: a string indicating the label field to export to the
+                annotation backend. A value of `None` indicates exporting only
+                the media.
+            **kwargs: additional arguments to send to the annotation backend
+        """
+        annotation_tool = foua.annotate(
+            samples=self, backend=backend, label_field=label_field, **kwargs,
+        )
+        self._annotation_tool = annotation_tool
+
+    def load_annotations(self, label_field="ground_truth", **kwargs):
+        """Loads annotations from the annotation tool used to annotate().
+        
+        Args:
+            label_field: the label field to create or to merge the annotations
+                into
+            **kwargs: additional arguments to send to the annotation tool
+        """
+        if self._annotation_tool is None:
+            logger.warning(
+                "No annotation tool found. Please run `SampleCollection.annotate()` before `load_annotations()`"
+            )
+            return
+
+        annotations = self._annotation_tool.load_annotations(**kwargs)
+        self._dataset.set_values(label_field, annotations)
+
     def list_indexes(self, include_private=False):
         """Returns the fields of the dataset that are indexed.
 
