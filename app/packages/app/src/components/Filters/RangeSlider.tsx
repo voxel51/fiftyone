@@ -282,7 +282,7 @@ export const NamedRangeSlider = React.memo(
                 value={includeNone}
                 setValue={setIncludeNone}
                 count={none}
-                subCount={subcountNone}
+                subCountAtom={null}
               />
             )}
             {(!hasDefaultRange || !includeNone) && (

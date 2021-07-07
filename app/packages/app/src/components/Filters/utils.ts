@@ -1,21 +1,14 @@
-import { useSpring } from "react-spring";
 import { atomFamily, selector, selectorFamily } from "recoil";
-import useMeasure from "react-use-measure";
 import { v4 as uuid } from "uuid";
 
 import * as atoms from "../../recoil/atoms";
 import * as selectors from "../../recoil/selectors";
-import {
-  AGGS,
-  BOOLEAN_FIELD,
-  OBJECT_ID_FIELD,
-  STRING_FIELD,
-  VALID_NUMERIC_TYPES,
-} from "../../utils/labels";
-import { request } from "../../utils/socket";
-import { sampleModalFilter } from "./LabelFieldFilters.state";
+import { isBooleanField } from "./BooleanFieldFilter.state";
+import { isNumericField } from "./NumericFieldFilter.state";
+import { isStringField } from "./StringFieldFilter.state";
 
-export type Value = string | null | false | true;
+import { AGGS } from "../../utils/labels";
+import { request } from "../../utils/socket";
 
 const COUNT_CLS = "Count";
 
@@ -34,8 +27,8 @@ export const catchLabelCount = (
   }
 };
 
-export const modalFrameStats = selector({
-  key: "modalFrameStats",
+export const modalStats = selector({
+  key: "modalStats",
   get: async ({ get }) => {
     const id = uuid();
     const data = await request({
@@ -66,7 +59,7 @@ export const modalFrameLabelCounts = selector({
 });
 
 export const modalFilteredFrameStats = selector({
-  key: "modalFilteredFrameStats",
+  key: "modalFilteredStats",
   get: async ({ get }) => {
     const id = uuid();
     const data = await request({
@@ -96,14 +89,6 @@ export const modalFilteredFrameLabelCounts = selector({
   },
 });
 
-export const isBooleanField = selectorFamily<boolean, string>({
-  key: "isBooleanField",
-  get: (name) => ({ get }) => {
-    const map = get(selectors.scalarsMap("sample"));
-    return map[name] === BOOLEAN_FIELD;
-  },
-});
-
 export const isLabelField = selectorFamily<boolean, string>({
   key: "isLabelField",
   get: (field) => ({ get }) => {
@@ -111,22 +96,6 @@ export const isLabelField = selectorFamily<boolean, string>({
       get(selectors.labelNames("frame")).map((l) => "frames." + l)
     );
     return names.includes(field);
-  },
-});
-
-export const isNumericField = selectorFamily<boolean, string>({
-  key: "isNumericField",
-  get: (name) => ({ get }) => {
-    const map = get(selectors.scalarsMap("sample"));
-    return VALID_NUMERIC_TYPES.includes(map[name]);
-  },
-});
-
-export const isStringField = selectorFamily<boolean, string>({
-  key: "isStringField",
-  get: (name) => ({ get }) => {
-    const map = get(selectors.scalarsMap("sample"));
-    return [OBJECT_ID_FIELD, STRING_FIELD].includes(map[name]);
   },
 });
 
@@ -166,79 +135,51 @@ export const noneCount = selectorFamily<
 const modalCountsAtom = selectorFamily<
   {
     count: number;
-    results: [Value, [number, number]][];
+    results: [Value, number][];
   },
   string
 >({
   key: "categoricalModalFieldCounts",
-  get: (path) => async ({ get }) => {
-    const video = get(selectors.isRootView) && get(selectors.isVideoDataset);
-    const sorting = get(atoms.sortFilterResults(true));
-    const filter = get(sampleModalFilter);
+  get: (path) => ({ get }) => {
     let target = get(selectors.modalSample);
-    let filteredTarget = filter(target, "", true);
-    let nullCount = 0,
-      nullFilteredCount = 0;
-    const counts = {},
-      filteredCounts = {};
+    let nullCount = 0;
+    const counts = {};
+    const video = get(selectors.isRootView) && get(selectors.isVideoDataset);
+
+    if (video && path.startsWith("frames.")) {
+      console.log(get(modalFrameLabelCounts));
+      return {
+        count: 0,
+        results: [],
+      };
+    }
 
     let keys = path.split(".").slice(0, -1);
     const key = path.split(".").slice(-1)[0];
 
-    if (video && path.startsWith("frames.")) {
-      const id = uuid();
-      const data = (await request({
-        type: "count_values",
-        uuid: id,
-        args: {
-          path,
-          sample_id: get(atoms.modal).sampleId,
-          ...sorting,
-        },
-      })) as { count: number; results: [Value, number][] };
-
-      return {
-        count: data.count,
-        results: data.results.map(([v, c]) => [v, [c, c]]),
-      };
-    }
-
     keys.forEach((key) => {
       target = target[key];
-      filteredTarget = filteredTarget[key];
     });
 
-    const add = (v, filtered = false) => {
-      const c = filtered ? filteredCounts : counts;
+    const add = (v) => {
       if (!v[key]) {
-        if (!filtered) {
-          nullCount++;
-        } else {
-          nullFilteredCount++;
-        }
+        nullCount++;
       } else {
-        v[key] in c ? c[v[key]]++ : (c[v[key]] = 1);
+        v[key] in counts ? counts[v[key]]++ : (counts[v[key]] = 1);
       }
     };
     let count = 0;
     if (Array.isArray(target)) {
       count = target.length;
-      target.forEach((v) => add(v, false));
-      Array.isArray(filteredTarget) &&
-        filteredTarget.forEach((v) => add(v, true));
+      target.forEach((v) => add(v));
     } else {
-      add(target, false);
-      add(filteredTarget, true);
+      add(target);
       target[key] !== null && target[key] !== undefined && (count = 1);
     }
-    const results: [Value, [number, number]][] = [
-      ...Object.entries(counts as { [key: string]: number }).map<
-        [Value, [number, number]]
-      >(([v, c]) => [v, [filteredCounts[v] ?? 0, c]]),
-    ];
+    const results: [Value, number][] = Object.entries(counts);
 
     if (nullCount) {
-      results.push([null, [nullFilteredCount, nullCount]]);
+      results.push([null, nullCount]);
     }
 
     return {
@@ -249,50 +190,19 @@ const modalCountsAtom = selectorFamily<
 });
 
 export const countsAtom = selectorFamily<
-  { count: number; results: [Value, [number | null, number]][] },
+  { count: number; results: [Value, number][] },
   { path: string; modal: boolean }
 >({
   key: "categoricalFieldCounts",
   get: ({ path, modal }) => ({ get }) => {
-    if (modal) {
-      return get(modalCountsAtom(path));
-    }
-
     const none = get(noneCount({ path, modal, filtered: false }));
-    const noneFiltered = get(noneCount({ path, modal, filtered: true }));
-
-    let subCounts = null;
-
-    const extendedStats = get(
-      get(selectors.hasFilters)
-        ? selectors.extendedDatasetStats
-        : selectors.datasetStats
-    );
-    if (extendedStats) {
-      subCounts = {};
-      extendedStats.forEach((cur) => {
-        if (cur.name === path && cur._CLS === AGGS.COUNT_VALUES) {
-          subCounts = Object.fromEntries(cur.result[1]);
-        }
-      });
-    }
 
     const data = (get(selectors.datasetStats) ?? []).reduce(
       (acc, cur) => {
         if (cur.name === path && cur._CLS === AGGS.COUNT_VALUES) {
           return {
             count: cur.result[0],
-            results: cur.result[1].map(([value, count]) => [
-              value,
-              [
-                subCounts
-                  ? subCounts.hasOwnProperty(value)
-                    ? subCounts[value]
-                    : 0
-                  : null,
-                count,
-              ],
-            ]),
+            results: cur.result[1],
           };
         }
         return acc;
@@ -302,33 +212,12 @@ export const countsAtom = selectorFamily<
 
     if (none > 0 && !modal) {
       data.count = data.count + 1;
-      data.results = [...data.results, [null, [noneFiltered, none]]];
+      data.results = [...data.results, [null, none]];
     }
 
     return data;
   },
 });
-
-type ExpandStyle = {
-  height: number;
-  overflow: "hidden";
-};
-
-export const useExpand = (
-  expanded: boolean
-): [(element: HTMLElement | null) => void, ExpandStyle] => {
-  const [ref, { height }] = useMeasure();
-  const props = useSpring({
-    height: expanded ? height : 0,
-    from: {
-      height: 0,
-    },
-    config: {
-      duration: 0,
-    },
-  });
-  return [ref, { ...props, overflow: "hidden" }];
-};
 
 export const activeFields = atomFamily<string[], boolean>({
   key: "activeFields",

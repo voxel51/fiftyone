@@ -2,9 +2,9 @@ import { atomFamily, selector, selectorFamily } from "recoil";
 
 import { Range } from "./RangeSlider";
 import * as utils from "./utils";
-import * as booleanField from "./BooleanFieldFilter";
-import * as numericField from "./NumericFieldFilter";
-import * as stringField from "./StringFieldFilter";
+import * as booleanField from "./BooleanFieldFilter.state";
+import * as numericField from "./NumericFieldFilter.state";
+import * as stringField from "./StringFieldFilter.state";
 import * as atoms from "../../recoil/atoms";
 import * as selectors from "../../recoil/selectors";
 import {
@@ -223,9 +223,9 @@ export const fieldIsFiltered = selectorFamily<
   key: "fieldIsFiltered",
   get: ({ path, modal }) => ({ get }) => {
     const isArgs = { path, modal };
-    if (get(utils.isBooleanField(path))) {
+    if (get(booleanField.isBooleanField(path))) {
       return get(booleanField.fieldIsFiltered(isArgs));
-    } else if (get(utils.isNumericField(path))) {
+    } else if (get(numericField.isNumericField(path))) {
       return get(numericField.fieldIsFiltered(isArgs));
     } else if (get(utils.isStringField(path))) {
       return get(stringField.fieldIsFiltered(isArgs));

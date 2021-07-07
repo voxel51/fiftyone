@@ -16,7 +16,7 @@ import Input from "../Common/Input";
 import Results, { ResultsContainer } from "../Common/Results";
 import { Button } from "../FieldsSidebar";
 import { PopoutSectionTitle, TabOption } from "../utils";
-import { LIST_LIMIT } from "./StringFieldFilter";
+import { LIST_LIMIT } from "./StringFieldFilter.state";
 import { ItemAction } from "../Actions/ItemAction";
 import socket from "../../shared/connection";
 import { packageMessage } from "../../utils/socket";
@@ -101,12 +101,12 @@ const nullSort = ({
   count,
   asc,
 }: atoms.SortResults): ((
-  aa: [Value, [number, number]],
-  bb: [Value, [number, number]]
+  aa: [Value, number | null],
+  bb: [Value, number | null]
 ) => number) => {
   return (aa, bb): number => {
-    let a = [aa[0], ...[...aa[1]].reverse()];
-    let b = [bb[0], ...[...bb[1]].reverse()];
+    let a = [...aa];
+    let b = [...bb];
 
     if (count) {
       a.reverse();
@@ -150,9 +150,9 @@ const Wrapper = ({
   const setExcluded = excludeAtom ? useSetRecoilState(excludeAtom) : null;
   const sorting = useRecoilValue(atoms.sortFilterResults(modal));
   const counts = Object.fromEntries(results);
-  let allValues: [Value, [number, number]][] = selected.map<
-    [string, [number, number]]
-  >((value) => (counts[value] ? [value, counts[value]] : [value, [0, 0]]));
+  let allValues: [string, number][] = selected.map<[string, number]>(
+    (value) => [value, counts[value] ?? 0]
+  );
 
   if (count <= CHECKBOX_LIMIT) {
     allValues = [...allValues, ...results.filter(([v]) => !selectedSet.has(v))];
@@ -160,26 +160,24 @@ const Wrapper = ({
 
   return (
     <>
-      {[...new Set(allValues)]
-        .sort(nullSort(sorting))
-        .map(([value, [subCount, count]]) => (
-          <Checkbox
-            key={String(value)}
-            color={color}
-            value={selectedSet.has(value)}
-            name={value}
-            count={count}
-            subCount={subCount}
-            setValue={(checked: boolean) => {
-              if (checked) {
-                selectedSet.add(value);
-              } else {
-                selectedSet.delete(value);
-              }
-              setSelected([...selectedSet].sort());
-            }}
-          />
-        ))}
+      {[...new Set(allValues)].sort(nullSort(sorting)).map(([value, count]) => (
+        <Checkbox
+          key={String(value)}
+          color={color}
+          value={selectedSet.has(value)}
+          name={value}
+          count={count}
+          subCountAtom={null}
+          setValue={(checked: boolean) => {
+            if (checked) {
+              selectedSet.add(value);
+            } else {
+              selectedSet.delete(value);
+            }
+            setSelected([...selectedSet].sort());
+          }}
+        />
+      ))}
       {Boolean(selectedSet.size) && (
         <>
           <PopoutSectionTitle />
@@ -282,7 +280,7 @@ const ResultsWrapper = ({
 interface Props {
   countsAtom: RecoilValueReadOnly<{
     count: number;
-    results: [Value, [number, number]][];
+    results: [Value, number][];
   }>;
   selectedValuesAtom: RecoilState<Value[]>;
   excludeAtom?: RecoilState<boolean>;

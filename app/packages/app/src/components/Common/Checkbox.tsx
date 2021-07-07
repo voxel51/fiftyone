@@ -8,6 +8,7 @@ import { ItemAction } from "../Actions/ItemAction";
 import { useTheme } from "../../utils/hooks";
 import { summarizeLongStr } from "../../utils/generic";
 import { getValueString, Value } from "../Filters/utils";
+import { RecoilValueReadOnly, useRecoilValue } from "recoil";
 
 interface CheckboxProps {
   color?: string;
@@ -15,7 +16,7 @@ interface CheckboxProps {
   value: boolean;
   setValue: (value: boolean) => void;
   count?: number;
-  subCount?: number;
+  subCountAtom?: RecoilValueReadOnly<number>;
 }
 
 const StyledCheckboxContainer = styled.div`
@@ -54,10 +55,11 @@ const makeCountStr = (subCount = null, count = null) => {
 };
 
 const Checkbox = React.memo(
-  ({ color, name, value, setValue, subCount, count }: CheckboxProps) => {
+  ({ color, name, value, setValue, subCountAtom, count }: CheckboxProps) => {
     const theme = useTheme();
     color = color ?? theme.brand;
     const props = useHighlightHover(false);
+    const subCount = subCountAtom ? useRecoilValue(subCountAtom) : null;
 
     const [text, coloring] = getValueString(name);
     const countStr = makeCountStr(subCount, count);

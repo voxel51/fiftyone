@@ -3,15 +3,16 @@ import { useRecoilCallback, useRecoilValue } from "recoil";
 import { animated } from "react-spring";
 import styled from "styled-components";
 
-import { countsAtom, noneCount, useExpand } from "./utils";
 import { NamedRangeSlider } from "./RangeSlider";
 import CategoricalFilter from "./CategoricalFilter";
 import { CONFIDENCE_LABELS } from "../../utils/labels";
+import { useExpand } from "./hooks";
 import { getPathExtension } from "./LabelFieldFilters.state";
 import * as atoms from "../../recoil/atoms";
 import * as selectors from "../../recoil/selectors";
-import * as numericField from "./NumericFieldFilter";
-import * as stringField from "./StringFieldFilter";
+import * as numericField from "./NumericFieldFilter.state";
+import * as stringField from "./StringFieldFilter.state";
+import { countsAtom, noneCount } from "./utils";
 
 const FilterHeader = styled.div`
   display: flex;
@@ -83,6 +84,8 @@ const LabelFilter = ({ expanded, entry, modal }: Props) => {
   const [confidenceRange, noConfidence] = modal
     ? [numericField.rangeModalAtom, numericField.noneModalAtom]
     : [numericField.rangeAtom, numericField.noneAtom];
+
+  modal && console.log("EHL");
 
   return (
     <animated.div style={{ ...props }}>

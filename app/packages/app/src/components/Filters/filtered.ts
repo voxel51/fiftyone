@@ -1,12 +1,11 @@
 import { selectorFamily, GetRecoilValue, SetRecoilState } from "recoil";
 
-import * as booleanFiltering from "./BooleanFieldFilter";
-import * as labelFiltering from "./LabelFieldFilters.state";
-import * as numericFiltering from "./NumericFieldFilter";
-import * as stringFiltering from "./StringFieldFilter";
-import { isBooleanField, isNumericField, isStringField } from "./utils";
 import * as atoms from "../../recoil/atoms";
 import * as selectors from "../../recoil/selectors";
+import * as booleanFiltering from "./BooleanFieldFilter.state";
+import * as labelFiltering from "./LabelFieldFilters.state";
+import * as numericFiltering from "./NumericFieldFilter.state";
+import * as stringFiltering from "./StringFieldFilter.state";
 
 const clearGridFilters = ({ current, get, paths, set }) => {
   const filters = { ...get(selectors.filterStages) };
@@ -25,13 +24,13 @@ export const filteredScalars = selectorFamily<string[], boolean>({
 
     let filtered = [];
     scalars.forEach((path) => {
-      if (get(isBooleanField(path))) {
+      if (get(booleanFiltering.isBooleanField(path))) {
         get(booleanFiltering.fieldIsFiltered({ modal, path })) &&
           filtered.push(path);
-      } else if (get(isNumericField(path))) {
+      } else if (get(numericFiltering.isNumericField(path))) {
         get(numericFiltering.fieldIsFiltered({ modal, path })) &&
           filtered.push(path);
-      } else if (get(isStringField(path))) {
+      } else if (get(stringFiltering.isStringField(path))) {
         get(stringFiltering.fieldIsFiltered({ modal, path })) &&
           filtered.push(path);
       }
@@ -56,7 +55,7 @@ export const filteredScalars = selectorFamily<string[], boolean>({
       if (paths.includes(path)) {
         return;
       }
-      if (get(isBooleanField(path))) {
+      if (get(booleanFiltering.isBooleanField(path))) {
         const [none, trueValue, falseValue] = [
           booleanFiltering.noneModalAtom,
           booleanFiltering.trueModalAtom,
@@ -66,7 +65,7 @@ export const filteredScalars = selectorFamily<string[], boolean>({
         set(none(path), false);
         set(trueValue(path), false);
         set(falseValue(path), false);
-      } else if (get(isNumericField(path))) {
+      } else if (get(numericFiltering.isNumericField(path))) {
         const [noneValue, rangeValue] = [
           numericFiltering.noneModalAtom,
           numericFiltering.rangeModalAtom,
@@ -74,7 +73,7 @@ export const filteredScalars = selectorFamily<string[], boolean>({
 
         set(noneValue({ path }), true);
         set(rangeValue({ path }), get(numericFiltering.boundsAtom({ path })));
-      } else if (get(isStringField(path))) {
+      } else if (get(stringFiltering.isStringField(path))) {
         const [values, exclude] = [
           stringFiltering.selectedValuesModalAtom,
           stringFiltering.excludeModalAtom,
