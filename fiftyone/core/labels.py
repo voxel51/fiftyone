@@ -363,7 +363,8 @@ class Detection(ImageLabel, _HasID, _HasAttributes):
 
         Args:
             tolerance (2): a tolerance, in pixels, when generating an
-                approximate polyline for the instance mask
+                approximate polyline for the instance mask. Typical values are
+                1-3 pixels
             filled (True): whether the polyline should be filled
 
         Returns:
