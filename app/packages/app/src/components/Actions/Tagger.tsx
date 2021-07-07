@@ -20,7 +20,6 @@ import {
   SwitcherDiv,
 } from "./utils";
 import { Button } from "../FieldsSidebar";
-import * as labelAtoms from "../Filters/LabelFieldFilters.state";
 import * as fieldAtoms from "../Filters/utils";
 import * as atoms from "../../recoil/atoms";
 import * as selectors from "../../recoil/selectors";
@@ -28,6 +27,7 @@ import socket from "../../shared/connection";
 import { useTheme } from "../../utils/hooks";
 import { packageMessage } from "../../utils/socket";
 import { PopoutSectionTitle } from "../utils";
+import * as filterAtoms from "../Filters/atoms";
 
 const IconDiv = styled.div`
   position: absolute;
@@ -353,8 +353,8 @@ const useTagCallback = (modal, targetLabels) => {
         } else if (hasSelectedLabels) {
           socket.send(packageModal({ changes }));
         } else {
-          const labels = await snapshot.getPromise(labelAtoms.modalLabels);
-          socket.send(packageModal({ changes, labels }));
+          // const labels = await snapshot.getPromise(labelAtoms.modalLabels);
+          // socket.send(packageModal({ changes, labels }));
         }
       } else {
         socket.send(packageGrid({ changes, targetLabels, activeLabels }));
@@ -377,7 +377,7 @@ const usePlaceHolder = (
   modal: boolean,
   labels: boolean,
   elementNames: { plural: string; singular: string }
-): (() => [number, string]) => {
+) => {
   return () => {
     const selection = useRecoilValue(
       modal ? selectors.selectedLabelIds : atoms.selectedSamples
@@ -387,7 +387,7 @@ const usePlaceHolder = (
       const labelCount =
         selection > 0
           ? selection
-          : useRecoilValue(labelAtoms.labelCount(modal));
+          : useRecoilValue(filterAtoms.labelCount(modal));
       return [labelCount, labelsModalPlaceholder(selection, labelCount)];
     } else if (modal) {
       return [1, samplePlaceholder(elementNames)];
@@ -398,7 +398,7 @@ const usePlaceHolder = (
       const selectedLabelCount = useRecoilValue(numLabelsInSelectedSamples);
       const labelCount = selection
         ? selectedLabelCount
-        : useRecoilValue(labelAtoms.labelCount(modal));
+        : useRecoilValue(filterAtoms.labelCount(modal));
       if (labels) {
         return [
           labelCount,

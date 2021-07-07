@@ -48,14 +48,7 @@ export const noneCount = selectorFamily<
 >({
   key: "noneCount",
   get: ({ path, modal, filtered }) => ({ get }) => {
-    if (modal) {
-    }
-
-    if (filtered) {
-      return get(selectors.noneFilteredFieldCounts)[path];
-    }
-
-    return get(selectors.noneFieldCounts)[path];
+    return 0;
   },
 });
 

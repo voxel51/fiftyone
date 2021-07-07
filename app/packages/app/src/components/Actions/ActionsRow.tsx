@@ -32,6 +32,7 @@ import { packageMessage } from "../../utils/socket";
 import Similar, { similaritySorting } from "./Similar";
 import { VideoLooker } from "@fiftyone/looker";
 import { showModalJSON } from "../../recoil/utils";
+import { hasFilters } from "../Filters/atoms";
 
 const Loading = () => {
   const theme = useTheme();
@@ -259,10 +260,10 @@ export const savingFilters = atom<boolean>({
 });
 
 const SaveFilters = () => {
-  const hasFilters = useRecoilValue(selectors.hasFilters);
+  const hasFiltersValue = useRecoilValue(hasFilters);
   const [loading, setLoading] = useRecoilState(savingFilters);
 
-  return hasFilters ? (
+  return hasFiltersValue ? (
     <PillButton
       open={false}
       highlight={true}

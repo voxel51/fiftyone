@@ -244,3 +244,45 @@ export const filteredSampleTagCounts = selectorFamily<
       : {};
   },
 });
+
+export const labelCounts = selectorFamily<
+  { [key: string]: number },
+  { key: "frame" | "sample"; modal: boolean }
+>({
+  key: "labelCounts",
+  get: ({ key, modal }) => ({ get }) => {
+    const stats = get(modal ? modalStats : selectors.datasetStats);
+
+    return {};
+  },
+});
+
+export const filteredLabelCounts = selectorFamily<
+  { [key: string]: number },
+  { key: "frame" | "sample"; modal: boolean }
+>({
+  key: "filteredLabelCounts",
+  get: ({ key, modal }) => ({ get }) => {
+    return {};
+  },
+});
+
+export const scalarCounts = selectorFamily<
+  { [key: string]: number | string | null },
+  boolean
+>({
+  key: "scalarCounts",
+  get: (modal) => ({ get }) => {
+    return {};
+  },
+});
+
+export const filteredScalarCounts = selectorFamily<
+  { [key: string]: number | string | null },
+  boolean
+>({
+  key: "filteredScalarCounts",
+  get: (modal) => ({ get }) => {
+    return {};
+  },
+});

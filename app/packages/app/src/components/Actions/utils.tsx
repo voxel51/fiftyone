@@ -4,6 +4,7 @@ import { animated, useSpring } from "react-spring";
 import styled from "styled-components";
 
 import { activeLabelPaths, activeLabels } from "../Filters/utils";
+import * as filterAtoms from "../Filters/atoms";
 import * as atoms from "../../recoil/atoms";
 import * as selectors from "../../recoil/selectors";
 import { useTheme } from "../../utils/hooks";
@@ -164,6 +165,7 @@ export const tagStats = selectorFamily<
 >({
   key: "tagStats",
   get: ({ modal, labels }) => ({ get }) => {
+    return {};
     if (modal && labels) {
       return {};
     } else if (modal) {
@@ -218,8 +220,8 @@ export const tagStats = selectorFamily<
         });
       } else {
         const counts = Object.keys(get(selectors.filterStages)).length
-          ? get(selectors.filteredTagSampleCounts)
-          : get(selectors.tagSampleCounts);
+          ? get(selectors.filteredSampleTagCounts(false))
+          : get(selectors.tagSampleCounts(false));
         Object.keys(counts).forEach((t) => {
           results[t] += counts[t];
         });

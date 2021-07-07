@@ -30,7 +30,6 @@ import CheckboxGrid from "./CheckboxGroup";
 import { Entry } from "./CheckboxGroup";
 import * as atoms from "../recoil/atoms";
 import * as fieldAtoms from "./Filters/utils";
-import * as labelAtoms from "./Filters/LabelFieldFilters.state";
 import * as selectors from "../recoil/selectors";
 import { FILTERABLE_TYPES } from "../utils/labels";
 import { useTheme } from "../utils/hooks";
@@ -251,14 +250,12 @@ const SampleTagsCell = ({ modal }: TagsCellProps) => {
     setMatchedTags,
   } = useSampleTags(modal);
   const colorMap = useRecoilValue(selectors.colorMap(modal));
-  const [subCountAtom, countAtom] = [
-    filterAtoms.sampleTagCounts(modal),
-    filterAtoms.filteredSampleTagCounts(modal),
+  const [subCount, count] = [
+    useRecoilValue(filterAtoms.filteredSampleTagCounts(modal)),
+    useRecoilValue(filterAtoms.sampleTagCounts(modal)),
   ];
-  const { singular: element } = useRecoilValue(selectors.elementNames);
 
-  const subCount = subCountAtom ? useRecoilValue(subCountAtom) : null;
-  const count = useRecoilValue(countAtom);
+  const { singular: element } = useRecoilValue(selectors.elementNames);
   const colorByLabel = useRecoilValue(atoms.colorByLabel(modal));
   const theme = useTheme();
   return (
@@ -333,7 +330,7 @@ const SampleTagsCell = ({ modal }: TagsCellProps) => {
   );
 };
 
-const useLabelTags = (modal, countAtom) => {
+const useLabelTags = (modal, count) => {
   let tags = useRecoilValue(selectors.labelTagNames);
   const [activeTags, setActiveTags] = useRecoilState(
     fieldAtoms.activeLabelTags(modal)
@@ -341,7 +338,6 @@ const useLabelTags = (modal, countAtom) => {
   const [matchedTags, setMatchedTags] = useRecoilState(
     filterAtoms.matchedTags({ modal, key: "label" })
   );
-  const count = useRecoilValue(countAtom);
   useEffect(() => {
     const newMatches = new Set<string>();
     matchedTags.forEach((tag) => {
@@ -359,15 +355,14 @@ const useLabelTags = (modal, countAtom) => {
     setActiveTags,
     matchedTags,
     setMatchedTags,
-    count,
   };
 };
 
 const LabelTagsCell = ({ modal }: TagsCellProps) => {
   const colorMap = useRecoilValue(selectors.colorMap(modal));
-  const [subCountAtom, countAtom] = [
-    filterAtoms.filteredLabelTagCounts(modal),
-    filterAtoms.labelTagCounts(modal),
+  const [subCount, count] = [
+    useRecoilValue(filterAtoms.filteredLabelTagCounts(modal)),
+    useRecoilValue(filterAtoms.labelTagCounts(modal)),
   ];
 
   const {
@@ -376,10 +371,8 @@ const LabelTagsCell = ({ modal }: TagsCellProps) => {
     setActiveTags,
     matchedTags,
     setMatchedTags,
-    count,
-  } = useLabelTags(modal, countAtom);
+  } = useLabelTags(modal, count);
 
-  const subCount = subCountAtom ? useRecoilValue(subCountAtom) : null;
   const colorByLabel = useRecoilValue(atoms.colorByLabel(modal));
   const theme = useTheme();
   const hasFilters = useRecoilValue(filterAtoms.hasFilters);
@@ -467,13 +460,11 @@ const LabelsCell = ({ modal, frames }: LabelsCellProps) => {
   const types = useRecoilValue(selectors.labelTypesMap);
 
   const colorMap = useRecoilValue(selectors.colorMap(modal));
-  const [subCountAtom, countAtom] = [
-    filterAtoms.filteredLabelCounts({ key, modal }),
-    filterAtoms.labelCounts({ key, modal }),
+  const [subCount, count] = [
+    useRecoilValue(filterAtoms.filteredLabelCounts({ key, modal })),
+    useRecoilValue(filterAtoms.labelCounts({ key, modal })),
   ];
 
-  const subCount = subCountAtom ? useRecoilValue(subCountAtom) : null;
-  const count = useRecoilValue(countAtom);
   const colorByLabel = useRecoilValue(atoms.colorByLabel(modal));
   const theme = useTheme();
 
@@ -581,18 +572,15 @@ const ScalarsCell = ({ modal }: ScalarsCellProps) => {
   const [activeScalars, setActiveScalars] = useRecoilState(
     fieldAtoms.activeScalars(modal)
   );
-
-  const colorMap = useRecoilValue(selectors.colorMap(modal));
-  const [subCountAtom, countAtom] = [
-    filterAtoms.filteredScalarCounts(modal),
-    filterAtoms.scalarCounts(modal),
-  ];
-
-  const subCount = subCountAtom ? useRecoilValue(subCountAtom) : null;
-  const count = useRecoilValue(countAtom);
   const colorByLabel = useRecoilValue(atoms.colorByLabel(modal));
   const theme = useTheme();
   const dbFields = useRecoilValue(selectors.scalarsDbMap("sample"));
+
+  const colorMap = useRecoilValue(selectors.colorMap(modal));
+  const [subCount, count] = [
+    useRecoilValue(filterAtoms.filteredScalarCounts(modal)),
+    useRecoilValue(filterAtoms.scalarCounts(modal)),
+  ];
 
   return (
     <Cell
