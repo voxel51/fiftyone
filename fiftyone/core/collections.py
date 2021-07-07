@@ -1533,6 +1533,7 @@ class SampleCollection(object):
         missing=None,
         method="coco",
         iou=0.50,
+        use_masks=False,
         classwise=True,
         config=None,
         **kwargs,
@@ -1589,6 +1590,9 @@ class SampleCollection(object):
             method ("coco"): a string specifying the evaluation method to use.
                 Supported values are ``("coco")``
             iou (0.50): the IoU threshold to use to determine matches
+            use_masks (False): whether to compute IoUs using the instances
+                masks in the ``mask`` attribute of the provided objects, which
+                must be :class:`fiftyone.core.labels.Detection` instances
             classwise (True): whether to only match objects with the same class
                 label (True) or allow matches between classes (False)
             config (None): a
@@ -1612,6 +1616,7 @@ class SampleCollection(object):
             missing=missing,
             method=method,
             iou=iou,
+            use_masks=use_masks,
             classwise=classwise,
             config=config,
             **kwargs,
