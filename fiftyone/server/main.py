@@ -782,7 +782,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
                     }
                 )
 
-        message = {"type": "frame_statistics", "stats": data, "uuid": uuid}
+        message = {"type": "statistics", "stats": data, "uuid": uuid}
 
         _write_message(message, app=True, only=caller)
 

@@ -99,7 +99,6 @@ function App() {
   useMessageHandler("update", useStateUpdate());
 
   useMessageHandler("notification", (data) => addNotification.current(data));
-  const connected = useRecoilValue(atoms.connected);
   useSendMessage("as_app", {
     notebook: isNotebook,
     handle: handleId,

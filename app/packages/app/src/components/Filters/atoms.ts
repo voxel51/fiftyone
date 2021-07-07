@@ -75,8 +75,8 @@ export const filterStage = selectorFamily<object, FilterParams>({
   },
 });
 
-export const modalStats = selector({
-  key: "modalStats",
+const modalStatsRaw = selector({
+  key: "modalStatsRaw",
   get: async ({ get }) => {
     const id = uuid();
     const data = await request({
@@ -91,8 +91,13 @@ export const modalStats = selector({
   },
 });
 
-export const extendedModalStats = selector({
-  key: "modalExtendedStats",
+const modalStats = selector({
+  key: "modalStats",
+  get: ({ get }) => get(modalStatsRaw).main,
+});
+
+const extendedModalStatsRaw = selector({
+  key: "modalExtendedStatsRaw",
   get: async ({ get }) => {
     const id = uuid();
     const data = await request({
@@ -106,6 +111,11 @@ export const extendedModalStats = selector({
 
     return data.stats;
   },
+});
+
+const extendedModalStats = selector({
+  key: "extendedModalStats",
+  get: ({ get }) => get(extendedModalStatsRaw).main,
 });
 
 export const noneFieldCounts = selector<{ [key: string]: number }>({

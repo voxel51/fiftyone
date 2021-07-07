@@ -38,7 +38,6 @@ export const request = ({
     const listener = requestWrapper(
       responseType || type,
       ({ uuid: responseUuid, ...data }) => {
-        console.log(type);
         if (uuid === responseUuid) {
           socket.removeEventListener("message", listener);
           resolve(data);
