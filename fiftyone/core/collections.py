@@ -1544,7 +1544,7 @@ class SampleCollection(object):
         configued via the ``method`` and ``config`` parameters.
 
         If an ``eval_key`` is provided, a number of fields are populated at the
-        detection- and sample-level recording the results of the evaluation:
+        object- and sample-level recording the results of the evaluation:
 
         -   True positive (TP), false positive (FP), and false negative (FN)
             counts for the each sample are saved in top-level fields of each
@@ -1561,20 +1561,21 @@ class SampleCollection(object):
                 FP: frame.<eval_key>_fp
                 FN: frame.<eval_key>_fn
 
-        -   The fields listed below are populated on each individual
-            :class:`fiftyone.core.labels.Detection` instance; these fields
-            tabulate the TP/FP/FN status of the object, the ID of the matching
-            object (if any), and the matching IoU::
+        -   The fields listed below are populated on each individual object;
+            these fields tabulate the TP/FP/FN status of the object, the ID of
+            the matching object (if any), and the matching IoU::
 
-                TP/FP/FN: detection.<eval_key>
-                      ID: detection.<eval_key>_id
-                     IoU: detection.<eval_key>_iou
+                TP/FP/FN: object.<eval_key>
+                      ID: object.<eval_key>_id
+                     IoU: object.<eval_key>_iou
 
         Args:
             pred_field: the name of the field containing the predicted
-                :class:`fiftyone.core.labels.Detections` to evaluate
+                :class:`fiftyone.core.labels.Detections` or
+                :class:`fiftyone.core.labels.Polylines`
             gt_field ("ground_truth"): the name of the field containing the
-                ground truth :class:`fiftyone.core.labels.Detections`
+                ground truth :class:`fiftyone.core.labels.Detections` or
+                :class:`fiftyone.core.labels.Polylines`
             eval_key (None): an evaluation key to use to refer to this
                 evaluation
             classes (None): the list of possible classes. If not provided,

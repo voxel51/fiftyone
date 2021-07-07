@@ -28,9 +28,11 @@ class COCOEvaluationConfig(DetectionEvaluationConfig):
 
     Args:
         pred_field: the name of the field containing the predicted
-            :class:`fiftyone.core.labels.Detections` instances
+            :class:`fiftyone.core.labels.Detections` or
+            :class:`fiftyone.core.labels.Polylines`
         gt_field: the name of the field containing the ground truth
-            :class:`fiftyone.core.labels.Detections` instances
+            :class:`fiftyone.core.labels.Detections` or
+            :class:`fiftyone.core.labels.Polylines`
         iou (None): the IoU threshold to use to determine matches
         classwise (None): whether to only match objects with the same class
             label (True) or allow matches between classes (False)
@@ -129,8 +131,8 @@ class COCOEvaluation(DetectionEvaluation):
         if eval_key is None:
             # Don't save results on user's data
             eval_key = "eval"
-            gts = _copy_detections(gts)
-            preds = _copy_detections(preds)
+            gts = _copy_labels(gts)
+            preds = _copy_labels(preds)
 
         return _coco_evaluation_single_iou(gts, preds, eval_key, self.config)
 
@@ -194,8 +196,8 @@ class COCOEvaluation(DetectionEvaluation):
 
                 for image in images:
                     # Don't mess with the user's data
-                    gts = _copy_detections(image[self.gt_field])
-                    preds = _copy_detections(image[self.pred_field])
+                    gts = _copy_labels(image[self.gt_field])
+                    preds = _copy_labels(image[self.pred_field])
 
                     image_matches = _coco_evaluation_iou_sweep(
                         gts, preds, self.config
@@ -464,12 +466,13 @@ def _coco_evaluation_iou_sweep(gts, preds, config):
 def _coco_evaluation_setup(
     gts, preds, id_keys, iou_key, config, max_preds=None
 ):
+    field = gts._LABEL_LIST_FIELD
     iscrowd = _make_iscrowd_fcn(config.iscrowd)
     classwise = config.classwise
 
     # Organize preds and GT by category
     cats = defaultdict(lambda: defaultdict(list))
-    for det in preds.detections:
+    for det in preds[field]:
         det[iou_key] = _NO_MATCH_IOU
         for id_key in id_keys:
             det[id_key] = _NO_MATCH_ID
@@ -477,7 +480,7 @@ def _coco_evaluation_setup(
         label = det.label if classwise else "all"
         cats[label]["preds"].append(det)
 
-    for det in gts.detections:
+    for det in gts[field]:
         det[iou_key] = _NO_MATCH_IOU
         for id_key in id_keys:
             det[id_key] = _NO_MATCH_ID
@@ -503,7 +506,7 @@ def _coco_evaluation_setup(
         gts = sorted(gts, key=iscrowd)
 
         # Compute ``num_preds x num_gts`` IoUs
-        ious = _compute_iou(preds, gts, iscrowd)
+        ious = _compute_ious(preds, gts, iscrowd)
 
         gt_ids = [g.id for g in gts]
         for pred, gt_ious in zip(preds, ious):
@@ -614,7 +617,7 @@ def _compute_matches(
     return matches
 
 
-def _compute_iou(preds, gts, iscrowd):
+def _compute_ious(preds, gts, iscrowd):
     ious = np.zeros((len(preds), len(gts)))
     for j, gt in enumerate(gts):
         gx, gy, gw, gh = gt.bounding_box
@@ -642,24 +645,25 @@ def _compute_iou(preds, gts, iscrowd):
 
 
 def _make_iscrowd_fcn(iscrowd_attr):
-    def _iscrowd(detection):
+    def _iscrowd(label):
         try:
-            return bool(detection[iscrowd_attr])
+            return bool(label[iscrowd_attr])
         except KeyError:
             # @todo remove Attribute usage
-            if iscrowd_attr in detection.attributes:
-                return bool(detection.attributes[iscrowd_attr].value)
+            if iscrowd_attr in label.attributes:
+                return bool(label.attributes[iscrowd_attr].value)
             else:
                 return False
 
     return _iscrowd
 
 
-def _copy_detections(dets):
-    _dets = dets.copy()
+def _copy_labels(labels):
+    field = labels._LABEL_LIST_FIELD
+    _labels = labels.copy()
 
     # We need the IDs to stay the same
-    for _det, det in zip(_dets.detections, dets.detections):
-        _det._id = det._id
+    for _label, label in zip(_labels[field], labels[field]):
+        _label._id = label._id
 
-    return _dets
+    return _labels

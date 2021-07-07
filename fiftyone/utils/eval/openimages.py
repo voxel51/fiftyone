@@ -28,9 +28,11 @@ class OpenImagesEvaluationConfig(DetectionEvaluationConfig):
 
     Args:
         pred_field: the name of the field containing the predicted
-            :class:`fiftyone.core.labels.Detections` instances
+            :class:`fiftyone.core.labels.Detections` or
+            :class:`fiftyone.core.labels.Polylines`
         gt_field: the name of the field containing the ground truth
-            :class:`fiftyone.core.labels.Detections` instances
+            :class:`fiftyone.core.labels.Detections` or
+            :class:`fiftyone.core.labels.Polylines`
         iou (None): the IoU threshold to use to determine matches
         classwise (None): whether to only match objects with the same class
             label (True) or allow matches between classes (False)
@@ -46,10 +48,10 @@ class OpenImagesEvaluationConfig(DetectionEvaluationConfig):
         neg_label_field (None): the name of a field containing image-level
             :class:`fiftyone.core.labels.Classifications` that specify which
             classes should not be evaluated in the image
-        expand_gt_hierarchy (True): whether to expand ground truth detections
-            and labels according to the provided ``hierarchy``
-        expand_pred_hierarchy (False): whether to expand predicted detections
-            and labels according to the provided ``hierarchy``
+        expand_gt_hierarchy (True): whether to expand ground truth objects and
+            labels according to the provided ``hierarchy``
+        expand_pred_hierarchy (False): whether to expand predicted objects and
+            labels according to the provided ``hierarchy``
     """
 
     def __init__(
@@ -461,10 +463,12 @@ def _expand_label_hierarchy(labels, config, expand_child=True):
     keyed_nodes = config._hierarchy_keyed_parent
     if expand_child:
         keyed_nodes = config._hierarchy_keyed_child
+
     additional_labs = []
     for lab in labels:
         if lab in keyed_nodes:
             additional_labs += list(keyed_nodes[lab])
+
     return list(set(labels + additional_labs))
 
 
@@ -474,6 +478,7 @@ def _expand_detection_hierarchy(cats, det, config, label_type):
         new_det = det.copy()
         new_det.label = parent
         cats[parent][label_type].append(new_det)
+
     return cats
 
 
@@ -511,6 +516,7 @@ def _open_images_evaluation_single_iou(
 def _open_images_evaluation_setup(
     gts, preds, id_key, iou_key, config, pos_labs, neg_labs, max_preds=None
 ):
+    field = gts._LABEL_LIST_FIELD
 
     if pos_labs is None:
         relevant_labs = neg_labs
@@ -524,7 +530,7 @@ def _open_images_evaluation_setup(
 
     # Organize preds and GT by category
     cats = defaultdict(lambda: defaultdict(list))
-    for det in preds.detections:
+    for det in preds[field]:
         if relevant_labs is None or det.label in relevant_labs:
             det[iou_key] = _NO_MATCH_IOU
             det[id_key] = _NO_MATCH_ID
@@ -535,7 +541,7 @@ def _open_images_evaluation_setup(
             if config.expand_pred_hierarchy and label != "all":
                 cats = _expand_detection_hierarchy(cats, det, config, "preds")
 
-    for det in gts.detections:
+    for det in gts[field]:
         if relevant_labs is None or det.label in relevant_labs:
             det[iou_key] = _NO_MATCH_IOU
             det[id_key] = _NO_MATCH_ID
@@ -564,7 +570,7 @@ def _open_images_evaluation_setup(
         gts = sorted(gts, key=iscrowd)
 
         # Compute ``num_preds x num_gts`` IoUs
-        ious = _compute_iou(preds, gts, iscrowd)
+        ious = _compute_ious(preds, gts, iscrowd)
 
         gt_ids = [g.id for g in gts]
         for pred, gt_ious in zip(preds, ious):
@@ -620,7 +626,7 @@ def _compute_matches(
                     ):
                         break
 
-                    # if you already perfectly matched a gt
+                    # If you already perfectly matched a gt
                     # then there is no reason to continue looking
                     # if you match multiple crowds with iou=1, choose the first
                     if best_match_iou == 1:
@@ -637,10 +643,10 @@ def _compute_matches(
                         gt_map[best_match]
                     ):
                         # Note: This differs from COCO in that Open Images
-                        # detections are only matched with the highest IoU gt
-                        # or a crowd. A detection will not be matched with a
-                        # secondary highest IoU gt if the highest IoU gt was
-                        # already matched with a different detection.
+                        # objects are only matched with the highest IoU gt or a
+                        # crowd. An object will not be matched with a secondary
+                        # highest IoU gt if the highest IoU gt was already
+                        # matched with a different object
 
                         best_match = None
 
@@ -651,7 +657,7 @@ def _compute_matches(
 
                     # This only occurs when matching more than 1 prediction to
                     # a crowd. Only the first match counts as a TP, the rest
-                    # are ignored in mAP calculation.
+                    # are ignored in mAP calculation
                     if gt[id_key] != _NO_MATCH_ID:
                         skip_match = True
                         tag = "crowd"
@@ -660,6 +666,7 @@ def _compute_matches(
                         gt[eval_key] = tag
                         gt[id_key] = pred.id
                         gt[iou_key] = best_match_iou
+
                     pred[eval_key] = tag
                     pred[id_key] = best_match
                     pred[iou_key] = best_match_iou
@@ -703,7 +710,7 @@ def _compute_matches(
     return matches
 
 
-def _compute_iou(preds, gts, iscrowd):
+def _compute_ious(preds, gts, iscrowd):
     ious = np.zeros((len(preds), len(gts)))
     for j, gt in enumerate(gts):
         gx, gy, gw, gh = gt.bounding_box
@@ -725,18 +732,18 @@ def _compute_iou(preds, gts, iscrowd):
             pred_area = ph * pw
             inter = h * w
             union = pred_area if gt_crowd else pred_area + gt_area - inter
-            ious[i, j] = min(1, inter / union)
+            ious[i, j] = min(inter / union, 1)
 
     return ious
 
 
 def _make_iscrowd_fcn(iscrowd_attr):
-    def _iscrowd(detection):
-        if iscrowd_attr in detection.attributes:
-            return bool(detection.attributes[iscrowd_attr].value)
+    def _iscrowd(label):
+        if iscrowd_attr in label.attributes:
+            return bool(label.attributes[iscrowd_attr].value)
 
         try:
-            return bool(detection[iscrowd_attr])
+            return bool(label[iscrowd_attr])
         except KeyError:
             return False
 

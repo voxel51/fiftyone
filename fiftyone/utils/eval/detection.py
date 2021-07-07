@@ -39,7 +39,7 @@ def evaluate_detections(
     configued via the ``method`` and ``config`` parameters.
 
     If an ``eval_key`` is provided, a number of fields are populated at the
-    detection- and sample-level recording the results of the evaluation:
+    object- and sample-level recording the results of the evaluation:
 
     -   True positive (TP), false positive (FP), and false negative (FN) counts
         for the each sample are saved in top-level fields of each sample::
@@ -55,21 +55,22 @@ def evaluate_detections(
             FP: frame.<eval_key>_fp
             FN: frame.<eval_key>_fn
 
-    -   The fields listed below are populated on each individual
-        :class:`fiftyone.core.labels.Detection` instance; these fields tabulate
-        the TP/FP/FN status of the object, the ID of the matching object
-        (if any), and the matching IoU::
+    -   The fields listed below are populated on each individual object; these
+        fields tabulate the TP/FP/FN status of the object, the ID of the
+        matching object (if any), and the matching IoU::
 
-            TP/FP/FN: detection.<eval_key>
-                  ID: detection.<eval_key>_id
-                 IoU: detection.<eval_key>_iou
+            TP/FP/FN: object.<eval_key>
+                  ID: object.<eval_key>_id
+                 IoU: object.<eval_key>_iou
 
     Args:
         samples: a :class:`fiftyone.core.collections.SampleCollection`
         pred_field: the name of the field containing the predicted
-            :class:`fiftyone.core.labels.Detections` to evaluate
+            :class:`fiftyone.core.labels.Detections` or
+            :class:`fiftyone.core.labels.Polylines`
         gt_field ("ground_truth"): the name of the field containing the ground
-            truth :class:`fiftyone.core.labels.Detections`
+            truth :class:`fiftyone.core.labels.Detections` or
+            :class:`fiftyone.core.labels.Polylines`
         eval_key (None): an evaluation key to use to refer to this evaluation
         classes (None): the list of possible classes. If not provided, classes
             are loaded from :meth:`fiftyone.core.dataset.Dataset.classes` or
@@ -167,9 +168,11 @@ class DetectionEvaluationConfig(foe.EvaluationMethodConfig):
 
     Args:
         pred_field: the name of the field containing the predicted
-            :class:`fiftyone.core.labels.Detections` instances
+            :class:`fiftyone.core.labels.Detections` or
+            :class:`fiftyone.core.labels.Polylines`
         gt_field: the name of the field containing the ground truth
-            :class:`fiftyone.core.labels.Detections` instances
+            :class:`fiftyone.core.labels.Detections` or
+            :class:`fiftyone.core.labels.Polylines`
         iou (None): the IoU threshold to use to determine matches
         classwise (None): whether to only match objects with the same class
             label (True) or allow matches between classes (False)
@@ -272,19 +275,31 @@ class DetectionEvaluation(foe.EvaluationMethod):
         )
 
     def get_fields(self, samples, eval_key):
+        pred_field = self.config.pred_field
+        pred_type = samples._get_label_field_type(pred_field)
+        pred_key = "%s.%s.%s" % (
+            pred_field,
+            pred_type._LABEL_LIST_FIELD,
+            eval_key,
+        )
+
+        gt_field = self.config.gt_field
+        gt_type = samples._get_label_field_type(gt_field)
+        gt_key = "%s.%s.%s" % (gt_field, gt_type._LABEL_LIST_FIELD, eval_key)
+
         fields = [
             "%s_tp" % eval_key,
             "%s_fp" % eval_key,
             "%s_fn" % eval_key,
-            "%s.detections.%s" % (self.config.pred_field, eval_key),
-            "%s.detections.%s_id" % (self.config.pred_field, eval_key),
-            "%s.detections.%s_iou" % (self.config.pred_field, eval_key),
-            "%s.detections.%s" % (self.config.gt_field, eval_key),
-            "%s.detections.%s_id" % (self.config.gt_field, eval_key),
-            "%s.detections.%s_iou" % (self.config.gt_field, eval_key),
+            pred_key,
+            "%s_id" % pred_key,
+            "%s_iou" % pred_key,
+            gt_key,
+            "%s_id" % gt_key,
+            "%s_iou" % gt_key,
         ]
 
-        if samples._is_frame_field(self.config.gt_field):
+        if samples._is_frame_field(gt_field):
             fields.extend(
                 [
                     "frames.%s_tp" % eval_key,
@@ -299,18 +314,27 @@ class DetectionEvaluation(foe.EvaluationMethod):
         pred_field, is_frame_field = samples._handle_frame_field(
             self.config.pred_field
         )
+        pred_type = samples._get_label_field_type(self.config.pred_field)
+        pred_key = "%s.%s.%s" % (
+            pred_field,
+            pred_type._LABEL_LIST_FIELD,
+            eval_key,
+        )
+
         gt_field, _ = samples._handle_frame_field(self.config.gt_field)
+        gt_type = samples._get_label_field_type(self.config.gt_field)
+        gt_key = "%s.%s.%s" % (gt_field, gt_type._LABEL_LIST_FIELD, eval_key)
 
         fields = [
             "%s_tp" % eval_key,
             "%s_fp" % eval_key,
             "%s_fn" % eval_key,
-            "%s.detections.%s" % (pred_field, eval_key),
-            "%s.detections.%s_id" % (pred_field, eval_key),
-            "%s.detections.%s_iou" % (pred_field, eval_key),
-            "%s.detections.%s" % (gt_field, eval_key),
-            "%s.detections.%s_id" % (gt_field, eval_key),
-            "%s.detections.%s_iou" % (gt_field, eval_key),
+            pred_key,
+            "%s_id" % pred_key,
+            "%s_iou" % pred_key,
+            gt_key,
+            "%s_id" % gt_key,
+            "%s_iou" % gt_key,
         ]
 
         if is_frame_field:
