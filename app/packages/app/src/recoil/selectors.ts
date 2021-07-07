@@ -218,47 +218,6 @@ export const view = selector<[]>({
   },
 });
 
-export const filterStages = selector<object>({
-  key: "filterStages",
-  get: ({ get }) => {
-    return get(atoms.stateDescription).filters;
-  },
-  set: ({ get, set }, filters) => {
-    const state = {
-      ...get(atoms.stateDescription),
-      filters,
-    };
-    state.selected.forEach((id) => {
-      set(atoms.isSelectedSample(id), false);
-    });
-    state.selected = [];
-    set(atoms.selectedSamples, new Set());
-    socket.send(packageMessage("filters_update", { filters }));
-    set(atoms.stateDescription, state);
-  },
-});
-
-export const hasFilters = selector<boolean>({
-  key: "hasFilters",
-  get: ({ get }) => Object.keys(get(filterStages)).length > 0,
-});
-
-export const filterStage = selectorFamily<object, string>({
-  key: "filterStage",
-  get: (path) => ({ get }) => {
-    return get(filterStages)?.[path] ?? {};
-  },
-  set: (path: string) => ({ get, set }, filter) => {
-    const filters = Object.assign({}, get(filterStages));
-    if (filter === null) {
-      delete filters[path];
-    } else {
-      filters[path] = filter;
-    }
-    set(filterStages, filters);
-  },
-});
-
 export const datasetStats = selector({
   key: "datasetStats",
   get: ({ get }) => {

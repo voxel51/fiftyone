@@ -1,5 +1,4 @@
 import {
-  atomFamily,
   DefaultValue,
   GetRecoilValue,
   selectorFamily,
@@ -9,6 +8,7 @@ import {
 import * as selectors from "../../recoil/selectors";
 import { Range } from "./RangeSlider";
 import { AGGS, VALID_NUMERIC_TYPES } from "../../utils/labels";
+import { filterStage } from "./atoms";
 
 export const isNumericField = selectorFamily<boolean, string>({
   key: "isNumericField",
@@ -26,6 +26,7 @@ type NumericFilter = {
 
 const getFilter = (
   get: GetRecoilValue,
+  modal: boolean,
   path: string,
   defaultRange?: Range
 ): NumericFilter => {
@@ -36,7 +37,7 @@ const getFilter = (
       range: bounds,
       none: true,
     },
-    ...get(selectors.filterStage(path)),
+    ...get(filterStage({ modal, path })),
   };
   if (!meetsDefault({ ...result, none: true }, bounds)) {
     return { ...result, none: false };
@@ -51,6 +52,7 @@ const meetsDefault = (filter: NumericFilter, bounds: Range) => {
 const setFilter = (
   get: GetRecoilValue,
   set: SetRecoilState,
+  modal: boolean,
   path: string,
   key: string,
   value: boolean | Range | DefaultValue,
@@ -59,7 +61,7 @@ const setFilter = (
   const bounds = get(boundsAtom({ path, defaultRange }));
   const filter = {
     range: bounds,
-    ...getFilter(get, path, defaultRange),
+    ...getFilter(get, modal, path, defaultRange),
     [key]: value,
     _CLS: "numeric",
   };
@@ -70,9 +72,9 @@ const setFilter = (
   }
 
   if (meetsDefault(check, bounds)) {
-    set(selectors.filterStage(path), null);
+    set(filterStage({ modal, path }), null);
   } else {
-    set(selectors.filterStage(path), { ...filter, none: false });
+    set(filterStage({ modal, path }), { ...filter, none: false });
   }
 };
 
@@ -114,69 +116,46 @@ export const boundsAtom = selectorFamily<
 export const rangeAtom = selectorFamily<
   Range,
   {
-    path: string;
     defaultRange?: Range;
+    modal: boolean;
+    path: string;
   }
 >({
   key: "filterNumericFieldRange",
-  get: ({ path, defaultRange }) => ({ get }) => {
-    return getFilter(get, path, defaultRange).range;
+  get: ({ defaultRange, modal, path }) => ({ get }) => {
+    return getFilter(get, modal, path, defaultRange).range;
   },
-  set: ({ path, defaultRange }) => ({ get, set }, range) =>
-    setFilter(get, set, path, "range", range, defaultRange),
-});
-
-export const rangeModalAtom = atomFamily<
-  Range,
-  {
-    path: string;
-    defaultRange?: Range;
-  }
->({
-  key: "modalFilterNumericFieldRange",
-  default: rangeAtom,
+  set: ({ defaultRange, modal, path }) => ({ get, set }, range) =>
+    setFilter(get, set, modal, path, "range", range, defaultRange),
 });
 
 export const noneAtom = selectorFamily<
   boolean,
   {
-    path: string;
     defaultRange?: Range;
+    modal: boolean;
+    path: string;
   }
 >({
   key: "filterNumericFieldNone",
-  get: ({ path }) => ({ get }) => getFilter(get, path).none,
-  set: ({ path, defaultRange }) => ({ get, set }, value) =>
-    setFilter(get, set, path, "none", value, defaultRange),
-});
-
-export const noneModalAtom = atomFamily<
-  boolean,
-  {
-    path: string;
-    defaultRange?: Range;
-  }
->({
-  key: "modalFilterNumericFieldNone",
-  default: true,
+  get: ({ modal, path }) => ({ get }) => getFilter(get, modal, path).none,
+  set: ({ defaultRange, modal, path }) => ({ get, set }, value) =>
+    setFilter(get, set, modal, path, "none", value, defaultRange),
 });
 
 export const fieldIsFiltered = selectorFamily<
   boolean,
   {
-    path: string;
     defaultRange?: Range;
     modal?: boolean;
+    path: string;
   }
 >({
   key: "numericFieldIsFiltered",
   get: ({ path, defaultRange, modal }) => ({ get }) => {
-    const [noneValue, rangeValue] = modal
-      ? [noneModalAtom, rangeModalAtom]
-      : [noneAtom, rangeAtom];
     const [none, range] = [
-      get(noneValue({ path, defaultRange })),
-      get(rangeValue({ path, defaultRange })),
+      get(noneAtom({ modal, path, defaultRange })),
+      get(rangeAtom({ modal, path, defaultRange })),
     ];
     const bounds = get(boundsAtom({ path, defaultRange }));
 
@@ -187,25 +166,5 @@ export const fieldIsFiltered = selectorFamily<
       ) &&
         bounds[0] !== bounds[1])
     );
-  },
-});
-
-export const modalFilter = selectorFamily<
-  NumericFilter | null,
-  {
-    path: string;
-    defaultRange?: Range;
-  }
->({
-  key: "numericFieldModalFilter",
-  get: (params) => ({ get }) => {
-    const filter: NumericFilter = {
-      _CLS: "numeric",
-      range: get(rangeModalAtom(params)),
-      none: get(noneModalAtom(params)),
-    };
-    const bounds = get(boundsAtom(params));
-
-    return meetsDefault(filter, bounds) ? null : filter;
   },
 });

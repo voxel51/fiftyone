@@ -8,6 +8,8 @@ import {
 
 import * as selectors from "../../recoil/selectors";
 import { BOOLEAN_FIELD } from "../../utils/labels";
+import { Value } from "./types";
+import { filterStage, FilterParams } from "./atoms";
 
 interface BooleanFilter {
   false: boolean;
@@ -16,13 +18,17 @@ interface BooleanFilter {
   _CLS: "bool";
 }
 
-const getFilter = (get: GetRecoilValue, path: string): BooleanFilter => {
+const getFilter = (
+  get: GetRecoilValue,
+  modal: boolean,
+  path: string
+): BooleanFilter => {
   return {
     _CLS: "bool",
     true: false,
     false: false,
     none: false,
-    ...get(selectors.filterStage(path)),
+    ...get(filterStage({ modal, path })),
   };
 };
 
@@ -32,81 +38,54 @@ const meetsDefault = (filter: BooleanFilter) =>
 const setFilter = (
   get: GetRecoilValue,
   set: SetRecoilState,
+  modal: boolean,
   path: string,
   key: string,
   value: boolean | DefaultValue
 ) => {
   const filter = {
-    ...getFilter(get, path),
+    ...getFilter(get, modal, path),
     [key]: value,
   };
   if (meetsDefault(filter)) {
-    set(selectors.filterStage(path), null);
+    set(filterStage({ modal, path }), null);
   } else {
-    set(selectors.filterStage(path), filter);
+    set(filterStage({ modal, path }), filter);
   }
 };
 
-export const trueAtom = selectorFamily<boolean, string>({
+export const trueAtom = selectorFamily<boolean, FilterParams>({
   key: "filterBooleanFieldTrue",
-  get: (path) => ({ get }) => getFilter(get, path).true,
-  set: (path) => ({ get, set }, value) =>
-    setFilter(get, set, path, "true", value),
+  get: ({ modal, path }) => ({ get }) => getFilter(get, modal, path).true,
+  set: ({ modal, path }) => ({ get, set }, value) =>
+    setFilter(get, set, modal, path, "true", value),
 });
 
-export const trueModalAtom = atomFamily<boolean, string>({
-  key: "modalFilterBooleanFieldTrue",
-  default: false,
-});
-
-export const falseAtom = selectorFamily<boolean, string>({
+export const falseAtom = selectorFamily<boolean, FilterParams>({
   key: "filterBooleanFieldFalse",
-  get: (path) => ({ get }) => getFilter(get, path).false,
-  set: (path) => ({ get, set }, value) =>
-    setFilter(get, set, path, "false", value),
+  get: ({ modal, path }) => ({ get }) => getFilter(get, modal, path).false,
+  set: ({ modal, path }) => ({ get, set }, value) =>
+    setFilter(get, set, modal, path, "false", value),
 });
 
-export const falseModalAtom = atomFamily<boolean, string>({
-  key: "modalFilterBooleanFieldFalse",
-  default: false,
-});
-
-export const noneAtom = selectorFamily<boolean, string>({
+export const noneAtom = selectorFamily<boolean, FilterParams>({
   key: "filterBooleanFieldNone",
-  get: (path) => ({ get }) => getFilter(get, path).none,
-  set: (path) => ({ get, set }, value) =>
-    setFilter(get, set, path, "none", value),
-});
-
-export const noneModalAtom = atomFamily<boolean, string>({
-  key: "modalFilterBooleanFieldNone",
-  default: false,
+  get: ({ modal, path }) => ({ get }) => getFilter(get, modal, path).none,
+  set: ({ modal, path }) => ({ get, set }, value) =>
+    setFilter(get, set, modal, path, "none", value),
 });
 
 export const fieldIsFiltered = selectorFamily<
   boolean,
-  { path: string; modal?: boolean }
+  { path: string; modal: boolean }
 >({
   key: "booleanFieldIsFiltered",
   get: ({ path, modal }) => ({ get }) => {
-    const [none, trueValue, falseValue] = modal
-      ? [noneModalAtom, trueModalAtom, falseModalAtom]
-      : [noneAtom, trueAtom, falseAtom];
-    return get(none(path)) || get(trueValue(path)) || get(falseValue(path));
-  },
-});
-
-export const modalFilter = selectorFamily<BooleanFilter | null, string>({
-  key: "booleanFieldModalFilter",
-  get: (path) => ({ get }) => {
-    const filter: BooleanFilter = {
-      _CLS: "bool",
-      false: get(falseModalAtom(path)),
-      true: get(trueModalAtom(path)),
-      none: get(noneModalAtom(path)),
-    };
-
-    return meetsDefault(filter) ? null : filter;
+    return (
+      get(noneAtom({ path, modal })) ||
+      get(trueAtom({ path, modal })) ||
+      get(falseAtom({ path, modal }))
+    );
   },
 });
 
@@ -118,24 +97,24 @@ export const selectedValuesAtom = selectorFamily<
   get: ({ modal, path }) => ({ get }) => {
     const values: Value[] = [];
 
-    if (get(modal ? noneModalAtom(path) : noneAtom(path))) {
+    if (get(noneAtom({ modal, path }))) {
       values.push(null);
     }
 
-    if (get(modal ? falseModalAtom(path) : falseAtom(path))) {
+    if (get(falseAtom({ modal, path }))) {
       values.push(false);
     }
 
-    if (get(modal ? trueModalAtom(path) : trueAtom(path))) {
+    if (get(trueAtom({ modal, path }))) {
       values.push(true);
     }
 
     return values;
   },
   set: ({ path, modal }) => ({ get, set }, values) => {
-    const noneA = modal ? noneModalAtom(path) : noneAtom(path);
-    const falseA = modal ? falseModalAtom(path) : falseAtom(path);
-    const trueA = modal ? trueModalAtom(path) : trueAtom(path);
+    const noneA = noneAtom({ path, modal });
+    const falseA = falseAtom({ path, modal });
+    const trueA = trueAtom({ modal, path });
 
     const currentNone = get(noneA);
     const currentFalse = get(falseA);

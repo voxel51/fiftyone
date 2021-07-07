@@ -9,6 +9,7 @@ import {
 import * as selectors from "../../recoil/selectors";
 import { OBJECT_ID_FIELD, STRING_FIELD } from "../../utils/labels";
 import { Value } from "./types";
+import { filterStage, FilterParams } from "./atoms";
 
 export const LIST_LIMIT = 200;
 
@@ -26,12 +27,16 @@ interface StringFilter {
   _CLS: "str";
 }
 
-const getFilter = (get: GetRecoilValue, path: string): StringFilter => {
+const getFilter = (
+  get: GetRecoilValue,
+  modal: boolean,
+  path: string
+): StringFilter => {
   return {
     values: [],
     exclude: false,
     _CLS: "str",
-    ...get(selectors.filterStage(path)),
+    ...get(filterStage({ modal, path })),
   };
 };
 
@@ -41,59 +46,38 @@ const meetsDefault = (filter: StringFilter) =>
 const setFilter = (
   get: GetRecoilValue,
   set: SetRecoilState,
+  modal: boolean,
   path: string,
   key: string,
   value: boolean | string[] | DefaultValue
 ) => {
   const filter = {
-    ...getFilter(get, path),
+    ...getFilter(get, modal, path),
     [key]: value,
   };
   if (filter.values.length === 0) {
     filter.exclude = false;
   }
   if (meetsDefault(filter)) {
-    set(selectors.filterStage(path), null);
+    set(filterStage({ modal, path }), null);
   } else {
-    set(selectors.filterStage(path), filter);
+    set(filterStage({ modal, path }), filter);
   }
 };
 
-export const selectedValuesAtom = selectorFamily<Value[], string>({
+export const selectedValuesAtom = selectorFamily<Value[], FilterParams>({
   key: "filterStringFieldValues",
-  get: (path) => ({ get }) => getFilter(get, path).values,
-  set: (path) => ({ get, set }, value) =>
-    setFilter(get, set, path, "values", value),
+  get: ({ modal, path }) => ({ get }) => getFilter(get, modal, path).values,
+  set: ({ modal, path }) => ({ get, set }, value) =>
+    typeof value === "string" &&
+    setFilter(get, set, modal, path, "values", value),
 });
 
-export const selectedValuesModalAtom = atomFamily<Value[], string>({
-  key: "modalFilterStringFieldValues",
-  default: [],
-});
-
-export const excludeAtom = selectorFamily<boolean, string>({
+export const excludeAtom = selectorFamily<boolean, FilterParams>({
   key: "filterStringFieldExclude",
-  get: (path) => ({ get }) => getFilter(get, path).exclude,
-  set: (path) => ({ get, set }, value) =>
-    setFilter(get, set, path, "exclude", value),
-});
-
-export const excludeModalAtom = atomFamily<boolean, string>({
-  key: "modalFilterStringFieldExclude",
-  default: false,
-});
-
-export const modalFilter = selectorFamily<StringFilter | null, string>({
-  key: "stringFieldModalFilter",
-  get: (path) => ({ get }) => {
-    const filter: StringFilter = {
-      _CLS: "str",
-      values: get(selectedValuesModalAtom(path)),
-      exclude: get(excludeModalAtom(path)),
-    };
-
-    return meetsDefault(filter) ? null : filter;
-  },
+  get: ({ modal, path }) => ({ get }) => getFilter(get, modal, path).exclude,
+  set: ({ modal, path }) => ({ get, set }, value) =>
+    setFilter(get, set, modal, path, "exclude", value),
 });
 
 export const fieldIsFiltered = selectorFamily<
@@ -102,8 +86,9 @@ export const fieldIsFiltered = selectorFamily<
 >({
   key: "stringFieldIsFiltered",
   get: ({ path, modal }) => ({ get }) => {
-    const values = modal ? selectedValuesModalAtom : selectedValuesAtom;
-    const exclude = modal ? excludeModalAtom : excludeAtom;
-    return get(values(path)).length > 0 || exclude(path);
+    return (
+      get(selectedValuesAtom({ modal, path })).length > 0 ||
+      excludeAtom({ modal, path })
+    );
   },
 });

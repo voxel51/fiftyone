@@ -1,9 +1,10 @@
 import React from "react";
 import { animated } from "react-spring";
 
-import { useExpand, countsAtom } from "./utils";
 import CategoricalFilter from "./CategoricalFilter";
 import { selectedValuesAtom } from "./BooleanFieldFilter.state";
+import { useExpand } from "./hooks";
+import { countsAtom } from "./utils";
 
 const BooleanFieldFilter = ({ expanded, entry, modal }) => {
   const [ref, props] = useExpand(expanded);

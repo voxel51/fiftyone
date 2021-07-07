@@ -77,16 +77,6 @@ const LabelFilter = ({ expanded, entry, modal }: Props) => {
   const cPath = `${path}.confidence`;
   const lPath = `${path}.label`;
 
-  const [selectedLabels, exclude] = modal
-    ? [stringField.selectedValuesModalAtom, stringField.excludeModalAtom]
-    : [stringField.selectedValuesAtom, stringField.excludeAtom];
-
-  const [confidenceRange, noConfidence] = modal
-    ? [numericField.rangeModalAtom, numericField.noneModalAtom]
-    : [numericField.rangeAtom, numericField.noneAtom];
-
-  modal && console.log("EHL");
-
   return (
     <animated.div style={{ ...props }}>
       <div ref={ref}>
@@ -96,9 +86,12 @@ const LabelFilter = ({ expanded, entry, modal }: Props) => {
             color={entry.color}
             name={"Labels"}
             valueName={"label"}
-            selectedValuesAtom={selectedLabels(lPath)}
+            selectedValuesAtom={stringField.selectedValuesAtom({
+              modal,
+              path: lPath,
+            })}
             countsAtom={countsAtom({ modal, path: lPath })}
-            excludeAtom={exclude(lPath)}
+            excludeAtom={stringField.excludeAtom({ modal, path: lPath })}
             modal={modal}
             path={lPath}
           />
@@ -106,7 +99,11 @@ const LabelFilter = ({ expanded, entry, modal }: Props) => {
             <NamedRangeSlider
               color={entry.color}
               name={"Confidence"}
-              noneAtom={noConfidence({ path: cPath, defaultRange: [0, 1] })}
+              noneAtom={numericField.noneAtom({
+                modal,
+                path: cPath,
+                defaultRange: [0, 1],
+              })}
               noneCountAtom={noneCount({ path: cPath, modal, filtered: false })}
               noneSubCountAtom={noneCount({
                 path: cPath,
@@ -117,7 +114,11 @@ const LabelFilter = ({ expanded, entry, modal }: Props) => {
                 path: cPath,
                 defaultRange: [0, 1],
               })}
-              valueAtom={confidenceRange({ path: cPath, defaultRange: [0, 1] })}
+              valueAtom={numericField.rangeAtom({
+                modal,
+                path: cPath,
+                defaultRange: [0, 1],
+              })}
             />
           )}
         </div>

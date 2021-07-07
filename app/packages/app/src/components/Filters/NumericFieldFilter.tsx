@@ -6,13 +6,7 @@ import * as selectors from "../../recoil/selectors";
 import { NamedRangeSlider } from "./RangeSlider";
 import { FRAME_NUMBER_FIELD, INT_FIELD } from "../../utils/labels";
 import { useExpand } from "./hooks";
-import {
-  boundsAtom,
-  rangeModalAtom,
-  rangeAtom,
-  noneModalAtom,
-  noneAtom,
-} from "./NumericFieldFilter.state";
+import { boundsAtom, rangeAtom, noneAtom } from "./NumericFieldFilter.state";
 import { noneCount } from "./utils";
 
 const NumericFieldFilter = ({ expanded, entry, modal }) => {
@@ -29,16 +23,8 @@ const NumericFieldFilter = ({ expanded, entry, modal }) => {
           path: entry.path,
           filtered: true,
         })}
-        valueAtom={
-          modal
-            ? rangeModalAtom({ path: entry.path })
-            : rangeAtom({ path: entry.path })
-        }
-        noneAtom={
-          modal
-            ? noneModalAtom({ path: entry.path })
-            : noneAtom({ path: entry.path })
-        }
+        valueAtom={rangeAtom({ modal, path: entry.path })}
+        noneAtom={noneAtom({ modal, path: entry.path })}
         int={[INT_FIELD, FRAME_NUMBER_FIELD].includes(type)}
         ref={ref}
       />

@@ -3,12 +3,7 @@ import { animated } from "react-spring";
 
 import CategoricalFilter from "./CategoricalFilter";
 import { useExpand } from "./hooks";
-import {
-  selectedValuesModalAtom,
-  selectedValuesAtom,
-  excludeAtom,
-  excludeModalAtom,
-} from "./StringFieldFilter.state";
+import { selectedValuesAtom, excludeAtom } from "./StringFieldFilter.state";
 import { countsAtom } from "./utils";
 
 const StringFieldFilter = ({ expanded, entry, modal }) => {
@@ -19,14 +14,8 @@ const StringFieldFilter = ({ expanded, entry, modal }) => {
       <CategoricalFilter
         valueName={entry.path}
         color={entry.color}
-        selectedValuesAtom={
-          modal
-            ? selectedValuesModalAtom(entry.path)
-            : selectedValuesAtom(entry.path)
-        }
-        excludeAtom={
-          modal ? excludeAtom(entry.path) : excludeModalAtom(entry.path)
-        }
+        selectedValuesAtom={selectedValuesAtom({ modal, path: entry.path })}
+        excludeAtom={excludeAtom({ modal, path: entry.path })}
         countsAtom={countsAtom({ modal, path: entry.path })}
         path={entry.path}
         modal={modal}
