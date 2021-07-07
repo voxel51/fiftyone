@@ -6,7 +6,6 @@ import * as booleanFiltering from "./BooleanFieldFilter.state";
 import * as labelFiltering from "./LabelFieldFilters.state";
 import * as numericFiltering from "./NumericFieldFilter.state";
 import * as stringFiltering from "./StringFieldFilter.state";
-import { filterStages } from "./atoms";
 
 const clearFilters = ({ current, get, modal, paths, set }) => {
   const atom = modal ? modalFilterStages : filterStages;

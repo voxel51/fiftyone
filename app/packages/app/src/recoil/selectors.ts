@@ -233,58 +233,13 @@ export const datasetStats = selector({
   },
 });
 
-export const noneFieldCounts = selector<{ [key: string]: number }>({
-  key: "noneFieldCounts",
-  get: ({ get }) => {
-    const raw = get(atoms.datasetStatsRaw);
-    const currentView = get(view);
-    if (!raw.view) {
-      return {};
-    }
-    if (viewsAreEqual(raw.view, currentView)) {
-      return raw.stats.none.reduce((acc, cur) => {
-        acc[cur.name] = cur.result;
-        return acc;
-      }, {});
-    }
-    return {};
-  },
-});
-
-export const noneFilteredFieldCounts = selector<{ [key: string]: number }>({
-  key: "noneFilteredFieldCounts",
-  get: ({ get }) => {
-    const raw = get(atoms.extendedDatasetStatsRaw);
-    const currentView = get(view);
-    if (!raw.view) {
-      return {};
-    }
-    if (!viewsAreEqual(raw.view, currentView)) {
-      return {};
-    }
-    const currentFilters = get(filterStages);
-    if (!filtersAreEqual(raw.filters, currentFilters)) {
-      return {};
-    }
-
-    if (Object.entries(currentFilters).length === 0) {
-      return get(noneFieldCounts);
-    }
-
-    return raw.stats.none.reduce((acc, cur) => {
-      acc[cur.name] = cur.result;
-      return acc;
-    }, {});
-  },
-});
-
 const normalizeFilters = (filters) => {
   const names = Object.keys(filters).sort();
   const list = names.map((n) => filters[n]);
   return JSON.stringify([names, list]);
 };
 
-const filtersAreEqual = (filtersOne, filtersTwo) => {
+export const filtersAreEqual = (filtersOne, filtersTwo) => {
   return normalizeFilters(filtersOne) === normalizeFilters(filtersTwo);
 };
 
@@ -305,6 +260,24 @@ export const extendedDatasetStats = selector({
     }
 
     return raw.stats.main;
+  },
+});
+
+export const filterStages = selector<object>({
+  key: "filterStages",
+  get: ({ get }) => get(atoms.stateDescription).filters,
+  set: ({ get, set }, filters) => {
+    const state = {
+      ...get(atoms.stateDescription),
+      filters,
+    };
+    state.selected.forEach((id) => {
+      set(atoms.isSelectedSample(id), false);
+    });
+    state.selected = [];
+    set(atoms.selectedSamples, new Set());
+    socket.send(packageMessage("filters_update", { filters }));
+    set(atoms.stateDescription, state);
   },
 });
 
@@ -364,78 +337,6 @@ export const labelTagNames = selector<string[]>({
   },
 });
 
-export const labelTagCounts = selector<{ [key: string]: number }>({
-  key: "labelTagCounts",
-  get: ({ get }) => {
-    const paths = get(labelPaths).map((p) => p + ".tags");
-    const result = {};
-    (get(datasetStats) ?? []).forEach((s) => {
-      if (paths.includes(s.name)) {
-        Object.entries(s.result).forEach(([tag, count]) => {
-          if (!(tag in result)) {
-            result[tag] = 0;
-          }
-          result[tag] += count;
-        });
-      }
-    });
-
-    return result;
-  },
-});
-
-export const filteredLabelTagCounts = selector<{ [key: string]: number }>({
-  key: "filteredLabelTagCounts",
-  get: ({ get }) => {
-    const paths = get(labelPaths).map((p) => p + ".tags");
-    const result = {};
-    (get(extendedDatasetStats) ?? []).forEach((s) => {
-      if (paths.includes(s.name)) {
-        Object.entries(s.result).forEach(([tag, count]) => {
-          if (!(tag in result)) {
-            result[tag] = 0;
-          }
-          result[tag] += count;
-        });
-      }
-    });
-
-    return result;
-  },
-});
-
-export const tagSampleCounts = selector({
-  key: "tagSampleCounts",
-  get: ({ get }) => {
-    const stats = get(datasetStats);
-
-    return stats
-      ? stats.reduce((acc, cur) => {
-          if (cur.name === "tags") {
-            return cur.result;
-          }
-          return acc;
-        }, {})
-      : {};
-  },
-});
-
-export const filteredTagSampleCounts = selector({
-  key: "filteredTagSampleCounts",
-  get: ({ get }) => {
-    const stats = get(extendedDatasetStats);
-
-    return stats
-      ? stats.reduce((acc, cur) => {
-          if (cur.name === "tags") {
-            return cur.result;
-          }
-          return acc;
-        }, {})
-      : {};
-  },
-});
-
 export const labelTagsPaths = selector({
   key: "labelTagsPaths",
   get: ({ get }) => {
@@ -446,55 +347,6 @@ export const labelTagsPaths = selector({
         : path;
       return `${path}.tags`;
     });
-  },
-});
-
-export const labelTagSampleCounts = selector({
-  key: "labelTagSampleCounts",
-  get: ({ get }) => {
-    const stats = get(datasetStats);
-    const paths = get(labelTagsPaths);
-
-    const result = {};
-
-    stats &&
-      stats.forEach((s) => {
-        if (paths.includes(s.name)) {
-          Object.entries(s.result).forEach(([k, v]) => {
-            if (!(k in result)) {
-              result[k] = v;
-            } else {
-              result[k] += v;
-            }
-          });
-        }
-      });
-
-    return result;
-  },
-});
-
-export const filteredLabelTagSampleCounts = selector({
-  key: "filteredLabelTagSampleCounts",
-  get: ({ get }) => {
-    const stats = get(extendedDatasetStats);
-    const paths = get(labelTagsPaths);
-
-    const result = {};
-
-    stats &&
-      stats.forEach((s) => {
-        if (paths.includes(s.name)) {
-          Object.entries(s.result).forEach(([k, v]) => {
-            if (!(k in result)) {
-              result[k] = v;
-            } else {
-              result[k] += v;
-            }
-          });
-        }
-      });
-    return result;
   },
 });
 
@@ -936,41 +788,6 @@ export const hiddenFieldLabels = selectorFamily<string[], string>({
         .map(([label_id]) => label_id);
     }
     return [];
-  },
-});
-
-export const matchedTags = selectorFamily<
-  Set<string>,
-  { key: string; modal: boolean }
->({
-  key: "matchedTags",
-  get: ({ key, modal }) => ({ get }) => {
-    if (modal) {
-      return get(atoms.matchedTagsModal(key));
-    }
-    const tags = get(filterStages).tags;
-    if (tags && tags[key]) {
-      return new Set(tags[key]);
-    }
-    return new Set();
-  },
-  set: ({ key, modal }) => ({ get, set }, value) => {
-    if (modal) {
-      set(atoms.matchedTagsModal(key), value);
-    } else {
-      const stages = { ...get(filterStages) };
-      const tags = { ...(stages.tags || {}) };
-      if (value instanceof Set && value.size) {
-        tags[key] = Array.from(value);
-      } else if (stages.tags && key in stages.tags) {
-        delete tags[key];
-      }
-      stages.tags = tags;
-      if (Object.keys(stages.tags).length === 0) {
-        delete stages["tags"];
-      }
-      set(filterStages, stages);
-    }
   },
 });
 

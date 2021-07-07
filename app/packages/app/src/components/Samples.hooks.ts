@@ -9,6 +9,7 @@ import tile, { State } from "../utils/tile";
 import { packageMessage } from "../utils/socket";
 import { filterView } from "../utils/view";
 import { zoomAspectRatio } from "@fiftyone/looker";
+import { filterStages } from "./Filters/atoms";
 
 export const gridZoom = atom<number | null>({
   key: "gridZoom",
@@ -39,7 +40,7 @@ const stringifyObj = (obj) => {
 };
 
 export default (): [State, (state: State) => void] => {
-  const filters = useRecoilValue(selectors.filterStages);
+  const filters = useRecoilValue(filterStages);
   const datasetName = useRecoilValue(selectors.datasetName);
   const view = useRecoilValue(selectors.view);
   const refresh = useRecoilValue(selectors.refresh);

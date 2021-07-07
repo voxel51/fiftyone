@@ -188,8 +188,3 @@ export const savedLookerOptions = atom({
   key: "savedLookerOptions",
   default: {},
 });
-
-export const matchedTagsModal = atomFamily<Set<string>, string>({
-  key: "matchedTagsModal",
-  default: new Set(),
-});

@@ -11,6 +11,7 @@ import { isFloat, prettify } from "../utils/generic";
 import { useMessageHandler, useSendMessage } from "../utils/hooks";
 import * as selectors from "../recoil/selectors";
 import { AGGS } from "../utils/labels";
+import { filterStages } from "./Filters/atoms";
 
 const Container = styled.div`
   ${scrollbarStyles}
@@ -183,7 +184,7 @@ const DistributionsContainer = styled.div`
 
 const Distributions = ({ group }: { group: string }) => {
   const view = useRecoilValue(selectors.view);
-  const filters = useRecoilValue(selectors.filterStages);
+  const filters = useRecoilValue(filterStages);
   const datasetName = useRecoilValue(selectors.datasetName);
   const [loading, setLoading] = useState(true);
   const refresh = useRecoilValue(selectors.refresh);

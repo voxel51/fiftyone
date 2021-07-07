@@ -4,7 +4,6 @@ import { animated, useSpring } from "react-spring";
 import styled from "styled-components";
 
 import { activeLabelPaths, activeLabels } from "../Filters/utils";
-import { labelCount } from "../Filters/LabelFieldFilters.state";
 import * as atoms from "../../recoil/atoms";
 import * as selectors from "../../recoil/selectors";
 import { useTheme } from "../../utils/hooks";
@@ -69,13 +68,11 @@ export const numTaggable = selectorFamily<
   key: "numTaggable",
   get: ({ modal, labels }) => ({ get }) => {
     if (labels) {
-      return get(labelCount(modal));
+      return 0;
     } else if (modal) {
       return 1;
     } else {
-      return (
-        get(selectors.filteredTagSampleCounts) ?? get(selectors.tagSampleCounts)
-      );
+      return 0;
     }
   },
 });

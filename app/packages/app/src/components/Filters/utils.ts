@@ -1,14 +1,13 @@
 import { atomFamily, selector, selectorFamily } from "recoil";
-import { v4 as uuid } from "uuid";
 
-import * as atoms from "../../recoil/atoms";
 import * as selectors from "../../recoil/selectors";
+import { isLabelField } from "./LabelFieldFilters.state";
 import { isBooleanField } from "./BooleanFieldFilter.state";
 import { isNumericField } from "./NumericFieldFilter.state";
 import { isStringField } from "./StringFieldFilter.state";
 
 import { AGGS } from "../../utils/labels";
-import { request } from "../../utils/socket";
+import { Value } from "./types";
 
 const COUNT_CLS = "Count";
 
@@ -26,78 +25,6 @@ export const catchLabelCount = (
     acc[cur.name.slice(prefix.length).split(".")[0]] = cur.result;
   }
 };
-
-export const modalStats = selector({
-  key: "modalStats",
-  get: async ({ get }) => {
-    const id = uuid();
-    const data = await request({
-      type: "frame_statistics",
-      uuid: id,
-      args: {
-        sample_id: get(atoms.modal).sampleId,
-      },
-    });
-
-    return data.stats;
-  },
-});
-
-export const modalFrameLabelCounts = selector({
-  key: "modalFrameLabelCounts",
-  get: ({ get }) => {
-    const stats = get(modalFrameStats).main;
-    const names = get(selectors.labelNames("frame"));
-    if (stats === null) {
-      return null;
-    }
-    return stats.reduce((acc, cur) => {
-      catchLabelCount(names, "frames.", cur, acc);
-      return acc;
-    }, {});
-  },
-});
-
-export const modalFilteredFrameStats = selector({
-  key: "modalFilteredStats",
-  get: async ({ get }) => {
-    const id = uuid();
-    const data = await request({
-      type: "frame_statistics",
-      uuid: id,
-      args: {
-        sample_id: get(atoms.modal).sampleId,
-      },
-    });
-
-    return data.stats;
-  },
-});
-
-export const modalFilteredFrameLabelCounts = selector({
-  key: "modalFilteredFrameLabelCounts",
-  get: ({ get }) => {
-    const stats = get(modalFilteredFrameStats).main;
-    const names = get(selectors.labelNames("frame"));
-    if (stats === null) {
-      return null;
-    }
-    return stats.reduce((acc, cur) => {
-      catchLabelCount(names, "frames.", cur, acc);
-      return acc;
-    }, {});
-  },
-});
-
-export const isLabelField = selectorFamily<boolean, string>({
-  key: "isLabelField",
-  get: (field) => ({ get }) => {
-    const names = get(selectors.labelNames("sample")).concat(
-      get(selectors.labelNames("frame")).map((l) => "frames." + l)
-    );
-    return names.includes(field);
-  },
-});
 
 export const unsupportedFields = selector<string[]>({
   key: "unsupportedFields",
@@ -129,63 +56,6 @@ export const noneCount = selectorFamily<
     }
 
     return get(selectors.noneFieldCounts)[path];
-  },
-});
-
-const modalCountsAtom = selectorFamily<
-  {
-    count: number;
-    results: [Value, number][];
-  },
-  string
->({
-  key: "categoricalModalFieldCounts",
-  get: (path) => ({ get }) => {
-    let target = get(selectors.modalSample);
-    let nullCount = 0;
-    const counts = {};
-    const video = get(selectors.isRootView) && get(selectors.isVideoDataset);
-
-    if (video && path.startsWith("frames.")) {
-      console.log(get(modalFrameLabelCounts));
-      return {
-        count: 0,
-        results: [],
-      };
-    }
-
-    let keys = path.split(".").slice(0, -1);
-    const key = path.split(".").slice(-1)[0];
-
-    keys.forEach((key) => {
-      target = target[key];
-    });
-
-    const add = (v) => {
-      if (!v[key]) {
-        nullCount++;
-      } else {
-        v[key] in counts ? counts[v[key]]++ : (counts[v[key]] = 1);
-      }
-    };
-    let count = 0;
-    if (Array.isArray(target)) {
-      count = target.length;
-      target.forEach((v) => add(v));
-    } else {
-      add(target);
-      target[key] !== null && target[key] !== undefined && (count = 1);
-    }
-    const results: [Value, number][] = Object.entries(counts);
-
-    if (nullCount) {
-      results.push([null, nullCount]);
-    }
-
-    return {
-      results,
-      count,
-    };
   },
 });
 

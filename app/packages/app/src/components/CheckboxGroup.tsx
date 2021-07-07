@@ -10,7 +10,10 @@ import { useRecoilValue } from "recoil";
 import { animated, useSpring } from "react-spring";
 
 import { fieldIsFiltered } from "./Filters/LabelFieldFilters.state";
-import { isBooleanField, isNumericField, isStringField } from "./Filters/utils";
+import { isBooleanField } from "./Filters/BooleanFieldFilter.state";
+import { isNumericField } from "./Filters/NumericFieldFilter.state";
+import { isStringField } from "./Filters/StringFieldFilter.state";
+
 import { labelTypeIsFilterable } from "../utils/labels";
 
 import LabelFieldFilter from "./Filters/LabelFieldFilter";
