@@ -5,6 +5,7 @@ import * as atoms from "../../recoil/atoms";
 import * as selectors from "../../recoil/selectors";
 import { request } from "../../utils/socket";
 import { viewsAreEqual } from "../../utils/view";
+import { sampleModalFilter } from "./LabelFieldFilters.state";
 
 export { filterStages } from "../../recoil/selectors";
 
@@ -79,7 +80,7 @@ export const modalStats = selector({
   get: async ({ get }) => {
     const id = uuid();
     const data = await request({
-      type: "frame_statistics",
+      type: "statistics",
       uuid: id,
       args: {
         sample_id: get(atoms.modal).sampleId,
@@ -95,7 +96,7 @@ export const extendedModalStats = selector({
   get: async ({ get }) => {
     const id = uuid();
     const data = await request({
-      type: "frame_statistics",
+      type: "statistics",
       uuid: id,
       args: {
         sample_id: get(atoms.modal).sampleId,
@@ -158,7 +159,7 @@ export const labelTagCounts = selectorFamily<
 >({
   key: "labelTagCounts",
   get: (modal) => ({ get }) => {
-    const stats = get(selectors.datasetStats);
+    const stats = get(modal ? modalStats : selectors.datasetStats);
     const paths = get(selectors.labelTagsPaths);
 
     const result = {};
@@ -186,7 +187,9 @@ export const filteredLabelTagCounts = selectorFamily<
 >({
   key: "filteredLabelTagCounts",
   get: (modal) => ({ get }) => {
-    const stats = get(selectors.extendedDatasetStats);
+    const stats = get(
+      modal ? extendedModalStats : selectors.extendedDatasetStats
+    );
     const paths = get(selectors.labelTagsPaths);
 
     const result = {};
@@ -213,7 +216,7 @@ export const sampleTagCounts = selectorFamily<
 >({
   key: "sampleTagCounts",
   get: (modal) => ({ get }) => {
-    const stats = get(selectors.datasetStats);
+    const stats = get(modal ? modalStats : selectors.datasetStats);
 
     return stats
       ? stats.reduce((acc, cur) => {
@@ -232,7 +235,9 @@ export const filteredSampleTagCounts = selectorFamily<
 >({
   key: "filteredSampleTagCounts",
   get: (modal) => ({ get }) => {
-    const stats = get(selectors.extendedDatasetStats);
+    const stats = get(
+      modal ? extendedModalStats : selectors.extendedDatasetStats
+    );
 
     return stats
       ? stats.reduce((acc, cur) => {
@@ -245,15 +250,39 @@ export const filteredSampleTagCounts = selectorFamily<
   },
 });
 
+const COUNT_CLS = "Count";
+
+export const catchLabelCount = (
+  names: string[],
+  prefix: string,
+  cur: { name: string; _CLS: string; result: number },
+  acc: { [key: string]: number }
+): void => {
+  if (
+    cur.name &&
+    names.includes(cur.name.slice(prefix.length).split(".")[0]) &&
+    cur._CLS === COUNT_CLS
+  ) {
+    acc[cur.name.slice(prefix.length).split(".")[0]] = cur.result;
+  }
+};
+
 export const labelCounts = selectorFamily<
   { [key: string]: number },
   { key: "frame" | "sample"; modal: boolean }
 >({
   key: "labelCounts",
   get: ({ key, modal }) => ({ get }) => {
+    const names = get(selectors.labelNames(key));
+    const prefix = key === "sample" ? "" : "frames.";
     const stats = get(modal ? modalStats : selectors.datasetStats);
-
-    return {};
+    if (stats === null) {
+      return null;
+    }
+    return stats.reduce((acc, cur) => {
+      catchLabelCount(names, prefix, cur, acc);
+      return acc;
+    }, {});
   },
 });
 
@@ -263,7 +292,18 @@ export const filteredLabelCounts = selectorFamily<
 >({
   key: "filteredLabelCounts",
   get: ({ key, modal }) => ({ get }) => {
-    return {};
+    const names = get(selectors.labelNames(key));
+    const prefix = key === "sample" ? "" : "frames.";
+    const stats = get(
+      modal ? extendedModalStats : selectors.extendedDatasetStats
+    );
+    if (stats === null) {
+      return null;
+    }
+    return stats.reduce((acc, cur) => {
+      catchLabelCount(names, prefix, cur, acc);
+      return acc;
+    }, {});
   },
 });
 
@@ -273,16 +313,40 @@ export const scalarCounts = selectorFamily<
 >({
   key: "scalarCounts",
   get: (modal) => ({ get }) => {
-    return {};
+    if (modal) {
+      return get(selectors.modalSample);
+    }
+
+    const names = get(selectors.scalarNames("sample"));
+    const stats = get(selectors.datasetStats);
+    if (stats === null) {
+      return null;
+    }
+    return stats.reduce((acc, cur) => {
+      catchLabelCount(names, "", cur, acc);
+      return acc;
+    }, {});
   },
 });
 
 export const filteredScalarCounts = selectorFamily<
-  { [key: string]: number | string | null },
+  { [key: string]: number | string | null } | null,
   boolean
 >({
   key: "filteredScalarCounts",
   get: (modal) => ({ get }) => {
-    return {};
+    if (modal) {
+      return null;
+    }
+
+    const names = get(selectors.scalarNames("sample"));
+    const stats = get(selectors.extendedDatasetStats);
+    if (stats === null) {
+      return null;
+    }
+    return stats.reduce((acc, cur) => {
+      catchLabelCount(names, "", cur, acc);
+      return acc;
+    }, {});
   },
 });

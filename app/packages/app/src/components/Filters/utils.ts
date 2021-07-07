@@ -9,23 +9,6 @@ import { isStringField } from "./StringFieldFilter.state";
 import { AGGS } from "../../utils/labels";
 import { Value } from "./types";
 
-const COUNT_CLS = "Count";
-
-export const catchLabelCount = (
-  names: string[],
-  prefix: string,
-  cur: { name: string; _CLS: string; result: number },
-  acc: { [key: string]: number }
-): void => {
-  if (
-    cur.name &&
-    names.includes(cur.name.slice(prefix.length).split(".")[0]) &&
-    cur._CLS === COUNT_CLS
-  ) {
-    acc[cur.name.slice(prefix.length).split(".")[0]] = cur.result;
-  }
-};
-
 export const unsupportedFields = selector<string[]>({
   key: "unsupportedFields",
   get: ({ get }) => {

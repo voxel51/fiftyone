@@ -21,53 +21,71 @@ import "../app.global.css";
 import { patching } from "../components/Actions/Patcher";
 import { similaritySorting } from "../components/Actions/Similar";
 import { savingFilters } from "../components/Actions/ActionsRow";
+import { useClearModal } from "../recoil/utils";
 
 const useStateUpdate = () => {
-  return useRecoilCallback(({ snapshot, set, reset }) => async ({ state }) => {
-    const newSamples = new Set<string>(state.selected);
-    const oldSamples = await snapshot.getPromise(atoms.selectedSamples);
-    oldSamples.forEach(
-      (s) => !newSamples.has(s) && reset(atoms.isSelectedSample(s))
-    );
-    newSamples.forEach(
-      (s) => !oldSamples.has(s) && set(atoms.isSelectedSample(s), true)
-    );
-    const counter = await snapshot.getPromise(atoms.viewCounter);
-    set(atoms.viewCounter, counter + 1);
-    set(atoms.loading, false);
-    set(atoms.selectedSamples, newSamples);
-    set(atoms.stateDescription, state);
-    set(selectors.anyTagging, false);
-    set(patching, false);
-    set(similaritySorting, false);
-    set(savingFilters, false);
-    const colorPool = await snapshot.getPromise(atoms.colorPool);
-    if (JSON.stringify(state.config.color_pool) !== JSON.stringify(colorPool)) {
-      set(atoms.colorPool, state.config.color_pool);
-    }
-  });
+  return useRecoilCallback(
+    ({ snapshot, set, reset }) => async ({ state }) => {
+      const newSamples = new Set<string>(state.selected);
+      const oldSamples = await snapshot.getPromise(atoms.selectedSamples);
+      oldSamples.forEach(
+        (s) => !newSamples.has(s) && reset(atoms.isSelectedSample(s))
+      );
+      newSamples.forEach(
+        (s) => !oldSamples.has(s) && set(atoms.isSelectedSample(s), true)
+      );
+      const counter = await snapshot.getPromise(atoms.viewCounter);
+      set(atoms.viewCounter, counter + 1);
+      set(atoms.loading, false);
+      set(atoms.selectedSamples, newSamples);
+      set(atoms.stateDescription, state);
+      set(selectors.anyTagging, false);
+      set(patching, false);
+      set(similaritySorting, false);
+      set(savingFilters, false);
+      const colorPool = await snapshot.getPromise(atoms.colorPool);
+      if (
+        JSON.stringify(state.config.color_pool) !== JSON.stringify(colorPool)
+      ) {
+        set(atoms.colorPool, state.config.color_pool);
+      }
+    },
+    []
+  );
 };
 
 const useStatisticsUpdate = () => {
-  return useRecoilCallback(({ set }) => async ({ stats, view, filters }) => {
-    filters && set(atoms.extendedDatasetStatsRaw, { stats, view, filters });
-    !filters && set(atoms.datasetStatsRaw, { stats, view });
-  });
+  return useRecoilCallback(
+    ({ set }) => async ({ stats, view, filters }) => {
+      filters && set(atoms.extendedDatasetStatsRaw, { stats, view, filters });
+      !filters && set(atoms.datasetStatsRaw, { stats, view });
+    },
+    []
+  );
 };
 
 const useOpen = () => {
-  return useRecoilCallback(({ set, snapshot }) => async () => {
-    set(atoms.loading, true);
-    const loading = await snapshot.getPromise(atoms.loading);
-    !loading && set(atoms.connected, true);
-  });
+  return useRecoilCallback(
+    ({ set, snapshot }) => async () => {
+      set(atoms.loading, true);
+      const loading = await snapshot.getPromise(atoms.loading);
+      !loading && set(atoms.connected, true);
+    },
+    []
+  );
 };
 
 const useClose = () => {
-  return useRecoilCallback(({ reset, set }) => async () => {
-    set(atoms.connected, false);
-    reset(atoms.stateDescription);
-  });
+  const clearModal = useClearModal();
+  return useRecoilCallback(
+    ({ reset, set }) => async () => {
+      clearModal();
+      set(atoms.connected, false);
+
+      reset(atoms.stateDescription);
+    },
+    []
+  );
 };
 
 function App() {

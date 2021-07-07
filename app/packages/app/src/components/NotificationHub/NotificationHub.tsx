@@ -169,6 +169,7 @@ const NotificationHub = ({
               <Button
                 onClick={(e) => {
                   e.stopPropagation();
+                  e.preventDefault();
                   cancelMap.has(item) && cancelMap.get(item)();
                 }}
               >
