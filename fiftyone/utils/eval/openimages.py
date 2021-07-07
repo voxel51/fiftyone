@@ -7,7 +7,6 @@ Open Images-style detection evaluation.
 """
 from collections import defaultdict
 import copy
-import logging
 
 import numpy as np
 
@@ -18,9 +17,10 @@ from .detection import (
     DetectionEvaluationConfig,
     DetectionResults,
 )
-
-
-logger = logging.getLogger(__name__)
+from .utils import (
+    compute_ious,
+    make_iscrowd_fcn,
+)
 
 
 class OpenImagesEvaluationConfig(DetectionEvaluationConfig):
@@ -37,6 +37,11 @@ class OpenImagesEvaluationConfig(DetectionEvaluationConfig):
         classwise (None): whether to only match objects with the same class
             label (True) or allow matches between classes (False)
         iscrowd ("IsGroupOf"): the name of the crowd attribute
+        use_masks (False): whether to compute IoUs using the instances masks in
+            the ``mask`` attribute of the provided objects, which must be
+            :class:`fiftyone.core.labels.Detection` instances
+        tolerance (None): a tolerance, in pixels, when generating approximate
+            polylines for instance masks. Typical values are 1-3 pixels
         max_preds (None): the maximum number of predicted objects to evaluate
             when computing mAP and PR curves
         hierarchy (None): an optional dict containing a hierachy of classes for
@@ -61,6 +66,8 @@ class OpenImagesEvaluationConfig(DetectionEvaluationConfig):
         iou=None,
         classwise=None,
         iscrowd="IsGroupOf",
+        use_masks=False,
+        tolerance=None,
         max_preds=None,
         hierarchy=None,
         pos_label_field=None,
@@ -74,6 +81,8 @@ class OpenImagesEvaluationConfig(DetectionEvaluationConfig):
         )
 
         self.iscrowd = iscrowd
+        self.use_masks = use_masks
+        self.tolerance = tolerance
         self.max_preds = max_preds
         self.hierarchy = hierarchy
         self.pos_label_field = pos_label_field
@@ -83,19 +92,12 @@ class OpenImagesEvaluationConfig(DetectionEvaluationConfig):
 
         if expand_pred_hierarchy:
             if not hierarchy:
-                logger.warning(
-                    "No hierarchy provided, setting `expand_pred_hierarchy` "
-                    "to False"
-                )
                 self.expand_pred_hierarchy = False
 
             # If expand pred hierarchy is true, so is expand hierarchy
             self.expand_gt_hierarchy = self.expand_pred_hierarchy
 
         if expand_gt_hierarchy and not hierarchy:
-            logger.warning(
-                "No hierarchy provided, setting `expand_gt_hierarchy` to False"
-            )
             self.expand_gt_hierarchy = False
 
         if self.expand_gt_hierarchy or self.expand_pred_hierarchy:
@@ -472,12 +474,12 @@ def _expand_label_hierarchy(labels, config, expand_child=True):
     return list(set(labels + additional_labs))
 
 
-def _expand_detection_hierarchy(cats, det, config, label_type):
+def _expand_detection_hierarchy(cats, obj, config, label_type):
     keyed_children = config._hierarchy_keyed_child
-    for parent in keyed_children[det.label]:
-        new_det = det.copy()
-        new_det.label = parent
-        cats[parent][label_type].append(new_det)
+    for parent in keyed_children[obj.label]:
+        new_obj = obj.copy()
+        new_obj.label = parent
+        cats[parent][label_type].append(new_obj)
 
     return cats
 
@@ -525,32 +527,41 @@ def _open_images_evaluation_setup(
     else:
         relevant_labs = list(set(pos_labs + neg_labs))
 
-    iscrowd = _make_iscrowd_fcn(config.iscrowd)
+    iscrowd = make_iscrowd_fcn(config.iscrowd)
     classwise = config.classwise
+
+    if config.use_masks:
+        iou_kwargs = dict(
+            iscrowd=iscrowd,
+            use_masks=config.use_masks,
+            tolerance=config.tolerance,
+        )
+    else:
+        iou_kwargs = dict(iscrowd=iscrowd)
 
     # Organize preds and GT by category
     cats = defaultdict(lambda: defaultdict(list))
-    for det in preds[field]:
-        if relevant_labs is None or det.label in relevant_labs:
-            det[iou_key] = _NO_MATCH_IOU
-            det[id_key] = _NO_MATCH_ID
+    for obj in preds[field]:
+        if relevant_labs is None or obj.label in relevant_labs:
+            obj[iou_key] = _NO_MATCH_IOU
+            obj[id_key] = _NO_MATCH_ID
 
-            label = det.label if classwise else "all"
-            cats[label]["preds"].append(det)
+            label = obj.label if classwise else "all"
+            cats[label]["preds"].append(obj)
 
             if config.expand_pred_hierarchy and label != "all":
-                cats = _expand_detection_hierarchy(cats, det, config, "preds")
+                cats = _expand_detection_hierarchy(cats, obj, config, "preds")
 
-    for det in gts[field]:
-        if relevant_labs is None or det.label in relevant_labs:
-            det[iou_key] = _NO_MATCH_IOU
-            det[id_key] = _NO_MATCH_ID
+    for obj in gts[field]:
+        if relevant_labs is None or obj.label in relevant_labs:
+            obj[iou_key] = _NO_MATCH_IOU
+            obj[id_key] = _NO_MATCH_ID
 
-            label = det.label if classwise else "all"
-            cats[label]["gts"].append(det)
+            label = obj.label if classwise else "all"
+            cats[label]["gts"].append(obj)
 
             if config.expand_gt_hierarchy and label != "all":
-                cats = _expand_detection_hierarchy(cats, det, config, "gts")
+                cats = _expand_detection_hierarchy(cats, obj, config, "gts")
 
     # Compute IoUs within each category
     pred_ious = {}
@@ -570,7 +581,7 @@ def _open_images_evaluation_setup(
         gts = sorted(gts, key=iscrowd)
 
         # Compute ``num_preds x num_gts`` IoUs
-        ious = _compute_ious(preds, gts, iscrowd)
+        ious = compute_ious(preds, gts, **iou_kwargs)
 
         gt_ids = [g.id for g in gts]
         for pred, gt_ious in zip(preds, ious):
@@ -708,46 +719,6 @@ def _compute_matches(
                 matches.append((gt.label, None, None, None, gt.id, None))
 
     return matches
-
-
-def _compute_ious(preds, gts, iscrowd):
-    ious = np.zeros((len(preds), len(gts)))
-    for j, gt in enumerate(gts):
-        gx, gy, gw, gh = gt.bounding_box
-        gt_area = gh * gw
-        gt_crowd = iscrowd(gt)
-        for i, pred in enumerate(preds):
-            px, py, pw, ph = pred.bounding_box
-
-            # Width of intersection
-            w = min(px + pw, gx + gw) - max(px, gx)
-            if w <= 0:
-                continue
-
-            # Height of intersection
-            h = min(py + ph, gy + gh) - max(py, gy)
-            if h <= 0:
-                continue
-
-            pred_area = ph * pw
-            inter = h * w
-            union = pred_area if gt_crowd else pred_area + gt_area - inter
-            ious[i, j] = min(inter / union, 1)
-
-    return ious
-
-
-def _make_iscrowd_fcn(iscrowd_attr):
-    def _iscrowd(label):
-        if iscrowd_attr in label.attributes:
-            return bool(label.attributes[iscrowd_attr].value)
-
-        try:
-            return bool(label[iscrowd_attr])
-        except KeyError:
-            return False
-
-    return _iscrowd
 
 
 # Parse hierarchy, code from:

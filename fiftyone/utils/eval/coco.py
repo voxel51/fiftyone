@@ -18,6 +18,10 @@ from .detection import (
     DetectionEvaluationConfig,
     DetectionResults,
 )
+from .utils import (
+    compute_ious,
+    make_iscrowd_fcn,
+)
 
 
 logger = logging.getLogger(__name__)
@@ -37,6 +41,11 @@ class COCOEvaluationConfig(DetectionEvaluationConfig):
         classwise (None): whether to only match objects with the same class
             label (True) or allow matches between classes (False)
         iscrowd ("iscrowd"): the name of the crowd attribute
+        use_masks (False): whether to compute IoUs using the instances masks in
+            the ``mask`` attribute of the provided objects, which must be
+            :class:`fiftyone.core.labels.Detection` instances
+        tolerance (None): a tolerance, in pixels, when generating approximate
+            polylines for instance masks. Typical values are 1-3 pixels
         compute_mAP (False): whether to perform the necessary computations so
             that mAP and PR curves can be generated
         iou_threshs (None): a list of IoU thresholds to use when computing mAP
@@ -53,6 +62,8 @@ class COCOEvaluationConfig(DetectionEvaluationConfig):
         iou=None,
         classwise=None,
         iscrowd="iscrowd",
+        use_masks=False,
+        tolerance=None,
         compute_mAP=False,
         iou_threshs=None,
         max_preds=None,
@@ -69,6 +80,8 @@ class COCOEvaluationConfig(DetectionEvaluationConfig):
             max_preds = 100
 
         self.iscrowd = iscrowd
+        self.use_masks = use_masks
+        self.tolerance = tolerance
         self.compute_mAP = compute_mAP
         self.iou_threshs = iou_threshs
         self.max_preds = max_preds
@@ -467,26 +480,36 @@ def _coco_evaluation_setup(
     gts, preds, id_keys, iou_key, config, max_preds=None
 ):
     field = gts._LABEL_LIST_FIELD
-    iscrowd = _make_iscrowd_fcn(config.iscrowd)
+
+    iscrowd = make_iscrowd_fcn(config.iscrowd)
     classwise = config.classwise
+
+    if config.use_masks:
+        iou_kwargs = dict(
+            iscrowd=iscrowd,
+            use_masks=config.use_masks,
+            tolerance=config.tolerance,
+        )
+    else:
+        iou_kwargs = dict(iscrowd=iscrowd)
 
     # Organize preds and GT by category
     cats = defaultdict(lambda: defaultdict(list))
-    for det in preds[field]:
-        det[iou_key] = _NO_MATCH_IOU
+    for obj in preds[field]:
+        obj[iou_key] = _NO_MATCH_IOU
         for id_key in id_keys:
-            det[id_key] = _NO_MATCH_ID
+            obj[id_key] = _NO_MATCH_ID
 
-        label = det.label if classwise else "all"
-        cats[label]["preds"].append(det)
+        label = obj.label if classwise else "all"
+        cats[label]["preds"].append(obj)
 
-    for det in gts[field]:
-        det[iou_key] = _NO_MATCH_IOU
+    for obj in gts[field]:
+        obj[iou_key] = _NO_MATCH_IOU
         for id_key in id_keys:
-            det[id_key] = _NO_MATCH_ID
+            obj[id_key] = _NO_MATCH_ID
 
-        label = det.label if classwise else "all"
-        cats[label]["gts"].append(det)
+        label = obj.label if classwise else "all"
+        cats[label]["gts"].append(obj)
 
     # Compute IoUs within each category
     pred_ious = {}
@@ -506,7 +529,7 @@ def _coco_evaluation_setup(
         gts = sorted(gts, key=iscrowd)
 
         # Compute ``num_preds x num_gts`` IoUs
-        ious = _compute_ious(preds, gts, iscrowd)
+        ious = compute_ious(preds, gts, **iou_kwargs)
 
         gt_ids = [g.id for g in gts]
         for pred, gt_ious in zip(preds, ious):
@@ -615,47 +638,6 @@ def _compute_matches(
                 )
 
     return matches
-
-
-def _compute_ious(preds, gts, iscrowd):
-    ious = np.zeros((len(preds), len(gts)))
-    for j, gt in enumerate(gts):
-        gx, gy, gw, gh = gt.bounding_box
-        gt_area = gh * gw
-        gt_crowd = iscrowd(gt)
-        for i, pred in enumerate(preds):
-            px, py, pw, ph = pred.bounding_box
-
-            # Width of intersection
-            w = min(px + pw, gx + gw) - max(px, gx)
-            if w <= 0:
-                continue
-
-            # Height of intersection
-            h = min(py + ph, gy + gh) - max(py, gy)
-            if h <= 0:
-                continue
-
-            pred_area = ph * pw
-            inter = h * w
-            union = pred_area if gt_crowd else pred_area + gt_area - inter
-            ious[i, j] = min(inter / union, 1)
-
-    return ious
-
-
-def _make_iscrowd_fcn(iscrowd_attr):
-    def _iscrowd(label):
-        try:
-            return bool(label[iscrowd_attr])
-        except KeyError:
-            # @todo remove Attribute usage
-            if iscrowd_attr in label.attributes:
-                return bool(label.attributes[iscrowd_attr].value)
-            else:
-                return False
-
-    return _iscrowd
 
 
 def _copy_labels(labels):

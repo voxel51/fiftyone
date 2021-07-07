@@ -311,33 +311,39 @@ class DetectionEvaluation(foe.EvaluationMethod):
         return fields
 
     def cleanup(self, samples, eval_key):
-        pred_field, is_frame_field = samples._handle_frame_field(
-            self.config.pred_field
-        )
-        pred_type = samples._get_label_field_type(self.config.pred_field)
-        pred_key = "%s.%s.%s" % (
-            pred_field,
-            pred_type._LABEL_LIST_FIELD,
-            eval_key,
-        )
-
-        gt_field, _ = samples._handle_frame_field(self.config.gt_field)
-        gt_type = samples._get_label_field_type(self.config.gt_field)
-        gt_key = "%s.%s.%s" % (gt_field, gt_type._LABEL_LIST_FIELD, eval_key)
-
         fields = [
             "%s_tp" % eval_key,
             "%s_fp" % eval_key,
             "%s_fn" % eval_key,
-            pred_key,
-            "%s_id" % pred_key,
-            "%s_iou" % pred_key,
-            gt_key,
-            "%s_id" % gt_key,
-            "%s_iou" % gt_key,
         ]
 
-        if is_frame_field:
+        try:
+            pred_field, _ = samples._handle_frame_field(self.config.pred_field)
+            pred_type = samples._get_label_field_type(self.config.pred_field)
+            pred_key = "%s.%s.%s" % (
+                pred_field,
+                pred_type._LABEL_LIST_FIELD,
+                eval_key,
+            )
+            fields.extend([pred_key, "%s_id" % pred_key, "%s_iou" % pred_key])
+        except ValueError:
+            # Field no longer exists, nothing to cleanup
+            pass
+
+        try:
+            gt_field, _ = samples._handle_frame_field(self.config.gt_field)
+            gt_type = samples._get_label_field_type(self.config.gt_field)
+            gt_key = "%s.%s.%s" % (
+                gt_field,
+                gt_type._LABEL_LIST_FIELD,
+                eval_key,
+            )
+            fields.extend([gt_key, "%s_id" % gt_key, "%s_iou" % gt_key])
+        except ValueError:
+            # Field no longer exists, nothing to cleanup
+            pass
+
+        if samples._is_frame_field(self.config.pred_field):
             samples._dataset.delete_sample_fields(
                 ["%s_tp" % eval_key, "%s_fp" % eval_key, "%s_fn" % eval_key],
                 error_level=1,
