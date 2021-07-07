@@ -744,7 +744,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         )
 
     @staticmethod
-    async def on_frame_statistics(caller, sample_id, uuid, filters=None):
+    async def on_statistics(caller, sample_id, uuid, filters=None):
         state = fos.StateDescription.from_dict(StateHandler.state)
         if state.view is not None:
             view = state.view
@@ -756,37 +756,31 @@ class StateHandler(tornado.websocket.WebSocketHandler):
 
         view = view.select(sample_id)
 
-        frame_fields = [
-            "frames." + field for field in view.get_frame_field_schema()
-        ]
-        view = view.select_fields(frame_fields)
-
         data = {"main": [], "none": []}
 
-        if frame_fields:
-            stats = fos.DatasetStatistics(view)
-            aggs = stats.aggregations
-            exists_aggs = stats.exists_aggregations
-            num_aggs = len(aggs)
+        stats = fos.DatasetStatistics(view)
+        aggs = stats.aggregations
+        exists_aggs = stats.exists_aggregations
+        num_aggs = len(aggs)
 
-            results = await view._async_aggregate(
-                StateHandler.sample_collection(), aggs + exists_aggs
-            )
-            aggs_results = results[:num_aggs]
-            exists_results = results[num_aggs:]
+        results = await view._async_aggregate(
+            StateHandler.sample_collection(), aggs + exists_aggs
+        )
+        aggs_results = results[:num_aggs]
+        exists_results = results[num_aggs:]
 
-            for a, r, k in [
-                (aggs, aggs_results, "main"),
-                (exists_aggs, exists_results, "none"),
-            ]:
-                for agg, result in zip(a, r):
-                    data[k].append(
-                        {
-                            "_CLS": agg.__class__.__name__,
-                            "name": agg.field_name,
-                            "result": result,
-                        }
-                    )
+        for a, r, k in [
+            (aggs, aggs_results, "main"),
+            (exists_aggs, exists_results, "none"),
+        ]:
+            for agg, result in zip(a, r):
+                data[k].append(
+                    {
+                        "_CLS": agg.__class__.__name__,
+                        "name": agg.field_name,
+                        "result": result,
+                    }
+                )
 
         message = {"type": "frame_statistics", "stats": data, "uuid": uuid}
 
