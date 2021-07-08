@@ -1257,16 +1257,25 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             self._frame_doc_cls._delete_embedded_fields(embedded_fields)
             fofr.Frame._reload_docs(self._frame_collection_name)
 
-    def iter_samples(self):
+    def iter_samples(self, progress=False):
         """Returns an iterator over the samples in the dataset.
+
+        Args:
+            progress (False): whether to render a progress bar tracking the
+                iterator's progress
 
         Returns:
             an iterator over :class:`fiftyone.core.sample.Sample` instances
         """
         pipeline = self._pipeline(detach_frames=True)
 
-        for sample in self._iter_samples(pipeline):
-            yield sample
+        if progress:
+            with fou.ProgressBar(total=len(self)) as pb:
+                for sample in pb(self._iter_samples(pipeline)):
+                    yield sample
+        else:
+            for sample in self._iter_samples(pipeline):
+                yield sample
 
     def _iter_samples(self, pipeline):
         index = 0
