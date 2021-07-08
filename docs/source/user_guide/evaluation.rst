@@ -531,7 +531,7 @@ __________
 You can use the
 :meth:`evaluate_detections() <fiftyone.core.collections.SampleCollection.evaluate_detections>`
 method to evaluate the predictions of an object detection model stored in a
-|Detections| field of your dataset.
+|Detections| or |Polylines| field of your dataset.
 
 Invoking
 :meth:`evaluate_detections() <fiftyone.core.collections.SampleCollection.evaluate_detections>`
@@ -550,6 +550,49 @@ samples.
     by default, but
     :ref:`Open Images-style <evaluating-detections-open-images>` evaluation is
     also natively supported.
+
+.. _evaluation-detection-types:
+
+Supported types
+---------------
+
+The :meth:`evaluate_detections() <fiftyone.core.collections.SampleCollection.evaluate_detections>`
+method supports all of the following task types:
+
+-   :ref:`Object detection <object-detection>`
+-   :ref:`Instance segmentations <objects-with-instance-segmentations>`
+-   :ref:`Polygon detection <polylines>`
+
+The only difference between each task type is in how the IoU between objects is
+calculated. Specifically, for instance segmentations and polygons, IoUs are
+computed between the polgyonal shapes rather than their rectangular bounding
+boxes.
+
+For object detection tasks, the ground truth and predicted objects should be
+stored in |Detections| format.
+
+For instance segmentation tasks, the ground truth and predicted objects should
+be stored in |Detections| format, and each |Detection| instance should have its
+:attr:`mask <fiftyone.core.labels.Detection.mask>` attribute populated to
+define the extent of the object within its bounding box.
+
+.. note::
+
+    In order to use instance masks for IoU calculations, pass ``use_masks=True``
+    to :meth:`evaluate_detections() <fiftyone.core.collections.SampleCollection.evaluate_detections>`.
+
+For polygon detection tasks, the ground truth and predicted objects should be
+stored in |Polylines| format with their
+:attr:`filled <fiftyone.core.labels.Polyline.filled>` attribute set to
+``True`` to indicate that they represent closed polygons (as opposed to
+polylines).
+
+.. note::
+
+    If you are evaluating polygons but would rather use bounding boxes rather
+    than the actual polygonal geometries for IoU calculations, you can pass
+    ``use_boxes=True`` to
+    :meth:`evaluate_detections() <fiftyone.core.collections.SampleCollection.evaluate_detections>`.
 
 .. _evaluation-patches:
 
