@@ -758,7 +758,10 @@ class Session(foc.HasClient):
         -   Other (non-remote): the App will be opened in a new browser tab
         """
         if self._remote:
-            raise ValueError("Remote sessions cannot launch the App")
+            logger.warn(
+                "Session.open() attempted, but remote sessions cannot launch the App"
+            )
+            return
 
         if self.plots:
             self.plots.connect()
@@ -793,7 +796,7 @@ class Session(foc.HasClient):
 
             IPython.display.display(
                 IPython.display.Javascript(
-                    'window.open("{url}");'.format(url=self.url)
+                    "window.open('{url}');".format(url=self.url)
                 )
             )
             return
