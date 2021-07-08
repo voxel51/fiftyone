@@ -116,12 +116,12 @@ const nullSort = ({
     }
 
     let result = 0;
-    a.forEach((ai, i) => {
-      result = genSort(ai, b[i], asc);
+    for (let i = 0; i < a.length; i++) {
+      result = genSort(a[i], b[i], asc);
       if (result !== 0) {
         return result;
       }
-    });
+    }
 
     return result;
   };

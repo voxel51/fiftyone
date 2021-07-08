@@ -527,10 +527,12 @@ const ScalarsCell = ({ modal }: ScalarsCellProps) => {
             selected: activeScalars.includes(name),
             color: colorByLabel ? theme.brand : colorMap(name),
             title: modal ? prettify(count[dbFields[name]], false) : name,
+            value: modal ? prettify(count[dbFields[name]], false) : null,
             path: name,
-            count: modal || count === null ? null : count[dbFields[name]],
+            count: modal || count === null ? null : count[name],
             type: "values",
             modal,
+            subCountAtom,
             canFilter: !modal,
           };
         })}

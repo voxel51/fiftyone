@@ -181,16 +181,19 @@ export abstract class Looker<
   }
 
   attach(element: HTMLElement): void {
-    this.state = this.postProcess(element);
     this.resizeObserver.observe(this.lookerElement.element);
-    element.appendChild(this.lookerElement.element);
+    requestAnimationFrame(() => {
+      element.appendChild(this.lookerElement.element);
+      this.state = this.postProcess(this.lookerElement.element);
+    });
   }
 
   detach(): void {
     this.resizeObserver.unobserve(this.lookerElement.element);
-    this.lookerElement.element.parentNode.removeChild(
-      this.lookerElement.element
-    );
+    this.lookerElement.element.parentNode &&
+      this.lookerElement.element.parentNode.removeChild(
+        this.lookerElement.element
+      );
   }
 
   destroy(): void {
@@ -411,8 +414,7 @@ export class FrameLooker extends Looker<FrameState> {
     const previousWindowBBox = this.state.windowBBox;
     this.state.windowBBox = getElementBBox(element);
     if (!this.state.setZoom) {
-      this.state.setZoom =
-        this.hasResized(previousWindowBBox) && !this.state.options.fullscreen;
+      this.state.setZoom = this.hasResized(previousWindowBBox);
     }
 
     if (this.state.setZoom && this.pluckedOverlays.length) {
@@ -500,8 +502,7 @@ export class ImageLooker extends Looker<ImageState> {
     const previousWindowBBox = this.state.windowBBox;
     this.state.windowBBox = getElementBBox(element);
     if (!this.state.setZoom) {
-      this.state.setZoom =
-        this.hasResized(previousWindowBBox) && !this.state.options.fullscreen;
+      this.state.setZoom = this.hasResized(previousWindowBBox);
     }
 
     if (this.state.setZoom && this.pluckedOverlays.length) {
@@ -859,8 +860,7 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
       this.state.disableOverlays = false;
     }
     if (!this.state.setZoom) {
-      this.state.setZoom =
-        this.hasResized(previousWindowBBox) && !this.state.options.fullscreen;
+      this.state.setZoom = this.hasResized(previousWindowBBox);
     }
 
     if (this.state.setZoom) {

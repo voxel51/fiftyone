@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { Suspense, useState } from "react";
 import styled from "styled-components";
 import {
   Checkbox,
@@ -21,7 +21,6 @@ import NumericFieldFilter from "./Filters/NumericFieldFilter";
 import StringFieldFilter from "./Filters/StringFieldFilter";
 import BooleanFieldFilter from "./Filters/BooleanFieldFilter";
 import { useTheme } from "../utils/hooks";
-import { ReactComponentLike } from "prop-types";
 
 const Body = styled.div`
   vertical-align: middle;
@@ -126,6 +125,49 @@ const CheckboxContainer = animated(styled.div`
   position: relative;
 `);
 
+const CheckboxText = ({
+  count,
+  subCountAtom,
+  value,
+  title,
+  path,
+}: {
+  title: string;
+  count?: number;
+  value?: string | number;
+  subCountAtom?: RecoilValueReadOnly<{ [key: string]: number }>;
+  path: string;
+}) => {
+  const subCounts = subCountAtom ? useRecoilValue(subCountAtom) : null;
+  const subCount = subCounts ? subCounts[path] : null;
+
+  if (value) {
+    return (
+      <span className="count" title={title}>
+        {value}
+      </span>
+    );
+  }
+
+  if (typeof count !== "number") {
+    return null;
+  }
+
+  if (typeof subCount === "number") {
+    return (
+      <span className="count" title={title}>
+        {`${subCount.toLocaleString()} of ${count.toLocaleString()}`}
+      </span>
+    );
+  }
+
+  return (
+    <span className="count" title={title}>
+      {count.toLocaleString()}
+    </span>
+  );
+};
+
 export type Entry = {
   name: string;
   selected: boolean;
@@ -138,7 +180,7 @@ export type Entry = {
   title: string;
   count?: number;
   value?: string | number;
-  subCountAtom: RecoilValueReadOnly<number>;
+  subCountAtom: RecoilValueReadOnly<{ [key: string]: number }>;
   canFilter?: boolean;
   type: string;
 };
@@ -162,6 +204,8 @@ const Entry = React.memo(({ entry, onCheck, modal }: EntryProps) => {
     canFilter,
     type,
     count,
+    subCountAtom,
+    value,
   } = entry;
   const [expanded, setExpanded] = useState(false);
   const theme = useTheme();
@@ -185,9 +229,26 @@ const Entry = React.memo(({ entry, onCheck, modal }: EntryProps) => {
             <span className="name" title={name}>
               {name}
             </span>
-            <span className="count" title={title}>
-              {count}
-            </span>
+            {
+              <Suspense
+                fallback={
+                  <CheckboxText
+                    path={path}
+                    value={value}
+                    count={count}
+                    title={title}
+                  />
+                }
+              >
+                <CheckboxText
+                  path={path}
+                  value={value}
+                  subCountAtom={subCountAtom}
+                  count={count}
+                  title={title}
+                />
+              </Suspense>
+            }
             {hasDropdown && (
               <ArrowType
                 onClick={(e) => {
