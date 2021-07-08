@@ -2565,7 +2565,7 @@ class CVATVideoAnnotationWriter(object):
         etau.write_file(xml_str, xml_path)
 
 
-class CVATAnnotationTool(foua.BaseAnnotationTool):
+class CVATAnnotationProvider(foua.BaseAnnotationProvider):
     """Basic interface for connecting to CVAT, sending samples for
     annotation, and importing them back into the collection.
     """
@@ -2627,6 +2627,49 @@ class CVATAnnotationTool(foua.BaseAnnotationTool):
     def base_job_uri(self, task_id, job_id):
         return "%s/tasks/%d/jobs/%d" % (self.base_uri, task_id, job_id)
 
+    def create_task(self, classes=[]):
+        labels = [{"name": c, "attributes": []} for c in classes]
+
+        data_task_create = {
+            "name": "FiftyOne_annotation",
+            "image_quality": 75,
+            "labels": labels,
+        }
+
+        task_creation_resp = self._session.post(
+            self.tasks_uri, verify=False, json=data_task_create,
+        )
+
+        task_json = task_creation_resp.json()
+        if _MAX_TASKS_MESSAGE in task_json:
+            logger.warning(
+                "You have reached the maximum number of tasks in "
+                "CVAT, please delete a task to create a new one"
+            )
+            return None
+
+        task_id = task_json["id"]
+
+        return task_id
+
+    def upload_data(self, task_id, paths):
+        data_files = {"image_quality": 75}
+
+        files = {
+            "client_files[%d]" % i: open(p, "rb") for i, p in enumerate(paths)
+        }
+        files_resp = self._session.post(
+            self.task_data_uri(task_id),
+            verify=False,
+            data=data_files,
+            files=files,
+        )
+
+        job_resp = self._session.get(self.jobs_uri(task_id))
+        job_id = job_resp.json()[0]["id"]
+
+        return job_id
+
     def upload_samples(
         self, samples, label_field="ground_truth", classes=None
     ):
@@ -2648,42 +2691,9 @@ class CVATAnnotationTool(foua.BaseAnnotationTool):
                 )[1]
                 classes = samples._dataset.distinct(label_path)
 
-        labels = [{"name": c, "attributes": []} for c in classes]
-
+        task_id = self.create_task(classes)
         paths = samples.values("filepath")
-        data_task_create = {
-            "name": "FiftyOne_annotation",
-            "image_quality": 75,
-            "labels": labels,
-        }
-
-        task_creation_resp = self._session.post(
-            self.tasks_uri, verify=False, json=data_task_create,
-        )
-
-        task_json = task_creation_resp.json()
-        if _MAX_TASKS_MESSAGE in task_json:
-            logger.warning(
-                "You have reached the maximum number of tasks in "
-                "CVAT, please delete a task to create a new one"
-            )
-            return None, None
-
-        task_id = task_json["id"]
-
-        data_files = {"image_quality": 75}
-        files = {
-            "client_files[%d]" % i: open(p, "rb") for i, p in enumerate(paths)
-        }
-        files_resp = self._session.post(
-            self.task_data_uri(task_id),
-            verify=False,
-            data=data_files,
-            files=files,
-        )
-
-        job_resp = self._session.get(self.jobs_uri(task_id))
-        job_id = job_resp.json()[0]["id"]
+        job_id = self.upload_data(task_id, paths)
 
         with etau.TempDir() as tmp:
             samples.export(
@@ -2718,10 +2728,10 @@ class CVATAnnotationTool(foua.BaseAnnotationTool):
 def annotate(
     samples, label_field="ground_truth", uri="cvat.org", https=True, **kwargs,
 ):
-    tool = CVATAnnotationTool(uri=uri, https=https)
-    task_id, job_id = tool.upload_samples(samples, label_field=label_field)
-    tool.launch_annotator(url=tool.base_job_uri(task_id, job_id))
-    return tool
+    provider = CVATAnnotationProvider(uri=uri, https=https)
+    task_id, job_id = provider.upload_samples(samples, label_field=label_field)
+    provider.launch_annotator(url=provider.base_job_uri(task_id, job_id))
+    return provider
 
 
 def load_cvat_image_annotations(xml_path):

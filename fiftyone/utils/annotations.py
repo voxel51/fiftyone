@@ -264,21 +264,35 @@ def annotate(samples, backend="cvat", label_field="ground_truth", **kwargs):
     return annotation_tool
 
 
-class BaseAnnotationTool(object):
-    """Basic interface for connecting to annotation tool, sending samples for
+class BaseAnnotationProvider(object):
+    """Basic interface for connecting to an annotation provider, sending samples for
     annotation, and importing them back into the collection.
     """
 
     def upload_samples(self):
-        """Upload samples into annotation tool"""
+        """Upload samples into annotation provider"""
         raise NotImplementedError("subclass must implement upload_samples()")
 
     def download_annotations(self):
-        """Download annotations from the annotation tool"""
+        """Download annotations from the annotation provider"""
         pass
 
     def launch_annotator(self):
-        """Open the uploaded annotations in the annotation tool"""
+        """Open the uploaded annotations in the annotation provider"""
+        pass
+
+
+class BaseAnnotationResults(object):
+    """Basic interface for results returned from `anntation()` call"""
+
+    def __init__(self):
+        pass
+
+
+class BaseAnnotationConfig(object):
+    """Config interface for specifying uploading annotations to a provider"""
+
+    def __init__(self):
         pass
 
 
