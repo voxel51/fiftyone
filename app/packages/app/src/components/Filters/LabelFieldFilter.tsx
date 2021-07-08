@@ -61,7 +61,7 @@ const HiddenLabelFilter = ({ entry }) => {
 interface Entry {
   path: string;
   name: string;
-  color: string;
+  color?: string;
   labelType?: string;
 }
 

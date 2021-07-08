@@ -6,7 +6,7 @@ import {
   CircularProgress,
 } from "@material-ui/core";
 import { ArrowDropDown, ArrowDropUp } from "@material-ui/icons";
-import { useRecoilValue } from "recoil";
+import { RecoilValueReadOnly, useRecoilValue } from "recoil";
 import { animated, useSpring } from "react-spring";
 
 import { fieldIsFiltered } from "./Filters/LabelFieldFilters.state";
@@ -21,6 +21,7 @@ import NumericFieldFilter from "./Filters/NumericFieldFilter";
 import StringFieldFilter from "./Filters/StringFieldFilter";
 import BooleanFieldFilter from "./Filters/BooleanFieldFilter";
 import { useTheme } from "../utils/hooks";
+import { ReactComponentLike } from "prop-types";
 
 const Body = styled.div`
   vertical-align: middle;
@@ -128,18 +129,17 @@ const CheckboxContainer = animated(styled.div`
 export type Entry = {
   name: string;
   selected: boolean;
-  data: string | null | any;
-  color: string;
+  color?: string;
   disabled: boolean;
   labelType?: string;
   path: string;
-  hasDropdown: boolean;
-  hideCheckbox: boolean;
+  hasDropdown?: boolean;
+  hideCheckbox?: boolean;
   title: string;
-  totalCount: number;
-  filteredCount: number;
+  count?: number;
+  value?: string | number;
+  subCountAtom: RecoilValueReadOnly<number>;
   canFilter?: boolean;
-  icon?: any;
   type: string;
 };
 
@@ -151,7 +151,6 @@ type EntryProps = {
 
 const Entry = React.memo(({ entry, onCheck, modal }: EntryProps) => {
   const {
-    data,
     disabled,
     color,
     hasDropdown,
@@ -161,8 +160,8 @@ const Entry = React.memo(({ entry, onCheck, modal }: EntryProps) => {
     selected,
     title,
     canFilter,
-    icon,
     type,
+    count,
   } = entry;
   const [expanded, setExpanded] = useState(false);
   const theme = useTheme();
@@ -186,33 +185,16 @@ const Entry = React.memo(({ entry, onCheck, modal }: EntryProps) => {
             <span className="name" title={name}>
               {name}
             </span>
-            {typeof data === "string" ? (
-              <>
-                <span className="count" title={title || data}>
-                  {data}
-                </span>
-                {hasDropdown && (
-                  <ArrowType
-                    onClick={(e) => {
-                      e.preventDefault();
-                      setExpanded(!expanded);
-                    }}
-                    style={{ marginRight: -4 }}
-                  />
-                )}
-              </>
-            ) : data ? (
-              data
-            ) : icon ? (
-              icon
-            ) : (
-              <CircularProgress
-                style={{
-                  color: theme.font,
-                  height: 16,
-                  width: 16,
-                  minWidth: 16,
+            <span className="count" title={title}>
+              {count}
+            </span>
+            {hasDropdown && (
+              <ArrowType
+                onClick={(e) => {
+                  e.preventDefault();
+                  setExpanded(!expanded);
                 }}
+                style={{ marginRight: -4 }}
               />
             )}
           </>

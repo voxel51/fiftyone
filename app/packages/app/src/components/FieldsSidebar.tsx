@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { MouseEventHandler, useEffect, useState } from "react";
 import styled from "styled-components";
 import {
   useRecoilValue,
@@ -137,34 +137,16 @@ const Cell = React.memo(
   }
 );
 
-const makeData = (filteredCount: number, totalCount: number): string => {
-  if (
-    typeof filteredCount === "number" &&
-    filteredCount !== totalCount &&
-    typeof totalCount === "number"
-  ) {
-    return `${filteredCount.toLocaleString()} of ${totalCount.toLocaleString()}`;
-  } else if (filteredCount === null) {
-    return null;
-  } else if (typeof totalCount === "number") {
-    return totalCount.toLocaleString();
-  }
-  return totalCount;
-};
-
-const makeTagData = (
-  filteredCount: number,
-  totalCount: number,
+const makeTagEye = (
   matchedTags: Set<string>,
   name: string,
   theme,
-  toggleFilter: (event: Event) => void,
+  toggleFilter: MouseEventHandler,
   labels: boolean
 ): any => {
   const color = matchedTags.has(name) ? theme.font : theme.fontDark;
   return (
     <>
-      <span>{makeData(filteredCount, totalCount)}</span>
       <span
         title={`Only show ${
           labels ? "labels" : "samples"
@@ -250,8 +232,8 @@ const SampleTagsCell = ({ modal }: TagsCellProps) => {
     setMatchedTags,
   } = useSampleTags(modal);
   const colorMap = useRecoilValue(selectors.colorMap(modal));
-  const [subCount, count] = [
-    useRecoilValue(filterAtoms.filteredSampleTagCounts(modal)),
+  const [subCountAtom, count] = [
+    filterAtoms.filteredSampleTagCounts(modal),
     useRecoilValue(filterAtoms.sampleTagCounts(modal)),
   ];
 
@@ -280,35 +262,6 @@ const SampleTagsCell = ({ modal }: TagsCellProps) => {
             canFilter: !modal,
             path: "tags." + name,
             type: "tags",
-            data: modal ? (
-              count[name] > 0 ? (
-                <Check style={{ color }} />
-              ) : (
-                <Close style={{ color }} />
-              )
-            ) : (
-              makeTagData(
-                subCount[name],
-                count[name],
-                matchedTags,
-                name,
-                theme,
-                (e: Event) => {
-                  e.stopPropagation();
-                  e.preventDefault();
-                  const newMatch = new Set(matchedTags);
-                  if (matchedTags.has(name)) {
-                    newMatch.delete(name);
-                  } else {
-                    newMatch.add(name);
-                  }
-                  setMatchedTags(newMatch);
-                },
-                false
-              )
-            ),
-            totalCount: count[name],
-            filteredCount: modal ? null : subCount[name],
             modal,
           };
         })}
@@ -360,8 +313,8 @@ const useLabelTags = (modal, count) => {
 
 const LabelTagsCell = ({ modal }: TagsCellProps) => {
   const colorMap = useRecoilValue(selectors.colorMap(modal));
-  const [subCount, count] = [
-    useRecoilValue(filterAtoms.filteredLabelTagCounts(modal)),
+  const [subCountAtom, count] = [
+    filterAtoms.filteredLabelTagCounts(modal),
     useRecoilValue(filterAtoms.labelTagCounts(modal)),
   ];
 
@@ -375,8 +328,6 @@ const LabelTagsCell = ({ modal }: TagsCellProps) => {
 
   const colorByLabel = useRecoilValue(atoms.colorByLabel(modal));
   const theme = useTheme();
-  const hasFilters = useRecoilValue(filterAtoms.hasFilters(modal));
-  const extStats = useRecoilValue(selectors.extendedDatasetStats);
 
   return (
     <Cell
@@ -399,32 +350,9 @@ const LabelTagsCell = ({ modal }: TagsCellProps) => {
           title: name,
           type: "label tags",
           path: "_label_tags." + name,
-          data: makeTagData(
-            hasFilters && extStats && !modal && !subCount[name]
-              ? 0
-              : subCount
-              ? subCount[name]
-              : null,
-            total,
-            matchedTags,
-            name,
-            theme,
-            (e) => {
-              e.stopPropagation();
-              e.preventDefault();
-              const newMatch = new Set(matchedTags);
-              if (matchedTags.has(name)) {
-                newMatch.delete(name);
-              } else {
-                newMatch.add(name);
-              }
-              setMatchedTags(newMatch);
-            },
-            true
-          ),
-          totalCount: total,
-          filteredCount: modal ? null : subCount[name],
           modal,
+          count: count[name],
+          subCountAtom,
         };
       })}
       onSelect={({ name, selected }) => {
@@ -460,8 +388,8 @@ const LabelsCell = ({ modal, frames }: LabelsCellProps) => {
   const types = useRecoilValue(selectors.labelTypesMap);
 
   const colorMap = useRecoilValue(selectors.colorMap(modal));
-  const [subCount, count] = [
-    useRecoilValue(filterAtoms.filteredLabelCounts({ key, modal })),
+  const [subCountAtom, count] = [
+    filterAtoms.filteredLabelCounts({ key, modal }),
     useRecoilValue(filterAtoms.labelCounts({ key, modal })),
   ];
 
@@ -494,11 +422,9 @@ const LabelsCell = ({ modal, frames }: LabelsCellProps) => {
           title: name,
           path,
           type: "labels",
-          data:
-            count && subCount ? makeData(subCount[name], count[name]) : null,
-          totalCount: count ? count[name] : null,
-          filteredCount: subCount ? subCount[name] : null,
           modal,
+          count: count ? count[name] : null,
+          subCountAtom,
           labelType: types[path],
           canFilter: true,
         };
@@ -577,8 +503,8 @@ const ScalarsCell = ({ modal }: ScalarsCellProps) => {
   const dbFields = useRecoilValue(selectors.scalarsDbMap("sample"));
 
   const colorMap = useRecoilValue(selectors.colorMap(modal));
-  const [subCount, count] = [
-    useRecoilValue(filterAtoms.filteredScalarCounts(modal)),
+  const [subCountAtom, count] = [
+    filterAtoms.filteredScalarCounts(modal),
     useRecoilValue(filterAtoms.scalarCounts(modal)),
   ];
 
@@ -602,15 +528,8 @@ const ScalarsCell = ({ modal }: ScalarsCellProps) => {
             color: colorByLabel ? theme.brand : colorMap(name),
             title: modal ? prettify(count[dbFields[name]], false) : name,
             path: name,
+            count: modal || count === null ? null : count[dbFields[name]],
             type: "values",
-            data:
-              count && subCount && !modal
-                ? makeData(subCount[name], count[name])
-                : modal
-                ? prettify(count[dbFields[name]])
-                : null,
-            totalCount: !modal && count ? count[name] : null,
-            filteredCount: !modal && subCount ? subCount[name] : null,
             modal,
             canFilter: !modal,
           };

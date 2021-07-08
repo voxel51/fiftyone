@@ -125,7 +125,7 @@ def _make_filter_stages(view, filters, match=False):
                 if match:
                     stage = fosg.MatchLabels(fields=path, filter=expr)
                 else:
-                    stage = fosg.FilterLabels(path, expr, only_matches=True)
+                    stage = fosg.FilterLabels(path, expr, only_matches=False)
 
                 stages.append(stage)
 

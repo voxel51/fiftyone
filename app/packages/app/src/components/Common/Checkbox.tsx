@@ -7,9 +7,9 @@ import { useHighlightHover } from "../Actions/utils";
 import { ItemAction } from "../Actions/ItemAction";
 import { useTheme } from "../../utils/hooks";
 import { summarizeLongStr } from "../../utils/generic";
-import { getValueString, Value } from "../Filters/utils";
+import { getValueString } from "../Filters/utils";
 import { RecoilValueReadOnly, useRecoilValue } from "recoil";
-import { subCountValueAtom } from "../Filters/atoms";
+import { Value } from "../Filters/types";
 
 interface CheckboxProps {
   color?: string;
@@ -66,7 +66,7 @@ const CheckboxName = ({
   text: string;
   color?: string;
 }) => {
-  const subCount = subCountValueAtom ? useRecoilValue(subCountAtom) : null;
+  const subCount = subCountAtom ? useRecoilValue(subCountAtom) : null;
   const countStr = makeCountStr(subCount, count);
 
   return (

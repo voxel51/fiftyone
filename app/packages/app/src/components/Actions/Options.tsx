@@ -63,6 +63,7 @@ const SortFilterResults = ({ modal }) => {
   const [{ count, asc }, setSortFilterResults] = useRecoilState(
     atoms.sortFilterResults(modal)
   );
+  console.log(count, asc);
 
   return (
     <>
