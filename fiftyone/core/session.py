@@ -782,13 +782,21 @@ class Session(foc.HasClient):
         This method cannot be called on remote sessions or from Colab
         notebooks.
         """
-        if self._remote:
-            raise ValueError("Remote sessions cannot launch the App")
-
-        if self._context == focx._COLAB:
-            raise ValueError(
-                "Cannot open the App in a dedicated tab from Colab notebooks"
+        if self._remote and self._context == focx._NONE:
+            logger.warn(
+                "Session.open_tab() attempted, but remote sessions cannot launch the App"
             )
+            return
+
+        if self._context != focx._NONE:
+            import IPython.display
+
+            IPython.display.display(
+                IPython.display.Javascript(
+                    'window.open("{url}");'.format(url=self.url)
+                )
+            )
+            return
 
         webbrowser.open(self.url, new=2)
 
