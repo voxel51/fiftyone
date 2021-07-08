@@ -20,10 +20,7 @@ import fiftyone.core.dataset as fod
 import fiftyone.core.client as foc
 from fiftyone.core.config import AppConfig
 import fiftyone.core.context as focx
-import fiftyone.core.frame as fof
-import fiftyone.core.media as fom
 import fiftyone.core.plots as fop
-import fiftyone.core.sample as fosa
 import fiftyone.core.service as fos
 import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
