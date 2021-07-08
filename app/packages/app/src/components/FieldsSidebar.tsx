@@ -375,7 +375,7 @@ const LabelTagsCell = ({ modal }: TagsCellProps) => {
 
   const colorByLabel = useRecoilValue(atoms.colorByLabel(modal));
   const theme = useTheme();
-  const hasFilters = useRecoilValue(filterAtoms.hasFilters);
+  const hasFilters = useRecoilValue(filterAtoms.hasFilters(modal));
   const extStats = useRecoilValue(selectors.extendedDatasetStats);
 
   return (

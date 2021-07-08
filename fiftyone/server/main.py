@@ -746,7 +746,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         )
 
     @staticmethod
-    async def on_statistics(caller, sample_id, uuid, filters=None):
+    async def on_modal_statistics(caller, sample_id, uuid, filters=None):
         state = fos.StateDescription.from_dict(StateHandler.state)
         if state.view is not None:
             view = state.view
@@ -784,7 +784,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
                     }
                 )
 
-        message = {"type": "statistics", "stats": data, "uuid": uuid}
+        message = {"type": "modal_statistics", "stats": data, "uuid": uuid}
 
         _write_message(message, app=True, only=caller)
 
@@ -1016,6 +1016,8 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             view = state.view
         elif state.dataset is not None:
             view = state.dataset
+
+        view = get_extended_view(view, filters=filters)
 
         view = _get_search_view(view, path, search, selected)
 

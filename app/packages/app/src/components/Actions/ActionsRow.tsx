@@ -260,7 +260,7 @@ export const savingFilters = atom<boolean>({
 });
 
 const SaveFilters = () => {
-  const hasFiltersValue = useRecoilValue(hasFilters);
+  const hasFiltersValue = useRecoilValue(hasFilters(false));
   const [loading, setLoading] = useRecoilState(savingFilters);
 
   return hasFiltersValue ? (

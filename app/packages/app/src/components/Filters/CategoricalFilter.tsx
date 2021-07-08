@@ -22,7 +22,8 @@ import socket from "../../shared/connection";
 import { packageMessage } from "../../utils/socket";
 import { useTheme } from "../../utils/hooks";
 import { Value } from "./types";
-import { subCountValueAtom } from "./atoms";
+import { modalFilterStages, subCountValueAtom } from "./atoms";
+import { filterStages } from "../../recoil/selectors";
 
 const CategoricalFilterContainer = styled.div`
   background: ${({ theme }) => theme.backgroundDark};
@@ -289,14 +290,23 @@ const useSearch = () => {
     }>
   >();
   return useRecoilCallback(
-    ({ snapshot }) => async (
-      modal: boolean,
-      path: string,
-      search: string,
-      selectedAtom,
-      setSearchResults: (value) => void,
-      setSubCount
-    ) => {
+    ({ snapshot }) => async ({
+      modal,
+      path,
+      search,
+      selectedValuesAtom,
+      setSearchResults,
+      setSubCount,
+      setActive,
+    }: {
+      modal: boolean;
+      search: string;
+      path: string;
+      selectedValuesAtom: RecoilState<Value[]>;
+      setSearchResults: (value) => void;
+      setSubCount: (value) => void;
+      setActive: (value) => void;
+    }) => {
       const id = uuid();
 
       const clear = setTimeout(() => setSearchResults(null), 200);
@@ -309,6 +319,13 @@ const useSearch = () => {
       if (modal) {
         sampleId = (await snapshot.getPromise(atoms.modal)).sampleId;
       }
+      const filters = {
+        ...(await snapshot.getPromise(
+          modal ? modalFilterStages : filterStages
+        )),
+      };
+      delete filters[path];
+      const selected = await snapshot.getPromise(selectedValuesAtom);
 
       const promise = new Promise<{
         count: number;
@@ -327,6 +344,7 @@ const useSearch = () => {
             limit: LIST_LIMIT,
             uuid: id,
             sample_id: sampleId,
+            filters,
             ...sorting,
           })
         );
@@ -396,13 +414,15 @@ const CategoricalFilter = React.memo(
 
       useLayoutEffect(() => {
         focused &&
-          runSearch(
+          runSearch({
             modal,
+            path,
             search,
             selectedValuesAtom,
             setSearchResults,
-            setSubCount
-          );
+            setSubCount,
+            setActive,
+          });
       }, [focused, search, selected]);
 
       return (

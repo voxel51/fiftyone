@@ -36,8 +36,8 @@ export const labelFilters = selectorFamily<LabelFilters, boolean>({
     const filters = {};
     const typeMap = get(selectors.labelTypesMap);
     const hiddenLabels = modal ? get(atoms.hiddenLabels) : null;
-    for (const label of labels) {
-      const path = `${label}${getPathExtension(typeMap[label])}`;
+    for (const field of labels) {
+      const path = `${field}${getPathExtension(typeMap[field])}`;
 
       const cPath = `${path}.confidence`;
       const lPath = `${path}.label`;
@@ -55,7 +55,7 @@ export const labelFilters = selectorFamily<LabelFilters, boolean>({
 
       const matchedTags = get(filterAtoms.matchedTags({ key: "label", modal }));
 
-      filters[label] = (s) => {
+      filters[field] = (s) => {
         if (hiddenLabels && hiddenLabels[s.id ?? s._id]) {
           return false;
         }

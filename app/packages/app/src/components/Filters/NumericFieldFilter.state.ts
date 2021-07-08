@@ -125,8 +125,9 @@ export const rangeAtom = selectorFamily<
   get: ({ defaultRange, modal, path }) => ({ get }) => {
     return getFilter(get, modal, path, defaultRange).range;
   },
-  set: ({ defaultRange, modal, path }) => ({ get, set }, range) =>
-    setFilter(get, set, modal, path, "range", range, defaultRange),
+  set: ({ defaultRange, modal, path }) => ({ get, set }, range) => {
+    setFilter(get, set, modal, path, "range", range, defaultRange);
+  },
 });
 
 export const noneAtom = selectorFamily<
@@ -138,7 +139,8 @@ export const noneAtom = selectorFamily<
   }
 >({
   key: "filterNumericFieldNone",
-  get: ({ modal, path }) => ({ get }) => getFilter(get, modal, path).none,
+  get: ({ defaultRange, modal, path }) => ({ get }) =>
+    getFilter(get, modal, path, defaultRange).none,
   set: ({ defaultRange, modal, path }) => ({ get, set }, value) =>
     setFilter(get, set, modal, path, "none", value, defaultRange),
 });

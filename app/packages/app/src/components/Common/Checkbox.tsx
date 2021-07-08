@@ -68,7 +68,6 @@ const CheckboxName = ({
 }) => {
   const subCount = subCountValueAtom ? useRecoilValue(subCountAtom) : null;
   const countStr = makeCountStr(subCount, count);
-  text === "bird" && console.log(subCountAtom, subCount);
 
   return (
     <CheckboxNameDiv>

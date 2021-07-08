@@ -6,8 +6,6 @@ import * as selectors from "../../recoil/selectors";
 import { AGGS } from "../../utils/labels";
 import { request } from "../../utils/socket";
 import { viewsAreEqual } from "../../utils/view";
-import Results from "../Common/Results";
-import { sampleModalFilter } from "./LabelFieldFilters.state";
 import { Value } from "./types";
 
 export { filterStages } from "../../recoil/selectors";
@@ -22,9 +20,11 @@ export const modalFilterStages = atom<object>({
   default: {},
 });
 
-export const hasFilters = selector<boolean>({
+export const hasFilters = selectorFamily<boolean, boolean>({
   key: "hasFilters",
-  get: ({ get }) => Object.keys(get(selectors.filterStages)).length > 0,
+  get: (modal) => ({ get }) =>
+    Object.keys(get(modal ? modalFilterStages : selectors.filterStages))
+      .length > 0,
 });
 
 export const matchedTags = selectorFamily<
@@ -83,7 +83,7 @@ const modalStatsRaw = selector({
   get: async ({ get }) => {
     const id = uuid();
     const data = await request({
-      type: "statistics",
+      type: "modal_statistics",
       uuid: id,
       args: {
         sample_id: get(atoms.modal).sampleId,
@@ -104,7 +104,7 @@ const extendedModalStatsRaw = selector({
   get: async ({ get }) => {
     const id = uuid();
     const data = await request({
-      type: "statistics",
+      type: "modal_statistics",
       uuid: id,
       args: {
         sample_id: get(atoms.modal).sampleId,
@@ -423,6 +423,9 @@ export const subCountValueAtom = selectorFamily<
 >({
   key: "categoricalFieldSubCountsValues",
   get: ({ path, modal, value }) => ({ get }) => {
+    if (!get(hasFilters(modal))) {
+      return null;
+    }
     const counts = get(countsAtom({ path, modal, filtered: true }));
 
     if (!counts) {
