@@ -44,6 +44,9 @@ class COCOEvaluationConfig(DetectionEvaluationConfig):
         use_masks (False): whether to compute IoUs using the instances masks in
             the ``mask`` attribute of the provided objects, which must be
             :class:`fiftyone.core.labels.Detection` instances
+        use_boxes (False): whether to compute IoUs using the bounding boxes
+            of the provided :class:`fiftyone.core.labels.Polyline` instances
+            rather than using their actual geometries
         tolerance (None): a tolerance, in pixels, when generating approximate
             polylines for instance masks. Typical values are 1-3 pixels
         compute_mAP (False): whether to perform the necessary computations so
@@ -72,6 +75,7 @@ class COCOEvaluationConfig(DetectionEvaluationConfig):
         classwise=None,
         iscrowd="iscrowd",
         use_masks=False,
+        use_boxes=False,
         tolerance=None,
         compute_mAP=False,
         iou_threshs=None,
@@ -91,6 +95,7 @@ class COCOEvaluationConfig(DetectionEvaluationConfig):
 
         self.iscrowd = iscrowd
         self.use_masks = use_masks
+        self.use_boxes = use_boxes
         self.tolerance = tolerance
         self.compute_mAP = compute_mAP
         self.iou_threshs = iou_threshs
@@ -496,8 +501,12 @@ def _coco_evaluation_setup(
     classwise = config.classwise
 
     iou_kwargs = dict(iscrowd=iscrowd, error_level=config.error_level)
+
     if config.use_masks:
         iou_kwargs.update(use_masks=True, tolerance=config.tolerance)
+
+    if config.use_boxes:
+        iou_kwargs.update(use_boxes=True)
 
     # Organize preds and GT by category
     cats = defaultdict(lambda: defaultdict(list))

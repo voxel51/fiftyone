@@ -45,7 +45,13 @@ def make_iscrowd_fcn(iscrowd_attr):
 
 
 def compute_ious(
-    preds, gts, iscrowd=None, use_masks=False, tolerance=None, error_level=1
+    preds,
+    gts,
+    iscrowd=None,
+    use_masks=False,
+    use_boxes=False,
+    tolerance=None,
+    error_level=1,
 ):
     """Computes the pairwise IoUs between the predicted and ground truth
     objects.
@@ -63,6 +69,9 @@ def compute_ious(
         use_masks (False): whether to compute IoUs using the instances masks in
             the ``mask`` attribute of the provided objects, which must be
             :class:`fiftyone.core.labels.Detection` instances
+        use_boxes (False): whether to compute IoUs using the bounding boxes
+            of the provided :class:`fiftyone.core.labels.Polyline` instances
+            rather than using their actual geometries
         tolerance (None): a tolerance, in pixels, when generating approximate
             polylines for instance masks. Typical values are 1-3 pixels
         error_level (1): the error level to use when manipulating instance
@@ -82,6 +91,9 @@ def compute_ious(
         return np.zeros((len(preds), len(gts)))
 
     if isinstance(preds[0], fol.Polyline):
+        if use_boxes:
+            return _compute_bbox_ious(preds, gts, iscrowd=iscrowd)
+
         return _compute_polyline_ious(preds, gts, error_level, iscrowd=iscrowd)
 
     if use_masks:
@@ -98,11 +110,22 @@ def compute_ious(
 
 
 def _compute_bbox_ious(preds, gts, iscrowd=None):
+    num_pred = len(preds)
+    num_gt = len(gts)
+
+    if iscrowd is not None:
+        gt_crowds = [iscrowd(gt) for gt in gts]
+    else:
+        gt_crowds = [False] * num_gt
+
+    if isinstance(preds[0], fol.Polyline):
+        preds = _polylines_to_detections(preds)
+        gts = _polylines_to_detections(gts)
+
     ious = np.zeros((len(preds), len(gts)))
-    for j, gt in enumerate(gts):
+    for j, (gt, gt_crowd) in enumerate(zip(gts, gt_crowds)):
         gx, gy, gw, gh = gt.bounding_box
         gt_area = gh * gw
-        gt_crowd = iscrowd(gt) if iscrowd is not None else False
 
         for i, pred in enumerate(preds):
             px, py, pw, ph = pred.bounding_box
@@ -119,7 +142,12 @@ def _compute_bbox_ious(preds, gts, iscrowd=None):
                 continue
 
             inter = h * w
-            union = pred_area if gt_crowd else pred_area + gt_area - inter
+
+            if gt_crowd:
+                union = pred_area
+            else:
+                union = pred_area + gt_area - inter
+
             ious[i, j] = min(etan.safe_divide(inter, union), 1)
 
     return ious
@@ -202,6 +230,17 @@ def _compute_mask_ious(preds, gts, tolerance, error_level, iscrowd=None):
     return _compute_polyline_ious(
         pred_polys, gt_polys, error_level, gt_crowds=gt_crowds
     )
+
+
+def _polylines_to_detections(polylines):
+    detections = []
+    for polyline in polylines:
+        detection = polyline.to_detection()
+
+        detection._id = polyline._id  # keep same ID
+        detections.append(detection)
+
+    return detections
 
 
 def _masks_to_polylines(detections, tolerance, error_level):

@@ -40,6 +40,9 @@ class OpenImagesEvaluationConfig(DetectionEvaluationConfig):
         use_masks (False): whether to compute IoUs using the instances masks in
             the ``mask`` attribute of the provided objects, which must be
             :class:`fiftyone.core.labels.Detection` instances
+        use_boxes (False): whether to compute IoUs using the bounding boxes
+            of the provided :class:`fiftyone.core.labels.Polyline` instances
+            rather than using their actual geometries
         tolerance (None): a tolerance, in pixels, when generating approximate
             polylines for instance masks. Typical values are 1-3 pixels
         max_preds (None): the maximum number of predicted objects to evaluate
@@ -76,6 +79,7 @@ class OpenImagesEvaluationConfig(DetectionEvaluationConfig):
         classwise=None,
         iscrowd="IsGroupOf",
         use_masks=False,
+        use_boxes=False,
         tolerance=None,
         max_preds=None,
         error_level=1,
@@ -92,6 +96,7 @@ class OpenImagesEvaluationConfig(DetectionEvaluationConfig):
 
         self.iscrowd = iscrowd
         self.use_masks = use_masks
+        self.use_boxes = use_boxes
         self.tolerance = tolerance
         self.max_preds = max_preds
         self.error_level = error_level
@@ -542,8 +547,12 @@ def _open_images_evaluation_setup(
     classwise = config.classwise
 
     iou_kwargs = dict(iscrowd=iscrowd, error_level=config.error_level)
+
     if config.use_masks:
         iou_kwargs.update(use_masks=True, tolerance=config.tolerance)
+
+    if config.use_boxes:
+        iou_kwargs.update(use_boxes=True)
 
     # Organize preds and GT by category
     cats = defaultdict(lambda: defaultdict(list))

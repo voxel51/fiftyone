@@ -1533,6 +1533,7 @@ class SampleCollection(object):
         method="coco",
         iou=0.50,
         use_masks=False,
+        use_boxes=False,
         classwise=True,
         config=None,
         **kwargs,
@@ -1600,6 +1601,9 @@ class SampleCollection(object):
             use_masks (False): whether to compute IoUs using the instances
                 masks in the ``mask`` attribute of the provided objects, which
                 must be :class:`fiftyone.core.labels.Detection` instances
+            use_boxes (False): whether to compute IoUs using the bounding boxes
+                of the provided :class:`fiftyone.core.labels.Polyline`
+                instances rather than using their actual geometries
             classwise (True): whether to only match objects with the same class
                 label (True) or allow matches between classes (False)
             config (None): a
@@ -1624,6 +1628,7 @@ class SampleCollection(object):
             method=method,
             iou=iou,
             use_masks=use_masks,
+            use_boxes=use_boxes,
             classwise=classwise,
             config=config,
             **kwargs,
