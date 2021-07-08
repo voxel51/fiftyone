@@ -6,7 +6,6 @@ import { isBooleanField } from "./BooleanFieldFilter.state";
 import { isNumericField } from "./NumericFieldFilter.state";
 import { isStringField } from "./StringFieldFilter.state";
 
-import { AGGS } from "../../utils/labels";
 import { Value } from "./types";
 
 export const unsupportedFields = selector<string[]>({
@@ -22,46 +21,6 @@ export const unsupportedFields = selector<string[]>({
         !get(isBooleanField(f)) &&
         !["metadata", "tags"].includes(f)
     );
-  },
-});
-
-export const noneCount = selectorFamily<
-  number,
-  { path: string; modal: boolean; filtered: boolean }
->({
-  key: "noneCount",
-  get: ({ path, modal, filtered }) => ({ get }) => {
-    return 0;
-  },
-});
-
-export const countsAtom = selectorFamily<
-  { count: number; results: [Value, number][] },
-  { path: string; modal: boolean }
->({
-  key: "categoricalFieldCounts",
-  get: ({ path, modal }) => ({ get }) => {
-    const none = get(noneCount({ path, modal, filtered: false }));
-
-    const data = (get(selectors.datasetStats) ?? []).reduce(
-      (acc, cur) => {
-        if (cur.name === path && cur._CLS === AGGS.COUNT_VALUES) {
-          return {
-            count: cur.result[0],
-            results: cur.result[1],
-          };
-        }
-        return acc;
-      },
-      { count: 0, results: [] }
-    );
-
-    if (none > 0 && !modal) {
-      data.count = data.count + 1;
-      data.results = [...data.results, [null, none]];
-    }
-
-    return data;
   },
 });
 

@@ -7,7 +7,7 @@ import { NamedRangeSlider } from "./RangeSlider";
 import { FRAME_NUMBER_FIELD, INT_FIELD } from "../../utils/labels";
 import { useExpand } from "./hooks";
 import { boundsAtom, rangeAtom, noneAtom } from "./NumericFieldFilter.state";
-import { noneCount } from "./utils";
+import { noneCount } from "./atoms";
 
 const NumericFieldFilter = ({ expanded, entry, modal }) => {
   const [ref, props] = useExpand(expanded);

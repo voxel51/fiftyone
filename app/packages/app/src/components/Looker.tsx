@@ -392,7 +392,7 @@ export const useFullscreen = () => {
 interface LookerProps {
   lookerRef?: MutableRefObject<any>;
   modal: boolean;
-  onClose: EventCallback;
+  onClose?: EventCallback;
   onClick?: React.MouseEventHandler<HTMLDivElement>;
   onNext?: EventCallback;
   onPrevious?: EventCallback;

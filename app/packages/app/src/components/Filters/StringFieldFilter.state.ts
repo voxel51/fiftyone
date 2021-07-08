@@ -69,7 +69,6 @@ export const selectedValuesAtom = selectorFamily<Value[], FilterParams>({
   key: "filterStringFieldValues",
   get: ({ modal, path }) => ({ get }) => getFilter(get, modal, path).values,
   set: ({ modal, path }) => ({ get, set }, value) =>
-    typeof value === "string" &&
     setFilter(get, set, modal, path, "values", value),
 });
 

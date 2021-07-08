@@ -12,7 +12,7 @@ import * as atoms from "../../recoil/atoms";
 import * as selectors from "../../recoil/selectors";
 import * as numericField from "./NumericFieldFilter.state";
 import * as stringField from "./StringFieldFilter.state";
-import { countsAtom, noneCount } from "./utils";
+import { countsAtom, noneCount } from "./atoms";
 
 const FilterHeader = styled.div`
   display: flex;
@@ -90,7 +90,7 @@ const LabelFilter = ({ expanded, entry, modal }: Props) => {
               modal,
               path: lPath,
             })}
-            countsAtom={countsAtom({ modal, path: lPath })}
+            countsAtom={countsAtom({ modal, path: lPath, filtered: false })}
             excludeAtom={stringField.excludeAtom({ modal, path: lPath })}
             modal={modal}
             path={lPath}

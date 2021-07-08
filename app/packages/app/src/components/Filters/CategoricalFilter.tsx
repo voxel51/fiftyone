@@ -22,6 +22,7 @@ import socket from "../../shared/connection";
 import { packageMessage } from "../../utils/socket";
 import { useTheme } from "../../utils/hooks";
 import { Value } from "./types";
+import { subCountValueAtom } from "./atoms";
 
 const CategoricalFilterContainer = styled.div`
   background: ${({ theme }) => theme.backgroundDark};
@@ -126,7 +127,7 @@ const nullSort = ({
 };
 
 interface WrapperProps {
-  results: [Value, [number, number]][];
+  results: [Value, number][];
   selectedValuesAtom: RecoilState<Value[]>;
   excludeAtom?: RecoilState<boolean>;
   name: string;
@@ -134,6 +135,7 @@ interface WrapperProps {
   color: string;
   count: number;
   modal: boolean;
+  path: string;
 }
 
 const Wrapper = ({
@@ -144,15 +146,17 @@ const Wrapper = ({
   excludeAtom,
   valueName,
   modal,
+  path,
 }: WrapperProps) => {
   const [selected, setSelected] = useRecoilState(selectedValuesAtom);
   const selectedSet = new Set(selected);
   const setExcluded = excludeAtom ? useSetRecoilState(excludeAtom) : null;
   const sorting = useRecoilValue(atoms.sortFilterResults(modal));
   const counts = Object.fromEntries(results);
-  let allValues: [string, number][] = selected.map<[string, number]>(
-    (value) => [value, counts[value] ?? 0]
-  );
+  let allValues: [Value, number][] = selected.map<[Value, number]>((value) => [
+    value,
+    counts[String(value)] ?? 0,
+  ]);
 
   if (count <= CHECKBOX_LIMIT) {
     allValues = [...allValues, ...results.filter(([v]) => !selectedSet.has(v))];
@@ -167,7 +171,7 @@ const Wrapper = ({
           value={selectedSet.has(value)}
           name={value}
           count={count}
-          subCountAtom={null}
+          subCountAtom={subCountValueAtom({ path, modal, value })}
           setValue={(checked: boolean) => {
             if (checked) {
               selectedSet.add(value);
@@ -450,6 +454,7 @@ const CategoricalFilter = React.memo(
             )}
 
             <Wrapper
+              path={path}
               color={color}
               name={name}
               results={results}

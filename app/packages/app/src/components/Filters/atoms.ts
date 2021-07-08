@@ -3,9 +3,12 @@ import { v4 as uuid } from "uuid";
 
 import * as atoms from "../../recoil/atoms";
 import * as selectors from "../../recoil/selectors";
+import { AGGS } from "../../utils/labels";
 import { request } from "../../utils/socket";
 import { viewsAreEqual } from "../../utils/view";
+import Results from "../Common/Results";
 import { sampleModalFilter } from "./LabelFieldFilters.state";
+import { Value } from "./types";
 
 export { filterStages } from "../../recoil/selectors";
 
@@ -358,5 +361,68 @@ export const filteredScalarCounts = selectorFamily<
       catchLabelCount(names, "", cur, acc);
       return acc;
     }, {});
+  },
+});
+
+export const noneCount = selectorFamily<
+  number,
+  { path: string; modal: boolean; filtered: boolean }
+>({
+  key: "noneCount",
+  get: ({ path, modal, filtered }) => ({ get }) => {
+    return 0;
+  },
+});
+
+export const countsAtom = selectorFamily<
+  { count: number; results: [Value, number][] },
+  { path: string; modal: boolean; filtered: boolean }
+>({
+  key: "categoricalFieldCounts",
+  get: ({ filtered, path, modal }) => ({ get }) => {
+    const none = get(noneCount({ path, modal, filtered: false }));
+
+    const atom = modal
+      ? filtered
+        ? extendedModalStats
+        : modalStats
+      : filtered
+      ? selectors.extendedDatasetStats
+      : selectors.datasetStats;
+
+    const data = (get(atom) ?? []).reduce(
+      (acc, cur) => {
+        if (cur.name === path && cur._CLS === AGGS.COUNT_VALUES) {
+          return {
+            count: cur.result[0],
+            results: cur.result[1],
+          };
+        }
+        return acc;
+      },
+      { count: 0, results: [] }
+    );
+
+    data.count = data.count + 1;
+    data.results = [...data.results, [null, none]];
+
+    return data;
+  },
+});
+
+export const subCountValueAtom = selectorFamily<
+  number | null,
+  { path: string; modal: boolean; value: Value }
+>({
+  key: "categoricalFieldSubCountsValues",
+  get: ({ path, modal, value }) => ({ get }) => {
+    const result = get(
+      countsAtom({ path, modal, filtered: true })
+    ).results.filter(([v]) => v === value);
+    if (Results.length) {
+      return result[0][1];
+    }
+
+    return null;
   },
 });
