@@ -44,6 +44,15 @@ class OpenImagesEvaluationConfig(DetectionEvaluationConfig):
             polylines for instance masks. Typical values are 1-3 pixels
         max_preds (None): the maximum number of predicted objects to evaluate
             when computing mAP and PR curves
+        error_level (1): the error level to use when manipulating instance
+            masks or polylines. Valid values are:
+
+                0: raise geometric errors that are encountered
+                1: log warnings if geometric errors are encountered
+                2: ignore geometric errors
+
+            If ``error_level > 0``, any calculation that raises a geometric
+            error will default to an IoU of 0
         hierarchy (None): an optional dict containing a hierachy of classes for
             evaluation following the structure
             ``{"LabelName": label, "Subcategory": [{...}, ...]}``
@@ -69,6 +78,7 @@ class OpenImagesEvaluationConfig(DetectionEvaluationConfig):
         use_masks=False,
         tolerance=None,
         max_preds=None,
+        error_level=1,
         hierarchy=None,
         pos_label_field=None,
         neg_label_field=None,
@@ -84,6 +94,7 @@ class OpenImagesEvaluationConfig(DetectionEvaluationConfig):
         self.use_masks = use_masks
         self.tolerance = tolerance
         self.max_preds = max_preds
+        self.error_level = error_level
         self.hierarchy = hierarchy
         self.pos_label_field = pos_label_field
         self.neg_label_field = neg_label_field
@@ -530,14 +541,9 @@ def _open_images_evaluation_setup(
     iscrowd = make_iscrowd_fcn(config.iscrowd)
     classwise = config.classwise
 
+    iou_kwargs = dict(iscrowd=iscrowd, error_level=config.error_level)
     if config.use_masks:
-        iou_kwargs = dict(
-            iscrowd=iscrowd,
-            use_masks=config.use_masks,
-            tolerance=config.tolerance,
-        )
-    else:
-        iou_kwargs = dict(iscrowd=iscrowd)
+        iou_kwargs.update(use_masks=True, tolerance=config.tolerance)
 
     # Organize preds and GT by category
     cats = defaultdict(lambda: defaultdict(list))

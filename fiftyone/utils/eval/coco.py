@@ -53,6 +53,15 @@ class COCOEvaluationConfig(DetectionEvaluationConfig):
         max_preds (None): the maximum number of predicted objects to evaluate
             when computing mAP and PR curves. Only applicable when
             ``compute_mAP`` is True
+        error_level (1): the error level to use when manipulating instance
+            masks or polylines. Valid values are:
+
+                0: raise geometric errors that are encountered
+                1: log warnings if geometric errors are encountered
+                2: ignore geometric errors
+
+            If ``error_level > 0``, any calculation that raises a geometric
+            error will default to an IoU of 0
     """
 
     def __init__(
@@ -67,6 +76,7 @@ class COCOEvaluationConfig(DetectionEvaluationConfig):
         compute_mAP=False,
         iou_threshs=None,
         max_preds=None,
+        error_level=1,
         **kwargs,
     ):
         super().__init__(
@@ -85,6 +95,7 @@ class COCOEvaluationConfig(DetectionEvaluationConfig):
         self.compute_mAP = compute_mAP
         self.iou_threshs = iou_threshs
         self.max_preds = max_preds
+        self.error_level = error_level
 
     @property
     def method(self):
@@ -484,14 +495,9 @@ def _coco_evaluation_setup(
     iscrowd = make_iscrowd_fcn(config.iscrowd)
     classwise = config.classwise
 
+    iou_kwargs = dict(iscrowd=iscrowd, error_level=config.error_level)
     if config.use_masks:
-        iou_kwargs = dict(
-            iscrowd=iscrowd,
-            use_masks=config.use_masks,
-            tolerance=config.tolerance,
-        )
-    else:
-        iou_kwargs = dict(iscrowd=iscrowd)
+        iou_kwargs.update(use_masks=True, tolerance=config.tolerance)
 
     # Organize preds and GT by category
     cats = defaultdict(lambda: defaultdict(list))

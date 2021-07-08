@@ -550,14 +550,14 @@ class DatasetMixin(object):
         for field_name in field_names:
             # pylint: disable=no-member
             if field_name in default_fields:
-                _handle_error(
+                fou.handle_error(
                     ValueError(
                         "Cannot delete default field '%s'" % field_name
                     ),
                     error_level,
                 )
             elif field_name not in cls._fields:
-                _handle_error(
+                fou.handle_error(
                     AttributeError("Field '%s' does not exist" % field_name),
                     error_level,
                 )
@@ -1099,14 +1099,3 @@ def _rename_field(field, new_field_name):
     field.db_field = new_field_name
     field.name = new_field_name
     return field
-
-
-def _handle_error(error, error_level):
-    if error_level > 1:
-        return
-
-    if error_level == 1:
-        logger.warning(error)
-        return
-
-    raise error

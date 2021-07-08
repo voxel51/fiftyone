@@ -36,6 +36,13 @@ def evaluate_detections(
     """Evaluates the predicted detections in the given samples with respect to
     the specified ground truth detections.
 
+    This method supports evaluating the following spatial data types:
+
+    -   Object detections in :class:`fiftyone.core.labels.Detections` format
+    -   Instance segmentations in :class:`fiftyone.core.labels.Detections`
+        format with their ``mask`` attributes populated
+    -   Polygons in :class:`fiftyone.core.labels.Polylines` format
+
     By default, this method uses COCO-style evaluation, but this can be
     configued via the ``method`` and ``config`` parameters.
 
