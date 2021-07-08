@@ -752,15 +752,13 @@ class Session(foc.HasClient):
 
         The behavior of this method depends on your context:
 
-        -   Notebooks: calls :meth:`Session.show` to open an App window in the
-            output of your current cell
-        -   Desktop: the desktop App will be opened, if necessary
-        -   Other (non-remote): the App will be opened in a new browser tab
+        -   Notebooks: calls :meth:`Session.show` to open a new App window in
+            the output of your current cell
+        -   Desktop: opens the desktop App, if necessary
+        -   Other (non-remote): opens the App in a new browser tab
         """
         if self._remote:
-            logger.warn(
-                "Session.open() attempted, but remote sessions cannot launch the App"
-            )
+            logger.warning("Remote sessions cannot open new App windows")
             return
 
         if self.plots:
@@ -777,18 +775,13 @@ class Session(foc.HasClient):
         self.open_tab()
 
     def open_tab(self):
-        """Opens the App in a new tab of your default browser.
+        """Opens the App in a new tab of your browser.
 
-        This method can be called from Jupyter notebooks and from desktop App
-        mode to override the default behavior of :meth:`Session.open`.
-
-        This method cannot be called on remote sessions or from Colab
-        notebooks.
+        This method can be called from Jupyter notebooks and in desktop App
+        mode to override the default location of the App.
         """
-        if self._remote and self._context == focx._NONE:
-            logger.warn(
-                "Session.open_tab() attempted, but remote sessions cannot launch the App"
-            )
+        if self._remote:
+            logger.warning("Remote sessions cannot open new App windows")
             return
 
         if self._context != focx._NONE:
@@ -851,7 +844,8 @@ class Session(foc.HasClient):
         connected windows (tabs) must be closed.
         """
         if self._context != focx._NONE:
-            raise RuntimeError("Notebook sessions cannot wait")
+            logger.warning("Notebook sessions cannot wait")
+            return
 
         try:
             if self._remote or not self._desktop:
@@ -880,7 +874,8 @@ class Session(foc.HasClient):
         Only applicable to notebook contexts.
         """
         if self._context == focx._NONE:
-            raise ValueError("Only notebook sessions can be frozen")
+            logger.warning("Only notebook sessions can be frozen")
+            return
 
         self.state.active_handle = None
 
