@@ -15,7 +15,7 @@ export const useSetModal = () => {
     ({ set, snapshot }) => async (sampleId: string) => {
       set(atoms.modal, { visible: true, sampleId: sampleId });
       const filters = await snapshot.getPromise(labelFilters(false));
-      set(labelFilters(true), filters);
+      // set(labelFilters(true), filters);
     },
     []
   );

@@ -258,6 +258,7 @@ export const extendedDatasetStats = selector({
     if (!filtersAreEqual(raw.filters, currentFilters)) {
       return null;
     }
+    console.log(raw.stats.main);
 
     return raw.stats.main;
   },

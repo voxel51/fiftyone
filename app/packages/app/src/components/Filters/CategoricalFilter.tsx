@@ -281,6 +281,71 @@ const ResultsWrapper = ({
   );
 };
 
+const useSearch = () => {
+  const currentPromise = useRef<
+    Promise<{
+      count: number;
+      results: [string, number][];
+    }>
+  >();
+  return useRecoilCallback(
+    ({ snapshot }) => async (
+      modal: boolean,
+      path: string,
+      search: string,
+      selectedAtom,
+      setSearchResults: (value) => void,
+      setSubCount
+    ) => {
+      const id = uuid();
+
+      const clear = setTimeout(() => setSearchResults(null), 200);
+      const wrap = (handler) => ({ data }) => {
+        data = JSON.parse(data);
+        data.uuid === id && handler(data);
+      };
+      const sorting = await snapshot.getPromise(atoms.sortFilterResults(modal));
+      let sampleId = null;
+      if (modal) {
+        sampleId = (await snapshot.getPromise(atoms.modal)).sampleId;
+      }
+
+      const promise = new Promise<{
+        count: number;
+        results: [string, number][];
+      }>((resolve) => {
+        const listener = wrap(({ count, results }) => {
+          socket.removeEventListener("message", listener);
+          resolve({ count, results });
+        });
+        socket.addEventListener("message", listener);
+        socket.send(
+          packageMessage("count_values", {
+            path,
+            search,
+            selected,
+            limit: LIST_LIMIT,
+            uuid: id,
+            sample_id: sampleId,
+            ...sorting,
+          })
+        );
+      });
+      currentPromise.current = promise;
+      promise.then(({ count, results }) => {
+        clearTimeout(clear);
+        if (currentPromise.current !== promise) {
+          return;
+        }
+        results.length && setActive(results[0][0]);
+        setSearchResults(results);
+        setSubCount(count);
+      });
+    },
+    []
+  );
+};
+
 interface Props {
   countsAtom: RecoilValueReadOnly<{
     count: number;
@@ -317,18 +382,9 @@ const CategoricalFilter = React.memo(
       const [search, setSearch] = useState("");
       const [active, setActive] = useState(undefined);
       const [subCount, setSubCount] = useState(null);
-      const sorting = useRecoilValue(atoms.sortFilterResults(modal));
       const [searchResults, setSearchResults] = useState<[string, number][]>(
         null
       );
-      const sampleId = modal ? useRecoilValue(atoms.modal).sampleId : null;
-
-      const currentPromise = useRef<
-        Promise<{
-          count: number;
-          results: [string, number][];
-        }>
-      >();
 
       const onSelect = useOnSelect(selectedValuesAtom, [
         () => setSearchResults(null),
@@ -336,47 +392,17 @@ const CategoricalFilter = React.memo(
         () => setActive(undefined),
       ]);
 
-      useLayoutEffect(() => {
-        const id = uuid();
+      const runSearch = useSearch();
 
-        const clear = setTimeout(() => setSearchResults(null), 200);
-        const wrap = (handler) => ({ data }) => {
-          data = JSON.parse(data);
-          data.uuid === id && handler(data);
-        };
-        if (focused) {
-          const promise = new Promise<{
-            count: number;
-            results: [string, number][];
-          }>((resolve) => {
-            const listener = wrap(({ count, results }) => {
-              socket.removeEventListener("message", listener);
-              resolve({ count, results });
-            });
-            socket.addEventListener("message", listener);
-            socket.send(
-              packageMessage("count_values", {
-                path,
-                search,
-                selected,
-                limit: LIST_LIMIT,
-                uuid: id,
-                sample_id: sampleId,
-                ...sorting,
-              })
-            );
-          });
-          currentPromise.current = promise;
-          promise.then(({ count, results }) => {
-            clearTimeout(clear);
-            if (currentPromise.current !== promise) {
-              return;
-            }
-            results.length && setActive(results[0][0]);
-            setSearchResults(results);
-            setSubCount(count);
-          });
-        }
+      useLayoutEffect(() => {
+        focused &&
+          runSearch(
+            modal,
+            search,
+            selectedValuesAtom,
+            setSearchResults,
+            setSubCount
+          );
       }, [focused, search, selected]);
 
       return (

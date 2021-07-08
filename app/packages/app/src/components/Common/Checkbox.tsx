@@ -1,4 +1,4 @@
-import React from "react";
+import React, { Suspense } from "react";
 import { Checkbox as MaterialCheckbox } from "@material-ui/core";
 import { animated } from "react-spring";
 import styled from "styled-components";
@@ -9,6 +9,7 @@ import { useTheme } from "../../utils/hooks";
 import { summarizeLongStr } from "../../utils/generic";
 import { getValueString, Value } from "../Filters/utils";
 import { RecoilValueReadOnly, useRecoilValue } from "recoil";
+import { subCountValueAtom } from "../Filters/atoms";
 
 interface CheckboxProps {
   color?: string;
@@ -31,7 +32,7 @@ const StyledCheckbox = animated(styled(ItemAction)`
   margin: 0;
 `);
 
-const CheckboxName = styled.div`
+const CheckboxNameDiv = styled.div`
   text-overflow: ellipsis;
   font-weight: bold;
   flex-grow: 1;
@@ -54,15 +55,37 @@ const makeCountStr = (subCount = null, count = null) => {
   return count.toLocaleString();
 };
 
+const CheckboxName = ({
+  subCountAtom,
+  count,
+  text,
+  color,
+}: {
+  subCountAtom?: RecoilValueReadOnly<number>;
+  count: number;
+  text: string;
+  color?: string;
+}) => {
+  const subCount = subCountValueAtom ? useRecoilValue(subCountAtom) : null;
+  const countStr = makeCountStr(subCount, count);
+  text === "bird" && console.log(subCountAtom, subCount);
+
+  return (
+    <CheckboxNameDiv>
+      <span style={color ? { color } : {}}>
+        {summarizeLongStr(text, 28 - countStr.length, "middle")}
+      </span>
+      {count && <span>{countStr}</span>}
+    </CheckboxNameDiv>
+  );
+};
+
 const Checkbox = React.memo(
   ({ color, name, value, setValue, subCountAtom, count }: CheckboxProps) => {
     const theme = useTheme();
     color = color ?? theme.brand;
     const props = useHighlightHover(false);
-    const subCount = subCountAtom ? useRecoilValue(subCountAtom) : null;
-
     const [text, coloring] = getValueString(name);
-    const countStr = makeCountStr(subCount, count);
 
     return (
       <StyledCheckboxContainer title={text}>
@@ -78,12 +101,22 @@ const Checkbox = React.memo(
             }}
             disableRipple={true}
           />
-          <CheckboxName>
-            <span style={coloring ? { color } : {}}>
-              {summarizeLongStr(text, 28 - countStr.length, "middle")}
-            </span>
-            {count && <span>{countStr}</span>}
-          </CheckboxName>
+          <Suspense
+            fallback={
+              <CheckboxName
+                count={count}
+                color={coloring ? color : null}
+                text={text}
+              />
+            }
+          >
+            <CheckboxName
+              color={coloring ? color : null}
+              count={count}
+              subCountAtom={subCountAtom}
+              text={text}
+            />
+          </Suspense>
         </StyledCheckbox>
       </StyledCheckboxContainer>
     );

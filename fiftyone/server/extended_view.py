@@ -32,12 +32,13 @@ def get_view_field(fields_map, path):
     return F(path)
 
 
-def get_extended_view(view, filters, count_label_tags=False):
+def get_extended_view(view, filters, match=False, count_label_tags=False):
     """Create an extended view with the provided filters.
 
     Args:
         view: a :class:`fiftyone.core.collections.SampleCollection`
         filters: a `dict` of App defined filters
+        match: whether to match instead of filter
         count_labels_tags (False): whether to set the hideen `_label_tags` field
             with counts of tags with respect to all label fields
     """
@@ -56,7 +57,7 @@ def get_extended_view(view, filters, count_label_tags=False):
         if "sample" in tags:
             view = view.match_tags(tags=tags["sample"])
 
-    stages = _make_filter_stages(view, filters)
+    stages = _make_filter_stages(view, filters, match=match)
 
     for stage in stages:
         view = view.add_stage(stage)
@@ -94,7 +95,7 @@ def _add_labels_tags_counts(view):
     return view
 
 
-def _make_filter_stages(view, filters):
+def _make_filter_stages(view, filters, match=False):
     field_schema = view.get_field_schema()
     if view.media_type == fom.VIDEO:
         frame_field_schema = view.get_frame_field_schema()
@@ -121,7 +122,13 @@ def _make_filter_stages(view, filters):
         if isinstance(field, fof.EmbeddedDocumentField):
             expr = _make_scalar_expression(F(keys[-1]), args)
             if expr is not None:
-                stages.append(fosg.MatchLabels(fields=path, filter=expr))
+                if match:
+                    stage = fosg.MatchLabels(fields=path, filter=expr)
+                else:
+                    stage = fosg.FilterLabels(path, expr)
+
+                stages.append(stage)
+
         else:
             view_field = get_view_field(fields_map, path)
             expr = _make_scalar_expression(view_field, args)

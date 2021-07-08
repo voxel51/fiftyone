@@ -390,7 +390,12 @@ export const countsAtom = selectorFamily<
       ? selectors.extendedDatasetStats
       : selectors.datasetStats;
 
-    const data = (get(atom) ?? []).reduce(
+    const value = get(atom);
+    if (!value && filtered) {
+      return null;
+    }
+
+    const data = (value ?? []).reduce(
       (acc, cur) => {
         if (cur.name === path && cur._CLS === AGGS.COUNT_VALUES) {
           return {
@@ -403,8 +408,10 @@ export const countsAtom = selectorFamily<
       { count: 0, results: [] }
     );
 
-    data.count = data.count + 1;
-    data.results = [...data.results, [null, none]];
+    if (none > 0) {
+      data.count = data.count + 1;
+      data.results = [...data.results, [null, none]];
+    }
 
     return data;
   },
@@ -416,13 +423,17 @@ export const subCountValueAtom = selectorFamily<
 >({
   key: "categoricalFieldSubCountsValues",
   get: ({ path, modal, value }) => ({ get }) => {
-    const result = get(
-      countsAtom({ path, modal, filtered: true })
-    ).results.filter(([v]) => v === value);
-    if (Results.length) {
+    const counts = get(countsAtom({ path, modal, filtered: true }));
+
+    if (!counts) {
+      return null;
+    }
+    const result = counts.results.filter(([v]) => v === value);
+
+    if (result.length) {
       return result[0][1];
     }
 
-    return null;
+    return 0;
   },
 });
