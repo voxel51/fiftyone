@@ -382,7 +382,15 @@ class COCODetectionDatasetImporter(
         image_metadata = fom.ImageMetadata(width=width, height=height)
 
         if self._annotations is None:
-            return image_path, image_metadata, None
+            if "coco_id" in self.label_types:
+                if self._has_scalar_labels:
+                    label = image_id
+                else:
+                    label = {"coco_id": image_id}
+            else:
+                label = None
+
+            return image_path, image_metadata, label
 
         coco_objects = self._annotations.get(image_id, [])
         frame_size = (width, height)
@@ -1414,7 +1422,7 @@ def _download_coco_dataset_split(
         )
 
     if classes is not None and split == "test":
-        logger.warning("Test split is unlabeled; ignoring `classes`")
+        logger.warning("Test split is unlabeled; ignoring classes requirement")
         classes = None
 
     if scratch_dir is None:
@@ -1748,6 +1756,10 @@ def _do_download(args):
 def _get_images_with_classes(
     image_ids, annotations, target_classes, all_classes
 ):
+    if annotations is None:
+        logger.warning("Dataset is unlabeled; ignoring classes requirement")
+        return image_ids, []
+
     if etau.is_str(target_classes):
         target_classes = [target_classes]
 
