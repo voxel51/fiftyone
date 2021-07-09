@@ -325,7 +325,7 @@ def test_evaluate_detections():
     dataset.delete_evaluations()
 
 
-def test_evaluate_polylines():
+def test_evaluate_polygons():
     dataset = foz.load_zoo_dataset(
         "coco-2017",
         split="validation",
@@ -391,13 +391,9 @@ def test_evaluate_polylines():
             sample.save()
 
     results1 = dataset.evaluate_detections(
-        "pred_det",
-        gt_field="detections",
-        eval_key="det_coco",
-        method="coco",
-        compute_mAP=True,
+        "pred_det", gt_field="detections", eval_key="det_coco", method="coco"
     )
-    print(results1.mAP())
+    print(results1.metrics())
 
     results2 = dataset.evaluate_detections(
         "pred_seg",
@@ -405,18 +401,13 @@ def test_evaluate_polylines():
         eval_key="seg_coco",
         method="coco",
         use_masks=True,
-        compute_mAP=True,
     )
-    print(results2.mAP())
+    print(results2.metrics())
 
     results3 = dataset.evaluate_detections(
-        "pred_pol",
-        gt_field="polylines",
-        eval_key="pol_coco",
-        method="coco",
-        compute_mAP=True,
+        "pred_pol", gt_field="polylines", eval_key="pol_coco", method="coco"
     )
-    print(results3.mAP())
+    print(results3.metrics())
 
     results4 = dataset.evaluate_detections(
         "pred_pol",
@@ -424,9 +415,8 @@ def test_evaluate_polylines():
         eval_key="pol_coco",
         method="coco",
         use_boxes=True,
-        compute_mAP=True,
     )
-    print(results4.mAP())
+    print(results4.metrics())
 
     results1 = dataset.evaluate_detections(
         "pred_det",
@@ -434,7 +424,7 @@ def test_evaluate_polylines():
         eval_key="det_oi",
         method="open-images",
     )
-    print(results1.mAP())
+    print(results1.metrics())
 
     results2 = dataset.evaluate_detections(
         "pred_seg",
@@ -443,7 +433,7 @@ def test_evaluate_polylines():
         method="open-images",
         use_masks=True,
     )
-    print(results2.mAP())
+    print(results2.metrics())
 
     results3 = dataset.evaluate_detections(
         "pred_pol",
@@ -451,7 +441,7 @@ def test_evaluate_polylines():
         eval_key="pol_oi",
         method="open-images",
     )
-    print(results3.mAP())
+    print(results3.metrics())
 
     results4 = dataset.evaluate_detections(
         "pred_pol",
@@ -460,7 +450,7 @@ def test_evaluate_polylines():
         method="open-images",
         use_boxes=True,
     )
-    print(results4.mAP())
+    print(results4.metrics())
 
 
 def test_evaluate_detections_frames():
