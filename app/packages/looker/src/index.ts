@@ -339,16 +339,6 @@ export abstract class Looker<
   }
 
   protected hasResized(previousWindowBBox: BoundingBox): boolean {
-    if (
-      Boolean(
-        !previousWindowBBox ||
-          !this.state.windowBBox ||
-          previousWindowBBox.some((v, i) => v !== this.state.windowBBox[i])
-      )
-    ) {
-      console.log(previousWindowBBox, this.state.windowBBox);
-    }
-
     return Boolean(
       !previousWindowBBox ||
         !this.state.windowBBox ||

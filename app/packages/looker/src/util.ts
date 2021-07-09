@@ -234,6 +234,10 @@ export const ensureCanvasSize = (
  * Get the smallest box that contains all points
  */
 export const getContainingBox = (points: Coordinates[]): BoundingBox => {
+  if (points.length === 0) {
+    return [0, 0, 1, 1];
+  }
+
   let tlx = Math.min(...points.map(([x]) => x));
   let tly = Math.min(...points.map(([_, y]) => y));
   let w = Math.max(...points.map(([x]) => x)) - tlx;
