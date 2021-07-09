@@ -116,6 +116,19 @@ class DatasetTests(unittest.TestCase):
         self.assertIs(dataset1c, dataset1)
 
     @drop_datasets
+    def test_iter_samples(self):
+        dataset = fo.Dataset()
+        dataset.add_samples(
+            [fo.Sample(filepath="image%d.jpg" % i) for i in range(50)]
+        )
+
+        for sample in dataset:
+            pass
+
+        for sample in dataset.iter_samples(progress=True):
+            pass
+
+    @drop_datasets
     def test_merge_samples1(self):
         # Windows compatibility
         def expand_path(path):

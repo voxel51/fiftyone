@@ -14,6 +14,7 @@ import multiprocessing
 import os
 import random
 import warnings
+import re
 
 import boto3
 import botocore
@@ -1628,7 +1629,7 @@ def _download_images_if_necessary(
     num_existing = 0
     for image_id in image_ids:
         fp = os.path.join(data_dir, image_id + ".jpg")
-        fp_download = os.path.join(split, image_id + ".jpg")
+        fp_download = re.sub(r"\\", "/", os.path.join(split, image_id + ".jpg"))
         if not os.path.isfile(fp):
             inputs.append((fp, fp_download))
         else:
