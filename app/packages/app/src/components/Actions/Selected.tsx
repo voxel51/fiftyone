@@ -7,7 +7,7 @@ import * as atoms from "../../recoil/atoms";
 import * as selectors from "../../recoil/selectors";
 import socket from "../../shared/connection";
 import { packageMessage } from "../../utils/socket";
-import { VideoLooker } from "@fiftyone/looker";
+import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
 import { useEventHandler } from "../../utils/hooks";
 
 const useGridActions = (close: () => void) => {
@@ -132,15 +132,22 @@ const hasSetDiff = <T extends unknown>(a: Set<T>, b: Set<T>): boolean =>
 const hasSetInt = <T extends unknown>(a: Set<T>, b: Set<T>): boolean =>
   new Set([...a].filter((e) => b.has(e))).size > 0;
 
-const useModalActions = (lookerRef, close) => {
+const toIds = (labels: atoms.SelectedLabel[]) =>
+  new Set([...labels].map(({ label_id }) => label_id));
+
+const useModalActions = (
+  lookerRef: MutableRefObject<VideoLooker | ImageLooker | FrameLooker>,
+  close
+) => {
   const selectedLabels = useRecoilValue(selectors.selectedLabelIds);
   const visibleSampleLabels = lookerRef.current.getCurrentSampleLabels();
   const isVideo =
     useRecoilValue(selectors.isVideoDataset) &&
     useRecoilValue(selectors.isRootView);
-  const visibleFrameLabels = isVideo
-    ? lookerRef.current.getCurrentFrameLabels()
-    : new Set();
+  const visibleFrameLabels =
+    lookerRef.current instanceof VideoLooker
+      ? lookerRef.current.getCurrentFrameLabels()
+      : new Array<atoms.SelectedLabel>();
 
   const closeAndCall = (callback) => {
     return React.useCallback(() => {
@@ -150,12 +157,18 @@ const useModalActions = (lookerRef, close) => {
   };
   const elementNames = useRecoilValue(selectors.elementNames);
 
-  const hasVisibleUnselected = hasSetDiff(visibleSampleLabels, selectedLabels);
-  const hasFrameVisibleUnselected = hasSetDiff(
-    visibleFrameLabels,
+  const hasVisibleUnselected = hasSetDiff(
+    toIds(visibleSampleLabels),
     selectedLabels
   );
-  const hasVisibleSelection = hasSetInt(selectedLabels, visibleSampleLabels);
+  const hasFrameVisibleUnselected = hasSetDiff(
+    toIds(visibleFrameLabels),
+    selectedLabels
+  );
+  const hasVisibleSelection = hasSetInt(
+    selectedLabels,
+    toIds(visibleSampleLabels)
+  );
 
   return [
     {
@@ -167,21 +180,19 @@ const useModalActions = (lookerRef, close) => {
       text: `Unselect visible (current ${elementNames.singular})`,
       hidden: !hasVisibleSelection,
       onClick: closeAndCall(
-        useUnselectVisible(null, visibleModalSampleLabelIds)
+        useUnselectVisible(null, toIds(visibleSampleLabels))
       ),
     },
     isVideo && {
       text: "Select visible (current frame)",
       hidden: !hasFrameVisibleUnselected,
-      onClick: closeAndCall(
-        useSelectVisible(visibleModalCurrentFrameLabels(frameNumber))
-      ),
+      onClick: closeAndCall(useSelectVisible(null, visibleFrameLabels)),
     },
     isVideo && {
       text: "Unselect visible (current frame)",
       hidden: !hasVisibleSelection,
       onClick: closeAndCall(
-        useUnselectVisible(visibleModalCurrentFrameLabelIds(frameNumber))
+        useUnselectVisible(null, toIds(visibleFrameLabels))
       ),
     },
     {
@@ -197,14 +208,12 @@ const useModalActions = (lookerRef, close) => {
     {
       text: `Hide unselected (current ${elementNames.singular})`,
       hidden: !hasVisibleUnselected,
-      onClick: closeAndCall(useHideOthers(visibleModalSampleLabels)),
+      onClick: closeAndCall(useHideOthers(null, visibleSampleLabels)),
     },
     isVideo && {
       text: "Hide unselected (current frame)",
       hidden: !hasFrameVisibleUnselected,
-      onClick: closeAndCall(
-        useHideOthers(visibleModalCurrentFrameLabels(frameNumber))
-      ),
+      onClick: closeAndCall(useHideOthers(null, visibleFrameLabels)),
     },
   ].filter(Boolean);
 };
@@ -212,7 +221,7 @@ const useModalActions = (lookerRef, close) => {
 interface SelectionActionsProps {
   modal: boolean;
   close: () => void;
-  lookerRef: MutableRefObject<VideoLooker>;
+  lookerRef: MutableRefObject<VideoLooker | ImageLooker | FrameLooker>;
   bounds: any;
 }
 

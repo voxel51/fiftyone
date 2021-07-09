@@ -9,6 +9,14 @@ export interface BaseSample {
     width: number;
     height: number;
   };
+  _id: string;
+}
+
+export interface LabelData {
+  label_id: string;
+  field: string;
+  frame_number?: number;
+  sample_id: string;
 }
 
 export type BufferRange = [number, number];

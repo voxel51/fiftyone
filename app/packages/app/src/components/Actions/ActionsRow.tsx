@@ -27,10 +27,10 @@ import { PillButton } from "../utils";
 import * as atoms from "../../recoil/atoms";
 import * as selectors from "../../recoil/selectors";
 import socket from "../../shared/connection";
-import { useOutsideClick, useTheme } from "../../utils/hooks";
+import { useEventHandler, useOutsideClick, useTheme } from "../../utils/hooks";
 import { packageMessage } from "../../utils/socket";
 import Similar, { similaritySorting } from "./Similar";
-import { VideoLooker } from "@fiftyone/looker";
+import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
 import { showModalJSON } from "../../recoil/utils";
 import { hasFilters } from "../Filters/atoms";
 
@@ -159,9 +159,10 @@ const Selected = ({
   lookerRef,
 }: {
   modal: boolean;
-  lookerRef?: MutableRefObject<VideoLooker>;
+  lookerRef?: MutableRefObject<VideoLooker | ImageLooker | FrameLooker>;
 }) => {
   const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
   const selectedSamples = useRecoilValue(atoms.selectedSamples);
   const selectedObjects = useRecoilValue(selectors.selectedLabels);
   const ref = useRef();
@@ -172,15 +173,23 @@ const Selected = ({
     ? Object.keys(selectedObjects).length
     : selectedSamples.size;
 
+  lookerRef && useEventHandler(lookerRef.current, "buffering", setLoading);
+
   if (numItems < 1 && !modal) {
     return null;
   }
   return (
     <ActionDiv ref={ref}>
       <PillButton
-        icon={<Check />}
+        icon={loading ? <Loading /> : <Check />}
         open={open}
-        onClick={() => setOpen(!open)}
+        style={{ cursor: loading ? "default" : "pointer" }}
+        onClick={() => {
+          if (loading) {
+            return;
+          }
+          setOpen(!open);
+        }}
         highlight={numItems > 0 || open}
         text={`${numItems}`}
         ref={mRef}

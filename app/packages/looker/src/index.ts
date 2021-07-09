@@ -39,6 +39,7 @@ import {
   FrameSample,
   Buffers,
   BoundingBox,
+  LabelData,
 } from "./state";
 import {
   addToBuffers,
@@ -226,23 +227,24 @@ export abstract class Looker<
     return Promise.resolve(this.sample);
   }
 
-  getCurrentSampleLabels(): Promise<{ field: string; label_id: string }[]> {
-    const labels: { field: string; label_id: string }[] = [];
+  getCurrentSampleLabels(): LabelData[] {
+    const labels: LabelData[] = [];
     this.currentOverlays.forEach((overlay) => {
       if (overlay instanceof ClassificationsOverlay) {
         overlay.getFilteredAndFlat(this.state).forEach(([field, label]) => {
           labels.push({
             field: field,
             label_id: label._id,
+            sample_id: this.sample._id,
           });
         });
       } else {
         const { id: label_id, field } = overlay.getSelectData(this.state);
-        labels.push({ label_id, field });
+        labels.push({ label_id, field, sample_id: this.sample._id });
       }
     });
 
-    return Promise.resolve(labels);
+    return labels;
   }
 
   protected get waiting() {
@@ -696,32 +698,29 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
     return this.imageSource.seeking;
   }
 
-  getCurrentSampleLabels(): Promise<{ field: string; label_id: string }[]> {
-    const labels: { field: string; label_id: string }[] = [];
+  getCurrentSampleLabels(): LabelData[] {
+    const labels: LabelData[] = [];
     processOverlays(this.state, this.sampleOverlays)[0].forEach((overlay) => {
       if (overlay instanceof ClassificationsOverlay) {
         overlay.getFilteredAndFlat(this.state).forEach(([field, label]) => {
           labels.push({
             field: field,
             label_id: label._id,
+            sample_id: this.sample._id,
           });
         });
       } else {
         const { id: label_id, field } = overlay.getSelectData(this.state);
-        labels.push({ label_id, field });
+        labels.push({ label_id, field, sample_id: this.sample._id });
       }
     });
 
-    return Promise.resolve(labels);
+    return labels;
   }
 
-  async getCurrentFrameLabels(): Promise<
-    { field: string; label_id: string }[]
-  > {
-    await this.getSample();
-
+  getCurrentFrameLabels(): LabelData[] {
     const frame = this.frames.get(this.frameNumber).deref();
-    const labels: { field: string; label_id: string }[] = [];
+    const labels: LabelData[] = [];
     if (frame) {
       processOverlays(this.state, frame.overlays)[0].forEach((overlay) => {
         if (overlay instanceof ClassificationsOverlay) {
@@ -729,11 +728,18 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
             labels.push({
               field: field,
               label_id: label._id,
+              frame_number: this.frameNumber,
+              sample_id: this.sample._id,
             });
           });
         } else {
           const { id: label_id, field } = overlay.getSelectData(this.state);
-          labels.push({ label_id, field });
+          labels.push({
+            label_id,
+            field,
+            sample_id: this.sample._id,
+            frame_number: this.frameNumber,
+          });
         }
       });
     }
@@ -852,9 +858,11 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
         state.frameNumber + CHUNK_SIZE / 2
       );
       if (this.hasFrame(bufferFrame)) {
+        this.state.buffering && this.dispatchEvent("buffering", false);
         this.state.buffering = false;
       } else {
         this.state.buffering = true;
+        this.dispatchEvent("buffering", true);
         this.requestFrames();
       }
     }
