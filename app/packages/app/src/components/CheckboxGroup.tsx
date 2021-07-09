@@ -131,15 +131,25 @@ const CheckboxText = ({
   value,
   title,
   path,
+  icon,
+  hasDropdown,
+  expanded,
+  setExpanded,
 }: {
   title: string;
   count?: number;
   value?: string | number;
   subCountAtom?: RecoilValueReadOnly<{ [key: string]: number }>;
   path: string;
+  icon?: any;
+  hasDropdown: boolean;
+  expanded: boolean;
+  setExpanded: (value: boolean) => void;
 }) => {
+  const theme = useTheme();
   const subCounts = subCountAtom ? useRecoilValue(subCountAtom) : null;
   const subCount = subCounts ? subCounts[path] : null;
+  const ArrowType = expanded ? ArrowDropUp : ArrowDropDown;
 
   if (value) {
     return (
@@ -150,21 +160,35 @@ const CheckboxText = ({
   }
 
   if (typeof count !== "number") {
-    return null;
-  }
-
-  if (typeof subCount === "number") {
     return (
-      <span className="count" title={title}>
-        {`${subCount.toLocaleString()} of ${count.toLocaleString()}`}
-      </span>
+      <CircularProgress
+        style={{
+          color: theme.font,
+          height: 16,
+          width: 16,
+          minWidth: 16,
+        }}
+      />
     );
   }
-
   return (
-    <span className="count" title={title}>
-      {count.toLocaleString()}
-    </span>
+    <>
+      <span className="count" title={title}>
+        {typeof subCount === "number"
+          ? `${subCount.toLocaleString()} of ${count.toLocaleString()}`
+          : count.toLocaleString()}
+      </span>
+
+      {hasDropdown && (
+        <ArrowType
+          onClick={(e) => {
+            e.preventDefault();
+            setExpanded(!expanded);
+          }}
+          style={{ marginRight: -4 }}
+        />
+      )}
+    </>
   );
 };
 
@@ -219,7 +243,6 @@ const Entry = React.memo(({ entry, onCheck, modal }: EntryProps) => {
   const containerProps = useSpring({
     backgroundColor: fieldFiltered ? "#6C757D" : theme.backgroundLight,
   });
-  const ArrowType = expanded ? ArrowDropUp : ArrowDropDown;
   return (
     <CheckboxContainer style={containerProps}>
       <FormControlLabel
@@ -237,6 +260,9 @@ const Entry = React.memo(({ entry, onCheck, modal }: EntryProps) => {
                     value={value}
                     count={count}
                     title={title}
+                    hasDropdown={hasDropdown}
+                    expanded={expanded}
+                    setExpanded={setExpanded}
                   />
                 }
               >
@@ -246,18 +272,12 @@ const Entry = React.memo(({ entry, onCheck, modal }: EntryProps) => {
                   subCountAtom={subCountAtom}
                   count={count}
                   title={title}
+                  hasDropdown={hasDropdown}
+                  expanded={expanded}
+                  setExpanded={setExpanded}
                 />
               </Suspense>
             }
-            {hasDropdown && (
-              <ArrowType
-                onClick={(e) => {
-                  e.preventDefault();
-                  setExpanded(!expanded);
-                }}
-                style={{ marginRight: -4 }}
-              />
-            )}
           </>
         }
         classes={{

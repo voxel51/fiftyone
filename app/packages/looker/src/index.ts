@@ -182,10 +182,8 @@ export abstract class Looker<
 
   attach(element: HTMLElement): void {
     this.resizeObserver.observe(this.lookerElement.element);
-    requestAnimationFrame(() => {
-      element.appendChild(this.lookerElement.element);
-      this.state = this.postProcess(this.lookerElement.element);
-    });
+    element.appendChild(this.lookerElement.element);
+    this.state = this.postProcess(this.lookerElement.element);
   }
 
   detach(): void {
@@ -341,6 +339,16 @@ export abstract class Looker<
   }
 
   protected hasResized(previousWindowBBox: BoundingBox): boolean {
+    if (
+      Boolean(
+        !previousWindowBBox ||
+          !this.state.windowBBox ||
+          previousWindowBBox.some((v, i) => v !== this.state.windowBBox[i])
+      )
+    ) {
+      console.log(previousWindowBBox, this.state.windowBBox);
+    }
+
     return Boolean(
       !previousWindowBBox ||
         !this.state.windowBBox ||
