@@ -198,7 +198,7 @@ const makeClearMatchTags = (color, matchedTags, setMatchedTags) => {
 };
 
 const useSampleTags = (modal) => {
-  const tags = useRecoilValue(selectors.tagNames);
+  const tags = useRecoilValue(filterAtoms.tagNames(modal));
   const [activeTags, setActiveTags] = useRecoilState(
     fieldAtoms.activeTags(modal)
   );
@@ -311,7 +311,7 @@ const SampleTagsCell = ({ modal }: TagsCellProps) => {
 };
 
 const useLabelTags = (modal, count) => {
-  let tags = useRecoilValue(selectors.labelTagNames);
+  let tags = useRecoilValue(filterAtoms.labelTagNames(modal));
   const [activeTags, setActiveTags] = useRecoilState(
     fieldAtoms.activeLabelTags(modal)
   );

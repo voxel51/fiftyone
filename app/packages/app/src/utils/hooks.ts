@@ -123,10 +123,11 @@ export const useFollow = (leaderRef, followerRef, set) => {
 
 export const useSampleUpdate = () => {
   const handler = useRecoilCallback(
-    ({ set }) => async ({ samples }) => {
+    ({ set, snapshot }) => async ({ samples }) => {
       samples.forEach(({ sample }) => {
         set(atoms.sample(sample._id), sample);
       });
+      set(atoms.modal, await snapshot.getPromise(atoms.modal));
       set(selectors.anyTagging, false);
     },
     []

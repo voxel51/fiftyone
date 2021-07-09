@@ -107,8 +107,8 @@ const nullSort = ({
   bb: [Value, number | null]
 ) => number) => {
   return (aa, bb): number => {
-    let a = [...aa].reverse();
-    let b = [...bb].reverse();
+    let a = [...aa];
+    let b = [...bb];
 
     if (count) {
       a.reverse();

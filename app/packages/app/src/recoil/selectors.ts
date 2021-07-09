@@ -310,33 +310,6 @@ export const currentCount = selector<number | null>({
   },
 });
 
-export const tagNames = selector<string[]>({
-  key: "tagNames",
-  get: ({ get }) => {
-    return (get(datasetStats) ?? []).reduce((acc, cur) => {
-      if (cur.name === "tags") {
-        return Object.keys(cur.result).sort();
-      }
-      return acc;
-    }, []);
-  },
-});
-
-export const labelTagNames = selector<string[]>({
-  key: "labelTagNames",
-  get: ({ get }) => {
-    const paths = get(labelTagsPaths);
-    const result = new Set<string>();
-    (get(datasetStats) ?? []).forEach((s) => {
-      if (paths.includes(s.name)) {
-        Object.keys(s.result).forEach((t) => result.add(t));
-      }
-    });
-
-    return Array.from(result).sort();
-  },
-});
-
 export const labelTagsPaths = selector({
   key: "labelTagsPaths",
   get: ({ get }) => {

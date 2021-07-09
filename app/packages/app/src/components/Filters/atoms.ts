@@ -466,3 +466,33 @@ export const labelCount = selectorFamily<number | null, boolean>({
     return sum;
   },
 });
+
+export const tagNames = selectorFamily<string[], boolean>({
+  key: "tagNames",
+  get: (modal) => ({ get }) => {
+    return (get(modal ? modalStats : selectors.datasetStats) ?? []).reduce(
+      (acc, cur) => {
+        if (cur.name === "tags") {
+          return Object.keys(cur.result).sort();
+        }
+        return acc;
+      },
+      []
+    );
+  },
+});
+
+export const labelTagNames = selectorFamily<string[], boolean>({
+  key: "labelTagNames",
+  get: (modal) => ({ get }) => {
+    const paths = get(selectors.labelTagsPaths);
+    const result = new Set<string>();
+    (get(modal ? modalStats : selectors.datasetStats) ?? []).forEach((s) => {
+      if (paths.includes(s.name)) {
+        Object.keys(s.result).forEach((t) => result.add(t));
+      }
+    });
+
+    return Array.from(result).sort();
+  },
+});

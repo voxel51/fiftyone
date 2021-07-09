@@ -96,9 +96,8 @@ export const activeScalars = selectorFamily<string[], boolean>({
 export const activeTags = selectorFamily<string[], boolean>({
   key: "activeTags",
   get: (modal) => ({ get }) => {
-    const tags = get(selectors.tagNames);
     return get(activeFields(modal))
-      .filter((t) => t.startsWith("tags.") && tags.includes(t.slice(5)))
+      .filter((t) => t.startsWith("tags."))
       .map((t) => t.slice(5));
   },
   set: (modal) => ({ get, set }, value) => {
@@ -119,13 +118,8 @@ export const activeTags = selectorFamily<string[], boolean>({
 export const activeLabelTags = selectorFamily<string[], boolean>({
   key: "activeLabelTags",
   get: (modal) => ({ get }) => {
-    const tags = get(selectors.labelTagNames);
     return get(activeFields(modal))
-      .filter(
-        (t) =>
-          t.startsWith("_label_tags.") &&
-          tags.includes(t.slice("_label_tags.".length))
-      )
+      .filter((t) => t.startsWith("_label_tags."))
       .map((t) => t.slice("_label_tags.".length));
   },
   set: (modal) => ({ get, set }, value) => {

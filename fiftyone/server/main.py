@@ -597,6 +597,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         )
         message = {"type": "sample", "sample": results[0], "uuid": uuid}
 
+        print("HELLO")
         _write_message(message, app=True, only=self)
 
     @staticmethod
@@ -817,7 +818,12 @@ class StateHandler(tornado.websocket.WebSocketHandler):
 
     @staticmethod
     async def on_tag_modal(
-        caller, changes, sample_id=None, labels=None,
+        caller,
+        changes,
+        sample_id=None,
+        labels=False,
+        filters={},
+        active_labels=[],
     ):
         state = fos.StateDescription.from_dict(StateHandler.state)
         if state.view is not None:
@@ -825,19 +831,23 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         else:
             view = state.dataset
 
-        if sample_id:
-            sample_ids = [sample_id]
-            tag_view = view.select(sample_id)
-            fosu.change_sample_tags(tag_view, changes)
-        else:
+        sample_ids = [sample_id]
+        view = get_extended_view(view, filters=filters, only_matches=False)
+
+        if labels:
             if state.selected_labels:
                 labels = state.selected_labels
+                sample_ids = list({label["sample_id"] for label in labels})
+                tag_view = view.select_labels(labels=labels)
+            else:
+                tag_view = view.select(sample_id)
 
-            sample_ids = list({label["sample_id"] for label in labels})
-            tag_view = view.select_labels(labels=labels)
-
-            fields = {label["field"] for label in labels}
-            fosu.change_label_tags(tag_view, changes, label_fields=fields)
+            fosu.change_label_tags(
+                tag_view, changes, label_fields=active_labels
+            )
+        else:
+            tag_view = view.select(sample_id)
+            fosu.change_sample_tags(tag_view, changes)
 
         for clients in PollingHandler.clients.values():
             clients.update({"extended_statistics", "statistics"})

@@ -323,39 +323,33 @@ const samplePlaceholder = (elementNames) => {
 const packageGrid = ({ targetLabels, activeLabels, changes }) =>
   packageMessage("tag", {
     target_labels: targetLabels,
-    active_labels: activeLabels.filter(
-      (l) => !(l.startsWith("tags.") || l.startsWith("_label_tags."))
-    ),
+    active_labels: activeLabels,
     changes,
   });
 
-const packageModal = ({ labels = null, sample_id = null, changes }) =>
+const packageModal = ({ labels, sample_id, changes, activeLabels }) =>
   packageMessage("tag_modal", {
     changes,
     labels,
     sample_id,
+    active_labels: activeLabels,
   });
 
 const useTagCallback = (modal, targetLabels) => {
   return useRecoilCallback(
     ({ snapshot }) => async ({ changes }) => {
-      const activeLabels = await snapshot.getPromise(
-        fieldAtoms.activeLabelPaths(modal)
-      );
+      const activeLabels = (
+        await snapshot.getPromise(fieldAtoms.activeLabelPaths(modal))
+      ).filter((l) => !(l.startsWith("tags.") || l.startsWith("_label_tags.")));
       if (modal) {
-        const hasSelectedLabels =
-          Object.keys(await snapshot.getPromise(selectors.selectedLabels))
-            .length > 0;
-        if (!targetLabels) {
-          const sample_id = (await snapshot.getPromise(selectors.modalSample))
-            ._id;
-          socket.send(packageModal({ sample_id, changes }));
-        } else if (hasSelectedLabels) {
-          socket.send(packageModal({ changes }));
-        } else {
-          // const labels = await snapshot.getPromise(labelAtoms.modalLabels);
-          // socket.send(packageModal({ changes, labels }));
-        }
+        socket.send(
+          packageModal({
+            sample_id: (await snapshot.getPromise(selectors.modalSample))._id,
+            changes,
+            labels: targetLabels,
+            activeLabels,
+          })
+        );
       } else {
         socket.send(packageGrid({ changes, targetLabels, activeLabels }));
       }
