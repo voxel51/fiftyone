@@ -37,7 +37,7 @@ _MISSING = "-"
 
 def test_evaluate_classifications():
     dataset = foz.load_zoo_dataset("imagenet-sample").clone()
-    logits_classes = dataset.info["classes"]
+    logits_classes = dataset.default_classes
 
     model = foz.load_zoo_model("resnet50-imagenet-torch")
     dataset.take(25).apply_model(model, "predictions", store_logits=True)
@@ -613,7 +613,8 @@ def test_classification_results():
     results.print_report()
 
     # Includes all 3 classes
-    results.plot_confusion_matrix()
+    plot = results.plot_confusion_matrix()
+    plot.show()
 
     classes = ["cat", "dog"]
 
@@ -623,10 +624,12 @@ def test_classification_results():
 
     # Only include `cat` and `dog` rows (GT); associated non-cat/dog
     # predictions are captured in an "other" column
-    results.plot_confusion_matrix(classes=classes)
+    plot = results.plot_confusion_matrix(classes=classes)
+    plot.show()
 
     # Only include `cat` and `dog` rows (GT) and columns (predictions)
-    results.plot_confusion_matrix(classes=classes, include_other=False)
+    plot = results.plot_confusion_matrix(classes=classes, include_other=False)
+    plot.show()
 
     input("Press enter to continue...")
 
@@ -643,7 +646,8 @@ def test_classification_results_missing_data():
 
     # Data includes missing GT/preds, so includes a "none" row/column when
     # plotting confusion matrix
-    results.plot_confusion_matrix()
+    plot = results.plot_confusion_matrix()
+    plot.show()
 
     classes = ["cat", "dog"]
 
@@ -653,10 +657,12 @@ def test_classification_results_missing_data():
 
     # Shows per-class metrics for only `cat` and `dog` classes, but other
     # predictions when GT=cat/dog are taken into account for P/R/F1 scores
-    results.plot_confusion_matrix(classes=classes)
+    plot = results.plot_confusion_matrix(classes=classes)
+    plot.show()
 
     # Only include `cat` and `dog` rows (GT) and columns (predictions)
-    results.plot_confusion_matrix(classes=classes, include_other=False)
+    plot = results.plot_confusion_matrix(classes=classes, include_other=False)
+    plot.show()
 
     input("Press enter to continue...")
 
@@ -677,18 +683,22 @@ def test_detection_results():
     results.print_report(classes=classes)
 
     # Should contain "other" and "none" columns
-    results.plot_confusion_matrix(classes=classes)
+    plot = results.plot_confusion_matrix(classes=classes)
+    plot.show()
 
     # Should not contain "other" or "none" columns
-    results.plot_confusion_matrix(classes=classes, include_other=False)
+    plot = results.plot_confusion_matrix(classes=classes, include_other=False)
+    plot.show()
 
     # Should contain "other" and "none" columns, as well as a "none" row
-    results.plot_confusion_matrix(classes=classes + [results.missing])
+    plot = results.plot_confusion_matrix(classes=classes + [results.missing])
+    plot.show()
 
     # Should contain "none" row and columns
-    results.plot_confusion_matrix(
+    plot = results.plot_confusion_matrix(
         classes=classes + [results.missing], include_other=False
     )
+    plot.show()
 
     input("Press enter to continue...")
 
