@@ -169,7 +169,8 @@ const Wrapper = ({
         <Checkbox
           key={String(value)}
           color={color}
-          value={selectedSet.has(value)}
+          value={selectedSet.has(value) || allValues.length === 1}
+          disabled={allValues.length === 1}
           name={value}
           count={count}
           subCountAtom={subCountValueAtom({ path, modal, value })}

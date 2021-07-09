@@ -18,6 +18,7 @@ interface CheckboxProps {
   setValue: (value: boolean) => void;
   count?: number;
   subCountAtom?: RecoilValueReadOnly<number>;
+  disabled?: boolean;
 }
 
 const StyledCheckboxContainer = styled.div`
@@ -80,16 +81,25 @@ const CheckboxName = ({
 };
 
 const Checkbox = React.memo(
-  ({ color, name, value, setValue, subCountAtom, count }: CheckboxProps) => {
+  ({
+    color,
+    name,
+    value,
+    setValue,
+    subCountAtom,
+    count,
+    disabled,
+  }: CheckboxProps) => {
     const theme = useTheme();
     color = color ?? theme.brand;
-    const props = useHighlightHover(false);
+    const props = useHighlightHover(disabled);
     const [text, coloring] = getValueString(name);
 
     return (
       <StyledCheckboxContainer title={text}>
         <StyledCheckbox {...props} onClick={() => setValue(!value)}>
           <MaterialCheckbox
+            disabled={disabled}
             checked={value}
             title={text}
             style={{ color, padding: "0 0.5rem 0 0" }}

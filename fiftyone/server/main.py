@@ -1017,7 +1017,10 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         elif state.dataset is not None:
             view = state.dataset
 
-        view = get_extended_view(view, filters=filters)
+        only_matches = sample_id is not None
+        view = get_extended_view(
+            view, filters=filters, only_matches=only_matches
+        )
 
         view = _get_search_view(view, path, search, selected)
 

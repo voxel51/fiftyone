@@ -377,7 +377,7 @@ const usePlaceHolder = (
   modal: boolean,
   labels: boolean,
   elementNames: { plural: string; singular: string }
-) => {
+): (() => [number, string]) => {
   return () => {
     const selection = useRecoilValue(
       modal ? selectors.selectedLabelIds : atoms.selectedSamples

@@ -377,9 +377,27 @@ const LabelTagsCell = ({ modal }: TagsCellProps) => {
           title: name,
           type: "label tags",
           path: "_label_tags." + name,
+          key: name,
           modal,
           count: count[name],
           subCountAtom,
+          icon: makeTagEye(
+            matchedTags,
+            name,
+            theme,
+            (e) => {
+              e.stopPropagation();
+              e.preventDefault();
+              const newMatch = new Set(matchedTags);
+              if (matchedTags.has(name)) {
+                newMatch.delete(name);
+              } else {
+                newMatch.add(name);
+              }
+              setMatchedTags(newMatch);
+            },
+            false
+          ),
         };
       })}
       onSelect={({ name, selected }) => {

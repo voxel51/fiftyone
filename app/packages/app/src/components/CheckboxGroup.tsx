@@ -173,7 +173,7 @@ const CheckboxText = ({
   return (
     <>
       <span className="count" title={title}>
-        {typeof subCount === "number"
+        {typeof subCount === "number" && subCount !== count
           ? `${subCount.toLocaleString()} of ${count.toLocaleString()}`
           : count.toLocaleString()}
       </span>
@@ -237,7 +237,7 @@ const Entry = React.memo(({ entry, onCheck, modal }: EntryProps) => {
   const [expanded, setExpanded] = useState(false);
   const theme = useTheme();
   const fieldFiltered =
-    useRecoilValue(fieldIsFiltered({ path: key ?? path, modal })) && canFilter;
+    useRecoilValue(fieldIsFiltered({ path, modal })) && canFilter;
   const isNumeric = useRecoilValue(isNumericField(path));
   const isString = useRecoilValue(isStringField(path));
   const isBoolean = useRecoilValue(isBooleanField(path));
@@ -259,7 +259,7 @@ const Entry = React.memo(({ entry, onCheck, modal }: EntryProps) => {
               <Suspense
                 fallback={
                   <CheckboxText
-                    path={path}
+                    path={key ? key : path}
                     value={value}
                     count={count}
                     title={title}
@@ -270,7 +270,7 @@ const Entry = React.memo(({ entry, onCheck, modal }: EntryProps) => {
                 }
               >
                 <CheckboxText
-                  path={path}
+                  path={key ? key : path}
                   value={value}
                   subCountAtom={subCountAtom}
                   count={count}

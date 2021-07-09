@@ -7,6 +7,7 @@ import { AGGS } from "../../utils/labels";
 import { request } from "../../utils/socket";
 import { viewsAreEqual } from "../../utils/view";
 import { Value } from "./types";
+import { activeLabels } from "./utils";
 
 export { filterStages } from "../../recoil/selectors";
 
@@ -438,5 +439,30 @@ export const subCountValueAtom = selectorFamily<
     }
 
     return 0;
+  },
+});
+
+export const labelCount = selectorFamily<number | null, boolean>({
+  key: "labelCount",
+  get: (modal) => ({ get }) => {
+    const atom = get(hasFilters(modal)) ? filteredLabelCounts : labelCounts;
+
+    let sum = 0;
+    let counts = get(atom({ modal, key: "sample" }));
+    get(activeLabels({ modal, frames: false })).forEach((path) => {
+      if (path in counts) {
+        sum += counts[path];
+      }
+    });
+
+    counts = get(atom({ modal, key: "frame" }));
+    get(activeLabels({ modal, frames: true })).forEach((path) => {
+      path = path.slice("frames.".length);
+      if (path in counts) {
+        sum += counts[path];
+      }
+    });
+
+    return sum;
   },
 });
