@@ -6,8 +6,8 @@ Evaluating Models
 .. default-role:: code
 
 FiftyOne provides a variety of builtin methods for evaluating your model
-predictions, including classifications, detections, and semantic segmentations,
-on both image and video datasets.
+predictions, including classifications, detections, polygons, instance and
+semantic segmentations, on both image and video datasets.
 
 When you evaluate a model in FiftyOne, you get access to the standard aggregate
 metrics such as classification reports, confusion matrices, and PR curves
@@ -51,7 +51,7 @@ method:
     dataset = foz.load_zoo_dataset("quickstart")
     print(dataset)
 
-    # Evaluate the detections in the `predictions` field with respect to the
+    # Evaluate the objects in the `predictions` field with respect to the
     # objects in the `ground_truth` field
     results = dataset.evaluate_detections(
         "predictions",
@@ -172,7 +172,7 @@ see the true positive examples of that class in the App.
 Likewise, whenever you modify the Session's view, either in the App or by
 programmatically setting
 :meth:`session.view <fiftyone.core.session.Session.view>`, the confusion matrix
-is automatically updated to show the cell counts for only those detections that
+is automatically updated to show the cell counts for only those objects that
 are included in the current view.
 
 .. code-block:: python
@@ -764,13 +764,13 @@ populated on each sample and its predicted/ground truth objects:
         FP: sample.<eval_key>_fp
         FN: sample.<eval_key>_fn
 
--   The fields listed below are populated on each individual |Detection|
-    instance; these fields tabulate the TP/FP/FN status of the object, the ID
-    of the matching object (if any), and the matching IoU::
+-   The fields listed below are populated on each individual object instance;
+    these fields tabulate the TP/FP/FN status of the object, the ID of the
+    matching object (if any), and the matching IoU::
 
-        TP/FP/FN: detection.<eval_key>
-              ID: detection.<eval_key>_id
-             IoU: detection.<eval_key>_iou
+        TP/FP/FN: object.<eval_key>
+              ID: object.<eval_key>_id
+             IoU: object.<eval_key>_iou
 
 .. note::
 
@@ -795,7 +795,7 @@ The example below demonstrates COCO-style detection evaluation on the
     dataset = foz.load_zoo_dataset("quickstart")
     print(dataset)
 
-    # Evaluate the detections in the `predictions` field with respect to the
+    # Evaluate the objects in the `predictions` field with respect to the
     # objects in the `ground_truth` field
     results = dataset.evaluate_detections(
         "predictions",
@@ -853,7 +853,7 @@ mAP and PR curves
 ~~~~~~~~~~~~~~~~~
 
 You can compute mean average precision (mAP) and precision-recall (PR) curves
-for your detections by passing the ``compute_mAP=True`` flag to
+for your objects by passing the ``compute_mAP=True`` flag to
 :meth:`evaluate_detections() <fiftyone.core.collections.SampleCollection.evaluate_detections>`:
 
 .. note::
@@ -896,8 +896,8 @@ the results of COCO-style evaluations.
 In order for the confusion matrix to capture anything other than false
 positive/negative counts, you will likely want to set the
 :class:`classwise <fiftyone.utils.eval.coco.COCOEvaluationConfig>` parameter
-to ``False`` during evaluation so that detections can be matched with ground
-truth objects of different classes.
+to ``False`` during evaluation so that predicted objects can be matched with
+ground truth objects of different classes.
 
 .. code-block:: python
     :linenos:
@@ -997,9 +997,9 @@ populated on each sample and its predicted/ground truth objects:
     instance; these fields tabulate the TP/FP/FN status of the object, the ID
     of the matching object (if any), and the matching IoU::
 
-        TP/FP/FN: detection.<eval_key>
-              ID: detection.<eval_key>_id
-             IoU: detection.<eval_key>_iou
+        TP/FP/FN: object.<eval_key>
+              ID: object.<eval_key>_id
+             IoU: object.<eval_key>_iou
 
 .. note::
 
@@ -1024,7 +1024,7 @@ The example below demonstrates Open Images-style detection evaluation on the
     dataset = foz.load_zoo_dataset("quickstart")
     print(dataset)
 
-    # Evaluate the detections in the `predictions` field with respect to the
+    # Evaluate the objects in the `predictions` field with respect to the
     # objects in the `ground_truth` field
     results = dataset.evaluate_detections(
         "predictions",
@@ -1126,8 +1126,8 @@ the results of Open Images-style evaluations.
 In order for the confusion matrix to capture anything other than false
 positive/negative counts, you will likely want to set the
 :class:`classwise <fiftyone.utils.eval.openimages.OpenImagesEvaluationConfig>`
-parameter to ``False`` during evaluation so that detections can be matched with
-ground truth objects of different classes.
+parameter to ``False`` during evaluation so that predicted objects can be
+matched with ground truth objects of different classes.
 
 .. code-block:: python
     :linenos:
