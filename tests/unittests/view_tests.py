@@ -21,6 +21,23 @@ from decorators import drop_datasets
 
 class DatasetViewTests(unittest.TestCase):
     @drop_datasets
+    def test_iter_samples(self):
+        dataset = fo.Dataset()
+        dataset.add_samples(
+            [fo.Sample(filepath="image%d.jpg" % i) for i in range(50)]
+        )
+
+        view = dataset.view()
+
+        self.assertEqual(len(dataset), len(view))
+
+        for sample in view:
+            pass
+
+        for sample in view.iter_samples(progress=True):
+            pass
+
+    @drop_datasets
     def test_view(self):
         dataset = fo.Dataset()
         dataset.add_sample_field(
