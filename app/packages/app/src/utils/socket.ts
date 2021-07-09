@@ -23,7 +23,7 @@ const requestWrapper = (type, handler) => ({ data }) => {
   data.type === type && handler(data);
 };
 
-export const request = ({
+export const request = <T>({
   type,
   args,
   uuid,
@@ -34,13 +34,13 @@ export const request = ({
   args: any;
   responseType?: string;
 }) => {
-  const promise = new Promise((resolve) => {
+  const promise = new Promise<T>((resolve) => {
     const listener = requestWrapper(
       responseType || type,
       ({ uuid: responseUuid, ...data }) => {
         if (uuid === responseUuid) {
           socket.removeEventListener("message", listener);
-          resolve(data);
+          resolve(data as T);
         }
       }
     );

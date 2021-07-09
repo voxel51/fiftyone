@@ -25,7 +25,7 @@ export const patching = atom<boolean>({
 });
 
 export const patchesFields = selector<string[]>({
-  key: "parchesFields",
+  key: "partchesFields",
   get: ({ get }) => {
     const paths = get(selectors.labelPaths);
     const types = get(selectors.labelTypesMap);

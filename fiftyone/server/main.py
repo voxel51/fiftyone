@@ -34,7 +34,7 @@ import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 import fiftyone.core.odm as foo
 from fiftyone.core.service import DatabaseService
-from fiftyone.core.stages import _STAGES
+from fiftyone.core.stages import Select, _STAGES
 import fiftyone.core.stages as fosg
 import fiftyone.core.state as fos
 import fiftyone.core.uid as fou
@@ -597,7 +597,6 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         )
         message = {"type": "sample", "sample": results[0], "uuid": uuid}
 
-        print("HELLO")
         _write_message(message, app=True, only=self)
 
     @staticmethod
@@ -718,21 +717,19 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         await StateHandler.on_update(caller, StateHandler.state)
 
     @staticmethod
-    async def on_all_tags(caller):
+    async def on_all_tags(caller, sample_id=None):
         state = fos.StateDescription.from_dict(StateHandler.state)
         if state.view is not None:
-            dataset = state.view._dataset
+            view = state.view._dataset
         else:
-            dataset = state.dataset
+            view = state.dataset
 
-        if dataset is None:
+        if view is None:
             label = []
             sample = []
         else:
-            (_, tag_aggs,) = fos.DatasetStatistics.get_label_aggregations(
-                dataset
-            )
-            results = await dataset._async_aggregate(
+            (_, tag_aggs,) = fos.DatasetStatistics.get_label_aggregations(view)
+            results = await view._async_aggregate(
                 StateHandler.sample_collection(),
                 [foa.Distinct("tags")] + tag_aggs,
             )
@@ -861,32 +858,55 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         asyncio.gather(*awaitables)
 
     @staticmethod
-    async def on_selected_statistics(caller, active_labels=[]):
+    async def on_tag_statistics(
+        caller,
+        active_labels=[],
+        filters={},
+        sample_id=None,
+        uuid=None,
+        labels=False,
+    ):
         state = fos.StateDescription.from_dict(StateHandler.state)
         if state.view is not None:
             view = state.view
         else:
             view = state.dataset
 
-        view = get_extended_view(view, state.filters)
-        view = view.select(state.selected).select_fields(active_labels)
+        view = get_extended_view(view, filters=filters)
 
-        count_aggs, tag_aggs = fos.DatasetStatistics.get_label_aggregations(
-            view
-        )
-        results = await view._async_aggregate(
-            StateHandler.sample_collection(), count_aggs + tag_aggs
-        )
+        if state.selected_labels and labels:
+            view = view.select_labels(state.selected_labels)
+        elif sample_id:
+            view = view.select(sample_id)
+        elif state.selected:
+            view = view.select(state.selected)
 
-        count = sum(results[: len(count_aggs)])
+        if labels:
+            view = view.select_fields(active_labels)
+            (
+                count_aggs,
+                tag_aggs,
+            ) = fos.DatasetStatistics.get_label_aggregations(view)
+            results = await view._async_aggregate(
+                StateHandler.sample_collection(), count_aggs + tag_aggs
+            )
 
-        tags = defaultdict(int)
-        for result in results[len(count_aggs) :]:
-            for tag, num in result.items():
-                tags[tag] += num
+            count = sum(results[: len(count_aggs)])
+            tags = defaultdict(int)
+            for result in results[len(count_aggs) :]:
+                for tag, num in result.items():
+                    tags[tag] += num
+        else:
+            tags = view.count_values("tags")
+            count = sum(tags.values())
 
         _write_message(
-            {"type": "selected_statistics", "count": count, "tags": tags},
+            {
+                "type": "tag_statistics",
+                "count": count,
+                "tags": tags,
+                "uuid": uuid,
+            },
             only=caller,
         )
 

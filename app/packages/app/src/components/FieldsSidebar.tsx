@@ -198,6 +198,7 @@ const makeClearMatchTags = (color, matchedTags, setMatchedTags) => {
 };
 
 const useSampleTags = (modal) => {
+  const allTags = useRecoilValue(filterAtoms.tagNames(false));
   const tags = useRecoilValue(filterAtoms.tagNames(modal));
   const [activeTags, setActiveTags] = useRecoilState(
     fieldAtoms.activeTags(modal)
@@ -212,7 +213,7 @@ const useSampleTags = (modal) => {
     });
 
     newMatches.size !== matchedTags.size && setMatchedTags(newMatches);
-  }, [matchedTags, tags]);
+  }, [matchedTags, allTags]);
 
   return { tags, activeTags, setActiveTags, matchedTags, setMatchedTags };
 };
@@ -311,6 +312,7 @@ const SampleTagsCell = ({ modal }: TagsCellProps) => {
 };
 
 const useLabelTags = (modal, count) => {
+  const allTags = useRecoilValue(filterAtoms.labelTagNames(false));
   let tags = useRecoilValue(filterAtoms.labelTagNames(modal));
   const [activeTags, setActiveTags] = useRecoilState(
     fieldAtoms.activeLabelTags(modal)
@@ -325,7 +327,7 @@ const useLabelTags = (modal, count) => {
     });
 
     newMatches.size !== matchedTags.size && setMatchedTags(newMatches);
-  }, [matchedTags, tags]);
+  }, [matchedTags, allTags]);
 
   !modal && (tags = tags.filter((t) => count[t]));
 
@@ -365,7 +367,6 @@ const LabelTagsCell = ({ modal }: TagsCellProps) => {
         const color = colorByLabel
           ? theme.brand
           : colorMap("_label_tags." + name);
-        const total = count && count[name] ? count[name] : 0;
         return {
           canFilter: true,
           name,
@@ -379,7 +380,7 @@ const LabelTagsCell = ({ modal }: TagsCellProps) => {
           path: "_label_tags." + name,
           key: name,
           modal,
-          count: count[name],
+          count: count[name] || 0,
           subCountAtom,
           icon: makeTagEye(
             matchedTags,

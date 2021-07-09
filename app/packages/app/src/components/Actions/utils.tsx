@@ -2,15 +2,15 @@ import { useState } from "react";
 import { selector, selectorFamily } from "recoil";
 import { animated, useSpring } from "react-spring";
 import styled from "styled-components";
+import { v4 as uuid } from "uuid";
 
-import { activeLabelPaths, activeLabels } from "../Filters/utils";
+import { activeLabelPaths } from "../Filters/utils";
 import * as filterAtoms from "../Filters/atoms";
 import * as atoms from "../../recoil/atoms";
 import * as selectors from "../../recoil/selectors";
 import { useTheme } from "../../utils/hooks";
-import { packageMessage } from "../../utils/socket";
+import { packageMessage, request } from "../../utils/socket";
 import socket from "../../shared/connection";
-import { VALID_LIST_TYPES, LABEL_LIST } from "../../utils/labels";
 
 export const SwitcherDiv = styled.div`
   border-bottom: 1px solid ${({ theme }) => theme.background};
@@ -104,60 +104,45 @@ export const allTags = selector<{ sample: string[]; label: string[] }>({
   },
 });
 
-export const selectedSampleLabelStatistics = selector<{
-  count: number;
-  tags: { [key: string]: number };
-}>({
-  key: "selectedSampleLabelStatistics",
-  get: async ({ get }) => {
+export const tagStatistics = selectorFamily<
+  {
+    count: number;
+    tags: { [key: string]: number };
+  },
+  { modal: boolean; labels: boolean }
+>({
+  key: "tagStatistics",
+  get: ({ modal, labels }) => async ({ get }) => {
     const state = get(atoms.stateDescription);
     const activeLabels = get(activeLabelPaths(false));
 
-    const wrap = (handler, type) => ({ data }) => {
-      data = JSON.parse(data);
-      data.type === type && handler(data);
-    };
-
-    const promise = new Promise<{
+    const id = uuid();
+    const { count, tags } = await request<{
       count: number;
       tags: { [key: string]: number };
-    }>((resolve) => {
-      const listener = wrap(({ count, tags }) => {
-        socket.removeEventListener("message", listener);
-        resolve({ count, tags });
-      }, "selected_statistics");
-      socket.addEventListener("message", listener);
-      socket.send(
-        packageMessage("selected_statistics", { active_labels: activeLabels })
-      );
+    }>({
+      type: "tag_statistics",
+      uuid: id,
+      args: {
+        active_labels: activeLabels,
+        sample_id: modal ? get(atoms.modal).sampleId : null,
+        filters: modal
+          ? get(filterAtoms.modalFilterStages)
+          : get(selectors.filterStages),
+        labels,
+      },
     });
 
-    const result = await promise;
-    return result;
+    return { count, tags };
   },
 });
 
 export const numLabelsInSelectedSamples = selector<number>({
   key: "numLabelsInSelectedSamples",
   get: ({ get }) => {
-    return get(selectedSampleLabelStatistics).count;
+    return get(tagStatistics({ modal: false, labels: true })).count;
   },
 });
-
-const addLabelToTagsResult = (result, label, label_id = null) => {
-  const add = (l) => {
-    if (label_id && l._id !== label_id) return;
-    l.tags &&
-      l.tags.forEach((t) => {
-        result[t] = t in result ? result[t] + 1 : 1;
-      });
-  };
-  if (VALID_LIST_TYPES.includes(label._cls)) {
-    label[LABEL_LIST[label._cls]] && label[LABEL_LIST[label._cls]].forEach(add);
-  } else {
-    add(label);
-  }
-};
 
 export const tagStats = selectorFamily<
   { [key: string]: number },
@@ -165,6 +150,13 @@ export const tagStats = selectorFamily<
 >({
   key: "tagStats",
   get: ({ modal, labels }) => ({ get }) => {
-    return {};
+    const results = Object.fromEntries(
+      get(allTags)[labels ? "label" : "sample"].map((t) => [t, 0])
+    );
+
+    return {
+      ...results,
+      ...get(tagStatistics({ modal, labels })).tags,
+    };
   },
 });

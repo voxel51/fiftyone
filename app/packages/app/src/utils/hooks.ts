@@ -127,7 +127,7 @@ export const useSampleUpdate = () => {
       samples.forEach(({ sample }) => {
         set(atoms.sample(sample._id), sample);
       });
-      set(atoms.modal, await snapshot.getPromise(atoms.modal));
+      set(atoms.modal, { ...(await snapshot.getPromise(atoms.modal)) });
       set(selectors.anyTagging, false);
     },
     []

@@ -95,7 +95,7 @@ const modalStatsRaw = selector({
   },
 });
 
-const modalStats = selector({
+export const modalStats = selector({
   key: "modalStats",
   get: ({ get }) => get(modalStatsRaw).main,
 });
@@ -117,7 +117,7 @@ const extendedModalStatsRaw = selector({
   },
 });
 
-const extendedModalStats = selector({
+export const extendedModalStats = selector({
   key: "extendedModalStats",
   get: ({ get }) => get(extendedModalStatsRaw).main,
 });
