@@ -37,6 +37,7 @@ import fiftyone.core.sample as fosa
 import fiftyone.core.stages as fos
 import fiftyone.core.utils as fou
 
+fose = fou.lazy_import("fiftyone.core.session")
 fov = fou.lazy_import("fiftyone.core.view")
 foua = fou.lazy_import("fiftyone.utils.annotations")
 foud = fou.lazy_import("fiftyone.utils.data")
@@ -5511,39 +5512,63 @@ class SampleCollection(object):
         if archive_path is not None:
             etau.make_archive(export_dir, archive_path, cleanup=True)
 
-    def annotate(self, backend="cvat", label_field="ground_truth", **kwargs):
+    def annotate(
+        self, backend="cvat", config=None, label_field="ground_truth", **kwargs
+    ):
         """Exports the samples and a label field to the given annotation
         backend.
 
         Args:
             backend ("cvat"): the name of the annotation backend to which to
                 export the samples. Options are ("cvat")
+            config (None): the :class:`AnnotationProviderConfig` containing the
+                information needed to upload samples for  annotations
             label_field: a string indicating the label field to export to the
                 annotation backend. A value of `None` indicates exporting only
                 the media.
-            **kwargs: additional arguments to send to the annotation backend
+            **kwargs: additional arguments to send to the annotation backend if
+                a config is not provided
         """
-        annotation_tool = foua.annotate(
-            samples=self, backend=backend, label_field=label_field, **kwargs,
+        annotation_info = foua.annotate(
+            samples=self,
+            config=None,
+            backend=backend,
+            label_field=label_field,
+            **kwargs,
         )
-        self._annotation_tool = annotation_tool
+        return annotation_info
 
-    def load_annotations(self, label_field="ground_truth", **kwargs):
-        """Loads annotations from the annotation tool used to annotate().
+    def annotate_selected(self, **kwargs):
+        session = fose._session
+        view = self.select(session.selected)
+        results = view.annotate(**kwargs)
+        return results
+
+    def load_annotations(
+        self,
+        info=None,
+        backend="cvat",
+        label_field="ground_truth",
+        config=None,
+        **kwargs,
+    ):
+        """Loads labels from the given annotation backend.
         
         Args:
+            info (None): the :class`AnnotationInfo` returned from a call to
+                `annotate()`
+            backend ("cvat"): the annotation backend to load labels from.
+                Options are ("cvat")
+            config (None): the :class:`AnnotationProviderConfig` containing the
+                information needed to load annotations
             label_field: the label field to create or to merge the annotations
                 into
-            **kwargs: additional arguments to send to the annotation tool
+            **kwargs: additional arguments to send to the annotation provider
+                if a config is not provided
         """
-        if self._annotation_tool is None:
-            logger.warning(
-                "No annotation tool found. Please run `SampleCollection.annotate()` before `load_annotations()`"
-            )
-            return
-
-        annotations = self._annotation_tool.load_annotations(**kwargs)
-        self._dataset.set_values(label_field, annotations)
+        return foua.load_annotations(
+            samples=self, info=info, config=config, backend=backend, **kwargs,
+        )
 
     def list_indexes(self, include_private=False):
         """Returns the fields of the dataset that are indexed.

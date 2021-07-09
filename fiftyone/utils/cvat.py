@@ -23,6 +23,7 @@ import eta.core.data as etad
 import eta.core.image as etai
 import eta.core.utils as etau
 
+import fiftyone as fo
 import fiftyone.constants as foc
 import fiftyone.core.labels as fol
 import fiftyone.core.metadata as fom
@@ -2565,67 +2566,96 @@ class CVATVideoAnnotationWriter(object):
         etau.write_file(xml_str, xml_path)
 
 
-class CVATAnnotationProvider(foua.BaseAnnotationProvider):
+# class CVATAnnotationProvider(foua.BaseAnnotationProvider):
+class CVATAnnotationAPI(foua.BaseAnnotationAPI):
     """Basic interface for connecting to CVAT, sending samples for
     annotation, and importing them back into the collection.
     """
 
-    def __init__(
-        self, uri="cvat.org", https=True, port=None,
-    ):
-        self._uri = uri
+    def __init__(self, url="cvat.org", https=True, port=None, auth=None):
+        self._url = url
         self._port = "" if port is None else "%d:" % port
         self._protocol = "https" if https else "http"
+        self._auth = auth
 
+        self._session = None
         urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-        auth = foua.get_username_password("CVAT")
+        self.setup()
+
+    def __enter__(self):
+        self.setup()
+        return self
+
+    def __exit__(self, *args):
+        self.close(*args)
+
+    def setup(self):
+        """Performs any necessary setup for the API.
+
+        This method is called when the API's context manager interface is
+        entered, :func:`CVATAnnotationAPI.__enter__`.
+        """
+        if self._auth is None:
+            self._auth = self.get_username_password("CVAT")
         self._session = requests.Session()
-        response = self._session.post(self.login_uri, auth, verify=False)
+        response = self._session.post(self.login_url, self._auth, verify=False)
         response.raise_for_status()
         if "csrftoken" in response.cookies:
             self._session.headers["X-CSRFToken"] = response.cookies[
                 "csrftoken"
             ]
 
-    @property
-    def base_uri(self):
-        return "%s://%s%s" % (self._protocol, self._uri, self._port)
+    def close(self, *args):
+        """Performs any necessary actions after the user is finished with the
+        API.
+
+        This method is called when the API's context manager interface is
+        exited, :func:`CVATAnnotationAPI.__exit__`.
+
+        Args:
+            *args: the arguments to :func:`CVATAnnotationAPI.__exit__`
+        """
+        self._session = None
 
     @property
-    def base_api_uri(self):
-        return "%s/api/v1" % self.base_uri
+    def base_url(self):
+        return "%s://%s%s" % (self._protocol, self._url, self._port)
 
     @property
-    def login_uri(self):
-        return "%s/auth/login" % self.base_api_uri
+    def base_api_url(self):
+        return "%s/api/v1" % self.base_url
 
     @property
-    def tasks_uri(self):
-        return "%s/tasks" % self.base_api_uri
+    def login_url(self):
+        return "%s/auth/login" % self.base_api_url
 
-    def task_uri(self, task_id):
-        return "%s/%d" % (self.tasks_uri, task_id)
+    @property
+    def tasks_url(self):
+        return "%s/tasks" % self.base_api_url
 
-    def task_data_uri(self, task_id):
-        return "%s/data" % self.task_uri(task_id)
+    def task_url(self, task_id):
+        return "%s/%d" % (self.tasks_url, task_id)
 
-    def task_annotation_uri(
+    def task_data_url(self, task_id):
+        return "%s/data" % self.task_url(task_id)
+
+    def task_annotation_url(
         self, task_id, annot_filepath, annot_format="CVAT 1.1",
     ):
         return "%s/annotations?format=%s&filename=%s" % (
-            self.task_uri(task_id),
+            self.task_url(task_id),
             annot_format,
             annot_filepath,
         )
 
-    def jobs_uri(self, task_id):
-        return "%s/jobs" % self.task_uri(task_id)
+    def jobs_url(self, task_id):
+        return "%s/jobs" % self.task_url(task_id)
 
-    def job_uri(self, task_id, job_id):
-        return "%s/%d" % (self.jobs_uri(task_id), job_id)
+    def job_url(self, task_id, job_id):
+        return "%s/%d" % (self.jobs_url(task_id), job_id)
 
-    def base_job_uri(self, task_id, job_id):
-        return "%s/tasks/%d/jobs/%d" % (self.base_uri, task_id, job_id)
+    def base_job_url(self, task_id, job_id):
+        return "%s/tasks/%d/jobs/%d" % (self.base_url, task_id, job_id)
 
     def create_task(self, classes=[]):
         labels = [{"name": c, "attributes": []} for c in classes]
@@ -2637,7 +2667,7 @@ class CVATAnnotationProvider(foua.BaseAnnotationProvider):
         }
 
         task_creation_resp = self._session.post(
-            self.tasks_uri, verify=False, json=data_task_create,
+            self.tasks_url, verify=False, json=data_task_create,
         )
 
         task_json = task_creation_resp.json()
@@ -2659,13 +2689,13 @@ class CVATAnnotationProvider(foua.BaseAnnotationProvider):
             "client_files[%d]" % i: open(p, "rb") for i, p in enumerate(paths)
         }
         files_resp = self._session.post(
-            self.task_data_uri(task_id),
+            self.task_data_url(task_id),
             verify=False,
             data=data_files,
             files=files,
         )
 
-        job_resp = self._session.get(self.jobs_uri(task_id))
+        job_resp = self._session.get(self.jobs_url(task_id))
         job_id = job_resp.json()[0]["id"]
 
         return job_id
@@ -2701,6 +2731,7 @@ class CVATAnnotationProvider(foua.BaseAnnotationProvider):
                 label_field=label_field,
                 dataset_type=fot.CVATImageDataset,
                 export_media=False,
+                overwrite=True,
             )
             annot_filepath = os.path.join(tmp, "labels.xml")
 
@@ -2708,30 +2739,92 @@ class CVATAnnotationProvider(foua.BaseAnnotationProvider):
                 "annotation_file": open(annot_filepath, "rb"),
             }
             self._session.put(
-                self.task_annotation_uri(task_id, annot_filepath),
+                self.task_annotation_url(task_id, annot_filepath),
                 files=annotation_file,
             )
 
         return task_id, job_id
 
-    def download_annotations(self):
+    def download_annotations(self, task_id, job_id):
         """Download annotations from the annotation tool"""
-        pass
+        response = self._session.get(self.task_url(task_id))
+        response.raise_for_status()
+
+        name = response.json()["name"]
+
+        with etau.TempDir() as tmp:
+            annot_path = os.path.join(tmp, "exported_labels.zip")
+            annot_xml_path = os.path.join(tmp, "annotations.xml")
+            annot_url = self.task_annotation_url(
+                task_id, name, annot_format="CVAT for images 1.1",
+            )
+
+            while True:
+                response = self._session.get(annot_url)
+                response.raise_for_status()
+
+                if response.status_code == 201:
+                    break
+
+            while True:
+                response = self._session.get(annot_url + "&action=download")
+                response.raise_for_status()
+
+                if response.content == b"":
+                    import pdb
+
+                    pdb.set_trace()
+                else:
+                    break
+
+            with open(annot_path, "wb") as ap:
+                ap.write(response.content)
+
+            etau.extract_zip(annot_path)
+            cvat_task_labels = load_cvat_image_annotations(annot_xml_path)
+
+        return cvat_task_labels
+
+    def delete_task(self, task_id):
+        response = self._session.delete(self.task_url(task_id))
+        response.raise_for_status()
 
     def launch_annotator(self, url=None):
         """Open the uploaded annotations in the annotation tool"""
         if url is None:
-            url = self.base_uri
+            url = self.base_url
         webbrowser.open(url, new=2)
 
 
+class CVATAnnotationInfo(foua.AnnotationInfo):
+    def __init__(self, api, task_id, job_id):
+        self.api = api
+        self.task_id = task_id
+        self.job_id = job_id
+
+
 def annotate(
-    samples, label_field="ground_truth", uri="cvat.org", https=True, **kwargs,
+    samples,
+    label_field="ground_truth",
+    url="cvat.org",
+    https=True,
+    auth=None,
+    **kwargs,
 ):
-    provider = CVATAnnotationProvider(uri=uri, https=https)
-    task_id, job_id = provider.upload_samples(samples, label_field=label_field)
-    provider.launch_annotator(url=provider.base_job_uri(task_id, job_id))
-    return provider
+    api = CVATAnnotationAPI(url=url, https=https, auth=auth)
+    task_id, job_id = api.upload_samples(samples, label_field=label_field)
+    api.launch_annotator(url=api.base_job_url(task_id, job_id))
+    info = CVATAnnotationInfo(api, task_id, job_id)
+    return info
+
+
+def load_annotations(info):
+    api = info.api
+    task_id = info.task_id
+    job_id = info.job_id
+    annotations = api.download_annotations(task_id, job_id)
+    api.delete_task(task_id)
+    return annotations
 
 
 def load_cvat_image_annotations(xml_path):

@@ -7,6 +7,7 @@ Data annotation utilities.
 """
 import getpass
 import logging
+import os
 
 import eta.core.annotations as etaa
 import eta.core.frames as etaf
@@ -14,6 +15,7 @@ import eta.core.image as etai
 import eta.core.video as etav
 
 import fiftyone as fo
+from fiftyone.core.expressions import ViewField as F
 import fiftyone.core.labels as fol
 import fiftyone.core.utils as fou
 
@@ -236,12 +238,16 @@ def _to_video_labels(sample, label_fields=None):
     return video_labels
 
 
-def annotate(samples, backend="cvat", label_field="ground_truth", **kwargs):
+def annotate(
+    samples, config=None, backend="cvat", label_field="ground_truth", **kwargs
+):
     """Exports the samples and a label field to the given annotation
     backend.
 
     Args:
         samples: a :class:`fiftyone.core.collections.SampleCollection`
+        config (None): the :class:`AnnotationProviderConfig` containing the
+            information needed to upload samples for  annotations
         backend ("cvat"): the name of the annotation backend to which to
             export the samples. Options are ("cvat")
         label_field: a string indicating the label field to export to the
@@ -250,54 +256,104 @@ def annotate(samples, backend="cvat", label_field="ground_truth", **kwargs):
         **kwargs: additional arguments to send to the annotation backend
 
     Returns:
-        annotation_tool: the
-            :class:`fiftyone.utils.annotations.BaseAnnotationTool` used to
+        annotation_info: the
+            :class:`fiftyone.utils.annotations.AnnotationInfo` used to
             upload and annotate the given samples
     """
     if backend == "cvat":
-        annotation_tool = fouc.annotate(
+        annotation_info = fouc.annotate(
             samples, label_field=label_field, **kwargs
         )
     else:
         logger.warning("Unsupported annotation backend %s" % backend)
 
-    return annotation_tool
+    return annotation_info
 
 
-class BaseAnnotationProvider(object):
+def load_annotations(
+    samples, info=None, backend="cvat", label_field="ground_truth", **kwargs
+):
+    """Loads labels from the given annotation backend.
+    
+    Args:
+        samples: a :class:`fiftyone.core.collections.SampleCollection`
+        info (None): the :class`AnnotationInfo` returned from a call to
+            `annotate()`
+        backend ("cvat"): the annotation backend to load labels from.
+            Options are ("cvat")
+        config (None): the :class:`AnnotationProviderConfig` containing the
+            information needed to load annotations
+        label_field: the label field to create or to merge the annotations
+            into
+        **kwargs: additional arguments to send to the annotation provider
+            if a config is not provided
+    """
+    if backend == "cvat":
+        annotations = fouc.load_annotations(info)
+    else:
+        logger.warning("Unsupported annotation backend %s" % backend)
+
+    annots_filenames = [i.name for i in annotations[2]]
+    annots_labels = [i.to_labels()["detections"] for i in annotations[2]]
+
+    # field_view = samples.match(F("filename") in annots_filenames).select_fields(label_field)
+    field_view = samples.select_fields(label_field)
+    samples._dataset.delete_labels(view=field_view, fields=label_field)
+    view_filenames = [os.path.basename(i) for i in samples.values("filepath")]
+
+    # https://stackoverflow.com/questions/23069055/python-sort-a-list-by-another-list
+    order = {v: i for i, v in enumerate(view_filenames)}
+    annots_labels_sorted = [
+        i[1]
+        for i in sorted(
+            list(zip(annots_filenames, annots_labels)),
+            key=lambda x: order[x[0]],
+        )
+    ]
+
+    field_view.set_values("ground_truth", annots_labels_sorted)
+
+
+class BaseAnnotationAPI(object):
     """Basic interface for connecting to an annotation provider, sending samples for
     annotation, and importing them back into the collection.
     """
 
-    def upload_samples(self):
-        """Upload samples into annotation provider"""
-        raise NotImplementedError("subclass must implement upload_samples()")
+    def get_username_password(self, host=""):
+        username = fo.config.annotation_username
+        password = fo.config.annotation_password
 
-    def download_annotations(self):
-        """Download annotations from the annotation provider"""
-        pass
+        if username is None or password is None:
+            logger.log(
+                "No config or environment variables found for "
+                "authentication. Please enter login information. Set the "
+                "environment variables `FIFTYONE_ANNOTATION_USERNAME` and "
+                "`FIFTYONE_ANNOTATION_PASSWORD` to avoid this in the future."
+            )
+            username = input("%s Username: " % host)
+            password = getpass.getpass(prompt="%s Password: " % host)
 
-    def launch_annotator(self):
-        """Open the uploaded annotations in the annotation provider"""
-        pass
+        return {
+            "username": username,
+            "password": password,
+        }
+
+    def get_api_key(self, host=""):
+        return {
+            "username": input("%s Username: " % host),
+            "password": getpass.getpass(prompt="%s Password: " % host),
+        }
 
 
-class BaseAnnotationResults(object):
+class AnnotationInfo(object):
     """Basic interface for results returned from `anntation()` call"""
 
     def __init__(self):
         pass
 
 
-class BaseAnnotationConfig(object):
+class AnnotationProviderConfig(object):
     """Config interface for specifying uploading annotations to a provider"""
 
     def __init__(self):
         pass
-
-
-def get_username_password(host=""):
-    return {
-        "username": input("%s Username: " % host),
-        "password": getpass.getpass(prompt="%s Password: " % host),
-    }

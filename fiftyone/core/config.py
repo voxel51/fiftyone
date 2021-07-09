@@ -150,6 +150,24 @@ class FiftyOneConfig(EnvConfig):
             env_var="FIFTYONE_REQUIREMENT_ERROR_LEVEL",
             default=0,
         )
+        self.annotation_username = self.parse_string(
+            d,
+            "annotation_username",
+            env_var="FIFTYONE_ANNOTATION_USERNAME",
+            default=None,
+        )
+        self.annotation_password = self.parse_string(
+            d,
+            "annotation_password",
+            env_var="FIFTYONE_ANNOTATION_PASSWORD",
+            default=None,
+        )
+        self.annotation_api_key = self.parse_string(
+            d,
+            "annotation_api_key",
+            env_var="FIFTYONE_ANNOTATION_API_KEY",
+            default=None,
+        )
 
         self._set_defaults()
         self._validate()
