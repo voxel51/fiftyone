@@ -146,30 +146,28 @@ const makeTagEye = (
 ): any => {
   const color = matchedTags.has(name) ? theme.font : theme.fontDark;
   return (
-    <>
-      <span
-        title={`Only show ${
-          labels ? "labels" : "samples"
-        } with the "${name}" tag ${
-          matchedTags.size ? "or other selected tags" : ""
-        }`}
-        onClick={toggleFilter}
+    <span
+      title={`Only show ${
+        labels ? "labels" : "samples"
+      } with the "${name}" tag ${
+        matchedTags.size ? "or other selected tags" : ""
+      }`}
+      onClick={toggleFilter}
+      style={{
+        cursor: "pointer",
+        height: 20,
+        width: 20,
+        marginLeft: 8,
+      }}
+    >
+      <Visibility
         style={{
-          cursor: "pointer",
+          color,
           height: 20,
           width: 20,
-          marginLeft: 8,
         }}
-      >
-        <Visibility
-          style={{
-            color,
-            height: 20,
-            width: 20,
-          }}
-        />
-      </span>
-    </>
+      />
+    </span>
   );
 };
 const makeClearMatchTags = (color, matchedTags, setMatchedTags) => {
@@ -260,8 +258,37 @@ const SampleTagsCell = ({ modal }: TagsCellProps) => {
             color,
             title: name,
             canFilter: !modal,
-            path: "tags." + name,
+            path: `tags.${name}`,
+            key: name,
             type: "tags",
+            count: !modal ? count[name] : null,
+            value: modal ? (
+              count[name] > 0 ? (
+                <Check style={{ color }} />
+              ) : (
+                <Close style={{ color }} />
+              )
+            ) : null,
+            subCountAtom,
+            icon: modal
+              ? null
+              : makeTagEye(
+                  matchedTags,
+                  name,
+                  theme,
+                  (e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    const newMatch = new Set(matchedTags);
+                    if (matchedTags.has(name)) {
+                      newMatch.delete(name);
+                    } else {
+                      newMatch.add(name);
+                    }
+                    setMatchedTags(newMatch);
+                  },
+                  false
+                ),
             modal,
           };
         })}

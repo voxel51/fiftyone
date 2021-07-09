@@ -131,14 +131,13 @@ const CheckboxText = ({
   value,
   title,
   path,
-  icon,
   hasDropdown,
   expanded,
   setExpanded,
 }: {
   title: string;
   count?: number;
-  value?: string | number;
+  value?: any;
   subCountAtom?: RecoilValueReadOnly<{ [key: string]: number }>;
   path: string;
   icon?: any;
@@ -207,6 +206,8 @@ export type Entry = {
   subCountAtom: RecoilValueReadOnly<{ [key: string]: number }>;
   canFilter?: boolean;
   type: string;
+  icon: any;
+  key?: string;
 };
 
 type EntryProps = {
@@ -230,11 +231,13 @@ const Entry = React.memo(({ entry, onCheck, modal }: EntryProps) => {
     count,
     subCountAtom,
     value,
+    icon,
+    key,
   } = entry;
   const [expanded, setExpanded] = useState(false);
   const theme = useTheme();
   const fieldFiltered =
-    useRecoilValue(fieldIsFiltered({ path, modal })) && canFilter;
+    useRecoilValue(fieldIsFiltered({ path: key ?? path, modal })) && canFilter;
   const isNumeric = useRecoilValue(isNumericField(path));
   const isString = useRecoilValue(isStringField(path));
   const isBoolean = useRecoilValue(isBooleanField(path));
@@ -278,6 +281,7 @@ const Entry = React.memo(({ entry, onCheck, modal }: EntryProps) => {
                 />
               </Suspense>
             }
+            {icon ? icon : null}
           </>
         }
         classes={{

@@ -65,9 +65,9 @@ const ImageContainerHeader = ({ showSidebar, onShowSidebar }: Props) => {
   const element = useRecoilValue(selectors.elementNames);
   const filteredCount = useRecoilValue(selectors.filteredCount);
   const resetGridZoom = useResetRecoilState(gridZoom);
-  const isRootView = useRecoilValue(selectors.isRootView);
   const theme = useTheme();
   let countStr = null;
+
   if (
     typeof filteredCount === "number" &&
     filteredCount !== totalCount &&

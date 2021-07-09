@@ -100,7 +100,7 @@ export const filteredFrameLabels = selectorFamily<string[], boolean>({
     return filtered;
   },
   set: (modal) => ({ get, set }, newValue) => {
-    const current = get(filteredLabels(modal));
+    const current = get(filteredFrameLabels(modal));
 
     let paths = [];
     if (Array.isArray(newValue)) {

@@ -351,7 +351,6 @@ const TeamsForm = () => {
   const formId = "87aa5367-a8f1-4ed4-9e23-1fdf8448d807";
   const postUrl = `https://api.hsforms.com/submissions/v3/integration/submit/${portalId}/${formId}`;
   const closeTeams = useRecoilValue(atoms.closeTeams);
-  const theme = useTheme();
 
   const setFormValue = (name) => (e) =>
     setFormState({
