@@ -77,6 +77,7 @@ class FiftyOneCommand(Command):
     def setup(parser):
         subparsers = parser.add_subparsers(title="available commands")
         _register_command(subparsers, "quickstart", QuickstartCommand)
+        _register_command(subparsers, "annotation", AnnotationCommand)
         _register_command(subparsers, "app", AppCommand)
         _register_command(subparsers, "config", ConfigCommand)
         _register_command(subparsers, "constants", ConstantsCommand)
@@ -802,6 +803,73 @@ class DatasetsDeleteCommand(Command):
 
         if args.non_persistent:
             fod.delete_non_persistent_datasets(verbose=True)
+
+
+class AnnotationCommand(Command):
+    """Tools for working with the FiftyOne Annotations."""
+
+    @staticmethod
+    def setup(parser):
+        subparsers = parser.add_subparsers(title="available commands")
+        _register_command(subparsers, "config", AnnotationConfigCommand)
+
+    @staticmethod
+    def execute(parser, args):
+        parser.print_help()
+
+
+class AnnotationConfigCommand(Command):
+    """Tools for working with your FiftyOne Annotation config.
+
+    Examples::
+
+        # Print your entire Annotation config
+        fiftyone annotation config
+
+        # Print a specific Annotation config field
+        fiftyone annotation config <field>
+
+        # Print the location of your Annotation config on disk (if one exists)
+        fiftyone annotation config --locate
+    """
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "field",
+            nargs="?",
+            metavar="FIELD",
+            help="an Annotation config field to print",
+        )
+        parser.add_argument(
+            "-l",
+            "--locate",
+            action="store_true",
+            help="print the location of your Annotation config on disk",
+        )
+
+    @staticmethod
+    def execute(parser, args):
+        if args.locate:
+            annotation_config_path = focg.locate_annotation_config()
+            if os.path.isfile(annotation_config_path):
+                print(annotation_config_path)
+            else:
+                print(
+                    "No Annotation config file found at '%s'"
+                    % annotation_config_path
+                )
+
+            return
+
+        if args.field:
+            field = getattr(fo.annotation_config, args.field)
+            if etau.is_str(field):
+                print(field)
+            else:
+                print(etas.json_to_str(field))
+        else:
+            print(fo.annotation_config)
 
 
 class AppCommand(Command):

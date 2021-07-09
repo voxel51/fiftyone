@@ -320,8 +320,8 @@ class BaseAnnotationAPI(object):
     """
 
     def get_username_password(self, host=""):
-        username = fo.config.annotation_username
-        password = fo.config.annotation_password
+        username = fo.annotation_config.cvat_username
+        password = fo.annotation_config.cvat_password
 
         if username is None or password is None:
             logger.log(
