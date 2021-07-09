@@ -479,9 +479,9 @@ def handle_error(error, error_level, base_error=None):
         error: an Exception instance
         error_level: the error level to use, defined as:
 
-            0: raise the error
-            1: log the error as a warning
-            2: ignore the error
+        -   0: raise the error
+        -   1: log the error as a warning
+        -   2: ignore the error
 
         base_error: (optional) a base Exception from which to raise ``error``
     """

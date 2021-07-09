@@ -59,9 +59,9 @@ class COCOEvaluationConfig(DetectionEvaluationConfig):
         error_level (1): the error level to use when manipulating instance
             masks or polylines. Valid values are:
 
-                0: raise geometric errors that are encountered
-                1: log warnings if geometric errors are encountered
-                2: ignore geometric errors
+            -   0: raise geometric errors that are encountered
+            -   1: log warnings if geometric errors are encountered
+            -   2: ignore geometric errors
 
             If ``error_level > 0``, any calculation that raises a geometric
             error will default to an IoU of 0

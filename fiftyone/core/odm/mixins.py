@@ -538,9 +538,9 @@ class DatasetMixin(object):
             are_frame_fields (False): whether these are frame-level fields
             error_level (0): the error level to use. Valid values are:
 
-                0: raise error if a field cannot be deleted
-                1: log warning if a field cannot be deleted
-                2: ignore fields that cannot be deleted
+            -   0: raise error if a field cannot be deleted
+            -   1: log warning if a field cannot be deleted
+            -   2: ignore fields that cannot be deleted
         """
         default_fields = get_default_fields(
             cls.__bases__[0], include_private=True
