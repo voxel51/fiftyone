@@ -1,20 +1,14 @@
 import React, { MutableRefObject, useLayoutEffect } from "react";
-import {
-  RecoilValueReadOnly,
-  selector,
-  selectorFamily,
-  useRecoilCallback,
-  useRecoilValue,
-} from "recoil";
+import { RecoilValueReadOnly, useRecoilCallback, useRecoilValue } from "recoil";
 
 import Popout from "./Popout";
 import { ActionOption } from "./Common";
 import * as atoms from "../../recoil/atoms";
 import * as selectors from "../../recoil/selectors";
-import * as labelAtoms from "../Filters/LabelFieldFilters.state";
 import socket from "../../shared/connection";
 import { packageMessage } from "../../utils/socket";
 import { VideoLooker } from "@fiftyone/looker";
+import { useEventHandler } from "../../utils/hooks";
 
 const useGridActions = (close: () => void) => {
   const elementNames = useRecoilValue(selectors.elementNames);
@@ -68,54 +62,16 @@ const useGridActions = (close: () => void) => {
   ];
 };
 
-const visibleModalSampleLabels = selector<atoms.SelectedLabel[]>({
-  key: "visibleModalSampleLabels",
-  get: ({ get }) => {
-    return get(labelAtoms.modalLabels);
-  },
-});
-
-const visibleModalSampleLabelIds = selector<Set<string>>({
-  key: "visibleModalSampleLabelIds",
-  get: ({ get }) => {
-    return new Set(
-      get(visibleModalSampleLabels).map(({ label_id }) => label_id)
-    );
-  },
-});
-
-const visibleModalCurrentFrameLabels = selectorFamily<
-  atoms.SelectedLabel[],
-  number
->({
-  key: "visibleModalCurrentFrameLabels",
-  get: (frameNumber) => ({ get }) => {
-    return get(labelAtoms.modalLabels).filter(
-      ({ frame_number }) => frame_number === frameNumber
-    );
-  },
-});
-
-const visibleModalCurrentFrameLabelIds = selectorFamily<Set<string>, number>({
-  key: "visibleModalCurrentFrameLabelIds",
-  get: (frameNumber) => ({ get }) => {
-    return new Set(
-      get(visibleModalCurrentFrameLabels(frameNumber)).map(
-        ({ label_id }) => label_id
-      )
-    );
-  },
-});
-
 const toLabelMap = (labels: atoms.SelectedLabel[]) =>
   Object.fromEntries(labels.map(({ label_id, ...rest }) => [label_id, rest]));
 
 const useSelectVisible = (
-  visibleAtom: RecoilValueReadOnly<atoms.SelectedLabel[]>
+  visibleAtom?: RecoilValueReadOnly<atoms.SelectedLabel[]>,
+  visible?: atoms.SelectedLabel[]
 ) => {
   return useRecoilCallback(({ snapshot, set }) => async () => {
     const selected = await snapshot.getPromise(selectors.selectedLabels);
-    const visible = await snapshot.getPromise(visibleAtom);
+    visible = visibleAtom ? await snapshot.getPromise(visibleAtom) : visible;
     set(selectors.selectedLabels, {
       ...selected,
       ...toLabelMap(visible),
@@ -124,11 +80,14 @@ const useSelectVisible = (
 };
 
 const useUnselectVisible = (
-  visibleIdsAtom: RecoilValueReadOnly<Set<string>>
+  visibleIdsAtom?: RecoilValueReadOnly<Set<string>>,
+  visibleIds?: Set<string>
 ) => {
   return useRecoilCallback(({ snapshot, set }) => async () => {
     const selected = await snapshot.getPromise(selectors.selectedLabels);
-    const visibleIds = await snapshot.getPromise(visibleIdsAtom);
+    visibleIds = visibleIdsAtom
+      ? await snapshot.getPromise(visibleIdsAtom)
+      : visibleIds;
 
     const filtered = Object.entries(selected).filter(
       ([label_id]) => !visibleIds.has(label_id)
@@ -153,11 +112,12 @@ const useHideSelected = () => {
 };
 
 const useHideOthers = (
-  visibleAtom: RecoilValueReadOnly<atoms.SelectedLabel[]>
+  visibleAtom?: RecoilValueReadOnly<atoms.SelectedLabel[]>,
+  visible?: atoms.SelectedLabel[]
 ) => {
   return useRecoilCallback(({ snapshot, set }) => async () => {
     const selected = await snapshot.getPromise(selectors.selectedLabelIds);
-    const visible = await snapshot.getPromise(visibleAtom);
+    visible = visibleAtom ? await snapshot.getPromise(visibleAtom) : visible;
     const hidden = await snapshot.getPromise(atoms.hiddenLabels);
     set(atoms.hiddenLabels, {
       ...hidden,
@@ -172,13 +132,16 @@ const hasSetDiff = <T extends unknown>(a: Set<T>, b: Set<T>): boolean =>
 const hasSetInt = <T extends unknown>(a: Set<T>, b: Set<T>): boolean =>
   new Set([...a].filter((e) => b.has(e))).size > 0;
 
-const useModalActions = (frameNumber, close) => {
+const useModalActions = (lookerRef, close) => {
   const selectedLabels = useRecoilValue(selectors.selectedLabelIds);
-  const visibleSampleLabels = useRecoilValue(visibleModalSampleLabelIds);
-  const visibleFrameLabels = useRecoilValue(
-    visibleModalCurrentFrameLabelIds(frameNumber)
-  );
-  const isVideo = useRecoilValue(selectors.isVideoDataset);
+  const visibleSampleLabels = lookerRef.current.getCurrentSampleLabels();
+  const isVideo =
+    useRecoilValue(selectors.isVideoDataset) &&
+    useRecoilValue(selectors.isRootView);
+  const visibleFrameLabels = isVideo
+    ? lookerRef.current.getCurrentFrameLabels()
+    : new Set();
+
   const closeAndCall = (callback) => {
     return React.useCallback(() => {
       close();
@@ -198,12 +161,14 @@ const useModalActions = (frameNumber, close) => {
     {
       text: `Select visible (current ${elementNames.singular})`,
       hidden: !hasVisibleUnselected,
-      onClick: closeAndCall(useSelectVisible(visibleModalSampleLabels)),
+      onClick: closeAndCall(useSelectVisible(null, visibleSampleLabels)),
     },
     {
       text: `Unselect visible (current ${elementNames.singular})`,
       hidden: !hasVisibleSelection,
-      onClick: closeAndCall(useUnselectVisible(visibleModalSampleLabelIds)),
+      onClick: closeAndCall(
+        useUnselectVisible(null, visibleModalSampleLabelIds)
+      ),
     },
     isVideo && {
       text: "Select visible (current frame)",
@@ -264,8 +229,10 @@ const SelectionActions = ({
       lookerRef.current.pause();
   });
   const actions = modal
-    ? useModalActions(lookerRef.frameNumber, close)
+    ? useModalActions(lookerRef, close)
     : useGridActions(close);
+
+  lookerRef && useEventHandler(lookerRef.current, "play", close);
 
   return (
     <Popout modal={modal} bounds={bounds}>

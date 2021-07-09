@@ -20,7 +20,7 @@ import {
 } from "./elements";
 import { LookerElement } from "./elements/common";
 import processOverlays from "./processOverlays";
-import { loadOverlays } from "./overlays";
+import { ClassificationsOverlay, loadOverlays } from "./overlays";
 import { CONTAINS, Overlay } from "./overlays/base";
 import {
   FrameState,
@@ -224,6 +224,25 @@ export abstract class Looker<
 
   getSample(): Promise<Sample> {
     return Promise.resolve(this.sample);
+  }
+
+  getCurrentSampleLabels(): Promise<{ field: string; label_id: string }[]> {
+    const labels: { field: string; label_id: string }[] = [];
+    this.currentOverlays.forEach((overlay) => {
+      if (overlay instanceof ClassificationsOverlay) {
+        overlay.getFilteredAndFlat(this.state).forEach(([field, label]) => {
+          labels.push({
+            field: field,
+            label_id: label._id,
+          });
+        });
+      } else {
+        const { id: label_id, field } = overlay.getSelectData(this.state);
+        labels.push({ label_id, field });
+      }
+    });
+
+    return Promise.resolve(labels);
   }
 
   protected get waiting() {
@@ -675,6 +694,51 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
 
   get waiting() {
     return this.imageSource.seeking;
+  }
+
+  getCurrentSampleLabels(): Promise<{ field: string; label_id: string }[]> {
+    const labels: { field: string; label_id: string }[] = [];
+    processOverlays(this.state, this.sampleOverlays)[0].forEach((overlay) => {
+      if (overlay instanceof ClassificationsOverlay) {
+        overlay.getFilteredAndFlat(this.state).forEach(([field, label]) => {
+          labels.push({
+            field: field,
+            label_id: label._id,
+          });
+        });
+      } else {
+        const { id: label_id, field } = overlay.getSelectData(this.state);
+        labels.push({ label_id, field });
+      }
+    });
+
+    return Promise.resolve(labels);
+  }
+
+  async getCurrentFrameLabels(): Promise<
+    { field: string; label_id: string }[]
+  > {
+    await this.getSample();
+
+    const frame = this.frames.get(this.frameNumber).deref();
+    const labels: { field: string; label_id: string }[] = [];
+    if (frame) {
+      processOverlays(this.state, frame.overlays)[0].forEach((overlay) => {
+        if (overlay instanceof ClassificationsOverlay) {
+          overlay.getFilteredAndFlat(this.state).forEach(([field, label]) => {
+            labels.push({
+              field: field,
+              label_id: label._id,
+            });
+          });
+        } else {
+          const { id: label_id, field } = overlay.getSelectData(this.state);
+          labels.push({ label_id, field });
+        }
+      });
+    }
+
+    return labels;
   }
 
   getElements() {

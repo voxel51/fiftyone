@@ -265,9 +265,9 @@ const SampleTagsCell = ({ modal }: TagsCellProps) => {
             count: !modal ? count[name] : null,
             value: modal ? (
               count[name] > 0 ? (
-                <Check style={{ color }} />
+                <Check style={{ marginTop: 3, color }} />
               ) : (
-                <Close style={{ color }} />
+                <Close style={{ marginTop: 3, color }} />
               )
             ) : null,
             subCountAtom,

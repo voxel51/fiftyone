@@ -143,7 +143,7 @@ export default class ClassificationsOverlay<State extends BaseState>
     ]);
   }
 
-  private getFilteredAndFlat(
+  getFilteredAndFlat(
     state: Readonly<State>,
     sort: boolean = true
   ): [string, ClassificationLabel][] {

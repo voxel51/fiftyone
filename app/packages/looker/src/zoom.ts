@@ -88,7 +88,7 @@ export const zoomToContent = <
   pan = [-w * cw - marginX + ww / 2, -h * ch - marginY + wh / 2];
 
   // Scale down and reposition for a centered patch with padding
-  if (w * squeeze > ww && h * squeeze > wh) {
+  if ((w * squeeze > ww && h * squeeze > wh) || !state.config.thumbnail) {
     scale = squeeze * scale;
     pan[0] = pan[0] * squeeze + (bw * w * (1 - squeeze)) / 2;
     pan[1] = pan[1] * squeeze + (bh * h * (1 - squeeze)) / 2;
