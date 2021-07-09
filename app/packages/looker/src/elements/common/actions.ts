@@ -56,6 +56,7 @@ const readActions = <State extends BaseState>(
 const escape: Control = {
   title: "Escape window",
   shortcut: "Esc",
+  eventKeys: "Escape",
   detail: "Escape help -> settings -> zoom -> fullscreen -> close",
   action: (update, dispatchEvent, eventKey) => {
     update(
