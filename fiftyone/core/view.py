@@ -265,12 +265,25 @@ class DatasetView(foc.SampleCollection):
         """
         return copy(self)
 
-    def iter_samples(self):
+    def iter_samples(self, progress=False):
         """Returns an iterator over the samples in the view.
+
+        Args:
+            progress (False): whether to render a progress bar tracking the
+                iterator's progress
 
         Returns:
             an iterator over :class:`fiftyone.core.sample.SampleView` instances
         """
+        if progress:
+            with fou.ProgressBar(total=len(self)) as pb:
+                for sample in pb(self._iter_samples()):
+                    yield sample
+        else:
+            for sample in self._iter_samples():
+                yield sample
+
+    def _iter_samples(self):
         sample_cls = self._SAMPLE_CLS
         selected_fields, excluded_fields = self._get_selected_excluded_fields()
         filtered_fields = self._get_filtered_fields()
