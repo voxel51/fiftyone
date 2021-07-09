@@ -31,7 +31,6 @@ def evaluate_segmentations(
     eval_key=None,
     mask_targets=None,
     method="simple",
-    config=None,
     **kwargs,
 ):
     """Evaluates the specified semantic segmentation masks in the given
@@ -39,6 +38,15 @@ def evaluate_segmentations(
 
     If the size of a predicted mask does not match the ground truth mask, it
     is resized to match the ground truth.
+
+    By default, this method simply performs pixelwise evaluation of the full
+    masks, but other strategies such as boundary-only evaluation can be
+    configured by passing additional parameters for the method's
+    :class:`SegmentationEvaluationConfig` class as ``kwargs``.
+
+    The supported ``method`` values and their associated configs are:
+
+    -   ``"simple"``: :class:`SimpleEvaluationConfig`
 
     If an ``eval_key`` is provided, the accuracy, precision, and recall of each
     sample is recorded in top-level fields of each sample::
@@ -73,9 +81,6 @@ def evaluate_segmentations(
             possible, or else the observed pixel values are used
         method ("simple"): a string specifying the evaluation method to use.
             Supported values are ``("simple")``
-        config (None): a :class:`SegmentationEvaluationConfig` specifying the
-            evaluation method to use. If a ``config`` is provided, the
-            ``method`` and ``kwargs`` parameters are ignored
         **kwargs: optional keyword arguments for the constructor of the
             :class:`SegmentationEvaluationConfig` being used
 
@@ -94,7 +99,7 @@ def evaluate_segmentations(
         elif samples.default_mask_targets:
             mask_targets = samples.default_mask_targets
 
-    config = _parse_config(config, pred_field, gt_field, method, **kwargs)
+    config = _parse_config(pred_field, gt_field, method, **kwargs)
     eval_method = config.build()
     eval_method.register_run(samples, eval_key)
 
@@ -378,10 +383,7 @@ class SegmentationResults(ClassificationResults):
         return ytrue, ypred, weights
 
 
-def _parse_config(config, pred_field, gt_field, method, **kwargs):
-    if config is not None:
-        return config
-
+def _parse_config(pred_field, gt_field, method, **kwargs):
     if method is None:
         method = "simple"
 

@@ -1458,7 +1458,6 @@ class SampleCollection(object):
         classes=None,
         missing=None,
         method="simple",
-        config=None,
         **kwargs,
     ):
         """Evaluates the classification predictions in this collection with
@@ -1466,8 +1465,18 @@ class SampleCollection(object):
 
         By default, this method simply compares the ground truth and prediction
         for each sample, but other strategies such as binary evaluation and
-        top-k matching can be configured via the ``method`` and ``config``
-        parameters.
+        top-k matching can be configured via the ``method`` parameter.
+
+        You can customize the evaluation method by passing additional
+        parameters for the method's
+        :class:`fiftyone.utils.eval.classification.ClassificationEvaluationConfig`
+        class as ``kwargs``.
+
+        The supported ``method`` values and their associated configs are:
+
+        -   ``"simple"``: :class:`fiftyone.utils.eval.classification.SimpleEvaluationConfig`
+        -   ``"top-k"``: :class:`fiftyone.utils.eval.classification.TopKEvaluationConfig`
+        -   ``"binary"``: :class:`fiftyone.utils.eval.classification.BinaryEvaluationConfig`
 
         If an ``eval_key`` is specified, then this method will record some
         statistics on each sample:
@@ -1500,10 +1509,6 @@ class SampleCollection(object):
                 are given this label for results purposes
             method ("simple"): a string specifying the evaluation method to use.
                 Supported values are ``("simple", "binary", "top-k")``
-            config (None): a
-                :class:`fiftyone.utils.eval.classification.ClassificationEvaluationConfig`
-                specifying the evaluation method to use. If a ``config`` is
-                provided, the ``method`` and ``kwargs`` parameters are ignored
             **kwargs: optional keyword arguments for the constructor of the
                 :class:`fiftyone.utils.eval.classification.ClassificationEvaluationConfig`
                 being used
@@ -1519,7 +1524,6 @@ class SampleCollection(object):
             classes=classes,
             missing=missing,
             method=method,
-            config=config,
             **kwargs,
         )
 
@@ -1535,7 +1539,6 @@ class SampleCollection(object):
         use_masks=False,
         use_boxes=False,
         classwise=True,
-        config=None,
         **kwargs,
     ):
         """Evaluates the specified predicted detections in this collection with
@@ -1549,8 +1552,17 @@ class SampleCollection(object):
             format with their ``mask`` attributes populated
         -   Polygons in :class:`fiftyone.core.labels.Polylines` format
 
-        By default, this method uses COCO-style evaluation, but this can be
-        configued via the ``method`` and ``config`` parameters.
+        By default, this method uses COCO-style evaluation, but you can use the
+        ``method`` parameter to select a different method, and you can
+        optionally customize the method by passing additional parameters for
+        the method's
+        :class:`fiftyone.utils.eval.detection.DetectionEvaluationConfig` class
+        as ``kwargs``.
+
+        The supported ``method`` values and their associated configs are:
+
+        -   ``"coco"``: :class:`fiftyone.utils.eval.coco.COCOEvaluationConfig`
+        -   ``"open-images"``: :class:`fiftyone.utils.eval.openimages.OpenImagesEvaluationConfig`
 
         If an ``eval_key`` is provided, a number of fields are populated at the
         object- and sample-level recording the results of the evaluation:
@@ -1606,11 +1618,6 @@ class SampleCollection(object):
                 instances rather than using their actual geometries
             classwise (True): whether to only match objects with the same class
                 label (True) or allow matches between classes (False)
-            config (None): a
-                :class:`fiftyone.utils.eval.detection.DetectionEvaluationConfig`
-                specifying the evaluation method to use. If a ``config`` is
-                provided, the ``method``, ``iou``, ``classwise``, and
-                ``kwargs`` parameters are ignored
             **kwargs: optional keyword arguments for the constructor of the
                 :class:`fiftyone.utils.eval.detection.DetectionEvaluationConfig`
                 being used
@@ -1630,7 +1637,6 @@ class SampleCollection(object):
             use_masks=use_masks,
             use_boxes=use_boxes,
             classwise=classwise,
-            config=config,
             **kwargs,
         )
 
@@ -1641,7 +1647,6 @@ class SampleCollection(object):
         eval_key=None,
         mask_targets=None,
         method="simple",
-        config=None,
         **kwargs,
     ):
         """Evaluates the specified semantic segmentation masks in this
@@ -1649,6 +1654,16 @@ class SampleCollection(object):
 
         If the size of a predicted mask does not match the ground truth mask,
         it is resized to match the ground truth.
+
+        By default, this method simply performs pixelwise evaluation of the
+        full masks, but other strategies such as boundary-only evaluation can
+        be configured by passing additional parameters for the method's
+        :class:`fiftyone.utils.eval.segmentation.SegmentationEvaluationConfig`
+        class as ``kwargs``.
+
+        The supported ``method`` values and their associated configs are:
+
+        -   ``"simple"``: :class:`fiftyone.utils.eval.segmentation.SimpleEvaluationConfig`
 
         If an ``eval_key`` is provided, the accuracy, precision, and recall of
         each sample is recorded in top-level fields of each sample::
@@ -1685,10 +1700,6 @@ class SampleCollection(object):
                 possible, or else the observed pixel values are used
             method ("simple"): a string specifying the evaluation method to
                 use. Supported values are ``("simple")``
-            config (None): a
-                :class:`fiftyone.utils.eval.segmentation.SegmentationEvaluationConfig`
-                specifying the evaluation method to use. If a ``config`` is
-                provided, the ``method`` and ``kwargs`` parameters are ignored
             **kwargs: optional keyword arguments for the constructor of the
                 :class:`fiftyone.utils.eval.segmentation.SegmentationEvaluationConfig`
                 being used
@@ -1703,7 +1714,6 @@ class SampleCollection(object):
             eval_key=eval_key,
             mask_targets=mask_targets,
             method=method,
-            config=config,
             **kwargs,
         )
 

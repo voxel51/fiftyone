@@ -33,7 +33,6 @@ def evaluate_detections(
     use_masks=False,
     use_boxes=False,
     classwise=True,
-    config=None,
     **kwargs,
 ):
     """Evaluates the predicted detections in the given samples with respect to
@@ -46,8 +45,15 @@ def evaluate_detections(
         format with their ``mask`` attributes populated
     -   Polygons in :class:`fiftyone.core.labels.Polylines` format
 
-    By default, this method uses COCO-style evaluation, but this can be
-    configued via the ``method`` and ``config`` parameters.
+    By default, this method uses COCO-style evaluation, but you can use the
+    ``method`` parameter to select a different method, and you can optionally
+    customize the method by passing additional parameters for the method's
+    :class:`DetectionEvaluationConfig` class as ``kwargs``.
+
+    The supported ``method`` values and their associated configs are:
+
+    -   ``"coco"``: :class:`fiftyone.utils.eval.coco.COCOEvaluationConfig`
+    -   ``"open-images"``: :class:`fiftyone.utils.eval.openimages.OpenImagesEvaluationConfig`
 
     If an ``eval_key`` is provided, a number of fields are populated at the
     object- and sample-level recording the results of the evaluation:
@@ -101,10 +107,6 @@ def evaluate_detections(
             rather than using their actual geometries
         classwise (True): whether to only match objects with the same class
             label (True) or allow matches between classes (False)
-        config (None): an :class:`DetectionEvaluationConfig` specifying the
-            evaluation method to use. If a ``config`` is provided, the
-            ``method``, ``iou``, ``classwise``, and ``kwargs`` parameters are
-            ignored
         **kwargs: optional keyword arguments for the constructor of the
             :class:`DetectionEvaluationConfig` being used
 
@@ -127,7 +129,6 @@ def evaluate_detections(
             classes = samples.default_classes
 
     config = _parse_config(
-        config,
         pred_field,
         gt_field,
         method,
@@ -460,10 +461,7 @@ class DetectionResults(ClassificationResults):
         )
 
 
-def _parse_config(config, pred_field, gt_field, method, **kwargs):
-    if config is not None:
-        return config
-
+def _parse_config(pred_field, gt_field, method, **kwargs):
     if method is None:
         method = "coco"
 

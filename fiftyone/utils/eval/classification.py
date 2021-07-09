@@ -27,15 +27,24 @@ def evaluate_classifications(
     classes=None,
     missing=None,
     method="simple",
-    config=None,
     **kwargs,
 ):
     """Evaluates the classification predictions in the given collection with
     respect to the specified ground truth labels.
 
-    By default, this method simply compares the ground truth and prediction for
-    each sample, but other strategies such as binary evaluation and top-k
-    matching can be configured via the ``method`` and ``config`` parameters.
+    By default, this method simply compares the ground truth and prediction
+    for each sample, but other strategies such as binary evaluation and
+    top-k matching can be configured via the ``method`` parameter.
+
+    You can customize the evaluation method by passing additional
+    parameters for the method's :class:`ClassificationEvaluationConfig` class
+    as ``kwargs``.
+
+    The supported ``method`` values and their associated configs are:
+
+    -   ``"simple"``: :class:`SimpleEvaluationConfig`
+    -   ``"top-k"``: :class:`TopKEvaluationConfig`
+    -   ``"binary"``: :class:`BinaryEvaluationConfig`
 
     If an ``eval_key`` is specified, then this method will record some
     statistics on each sample:
@@ -66,9 +75,6 @@ def evaluate_classifications(
             given this label for results purposes
         method ("simple"): a string specifying the evaluation method to use.
             Supported values are ``("simple", "binary", "top-k")``
-        config (None): an :class:`ClassificationEvaluationConfig` specifying
-            the evaluation method to use. If a ``config`` is provided, the
-            ``method`` and ``kwargs`` parameters are ignored
         **kwargs: optional keyword arguments for the constructor of the
             :class:`ClassificationEvaluationConfig` being used
 
@@ -87,7 +93,7 @@ def evaluate_classifications(
         elif samples.default_classes:
             classes = samples.default_classes
 
-    config = _parse_config(config, pred_field, gt_field, method, **kwargs)
+    config = _parse_config(pred_field, gt_field, method, **kwargs)
     eval_method = config.build()
     eval_method.register_run(samples, eval_key)
 
@@ -1009,10 +1015,7 @@ class BinaryClassificationResults(ClassificationResults):
         )
 
 
-def _parse_config(config, pred_field, gt_field, method, **kwargs):
-    if config is not None:
-        return config
-
+def _parse_config(pred_field, gt_field, method, **kwargs):
     if method is None:
         method = "simple"
 
