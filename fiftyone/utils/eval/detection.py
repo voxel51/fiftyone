@@ -11,7 +11,9 @@ import logging
 import numpy as np
 
 import fiftyone.core.evaluation as foe
+import fiftyone.core.labels as fol
 import fiftyone.core.utils as fou
+import fiftyone.core.validation as fov
 
 from .classification import ClassificationResults
 
@@ -109,6 +111,13 @@ def evaluate_detections(
     Returns:
         a :class:`DetectionResults`
     """
+    fov.validate_collection_label_fields(
+        samples,
+        (pred_field, gt_field),
+        (fol.Detections, fol.Polylines),
+        same_type=True,
+    )
+
     if classes is None:
         if pred_field in samples.classes:
             classes = samples.classes[pred_field]
@@ -463,7 +472,7 @@ def _parse_config(config, pred_field, gt_field, method, **kwargs):
 
         return COCOEvaluationConfig(pred_field, gt_field, **kwargs)
 
-    elif method == "open-images":
+    if method == "open-images":
         from .openimages import OpenImagesEvaluationConfig
 
         return OpenImagesEvaluationConfig(pred_field, gt_field, **kwargs)

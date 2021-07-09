@@ -14,7 +14,9 @@ import sklearn.metrics as skm
 import fiftyone.core.evaluation as foe
 from fiftyone.core.expressions import ViewField as F
 import fiftyone.core.fields as fof
+import fiftyone.core.labels as fol
 import fiftyone.core.plots as fop
+import fiftyone.core.validation as fov
 
 
 def evaluate_classifications(
@@ -73,6 +75,10 @@ def evaluate_classifications(
     Returns:
         a :class:`ClassificationResults`
     """
+    fov.validate_collection_label_fields(
+        samples, (pred_field, gt_field), fol.Classification, same_type=True
+    )
+
     if classes is None:
         if pred_field in samples.classes:
             classes = samples.classes[pred_field]

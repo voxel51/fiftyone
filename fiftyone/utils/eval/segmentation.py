@@ -14,7 +14,9 @@ import sklearn.metrics as skm
 import eta.core.image as etai
 
 import fiftyone.core.evaluation as foe
+import fiftyone.core.labels as fol
 import fiftyone.core.utils as fou
+import fiftyone.core.validation as fov
 
 from .classification import ClassificationResults
 
@@ -80,6 +82,10 @@ def evaluate_segmentations(
     Returns:
         a :class:`SegmentationResults`
     """
+    fov.validate_collection_label_fields(
+        samples, (pred_field, gt_field), fol.Segmentation, same_type=True
+    )
+
     if mask_targets is None:
         if pred_field in samples.mask_targets:
             mask_targets = samples.mask_targets[pred_field]
