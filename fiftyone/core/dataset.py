@@ -1170,9 +1170,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             field_name: the field name or ``embedded.field.name``
             error_level (0): the error level to use. Valid values are:
 
-                0: raise error if a top-level field cannot be deleted
-                1: log warning if a top-level field cannot be deleted
-                2: ignore top-level fields that cannot be deleted
+            -   0: raise error if a top-level field cannot be deleted
+            -   1: log warning if a top-level field cannot be deleted
+            -   2: ignore top-level fields that cannot be deleted
         """
         self._delete_sample_fields(field_name, error_level)
 
@@ -1186,9 +1186,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             field_names: the field name or iterable of field names
             error_level (0): the error level to use. Valid values are:
 
-                0: raise error if a top-level field cannot be deleted
-                1: log warning if a top-level field cannot be deleted
-                2: ignore top-level fields that cannot be deleted
+            -   0: raise error if a top-level field cannot be deleted
+            -   1: log warning if a top-level field cannot be deleted
+            -   2: ignore top-level fields that cannot be deleted
         """
         self._delete_sample_fields(field_names, error_level)
 
@@ -1204,9 +1204,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             field_name: the field name or ``embedded.field.name``
             error_level (0): the error level to use. Valid values are:
 
-                0: raise error if a top-level field cannot be deleted
-                1: log warning if a top-level field cannot be deleted
-                2: ignore top-level fields that cannot be deleted
+            -   0: raise error if a top-level field cannot be deleted
+            -   1: log warning if a top-level field cannot be deleted
+            -   2: ignore top-level fields that cannot be deleted
         """
         self._delete_frame_fields(field_name, error_level)
 
@@ -1222,9 +1222,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             field_names: a field name or iterable of field names
             error_level (0): the error level to use. Valid values are:
 
-                0: raise error if a top-level field cannot be deleted
-                1: log warning if a top-level field cannot be deleted
-                2: ignore top-level fields that cannot be deleted
+            -   0: raise error if a top-level field cannot be deleted
+            -   1: log warning if a top-level field cannot be deleted
+            -   2: ignore top-level fields that cannot be deleted
         """
         self._delete_frame_fields(field_names, error_level)
 

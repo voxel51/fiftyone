@@ -1,6 +1,10 @@
 """
 Evaluation tests.
 
+You must run these tests interactively as follows::
+
+    pytest tests/intensive/evaluation_tests.py -s -k <test_case>
+
 | Copyright 2017-2021, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
@@ -13,7 +17,6 @@ import numpy as np
 import fiftyone as fo
 import fiftyone.zoo as foz
 from fiftyone import ViewField as F
-from fiftyone.utils.eval.coco import COCOEvaluationConfig
 
 
 _ANIMALS = [
@@ -34,7 +37,7 @@ _MISSING = "-"
 
 def test_evaluate_classifications():
     dataset = foz.load_zoo_dataset("imagenet-sample").clone()
-    logits_classes = dataset.info["classes"]
+    logits_classes = dataset.default_classes
 
     model = foz.load_zoo_model("resnet50-imagenet-torch")
     dataset.take(25).apply_model(model, "predictions", store_logits=True)
@@ -242,6 +245,7 @@ def test_evaluate_detections():
         gt_field="ground_truth",
         eval_key=EVAL_KEY,
         missing=_MISSING,
+        method="coco",
     )
 
     results.print_report(classes=classes)
@@ -252,18 +256,59 @@ def test_evaluate_detections():
     print(dataset.get_evaluation_info(EVAL_KEY))
 
     #
-    # Customized COCO evaluation evaluation
+    # Customized COCO evaluation
     #
-
-    config = COCOEvaluationConfig()
-    config.iou = 0.5
-    config.classwise = False
 
     results = view.evaluate_detections(
         "predictions",
         gt_field="ground_truth",
         eval_key=EVAL_KEY,
-        config=config,
+        missing=_MISSING,
+        method="coco",
+        iou=0.5,
+        classwise=False,
+    )
+
+    results.print_report(classes=classes)
+
+    print(dataset.bounds(EVAL_KEY + "_tp"))
+    print(dataset.bounds(EVAL_KEY + "_fp"))
+    print(dataset.bounds(EVAL_KEY + "_fn"))
+    print(dataset.get_evaluation_info(EVAL_KEY))
+
+    #
+    # Open Images evaluation
+    #
+
+    EVAL_KEY = "eval_oi"
+
+    results = view.evaluate_detections(
+        "predictions",
+        gt_field="ground_truth",
+        eval_key=EVAL_KEY,
+        missing=_MISSING,
+        method="open-images",
+    )
+
+    results.print_report(classes=classes)
+
+    print(dataset.bounds(EVAL_KEY + "_tp"))
+    print(dataset.bounds(EVAL_KEY + "_fp"))
+    print(dataset.bounds(EVAL_KEY + "_fn"))
+    print(dataset.get_evaluation_info(EVAL_KEY))
+
+    #
+    # Customized Open Images evaluation
+    #
+
+    results = view.evaluate_detections(
+        "predictions",
+        gt_field="ground_truth",
+        eval_key=EVAL_KEY,
+        missing=_MISSING,
+        method="open-images",
+        iou=0.5,
+        classwise=False,
     )
 
     results.print_report(classes=classes)
@@ -278,6 +323,134 @@ def test_evaluate_detections():
     #
 
     dataset.delete_evaluations()
+
+
+def test_evaluate_polygons():
+    dataset = foz.load_zoo_dataset(
+        "coco-2017",
+        split="validation",
+        label_types=["detections", "segmentations"],
+        max_samples=50,
+        drop_existing_dataset=True,
+    )
+
+    # pylint: disable=no-member
+    def jitter(labels, delta=None, uniform=True):
+        if isinstance(labels, fo.Detections):
+            for detection in labels.detections:
+                alpha = random.random()
+                bounding_box = np.array(detection.bounding_box)
+
+                if uniform:
+                    bounding_box += alpha * delta * np.array([1, 1, 0, 0])
+                else:
+                    bounding_box += alpha * delta * np.random.random(4)
+
+                detection.bounding_box = bounding_box.tolist()
+                detection.confidence = alpha
+
+        if isinstance(labels, fo.Polylines):
+            for polyline in labels.polylines:
+                alpha = random.random()
+                points = []
+                for _points in polyline.points:
+                    _points = np.array(_points)
+
+                    if uniform:
+                        _points += alpha * delta * np.ones(_points.shape)
+                    else:
+                        _points += (
+                            alpha * delta * np.random.random(_points.shape)
+                        )
+
+                    points.append(_points.tolist())
+
+                polyline.points = points
+                polyline.confidence = alpha
+
+        return labels
+
+    # Add polylines
+    with fo.ProgressBar() as pb:
+        for sample in pb(dataset):
+            sample["polylines"] = sample["segmentations"].to_polylines()
+            sample.save()
+
+    # doesn't create self-intersecting polygons
+    # jit = lambda labels: jitter(labels, delta=0.03, uniform=True)
+
+    # likely creates self-intersecting polylines
+    jit = lambda labels: jitter(labels, delta=0.05, uniform=False)
+
+    # Add predictions
+    with fo.ProgressBar() as pb:
+        for sample in pb(dataset):
+            sample["pred_det"] = jit(sample["detections"].copy())
+            sample["pred_seg"] = jit(sample["segmentations"].copy())
+            sample["pred_pol"] = jit(sample["polylines"].copy())
+            sample.save()
+
+    results1 = dataset.evaluate_detections(
+        "pred_det", gt_field="detections", eval_key="det_coco", method="coco"
+    )
+    print(results1.metrics())
+
+    results2 = dataset.evaluate_detections(
+        "pred_seg",
+        gt_field="segmentations",
+        eval_key="seg_coco",
+        method="coco",
+        use_masks=True,
+    )
+    print(results2.metrics())
+
+    results3 = dataset.evaluate_detections(
+        "pred_pol", gt_field="polylines", eval_key="pol_coco", method="coco"
+    )
+    print(results3.metrics())
+
+    results4 = dataset.evaluate_detections(
+        "pred_pol",
+        gt_field="polylines",
+        eval_key="pol_coco",
+        method="coco",
+        use_boxes=True,
+    )
+    print(results4.metrics())
+
+    results1 = dataset.evaluate_detections(
+        "pred_det",
+        gt_field="detections",
+        eval_key="det_oi",
+        method="open-images",
+    )
+    print(results1.metrics())
+
+    results2 = dataset.evaluate_detections(
+        "pred_seg",
+        gt_field="segmentations",
+        eval_key="seg_oi",
+        method="open-images",
+        use_masks=True,
+    )
+    print(results2.metrics())
+
+    results3 = dataset.evaluate_detections(
+        "pred_pol",
+        gt_field="polylines",
+        eval_key="pol_oi",
+        method="open-images",
+    )
+    print(results3.metrics())
+
+    results4 = dataset.evaluate_detections(
+        "pred_pol",
+        gt_field="polylines",
+        eval_key="pol_oi",
+        method="open-images",
+        use_boxes=True,
+    )
+    print(results4.metrics())
 
 
 def test_evaluate_detections_frames():
@@ -430,7 +603,8 @@ def test_classification_results():
     results.print_report()
 
     # Includes all 3 classes
-    results.plot_confusion_matrix()
+    plot = results.plot_confusion_matrix()
+    plot.show()
 
     classes = ["cat", "dog"]
 
@@ -440,10 +614,12 @@ def test_classification_results():
 
     # Only include `cat` and `dog` rows (GT); associated non-cat/dog
     # predictions are captured in an "other" column
-    results.plot_confusion_matrix(classes=classes)
+    plot = results.plot_confusion_matrix(classes=classes)
+    plot.show()
 
     # Only include `cat` and `dog` rows (GT) and columns (predictions)
-    results.plot_confusion_matrix(classes=classes, include_other=False)
+    plot = results.plot_confusion_matrix(classes=classes, include_other=False)
+    plot.show()
 
     input("Press enter to continue...")
 
@@ -460,7 +636,8 @@ def test_classification_results_missing_data():
 
     # Data includes missing GT/preds, so includes a "none" row/column when
     # plotting confusion matrix
-    results.plot_confusion_matrix()
+    plot = results.plot_confusion_matrix()
+    plot.show()
 
     classes = ["cat", "dog"]
 
@@ -470,10 +647,12 @@ def test_classification_results_missing_data():
 
     # Shows per-class metrics for only `cat` and `dog` classes, but other
     # predictions when GT=cat/dog are taken into account for P/R/F1 scores
-    results.plot_confusion_matrix(classes=classes)
+    plot = results.plot_confusion_matrix(classes=classes)
+    plot.show()
 
     # Only include `cat` and `dog` rows (GT) and columns (predictions)
-    results.plot_confusion_matrix(classes=classes, include_other=False)
+    plot = results.plot_confusion_matrix(classes=classes, include_other=False)
+    plot.show()
 
     input("Press enter to continue...")
 
@@ -494,18 +673,22 @@ def test_detection_results():
     results.print_report(classes=classes)
 
     # Should contain "other" and "none" columns
-    results.plot_confusion_matrix(classes=classes)
+    plot = results.plot_confusion_matrix(classes=classes)
+    plot.show()
 
     # Should not contain "other" or "none" columns
-    results.plot_confusion_matrix(classes=classes, include_other=False)
+    plot = results.plot_confusion_matrix(classes=classes, include_other=False)
+    plot.show()
 
     # Should contain "other" and "none" columns, as well as a "none" row
-    results.plot_confusion_matrix(classes=classes + [results.missing])
+    plot = results.plot_confusion_matrix(classes=classes + [results.missing])
+    plot.show()
 
     # Should contain "none" row and columns
-    results.plot_confusion_matrix(
+    plot = results.plot_confusion_matrix(
         classes=classes + [results.missing], include_other=False
     )
+    plot.show()
 
     input("Press enter to continue...")
 
