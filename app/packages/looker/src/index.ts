@@ -560,6 +560,7 @@ interface AcquireReaderOptions {
   frameNumber: number;
   frameCount: number;
   update: StateUpdate<VideoState>;
+  dispatchEvent: (eventType: string, detail: any) => void;
 }
 
 const aquireReader = (() => {
@@ -596,6 +597,7 @@ const aquireReader = (() => {
     getCurrentFrame,
     sampleId,
     update,
+    dispatchEvent,
   }: AcquireReaderOptions): [() => void, () => void] => {
     const subscription = uuid();
     streamSize = 0;
@@ -644,7 +646,12 @@ const aquireReader = (() => {
           requestingFrames = false;
         }
 
-        update({ buffering: false });
+        update((state) => {
+          if (state.buffering) {
+            dispatchEvent("buffering", false);
+          }
+          return { buffering: false };
+        });
       }
     };
     requestingFrames = true;
@@ -848,6 +855,7 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
       lookerWithReader = this;
       this.state.buffers = [[1, 1]];
     } else if (lookerWithReader !== this && frameCount) {
+      this.state.buffering && this.dispatchEvent("buffering", false);
       this.state.playing = false;
       this.state.buffering = false;
     }

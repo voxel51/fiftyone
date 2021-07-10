@@ -173,7 +173,10 @@ const Selected = ({
     ? Object.keys(selectedObjects).length
     : selectedSamples.size;
 
-  lookerRef && useEventHandler(lookerRef.current, "buffering", setLoading);
+  lookerRef &&
+    useEventHandler(lookerRef.current, "buffering", (e) =>
+      setLoading(e.detail)
+    );
 
   if (numItems < 1 && !modal) {
     return null;

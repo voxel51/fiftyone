@@ -233,7 +233,7 @@ const SelectionActions = ({
 }: SelectionActionsProps) => {
   useLayoutEffect(() => {
     lookerRef &&
-      lookerRef.current &&
+      lookerRef.current instanceof VideoLooker &&
       lookerRef.current.pause &&
       lookerRef.current.pause();
   });
