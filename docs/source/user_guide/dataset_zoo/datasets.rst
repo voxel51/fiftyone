@@ -539,6 +539,14 @@ COCO-2014 by passing them to
 -   ``include_id``: whether to include the COCO ID of each sample in the loaded
     labels. By default, this is False
 
+-   ``include_license``: whether to include the COCO license of each sample in
+    the loaded labels, if available. The supported values are:
+
+    -   ``"False"`` (default): don't load the license
+    -   ``True``/``"id"``: store the integer license ID
+    -   ``"name"``: store the string license name
+    -   ``"url"``: store the license URL
+
 -   ``only_matching``: whether to only load labels that match the ``classes``
     or ``attrs`` requirements that you provide (True), or to load all labels
     for samples that match the requirements (False). By default, this is False
@@ -766,6 +774,9 @@ COCO-2017 by passing them to
 
 -   ``include_id``: whether to include the COCO ID of each sample in the loaded
     labels. By default, this is False
+
+-   ``include_license``: whether to include the COCO license of each sample in
+    the loaded labels. By default, this is False
 
 -   ``only_matching``: whether to only load labels that match the ``classes``
     or ``attrs`` requirements that you provide (True), or to load all labels
