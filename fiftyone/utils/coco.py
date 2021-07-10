@@ -273,8 +273,8 @@ class COCODetectionDatasetImporter(
             sample in the loaded labels, if available. Supported values are:
 
             -   ``"False"``: don't load the license
-            -   ``True``/``"id"``: store the integer license ID
-            -   ``"name"``: store the string license name
+            -   ``True``/``"name"``: store the string license name
+            -   ``"id"``: store the integer license ID
             -   ``"url"``: store the license URL
 
             Note that the license descriptions (if available) are always loaded
@@ -1701,7 +1701,7 @@ def _parse_include_license(include_license):
         )
 
     if include_license == True:
-        include_license = "id"
+        include_license = "name"
 
     return include_license
 

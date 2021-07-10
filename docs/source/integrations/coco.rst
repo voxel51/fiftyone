@@ -137,8 +137,8 @@ COCO-2014 and COCO-2017 by passing them to
     the loaded labels, if available. The supported values are:
 
     -   ``"False"`` (default): don't load the license
-    -   ``True``/``"id"``: store the integer license ID
-    -   ``"name"``: store the string license name
+    -   ``True``/``"name"``: store the string license name
+    -   ``"id"``: store the integer license ID
     -   ``"url"``: store the license URL
 
 -   ``only_matching``: whether to only load labels that match the ``classes``
