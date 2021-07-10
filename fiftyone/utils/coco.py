@@ -269,6 +269,8 @@ class COCODetectionDatasetImporter(
                 two formats
         include_id (False): whether to include the COCO ID of each sample in the
             loaded labels
+        include_license (False): whether to include the license ID of each
+            sample in the loaded labels
         extra_attrs (None): whether to load extra annotation attributes onto
             the imported labels. Supported values are:
 
@@ -306,6 +308,7 @@ class COCODetectionDatasetImporter(
         classes=None,
         image_ids=None,
         include_id=False,
+        include_license=False,
         extra_attrs=None,
         only_matching=False,
         use_polylines=False,
@@ -328,6 +331,9 @@ class COCODetectionDatasetImporter(
 
         if include_id:
             label_types.append("coco_id")
+
+        if include_license:
+            label_types.append("license")
 
         super().__init__(
             dataset_dir=dataset_dir,
@@ -445,6 +451,9 @@ class COCODetectionDatasetImporter(
         if "coco_id" in self.label_types:
             label["coco_id"] = image_id
 
+        if "license" in self.label_types:
+            label["license"] = image_dict.get("license", None)
+
         if self._has_scalar_labels:
             label = next(iter(label.values())) if label else None
 
@@ -470,6 +479,7 @@ class COCODetectionDatasetImporter(
             "segmentations": seg_type,
             "keypoints": fol.Keypoints,
             "coco_id": int,
+            "license": int,
         }
 
         if self._has_scalar_labels:
