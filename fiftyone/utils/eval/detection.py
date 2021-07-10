@@ -11,7 +11,9 @@ import logging
 import numpy as np
 
 import fiftyone.core.evaluation as foe
+import fiftyone.core.labels as fol
 import fiftyone.core.utils as fou
+import fiftyone.core.validation as fov
 
 from .classification import ClassificationResults
 
@@ -28,18 +30,33 @@ def evaluate_detections(
     missing=None,
     method="coco",
     iou=0.50,
+    use_masks=False,
+    use_boxes=False,
     classwise=True,
-    config=None,
-    **kwargs
+    **kwargs,
 ):
     """Evaluates the predicted detections in the given samples with respect to
     the specified ground truth detections.
 
-    By default, this method uses COCO-style evaluation, but this can be
-    configued via the ``method`` and ``config`` parameters.
+    This method supports evaluating the following spatial data types:
+
+    -   Object detections in :class:`fiftyone.core.labels.Detections` format
+    -   Instance segmentations in :class:`fiftyone.core.labels.Detections`
+        format with their ``mask`` attributes populated
+    -   Polygons in :class:`fiftyone.core.labels.Polylines` format
+
+    By default, this method uses COCO-style evaluation, but you can use the
+    ``method`` parameter to select a different method, and you can optionally
+    customize the method by passing additional parameters for the method's
+    :class:`DetectionEvaluationConfig` class as ``kwargs``.
+
+    The supported ``method`` values and their associated configs are:
+
+    -   ``"coco"``: :class:`fiftyone.utils.eval.coco.COCOEvaluationConfig`
+    -   ``"open-images"``: :class:`fiftyone.utils.eval.openimages.OpenImagesEvaluationConfig`
 
     If an ``eval_key`` is provided, a number of fields are populated at the
-    detection- and sample-level recording the results of the evaluation:
+    object- and sample-level recording the results of the evaluation:
 
     -   True positive (TP), false positive (FP), and false negative (FN) counts
         for the each sample are saved in top-level fields of each sample::
@@ -55,21 +72,22 @@ def evaluate_detections(
             FP: frame.<eval_key>_fp
             FN: frame.<eval_key>_fn
 
-    -   The fields listed below are populated on each individual
-        :class:`fiftyone.core.labels.Detection` instance; these fields tabulate
-        the TP/FP/FN status of the object, the ID of the matching object
-        (if any), and the matching IoU::
+    -   The fields listed below are populated on each individual object; these
+        fields tabulate the TP/FP/FN status of the object, the ID of the
+        matching object (if any), and the matching IoU::
 
-            TP/FP/FN: detection.<eval_key>
-                  ID: detection.<eval_key>_id
-                 IoU: detection.<eval_key>_iou
+            TP/FP/FN: object.<eval_key>
+                  ID: object.<eval_key>_id
+                 IoU: object.<eval_key>_iou
 
     Args:
         samples: a :class:`fiftyone.core.collections.SampleCollection`
         pred_field: the name of the field containing the predicted
-            :class:`fiftyone.core.labels.Detections` to evaluate
+            :class:`fiftyone.core.labels.Detections` or
+            :class:`fiftyone.core.labels.Polylines`
         gt_field ("ground_truth"): the name of the field containing the ground
-            truth :class:`fiftyone.core.labels.Detections`
+            truth :class:`fiftyone.core.labels.Detections` or
+            :class:`fiftyone.core.labels.Polylines`
         eval_key (None): an evaluation key to use to refer to this evaluation
         classes (None): the list of possible classes. If not provided, classes
             are loaded from :meth:`fiftyone.core.dataset.Dataset.classes` or
@@ -81,18 +99,27 @@ def evaluate_detections(
         method ("coco"): a string specifying the evaluation method to use.
             Supported values are ``("coco", "open-images")``
         iou (0.50): the IoU threshold to use to determine matches
+        use_masks (False): whether to compute IoUs using the instances masks in
+            the ``mask`` attribute of the provided objects, which must be
+            :class:`fiftyone.core.labels.Detection` instances
+        use_boxes (False): whether to compute IoUs using the bounding boxes
+            of the provided :class:`fiftyone.core.labels.Polyline` instances
+            rather than using their actual geometries
         classwise (True): whether to only match objects with the same class
             label (True) or allow matches between classes (False)
-        config (None): an :class:`DetectionEvaluationConfig` specifying the
-            evaluation method to use. If a ``config`` is provided, the
-            ``method``, ``iou``, ``classwise``, and ``kwargs`` parameters are
-            ignored
         **kwargs: optional keyword arguments for the constructor of the
             :class:`DetectionEvaluationConfig` being used
 
     Returns:
         a :class:`DetectionResults`
     """
+    fov.validate_collection_label_fields(
+        samples,
+        (pred_field, gt_field),
+        (fol.Detections, fol.Polylines),
+        same_type=True,
+    )
+
     if classes is None:
         if pred_field in samples.classes:
             classes = samples.classes[pred_field]
@@ -102,11 +129,12 @@ def evaluate_detections(
             classes = samples.default_classes
 
     config = _parse_config(
-        config,
         pred_field,
         gt_field,
         method,
         iou=iou,
+        use_masks=use_masks,
+        use_boxes=use_boxes,
         classwise=classwise,
         **kwargs,
     )
@@ -167,9 +195,11 @@ class DetectionEvaluationConfig(foe.EvaluationMethodConfig):
 
     Args:
         pred_field: the name of the field containing the predicted
-            :class:`fiftyone.core.labels.Detections` instances
+            :class:`fiftyone.core.labels.Detections` or
+            :class:`fiftyone.core.labels.Polylines`
         gt_field: the name of the field containing the ground truth
-            :class:`fiftyone.core.labels.Detections` instances
+            :class:`fiftyone.core.labels.Detections` or
+            :class:`fiftyone.core.labels.Polylines`
         iou (None): the IoU threshold to use to determine matches
         classwise (None): whether to only match objects with the same class
             label (True) or allow matches between classes (False)
@@ -272,19 +302,31 @@ class DetectionEvaluation(foe.EvaluationMethod):
         )
 
     def get_fields(self, samples, eval_key):
+        pred_field = self.config.pred_field
+        pred_type = samples._get_label_field_type(pred_field)
+        pred_key = "%s.%s.%s" % (
+            pred_field,
+            pred_type._LABEL_LIST_FIELD,
+            eval_key,
+        )
+
+        gt_field = self.config.gt_field
+        gt_type = samples._get_label_field_type(gt_field)
+        gt_key = "%s.%s.%s" % (gt_field, gt_type._LABEL_LIST_FIELD, eval_key)
+
         fields = [
             "%s_tp" % eval_key,
             "%s_fp" % eval_key,
             "%s_fn" % eval_key,
-            "%s.detections.%s" % (self.config.pred_field, eval_key),
-            "%s.detections.%s_id" % (self.config.pred_field, eval_key),
-            "%s.detections.%s_iou" % (self.config.pred_field, eval_key),
-            "%s.detections.%s" % (self.config.gt_field, eval_key),
-            "%s.detections.%s_id" % (self.config.gt_field, eval_key),
-            "%s.detections.%s_iou" % (self.config.gt_field, eval_key),
+            pred_key,
+            "%s_id" % pred_key,
+            "%s_iou" % pred_key,
+            gt_key,
+            "%s_id" % gt_key,
+            "%s_iou" % gt_key,
         ]
 
-        if samples._is_frame_field(self.config.gt_field):
+        if samples._is_frame_field(gt_field):
             fields.extend(
                 [
                     "frames.%s_tp" % eval_key,
@@ -296,24 +338,39 @@ class DetectionEvaluation(foe.EvaluationMethod):
         return fields
 
     def cleanup(self, samples, eval_key):
-        pred_field, is_frame_field = samples._handle_frame_field(
-            self.config.pred_field
-        )
-        gt_field, _ = samples._handle_frame_field(self.config.gt_field)
-
         fields = [
             "%s_tp" % eval_key,
             "%s_fp" % eval_key,
             "%s_fn" % eval_key,
-            "%s.detections.%s" % (pred_field, eval_key),
-            "%s.detections.%s_id" % (pred_field, eval_key),
-            "%s.detections.%s_iou" % (pred_field, eval_key),
-            "%s.detections.%s" % (gt_field, eval_key),
-            "%s.detections.%s_id" % (gt_field, eval_key),
-            "%s.detections.%s_iou" % (gt_field, eval_key),
         ]
 
-        if is_frame_field:
+        try:
+            pred_field, _ = samples._handle_frame_field(self.config.pred_field)
+            pred_type = samples._get_label_field_type(self.config.pred_field)
+            pred_key = "%s.%s.%s" % (
+                pred_field,
+                pred_type._LABEL_LIST_FIELD,
+                eval_key,
+            )
+            fields.extend([pred_key, "%s_id" % pred_key, "%s_iou" % pred_key])
+        except ValueError:
+            # Field no longer exists, nothing to cleanup
+            pass
+
+        try:
+            gt_field, _ = samples._handle_frame_field(self.config.gt_field)
+            gt_type = samples._get_label_field_type(self.config.gt_field)
+            gt_key = "%s.%s.%s" % (
+                gt_field,
+                gt_type._LABEL_LIST_FIELD,
+                eval_key,
+            )
+            fields.extend([gt_key, "%s_id" % gt_key, "%s_iou" % gt_key])
+        except ValueError:
+            # Field no longer exists, nothing to cleanup
+            pass
+
+        if samples._is_frame_field(self.config.pred_field):
             samples._dataset.delete_sample_fields(
                 ["%s_tp" % eval_key, "%s_fp" % eval_key, "%s_fn" % eval_key],
                 error_level=1,
@@ -404,10 +461,7 @@ class DetectionResults(ClassificationResults):
         )
 
 
-def _parse_config(config, pred_field, gt_field, method, **kwargs):
-    if config is not None:
-        return config
-
+def _parse_config(pred_field, gt_field, method, **kwargs):
     if method is None:
         method = "coco"
 
@@ -416,7 +470,7 @@ def _parse_config(config, pred_field, gt_field, method, **kwargs):
 
         return COCOEvaluationConfig(pred_field, gt_field, **kwargs)
 
-    elif method == "open-images":
+    if method == "open-images":
         from .openimages import OpenImagesEvaluationConfig
 
         return OpenImagesEvaluationConfig(pred_field, gt_field, **kwargs)

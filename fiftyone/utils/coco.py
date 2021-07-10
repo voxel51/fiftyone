@@ -327,10 +327,9 @@ class COCODetectionDatasetImporter(
             default="labels.json",
         )
 
-        label_types = _parse_label_types(label_types)
-
+        _label_types = _parse_label_types(label_types)
         if include_id:
-            label_types.append("coco_id")
+            _label_types.append("coco_id")
 
         if include_license:
             label_types.append("license")
@@ -352,6 +351,7 @@ class COCODetectionDatasetImporter(
         self.use_polylines = use_polylines
         self.tolerance = tolerance
 
+        self._label_types = _label_types
         self._info = None
         self._classes = None
         self._supercategory_map = None
@@ -408,7 +408,7 @@ class COCODetectionDatasetImporter(
 
         label = {}
 
-        if "detections" in self.label_types:
+        if "detections" in self._label_types:
             detections = _coco_objects_to_detections(
                 coco_objects,
                 frame_size,
@@ -419,7 +419,7 @@ class COCODetectionDatasetImporter(
             if detections is not None:
                 label["detections"] = detections
 
-        if "segmentations" in self.label_types:
+        if "segmentations" in self._label_types:
             if self.use_polylines:
                 segmentations = _coco_objects_to_polylines(
                     coco_objects,
@@ -440,7 +440,7 @@ class COCODetectionDatasetImporter(
             if segmentations is not None:
                 label["segmentations"] = segmentations
 
-        if "keypoints" in self.label_types:
+        if "keypoints" in self._label_types:
             keypoints = _coco_objects_to_keypoints(
                 coco_objects, frame_size, self._classes
             )
@@ -448,7 +448,7 @@ class COCODetectionDatasetImporter(
             if keypoints is not None:
                 label["keypoints"] = keypoints
 
-        if "coco_id" in self.label_types:
+        if "coco_id" in self._label_types:
             label["coco_id"] = image_id
 
         if "license" in self.label_types:
@@ -469,7 +469,7 @@ class COCODetectionDatasetImporter(
 
     @property
     def _has_scalar_labels(self):
-        return len(self.label_types) == 1
+        return len(self._label_types) == 1
 
     @property
     def label_cls(self):
@@ -483,9 +483,9 @@ class COCODetectionDatasetImporter(
         }
 
         if self._has_scalar_labels:
-            return types[self.label_types[0]]
+            return types[self._label_types[0]]
 
-        return {k: v for k, v in types.items() if k in self.label_types}
+        return {k: v for k, v in types.items() if k in self._label_types}
 
     def setup(self):
         self._image_paths_map = self._load_data_map(self.data_path)

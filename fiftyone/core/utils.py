@@ -33,7 +33,6 @@ except:
     import pprint as _pprint
 
 import numpy as np
-import packaging.version
 import xmltodict
 
 import eta
@@ -407,7 +406,7 @@ def ensure_tf(eager=False, error_level=None, error_msg=None):
 
         error_msg += "\n\n" + _REQUIREMENT_ERROR_SUFFIX
 
-        etau.handle_error(ValueError(error_msg), error_level, base_error=e)
+        handle_error(ValueError(error_msg), error_level, base_error=e)
 
         return False
 
@@ -471,6 +470,63 @@ def ensure_torch(error_level=None, error_msg=None):
     )
 
     return success1 & success2
+
+
+def handle_error(error, error_level, base_error=None):
+    """Handles the error at the specified error level.
+
+    Args:
+        error: an Exception instance
+        error_level: the error level to use, defined as:
+
+        -   0: raise the error
+        -   1: log the error as a warning
+        -   2: ignore the error
+
+        base_error: (optional) a base Exception from which to raise ``error``
+    """
+    etau.handle_error(error, error_level, base_error=base_error)
+
+
+class LoggingLevel(object):
+    """Context manager that allows for a temporary change to the level of a
+    ``logging.Logger``.
+
+    Example::
+
+        import logging
+        import fiftyone.core.utils as fou
+
+        with fou.LoggingLevel(logging.CRITICAL):
+            # do things with all logging at CRITICAL
+
+        with fou.LoggingLevel(logging.ERROR, logger="fiftyone"):
+            # do things with FiftyOne logging at ERROR
+
+     Args:
+        level: the logging level to use, e.g., ``logging.ERROR``
+        logger (None): a ``logging.Logger`` or the name of a logger. By
+            default, the root logger is used
+    """
+
+    def __init__(self, level, logger=None):
+        if logger is None or etau.is_str(logger):
+            logger = logging.getLogger(logger)
+
+        if level is None:
+            level = logging.NOTSET
+
+        self._logger = logger
+        self._level = level
+        self._level_orig = None
+
+    def __enter__(self):
+        self._level_orig = self._logger.level
+        self._logger.setLevel(self._level)
+        return self
+
+    def __exit__(self, *args):
+        self._logger.setLevel(self._level_orig)
 
 
 def lazy_import(module_name, callback=None):
@@ -624,8 +680,9 @@ class ResourceLimit(object):
     Example::
 
         import resource
+        import fiftyone.core.utils as fou
 
-        with ResourceLimit(resource.RLIMIT_NOFILE, soft=4096):
+        with fou.ResourceLimit(resource.RLIMIT_NOFILE, soft=4096):
             # temporarily do things with up to 4096 open files
 
      Args:
@@ -642,7 +699,7 @@ class ResourceLimit(object):
 
     def __init__(self, limit, soft=None, hard=None, warn_on_failure=False):
         try:
-            import resource
+            import resource  # pylint: disable=unused-import
 
             self._supported_platform = True
         except ImportError as e:

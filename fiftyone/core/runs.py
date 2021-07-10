@@ -7,6 +7,8 @@ Dataset runs framework.
 """
 from copy import copy
 import datetime
+import logging
+
 from bson import json_util
 
 import numpy as np
@@ -16,6 +18,9 @@ import eta.core.utils as etau
 
 from fiftyone.core.config import Config, Configurable
 from fiftyone.core.odm.runs import RunDocument
+
+
+logger = logging.getLogger(__name__)
 
 
 class RunInfo(Config):
@@ -56,9 +61,10 @@ class RunConfig(Config):
 
     def __init__(self, **kwargs):
         if kwargs:
-            raise ValueError(
-                "%s has no parameters %s"
-                % (self.__class__, set(kwargs.keys()))
+            logger.warning(
+                "Ignoring unsupported parameters %s for %s",
+                set(kwargs.keys()),
+                type(self),
             )
 
     @property
