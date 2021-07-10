@@ -7,7 +7,6 @@ Open Images-style detection evaluation.
 """
 from collections import defaultdict
 import copy
-import logging
 
 import numpy as np
 
@@ -18,9 +17,10 @@ from .detection import (
     DetectionEvaluationConfig,
     DetectionResults,
 )
-
-
-logger = logging.getLogger(__name__)
+from .utils import (
+    compute_ious,
+    make_iscrowd_fcn,
+)
 
 
 class OpenImagesEvaluationConfig(DetectionEvaluationConfig):
@@ -28,15 +28,34 @@ class OpenImagesEvaluationConfig(DetectionEvaluationConfig):
 
     Args:
         pred_field: the name of the field containing the predicted
-            :class:`fiftyone.core.labels.Detections` instances
+            :class:`fiftyone.core.labels.Detections` or
+            :class:`fiftyone.core.labels.Polylines`
         gt_field: the name of the field containing the ground truth
-            :class:`fiftyone.core.labels.Detections` instances
+            :class:`fiftyone.core.labels.Detections` or
+            :class:`fiftyone.core.labels.Polylines`
         iou (None): the IoU threshold to use to determine matches
         classwise (None): whether to only match objects with the same class
             label (True) or allow matches between classes (False)
         iscrowd ("IsGroupOf"): the name of the crowd attribute
+        use_masks (False): whether to compute IoUs using the instances masks in
+            the ``mask`` attribute of the provided objects, which must be
+            :class:`fiftyone.core.labels.Detection` instances
+        use_boxes (False): whether to compute IoUs using the bounding boxes
+            of the provided :class:`fiftyone.core.labels.Polyline` instances
+            rather than using their actual geometries
+        tolerance (None): a tolerance, in pixels, when generating approximate
+            polylines for instance masks. Typical values are 1-3 pixels
         max_preds (None): the maximum number of predicted objects to evaluate
             when computing mAP and PR curves
+        error_level (1): the error level to use when manipulating instance
+            masks or polylines. Valid values are:
+
+            -   0: raise geometric errors that are encountered
+            -   1: log warnings if geometric errors are encountered
+            -   2: ignore geometric errors
+
+            If ``error_level > 0``, any calculation that raises a geometric
+            error will default to an IoU of 0
         hierarchy (None): an optional dict containing a hierachy of classes for
             evaluation following the structure
             ``{"LabelName": label, "Subcategory": [{...}, ...]}``
@@ -46,10 +65,10 @@ class OpenImagesEvaluationConfig(DetectionEvaluationConfig):
         neg_label_field (None): the name of a field containing image-level
             :class:`fiftyone.core.labels.Classifications` that specify which
             classes should not be evaluated in the image
-        expand_gt_hierarchy (True): whether to expand ground truth detections
-            and labels according to the provided ``hierarchy``
-        expand_pred_hierarchy (False): whether to expand predicted detections
-            and labels according to the provided ``hierarchy``
+        expand_gt_hierarchy (True): whether to expand ground truth objects and
+            labels according to the provided ``hierarchy``
+        expand_pred_hierarchy (False): whether to expand predicted objects and
+            labels according to the provided ``hierarchy``
     """
 
     def __init__(
@@ -59,7 +78,11 @@ class OpenImagesEvaluationConfig(DetectionEvaluationConfig):
         iou=None,
         classwise=None,
         iscrowd="IsGroupOf",
+        use_masks=False,
+        use_boxes=False,
+        tolerance=None,
         max_preds=None,
+        error_level=1,
         hierarchy=None,
         pos_label_field=None,
         neg_label_field=None,
@@ -72,7 +95,11 @@ class OpenImagesEvaluationConfig(DetectionEvaluationConfig):
         )
 
         self.iscrowd = iscrowd
+        self.use_masks = use_masks
+        self.use_boxes = use_boxes
+        self.tolerance = tolerance
         self.max_preds = max_preds
+        self.error_level = error_level
         self.hierarchy = hierarchy
         self.pos_label_field = pos_label_field
         self.neg_label_field = neg_label_field
@@ -81,19 +108,12 @@ class OpenImagesEvaluationConfig(DetectionEvaluationConfig):
 
         if expand_pred_hierarchy:
             if not hierarchy:
-                logger.warning(
-                    "No hierarchy provided, setting `expand_pred_hierarchy` "
-                    "to False"
-                )
                 self.expand_pred_hierarchy = False
 
             # If expand pred hierarchy is true, so is expand hierarchy
             self.expand_gt_hierarchy = self.expand_pred_hierarchy
 
         if expand_gt_hierarchy and not hierarchy:
-            logger.warning(
-                "No hierarchy provided, setting `expand_gt_hierarchy` to False"
-            )
             self.expand_gt_hierarchy = False
 
         if self.expand_gt_hierarchy or self.expand_pred_hierarchy:
@@ -461,19 +481,22 @@ def _expand_label_hierarchy(labels, config, expand_child=True):
     keyed_nodes = config._hierarchy_keyed_parent
     if expand_child:
         keyed_nodes = config._hierarchy_keyed_child
+
     additional_labs = []
     for lab in labels:
         if lab in keyed_nodes:
             additional_labs += list(keyed_nodes[lab])
+
     return list(set(labels + additional_labs))
 
 
-def _expand_detection_hierarchy(cats, det, config, label_type):
+def _expand_detection_hierarchy(cats, obj, config, label_type):
     keyed_children = config._hierarchy_keyed_child
-    for parent in keyed_children[det.label]:
-        new_det = det.copy()
-        new_det.label = parent
-        cats[parent][label_type].append(new_det)
+    for parent in keyed_children[obj.label]:
+        new_obj = obj.copy()
+        new_obj.label = parent
+        cats[parent][label_type].append(new_obj)
+
     return cats
 
 
@@ -511,6 +534,7 @@ def _open_images_evaluation_single_iou(
 def _open_images_evaluation_setup(
     gts, preds, id_key, iou_key, config, pos_labs, neg_labs, max_preds=None
 ):
+    field = gts._LABEL_LIST_FIELD
 
     if pos_labs is None:
         relevant_labs = neg_labs
@@ -519,32 +543,40 @@ def _open_images_evaluation_setup(
     else:
         relevant_labs = list(set(pos_labs + neg_labs))
 
-    iscrowd = _make_iscrowd_fcn(config.iscrowd)
+    iscrowd = make_iscrowd_fcn(config.iscrowd)
     classwise = config.classwise
+
+    iou_kwargs = dict(iscrowd=iscrowd, error_level=config.error_level)
+
+    if config.use_masks:
+        iou_kwargs.update(use_masks=True, tolerance=config.tolerance)
+
+    if config.use_boxes:
+        iou_kwargs.update(use_boxes=True)
 
     # Organize preds and GT by category
     cats = defaultdict(lambda: defaultdict(list))
-    for det in preds.detections:
-        if relevant_labs is None or det.label in relevant_labs:
-            det[iou_key] = _NO_MATCH_IOU
-            det[id_key] = _NO_MATCH_ID
+    for obj in preds[field]:
+        if relevant_labs is None or obj.label in relevant_labs:
+            obj[iou_key] = _NO_MATCH_IOU
+            obj[id_key] = _NO_MATCH_ID
 
-            label = det.label if classwise else "all"
-            cats[label]["preds"].append(det)
+            label = obj.label if classwise else "all"
+            cats[label]["preds"].append(obj)
 
             if config.expand_pred_hierarchy and label != "all":
-                cats = _expand_detection_hierarchy(cats, det, config, "preds")
+                cats = _expand_detection_hierarchy(cats, obj, config, "preds")
 
-    for det in gts.detections:
-        if relevant_labs is None or det.label in relevant_labs:
-            det[iou_key] = _NO_MATCH_IOU
-            det[id_key] = _NO_MATCH_ID
+    for obj in gts[field]:
+        if relevant_labs is None or obj.label in relevant_labs:
+            obj[iou_key] = _NO_MATCH_IOU
+            obj[id_key] = _NO_MATCH_ID
 
-            label = det.label if classwise else "all"
-            cats[label]["gts"].append(det)
+            label = obj.label if classwise else "all"
+            cats[label]["gts"].append(obj)
 
             if config.expand_gt_hierarchy and label != "all":
-                cats = _expand_detection_hierarchy(cats, det, config, "gts")
+                cats = _expand_detection_hierarchy(cats, obj, config, "gts")
 
     # Compute IoUs within each category
     pred_ious = {}
@@ -564,7 +596,7 @@ def _open_images_evaluation_setup(
         gts = sorted(gts, key=iscrowd)
 
         # Compute ``num_preds x num_gts`` IoUs
-        ious = _compute_iou(preds, gts, iscrowd)
+        ious = compute_ious(preds, gts, **iou_kwargs)
 
         gt_ids = [g.id for g in gts]
         for pred, gt_ious in zip(preds, ious):
@@ -620,7 +652,7 @@ def _compute_matches(
                     ):
                         break
 
-                    # if you already perfectly matched a gt
+                    # If you already perfectly matched a gt
                     # then there is no reason to continue looking
                     # if you match multiple crowds with iou=1, choose the first
                     if best_match_iou == 1:
@@ -637,10 +669,10 @@ def _compute_matches(
                         gt_map[best_match]
                     ):
                         # Note: This differs from COCO in that Open Images
-                        # detections are only matched with the highest IoU gt
-                        # or a crowd. A detection will not be matched with a
-                        # secondary highest IoU gt if the highest IoU gt was
-                        # already matched with a different detection.
+                        # objects are only matched with the highest IoU gt or a
+                        # crowd. An object will not be matched with a secondary
+                        # highest IoU gt if the highest IoU gt was already
+                        # matched with a different object
 
                         best_match = None
 
@@ -651,7 +683,7 @@ def _compute_matches(
 
                     # This only occurs when matching more than 1 prediction to
                     # a crowd. Only the first match counts as a TP, the rest
-                    # are ignored in mAP calculation.
+                    # are ignored in mAP calculation
                     if gt[id_key] != _NO_MATCH_ID:
                         skip_match = True
                         tag = "crowd"
@@ -660,6 +692,7 @@ def _compute_matches(
                         gt[eval_key] = tag
                         gt[id_key] = pred.id
                         gt[iou_key] = best_match_iou
+
                     pred[eval_key] = tag
                     pred[id_key] = best_match
                     pred[iou_key] = best_match_iou
@@ -701,46 +734,6 @@ def _compute_matches(
                 matches.append((gt.label, None, None, None, gt.id, None))
 
     return matches
-
-
-def _compute_iou(preds, gts, iscrowd):
-    ious = np.zeros((len(preds), len(gts)))
-    for j, gt in enumerate(gts):
-        gx, gy, gw, gh = gt.bounding_box
-        gt_area = gh * gw
-        gt_crowd = iscrowd(gt)
-        for i, pred in enumerate(preds):
-            px, py, pw, ph = pred.bounding_box
-
-            # Width of intersection
-            w = min(px + pw, gx + gw) - max(px, gx)
-            if w <= 0:
-                continue
-
-            # Height of intersection
-            h = min(py + ph, gy + gh) - max(py, gy)
-            if h <= 0:
-                continue
-
-            pred_area = ph * pw
-            inter = h * w
-            union = pred_area if gt_crowd else pred_area + gt_area - inter
-            ious[i, j] = min(1, inter / union)
-
-    return ious
-
-
-def _make_iscrowd_fcn(iscrowd_attr):
-    def _iscrowd(detection):
-        if iscrowd_attr in detection.attributes:
-            return bool(detection.attributes[iscrowd_attr].value)
-
-        try:
-            return bool(detection[iscrowd_attr])
-        except KeyError:
-            return False
-
-    return _iscrowd
 
 
 # Parse hierarchy, code from:

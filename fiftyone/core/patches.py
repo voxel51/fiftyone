@@ -18,8 +18,6 @@ import fiftyone.core.sample as fos
 import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
 
-fouc = fou.lazy_import("fiftyone.utils.eval.coco")
-
 
 _SINGLE_TYPES_MAP = {
     fol.Detections: fol.Detection,
@@ -513,7 +511,7 @@ def make_evaluation_dataset(sample_collection, eval_key, name=None):
     eval_info = sample_collection.get_evaluation_info(eval_key)
     pred_field = eval_info.config.pred_field
     gt_field = eval_info.config.gt_field
-    if isinstance(eval_info.config, fouc.COCOEvaluationConfig):
+    if hasattr(eval_info.config, "iscrowd"):
         crowd_attr = eval_info.config.iscrowd
     else:
         crowd_attr = None
