@@ -234,13 +234,13 @@ populated on each sample and its predicted/ground truth objects:
         FP: sample.<eval_key>_fp
         FN: sample.<eval_key>_fn
 
--   The fields listed below are populated on each individual |Detection|
-    instance; these fields tabulate the TP/FP/FN status of the object, the ID
-    of the matching object (if any), and the matching IoU::
+-   The fields listed below are populated on each individual object instance;
+    these fields tabulate the TP/FP/FN status of the object, the ID of the
+    matching object (if any), and the matching IoU::
 
-        TP/FP/FN: detection.<eval_key>
-              ID: detection.<eval_key>_id
-             IoU: detection.<eval_key>_iou
+        TP/FP/FN: object.<eval_key>
+              ID: object.<eval_key>_id
+             IoU: object.<eval_key>_iou
 
 .. note::
 
@@ -265,7 +265,7 @@ The example below demonstrates Open Images-style detection evaluation on the
     dataset = foz.load_zoo_dataset("quickstart")
     print(dataset)
 
-    # Evaluate the detections in the `predictions` field with respect to the
+    # Evaluate the objects in the `predictions` field with respect to the
     # objects in the `ground_truth` field
     results = dataset.evaluate_detections(
         "predictions",
@@ -367,8 +367,8 @@ the results of Open Images-style evaluations.
 In order for the confusion matrix to capture anything other than false
 positive/negative counts, you will likely want to set the
 :class:`classwise <fiftyone.utils.eval.openimages.OpenImagesEvaluationConfig>`
-parameter to ``False`` during evaluation so that detections can be matched with
-ground truth objects of different classes.
+parameter to ``False`` during evaluation so that predicted objects can be
+matched with ground truth objects of different classes.
 
 .. code-block:: python
     :linenos:

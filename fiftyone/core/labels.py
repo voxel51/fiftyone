@@ -5,6 +5,8 @@ Labels stored in dataset samples.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import itertools
+
 from bson import ObjectId
 
 import eta.core.data as etad
@@ -20,6 +22,9 @@ import fiftyone.core.fields as fof
 import fiftyone.core.utils as fou
 
 foug = fou.lazy_import("fiftyone.utils.geojson")
+sg = fou.lazy_import(
+    "shapely.geometry", callback=lambda: fou.ensure_package("shapely")
+)
 
 
 class _NoDefault(object):
@@ -358,7 +363,8 @@ class Detection(ImageLabel, _HasID, _HasAttributes):
 
         Args:
             tolerance (2): a tolerance, in pixels, when generating an
-                approximate polyline for the instance mask
+                approximate polyline for the instance mask. Typical values are
+                1-3 pixels
             filled (True): whether the polyline should be filled
 
         Returns:
@@ -369,6 +375,28 @@ class Detection(ImageLabel, _HasID, _HasAttributes):
             dobj, tolerance=tolerance, filled=filled
         )
         return Polyline.from_eta_polyline(polyline)
+
+    def to_shapely(self, frame_size=None):
+        """Returns a Shapely representation of this instance.
+
+        Args:
+            frame_size (None): the ``(width, height)`` of the image. If
+                provided, the returned geometry will use absolute coordinates
+
+        Returns:
+            a ``shapely.geometry.polygon.Polygon``
+        """
+        # pylint: disable=unpacking-non-sequence
+        x, y, w, h = self.bounding_box
+
+        if frame_size is not None:
+            width, height = frame_size
+            x *= width
+            y *= height
+            w *= width
+            h *= height
+
+        return sg.box(x, y, x + w, y + h)
 
     def to_detected_object(self, name=None):
         """Returns an ``eta.core.objects.DetectedObject`` representation of
@@ -580,6 +608,56 @@ class Polyline(ImageLabel, _HasID, _HasAttributes):
             tags=self.tags,
         )
 
+    def to_shapely(self, frame_size=None):
+        """Returns a Shapely representation of this instance.
+
+        The type of geometry returned depends on the number of shapes
+        (:attr:`points`) and whether they are polygons or lines
+        (:attr:`filled`).
+
+        Args:
+            frame_size (None): the ``(width, height)`` of the image. If
+                provided, the returned geometry will use absolute coordinates
+
+        Returns:
+            one of the following:
+
+            -   ``shapely.geometry.polygon.Polygon``: if :attr:`filled` is True
+                and :attr:`points` contains a single shape
+            -   ``shapely.geometry.multipolygon.MultiPolygon``: if
+                :attr:`filled` is True and :attr:`points` contains multiple
+                shapes
+            -   ``shapely.geometry.linestring.LineString``: if :attr:`filled`
+                is False and :attr:`points` contains a single shape
+            -   ``shapely.geometry.multilinestring.MultiLineString``: if
+                :attr:`filled` is False and :attr:`points` contains multiple
+                shapes
+        """
+        if self.closed:
+            points = []
+            for shape in self.points:  # pylint: disable=not-an-iterable
+                if shape:
+                    shape = list(shape) + [shape[0]]
+
+                points.append(shape)
+        else:
+            points = self.points
+
+        if frame_size is not None:
+            w, h = frame_size
+            points = [[(x * w, y * h) for x, y in shape] for shape in points]
+
+        if len(points) == 1:
+            if self.filled:
+                return sg.Polygon(points[0])
+
+            return sg.LineString(points[0])
+
+        if self.filled:
+            return sg.MultiPolygon(list(zip(points, itertools.repeat(None))))
+
+        return sg.MultiLineString(points)
+
     def to_eta_polyline(self, name=None):
         """Returns an ``eta.core.polylines.Polyline`` representation of this
         instance.
@@ -730,6 +808,25 @@ class Keypoint(ImageLabel, _HasID, _HasAttributes):
     points = fof.KeypointsField()
     confidence = fof.FloatField()
     index = fof.IntField()
+
+    def to_shapely(self, frame_size=None):
+        """Returns a Shapely representation of this instance.
+
+        Args:
+            frame_size (None): the ``(width, height)`` of the image. If
+                provided, the returned geometry will use absolute coordinates
+
+        Returns:
+            a ``shapely.geometry.multipoint.MultiPoint``
+        """
+        # pylint: disable=not-an-iterable
+        points = self.points
+
+        if frame_size is not None:
+            w, h = frame_size
+            points = [(x * w, y * h) for x, y in points]
+
+        return sg.MultiPoint(points)
 
     def to_eta_keypoints(self, name=None):
         """Returns an ``eta.core.keypoints.Keypoints`` representation of this
