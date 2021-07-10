@@ -81,7 +81,7 @@ setup(
         "packaging",
         "pandas",
         "Pillow>=6.2",
-        "plotly>=4.14",
+        "plotly>=4.14,<5",
         "pprintpp",
         "psutil",
         "pymongo>=3.11,<4",
