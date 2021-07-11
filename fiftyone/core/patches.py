@@ -693,7 +693,16 @@ def _merge_matched_labels(dataset, src_collection, eval_key, field):
         [
             {"$project": {list_field: True}},
             {"$unwind": "$" + list_field},
-            {"$match": {"$expr": {"$ne": ["$" + eval_field, _NO_MATCH_ID]}}},
+            {
+                "$match": {
+                    "$expr": {
+                        "$and": [
+                            {"$gt": ["$" + eval_field, None]},
+                            {"$ne": ["$" + eval_field, _NO_MATCH_ID]},
+                        ]
+                    }
+                }
+            },
             {
                 "$group": {
                     "_id": {"$toObjectId": "$" + eval_field},
