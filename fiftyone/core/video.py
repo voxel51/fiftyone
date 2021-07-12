@@ -52,6 +52,7 @@ class FrameView(fos.SampleView):
         return self._doc.sample_id
 
     def save(self):
+        """Saves the frame to the database."""
         super().save()
         self._view._sync_source_sample(self)
 
@@ -75,8 +76,6 @@ class FramesView(fov.DatasetView):
         frames_dataset: the :class:`fiftyone.core.dataset.Dataset` that serves
             the frames in this view
     """
-
-    _SAMPLE_CLS = FrameView
 
     def __init__(
         self, source_collection, frames_stage, frames_dataset, _stages=None
@@ -110,6 +109,10 @@ class FramesView(fov.DatasetView):
     @property
     def _root_dataset(self):
         return self._source_collection._root_dataset
+
+    @property
+    def _sample_cls(self):
+        return FrameView
 
     @property
     def _stages(self):
@@ -153,6 +156,18 @@ class FramesView(fov.DatasetView):
         self._sync_source(fields=[field], ids=ids)
 
     def save(self, fields=None):
+        """Overwrites the frames in the source dataset with the contents of the
+        view.
+
+        .. warning::
+
+            This will permanently delete any omitted or filtered contents from
+            the source dataset.
+
+        Args:
+            fields (None): an optional field or list of fields to save. If
+                specified, only these fields are overwritten
+        """
         if etau.is_str(fields):
             fields = [fields]
 
@@ -161,6 +176,13 @@ class FramesView(fov.DatasetView):
         self._sync_source(fields=fields)
 
     def reload(self):
+        """Reloads this view from the frames of the source collection in the
+        database.
+
+        Note that :class:`FrameView` instances are not singletons, so any
+        in-memory frames extracted from this view will not be updated by
+        calling this method.
+        """
         self._root_dataset.reload()
 
         #
@@ -173,6 +195,26 @@ class FramesView(fov.DatasetView):
         self._frames_dataset.delete()
         _view = self._frames_stage.load_view(self._source_collection)
         self._frames_dataset = _view._frames_dataset
+
+    def _set_labels(self, field_name, sample_ids, label_docs):
+        super()._set_labels(field_name, sample_ids, label_docs)
+
+        self._sync_source(fields=[field_name], ids=sample_ids)
+
+    def _delete_labels(self, ids, fields=None):
+        super()._delete_labels(ids, fields=fields)
+
+        if fields is not None:
+            if etau.is_str(fields):
+                fields = [fields]
+
+            frame_fields = [
+                self._source_collection._FRAMES_PREFIX + f for f in fields
+            ]
+        else:
+            frame_fields = None
+
+        self._source_collection._delete_labels(ids, fields=frame_fields)
 
     def _sync_source_sample(self, sample):
         self._sync_source_schema(delete=False)
@@ -313,7 +355,6 @@ def make_frames_dataset(
     max_size=None,
     force_sample=False,
     sparse=False,
-    name=None,
     verbose=False,
 ):
     """Creates a dataset that contains one sample per video frame in the
@@ -385,7 +426,6 @@ def make_frames_dataset(
             instances have explicitly been created
         force_sample (False): whether to resample videos whose sampled frames
             already exist
-        name (None): a name for the returned dataset
         verbose (False): whether to log information about the frames that will
             be sampled, if any
 
@@ -406,7 +446,7 @@ def make_frames_dataset(
     # Create dataset with proper schema
     #
 
-    dataset = fod.Dataset(name, _frames=True)
+    dataset = fod.Dataset(_frames=True)
     dataset.media_type = fom.IMAGE
     dataset.add_sample_field(
         "sample_id", fof.ObjectIdField, db_field="_sample_id"

@@ -31,6 +31,10 @@ class _PatchView(fos.SampleView):
     def _sample_id(self):
         return self._doc.sample_id
 
+    @property
+    def _frame_id(self):
+        return self._doc.frame_id
+
     def save(self):
         super().save()
         self._view._sync_source_sample(self)
@@ -173,15 +177,15 @@ class _PatchesView(fov.DatasetView):
 
     def save(self, fields=None):
         """Overwrites the object patches in the source dataset with the
-        contents of the view.
+        contents of this view.
 
         If this view contains any additional fields that were not extracted
         from the source dataset, these fields are not saved.
 
         .. warning::
 
-            This will permanently delete any omitted, filtered, or otherwise
-            modified patches from the source dataset.
+            This will permanently delete any omitted or filtered contents from
+            the source dataset.
 
         Args:
             fields (None): an optional field or list of fields to save. If
@@ -207,7 +211,14 @@ class _PatchesView(fov.DatasetView):
         self._sync_source_root(fields)
 
     def reload(self):
-        self._root_dataset.reload()
+        """Reloads this view from the object patches of the source collection
+        in the database.
+
+        Note that :class:`PatchView` instances are not singletons, so any
+        in-memory patches extracted from this view will not be updated by
+        calling this method.
+        """
+        self._source_collection.reload()
 
         #
         # Regenerate the patches dataset
@@ -232,9 +243,7 @@ class _PatchesView(fov.DatasetView):
         if is_list_field:
             doc = doc[label_type._LABEL_LIST_FIELD]
 
-        self._source_collection._set_labels_by_id(
-            field, [sample.sample_id], [doc]
-        )
+        self._source_collection._set_labels(field, [sample.sample_id], [doc])
 
     def _sync_source_field(self, field, ids=None):
         _, label_path = self._patches_dataset._get_label_field_path(field)
@@ -250,7 +259,7 @@ class _PatchesView(fov.DatasetView):
             [foa.Values("sample_id"), foa.Values(label_path, _raw=True)]
         )
 
-        self._source_collection._set_labels_by_id(field, sample_ids, docs)
+        self._source_collection._set_labels(field, sample_ids, docs)
 
     def _sync_source_root(self, fields):
         for field in fields:
@@ -272,7 +281,7 @@ class _PatchesView(fov.DatasetView):
             ]
         )
 
-        self._source_collection._set_labels_by_id(field, sample_ids, docs)
+        self._source_collection._set_labels(field, sample_ids, docs)
 
         #
         # Sync label deletions
@@ -285,11 +294,13 @@ class _PatchesView(fov.DatasetView):
         delete_ids = set(src_ids) - set(label_ids)
 
         if delete_ids:
-            self._source_collection._dataset.delete_labels(
+            self._source_collection._delete_labels(
                 ids=delete_ids, fields=field
             )
 
     def _get_ids_map(self, field):
+        # this method is used by `fiftyone.brain.compute_similarity()`
+
         label_type = self._patches_dataset._get_label_field_type(field)
         is_list_field = issubclass(label_type, fol._LABEL_LIST_FIELDS)
 
@@ -337,8 +348,6 @@ class PatchesView(_PatchesView):
             the patches in this view
     """
 
-    _SAMPLE_CLS = PatchView
-
     def __init__(
         self, source_collection, patches_stage, patches_dataset, _stages=None
     ):
@@ -347,6 +356,10 @@ class PatchesView(_PatchesView):
         )
 
         self._patches_field = patches_stage.field
+
+    @property
+    def _sample_cls(self):
+        return PatchView
 
     @property
     def _label_fields(self):
@@ -380,8 +393,6 @@ class EvaluationPatchesView(_PatchesView):
             the patches in this view
     """
 
-    _SAMPLE_CLS = EvaluationPatchView
-
     def __init__(
         self, source_collection, patches_stage, patches_dataset, _stages=None
     ):
@@ -393,6 +404,10 @@ class EvaluationPatchesView(_PatchesView):
         eval_info = source_collection.get_evaluation_info(eval_key)
         self._gt_field = eval_info.config.gt_field
         self._pred_field = eval_info.config.pred_field
+
+    @property
+    def _sample_cls(self):
+        return EvaluationPatchView
 
     @property
     def _label_fields(self):
@@ -409,9 +424,7 @@ class EvaluationPatchesView(_PatchesView):
         return self._pred_field
 
 
-def make_patches_dataset(
-    sample_collection, field, keep_label_lists=False, name=None
-):
+def make_patches_dataset(sample_collection, field, keep_label_lists=False):
     """Creates a dataset that contains one sample per object patch in the
     specified field of the collection.
 
@@ -428,17 +441,22 @@ def make_patches_dataset(
         keep_label_lists (False): whether to store the patches in label list
             fields of the same type as the input collection rather than using
             their single label variants
-        name (None): a name for the returned dataset
 
     Returns:
         a :class:`fiftyone.core.dataset.Dataset`
     """
+    if sample_collection._is_frame_field(field):
+        raise ValueError(
+            "Frame label patches cannot be directly extracted; you must first "
+            "convert your video dataset to frames via `to_frames()`"
+        )
+
     if keep_label_lists:
         field_type = sample_collection._get_label_field_type(field)
     else:
         field_type = _get_single_label_field_type(sample_collection, field)
 
-    dataset = fod.Dataset(name, _patches=True)
+    dataset = fod.Dataset(_patches=True)
     dataset.media_type = fom.IMAGE
     dataset.add_sample_field(
         "sample_id", fof.ObjectIdField, db_field="_sample_id"
@@ -471,7 +489,7 @@ def _get_single_label_field_type(sample_collection, field):
     return _SINGLE_TYPES_MAP[label_type]
 
 
-def make_evaluation_dataset(sample_collection, eval_key, name=None):
+def make_evaluation_dataset(sample_collection, eval_key):
     """Creates a dataset based on the results of the evaluation with the given
     key that contains one sample for each true positive, false positive, and
     false negative example in the input collection, respectively.
@@ -510,7 +528,6 @@ def make_evaluation_dataset(sample_collection, eval_key, name=None):
             ground truth/predicted fields that are of type
             :class:`fiftyone.core.labels.Detections` or
             :class:`fiftyone.core.labels.Polylines`
-        name (None): a name for the returned dataset
 
     Returns:
         a :class:`fiftyone.core.dataset.Dataset`
@@ -524,11 +541,22 @@ def make_evaluation_dataset(sample_collection, eval_key, name=None):
     else:
         crowd_attr = None
 
+    if sample_collection._is_frame_field(pred_field):
+        if not sample_collection._is_frames:
+            raise ValueError(
+                "Frame evaluation patches cannot be directly extracted; you "
+                "must first convert your video dataset to frames via "
+                "`to_frames()`"
+            )
+
+        pred_field = pred_field[len(sample_collection._FRAMES_PREFIX) :]
+        gt_field = gt_field[len(sample_collection._FRAMES_PREFIX) :]
+
     pred_type = sample_collection._get_label_field_type(pred_field)
     gt_type = sample_collection._get_label_field_type(gt_field)
 
     # Setup dataset with correct schema
-    dataset = fod.Dataset(name, _patches=True)
+    dataset = fod.Dataset(_patches=True)
     dataset.media_type = fom.IMAGE
     dataset.add_sample_field(
         pred_field, fof.EmbeddedDocumentField, embedded_doc_type=pred_type
@@ -569,17 +597,6 @@ def make_evaluation_dataset(sample_collection, eval_key, name=None):
 
 
 def _make_patches_view(sample_collection, field, keep_label_lists=False):
-    if sample_collection._is_frames:
-        raise ValueError(
-            "Creating patches views into frame views is not yet supported"
-        )
-
-    if sample_collection._is_frame_field(field):
-        raise ValueError(
-            "Frame label patches cannot be directly extracted; you must first "
-            "convert your video dataset to frames via `to_frames()`"
-        )
-
     label_type = sample_collection._get_label_field_type(field)
     if issubclass(label_type, _PATCHES_TYPES):
         list_field = field + "." + label_type._LABEL_LIST_FIELD

@@ -52,8 +52,6 @@ class DatasetView(foc.SampleCollection):
             view
     """
 
-    _SAMPLE_CLS = fos.SampleView
-
     def __init__(self, dataset, _stages=None):
         if _stages is None:
             _stages = []
@@ -123,6 +121,10 @@ class DatasetView(foc.SampleCollection):
     @property
     def _is_frames(self):
         return self._dataset._is_frames
+
+    @property
+    def _sample_cls(self):
+        return fos.SampleView
 
     @property
     def _stages(self):
@@ -284,7 +286,7 @@ class DatasetView(foc.SampleCollection):
                 yield sample
 
     def _iter_samples(self):
-        sample_cls = self._SAMPLE_CLS
+        sample_cls = self._sample_cls
         selected_fields, excluded_fields = self._get_selected_excluded_fields()
         filtered_fields = self._get_filtered_fields()
 

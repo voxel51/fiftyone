@@ -1155,7 +1155,7 @@ class SampleCollection(object):
 
         self._dataset._bulk_write(ops, frames=frames)
 
-    def _set_labels_by_id(self, field_name, ids, docs):
+    def _set_labels(self, field_name, sample_ids, label_docs):
         label_type = self._get_label_field_type(field_name)
         field_name, is_frame_field = self._handle_frame_field(field_name)
 
@@ -1165,7 +1165,7 @@ class SampleCollection(object):
             elem_id = root + "._id"
             set_path = root + ".$"
 
-            for _id, _docs in zip(ids, docs):
+            for _id, _docs in zip(sample_ids, label_docs):
                 if not _docs:
                     continue
 
@@ -1182,7 +1182,7 @@ class SampleCollection(object):
         else:
             elem_id = field_name + "._id"
 
-            for _id, doc in zip(ids, docs):
+            for _id, doc in zip(sample_ids, label_docs):
                 ops.append(
                     UpdateOne(
                         {"_id": ObjectId(_id), elem_id: doc["_id"]},
@@ -1191,6 +1191,9 @@ class SampleCollection(object):
                 )
 
         self._dataset._bulk_write(ops, frames=is_frame_field)
+
+    def _delete_labels(self, ids, fields=None):
+        self._dataset.delete_labels(ids=ids, fields=fields)
 
     def compute_metadata(
         self, overwrite=False, num_workers=None, skip_failures=True
