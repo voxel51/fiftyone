@@ -851,7 +851,7 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
         frameCount,
         frameNumber: Math.max(state.frameNumber, 2),
         update: this.updater,
-        dispatchEvent: this.dispatchEvent,
+        dispatchEvent: (event, detail) => this.dispatchEvent(event, detail),
       });
       lookerWithReader = this;
       this.state.buffers = [[1, 1]];

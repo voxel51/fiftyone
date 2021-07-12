@@ -104,12 +104,7 @@ const LabelFilter = ({ expanded, entry, modal }: Props) => {
                 path: cPath,
                 defaultRange: [0, 1],
               })}
-              noneCountAtom={noneCount({ path: cPath, modal, filtered: false })}
-              noneSubCountAtom={noneCount({
-                path: cPath,
-                modal,
-                filtered: true,
-              })}
+              noneCountAtom={noneCount({ path: cPath, modal })}
               boundsAtom={numericField.boundsAtom({
                 path: cPath,
                 defaultRange: [0, 1],
