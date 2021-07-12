@@ -371,7 +371,7 @@ const useTagCallback = (modal, targetLabels, lookerRef = null) => {
         socket.send(packageGrid({ changes, targetLabels, activeLabels }));
       }
     },
-    [modal, targetLabels, lookerRef.current]
+    [modal, targetLabels, lookerRef]
   );
 };
 
@@ -432,7 +432,7 @@ type TaggerProps = {
   lookerRef?: MutableRefObject<VideoLooker>;
 };
 
-const Tagger = ({ modal, bounds, close }: TaggerProps) => {
+const Tagger = ({ modal, bounds, close, lookerRef }: TaggerProps) => {
   const [labels, setLabels] = useState(modal);
   const elementNames = useRecoilValue(selectors.elementNames);
   const theme = useTheme();

@@ -936,15 +936,11 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         view = view.select(sample_ids)
 
         if view.media_type == fom.VIDEO and current_frame is not None:
-            default_filter = (F("frame_number") >= 1) & (
-                F("frame_number") <= 1
-            )
-            current_filter = (F("frame_number") >= current_frame) & (
-                F("frame_number") <= current_frame
-            )
+            default_filter = F("frame_number") == 1
+            current_filter = F("frame_number").is_in([current_frame, 1])
             filter_frames = lambda f: F("frames").filter(f)
             expr = F.if_else(
-                F("id") == sample_id,
+                F(view._get_db_fields_map()["id"]).to_string() == sample_id,
                 filter_frames(current_filter),
                 filter_frames(default_filter),
             )
