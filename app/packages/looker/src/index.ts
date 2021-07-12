@@ -84,7 +84,7 @@ export abstract class Looker<
     options: Optional<State["options"]>
   ) {
     this.sample = sample;
-    this.updateSample(sample);
+    this.loadSample(sample);
     this.eventTarget = new EventTarget();
     this.updater = this.makeUpdate();
     this.state = this.getInitialState(config, options);
@@ -205,22 +205,7 @@ export abstract class Looker<
   }
 
   updateSample(sample: Sample) {
-    this.sample = sample;
-    const messageUUID = uuid();
-    const listener = ({ data: { sample, uuid } }) => {
-      if (uuid === messageUUID) {
-        this.loadOverlays(sample);
-        this.updater({ overlaysPrepared: true });
-        labelsWorker.removeEventListener("message", listener);
-      }
-    };
-    labelsWorker.addEventListener("message", listener);
-    labelsWorker.postMessage({
-      method: "processSample",
-      origin: window.location.origin,
-      sample,
-      uuid: messageUUID,
-    });
+    this.loadSample(sample);
   }
 
   getSample(): Promise<Sample> {
@@ -365,6 +350,25 @@ export abstract class Looker<
         !this.state.windowBBox ||
         previousWindowBBox.some((v, i) => v !== this.state.windowBBox[i])
     );
+  }
+
+  private loadSample(sample: Sample) {
+    this.sample = sample;
+    const messageUUID = uuid();
+    const listener = ({ data: { sample, uuid } }) => {
+      if (uuid === messageUUID) {
+        this.loadOverlays(sample);
+        this.updater({ overlaysPrepared: true });
+        labelsWorker.removeEventListener("message", listener);
+      }
+    };
+    labelsWorker.addEventListener("message", listener);
+    labelsWorker.postMessage({
+      method: "processSample",
+      origin: window.location.origin,
+      sample,
+      uuid: messageUUID,
+    });
   }
 }
 
@@ -587,8 +591,9 @@ const aquireReader = (() => {
 
   const frameReader = createWorker();
   let requestingFrames: boolean = false;
+  let currentOptions: AcquireReaderOptions = null;
 
-  return ({
+  const setStream = ({
     addFrame,
     addFrameBuffers,
     removeFrame,
@@ -598,10 +603,10 @@ const aquireReader = (() => {
     sampleId,
     update,
     dispatchEvent,
-  }: AcquireReaderOptions): [() => void, () => void] => {
-    const subscription = uuid();
+  }: AcquireReaderOptions): string => {
     streamSize = 0;
     streamCount = 0;
+    const subscription = uuid();
     frameReader.onmessage = (message: MessageEvent<FrameChunkResponse>) => {
       const {
         data: {
@@ -663,19 +668,25 @@ const aquireReader = (() => {
       uuid: subscription,
       origin: window.location.origin,
     });
+    return subscription;
+  };
 
-    return [
-      () => {
-        if (!requestingFrames) {
-          frameReader.postMessage({
-            method: "requestFrameChunk",
-            uuid: subscription,
-          });
-        }
-        requestingFrames = true;
-      },
-      () => (frameCache = createCache()),
-    ];
+  return (options: AcquireReaderOptions): ((frameNumber?: number) => void) => {
+    currentOptions = options;
+    const subscription = setStream(options);
+
+    return (frameNumber?: number) => {
+      if (typeof frameNumber === "number") {
+        frameCache = createCache();
+        setStream({ ...options, frameNumber });
+      } else if (!requestingFrames) {
+        frameReader.postMessage({
+          method: "requestFrameChunk",
+          uuid: subscription,
+        });
+      }
+      requestingFrames = true;
+    };
   };
 })();
 
@@ -686,8 +697,7 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
   private frames: Map<number, WeakRef<Frame>> = new Map();
   private firstFrame: Frame | null = null;
   protected imageSource: HTMLVideoElement;
-  private requestFrames: (() => void) | null = null;
-  private invalidateCache: (() => void) | null = null;
+  private requestFrames: (frameNumber?: number) => void;
 
   constructor(
     sample: VideoSample,
@@ -799,6 +809,7 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
       )
     );
 
+    console.log(sample);
     const firstFrameSample = sample.frames[0] || { frame_number: 1 };
     const firstFrameOverlays = loadOverlays(
       Object.fromEntries(
@@ -839,7 +850,7 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
       lookerWithReader !== this &&
       frameCount !== null
     ) {
-      [this.requestFrames, this.invalidateCache] = aquireReader({
+      this.requestFrames = aquireReader({
         addFrame: (frameNumber, frame) =>
           this.frames.set(frameNumber, new WeakRef(frame)),
         addFrameBuffers: (range) =>
@@ -929,6 +940,7 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
       }
     });
   }
+  invalidateCache;
 
   postProcess(element: HTMLElement): VideoState {
     const previousWindowBBox = this.state.windowBBox;
@@ -954,6 +966,11 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
       this.state.zoomToContent = false;
     }
     return super.postProcess(element);
+  }
+
+  updateSample(sample: VideoSample) {
+    this.requestFrames();
+    super.updateSample(sample);
   }
 
   private hasFrame(frameNumber: number) {
