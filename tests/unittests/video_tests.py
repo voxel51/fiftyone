@@ -1020,6 +1020,24 @@ class VideoTests(unittest.TestCase):
             },
         )
 
+        self.assertSetEqual(
+            set(view.select_fields().get_field_schema().keys()),
+            {
+                "id",
+                "filepath",
+                "metadata",
+                "tags",
+                "sample_id",
+                "frame_number",
+            },
+        )
+
+        with self.assertRaises(ValueError):
+            view.exclude_fields("sample_id")  # can't exclude default field
+
+        with self.assertRaises(ValueError):
+            view.exclude_fields("frame_number")  # can't exclude default field
+
         self.assertEqual(len(view), 9)
 
         frame = view.first()
@@ -1207,6 +1225,10 @@ class VideoTests(unittest.TestCase):
 
         dataset.add_samples([sample1, sample2])
 
+        # User must first convert to frames, then patches
+        with self.assertRaises(ValueError):
+            dataset.to_patches("frames.ground_truth")
+
         frames = dataset.to_frames(sample_frames=False)
         patches = frames.to_patches("ground_truth")
 
@@ -1223,6 +1245,30 @@ class VideoTests(unittest.TestCase):
                 "ground_truth",
             },
         )
+
+        self.assertSetEqual(
+            set(patches.select_fields().get_field_schema().keys()),
+            {
+                "id",
+                "filepath",
+                "metadata",
+                "tags",
+                "sample_id",
+                "frame_id",
+                "frame_number",
+            },
+        )
+
+        # can't exclude default fields
+
+        with self.assertRaises(ValueError):
+            patches.exclude_fields("sample_id")
+
+        with self.assertRaises(ValueError):
+            patches.exclude_fields("frame_id")
+
+        with self.assertRaises(ValueError):
+            patches.exclude_fields("frame_number")
 
         self.assertEqual(dataset.count("frames.ground_truth.detections"), 4)
         self.assertEqual(patches.count(), 4)
