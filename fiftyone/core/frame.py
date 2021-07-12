@@ -701,8 +701,10 @@ class FramesView(Frames):
         return list(self._view.get_frame_field_schema().keys())
 
     @property
-    def _frames_view(self):
-        return self._view.select(self._sample.id)
+    def _frames_pipeline(self):
+        return [{"$match": {"_id": self._sample._id}}] + self._view._pipeline(
+            frames_only=True
+        )
 
     def add_frame(self, frame_number, frame, expand_schema=True):
         """Adds the frame to this instance.
@@ -769,7 +771,7 @@ class FramesView(Frames):
         if not self._needs_frames:
             return super()._get_frame_numbers_db()
 
-        pipeline = self._frames_view._pipeline(frames_only=True) + [
+        pipeline = self._frames_pipeline + [
             {
                 "$group": {
                     "_id": None,
@@ -788,15 +790,9 @@ class FramesView(Frames):
         if not self._needs_frames:
             return super()._get_frame_db(frame_number)
 
-        pipeline = self._view._pipeline(frames_only=True)
-        pipeline.append(
-            {
-                "$match": {
-                    "_sample_id": self._sample._id,
-                    "frame_number": frame_number,
-                }
-            }
-        )
+        pipeline = self._frames_pipeline + [
+            {"$match": {"frame_number": frame_number}}
+        ]
 
         try:
             return next(self._dataset._aggregate(pipeline))
@@ -807,7 +803,7 @@ class FramesView(Frames):
         if not self._needs_frames:
             return super()._iter_frames_db()
 
-        return self._frames_view._aggregate(frames_only=True)
+        return self._dataset._aggregate(pipeline=self._frames_pipeline)
 
     def _make_frame(self, d):
         doc = self._dataset._frame_dict_to_doc(d)
