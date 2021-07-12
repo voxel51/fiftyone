@@ -1464,7 +1464,7 @@ Dataset Zoo:
     results = dataset.evaluate_detections(
         "frames.predictions",
         gt_field="frames.ground_truth",
-        eval_key="eval_frames",
+        eval_key="eval",
     )
 
     # Print a classification report
@@ -1481,3 +1481,39 @@ Dataset Zoo:
        micro avg       0.94      0.94      0.94     11345
        macro avg       0.88      0.94      0.91     11345
     weighted avg       0.94      0.94      0.94     11345
+
+You can also view frame-level evaluation results as
+:ref:`evaluation patches <evaluation-patches>` by first converting
+:ref:`to frames <frame-views>` and then :ref:`to patches <eval-patches-views>`!
+
+.. code-block:: python
+    :linenos:
+
+    # Frame evaluation patches view
+    frame_eval_patches = dataset.to_frames().to_evaluation_patches("eval")
+    print(frame_eval_patches)
+
+    session = fo.launch_app(view=frame_eval_patches)
+
+.. code-block:: text
+
+    Dataset:     video-eval-demo
+    Media type:  image
+    Num patches: 11345
+    Tags:        []
+    Patch fields:
+        id:           fiftyone.core.fields.ObjectIdField
+        filepath:     fiftyone.core.fields.StringField
+        tags:         fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
+        metadata:     fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.Metadata)
+        predictions:  fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Detections)
+        ground_truth: fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Detections)
+        sample_id:    fiftyone.core.fields.ObjectIdField
+        frame_id:     fiftyone.core.fields.ObjectIdField
+        frame_number: fiftyone.core.fields.FrameNumberField
+        type:         fiftyone.core.fields.StringField
+        iou:          fiftyone.core.fields.FloatField
+        crowd:        fiftyone.core.fields.BooleanField
+    View stages:
+        1. ToFrames(config=None)
+        2. ToEvaluationPatches(eval_key='eval')

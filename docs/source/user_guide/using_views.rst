@@ -922,6 +922,58 @@ The only way in which frames views differ from regular image collections is
 that changes to the ``tags`` or ``metadata`` fields of frame samples will not be
 propagated to the frames of the underlying video dataset.
 
+.. _frame-patches-views:
+
+Frame patches views
+-------------------
+
+Since frame views into video datasets behave just like any other view, you can
+chain
+:meth:`to_frames() <fiftyone.core.collections.SampleCollection.to_frames>` and
+:meth:`to_patches() <fiftyone.core.collections.SampleCollection.to_patches>`
+to create **frame patch views** into your video datasets that contain one
+sample per object patch in the frames of the dataset!
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart-video")
+
+    session = fo.launch_app(dataset)
+
+    # Create a frame patches view
+    frame_patches = dataset.to_frames().to_patches("ground_truth_detections")
+    print(frame_patches)
+
+    # Verify that one sample per object was created
+    print(dataset.count("frames.ground_truth_detections.detections"))  # 11345
+    print(len(frame_patches))  # 11345
+
+    # View frame patches in the App
+    session.view = frame_patches
+
+.. code-block:: text
+
+    Dataset:     quickstart-video
+    Media type:  image
+    Num patches: 11345
+    Tags:        []
+    Patch fields:
+        id:                      fiftyone.core.fields.ObjectIdField
+        filepath:                fiftyone.core.fields.StringField
+        tags:                    fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
+        metadata:                fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.Metadata)
+        sample_id:               fiftyone.core.fields.ObjectIdField
+        frame_id:                fiftyone.core.fields.ObjectIdField
+        frame_number:            fiftyone.core.fields.FrameNumberField
+        ground_truth_detections: fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Detection)
+    View stages:
+        1. ToFrames(config=None)
+        2. ToPatches(field='ground_truth_detections')
+
 .. _querying-frames:
 
 Querying frames
