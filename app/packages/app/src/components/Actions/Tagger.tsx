@@ -1,4 +1,9 @@
-import React, { Suspense, useLayoutEffect, useState } from "react";
+import React, {
+  MutableRefObject,
+  Suspense,
+  useLayoutEffect,
+  useState,
+} from "react";
 import numeral from "numeral";
 import { CircularProgress } from "@material-ui/core";
 import {
@@ -28,6 +33,7 @@ import { useTheme } from "../../utils/hooks";
 import { packageMessage } from "../../utils/socket";
 import { PopoutSectionTitle } from "../utils";
 import * as filterAtoms from "../Filters/atoms";
+import { VideoLooker } from "@fiftyone/looker";
 
 const IconDiv = styled.div`
   position: absolute;
@@ -327,15 +333,22 @@ const packageGrid = ({ targetLabels, activeLabels, changes }) =>
     changes,
   });
 
-const packageModal = ({ labels, sample_id, changes, activeLabels }) =>
+const packageModal = ({
+  labels,
+  sample_id,
+  changes,
+  activeLabels,
+  frameNumber = null,
+}) =>
   packageMessage("tag_modal", {
     changes,
     labels,
     sample_id,
     active_labels: activeLabels,
+    frame_number: frameNumber,
   });
 
-const useTagCallback = (modal, targetLabels) => {
+const useTagCallback = (modal, targetLabels, lookerRef = null) => {
   return useRecoilCallback(
     ({ snapshot }) => async ({ changes }) => {
       const activeLabels = (
@@ -348,13 +361,17 @@ const useTagCallback = (modal, targetLabels) => {
             changes,
             labels: targetLabels,
             activeLabels,
+            frameNumber:
+              lookerRef && lookerRef.current
+                ? lookerRef.current.frameNumber
+                : null,
           })
         );
       } else {
         socket.send(packageGrid({ changes, targetLabels, activeLabels }));
       }
     },
-    [modal, targetLabels]
+    [modal, targetLabels, lookerRef.current]
   );
 };
 
@@ -412,6 +429,7 @@ type TaggerProps = {
   modal: boolean;
   bounds: any;
   close: () => void;
+  lookerRef?: MutableRefObject<VideoLooker>;
 };
 
 const Tagger = ({ modal, bounds, close }: TaggerProps) => {
@@ -428,7 +446,7 @@ const Tagger = ({ modal, bounds, close }: TaggerProps) => {
     cursor: labels ? "default" : "pointer",
   });
 
-  const submit = useTagCallback(modal, labels);
+  const submit = useTagCallback(modal, labels, lookerRef);
   const placeholder = usePlaceHolder(modal, labels, elementNames);
 
   return (

@@ -821,6 +821,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         labels=False,
         filters={},
         active_labels=[],
+        frame_number=None,
     ):
         state = fos.StateDescription.from_dict(StateHandler.state)
         if state.view is not None:
@@ -850,9 +851,15 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             clients.update({"extended_statistics", "statistics"})
 
         if isinstance(caller, PollingHandler):
-            await StateHandler.send_samples(sample_ids, only=caller)
+            await StateHandler.send_samples(
+                sample_id, sample_ids, current_frame=frame_number, only=caller
+            )
 
-        awaitables = [StateHandler.send_samples(sample_ids)]
+        awaitables = [
+            StateHandler.send_samples(
+                sample_id, sample_ids, current_frame=frame_number
+            )
+        ]
         awaitables += StateHandler.get_statistics_awaitables()
 
         asyncio.gather(*awaitables)
@@ -911,19 +918,42 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         )
 
     @classmethod
-    async def send_samples(cls, sample_ids, only=None):
+    async def send_samples(
+        cls, sample_id, sample_ids, current_frame=None, only=None
+    ):
         state = fos.StateDescription.from_dict(StateHandler.state)
         if state.view is not None:
             view = state.view
         else:
             view = state.dataset
 
-        view = get_extended_view(view, state.filters, count_label_tags=True)
+        view = get_extended_view(
+            view, state.filters, match=False, count_label_tags=True
+        )
 
         col = cls.sample_collection()
 
         view = view.select(sample_ids)
-        result, _ = await _get_sample_data(col, view, len(sample_ids), 1)
+
+        if view.media_type == fom.VIDEO and current_frame is not None:
+            default_filter = (F("frame_number") >= 1) & (
+                F("frame_number") <= 1
+            )
+            current_filter = (F("frame_number") >= current_frame) & (
+                F("frame_number") <= current_frame
+            )
+            filter_frames = lambda f: F("frames").filter(f)
+            expr = F.if_else(
+                F("id") == sample_id,
+                filter_frames(current_filter),
+                filter_frames(default_filter),
+            )
+        else:
+            expr = None
+
+        result, _ = await _get_sample_data(
+            col, view, len(sample_ids), 1, detach_frames=False, expr=expr
+        )
 
         _write_message(
             {"type": "samples_update", "samples": result}, app=True, only=only
@@ -1396,9 +1426,9 @@ async def _numeric_histograms(coll, view, schema, prefix=""):
 
 
 async def _get_samples(
-    col, view, page_length, page, detach_frames=True, frames=[1, 1]
+    col, view, page_length, page, detach_frames=True, frames=[1, 1], expr=None
 ):
-    if view.media_type == fom.VIDEO:
+    if view.media_type == fom.VIDEO and expr is None:
         view = view.set_field(
             "frames",
             F("frames").filter(
@@ -1406,6 +1436,8 @@ async def _get_samples(
                 & (F("frame_number") <= frames[1])
             ),
         )
+    elif expr is not None:
+        view = view.set_field("frames", expr)
 
     pipeline = view._pipeline(attach_frames=True, detach_frames=detach_frames)
 
@@ -1420,9 +1452,11 @@ async def _get_samples(
     return samples, more
 
 
-async def _get_sample_data(col, view, page_length, page, detach_frames=True):
+async def _get_sample_data(
+    col, view, page_length, page, detach_frames=True, expr=None
+):
     samples, more = await _get_samples(
-        col, view, page_length, page, detach_frames=detach_frames
+        col, view, page_length, page, detach_frames=detach_frames, expr=expr
     )
 
     results = [{"sample": s} for s in samples]

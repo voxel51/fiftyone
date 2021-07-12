@@ -119,8 +119,15 @@ const Similarity = ({ modal }: { modal: boolean }) => {
   );
 };
 
-const Tag = ({ modal }) => {
+const Tag = ({
+  modal,
+  lookerRef,
+}: {
+  modal: boolean;
+  lookerRef?: MutableRefObject<VideoLooker | ImageLooker | FrameLooker>;
+}) => {
   const [open, setOpen] = useState(false);
+  const [available, setAvailable] = useState(true);
   const selected = useRecoilValue(
     modal ? selectors.selectedLabelIds : atoms.selectedSamples
   );
@@ -136,19 +143,36 @@ const Tag = ({ modal }) => {
     close && setOpen(false);
   }, [close]);
 
+  lookerRef &&
+    useEventHandler(lookerRef.current, "play", () => {
+      open && setOpen(false);
+      setAvailable(false);
+    });
+  lookerRef &&
+    useEventHandler(lookerRef.current, "pause", () => setAvailable(true));
+
   return (
     <ActionDiv ref={ref}>
       <PillButton
-        style={{ cursor: disabled ? "default" : "pointer" }}
+        style={{ cursor: disabled || !available ? "default" : "pointer" }}
         icon={disabled ? <Loading /> : <LocalOffer />}
         open={open}
-        onClick={() => !disabled && setOpen(!open)}
-        highlight={Boolean(selected.size) || open}
+        onClick={() => !disabled && available && setOpen(!open)}
+        highlight={(Boolean(selected.size) || open) && available}
         ref={mRef}
         title={`Tag sample${modal ? "" : "s"} or labels`}
       />
-      {open && !close && (
-        <Tagger modal={modal} bounds={bounds} close={() => setOpen(false)} />
+      {open && !close && available && (
+        <Tagger
+          modal={modal}
+          bounds={bounds}
+          close={() => setOpen(false)}
+          lookerRef={
+            lookerRef && lookerRef.current instanceof VideoLooker
+              ? (lookerRef as MutableRefObject<VideoLooker>)
+              : null
+          }
+        />
       )}
     </ActionDiv>
   );

@@ -359,7 +359,7 @@ export const nextFrame: Control<VideoState> = {
   eventKeys: [".", ">"],
   shortcut: ">",
   detail: "Seek to the next frame",
-  action: (update) => {
+  action: (update, dispatchEvent) => {
     update(
       ({
         frameNumber,
@@ -374,7 +374,8 @@ export const nextFrame: Control<VideoState> = {
         const total = getFrameNumber(duration, duration, frameRate);
 
         return { frameNumber: Math.min(total, frameNumber + 1) };
-      }
+      },
+      (state, overlays) => dispatchTooltipEvent(dispatchEvent)(state, overlays)
     );
   },
 };
@@ -384,13 +385,16 @@ export const previousFrame: Control<VideoState> = {
   eventKeys: [",", "<"],
   shortcut: ",",
   detail: "Seek to the previous frame",
-  action: (update) => {
-    update(({ frameNumber, playing, config: { thumbnail } }) => {
-      if (playing || thumbnail) {
-        return {};
-      }
-      return { frameNumber: Math.max(1, frameNumber - 1) };
-    });
+  action: (update, dispatchEvent) => {
+    update(
+      ({ frameNumber, playing, config: { thumbnail } }) => {
+        if (playing || thumbnail) {
+          return {};
+        }
+        return { frameNumber: Math.max(1, frameNumber - 1) };
+      },
+      (state, overlays) => dispatchTooltipEvent(dispatchEvent)(state, overlays)
+    );
   },
 };
 
