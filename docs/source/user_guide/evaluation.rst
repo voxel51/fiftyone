@@ -276,7 +276,7 @@ fake predictions added to it to demonstrate the workflow:
 
     #
     # Create some test predictions by copying the ground truth labels into a
-    # new `predictions` field and then perturbing 10% of the labels at random
+    # new `predictions` field with 10% of the labels perturbed at random
     #
 
     classes = dataset.distinct("ground_truth.label")
@@ -287,12 +287,12 @@ fake predictions added to it to demonstrate the workflow:
 
         return val
 
-    dataset.clone_sample_field("ground_truth", "predictions")
+    predictions = [
+        fo.Classification(label=jitter(gt.label), confidence=random.random())
+        for gt in dataset.values("ground_truth")
+    ]
 
-    gt_labels = dataset.values("ground_truth.label")
-    pred_labels = [jitter(label) for label in gt_labels]
-
-    dataset.set_values("predictions.label", pred_labels)
+    dataset.set_values("predictions", predictions)
 
     print(dataset)
 
@@ -1435,27 +1435,38 @@ Dataset Zoo:
 
     #
     # Create some test predictions by copying the ground truth objects into a
-    # new `predictions` field of the frames and then perturbing 10% of the
-    # labels at random
+    # new `predictions` field of the frames with 10% of the labels perturbed at
+    # random
     #
 
     classes = dataset.distinct("frames.ground_truth.detections.label")
 
     def jitter(val):
-        if isinstance(val, list):
-            return [jitter(v) for v in val]
-
         if random.random() < 0.10:
             return random.choice(classes)
 
         return val
 
-    dataset.clone_frame_field("ground_truth", "predictions")
+    predictions = []
+    for sample_gts in dataset.values("frames.ground_truth"):
+        sample_predictions = []
+        for frame_gts in sample_gts:
+            sample_predictions.append(
+                fo.Detections(
+                    detections=[
+                        fo.Detection(
+                            label=jitter(gt.label),
+                            bounding_box=gt.bounding_box,
+                            confidence=random.random(),
+                        )
+                        for gt in frame_gts.detections
+                    ]
+                )
+            )
 
-    gt_labels = dataset.values("frames.ground_truth.detections.label")
-    pred_labels = jitter(gt_labels)
+        predictions.append(sample_predictions)
 
-    dataset.set_values("frames.predictions.detections.label", pred_labels)
+    dataset.set_values("frames.predictions", predictions)
 
     print(dataset)
 
