@@ -1503,7 +1503,7 @@ You can also view frame-level evaluation results as
 .. code-block:: python
     :linenos:
 
-    # Frame evaluation patches view
+    # Convert to frame evaluation patches
     frame_eval_patches = dataset.to_frames().to_evaluation_patches("eval")
     print(frame_eval_patches)
 
