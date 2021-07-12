@@ -560,9 +560,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             )
             return
 
-        view = get_extended_view(
-            view, state.filters, match=True, count_label_tags=True
-        )
+        view = get_extended_view(view, state.filters, count_label_tags=True)
         view = view.skip((page - 1) * page_length)
 
         results, more = await _get_sample_data(
@@ -830,7 +828,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             view = state.dataset
 
         sample_ids = [sample_id]
-        view = get_extended_view(view, filters=filters, only_matches=False)
+        view = get_extended_view(view, filters)
 
         if labels:
             if state.selected_labels:
@@ -879,7 +877,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         else:
             view = state.dataset
 
-        view = get_extended_view(view, filters=filters)
+        view = get_extended_view(view, filters)
 
         if state.selected_labels and labels:
             view = view.select_labels(state.selected_labels)
@@ -927,9 +925,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         else:
             view = state.dataset
 
-        view = get_extended_view(
-            view, state.filters, match=False, count_label_tags=True
-        )
+        view = get_extended_view(view, state.filters, count_label_tags=True)
 
         col = cls.sample_collection()
 
@@ -1073,10 +1069,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         elif state.dataset is not None:
             view = state.dataset
 
-        only_matches = sample_id is not None
-        view = get_extended_view(
-            view, filters=filters, only_matches=only_matches
-        )
+        view = get_extended_view(view, filters=filters)
 
         view = _get_search_view(view, path, search, selected)
 

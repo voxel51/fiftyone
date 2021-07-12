@@ -348,7 +348,7 @@ const ActionsRow = ({ modal, lookerRef }: ActionsRowProps) => {
     <ActionsRowDiv style={style}>
       {modal && <ShowJSON />}
       <Options modal={modal} />
-      <Tag modal={modal} lookerRef={lookerRef} />
+      <Tag modal={modal} lookerRef={modal ? lookerRef : null} />
       {!modal && isRootView && !isVideo && <Patches />}
       {!isVideo && <Similarity modal={modal} />}
       {modal && <Hidden />}

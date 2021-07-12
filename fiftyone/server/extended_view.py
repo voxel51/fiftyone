@@ -32,20 +32,18 @@ def get_view_field(fields_map, path):
     return F(path)
 
 
-def get_extended_view(
-    view, filters, match=False, only_matches=True, count_label_tags=False
-):
+def get_extended_view(view, filters, count_label_tags=False):
     """Create an extended view with the provided filters.
 
     Args:
         view: a :class:`fiftyone.core.collections.SampleCollection`
         filters: a `dict` of App defined filters
-        match: whether to match instead of filter
-        only_matches: whether to filter to matches in filtering labels
-        count_labels_tags (False): whether to set the hideen `_label_tags` field
+        count_label_tags (False): whether to set the hideen `_label_tags` field
             with counts of tags with respect to all label fields
     """
     label_tags = None
+    cleanup_fields = set()
+    filtered_labels = set()
     if filters is None or not filters:
         return view
 
@@ -60,20 +58,20 @@ def get_extended_view(
         if "sample" in tags:
             view = view.match_tags(tags=tags["sample"])
 
-    stages = _make_filter_stages(
-        view, filters, match=match, only_matches=only_matches
-    )
+    stages = _make_filter_stages(view, filters, hide_result=count_label_tags)
 
     for stage in stages:
         view = view.add_stage(stage)
 
     if count_label_tags:
-        view = _add_labels_tags_counts(view)
+        view = _add_labels_tags_counts(view, filtered_labels, label_tags)
+        if cleanup_fields:
+            view = view.mongo([{"$unset": field} for field in cleanup_fields])
 
     return view
 
 
-def _add_labels_tags_counts(view):
+def _add_labels_tags_counts(view, filtered_fields, label_tags):
     fields = fos.DatasetStatistics.labels(view)
     view = view.set_field(_LABEL_TAGS, [], _allow_missing=True)
     for path, field in fields:
@@ -82,6 +80,7 @@ def _add_labels_tags_counts(view):
         ):
             continue
 
+        path = _get_filtered_path(view, path, filtered_fields, label_tags)
         if issubclass(field.document_type, fol._HasLabelList):
             if path.startswith(view._FRAMES_PREFIX):
                 add_tags = _add_frame_labels_tags
@@ -100,15 +99,22 @@ def _add_labels_tags_counts(view):
     return view
 
 
-def _make_filter_stages(view, filters, match=False, only_matches=True):
+def _make_filter_stages(view, filters, label_tags=None, hide_result=False):
     field_schema = view.get_field_schema()
     if view.media_type == fom.VIDEO:
         frame_field_schema = view.get_frame_field_schema()
     else:
         frame_field_schema = None
 
+    cleanup = set()
+    filtered_labels = set()
     stages = []
     fields_map = view._get_db_fields_map()
+
+    tag_expr = (F("tags") != None).if_else(
+        F("tags").contains(label_tags), False
+    )
+
     for path, args in filters.items():
         if path == "tags":
             continue
@@ -127,20 +133,59 @@ def _make_filter_stages(view, filters, match=False, only_matches=True):
         if isinstance(field, fof.EmbeddedDocumentField):
             expr = _make_scalar_expression(F(keys[-1]), args)
             if expr is not None:
-                if match:
-                    stage = fosg.MatchLabels(fields=path, filter=expr)
+                if hide_result:
+                    new_field = "__%s" % path.split(".")[-1]
+                    if frames:
+                        new_field = "%s%s" % (view._FRAMES_PREFIX, new_field,)
                 else:
-                    stage = fosg.FilterLabels(
-                        path, expr, only_matches=only_matches
-                    )
-
-                stages.append(stage)
+                    new_field = None
+                stages.append(
+                    fosg.FilterLabels(path, expr, _new_field=new_field)
+                )
+                filtered_labels.add(path)
+                cleanup.add(new_field)
 
         else:
             view_field = get_view_field(fields_map, path)
             expr = _make_scalar_expression(view_field, args)
             if expr is not None:
                 stages.append(fosg.Match(expr))
+
+    if label_tags is not None and hide_result:
+        for path, _ in fos.DatasetStatistics.labels(view):
+            if hide_result:
+                new_field = _get_filtered_path(
+                    view, path, filtered_labels, label_tags
+                )
+            else:
+                new_field = None
+
+            if path in filtered_labels:
+                prefix = "__"
+            else:
+                prefix = ""
+
+            stages.append(
+                fosg.FilterLabels(
+                    path,
+                    tag_expr,
+                    only_matches=False,
+                    _new_field=new_field,
+                    _prefix=prefix,
+                )
+            )
+            cleanup.add(new_field)
+
+        match_exprs = []
+        for path, _ in fos.DatasetStatistics.labels(view):
+            prefix = "__" if hide_result else ""
+            match_exprs.append(
+                fosg._get_label_field_only_matches_expr(
+                    view, path, prefix=prefix
+                )
+            )
+
+        stages.append(fosg.Match(F.any(match_exprs)))
 
     return stages
 
@@ -197,6 +242,16 @@ def _make_scalar_expression(f, args):
         expr |= ~(f.exists())
 
     return expr
+
+
+def _get_filtered_path(view, path, filtered_fields, label_tags):
+    if path not in filtered_fields and not label_tags:
+        return path
+
+    if path.startswith(view._FRAMES_PREFIX):
+        return "%s__%s" % (view._FRAMES_PREFIX, path.split(".")[1])
+
+    return "__%s" % path
 
 
 def _add_frame_labels_tags(path, field, view):

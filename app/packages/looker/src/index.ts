@@ -123,6 +123,7 @@ export abstract class Looker<
       if (Object.keys(updates).length === 0 && !postUpdate) {
         return;
       }
+      const previousState = this.state;
       this.state = mergeUpdates(this.state, updates);
       this.pluckedOverlays = this.pluckOverlays(this.state);
       [this.currentOverlays, this.state.rotate] = processOverlays(
@@ -134,6 +135,9 @@ export abstract class Looker<
         Boolean(this.currentOverlays.length) &&
         this.currentOverlays[0].containsPoint(this.state) > CONTAINS.NONE;
       postUpdate && postUpdate(this.state, this.currentOverlays);
+
+      this.dispatchImpliedEvents(previousState, this.state);
+
       this.lookerElement.render(this.state as Readonly<State>);
       const ctx = this.ctx;
       if (!this.state.loaded) {
@@ -681,12 +685,12 @@ const { aquireReader, addFrame } = (() => {
       options: AcquireReaderOptions
     ): ((frameNumber?: number) => void) => {
       currentOptions = options;
-      const subscription = setStream(currentOptions);
+      let subscription = setStream(currentOptions);
 
       return (frameNumber?: number) => {
         if (typeof frameNumber === "number") {
           frameCache = createCache();
-          setStream({ ...currentOptions, frameNumber });
+          subscription = setStream({ ...currentOptions, frameNumber });
         } else if (!requestingFrames) {
           frameReader.postMessage({
             method: "requestFrameChunk",

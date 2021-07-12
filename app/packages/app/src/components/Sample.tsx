@@ -76,6 +76,7 @@ const SampleInfo = React.memo(({ sampleId }: { sampleId: string }) => {
         />,
       ];
     } else if (cur.startsWith("_label_tags.")) {
+      console.log(sample);
       const tag = cur.slice("_label_tags.".length);
       const count = sample._label_tags[tag] || 0;
       if (count > 0) {
