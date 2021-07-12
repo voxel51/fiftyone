@@ -119,7 +119,7 @@ def test_to_frame_patches():
     dataset.tag_samples("test")
 
     frames = dataset.to_frames()
-    patches = dataset.to_patches("ground_truth")
+    patches = frames.to_patches("ground_truth")
 
     # Frames and patches inherit sample tags
     print(dataset.count_sample_tags())
@@ -200,10 +200,10 @@ def test_to_frame_patches():
     # New sample-level patch fields are not synced
     print(view.count_values("hello"))
     print(patches.count_values("hello"))
-    print(frames.count_values("hello"))  # {}
-    print(dataset.count_values("frames.hello"))  # {}
+    assert "hello" not in frames.get_field_schema()
+    assert "hello" not in dataset.get_frame_field_schema()
 
-    sample["ground_truth.hello"] = "world"
+    sample.ground_truth.hello = "world"
     sample.save()
 
     # Patch label changes are synced to source datasets
