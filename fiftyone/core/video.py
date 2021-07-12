@@ -9,6 +9,7 @@ from copy import deepcopy
 import logging
 import os
 
+from bson import ObjectId
 from pymongo.errors import BulkWriteError
 
 import eta.core.utils as etau
@@ -146,7 +147,7 @@ class FramesView(fov.DatasetView):
         # The `set_values()` operation could change the contents of this view,
         # so we first record the sample IDs that need to be synced
         if self._stages:
-            ids = self.values("_id")
+            ids = self.values("id")
         else:
             ids = None
 
@@ -271,7 +272,13 @@ class FramesView(fov.DatasetView):
             )
         else:
             if ids is not None:
-                pipeline.append({"$match": {"_id": {"$in": ids}}})
+                pipeline.append(
+                    {
+                        "$match": {
+                            "_id": {"$in": [ObjectId(_id) for _id in ids]}
+                        }
+                    }
+                )
 
             if fields is None:
                 default_fields.discard("_sample_id")

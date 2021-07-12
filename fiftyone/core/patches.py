@@ -117,6 +117,10 @@ class _PatchesView(fov.DatasetView):
         return self._source_collection._root_dataset
 
     @property
+    def _is_frames(self):
+        return self._source_collection._is_frames
+
+    @property
     def _stages(self):
         return self.__stages
 
@@ -127,6 +131,13 @@ class _PatchesView(fov.DatasetView):
             + [self._patches_stage]
             + self.__stages
         )
+
+    @property
+    def _id_field(self):
+        if self._is_frames:
+            return "frame_id"
+
+        return "sample_id"
 
     @property
     def _label_fields(self):
@@ -153,7 +164,7 @@ class _PatchesView(fov.DatasetView):
 
         extras = ["_sample_id" if use_db_fields else "sample_id"]
 
-        if self._source_collection._is_frames:
+        if self._is_frames:
             extras.append("_frame_id" if use_db_fields else "frame_id")
             extras.append("frame_number")
 
@@ -239,11 +250,13 @@ class _PatchesView(fov.DatasetView):
         label_type = self._patches_dataset._get_label_field_type(field)
         is_list_field = issubclass(label_type, fol._LABEL_LIST_FIELDS)
 
+        sample_id = sample[self._id_field]
+
         doc = sample._doc.field_to_mongo(field)
         if is_list_field:
             doc = doc[label_type._LABEL_LIST_FIELD]
 
-        self._source_collection._set_labels(field, [sample.sample_id], [doc])
+        self._source_collection._set_labels(field, [sample_id], [doc])
 
     def _sync_source_field(self, field, ids=None):
         _, label_path = self._patches_dataset._get_label_field_path(field)
@@ -256,7 +269,7 @@ class _PatchesView(fov.DatasetView):
             view = self._patches_dataset
 
         sample_ids, docs = view.aggregate(
-            [foa.Values("sample_id"), foa.Values(label_path, _raw=True)]
+            [foa.Values(self._id_field), foa.Values(label_path, _raw=True)]
         )
 
         self._source_collection._set_labels(field, sample_ids, docs)
@@ -266,8 +279,8 @@ class _PatchesView(fov.DatasetView):
             self._sync_source_root_field(field)
 
     def _sync_source_root_field(self, field):
-        _, id_path = self._get_label_field_path(field, "id")
-        label_path = id_path.rsplit(".", 1)[0]
+        _, label_id_path = self._get_label_field_path(field, "id")
+        label_path = label_id_path.rsplit(".", 1)[0]
 
         #
         # Sync label updates
@@ -275,9 +288,9 @@ class _PatchesView(fov.DatasetView):
 
         sample_ids, docs, label_ids = self._patches_dataset.aggregate(
             [
-                foa.Values("sample_id"),
+                foa.Values(self._id_field),
                 foa.Values(label_path, _raw=True),
-                foa.Values(id_path, unwind=True),
+                foa.Values(label_id_path, unwind=True),
             ]
         )
 
