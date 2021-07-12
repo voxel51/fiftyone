@@ -122,28 +122,22 @@ export const extendedModalStats = selector({
   get: ({ get }) => get(extendedModalStatsRaw).main,
 });
 
-export const noneFieldCounts = selector<{ [key: string]: number }>({
+export const noneFieldCounts = selectorFamily<
+  { [key: string]: number },
+  { filtered: boolean; modal: boolean }
+>({
   key: "noneFieldCounts",
-  get: ({ get }) => {
-    const raw = get(atoms.datasetStatsRaw);
-    const currentView = get(selectors.view);
-    if (!raw.view) {
-      return {};
-    }
-    if (viewsAreEqual(raw.view, currentView)) {
-      return raw.stats.none.reduce((acc, cur) => {
-        acc[cur.name] = cur.result;
-        return acc;
-      }, {});
-    }
-    return {};
-  },
-});
+  get: ({ modal, filtered }) => ({ get }) => {
+    const raw = get(
+      modal
+        ? filtered
+          ? extendedModalStatsRaw
+          : modalStatsRaw
+        : filtered
+        ? atoms.extendedDatasetStatsRaw
+        : atoms.datasetStatsRaw
+    );
 
-export const noneFilteredFieldCounts = selector<{ [key: string]: number }>({
-  key: "noneFilteredFieldCounts",
-  get: ({ get }) => {
-    const raw = get(atoms.extendedDatasetStatsRaw);
     const currentView = get(selectors.view);
     if (!raw.view) {
       return {};
@@ -151,13 +145,23 @@ export const noneFilteredFieldCounts = selector<{ [key: string]: number }>({
     if (!viewsAreEqual(raw.view, currentView)) {
       return {};
     }
-    const currentFilters = get(selectors.filterStages);
+
+    if (!filtered) {
+      return raw.stats.none.reduce((acc, cur) => {
+        acc[cur.name] = cur.result;
+        return acc;
+      }, {});
+    }
+
+    const currentFilters = get(
+      modal ? modalFilterStages : selectors.filterStages
+    );
     if (!selectors.filtersAreEqual(raw.filters, currentFilters)) {
       return {};
     }
 
     if (Object.entries(currentFilters).length === 0) {
-      return get(noneFieldCounts);
+      return noneFieldCounts({ modal, filtered: false });
     }
 
     return raw.stats.none.reduce((acc, cur) => {
@@ -277,7 +281,7 @@ export const catchLabelCount = (
     names.includes(cur.name.slice(prefix.length).split(".")[0]) &&
     cur._CLS === COUNT_CLS
   ) {
-    acc[cur.name.slice(prefix.length).split(".")[0]] = cur.result;
+    acc[prefix + cur.name.slice(prefix.length).split(".")[0]] = cur.result;
   }
 };
 
@@ -371,7 +375,7 @@ export const noneCount = selectorFamily<
 >({
   key: "noneCount",
   get: ({ path, modal, filtered }) => ({ get }) => {
-    return 0;
+    return get(noneFieldCounts({ modal, filtered }))[path];
   },
 });
 

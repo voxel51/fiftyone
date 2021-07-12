@@ -206,7 +206,7 @@ export type Entry = {
   subCountAtom: RecoilValueReadOnly<{ [key: string]: number }>;
   canFilter?: boolean;
   type: string;
-  icon: any;
+  icon?: any;
   key?: string;
 };
 
