@@ -57,62 +57,10 @@ Can I use FiftyOne in a remote notebook?
 ----------------------------------------
 
 Yes! It is possible to work with a Jupyter notebook in your local browser that
-is
-`served from a remote machine <https://ljvmiranda921.github.io/notebook/2018/01/31/running-a-jupyter-notebook>`_
-where your data is located. Follow the instructions below to achieve this.
+is served from a remote machine.
 
-**On the remote machine:**
-
-Start the Jupyter server on a port of your choice:
-
-.. code:: shell
-
-    # On remote machine
-    jupyter notebook --no-browser --port=XXXX /path/to/notebook.ipynb
-
-**On your local machine:**
-
-Back on your local machine, you will need to forward the remote port `XXXX` to
-a local port (we'll also use `XXXX` here, for consistency):
-
-.. code:: shell
-
-    # On local machine
-    ssh -N -L XXXX:localhost:XXXX [<username>@]<hostname>
-
-Now open ``localhost:XXXX`` in your browser and you should find your notebook!
-
-If your notebook launches the :ref:`FiftyOne App <fiftyone-app>`, you will also
-need to forward the port used by the App to your local machine. By default,
-the App uses port `5151`, but you can :ref:`specify any port <remote-data>`,
-say `YYYY`, not currently in use on your remote machine:
-
-.. code:: shell
-
-    # On local machine
-    ssh -N -L 5151:localhost:YYYY [<username>@]<hostname>
-
-**In your Jupyter notebook:**
-
-When you launch the :ref:`FiftyOne App <fiftyone-app>` in your notebook, you
-should now see the App as expected!
-
-.. code:: python
-
-    # Launch the App in a notebook cell
-    session = fo.launch_app(dataset)  # port=YYYY
-
-If you chose a port `YYYY` other than the default `5151`, you will need to
-specify it when launching App instances per the commented argument above.
-
-Note that you can also open the App
-:ref:`in a dedicated tab <opening-app-dedicated-tab>`:
-
-.. code:: python
-
-    # Launch the App in a dedicated browser tab
-    session = fo.launch_app(dataset, auto=False)  # port=YYYY
-    session.open_tab()
+Refer to :ref:`this section <remote-notebooks>` of the environment guide for
+instructions to achieve this.
 
 .. _faq-remote-server-data:
 

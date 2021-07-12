@@ -67,6 +67,12 @@ jobs:
         run: |
           cd package/db
           python setup.py bdist_wheel --plat-name linux-x86_64
+      - name: Build wheel (RHEL/CentOS 7 x86_64)
+        env:
+          FIFTYONE_DB_BUILD_LINUX_DISTRO: rhel7
+        run: |
+          cd package/db
+          python setup.py bdist_wheel --plat-name linux-x86_64
       - name: Upload wheel (linux-86_64)
         uses: actions/upload-artifact@v2
         with:
@@ -87,6 +93,11 @@ jobs:
         with:
           name: wheel-debian9
           path: package/db/dist/*debian9*.whl
+      - name: Upload wheel (RHEL/CentOS 7)
+        uses: actions/upload-artifact@v2
+        with:
+          name: wheel-rhel7
+          path: package/db/dist/*rhel7*.whl
       - name: Upload wheel (macOS)
         uses: actions/upload-artifact@v2
         with:

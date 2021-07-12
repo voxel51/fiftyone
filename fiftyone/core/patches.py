@@ -15,10 +15,7 @@ import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 import fiftyone.core.sample as fos
-import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
-
-fouc = fou.lazy_import("fiftyone.utils.eval.coco")
 
 
 _SINGLE_TYPES_MAP = {
@@ -513,7 +510,7 @@ def make_evaluation_dataset(sample_collection, eval_key, name=None):
     eval_info = sample_collection.get_evaluation_info(eval_key)
     pred_field = eval_info.config.pred_field
     gt_field = eval_info.config.gt_field
-    if isinstance(eval_info.config, fouc.COCOEvaluationConfig):
+    if hasattr(eval_info.config, "iscrowd"):
         crowd_attr = eval_info.config.iscrowd
     else:
         crowd_attr = None
@@ -635,7 +632,10 @@ def _make_eval_view(
 
     if crowd_attr is not None:
         crowd_path1 = "$" + field + "." + crowd_attr
+
+        # @todo remove Attributes usage
         crowd_path2 = "$" + field + ".attributes." + crowd_attr + ".value"
+
         view = view.mongo(
             [
                 {
@@ -686,57 +686,49 @@ def _merge_matched_labels(dataset, src_collection, eval_key, field):
 
     list_field = field + "." + field_type._LABEL_LIST_FIELD
     eval_id = eval_key + "_id"
-    foreign_key = "key"
+    eval_field = list_field + "." + eval_id
 
-    lookup_pipeline = src_collection._pipeline(detach_frames=True)
-    lookup_pipeline.extend(
+    pipeline = src_collection._pipeline(detach_frames=True)
+    pipeline.extend(
         [
             {"$project": {list_field: True}},
             {"$unwind": "$" + list_field},
-            {"$replaceRoot": {"newRoot": "$" + list_field}},
             {
                 "$match": {
                     "$expr": {
                         "$and": [
-                            {"$ne": ["$" + eval_id, _NO_MATCH_ID]},
-                            {
-                                "$eq": [
-                                    {"$toObjectId": "$" + eval_id},
-                                    "$$" + foreign_key,
-                                ]
-                            },
+                            {"$gt": ["$" + eval_field, None]},
+                            {"$ne": ["$" + eval_field, _NO_MATCH_ID]},
                         ]
                     }
+                }
+            },
+            {
+                "$group": {
+                    "_id": {"$toObjectId": "$" + eval_field},
+                    "_labels": {"$push": "$" + list_field},
+                }
+            },
+            {
+                "$project": {
+                    field: {
+                        "_cls": field_type.__name__,
+                        field_type._LABEL_LIST_FIELD: "$_labels",
+                    }
+                },
+            },
+            {
+                "$merge": {
+                    "into": dataset._sample_collection_name,
+                    "on": "_id",
+                    "whenMatched": "merge",
+                    "whenNotMatched": "discard",
                 }
             },
         ]
     )
 
-    pipeline = [
-        {"$set": {field + "._cls": field_type.__name__}},
-        {
-            "$lookup": {
-                "from": src_collection._dataset._sample_collection_name,
-                "let": {foreign_key: "$_id"},
-                "pipeline": lookup_pipeline,
-                "as": list_field,
-            }
-        },
-        {
-            "$set": {
-                field: {
-                    "$cond": {
-                        "if": {"$gt": [{"$size": "$" + list_field}, 0]},
-                        "then": "$" + field,
-                        "else": None,
-                    }
-                }
-            }
-        },
-        {"$out": dataset._sample_collection_name},
-    ]
-
-    dataset._aggregate(pipeline=pipeline, attach_frames=False)
+    src_collection._dataset._aggregate(pipeline=pipeline, attach_frames=False)
 
 
 def _write_samples(dataset, src_collection):

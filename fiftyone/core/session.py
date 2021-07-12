@@ -20,10 +20,7 @@ import fiftyone.core.dataset as fod
 import fiftyone.core.client as foc
 from fiftyone.core.config import AppConfig
 import fiftyone.core.context as focx
-import fiftyone.core.frame as fof
-import fiftyone.core.media as fom
 import fiftyone.core.plots as fop
-import fiftyone.core.sample as fosa
 import fiftyone.core.service as fos
 import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
@@ -752,13 +749,14 @@ class Session(foc.HasClient):
 
         The behavior of this method depends on your context:
 
-        -   Notebooks: calls :meth:`Session.show` to open an App window in the
-            output of your current cell
-        -   Desktop: the desktop App will be opened, if necessary
-        -   Other (non-remote): the App will be opened in a new browser tab
+        -   Notebooks: calls :meth:`Session.show` to open a new App window in
+            the output of your current cell
+        -   Desktop: opens the desktop App, if necessary
+        -   Other (non-remote): opens the App in a new browser tab
         """
         if self._remote:
-            raise ValueError("Remote sessions cannot launch the App")
+            logger.warning("Remote sessions cannot open new App windows")
+            return
 
         if self.plots:
             self.plots.connect()
@@ -774,21 +772,24 @@ class Session(foc.HasClient):
         self.open_tab()
 
     def open_tab(self):
-        """Opens the App in a new tab of your default browser.
+        """Opens the App in a new tab of your browser.
 
-        This method can be called from Jupyter notebooks and from desktop App
-        mode to override the default behavior of :meth:`Session.open`.
-
-        This method cannot be called on remote sessions or from Colab
-        notebooks.
+        This method can be called from Jupyter notebooks and in desktop App
+        mode to override the default location of the App.
         """
         if self._remote:
-            raise ValueError("Remote sessions cannot launch the App")
+            logger.warning("Remote sessions cannot open new App windows")
+            return
 
-        if self._context == focx._COLAB:
-            raise ValueError(
-                "Cannot open the App in a dedicated tab from Colab notebooks"
+        if self._context != focx._NONE:
+            import IPython.display
+
+            IPython.display.display(
+                IPython.display.Javascript(
+                    "window.open('{url}');".format(url=self.url)
+                )
             )
+            return
 
         webbrowser.open(self.url, new=2)
 
@@ -840,7 +841,8 @@ class Session(foc.HasClient):
         connected windows (tabs) must be closed.
         """
         if self._context != focx._NONE:
-            raise RuntimeError("Notebook sessions cannot wait")
+            logger.warning("Notebook sessions cannot wait")
+            return
 
         try:
             if self._remote or not self._desktop:
@@ -869,7 +871,8 @@ class Session(foc.HasClient):
         Only applicable to notebook contexts.
         """
         if self._context == focx._NONE:
-            raise ValueError("Only notebook sessions can be frozen")
+            logger.warning("Only notebook sessions can be frozen")
+            return
 
         self.state.active_handle = None
 
