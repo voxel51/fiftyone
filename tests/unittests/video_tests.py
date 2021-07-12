@@ -1207,7 +1207,7 @@ class VideoTests(unittest.TestCase):
 
         dataset.add_samples([sample1, sample2])
 
-        frames = dataset.to_frames(config={"sample_frames": False})
+        frames = dataset.to_frames(sample_frames=False)
         patches = frames.to_patches("ground_truth")
 
         self.assertSetEqual(
@@ -1261,16 +1261,19 @@ class VideoTests(unittest.TestCase):
         patches.tag_samples("patch")
 
         self.assertEqual(patches.count_sample_tags()["patch"], 4)
+        self.assertNotIn("patch", frames.count_sample_tags())
         self.assertNotIn("patch", dataset.count_sample_tags())
 
         patches.untag_samples("patch")
 
         self.assertNotIn("patch", patches.count_sample_tags())
+        self.assertNotIn("patch", frames.count_sample_tags())
         self.assertNotIn("patch", dataset.count_sample_tags())
 
         patches.tag_labels("test")
 
         self.assertDictEqual(patches.count_label_tags(), {"test": 4})
+        self.assertDictEqual(frames.count_label_tags(), {"test": 4})
         self.assertDictEqual(
             dataset.count_label_tags("frames.ground_truth"), {"test": 4}
         )
@@ -1281,9 +1284,8 @@ class VideoTests(unittest.TestCase):
         patches.select_labels(tags="test").untag_labels("test")
 
         self.assertDictEqual(patches.count_label_tags(), {})
-        self.assertDictEqual(
-            dataset.count_label_tags("frames.ground_truth"), {}
-        )
+        self.assertDictEqual(frames.count_label_tags(), {})
+        self.assertDictEqual(dataset.count_label_tags(), {})
 
         view2 = patches.limit(2)
 
@@ -1291,13 +1293,21 @@ class VideoTests(unittest.TestCase):
         view2.set_values("ground_truth.label_upper", values)
 
         self.assertEqual(dataset.count(), 2)
+
+        # Empty frames were added based on metadata frame counts
+        self.assertEqual(frames.count(), 9)
+
         self.assertEqual(patches.count(), 4)
         self.assertEqual(view2.count(), 2)
-        self.assertEqual(dataset.count("frames.detections"), 4)
+        self.assertEqual(dataset.count("frames.ground_truth.detections"), 4)
+        self.assertEqual(frames.count("ground_truth.detections"), 4)
         self.assertEqual(patches.count("ground_truth"), 4)
         self.assertEqual(view2.count("ground_truth"), 2)
         self.assertEqual(
             dataset.count("frames.ground_truth.detections.label_upper"), 2
+        )
+        self.assertEqual(
+            frames.count("ground_truth.detections.label_upper"), 2
         )
         self.assertEqual(patches.count("ground_truth.label_upper"), 2)
         self.assertEqual(view2.count("ground_truth.label_upper"), 2)
@@ -1308,29 +1318,22 @@ class VideoTests(unittest.TestCase):
 
         self.assertEqual(patches.count(), 4)
         self.assertEqual(view3.count(), 2)
-        self.assertEqual(dataset.count("frames.ground_truth.detections"), 6)
+        self.assertEqual(dataset.count("frames.ground_truth.detections"), 4)
         self.assertNotIn("rabbit", view3.count_values("ground_truth.label"))
         self.assertEqual(view3.count_values("ground_truth.label")["RABBIT"], 1)
-        self.assertEqual(
-            patches.count_values("ground_truth.label")["RABBIT"], 1
-        )
-        self.assertEqual(
-            dataset.count_values("frames.ground_truth.detections.label")[
-                "dog"
-            ],
-            1,
-        )
-        self.assertEqual(
-            dataset.count_values("frames.ground_truth.detections.label")[
-                "DOG"
-            ],
-            1,
+        self.assertNotIn("RABBIT", patches.count_values("ground_truth.label"))
+        self.assertNotIn(
+            "RABBIT",
+            dataset.count_values("frames.ground_truth.detections.label"),
         )
 
         view3.save()
 
         self.assertEqual(patches.count(), 2)
+        self.assertEqual(frames.count(), 9)
         self.assertEqual(dataset.count(), 2)
+        self.assertEqual(patches.count("ground_truth"), 2)
+        self.assertEqual(frames.count("ground_truth.detections"), 2)
         self.assertEqual(dataset.count("frames"), 6)
         self.assertEqual(dataset.count("frames.ground_truth.detections"), 2)
 
@@ -1343,6 +1346,9 @@ class VideoTests(unittest.TestCase):
             patches.count_values("ground_truth.hello")["world"], 1
         )
         self.assertEqual(
+            frames.count_values("ground_truth.detections.hello")["world"], 1
+        )
+        self.assertEqual(
             dataset.count_values("frames.ground_truth.detections.hello")[
                 "world"
             ],
@@ -1353,10 +1359,14 @@ class VideoTests(unittest.TestCase):
         patches.reload()
 
         self.assertDictEqual(dataset.count_sample_tags(), {})
+        self.assertDictEqual(frames.count_sample_tags(), {})
         self.assertDictEqual(patches.count_sample_tags(), {})
 
         patches.tag_labels("test")
 
+        self.assertDictEqual(
+            patches.count_label_tags(), frames.count_label_tags()
+        )
         self.assertDictEqual(
             patches.count_label_tags(), dataset.count_label_tags()
         )
@@ -1367,6 +1377,9 @@ class VideoTests(unittest.TestCase):
         patches.select_labels(tags="test").untag_labels("test")
 
         self.assertDictEqual(patches.count_values("ground_truth.tags"), {})
+        self.assertDictEqual(
+            frames.count_values("ground_truth.detections.tags"), {}
+        )
         self.assertDictEqual(
             dataset.count_values("frames.ground_truth.detections.tags"), {}
         )
