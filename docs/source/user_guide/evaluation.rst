@@ -655,6 +655,9 @@ results of an evaluation on the
     eval_patches = dataset.to_evaluation_patches("eval")
     print(eval_patches)
 
+    print(eval_patches.count_values("type"))
+    # {'fn': 246, 'fp': 4131, 'tp': 986}
+
     # View patches in the App
     session.view = eval_patches
 
@@ -1504,13 +1507,16 @@ You can also view frame-level evaluation results as
     frame_eval_patches = dataset.to_frames().to_evaluation_patches("eval")
     print(frame_eval_patches)
 
+    print(frame_eval_patches.count_values("type"))
+    # {'tp': 10578, 'fn': 767, 'fp': 767}
+
     session = fo.launch_app(view=frame_eval_patches)
 
 .. code-block:: text
 
     Dataset:     video-eval-demo
     Media type:  image
-    Num patches: 11345
+    Num patches: 12112
     Tags:        []
     Patch fields:
         id:           fiftyone.core.fields.ObjectIdField

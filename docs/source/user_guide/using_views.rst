@@ -698,6 +698,9 @@ respectively.
     eval_patches = dataset.to_evaluation_patches("eval")
     print(eval_patches)
 
+    print(eval_patches.count_values("type"))
+    # {'fn': 246, 'fp': 4131, 'tp': 986}
+
     # View patches in the App
     session.view = eval_patches
 
