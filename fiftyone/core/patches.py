@@ -554,16 +554,20 @@ def make_evaluation_dataset(sample_collection, eval_key):
     else:
         crowd_attr = None
 
-    if sample_collection._is_frame_field(pred_field):
-        if not sample_collection._is_frames:
+    if sample_collection._is_frames:
+        if not pred_field.startswith(sample_collection._FRAMES_PREFIX):
             raise ValueError(
-                "Frame evaluation patches cannot be directly extracted; you "
-                "must first convert your video dataset to frames via "
-                "`to_frames()`"
+                "Cannot extract evaluation patches for sample-level "
+                "evaluation '%s' from a frames view" % eval_key
             )
 
         pred_field = pred_field[len(sample_collection._FRAMES_PREFIX) :]
         gt_field = gt_field[len(sample_collection._FRAMES_PREFIX) :]
+    elif sample_collection._is_frame_field(pred_field):
+        raise ValueError(
+            "Frame evaluation patches cannot be directly extracted; you must "
+            "first convert your video dataset to frames via `to_frames()`"
+        )
 
     pred_type = sample_collection._get_label_field_type(pred_field)
     gt_type = sample_collection._get_label_field_type(gt_field)
