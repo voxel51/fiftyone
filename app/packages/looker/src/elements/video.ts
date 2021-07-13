@@ -74,8 +74,8 @@ export class LoaderBar extends BaseElement<VideoState> {
 }
 
 export class PlayButtonElement extends BaseElement<VideoState, HTMLDivElement> {
-  private isPlaying: boolean = false;
-  private isBuffering: boolean = false;
+  private isPlaying: boolean;
+  private isBuffering: boolean;
   private play: SVGElement;
   private pause: SVGElement;
   private buffering: SVGElement;

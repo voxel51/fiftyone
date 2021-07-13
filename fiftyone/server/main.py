@@ -318,6 +318,8 @@ class PollingHandler(tornado.web.RequestHandler):
                 "all_tags",
                 "selected_statistics",
                 "tag_modal",
+                "modal_statistics",
+                "tag_statistics",
             }:
                 caller = self
             elif event in {"capture", "update"}:

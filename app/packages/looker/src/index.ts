@@ -40,6 +40,7 @@ import {
   Buffers,
   BoundingBox,
   LabelData,
+  BufferRange,
 } from "./state";
 import {
   addToBuffers,
@@ -68,8 +69,8 @@ export abstract class Looker<
   private eventTarget: EventTarget;
   protected lookerElement: LookerElement<State>;
   private resizeObserver: ResizeObserver;
-  private readonly canvas: HTMLCanvasElement;
-  private ctx: CanvasRenderingContext2D;
+  protected readonly canvas: HTMLCanvasElement;
+  protected readonly ctx: CanvasRenderingContext2D;
 
   protected currentOverlays: Overlay<State>[];
   protected pluckedOverlays: Overlay<State>[];
@@ -596,7 +597,7 @@ const { aquireReader, addFrame } = (() => {
   let frameCache = createCache();
 
   let streamSize = 0;
-  let streamCount = 0;
+  let nextRange: BufferRange = null;
 
   const frameReader = createWorker();
   let requestingFrames: boolean = false;
@@ -608,13 +609,12 @@ const { aquireReader, addFrame } = (() => {
     removeFrame,
     frameNumber,
     frameCount,
-    getCurrentFrame,
     sampleId,
     update,
     dispatchEvent,
   }: AcquireReaderOptions): string => {
     streamSize = 0;
-    streamCount = 0;
+    nextRange = [frameNumber, Math.min(frameCount, CHUNK_SIZE + frameNumber)];
     const subscription = uuid();
     frameReader.onmessage = (message: MessageEvent<FrameChunkResponse>) => {
       const {
@@ -640,17 +640,15 @@ const { aquireReader, addFrame } = (() => {
             overlays.forEach((overlay) => {
               streamSize += overlay.getSizeBytes();
             });
-            streamCount += 1;
             const frame = { sample: frameSample, overlays };
             frameCache.set(new WeakRef(removeFrame), frame);
             addFrame(frameNumber, frame);
           });
 
-        const requestMore =
-          streamCount < end - getCurrentFrame() &&
-          streamSize < MAX_FRAME_CACHE_SIZE_BYTES;
+        const requestMore = streamSize < MAX_FRAME_CACHE_SIZE_BYTES;
 
         if (requestMore && end < frameCount) {
+          nextRange = [end + 1, Math.min(frameCount, end + 1 + CHUNK_SIZE)];
           requestingFrames = true;
           frameReader.postMessage({
             method: "requestFrameChunk",
@@ -658,12 +656,11 @@ const { aquireReader, addFrame } = (() => {
           });
         } else {
           requestingFrames = false;
+          nextRange = null;
         }
 
         update((state) => {
-          if (state.buffering) {
-            dispatchEvent("buffering", false);
-          }
+          state.buffering && dispatchEvent("buffering", false);
           return { buffering: false };
         });
       }
@@ -687,9 +684,14 @@ const { aquireReader, addFrame } = (() => {
       currentOptions = options;
       let subscription = setStream(currentOptions);
 
-      return (frameNumber?: number) => {
-        if (typeof frameNumber === "number") {
-          frameCache = createCache();
+      return (frameNumber: number, force?: boolean) => {
+        if (
+          force ||
+          !nextRange ||
+          (frameNumber < nextRange[0] && frameNumber > nextRange[1])
+        ) {
+          force && frameCache.reset();
+          nextRange = [frameNumber, frameNumber + CHUNK_SIZE];
           subscription = setStream({ ...currentOptions, frameNumber });
         } else if (!requestingFrames) {
           frameReader.postMessage({
@@ -712,7 +714,7 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
   private sampleOverlays: Overlay<VideoState>[] = [];
   private frames: Map<number, WeakRef<Frame>> = new Map();
   protected imageSource: HTMLVideoElement;
-  private requestFrames: (frameNumber?: number) => void;
+  private requestFrames: (frameNumber: number, force?: boolean) => void;
 
   constructor(
     sample: VideoSample,
@@ -913,17 +915,13 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
     }
 
     if (lookerWithReader === this) {
-      const bufferFrame = Math.min(
-        frameCount,
-        state.frameNumber + CHUNK_SIZE / 2
-      );
-      if (this.hasFrame(bufferFrame)) {
+      if (this.hasFrame(Math.min(frameCount, state.frameNumber + 1))) {
         this.state.buffering && this.dispatchEvent("buffering", false);
         this.state.buffering = false;
       } else {
         this.state.buffering = true;
         this.dispatchEvent("buffering", true);
-        this.requestFrames();
+        this.requestFrames(state.frameNumber);
       }
     }
 
@@ -1009,8 +1007,9 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
 
   updateSample(sample: VideoSample) {
     this.state.buffers = [[1, 1]];
+    this.frames.clear();
     super.updateSample(sample);
-    this.requestFrames(this.frameNumber);
+    this.requestFrames(this.frameNumber, true);
   }
 
   private hasFrame(frameNumber: number) {

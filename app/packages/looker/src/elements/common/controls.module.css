@@ -104,12 +104,14 @@
     rgb(238, 238, 238) var(--progress, 0%),
     rgb(238, 238, 238) 100%
   );
+  overflow: hidden;
 }
 .lookerControls input[type="range"]::-moz-range-thumb {
   height: 0;
   width: 0;
   outline: 0;
   border: none;
+  overflow: hidden;
 }
 .lookerControls input[type="range"]:hover::-moz-range-runnable-track {
   height: 6px;
