@@ -194,6 +194,12 @@ installation by adding `--force-reinstall` to the commands below.
 
       pip install fiftyone-db-debian9
 
+  .. tab:: RHEL 7
+
+    .. code-block:: shell
+
+      pip install fiftyone-db-rhel7
+
 Manual installation
 ~~~~~~~~~~~~~~~~~~~
 

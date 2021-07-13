@@ -35,6 +35,9 @@ MONGODB_DOWNLOAD_URLS = {
     "debian9": {
         "manylinux1_x86_64": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-debian92-4.4.2.tgz",
     },
+    "rhel7": {
+        "manylinux1_x86_64": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-rhel70-4.4.2.tgz",
+    },
 }
 
 # mongodb binaries to distribute
