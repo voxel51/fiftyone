@@ -47,7 +47,6 @@ _session = None
 _server_services = {}
 _subscribed_sessions = defaultdict(set)
 
-
 _APP_DESKTOP_MESSAGE = """
 Desktop App launched.
 """
@@ -892,7 +891,8 @@ class Session(foc.HasClient):
             return
 
         handle = data["handle"]
-        if data["handle"] in self._handles:
+        if handle in self._handles and self._handles[handle]["active"]:
+            self._handles[handle]["active"] = False
             self._handles[handle]["target"].update(
                 HTML(
                     fout._SCREENSHOT_HTML.render(
@@ -923,6 +923,7 @@ class Session(foc.HasClient):
         self.state.active_handle = handle
         if handle in self._handles:
             source = self._handles[handle]
+            source["active"] = True
             _display(
                 self,
                 source["target"],
@@ -958,7 +959,11 @@ class Session(foc.HasClient):
         if height is None:
             height = self.config.notebook_height
 
-        self._handles[uuid] = {"target": handle, "height": height}
+        self._handles[uuid] = {
+            "target": handle,
+            "height": height,
+            "active": True,
+        }
 
         _display(self, handle, uuid, self._port, height)
         return uuid

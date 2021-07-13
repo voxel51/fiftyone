@@ -1676,7 +1676,7 @@ __metadata:
     classnames: ^2.2.6
     copy-to-clipboard: ^3.3.1
     electron: ^13.1.2
-    html2canvas: ^1.0.0-rc.7
+    html2canvas: 1.0.0-rc.7
     mime: ^2.5.2
     numeral: ^2.0.6
     prettier: 2.2.1
@@ -4304,12 +4304,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"html2canvas@npm:^1.0.0-rc.7":
-  version: 1.1.2
-  resolution: "html2canvas@npm:1.1.2"
+"html2canvas@npm:1.0.0-rc.7":
+  version: 1.0.0-rc.7
+  resolution: "html2canvas@npm:1.0.0-rc.7"
   dependencies:
     css-line-break: 1.1.1
-  checksum: b50e1d8caf41f88e7f192e59b64bde9b81970be3ffcf779f42989dc892c82a452ad01ceb48303459d5802af46658ffc148b1a1c2323bd29387d3d8fa2d125cd0
+  checksum: c0c6626e6ff9bf53325829e60b20e6ede276d0611ded30540950cc4369e22ed924514bc6bea1c986bca4a320a28e6db9911e8ac48b9602956653a045e7b4dbee
   languageName: node
   linkType: hard
 

@@ -194,7 +194,7 @@ export const useGA = () => {
     if (gaInitialized) {
       ReactGA.pageview(window.location.pathname + window.location.search);
     }
-  }, [window.location.pathname, window.location.search]);
+  });
 };
 
 export const useScreenshot = () => {
@@ -239,13 +239,23 @@ export const useScreenshot = () => {
   }, []);
 
   const applyStyles = useCallback(() => {
-    return fetch("/_dist_/index.css")
-      .then((response) => response.text())
-      .then((text) => {
-        const style = document.createElement("style");
-        style.appendChild(document.createTextNode(text));
-        document.head.appendChild(style);
-      });
+    const styles: Promise<void>[] = [];
+
+    document.querySelectorAll("link").forEach((link) => {
+      if (link.rel === "stylesheet") {
+        styles.push(
+          fetch(link.href)
+            .then((response) => response.text())
+            .then((text) => {
+              const style = document.createElement("style");
+              style.appendChild(document.createTextNode(text));
+              document.head.appendChild(style);
+            })
+        );
+      }
+    });
+
+    return Promise.all(styles);
   }, []);
 
   const captureVideos = useCallback(() => {
@@ -287,7 +297,10 @@ export const useScreenshot = () => {
         );
       }
       socket.send(
-        packageMessage("capture", { src: imgData, width: canvas.width })
+        packageMessage("capture", {
+          src: imgData,
+          width: canvas.width,
+        })
       );
     });
   }, []);

@@ -456,13 +456,15 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
     this.frameNumber = 1;
 
     this.requestCallback = (callback: (frameNumber: number) => void) => {
-      requestAnimationFrame((stamp) => {
+      requestAnimationFrame(() => {
         callback(
-          getFrameNumber(
-            this.element.currentTime +
-              (window.performance.now() - stamp) / 1000,
-            this.duration,
-            this.frameRate
+          Math.min(
+            getFrameNumber(
+              this.element.currentTime,
+              this.duration,
+              this.frameRate
+            ),
+            this.frameCount
           )
         );
       });
