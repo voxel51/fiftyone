@@ -211,24 +211,30 @@ If you need to downgrade to an older version of FiftyOne for any reason, you
 can do so.
 
 Since new releases occasionally introduce backwards-incompatible changes to the
-data model, we provide a :ref:`fiftyone migrate <cli-fiftyone-migrate>` command
-that can perform any necessary downward database migrations.
+data model, you must use the :ref:`fiftyone migrate <cli-fiftyone-migrate>`
+command to perform any necessary downward database migrations
+**before installing the older version of FiftyOne**.
 
 Here's the workflow for downgrading to an older version of FiftyOne:
 
 .. code-block:: shell
 
     # The version that you wish to downgrade to
-    VERSION=0.7.1  # for example
+    VERSION=0.9.4  # for example
 
     # Migrate the database
     fiftyone migrate --all -v $VERSION
 
-    # Verify that all of your datasets were migrated
+    # Optional: verify that your datasets were migrated
     fiftyone migrate --info
 
     # Now install the older version of `fiftyone`
     pip install fiftyone==$VERSION
+
+If you are reading this after encountering an error resulting from downgrading
+your ``fiftyone`` package without first running
+:ref:`fiftyone migrate <cli-fiftyone-migrate>`, don't worry, you simply need to
+reinstall the newer version of FiftyOne and then follow these instructions.
 
 .. note::
 
