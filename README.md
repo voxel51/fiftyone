@@ -170,13 +170,6 @@ bash install.bash
 which you can do either by rerunning the install script or just running
 `yarn build-web` in the `./app` directory.
 
-3. If you want to use the `fiftyone.brain` package, you will need to install it
-   separately after installing FiftyOne:
-
-```shell
-pip install fiftyone-brain
-```
-
 ### Upgrading your source installation
 
 To upgrade an existing source installation to the bleeding edge, simply pull
