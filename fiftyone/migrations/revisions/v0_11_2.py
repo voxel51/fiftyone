@@ -41,7 +41,7 @@ def down(db, dataset_name):
         version = run_doc.pop("version", "????")
         logger.warning(
             "You may not be able to use brain results with key '%s' from "
-            "from v%s on dataset '%s' in prior versions of FiftyOne",
+            "from v%s on dataset '%s' in older versions of FiftyOne",
             brain_key,
             version,
             dataset_name,
