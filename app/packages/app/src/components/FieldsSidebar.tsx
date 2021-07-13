@@ -78,7 +78,7 @@ type CellProps = {
   entries: Entry[];
   icon: any;
   children?: any;
-  pills?: Array<typeof PillButton>;
+  pills?: Array<JSX.Element>;
 };
 
 const Cell = React.memo(
@@ -559,10 +559,14 @@ const ScalarsCell = ({ modal }: ScalarsCellProps) => {
     <Cell
       label="Scalars"
       icon={<BarChart />}
-      pills={useClearFiltersPill(
-        filtering.numFilteredScalars(modal),
-        filtering.filteredScalars(modal)
-      )}
+      pills={
+        modal
+          ? null
+          : useClearFiltersPill(
+              filtering.numFilteredScalars(modal),
+              filtering.filteredScalars(modal)
+            )
+      }
       entries={scalars
         .filter((name) => !(["filepath", "id"].includes(name) && modal))
         .map((name) => {
