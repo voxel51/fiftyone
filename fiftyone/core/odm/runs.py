@@ -21,6 +21,7 @@ class RunDocument(EmbeddedDocument):
     """Description of a run on a dataset."""
 
     key = StringField()
+    version = StringField()
     timestamp = DateTimeField()
     config = DictField()
     view_stages = ListField(StringField())

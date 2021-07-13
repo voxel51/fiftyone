@@ -1864,7 +1864,8 @@ class SampleCollection(object):
         )
 
     def delete_brain_run(self, brain_key):
-        """Deletes the brain method run with the given key from this collection.
+        """Deletes the brain method run with the given key from this
+        collection.
 
         Args:
             brain_key: a brain key
@@ -1888,14 +1889,20 @@ class SampleCollection(object):
     def _get_brain_runs_with_type(self, run_type, **kwargs):
         brain_keys = []
         for brain_key in self.list_brain_runs():
-            brain_info = self.get_brain_info(brain_key)
+            try:
+                brain_info = self.get_brain_info(brain_key)
+            except:
+                logger.warning(
+                    "Failed to load info for brain method run '%s'", brain_key
+                )
+                continue
 
             run_cls = etau.get_class(brain_info.config.cls)
             if not issubclass(run_cls, run_type):
                 continue
 
             if any(
-                getattr(brain_info.config, key) != value
+                getattr(brain_info.config, key, None) != value
                 for key, value in kwargs.items()
             ):
                 continue
