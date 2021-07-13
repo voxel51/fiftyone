@@ -2419,8 +2419,12 @@ def _patch_perform_plotly_relayout():
     if find in code:
         logger.debug("Patching '%s'", filepath)
         fixed = code.replace(find, replace)
-        with open(filepath, "w") as f:
-            f.write(fixed)
+        try:
+            with open(filepath, "w") as f:
+                f.write(fixed)
+        except OSError as e:
+            logger.debug("Unable to patch '%s'", filepath)
+            logger.debug(e)
     elif replace in code:
         logger.debug("Already patched '%s'", filepath)
     else:
