@@ -196,6 +196,11 @@ export default class DetectionOverlay<
       text.length && (text += " ");
       text += `(${Number(this.label.confidence).toFixed(2)})`;
     }
+
+    if (state.options.showIndex && !isNaN(this.label.index)) {
+      text.length && (text += " ");
+      text += `[${Number(this.label.index).toLocaleString()}]`;
+    }
     return text;
   }
 

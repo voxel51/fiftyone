@@ -17,6 +17,7 @@ export interface LabelData {
   field: string;
   frame_number?: number;
   sample_id: string;
+  index?: number;
 }
 
 export type BufferRange = [number, number];
@@ -30,8 +31,9 @@ interface BaseOptions {
   };
   colorMap: (key: string | number | null | undefined) => string;
   selectedLabels: string[];
-  showLabel: boolean;
   showConfidence: boolean;
+  showIndex: boolean;
+  showLabel: boolean;
   showTooltip: boolean;
   onlyShowHoveredLabel: boolean;
   smoothMasks: boolean;
@@ -76,11 +78,11 @@ export interface ImageOptions extends BaseOptions {
 }
 
 export interface VideoOptions extends BaseOptions {
-  useFrameNumber: boolean;
   autoplay: boolean;
   loop: boolean;
-  volume: number;
   playbackRate: number;
+  useFrameNumber: boolean;
+  volume: number;
 }
 
 export interface TooltipOverlay {
@@ -176,8 +178,9 @@ const DEFAULT_BASE_OPTIONS: BaseOptions = {
   activeLabels: [],
   colorByLabel: false,
   selectedLabels: [],
-  showLabel: false,
   showConfidence: false,
+  showIndex: false,
+  showLabel: false,
   showTooltip: false,
   onlyShowHoveredLabel: false,
   filter: null,
@@ -202,10 +205,10 @@ export const DEFAULT_IMAGE_OPTIONS: ImageOptions = {
 
 export const DEFAULT_VIDEO_OPTIONS: VideoOptions = {
   ...DEFAULT_BASE_OPTIONS,
-  useFrameNumber: false,
   autoplay: false,
   loop: false,
   playbackRate: 1,
+  useFrameNumber: false,
   volume: 0,
 };
 

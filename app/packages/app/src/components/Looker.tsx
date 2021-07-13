@@ -328,17 +328,21 @@ type EventCallback = (event: CustomEvent) => void;
 export const defaultLookerOptions = selectorFamily({
   key: "defaultLookerOptions",
   get: (modal: boolean) => ({ get }) => {
-    const showLabel = get(selectors.appConfig).show_label;
     const showConfidence = get(selectors.appConfig).show_confidence;
+    const showIndex = get(selectors.appConfig).show_index;
+    const showLabel = get(selectors.appConfig).show_label;
     const showTooltip = get(selectors.appConfig).show_tooltip;
+    const useFrameNumber = get(selectors.appConfig).use_frame_number;
     const video = get(selectors.isVideoDataset) ? { loop: !modal } : {};
     const zoom = get(selectors.isPatchesView) ? { zoom: true } : {};
     const colorByLabel = get(atoms.colorByLabel(modal));
 
     return {
       colorByLabel,
-      showLabel,
       showConfidence,
+      showIndex,
+      showLabel,
+      useFrameNumber,
       showTooltip,
       ...video,
       ...zoom,

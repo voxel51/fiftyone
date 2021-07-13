@@ -223,14 +223,17 @@ class AppConfig(EnvConfig):
             env_var="FIFTYONE_APP_NOTEBOOK_HEIGHT",
             default=800,
         )
-        self.show_label = self.parse_bool(
-            d, "show_label", env_var="FIFTYONE_APP_SHOW_LABEL", default=True,
-        )
         self.show_confidence = self.parse_bool(
             d,
             "show_confidence",
             env_var="FIFTYONE_APP_SHOW_CONFIDENCE",
             default=True,
+        )
+        self.show_index = self.parse_bool(
+            d, "show_index", env_var="FIFTYONE_APP_SHOW_INDEX", default=True,
+        )
+        self.show_label = self.parse_bool(
+            d, "show_label", env_var="FIFTYONE_APP_SHOW_LABEL", default=True,
         )
         self.show_tooltip = self.parse_bool(
             d,
@@ -242,7 +245,7 @@ class AppConfig(EnvConfig):
             d,
             "use_frame_number",
             env_var="FIFTYONE_APP_USE_FRAME_NUMBER",
-            default=True,
+            default=False,
         )
 
         self._validate()

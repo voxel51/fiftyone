@@ -58,8 +58,9 @@ export const getFrameElements: GetElements<FrameState> = (
         node: common.OptionsPanelElement,
         children: [
           { node: common.OnlyShowHoveredOnLabelOptionElement },
-          { node: common.ShowLabelOptionElement },
           { node: common.ShowConfidenceOptionElement },
+          { node: common.ShowIndexOptionElement },
+          { node: common.ShowLabelOptionElement },
           { node: common.ShowTooltipOptionElement },
         ],
       },
@@ -110,8 +111,9 @@ export const getImageElements: GetElements<ImageState> = (
         node: common.OptionsPanelElement,
         children: [
           { node: common.OnlyShowHoveredOnLabelOptionElement },
-          { node: common.ShowLabelOptionElement },
           { node: common.ShowConfidenceOptionElement },
+          { node: common.ShowIndexOptionElement },
+          { node: common.ShowLabelOptionElement },
           { node: common.ShowTooltipOptionElement },
         ],
       },
@@ -167,11 +169,12 @@ export const getVideoElements: GetElements<VideoState> = (
       {
         node: common.OptionsPanelElement,
         children: [
-          { node: common.UseFrameNumberOptionElement },
           { node: common.OnlyShowHoveredOnLabelOptionElement },
-          { node: common.ShowLabelOptionElement },
           { node: common.ShowConfidenceOptionElement },
+          { node: common.ShowIndexOptionElement },
+          { node: common.ShowLabelOptionElement },
           { node: common.ShowTooltipOptionElement },
+          { node: common.UseFrameNumberOptionElement },
         ],
       },
       {

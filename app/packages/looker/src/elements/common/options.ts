@@ -127,39 +127,6 @@ export class OnlyShowHoveredOnLabelOptionElement<
   }
 }
 
-export class ShowLabelOptionElement<
-  State extends BaseState
-> extends BaseElement<State> {
-  checkbox?: HTMLInputElement;
-  label?: HTMLLabelElement;
-
-  getEvents(): Events<State> {
-    return {
-      click: ({ event, update, dispatchEvent }) => {
-        event.stopPropagation();
-        event.preventDefault();
-        update(({ options: { showLabel } }) => {
-          dispatchEvent("options", { showLabel: !showLabel });
-          return {
-            options: { showLabel: !showLabel },
-          };
-        });
-      },
-    };
-  }
-
-  createHTMLElement() {
-    [this.label, this.checkbox] = makeCheckboxRow("Show label", false);
-    return makeWrapper([this.label]);
-  }
-
-  renderSelf({ options: { showLabel } }: Readonly<State>) {
-    // @ts-ignore
-    this.checkbox.checked = showLabel;
-    return this.element;
-  }
-}
-
 export class ShowConfidenceOptionElement<
   State extends BaseState
 > extends BaseElement<State> {
@@ -189,6 +156,72 @@ export class ShowConfidenceOptionElement<
   renderSelf({ options: { showConfidence } }: Readonly<State>) {
     // @ts-ignore
     this.checkbox.checked = showConfidence;
+    return this.element;
+  }
+}
+
+export class ShowIndexOptionElement<
+  State extends BaseState
+> extends BaseElement<State> {
+  checkbox?: HTMLInputElement;
+  label?: HTMLLabelElement;
+
+  getEvents(): Events<State> {
+    return {
+      click: ({ event, update, dispatchEvent }) => {
+        event.stopPropagation();
+        event.preventDefault();
+        update(({ options: { showIndex } }) => {
+          dispatchEvent("options", { showIndex: !showIndex });
+          return {
+            options: { showIndex: !showIndex },
+          };
+        });
+      },
+    };
+  }
+
+  createHTMLElement() {
+    [this.label, this.checkbox] = makeCheckboxRow("Show index", false);
+    return makeWrapper([this.label]);
+  }
+
+  renderSelf({ options: { showIndex } }: Readonly<State>) {
+    // @ts-ignore
+    this.checkbox.checked = showIndex;
+    return this.element;
+  }
+}
+
+export class ShowLabelOptionElement<
+  State extends BaseState
+> extends BaseElement<State> {
+  checkbox?: HTMLInputElement;
+  label?: HTMLLabelElement;
+
+  getEvents(): Events<State> {
+    return {
+      click: ({ event, update, dispatchEvent }) => {
+        event.stopPropagation();
+        event.preventDefault();
+        update(({ options: { showLabel } }) => {
+          dispatchEvent("options", { showLabel: !showLabel });
+          return {
+            options: { showLabel: !showLabel },
+          };
+        });
+      },
+    };
+  }
+
+  createHTMLElement() {
+    [this.label, this.checkbox] = makeCheckboxRow("Show label", false);
+    return makeWrapper([this.label]);
+  }
+
+  renderSelf({ options: { showLabel } }: Readonly<State>) {
+    // @ts-ignore
+    this.checkbox.checked = showLabel;
     return this.element;
   }
 }
