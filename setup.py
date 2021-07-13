@@ -22,7 +22,7 @@ class BdistWheelCustom(bdist_wheel):
         ]
 
 
-VERSION = "0.12.0"  # pre-bumped for next release in #1115
+VERSION = "0.11.2"  # pre-bumped for next release in #1115
 
 
 def get_version():
