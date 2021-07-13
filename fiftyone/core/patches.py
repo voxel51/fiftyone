@@ -474,12 +474,18 @@ def make_patches_dataset(sample_collection, field, keep_label_lists=False):
     dataset.add_sample_field(
         "sample_id", fof.ObjectIdField, db_field="_sample_id"
     )
+    dataset.create_index("sample_id", unique=False)
 
     if sample_collection._is_frames:
         dataset.add_sample_field(
             "frame_id", fof.ObjectIdField, db_field="_frame_id"
         )
         dataset.add_sample_field("frame_number", fof.FrameNumberField)
+
+        dataset.create_index("frame_id", unique=False)
+        dataset._sample_collection.create_index(
+            [("_sample_id", 1), ("frame_number", 1)], unique=False
+        )
 
     dataset.add_sample_field(
         field, fof.EmbeddedDocumentField, embedded_doc_type=field_type
@@ -584,11 +590,18 @@ def make_evaluation_dataset(sample_collection, eval_key):
     dataset.add_sample_field(
         "sample_id", fof.ObjectIdField, db_field="_sample_id"
     )
+    dataset.create_index("sample_id", unique=False)
+
     if sample_collection._is_frames:
         dataset.add_sample_field(
             "frame_id", fof.ObjectIdField, db_field="_frame_id"
         )
         dataset.add_sample_field("frame_number", fof.FrameNumberField)
+
+        dataset.create_index("frame_id", unique=False)
+        dataset._sample_collection.create_index(
+            [("_sample_id", 1), ("frame_number", 1)], unique=False
+        )
 
     dataset.add_sample_field("type", fof.StringField)
     dataset.add_sample_field("iou", fof.FloatField)

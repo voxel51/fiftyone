@@ -3762,8 +3762,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             a list of field names
         """
+        # @todo must either properly support or omit compound indexes
         index_info = self._sample_collection.index_information()
         index_fields = [v["key"][0][0] for v in index_info.values()]
+
+        fields_map = self._get_db_fields_map(reverse=True)
+        index_fields = [fields_map.get(f, f) for f in index_fields]
 
         if include_private:
             return index_fields
@@ -3787,28 +3791,34 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             sphere2d (False): whether the field is a GeoJSON field that
                 requires a sphere2d index
         """
-        root = field_name.split(".", 1)[0]
+        # @todo support creating compound indexes?
+        # @todo support indexing frame fields?
+        if self._is_frame_field(field_name):
+            raise ValueError("Cannot index frame field '%s'" % field_name)
 
+        root = field_name.split(".", 1)[0]
         if root not in self.get_field_schema(include_private=True):
             raise ValueError("Dataset has no field '%s'" % root)
+
+        _field_name = self._get_db_field(field_name)
 
         index_info = self._sample_collection.index_information()
         index_map = {
             v["key"][0][0]: v.get("unique", False) for v in index_info.values()
         }
-        if field_name in index_map:
-            _unique = index_map[field_name]
+        if _field_name in index_map:
+            _unique = index_map[_field_name]
             if _unique or (unique == _unique):
                 # Satisfactory index already exists
                 return
 
             # Must drop existing index
-            self.drop_index(field_name)
+            self.drop_index(_field_name)
 
         if sphere2d:
-            index_spec = [(field_name, "2dsphere")]
+            index_spec = [(_field_name, "2dsphere")]
         else:
-            index_spec = field_name
+            index_spec = [(_field_name, 1)]
 
         self._sample_collection.create_index(index_spec, unique=unique)
 
@@ -3821,15 +3831,16 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         index_info = self._sample_collection.index_information()
         index_map = {v["key"][0][0]: k for k, v in index_info.items()}
 
-        if field_name not in index_map:
-            if ("." not in field_name) and (
-                field_name not in self.get_field_schema()
-            ):
+        _field_name = self._get_db_field(field_name)
+
+        if _field_name not in index_map:
+            root = field_name.split(".", 1)[0]
+            if root not in self.get_field_schema(include_private=True):
                 raise ValueError("Dataset has no field '%s'" % field_name)
 
             raise ValueError("Dataset field '%s' is not indexed" % field_name)
 
-        self._sample_collection.drop_index(index_map[field_name])
+        self._sample_collection.drop_index(index_map[_field_name])
 
     @classmethod
     def from_dict(cls, d, name=None, rel_dir=None, frame_labels_dir=None):

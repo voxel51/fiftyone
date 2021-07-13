@@ -6107,7 +6107,13 @@ class SampleCollection(object):
 
         return any(issubclass(label_type, t) for t in label_type_or_types)
 
-    def _get_db_fields_map(self, include_private=False, frames=False):
+    def _get_db_field(self, field_name):
+        fields_map = self._get_db_fields_map()
+        return fields_map.get(field_name, field_name)
+
+    def _get_db_fields_map(
+        self, include_private=False, frames=False, reverse=False
+    ):
         if frames:
             schema = self.get_frame_field_schema(
                 include_private=include_private
@@ -6121,7 +6127,10 @@ class SampleCollection(object):
         fields_map = {}
         for field_name, field in schema.items():
             if field.db_field != field_name:
-                fields_map[field_name] = field.db_field
+                if reverse:
+                    fields_map[field.db_field] = field_name
+                else:
+                    fields_map[field_name] = field.db_field
 
         return fields_map
 
