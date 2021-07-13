@@ -560,7 +560,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             )
             return
 
-        view = get_extended_view(view, state.filters, count_label_tags=True)
+        view = get_extended_view(view, state.filters, count_labels_tags=True)
         view = view.skip((page - 1) * page_length)
 
         results, more = await _get_sample_data(
@@ -925,7 +925,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         else:
             view = state.dataset
 
-        view = get_extended_view(view, state.filters, count_label_tags=True)
+        view = get_extended_view(view, state.filters, count_labels_tags=True)
 
         col = cls.sample_collection()
 

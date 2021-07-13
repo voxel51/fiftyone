@@ -32,38 +32,38 @@ def get_view_field(fields_map, path):
     return F(path)
 
 
-def get_extended_view(view, filters, count_label_tags=False):
+def get_extended_view(view, filters, count_labels_tags=False):
     """Create an extended view with the provided filters.
-
     Args:
         view: a :class:`fiftyone.core.collections.SampleCollection`
         filters: a `dict` of App defined filters
-        count_label_tags (False): whether to set the hideen `_label_tags` field
+        count_labels_tags (False): whether to set the hideen `_label_tags` field
             with counts of tags with respect to all label fields
     """
-    label_tags = None
     cleanup_fields = set()
     filtered_labels = set()
-    if filters is None or not filters:
-        return view
 
-    if "tags" in filters:
-        tags = filters.get("tags")
-        if "label" in tags:
-            label_tags = tags["label"]
+    label_tags = None
+    if filters is not None and len(filters):
+        if "tags" in filters:
+            tags = filters.get("tags")
+            if "label" in tags:
+                label_tags = tags["label"]
 
-        if label_tags:
-            view = view.select_labels(tags=label_tags)
+            if not count_labels_tags and label_tags:
+                view = view.select_labels(tags=label_tags)
 
-        if "sample" in tags:
-            view = view.match_tags(tags=tags["sample"])
+            if "sample" in tags:
+                view = view.match_tags(tags=tags["sample"])
 
-    stages = _make_filter_stages(view, filters, hide_result=count_label_tags)
+        stages, cleanup_fields, filtered_labels = _make_filter_stages(
+            view, filters, label_tags=label_tags, hide_result=count_labels_tags
+        )
 
-    for stage in stages:
-        view = view.add_stage(stage)
+        for stage in stages:
+            view = view.add_stage(stage)
 
-    if count_label_tags:
+    if count_labels_tags:
         view = _add_labels_tags_counts(view, filtered_labels, label_tags)
         if cleanup_fields:
             view = view.mongo([{"$unset": field} for field in cleanup_fields])
@@ -106,15 +106,14 @@ def _make_filter_stages(view, filters, label_tags=None, hide_result=False):
     else:
         frame_field_schema = None
 
-    cleanup = set()
-    filtered_labels = set()
-    stages = []
-    fields_map = view._get_db_fields_map()
-
     tag_expr = (F("tags") != None).if_else(
         F("tags").contains(label_tags), False
     )
 
+    stages = []
+    cleanup = set()
+    filtered_labels = set()
+    fields_map = view._get_db_fields_map()
     for path, args in filters.items():
         if path == "tags":
             continue
@@ -144,7 +143,6 @@ def _make_filter_stages(view, filters, label_tags=None, hide_result=False):
                 )
                 filtered_labels.add(path)
                 cleanup.add(new_field)
-
         else:
             view_field = get_view_field(fields_map, path)
             expr = _make_scalar_expression(view_field, args)
@@ -187,7 +185,7 @@ def _make_filter_stages(view, filters, label_tags=None, hide_result=False):
 
         stages.append(fosg.Match(F.any(match_exprs)))
 
-    return stages
+    return stages, cleanup, filtered_labels
 
 
 def _make_scalar_expression(f, args):
