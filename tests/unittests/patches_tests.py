@@ -73,6 +73,14 @@ class PatchesTests(unittest.TestCase):
             },
         )
 
+        self.assertSetEqual(
+            set(view.select_fields().get_field_schema().keys()),
+            {"id", "filepath", "tags", "metadata", "sample_id"},
+        )
+
+        with self.assertRaises(ValueError):
+            view.exclude_fields("sample_id")  # can't exclude default field
+
         self.assertEqual(dataset.count("ground_truth.detections"), 6)
         self.assertEqual(view.count(), 6)
         self.assertEqual(len(view), 6)
@@ -271,14 +279,22 @@ class PatchesTests(unittest.TestCase):
                 "filepath",
                 "metadata",
                 "tags",
+                "sample_id",
                 "ground_truth",
                 "predictions",
                 "type",
                 "iou",
                 "crowd",
-                "sample_id",
             },
         )
+
+        self.assertSetEqual(
+            set(view.select_fields().get_field_schema().keys()),
+            {"id", "filepath", "metadata", "tags", "sample_id"},
+        )
+
+        with self.assertRaises(ValueError):
+            view.exclude_fields("sample_id")  # can't exclude default field
 
         self.assertEqual(dataset.count("ground_truth.detections"), 3)
         self.assertEqual(dataset.count("predictions.detections"), 4)

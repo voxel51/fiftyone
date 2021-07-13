@@ -357,17 +357,15 @@ class SampleCollection(object):
         """
         raise NotImplementedError("Subclass must implement iter_samples()")
 
-    @classmethod
     def _get_default_sample_fields(
-        cls, include_private=False, use_db_fields=False
+        self, include_private=False, use_db_fields=False
     ):
         return fosa.get_default_sample_fields(
             include_private=include_private, use_db_fields=use_db_fields
         )
 
-    @classmethod
     def _get_default_frame_fields(
-        cls, include_private=False, use_db_fields=False
+        self, include_private=False, use_db_fields=False
     ):
         return fofr.get_default_frame_fields(
             include_private=include_private, use_db_fields=use_db_fields
@@ -1157,7 +1155,7 @@ class SampleCollection(object):
 
         self._dataset._bulk_write(ops, frames=frames)
 
-    def _set_labels_by_id(self, field_name, ids, docs):
+    def _set_labels(self, field_name, sample_ids, label_docs):
         label_type = self._get_label_field_type(field_name)
         field_name, is_frame_field = self._handle_frame_field(field_name)
 
@@ -1167,7 +1165,7 @@ class SampleCollection(object):
             elem_id = root + "._id"
             set_path = root + ".$"
 
-            for _id, _docs in zip(ids, docs):
+            for _id, _docs in zip(sample_ids, label_docs):
                 if not _docs:
                     continue
 
@@ -1184,7 +1182,7 @@ class SampleCollection(object):
         else:
             elem_id = field_name + "._id"
 
-            for _id, doc in zip(ids, docs):
+            for _id, doc in zip(sample_ids, label_docs):
                 ops.append(
                     UpdateOne(
                         {"_id": ObjectId(_id), elem_id: doc["_id"]},
@@ -1193,6 +1191,9 @@ class SampleCollection(object):
                 )
 
         self._dataset._bulk_write(ops, frames=is_frame_field)
+
+    def _delete_labels(self, ids, fields=None):
+        self._dataset.delete_labels(ids=ids, fields=fields)
 
     def compute_metadata(
         self, overwrite=False, num_workers=None, skip_failures=True
@@ -1863,7 +1864,8 @@ class SampleCollection(object):
         )
 
     def delete_brain_run(self, brain_key):
-        """Deletes the brain method run with the given key from this collection.
+        """Deletes the brain method run with the given key from this
+        collection.
 
         Args:
             brain_key: a brain key
@@ -1887,14 +1889,20 @@ class SampleCollection(object):
     def _get_brain_runs_with_type(self, run_type, **kwargs):
         brain_keys = []
         for brain_key in self.list_brain_runs():
-            brain_info = self.get_brain_info(brain_key)
+            try:
+                brain_info = self.get_brain_info(brain_key)
+            except:
+                logger.warning(
+                    "Failed to load info for brain method run '%s'", brain_key
+                )
+                continue
 
             run_cls = etau.get_class(brain_info.config.cls)
             if not issubclass(run_cls, run_type):
                 continue
 
             if any(
-                getattr(brain_info.config, key) != value
+                getattr(brain_info.config, key, None) != value
                 for key, value in kwargs.items()
             ):
                 continue
