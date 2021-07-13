@@ -276,7 +276,7 @@ fake predictions added to it to demonstrate the workflow:
 
     #
     # Create some test predictions by copying the ground truth labels into a
-    # new `predictions` field and then perturbing 10% of the labels at random
+    # new `predictions` field with 10% of the labels perturbed at random
     #
 
     classes = dataset.distinct("ground_truth.label")
@@ -287,12 +287,12 @@ fake predictions added to it to demonstrate the workflow:
 
         return val
 
-    dataset.clone_sample_field("ground_truth", "predictions")
+    predictions = [
+        fo.Classification(label=jitter(gt.label), confidence=random.random())
+        for gt in dataset.values("ground_truth")
+    ]
 
-    gt_labels = dataset.values("ground_truth.label")
-    pred_labels = [jitter(label) for label in gt_labels]
-
-    dataset.set_values("predictions.label", pred_labels)
+    dataset.set_values("predictions", predictions)
 
     print(dataset)
 
@@ -654,6 +654,9 @@ results of an evaluation on the
     # Convert to evaluation patches
     eval_patches = dataset.to_evaluation_patches("eval")
     print(eval_patches)
+
+    print(eval_patches.count_values("type"))
+    # {'fn': 246, 'fp': 4131, 'tp': 986}
 
     # View patches in the App
     session.view = eval_patches
@@ -1435,27 +1438,38 @@ Dataset Zoo:
 
     #
     # Create some test predictions by copying the ground truth objects into a
-    # new `predictions` field of the frames and then perturbing 10% of the
-    # labels at random
+    # new `predictions` field of the frames with 10% of the labels perturbed at
+    # random
     #
 
     classes = dataset.distinct("frames.ground_truth.detections.label")
 
     def jitter(val):
-        if isinstance(val, list):
-            return [jitter(v) for v in val]
-
         if random.random() < 0.10:
             return random.choice(classes)
 
         return val
 
-    dataset.clone_frame_field("ground_truth", "predictions")
+    predictions = []
+    for sample_gts in dataset.values("frames.ground_truth"):
+        sample_predictions = []
+        for frame_gts in sample_gts:
+            sample_predictions.append(
+                fo.Detections(
+                    detections=[
+                        fo.Detection(
+                            label=jitter(gt.label),
+                            bounding_box=gt.bounding_box,
+                            confidence=random.random(),
+                        )
+                        for gt in frame_gts.detections
+                    ]
+                )
+            )
 
-    gt_labels = dataset.values("frames.ground_truth.detections.label")
-    pred_labels = jitter(gt_labels)
+        predictions.append(sample_predictions)
 
-    dataset.set_values("frames.predictions.detections.label", pred_labels)
+    dataset.set_values("frames.predictions", predictions)
 
     print(dataset)
 
@@ -1464,7 +1478,7 @@ Dataset Zoo:
     results = dataset.evaluate_detections(
         "frames.predictions",
         gt_field="frames.ground_truth",
-        eval_key="eval_frames",
+        eval_key="eval",
     )
 
     # Print a classification report
@@ -1481,3 +1495,42 @@ Dataset Zoo:
        micro avg       0.94      0.94      0.94     11345
        macro avg       0.88      0.94      0.91     11345
     weighted avg       0.94      0.94      0.94     11345
+
+You can also view frame-level evaluation results as
+:ref:`evaluation patches <evaluation-patches>` by first converting
+:ref:`to frames <frame-views>` and then :ref:`to patches <eval-patches-views>`!
+
+.. code-block:: python
+    :linenos:
+
+    # Convert to frame evaluation patches
+    frame_eval_patches = dataset.to_frames().to_evaluation_patches("eval")
+    print(frame_eval_patches)
+
+    print(frame_eval_patches.count_values("type"))
+    # {'tp': 10578, 'fn': 767, 'fp': 767}
+
+    session = fo.launch_app(view=frame_eval_patches)
+
+.. code-block:: text
+
+    Dataset:     video-eval-demo
+    Media type:  image
+    Num patches: 12112
+    Tags:        []
+    Patch fields:
+        id:           fiftyone.core.fields.ObjectIdField
+        filepath:     fiftyone.core.fields.StringField
+        tags:         fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
+        metadata:     fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.Metadata)
+        predictions:  fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Detections)
+        ground_truth: fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Detections)
+        sample_id:    fiftyone.core.fields.ObjectIdField
+        frame_id:     fiftyone.core.fields.ObjectIdField
+        frame_number: fiftyone.core.fields.FrameNumberField
+        type:         fiftyone.core.fields.StringField
+        iou:          fiftyone.core.fields.FloatField
+        crowd:        fiftyone.core.fields.BooleanField
+    View stages:
+        1. ToFrames(config=None)
+        2. ToEvaluationPatches(eval_key='eval')
