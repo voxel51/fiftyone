@@ -569,7 +569,7 @@ export function withVideoLookerEvents(): () => Events<VideoState> {
             return {
               frameNumber: Math.min(
                 Math.max(
-                  0,
+                  1,
                   Math.round(((event.clientX + 6 - left) / width) * frameCount)
                 ),
                 frameCount
@@ -590,7 +590,7 @@ export function withVideoLookerEvents(): () => Events<VideoState> {
               seeking: false,
               frameNumber: Math.min(
                 Math.max(
-                  0,
+                  1,
                   Math.round(((event.clientX + 6 - left) / width) * frameCount)
                 ),
                 frameCount

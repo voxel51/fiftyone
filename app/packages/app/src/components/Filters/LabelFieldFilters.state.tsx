@@ -101,23 +101,25 @@ export const sampleModalFilter = selector({
     const labels = get(utils.activeFields(true));
     const hiddenLabels = get(atoms.hiddenLabels);
     const fields = get(utils.activeFields(false));
-    return (sample, prefix = null, allFields = false) => {
+    return (sample, prefix = null, allFields = false, withPrefix = true) => {
       return Object.entries(sample).reduce((acc, [key, value]) => {
         if (value && hiddenLabels[value.id ?? value._id]) {
           return acc;
         }
+        let addKey = key;
         if (prefix) {
           key = `${prefix}${key}`;
+          withPrefix && (addKey = key);
         }
         if (key === "tags") {
-          acc[key] = value;
+          acc[addKey] = value;
         } else if (
           value &&
           VALID_LIST_TYPES.includes(value._cls) &&
           (labels.includes(key) || allFields)
         ) {
           if (allFields || fields.includes(key)) {
-            acc[key] =
+            acc[addKey] =
               filters[key] && value !== null
                 ? {
                     ...value,
@@ -131,18 +133,15 @@ export const sampleModalFilter = selector({
           }
         } else if (
           value !== null &&
-          filters[key] &&
-          filters[key](value) &&
+          filters[addKey] &&
+          filters[addKey](value) &&
           (labels.includes(key) || allFields)
         ) {
-          acc[key] = value;
+          acc[addKey] = value;
         } else if (RESERVED_FIELDS.includes(key)) {
-          acc[key] = value;
-        } else if (
-          ["string", "number", "null"].includes(typeof value) &&
-          (labels.includes(key) || allFields)
-        ) {
-          acc[key] = value;
+          acc[addKey] = value;
+        } else if (["string", "number", "null"].includes(typeof value)) {
+          acc[addKey] = value;
         }
         return acc;
       }, {});

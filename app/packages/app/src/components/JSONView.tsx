@@ -79,7 +79,7 @@ const JSONView = ({ lookerRef, enableFilter, filterJSON }: Props) => {
   if (filterJSON && sample) {
     sample = filter(sample);
     if (isVideo) {
-      sample.frames[0] = filter(sample.frames[0], "frames.");
+      sample.frames[0] = filter(sample.frames[0], "frames.", false, false);
     }
   }
   const str = JSON.stringify(sample, null, 4);
