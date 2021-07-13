@@ -1891,6 +1891,9 @@ class SampleCollection(object):
             try:
                 brain_info = self.get_brain_info(brain_key)
             except:
+                logger.warning(
+                    "Failed to load info for brain method run '%s'", brain_key
+                )
                 continue
 
             run_cls = etau.get_class(brain_info.config.cls)
@@ -1898,7 +1901,7 @@ class SampleCollection(object):
                 continue
 
             if any(
-                getattr(brain_info.config, key) != value
+                getattr(brain_info.config, key, None) != value
                 for key, value in kwargs.items()
             ):
                 continue
