@@ -24,6 +24,7 @@ import { useTheme } from "../../utils/hooks";
 import { Value } from "./types";
 import { modalFilterStages, subCountValueAtom } from "./atoms";
 import { filterStages } from "../../recoil/selectors";
+import { genSort } from "../../utils/generic";
 
 const CategoricalFilterContainer = styled.div`
   background: ${({ theme }) => theme.backgroundDark};
@@ -77,26 +78,6 @@ const ExcludeOption = ({
       ]}
     />
   );
-};
-
-const genSort = (a, b, asc) => {
-  if (a === b) {
-    return 0;
-  }
-
-  if (a === null) {
-    return 1;
-  }
-
-  if (b === null) {
-    return -1;
-  }
-
-  if (a > b) {
-    return asc ? 1 : -1;
-  }
-
-  return asc ? -1 : 1;
 };
 
 const nullSort = ({

@@ -239,6 +239,7 @@ const SampleTagsCell = ({ modal }: TagsCellProps) => {
   const { singular: element } = useRecoilValue(selectors.elementNames);
   const colorByLabel = useRecoilValue(atoms.colorByLabel(modal));
   const theme = useTheme();
+
   return (
     <Cell
       label={`${element} tags`}

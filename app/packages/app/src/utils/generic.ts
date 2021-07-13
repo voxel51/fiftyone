@@ -56,3 +56,23 @@ export const prettify = (
   }
   return null;
 };
+
+export const genSort = (a, b, asc) => {
+  if (a === b) {
+    return 0;
+  }
+
+  if (a === null) {
+    return 1;
+  }
+
+  if (b === null) {
+    return -1;
+  }
+
+  if (a > b) {
+    return asc ? 1 : -1;
+  }
+
+  return asc ? -1 : 1;
+};

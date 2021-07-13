@@ -21,6 +21,8 @@ import NumericFieldFilter from "./Filters/NumericFieldFilter";
 import StringFieldFilter from "./Filters/StringFieldFilter";
 import BooleanFieldFilter from "./Filters/BooleanFieldFilter";
 import { useTheme } from "../utils/hooks";
+import { genSort } from "../utils/generic";
+import { sortFilterResults } from "../recoil/atoms";
 
 const Body = styled.div`
   vertical-align: middle;
@@ -202,7 +204,7 @@ export type Entry = {
   hideCheckbox?: boolean;
   title: string;
   count?: number;
-  value?: string | number;
+  value?: string | number | any;
   subCountAtom: RecoilValueReadOnly<{ [key: string]: number }>;
   canFilter?: boolean;
   type: string;
@@ -331,6 +333,32 @@ const Entry = React.memo(({ entry, onCheck, modal }: EntryProps) => {
   );
 });
 
+const withSort = (modal: boolean) => {
+  const { count, asc } = useRecoilValue(sortFilterResults(modal));
+
+  return (entries: Entry[]): Entry[] => {
+    return entries.sort((aa, bb) => {
+      let a = [aa.name, aa.count];
+      let b = [bb.name, bb.count];
+
+      if (count) {
+        a.reverse();
+        b.reverse();
+      }
+
+      let result = 0;
+      for (let i = 0; i < a.length; i++) {
+        result = genSort(a[i], b[i], asc);
+        if (result !== 0) {
+          return result;
+        }
+      }
+
+      return result;
+    });
+  };
+};
+
 type CheckboxGroupProps = {
   entries: Entry[];
   onCheck: (entry: Entry) => void;
@@ -339,9 +367,10 @@ type CheckboxGroupProps = {
 
 const CheckboxGroup = React.memo(
   ({ entries, onCheck, modal }: CheckboxGroupProps) => {
+    const sorter = withSort(modal);
     return (
       <Body>
-        {entries.map((entry) => (
+        {sorter(entries).map((entry) => (
           <Entry
             key={entry.name}
             entry={entry}
