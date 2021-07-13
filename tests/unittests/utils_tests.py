@@ -215,6 +215,26 @@ class MigrationTests(unittest.TestCase):
         )
         self.assertEqual(runner.revisions, ["0.3", "0.2", "0.1"])
 
+    def test_future(self):
+        pkg_ver = foc.VERSION
+        future_ver = str(int(pkg_ver[0]) + 1) + pkg_ver[1:]
+
+        # Uprading to a future version is not allowed
+
+        with self.assertRaises(EnvironmentError):
+            MigrationRunner(destination=future_ver)
+
+        with self.assertRaises(EnvironmentError):
+            MigrationRunner(head="0.1", destination=future_ver)
+
+        # Downgrading from a future version is not allowed
+
+        with self.assertRaises(EnvironmentError):
+            MigrationRunner(head=future_ver)
+
+        with self.assertRaises(EnvironmentError):
+            MigrationRunner(head=future_ver, destination="0.1")
+
 
 class UIDTests(unittest.TestCase):
     def test_log_import(self):

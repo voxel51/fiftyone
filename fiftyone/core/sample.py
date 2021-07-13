@@ -522,11 +522,8 @@ class SampleView(_SampleMixin, DocumentView):
 
     .. note::
 
-        :meth:`SampleView.save` will not delete any excluded fields or filtered
-        array elements from the source sample.
-
-    Sample views should never be created manually; they are generated when
-    accessing the samples in a :class:`fiftyone.core.view.DatasetView`.
+        Sample views should never be created manually; they are generated when
+        accessing the samples in a :class:`fiftyone.core.view.DatasetView`.
 
     Args:
         doc: a :class:`fiftyone.core.odm.mixins.DatasetSampleDocument`
@@ -600,7 +597,13 @@ class SampleView(_SampleMixin, DocumentView):
         return d
 
     def save(self):
-        """Saves the sample view to the database."""
+        """Saves the sample view to the database.
+
+        .. warning::
+
+            This will permanently delete any omitted or filtered contents from
+            the source dataset.
+        """
         if self.media_type == fomm.VIDEO:
             self.frames.save()
 
