@@ -551,16 +551,6 @@ export function withVideoLookerEvents(): () => Events<VideoState> {
           };
         });
       },
-      mouseout: ({ update }) => {
-        update(({ config: { thumbnail } }) => {
-          if (thumbnail) {
-            return {
-              playing: false,
-            };
-          }
-          return {};
-        });
-      },
       mousemove: ({ event, update }) => {
         update(({ seeking, duration, config: { frameRate } }) => {
           if (duration && seeking) {
