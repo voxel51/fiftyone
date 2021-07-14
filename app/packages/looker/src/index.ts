@@ -319,6 +319,7 @@ export abstract class Looker<
       zoomToContent: false,
       setZoom: true,
       hasDefaultZoom: true,
+      json: false,
     };
   }
 

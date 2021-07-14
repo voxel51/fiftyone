@@ -39,7 +39,6 @@ export class LookerElement<State extends BaseState> extends BaseElement<
           disableControls: false,
           showControls: false,
           showOptions: false,
-          showHelp: false,
           panning: false,
         });
       },

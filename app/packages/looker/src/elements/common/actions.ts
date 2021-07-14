@@ -106,7 +106,6 @@ export const controls: Control = {
 
       return {
         showControls: !showControls,
-        showHelp: false,
         disableControls: showControls,
         showOptions: false,
       };
@@ -180,14 +179,22 @@ export const help: Control = {
   shortcut: "?",
   detail: "Display this help window",
   action: (update) => {
-    update(({ showHelp, config: { thumbnail } }) =>
-      thumbnail ? {} : { showHelp: !showHelp }
-    );
+    update(({ showHelp, config: { thumbnail } }) => {
+      if (thumbnail) {
+        return {};
+      }
+
+      if (!showHelp) {
+        return { showHelp: true, json: false };
+      }
+
+      return { showHelp: false };
+    });
   },
 };
 
 export const zoomIn: Control = {
-  title: "Zoom (scroll) in",
+  title: "Zoom in",
   eventKeys: ["+", "="],
   shortcut: "+",
   detail: "Zoom in on the sample",
@@ -222,7 +229,7 @@ export const zoomIn: Control = {
 };
 
 export const zoomOut: Control = {
-  title: "Zoom (scroll)  out",
+  title: "Zoom  out",
   eventKeys: ["-", "_"],
   shortcut: "-",
   detail: "Zoom out on the sample",
@@ -343,9 +350,19 @@ export const json: Control = {
   shortcut: "j",
   detail: "View JSON",
   action: (update) => {
-    update(({ json, disableOverlays, config: { thumbnail } }) =>
-      thumbnail ? {} : { json: disableOverlays ? false : !json }
-    );
+    update(({ json, disableOverlays, config: { thumbnail } }) => {
+      if (thumbnail) {
+        return {};
+      }
+
+      const newJSON = disableOverlays ? false : !json;
+
+      if (newJSON) {
+        return { json: newJSON, showHelp: false };
+      }
+
+      return { json: false };
+    });
   },
 };
 
@@ -363,6 +380,7 @@ export const COMMON = {
   controlsToggle,
   settings,
   fullscreen,
+  json,
 };
 
 export const COMMON_SHORTCUTS = readActions(COMMON);
@@ -503,32 +521,7 @@ export class HelpPanelElement<State extends BaseState> extends BaseElement<
   }
 
   createHTMLElement() {
-    const element = document.createElement("div");
-    const header = document.createElement("div");
-    header.innerText = "Help";
-    header.classList.add(lookerPanelHeader);
-    element.appendChild(header);
-    element.classList.add(lookerPanel);
-
-    const container = document.createElement("div");
-    container.classList.add(lookerPanelContainer);
-
-    const vContainer = document.createElement("div");
-    vContainer.classList.add(lookerPanelVerticalContainer);
-
-    vContainer.appendChild(element);
-
-    container.appendChild(vContainer);
-
-    const items = document.createElement("div");
-    items.classList.add(lookerHelpPanelItems);
-    this.items = items;
-
-    Object.values(COMMON).forEach(addItem(items));
-
-    element.appendChild(items);
-
-    return container;
+    return this.createHelpPanel(COMMON);
   }
 
   isShown({ config: { thumbnail } }: Readonly<State>) {
@@ -552,24 +545,52 @@ export class HelpPanelElement<State extends BaseState> extends BaseElement<
     this.showHelp = showHelp;
     return this.element;
   }
+
+  protected createHelpPanel(controls: ControlMap<State>): HTMLElement {
+    const element = document.createElement("div");
+    const header = document.createElement("div");
+    header.innerText = "Help";
+    header.classList.add(lookerPanelHeader);
+    element.classList.add(lookerPanel);
+
+    const container = document.createElement("div");
+    container.classList.add(lookerPanelContainer);
+
+    const vContainer = document.createElement("div");
+    vContainer.classList.add(lookerPanelVerticalContainer);
+
+    vContainer.appendChild(element);
+
+    container.appendChild(vContainer);
+    const c = document.createElement("div");
+
+    const items = document.createElement("div");
+    items.classList.add(lookerHelpPanelItems);
+    this.items = items;
+
+    Object.values(controls)
+      .sort((a, b) => (a.shortcut > b.shortcut ? 1 : -1))
+      .forEach(addItem(items));
+
+    c.appendChild(header);
+    c.appendChild(items);
+    element.append(c);
+
+    return container;
+  }
 }
 
 export class VideoHelpPanelElement<
   State extends VideoState
 > extends HelpPanelElement<State> {
   createHTMLElement() {
-    const element = super.createHTMLElement();
-
-    Object.values(VIDEO).forEach(addItem(this.items as HTMLDivElement));
-
-    return element;
+    return this.createHelpPanel({ ...COMMON, ...VIDEO });
   }
 }
 
-const addItem = (items: HTMLDivElement) => (value: Control<VideoState>) => {
-  const item = document.createElement("div");
-  item.classList.add(lookerShortcutItem);
-
+const addItem = <State extends BaseState>(items: HTMLDivElement) => (
+  value: Control<State>
+) => {
   const shortcut = document.createElement("div");
   shortcut.classList.add(lookerShortcutValue);
   shortcut.innerHTML = value.shortcut;
@@ -582,9 +603,7 @@ const addItem = (items: HTMLDivElement) => (value: Control<VideoState>) => {
   detail.classList.add(lookerShortcutDetail);
   detail.innerText = value.detail;
 
-  item.appendChild(shortcut);
-  item.appendChild(title);
-  item.appendChild(detail);
-
-  items.appendChild(item);
+  items.appendChild(shortcut);
+  items.appendChild(title);
+  items.appendChild(detail);
 };
