@@ -129,6 +129,7 @@ export abstract class Looker<
       }
       const previousState = this.state;
       this.state = mergeUpdates(this.state, updates);
+
       this.pluckedOverlays = this.pluckOverlays(this.state);
       [this.currentOverlays, this.state.rotate] = processOverlays(
         this.state,
@@ -233,9 +234,7 @@ export abstract class Looker<
     delete this.lookerElement;
   }
 
-  updateOptions(options: Optional<State["options"]>) {
-    this.updater({ options });
-  }
+  abstract updateOptions(options: Optional<State["options"]>): void;
 
   updateSample(sample: Sample) {
     this.loadSample(sample);
@@ -491,6 +490,14 @@ export class FrameLooker extends Looker<FrameState> {
 
     return super.postProcess(element);
   }
+
+  updateOptions(options: Optional<FrameState["options"]>) {
+    const state: Optional<FrameState> = { options };
+    if (options.zoom !== undefined) {
+      state.setZoom = this.state.options.zoom !== options.zoom;
+    }
+    this.updater(state);
+  }
 }
 
 export class ImageLooker extends Looker<ImageState> {
@@ -578,6 +585,14 @@ export class ImageLooker extends Looker<ImageState> {
     }
 
     return super.postProcess(element);
+  }
+
+  updateOptions(options: Optional<ImageState["options"]>) {
+    const state: Optional<ImageState> = { options };
+    if (options.zoom !== undefined) {
+      state.setZoom = this.state.options.zoom !== options.zoom;
+    }
+    this.updater(state);
   }
 }
 
@@ -1026,6 +1041,10 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
       this.state.zoomToContent = false;
     }
     return super.postProcess(element);
+  }
+
+  updateOptions(options: Optional<VideoState["options"]>) {
+    this.updater({ options });
   }
 
   updateSample(sample: VideoSample) {

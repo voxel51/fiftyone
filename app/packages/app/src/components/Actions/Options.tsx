@@ -1,5 +1,5 @@
 import React from "react";
-import { useRecoilState } from "recoil";
+import { useRecoilState, useRecoilValue } from "recoil";
 import { Autorenew } from "@material-ui/icons";
 
 import Popout from "./Popout";
@@ -7,6 +7,7 @@ import { PopoutSectionTitle, TabOption } from "../utils";
 import * as atoms from "../../recoil/atoms";
 import { Button } from "../FieldsSidebar";
 import Checkbox from "../Common/Checkbox";
+import { isPatchesView } from "../../recoil/selectors";
 
 export const RefreshButton = ({ modal }) => {
   const [colorSeed, setColorSeed] = useRecoilState(
@@ -14,7 +15,6 @@ export const RefreshButton = ({ modal }) => {
   );
   return (
     <>
-      <PopoutSectionTitle></PopoutSectionTitle>
       <Button
         text={"Refresh colors"}
         onClick={() => setColorSeed(colorSeed + 1)}
@@ -45,12 +45,12 @@ const ColorBy = ({ modal }) => {
         options={[
           {
             text: "field",
-            title: "color by field",
+            title: "Color by field",
             onClick: () => colorByLabel && setColorByLabel(false),
           },
           {
             text: "value",
-            title: "color by value",
+            title: "Color by value",
             onClick: () => !colorByLabel && setColorByLabel(true),
           },
         ]}
@@ -63,7 +63,6 @@ const SortFilterResults = ({ modal }) => {
   const [{ count, asc }, setSortFilterResults] = useRecoilState(
     atoms.sortFilterResults(modal)
   );
-  console.log(count, asc);
 
   return (
     <>
@@ -73,12 +72,12 @@ const SortFilterResults = ({ modal }) => {
         options={[
           {
             text: "count",
-            title: "sort by count",
+            title: "Sort by count",
             onClick: () => !count && setSortFilterResults({ count: true, asc }),
           },
           {
             text: "value",
-            title: "sort by value",
+            title: "Sort by value",
             onClick: () => count && setSortFilterResults({ count: false, asc }),
           },
         ]}
@@ -87,6 +86,26 @@ const SortFilterResults = ({ modal }) => {
         name={"Reverse"}
         value={!asc}
         setValue={(value) => setSortFilterResults({ count, asc: !value })}
+      />
+    </>
+  );
+};
+
+const Patches = ({ modal }) => {
+  const isPatches = useRecoilValue(isPatchesView);
+  const [crop, setCrop] = useRecoilState(atoms.cropToContent(modal));
+
+  if (!isPatches) {
+    return null;
+  }
+
+  return (
+    <>
+      <PopoutSectionTitle>Patches</PopoutSectionTitle>
+      <Checkbox
+        name={"Crop to patch"}
+        value={crop}
+        setValue={(value) => setCrop(value)}
       />
     </>
   );
@@ -102,6 +121,7 @@ const Options = ({ modal, bounds }: OptionsProps) => {
       <ColorBy modal={modal} />
       <RefreshButton modal={modal} />
       <SortFilterResults modal={modal} />
+      <Patches modal={modal} />
     </Popout>
   );
 };

@@ -363,14 +363,20 @@ type CheckboxGroupProps = {
   entries: Entry[];
   onCheck: (entry: Entry) => void;
   modal: boolean;
+  sort?: boolean;
 };
 
 const CheckboxGroup = React.memo(
-  ({ entries, onCheck, modal }: CheckboxGroupProps) => {
+  ({ entries, onCheck, modal, sort = true }: CheckboxGroupProps) => {
     const sorter = withSort(modal);
+
+    if (sort) {
+      entries = sorter(entries);
+    }
+
     return (
       <Body>
-        {sorter(entries).map((entry) => (
+        {entries.map((entry) => (
           <Entry
             key={entry.name}
             entry={entry}

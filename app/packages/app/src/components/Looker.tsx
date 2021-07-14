@@ -135,7 +135,7 @@ const ContentItem = ({
             case "number":
               return Number.isInteger(value) ? value : value.toFixed(3);
             case "string":
-              return value;
+              return value.length ? value : '""';
             case "boolean":
               return value ? "True" : "False";
             default:
@@ -334,7 +334,9 @@ export const defaultLookerOptions = selectorFamily({
     const showTooltip = get(selectors.appConfig).show_tooltip;
     const useFrameNumber = get(selectors.appConfig).use_frame_number;
     const video = get(selectors.isVideoDataset) ? { loop: !modal } : {};
-    const zoom = get(selectors.isPatchesView) ? { zoom: true } : {};
+    const zoom = get(selectors.isPatchesView)
+      ? { zoom: get(atoms.cropToContent(modal)) }
+      : {};
     const colorByLabel = get(atoms.colorByLabel(modal));
 
     return {

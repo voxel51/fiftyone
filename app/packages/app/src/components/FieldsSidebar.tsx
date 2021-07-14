@@ -79,6 +79,7 @@ type CellProps = {
   icon: any;
   children?: any;
   pills?: Array<JSX.Element>;
+  sort?: boolean;
 };
 
 const Cell = React.memo(
@@ -92,6 +93,7 @@ const Cell = React.memo(
     modal,
     children,
     pills = [],
+    sort,
   }: CellProps) => {
     const [expanded, setExpanded] = useState(true);
     const numSelected = entries.filter((e) => e.selected).length;
@@ -127,7 +129,12 @@ const Cell = React.memo(
         onExpand={setExpanded}
       >
         {entries.length ? (
-          <CheckboxGrid entries={entries} onCheck={onSelect} modal={modal} />
+          <CheckboxGrid
+            entries={entries}
+            onCheck={onSelect}
+            modal={modal}
+            sort={sort}
+          />
         ) : (
           <span>No {title.toLocaleLowerCase()}</span>
         )}
@@ -567,6 +574,7 @@ const ScalarsCell = ({ modal }: ScalarsCellProps) => {
               filtering.filteredScalars(modal)
             )
       }
+      sort={!modal}
       entries={scalars
         .filter((name) => !(["filepath", "id"].includes(name) && modal))
         .map((name) => {

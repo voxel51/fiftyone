@@ -192,15 +192,16 @@ export default class DetectionOverlay<
     let text =
       this.label.label && state.options.showLabel ? `${this.label.label}` : "";
 
+    if (state.options.showIndex && !isNaN(this.label.index)) {
+      text.length && (text += " ");
+      text += `[${Number(this.label.index).toLocaleString()}]`;
+    }
+
     if (state.options.showConfidence && !isNaN(this.label.confidence)) {
       text.length && (text += " ");
       text += `(${Number(this.label.confidence).toFixed(2)})`;
     }
 
-    if (state.options.showIndex && !isNaN(this.label.index)) {
-      text.length && (text += " ");
-      text += `[${Number(this.label.index).toLocaleString()}]`;
-    }
     return text;
   }
 

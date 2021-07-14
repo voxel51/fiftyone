@@ -73,7 +73,6 @@ const Input = React.memo(
             }
           }}
           onKeyPress={(e: React.KeyboardEvent<HTMLInputElement>) => {
-            console.log(e.key);
             e.key === "Enter" && onEnter && onEnter();
           }}
           onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {

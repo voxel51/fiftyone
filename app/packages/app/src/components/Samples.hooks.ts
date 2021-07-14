@@ -45,6 +45,7 @@ export default (): [State, (state: State) => void] => {
   const view = useRecoilValue(selectors.view);
   const refresh = useRecoilValue(selectors.refresh);
   const pageSizeValue = useRecoilValue(pageSize);
+  const cropToContent = useRecoilValue(atoms.cropToContent(false));
   const [state, setState] = useState({
     loadMore: false,
     isLoading: false,
@@ -57,10 +58,14 @@ export default (): [State, (state: State) => void] => {
       const rows = await snapshot.getPromise(atoms.gridRows);
       const ratio = await snapshot.getPromise(gridRowAspectRatio);
       const isPatchesView = await snapshot.getPromise(selectors.isPatchesView);
+      const cropToContent = await snapshot.getPromise(
+        atoms.cropToContent(false)
+      );
       results.forEach((sample) => {
-        sample.aspect_ratio = isPatchesView
-          ? zoomAspectRatio(sample.sample, sample.width / sample.height)
-          : sample.width / sample.height;
+        sample.aspect_ratio =
+          isPatchesView && cropToContent
+            ? zoomAspectRatio(sample.sample, sample.width / sample.height)
+            : sample.width / sample.height;
       });
       const [newState, newRows] = tile(results, more, state, rows, ratio);
 
@@ -116,6 +121,7 @@ export default (): [State, (state: State) => void] => {
     refresh,
     stringifyObj(filters),
     pageSizeValue,
+    cropToContent,
   ]);
 
   useLayoutEffect(() => {

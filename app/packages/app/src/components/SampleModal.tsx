@@ -1,4 +1,4 @@
-import React, { Suspense, useState, useRef, useCallback, useMemo } from "react";
+import React, { Suspense, useState, useRef, useMemo } from "react";
 import styled from "styled-components";
 import {
   useRecoilValue,
@@ -9,15 +9,12 @@ import {
 
 import Actions from "./Actions";
 import FieldsSidebar from "./FieldsSidebar";
-import JSONView from "./JSONView";
 import Looker from "./Looker";
 import { ModalFooter } from "./utils";
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
 import { useTheme } from "../utils/hooks";
 import { formatMetadata } from "../utils/labels";
-import { showModalJSON } from "../recoil/utils";
-import Loading from "./Loading";
 import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
 
 const modalSrc = selector<string | null>({
@@ -234,7 +231,6 @@ const SampleModal = ({ onClose, sampleId }: Props, ref) => {
   const sampleSrc = useRecoilValue(modalSrc);
   const [index, setIndex] = useRecoilState(modalIndex);
   const numSamples = useRecoilValue(selectors.currentSamplesSize);
-  const showJSON = useRecoilValue(showModalJSON);
   const [enableJSONFilter, setEnableJSONFilter] = useState(true);
   const lookerRef = useRef<VideoLooker & ImageLooker & FrameLooker>();
   const onSelectLabel = useOnSelectLabel();
@@ -258,25 +254,16 @@ const SampleModal = ({ onClose, sampleId }: Props, ref) => {
   return (
     <Container style={{ zIndex: 10001 }} ref={ref}>
       <div className={`looker-element`}>
-        <Suspense fallback={<Loading />}>
-          <Looker
-            key={`modal-${sampleSrc}`} // force re-render when this changes
-            sampleId={_id}
-            modal={true}
-            lookerRef={lookerRef}
-            onSelectLabel={onSelectLabel}
-            onNext={onNext}
-            onPrevious={onPrevious}
-            onClose={onClose}
-          />
-          {showJSON && (
-            <JSONView
-              filterJSON={enableJSONFilter}
-              enableFilter={setEnableJSONFilter}
-              lookerRef={lookerRef}
-            />
-          )}
-        </Suspense>
+        <Looker
+          key={`modal-${sampleSrc}`} // force re-render when this changes
+          sampleId={_id}
+          modal={true}
+          lookerRef={lookerRef}
+          onSelectLabel={onSelectLabel}
+          onNext={onNext}
+          onPrevious={onPrevious}
+          onClose={onClose}
+        />
       </div>
       {!fullscreen && (
         <div className={`sidebar`}>

@@ -19,7 +19,7 @@ import useMeasure from "react-use-measure";
 import { atom, selectorFamily, useRecoilState, useRecoilValue } from "recoil";
 import styled from "styled-components";
 
-import Coloring from "./Options";
+import OptionsActions from "./Options";
 import Patcher, { patchesFields, patching } from "./Patcher";
 import Selector from "./Selected";
 import Tagger from "./Tagger";
@@ -241,6 +241,7 @@ const Options = ({ modal }) => {
   const ref = useRef();
   useOutsideClick(ref, () => open && setOpen(false));
   const [mRef, bounds] = useMeasure();
+  const patches = useRecoilValue(selectors.isPatchesView);
 
   return (
     <ActionDiv ref={ref}>
@@ -248,25 +249,12 @@ const Options = ({ modal }) => {
         icon={<Settings />}
         open={open}
         onClick={() => setOpen(!open)}
-        highlight={open}
+        highlight={open || patches}
         ref={mRef}
         title={"Display options"}
       />
-      {open && <Coloring modal={modal} bounds={bounds} />}
+      {open && <OptionsActions modal={modal} bounds={bounds} />}
     </ActionDiv>
-  );
-};
-
-const ShowJSON = () => {
-  const [showJSON, setShowJSON] = useRecoilState(showModalJSON);
-  return (
-    <PillButton
-      open={false}
-      onClick={() => setShowJSON(!showJSON)}
-      highlight={showJSON}
-      text={"JSON"}
-      title={showJSON ? "Show JSON" : "Hide JSON"}
-    />
   );
 };
 
@@ -346,7 +334,6 @@ const ActionsRow = ({ modal, lookerRef }: ActionsRowProps) => {
       };
   return (
     <ActionsRowDiv style={style}>
-      {modal && <ShowJSON />}
       <Options modal={modal} />
       <Tag modal={modal} lookerRef={modal ? lookerRef : null} />
       {!modal && isRootView && !isVideo && <Patches />}

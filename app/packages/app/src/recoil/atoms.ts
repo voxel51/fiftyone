@@ -24,6 +24,11 @@ export const sortFilterResults = atomFamily<SortResults, boolean>({
   },
 });
 
+export const cropToContent = atomFamily<boolean, boolean>({
+  key: "cropToContent",
+  default: true,
+});
+
 export const fullscreen = atom<boolean>({
   key: "fullscreen",
   default: false,
