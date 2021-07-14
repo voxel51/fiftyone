@@ -4620,33 +4620,57 @@ def _clone_runs(dst_dataset, src_doc):
     dst_doc.save()
 
 
-def _ensure_index(dataset, field, unique=False):
-    coll = dataset._sample_collection
+def _ensure_index(sample_collection, db_field, unique=False):
+    # For some reason the ID index is not reported by `index_information()` as
+    # being unique like other manually created indexes, but it is
+    if db_field == "_id":
+        return False, False
 
-    index_info = coll.index_information()
+    coll = sample_collection._dataset._sample_collection
 
-    # field -> (name, unique)
-    index_map = {
-        v["key"][0][0]: (k, v.get("unique", False))
-        for k, v in index_info.items()
-    }
+    # db_field -> (name, unique)
+    index_map = _get_single_index_map(coll)
 
     new = False
     dropped = False
 
-    if field in index_map:
-        name, current_unique = index_map[field]
-        if current_unique or (current_unique == unique):
+    if db_field in index_map:
+        name, _unique = index_map[db_field]
+        if _unique or (_unique == unique):
             # Satisfactory index already exists
             return new, dropped
 
+        # Must upgrade to unique index
         coll.drop_index(name)
         dropped = True
 
-    coll.create_index(field, unique=True)
+    coll.create_index(db_field, unique=True)
     new = True
 
     return new, dropped
+
+
+def _cleanup_index(sample_collection, db_field, new_index, dropped_index):
+    coll = sample_collection._dataset._sample_collection
+
+    if new_index:
+        # db_field -> (name, unique)
+        index_map = _get_single_index_map(coll)
+
+        name = index_map[db_field][0]
+        coll.drop_index(name)
+
+    if dropped_index:
+        coll.create_index(db_field)
+
+
+def _get_single_index_map(coll):
+    # db_field -> (name, unique)
+    return {
+        v["key"][0][0]: (k, v.get("unique", False))
+        for k, v in coll.index_information().items()
+        if len(v["key"]) == 1
+    }
 
 
 def _merge_samples_python(
@@ -4781,22 +4805,17 @@ def _merge_samples_pipeline(
     #
 
     db_fields_map = src_collection._get_db_fields_map()
-
     key_field = db_fields_map.get(key_field, key_field)
 
     is_video = dst_dataset.media_type == fom.VIDEO
     src_dataset = src_collection._dataset
 
-    if key_field != "_id":
-        new_src_index, dropped_src_index = _ensure_index(
-            src_dataset, key_field, unique=True
-        )
-        new_dst_index, dropped_dst_index = _ensure_index(
-            dst_dataset, key_field, unique=True
-        )
-    else:
-        new_src_index, dropped_src_index = False, False
-        new_dst_index, dropped_dst_index = False, False
+    new_src_index, dropped_src_index = _ensure_index(
+        src_dataset, key_field, unique=True
+    )
+    new_dst_index, dropped_dst_index = _ensure_index(
+        dst_dataset, key_field, unique=True
+    )
 
     if is_video:
         frame_fields = None
@@ -4961,18 +4980,8 @@ def _merge_samples_pipeline(
     src_dataset._aggregate(pipeline=sample_pipeline)
 
     # Cleanup indexes
-
-    if new_src_index:
-        src_collection.drop_index(key_field)
-
-    if dropped_src_index:
-        src_collection.create_index(key_field)
-
-    if new_dst_index:
-        dst_dataset.drop_index(key_field)
-
-    if dropped_dst_index:
-        dst_dataset.create_index(key_field)
+    _cleanup_index(src_collection, key_field, new_src_index, dropped_src_index)
+    _cleanup_index(dst_dataset, key_field, new_dst_index, dropped_dst_index)
 
     #
     # Merge frames

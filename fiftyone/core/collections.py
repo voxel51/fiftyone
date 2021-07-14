@@ -5600,7 +5600,8 @@ class SampleCollection(object):
         return index_info
 
     def create_index(self, field_or_spec, unique=False, **kwargs):
-        """Creates an index on the given field or with the given specification.
+        """Creates an index on the given field or with the given specification,
+        if necessary.
 
         Indexes enable efficient sorting, merging, and other such operations.
 
@@ -5622,6 +5623,9 @@ class SampleCollection(object):
             unique (False): whether to add a uniqueness constraint to the index
             **kwargs: optional keyword arguments for
                 :meth:`pymongo:pymongo.collection.Collection.create_index`
+
+        Returns:
+            the name of the index
         """
         if etau.is_str(field_or_spec):
             input_spec = [(field_or_spec, 1)]
@@ -5633,20 +5637,25 @@ class SampleCollection(object):
         if len(input_spec) == 1:
             field = input_spec[0][0]
 
+            if field == "id":
+                # For some reason the ID index is not reported by
+                # `get_index_information()` as being unique like other manually
+                # created indexes, but it is, so nothing needs to be done here
+                return field
+
             index_info = self.get_index_information()
             if field in index_info:
                 _unique = index_info[field].get("unique", False)
                 if _unique or (unique == _unique):
                     # Satisfactory index already exists
-                    return
+                    return field
 
                 _field, is_frame_field = self._handle_frame_field(field)
                 if _field in self._get_default_indexes(frames=is_frame_field):
-                    # Don't allow editing default indexes
                     logger.warning("Cannot modify default index '%s'", field)
-                    return
+                    return field
 
-                # We need to drop existing index and replace with unique one
+                # We need to drop existing index and replace with a unique one
                 self.drop_index(field)
 
         is_frame_fields = []
@@ -5666,11 +5675,11 @@ class SampleCollection(object):
         is_frame_index = all(is_frame_fields)
 
         if is_frame_index:
-            collection = self._dataset._frame_collection
+            coll = self._dataset._frame_collection
         else:
-            collection = self._dataset._sample_collection
+            coll = self._dataset._sample_collection
 
-        collection.create_index(index_spec, unique=unique, **kwargs)
+        return coll.create_index(index_spec, unique=unique, **kwargs)
 
     def drop_index(self, field_or_name):
         """Drops the index for the given field or name.
@@ -5686,18 +5695,18 @@ class SampleCollection(object):
             if name in self._get_default_indexes(frames=True):
                 raise ValueError("Cannot drop default frame index '%s'" % name)
 
-            collection = self._dataset._frame_collection
+            coll = self._dataset._frame_collection
         else:
             if name in self._get_default_indexes():
                 raise ValueError("Cannot drop default index '%s'" % name)
 
-            collection = self._dataset._sample_collection
+            coll = self._dataset._sample_collection
 
         index_map = {}
         fields_map = self._get_db_fields_map(
             frames=is_frame_index, reverse=True
         )
-        for key, info in collection.index_information().items():
+        for key, info in coll.index_information().items():
             if len(info["key"]) == 1:
                 # We use field name, not pymongo name, for single field indexes
                 field = info["key"][0][0]
@@ -5711,7 +5720,7 @@ class SampleCollection(object):
                 "%s has no %s '%s'" % (self.__class__.__name__, itype, name)
             )
 
-        collection.drop_index(index_map[name])
+        coll.drop_index(index_map[name])
 
     def _get_default_indexes(self, frames=False):
         if frames:
