@@ -62,6 +62,8 @@ const labelsWorker = createWorker();
 
 type ImageSource = HTMLImageElement | HTMLVideoElement;
 
+const backCanvas = document.createElement("canvas");
+
 export abstract class Looker<
   State extends BaseState = BaseState,
   Sample extends BaseSample = BaseSample
@@ -69,8 +71,8 @@ export abstract class Looker<
   private eventTarget: EventTarget;
   protected lookerElement: LookerElement<State>;
   private resizeObserver: ResizeObserver;
-  protected readonly canvas: HTMLCanvasElement;
-  protected readonly ctx: CanvasRenderingContext2D;
+  private readonly canvas: HTMLCanvasElement;
+  private readonly ctx: CanvasRenderingContext2D;
 
   protected currentOverlays: Overlay<State>[];
   protected pluckedOverlays: Overlay<State>[];
@@ -145,6 +147,11 @@ export abstract class Looker<
         return;
       }
 
+      if (this.waiting && !this.state.config.thumbnail) {
+        ctx.drawImage(backCanvas, 0, 0);
+        return;
+      }
+
       ctx.lineWidth = this.state.strokeWidth;
       ctx.font = `bold ${this.state.fontSize.toFixed(2)}px Palanquin`;
       ctx.textAlign = "left";
@@ -172,6 +179,20 @@ export abstract class Looker<
       for (let index = numOverlays - 1; index >= 0; index--) {
         this.currentOverlays[index].draw(ctx, this.state);
       }
+
+      if (this.state.config.thumbnail) {
+        return;
+      }
+
+      if (backCanvas.width !== this.canvas.width) {
+        backCanvas.width = this.canvas.width;
+      }
+
+      if (backCanvas.height !== this.canvas.height) {
+        backCanvas.height = this.canvas.height;
+      }
+
+      backCanvas.getContext("2d").drawImage(this.canvas, 0, 0);
     };
   }
 
