@@ -32,6 +32,13 @@ Core
 - Added support for creating :ref:`patch views <frame-patches-views>` and
   :ref:`evaluation patch views <evaluating-videos>` into the frames of video
   datasets
+- Added improved support for
+  :meth:`creating <fiftyone.core.collections.SampleCollection.create_index>`,
+  :meth:`viewing <fiftyone.core.collections.SampleCollection.get_index_information>`,
+  and :meth:`dropping <fiftyone.core.collections.SampleCollection.drop_index>`
+  dropping sample- and frame-level indexes on datasets
+- Added additional indexes on patch and frames views to enable efficient
+  ID-based queries
 - Added support for gracefully loading and deleting evaluations and brain
   methods executed in future versions of FiftyOne (e.g., after
   :ref:`downgrading <downgrading-fiftyone>` your FiftyOne package version)
