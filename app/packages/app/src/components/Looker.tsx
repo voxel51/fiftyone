@@ -1,12 +1,7 @@
 import React, { useState, useRef, MutableRefObject, useEffect } from "react";
 import ReactDOM from "react-dom";
 import styled from "styled-components";
-import {
-  selectorFamily,
-  useRecoilValue,
-  useRecoilCallback,
-  useRecoilState,
-} from "recoil";
+import { selectorFamily, useRecoilValue, useRecoilCallback } from "recoil";
 import { animated, useSpring } from "react-spring";
 
 import * as labelAtoms from "./Filters/utils";
@@ -23,6 +18,8 @@ import {
   VideoOptions,
 } from "@fiftyone/looker/src/state";
 import { useMove } from "react-use-gesture";
+import ExternalLink from "./ExternalLink";
+import { Warning } from "@material-ui/icons";
 
 type LookerTypes = typeof FrameLooker | typeof ImageLooker | typeof VideoLooker;
 
@@ -42,6 +39,29 @@ const lookerType = selectorFamily<LookerTypes, string>({
     return ImageLooker;
   },
 });
+
+const InfoWrapper = styled.div`
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  z-index: 100;
+  width: 100%;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  font-size: 125%;
+  svg {
+    font-size: 200%;
+    color: ${({ theme }) => theme.fontDark};
+  }
+  svg.error {
+    color: ${({ theme }) => theme.error};
+  }
+  p {
+    margin: 0;
+  }
+`;
 
 const TagBlock = styled.div`
   margin: 0;
@@ -325,7 +345,7 @@ const TooltipInfo = React.memo(
 
 type EventCallback = (event: CustomEvent) => void;
 
-export const defaultLookerOptions = selectorFamily({
+const defaultLookerOptions = selectorFamily({
   key: "defaultLookerOptions",
   get: (modal: boolean) => ({ get }) => {
     const showConfidence = get(selectors.appConfig).show_confidence;
@@ -352,7 +372,7 @@ export const defaultLookerOptions = selectorFamily({
   },
 });
 
-export const lookerOptions = selectorFamily<
+const lookerOptions = selectorFamily<
   Partial<FrameOptions | ImageOptions | VideoOptions>,
   boolean
 >({
@@ -376,7 +396,7 @@ export const lookerOptions = selectorFamily<
   },
 });
 
-export const useLookerOptionsUpdate = () => {
+const useLookerOptionsUpdate = () => {
   return useRecoilCallback(
     ({ snapshot, set }) => async (event: CustomEvent) => {
       const currentOptions = await snapshot.getPromise(
@@ -387,12 +407,43 @@ export const useLookerOptionsUpdate = () => {
   );
 };
 
-export const useFullscreen = () => {
-  return useRecoilCallback(
-    ({ snapshot, set }) => async (event: CustomEvent) => {
-      set(atoms.fullscreen, event.detail);
-    }
+const useFullscreen = () => {
+  return useRecoilCallback(({ set }) => async (event: CustomEvent) => {
+    set(atoms.fullscreen, event.detail);
+  });
+};
+
+const useErrorHandler = (looker, sampleId) => {
+  const [error, setError] = useState(null);
+  const mimetype = useRecoilValue(selectors.sampleMimeType(sampleId));
+  const video = mimetype.startsWith("video/");
+
+  useEventHandler(looker, "error", () =>
+    setError(
+      <>
+        <p>
+          The {video ? "video" : "image"} failed to load. The file may not
+          exist, or its type ({mimetype}) may be unsupported.
+        </p>
+        <p>
+          {video && (
+            <>
+              {" "}
+              You can use{" "}
+              <code>
+                <ExternalLink href="https://voxel51.com/docs/fiftyone/api/fiftyone.utils.video.html#fiftyone.utils.video.reencode_videos">
+                  fiftyone.utils.video.reencode_videos()
+                </ExternalLink>
+              </code>{" "}
+              to re-encode videos in a supported format.
+            </>
+          )}
+        </p>
+      </>
+    )
   );
+
+  return error;
 };
 
 interface LookerProps {
@@ -458,6 +509,7 @@ const Looker = ({
 
   lookerRef && (lookerRef.current = looker);
 
+  const error = useErrorHandler(looker, sampleId);
   modal && useEventHandler(looker, "options", useLookerOptionsUpdate());
   modal && useEventHandler(looker, "fullscreen", useFullscreen());
   useEventHandler(looker, "next", onNext);
@@ -469,22 +521,27 @@ const Looker = ({
   }, []);
 
   return (
-    <>
-      <div
-        ref={(node) => {
-          node ? looker.attach(node) : looker.detach();
-        }}
-        style={{
-          width: "100%",
-          height: "100%",
-          background: theme.backgroundDark,
-          ...style,
-        }}
-        onClick={onClick}
-        {...bindMove()}
-      />
+    <div
+      ref={(node) => {
+        node ? looker.attach(node) : looker.detach();
+      }}
+      style={{
+        width: "100%",
+        height: "100%",
+        background: theme.backgroundDark,
+        ...style,
+      }}
+      onClick={onClick}
+      {...bindMove()}
+    >
+      {error && (
+        <InfoWrapper>
+          <Warning classes={{ root: "error" }} />
+          {!modal ? null : <div>{error}</div>}{" "}
+        </InfoWrapper>
+      )}
       {modal && <TooltipInfo looker={looker} moveRef={ref} />}
-    </>
+    </div>
   );
 };
 
