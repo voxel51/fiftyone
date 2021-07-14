@@ -5555,9 +5555,9 @@ class SampleCollection(object):
         """Returns the list of index names on this collection.
 
         Single-field indexes are referenced by their field name, while compound
-        indexes are referenced by more complicated strings (see
+        indexes are referenced by more complicated strings. See
         :meth:`pymongo:pymongo.collection.Collection.index_information` for
-        details on the compound format).
+        details on the compound format.
 
         Returns:
             the list of index names
