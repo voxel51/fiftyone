@@ -15,6 +15,10 @@ export class LookerElement<State extends BaseState> extends BaseElement<
   getEvents(): Events<State> {
     return {
       keydown: ({ event, update, dispatchEvent }) => {
+        if (event.altKey || event.ctrlKey || event.metaKey) {
+          return;
+        }
+
         const e = event as KeyboardEvent;
         if (e.key in COMMON_SHORTCUTS) {
           COMMON_SHORTCUTS[e.key].action(update, dispatchEvent, e.key);

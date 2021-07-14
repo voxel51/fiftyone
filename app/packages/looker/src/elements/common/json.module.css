@@ -2,7 +2,13 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 
-.lookerJSONPanel {
+.lookerJSONPanel,
+.lookerJSONPanel > div,
+.lookerJSONPanel > div > div {
   width: 100%;
   height: 100%;
+}
+
+.lookerJSONPanel pre {
+  font-weight: normal;
 }

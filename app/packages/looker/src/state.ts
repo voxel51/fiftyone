@@ -33,6 +33,7 @@ interface BaseOptions {
   selectedLabels: string[];
   showConfidence: boolean;
   showIndex: boolean;
+  showJSON: boolean;
   showLabel: boolean;
   showTooltip: boolean;
   onlyShowHoveredLabel: boolean;
@@ -117,7 +118,6 @@ export interface BaseState {
   strokeWidth: number;
   fontSize: number;
   wheeling: boolean;
-  json: boolean;
   windowBBox: BoundingBox;
   transformedWindowBBox: BoundingBox;
   mediaBBox: BoundingBox;
@@ -181,6 +181,7 @@ const DEFAULT_BASE_OPTIONS: BaseOptions = {
   selectedLabels: [],
   showConfidence: false,
   showIndex: false,
+  showJSON: false,
   showLabel: false,
   showTooltip: false,
   onlyShowHoveredLabel: false,

@@ -144,6 +144,13 @@ export abstract class Looker<
       this.dispatchImpliedEvents(previousState, this.state);
 
       this.lookerElement.render(this.state as Readonly<State>);
+
+      if (this.state.options.showJSON) {
+        const pre = this.lookerElement.element.querySelectorAll("pre")[0];
+        this.getSample().then((sample) => {
+          pre.innerText = JSON.stringify(sample, null, 4);
+        });
+      }
       const ctx = this.ctx;
       if (!this.state.loaded) {
         return;

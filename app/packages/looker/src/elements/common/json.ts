@@ -19,10 +19,11 @@ export class JSONPanelElement<State extends BaseState> extends BaseElement<
   private json?: boolean;
   getEvents(): Events<State> {
     return {
-      click: ({ event, update }) => {
+      click: ({ event, update, dispatchEvent }) => {
         event.stopPropagation();
         event.preventDefault();
-        update({ showHelp: false });
+        update({ options: { showJSON: false } });
+        dispatchEvent("options", { showJSON: false });
       },
       dblclick: ({ event }) => {
         event.stopPropagation();
@@ -38,9 +39,9 @@ export class JSONPanelElement<State extends BaseState> extends BaseElement<
     header.classList.add(lookerPanelHeader);
     element.appendChild(header);
     element.classList.add(lookerPanel);
-    element.classList.add(lookerJSONPanel);
 
     const container = document.createElement("div");
+    container.classList.add(lookerJSONPanel);
     container.classList.add(lookerPanelContainer);
 
     const vContainer = document.createElement("div");
@@ -49,6 +50,7 @@ export class JSONPanelElement<State extends BaseState> extends BaseElement<
     vContainer.appendChild(element);
 
     container.appendChild(vContainer);
+    element.appendChild(document.createElement("pre"));
 
     return container;
   }
@@ -57,21 +59,24 @@ export class JSONPanelElement<State extends BaseState> extends BaseElement<
     return !thumbnail;
   }
 
-  renderSelf({ json, config: { thumbnail } }: Readonly<State>) {
+  renderSelf({
+    config: { thumbnail },
+    options: { showJSON },
+  }: Readonly<State>) {
     if (thumbnail) {
       return this.element;
     }
-    if (this.json === json) {
+    if (this.json === showJSON) {
       return this.element;
     }
-    if (json) {
+    if (showJSON) {
       this.element.style.opacity = "0.9";
       this.element.style.display = "flex";
     } else {
       this.element.style.opacity = "0.0";
       this.element.style.display = "none";
     }
-    this.json = json;
+    this.json = showJSON;
     return this.element;
   }
 }

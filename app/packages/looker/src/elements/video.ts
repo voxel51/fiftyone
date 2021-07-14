@@ -182,7 +182,7 @@ export class SeekBarThumbElement extends BaseElement<
         update({ seekBarHovering: true });
       },
       mousedown: ({ update }) => {
-        update({ seeking: true, seekBarHovering: true });
+        update({ seeking: true, json: false, seekBarHovering: true });
       },
       mouseleave: ({ update }) => {
         update(({ seeking }) => ({ seekBarHovering: seeking }));
@@ -233,6 +233,7 @@ export class SeekBarElement extends BaseElement<VideoState, HTMLInputElement> {
       mousedown: ({ update }) => {
         update({
           seeking: true,
+          json: false,
         });
       },
       mouseenter: ({ update }) => {
@@ -523,6 +524,10 @@ export function withVideoLookerEvents(): () => Events<VideoState> {
   return function () {
     return {
       keydown: ({ event, update, dispatchEvent }) => {
+        if (event.altKey || event.ctrlKey || event.metaKey) {
+          return;
+        }
+
         const e = event as KeyboardEvent;
         if (e.key in VIDEO_SHORTCUTS) {
           VIDEO_SHORTCUTS[e.key].action(update, dispatchEvent, e.key);

@@ -10,7 +10,6 @@ import { getFrameNumber } from "../util";
 
 import {
   lookerHelpPanelItems,
-  lookerShortcutItem,
   lookerShortcutValue,
   lookerShortcutTitle,
   lookerShortcutDetail,
@@ -349,20 +348,24 @@ export const json: Control = {
   title: "JSON",
   shortcut: "j",
   detail: "View JSON",
-  action: (update) => {
-    update(({ json, disableOverlays, config: { thumbnail } }) => {
-      if (thumbnail) {
-        return {};
+  action: (update, dispatchEvent) => {
+    let newJSON = null;
+    update(
+      ({ disableOverlays, config: { thumbnail }, options: { showJSON } }) => {
+        if (thumbnail) {
+          return {};
+        }
+
+        newJSON = disableOverlays ? false : !showJSON;
+
+        if (newJSON) {
+          return { showHelp: false, options: { showJSON: newJSON } };
+        }
+
+        return { options: { showJSON: false } };
       }
-
-      const newJSON = disableOverlays ? false : !json;
-
-      if (newJSON) {
-        return { json: newJSON, showHelp: false };
-      }
-
-      return { json: false };
-    });
+    );
+    newJSON !== null && dispatchEvent("options", { showJSON: newJSON });
   },
 };
 
@@ -404,7 +407,7 @@ export const nextFrame: Control<VideoState> = {
         }
         const total = getFrameNumber(duration, duration, frameRate);
 
-        return { frameNumber: Math.min(total, frameNumber + 1) };
+        return { frameNumber: Math.min(total, frameNumber + 1), json: false };
       },
       (state, overlays) => dispatchTooltipEvent(dispatchEvent)(state, overlays)
     );
@@ -422,7 +425,7 @@ export const previousFrame: Control<VideoState> = {
         if (playing || thumbnail) {
           return {};
         }
-        return { frameNumber: Math.max(1, frameNumber - 1) };
+        return { frameNumber: Math.max(1, frameNumber - 1), json: false };
       },
       (state, overlays) => dispatchTooltipEvent(dispatchEvent)(state, overlays)
     );
@@ -435,11 +438,12 @@ export const playPause: Control<VideoState> = {
   eventKeys: " ",
   detail: "Play or pause the video",
   action: (update) => {
-    update(({ playing, config: { thumbnail }, json }) => {
+    update(({ playing, config: { thumbnail } }) => {
       return thumbnail
         ? {}
         : {
-            playing: json ? false : !playing,
+            playing: !playing,
+            json: false,
           };
     });
   },
@@ -485,6 +489,7 @@ const seekTo: Control<VideoState> = {
       const total = getFrameNumber(duration, duration, frameRate);
       return {
         frameNumber: Math.round((parseInt(eventKey, 10) / 10) * total),
+        json: false,
       };
     });
   },
