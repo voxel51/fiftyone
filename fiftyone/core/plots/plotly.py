@@ -17,7 +17,6 @@ import plotly.graph_objects as go
 
 import eta.core.utils as etau
 
-import fiftyone as fo
 import fiftyone.core.context as foc
 import fiftyone.core.expressions as foe
 import fiftyone.core.fields as fof
@@ -2391,16 +2390,11 @@ def _patch_perform_plotly_relayout():
 
     https://github.com/plotly/plotly.py/issues/2570
     """
-    filepath = os.path.join(
-        os.path.dirname(np.__file__), "..", "plotly", "basedatatypes.py",
+    filepath = os.path.normpath(
+        os.path.join(
+            os.path.dirname(np.__file__), "..", "plotly", "basedatatypes.py"
+        )
     )
-
-    if not os.path.isfile(filepath):
-        logger.debug("Unable to patch '%s'", filepath)
-        return
-
-    with open(filepath, "r") as f:
-        code = f.read()
 
     find = """
             if not BaseFigure._is_key_path_compatible(key_path_str, self.layout):
@@ -2416,14 +2410,21 @@ def _patch_perform_plotly_relayout():
 
                 raise ValueError("""
 
-    if find in code:
-        logger.debug("Patching '%s'", filepath)
-        fixed = code.replace(find, replace)
-        with open(filepath, "w") as f:
-            f.write(fixed)
-    elif replace in code:
-        logger.debug("Already patched '%s'", filepath)
-    else:
+    try:
+        with open(filepath, "r") as f:
+            code = f.read()
+
+        if find in code:
+            logger.debug("Patching '%s'", filepath)
+            fixed = code.replace(find, replace)
+            with open(filepath, "w") as f:
+                f.write(fixed)
+        elif replace in code:
+            logger.debug("Already patched '%s'", filepath)
+        else:
+            logger.debug("Unable to patch '%s'", filepath)
+    except Exception as e:
+        logger.debug(e)
         logger.debug("Unable to patch '%s'", filepath)
 
 

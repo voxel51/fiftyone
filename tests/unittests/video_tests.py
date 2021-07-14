@@ -84,6 +84,59 @@ class VideoTests(unittest.TestCase):
         self.assertTrue(frame_numbers, [1, 5])
 
     @drop_datasets
+    def test_video_indexes(self):
+        dataset = fo.Dataset()
+
+        sample = fo.Sample(filepath="video.mp4", field="hi")
+        sample.frames[1] = fo.Frame(
+            field="hi", cls=fo.Classification(label="cat")
+        )
+
+        dataset.add_sample(sample)
+
+        info = dataset.get_index_information()
+        indexes = dataset.list_indexes()
+
+        default_indexes = {
+            "id",
+            "filepath",
+            "frames.id",
+            "frames._sample_id_1_frame_number_1",
+        }
+        self.assertSetEqual(set(info.keys()), default_indexes)
+        self.assertSetEqual(set(indexes), default_indexes)
+
+        dataset.create_index("frames.id", unique=True)  # already exists
+        dataset.create_index("frames.id")  # sufficient index exists
+        with self.assertRaises(ValueError):
+            dataset.drop_index("frames.id")  # can't drop default
+
+        name = dataset.create_index("frames.field")
+        self.assertEqual(name, "frames.field")
+        self.assertIn("frames.field", dataset.list_indexes())
+
+        dataset.drop_index("frames.field")
+        self.assertNotIn("frames.field", dataset.list_indexes())
+
+        name = dataset.create_index("frames.cls.label")
+        self.assertEqual(name, "frames.cls.label")
+        self.assertIn("frames.cls.label", dataset.list_indexes())
+
+        dataset.drop_index("frames.cls.label")
+        self.assertNotIn("frames.cls.label", dataset.list_indexes())
+
+        compound_index_name = dataset.create_index(
+            [("frames.id", 1), ("frames.field", 1)]
+        )
+        self.assertIn(compound_index_name, dataset.list_indexes())
+
+        dataset.drop_index(compound_index_name)
+        self.assertNotIn(compound_index_name, dataset.list_indexes())
+
+        with self.assertRaises(ValueError):
+            dataset.create_index("frames.non_existent_field")
+
+    @drop_datasets
     def test_frames_order(self):
         dataset = fo.Dataset()
 
@@ -1020,6 +1073,45 @@ class VideoTests(unittest.TestCase):
             },
         )
 
+        self.assertSetEqual(
+            set(view.select_fields().get_field_schema().keys()),
+            {
+                "id",
+                "filepath",
+                "metadata",
+                "tags",
+                "sample_id",
+                "frame_number",
+            },
+        )
+
+        with self.assertRaises(ValueError):
+            view.exclude_fields("sample_id")  # can't exclude default field
+
+        with self.assertRaises(ValueError):
+            view.exclude_fields("frame_number")  # can't exclude default field
+
+        index_info = view.get_index_information()
+        indexes = view.list_indexes()
+
+        default_indexes = {
+            "id",
+            "filepath",
+            "sample_id",
+            "_sample_id_1_frame_number_1",
+        }
+        self.assertSetEqual(set(index_info.keys()), default_indexes)
+        self.assertSetEqual(set(indexes), default_indexes)
+
+        with self.assertRaises(ValueError):
+            view.drop_index("id")  # can't drop default index
+
+        with self.assertRaises(ValueError):
+            view.drop_index("filepath")  # can't drop default index
+
+        with self.assertRaises(ValueError):
+            view.drop_index("sample_id")  # can't drop default index
+
         self.assertEqual(len(view), 9)
 
         frame = view.first()
@@ -1165,6 +1257,277 @@ class VideoTests(unittest.TestCase):
         frames = view.to_frames(sparse=True, sample_frames=False)
 
         self.assertEqual(len(frames), 2)
+
+    @drop_datasets
+    def test_to_frame_patches(self):
+        dataset = fo.Dataset()
+
+        sample1 = fo.Sample(
+            filepath="video.mp4",
+            metadata=fo.VideoMetadata(total_frame_count=4),
+            tags=["test"],
+            weather="sunny",
+        )
+        sample1.frames[1] = fo.Frame(hello="world")
+        sample1.frames[2] = fo.Frame(
+            ground_truth=fo.Detections(
+                detections=[
+                    fo.Detection(label="cat"),
+                    fo.Detection(label="dog"),
+                ]
+            )
+        )
+        sample1.frames[3] = fo.Frame(hello="goodbye")
+
+        sample2 = fo.Sample(
+            filepath="video.mp4",
+            metadata=fo.VideoMetadata(total_frame_count=5),
+            tags=["test"],
+            weather="cloudy",
+        )
+        sample2.frames[1] = fo.Frame(
+            hello="goodbye",
+            ground_truth=fo.Detections(
+                detections=[
+                    fo.Detection(label="dog"),
+                    fo.Detection(label="rabbit"),
+                ]
+            ),
+        )
+        sample2.frames[3] = fo.Frame()
+        sample2.frames[5] = fo.Frame(hello="there")
+
+        dataset.add_samples([sample1, sample2])
+
+        # User must first convert to frames, then patches
+        with self.assertRaises(ValueError):
+            dataset.to_patches("frames.ground_truth")
+
+        frames = dataset.to_frames(sample_frames=False)
+        patches = frames.to_patches("ground_truth")
+
+        self.assertSetEqual(
+            set(patches.get_field_schema().keys()),
+            {
+                "id",
+                "filepath",
+                "metadata",
+                "tags",
+                "sample_id",
+                "frame_id",
+                "frame_number",
+                "ground_truth",
+            },
+        )
+
+        self.assertSetEqual(
+            set(patches.select_fields().get_field_schema().keys()),
+            {
+                "id",
+                "filepath",
+                "metadata",
+                "tags",
+                "sample_id",
+                "frame_id",
+                "frame_number",
+            },
+        )
+
+        with self.assertRaises(ValueError):
+            patches.exclude_fields("sample_id")  # can't exclude default field
+
+        with self.assertRaises(ValueError):
+            patches.exclude_fields("frame_id")  # can't exclude default field
+
+        with self.assertRaises(ValueError):
+            patches.exclude_fields(
+                "frame_number"
+            )  # can't exclude default field
+
+        index_info = patches.get_index_information()
+        indexes = patches.list_indexes()
+
+        default_indexes = {
+            "id",
+            "filepath",
+            "sample_id",
+            "frame_id",
+            "_sample_id_1_frame_number_1",
+        }
+        self.assertSetEqual(set(index_info.keys()), default_indexes)
+        self.assertSetEqual(set(indexes), default_indexes)
+
+        with self.assertRaises(ValueError):
+            patches.drop_index("id")  # can't drop default index
+
+        with self.assertRaises(ValueError):
+            patches.drop_index("filepath")  # can't drop default index
+
+        with self.assertRaises(ValueError):
+            patches.drop_index("sample_id")  # can't drop default index
+
+        with self.assertRaises(ValueError):
+            patches.drop_index("frame_id")  # can't drop default index
+
+        self.assertEqual(dataset.count("frames.ground_truth.detections"), 4)
+        self.assertEqual(patches.count(), 4)
+        self.assertEqual(len(patches), 4)
+
+        patch = patches.first()
+        self.assertIsInstance(patch.id, str)
+        self.assertIsInstance(patch._id, ObjectId)
+        self.assertIsInstance(patch.sample_id, str)
+        self.assertIsInstance(patch._sample_id, ObjectId)
+        self.assertIsInstance(patch.frame_id, str)
+        self.assertIsInstance(patch._frame_id, ObjectId)
+        self.assertIsInstance(patch.frame_number, int)
+
+        for _id in patches.values("id"):
+            self.assertIsInstance(_id, str)
+
+        for oid in patches.values("_id"):
+            self.assertIsInstance(oid, ObjectId)
+
+        for _id in patches.values("sample_id"):
+            self.assertIsInstance(_id, str)
+
+        for oid in patches.values("_sample_id"):
+            self.assertIsInstance(oid, ObjectId)
+
+        for _id in patches.values("frame_id"):
+            self.assertIsInstance(_id, str)
+
+        for oid in patches.values("_frame_id"):
+            self.assertIsInstance(oid, ObjectId)
+
+        self.assertDictEqual(dataset.count_sample_tags(), {"test": 2})
+        self.assertDictEqual(patches.count_sample_tags(), {"test": 4})
+
+        patches.tag_samples("patch")
+
+        self.assertEqual(patches.count_sample_tags()["patch"], 4)
+        self.assertNotIn("patch", frames.count_sample_tags())
+        self.assertNotIn("patch", dataset.count_sample_tags())
+
+        patches.untag_samples("patch")
+
+        self.assertNotIn("patch", patches.count_sample_tags())
+        self.assertNotIn("patch", frames.count_sample_tags())
+        self.assertNotIn("patch", dataset.count_sample_tags())
+
+        patches.tag_labels("test")
+
+        self.assertDictEqual(patches.count_label_tags(), {"test": 4})
+        self.assertDictEqual(frames.count_label_tags(), {"test": 4})
+        self.assertDictEqual(
+            dataset.count_label_tags("frames.ground_truth"), {"test": 4}
+        )
+
+        # Including `select_labels()` here tests an important property: if the
+        # contents of a `view` changes after a save operation occurs, the
+        # original view still needs to be synced with the source dataset
+        patches.select_labels(tags="test").untag_labels("test")
+
+        self.assertDictEqual(patches.count_label_tags(), {})
+        self.assertDictEqual(frames.count_label_tags(), {})
+        self.assertDictEqual(dataset.count_label_tags(), {})
+
+        view2 = patches.limit(2)
+
+        values = [l.upper() for l in view2.values("ground_truth.label")]
+        view2.set_values("ground_truth.label_upper", values)
+
+        self.assertEqual(dataset.count(), 2)
+
+        # Empty frames were added based on metadata frame counts
+        self.assertEqual(frames.count(), 9)
+
+        self.assertEqual(patches.count(), 4)
+        self.assertEqual(view2.count(), 2)
+        self.assertEqual(dataset.count("frames.ground_truth.detections"), 4)
+        self.assertEqual(frames.count("ground_truth.detections"), 4)
+        self.assertEqual(patches.count("ground_truth"), 4)
+        self.assertEqual(view2.count("ground_truth"), 2)
+        self.assertEqual(
+            dataset.count("frames.ground_truth.detections.label_upper"), 2
+        )
+        self.assertEqual(
+            frames.count("ground_truth.detections.label_upper"), 2
+        )
+        self.assertEqual(patches.count("ground_truth.label_upper"), 2)
+        self.assertEqual(view2.count("ground_truth.label_upper"), 2)
+
+        view3 = patches.skip(2).set_field(
+            "ground_truth.label", F("label").upper()
+        )
+
+        self.assertEqual(patches.count(), 4)
+        self.assertEqual(view3.count(), 2)
+        self.assertEqual(dataset.count("frames.ground_truth.detections"), 4)
+        self.assertNotIn("rabbit", view3.count_values("ground_truth.label"))
+        self.assertEqual(view3.count_values("ground_truth.label")["RABBIT"], 1)
+        self.assertNotIn("RABBIT", patches.count_values("ground_truth.label"))
+        self.assertNotIn(
+            "RABBIT",
+            dataset.count_values("frames.ground_truth.detections.label"),
+        )
+
+        view3.save()
+
+        self.assertEqual(patches.count(), 2)
+        self.assertEqual(frames.count(), 9)
+        self.assertEqual(dataset.count(), 2)
+        self.assertEqual(patches.count("ground_truth"), 2)
+        self.assertEqual(frames.count("ground_truth.detections"), 2)
+        self.assertEqual(dataset.count("frames"), 6)
+        self.assertEqual(dataset.count("frames.ground_truth.detections"), 2)
+
+        sample = patches.first()
+
+        sample.ground_truth.hello = "world"
+        sample.save()
+
+        self.assertEqual(
+            patches.count_values("ground_truth.hello")["world"], 1
+        )
+        self.assertEqual(
+            frames.count_values("ground_truth.detections.hello")["world"], 1
+        )
+        self.assertEqual(
+            dataset.count_values("frames.ground_truth.detections.hello")[
+                "world"
+            ],
+            1,
+        )
+
+        dataset.untag_samples("test")
+        patches.reload()
+
+        self.assertDictEqual(dataset.count_sample_tags(), {})
+        self.assertDictEqual(frames.count_sample_tags(), {})
+        self.assertDictEqual(patches.count_sample_tags(), {})
+
+        patches.tag_labels("test")
+
+        self.assertDictEqual(
+            patches.count_label_tags(), frames.count_label_tags()
+        )
+        self.assertDictEqual(
+            patches.count_label_tags(), dataset.count_label_tags()
+        )
+
+        # Including `select_labels()` here tests an important property: if the
+        # contents of a `view` changes after a save operation occurs, the
+        # original view still needs to be synced with the source dataset
+        patches.select_labels(tags="test").untag_labels("test")
+
+        self.assertDictEqual(patches.count_values("ground_truth.tags"), {})
+        self.assertDictEqual(
+            frames.count_values("ground_truth.detections.tags"), {}
+        )
+        self.assertDictEqual(
+            dataset.count_values("frames.ground_truth.detections.tags"), {}
+        )
 
 
 if __name__ == "__main__":

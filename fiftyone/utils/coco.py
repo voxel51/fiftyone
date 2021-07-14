@@ -267,8 +267,19 @@ class COCODetectionDatasetImporter(
             -   the path to a text (newline-separated), JSON, or CSV file
                 containing the list of image IDs to load in either of the first
                 two formats
-        include_id (False): whether to include the COCO ID of each sample in the
-            loaded labels
+        include_id (False): whether to include the COCO ID of each sample in
+            the loaded labels
+        include_license (False): whether to include the license ID of each
+            sample in the loaded labels, if available. Supported values are:
+
+            -   ``"False"``: don't load the license
+            -   ``True``/``"name"``: store the string license name
+            -   ``"id"``: store the integer license ID
+            -   ``"url"``: store the license URL
+
+            Note that the license descriptions (if available) are always loaded
+            into ``dataset.info["licenses"]`` and can be used to convert
+            between ID, name, and URL later
         extra_attrs (None): whether to load extra annotation attributes onto
             the imported labels. Supported values are:
 
@@ -306,6 +317,7 @@ class COCODetectionDatasetImporter(
         classes=None,
         image_ids=None,
         include_id=False,
+        include_license=False,
         extra_attrs=None,
         only_matching=False,
         use_polylines=False,
@@ -324,10 +336,15 @@ class COCODetectionDatasetImporter(
             default="labels.json",
         )
 
-        label_types = _parse_label_types(label_types)
+        _label_types = _parse_label_types(label_types)
+
+        include_license = _parse_include_license(include_license)
 
         if include_id:
-            label_types.append("coco_id")
+            _label_types.append("coco_id")
+
+        if include_license:
+            _label_types.append("license")
 
         super().__init__(
             dataset_dir=dataset_dir,
@@ -341,13 +358,17 @@ class COCODetectionDatasetImporter(
         self.label_types = label_types
         self.classes = classes
         self.image_ids = image_ids
+        self.include_id = include_id
+        self.include_license = include_license
         self.extra_attrs = extra_attrs
         self.only_matching = only_matching
         self.use_polylines = use_polylines
         self.tolerance = tolerance
 
+        self._label_types = _label_types
         self._info = None
         self._classes = None
+        self._license_map = None
         self._supercategory_map = None
         self._image_paths_map = None
         self._image_dicts_map = None
@@ -371,6 +392,7 @@ class COCODetectionDatasetImporter(
             image_path = self._image_paths_map[filename]
 
         image_dict = self._image_dicts_map.get(filename, None)
+
         if image_dict is None:
             image_metadata = fom.ImageMetadata.build_for(image_path)
             return image_path, image_metadata, None
@@ -381,61 +403,63 @@ class COCODetectionDatasetImporter(
 
         image_metadata = fom.ImageMetadata(width=width, height=height)
 
-        if self._annotations is None:
-            return image_path, image_metadata, None
-
-        coco_objects = self._annotations.get(image_id, [])
-        frame_size = (width, height)
-
-        if self.classes is not None and self.only_matching:
-            coco_objects = _get_matching_objects(
-                coco_objects, self.classes, self._classes
-            )
-
         label = {}
 
-        if "detections" in self.label_types:
-            detections = _coco_objects_to_detections(
-                coco_objects,
-                frame_size,
-                self._classes,
-                self._supercategory_map,
-                False,  # no segmentations
-            )
-            if detections is not None:
-                label["detections"] = detections
+        if self._annotations is not None:
+            coco_objects = self._annotations.get(image_id, [])
+            frame_size = (width, height)
 
-        if "segmentations" in self.label_types:
-            if self.use_polylines:
-                segmentations = _coco_objects_to_polylines(
+            if self.classes is not None and self.only_matching:
+                coco_objects = _get_matching_objects(
+                    coco_objects, self.classes, self._classes
+                )
+
+            if "detections" in self._label_types:
+                detections = _coco_objects_to_detections(
                     coco_objects,
                     frame_size,
                     self._classes,
                     self._supercategory_map,
-                    self.tolerance,
+                    False,  # no segmentations
                 )
-            else:
-                segmentations = _coco_objects_to_detections(
-                    coco_objects,
-                    frame_size,
-                    self._classes,
-                    self._supercategory_map,
-                    True,  # load segmentations
+                if detections is not None:
+                    label["detections"] = detections
+
+            if "segmentations" in self._label_types:
+                if self.use_polylines:
+                    segmentations = _coco_objects_to_polylines(
+                        coco_objects,
+                        frame_size,
+                        self._classes,
+                        self._supercategory_map,
+                        self.tolerance,
+                    )
+                else:
+                    segmentations = _coco_objects_to_detections(
+                        coco_objects,
+                        frame_size,
+                        self._classes,
+                        self._supercategory_map,
+                        True,  # load segmentations
+                    )
+
+                if segmentations is not None:
+                    label["segmentations"] = segmentations
+
+            if "keypoints" in self._label_types:
+                keypoints = _coco_objects_to_keypoints(
+                    coco_objects, frame_size, self._classes
                 )
 
-            if segmentations is not None:
-                label["segmentations"] = segmentations
+                if keypoints is not None:
+                    label["keypoints"] = keypoints
 
-        if "keypoints" in self.label_types:
-            keypoints = _coco_objects_to_keypoints(
-                coco_objects, frame_size, self._classes
-            )
-
-            if keypoints is not None:
-                label["keypoints"] = keypoints
-
-        if "coco_id" in self.label_types:
+        if "coco_id" in self._label_types:
             label["coco_id"] = image_id
+
+        if "license" in self._label_types:
+            license_id = image_dict.get("license", None)
+            label["license"] = self._license_map.get(license_id, None)
 
         if self._has_scalar_labels:
             label = next(iter(label.values())) if label else None
@@ -452,7 +476,7 @@ class COCODetectionDatasetImporter(
 
     @property
     def _has_scalar_labels(self):
-        return len(self.label_types) == 1
+        return len(self._label_types) == 1
 
     @property
     def label_cls(self):
@@ -462,12 +486,13 @@ class COCODetectionDatasetImporter(
             "segmentations": seg_type,
             "keypoints": fol.Keypoints,
             "coco_id": int,
+            "license": int,
         }
 
         if self._has_scalar_labels:
-            return types[self.label_types[0]]
+            return types[self._label_types[0]]
 
-        return {k: v for k, v in types.items() if k in self.label_types}
+        return {k: v for k, v in types.items() if k in self._label_types}
 
     def setup(self):
         self._image_paths_map = self._load_data_map(self.data_path)
@@ -513,8 +538,17 @@ class COCODetectionDatasetImporter(
             annotations = None
             filenames = []
 
+        if self.include_license:
+            license_map = {
+                l.get("id", None): l.get(self.include_license, None)
+                for l in info.get("licenses", [])
+            }
+        else:
+            license_map = None
+
         self._info = info
         self._classes = classes
+        self._license_map = license_map
         self._supercategory_map = supercategory_map
         self._image_dicts_map = image_dicts_map
         self._annotations = annotations
@@ -1412,7 +1446,7 @@ def _download_coco_dataset_split(
         )
 
     if classes is not None and split == "test":
-        logger.warning("Test split is unlabeled; ignoring `classes`")
+        logger.warning("Test split is unlabeled; ignoring classes requirement")
         classes = None
 
     if scratch_dir is None:
@@ -1658,6 +1692,20 @@ def _parse_label_types(label_types):
     return label_types
 
 
+def _parse_include_license(include_license):
+    supported_values = {True, False, "id", "name", "url"}
+    if include_license not in supported_values:
+        raise ValueError(
+            "Unsupported include_license=%s. Supported values are %s"
+            % (include_license, supported_values)
+        )
+
+    if include_license == True:
+        include_license = "name"
+
+    return include_license
+
+
 def _get_matching_image_ids(
     all_classes,
     images,
@@ -1746,6 +1794,10 @@ def _do_download(args):
 def _get_images_with_classes(
     image_ids, annotations, target_classes, all_classes
 ):
+    if annotations is None:
+        logger.warning("Dataset is unlabeled; ignoring classes requirement")
+        return image_ids, []
+
     if etau.is_str(target_classes):
         target_classes = [target_classes]
 

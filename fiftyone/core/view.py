@@ -52,8 +52,6 @@ class DatasetView(foc.SampleCollection):
             view
     """
 
-    _SAMPLE_CLS = fos.SampleView
-
     def __init__(self, dataset, _stages=None):
         if _stages is None:
             _stages = []
@@ -123,6 +121,10 @@ class DatasetView(foc.SampleCollection):
     @property
     def _is_frames(self):
         return self._dataset._is_frames
+
+    @property
+    def _sample_cls(self):
+        return fos.SampleView
 
     @property
     def _stages(self):
@@ -265,13 +267,26 @@ class DatasetView(foc.SampleCollection):
         """
         return copy(self)
 
-    def iter_samples(self):
+    def iter_samples(self, progress=False):
         """Returns an iterator over the samples in the view.
+
+        Args:
+            progress (False): whether to render a progress bar tracking the
+                iterator's progress
 
         Returns:
             an iterator over :class:`fiftyone.core.sample.SampleView` instances
         """
-        sample_cls = self._SAMPLE_CLS
+        if progress:
+            with fou.ProgressBar(total=len(self)) as pb:
+                for sample in pb(self._iter_samples()):
+                    yield sample
+        else:
+            for sample in self._iter_samples():
+                yield sample
+
+    def _iter_samples(self):
+        sample_cls = self._sample_cls
         selected_fields, excluded_fields = self._get_selected_excluded_fields()
         filtered_fields = self._get_filtered_fields()
 
@@ -619,47 +634,6 @@ class DatasetView(foc.SampleCollection):
             the new :class:`Dataset`
         """
         return self._dataset._clone(name=name, view=self)
-
-    def list_indexes(self, include_private=False):
-        """Returns the fields of the dataset that are indexed.
-
-        Args:
-            include_private (False): whether to include private fields that
-                start with ``_``
-
-        Returns:
-            a list of field names
-        """
-        return self._dataset.list_indexes(include_private=include_private)
-
-    def create_index(self, field_name, unique=False, sphere2d=False):
-        """Creates an index on the given field.
-
-        If the given field already has a unique index, it will be retained
-        regardless of the ``unique`` value you specify.
-
-        If the given field already has a non-unique index but you requested a
-        unique index, the existing index will be dropped.
-
-        Indexes enable efficient sorting, merging, and other such operations.
-
-        Args:
-            field_name: the field name or ``embedded.field.name``
-            unique (False): whether to add a uniqueness constraint to the index
-            sphere2d (False): whether the field is a GeoJSON field that
-                requires a sphere2d index
-        """
-        self._dataset.create_index(
-            field_name, unique=unique, sphere2d=sphere2d
-        )
-
-    def drop_index(self, field_name):
-        """Drops the index on the given field.
-
-        Args:
-            field_name: the field name or ``embedded.field.name``
-        """
-        self._dataset.drop_index(field_name)
 
     def reload(self):
         """Reloads the underlying dataset from the database.

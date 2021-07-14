@@ -22,7 +22,7 @@ class BdistWheelCustom(bdist_wheel):
         ]
 
 
-VERSION = "0.11.1"
+VERSION = "0.11.2"  # pre-bumped for next release in #1115
 
 
 def get_version():
@@ -76,15 +76,15 @@ setup(
         "kaleido",
         "matplotlib",
         "mongoengine==0.20.0",
-        "motor<3,>=2.3",
+        "motor>=2.3,<3",
         "numpy",
         "packaging",
         "pandas",
         "Pillow>=6.2",
-        "plotly>=4.14",
+        "plotly>=4.14,<5",
         "pprintpp",
         "psutil",
-        "pymongo<4,>=3.11",
+        "pymongo>=3.11,<4",
         "PyYAML",
         "retrying",
         "scikit-learn",

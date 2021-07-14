@@ -7,7 +7,6 @@ Interface for sample collections.
 """
 from collections import defaultdict
 import itertools
-import inspect
 import logging
 import os
 import random
@@ -346,8 +345,12 @@ class SampleCollection(object):
         """
         raise NotImplementedError("Subclass must implement view()")
 
-    def iter_samples(self):
+    def iter_samples(self, progress=False):
         """Returns an iterator over the samples in the collection.
+
+        Args:
+            progress (False): whether to render a progress bar tracking the
+                iterator's progress
 
         Returns:
             an iterator over :class:`fiftyone.core.sample.Sample` or
@@ -355,17 +358,15 @@ class SampleCollection(object):
         """
         raise NotImplementedError("Subclass must implement iter_samples()")
 
-    @classmethod
     def _get_default_sample_fields(
-        cls, include_private=False, use_db_fields=False
+        self, include_private=False, use_db_fields=False
     ):
         return fosa.get_default_sample_fields(
             include_private=include_private, use_db_fields=use_db_fields
         )
 
-    @classmethod
     def _get_default_frame_fields(
-        cls, include_private=False, use_db_fields=False
+        self, include_private=False, use_db_fields=False
     ):
         return fofr.get_default_frame_fields(
             include_private=include_private, use_db_fields=use_db_fields
@@ -1155,7 +1156,7 @@ class SampleCollection(object):
 
         self._dataset._bulk_write(ops, frames=frames)
 
-    def _set_labels_by_id(self, field_name, ids, docs):
+    def _set_labels(self, field_name, sample_ids, label_docs):
         label_type = self._get_label_field_type(field_name)
         field_name, is_frame_field = self._handle_frame_field(field_name)
 
@@ -1165,7 +1166,7 @@ class SampleCollection(object):
             elem_id = root + "._id"
             set_path = root + ".$"
 
-            for _id, _docs in zip(ids, docs):
+            for _id, _docs in zip(sample_ids, label_docs):
                 if not _docs:
                     continue
 
@@ -1182,7 +1183,7 @@ class SampleCollection(object):
         else:
             elem_id = field_name + "._id"
 
-            for _id, doc in zip(ids, docs):
+            for _id, doc in zip(sample_ids, label_docs):
                 ops.append(
                     UpdateOne(
                         {"_id": ObjectId(_id), elem_id: doc["_id"]},
@@ -1191,6 +1192,9 @@ class SampleCollection(object):
                 )
 
         self._dataset._bulk_write(ops, frames=is_frame_field)
+
+    def _delete_labels(self, ids, fields=None):
+        self._dataset.delete_labels(ids=ids, fields=fields)
 
     def compute_metadata(
         self, overwrite=False, num_workers=None, skip_failures=True
@@ -1460,7 +1464,6 @@ class SampleCollection(object):
         classes=None,
         missing=None,
         method="simple",
-        config=None,
         **kwargs,
     ):
         """Evaluates the classification predictions in this collection with
@@ -1468,8 +1471,18 @@ class SampleCollection(object):
 
         By default, this method simply compares the ground truth and prediction
         for each sample, but other strategies such as binary evaluation and
-        top-k matching can be configured via the ``method`` and ``config``
-        parameters.
+        top-k matching can be configured via the ``method`` parameter.
+
+        You can customize the evaluation method by passing additional
+        parameters for the method's
+        :class:`fiftyone.utils.eval.classification.ClassificationEvaluationConfig`
+        class as ``kwargs``.
+
+        The supported ``method`` values and their associated configs are:
+
+        -   ``"simple"``: :class:`fiftyone.utils.eval.classification.SimpleEvaluationConfig`
+        -   ``"top-k"``: :class:`fiftyone.utils.eval.classification.TopKEvaluationConfig`
+        -   ``"binary"``: :class:`fiftyone.utils.eval.classification.BinaryEvaluationConfig`
 
         If an ``eval_key`` is specified, then this method will record some
         statistics on each sample:
@@ -1502,10 +1515,6 @@ class SampleCollection(object):
                 are given this label for results purposes
             method ("simple"): a string specifying the evaluation method to use.
                 Supported values are ``("simple", "binary", "top-k")``
-            config (None): a
-                :class:`fiftyone.utils.eval.classification.ClassificationEvaluationConfig`
-                specifying the evaluation method to use. If a ``config`` is
-                provided, the ``method`` and ``kwargs`` parameters are ignored
             **kwargs: optional keyword arguments for the constructor of the
                 :class:`fiftyone.utils.eval.classification.ClassificationEvaluationConfig`
                 being used
@@ -1521,7 +1530,6 @@ class SampleCollection(object):
             classes=classes,
             missing=missing,
             method=method,
-            config=config,
             **kwargs,
         )
 
@@ -1534,18 +1542,36 @@ class SampleCollection(object):
         missing=None,
         method="coco",
         iou=0.50,
+        use_masks=False,
+        use_boxes=False,
         classwise=True,
-        config=None,
         **kwargs,
     ):
         """Evaluates the specified predicted detections in this collection with
         respect to the specified ground truth detections.
 
-        By default, this method uses COCO-style evaluation, but this can be
-        configued via the ``method`` and ``config`` parameters.
+        This method supports evaluating the following spatial data types:
+
+        -   Object detections in :class:`fiftyone.core.labels.Detections`
+            format
+        -   Instance segmentations in :class:`fiftyone.core.labels.Detections`
+            format with their ``mask`` attributes populated
+        -   Polygons in :class:`fiftyone.core.labels.Polylines` format
+
+        By default, this method uses COCO-style evaluation, but you can use the
+        ``method`` parameter to select a different method, and you can
+        optionally customize the method by passing additional parameters for
+        the method's
+        :class:`fiftyone.utils.eval.detection.DetectionEvaluationConfig` class
+        as ``kwargs``.
+
+        The supported ``method`` values and their associated configs are:
+
+        -   ``"coco"``: :class:`fiftyone.utils.eval.coco.COCOEvaluationConfig`
+        -   ``"open-images"``: :class:`fiftyone.utils.eval.openimages.OpenImagesEvaluationConfig`
 
         If an ``eval_key`` is provided, a number of fields are populated at the
-        detection- and sample-level recording the results of the evaluation:
+        object- and sample-level recording the results of the evaluation:
 
         -   True positive (TP), false positive (FP), and false negative (FN)
             counts for the each sample are saved in top-level fields of each
@@ -1562,20 +1588,21 @@ class SampleCollection(object):
                 FP: frame.<eval_key>_fp
                 FN: frame.<eval_key>_fn
 
-        -   The fields listed below are populated on each individual
-            :class:`fiftyone.core.labels.Detection` instance; these fields
-            tabulate the TP/FP/FN status of the object, the ID of the matching
-            object (if any), and the matching IoU::
+        -   The fields listed below are populated on each individual object;
+            these fields tabulate the TP/FP/FN status of the object, the ID of
+            the matching object (if any), and the matching IoU::
 
-                TP/FP/FN: detection.<eval_key>
-                      ID: detection.<eval_key>_id
-                     IoU: detection.<eval_key>_iou
+                TP/FP/FN: object.<eval_key>
+                      ID: object.<eval_key>_id
+                     IoU: object.<eval_key>_iou
 
         Args:
             pred_field: the name of the field containing the predicted
-                :class:`fiftyone.core.labels.Detections` to evaluate
+                :class:`fiftyone.core.labels.Detections` or
+                :class:`fiftyone.core.labels.Polylines`
             gt_field ("ground_truth"): the name of the field containing the
-                ground truth :class:`fiftyone.core.labels.Detections`
+                ground truth :class:`fiftyone.core.labels.Detections` or
+                :class:`fiftyone.core.labels.Polylines`
             eval_key (None): an evaluation key to use to refer to this
                 evaluation
             classes (None): the list of possible classes. If not provided,
@@ -1589,13 +1616,14 @@ class SampleCollection(object):
             method ("coco"): a string specifying the evaluation method to use.
                 Supported values are ``("coco")``
             iou (0.50): the IoU threshold to use to determine matches
+            use_masks (False): whether to compute IoUs using the instances
+                masks in the ``mask`` attribute of the provided objects, which
+                must be :class:`fiftyone.core.labels.Detection` instances
+            use_boxes (False): whether to compute IoUs using the bounding boxes
+                of the provided :class:`fiftyone.core.labels.Polyline`
+                instances rather than using their actual geometries
             classwise (True): whether to only match objects with the same class
                 label (True) or allow matches between classes (False)
-            config (None): a
-                :class:`fiftyone.utils.eval.detection.DetectionEvaluationConfig`
-                specifying the evaluation method to use. If a ``config`` is
-                provided, the ``method``, ``iou``, ``classwise``, and
-                ``kwargs`` parameters are ignored
             **kwargs: optional keyword arguments for the constructor of the
                 :class:`fiftyone.utils.eval.detection.DetectionEvaluationConfig`
                 being used
@@ -1612,8 +1640,9 @@ class SampleCollection(object):
             missing=missing,
             method=method,
             iou=iou,
+            use_masks=use_masks,
+            use_boxes=use_boxes,
             classwise=classwise,
-            config=config,
             **kwargs,
         )
 
@@ -1624,7 +1653,6 @@ class SampleCollection(object):
         eval_key=None,
         mask_targets=None,
         method="simple",
-        config=None,
         **kwargs,
     ):
         """Evaluates the specified semantic segmentation masks in this
@@ -1632,6 +1660,16 @@ class SampleCollection(object):
 
         If the size of a predicted mask does not match the ground truth mask,
         it is resized to match the ground truth.
+
+        By default, this method simply performs pixelwise evaluation of the
+        full masks, but other strategies such as boundary-only evaluation can
+        be configured by passing additional parameters for the method's
+        :class:`fiftyone.utils.eval.segmentation.SegmentationEvaluationConfig`
+        class as ``kwargs``.
+
+        The supported ``method`` values and their associated configs are:
+
+        -   ``"simple"``: :class:`fiftyone.utils.eval.segmentation.SimpleEvaluationConfig`
 
         If an ``eval_key`` is provided, the accuracy, precision, and recall of
         each sample is recorded in top-level fields of each sample::
@@ -1668,10 +1706,6 @@ class SampleCollection(object):
                 possible, or else the observed pixel values are used
             method ("simple"): a string specifying the evaluation method to
                 use. Supported values are ``("simple")``
-            config (None): a
-                :class:`fiftyone.utils.eval.segmentation.SegmentationEvaluationConfig`
-                specifying the evaluation method to use. If a ``config`` is
-                provided, the ``method`` and ``kwargs`` parameters are ignored
             **kwargs: optional keyword arguments for the constructor of the
                 :class:`fiftyone.utils.eval.segmentation.SegmentationEvaluationConfig`
                 being used
@@ -1686,7 +1720,6 @@ class SampleCollection(object):
             eval_key=eval_key,
             mask_targets=mask_targets,
             method=method,
-            config=config,
             **kwargs,
         )
 
@@ -1832,7 +1865,8 @@ class SampleCollection(object):
         )
 
     def delete_brain_run(self, brain_key):
-        """Deletes the brain method run with the given key from this collection.
+        """Deletes the brain method run with the given key from this
+        collection.
 
         Args:
             brain_key: a brain key
@@ -1856,14 +1890,20 @@ class SampleCollection(object):
     def _get_brain_runs_with_type(self, run_type, **kwargs):
         brain_keys = []
         for brain_key in self.list_brain_runs():
-            brain_info = self.get_brain_info(brain_key)
+            try:
+                brain_info = self.get_brain_info(brain_key)
+            except:
+                logger.warning(
+                    "Failed to load info for brain method run '%s'", brain_key
+                )
+                continue
 
             run_cls = etau.get_class(brain_info.config.cls)
             if not issubclass(run_cls, run_type):
                 continue
 
             if any(
-                getattr(brain_info.config, key) != value
+                getattr(brain_info.config, key, None) != value
                 for key, value in kwargs.items()
             ):
                 continue
@@ -5546,44 +5586,197 @@ class SampleCollection(object):
             samples=self, info=info, backend=backend, label_field=label_field,
         )
 
-    def list_indexes(self, include_private=False):
-        """Returns the fields of the dataset that are indexed.
+    def list_indexes(self):
+        """Returns the list of index names on this collection.
 
-        Args:
-            include_private (False): whether to include private fields that
-                start with ``_``
+        Single-field indexes are referenced by their field name, while compound
+        indexes are referenced by more complicated strings. See
+        :meth:`pymongo:pymongo.collection.Collection.index_information` for
+        details on the compound format.
 
         Returns:
-            a list of field names
+            the list of index names
         """
-        raise NotImplementedError("Subclass must implement list_indexes()")
+        return list(self.get_index_information().keys())
 
-    def create_index(self, field_name, unique=False, sphere2d=False):
-        """Creates an index on the given field.
+    def get_index_information(self):
+        """Returns a dictionary of information about the indexes on this
+        collection.
 
-        If the given field already has a unique index, it will be retained
-        regardless of the ``unique`` value you specify.
+        See :meth:`pymongo:pymongo.collection.Collection.index_information` for
+        details on the structure of this dictionary.
 
-        If the given field already has a non-unique index but you requested a
-        unique index, the existing index will be dropped.
+        Returns:
+            a dict mapping index names to info dicts
+        """
+        index_info = {}
+
+        # Sample-level indexes
+        fields_map = self._get_db_fields_map(reverse=True)
+        sample_info = self._dataset._sample_collection.index_information()
+        for key, info in sample_info.items():
+            if len(info["key"]) == 1:
+                field = info["key"][0][0]
+                key = fields_map.get(field, field)
+
+            index_info[key] = info
+
+        if self.media_type == fom.VIDEO:
+            # Frame-level indexes
+            fields_map = self._get_db_fields_map(frames=True, reverse=True)
+            frame_info = self._dataset._frame_collection.index_information()
+            for key, info in frame_info.items():
+                if len(info["key"]) == 1:
+                    field = info["key"][0][0]
+                    key = fields_map.get(field, field)
+
+                index_info[self._FRAMES_PREFIX + key] = info
+
+        return index_info
+
+    def create_index(self, field_or_spec, unique=False, **kwargs):
+        """Creates an index on the given field or with the given specification,
+        if necessary.
 
         Indexes enable efficient sorting, merging, and other such operations.
 
+        Frame-level fields can be indexed by prepending ``"frames."`` to the
+        field name.
+
+        If you are indexing a single field and it already has a unique
+        constraint, it will be retained regardless of the ``unique`` value you
+        specify. Conversely, if the given field already has a non-unique index
+        but you requested a unique index, the existing index will be replaced
+        with a unique index. Use :meth:`drop_index` to drop an existing index
+        first if you wish to modify an existing index in other ways.
+
         Args:
-            field_name: the field name or ``embedded.field.name``
+            field_or_spec: the field name, ``embedded.field.name``, or index
+                specification list. See
+                :meth:`pymongo:pymongo.collection.Collection.create_index` for
+                supported values
             unique (False): whether to add a uniqueness constraint to the index
-            sphere2d (False): whether the field is a GeoJSON field that
-                requires a sphere2d index
-        """
-        raise NotImplementedError("Subclass must implement create_index()")
+            **kwargs: optional keyword arguments for
+                :meth:`pymongo:pymongo.collection.Collection.create_index`
 
-    def drop_index(self, field_name):
-        """Drops the index on the given field.
+        Returns:
+            the name of the index
+        """
+        if etau.is_str(field_or_spec):
+            input_spec = [(field_or_spec, 1)]
+        else:
+            input_spec = list(field_or_spec)
+
+        single_field_index = len(input_spec) == 1
+
+        # For single field indexes, provide special handling based on `unique`
+        # constraint
+        if single_field_index:
+            field = input_spec[0][0]
+
+            index_info = self.get_index_information()
+            if field in index_info:
+                _unique = index_info[field].get("unique", False)
+                if _unique or (unique == _unique):
+                    # Satisfactory index already exists
+                    return field
+
+                _field, is_frame_field = self._handle_frame_field(field)
+
+                if _field == "id":
+                    # For some reason ID indexes are not reported by
+                    # `get_index_information()` as being unique like other
+                    # manually created indexes, but they are, so nothing needs
+                    # to be done here
+                    return field
+
+                if _field in self._get_default_indexes(frames=is_frame_field):
+                    raise ValueError(
+                        "Cannot modify default index '%s'" % field
+                    )
+
+                # We need to drop existing index and replace with a unique one
+                self.drop_index(field)
+
+        is_frame_fields = []
+        index_spec = []
+        for field, option in input_spec:
+            self._validate_root_field(field, include_private=True)
+            _field, is_frame_field = self._get_db_field(field)
+            is_frame_fields.append(is_frame_field)
+            index_spec.append((_field, option))
+
+        if len(set(is_frame_fields)) > 1:
+            raise ValueError(
+                "Fields in a compound index must be either all sample-level "
+                "or all frame-level fields"
+            )
+
+        is_frame_index = all(is_frame_fields)
+
+        if is_frame_index:
+            coll = self._dataset._frame_collection
+        else:
+            coll = self._dataset._sample_collection
+
+        name = coll.create_index(index_spec, unique=unique, **kwargs)
+
+        if single_field_index:
+            name = input_spec[0][0]
+        elif is_frame_index:
+            name = self._FRAMES_PREFIX + name
+
+        return name
+
+    def drop_index(self, field_or_name):
+        """Drops the index for the given field or name.
 
         Args:
-            field_name: the field name or ``embedded.field.name``
+            field_or_name: a field name, ``embedded.field.name``, or compound
+                index name. Use :meth:`list_indexes` to see the available
+                indexes
         """
-        raise NotImplementedError("Subclass must implement drop_index()")
+        name, is_frame_index = self._handle_frame_field(field_or_name)
+
+        if is_frame_index:
+            if name in self._get_default_indexes(frames=True):
+                raise ValueError("Cannot drop default frame index '%s'" % name)
+
+            coll = self._dataset._frame_collection
+        else:
+            if name in self._get_default_indexes():
+                raise ValueError("Cannot drop default index '%s'" % name)
+
+            coll = self._dataset._sample_collection
+
+        index_map = {}
+        fields_map = self._get_db_fields_map(
+            frames=is_frame_index, reverse=True
+        )
+        for key, info in coll.index_information().items():
+            if len(info["key"]) == 1:
+                # We use field name, not pymongo name, for single field indexes
+                field = info["key"][0][0]
+                index_map[fields_map.get(field, field)] = key
+            else:
+                index_map[key] = key
+
+        if name not in index_map:
+            itype = "frame index" if is_frame_index else "index"
+            raise ValueError(
+                "%s has no %s '%s'" % (self.__class__.__name__, itype, name)
+            )
+
+        coll.drop_index(index_map[name])
+
+    def _get_default_indexes(self, frames=False):
+        if frames:
+            if self.media_type == fom.VIDEO:
+                return ["id", "_sample_id_1_frame_number_1"]
+
+            return []
+
+        return ["id", "filepath"]
 
     def reload(self):
         """Reloads the collection from the database."""
@@ -6102,7 +6295,15 @@ class SampleCollection(object):
 
         return any(issubclass(label_type, t) for t in label_type_or_types)
 
-    def _get_db_fields_map(self, include_private=False, frames=False):
+    def _get_db_field(self, field_name):
+        field, is_frame_field = self._handle_frame_field(field_name)
+        fields_map = self._get_db_fields_map(frames=is_frame_field)
+        db_field = fields_map.get(field, field)
+        return db_field, is_frame_field
+
+    def _get_db_fields_map(
+        self, include_private=False, frames=False, reverse=False
+    ):
         if frames:
             schema = self.get_frame_field_schema(
                 include_private=include_private
@@ -6116,7 +6317,10 @@ class SampleCollection(object):
         fields_map = {}
         for field_name, field in schema.items():
             if field.db_field != field_name:
-                fields_map[field_name] = field.db_field
+                if reverse:
+                    fields_map[field.db_field] = field_name
+                else:
+                    fields_map[field_name] = field.db_field
 
         return fields_map
 
@@ -6146,6 +6350,31 @@ class SampleCollection(object):
             ).keys()
         ]
 
+    def _validate_root_field(self, field_name, include_private=False):
+        _ = self._get_root_field_type(
+            field_name, include_private=include_private
+        )
+
+    def _get_root_field_type(self, field_name, include_private=False):
+        field_name, is_frame_field = self._handle_frame_field(field_name)
+
+        if is_frame_field:
+            schema = self.get_frame_field_schema(
+                include_private=include_private
+            )
+        else:
+            schema = self.get_field_schema(include_private=include_private)
+
+        root = field_name.split(".", 1)[0]
+
+        if root not in schema:
+            ftype = "frame field" if is_frame_field else "field"
+            raise ValueError(
+                "%s has no %s '%s'" % (self.__class__.__name__, ftype, root)
+            )
+
+        return schema[root]
+
     def _get_label_field_type(self, field_name):
         field_name, is_frame_field = self._handle_frame_field(field_name)
         if is_frame_field:
@@ -6154,10 +6383,10 @@ class SampleCollection(object):
             schema = self.get_field_schema()
 
         if field_name not in schema:
-            ftype = "Frame field" if is_frame_field else "Field"
+            ftype = "frame field" if is_frame_field else "field"
             raise ValueError(
-                "%s '%s' does not exist on collection '%s'"
-                % (ftype, field_name, self.name)
+                "%s has no %s '%s'"
+                % (self.__class__.__name__, ftype, field_name)
             )
 
         field = schema[field_name]

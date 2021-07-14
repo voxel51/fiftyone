@@ -1170,9 +1170,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             field_name: the field name or ``embedded.field.name``
             error_level (0): the error level to use. Valid values are:
 
-                0: raise error if a top-level field cannot be deleted
-                1: log warning if a top-level field cannot be deleted
-                2: ignore top-level fields that cannot be deleted
+            -   0: raise error if a top-level field cannot be deleted
+            -   1: log warning if a top-level field cannot be deleted
+            -   2: ignore top-level fields that cannot be deleted
         """
         self._delete_sample_fields(field_name, error_level)
 
@@ -1186,9 +1186,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             field_names: the field name or iterable of field names
             error_level (0): the error level to use. Valid values are:
 
-                0: raise error if a top-level field cannot be deleted
-                1: log warning if a top-level field cannot be deleted
-                2: ignore top-level fields that cannot be deleted
+            -   0: raise error if a top-level field cannot be deleted
+            -   1: log warning if a top-level field cannot be deleted
+            -   2: ignore top-level fields that cannot be deleted
         """
         self._delete_sample_fields(field_names, error_level)
 
@@ -1204,9 +1204,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             field_name: the field name or ``embedded.field.name``
             error_level (0): the error level to use. Valid values are:
 
-                0: raise error if a top-level field cannot be deleted
-                1: log warning if a top-level field cannot be deleted
-                2: ignore top-level fields that cannot be deleted
+            -   0: raise error if a top-level field cannot be deleted
+            -   1: log warning if a top-level field cannot be deleted
+            -   2: ignore top-level fields that cannot be deleted
         """
         self._delete_frame_fields(field_name, error_level)
 
@@ -1222,9 +1222,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             field_names: a field name or iterable of field names
             error_level (0): the error level to use. Valid values are:
 
-                0: raise error if a top-level field cannot be deleted
-                1: log warning if a top-level field cannot be deleted
-                2: ignore top-level fields that cannot be deleted
+            -   0: raise error if a top-level field cannot be deleted
+            -   1: log warning if a top-level field cannot be deleted
+            -   2: ignore top-level fields that cannot be deleted
         """
         self._delete_frame_fields(field_names, error_level)
 
@@ -1257,16 +1257,25 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             self._frame_doc_cls._delete_embedded_fields(embedded_fields)
             fofr.Frame._reload_docs(self._frame_collection_name)
 
-    def iter_samples(self):
+    def iter_samples(self, progress=False):
         """Returns an iterator over the samples in the dataset.
+
+        Args:
+            progress (False): whether to render a progress bar tracking the
+                iterator's progress
 
         Returns:
             an iterator over :class:`fiftyone.core.sample.Sample` instances
         """
         pipeline = self._pipeline(detach_frames=True)
 
-        for sample in self._iter_samples(pipeline):
-            yield sample
+        if progress:
+            with fou.ProgressBar(total=len(self)) as pb:
+                for sample in pb(self._iter_samples(pipeline)):
+                    yield sample
+        else:
+            for sample in self._iter_samples(pipeline):
+                yield sample
 
     def _iter_samples(self, pipeline):
         index = 0
@@ -3743,85 +3752,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         dataset.add_videos_patt(videos_patt, tags=tags)
         return dataset
 
-    def list_indexes(self, include_private=False):
-        """Returns the fields of the dataset that are indexed.
-
-        Args:
-            include_private (False): whether to include private fields that
-                start with ``_``
-
-        Returns:
-            a list of field names
-        """
-        index_info = self._sample_collection.index_information()
-        index_fields = [v["key"][0][0] for v in index_info.values()]
-
-        if include_private:
-            return index_fields
-
-        return [f for f in index_fields if not f.startswith("_")]
-
-    def create_index(self, field_name, unique=False, sphere2d=False):
-        """Creates an index on the given field.
-
-        If the given field already has a unique index, it will be retained
-        regardless of the ``unique`` value you specify.
-
-        If the given field already has a non-unique index but you requested a
-        unique index, the existing index will be replaced with a unique index.
-
-        Indexes enable efficient sorting, merging, and other such operations.
-
-        Args:
-            field_name: the field name or ``embedded.field.name``
-            unique (False): whether to add a uniqueness constraint to the index
-            sphere2d (False): whether the field is a GeoJSON field that
-                requires a sphere2d index
-        """
-        root = field_name.split(".", 1)[0]
-
-        if root not in self.get_field_schema(include_private=True):
-            raise ValueError("Dataset has no field '%s'" % root)
-
-        index_info = self._sample_collection.index_information()
-        index_map = {
-            v["key"][0][0]: v.get("unique", False) for v in index_info.values()
-        }
-        if field_name in index_map:
-            _unique = index_map[field_name]
-            if _unique or (unique == _unique):
-                # Satisfactory index already exists
-                return
-
-            # Must drop existing index
-            self.drop_index(field_name)
-
-        if sphere2d:
-            index_spec = [(field_name, "2dsphere")]
-        else:
-            index_spec = field_name
-
-        self._sample_collection.create_index(index_spec, unique=unique)
-
-    def drop_index(self, field_name):
-        """Drops the index on the given field.
-
-        Args:
-            field_name: the field name or ``embedded.field.name``
-        """
-        index_info = self._sample_collection.index_information()
-        index_map = {v["key"][0][0]: k for k, v in index_info.items()}
-
-        if field_name not in index_map:
-            if ("." not in field_name) and (
-                field_name not in self.get_field_schema()
-            ):
-                raise ValueError("Dataset has no field '%s'" % field_name)
-
-            raise ValueError("Dataset field '%s' is not indexed" % field_name)
-
-        self._sample_collection.drop_index(index_map[field_name])
-
     @classmethod
     def from_dict(cls, d, name=None, rel_dir=None, frame_labels_dir=None):
         """Loads a :class:`Dataset` from a JSON dictionary generated by
@@ -4690,33 +4620,57 @@ def _clone_runs(dst_dataset, src_doc):
     dst_doc.save()
 
 
-def _ensure_index(dataset, field, unique=False):
-    coll = dataset._sample_collection
+def _ensure_index(sample_collection, db_field, unique=False):
+    # For some reason the ID index is not reported by `index_information()` as
+    # being unique like other manually created indexes, but it is
+    if db_field == "_id":
+        return False, False
 
-    index_info = coll.index_information()
+    coll = sample_collection._dataset._sample_collection
 
-    # field -> (name, unique)
-    index_map = {
-        v["key"][0][0]: (k, v.get("unique", False))
-        for k, v in index_info.items()
-    }
+    # db_field -> (name, unique)
+    index_map = _get_single_index_map(coll)
 
     new = False
     dropped = False
 
-    if field in index_map:
-        name, current_unique = index_map[field]
-        if current_unique or (current_unique == unique):
+    if db_field in index_map:
+        name, _unique = index_map[db_field]
+        if _unique or (_unique == unique):
             # Satisfactory index already exists
             return new, dropped
 
+        # Must upgrade to unique index
         coll.drop_index(name)
         dropped = True
 
-    coll.create_index(field, unique=True)
+    coll.create_index(db_field, unique=True)
     new = True
 
     return new, dropped
+
+
+def _cleanup_index(sample_collection, db_field, new_index, dropped_index):
+    coll = sample_collection._dataset._sample_collection
+
+    if new_index:
+        # db_field -> (name, unique)
+        index_map = _get_single_index_map(coll)
+
+        name = index_map[db_field][0]
+        coll.drop_index(name)
+
+    if dropped_index:
+        coll.create_index(db_field)
+
+
+def _get_single_index_map(coll):
+    # db_field -> (name, unique)
+    return {
+        v["key"][0][0]: (k, v.get("unique", False))
+        for k, v in coll.index_information().items()
+        if len(v["key"]) == 1
+    }
 
 
 def _merge_samples_python(
@@ -4851,22 +4805,17 @@ def _merge_samples_pipeline(
     #
 
     db_fields_map = src_collection._get_db_fields_map()
-
     key_field = db_fields_map.get(key_field, key_field)
 
     is_video = dst_dataset.media_type == fom.VIDEO
     src_dataset = src_collection._dataset
 
-    if key_field != "_id":
-        new_src_index, dropped_src_index = _ensure_index(
-            src_dataset, key_field, unique=True
-        )
-        new_dst_index, dropped_dst_index = _ensure_index(
-            dst_dataset, key_field, unique=True
-        )
-    else:
-        new_src_index, dropped_src_index = False, False
-        new_dst_index, dropped_dst_index = False, False
+    new_src_index, dropped_src_index = _ensure_index(
+        src_dataset, key_field, unique=True
+    )
+    new_dst_index, dropped_dst_index = _ensure_index(
+        dst_dataset, key_field, unique=True
+    )
 
     if is_video:
         frame_fields = None
@@ -5031,18 +4980,8 @@ def _merge_samples_pipeline(
     src_dataset._aggregate(pipeline=sample_pipeline)
 
     # Cleanup indexes
-
-    if new_src_index:
-        src_collection.drop_index(key_field)
-
-    if dropped_src_index:
-        src_collection.create_index(key_field)
-
-    if new_dst_index:
-        dst_dataset.drop_index(key_field)
-
-    if dropped_dst_index:
-        dst_dataset.create_index(key_field)
+    _cleanup_index(src_collection, key_field, new_src_index, dropped_src_index)
+    _cleanup_index(dst_dataset, key_field, new_dst_index, dropped_dst_index)
 
     #
     # Merge frames

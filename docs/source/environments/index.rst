@@ -171,29 +171,37 @@ Any time you update the state of your ``session`` object; e.g., by setting
 :meth:`session.dataset <fiftyone.core.session.Session.dataset>` or
 :meth:`session.view <fiftyone.core.session.Session.view>`, a new App window
 will be automatically opened in the output of the current cell. The previously
-active App will be replaced with a screenshot of itself.
-
-An App that was replaced with a screenshot can be reactivated by clicking on
-the screenshot if within the notebooj environment in which it was created. Note
-that the reactivated App will load the current state of the ``session`` object,
-not the state in which the screenshot was taken.
+active App will be "frozen", i.e., replaced with a screenshot of its current
+state.
 
 .. code-block:: python
     :linenos:
 
-    # A new App window will be created in the output of this cell
+    # A new App window will be created in the output of this cell, and the
+    # previously active App instance will be replaced with a screenshot
     session.view = dataset.take(10)
 
-A screenshot of the active App can be taken with
+You can reactivate a frozen App instance from the same notebook session by
+clicking on the screenshot.
+
+.. note::
+
+    Reactivating a frozen App instance will load the current state of the
+    ``session`` object, not the state in which the screenshot was taken.
+
+To reactivate an App instance from a previous session, e.g., when running a
+notebook downloaded from the web for the first time, you must (re)run the cell.
+
+You can manually replace the active App instance with a screenshot by calling
 :meth:`session.freeze() <fiftyone.core.session.Session.freeze>`. This is
 useful when you are finished with your notebook and ready to share it with
-others.
+others, as an active App instance itself cannot be viewed outside of the
+current notebook session.
 
 .. code-block:: python
     :linenos:
 
-    # Ensure only screenshots of FiftyOne Apps exist, so the notebook can be
-    # shared
+    # Replace active App instance with screenshot so App state is viewable offline
     session.freeze()
 
 Manually controlling App instances
@@ -215,7 +223,7 @@ When ``auto=False`` is provided, a new App window is created only when you call
 .. code-block:: python
     :linenos:
 
-    # Update the session's view; no App windows is created
+    # Update the session's view; no App window is created
     session.view = dataset.take(10)
 
     # In another cell
@@ -246,8 +254,8 @@ browser tab rather than working with it in cell output(s).
 
 To do this, pass the ``auto=False`` flag to
 :meth:`launch_app() <fiftyone.core.session.launch_app>` when you launch the
-App and then call
-:meth:`session.open_tab() <fiftyone.core.session.Session.open_tab>`:
+App (so that additional App instances will not be created as you work) and then
+call :meth:`session.open_tab() <fiftyone.core.session.Session.open_tab>`:
 
 .. code-block:: python
     :linenos:
@@ -272,6 +280,68 @@ To do this, pass the ``desktop=True`` flag to
 
     # Creates a session and launches the desktop App
     session = fo.launch_app(dataset, desktop=True)
+
+.. _remote-notebooks:
+
+Remote notebooks
+~~~~~~~~~~~~~~~~
+
+You can also work in a Jupyter notebook in your local browser that is
+`served from a remote machine <https://ljvmiranda921.github.io/notebook/2018/01/31/running-a-jupyter-notebook>`_
+where your data is located. Follow the instructions below to achieve this.
+
+**On the remote machine:**
+
+Start the Jupyter server on a port of your choice:
+
+.. code:: shell
+
+    # On remote machine
+    jupyter notebook --no-browser --port=XXXX /path/to/notebook.ipynb
+
+**On your local machine:**
+
+Back on your local machine, you will need to forward the remote port `XXXX` to
+a local port (we'll also use `XXXX` here, for consistency):
+
+.. code:: shell
+
+    # On local machine
+    ssh -N -L XXXX:localhost:XXXX [<username>@]<hostname>
+
+Now open ``localhost:XXXX`` in your browser and you should find your notebook!
+
+If your notebook launches the :ref:`FiftyOne App <fiftyone-app>`, you will also
+need to forward the port used by the App to your local machine. By default,
+the App uses port `5151`, but you can :ref:`specify any port <remote-data>`,
+say `YYYY`, not currently in use on your remote machine:
+
+.. code:: shell
+
+    # On local machine
+    ssh -N -L 5151:localhost:YYYY [<username>@]<hostname>
+
+**In your Jupyter notebook:**
+
+When you launch the :ref:`FiftyOne App <fiftyone-app>` in your notebook, you
+should now see the App as expected!
+
+.. code:: python
+
+    # Launch the App in a notebook cell
+    session = fo.launch_app(dataset)  # port=YYYY
+
+If you chose a port `YYYY` other than the default `5151`, you will need to
+specify it when launching App instances per the commented argument above.
+
+Note that you can also open the App
+:ref:`in a dedicated tab <opening-app-dedicated-tab>`:
+
+.. code:: python
+
+    # Launch the App in a dedicated browser tab
+    session = fo.launch_app(dataset, auto=False)  # port=YYYY
+    session.open_tab()
 
 .. _cloud-storage:
 

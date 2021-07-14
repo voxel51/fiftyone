@@ -133,6 +133,14 @@ COCO-2014 and COCO-2017 by passing them to
 -   ``include_id``: whether to include the COCO ID of each sample in the loaded
     labels. By default, this is False
 
+-   ``include_license``: whether to include the COCO license of each sample in
+    the loaded labels, if available. The supported values are:
+
+    -   ``"False"`` (default): don't load the license
+    -   ``True``/``"name"``: store the string license name
+    -   ``"id"``: store the integer license ID
+    -   ``"url"``: store the license URL
+
 -   ``only_matching``: whether to only load labels that match the ``classes``
     or ``attrs`` requirements that you provide (True), or to load all labels
     for samples that match the requirements (False). By default, this is False
@@ -335,7 +343,7 @@ You can also explicitly request that COCO-style evaluation be used by setting
 the ``method`` parameter to ``"coco"``.
 
 See :ref:`this page <evaluating-detections>` for more information about using
-FiftyOne to analyze detection models.
+FiftyOne to analyze object detection models.
 
 .. note::
 
@@ -373,13 +381,13 @@ populated on each sample and its predicted/ground truth objects:
         FP: sample.<eval_key>_fp
         FN: sample.<eval_key>_fn
 
--   The fields listed below are populated on each individual |Detection|
-    instance; these fields tabulate the TP/FP/FN status of the object, the ID
-    of the matching object (if any), and the matching IoU::
+-   The fields listed below are populated on each individual object instance;
+    these fields tabulate the TP/FP/FN status of the object, the ID of the
+    matching object (if any), and the matching IoU::
 
-        TP/FP/FN: detection.<eval_key>
-              ID: detection.<eval_key>_id
-             IoU: detection.<eval_key>_iou
+        TP/FP/FN: object.<eval_key>
+              ID: object.<eval_key>_id
+             IoU: object.<eval_key>_iou
 
 .. note::
 
@@ -404,7 +412,7 @@ The example below demonstrates COCO-style detection evaluation on the
     dataset = foz.load_zoo_dataset("quickstart")
     print(dataset)
 
-    # Evaluate the detections in the `predictions` field with respect to the
+    # Evaluate the objects in the `predictions` field with respect to the
     # objects in the `ground_truth` field
     results = dataset.evaluate_detections(
         "predictions",
@@ -463,7 +471,7 @@ mAP and PR curves
 ~~~~~~~~~~~~~~~~~
 
 You can compute mean average precision (mAP) and precision-recall (PR) curves
-for your detections by passing the ``compute_mAP=True`` flag to
+for your predictions by passing the ``compute_mAP=True`` flag to
 :meth:`evaluate_detections() <fiftyone.core.collections.SampleCollection.evaluate_detections>`:
 
 .. note::
@@ -507,8 +515,8 @@ the results of COCO-style evaluations.
 In order for the confusion matrix to capture anything other than false
 positive/negative counts, you will likely want to set the
 :class:`classwise <fiftyone.utils.eval.coco.COCOEvaluationConfig>` parameter
-to ``False`` during evaluation so that detections can be matched with ground
-truth objects of different classes.
+to ``False`` during evaluation so that predicted objects can be matched with
+ground truth objects of different classes.
 
 .. code-block:: python
     :linenos:

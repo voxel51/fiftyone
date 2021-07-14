@@ -2001,8 +2001,8 @@ class _GeoStage(ViewStage):
             # Assume the user directly specified the subfield to use
             self._location_key = self._location_field
 
-        # These operations require a `sphere2d` index
-        sample_collection.create_index(self._location_key, sphere2d=True)
+        # These operations require a spherical index
+        sample_collection.create_index([(self._location_key, "2dsphere")])
 
 
 class GeoNear(_GeoStage):

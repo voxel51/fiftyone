@@ -6,8 +6,8 @@ Evaluating Models
 .. default-role:: code
 
 FiftyOne provides a variety of builtin methods for evaluating your model
-predictions, including classifications, detections, and semantic segmentations,
-on both image and video datasets.
+predictions, including classifications, detections, polygons, instance and
+semantic segmentations, on both image and video datasets.
 
 When you evaluate a model in FiftyOne, you get access to the standard aggregate
 metrics such as classification reports, confusion matrices, and PR curves
@@ -51,7 +51,7 @@ method:
     dataset = foz.load_zoo_dataset("quickstart")
     print(dataset)
 
-    # Evaluate the detections in the `predictions` field with respect to the
+    # Evaluate the objects in the `predictions` field with respect to the
     # objects in the `ground_truth` field
     results = dataset.evaluate_detections(
         "predictions",
@@ -172,7 +172,7 @@ see the true positive examples of that class in the App.
 Likewise, whenever you modify the Session's view, either in the App or by
 programmatically setting
 :meth:`session.view <fiftyone.core.session.Session.view>`, the confusion matrix
-is automatically updated to show the cell counts for only those detections that
+is automatically updated to show the cell counts for only those objects that
 are included in the current view.
 
 .. code-block:: python
@@ -276,7 +276,7 @@ fake predictions added to it to demonstrate the workflow:
 
     #
     # Create some test predictions by copying the ground truth labels into a
-    # new `predictions` field and then perturbing 10% of the labels at random
+    # new `predictions` field with 10% of the labels perturbed at random
     #
 
     classes = dataset.distinct("ground_truth.label")
@@ -287,12 +287,12 @@ fake predictions added to it to demonstrate the workflow:
 
         return val
 
-    dataset.clone_sample_field("ground_truth", "predictions")
+    predictions = [
+        fo.Classification(label=jitter(gt.label), confidence=random.random())
+        for gt in dataset.values("ground_truth")
+    ]
 
-    gt_labels = dataset.values("ground_truth.label")
-    pred_labels = [jitter(label) for label in gt_labels]
-
-    dataset.set_values("predictions.label", pred_labels)
+    dataset.set_values("predictions", predictions)
 
     print(dataset)
 
@@ -531,7 +531,7 @@ __________
 You can use the
 :meth:`evaluate_detections() <fiftyone.core.collections.SampleCollection.evaluate_detections>`
 method to evaluate the predictions of an object detection model stored in a
-|Detections| field of your dataset.
+|Detections| or |Polylines| field of your dataset.
 
 Invoking
 :meth:`evaluate_detections() <fiftyone.core.collections.SampleCollection.evaluate_detections>`
@@ -550,6 +550,49 @@ samples.
     by default, but
     :ref:`Open Images-style <evaluating-detections-open-images>` evaluation is
     also natively supported.
+
+.. _evaluation-detection-types:
+
+Supported types
+---------------
+
+The :meth:`evaluate_detections() <fiftyone.core.collections.SampleCollection.evaluate_detections>`
+method supports all of the following task types:
+
+-   :ref:`Object detection <object-detection>`
+-   :ref:`Instance segmentations <objects-with-instance-segmentations>`
+-   :ref:`Polygon detection <polylines>`
+
+The only difference between each task type is in how the IoU between objects is
+calculated. Specifically, for instance segmentations and polygons, IoUs are
+computed between the polgyonal shapes rather than their rectangular bounding
+boxes.
+
+For object detection tasks, the ground truth and predicted objects should be
+stored in |Detections| format.
+
+For instance segmentation tasks, the ground truth and predicted objects should
+be stored in |Detections| format, and each |Detection| instance should have its
+:attr:`mask <fiftyone.core.labels.Detection.mask>` attribute populated to
+define the extent of the object within its bounding box.
+
+.. note::
+
+    In order to use instance masks for IoU calculations, pass ``use_masks=True``
+    to :meth:`evaluate_detections() <fiftyone.core.collections.SampleCollection.evaluate_detections>`.
+
+For polygon detection tasks, the ground truth and predicted objects should be
+stored in |Polylines| format with their
+:attr:`filled <fiftyone.core.labels.Polyline.filled>` attribute set to
+``True`` to indicate that they represent closed polygons (as opposed to
+polylines).
+
+.. note::
+
+    If you are evaluating polygons but would rather use bounding boxes rather
+    than the actual polygonal geometries for IoU calculations, you can pass
+    ``use_boxes=True`` to
+    :meth:`evaluate_detections() <fiftyone.core.collections.SampleCollection.evaluate_detections>`.
 
 .. _evaluation-patches:
 
@@ -611,6 +654,9 @@ results of an evaluation on the
     # Convert to evaluation patches
     eval_patches = dataset.to_evaluation_patches("eval")
     print(eval_patches)
+
+    print(eval_patches.count_values("type"))
+    # {'fn': 246, 'fp': 4131, 'tp': 986}
 
     # View patches in the App
     session.view = eval_patches
@@ -721,13 +767,13 @@ populated on each sample and its predicted/ground truth objects:
         FP: sample.<eval_key>_fp
         FN: sample.<eval_key>_fn
 
--   The fields listed below are populated on each individual |Detection|
-    instance; these fields tabulate the TP/FP/FN status of the object, the ID
-    of the matching object (if any), and the matching IoU::
+-   The fields listed below are populated on each individual object instance;
+    these fields tabulate the TP/FP/FN status of the object, the ID of the
+    matching object (if any), and the matching IoU::
 
-        TP/FP/FN: detection.<eval_key>
-              ID: detection.<eval_key>_id
-             IoU: detection.<eval_key>_iou
+        TP/FP/FN: object.<eval_key>
+              ID: object.<eval_key>_id
+             IoU: object.<eval_key>_iou
 
 .. note::
 
@@ -752,7 +798,7 @@ The example below demonstrates COCO-style detection evaluation on the
     dataset = foz.load_zoo_dataset("quickstart")
     print(dataset)
 
-    # Evaluate the detections in the `predictions` field with respect to the
+    # Evaluate the objects in the `predictions` field with respect to the
     # objects in the `ground_truth` field
     results = dataset.evaluate_detections(
         "predictions",
@@ -810,7 +856,7 @@ mAP and PR curves
 ~~~~~~~~~~~~~~~~~
 
 You can compute mean average precision (mAP) and precision-recall (PR) curves
-for your detections by passing the ``compute_mAP=True`` flag to
+for your objects by passing the ``compute_mAP=True`` flag to
 :meth:`evaluate_detections() <fiftyone.core.collections.SampleCollection.evaluate_detections>`:
 
 .. note::
@@ -853,8 +899,8 @@ the results of COCO-style evaluations.
 In order for the confusion matrix to capture anything other than false
 positive/negative counts, you will likely want to set the
 :class:`classwise <fiftyone.utils.eval.coco.COCOEvaluationConfig>` parameter
-to ``False`` during evaluation so that detections can be matched with ground
-truth objects of different classes.
+to ``False`` during evaluation so that predicted objects can be matched with
+ground truth objects of different classes.
 
 .. code-block:: python
     :linenos:
@@ -954,9 +1000,9 @@ populated on each sample and its predicted/ground truth objects:
     instance; these fields tabulate the TP/FP/FN status of the object, the ID
     of the matching object (if any), and the matching IoU::
 
-        TP/FP/FN: detection.<eval_key>
-              ID: detection.<eval_key>_id
-             IoU: detection.<eval_key>_iou
+        TP/FP/FN: object.<eval_key>
+              ID: object.<eval_key>_id
+             IoU: object.<eval_key>_iou
 
 .. note::
 
@@ -981,7 +1027,7 @@ The example below demonstrates Open Images-style detection evaluation on the
     dataset = foz.load_zoo_dataset("quickstart")
     print(dataset)
 
-    # Evaluate the detections in the `predictions` field with respect to the
+    # Evaluate the objects in the `predictions` field with respect to the
     # objects in the `ground_truth` field
     results = dataset.evaluate_detections(
         "predictions",
@@ -1083,8 +1129,8 @@ the results of Open Images-style evaluations.
 In order for the confusion matrix to capture anything other than false
 positive/negative counts, you will likely want to set the
 :class:`classwise <fiftyone.utils.eval.openimages.OpenImagesEvaluationConfig>`
-parameter to ``False`` during evaluation so that detections can be matched with
-ground truth objects of different classes.
+parameter to ``False`` during evaluation so that predicted objects can be
+matched with ground truth objects of different classes.
 
 .. code-block:: python
     :linenos:
@@ -1392,27 +1438,38 @@ Dataset Zoo:
 
     #
     # Create some test predictions by copying the ground truth objects into a
-    # new `predictions` field of the frames and then perturbing 10% of the
-    # labels at random
+    # new `predictions` field of the frames with 10% of the labels perturbed at
+    # random
     #
 
     classes = dataset.distinct("frames.ground_truth.detections.label")
 
     def jitter(val):
-        if isinstance(val, list):
-            return [jitter(v) for v in val]
-
         if random.random() < 0.10:
             return random.choice(classes)
 
         return val
 
-    dataset.clone_frame_field("ground_truth", "predictions")
+    predictions = []
+    for sample_gts in dataset.values("frames.ground_truth"):
+        sample_predictions = []
+        for frame_gts in sample_gts:
+            sample_predictions.append(
+                fo.Detections(
+                    detections=[
+                        fo.Detection(
+                            label=jitter(gt.label),
+                            bounding_box=gt.bounding_box,
+                            confidence=random.random(),
+                        )
+                        for gt in frame_gts.detections
+                    ]
+                )
+            )
 
-    gt_labels = dataset.values("frames.ground_truth.detections.label")
-    pred_labels = jitter(gt_labels)
+        predictions.append(sample_predictions)
 
-    dataset.set_values("frames.predictions.detections.label", pred_labels)
+    dataset.set_values("frames.predictions", predictions)
 
     print(dataset)
 
@@ -1421,7 +1478,7 @@ Dataset Zoo:
     results = dataset.evaluate_detections(
         "frames.predictions",
         gt_field="frames.ground_truth",
-        eval_key="eval_frames",
+        eval_key="eval",
     )
 
     # Print a classification report
@@ -1438,3 +1495,42 @@ Dataset Zoo:
        micro avg       0.94      0.94      0.94     11345
        macro avg       0.88      0.94      0.91     11345
     weighted avg       0.94      0.94      0.94     11345
+
+You can also view frame-level evaluation results as
+:ref:`evaluation patches <evaluation-patches>` by first converting
+:ref:`to frames <frame-views>` and then :ref:`to patches <eval-patches-views>`!
+
+.. code-block:: python
+    :linenos:
+
+    # Convert to frame evaluation patches
+    frame_eval_patches = dataset.to_frames().to_evaluation_patches("eval")
+    print(frame_eval_patches)
+
+    print(frame_eval_patches.count_values("type"))
+    # {'tp': 10578, 'fn': 767, 'fp': 767}
+
+    session = fo.launch_app(view=frame_eval_patches)
+
+.. code-block:: text
+
+    Dataset:     video-eval-demo
+    Media type:  image
+    Num patches: 12112
+    Tags:        []
+    Patch fields:
+        id:           fiftyone.core.fields.ObjectIdField
+        filepath:     fiftyone.core.fields.StringField
+        tags:         fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
+        metadata:     fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.Metadata)
+        predictions:  fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Detections)
+        ground_truth: fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Detections)
+        sample_id:    fiftyone.core.fields.ObjectIdField
+        frame_id:     fiftyone.core.fields.ObjectIdField
+        frame_number: fiftyone.core.fields.FrameNumberField
+        type:         fiftyone.core.fields.StringField
+        iou:          fiftyone.core.fields.FloatField
+        crowd:        fiftyone.core.fields.BooleanField
+    View stages:
+        1. ToFrames(config=None)
+        2. ToEvaluationPatches(eval_key='eval')

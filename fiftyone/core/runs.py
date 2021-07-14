@@ -7,15 +7,19 @@ Dataset runs framework.
 """
 from copy import copy
 import datetime
-from bson import json_util
+import logging
 
-import numpy as np
+from bson import json_util
 
 import eta.core.serial as etas
 import eta.core.utils as etau
 
+import fiftyone.constants as foc
 from fiftyone.core.config import Config, Configurable
 from fiftyone.core.odm.runs import RunDocument
+
+
+logger = logging.getLogger(__name__)
 
 
 class RunInfo(Config):
@@ -23,12 +27,14 @@ class RunInfo(Config):
 
     Args:
         key: the run key
+        version (None): the version of FiftyOne when the run was executed
         timestamp (None): the UTC ``datetime`` of the run
         config (None): the :class:`RunConfig` for the run
     """
 
-    def __init__(self, key, timestamp=None, config=None):
+    def __init__(self, key, version=None, timestamp=None, config=None):
         self.key = key
+        self.version = version
         self.timestamp = timestamp
         self.config = config
 
@@ -41,6 +47,7 @@ class RunInfo(Config):
     def _from_doc(cls, doc):
         return cls(
             key=doc.key,
+            version=doc.version,
             timestamp=doc.timestamp,
             config=cls.config_cls().from_dict(doc.config),
         )
@@ -56,9 +63,10 @@ class RunConfig(Config):
 
     def __init__(self, **kwargs):
         if kwargs:
-            raise ValueError(
-                "%s has no parameters %s"
-                % (self.__class__, set(kwargs.keys()))
+            logger.warning(
+                "Ignoring unsupported parameters %s for %s",
+                set(kwargs.keys()),
+                type(self),
             )
 
     @property
@@ -183,9 +191,12 @@ class Run(Configurable):
             return
 
         self.validate_run(samples, key, overwrite=overwrite)
+        version = foc.VERSION
         timestamp = datetime.datetime.utcnow()
         run_info_cls = self.run_info_cls()
-        run_info = run_info_cls(key, timestamp=timestamp, config=self.config)
+        run_info = run_info_cls(
+            key, version=version, timestamp=timestamp, config=self.config
+        )
         self.save_run_info(samples, run_info)
 
     def validate_run(self, samples, key, overwrite=True):
@@ -219,9 +230,13 @@ class Run(Configurable):
                 % (self._run_str().capitalize(), key)
             )
 
-        existing_info = self.get_run_info(samples, key)
+        try:
+            existing_info = self.get_run_info(samples, key)
+        except:
+            # If the old info can't be loaded, always let the user overwrite it
+            return
 
-        if self.config.__class__ != existing_info.config.__class__:
+        if type(self.config) != type(existing_info.config):
             raise ValueError(
                 "Cannot overwrite existing %s '%s' of type %s with one of "
                 "type %s; please choose a different key or delete the "
@@ -229,8 +244,8 @@ class Run(Configurable):
                 % (
                     self._run_str(),
                     key,
-                    existing_info.config.__class__,
-                    self.config.__class__,
+                    type(existing_info.config),
+                    type(self.config),
                 )
             )
 
@@ -295,7 +310,26 @@ class Run(Configurable):
         """
         run_doc = cls._get_run_doc(samples, key)
         run_info_cls = cls.run_info_cls()
-        return run_info_cls._from_doc(run_doc)
+
+        try:
+            return run_info_cls._from_doc(run_doc)
+        except Exception as e:
+            if run_doc.version == foc.VERSION:
+                raise e
+
+            raise ValueError(
+                "Failed to load info for %s with key '%s'. The %s used "
+                "fiftyone==%s but you are currently using fiftyone==%s. We "
+                "recommend that you re-run the method with your current "
+                "FiftyOne version"
+                % (
+                    cls._run_str(),
+                    key,
+                    cls._run_str(),
+                    run_doc.version or "????",
+                    foc.VERSION,
+                )
+            ) from e
 
     @classmethod
     def save_run_info(cls, samples, run_info, overwrite=True):
@@ -323,6 +357,7 @@ class Run(Configurable):
 
         run_docs[key] = RunDocument(
             key=key,
+            version=run_info.version,
             timestamp=run_info.timestamp,
             config=run_info.config.serialize(),
             view_stages=view_stages,
@@ -399,7 +434,26 @@ class Run(Configurable):
         view = cls.load_run_view(samples, key)
         run_doc.results.seek(0)
         results_str = run_doc.results.read().decode()
-        run_results = RunResults.from_str(results_str, view)
+
+        try:
+            run_results = RunResults.from_str(results_str, view)
+        except Exception as e:
+            if run_doc.version == foc.VERSION:
+                raise e
+
+            raise ValueError(
+                "Failed to load results for %s with key '%s'. The %s used "
+                "fiftyone==%s but you are currently using fiftyone==%s. We "
+                "recommend that you re-run the method with your current "
+                "FiftyOne version"
+                % (
+                    cls._run_str(),
+                    key,
+                    cls._run_str(),
+                    run_doc.version or "????",
+                    foc.VERSION,
+                )
+            ) from e
 
         # Cache the results for future use in this session
         results_cache[key] = run_results
@@ -469,21 +523,30 @@ class Run(Configurable):
             samples: a :class:`fiftyone.core.collections.SampleCollection`
             key: a run key
         """
-        # Cleanup run
-        run_info = cls.get_run_info(samples, key)
-        run = run_info.config.build()
-        run.cleanup(samples, key)
+        run_doc = cls._get_run_doc(samples, key)
+
+        try:
+            # Cleanup after run, if possible
+            run_info = cls.get_run_info(samples, key)
+            run = run_info.config.build()
+            run.cleanup(samples, key)
+        except:
+            logger.warning(
+                "Unable to run cleanup() for the %s with key '%s'",
+                cls._run_str(),
+                key,
+            )
 
         dataset = samples._root_dataset
 
-        # Delete run from dataset
+        # Delete run from dataset doc
         run_docs = getattr(dataset._doc, cls._runs_field())
-        run_doc = run_docs.pop(key, None)
+        run_docs.pop(key, None)
         results_cache = getattr(dataset, cls._results_cache_field())
         results_cache.pop(key, None)
 
         # Must manually delete run result, which is stored via GridFS
-        if run_doc and run_doc.results:
+        if run_doc.results:
             run_doc.results.delete()
 
         dataset._doc.save()
@@ -505,8 +568,7 @@ class Run(Configurable):
         run_doc = run_docs.get(key, None)
         if run_doc is None:
             raise ValueError(
-                "%s key '%s' not found on dataset '%s'"
-                % (cls._run_str().capitalize(), key, samples._dataset.name)
+                "Dataset has no %s key '%s'" % (cls._run_str(), key)
             )
 
         return run_doc

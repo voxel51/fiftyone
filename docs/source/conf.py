@@ -141,6 +141,7 @@ intersphinx_mapping = {
     "numpy": ("https://numpy.org/doc/stable/", None),
     "torch": ("https://pytorch.org/docs/stable/", None),
     "flash": ("https://lightning-flash.readthedocs.io/en/latest", None),
+    "pymongo": ("https://pymongo.readthedocs.io/en/stable/", None),
 }
 
 # -- Options for HTML output -------------------------------------------------

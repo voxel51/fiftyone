@@ -9,7 +9,6 @@ import contextlib
 import inspect
 import itertools
 import logging
-import warnings
 
 import numpy as np
 
@@ -21,7 +20,6 @@ import eta.core.video as etav
 import eta.core.web as etaw
 
 import fiftyone as fo
-import fiftyone.core.frame as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 import fiftyone.core.utils as fou
@@ -1258,8 +1256,10 @@ def compute_patch_embeddings(
         if embeddings_field is not None:
             embeddings_field, _ = samples._handle_frame_field(embeddings_field)
 
-        fov.validate_collection_frame_label_fields(
-            samples, patches_field, _ALLOWED_PATCH_TYPES
+        fov.validate_collection_label_fields(
+            samples,
+            samples._FRAMES_PREFIX + patches_field,
+            _ALLOWED_PATCH_TYPES,
         )
     else:
         fov.validate_collection_label_fields(

@@ -18,6 +18,10 @@ from .detection import (
     DetectionEvaluationConfig,
     DetectionResults,
 )
+from .utils import (
+    compute_ious,
+    make_iscrowd_fcn,
+)
 
 
 logger = logging.getLogger(__name__)
@@ -28,13 +32,23 @@ class COCOEvaluationConfig(DetectionEvaluationConfig):
 
     Args:
         pred_field: the name of the field containing the predicted
-            :class:`fiftyone.core.labels.Detections` instances
+            :class:`fiftyone.core.labels.Detections` or
+            :class:`fiftyone.core.labels.Polylines`
         gt_field: the name of the field containing the ground truth
-            :class:`fiftyone.core.labels.Detections` instances
+            :class:`fiftyone.core.labels.Detections` or
+            :class:`fiftyone.core.labels.Polylines`
         iou (None): the IoU threshold to use to determine matches
         classwise (None): whether to only match objects with the same class
             label (True) or allow matches between classes (False)
         iscrowd ("iscrowd"): the name of the crowd attribute
+        use_masks (False): whether to compute IoUs using the instances masks in
+            the ``mask`` attribute of the provided objects, which must be
+            :class:`fiftyone.core.labels.Detection` instances
+        use_boxes (False): whether to compute IoUs using the bounding boxes
+            of the provided :class:`fiftyone.core.labels.Polyline` instances
+            rather than using their actual geometries
+        tolerance (None): a tolerance, in pixels, when generating approximate
+            polylines for instance masks. Typical values are 1-3 pixels
         compute_mAP (False): whether to perform the necessary computations so
             that mAP and PR curves can be generated
         iou_threshs (None): a list of IoU thresholds to use when computing mAP
@@ -42,6 +56,15 @@ class COCOEvaluationConfig(DetectionEvaluationConfig):
         max_preds (None): the maximum number of predicted objects to evaluate
             when computing mAP and PR curves. Only applicable when
             ``compute_mAP`` is True
+        error_level (1): the error level to use when manipulating instance
+            masks or polylines. Valid values are:
+
+            -   0: raise geometric errors that are encountered
+            -   1: log warnings if geometric errors are encountered
+            -   2: ignore geometric errors
+
+            If ``error_level > 0``, any calculation that raises a geometric
+            error will default to an IoU of 0
     """
 
     def __init__(
@@ -51,9 +74,13 @@ class COCOEvaluationConfig(DetectionEvaluationConfig):
         iou=None,
         classwise=None,
         iscrowd="iscrowd",
+        use_masks=False,
+        use_boxes=False,
+        tolerance=None,
         compute_mAP=False,
         iou_threshs=None,
         max_preds=None,
+        error_level=1,
         **kwargs,
     ):
         super().__init__(
@@ -67,9 +94,13 @@ class COCOEvaluationConfig(DetectionEvaluationConfig):
             max_preds = 100
 
         self.iscrowd = iscrowd
+        self.use_masks = use_masks
+        self.use_boxes = use_boxes
+        self.tolerance = tolerance
         self.compute_mAP = compute_mAP
         self.iou_threshs = iou_threshs
         self.max_preds = max_preds
+        self.error_level = error_level
 
     @property
     def method(self):
@@ -129,8 +160,8 @@ class COCOEvaluation(DetectionEvaluation):
         if eval_key is None:
             # Don't save results on user's data
             eval_key = "eval"
-            gts = _copy_detections(gts)
-            preds = _copy_detections(preds)
+            gts = _copy_labels(gts)
+            preds = _copy_labels(preds)
 
         return _coco_evaluation_single_iou(gts, preds, eval_key, self.config)
 
@@ -194,8 +225,8 @@ class COCOEvaluation(DetectionEvaluation):
 
                 for image in images:
                     # Don't mess with the user's data
-                    gts = _copy_detections(image[self.gt_field])
-                    preds = _copy_detections(image[self.pred_field])
+                    gts = _copy_labels(image[self.gt_field])
+                    preds = _copy_labels(image[self.pred_field])
 
                     image_matches = _coco_evaluation_iou_sweep(
                         gts, preds, self.config
@@ -464,26 +495,36 @@ def _coco_evaluation_iou_sweep(gts, preds, config):
 def _coco_evaluation_setup(
     gts, preds, id_keys, iou_key, config, max_preds=None
 ):
-    iscrowd = _make_iscrowd_fcn(config.iscrowd)
+    field = gts._LABEL_LIST_FIELD
+
+    iscrowd = make_iscrowd_fcn(config.iscrowd)
     classwise = config.classwise
+
+    iou_kwargs = dict(iscrowd=iscrowd, error_level=config.error_level)
+
+    if config.use_masks:
+        iou_kwargs.update(use_masks=True, tolerance=config.tolerance)
+
+    if config.use_boxes:
+        iou_kwargs.update(use_boxes=True)
 
     # Organize preds and GT by category
     cats = defaultdict(lambda: defaultdict(list))
-    for det in preds.detections:
-        det[iou_key] = _NO_MATCH_IOU
+    for obj in preds[field]:
+        obj[iou_key] = _NO_MATCH_IOU
         for id_key in id_keys:
-            det[id_key] = _NO_MATCH_ID
+            obj[id_key] = _NO_MATCH_ID
 
-        label = det.label if classwise else "all"
-        cats[label]["preds"].append(det)
+        label = obj.label if classwise else "all"
+        cats[label]["preds"].append(obj)
 
-    for det in gts.detections:
-        det[iou_key] = _NO_MATCH_IOU
+    for obj in gts[field]:
+        obj[iou_key] = _NO_MATCH_IOU
         for id_key in id_keys:
-            det[id_key] = _NO_MATCH_ID
+            obj[id_key] = _NO_MATCH_ID
 
-        label = det.label if classwise else "all"
-        cats[label]["gts"].append(det)
+        label = obj.label if classwise else "all"
+        cats[label]["gts"].append(obj)
 
     # Compute IoUs within each category
     pred_ious = {}
@@ -503,7 +544,7 @@ def _coco_evaluation_setup(
         gts = sorted(gts, key=iscrowd)
 
         # Compute ``num_preds x num_gts`` IoUs
-        ious = _compute_iou(preds, gts, iscrowd)
+        ious = compute_ious(preds, gts, **iou_kwargs)
 
         gt_ids = [g.id for g in gts]
         for pred, gt_ious in zip(preds, ious):
@@ -614,52 +655,12 @@ def _compute_matches(
     return matches
 
 
-def _compute_iou(preds, gts, iscrowd):
-    ious = np.zeros((len(preds), len(gts)))
-    for j, gt in enumerate(gts):
-        gx, gy, gw, gh = gt.bounding_box
-        gt_area = gh * gw
-        gt_crowd = iscrowd(gt)
-        for i, pred in enumerate(preds):
-            px, py, pw, ph = pred.bounding_box
-
-            # Width of intersection
-            w = min(px + pw, gx + gw) - max(px, gx)
-            if w <= 0:
-                continue
-
-            # Height of intersection
-            h = min(py + ph, gy + gh) - max(py, gy)
-            if h <= 0:
-                continue
-
-            pred_area = ph * pw
-            inter = h * w
-            union = pred_area if gt_crowd else pred_area + gt_area - inter
-            ious[i, j] = min(inter / union, 1)
-
-    return ious
-
-
-def _make_iscrowd_fcn(iscrowd_attr):
-    def _iscrowd(detection):
-        try:
-            return bool(detection[iscrowd_attr])
-        except KeyError:
-            # @todo remove Attribute usage
-            if iscrowd_attr in detection.attributes:
-                return bool(detection.attributes[iscrowd_attr].value)
-            else:
-                return False
-
-    return _iscrowd
-
-
-def _copy_detections(dets):
-    _dets = dets.copy()
+def _copy_labels(labels):
+    field = labels._LABEL_LIST_FIELD
+    _labels = labels.copy()
 
     # We need the IDs to stay the same
-    for _det, det in zip(_dets.detections, dets.detections):
-        _det._id = det._id
+    for _label, label in zip(_labels[field], labels[field]):
+        _label._id = label._id
 
-    return _dets
+    return _labels
