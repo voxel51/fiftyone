@@ -301,11 +301,18 @@ const SampleModal = ({ onClose, sampleId }: Props, ref) => {
             {formatMetadata(metadata).map(({ name, value }) => (
               <Row key={"metadata-" + name} name={name} value={value} />
             ))}
-            <h2>
-              Fields
-              <span className="push-right" />
-            </h2>
-            <Suspense fallback={<Loading />}>
+            <Suspense
+              fallback={
+                <h2>
+                  Fields...
+                  <span className="push-right" />
+                </h2>
+              }
+            >
+              <h2>
+                Fields
+                <span className="push-right" />
+              </h2>
               <FieldsSidebar
                 modal={true}
                 style={{
