@@ -5551,44 +5551,176 @@ class SampleCollection(object):
         if archive_path is not None:
             etau.make_archive(export_dir, archive_path, cleanup=True)
 
-    def list_indexes(self, include_private=False):
-        """Returns the fields of the dataset that are indexed.
+    def list_indexes(self):
+        """Returns the list of index names on this collection.
 
-        Args:
-            include_private (False): whether to include private fields that
-                start with ``_``
+        Single-field indexes are referenced by their field name, while compound
+        indexes are referenced by more complicated strings (see
+        :meth:`pymongo:pymongo.collection.Collection.index_information` for
+        details on the compound format).
 
         Returns:
-            a list of field names
+            the list of index names
         """
-        raise NotImplementedError("Subclass must implement list_indexes()")
+        return list(self.get_index_information().keys())
 
-    def create_index(self, field_name, unique=False, sphere2d=False):
-        """Creates an index on the given field.
+    def get_index_information(self):
+        """Returns a dictionary of information about the indexes on this
+        collection.
 
-        If the given field already has a unique index, it will be retained
-        regardless of the ``unique`` value you specify.
+        See :meth:`pymongo:pymongo.collection.Collection.index_information` for
+        details on the structure of this dictionary.
 
-        If the given field already has a non-unique index but you requested a
-        unique index, the existing index will be dropped.
+        Returns:
+            a dict mapping index names to info dicts
+        """
+        index_info = {}
+
+        # Sample-level indexes
+        fields_map = self._get_db_fields_map(reverse=True)
+        sample_info = self._dataset._sample_collection.index_information()
+        for key, info in sample_info.items():
+            if len(info["key"]) == 1:
+                field = info["key"][0][0]
+                key = fields_map.get(field, field)
+
+            index_info[key] = info
+
+        if self.media_type == fom.VIDEO:
+            # Frame-level indexes
+            fields_map = self._get_db_fields_map(frames=True, reverse=True)
+            frame_info = self._dataset._frame_collection.index_information()
+            for key, info in frame_info.items():
+                if len(info["key"]) == 1:
+                    field = info["key"][0][0]
+                    key = fields_map.get(field, field)
+
+                index_info[self._FRAMES_PREFIX + key] = info
+
+        return index_info
+
+    def create_index(self, field_or_spec, unique=False, **kwargs):
+        """Creates an index on the given field or with the given specification.
 
         Indexes enable efficient sorting, merging, and other such operations.
 
+        Frame-level fields can be indexed by prepending ``"frames."`` to the
+        field name.
+
+        If you are indexing a single field and it already has a unique
+        constraint, it will be retained regardless of the ``unique`` value you
+        specify. Conversely, if the given field already has a non-unique index
+        but you requested a unique index, the existing index will be replaced
+        with a unique index. Use :meth:`drop_index` to drop an existing index
+        first if you wish to modify an existing index in other ways.
+
         Args:
-            field_name: the field name or ``embedded.field.name``
+            field_or_spec: the field name, ``embedded.field.name``, or index
+                specification list. See
+                :meth:`pymongo:pymongo.collection.Collection.create_index` for
+                supported values
             unique (False): whether to add a uniqueness constraint to the index
-            sphere2d (False): whether the field is a GeoJSON field that
-                requires a sphere2d index
+            **kwargs: optional keyword arguments for
+                :meth:`pymongo:pymongo.collection.Collection.create_index`
         """
-        raise NotImplementedError("Subclass must implement create_index()")
+        if etau.is_str(field_or_spec):
+            input_spec = [(field_or_spec, 1)]
+        else:
+            input_spec = list(field_or_spec)
 
-    def drop_index(self, field_name):
-        """Drops the index on the given field.
+        # For single field indexes, provide special handling based on `unique`
+        # constraint
+        if len(input_spec) == 1:
+            field = input_spec[0][0]
+
+            index_info = self.get_index_information()
+            if field in index_info:
+                _unique = index_info[field].get("unique", False)
+                if _unique or (unique == _unique):
+                    # Satisfactory index already exists
+                    return
+
+                _field, is_frame_field = self._handle_frame_field(field)
+                if _field in self._get_default_indexes(frames=is_frame_field):
+                    # Don't allow editing default indexes
+                    logger.warning("Cannot modify default index '%s'", field)
+                    return
+
+                # We need to drop existing index and replace with unique one
+                self.drop_index(field)
+
+        is_frame_fields = []
+        index_spec = []
+        for field, option in input_spec:
+            self._validate_root_field(field, include_private=True)
+            _field, is_frame_field = self._get_db_field(field)
+            is_frame_fields.append(is_frame_field)
+            index_spec.append((_field, option))
+
+        if len(set(is_frame_fields)) > 1:
+            raise ValueError(
+                "Fields in a compound index must be either all sample-level "
+                "or all frame-level fields"
+            )
+
+        is_frame_index = all(is_frame_fields)
+
+        if is_frame_index:
+            collection = self._dataset._frame_collection
+        else:
+            collection = self._dataset._sample_collection
+
+        collection.create_index(index_spec, unique=unique, **kwargs)
+
+    def drop_index(self, field_or_name):
+        """Drops the index for the given field or name.
 
         Args:
-            field_name: the field name or ``embedded.field.name``
+            field_or_name: a field name, ``embedded.field.name``, or compound
+                index name. Use :meth:`list_indexes` to see the available
+                indexes
         """
-        raise NotImplementedError("Subclass must implement drop_index()")
+        name, is_frame_index = self._handle_frame_field(field_or_name)
+
+        if is_frame_index:
+            if name in self._get_default_indexes(frames=True):
+                raise ValueError("Cannot drop default frame index '%s'" % name)
+
+            collection = self._dataset._frame_collection
+        else:
+            if name in self._get_default_indexes():
+                raise ValueError("Cannot drop default index '%s'" % name)
+
+            collection = self._dataset._sample_collection
+
+        index_map = {}
+        fields_map = self._get_db_fields_map(
+            frames=is_frame_index, reverse=True
+        )
+        for key, info in collection.index_information().items():
+            if len(info["key"]) == 1:
+                # We use field name, not pymongo name, for single field indexes
+                field = info["key"][0][0]
+                index_map[fields_map.get(field, field)] = key
+            else:
+                index_map[key] = key
+
+        if name not in index_map:
+            itype = "frame index" if is_frame_index else "index"
+            raise ValueError(
+                "%s has no %s '%s'" % (self.__class__.__name__, itype, name)
+            )
+
+        collection.drop_index(index_map[name])
+
+    def _get_default_indexes(self, frames=False):
+        if frames:
+            if self.media_type == fom.VIDEO:
+                return ["id", "_sample_id_1_frame_number_1"]
+
+            return []
+
+        return ["id", "filepath"]
 
     def reload(self):
         """Reloads the collection from the database."""
@@ -6108,8 +6240,10 @@ class SampleCollection(object):
         return any(issubclass(label_type, t) for t in label_type_or_types)
 
     def _get_db_field(self, field_name):
-        fields_map = self._get_db_fields_map()
-        return fields_map.get(field_name, field_name)
+        field, is_frame_field = self._handle_frame_field(field_name)
+        fields_map = self._get_db_fields_map(frames=is_frame_field)
+        db_field = fields_map.get(field, field)
+        return db_field, is_frame_field
 
     def _get_db_fields_map(
         self, include_private=False, frames=False, reverse=False
@@ -6160,6 +6294,31 @@ class SampleCollection(object):
             ).keys()
         ]
 
+    def _validate_root_field(self, field_name, include_private=False):
+        _ = self._get_root_field_type(
+            field_name, include_private=include_private
+        )
+
+    def _get_root_field_type(self, field_name, include_private=False):
+        field_name, is_frame_field = self._handle_frame_field(field_name)
+
+        if is_frame_field:
+            schema = self.get_frame_field_schema(
+                include_private=include_private
+            )
+        else:
+            schema = self.get_field_schema(include_private=include_private)
+
+        root = field_name.split(".", 1)[0]
+
+        if root not in schema:
+            ftype = "frame field" if is_frame_field else "field"
+            raise ValueError(
+                "%s has no %s '%s'" % (self.__class__.__name__, ftype, root)
+            )
+
+        return schema[root]
+
     def _get_label_field_type(self, field_name):
         field_name, is_frame_field = self._handle_frame_field(field_name)
         if is_frame_field:
@@ -6168,10 +6327,10 @@ class SampleCollection(object):
             schema = self.get_field_schema()
 
         if field_name not in schema:
-            ftype = "Frame field" if is_frame_field else "Field"
+            ftype = "frame field" if is_frame_field else "field"
             raise ValueError(
-                "%s '%s' does not exist on collection '%s'"
-                % (ftype, field_name, self.name)
+                "%s has no %s '%s'"
+                % (self.__class__.__name__, ftype, field_name)
             )
 
         field = schema[field_name]
