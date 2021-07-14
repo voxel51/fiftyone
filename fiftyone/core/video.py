@@ -143,6 +143,12 @@ class FramesView(fov.DatasetView):
 
         return fields + ("sample_id", "frame_number")
 
+    def _get_default_indexes(self, frames=False):
+        if frames:
+            return super()._get_default_indexes(frames=frames)
+
+        return ["id", "filepath", "sample_id", "_sample_id_1_frame_number_1"]
+
     def set_values(self, field_name, *args, **kwargs):
         # The `set_values()` operation could change the contents of this view,
         # so we first record the sample IDs that need to be synced
@@ -462,11 +468,11 @@ def make_frames_dataset(
     frame_schema = sample_collection.get_frame_field_schema()
     dataset._sample_doc_cls.merge_field_schema(frame_schema)
 
+    dataset.create_index("sample_id")
+
     # This index will be used when populating the collection now as well as
     # later when syncing the source collection
-    dataset._sample_collection.create_index(
-        [("_sample_id", 1), ("frame_number", 1)], unique=True
-    )
+    dataset.create_index([("sample_id", 1), ("frame_number", 1)], unique=True)
 
     # Populate frames dataset
     ids_to_sample, frames_to_sample = _populate_frames(
