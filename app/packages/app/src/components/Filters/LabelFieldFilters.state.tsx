@@ -86,6 +86,7 @@ export const labelFilters = selectorFamily<LabelFilters, boolean>({
     return filters;
   },
   set: () => ({ get, set }, _) => {
+    set(utils.activeFields(true), get(utils.activeFields(false)));
     set(filterAtoms.modalFilterStages, get(filterAtoms.filterStages));
     set(atoms.colorByLabel(true), get(atoms.colorByLabel(false)));
     set(atoms.colorSeed(true), get(atoms.colorSeed(false)));

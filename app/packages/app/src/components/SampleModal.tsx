@@ -17,7 +17,7 @@ import * as selectors from "../recoil/selectors";
 import { useTheme } from "../utils/hooks";
 import { formatMetadata } from "../utils/labels";
 import { showModalJSON } from "../recoil/utils";
-import Loading from "./Common/Loading";
+import Loading from "./Loading";
 import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
 
 const modalSrc = selector<string | null>({
