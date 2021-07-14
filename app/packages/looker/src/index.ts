@@ -63,6 +63,7 @@ const labelsWorker = createWorker();
 type ImageSource = HTMLImageElement | HTMLVideoElement;
 
 const backCanvas = document.createElement("canvas");
+const backCanvasCtx = backCanvas.getContext("2d");
 
 export abstract class Looker<
   State extends BaseState = BaseState,
@@ -192,7 +193,8 @@ export abstract class Looker<
         backCanvas.height = this.canvas.height;
       }
 
-      backCanvas.getContext("2d").drawImage(this.canvas, 0, 0);
+      backCanvasCtx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+      backCanvasCtx.drawImage(this.canvas, 0, 0);
     };
   }
 
