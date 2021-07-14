@@ -5632,9 +5632,11 @@ class SampleCollection(object):
         else:
             input_spec = list(field_or_spec)
 
+        single_field_index = len(input_spec) == 1
+
         # For single field indexes, provide special handling based on `unique`
         # constraint
-        if len(input_spec) == 1:
+        if single_field_index:
             field = input_spec[0][0]
 
             index_info = self.get_index_information()
@@ -5684,7 +5686,9 @@ class SampleCollection(object):
 
         name = coll.create_index(index_spec, unique=unique, **kwargs)
 
-        if is_frame_index:
+        if single_field_index:
+            name = input_spec[0][0]
+        elif is_frame_index:
             name = self._FRAMES_PREFIX + name
 
         return name

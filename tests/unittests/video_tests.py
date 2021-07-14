@@ -88,7 +88,9 @@ class VideoTests(unittest.TestCase):
         dataset = fo.Dataset()
 
         sample = fo.Sample(filepath="video.mp4", field="hi")
-        sample.frames[1] = fo.Frame(field="there")
+        sample.frames[1] = fo.Frame(
+            field="hi", cls=fo.Classification(label="cat")
+        )
 
         dataset.add_sample(sample)
 
@@ -109,11 +111,19 @@ class VideoTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             dataset.drop_index("frames.id")  # can't drop default
 
-        dataset.create_index("frames.field")
+        name = dataset.create_index("frames.field")
+        self.assertEqual(name, "frames.field")
         self.assertIn("frames.field", dataset.list_indexes())
 
         dataset.drop_index("frames.field")
         self.assertNotIn("frames.field", dataset.list_indexes())
+
+        name = dataset.create_index("frames.cls.label")
+        self.assertEqual(name, "frames.cls.label")
+        self.assertIn("frames.cls.label", dataset.list_indexes())
+
+        dataset.drop_index("frames.cls.label")
+        self.assertNotIn("frames.cls.label", dataset.list_indexes())
 
         compound_index_name = dataset.create_index(
             [("frames.id", 1), ("frames.field", 1)]

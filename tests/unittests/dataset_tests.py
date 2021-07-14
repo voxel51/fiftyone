@@ -118,7 +118,13 @@ class DatasetTests(unittest.TestCase):
     @drop_datasets
     def test_indexes(self):
         dataset = fo.Dataset()
-        dataset.add_sample(fo.Sample(filepath="image.png", field="hi"))
+
+        sample = fo.Sample(
+            filepath="image.png",
+            field="hi",
+            cls=fo.Classification(label="cat"),
+        )
+        dataset.add_sample(sample)
 
         info = dataset.get_index_information()
         indexes = dataset.list_indexes()
@@ -141,11 +147,19 @@ class DatasetTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             dataset.drop_index("filepath")  # can't drop default index
 
-        dataset.create_index("field")
+        name = dataset.create_index("field")
+        self.assertEqual(name, "field")
         self.assertIn("field", dataset.list_indexes())
 
         dataset.drop_index("field")
         self.assertNotIn("field", dataset.list_indexes())
+
+        name = dataset.create_index("cls.label")
+        self.assertEqual(name, "cls.label")
+        self.assertIn("cls.label", dataset.list_indexes())
+
+        dataset.drop_index("cls.label")
+        self.assertNotIn("cls.label", dataset.list_indexes())
 
         compound_index_name = dataset.create_index([("id", 1), ("field", 1)])
         self.assertIn(compound_index_name, dataset.list_indexes())
