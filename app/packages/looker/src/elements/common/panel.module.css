@@ -1,0 +1,39 @@
+/**
+ * Copyright 2017-2021, Voxel51, Inc.
+ */
+
+.lookerPanel {
+  padding: 1rem;
+  line-height: 1;
+  font-weight: bold;
+
+  color: #eee;
+  background-color: hsl(210, 11%, 11%);
+  border: 1px solid #191c1f;
+  box-shadow: 0 8px 15px 0 rgba(0, 0, 0, 0.43);
+  border-radius: 3px;
+}
+
+.lookerPanelContainer {
+  position: absoulte;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  padding: 10px 20px 50px;
+}
+
+.lookerPanelVerticalContainer {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.lookerPanelHeader {
+  margin-bottom: 0.5rem;
+  font-size: 18px;
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid rgb(225, 100, 40);
+}

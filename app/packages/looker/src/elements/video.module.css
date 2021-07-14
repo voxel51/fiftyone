@@ -81,7 +81,7 @@
 .lookerSeekBar {
   --progress: 0%;
   --buffer-progress: 0%;
-  grid-area: 1 / 1 / 1 / 16;
+  grid-area: 1 / 1 / 1 / 17;
   margin-top: -5px;
   width: 100%;
 }

@@ -14,8 +14,10 @@ import {
   zoomIn,
   zoomOut,
   cropToContent,
+  json,
 } from "./actions";
 import cropIcon from "../../icons/crop.svg";
+import jsonIcon from "../../icons/json.svg";
 
 import {
   lookerArrow,
@@ -299,7 +301,7 @@ export class HelpButtonElement<State extends BaseState> extends BaseElement<
     element.style.padding = "2px";
     element.src = ICONS.help;
     element.title = "Help (?)";
-    element.style.gridArea = "2 / 12 / 2 / 12";
+    element.style.gridArea = "2 / 13 / 2 / 13";
     return element;
   }
 
@@ -327,7 +329,7 @@ export class OptionsButtonElement<State extends BaseState> extends BaseElement<
     element.style.padding = "2px";
     element.src = ICONS.options;
     element.title = "Settings (s)";
-    element.style.gridArea = "2 / 13 / 2 / 13";
+    element.style.gridArea = "2 / 14 / 2 / 14";
     return element;
   }
 
@@ -355,8 +357,43 @@ export class CropToContentButtonElement<
     const element = document.createElement("img");
     element.style.padding = "2px";
     element.src = cropIcon;
-    element.title = `${cropToContent.title} (${cropToContent})`;
+    element.title = `${cropToContent.title} (${cropToContent.shortcut})`;
     element.style.gridArea = "2 / 10 / 2 / 10";
+    return element;
+  }
+
+  renderSelf({ disableOverlays }) {
+    if (this.disabled !== disableOverlays) {
+      this.element.style.opacity = disableOverlays ? "0.5" : "1";
+      this.element.style.cursor = disableOverlays ? "unset" : "pointer";
+      this.disabled = disableOverlays;
+    }
+
+    return this.element;
+  }
+}
+
+export class JSONButtonElement<State extends BaseState> extends BaseElement<
+  State
+> {
+  private disabled: boolean;
+
+  getEvents(): Events<State> {
+    return {
+      click: ({ event, update, dispatchEvent }) => {
+        event.stopPropagation();
+        event.preventDefault();
+        json.action(update, dispatchEvent);
+      },
+    };
+  }
+
+  createHTMLElement() {
+    const element = document.createElement("img");
+    element.style.padding = "2px";
+    element.src = jsonIcon;
+    element.title = `${json.title} (${json.shortcut})`;
+    element.style.gridArea = "2 / 12 / 2 / 12";
     return element;
   }
 

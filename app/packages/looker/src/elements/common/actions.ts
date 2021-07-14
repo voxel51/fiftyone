@@ -9,16 +9,18 @@ import { BaseElement, DispatchEvent, Events } from "../base";
 import { getFrameNumber } from "../util";
 
 import {
-  lookerHelpPanel,
-  lookerHelpPanelContainer,
-  lookerHelpPanelHeader,
   lookerHelpPanelItems,
-  lookerHelpPanelVerticalContainer,
   lookerShortcutItem,
   lookerShortcutValue,
   lookerShortcutTitle,
   lookerShortcutDetail,
 } from "./actions.module.css";
+import {
+  lookerPanel,
+  lookerPanelContainer,
+  lookerPanelHeader,
+  lookerPanelVerticalContainer,
+} from "./panel.module.css";
 import { dispatchTooltipEvent } from "./util";
 
 type Action<State extends BaseState> = (
@@ -336,6 +338,17 @@ export const fullscreen: Control = {
   },
 };
 
+export const json: Control = {
+  title: "JSON",
+  shortcut: "j",
+  detail: "View JSON",
+  action: (update) => {
+    update(({ json, disableOverlays, config: { thumbnail } }) =>
+      thumbnail ? {} : { json: disableOverlays ? false : !json }
+    );
+  },
+};
+
 export const COMMON = {
   escape,
   next,
@@ -404,11 +417,11 @@ export const playPause: Control<VideoState> = {
   eventKeys: " ",
   detail: "Play or pause the video",
   action: (update) => {
-    update(({ playing, config: { thumbnail } }) => {
+    update(({ playing, config: { thumbnail }, json }) => {
       return thumbnail
         ? {}
         : {
-            playing: !playing,
+            playing: json ? false : !playing,
           };
     });
   },
@@ -493,15 +506,15 @@ export class HelpPanelElement<State extends BaseState> extends BaseElement<
     const element = document.createElement("div");
     const header = document.createElement("div");
     header.innerText = "Help";
-    header.classList.add(lookerHelpPanelHeader);
+    header.classList.add(lookerPanelHeader);
     element.appendChild(header);
-    element.classList.add(lookerHelpPanel);
+    element.classList.add(lookerPanel);
 
     const container = document.createElement("div");
-    container.classList.add(lookerHelpPanelContainer);
+    container.classList.add(lookerPanelContainer);
 
     const vContainer = document.createElement("div");
-    vContainer.classList.add(lookerHelpPanelVerticalContainer);
+    vContainer.classList.add(lookerPanelVerticalContainer);
 
     vContainer.appendChild(element);
 

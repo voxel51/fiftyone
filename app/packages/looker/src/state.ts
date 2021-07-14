@@ -117,6 +117,7 @@ export interface BaseState {
   strokeWidth: number;
   fontSize: number;
   wheeling: boolean;
+  json: boolean;
   windowBBox: BoundingBox;
   transformedWindowBBox: BoundingBox;
   mediaBBox: BoundingBox;

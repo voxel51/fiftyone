@@ -34,6 +34,9 @@ export const getFrameElements: GetElements<FrameState> = (
         node: common.CanvasElement,
       },
       {
+        node: common.JSONPanelElement,
+      },
+      {
         node: common.HelpPanelElement,
       },
       {
@@ -44,6 +47,7 @@ export const getFrameElements: GetElements<FrameState> = (
           { node: common.MinusElement },
           { node: common.CropToContentButtonElement },
           { node: common.FullscreenButtonElement },
+          { node: common.JSONButtonElement },
           { node: common.OptionsButtonElement },
           { node: common.HelpButtonElement },
         ],
@@ -88,6 +92,9 @@ export const getImageElements: GetElements<ImageState> = (
         node: common.CanvasElement,
       },
       {
+        node: common.JSONPanelElement,
+      },
+      {
         node: common.HelpPanelElement,
       },
       {
@@ -97,6 +104,7 @@ export const getImageElements: GetElements<ImageState> = (
           { node: common.MinusElement },
           { node: common.CropToContentButtonElement },
           { node: common.FullscreenButtonElement },
+          { node: common.JSONButtonElement },
           { node: common.OptionsButtonElement },
           { node: common.HelpButtonElement },
         ],
@@ -141,6 +149,9 @@ export const getVideoElements: GetElements<VideoState> = (
         node: common.CanvasElement,
       },
       {
+        node: common.JSONPanelElement,
+      },
+      {
         node: common.VideoHelpPanelElement,
       },
       {
@@ -156,6 +167,7 @@ export const getVideoElements: GetElements<VideoState> = (
           { node: common.MinusElement },
           { node: common.CropToContentButtonElement },
           { node: common.FullscreenButtonElement },
+          { node: common.JSONButtonElement },
           { node: common.OptionsButtonElement },
           { node: common.HelpButtonElement },
         ],
