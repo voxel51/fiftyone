@@ -116,6 +116,47 @@ class DatasetTests(unittest.TestCase):
         self.assertIs(dataset1c, dataset1)
 
     @drop_datasets
+    def test_indexes(self):
+        dataset = fo.Dataset()
+        dataset.add_sample(fo.Sample(filepath="image.png", field="hi"))
+
+        info = dataset.get_index_information()
+        indexes = dataset.list_indexes()
+
+        default_indexes = {"id", "filepath"}
+        self.assertSetEqual(set(info.keys()), default_indexes)
+        self.assertSetEqual(set(indexes), default_indexes)
+
+        dataset.create_index("id", unique=True)  # already exists
+        dataset.create_index("id")  # sufficient index exists
+        with self.assertRaises(ValueError):
+            dataset.drop_index("id")  # can't drop default
+
+        dataset.create_index("filepath")  # already exists
+
+        with self.assertRaises(ValueError):
+            # can't upgrade default index to unique
+            dataset.create_index("filepath", unique=True)
+
+        with self.assertRaises(ValueError):
+            dataset.drop_index("filepath")  # can't drop default index
+
+        dataset.create_index("field")
+        self.assertIn("field", dataset.list_indexes())
+
+        dataset.drop_index("field")
+        self.assertNotIn("field", dataset.list_indexes())
+
+        compound_index_name = dataset.create_index([("id", 1), ("field", 1)])
+        self.assertIn(compound_index_name, dataset.list_indexes())
+
+        dataset.drop_index(compound_index_name)
+        self.assertNotIn(compound_index_name, dataset.list_indexes())
+
+        with self.assertRaises(ValueError):
+            dataset.create_index("non_existent_field")
+
+    @drop_datasets
     def test_iter_samples(self):
         dataset = fo.Dataset()
         dataset.add_samples(

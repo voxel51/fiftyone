@@ -5637,12 +5637,6 @@ class SampleCollection(object):
         if len(input_spec) == 1:
             field = input_spec[0][0]
 
-            if field == "id":
-                # For some reason the ID index is not reported by
-                # `get_index_information()` as being unique like other manually
-                # created indexes, but it is, so nothing needs to be done here
-                return field
-
             index_info = self.get_index_information()
             if field in index_info:
                 _unique = index_info[field].get("unique", False)
@@ -5651,9 +5645,18 @@ class SampleCollection(object):
                     return field
 
                 _field, is_frame_field = self._handle_frame_field(field)
-                if _field in self._get_default_indexes(frames=is_frame_field):
-                    logger.warning("Cannot modify default index '%s'", field)
+
+                if _field == "id":
+                    # For some reason ID indexes are not reported by
+                    # `get_index_information()` as being unique like other
+                    # manually created indexes, but they are, so nothing needs
+                    # to be done here
                     return field
+
+                if _field in self._get_default_indexes(frames=is_frame_field):
+                    raise ValueError(
+                        "Cannot modify default index '%s'" % field
+                    )
 
                 # We need to drop existing index and replace with a unique one
                 self.drop_index(field)
@@ -5679,7 +5682,12 @@ class SampleCollection(object):
         else:
             coll = self._dataset._sample_collection
 
-        return coll.create_index(index_spec, unique=unique, **kwargs)
+        name = coll.create_index(index_spec, unique=unique, **kwargs)
+
+        if is_frame_index:
+            name = self._FRAMES_PREFIX + name
+
+        return name
 
     def drop_index(self, field_or_name):
         """Drops the index for the given field or name.
