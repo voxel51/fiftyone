@@ -266,12 +266,13 @@ def annotate(
         )
     else:
         logger.warning("Unsupported annotation backend %s" % backend)
+        return
 
     return annotation_info
 
 
 def load_annotations(
-    samples, info=None, backend="cvat", label_field="ground_truth", **kwargs
+    samples, info, backend="cvat", label_field="ground_truth"
 ):
     """Loads labels from the given annotation backend.
     
@@ -281,22 +282,18 @@ def load_annotations(
             `annotate()`
         backend ("cvat"): the annotation backend to load labels from.
             Options are ("cvat")
-        config (None): the :class:`AnnotationProviderConfig` containing the
-            information needed to load annotations
         label_field: the label field to create or to merge the annotations
             into
-        **kwargs: additional arguments to send to the annotation provider
-            if a config is not provided
     """
     if backend == "cvat":
         annotations = fouc.load_annotations(info)
     else:
         logger.warning("Unsupported annotation backend %s" % backend)
+        return
 
     annots_filenames = [i.name for i in annotations[2]]
     annots_labels = [i.to_labels()["detections"] for i in annotations[2]]
 
-    # field_view = samples.match(F("filename") in annots_filenames).select_fields(label_field)
     field_view = samples.select_fields(label_field)
     samples._dataset.delete_labels(view=field_view, fields=label_field)
     view_filenames = [os.path.basename(i) for i in samples.values("filepath")]
@@ -311,7 +308,7 @@ def load_annotations(
         )
     ]
 
-    field_view.set_values("ground_truth", annots_labels_sorted)
+    field_view.set_values(label_field, annots_labels_sorted)
 
 
 class BaseAnnotationAPI(object):
@@ -339,21 +336,11 @@ class BaseAnnotationAPI(object):
         }
 
     def get_api_key(self, host=""):
-        return {
-            "username": input("%s Username: " % host),
-            "password": getpass.getpass(prompt="%s Password: " % host),
-        }
-
-
-class AnnotationInfo(object):
-    """Basic interface for results returned from `anntation()` call"""
-
-    def __init__(self):
         pass
 
 
-class AnnotationProviderConfig(object):
-    """Config interface for specifying uploading annotations to a provider"""
+class AnnotationInfo(object):
+    """Basic interface for results returned from `annotate()` call"""
 
     def __init__(self):
         pass

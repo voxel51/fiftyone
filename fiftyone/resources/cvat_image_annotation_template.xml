@@ -20,7 +20,10 @@
 {% for attribute in label.attributes %}
                         <attribute>
                             <name>{{ attribute.name }}</name>
-                            <values>{{ attribute.categories|join('\n') }}</values>
+                            <mutable>False</mutable>
+                            <input_type>text</input_type>
+                            <default_value></default_value>
+                            <values></values>
                         </attribute>
 {% endfor %}
                     </attributes>

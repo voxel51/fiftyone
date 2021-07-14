@@ -5512,62 +5512,38 @@ class SampleCollection(object):
         if archive_path is not None:
             etau.make_archive(export_dir, archive_path, cleanup=True)
 
-    def annotate(
-        self, backend="cvat", config=None, label_field="ground_truth", **kwargs
-    ):
+    def annotate(self, backend="cvat", label_field="ground_truth", **kwargs):
         """Exports the samples and a label field to the given annotation
         backend.
 
         Args:
             backend ("cvat"): the name of the annotation backend to which to
                 export the samples. Options are ("cvat")
-            config (None): the :class:`AnnotationProviderConfig` containing the
-                information needed to upload samples for  annotations
             label_field: a string indicating the label field to export to the
                 annotation backend. A value of `None` indicates exporting only
                 the media.
-            **kwargs: additional arguments to send to the annotation backend if
-                a config is not provided
+            **kwargs: additional arguments to send to the annotation backend
         """
         annotation_info = foua.annotate(
-            samples=self,
-            config=None,
-            backend=backend,
-            label_field=label_field,
-            **kwargs,
+            samples=self, backend=backend, label_field=label_field, **kwargs,
         )
         return annotation_info
 
-    def annotate_selected(self, **kwargs):
-        session = fose._session
-        view = self.select(session.selected)
-        results = view.annotate(**kwargs)
-        return results
-
     def load_annotations(
-        self,
-        info=None,
-        backend="cvat",
-        label_field="ground_truth",
-        config=None,
-        **kwargs,
+        self, info, backend="cvat", label_field="ground_truth",
     ):
         """Loads labels from the given annotation backend.
         
         Args:
-            info (None): the :class`AnnotationInfo` returned from a call to
+            info: the :class`AnnotationInfo` returned from a call to
                 `annotate()`
             backend ("cvat"): the annotation backend to load labels from.
                 Options are ("cvat")
-            config (None): the :class:`AnnotationProviderConfig` containing the
-                information needed to load annotations
             label_field: the label field to create or to merge the annotations
                 into
-            **kwargs: additional arguments to send to the annotation provider
-                if a config is not provided
         """
         return foua.load_annotations(
-            samples=self, info=info, config=config, backend=backend, **kwargs,
+            samples=self, info=info, backend=backend, label_field=label_field,
         )
 
     def list_indexes(self, include_private=False):

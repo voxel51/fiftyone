@@ -533,6 +533,8 @@ class CVATImageDatasetExporter(
         image_format (None): the image format to use when writing in-memory
             images to disk. By default, ``fiftyone.config.default_image_ext``
             is used
+        class_as_attribute (False): export object class labels as attributes 
+            instead of top level labels
     """
 
     def __init__(
@@ -542,6 +544,7 @@ class CVATImageDatasetExporter(
         labels_path=None,
         export_media=None,
         image_format=None,
+        class_as_attribute=False,
     ):
         data_path, export_media = self._parse_data_path(
             export_dir=export_dir,
@@ -562,6 +565,7 @@ class CVATImageDatasetExporter(
         self.labels_path = labels_path
         self.export_media = export_media
         self.image_format = image_format
+        self.class_as_attribute = class_as_attribute
 
         self._name = None
         self._task_labels = None
@@ -608,7 +612,9 @@ class CVATImageDatasetExporter(
         if metadata is None:
             metadata = fom.ImageMetadata.build_for(out_image_path)
 
-        cvat_image = CVATImage.from_labels(labels, metadata)
+        cvat_image = CVATImage.from_labels(
+            labels, metadata, class_as_attribute=self.class_as_attribute
+        )
 
         cvat_image.id = len(self._cvat_images)
         cvat_image.name = os.path.basename(out_image_path)
@@ -912,6 +918,33 @@ class CVATTaskLabels(object):
 
         return cls.from_schema(schema)
 
+    def to_labels_list(self):
+        _names = []
+        _categories = {}
+        for label in self.labels:
+            _names.append(label["name"])
+            attributes = label.get("attributes", None) or []
+            for attribute in attributes:
+                name = attribute["name"]
+                if name not in _categories:
+                    _categories[name] = []
+
+                _categories[name] += attribute["categories"]
+
+        _attributes = []
+        for name, categories in _categories.items():
+            _attributes.append(
+                {"name": name, "mutable": True, "input_type": "text",}
+            )
+
+        return [{"name": "Object", "attributes": _attributes}]
+
+        # _labels = []
+        # for label_name in _names:
+        #    _labels.append({"name": label_name, "attributes": _attributes})
+
+        # return _labels
+
     @classmethod
     def from_labels_dict(cls, d):
         """Creates a :class:`CVATTaskLabels` instance from the ``<labels>``
@@ -933,7 +966,7 @@ class CVATTaskLabels(object):
                 _attributes.append(
                     {
                         "name": attribute["name"],
-                        "categories": attribute["values"].split("\n"),
+                        "categories": (attribute["values"] or "").split("\n"),
                     }
                 )
 
@@ -965,6 +998,21 @@ class CVATTaskLabels(object):
                         {
                             "name": name,
                             "categories": sorted(attr_schema.categories),
+                        }
+                    )
+
+                if isinstance(attr_schema, etad.NumericAttributeSchema):
+                    attributes.append(
+                        {
+                            "name": name,
+                            "categories": sorted(attr_schema.range),
+                        }
+                    )
+                if isinstance(attr_schema, etad.BooleanAttributeSchema):
+                    attributes.append(
+                        {
+                            "name": name,
+                            "categories": sorted(attr_schema.range),
                         }
                     )
 
@@ -1069,7 +1117,7 @@ class CVATImage(object):
         return labels
 
     @classmethod
-    def from_labels(cls, labels, metadata):
+    def from_labels(cls, labels, metadata, class_as_attribute=False):
         """Creates a :class:`CVATImage` from a dictionary of labels.
 
         Args:
@@ -1114,7 +1162,12 @@ class CVATImage(object):
                 )
                 warnings.warn(msg)
 
-        boxes = [CVATImageBox.from_detection(d, metadata) for d in _detections]
+        boxes = [
+            CVATImageBox.from_detection(
+                d, metadata, class_as_attribute=class_as_attribute
+            )
+            for d in _detections
+        ]
 
         polygons = []
         for p in _polygons:
@@ -1248,8 +1301,9 @@ class CVATImageAnno(object):
         return attributes
 
     @staticmethod
-    def _parse_attributes(label):
+    def _parse_attributes(label, default_fields=[]):
         occluded = None
+        attributes = []
 
         if label.attributes:
             supported_attrs = (
@@ -1258,14 +1312,17 @@ class CVATImageAnno(object):
                 fol.NumericAttribute,
             )
 
-            attributes = []
             for name, attr in label.attributes.items():
                 if name == "occluded":
                     occluded = attr.value
                 elif isinstance(attr, supported_attrs):
                     attributes.append(CVATAttribute(name, attr.value))
-        else:
-            attributes = None
+
+        attributes.append(CVATAttribute("label_id", label.id))
+
+        for field in label._fields_ordered:
+            if field not in default_fields:
+                attributes.append(CVATAttribute(field, label[field]))
 
         return occluded, attributes
 
@@ -1278,7 +1335,11 @@ class CVATImageAnno(object):
         attributes = []
         for attr in _ensure_list(d.get("attribute", [])):
             name = attr["@name"].lstrip("@")
+            if name == "label_id":
+                continue
             value = attr["#text"]
+            if value == "None":
+                value = None
             try:
                 value = float(value)
             except:
@@ -1302,8 +1363,27 @@ class CVATImageBox(CVATImageAnno):
         attributes (None): a list of :class:`CVATAttribute` instances
     """
 
+    default_fields = [
+        "_cls",
+        "_id",
+        "attributes",
+        "bounding_box",
+        "index",
+        "label",
+        "mask",
+        "tags",
+    ]
+
     def __init__(
-        self, label, xtl, ytl, xbr, ybr, occluded=None, attributes=None
+        self,
+        label,
+        xtl,
+        ytl,
+        xbr,
+        ybr,
+        occluded=None,
+        attributes=None,
+        class_as_attribute=False,
     ):
         self.label = label
         self.xtl = xtl
@@ -1332,14 +1412,14 @@ class CVATImageBox(CVATImageAnno):
             (self.ybr - self.ytl) / height,
         ]
 
-        attributes = self._to_attributes()
+        detection = fol.Detection(label=label, bounding_box=bounding_box,)
+        for attribute in self.attributes:
+            detection[attribute.name] = attribute.value
 
-        return fol.Detection(
-            label=label, bounding_box=bounding_box, attributes=attributes,
-        )
+        return detection
 
     @classmethod
-    def from_detection(cls, detection, metadata):
+    def from_detection(cls, detection, metadata, class_as_attribute=False):
         """Creates a :class:`CVATImageBox` from a
         :class:`fiftyone.core.labels.Detection`.
 
@@ -1361,7 +1441,13 @@ class CVATImageBox(CVATImageAnno):
         xbr = int(round((x + w) * width))
         ybr = int(round((y + h) * height))
 
-        occluded, attributes = cls._parse_attributes(detection)
+        occluded, attributes = cls._parse_attributes(
+            detection, default_fields=cls.default_fields
+        )
+
+        if class_as_attribute:
+            label = "Object"
+            attributes.append(CVATAttribute("label", detection.label))
 
         return cls(
             label, xtl, ytl, xbr, ybr, occluded=occluded, attributes=attributes
@@ -1378,7 +1464,10 @@ class CVATImageBox(CVATImageAnno):
         Returns:
             a :class:`CVATImageBox`
         """
+        class_as_attribute = False
         label = d["@label"]
+        if label == "Object":
+            class_as_attribute = True
 
         xtl = int(round(float(d["@xtl"])))
         ytl = int(round(float(d["@ytl"])))
@@ -1386,6 +1475,14 @@ class CVATImageBox(CVATImageAnno):
         ybr = int(round(float(d["@ybr"])))
 
         occluded, attributes = cls._parse_anno_dict(d)
+        if class_as_attribute:
+            _attributes = []
+            for attribute in attributes:
+                if attribute.name == "label":
+                    label = attribute.value
+                else:
+                    _attributes.append(attribute)
+            attributes = _attributes
 
         return cls(
             label, xtl, ytl, xbr, ybr, occluded=occluded, attributes=attributes
@@ -2566,7 +2663,6 @@ class CVATVideoAnnotationWriter(object):
         etau.write_file(xml_str, xml_path)
 
 
-# class CVATAnnotationProvider(foua.BaseAnnotationProvider):
 class CVATAnnotationAPI(foua.BaseAnnotationAPI):
     """Basic interface for connecting to CVAT, sending samples for
     annotation, and importing them back into the collection.
@@ -2657,8 +2753,7 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
     def base_job_url(self, task_id, job_id):
         return "%s/tasks/%d/jobs/%d" % (self.base_url, task_id, job_id)
 
-    def create_task(self, classes=[]):
-        labels = [{"name": c, "attributes": []} for c in classes]
+    def create_task(self, labels=[]):
 
         data_task_create = {
             "name": "FiftyOne_annotation",
@@ -2721,10 +2816,6 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
                 )[1]
                 classes = samples._dataset.distinct(label_path)
 
-        task_id = self.create_task(classes)
-        paths = samples.values("filepath")
-        job_id = self.upload_data(task_id, paths)
-
         with etau.TempDir() as tmp:
             samples.export(
                 tmp,
@@ -2732,12 +2823,26 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
                 dataset_type=fot.CVATImageDataset,
                 export_media=False,
                 overwrite=True,
+                class_as_attribute=True,
             )
             annot_filepath = os.path.join(tmp, "labels.xml")
 
             annotation_file = {
                 "annotation_file": open(annot_filepath, "rb"),
             }
+
+            _, task_labels, _ = load_cvat_image_annotations(annot_filepath)
+            labels = task_labels.to_labels_list()
+
+            for attr in labels[0]["attributes"]:
+                if attr["name"] == "label":
+                    attr["values"] = classes
+                    attr["input_type"] = "select"
+
+            task_id = self.create_task(labels)
+            paths = samples.values("filepath")
+            job_id = self.upload_data(task_id, paths)
+
             self._session.put(
                 self.task_annotation_url(task_id, annot_filepath),
                 files=annotation_file,
@@ -2770,11 +2875,7 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
                 response = self._session.get(annot_url + "&action=download")
                 response.raise_for_status()
 
-                if response.content == b"":
-                    import pdb
-
-                    pdb.set_trace()
-                else:
+                if response.content != b"":
                     break
 
             with open(annot_path, "wb") as ap:
@@ -2814,8 +2915,7 @@ def annotate(
     api = CVATAnnotationAPI(url=url, https=https, auth=auth)
     task_id, job_id = api.upload_samples(samples, label_field=label_field)
     api.launch_annotator(url=api.base_job_url(task_id, job_id))
-    info = CVATAnnotationInfo(api, task_id, job_id)
-    return info
+    return CVATAnnotationInfo(api, task_id, job_id)
 
 
 def load_annotations(info):
