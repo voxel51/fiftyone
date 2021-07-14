@@ -170,6 +170,16 @@ class _PatchesView(fov.DatasetView):
 
         return fields + tuple(extras)
 
+    def _get_default_indexes(self, frames=False):
+        if frames:
+            return super()._get_default_indexes(frames=frames)
+
+        names = ["id", "filepath", "sample_id"]
+        if self._is_frames:
+            names.extend(["frame_id", "_sample_id_1_frame_number_1"])
+
+        return names
+
     def set_values(self, field_name, *args, **kwargs):
         field = field_name.split(".", 1)[0]
         must_sync = field in self._label_fields
@@ -474,12 +484,15 @@ def make_patches_dataset(sample_collection, field, keep_label_lists=False):
     dataset.add_sample_field(
         "sample_id", fof.ObjectIdField, db_field="_sample_id"
     )
+    dataset.create_index("sample_id")
 
     if sample_collection._is_frames:
         dataset.add_sample_field(
             "frame_id", fof.ObjectIdField, db_field="_frame_id"
         )
         dataset.add_sample_field("frame_number", fof.FrameNumberField)
+        dataset.create_index("frame_id")
+        dataset.create_index([("sample_id", 1), ("frame_number", 1)])
 
     dataset.add_sample_field(
         field, fof.EmbeddedDocumentField, embedded_doc_type=field_type
@@ -584,11 +597,15 @@ def make_evaluation_dataset(sample_collection, eval_key):
     dataset.add_sample_field(
         "sample_id", fof.ObjectIdField, db_field="_sample_id"
     )
+    dataset.create_index("sample_id")
+
     if sample_collection._is_frames:
         dataset.add_sample_field(
             "frame_id", fof.ObjectIdField, db_field="_frame_id"
         )
         dataset.add_sample_field("frame_number", fof.FrameNumberField)
+        dataset.create_index("frame_id")
+        dataset.create_index([("sample_id", 1), ("frame_number", 1)])
 
     dataset.add_sample_field("type", fof.StringField)
     dataset.add_sample_field("iou", fof.FloatField)

@@ -84,6 +84,59 @@ class VideoTests(unittest.TestCase):
         self.assertTrue(frame_numbers, [1, 5])
 
     @drop_datasets
+    def test_video_indexes(self):
+        dataset = fo.Dataset()
+
+        sample = fo.Sample(filepath="video.mp4", field="hi")
+        sample.frames[1] = fo.Frame(
+            field="hi", cls=fo.Classification(label="cat")
+        )
+
+        dataset.add_sample(sample)
+
+        info = dataset.get_index_information()
+        indexes = dataset.list_indexes()
+
+        default_indexes = {
+            "id",
+            "filepath",
+            "frames.id",
+            "frames._sample_id_1_frame_number_1",
+        }
+        self.assertSetEqual(set(info.keys()), default_indexes)
+        self.assertSetEqual(set(indexes), default_indexes)
+
+        dataset.create_index("frames.id", unique=True)  # already exists
+        dataset.create_index("frames.id")  # sufficient index exists
+        with self.assertRaises(ValueError):
+            dataset.drop_index("frames.id")  # can't drop default
+
+        name = dataset.create_index("frames.field")
+        self.assertEqual(name, "frames.field")
+        self.assertIn("frames.field", dataset.list_indexes())
+
+        dataset.drop_index("frames.field")
+        self.assertNotIn("frames.field", dataset.list_indexes())
+
+        name = dataset.create_index("frames.cls.label")
+        self.assertEqual(name, "frames.cls.label")
+        self.assertIn("frames.cls.label", dataset.list_indexes())
+
+        dataset.drop_index("frames.cls.label")
+        self.assertNotIn("frames.cls.label", dataset.list_indexes())
+
+        compound_index_name = dataset.create_index(
+            [("frames.id", 1), ("frames.field", 1)]
+        )
+        self.assertIn(compound_index_name, dataset.list_indexes())
+
+        dataset.drop_index(compound_index_name)
+        self.assertNotIn(compound_index_name, dataset.list_indexes())
+
+        with self.assertRaises(ValueError):
+            dataset.create_index("frames.non_existent_field")
+
+    @drop_datasets
     def test_frames_order(self):
         dataset = fo.Dataset()
 
@@ -1038,6 +1091,27 @@ class VideoTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             view.exclude_fields("frame_number")  # can't exclude default field
 
+        index_info = view.get_index_information()
+        indexes = view.list_indexes()
+
+        default_indexes = {
+            "id",
+            "filepath",
+            "sample_id",
+            "_sample_id_1_frame_number_1",
+        }
+        self.assertSetEqual(set(index_info.keys()), default_indexes)
+        self.assertSetEqual(set(indexes), default_indexes)
+
+        with self.assertRaises(ValueError):
+            view.drop_index("id")  # can't drop default index
+
+        with self.assertRaises(ValueError):
+            view.drop_index("filepath")  # can't drop default index
+
+        with self.assertRaises(ValueError):
+            view.drop_index("sample_id")  # can't drop default index
+
         self.assertEqual(len(view), 9)
 
         frame = view.first()
@@ -1259,16 +1333,41 @@ class VideoTests(unittest.TestCase):
             },
         )
 
-        # can't exclude default fields
+        with self.assertRaises(ValueError):
+            patches.exclude_fields("sample_id")  # can't exclude default field
 
         with self.assertRaises(ValueError):
-            patches.exclude_fields("sample_id")
+            patches.exclude_fields("frame_id")  # can't exclude default field
 
         with self.assertRaises(ValueError):
-            patches.exclude_fields("frame_id")
+            patches.exclude_fields(
+                "frame_number"
+            )  # can't exclude default field
+
+        index_info = patches.get_index_information()
+        indexes = patches.list_indexes()
+
+        default_indexes = {
+            "id",
+            "filepath",
+            "sample_id",
+            "frame_id",
+            "_sample_id_1_frame_number_1",
+        }
+        self.assertSetEqual(set(index_info.keys()), default_indexes)
+        self.assertSetEqual(set(indexes), default_indexes)
 
         with self.assertRaises(ValueError):
-            patches.exclude_fields("frame_number")
+            patches.drop_index("id")  # can't drop default index
+
+        with self.assertRaises(ValueError):
+            patches.drop_index("filepath")  # can't drop default index
+
+        with self.assertRaises(ValueError):
+            patches.drop_index("sample_id")  # can't drop default index
+
+        with self.assertRaises(ValueError):
+            patches.drop_index("frame_id")  # can't drop default index
 
         self.assertEqual(dataset.count("frames.ground_truth.detections"), 4)
         self.assertEqual(patches.count(), 4)
