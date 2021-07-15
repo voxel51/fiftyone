@@ -679,10 +679,10 @@ class COCODetectionDataset(ImageDetectionDataset):
     The ``file_name`` attribute of the labels file encodes the location of the
     corresponding images, which can be any of the following:
 
-    -   the filename of an image in the ``data/`` folder
-    -   a relative path like ``data/sub/folder/filename.ext`` specifying the
+    -   The filename of an image in the ``data/`` folder
+    -   A relative path like ``data/sub/folder/filename.ext`` specifying the
         relative path to the image in a nested subfolder of ``data/``
-    -   an absolute path to an image, which may or may not be in the ``data/``
+    -   An absolute path to an image, which may or may not be in the ``data/``
         folder
 
     .. note::
@@ -1079,8 +1079,8 @@ class YOLOv5Dataset(ImageDetectionDataset):
         names: ["list", "of", "classes", ...]
 
     See `this page <https://docs.ultralytics.com/tutorials/train-custom-datasets>`_
-    for a full description of the possible format of ``dataset.yaml``.
-    In particular, the dataset may contain one or more splits with arbitrary
+    for a full description of the possible format of ``dataset.yaml``. In
+    particular, the dataset may contain one or more splits with arbitrary
     names, as the specific split being imported or exported is specified by the
     ``split`` argument to :class:`fiftyone.utils.yolo.YOLOv5DatasetImporter`
     and :class:`fiftyone.utils.yolo.YOLOv5DatasetExporter`, respectively.
@@ -1345,10 +1345,10 @@ class CVATImageDataset(ImageLabelsDataset):
     The ``name`` field of the ``<image>`` tags in the labels file encodes the
     location of the corresponding images, which can be any of the following:
 
-    -   the filename of an image in the ``data/`` folder
-    -   a relative path like ``data/sub/folder/filename.ext`` specifying the
+    -   The filename of an image in the ``data/`` folder
+    -   A relative path like ``data/sub/folder/filename.ext`` specifying the
         relative path to the image in a nested subfolder of ``data/``
-    -   an absolute path to an image, which may or may not be in the ``data/``
+    -   An absolute path to an image, which may or may not be in the ``data/``
         folder
 
     .. note::
@@ -1551,10 +1551,8 @@ class FiftyOneImageLabelsDataset(ImageLabelsDataset):
             ]
         }
 
-    and where each labels JSON file is stored in ``eta.core.image.ImageLabels``
-    format. See
-    `this guide <https://github.com/voxel51/eta/blob/develop/docs/image_labels_guide.md>`_
-    for more details.
+    and where each labels JSON file is stored in
+    `ETA ImageLabels format <https://github.com/voxel51/eta/blob/develop/docs/image_labels_guide.md>`_.
 
     For unlabeled images, an empty ``eta.core.image.ImageLabels`` file is
     stored.
@@ -1583,6 +1581,74 @@ class FiftyOneImageLabelsDataset(ImageLabelsDataset):
         import fiftyone.utils.data as foud
 
         return foud.FiftyOneImageLabelsDatasetExporter
+
+
+class FiftyOneVideoLabelsDataset(VideoLabelsDataset):
+    """A labeled dataset consisting of videos and their associated labels
+    stored in
+    `ETA VideoLabels format <https://github.com/voxel51/eta/blob/develop/docs/video_labels_guide.md>`_.
+
+    Datasets of this type are read/written in the following format::
+
+        <dataset_dir>/
+            data/
+                <uuid1>.<ext>
+                <uuid2>.<ext>
+                ...
+            labels/
+                <uuid1>.json
+                <uuid2>.json
+                ...
+            manifest.json
+
+    where ``manifest.json`` is a JSON file in the following format::
+
+        {
+            "type": "eta.core.datasets.LabeledVideoDataset",
+            "description": "",
+            "index": [
+                {
+                    "data": "data/<uuid1>.<ext>",
+                    "labels": "labels/<uuid1>.json"
+                },
+                {
+                    "data": "data/<uuid2>.<ext>",
+                    "labels": "labels/<uuid2>.json"
+                },
+                ...
+            ]
+        }
+
+    and where each labels JSON file is stored in
+    `ETA VideoLabels format <https://github.com/voxel51/eta/blob/develop/docs/video_labels_guide.md>`_.
+
+    For unlabeled videos, an empty ``eta.core.image.VideoLabels`` file is
+    stored.
+
+    .. note::
+
+        See :class:`fiftyone.utils.data.importers.FiftyOneVideoLabelsDatasetImporter`
+        for parameters that can be passed to methods like
+        :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>` to
+        customize the import of datasets of this type.
+
+    .. note::
+
+        See :class:`fiftyone.utils.data.exporters.FiftyOneVideoLabelsDatasetExporter`
+        for parameters that can be passed to methods like
+        :meth:`SampleCollection.export() <fiftyone.core.collections.SampleCollection.export>`
+        to customize the export of datasets of this type.
+    """
+
+    def get_dataset_importer_cls(self):
+        import fiftyone.utils.data as foud
+
+        return foud.FiftyOneVideoLabelsDatasetImporter
+
+    def get_dataset_exporter_cls(self):
+        import fiftyone.utils.data as foud
+
+        return foud.FiftyOneVideoLabelsDatasetExporter
 
 
 class BDDDataset(ImageLabelsDataset):
@@ -1682,10 +1748,10 @@ class BDDDataset(ImageLabelsDataset):
     The ``name`` attribute of the labels file encodes the location of the
     corresponding images, which can be any of the following:
 
-    -   the filename of an image in the ``data/`` folder
-    -   a relative path like ``data/sub/folder/filename.ext`` specifying the
+    -   The filename of an image in the ``data/`` folder
+    -   A relative path like ``data/sub/folder/filename.ext`` specifying the
         relative path to the image in a nested subfolder of ``data/``
-    -   an absolute path to an image, which may or may not be in the ``data/``
+    -   An absolute path to an image, which may or may not be in the ``data/``
         folder
 
     .. note::
@@ -1769,10 +1835,10 @@ class GeoJSONDataset(LabeledDataset):
     and the ``filename`` property encodes the name of the corresponding media,
     which can be any of the following:
 
-    -   the filename of an image in the ``data/`` folder
-    -   a relative path like ``data/sub/folder/filename.ext`` specifying the
+    -   The filename of an image in the ``data/`` folder
+    -   A relative path like ``data/sub/folder/filename.ext`` specifying the
         relative path to the image in a nested subfolder of ``data/``
-    -   an absolute path to an image, which may or may not be in the ``data/``
+    -   An absolute path to an image, which may or may not be in the ``data/``
         folder
 
     Samples with no location data will have a null ``geometry`` field.
@@ -1804,76 +1870,6 @@ class GeoJSONDataset(LabeledDataset):
         import fiftyone.utils.geojson as foug
 
         return foug.GeoJSONDatasetExporter
-
-
-class FiftyOneVideoLabelsDataset(VideoLabelsDataset):
-    """A labeled dataset consisting of videos and their associated labels
-    stored in
-    `ETA VideoLabels format <https://github.com/voxel51/eta/blob/develop/docs/video_labels_guide.md>`_.
-
-    Datasets of this type are read/written in the following format::
-
-        <dataset_dir>/
-            data/
-                <uuid1>.<ext>
-                <uuid2>.<ext>
-                ...
-            labels/
-                <uuid1>.json
-                <uuid2>.json
-                ...
-            manifest.json
-
-    where ``manifest.json`` is a JSON file in the following format::
-
-        {
-            "type": "eta.core.datasets.LabeledVideoDataset",
-            "description": "",
-            "index": [
-                {
-                    "data": "data/<uuid1>.<ext>",
-                    "labels": "labels/<uuid1>.json"
-                },
-                {
-                    "data": "data/<uuid2>.<ext>",
-                    "labels": "labels/<uuid2>.json"
-                },
-                ...
-            ]
-        }
-
-    and where each labels JSON file is stored in ``eta.core.image.VideoLabels``
-    format. See
-    `this guide <https://github.com/voxel51/eta/blob/develop/docs/video_labels_guide.md>`_
-    for more details.
-
-    For unlabeled videos, an empty ``eta.core.image.VideoLabels`` file is
-    stored.
-
-    .. note::
-
-        See :class:`fiftyone.utils.data.importers.FiftyOneVideoLabelsDatasetImporter`
-        for parameters that can be passed to methods like
-        :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>` to
-        customize the import of datasets of this type.
-
-    .. note::
-
-        See :class:`fiftyone.utils.data.exporters.FiftyOneVideoLabelsDatasetExporter`
-        for parameters that can be passed to methods like
-        :meth:`SampleCollection.export() <fiftyone.core.collections.SampleCollection.export>`
-        to customize the export of datasets of this type.
-    """
-
-    def get_dataset_importer_cls(self):
-        import fiftyone.utils.data as foud
-
-        return foud.FiftyOneVideoLabelsDatasetImporter
-
-    def get_dataset_exporter_cls(self):
-        import fiftyone.utils.data as foud
-
-        return foud.FiftyOneVideoLabelsDatasetExporter
 
 
 class FiftyOneDataset(Dataset):

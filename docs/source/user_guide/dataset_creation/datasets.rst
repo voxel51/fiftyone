@@ -31,8 +31,8 @@ that you're loading.
 
     If your data is stored in the
     :ref:`canoncial format <supported-import-formats>` of the type you're
-    importing, then you can load it by providing the ``dataset_dir`` and
-    ``dataset_type`` parameters:
+    importing, then you can load it by providing the `dataset_dir` and
+    `dataset_type` parameters:
 
     .. code-block:: python
         :linenos:
@@ -53,7 +53,7 @@ that you're loading.
 
     Alternatively, when importing labeled datasets in formats such as
     :ref:`COCO <COCODetectionDataset-import>`, you may find it more natural to
-    provide the ``data_path`` and ``labels_path`` parameters to independently
+    provide the `data_path` and `labels_path` parameters to independently
     specify the location of the source media on disk and the annotations file
     containing the labels to import:
 
@@ -94,8 +94,8 @@ that you're loading.
 
     If your data is stored in the
     :ref:`canoncial format <supported-import-formats>` of the type you're
-    importing, then you can load it by providing the ``--dataset-dir`` and
-    ``--type`` options:
+    importing, then you can load it by providing the `--dataset-dir` and
+    `--type` options:
 
     .. code-block:: shell
 
@@ -114,7 +114,7 @@ that you're loading.
 
     Alternatively, when importing labeled datasets in formats such as
     :ref:`COCO <COCODetectionDataset-import>`, you may find it more natural to
-    provide the ``data_path`` and ``labels_path`` parameters via the
+    provide the `data_path` and `labels_path` parameters via the
     :ref:`kwargs option <cli-fiftyone-datasets-create>` to independently
     specify the location of the source media on disk and the annotations file
     containing the labels to import:
@@ -245,8 +245,17 @@ Datasets of this type are read in the following format:
         <filename1>.<ext>
         <filename2>.<ext>
 
-When reading datasets of this type, subfolders are recursively traversed, and
-files with non-image MIME types are omitted.
+where files with non-image MIME types are omitted.
+
+By default, the dataset may contain nested subfolders of images, which are
+recursively listed.
+
+.. note::
+
+    See :class:`fiftyone.utils.data.importers.ImageDirectoryImporter` for
+    parameters that can be passed to methods like
+    :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>` to
+    customize the import of datasets of this type.
 
 You can create a FiftyOne dataset from a directory of images as follows:
 
@@ -318,8 +327,17 @@ Datasets of this type are read in the following format:
         <filename1>.<ext>
         <filename2>.<ext>
 
-When reading datasets of this type, subfolders are recursively traversed, and
-files with non-video MIME types are omitted.
+where files with non-video MIME types are omitted.
+
+By default, the dataset may contain nested subfolders of videos, which are
+recursively listed.
+
+.. note::
+
+    See :class:`fiftyone.utils.data.importers.VideoDirectoryImporter` for
+    parameters that can be passed to methods like
+    :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>` to
+    customize the import of datasets of this type.
 
 You can create a FiftyOne dataset from a directory of videos as follows:
 
@@ -395,7 +413,7 @@ Datasets of this type are read in the following format:
             ...
         labels.json
 
-where ``labels.json`` is a JSON file in the following format:
+where `labels.json` is a JSON file in the following format:
 
 .. code-block:: text
 
@@ -417,6 +435,17 @@ mapped to class label strings via `classes[target]`. If no `classes` field is
 provided, then the `target` values directly store the label strings.
 
 The target value in `labels` for unlabeled images is `None`.
+
+The UUIDs can also be relative paths like `path/to/uuid`, in which case the
+images in `data/` should be arranged in nested subfolders with the
+corresponding names.
+
+.. note::
+
+    See :class:`fiftyone.utils.data.importers.FiftyOneImageClassificationDatasetImporter`
+    for parameters that can be passed to methods like
+    :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>` to
+    customize the import of datasets of this type.
 
 You can create a FiftyOne dataset from an image classification dataset stored
 in the above format as follows:
@@ -501,6 +530,15 @@ Datasets of this type are read in the following format:
 
 Unlabeled images are stored in a subdirectory named `_unlabeled`.
 
+Each class folder may contain nested subfolders of images.
+
+.. note::
+
+    See :class:`fiftyone.utils.data.importers.ImageClassificationDirectoryTreeImporter`
+    for parameters that can be passed to methods like
+    :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>` to
+    customize the import of datasets of this type.
+
 You can create a FiftyOne dataset from an image classification directory tree
 stored in the above format as follows:
 
@@ -583,6 +621,15 @@ Datasets of this type are read in the following format:
         ...
 
 Unlabeled videos are stored in a subdirectory named `_unlabeled`.
+
+Each class folder may contain nested subfolders of videos.
+
+.. note::
+
+    See :class:`fiftyone.utils.data.importers.VideoClassificationDirectoryTreeImporter`
+    for parameters that can be passed to methods like
+    :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>` to
+    customize the import of datasets of this type.
 
 You can create a FiftyOne dataset from a video classification directory tree
 stored in the above format as follows:
@@ -679,6 +726,13 @@ following format:
     }
 
 For unlabeled samples, the TFRecords do not contain `label` features.
+
+.. note::
+
+    See :class:`fiftyone.utils.tf.TFImageClassificationDatasetImporter`
+    for parameters that can be passed to methods like
+    :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>` to
+    customize the import of datasets of this type.
 
 You can create a FiftyOne dataset from an image classification dataset stored
 as a directory of TFRecords in the above format as follows:
@@ -813,6 +867,17 @@ provided, then the `target` values directly store the label strings.
 
 The target value in `labels` for unlabeled images is `None`.
 
+The UUIDs can also be relative paths like `path/to/uuid`, in which case the
+images in `data/` should be arranged in nested subfolders with the
+corresponding names.
+
+.. note::
+
+    See :class:`fiftyone.utils.data.importers.FiftyOneImageDetectionDatasetImporter`
+    for parameters that can be passed to methods like
+    :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>` to
+    customize the import of datasets of this type.
+
 You can create a FiftyOne dataset from an image detection dataset stored in the
 above format as follows:
 
@@ -892,7 +957,7 @@ Datasets of this type are read in the following format:
             ...
         labels.json
 
-where ``labels.json`` is a JSON file in the following format:
+where `labels.json` is a JSON file in the following format:
 
 .. code-block:: text
 
@@ -947,6 +1012,21 @@ See `this page <https://cocodataset.org/#format-data>`_ for a full
 specification of the `segmentation` field.
 
 For unlabeled datasets, `labels.json` does not contain an `annotations` field.
+
+The `file_name` attribute of the labels file encodes the location of the
+corresponding images, which can be any of the following:
+
+-   The filename of an image in the `data/` folder
+-   A relative path like `data/sub/folder/filename.ext` specifying the relative
+    path to the image in a nested subfolder of `data/`
+-   An absolute path to an image, which may or may not be in the `data/` folder
+
+.. note::
+
+    See :class:`fiftyone.utils.coco.COCODetectionDatasetImporter` for
+    parameters that can be passed to methods like
+    :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>` to
+    customize the import of datasets of this type.
 
 You can create a FiftyOne dataset from a COCO detection dataset stored in the
 above format as follows:
@@ -1077,6 +1157,16 @@ where the labels XML files are in the following format:
 
 Unlabeled images have no corresponding file in `labels/`.
 
+The `data/` and `labels/` files may contain nested subfolders of parallelly
+organized images and masks.
+
+.. note::
+
+    See :class:`fiftyone.utils.voc.VOCDetectionDatasetImporter` for
+    parameters that can be passed to methods like
+    :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>` to
+    customize the import of datasets of this type.
+
 You can create a FiftyOne dataset from a VOC detection dataset stored in the
 above format as follows:
 
@@ -1168,35 +1258,45 @@ meanings:
 +==========+=============+=============================================================+=========+
 | 1        | type        | The object label                                            |         |
 +----------+-------------+-------------------------------------------------------------+---------+
-| 1        | truncated   | A float in ``[0, 1]``, where 0 is non-truncated and         | 0       |
+| 1        | truncated   | A float in `[0, 1]`, where 0 is non-truncated and           | 0       |
 |          |             | 1 is fully truncated. Here, truncation refers to the object |         |
 |          |             | leaving image boundaries                                    |         |
 +----------+-------------+-------------------------------------------------------------+---------+
-| 1        | occluded    | An int in ``(0, 1, 2, 3)`` indicating occlusion state,      | 0       |
+| 1        | occluded    | An int in `(0, 1, 2, 3)` indicating occlusion state,        | 0       |
 |          |             | where:- 0 = fully visible- 1 = partly occluded- 2 =         |         |
 |          |             | largely occluded- 3 = unknown                               |         |
 +----------+-------------+-------------------------------------------------------------+---------+
-| 1        | alpha       | Observation angle of the object, in ``[-pi, pi]``           | 0       |
+| 1        | alpha       | Observation angle of the object, in `[-pi, pi]`             | 0       |
 +----------+-------------+-------------------------------------------------------------+---------+
 | 4        | bbox        | 2D bounding box of object in the image in pixels, in the    |         |
-|          |             | format ``[xtl, ytl, xbr, ybr]``                             |         |
+|          |             | format `[xtl, ytl, xbr, ybr]`                               |         |
 +----------+-------------+-------------------------------------------------------------+---------+
 | 1        | dimensions  | 3D object dimensions, in meters, in the format              | 0       |
-|          |             | ``[height, width, length]``                                 |         |
+|          |             | `[height, width, length]`                                   |         |
 +----------+-------------+-------------------------------------------------------------+---------+
-| 1        | location    | 3D object location ``(x, y, z)`` in camera coordinates      | 0       |
+| 1        | location    | 3D object location `(x, y, z)` in camera coordinates        | 0       |
 |          |             | (in meters)                                                 |         |
 +----------+-------------+-------------------------------------------------------------+---------+
 | 1        | rotation\_y | Rotation around the y-axis in camera coordinates, in        | 0       |
-|          |             | ``[-pi, pi]``                                               |         |
+|          |             | `[-pi, pi]`                                                 |         |
 +----------+-------------+-------------------------------------------------------------+---------+
-| 1        | score       | ``(optional)`` A float confidence for the detection         |         |
+| 1        | score       | `(optional)` A float confidence for the detection           |         |
 +----------+-------------+-------------------------------------------------------------+---------+
 
 When reading datasets of this type, all columns after the four `bbox` columns
 may be omitted.
 
 Unlabeled images have no corresponding file in `labels/`.
+
+The `data/` and `labels/` files may contain nested subfolders of parallelly
+organized images and masks.
+
+.. note::
+
+    See :class:`fiftyone.utils.kitti.KITTIDetectionDatasetImporter` for
+    parameters that can be passed to methods like
+    :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>` to
+    customize the import of datasets of this type.
 
 You can create a FiftyOne dataset from a KITTI detection dataset stored in the
 above format as follows:
@@ -1296,9 +1396,13 @@ and `images.txt` contains the list of images in `data/`:
     data/<uuid2>.<ext>
     ...
 
-and the TXT files in `data/` are space-delimited files where each row
-corresponds to an object in the image of the same name, in the following
-format:
+The image paths in `images.txt` can be specified as either relative (to the
+location of file) or as absolute paths. Alternatively, this file can be
+omitted, in which case the `data/` directory is listed to determine the
+available images.
+
+The TXT files in `data/` are space-delimited files where each row corresponds
+to an object in the image of the same name, in the following format::
 
 .. code-block:: text
 
@@ -1309,6 +1413,15 @@ label from `obj.names` and the bounding box coordinates are expressed as
 relative coordinates in `[0, 1] x [0, 1]`.
 
 Unlabeled images have no corresponding TXT file in `data/`.
+
+The `data/` folder may contain nested subfolders.
+
+.. note::
+
+    See :class:`fiftyone.utils.yolo.YOLOv4DatasetImporter` for parameters
+    that can be passed to methods like
+    :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>` to
+    customize the import of datasets of this type.
 
 You can create a FiftyOne dataset from a YOLOv4 dataset stored in the above
 format as follows:
@@ -1415,9 +1528,15 @@ where `dataset.yaml` contains the following information:
     # class names
     names: ["list", "of", "classes", ...]
 
-and the TXT files in `labels/` are space-delimited files where each row
-corresponds to an object in the image of the same name, in the following
-format:
+See `this page <https://docs.ultralytics.com/tutorials/train-custom-datasets>`_
+for a full description of the possible format of `dataset.yaml`. In particular,
+the dataset may contain one or more splits with arbitrary names, as the
+specific split being imported or exported is specified by the `split` argument
+to :class:`fiftyone.utils.yolo.YOLOv5DatasetImporter` and
+:class:`fiftyone.utils.yolo.YOLOv5DatasetExporter`, respectively.
+
+The TXT files in `labels/` are space-delimited files where each row corresponds
+to an object in the image of the same name, in the following format::
 
 .. code-block:: text
 
@@ -1428,6 +1547,16 @@ where `<target>` is the zero-based integer index of the object class label from
 relative coordinates in `[0, 1] x [0, 1]`.
 
 Unlabeled images have no corresponding TXT file in `labels/`.
+
+The image and labels directories for a given split may contain nested
+subfolders of parallelly organized images and labels.
+
+.. note::
+
+    See :class:`fiftyone.utils.yolo.YOLOv5DatasetImporter` for parameters
+    that can be passed to methods like
+    :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>` to
+    customize the import of datasets of this type.
 
 You can create a FiftyOne dataset from a YOLOv5 dataset stored in the above
 format as follows:
@@ -1545,6 +1674,13 @@ following format:
 
 The TFRecords for unlabeled samples do not contain `image/object/*` features.
 
+.. note::
+
+    See :class:`fiftyone.utils.tf.TFObjectDetectionDatasetImporter` for
+    parameters that can be passed to methods like
+    :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>` to
+    customize the import of datasets of this type.
+
 You can create a FiftyOne dataset from an object detection dataset stored as a
 directory of TFRecords in the above format as follows:
 
@@ -1640,9 +1776,19 @@ Datasets of this type are read in the following format:
             <filename2>.<ext>
             ...
 
-where ``labels/`` contains the semantic segmentations stored as images.
+where `labels/` contains the semantic segmentations stored as images.
 
-Unlabeled images have no corresponding file in ``labels/``.
+Unlabeled images have no corresponding file in `labels/`.
+
+The `data/` and `labels/` files may contain nested subfolders of parallelly
+organized images and masks.
+
+.. note::
+
+    See :class:`fiftyone.utils.data.importers.ImageSegmentationDirectoryImporter`
+    for parameters that can be passed to methods like
+    :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>` to
+    customize the import of datasets of this type.
 
 You can create a FiftyOne dataset from an image segmentation dataset stored in
 the above format as follows:
@@ -1732,25 +1878,32 @@ where `labels.xml` is an XML file in the following format:
         <version>1.1</version>
         <meta>
             <task>
+                <id>0</id>
+                <name>task-name</name>
                 <size>51</size>
                 <mode>annotation</mode>
+                <overlap></overlap>
+                <bugtracker></bugtracker>
+                <flipped>False</flipped>
+                <created>2017-11-20 11:51:51.000000+00:00</created>
+                <updated>2017-11-20 11:51:51.000000+00:00</updated>
                 <labels>
                     <label>
                         <name>car</name>
                         <attributes>
                             <attribute>
                                 <name>type</name>
-                                <values>coupe\nsedan\ntruck</values>
+                                <values>coupe\\nsedan\\ntruck</values>
                             </attribute>
                             ...
                         </attributes>
                     </label>
                     <label>
-                        <name>person</name>
+                        <name>traffic_line</name>
                         <attributes>
                             <attribute>
-                                <name>gender</name>
-                                <values>male\nfemale</values>
+                                <name>color</name>
+                                <values>white\\nyellow</values>
                             </attribute>
                             ...
                         </attributes>
@@ -1758,20 +1911,64 @@ where `labels.xml` is an XML file in the following format:
                     ...
                 </labels>
             </task>
+            <segments>
+                <segment>
+                    <id>0</id>
+                    <start>0</start>
+                    <stop>50</stop>
+                    <url></url>
+                </segment>
+            </segments>
+            <owner>
+                <username></username>
+                <email></email>
+            </owner>
             <dumped>2017-11-20 11:51:51.000000+00:00</dumped>
         </meta>
-        <image id="1" name="<uuid1>.<ext>" width="640" height="480">
-            <box label="car" xtl="100" ytl="50" xbr="325" ybr="190" type="sedan"></box>
+        <image id="0" name="<uuid1>.<ext>" width="640" height="480">
+            <box label="car" xtl="100" ytl="50" xbr="325" ybr="190" occluded="0">
+                <attribute name="type">sedan</attribute>
+                ...
+            </box>
+            ...
+            <polygon label="car" points="561.30,916.23;561.30,842.77;...;560.20,966.67" occluded="0">
+                <attribute name="make">Honda</attribute>
+                ...
+            </polygon>
+            ...
+            <polyline label="traffic_line" points="462.10,0.00;126.80,1200.00" occluded="0">
+                <attribute name="color">yellow</attribute>
+                ...
+            </polyline>
+            ...
+            <points label="wheel" points="574.90,939.48;1170.16,907.90;...;600.16,459.48" occluded="0">
+                <attribute name="location">front_driver_side</attribute>
+                ...
+            </points>
             ...
         </image>
         ...
-        <image id="51" name="<uuid51>.<ext>" width="640" height="480">
-            <box label="person" xtl="300" ytl="25" xbr="375" ybr="400" gender="female"></box>
+        <image id="50" name="<uuid51>.<ext>" width="640" height="480">
             ...
         </image>
     </annotations>
 
 Unlabeled images have no corresponding `image` tag in `labels.xml`.
+
+The `name` field of the `<image>` tags in the labels file encodes the location
+of the corresponding images, which can be any of the following:
+
+-   The filename of an image in the `data/` folder
+-   A relative path like `data/sub/folder/filename.ext` specifying the relative
+    path to the image in a nested subfolder of `data/`
+-   An absolute path to an image, which may or may not be in the `data/` folder
+
+.. note::
+
+    See :class:`fiftyone.utils.cvat.CVATImageDatasetImporter` for
+    parameters that can be passed to methods like
+    :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>` to
+    customize the import of datasets of this type.
 
 You can create a FiftyOne dataset from a CVAT image dataset stored in the above
 format as follows:
@@ -1884,11 +2081,11 @@ where the labels XML files are stored in the following format:
                         </attributes>
                     </label>
                     <label>
-                        <name>person</name>
+                        <name>traffic_line</name>
                         <attributes>
                             <attribute>
-                                <name>gender</name>
-                                <values>male\\nfemale</values>
+                                <name>color</name>
+                                <values>white\\nyellow</values>
                             </attribute>
                             ...
                         </attributes>
@@ -1914,24 +2111,50 @@ where the labels XML files are stored in the following format:
             </original_size>
             <dumped>2017-11-20 11:51:51.000000+00:00</dumped>
         </meta>
-        <track id="0" label="car">
-            <box frame="0" xtl="100" ytl="50" xbr="325" ybr="190" outside="0" occluded="0" keyframe="1">
+        <track id="0" label=car">
+            <box frame="0" xtl="100" ytl="50" xbr="325" ybr="190" outside="0" occluded="0", keyframe="1">
                 <attribute name="type">sedan</attribute>
                 ...
             </box>
             ...
         </track>
-        ...
-        <track id="10" label="person">
-            <box frame="45" xtl="300" ytl="25" xbr="375" ybr="400" outside="0" occluded="0" keyframe="1">
-                <attribute name="gender">female</attribute>
+        <track id="1" label=car">
+            <polygon frame="0" points="561.30,916.23;561.30,842.77;...;560.20,966.67" outside="0" occluded="0", keyframe="1">
+                <attribute name="make">Honda</attribute>
                 ...
-            </box>
+            </polygon>
             ...
         </track>
+        ...
+        <track id="10" label="traffic_line">
+            <polyline frame="10" points="462.10,0.00;126.80,1200.00" outside="0" occluded="0", keyframe="1">
+                <attribute name="color">yellow</attribute>
+                ...
+            </polyline>
+            ...
+        </track>
+        ...
+        <track id="88" label="wheel">
+            <points frame="176" points="574.90,939.48;1170.16,907.90;...;600.16,459.48" outside="0" occluded="0", keyframe="1">
+                <attribute name="location">front_driver_side</attribute>
+                ...
+            </points>
+            ...
+        </track>
+        ...
     </annotations>
 
 Unlabeled videos have no corresponding file in `labels/`.
+
+The `data/` and `labels/` files may contain nested subfolders of parallelly
+organized images and labels.
+
+.. note::
+
+    See :class:`fiftyone.utils.cvat.CVATVideoDatasetImporter` for
+    parameters that can be passed to methods like
+    :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>` to
+    customize the import of datasets of this type.
 
 You can create a FiftyOne dataset from a CVAT video dataset stored in the above
 format as follows:
@@ -2040,6 +2263,13 @@ and where each labels JSON file is stored in
 
 For unlabeled images, an empty `eta.core.image.ImageLabels` file is stored.
 
+.. note::
+
+    See :class:`fiftyone.utils.data.importers.FiftyOneImageLabelsDatasetImporter`
+    for parameters that can be passed to methods like
+    :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>` to
+    customize the import of datasets of this type.
+
 You can create a FiftyOne dataset from an image labels dataset stored in the
 above format as follows:
 
@@ -2146,6 +2376,13 @@ and where each labels JSON file is stored in
 `ETA VideoLabels format <https://github.com/voxel51/eta/blob/develop/docs/video_labels_guide.md>`_.
 
 For unlabeled videos, an empty `eta.core.video.VideoLabels` file is written.
+
+.. note::
+
+    See :class:`fiftyone.utils.data.importers.FiftyOneVideoLabelsDatasetImporter`
+    for parameters that can be passed to methods like
+    :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>` to
+    customize the import of datasets of this type.
 
 You can create a FiftyOne dataset from a video labels dataset stored in the
 above format as follows:
@@ -2307,6 +2544,21 @@ where `labels.json` is a JSON file in the following format:
 
 Unlabeled images have no corresponding entry in `labels.json`.
 
+The `name` attribute of the labels file encodes the location of the
+corresponding images, which can be any of the following:
+
+-   The filename of an image in the `data/` folder
+-   A relative path like `data/sub/folder/filename.ext` specifying the relative
+    path to the image in a nested subfolder of `data/`
+-   An absolute path to an image, which may or may not be in the `data/` folder
+
+.. note::
+
+    See :class:`fiftyone.utils.bdd.BDDDatasetImporter` for parameters that
+    can be passed to methods like
+    :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>` to
+    customize the import of datasets of this type.
+
 You can create a FiftyOne dataset from a BDD dataset stored in the above format
 as follows:
 
@@ -2383,8 +2635,8 @@ Datasets of this type are read in the following format:
             ...
         labels.json
 
-where ``labels.json`` is a GeoJSON file containing a ``FeatureCollection`` in
-the following format:
+where `labels.json` is a GeoJSON file containing a `FeatureCollection` in the
+following format:
 
 .. code-block:: text
 
@@ -2423,15 +2675,22 @@ the following format:
         ]
     }
 
-where the ``geometry`` field may contain any valid GeoJSON geometry object, and
-the ``filename`` property encodes the name of the corresponding media in the
-``data/`` folder. The ``filename`` property can also be an absolute path, which
-may or may not be in the ``data/`` folder.
+where the `geometry` field may contain any valid GeoJSON geometry object, and
+the `filename` property encodes the name of the corresponding media in the
+`data/` folder. The `filename` property can also be an absolute path, which
+may or may not be in the `data/` folder.
 
-Samples with no location data will have a null ``geometry`` field.
+Samples with no location data will have a null `geometry` field.
 
-The ``properties`` field of each feature can contain additional labels that
+The `properties` field of each feature can contain additional labels that
 can be imported when working with datasets of this type.
+
+.. note::
+
+    See :class:`fiftyone.utils.geojson.GeoJSONDatasetImporter` for
+    parameters that can be passed to methods like
+    :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>` to
+    customize the import of datasets of this type.
 
 You can create a FiftyOne dataset from a GeoJSON dataset stored in the above
 format as follows:
@@ -2528,6 +2787,13 @@ of the samples in the dataset, `evaluations/` contains any serialized
 Video datasets have an additional `frames.json` file that contains a serialized
 representation of the frame labels for each video in the dataset.
 
+.. note::
+
+    See :class:`fiftyone.utils.data.importers.FiftyOneDatasetImporter` for
+    parameters that can be passed to methods like
+    :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>` to
+    customize the import of datasets of this type.
+
 You can create a FiftyOne dataset from a directory in the above format as
 follows:
 
@@ -2601,60 +2867,27 @@ a dataset from disk in your custom format using the following recipe:
 
     import fiftyone as fo
 
-    name = "custom-dataset"
-    dataset_dir = "/path/to/custom-dataset"
-
     # Create an instance of your custom dataset importer
-    importer = CustomDatasetImporter(dataset_dir, ...)
+    importer = CustomDatasetImporter(...)
 
     # Import the dataset!
-    dataset = fo.Dataset.from_importer(importer, name=name)
+    dataset = fo.Dataset.from_importer(importer)
 
 You can also define a custom |DatasetType| type, which enables you to import
 datasets in your custom format using the
 :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>` factory
 method:
 
-.. tabs::
+.. code-block:: python
+    :linenos:
 
-  .. group-tab:: Python
+    import fiftyone as fo
 
-    Import a dataset in your custom format by passing your |DatasetType| to the
-    `dataset_type` argument of
-    :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>`:
+    # The `fiftyone.types.Dataset` subclass for your custom dataset
+    dataset_type = CustomDataset
 
-    .. code-block:: python
-        :linenos:
-
-        import fiftyone as fo
-
-        name = "custom-dataset"
-        dataset_dir = "/path/to/custom-dataset"
-
-        # The `fiftyone.types.Dataset` subclass for your custom dataset
-        dataset_type = CustomDataset
-
-        # Import the dataset!
-        dataset = fo.Dataset.from_dir(dataset_dir, dataset_type, name=name)
-
-  .. group-tab:: CLI
-
-    Import a dataset in your custom format by passing your |DatasetType| in the
-    `--type` flag of the `fiftyone datasets create` method of the CLI:
-
-    .. code-block:: shell
-
-        NAME=custom-dataset
-        DATASET_DIR=/path/to/custom-dataset
-
-        # The `fiftyone.types.Dataset` subclass for your custom dataset
-        DATASET_TYPE = CustomDataset
-
-        # Import the dataset!
-        fiftyone datasets create \
-            --name $NAME \
-            --dataset-dir $DATASET_DIR \
-            --type $DATASET_TYPE
+    # Import the dataset!
+    dataset = fo.Dataset.from_dir(dataset_type=dataset_type, ...)
 
 .. _writing-a-custom-dataset-importer:
 
@@ -2683,7 +2916,8 @@ should implement is determined by the type of dataset that you are importing.
             """Custom importer for unlabeled image datasets.
 
             Args:
-                dataset_dir: the dataset directory
+                dataset_dir (None): the dataset directory. This may be optional for
+                    some importers
                 shuffle (False): whether to randomly shuffle the order in which the
                     samples are imported
                 seed (None): a random seed to use when shuffling
@@ -2693,10 +2927,18 @@ should implement is determined by the type of dataset that you are importing.
             """
 
             def __init__(
-                self, dataset_dir, shuffle=False, seed=None, max_samples=None, **kwargs
+                self,
+                dataset_dir=None,
+                shuffle=False,
+                seed=None,
+                max_samples=None,
+                **kwargs,
             ):
                 super().__init__(
-                    dataset_dir, shuffle=shuffle, seed=seed, max_samples=max_samples
+                    dataset_dir=dataset_dir,
+                    shuffle=shuffle,
+                    seed=seed,
+                    max_samples=max_samples
                 )
                 # Your initialization here
 
@@ -2784,7 +3026,7 @@ should implement is determined by the type of dataset that you are importing.
 
         dataset = fo.Dataset(...)
 
-        importer = CustomUnlabeledImageDatasetImporter(dataset_dir, ...)
+        importer = CustomUnlabeledImageDatasetImporter(...)
         with importer:
             for image_path, image_metadata in importer:
                 dataset.add_sample(
@@ -2838,7 +3080,8 @@ should implement is determined by the type of dataset that you are importing.
             """Custom importer for labeled image datasets.
 
             Args:
-                dataset_dir: the dataset directory
+                dataset_dir (None): the dataset directory. This may be optional for
+                    some importers
                 skip_unlabeled (False): whether to skip unlabeled images when importing
                 shuffle (False): whether to randomly shuffle the order in which the
                     samples are imported
@@ -2850,7 +3093,7 @@ should implement is determined by the type of dataset that you are importing.
 
             def __init__(
                 self,
-                dataset_dir,
+                dataset_dir=None,
                 skip_unlabeled=False,
                 shuffle=False,
                 seed=None,
@@ -2858,7 +3101,7 @@ should implement is determined by the type of dataset that you are importing.
                 **kwargs,
             ):
                 super().__init__(
-                    dataset_dir,
+                    dataset_dir=dataset_dir,
                     skip_unlabeled=skip_unlabeled,
                     shuffle=shuffle,
                     seed=seed,
@@ -2973,7 +3216,7 @@ should implement is determined by the type of dataset that you are importing.
 
         dataset = fo.Dataset(...)
 
-        importer = CustomLabeledImageDatasetImporter(dataset_dir, ...)
+        importer = CustomLabeledImageDatasetImporter(...)
         label_field = ...
 
         with importer:
@@ -3042,7 +3285,8 @@ should implement is determined by the type of dataset that you are importing.
             """Custom importer for unlabeled video datasets.
 
             Args:
-                dataset_dir: the dataset directory
+                dataset_dir (None): the dataset directory. This may be optional for
+                    some importers
                 shuffle (False): whether to randomly shuffle the order in which the
                     samples are imported
                 seed (None): a random seed to use when shuffling
@@ -3052,10 +3296,18 @@ should implement is determined by the type of dataset that you are importing.
             """
 
             def __init__(
-                self, dataset_dir, shuffle=False, seed=None, max_samples=None, **kwargs
+                self,
+                dataset_dir=None,
+                shuffle=False,
+                seed=None,
+                max_samples=None,
+                **kwargs,
             ):
                 super().__init__(
-                    dataset_dir, shuffle=shuffle, seed=seed, max_samples=max_samples
+                    dataset_dir=dataset_dir,
+                    shuffle=shuffle,
+                    seed=seed,
+                    max_samples=max_samples,
                 )
                 # Your initialization here
 
@@ -3143,7 +3395,7 @@ should implement is determined by the type of dataset that you are importing.
 
         dataset = fo.Dataset(...)
 
-        importer = CustomUnlabeledVideoDatasetImporter(dataset_dir, ...)
+        importer = CustomUnlabeledVideoDatasetImporter(...)
         with importer:
             for video_path, video_metadata in importer:
                 dataset.add_sample(
@@ -3197,7 +3449,8 @@ should implement is determined by the type of dataset that you are importing.
             """Custom importer for labeled video datasets.
 
             Args:
-                dataset_dir: the dataset directory
+                dataset_dir (None): the dataset directory. This may be optional for
+                    some importers
                 skip_unlabeled (False): whether to skip unlabeled videos when importing
                 shuffle (False): whether to randomly shuffle the order in which the
                     samples are imported
@@ -3209,7 +3462,7 @@ should implement is determined by the type of dataset that you are importing.
 
             def __init__(
                 self,
-                dataset_dir,
+                dataset_dir=None,
                 skip_unlabeled=False,
                 shuffle=False,
                 seed=None,
@@ -3217,7 +3470,7 @@ should implement is determined by the type of dataset that you are importing.
                 **kwargs,
             ):
                 super().__init__(
-                    dataset_dir,
+                    dataset_dir=dataset_dir,
                     skip_unlabeled=skip_unlabeled,
                     shuffle=shuffle,
                     seed=seed,
@@ -3363,7 +3616,7 @@ should implement is determined by the type of dataset that you are importing.
 
         dataset = fo.Dataset(...)
 
-        importer = CustomLabeledVideoDatasetImporter(dataset_dir, ...)
+        importer = CustomLabeledVideoDatasetImporter(...)
         label_field = ...
 
         with importer:
@@ -3405,9 +3658,9 @@ should implement is determined by the type of dataset that you are importing.
     loaded by invoking the
     :meth:`__next__() <fiftyone.utils.data.importers.LabeledVideoDatasetImporter.__next__>`
     method of the importer. In particular, sample-level labels for the video
-    may be returned in a ``label`` value (which may contain a single |Label|
+    may be returned in a `label` value (which may contain a single |Label|
     value or a dictionary that maps field names to labels), and frame-level
-    labels may be returned in a ``frames`` dictionary that maps frame numbers
+    labels may be returned in a `frames` dictionary that maps frame numbers
     to dictionaries of field names and labels.
 
     The
@@ -3451,7 +3704,7 @@ dataset, including
 :meth:`mask_targets <fiftyone.core.dataset.Dataset.mask_targets>`, and
 :meth:`default_mask_targets <fiftyone.core.dataset.Dataset.default_mask_targets>`.
 
-The function below describes how the ``info`` dict is dissected by the dataset
+The function below describes how the `info` dict is dissected by the dataset
 import routine:
 
 .. code-block:: python
