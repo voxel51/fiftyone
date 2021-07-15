@@ -2093,7 +2093,7 @@ def _mask_to_polygons(mask, tolerance):
     padded_mask = np.pad(mask, pad_width=1, mode="constant", constant_values=0)
 
     contours = measure.find_contours(padded_mask, 0.5)
-    contours = np.subtract(contours, 1)  # undo padding
+    contours = [c - 1 for c in contours]  # undo padding
 
     polygons = []
     for contour in contours:
