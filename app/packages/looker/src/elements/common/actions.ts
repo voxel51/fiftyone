@@ -55,7 +55,7 @@ const readActions = <State extends BaseState>(
 };
 
 const escape: Control = {
-  title: "Escape window",
+  title: "Escape context",
   shortcut: "Esc",
   eventKeys: "Escape",
   detail: "Escape help -> settings -> zoom -> fullscreen -> close",
@@ -417,7 +417,7 @@ export const nextFrame: Control<VideoState> = {
 export const previousFrame: Control<VideoState> = {
   title: "Previous frame",
   eventKeys: [",", "<"],
-  shortcut: ",",
+  shortcut: "<",
   detail: "Seek to the previous frame",
   action: (update, dispatchEvent) => {
     update(

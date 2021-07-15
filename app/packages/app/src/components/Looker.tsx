@@ -506,7 +506,7 @@ const Looker = ({
   }, [sample]);
 
   useEffect(() => {
-    return () => looker && looker.destroy();
+    return () => modal && looker && looker.destroy();
   }, [looker]);
 
   lookerRef && (lookerRef.current = looker);

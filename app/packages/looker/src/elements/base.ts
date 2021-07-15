@@ -56,25 +56,20 @@ export abstract class BaseElement<
 
   render(state: Readonly<State>): Element {
     const self = this.renderSelf(state);
-    const children = this.renderChildren(state);
 
-    children.forEach((child, i) => {
-      const isShown = this.children[i].isShown(state);
-      if (child.parentNode === this.element) {
-        if (!isShown) {
-          this.element.removeChild(child);
-        }
+    this.children.forEach((child) => {
+      if (!child.isShown(state)) {
         return;
       }
-      if (isShown) self.appendChild(child);
-    });
-    return self;
-  }
 
-  renderChildren(state: Readonly<State>): HTMLElement[] {
-    return this.children
-      .map((child) => (child.isShown(state) ? child.render(state) : null))
-      .filter((child) => Boolean(child));
+      const element = child.render(state);
+      if (element.parentNode === this.element) {
+        return;
+      }
+      self.appendChild(element);
+    });
+
+    return self;
   }
 
   abstract renderSelf(state: Readonly<State>): Element;

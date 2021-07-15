@@ -1674,7 +1674,6 @@ __metadata:
     "@vitejs/plugin-react-refresh": ^1.3.3
     "@xstate/react": 1.3.3
     classnames: ^2.2.6
-    copy-to-clipboard: ^3.3.1
     electron: ^13.1.2
     html2canvas: 1.0.0-rc.7
     mime: ^2.5.2
@@ -1693,8 +1692,7 @@ __metadata:
     react-use-gesture: ^9.0.0
     react-use-measure: ^2.0.1
     react-uuid: ^1.0.2
-    recharts: ^2.0.9
-    recharts-scale: ^0.4.5
+    recharts: 2.0.9
     recoil: ^0.3.1
     reconnecting-websocket: ^4.4.0
     resize-observer-polyfill: ^1.5.1
@@ -1702,7 +1700,7 @@ __metadata:
     styled-components: ^5.1.1
     typescript: 4.2.4
     uuid: ^8.3.2
-    vite: 2.3.3
+    vite: 2.4.0
     xstate: ^4.14.0
   peerDependencies:
     prop-types: "*"
@@ -1737,7 +1735,7 @@ __metadata:
     typescript: 4.2.4
     typescript-plugin-css-modules: ^3.4.0
     uuid: ^8.3.2
-    vite: 2.3.3
+    vite: 2.4.0
   languageName: unknown
   linkType: soft
 
@@ -3787,12 +3785,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"esbuild@npm:^0.11.23":
-  version: 0.11.23
-  resolution: "esbuild@npm:0.11.23"
+"esbuild@npm:^0.12.8":
+  version: 0.12.15
+  resolution: "esbuild@npm:0.12.15"
   bin:
     esbuild: bin/esbuild
-  checksum: 9226fc3d74f7555c96778c5d9204312c578e9c11b472deebfbab52c4ac58b9efc3a40be529368f6ccbe257d0059c6b8fd142c179824a3227d055d912c7b5a94a
+  checksum: 22ec14d41c8a9256934b476575f3dbb47437c3c9953c4e4e00560454449075822c0824fa982a51cb545c255c561a781908da9711081d57b4f3bca15341569906
   languageName: node
   linkType: hard
 
@@ -4035,7 +4033,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"fsevents@patch:fsevents@~2.3.1#builtin<compat/fsevents>, fsevents@patch:fsevents@~2.3.2#builtin<compat/fsevents>":
+"fsevents@patch:fsevents@~2.3.2#builtin<compat/fsevents>":
   version: 2.3.2
   resolution: "fsevents@patch:fsevents@npm%3A2.3.2#builtin<compat/fsevents>::version=2.3.2&hash=11e9ea"
   dependencies:
@@ -4044,7 +4042,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"fsevents@~2.3.1, fsevents@~2.3.2":
+fsevents@~2.3.2:
   version: 2.3.2
   resolution: "fsevents@npm:2.3.2"
   dependencies:
@@ -5813,7 +5811,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"postcss@npm:^8.2.10, postcss@npm:^8.3.0":
+"postcss@npm:^8.3.0, postcss@npm:^8.3.5":
   version: 8.3.5
   resolution: "postcss@npm:8.3.5"
   dependencies:
@@ -6214,7 +6212,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"recharts-scale@npm:^0.4.4, recharts-scale@npm:^0.4.5":
+"recharts-scale@npm:^0.4.4":
   version: 0.4.5
   resolution: "recharts-scale@npm:0.4.5"
   dependencies:
@@ -6223,9 +6221,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"recharts@npm:^2.0.9":
-  version: 2.0.10
-  resolution: "recharts@npm:2.0.10"
+"recharts@npm:2.0.9":
+  version: 2.0.9
+  resolution: "recharts@npm:2.0.9"
   dependencies:
     "@types/d3-scale": ^3.0.0
     "@types/d3-shape": ^2.0.0
@@ -6243,7 +6241,7 @@ __metadata:
   peerDependencies:
     react: ^16.0.0 || ^17.0.0
     react-dom: ^16.0.0 || ^17.0.0
-  checksum: dd250357b272a3d8ef58530ff1ac4a9f13607769ae7f4ffc03db77d98e8fa631d2d666856458f179b3650bf08884f609ef9b089b8361b7fa65cf3f3c55483354
+  checksum: c4652198ca49f0ba69c704cf4bbf039058b135ce5f9195371a7adff9308da89c8e33d416aa5a3a103ba76d59f1b5ecdf8876f4c0b6d8a30e351228fbeaceaca4
   languageName: node
   linkType: hard
 
@@ -6404,7 +6402,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"resolve@^1.14.2, resolve@^1.19.0":
+"resolve@^1.14.2, resolve@^1.20.0":
   version: 1.20.0
   resolution: "resolve@npm:1.20.0"
   dependencies:
@@ -6414,7 +6412,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"resolve@patch:resolve@^1.14.2#builtin<compat/resolve>, resolve@patch:resolve@^1.19.0#builtin<compat/resolve>":
+"resolve@patch:resolve@^1.14.2#builtin<compat/resolve>, resolve@patch:resolve@^1.20.0#builtin<compat/resolve>":
   version: 1.20.0
   resolution: "resolve@patch:resolve@npm%3A1.20.0#builtin<compat/resolve>::version=1.20.0&hash=3388aa"
   dependencies:
@@ -7380,21 +7378,21 @@ typescript@4.2.4:
   languageName: node
   linkType: hard
 
-"vite@npm:2.3.3":
-  version: 2.3.3
-  resolution: "vite@npm:2.3.3"
+"vite@npm:2.4.0":
+  version: 2.4.0
+  resolution: "vite@npm:2.4.0"
   dependencies:
-    esbuild: ^0.11.23
-    fsevents: ~2.3.1
-    postcss: ^8.2.10
-    resolve: ^1.19.0
+    esbuild: ^0.12.8
+    fsevents: ~2.3.2
+    postcss: ^8.3.5
+    resolve: ^1.20.0
     rollup: ^2.38.5
   dependenciesMeta:
     fsevents:
       optional: true
   bin:
     vite: bin/vite.js
-  checksum: 5f552de62f5fc36f49fae6d22672efa170ae8dfe1551a9cb38fd89f222e1941e9b10a39b8f65461c91654ef5d7c4b20f6d0cefe8dda28d2e186cb1cd92458e5f
+  checksum: ca7336ae31bd7f7d8c13a6814955755c9e72d514ed18309c7e26a3d0ff213b9c323ff7819b8469f56109e125854e5ad8b04bdfc6e13728b2508602099804a862
   languageName: node
   linkType: hard
 

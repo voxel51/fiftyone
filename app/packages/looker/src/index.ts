@@ -101,7 +101,6 @@ export abstract class Looker<
         this.updater({ windowBBox: getElementBBox(this.lookerElement.element) })
       )
     );
-    this.resizeObserver.observe(this.lookerElement.element);
   }
 
   protected dispatchEvent(eventType: string, detail: any): void {
@@ -121,10 +120,6 @@ export abstract class Looker<
 
   private makeUpdate(): StateUpdate<State> {
     return (stateOrUpdater, postUpdate) => {
-      if (!this.lookerElement) {
-        return;
-      }
-
       const updates =
         stateOrUpdater instanceof Function
           ? stateOrUpdater(this.state)
@@ -132,14 +127,20 @@ export abstract class Looker<
       if (Object.keys(updates).length === 0 && !postUpdate) {
         return;
       }
+
       this.previousState = this.state;
       this.state = mergeUpdates(this.state, updates);
+
+      if (!this.state.windowBBox) {
+        return;
+      }
 
       this.pluckedOverlays = this.pluckOverlays(this.state);
       [this.currentOverlays, this.state.rotate] = processOverlays(
         this.state,
         this.pluckedOverlays
       );
+
       this.state = this.postProcess();
       this.state.mouseIsOnOverlay =
         Boolean(this.currentOverlays.length) &&
@@ -217,11 +218,13 @@ export abstract class Looker<
       element = document.getElementById(element);
     }
 
-    element.appendChild(this.lookerElement.element);
     this.updater({ windowBBox: getElementBBox(element) });
+    element.appendChild(this.lookerElement.element);
+    this.resizeObserver.observe(this.lookerElement.element);
   }
 
   detach(): void {
+    this.resizeObserver.unobserve(this.lookerElement.element);
     this.lookerElement.element.parentNode &&
       this.lookerElement.element.parentNode.removeChild(
         this.lookerElement.element
@@ -230,7 +233,6 @@ export abstract class Looker<
 
   destroy(): void {
     this.detach();
-    this.resizeObserver.unobserve(this.lookerElement.element);
     delete this.lookerElement;
   }
 

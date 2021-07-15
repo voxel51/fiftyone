@@ -149,10 +149,10 @@ export const getVideoElements: GetElements<VideoState> = (
         node: common.CanvasElement,
       },
       {
-        node: video.LoaderBar,
+        node: common.JSONPanelElement,
       },
       {
-        node: common.JSONPanelElement,
+        node: video.LoaderBar,
       },
       {
         node: common.VideoHelpPanelElement,
