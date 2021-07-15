@@ -1700,7 +1700,7 @@ __metadata:
     styled-components: ^5.1.1
     typescript: 4.2.4
     uuid: ^8.3.2
-    vite: 2.4.0
+    vite: 2.4.2
     xstate: ^4.14.0
   peerDependencies:
     prop-types: "*"
@@ -1735,7 +1735,7 @@ __metadata:
     typescript: 4.2.4
     typescript-plugin-css-modules: ^3.4.0
     uuid: ^8.3.2
-    vite: 2.4.0
+    vite: 2.4.2
   languageName: unknown
   linkType: soft
 
@@ -7378,9 +7378,9 @@ typescript@4.2.4:
   languageName: node
   linkType: hard
 
-"vite@npm:2.4.0":
-  version: 2.4.0
-  resolution: "vite@npm:2.4.0"
+"vite@npm:2.4.2":
+  version: 2.4.2
+  resolution: "vite@npm:2.4.2"
   dependencies:
     esbuild: ^0.12.8
     fsevents: ~2.3.2
@@ -7392,7 +7392,7 @@ typescript@4.2.4:
       optional: true
   bin:
     vite: bin/vite.js
-  checksum: ca7336ae31bd7f7d8c13a6814955755c9e72d514ed18309c7e26a3d0ff213b9c323ff7819b8469f56109e125854e5ad8b04bdfc6e13728b2508602099804a862
+  checksum: 59949bfcc490ffcc499dcd4a93cb56b2d8aa0b2063cf1f1e83aaa9a38cd11de59e1acd987bfec2542c68da886bd82d63b7539f538824b16260875178e260b8b7
   languageName: node
   linkType: hard
 

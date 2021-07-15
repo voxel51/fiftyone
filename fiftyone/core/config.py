@@ -217,6 +217,12 @@ class AppConfig(EnvConfig):
             env_var="FIFTYONE_APP_GRID_ZOOM",
             default=5,
         )
+        self.loop_videos = self.parse_bool(
+            d,
+            "loop_videos",
+            env_var="FIFTYONE_APP_LOOP_VIDEOS",
+            default=False,
+        )
         self.notebook_height = self.parse_int(
             d,
             "notebook_height",

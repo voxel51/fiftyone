@@ -488,7 +488,10 @@ const seekTo: Control<VideoState> = {
     update(({ duration, config: { frameRate } }) => {
       const total = getFrameNumber(duration, duration, frameRate);
       return {
-        frameNumber: Math.round((parseInt(eventKey, 10) / 10) * total),
+        frameNumber: Math.max(
+          1,
+          Math.round((parseInt(eventKey, 10) / 10) * total)
+        ),
         json: false,
       };
     });

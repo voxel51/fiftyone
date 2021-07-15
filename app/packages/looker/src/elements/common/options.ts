@@ -64,32 +64,31 @@ export class OptionsPanelElement<State extends BaseState> extends BaseElement<
   }
 }
 
-export class UseFrameNumberOptionElement extends BaseElement<VideoState> {
+export class LoopVideoOptionElement extends BaseElement<VideoState> {
   checkbox?: HTMLInputElement;
   label?: HTMLLabelElement;
 
   getEvents(): Events<VideoState> {
     return {
-      click: ({ event, update }) => {
+      click: ({ event, update, dispatchEvent }) => {
         event.stopPropagation();
         event.preventDefault();
-        update(({ options: { useFrameNumber } }) => {
-          return {
-            options: { useFrameNumber: !useFrameNumber },
-          };
+        update(({ options: { loop } }) => {
+          dispatchEvent("options", { loop: !loop });
+          return { options: { loop: !loop } };
         });
       },
     };
   }
 
   createHTMLElement() {
-    [this.label, this.checkbox] = makeCheckboxRow("Use frame number", false);
+    [this.label, this.checkbox] = makeCheckboxRow("Loop video", false);
     return makeWrapper([this.label]);
   }
 
-  renderSelf({ options: { useFrameNumber } }: Readonly<VideoState>) {
-    // @ts-ignore
-    this.checkbox.checked = useFrameNumber;
+  renderSelf({ options: { loop } }: Readonly<VideoState>) {
+    //@ts-ignore
+    this.checkbox.checked = loop;
     return this.element;
   }
 }
@@ -267,6 +266,36 @@ const makeWrapper = function (children: HTMLElement[]) {
   }
   return wrapper;
 };
+
+export class UseFrameNumberOptionElement extends BaseElement<VideoState> {
+  checkbox?: HTMLInputElement;
+  label?: HTMLLabelElement;
+
+  getEvents(): Events<VideoState> {
+    return {
+      click: ({ event, update }) => {
+        event.stopPropagation();
+        event.preventDefault();
+        update(({ options: { useFrameNumber } }) => {
+          return {
+            options: { useFrameNumber: !useFrameNumber },
+          };
+        });
+      },
+    };
+  }
+
+  createHTMLElement() {
+    [this.label, this.checkbox] = makeCheckboxRow("Use frame number", false);
+    return makeWrapper([this.label]);
+  }
+
+  renderSelf({ options: { useFrameNumber } }: Readonly<VideoState>) {
+    // @ts-ignore
+    this.checkbox.checked = useFrameNumber;
+    return this.element;
+  }
+}
 
 const makeCheckboxRow = function (
   text: string,

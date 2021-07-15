@@ -259,6 +259,8 @@ The FiftyOne App can be configured in the ways described below:
 | `default_grid_zoom` | `FIFTYONE_APP_DEFAULT_GRID_ZOOM`  | `5`                         | The default zoom level of the App's sample grid. Larger values result in larger samples  |
 |                     |                                   |                             | (and thus fewer samples in the grid). Supported values are `{0, 1, ..., 10}`.            |
 +---------------------+-----------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
+| `loop_videos`       | `FIFTYONE_APP_LOOP_VIDEOS`        | `False`                     | Whether to loop videos by default in the expanded sample view.                           |
++---------------------+-----------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
 | `notebook_height`   | `FIFTYONE_APP_NOTEBOOK_HEIGHT`    | `800`                       | The height of App instances displayed in notebook cells.                                 |
 +---------------------+-----------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
 | `show_confidence`   | `FIFTYONE_APP_SHOW_CONFIDENCE`    | `True`                      | Whether to show confidences when rendering labels in the App's expanded sample view.     |

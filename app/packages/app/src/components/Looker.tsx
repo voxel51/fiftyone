@@ -351,7 +351,9 @@ const defaultLookerOptions = selectorFamily({
     const showLabel = get(selectors.appConfig).show_label;
     const showTooltip = get(selectors.appConfig).show_tooltip;
     const useFrameNumber = get(selectors.appConfig).use_frame_number;
-    const video = get(selectors.isVideoDataset) ? { loop: !modal } : {};
+    const video = get(selectors.isVideoDataset)
+      ? { loop: modal ? get(selectors.appConfig).loop_videos : true }
+      : {};
     const zoom = get(selectors.isPatchesView)
       ? { zoom: get(atoms.cropToContent(modal)) }
       : {};

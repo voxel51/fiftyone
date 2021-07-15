@@ -184,6 +184,7 @@ export const getVideoElements: GetElements<VideoState> = (
       {
         node: common.OptionsPanelElement,
         children: [
+          { node: common.LoopVideoOptionElement },
           { node: common.OnlyShowHoveredOnLabelOptionElement },
           { node: common.ShowConfidenceOptionElement },
           { node: common.ShowIndexOptionElement },
