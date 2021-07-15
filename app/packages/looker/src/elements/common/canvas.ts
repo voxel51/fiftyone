@@ -22,6 +22,7 @@ export class CanvasElement<State extends BaseState> extends BaseElement<
   private start: Coordinates = [0, 0];
   private wheelTimeout: ReturnType<typeof setTimeout> | null = null;
   private loaded: boolean = true;
+  private cursor: string;
 
   getEvents(): Events<State> {
     return {
@@ -184,18 +185,25 @@ export class CanvasElement<State extends BaseState> extends BaseElement<
   }: Readonly<State>) {
     if (this.width !== width) {
       this.element.width = width;
+      this.width = width;
     }
     if (this.height !== height) {
       this.element.height = height;
+      this.height = height;
     }
+
+    const cursor = this.cursor;
     if (panning) {
-      this.element.style.cursor !== "all-scroll" &&
-        (this.element.style.cursor = "all-scroll");
+      cursor !== "all-scroll" && (this.cursor = "all-scroll");
     } else if (!thumbnail && mouseIsOnOverlay && !disableOverlays) {
-      this.element.style.cursor = "pointer";
+      cursor !== "pointer" && (this.cursor = "pointer");
     } else if (thumbnail) {
-      this.element.style.cursor = "unset";
-    } else {
+      cursor !== "unset" && (this.cursor = "unset");
+    } else if (cursor !== "default") {
+      this.cursor = "default";
+    }
+
+    if (this.cursor !== cursor) {
       this.element.style.cursor = "default";
     }
 

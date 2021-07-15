@@ -28,11 +28,7 @@ export class ImageElement extends BaseElement<ImageState, HTMLImageElement> {
     return element;
   }
 
-  renderSelf(state: Readonly<ImageState>) {
-    const {
-      config: { src },
-    } = state;
-
+  renderSelf({ config: { src } }: Readonly<ImageState>) {
     if (this.src !== src) {
       this.src = src;
       this.element.setAttribute("src", src);

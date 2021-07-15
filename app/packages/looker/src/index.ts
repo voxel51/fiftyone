@@ -74,6 +74,7 @@ export abstract class Looker<
   private resizeObserver: ResizeObserver;
   private readonly canvas: HTMLCanvasElement;
   private readonly ctx: CanvasRenderingContext2D;
+  private previousState?: Readonly<State>;
 
   protected currentOverlays: Overlay<State>[];
   protected pluckedOverlays: Overlay<State>[];
@@ -99,7 +100,9 @@ export abstract class Looker<
     this.ctx = this.canvas.getContext("2d");
     this.imageSource = this.lookerElement.children[0].element as ImageSource;
     this.resizeObserver = new ResizeObserver(() =>
-      requestAnimationFrame(() => this.updater(({ loaded }) => ({ loaded })))
+      requestAnimationFrame(() =>
+        this.updater({ windowBBox: getElementBBox(this.lookerElement.element) })
+      )
     );
     this.resizeObserver.observe(this.lookerElement.element);
   }
@@ -128,7 +131,7 @@ export abstract class Looker<
       if (Object.keys(updates).length === 0 && !postUpdate) {
         return;
       }
-      const previousState = this.state;
+      this.previousState = this.state;
       this.state = mergeUpdates(this.state, updates);
 
       this.pluckedOverlays = this.pluckOverlays(this.state);
@@ -136,13 +139,13 @@ export abstract class Looker<
         this.state,
         this.pluckedOverlays
       );
-      this.state = this.postProcess(this.lookerElement.element);
+      this.state = this.postProcess();
       this.state.mouseIsOnOverlay =
         Boolean(this.currentOverlays.length) &&
         this.currentOverlays[0].containsPoint(this.state) > CONTAINS.NONE;
       postUpdate && postUpdate(this.state, this.currentOverlays);
 
-      this.dispatchImpliedEvents(previousState, this.state);
+      this.dispatchImpliedEvents(this.previousState, this.state);
 
       this.lookerElement.render(this.state as Readonly<State>);
 
@@ -229,7 +232,7 @@ export abstract class Looker<
     }
 
     element.appendChild(this.lookerElement.element);
-    this.state = this.postProcess(this.lookerElement.element);
+    this.updater({ windowBBox: getElementBBox(element) });
   }
 
   detach(): void {
@@ -333,7 +336,7 @@ export abstract class Looker<
     };
   }
 
-  protected postProcess(element: HTMLElement): State {
+  protected postProcess(): State {
     let [tlx, tly, w, h] = this.state.windowBBox;
     this.state.pan = snapBox(
       this.state.scale,
@@ -387,11 +390,13 @@ export abstract class Looker<
     return this.state;
   }
 
-  protected hasResized(previousWindowBBox: BoundingBox): boolean {
+  protected hasResized(): boolean {
     return Boolean(
-      !previousWindowBBox ||
-        !this.state.windowBBox ||
-        previousWindowBBox.some((v, i) => v !== this.state.windowBBox[i])
+      !this.previousState?.windowBBox ||
+        !this.state?.windowBBox ||
+        this.previousState.windowBBox.some(
+          (v, i) => v !== this.state.windowBBox[i]
+        )
     );
   }
 
@@ -476,11 +481,9 @@ export class FrameLooker extends Looker<FrameState> {
     return this.overlays;
   }
 
-  postProcess(element: HTMLElement): FrameState {
-    const previousWindowBBox = this.state.windowBBox;
-    this.state.windowBBox = getElementBBox(element);
+  postProcess(): FrameState {
     if (!this.state.setZoom) {
-      this.state.setZoom = this.hasResized(previousWindowBBox);
+      this.state.setZoom = this.hasResized();
     }
 
     if (this.state.setZoom && this.pluckedOverlays.length) {
@@ -499,7 +502,7 @@ export class FrameLooker extends Looker<FrameState> {
       this.state.zoomToContent = false;
     }
 
-    return super.postProcess(element);
+    return super.postProcess();
   }
 
   updateOptions(options: Optional<FrameState["options"]>) {
@@ -572,11 +575,9 @@ export class ImageLooker extends Looker<ImageState> {
     return this.overlays;
   }
 
-  postProcess(element: HTMLElement): ImageState {
-    const previousWindowBBox = this.state.windowBBox;
-    this.state.windowBBox = getElementBBox(element);
+  postProcess(): ImageState {
     if (!this.state.setZoom) {
-      this.state.setZoom = this.hasResized(previousWindowBBox);
+      this.state.setZoom = this.hasResized();
     }
 
     if (this.state.setZoom && this.pluckedOverlays.length) {
@@ -595,11 +596,11 @@ export class ImageLooker extends Looker<ImageState> {
       this.state.zoomToContent = false;
     }
 
-    return super.postProcess(element);
+    return super.postProcess();
   }
 
   updateOptions(options: Optional<ImageState["options"]>) {
-    const state: Optional<ImageState> = { options, renderElements: false };
+    const state: Optional<ImageState> = { options };
     if (options.zoom !== undefined) {
       state.setZoom = this.state.options.zoom !== options.zoom;
     }
@@ -1027,16 +1028,14 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
     });
   }
 
-  postProcess(element: HTMLElement): VideoState {
-    const previousWindowBBox = this.state.windowBBox;
-    this.state.windowBBox = getElementBBox(element);
+  postProcess(): VideoState {
     if (this.state.seeking) {
       this.state.disableOverlays = true;
     } else if (!this.state.playing && !this.state.buffering) {
       this.state.disableOverlays = false;
     }
     if (!this.state.setZoom) {
-      this.state.setZoom = this.hasResized(previousWindowBBox);
+      this.state.setZoom = this.hasResized();
     }
 
     if (this.state.setZoom) {
@@ -1050,7 +1049,7 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
       this.state = zoomToContent(this.state, this.currentOverlays);
       this.state.zoomToContent = false;
     }
-    return super.postProcess(element);
+    return super.postProcess();
   }
 
   updateOptions(options: Optional<VideoState["options"]>) {

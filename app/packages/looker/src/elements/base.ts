@@ -72,7 +72,9 @@ export abstract class BaseElement<
   }
 
   renderChildren(state: Readonly<State>): HTMLElement[] {
-    return this.children.map((child) => child.render(state));
+    return this.children
+      .map((child) => (child.isShown(state) ? child.render(state) : null))
+      .filter((child) => Boolean(child));
   }
 
   abstract renderSelf(state: Readonly<State>): Element;
