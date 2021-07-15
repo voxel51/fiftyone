@@ -204,7 +204,7 @@ export class CanvasElement<State extends BaseState> extends BaseElement<
     }
 
     if (this.cursor !== cursor) {
-      this.element.style.cursor = "default";
+      this.element.style.cursor = this.cursor;
     }
 
     if (this.loaded !== loaded) {

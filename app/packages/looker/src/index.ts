@@ -62,9 +62,6 @@ const labelsWorker = createWorker();
 
 type ImageSource = HTMLImageElement | HTMLVideoElement;
 
-const backCanvas = document.createElement("canvas");
-const backCanvasCtx = backCanvas.getContext("2d");
-
 export abstract class Looker<
   State extends BaseState = BaseState,
   Sample extends BaseSample = BaseSample
@@ -160,8 +157,7 @@ export abstract class Looker<
         return;
       }
 
-      if (this.waiting && !this.state.config.thumbnail) {
-        ctx.drawImage(backCanvas, 0, 0);
+      if (this.waiting) {
         return;
       }
 
@@ -171,6 +167,7 @@ export abstract class Looker<
       ctx.textBaseline = "bottom";
       ctx.imageSmoothingEnabled = false;
       ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.clearRect(0, 0, this.state.windowBBox[2], this.state.windowBBox[3]);
 
       ctx.translate(...this.state.pan);
       ctx.scale(this.state.scale, this.state.scale);
@@ -192,21 +189,6 @@ export abstract class Looker<
       for (let index = numOverlays - 1; index >= 0; index--) {
         this.currentOverlays[index].draw(ctx, this.state);
       }
-
-      if (this.state.config.thumbnail) {
-        return;
-      }
-
-      if (backCanvas.width !== this.canvas.width) {
-        backCanvas.width = this.canvas.width;
-      }
-
-      if (backCanvas.height !== this.canvas.height) {
-        backCanvas.height = this.canvas.height;
-      }
-
-      backCanvasCtx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-      backCanvasCtx.drawImage(this.canvas, 0, 0);
     };
   }
 
