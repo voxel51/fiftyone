@@ -220,13 +220,7 @@ const DetectionInfo = ({ detail }) => {
 const KeypointInfo = ({ detail }) => {
   return (
     <AttrBlock style={{ borderColor: detail.color }}>
-      <AttrInfo label={detail.label}>
-        <ContentItem
-          key={"# keypoints"}
-          name={"# keypoints"}
-          value={detail.numPoints}
-        />
-      </AttrInfo>
+      <AttrInfo label={detail.label} />
     </AttrBlock>
   );
 };
@@ -245,9 +239,7 @@ const SegmentationInfo = ({ detail }) => {
 const PolylineInfo = ({ detail }) => {
   return (
     <AttrBlock style={{ borderColor: detail.color }}>
-      <AttrInfo label={detail.label}>
-        <ContentItem key={"# points"} name={"# points"} value={detail.points} />
-      </AttrInfo>
+      <AttrInfo label={detail.label} />
     </AttrBlock>
   );
 };

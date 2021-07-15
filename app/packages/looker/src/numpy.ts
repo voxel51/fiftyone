@@ -126,6 +126,7 @@ function parse(array: Uint8Array): NumpyResult {
           rawData.byteOffset,
           rawData.byteLength / ArrayType.BYTES_PER_ELEMENT
         );
+
   return {
     shape: header.shape,
     buffer: typedData.buffer,

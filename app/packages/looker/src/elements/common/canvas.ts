@@ -62,7 +62,7 @@ export class CanvasElement<State extends BaseState> extends BaseElement<
               }
               return {};
             }),
-          2500
+          3500
         );
         update((state) => {
           if (state.config.thumbnail) {
