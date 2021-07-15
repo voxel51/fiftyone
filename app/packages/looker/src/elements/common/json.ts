@@ -34,10 +34,6 @@ export class JSONPanelElement<State extends BaseState> extends BaseElement<
 
   createHTMLElement() {
     const element = document.createElement("div");
-    const header = document.createElement("div");
-    header.innerText = "JSON";
-    header.classList.add(lookerPanelHeader);
-    element.appendChild(header);
     element.classList.add(lookerPanel);
 
     const container = document.createElement("div");

@@ -975,7 +975,6 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
   }
 
   getSample(): Promise<VideoSample> {
-    this.updater({ playing: false });
     return new Promise((resolve) => {
       const resolver = () => {
         if (this.hasFrame(this.frameNumber)) {
