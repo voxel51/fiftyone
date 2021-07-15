@@ -505,13 +505,17 @@ const Looker = ({
     !initialRef.current && looker.updateSample(sample);
   }, [sample]);
 
+  useEffect(() => {
+    return () => looker && looker.destroy();
+  }, [looker]);
+
   lookerRef && (lookerRef.current = looker);
 
   const error = useErrorHandler(looker, sampleId);
   modal && useEventHandler(looker, "options", useLookerOptionsUpdate());
   modal && useEventHandler(looker, "fullscreen", useFullscreen());
-  useEventHandler(looker, "next", onNext);
-  useEventHandler(looker, "previous", onPrevious);
+  onNext && useEventHandler(looker, "next", onNext);
+  onPrevious && useEventHandler(looker, "previous", onPrevious);
   onClose && useEventHandler(looker, "close", onClose);
   onSelectLabel && useEventHandler(looker, "select", onSelectLabel);
   useEffect(() => {

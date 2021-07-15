@@ -121,6 +121,10 @@ export abstract class Looker<
 
   private makeUpdate(): StateUpdate<State> {
     return (stateOrUpdater, postUpdate) => {
+      if (!this.lookerElement) {
+        return;
+      }
+
       const updates =
         stateOrUpdater instanceof Function
           ? stateOrUpdater(this.state)

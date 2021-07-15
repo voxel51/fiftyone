@@ -149,6 +149,9 @@ export const getVideoElements: GetElements<VideoState> = (
         node: common.CanvasElement,
       },
       {
+        node: video.LoaderBar,
+      },
+      {
         node: common.JSONPanelElement,
       },
       {
@@ -188,9 +191,6 @@ export const getVideoElements: GetElements<VideoState> = (
           { node: common.ShowTooltipOptionElement },
           { node: common.UseFrameNumberOptionElement },
         ],
-      },
-      {
-        node: video.LoaderBar,
       },
     ],
   };

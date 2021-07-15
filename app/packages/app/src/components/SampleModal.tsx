@@ -231,7 +231,6 @@ const SampleModal = ({ onClose, sampleId }: Props, ref) => {
   const sampleSrc = useRecoilValue(modalSrc);
   const [index, setIndex] = useRecoilState(modalIndex);
   const numSamples = useRecoilValue(selectors.currentSamplesSize);
-  const [enableJSONFilter, setEnableJSONFilter] = useState(true);
   const lookerRef = useRef<VideoLooker & ImageLooker & FrameLooker>();
   const onSelectLabel = useOnSelectLabel();
 
