@@ -3,6 +3,7 @@ import ReactDOM from "react-dom";
 import styled from "styled-components";
 import { selectorFamily, useRecoilValue, useRecoilCallback } from "recoil";
 import { animated, useSpring } from "react-spring";
+import { v4 as uuid } from "uuid";
 
 import * as labelAtoms from "./Filters/utils";
 import { ContentDiv, ContentHeader } from "./utils";
@@ -17,7 +18,6 @@ import {
   ImageOptions,
   VideoOptions,
 } from "@fiftyone/looker/src/state";
-import { useMove } from "react-use-gesture";
 import ExternalLink from "./ExternalLink";
 import { Warning } from "@material-ui/icons";
 
@@ -289,59 +289,57 @@ const TagInfo = ({ tags }: { tags: string[] }) => {
   );
 };
 
-const TooltipInfo = React.memo(
-  ({ looker }: { looker: any; moveRef: MutableRefObject<HTMLDivElement> }) => {
-    const [detail, setDetail] = useState(null);
-    const [coords, setCoords] = useState<{
-      top?: placement;
-      bottom?: placement;
-      left?: placement;
-    }>({
-      top: -1000,
-      left: -1000,
-      bottom: "unset",
-    });
-    const position = detail
-      ? coords
-      : { top: -1000, left: -1000, bottom: "unset" };
+const TooltipInfo = React.memo(({ looker }: { looker: any }) => {
+  const [detail, setDetail] = useState(null);
+  const [coords, setCoords] = useState<{
+    top?: placement;
+    bottom?: placement;
+    left?: placement;
+  }>({
+    top: -1000,
+    left: -1000,
+    bottom: "unset",
+  });
+  const position = detail
+    ? coords
+    : { top: -1000, left: -1000, bottom: "unset" };
 
-    const coordsProps = useSpring({
-      ...position,
-      config: {
-        duration: 0,
-      },
-    });
-    const ref = useRef<HTMLDivElement>(null);
+  const coordsProps = useSpring({
+    ...position,
+    config: {
+      duration: 0,
+    },
+  });
+  const ref = useRef<HTMLDivElement>(null);
 
-    useEventHandler(looker, "tooltip", (e) => {
-      setDetail(e.detail ? e.detail : null);
-      e.detail && setCoords(computeCoordinates(e.detail.coordinates));
-    });
+  useEventHandler(looker, "tooltip", (e) => {
+    setDetail(e.detail ? e.detail : null);
+    e.detail && setCoords(computeCoordinates(e.detail.coordinates));
+  });
 
-    const showProps = useSpring({
-      display: detail ? "block" : "none",
-      opacity: detail ? 1 : 0,
-    });
-    const Component = detail ? OVERLAY_INFO[detail.type] : null;
+  const showProps = useSpring({
+    display: detail ? "block" : "none",
+    opacity: detail ? 1 : 0,
+  });
+  const Component = detail ? OVERLAY_INFO[detail.type] : null;
 
-    return Component
-      ? ReactDOM.createPortal(
-          <TooltipDiv
-            style={{ ...coordsProps, ...showProps, position: "fixed" }}
-            ref={ref}
-          >
-            <ContentHeader key="header">{detail.field}</ContentHeader>
-            <Border color={detail.color} id={detail.label._id} />
-            {detail.label.tags && detail.label.tags.length > 0 && (
-              <TagInfo key={"tags"} tags={detail.label?.tags} />
-            )}
-            <Component key={"attrs"} detail={detail} />
-          </TooltipDiv>,
-          document.body
-        )
-      : null;
-  }
-);
+  return Component
+    ? ReactDOM.createPortal(
+        <TooltipDiv
+          style={{ ...coordsProps, ...showProps, position: "fixed" }}
+          ref={ref}
+        >
+          <ContentHeader key="header">{detail.field}</ContentHeader>
+          <Border color={detail.color} id={detail.label._id} />
+          {detail.label.tags && detail.label.tags.length > 0 && (
+            <TagInfo key={"tags"} tags={detail.label?.tags} />
+          )}
+          <Component key={"attrs"} detail={detail} />
+        </TooltipDiv>,
+        document.body
+      )
+    : null;
+});
 
 type EventCallback = (event: CustomEvent) => void;
 
@@ -380,7 +378,6 @@ const lookerOptions = selectorFamily<
   get: (modal) => ({ get }) => {
     const options = {
       ...get(defaultLookerOptions(modal)),
-      activeLabels: get(labelAtoms.activeFields(modal)),
       colorMap: get(selectors.colorMap(modal)),
       filter: get(labelFilters(modal)),
     };
@@ -469,13 +466,13 @@ const Looker = ({
   sampleId,
   style,
 }: LookerProps) => {
+  const [id] = useState(() => uuid());
   let sample = useRecoilValue(atoms.sample(sampleId));
   const sampleSrc = useRecoilValue(selectors.sampleSrc(sampleId));
   const options = useRecoilValue(lookerOptions(modal));
+  const activeLabels = useRecoilValue(labelAtoms.activeFields(modal));
   const metadata = useRecoilValue(atoms.sampleMetadata(sampleId));
-  const ref = useRef<any>();
   const theme = useTheme();
-  const bindMove = useMove((s) => ref.current && ref.current(s));
   const lookerConstructor = useRecoilValue(lookerType(sampleId));
   const initialRef = useRef<boolean>(true);
 
@@ -492,6 +489,7 @@ const Looker = ({
           sampleId,
         },
         {
+          activeLabels,
           ...options,
           hasNext: Boolean(onNext),
           hasPrevious: Boolean(onPrevious),
@@ -500,8 +498,8 @@ const Looker = ({
   );
 
   useEffect(() => {
-    !initialRef.current && looker.updateOptions(options);
-  }, [options]);
+    !initialRef.current && looker.updateOptions({ ...options, activeLabels });
+  }, [options, activeLabels]);
 
   useEffect(() => {
     !initialRef.current && looker.updateSample(sample);
@@ -520,11 +518,11 @@ const Looker = ({
     initialRef.current = false;
   }, []);
 
+  useEffect(() => looker.attach(id), [id]);
+
   return (
     <div
-      ref={(node) => {
-        node ? looker.attach(node) : looker.detach();
-      }}
+      id={id}
       style={{
         width: "100%",
         height: "100%",
@@ -532,7 +530,6 @@ const Looker = ({
         ...style,
       }}
       onClick={onClick}
-      {...bindMove()}
     >
       {error && (
         <InfoWrapper>
@@ -540,7 +537,7 @@ const Looker = ({
           {!modal ? null : <div>{error}</div>}{" "}
         </InfoWrapper>
       )}
-      {modal && <TooltipInfo looker={looker} moveRef={ref} />}
+      {modal && <TooltipInfo looker={looker} />}
     </div>
   );
 };

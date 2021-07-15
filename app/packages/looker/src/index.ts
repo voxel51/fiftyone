@@ -101,6 +101,7 @@ export abstract class Looker<
     this.resizeObserver = new ResizeObserver(() =>
       requestAnimationFrame(() => this.updater(({ loaded }) => ({ loaded })))
     );
+    this.resizeObserver.observe(this.lookerElement.element);
   }
 
   protected dispatchEvent(eventType: string, detail: any): void {
@@ -222,14 +223,16 @@ export abstract class Looker<
     this.eventTarget.removeEventListener(eventType, handler, ...args);
   }
 
-  attach(element: HTMLElement): void {
-    this.resizeObserver.observe(this.lookerElement.element);
+  attach(element: HTMLElement | string): void {
+    if (typeof element === "string") {
+      element = document.getElementById(element);
+    }
+
     element.appendChild(this.lookerElement.element);
     this.state = this.postProcess(this.lookerElement.element);
   }
 
   detach(): void {
-    this.resizeObserver.unobserve(this.lookerElement.element);
     this.lookerElement.element.parentNode &&
       this.lookerElement.element.parentNode.removeChild(
         this.lookerElement.element
@@ -238,6 +241,7 @@ export abstract class Looker<
 
   destroy(): void {
     this.detach();
+    this.resizeObserver.unobserve(this.lookerElement.element);
     delete this.lookerElement;
   }
 
@@ -326,7 +330,6 @@ export abstract class Looker<
       zoomToContent: false,
       setZoom: true,
       hasDefaultZoom: true,
-      json: false,
     };
   }
 
@@ -596,7 +599,7 @@ export class ImageLooker extends Looker<ImageState> {
   }
 
   updateOptions(options: Optional<ImageState["options"]>) {
-    const state: Optional<ImageState> = { options };
+    const state: Optional<ImageState> = { options, renderElements: false };
     if (options.zoom !== undefined) {
       state.setZoom = this.state.options.zoom !== options.zoom;
     }
