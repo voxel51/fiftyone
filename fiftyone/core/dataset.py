@@ -1312,12 +1312,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         Returns:
             the ID of the sample in the dataset
-
-        Raises:
-            ValueError: if ``expand_schema`` is False and a new field is
-                encountered
-            ``mongoengine.errors.ValidationError``: if a sample field has a
-                type that is inconsistent with the dataset schema
         """
         return self._add_samples_batch([sample], expand_schema, validate)[0]
 
@@ -1345,12 +1339,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         Returns:
             a list of IDs of the samples in the dataset
-
-        Raises:
-            ValueError: if ``expand_schema`` is False and a new field is
-                encountered
-            ``mongoengine.errors.ValidationError``: if a sample field has a
-                type that is inconsistent with the dataset schema
         """
         if num_samples is None:
             try:

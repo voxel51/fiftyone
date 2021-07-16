@@ -143,6 +143,7 @@ intersphinx_mapping = {
     "torchvision": ("https://pytorch.org/vision/stable/", None),
     "flash": ("https://lightning-flash.readthedocs.io/en/latest", None),
     "pymongo": ("https://pymongo.readthedocs.io/en/stable/", None),
+    "mongoengine": ("https://docs.mongoengine.org/", None),
 }
 
 # -- Options for HTML output -------------------------------------------------
