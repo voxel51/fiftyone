@@ -550,7 +550,7 @@ class TFImageClassificationDatasetImporter(
     themselves and not their paths on disk, and, therefore, the images are read
     in-memory and written to the provided ``images_dir`` during import.
 
-    See :ref:`this page <TFImageClassificationDataset-import>`. for format
+    See :ref:`this page <TFImageClassificationDataset-import>` for format
     details.
 
     Args:
@@ -590,7 +590,7 @@ class TFObjectDetectionDatasetImporter(TFRecordsLabeledImageDatasetImporter):
     themselves and not their paths on disk, and, therefore, the images are read
     in-memory and written to the provided ``images_dir`` during import.
 
-    See :ref:`this page <TFObjectDetectionDataset-import>`. for format
+    See :ref:`this page <TFObjectDetectionDataset-import>` for format
     details.
 
     Args:
@@ -718,7 +718,7 @@ class TFImageClassificationDatasetExporter(TFRecordsDatasetExporter):
     """Exporter that writes an image classification dataset to disk as
     TFRecords.
 
-    See :ref:`this page <TFImageClassificationDataset-export>`. for format
+    See :ref:`this page <TFImageClassificationDataset-export>` for format
     details.
 
     Args:
@@ -754,7 +754,7 @@ class TFObjectDetectionDatasetExporter(TFRecordsDatasetExporter):
     """Exporter that writes an object detection dataset to disk as TFRecords
     in the TF Object Detection API format.
 
-    See :ref:`this page <TFObjectDetectionDataset-export>`. for format details.
+    See :ref:`this page <TFObjectDetectionDataset-export>` for format details.
 
     Args:
         export_dir (None): the directory to write the export. Can be omitted if
@@ -861,7 +861,7 @@ class TFImageClassificationExampleGenerator(TFExampleGenerator):
     """Class for generating ``tf.train.Example`` protos for samples in TF
     image classification format.
 
-    See :ref:`this page <TFImageClassificationDataset-export>`. for format
+    See :ref:`this page <TFImageClassificationDataset-export>` for format
     details.
     """
 
@@ -906,8 +906,7 @@ class TFObjectDetectionExampleGenerator(TFExampleGenerator):
     """Class for generating ``tf.train.Example`` protos for samples in TF
     Object Detection API format.
 
-    See :ref:`this page <TFObjectDetectionDataset-export>`. for format
-    details.
+    See :ref:`this page <TFObjectDetectionDataset-export>` for format details.
 
     Args:
         classes (None): the list of possible class labels. If omitted, the
