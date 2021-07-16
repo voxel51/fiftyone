@@ -299,9 +299,6 @@ def load_annotations(
         logger.warning("Unsupported annotation backend %s" % backend)
         return
 
-    # TODO: Check previously stored label ids to see if the view has changed
-    # Remove any ids that have been deleted since the previous view
-
     annotation_label_ids = []
     for sample in annotations.values():
         annotation_label_ids.extend(list(sample.keys()))
@@ -320,9 +317,11 @@ def load_annotations(
     added_labels = ann_ids - prev_ids
     labels_to_check = curr_ids - deleted_labels
 
+    # Remove deleted labels
     deleted_view = samples.select_labels(ids=list(deleted_labels))
     samples._dataset.delete_labels(view=deleted_view, fields=label_field)
 
+    # Add new labels
     for sample_id, label_id_map in annotations.items():
         sample = samples._dataset[sample_id]
         labels = [
@@ -336,6 +335,9 @@ def load_annotations(
             sample.merge(new_sample)
             sample.save()
 
+    # Merge other labels
+    # TODO: Figure out a better way to iterate through a set of labels based on
+    # ID and merge their fields
     sample_id_map = dict(zip(samples.values("id"), samples.values("filepath")))
     full_samples = samples._dataset.select(list(annotations.keys()))
     label_field_path = samples._get_label_field_path(label_field)[1].split(".")
