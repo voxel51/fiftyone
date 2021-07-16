@@ -1,4 +1,4 @@
-import { atomFamily, selector, selectorFamily } from "recoil";
+import { atom, atomFamily, selector, selectorFamily } from "recoil";
 
 import * as selectors from "../../recoil/selectors";
 import { isLabelField } from "./LabelFieldFilters.state";
@@ -24,9 +24,14 @@ export const unsupportedFields = selector<string[]>({
   },
 });
 
-export const activeFields = atomFamily<string[], boolean>({
+export const activeFields = atom<string[]>({
   key: "activeFields",
   default: selectors.labelPaths,
+});
+
+export const activeModalFields = atom<string[]>({
+  key: "activeModalFields",
+  default: [],
 });
 
 export const activeLabels = selectorFamily<
@@ -36,7 +41,7 @@ export const activeLabels = selectorFamily<
   key: "activeLabels",
   get: ({ modal, frames }) => ({ get }) => {
     const paths = get(selectors.labelPaths);
-    return get(activeFields(modal))
+    return get(modal ? activeModalFields : activeFields)
       .filter((v) => paths.includes(v))
       .filter((v) =>
         frames ? v.startsWith("frames.") : !v.startsWith("frames.")
@@ -44,7 +49,7 @@ export const activeLabels = selectorFamily<
   },
   set: ({ modal, frames }) => ({ get, set }, value) => {
     if (Array.isArray(value)) {
-      let active = get(activeFields(modal)).filter((v) =>
+      let active = get(modal ? activeModalFields : activeFields).filter((v) =>
         get(isLabelField(v)) &&
         (frames ? v.startsWith("frames.") : !v.startsWith("frames."))
           ? value.includes(v)
@@ -54,7 +59,7 @@ export const activeLabels = selectorFamily<
       if (value.length) {
         active = [value[0], ...active.filter((v) => v !== value[0])];
       }
-      set(activeFields(modal), active);
+      set(activeModalFields, active);
     }
   },
 });
@@ -73,7 +78,9 @@ export const activeScalars = selectorFamily<string[], boolean>({
   key: "activeScalars",
   get: (modal) => ({ get }) => {
     const scalars = get(selectors.scalarNames("sample"));
-    return get(activeFields(modal)).filter((v) => scalars.includes(v));
+    return get(modal ? activeModalFields : activeFields).filter((v) =>
+      scalars.includes(v)
+    );
   },
   set: (modal) => ({ get, set }, value) => {
     if (modal) {
@@ -82,13 +89,13 @@ export const activeScalars = selectorFamily<string[], boolean>({
     if (Array.isArray(value)) {
       const scalars = get(selectors.scalarNames("sample"));
       const prevActiveScalars = get(activeScalars(modal));
-      let active = get(activeFields(modal)).filter((v) =>
+      let active = get(modal ? activeModalFields : activeFields).filter((v) =>
         scalars.includes(v) ? value.includes(v) : true
       );
       if (value.length && prevActiveScalars.length < value.length) {
         active = [value[0], ...active.filter((v) => v !== value[0])];
       }
-      set(activeFields(modal), active);
+      set(activeModalFields, active);
     }
   },
 });
@@ -96,7 +103,7 @@ export const activeScalars = selectorFamily<string[], boolean>({
 export const activeTags = selectorFamily<string[], boolean>({
   key: "activeTags",
   get: (modal) => ({ get }) => {
-    return get(activeFields(modal))
+    return get(modal ? activeModalFields : activeFields)
       .filter((t) => t.startsWith("tags."))
       .map((t) => t.slice(5));
   },
@@ -104,13 +111,13 @@ export const activeTags = selectorFamily<string[], boolean>({
     if (Array.isArray(value)) {
       const tags = value.map((v) => "tags." + v);
       const prevActiveTags = get(activeTags(modal));
-      let active = get(activeFields(modal)).filter((v) =>
+      let active = get(modal ? activeModalFields : activeFields).filter((v) =>
         v.startsWith("tags.") ? tags.includes(v) : true
       );
       if (tags.length && prevActiveTags.length < tags.length) {
         active = [tags[0], ...active.filter((v) => v !== tags[0])];
       }
-      set(activeFields(modal), active);
+      set(activeModalFields, active);
     }
   },
 });
@@ -118,7 +125,7 @@ export const activeTags = selectorFamily<string[], boolean>({
 export const activeLabelTags = selectorFamily<string[], boolean>({
   key: "activeLabelTags",
   get: (modal) => ({ get }) => {
-    return get(activeFields(modal))
+    return get(modal ? activeModalFields : activeFields)
       .filter((t) => t.startsWith("_label_tags."))
       .map((t) => t.slice("_label_tags.".length));
   },
@@ -126,13 +133,13 @@ export const activeLabelTags = selectorFamily<string[], boolean>({
     if (Array.isArray(value)) {
       const tags = value.map((v) => "_label_tags." + v);
       const prevActiveTags = get(activeLabelTags(modal));
-      let active = get(activeFields(modal)).filter((v) =>
+      let active = get(modal ? activeModalFields : activeFields).filter((v) =>
         v.startsWith("_label_tags.") ? tags.includes(v) : true
       );
       if (tags.length && prevActiveTags.length < tags.length) {
         active = [tags[0], ...active.filter((v) => v !== tags[0])];
       }
-      set(activeFields(modal), active);
+      set(activeModalFields, active);
     }
   },
 });

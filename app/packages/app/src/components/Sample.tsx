@@ -48,7 +48,7 @@ const SampleInfoDiv = styled.div`
 `;
 
 const SampleInfo = React.memo(({ sampleId }: { sampleId: string }) => {
-  const activeFields = useRecoilValue(labelAtoms.activeFields(false));
+  const activeFields = useRecoilValue(labelAtoms.activeFields);
   const colorMap = useRecoilValue(selectors.colorMap(false));
   const scalars = useRecoilValue(selectors.scalarNames("sample"));
   const colorByLabel = useRecoilValue(atoms.colorByLabel(false));

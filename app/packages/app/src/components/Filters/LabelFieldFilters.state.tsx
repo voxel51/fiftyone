@@ -32,7 +32,7 @@ export const getPathExtension = (type: string): string => {
 export const labelFilters = selectorFamily<LabelFilters, boolean>({
   key: "labelFilters",
   get: (modal) => ({ get }) => {
-    const labels = get(utils.activeFields(true));
+    const labels = get(modal ? utils.activeModalFields : utils.activeFields);
     const filters = {};
     const typeMap = get(selectors.labelTypesMap);
     const hiddenLabels = modal ? get(atoms.hiddenLabels) : null;
@@ -86,68 +86,12 @@ export const labelFilters = selectorFamily<LabelFilters, boolean>({
     return filters;
   },
   set: () => ({ get, set }, _) => {
-    set(utils.activeFields(true), get(utils.activeFields(false)));
+    set(utils.activeModalFields, get(utils.activeFields));
     set(atoms.cropToContent(true), get(atoms.cropToContent(false)));
     set(filterAtoms.modalFilterStages, get(filterAtoms.filterStages));
     set(atoms.colorByLabel(true), get(atoms.colorByLabel(false)));
     set(atoms.colorSeed(true), get(atoms.colorSeed(false)));
     set(atoms.sortFilterResults(true), get(atoms.sortFilterResults(false)));
-  },
-});
-
-export const sampleModalFilter = selector({
-  key: "sampleModalFilter",
-  get: ({ get }) => {
-    const filters = get(labelFilters(true));
-
-    const labels = get(utils.activeFields(true));
-    const hiddenLabels = get(atoms.hiddenLabels);
-    const fields = get(utils.activeFields(false));
-    return (sample, prefix = null, allFields = false, withPrefix = true) => {
-      return Object.entries(sample).reduce((acc, [key, value]) => {
-        if (value && hiddenLabels[value.id ?? value._id]) {
-          return acc;
-        }
-        let addKey = key;
-        if (prefix) {
-          key = `${prefix}${key}`;
-          withPrefix && (addKey = key);
-        }
-        if (key === "tags") {
-          acc[addKey] = value;
-        } else if (
-          value &&
-          VALID_LIST_TYPES.includes(value._cls) &&
-          (labels.includes(key) || allFields)
-        ) {
-          if (allFields || fields.includes(key)) {
-            acc[addKey] =
-              filters[key] && value !== null
-                ? {
-                    ...value,
-                    [value._cls.toLowerCase()]: value[
-                      value._cls.toLowerCase()
-                    ].filter(
-                      (l) => filters[key](l) && !hiddenLabels[l.id ?? l._id]
-                    ),
-                  }
-                : value;
-          }
-        } else if (
-          value !== null &&
-          filters[addKey] &&
-          filters[addKey](value) &&
-          (labels.includes(key) || allFields)
-        ) {
-          acc[addKey] = value;
-        } else if (RESERVED_FIELDS.includes(key)) {
-          acc[addKey] = value;
-        } else if (["string", "number", "null"].includes(typeof value)) {
-          acc[addKey] = value;
-        }
-        return acc;
-      }, {});
-    };
   },
 });
 

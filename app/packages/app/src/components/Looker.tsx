@@ -1,7 +1,12 @@
 import React, { useState, useRef, MutableRefObject, useEffect } from "react";
 import ReactDOM from "react-dom";
 import styled from "styled-components";
-import { selectorFamily, useRecoilValue, useRecoilCallback } from "recoil";
+import {
+  selectorFamily,
+  useRecoilValue,
+  useRecoilCallback,
+  selector,
+} from "recoil";
 import { animated, useSpring } from "react-spring";
 import { v4 as uuid } from "uuid";
 
@@ -364,26 +369,30 @@ const defaultLookerOptions = selectorFamily({
   },
 });
 
-const lookerOptions = selectorFamily<
-  Partial<FrameOptions | ImageOptions | VideoOptions>,
-  boolean
+const lookerOptions = selector<
+  Partial<FrameOptions | ImageOptions | VideoOptions>
 >({
   key: "lookerOptions",
-  get: (modal) => ({ get }) => {
-    const options = {
-      ...get(defaultLookerOptions(modal)),
-      colorMap: get(selectors.colorMap(modal)),
-      filter: get(labelFilters(modal)),
+  get: ({ get }) => {
+    return {
+      colorMap: get(selectors.colorMap(false)),
     };
-    if (modal) {
-      return {
-        ...options,
-        ...get(atoms.savedLookerOptions),
-        selectedLabels: [...get(selectors.selectedLabelIds)],
-        fullscreen: get(atoms.fullscreen),
-      };
-    }
-    return options;
+  },
+});
+
+const lookerModalOptions = selector<
+  Partial<FrameOptions | ImageOptions | VideoOptions>
+>({
+  key: "lookerModalOptions",
+  get: ({ get }) => {
+    return {
+      ...get(defaultLookerOptions(true)),
+      colorMap: get(selectors.colorMap(true)),
+      filter: get(labelFilters(true)),
+      ...get(atoms.savedLookerOptions),
+      selectedLabels: [...get(selectors.selectedLabelIds)],
+      fullscreen: get(atoms.fullscreen),
+    };
   },
 });
 
@@ -463,8 +472,10 @@ const Looker = ({
   const [id] = useState(() => uuid());
   let sample = useRecoilValue(atoms.sample(sampleId));
   const sampleSrc = useRecoilValue(selectors.sampleSrc(sampleId));
-  const options = useRecoilValue(lookerOptions(modal));
-  const activeLabels = useRecoilValue(labelAtoms.activeFields(modal));
+  const options = useRecoilValue(modal ? lookerModalOptions : lookerOptions);
+  const activeLabels = useRecoilValue(
+    modal ? labelAtoms.activeModalFields : labelAtoms.activeFields
+  );
   const metadata = useRecoilValue(atoms.sampleMetadata(sampleId));
   const theme = useTheme();
   const lookerConstructor = useRecoilValue(lookerType(sampleId));
@@ -492,8 +503,9 @@ const Looker = ({
   );
 
   useEffect(() => {
-    !initialRef.current && looker.updateOptions({ ...options, activeLabels });
-  }, [options, activeLabels]);
+    !modal && console.log(options);
+    !initialRef.current && looker.updateOptions({ ...options });
+  }, [options]);
 
   useEffect(() => {
     !initialRef.current && looker.updateSample(sample);
