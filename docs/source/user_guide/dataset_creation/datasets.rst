@@ -976,7 +976,9 @@ where `labels.json` is a JSON file in the following format:
             {
                 "id": 2,
                 "name": "cat",
-                "supercategory": "animal"
+                "supercategory": "animal",
+                "keypoints": ["nose", "head", ...],
+                "skeleton": [[12, 14], [14, 16], ...]
             },
             ...
         ],
@@ -1284,7 +1286,7 @@ meanings:
 +----------+-------------+-------------------------------------------------------------+---------+
 
 When reading datasets of this type, all columns after the four `bbox` columns
-may be omitted.
+are optional.
 
 Unlabeled images have no corresponding file in `labels/`.
 
@@ -1532,11 +1534,10 @@ See `this page <https://docs.ultralytics.com/tutorials/train-custom-datasets>`_
 for a full description of the possible format of `dataset.yaml`. In particular,
 the dataset may contain one or more splits with arbitrary names, as the
 specific split being imported or exported is specified by the `split` argument
-to :class:`fiftyone.utils.yolo.YOLOv5DatasetImporter` and
-:class:`fiftyone.utils.yolo.YOLOv5DatasetExporter`, respectively.
+to :class:`fiftyone.utils.yolo.YOLOv5DatasetImporter`.
 
 The TXT files in `labels/` are space-delimited files where each row corresponds
-to an object in the image of the same name, in the following format::
+to an object in the image of the same name, in the following format:
 
 .. code-block:: text
 
@@ -1642,13 +1643,17 @@ following format:
         # Image dimensions
         "image/height": tf.io.FixedLenFeature([], tf.int64),
         "image/width": tf.io.FixedLenFeature([], tf.int64),
+
         # Image filename is used for both of these when writing
         "image/filename": tf.io.FixedLenFeature([], tf.string),
         "image/source_id": tf.io.FixedLenFeature([], tf.string),
+
         # Encoded image bytes
         "image/encoded": tf.io.FixedLenFeature([], tf.string),
+
         # Image format, either `jpeg` or `png`
         "image/format": tf.io.FixedLenFeature([], tf.string),
+
         # Normalized bounding box coordinates in `[0, 1]`
         "image/object/bbox/xmin": tf.io.FixedLenSequenceFeature(
             [], tf.float32, allow_missing=True
@@ -1662,10 +1667,12 @@ following format:
         "image/object/bbox/ymax": tf.io.FixedLenSequenceFeature(
             [], tf.float32, allow_missing=True
         ),
+
         # Class label string
         "image/object/class/text": tf.io.FixedLenSequenceFeature(
             [], tf.string, allow_missing=True
         ),
+
         # Integer class ID
         "image/object/class/label": tf.io.FixedLenSequenceFeature(
             [], tf.int64, allow_missing=True
@@ -2683,7 +2690,7 @@ may or may not be in the `data/` folder.
 Samples with no location data will have a null `geometry` field.
 
 The `properties` field of each feature can contain additional labels that
-can be imported when working with datasets of this type.
+can be imported.
 
 .. note::
 
