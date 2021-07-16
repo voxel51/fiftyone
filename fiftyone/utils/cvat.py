@@ -2594,7 +2594,6 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
                 "input_type": "select",
             }
         }
-        # self._attr_spec_ids = None
         self._image_quality = image_quality
 
         self._session = None
@@ -2698,7 +2697,6 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
         )
 
         task_json = task_creation_resp.json()
-        # self._attr_spec_ids = dict([(i["name"], i["id"]) for i in task_json["labels"][0]["attributes"]])
         if _MAX_TASKS_MESSAGE in task_json:
             raise ValueError(
                 "You have reached the maximum number of tasks in "
@@ -2944,9 +2942,6 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
             "mask",
             "tags",
         ]
-        # if self._attr_spec_ids is None:
-        #    raise ValueError("You must first call `upload_samples` to "
-        #    "create a task and populate the `_attr_spec_ids` mapping")
         fields = label._fields_ordered
         attributes = [{"spec_id": "label_id", "value": label.id}]
         for field in fields:
