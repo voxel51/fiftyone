@@ -93,9 +93,6 @@ def load_dataset(name):
 
     Returns:
         a :class:`Dataset`
-
-    Raises:
-        ValueError: if no dataset exists with the given name
     """
     return Dataset(name, _create=False)
 
@@ -154,9 +151,6 @@ def delete_dataset(name, verbose=False):
     Args:
         name: the name of the dataset
         verbose (False): whether to log the name of the deleted dataset
-
-    Raises:
-        ValueError: if the dataset is not found
     """
     dataset = load_dataset(name)
     dataset.delete()
@@ -622,9 +616,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         Returns:
             a :class:`fiftyone.core.sample.Sample`
-
-        Raises:
-            ValueError: if the dataset is empty
         """
         return super().first()
 
@@ -633,9 +624,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         Returns:
             a :class:`fiftyone.core.sample.Sample`
-
-        Raises:
-            ValueError: if the dataset is empty
         """
         try:
             sample_view = self[-1:].first()

@@ -225,9 +225,6 @@ class SampleCollection(object):
         Returns:
             a :class:`fiftyone.core.sample.Sample` or
             :class:`fiftyone.core.sample.SampleView`
-
-        Raises:
-            ValueError: if the collection is empty
         """
         try:
             return next(iter(self))
@@ -240,9 +237,6 @@ class SampleCollection(object):
         Returns:
             a :class:`fiftyone.core.sample.Sample` or
             :class:`fiftyone.core.sample.SampleView`
-
-        Raises:
-            ValueError: if the collection is empty
         """
         return self[-1:].first()
 
@@ -5906,10 +5900,6 @@ class SampleCollection(object):
 
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
-
-        Raises:
-            :class:`fiftyone.core.stages.ViewStageError`: if the stage was not
-                a valid stage for this collection
         """
         raise NotImplementedError("Subclass must implement _add_view_stage()")
 
