@@ -24,7 +24,7 @@ class YOLOv4DatasetImporter(
 ):
     """Importer for YOLOv4 datasets stored on disk.
 
-    See :class:`fiftyone.types.dataset_types.YOLOv4Dataset` for format details.
+    See :ref:`this page <YOLOv4Dataset-import>` for format details.
 
     Args:
         dataset_dir (None): the dataset directory
@@ -198,7 +198,7 @@ class YOLOv5DatasetImporter(
 ):
     """Importer for YOLOv5 datasets stored on disk.
 
-    See :class:`fiftyone.types.dataset_types.YOLOv5Dataset` for format details.
+    See :ref:`this page <YOLOv5Dataset-import>` for format details.
 
     Args:
         dataset_dir (None): the dataset directory
@@ -338,7 +338,7 @@ class YOLOv4DatasetExporter(
 ):
     """Exporter that writes YOLOv4 datasets to disk.
 
-    See :class:`fiftyone.types.dataset_types.YOLOv4Dataset` for format details.
+    See :ref:`this page <YOLOv4Dataset-export>` for format details.
 
     Args:
         export_dir (None): the directory to write the export. This has no
@@ -531,7 +531,7 @@ class YOLOv5DatasetExporter(
 ):
     """Exporter that writes YOLOv5 datasets to disk.
 
-    See :class:`fiftyone.types.dataset_types.YOLOv5Dataset` for format details.
+    See :ref:`this page <YOLOv5Dataset-export>` for format details.
 
     Args:
         export_dir (None): the directory to write the export. This has no

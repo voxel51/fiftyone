@@ -294,8 +294,7 @@ class GeoJSONDatasetImporter(
     """Importer for image or video datasets whose location data and labels are
     stored in GeoJSON format.
 
-    See :class:`fiftyone.types.dataset_types.GeoJSONDataset` for format
-    details.
+    See :ref:`this page <GeoJSONDataset-import>` for format details.
 
     Args:
         dataset_dir (None): the dataset directory
@@ -485,8 +484,7 @@ class GeoJSONDatasetExporter(
     """Exporter for image or video datasets whose location data and labels are
     stored in GeoJSON format.
 
-    See :class:`fiftyone.types.dataset_types.GeoJSONDataset` for format
-    details.
+    See :ref:`this page <GeoJSONDataset-export>` for format details.
 
     Args:
         export_dir (None): the directory to write the export. This has no

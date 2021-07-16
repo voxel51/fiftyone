@@ -252,8 +252,8 @@ recursively listed.
 
 .. note::
 
-    See :class:`fiftyone.utils.data.importers.ImageDirectoryImporter` for
-    parameters that can be passed to methods like
+    See :class:`ImageDirectoryImporter <fiftyone.utils.data.importers.ImageDirectoryImporter>`
+    for parameters that can be passed to methods like
     :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>` to
     customize the import of datasets of this type.
 
@@ -334,8 +334,8 @@ recursively listed.
 
 .. note::
 
-    See :class:`fiftyone.utils.data.importers.VideoDirectoryImporter` for
-    parameters that can be passed to methods like
+    See :class:`VideoDirectoryImporter <fiftyone.utils.data.importers.VideoDirectoryImporter>`
+    for parameters that can be passed to methods like
     :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>` to
     customize the import of datasets of this type.
 
@@ -442,7 +442,7 @@ corresponding names.
 
 .. note::
 
-    See :class:`fiftyone.utils.data.importers.FiftyOneImageClassificationDatasetImporter`
+    See :class:`FiftyOneImageClassificationDatasetImporter <fiftyone.utils.data.importers.FiftyOneImageClassificationDatasetImporter>`
     for parameters that can be passed to methods like
     :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>` to
     customize the import of datasets of this type.
@@ -534,7 +534,7 @@ Each class folder may contain nested subfolders of images.
 
 .. note::
 
-    See :class:`fiftyone.utils.data.importers.ImageClassificationDirectoryTreeImporter`
+    See :class:`ImageClassificationDirectoryTreeImporter <fiftyone.utils.data.importers.ImageClassificationDirectoryTreeImporter>`
     for parameters that can be passed to methods like
     :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>` to
     customize the import of datasets of this type.
@@ -626,7 +626,7 @@ Each class folder may contain nested subfolders of videos.
 
 .. note::
 
-    See :class:`fiftyone.utils.data.importers.VideoClassificationDirectoryTreeImporter`
+    See :class:`VideoClassificationDirectoryTreeImporter <fiftyone.utils.data.importers.VideoClassificationDirectoryTreeImporter>`
     for parameters that can be passed to methods like
     :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>` to
     customize the import of datasets of this type.
@@ -729,7 +729,7 @@ For unlabeled samples, the TFRecords do not contain `label` features.
 
 .. note::
 
-    See :class:`fiftyone.utils.tf.TFImageClassificationDatasetImporter`
+    See :class:`TFImageClassificationDatasetImporter <fiftyone.utils.tf.TFImageClassificationDatasetImporter>`
     for parameters that can be passed to methods like
     :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>` to
     customize the import of datasets of this type.
@@ -873,7 +873,7 @@ corresponding names.
 
 .. note::
 
-    See :class:`fiftyone.utils.data.importers.FiftyOneImageDetectionDatasetImporter`
+    See :class:`FiftyOneImageDetectionDatasetImporter <fiftyone.utils.data.importers.FiftyOneImageDetectionDatasetImporter>`
     for parameters that can be passed to methods like
     :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>` to
     customize the import of datasets of this type.
@@ -1025,8 +1025,8 @@ corresponding images, which can be any of the following:
 
 .. note::
 
-    See :class:`fiftyone.utils.coco.COCODetectionDatasetImporter` for
-    parameters that can be passed to methods like
+    See :class:`COCODetectionDatasetImporter <fiftyone.utils.coco.COCODetectionDatasetImporter>`
+    for parameters that can be passed to methods like
     :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>` to
     customize the import of datasets of this type.
 
@@ -1164,8 +1164,8 @@ organized images and masks.
 
 .. note::
 
-    See :class:`fiftyone.utils.voc.VOCDetectionDatasetImporter` for
-    parameters that can be passed to methods like
+    See :class:`VOCDetectionDatasetImporter <fiftyone.utils.voc.VOCDetectionDatasetImporter>`
+    for parameters that can be passed to methods like
     :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>` to
     customize the import of datasets of this type.
 
@@ -1295,8 +1295,8 @@ organized images and masks.
 
 .. note::
 
-    See :class:`fiftyone.utils.kitti.KITTIDetectionDatasetImporter` for
-    parameters that can be passed to methods like
+    See :class:`KITTIDetectionDatasetImporter <fiftyone.utils.kitti.KITTIDetectionDatasetImporter>`
+    for parameters that can be passed to methods like
     :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>` to
     customize the import of datasets of this type.
 
@@ -1420,8 +1420,8 @@ The `data/` folder may contain nested subfolders.
 
 .. note::
 
-    See :class:`fiftyone.utils.yolo.YOLOv4DatasetImporter` for parameters
-    that can be passed to methods like
+    See :class:`YOLOv4DatasetImporter <fiftyone.utils.yolo.YOLOv4DatasetImporter>`
+    for parameters that can be passed to methods like
     :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>` to
     customize the import of datasets of this type.
 
@@ -1554,8 +1554,8 @@ subfolders of parallelly organized images and labels.
 
 .. note::
 
-    See :class:`fiftyone.utils.yolo.YOLOv5DatasetImporter` for parameters
-    that can be passed to methods like
+    See :class:`YOLOv5DatasetImporter <fiftyone.utils.yolo.YOLOv5DatasetImporter>`
+    for parameters that can be passed to methods like
     :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>` to
     customize the import of datasets of this type.
 
@@ -1683,8 +1683,8 @@ The TFRecords for unlabeled samples do not contain `image/object/*` features.
 
 .. note::
 
-    See :class:`fiftyone.utils.tf.TFObjectDetectionDatasetImporter` for
-    parameters that can be passed to methods like
+    See :class:`TFObjectDetectionDatasetImporter <fiftyone.utils.tf.TFObjectDetectionDatasetImporter>`
+    for parameters that can be passed to methods like
     :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>` to
     customize the import of datasets of this type.
 
@@ -1792,7 +1792,7 @@ organized images and masks.
 
 .. note::
 
-    See :class:`fiftyone.utils.data.importers.ImageSegmentationDirectoryImporter`
+    See :class:`ImageSegmentationDirectoryImporter <fiftyone.utils.data.importers.ImageSegmentationDirectoryImporter>`
     for parameters that can be passed to methods like
     :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>` to
     customize the import of datasets of this type.
@@ -1972,8 +1972,8 @@ of the corresponding images, which can be any of the following:
 
 .. note::
 
-    See :class:`fiftyone.utils.cvat.CVATImageDatasetImporter` for
-    parameters that can be passed to methods like
+    See :class:`CVATImageDatasetImporter <fiftyone.utils.cvat.CVATImageDatasetImporter>`
+    for parameters that can be passed to methods like
     :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>` to
     customize the import of datasets of this type.
 
@@ -2158,8 +2158,8 @@ organized images and labels.
 
 .. note::
 
-    See :class:`fiftyone.utils.cvat.CVATVideoDatasetImporter` for
-    parameters that can be passed to methods like
+    See :class:`CVATVideoDatasetImporter <fiftyone.utils.cvat.CVATVideoDatasetImporter>`
+    for parameters that can be passed to methods like
     :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>` to
     customize the import of datasets of this type.
 
@@ -2272,7 +2272,7 @@ For unlabeled images, an empty `eta.core.image.ImageLabels` file is stored.
 
 .. note::
 
-    See :class:`fiftyone.utils.data.importers.FiftyOneImageLabelsDatasetImporter`
+    See :class:`FiftyOneImageLabelsDatasetImporter <fiftyone.utils.data.importers.FiftyOneImageLabelsDatasetImporter>`
     for parameters that can be passed to methods like
     :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>` to
     customize the import of datasets of this type.
@@ -2386,7 +2386,7 @@ For unlabeled videos, an empty `eta.core.video.VideoLabels` file is written.
 
 .. note::
 
-    See :class:`fiftyone.utils.data.importers.FiftyOneVideoLabelsDatasetImporter`
+    See :class:`FiftyOneVideoLabelsDatasetImporter <fiftyone.utils.data.importers.FiftyOneVideoLabelsDatasetImporter>`
     for parameters that can be passed to methods like
     :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>` to
     customize the import of datasets of this type.
@@ -2561,8 +2561,8 @@ corresponding images, which can be any of the following:
 
 .. note::
 
-    See :class:`fiftyone.utils.bdd.BDDDatasetImporter` for parameters that
-    can be passed to methods like
+    See :class:`BDDDatasetImporter <fiftyone.utils.bdd.BDDDatasetImporter>`
+    for parameters that can be passed to methods like
     :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>` to
     customize the import of datasets of this type.
 
@@ -2694,8 +2694,8 @@ can be imported.
 
 .. note::
 
-    See :class:`fiftyone.utils.geojson.GeoJSONDatasetImporter` for
-    parameters that can be passed to methods like
+    See :class:`GeoJSONDatasetImporter <fiftyone.utils.geojson.GeoJSONDatasetImporter>`
+    for parameters that can be passed to methods like
     :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>` to
     customize the import of datasets of this type.
 
@@ -2796,8 +2796,8 @@ representation of the frame labels for each video in the dataset.
 
 .. note::
 
-    See :class:`fiftyone.utils.data.importers.FiftyOneDatasetImporter` for
-    parameters that can be passed to methods like
+    See :class:`FiftyOneDatasetImporter <fiftyone.utils.data.importers.FiftyOneDatasetImporter>`
+    for parameters that can be passed to methods like
     :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>` to
     customize the import of datasets of this type.
 

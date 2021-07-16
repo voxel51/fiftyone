@@ -27,8 +27,7 @@ class KITTIDetectionDatasetImporter(
 ):
     """Importer for KITTI detection datasets stored on disk.
 
-    See :class:`fiftyone.types.dataset_types.KITTIDetectionDataset` for format
-    details.
+    See :ref:`this page <KITTIDetectionDataset-import>` for format details.
 
     Args:
         dataset_dir (None): the dataset directory
@@ -178,8 +177,7 @@ class KITTIDetectionDatasetExporter(
 ):
     """Exporter that writes KITTI detection datasets to disk.
 
-    See :class:`fiftyone.types.dataset_types.KITTIDetectionDataset` for format
-    details.
+    See :ref:`this page <KITTIDetectionDataset-export>` for format details.
 
     Args:
         export_dir (None): the directory to write the export. This has no
@@ -302,8 +300,7 @@ class KITTIDetectionDatasetExporter(
 class KITTIAnnotationWriter(object):
     """Class for writing annotations in KITTI detection format.
 
-    See :class:`fiftyone.types.dataset_types.KITTIDetectionDataset` for more
-    format details.
+    See :ref:`this page <KITTIDetectionDataset-export>` for format details.
     """
 
     def write(self, detections, metadata, txt_path):
@@ -327,8 +324,7 @@ class KITTIAnnotationWriter(object):
 def load_kitti_detection_annotations(txt_path, frame_size):
     """Loads the KITTI detection annotations from the given TXT file.
 
-    See :class:`fiftyone.types.dataset_types.KITTIDetectionDataset` for format
-    details.
+    See :ref:`this page <KITTIDetectionDataset-import>` for format details.
 
     Args:
         txt_path: the path to the annotations TXT file
@@ -368,9 +364,7 @@ def download_kitti_detection_dataset(
 ):
     """Downloads the KITTI object detection dataset from the web.
 
-    The dataset will be organized on disk in
-    :class:`fiftyone.types.dataset_types.KITTIDetectionDataset` format as
-    follows::
+    The dataset will be organized on disk in as follows::
 
         dataset_dir/
             train/

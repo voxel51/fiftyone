@@ -28,8 +28,7 @@ class VOCDetectionDatasetImporter(
 ):
     """Importer for VOC detection datasets stored on disk.
 
-    See :class:`fiftyone.types.dataset_types.VOCDetectionDataset` for format
-    details.
+    See :ref:`this page <VOCDetectionDataset-import>` for format details.
 
     Args:
         dataset_dir (None): the dataset directory
@@ -192,8 +191,7 @@ class VOCDetectionDatasetExporter(
 ):
     """Exporter that writes VOC detection datasets to disk.
 
-    See :class:`fiftyone.types.dataset_types.VOCDetectionDataset` for format
-    details.
+    See :ref:`this page <VOCDetectionDataset-export>` for format details.
 
     Args:
         export_dir (None): the directory to write the export. This has no
@@ -648,8 +646,7 @@ class VOCBoundingBox(object):
 class VOCAnnotationWriter(object):
     """Class for writing annotations in VOC format.
 
-    See :class:`fiftyone.types.dataset_types.VOCDetectionDataset` for format
-    details.
+    See :ref:`this page <VOCDetectionDataset-export>` for format details.
     """
 
     def __init__(self):
@@ -691,8 +688,7 @@ class VOCAnnotationWriter(object):
 def load_voc_detection_annotations(xml_path):
     """Loads the VOC detection annotations from the given XML file.
 
-    See :class:`fiftyone.types.dataset_types.VOCDetectionDataset` for format
-    details.
+    See :ref:`this page <VOCDetectionDataset-import>` for format details.
 
     Args:
         xml_path: the path to the annotations XML file

@@ -1137,8 +1137,8 @@ class ImageLabelsSampleParser(LabeledImageTupleSampleParser):
 class FiftyOneImageClassificationSampleParser(ImageClassificationSampleParser):
     """Parser for samples in FiftyOne image classification datasets.
 
-    See :class:`fiftyone.types.dataset_types.FiftyOneImageClassificationDataset`
-    for format details.
+    See :ref:`this page <FiftyOneImageClassification-import>` for format
+    details.
 
     Args:
         classes (None): an optional list of class label strings. If provided,
@@ -1153,8 +1153,7 @@ class FiftyOneImageClassificationSampleParser(ImageClassificationSampleParser):
 class FiftyOneImageDetectionSampleParser(ImageDetectionSampleParser):
     """Parser for samples in FiftyOne image detection datasets.
 
-    See :class:`fiftyone.types.dataset_types.FiftyOneImageDetectionDataset` for
-    format details.
+    See :ref:`this page <FiftyOneImageDetection-import>` for format details.
 
     Args:
         classes (None): an optional list of class label strings. If provided,
@@ -1176,8 +1175,7 @@ class FiftyOneImageDetectionSampleParser(ImageDetectionSampleParser):
 class FiftyOneImageLabelsSampleParser(ImageLabelsSampleParser):
     """Parser for samples in FiftyOne image labels datasets.
 
-    See :class:`fiftyone.types.dataset_types.FiftyOneImageLabelsDataset` for
-    format details.
+    See :ref:`this page <FiftyOneImageLabels-import>` for format details.
 
     Args:
         prefix (None): a string prefix to prepend to each label name in the
@@ -1265,8 +1263,7 @@ class VideoLabelsSampleParser(LabeledVideoSampleParser):
 class FiftyOneVideoLabelsSampleParser(VideoLabelsSampleParser):
     """Parser for samples in FiftyOne video labels datasets.
 
-    See :class:`fiftyone.types.dataset_types.FiftyOneVideoLabelsDataset` for
-    format details.
+    See :ref:`this page <FiftyOneVideoLabels-import>` for format details.
 
     Args:
         expand (True): whether to expand the labels for each frame into

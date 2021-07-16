@@ -45,8 +45,7 @@ class CVATImageSampleParser(foud.LabeledImageTupleSampleParser):
           loaded via :meth:`fiftyone.core.utils.load_xml_as_json_dict`, or
           ``None`` for unlabeled images.
 
-    See :class:`fiftyone.types.dataset_types.CVATImageDataset` for more format
-    details.
+    See :ref:`this page <CVATImageDataset-import>` for format details.
     """
 
     def __init__(self):
@@ -117,8 +116,7 @@ class CVATVideoSampleParser(foud.LabeledVideoSampleParser):
         - ``anno_path`` is the path to a CVAT video labels XML file on disk,
           or ``None`` for unlabeled videos.
 
-    See :class:`fiftyone.types.dataset_types.CVATVideoDataset` for more format
-    details.
+    See :ref:`this page <CVATVideoDataset-import>` for format details.
     """
 
     @property
@@ -158,8 +156,7 @@ class CVATImageDatasetImporter(
 ):
     """Importer for CVAT image datasets stored on disk.
 
-    See :class:`fiftyone.types.dataset_types.CVATImageDataset` for format
-    details.
+    See :ref:`this page <CVATImageDataset-import>` for format details.
 
     Args:
         dataset_dir (None): the dataset directory
@@ -312,8 +309,7 @@ class CVATVideoDatasetImporter(
 ):
     """Importer for CVAT video datasets stored on disk.
 
-    See :class:`fiftyone.types.dataset_types.CVATVideoDataset` for format
-    details.
+    See :ref:`this page <CVATVideoDataset-import>` for format details.
 
     Args:
         dataset_dir (None): the dataset directory
@@ -475,8 +471,7 @@ class CVATImageDatasetExporter(
 ):
     """Exporter that writes CVAT image datasets to disk.
 
-    See :class:`fiftyone.types.dataset_types.CVATImageDataset` for format
-    details.
+    See :ref:`this page <CVATImageDataset-export>` for format details.
 
     Args:
         export_dir (None): the directory to write the export. This has no
@@ -639,8 +634,7 @@ class CVATVideoDatasetExporter(
 ):
     """Exporter that writes CVAT video datasets to disk.
 
-    See :class:`fiftyone.types.dataset_types.CVATVideoDataset` for format
-    details.
+    See :ref:`this page <CVATVideoDataset-export>` for format details.
 
     Args:
         export_dir (None): the directory to write the export. This has no
@@ -2464,8 +2458,7 @@ class CVATAttribute(object):
 class CVATImageAnnotationWriter(object):
     """Class for writing annotations in CVAT image format.
 
-    See :class:`fiftyone.types.dataset_types.CVATImageDataset` for format
-    details.
+    See :ref:`this page <CVATImageDataset-export>` for format details.
     """
 
     def __init__(self):
@@ -2509,8 +2502,7 @@ class CVATImageAnnotationWriter(object):
 class CVATVideoAnnotationWriter(object):
     """Class for writing annotations in CVAT video format.
 
-    See :class:`fiftyone.types.dataset_types.CVATVideoDataset` for format
-    details.
+    See :ref:`this page <CVATVideoDataset-export>` for format details.
     """
 
     def __init__(self):
@@ -2564,8 +2556,7 @@ class CVATVideoAnnotationWriter(object):
 def load_cvat_image_annotations(xml_path):
     """Loads the CVAT image annotations from the given XML file.
 
-    See :class:`fiftyone.types.dataset_types.CVATImageDataset` for format
-    details.
+    See :ref:`this page <CVATImageDataset-import>` for format details.
 
     Args:
         xml_path: the path to the annotations XML file
@@ -2620,8 +2611,7 @@ def load_cvat_image_annotations(xml_path):
 def load_cvat_video_annotations(xml_path):
     """Loads the CVAT video annotations from the given XML file.
 
-    See :class:`fiftyone.types.dataset_types.CVATVideoDataset` for format
-    details.
+    See :ref:`this page <CVATVideoDataset-import>` for format details.
 
     Args:
         xml_path: the path to the annotations XML file

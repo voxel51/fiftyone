@@ -34,86 +34,10 @@ class BDDSampleParser(foud.LabeledImageTupleSampleParser):
         - ``image_or_path`` is either an image that can be converted to numpy
           format via ``np.asarray()`` or the path to an image on disk
 
-        - ``anno_or_path`` is a dictionary in the following format::
+        - ``anno_or_path`` is a BDD labels dictionary or the path to such a
+          JSON file on disk. For unlabeled images, this can be ``None``.
 
-            {
-                "name": "<filename>.<ext>",
-                "attributes": {
-                    "scene": "city street",
-                    "timeofday": "daytime",
-                    "weather": "overcast"
-                },
-                "labels": [
-                    {
-                        "id": 0,
-                        "category": "traffic sign",
-                        "manualAttributes": true,
-                        "manualShape": true,
-                        "attributes": {
-                            "occluded": false,
-                            "trafficLightColor": "none",
-                            "truncated": false
-                        },
-                        "box2d": {
-                            "x1": 1000.698742,
-                            "x2": 1040.626872,
-                            "y1": 281.992415,
-                            "y2": 326.91156
-                        }
-                    },
-                    ...
-                    {
-                        "id": 34,
-                        "category": "drivable area",
-                        "manualAttributes": true,
-                        "manualShape": true,
-                        "attributes": {
-                            "areaType": "direct"
-                        },
-                        "poly2d": [
-                            {
-                                "types": "LLLLCCC",
-                                "closed": true,
-                                "vertices": [
-                                    [241.143645, 697.923453],
-                                    [541.525255, 380.564983],
-                                    ...
-                                ]
-                            }
-                        ]
-                    },
-                    ...
-                    {
-                        "id": 109356,
-                        "category": "lane",
-                        "attributes": {
-                            "laneDirection": "parallel",
-                            "laneStyle": "dashed",
-                            "laneType": "single white"
-                        },
-                        "manualShape": true,
-                        "manualAttributes": true,
-                        "poly2d": [
-                            {
-                                "types": "LL",
-                                "closed": false,
-                                "vertices": [
-                                    [492.879546, 331.939543],
-                                    [0, 471.076658],
-                                    ...
-                                ]
-                            }
-                        ],
-                    },
-                    ...
-                }
-            }
-
-          or the path to such a JSON file on disk. For unlabeled images,
-          ``anno_or_path`` can be ``None``.
-
-    See :class:`fiftyone.types.dataset_types.BDDDataset` for more format
-    details.
+    See :ref:`this page <BDDDataset-import>` for format details.
     """
 
     @property
@@ -156,7 +80,7 @@ class BDDDatasetImporter(
 ):
     """Importer for BDD datasets stored on disk.
 
-    See :class:`fiftyone.types.dataset_types.BDDDataset` for format details.
+    See :ref:`this page <BDDDataset-import>` for format details.
 
     Args:
         dataset_dir (None): the dataset directory
@@ -305,7 +229,7 @@ class BDDDatasetExporter(
 ):
     """Exporter that writes BDD datasets to disk.
 
-    See :class:`fiftyone.types.dataset_types.BDDDataset` for format details.
+    See :ref:`this page <BDDDataset-export>` for format details.
 
     Args:
         export_dir (None): the directory to write the export. This has no
@@ -438,8 +362,7 @@ class BDDDatasetExporter(
 def load_bdd_annotations(json_path):
     """Loads the BDD annotations from the given JSON file.
 
-    See :class:`fiftyone.types.dataset_types.BDDDataset` for more format
-    details.
+    See :ref:`this page <BDDDataset-import>` for format details.
 
     Args:
         json_path: the path to the annotations JSON file
@@ -455,7 +378,7 @@ def parse_bdd100k_dataset(
     source_dir, dataset_dir, copy_files=True, overwrite=False
 ):
     """Parses the raw BDD100K download files in the specified directory into
-    per-split directories in :class:`BDDDataset` format.
+    per-split directories in BDD format.
 
     This function assumes that the input ``source_dir`` contains the following
     contents::

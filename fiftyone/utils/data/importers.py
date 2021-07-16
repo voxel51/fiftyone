@@ -663,8 +663,8 @@ class DatasetImporter(object):
     Typically, dataset importers should implement the parameters documented on
     this class, although this is not mandatory.
 
-    See `this page <https://voxel51.com/docs/fiftyone/user_guide/dataset_creation/datasets.html#writing-a-custom-datasetimporter>`_
-    for information about implementing/using dataset importers.
+    See :ref:`this page <writing-a-custom-dataset-importer>` for information
+    about implementing/using dataset importers.
 
     .. automethod:: __len__
     .. automethod:: __next__
@@ -839,8 +839,8 @@ class GenericSampleDatasetImporter(DatasetImporter):
     Typically, dataset importers should implement the parameters documented on
     this class, although this is not mandatory.
 
-    See `this page <https://voxel51.com/docs/fiftyone/user_guide/dataset_creation/datasets.html#writing-a-custom-datasetimporter>`_
-    for information about implementing/using dataset importers.
+    See :ref:`this page <writing-a-custom-dataset-importer>` for information
+    about implementing/using dataset importers.
 
     .. automethod:: __len__
     .. automethod:: __next__
@@ -899,8 +899,8 @@ class UnlabeledImageDatasetImporter(DatasetImporter):
     Typically, dataset importers should implement the parameters documented on
     this class, although this is not mandatory.
 
-    See `this page <https://voxel51.com/docs/fiftyone/user_guide/dataset_creation/datasets.html#writing-a-custom-datasetimporter>`_
-    for information about implementing/using dataset importers.
+    See :ref:`this page <writing-a-custom-dataset-importer>` for information
+    about implementing/using dataset importers.
 
     .. automethod:: __len__
     .. automethod:: __next__
@@ -945,8 +945,8 @@ class UnlabeledVideoDatasetImporter(DatasetImporter):
     Typically, dataset importers should implement the parameters documented on
     this class, although this is not mandatory.
 
-    See `this page <https://voxel51.com/docs/fiftyone/user_guide/dataset_creation/datasets.html#writing-a-custom-datasetimporter>`_
-    for information about implementing/using dataset importers.
+    See :ref:`this page <writing-a-custom-dataset-importer>` for information
+    about implementing/using dataset importers.
 
     .. automethod:: __len__
     .. automethod:: __next__
@@ -991,8 +991,8 @@ class LabeledImageDatasetImporter(DatasetImporter):
     Typically, dataset importers should implement the parameters documented on
     this class, although this is not mandatory.
 
-    See `this page <https://voxel51.com/docs/fiftyone/user_guide/dataset_creation/datasets.html#writing-a-custom-datasetimporter>`_
-    for information about implementing/using dataset importers.
+    See :ref:`this page <writing-a-custom-dataset-importer>` for information
+    about implementing/using dataset importers.
 
     .. automethod:: __len__
     .. automethod:: __next__
@@ -1058,8 +1058,8 @@ class LabeledVideoDatasetImporter(DatasetImporter):
     Typically, dataset importers should implement the parameters documented on
     this class, although this is not mandatory.
 
-    See `this page <https://voxel51.com/docs/fiftyone/user_guide/dataset_creation/datasets.html#writing-a-custom-datasetimporter>`_
-    for information about implementing/using dataset importers.
+    See :ref:`this page <writing-a-custom-dataset-importer>` for information
+    about implementing/using dataset importers.
 
     .. automethod:: __len__
     .. automethod:: __next__
@@ -1327,8 +1327,7 @@ class LegacyFiftyOneDatasetImporter(GenericSampleDatasetImporter):
 class FiftyOneDatasetImporter(BatchDatasetImporter):
     """Importer for FiftyOne datasets stored on disk in serialized JSON format.
 
-    See :class:`fiftyone.types.dataset_types.FiftyOneDataset` for format
-    details.
+    See :ref:`this page <FiftyOneDataset-import>` for format details.
 
     Args:
         dataset_dir: the dataset directory
@@ -1583,8 +1582,7 @@ def _import_brain_results(dataset, brain_dir, brain_keys=None):
 class ImageDirectoryImporter(UnlabeledImageDatasetImporter):
     """Importer for a directory of images stored on disk.
 
-    See :class:`fiftyone.types.dataset_types.ImageDirectory` for format
-    details.
+    See :ref:`this page <ImageDirectory-import>` for format details.
 
     Args:
         dataset_dir: the dataset directory
@@ -1665,8 +1663,7 @@ class ImageDirectoryImporter(UnlabeledImageDatasetImporter):
 class VideoDirectoryImporter(UnlabeledVideoDatasetImporter):
     """Importer for a directory of videos stored on disk.
 
-    See :class:`fiftyone.types.dataset_types.VideoDirectory` for format
-    details.
+    See :ref:`this page <VideoDirectory-import>` for format details.
 
     Args:
         dataset_dir: the dataset directory
@@ -1750,8 +1747,8 @@ class FiftyOneImageClassificationDatasetImporter(
     """Importer for image classification datasets stored on disk in FiftyOne's
     default format.
 
-    See :class:`fiftyone.types.dataset_types.FiftyOneImageClassificationDataset`
-    for format details.
+    See :ref:`this page <FiftyOneImageClassificationDataset-import>` for format
+    details.
 
     Args:
         dataset_dir (None): the dataset directory
@@ -1907,8 +1904,8 @@ class FiftyOneImageClassificationDatasetImporter(
 class ImageClassificationDirectoryTreeImporter(LabeledImageDatasetImporter):
     """Importer for an image classification directory tree stored on disk.
 
-    See :class:`fiftyone.types.dataset_types.ImageClassificationDirectoryTree`
-    for format details.
+    See :ref:`this page <ImageClassificationDirectoryTree-import>` for format
+    details.
 
     Args:
         dataset_dir: the dataset directory
@@ -2023,8 +2020,8 @@ class ImageClassificationDirectoryTreeImporter(LabeledImageDatasetImporter):
 class VideoClassificationDirectoryTreeImporter(LabeledVideoDatasetImporter):
     """Importer for a viideo classification directory tree stored on disk.
 
-    See :class:`fiftyone.types.dataset_types.VideoClassificationDirectoryTree`
-    for format details.
+    See :ref:`this page <VideoClassificationDirectoryTree-import>` for format
+    details.
 
     Args:
         dataset_dir: the dataset directory
@@ -2146,8 +2143,8 @@ class FiftyOneImageDetectionDatasetImporter(
     """Importer for image detection datasets stored on disk in FiftyOne's
     default format.
 
-    See :class:`fiftyone.types.dataset_types.FiftyOneImageDetectionDataset` for
-    format details.
+    See :ref:`this page <FiftyOneImageDetectionDataset-import>` for format
+    details.
 
     Args:
         dataset_dir (None): the dataset directory
@@ -2308,8 +2305,8 @@ class ImageSegmentationDirectoryImporter(
 ):
     """Importer for image segmentation datasets stored on disk.
 
-    See :class:`fiftyone.types.dataset_types.ImageSegmentationDirectory` for
-    format details.
+    See :ref:`this page <ImageSegmentationDirectory-import>` for format
+    details.
 
     Args:
         dataset_dir (None): the dataset directory
@@ -2460,8 +2457,8 @@ class FiftyOneImageLabelsDatasetImporter(LabeledImageDatasetImporter):
     """Importer for labeled image datasets whose labels are stored in
     `ETA ImageLabels format <https://github.com/voxel51/eta/blob/develop/docs/image_labels_guide.md>`_.
 
-    See :class:`fiftyone.types.dataset_types.FiftyOneImageLabelsDataset` for
-    format details.
+    See :ref:`this page <FiftyOneImageLabelsDataset-import>` for format
+    details.
 
     Args:
         dataset_dir: the dataset directory
@@ -2583,8 +2580,8 @@ class FiftyOneVideoLabelsDatasetImporter(LabeledVideoDatasetImporter):
     """Importer for labeled video datasets whose labels are stored in
     `ETA VideoLabels format <https://github.com/voxel51/eta/blob/develop/docs/video_labels_guide.md>`_.
 
-    See :class:`fiftyone.types.dataset_types.FiftyOneVideoLabelsDataset` for
-    format details.
+    See :ref:`this page <FiftyOneVideoLabelsDataset-import>` for format
+    details.
 
     Args:
         dataset_dir: the dataset directory

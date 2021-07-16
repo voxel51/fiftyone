@@ -140,6 +140,7 @@ intersphinx_mapping = {
     # "python": ("https://docs.python.org/3", None),
     "numpy": ("https://numpy.org/doc/stable/", None),
     "torch": ("https://pytorch.org/docs/stable/", None),
+    "torchvision": ("https://pytorch.org/vision/stable/", None),
     "flash": ("https://lightning-flash.readthedocs.io/en/latest", None),
     "pymongo": ("https://pymongo.readthedocs.io/en/stable/", None),
 }

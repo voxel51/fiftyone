@@ -222,8 +222,7 @@ class COCODetectionDatasetImporter(
 ):
     """Importer for COCO detection datasets stored on disk.
 
-    See :class:`fiftyone.types.dataset_types.COCODetectionDataset` for format
-    details.
+    See :ref:`this page <COCODetectionDataset-import>` for format details.
 
     Args:
         dataset_dir (None): the dataset directory
@@ -568,8 +567,7 @@ class COCODetectionDatasetExporter(
     This class currently only supports exporting detections and instance
     segmentations.
 
-    See :class:`fiftyone.types.dataset_types.COCODetectionDataset` for format
-    details.
+    See :ref:`this page <COCODetectionDataset-export>` for format details.
 
     Args:
         export_dir (None): the directory to write the export. This has no
@@ -1167,8 +1165,7 @@ class COCOObject(object):
 def load_coco_detection_annotations(json_path, extra_attrs=None):
     """Loads the COCO annotations from the given JSON file.
 
-    See :class:`fiftyone.types.dataset_types.COCODetectionDataset` for format
-    details.
+    See :ref:`this page <COCODetectionDataset-import>` for format details.
 
     Args:
         json_path: the path to the annotations JSON file
@@ -1286,8 +1283,8 @@ def is_download_required(
     order for the given directory to contain enough samples to satisfy the
     given requirements.
 
-    See :class:`fiftyone.types.dataset_types.COCODetectionDataset` for the
-    format in which ``dataset_dir`` must be arranged.
+    See :ref:`this page <COCODetectionDataset-import>` for the format in which
+    ``dataset_dir`` must be arranged.
 
     Args:
         dataset_dir: the directory to download the dataset
@@ -1353,8 +1350,8 @@ def download_coco_dataset_split(
     """Utility that downloads full or partial splits of the
     `COCO dataset <https://cocodataset.org>`_.
 
-    See :class:`fiftyone.types.dataset_types.COCODetectionDataset` for the
-    format in which ``dataset_dir`` will be arranged.
+    See :ref:`this page <COCODetectionDataset-export>` for the format in which
+    ``dataset_dir`` will be arranged.
 
     Any existing files are not re-downloaded.
 

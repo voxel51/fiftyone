@@ -359,8 +359,8 @@ Datasets of this type are exported in the following format:
 
 .. note::
 
-    See :class:`fiftyone.utils.data.exporters.ImageDirectoryExporter` for
-    parameters that can be passed to methods like
+    See :class:`ImageDirectoryExporter <fiftyone.utils.data.exporters.ImageDirectoryExporter>`
+    for parameters that can be passed to methods like
     :meth:`SampleCollection.export() <fiftyone.core.collections.SampleCollection.export>`
     to customize the export of datasets of this type.
 
@@ -417,8 +417,8 @@ Datasets of this type are exported in the following format:
 
 .. note::
 
-    See :class:`fiftyone.utils.data.exporters.VideoDirectoryExporter` for
-    parameters that can be passed to methods like
+    See :class:`VideoDirectoryExporter <fiftyone.utils.data.exporters.VideoDirectoryExporter>`
+    for parameters that can be passed to methods like
     :meth:`SampleCollection.export() <fiftyone.core.collections.SampleCollection.export>`
     to customize the export of datasets of this type.
 
@@ -501,7 +501,7 @@ The target value in `labels` for unlabeled images is `None`.
 
 .. note::
 
-    See :class:`fiftyone.utils.data.exporters.FiftyOneImageClassificationDatasetExporter`
+    See :class:`FiftyOneImageClassificationDatasetExporter <fiftyone.utils.data.exporters.FiftyOneImageClassificationDatasetExporter>`
     for parameters that can be passed to methods like
     :meth:`SampleCollection.export() <fiftyone.core.collections.SampleCollection.export>`
     to customize the export of datasets of this type.
@@ -573,7 +573,7 @@ Unlabeled images are stored in a subdirectory named `_unlabeled`.
 
 .. note::
 
-    See :class:`fiftyone.utils.data.exporters.ImageClassificationDirectoryTreeExporter`
+    See :class:`ImageClassificationDirectoryTreeExporter <fiftyone.utils.data.exporters.ImageClassificationDirectoryTreeExporter>`
     for parameters that can be passed to methods like
     :meth:`SampleCollection.export() <fiftyone.core.collections.SampleCollection.export>`
     to customize the export of datasets of this type.
@@ -645,7 +645,7 @@ Unlabeled videos are stored in a subdirectory named `_unlabeled`.
 
 .. note::
 
-    See :class:`fiftyone.utils.data.exporters.VideoClassificationDirectoryTreeExporter`
+    See :class:`VideoClassificationDirectoryTreeExporter <fiftyone.utils.data.exporters.VideoClassificationDirectoryTreeExporter>`
     for parameters that can be passed to methods like
     :meth:`SampleCollection.export() <fiftyone.core.collections.SampleCollection.export>`
     to customize the export of datasets of this type.
@@ -730,7 +730,7 @@ For unlabeled samples, the TFRecords do not contain `label` features.
 
 .. note::
 
-    See :class:`fiftyone.utils.tf.TFImageClassificationDatasetExporter`
+    See :class:`TFImageClassificationDatasetExporter <fiftyone.utils.tf.TFImageClassificationDatasetExporter>`
     for parameters that can be passed to methods like
     :meth:`SampleCollection.export() <fiftyone.core.collections.SampleCollection.export>`
     to customize the export of datasets of this type.
@@ -837,7 +837,7 @@ The target value in `labels` for unlabeled images is `None`.
 
 .. note::
 
-    See :class:`fiftyone.utils.data.exporters.FiftyOneImageDetectionDatasetExporter`
+    See :class:`FiftyOneImageDetectionDatasetExporter <fiftyone.utils.data.exporters.FiftyOneImageDetectionDatasetExporter>`
     for parameters that can be passed to methods like
     :meth:`SampleCollection.export() <fiftyone.core.collections.SampleCollection.export>`
     to customize the export of datasets of this type.
@@ -970,8 +970,8 @@ corresponding images, which can be any of the following:
 
 .. note::
 
-    See :class:`fiftyone.utils.coco.COCODetectionDatasetExporter` for
-    parameters that can be passed to methods like
+    See :class:`COCODetectionDatasetExporter <fiftyone.utils.coco.COCODetectionDatasetExporter>`
+    for parameters that can be passed to methods like
     :meth:`SampleCollection.export() <fiftyone.core.collections.SampleCollection.export>`
     to customize the export of datasets of this type.
 
@@ -1091,8 +1091,8 @@ Unlabeled images have no corresponding file in `labels/`.
 
 .. note::
 
-    See :class:`fiftyone.utils.voc.VOCDetectionDatasetExporter` for
-    parameters that can be passed to methods like
+    See :class:`VOCDetectionDatasetExporter <fiftyone.utils.voc.VOCDetectionDatasetExporter>`
+    for parameters that can be passed to methods like
     :meth:`SampleCollection.export() <fiftyone.core.collections.SampleCollection.export>`
     to customize the export of datasets of this type.
 
@@ -1202,8 +1202,8 @@ Unlabeled images have no corresponding file in `labels/`.
 
 .. note::
 
-    See :class:`fiftyone.utils.kitti.KITTIDetectionDatasetExporter` for
-    parameters that can be passed to methods like
+    See :class:`KITTIDetectionDatasetExporter <fiftyone.utils.kitti.KITTIDetectionDatasetExporter>`
+    for parameters that can be passed to methods like
     :meth:`SampleCollection.export() <fiftyone.core.collections.SampleCollection.export>`
     to customize the export of datasets of this type.
 
@@ -1302,8 +1302,8 @@ Unlabeled images have no corresponding TXT file in `data/`.
 
 .. note::
 
-    See :class:`fiftyone.utils.yolo.YOLOv4DatasetExporter` for parameters
-    that can be passed to methods like
+    See :class:`YOLOv4DatasetExporter <fiftyone.utils.yolo.YOLOv4DatasetExporter>`
+    for parameters that can be passed to methods like
     :meth:`SampleCollection.export() <fiftyone.core.collections.SampleCollection.export>`
     to customize the export of datasets of this type.
 
@@ -1415,8 +1415,8 @@ Unlabeled images have no corresponding TXT file in `labels/`.
 
 .. note::
 
-    See :class:`fiftyone.utils.yolo.YOLOv5DatasetExporter` for parameters
-    that can be passed to methods like
+    See :class:`YOLOv5DatasetExporter <fiftyone.utils.yolo.YOLOv5DatasetExporter>`
+    for parameters that can be passed to methods like
     :meth:`SampleCollection.export() <fiftyone.core.collections.SampleCollection.export>`
     to customize the export of datasets of this type.
 
@@ -1526,8 +1526,8 @@ The TFRecords for unlabeled samples do not contain `image/object/*` features.
 
 .. note::
 
-    See :class:`fiftyone.utils.tf.TFObjectDetectionDatasetExporter` for
-    parameters that can be passed to methods like
+    See :class:`TFObjectDetectionDatasetExporter <fiftyone.utils.tf.TFObjectDetectionDatasetExporter>`
+    for parameters that can be passed to methods like
     :meth:`SampleCollection.export() <fiftyone.core.collections.SampleCollection.export>`
     to customize the export of datasets of this type.
 
@@ -1599,7 +1599,7 @@ Unlabeled images have no corresponding file in `labels/`.
 
 .. note::
 
-    See :class:`fiftyone.utils.data.exporters.ImageSegmentationDirectoryExporter`
+    See :class:`ImageSegmentationDirectoryExporter <fiftyone.utils.data.exporters.ImageSegmentationDirectoryExporter>`
     for parameters that can be passed to methods like
     :meth:`SampleCollection.export() <fiftyone.core.collections.SampleCollection.export>`
     to customize the export of datasets of this type.
@@ -1760,8 +1760,8 @@ of the corresponding images, which can be any of the following:
 
 .. note::
 
-    See :class:`fiftyone.utils.cvat.CVATImageDatasetExporter` for
-    parameters that can be passed to methods like
+    See :class:`CVATImageDatasetExporter <fiftyone.utils.cvat.CVATImageDatasetExporter>`
+    for parameters that can be passed to methods like
     :meth:`SampleCollection.export() <fiftyone.core.collections.SampleCollection.export>`
     to customize the export of datasets of this type.
 
@@ -1925,8 +1925,8 @@ Unlabeled videos have no corresponding file in `labels/`.
 
 .. note::
 
-    See :class:`fiftyone.utils.cvat.CVATVideoDatasetExporter` for
-    parameters that can be passed to methods like
+    See :class:`CVATVideoDatasetExporter <fiftyone.utils.cvat.CVATVideoDatasetExporter>`
+    for parameters that can be passed to methods like
     :meth:`SampleCollection.export() <fiftyone.core.collections.SampleCollection.export>`
     to customize the export of datasets of this type.
 
@@ -2021,7 +2021,7 @@ For unlabeled images, an empty `eta.core.image.ImageLabels` file is stored.
 
 .. note::
 
-    See :class:`fiftyone.utils.data.importers.FiftyOneImageLabelsDatasetExporter`
+    See :class:`FiftyOneImageLabelsDatasetExporter <fiftyone.utils.data.importers.FiftyOneImageLabelsDatasetExporter>`
     for parameters that can be passed to methods like
     :meth:`SampleCollection.export() <fiftyone.core.collections.SampleCollection.export>`
     to customize the export of datasets of this type.
@@ -2117,7 +2117,7 @@ For unlabeled videos, an empty `eta.core.video.VideoLabels` file is stored.
 
 .. note::
 
-    See :class:`fiftyone.utils.data.exporters.FiftyOneVideoLabelsDatasetExporter`
+    See :class:`FiftyOneVideoLabelsDatasetExporter <fiftyone.utils.data.exporters.FiftyOneVideoLabelsDatasetExporter>`
     for parameters that can be passed to methods like
     :meth:`SampleCollection.export() <fiftyone.core.collections.SampleCollection.export>`
     to customize the export of datasets of this type.
@@ -2274,8 +2274,8 @@ corresponding images, which can be any of the following:
 
 .. note::
 
-    See :class:`fiftyone.utils.bdd.BDDDatasetExporter` for parameters that
-    can be passed to methods like
+    See :class:`BDDDatasetExporter <fiftyone.utils.bdd.BDDDatasetExporter>`
+    for parameters that can be passed to methods like
     :meth:`SampleCollection.export() <fiftyone.core.collections.SampleCollection.export>`
     to customize the export of datasets of this type.
 
@@ -2391,8 +2391,8 @@ each sample.
 
 .. note::
 
-    See :class:`fiftyone.utils.geojson.GeoJSONDatasetExporter` for
-    parameters that can be passed to methods like
+    See :class:`GeoJSONDatasetExporter <fiftyone.utils.geojson.GeoJSONDatasetExporter>`
+    for parameters that can be passed to methods like
     :meth:`SampleCollection.export() <fiftyone.core.collections.SampleCollection.export>`
     to customize the export of datasets of this type.
 
@@ -2471,8 +2471,8 @@ representation of the frame labels for each video in the dataset.
 
 .. note::
 
-    See :class:`fiftyone.utils.data.exporters.FiftyOneDatasetExporter` for
-    parameters that can be passed to methods like
+    See :class:`FiftyOneDatasetExporter <fiftyone.utils.data.exporters.FiftyOneDatasetExporter>`
+    for parameters that can be passed to methods like
     :meth:`SampleCollection.export() <fiftyone.core.collections.SampleCollection.export>`
     to customize the export of datasets of this type.
 
