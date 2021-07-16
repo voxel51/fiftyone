@@ -59,7 +59,7 @@ export const activeLabels = selectorFamily<
       if (value.length) {
         active = [value[0], ...active.filter((v) => v !== value[0])];
       }
-      set(activeModalFields, active);
+      set(modal ? activeModalFields : activeFields, active);
     }
   },
 });
@@ -95,7 +95,7 @@ export const activeScalars = selectorFamily<string[], boolean>({
       if (value.length && prevActiveScalars.length < value.length) {
         active = [value[0], ...active.filter((v) => v !== value[0])];
       }
-      set(activeModalFields, active);
+      set(modal ? activeModalFields : activeFields, active);
     }
   },
 });
@@ -117,7 +117,7 @@ export const activeTags = selectorFamily<string[], boolean>({
       if (tags.length && prevActiveTags.length < tags.length) {
         active = [tags[0], ...active.filter((v) => v !== tags[0])];
       }
-      set(activeModalFields, active);
+      set(modal ? activeModalFields : activeFields, active);
     }
   },
 });
@@ -139,7 +139,7 @@ export const activeLabelTags = selectorFamily<string[], boolean>({
       if (tags.length && prevActiveTags.length < tags.length) {
         active = [tags[0], ...active.filter((v) => v !== tags[0])];
       }
-      set(activeModalFields, active);
+      set(modal ? activeModalFields : activeFields, active);
     }
   },
 });

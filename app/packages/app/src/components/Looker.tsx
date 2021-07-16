@@ -503,9 +503,8 @@ const Looker = ({
   );
 
   useEffect(() => {
-    !modal && console.log(options);
-    !initialRef.current && looker.updateOptions({ ...options });
-  }, [options]);
+    !initialRef.current && looker.updateOptions({ ...options, activeLabels });
+  }, [options, activeLabels]);
 
   useEffect(() => {
     !initialRef.current && looker.updateSample(sample);

@@ -31,7 +31,6 @@ import { useEventHandler, useOutsideClick, useTheme } from "../../utils/hooks";
 import { packageMessage } from "../../utils/socket";
 import Similar, { similaritySorting } from "./Similar";
 import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
-import { showModalJSON } from "../../recoil/utils";
 import { hasFilters } from "../Filters/atoms";
 
 const Loading = () => {
