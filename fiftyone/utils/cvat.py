@@ -27,7 +27,6 @@ import fiftyone as fo
 import fiftyone.constants as foc
 import fiftyone.core.labels as fol
 import fiftyone.core.metadata as fom
-import fiftyone.types as fot
 import fiftyone.core.utils as fou
 import fiftyone.utils.annotations as foua
 import fiftyone.utils.data as foud
@@ -533,8 +532,6 @@ class CVATImageDatasetExporter(
         image_format (None): the image format to use when writing in-memory
             images to disk. By default, ``fiftyone.config.default_image_ext``
             is used
-        class_as_attribute (False): export object class labels as attributes 
-            instead of top level labels
     """
 
     def __init__(
@@ -544,7 +541,6 @@ class CVATImageDatasetExporter(
         labels_path=None,
         export_media=None,
         image_format=None,
-        class_as_attribute=False,
     ):
         data_path, export_media = self._parse_data_path(
             export_dir=export_dir,
@@ -565,7 +561,6 @@ class CVATImageDatasetExporter(
         self.labels_path = labels_path
         self.export_media = export_media
         self.image_format = image_format
-        self.class_as_attribute = class_as_attribute
 
         self._name = None
         self._task_labels = None
@@ -612,9 +607,7 @@ class CVATImageDatasetExporter(
         if metadata is None:
             metadata = fom.ImageMetadata.build_for(out_image_path)
 
-        cvat_image = CVATImage.from_labels(
-            labels, metadata, class_as_attribute=self.class_as_attribute
-        )
+        cvat_image = CVATImage.from_labels(labels, metadata)
 
         cvat_image.id = len(self._cvat_images)
         cvat_image.name = os.path.basename(out_image_path)
@@ -918,33 +911,6 @@ class CVATTaskLabels(object):
 
         return cls.from_schema(schema)
 
-    def to_labels_list(self):
-        _names = []
-        _categories = {}
-        for label in self.labels:
-            _names.append(label["name"])
-            attributes = label.get("attributes", None) or []
-            for attribute in attributes:
-                name = attribute["name"]
-                if name not in _categories:
-                    _categories[name] = []
-
-                _categories[name] += attribute["categories"]
-
-        _attributes = []
-        for name, categories in _categories.items():
-            _attributes.append(
-                {"name": name, "mutable": True, "input_type": "text",}
-            )
-
-        return [{"name": "Object", "attributes": _attributes}]
-
-        # _labels = []
-        # for label_name in _names:
-        #    _labels.append({"name": label_name, "attributes": _attributes})
-
-        # return _labels
-
     @classmethod
     def from_labels_dict(cls, d):
         """Creates a :class:`CVATTaskLabels` instance from the ``<labels>``
@@ -966,7 +932,7 @@ class CVATTaskLabels(object):
                 _attributes.append(
                     {
                         "name": attribute["name"],
-                        "categories": (attribute["values"] or "").split("\n"),
+                        "categories": attribute["values"].split("\n"),
                     }
                 )
 
@@ -998,21 +964,6 @@ class CVATTaskLabels(object):
                         {
                             "name": name,
                             "categories": sorted(attr_schema.categories),
-                        }
-                    )
-
-                if isinstance(attr_schema, etad.NumericAttributeSchema):
-                    attributes.append(
-                        {
-                            "name": name,
-                            "categories": sorted(attr_schema.range),
-                        }
-                    )
-                if isinstance(attr_schema, etad.BooleanAttributeSchema):
-                    attributes.append(
-                        {
-                            "name": name,
-                            "categories": sorted(attr_schema.range),
                         }
                     )
 
@@ -1117,7 +1068,7 @@ class CVATImage(object):
         return labels
 
     @classmethod
-    def from_labels(cls, labels, metadata, class_as_attribute=False):
+    def from_labels(cls, labels, metadata):
         """Creates a :class:`CVATImage` from a dictionary of labels.
 
         Args:
@@ -1162,12 +1113,7 @@ class CVATImage(object):
                 )
                 warnings.warn(msg)
 
-        boxes = [
-            CVATImageBox.from_detection(
-                d, metadata, class_as_attribute=class_as_attribute
-            )
-            for d in _detections
-        ]
+        boxes = [CVATImageBox.from_detection(d, metadata) for d in _detections]
 
         polygons = []
         for p in _polygons:
@@ -1301,9 +1247,8 @@ class CVATImageAnno(object):
         return attributes
 
     @staticmethod
-    def _parse_attributes(label, default_fields=[]):
+    def _parse_attributes(label):
         occluded = None
-        attributes = []
 
         if label.attributes:
             supported_attrs = (
@@ -1312,17 +1257,14 @@ class CVATImageAnno(object):
                 fol.NumericAttribute,
             )
 
+            attributes = []
             for name, attr in label.attributes.items():
                 if name == "occluded":
                     occluded = attr.value
                 elif isinstance(attr, supported_attrs):
                     attributes.append(CVATAttribute(name, attr.value))
-
-        attributes.append(CVATAttribute("label_id", label.id))
-
-        for field in label._fields_ordered:
-            if field not in default_fields:
-                attributes.append(CVATAttribute(field, label[field]))
+        else:
+            attributes = None
 
         return occluded, attributes
 
@@ -1335,16 +1277,7 @@ class CVATImageAnno(object):
         attributes = []
         for attr in _ensure_list(d.get("attribute", [])):
             name = attr["@name"].lstrip("@")
-            if name == "label_id":
-                continue
-
-            if "#text" in attr:
-                value = attr["#text"]
-            else:
-                value = None
-
-            if value == "None":
-                value = None
+            value = attr["#text"]
             try:
                 value = float(value)
             except:
@@ -1368,18 +1301,8 @@ class CVATImageBox(CVATImageAnno):
         attributes (None): a list of :class:`CVATAttribute` instances
     """
 
-    default_fields = []
-
     def __init__(
-        self,
-        label,
-        xtl,
-        ytl,
-        xbr,
-        ybr,
-        occluded=None,
-        attributes=None,
-        class_as_attribute=False,
+        self, label, xtl, ytl, xbr, ybr, occluded=None, attributes=None
     ):
         self.label = label
         self.xtl = xtl
@@ -1408,14 +1331,14 @@ class CVATImageBox(CVATImageAnno):
             (self.ybr - self.ytl) / height,
         ]
 
-        detection = fol.Detection(label=label, bounding_box=bounding_box,)
-        for attribute in self.attributes:
-            detection[attribute.name] = attribute.value
+        attributes = self._to_attributes()
 
-        return detection
+        return fol.Detection(
+            label=label, bounding_box=bounding_box, attributes=attributes,
+        )
 
     @classmethod
-    def from_detection(cls, detection, metadata, class_as_attribute=False):
+    def from_detection(cls, detection, metadata):
         """Creates a :class:`CVATImageBox` from a
         :class:`fiftyone.core.labels.Detection`.
 
@@ -1437,13 +1360,7 @@ class CVATImageBox(CVATImageAnno):
         xbr = int(round((x + w) * width))
         ybr = int(round((y + h) * height))
 
-        occluded, attributes = cls._parse_attributes(
-            detection, default_fields=cls.default_fields
-        )
-
-        if class_as_attribute:
-            label = "Object"
-            attributes.append(CVATAttribute("label", detection.label))
+        occluded, attributes = cls._parse_attributes(detection)
 
         return cls(
             label, xtl, ytl, xbr, ybr, occluded=occluded, attributes=attributes
@@ -1460,10 +1377,7 @@ class CVATImageBox(CVATImageAnno):
         Returns:
             a :class:`CVATImageBox`
         """
-        class_as_attribute = False
         label = d["@label"]
-        if label == "Object":
-            class_as_attribute = True
 
         xtl = int(round(float(d["@xtl"])))
         ytl = int(round(float(d["@ytl"])))
@@ -1471,14 +1385,6 @@ class CVATImageBox(CVATImageAnno):
         ybr = int(round(float(d["@ybr"])))
 
         occluded, attributes = cls._parse_anno_dict(d)
-        if class_as_attribute:
-            _attributes = []
-            for attribute in attributes:
-                if attribute.name == "label":
-                    label = attribute.value
-                else:
-                    _attributes.append(attribute)
-            attributes = _attributes
 
         return cls(
             label, xtl, ytl, xbr, ybr, occluded=occluded, attributes=attributes

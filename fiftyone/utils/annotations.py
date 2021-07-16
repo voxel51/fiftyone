@@ -7,7 +7,6 @@ Data annotation utilities.
 """
 import getpass
 import logging
-import os
 
 import eta.core.annotations as etaa
 import eta.core.frames as etaf
