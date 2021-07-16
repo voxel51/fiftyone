@@ -4,7 +4,7 @@ import styled from "styled-components";
 
 import FieldsSidebar from "../components/FieldsSidebar";
 import ContainerHeader from "../components/ImageContainerHeader";
-import Samples from "../components/Samples";
+import Flashlight from "../components/Flashlight";
 import ViewBar from "../components/ViewBar/ViewBar";
 import { scrollbarStyles } from "../components/utils";
 
@@ -62,7 +62,7 @@ const SamplesContainer = React.memo(() => {
           </SidebarContainer>
         ) : null}
         <ContentColumn>
-          <Samples />
+          <Flashlight />
         </ContentColumn>
       </Container>
     </>

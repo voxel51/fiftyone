@@ -1,12 +1,12 @@
 {
-  "compilerOptions": {
-    "module": "es2020",
-    "noImplicitAny": false,
-    "sourceMap": true,
-    "outDir": "dist",
-    "jsx": "preserve",
-    "types": ["vite/client"]
-  },
-  "include": ["index.ts"],
-  "references": [{ "path": "../looker" }]
+    "compilerOptions": {
+        "module": "es2020",
+        "noImplicitAny": false,
+        "sourceMap": true,
+        "outDir": "dist",
+        "jsx": "preserve",
+        "types": ["vite/client"]
+    },
+    "include": ["index.ts"],
+    "references": [{ "path": "../looker" }, { "path": "../flashlight" }]
 }

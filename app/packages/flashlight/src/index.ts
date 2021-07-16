@@ -2,12 +2,13 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 
-import { Get, Response, State } from "./state";
+import { Get, State } from "./state";
 
 import { flashlight } from "./styles.module.css";
 
-interface FlashlightConfig<K> {
+export interface FlashlightConfig<K> {
   get: Get<K>;
+  render: (id: string, element: HTMLDivElement) => void;
   margin: number;
 }
 
@@ -24,7 +25,11 @@ export default class Flashlight<K> {
     };
   }
 
-  attach(element: HTMLDivElement) {
+  attach(element: HTMLElement | string): void {
+    if (typeof element === "string") {
+      element = document.getElementById(element);
+    }
+
     const { width, height } = element.getBoundingClientRect();
 
     this.state.width = width;

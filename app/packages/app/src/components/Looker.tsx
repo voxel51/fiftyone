@@ -369,17 +369,6 @@ const defaultLookerOptions = selectorFamily({
   },
 });
 
-const lookerOptions = selector<
-  Partial<FrameOptions | ImageOptions | VideoOptions>
->({
-  key: "lookerOptions",
-  get: ({ get }) => {
-    return {
-      colorMap: get(selectors.colorMap(false)),
-    };
-  },
-});
-
 const lookerModalOptions = selector<
   Partial<FrameOptions | ImageOptions | VideoOptions>
 >({
@@ -460,7 +449,6 @@ interface LookerProps {
 
 const Looker = ({
   lookerRef,
-  modal,
   onClose,
   onClick,
   onNext,
@@ -472,10 +460,8 @@ const Looker = ({
   const [id] = useState(() => uuid());
   let sample = useRecoilValue(atoms.sample(sampleId));
   const sampleSrc = useRecoilValue(selectors.sampleSrc(sampleId));
-  const options = useRecoilValue(modal ? lookerModalOptions : lookerOptions);
-  const activeLabels = useRecoilValue(
-    modal ? labelAtoms.activeModalFields : labelAtoms.activeFields
-  );
+  const options = useRecoilValue(lookerModalOptions);
+  const activeLabels = useRecoilValue(labelAtoms.activeModalFields);
   const metadata = useRecoilValue(atoms.sampleMetadata(sampleId));
   const theme = useTheme();
   const lookerConstructor = useRecoilValue(lookerType(sampleId));
@@ -487,7 +473,6 @@ const Looker = ({
         sample,
         {
           src: sampleSrc,
-          thumbnail: !modal,
           dimensions: [metadata.width, metadata.height],
           frameRate: metadata.frameRate,
           frameNumber: sample.frame_number,
@@ -511,14 +496,14 @@ const Looker = ({
   }, [sample]);
 
   useEffect(() => {
-    return () => modal && looker && looker.destroy();
+    return () => looker && looker.destroy();
   }, [looker]);
 
   lookerRef && (lookerRef.current = looker);
 
   const error = useErrorHandler(looker, sampleId);
-  modal && useEventHandler(looker, "options", useLookerOptionsUpdate());
-  modal && useEventHandler(looker, "fullscreen", useFullscreen());
+  useEventHandler(looker, "options", useLookerOptionsUpdate());
+  useEventHandler(looker, "fullscreen", useFullscreen());
   onNext && useEventHandler(looker, "next", onNext);
   onPrevious && useEventHandler(looker, "previous", onPrevious);
   onClose && useEventHandler(looker, "close", onClose);
@@ -543,10 +528,10 @@ const Looker = ({
       {error && (
         <InfoWrapper>
           <Warning classes={{ root: "error" }} />
-          {!modal ? null : <div>{error}</div>}{" "}
+          <div>{error}</div>
         </InfoWrapper>
       )}
-      {modal && <TooltipInfo looker={looker} />}
+      {<TooltipInfo looker={looker} />}
     </div>
   );
 };

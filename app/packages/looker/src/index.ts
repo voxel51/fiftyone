@@ -38,7 +38,6 @@ import {
   VideoSample,
   FrameSample,
   Buffers,
-  BoundingBox,
   LabelData,
   BufferRange,
 } from "./state";

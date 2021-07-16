@@ -6,7 +6,7 @@ import { constSelector, useRecoilValue, useResetRecoilState } from "recoil";
 import DropdownHandle from "./DropdownHandle";
 import Actions from "./Actions";
 import * as selectors from "../recoil/selectors";
-import { gridZoom } from "./Samples.hooks";
+import { gridZoom } from "./Flashlight";
 import { useTheme } from "./../utils/hooks";
 import { Slider } from "./Filters/RangeSlider";
 
