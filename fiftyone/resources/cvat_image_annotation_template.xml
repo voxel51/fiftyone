@@ -20,10 +20,7 @@
 {% for attribute in label.attributes %}
                         <attribute>
                             <name>{{ attribute.name }}</name>
-                            <mutable>False</mutable>
-                            <input_type>text</input_type>
-                            <default_value></default_value>
-                            <values></values>
+                            <values>{{ attribute.categories|join('\n') }}</values>
                         </attribute>
 {% endfor %}
                     </attributes>
@@ -48,7 +45,7 @@
 {% for image in images %}
     <image id="{{ image.id }}" name="{{ image.name }}" width="{{ image.width }}" height="{{ image.height }}">
 {% for box in image.boxes %}
-    <box label="{{ box.label }}" xtl="{{ box.xtl }}" ytl="{{ box.ytl }}" xbr="{{ box.xbr }}" ybr="{{ box.ybr }}"{% if box.occluded is not none %} occluded="{{ box.occluded }}"{% else %} occluded="0"{%endif %}>
+        <box label="{{ box.label }}" xtl="{{ box.xtl }}" ytl="{{ box.ytl }}" xbr="{{ box.xbr }}" ybr="{{ box.ybr }}"{% if box.occluded is not none %} occluded="{{ box.occluded }}"{% else %} occluded="0"{%endif %}>
 {% for attr in box.attributes %}
             <attribute name="{{ attr.name }}">{{ attr.value }}</attribute>
 {% endfor %}
@@ -78,3 +75,4 @@
     </image>
 {% endfor %}
 </annotations>
+
