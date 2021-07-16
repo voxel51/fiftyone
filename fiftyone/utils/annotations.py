@@ -272,7 +272,7 @@ def annotate(
 
 
 def load_annotations(
-    samples, info, backend="cvat", label_field="ground_truth"
+    samples, info, backend="cvat", label_field="ground_truth", **kwargs
 ):
     """Loads labels from the given annotation backend.
     
@@ -284,31 +284,78 @@ def load_annotations(
             Options are ("cvat")
         label_field: the label field to create or to merge the annotations
             into
+        **kwargs: additional arguments to pass to the `load_annotations`
+            function of the specified backend
     """
     if backend == "cvat":
-        annotations = fouc.load_annotations(info)
+        if not isinstance(info, fouc.CVATAnnotationInfo):
+            raise ValueError(
+                "Expected info to be of type"
+                " `fiftyone.utils.cvat.CVATAnnotationInfo` when"
+                " using the CVAT backend. Found %s" % str(type(info))
+            )
+
+        annotations = fouc.load_annotations(info, **kwargs)
     else:
         logger.warning("Unsupported annotation backend %s" % backend)
         return
 
-    annots_filenames = [i.name for i in annotations[2]]
-    annots_labels = [i.to_labels()["detections"] for i in annotations[2]]
+    # TODO: Check previously stored label ids to see if the view has changed
+    # Remove any ids that have been deleted since the previous view
 
-    field_view = samples.select_fields(label_field)
-    samples._dataset.delete_labels(view=field_view, fields=label_field)
-    view_filenames = [os.path.basename(i) for i in samples.values("filepath")]
+    annotation_label_ids = []
+    for sample in annotations.values():
+        annotation_label_ids.extend(list(sample.keys()))
 
-    # https://stackoverflow.com/questions/23069055/python-sort-a-list-by-another-list
-    order = {v: i for i, v in enumerate(view_filenames)}
-    annots_labels_sorted = [
-        i[1]
-        for i in sorted(
-            list(zip(annots_filenames, annots_labels)),
-            key=lambda x: order[x[0]],
+    id_path = samples._get_label_field_path(label_field, "id")[1]
+    current_label_ids = samples.distinct(id_path)
+
+    prev_label_ids = []
+    for ids in info.id_map.values():
+        prev_label_ids.extend(ids)
+
+    prev_ids = set(prev_label_ids)
+    ann_ids = set(annotation_label_ids)
+    curr_ids = set(current_label_ids)
+    deleted_labels = prev_ids - ann_ids
+    added_labels = ann_ids - prev_ids
+    labels_to_check = curr_ids - deleted_labels
+
+    deleted_view = samples.select_labels(ids=list(deleted_labels))
+    samples._dataset.delete_labels(view=deleted_view, fields=label_field)
+
+    for sample_id, label_id_map in annotations.items():
+        sample = samples._dataset[sample_id]
+        labels = [
+            label
+            for l_id, label in label_id_map.items()
+            if l_id in added_labels
+        ]
+        new_sample = fo.Sample(filepath=sample.filepath)
+        new_sample[label_field] = fol.Detections(detections=labels)
+        if labels != []:
+            sample.merge(new_sample)
+            sample.save()
+
+    sample_id_map = dict(zip(samples.values("id"), samples.values("filepath")))
+    full_samples = samples._dataset.select(list(annotations.keys()))
+    label_field_path = samples._get_label_field_path(label_field)[1].split(".")
+    for sample in full_samples:
+        sample_annot_ids = set(annotations[sample.id].keys()) & labels_to_check
+        view_to_check = samples._dataset.select_labels(
+            ids=list(sample_annot_ids)
         )
-    ]
+        for sv in view_to_check:
+            next_field = sv
+            for field in label_field_path:
+                next_field = next_field[field]
 
-    field_view.set_values(label_field, annots_labels_sorted)
+            for label in next_field:
+                annot_label = annotations[sample.id][label.id]
+                for field in annot_label._fields_ordered:
+                    if field not in info.default_fields:
+                        label[field] = annot_label[field]
+        sample.save()
 
 
 class BaseAnnotationAPI(object):
@@ -342,5 +389,16 @@ class BaseAnnotationAPI(object):
 class AnnotationInfo(object):
     """Basic interface for results returned from `annotate()` call"""
 
-    def __init__(self):
-        pass
+    def __init__(self, label_field, backend):
+        self.label_field = label_field
+        self.backend = backend
+        self.id_map = None
+        self.default_fields = []
+
+    def store_label_ids(self, samples):
+        label_id_path = samples._get_label_field_path(self.label_field, "id")[
+            1
+        ]
+        label_ids = samples.values(label_id_path)
+        sample_ids = samples.values("id")
+        self.id_map = dict(zip(sample_ids, label_ids))

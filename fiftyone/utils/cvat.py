@@ -1337,7 +1337,12 @@ class CVATImageAnno(object):
             name = attr["@name"].lstrip("@")
             if name == "label_id":
                 continue
-            value = attr["#text"]
+
+            if "#text" in attr:
+                value = attr["#text"]
+            else:
+                value = None
+
             if value == "None":
                 value = None
             try:
@@ -1363,16 +1368,7 @@ class CVATImageBox(CVATImageAnno):
         attributes (None): a list of :class:`CVATAttribute` instances
     """
 
-    default_fields = [
-        "_cls",
-        "_id",
-        "attributes",
-        "bounding_box",
-        "index",
-        "label",
-        "mask",
-        "tags",
-    ]
+    default_fields = []
 
     def __init__(
         self,
@@ -2668,11 +2664,32 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
     annotation, and importing them back into the collection.
     """
 
-    def __init__(self, url="cvat.org", https=True, port=None, auth=None):
+    def __init__(
+        self,
+        url="cvat.org",
+        https=True,
+        port=None,
+        auth=None,
+        segment_size=None,
+        image_quality=75,
+    ):
         self._url = url
+        self._segment_size = segment_size
         self._port = "" if port is None else "%d:" % port
         self._protocol = "https" if https else "http"
         self._auth = auth
+        self._label_id_map = {}
+        self._attribute_id_map = {}
+        self._frame_id_map = {}
+        self._label_attributes = {
+            "label_id": {
+                "name": "label_id",
+                "mutable": True,
+                "input_type": "select",
+            }
+        }
+        # self._attr_spec_ids = None
+        self._image_quality = image_quality
 
         self._session = None
         urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
@@ -2735,7 +2752,13 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
     def task_data_url(self, task_id):
         return "%s/data" % self.task_url(task_id)
 
-    def task_annotation_url(
+    def task_data_meta_url(self, task_id):
+        return "%s/data/meta" % self.task_url(task_id)
+
+    def task_annotation_url(self, task_id):
+        return "%s/annotations" % self.task_url(task_id)
+
+    def task_annotation_formatted_url(
         self, task_id, annot_filepath, annot_format="CVAT 1.1",
     ):
         return "%s/annotations?format=%s&filename=%s" % (
@@ -2757,28 +2780,38 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
 
         data_task_create = {
             "name": "FiftyOne_annotation",
-            "image_quality": 75,
+            "image_quality": self._image_quality,
             "labels": labels,
         }
+
+        if self._segment_size is not None:
+            data_task_create["segment_size"] = self._segment_size
 
         task_creation_resp = self._session.post(
             self.tasks_url, verify=False, json=data_task_create,
         )
 
         task_json = task_creation_resp.json()
+        # self._attr_spec_ids = dict([(i["name"], i["id"]) for i in task_json["labels"][0]["attributes"]])
         if _MAX_TASKS_MESSAGE in task_json:
-            logger.warning(
+            raise ValueError(
                 "You have reached the maximum number of tasks in "
                 "CVAT, please delete a task to create a new one"
             )
-            return None
 
+        self._attribute_id_map = dict(
+            [
+                (i["name"], i["id"])
+                for i in task_json["labels"][0]["attributes"]
+            ]
+        )
         task_id = task_json["id"]
+        object_label_id = task_json["labels"][0]["id"]
 
-        return task_id
+        return task_id, object_label_id
 
     def upload_data(self, task_id, paths):
-        data_files = {"image_quality": 75}
+        data_files = {"image_quality": self._image_quality}
 
         files = {
             "client_files[%d]" % i: open(p, "rb") for i, p in enumerate(paths)
@@ -2791,9 +2824,9 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
         )
 
         job_resp = self._session.get(self.jobs_url(task_id))
-        job_id = job_resp.json()[0]["id"]
+        job_ids = [j["id"] for j in job_resp.json()]
 
-        return job_id
+        return job_ids
 
     def upload_samples(
         self, samples, label_field="ground_truth", classes=None
@@ -2811,80 +2844,110 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
             elif samples.default_classes:
                 classes = samples.default_classes
             else:
-                label_path = samples._dataset._get_label_field_path(
+                label_path = samples._get_label_field_path(
                     label_field, "label"
                 )[1]
                 classes = samples._dataset.distinct(label_path)
+            self._classes = classes
 
-        with etau.TempDir() as tmp:
-            samples.export(
-                tmp,
-                label_field=label_field,
-                dataset_type=fot.CVATImageDataset,
-                export_media=False,
-                overwrite=True,
-                class_as_attribute=True,
-            )
-            annot_filepath = os.path.join(tmp, "labels.xml")
+        label_attr = {
+            "name": "label",
+            "mutable": True,
+            "input_type": "select",
+            "values": classes,
+        }
+        label_id_attr = {
+            "name": "label_id",
+            "mutable": True,
+            "input_type": "select",
+        }
+        self._label_attributes["label"] = label_attr
+        self._label_attributes["label_id"] = label_id_attr
 
-            annotation_file = {
-                "annotation_file": open(annot_filepath, "rb"),
-            }
+        annot_shapes = self.create_shapes(samples, label_field)
+        attributes = list(self._label_attributes.values())
+        labels = [{"name": "Object", "attributes": attributes,}]
 
-            _, task_labels, _ = load_cvat_image_annotations(annot_filepath)
-            labels = task_labels.to_labels_list()
+        task_id, object_label_id = self.create_task(labels)
+        paths = samples.values("filepath")
+        job_ids = self.upload_data(task_id, paths)
 
-            for attr in labels[0]["attributes"]:
-                if attr["name"] == "label":
-                    attr["values"] = classes
-                    attr["input_type"] = "select"
+        annot_shapes = self.remap_shape_ids(annot_shapes, object_label_id)
 
-            task_id = self.create_task(labels)
-            paths = samples.values("filepath")
-            job_id = self.upload_data(task_id, paths)
+        annot_json = {
+            "version": 0,
+            "tags": [],
+            "shapes": annot_shapes,
+            "tracks": [],
+        }
 
-            self._session.put(
-                self.task_annotation_url(task_id, annot_filepath),
-                files=annotation_file,
-            )
+        resp = self._session.put(
+            self.task_annotation_url(task_id), json=annot_json
+        )
 
-        return task_id, job_id
+        return task_id, job_ids
 
-    def download_annotations(self, task_id, job_id):
+    def download_annotations(self, label_field, task_id, job_ids):
         """Download annotations from the annotation tool"""
-        response = self._session.get(self.task_url(task_id))
+        response = self._session.get(self.task_annotation_url(task_id))
         response.raise_for_status()
 
-        name = response.json()["name"]
+        resp_json = response.json()
+        shapes = resp_json["shapes"]
 
-        with etau.TempDir() as tmp:
-            annot_path = os.path.join(tmp, "exported_labels.zip")
-            annot_xml_path = os.path.join(tmp, "annotations.xml")
-            annot_url = self.task_annotation_url(
-                task_id, name, annot_format="CVAT for images 1.1",
+        data_resp = self._session.get(self.task_data_meta_url(task_id))
+        frames = data_resp.json()["frames"]
+
+        results = {}
+        for shape in shapes:
+            frame = shape["frame"]
+            sample_id = self._frame_id_map[frame]
+            if sample_id not in results:
+                results[sample_id] = {}
+            metadata = frames[frame]
+            width = metadata["width"]
+            height = metadata["height"]
+            xtl, ytl, xbr, ybr = shape["points"]
+            bbox = [
+                xtl / width,
+                ytl / height,
+                (xbr - xtl) / width,
+                (ybr - ytl) / height,
+            ]
+            attributes = {}
+            attr_id_map_rev = {v: k for k, v in self._attribute_id_map.items()}
+            for attr in shape["attributes"]:
+                name = attr_id_map_rev[attr["spec_id"]]
+                val = self.parse_attribute(attr["value"])
+                attributes[name] = CVATAttribute(name=name, value=val)
+            class_name = attributes["label"].value
+            if class_name not in self._classes:
+                continue
+            fo_attributes = {}
+            for attr_name, attribute in attributes.items():
+                if attr_name.startswith("attribute:"):
+                    name = attr_name.strip("attribute:")
+                    attribute.name = name
+                    if attribute.value is not None:
+                        fo_attributes[name] = attribute.to_attribute()
+            label = fol.Detection(
+                label=attributes["label"].value,
+                bounding_box=bbox,
+                attributes=fo_attributes,
             )
+            label_id = attributes["label_id"].value
+            if label_id is not None:
+                label._id = label_id
+            for attr_name, attribute in attributes.items():
+                if attr_name not in [
+                    "label",
+                    "label_id",
+                ] and not attr_name.startswith("attribute:"):
+                    label[attr_name] = attribute.value
 
-            while True:
-                response = self._session.get(annot_url)
-                response.raise_for_status()
+            results[sample_id][label.id] = label
 
-                if response.status_code == 201:
-                    break
-
-            while True:
-                response = self._session.get(annot_url + "&action=download")
-                response.raise_for_status()
-
-                if response.content != b"":
-                    break
-
-            with open(annot_path, "wb") as ap:
-                ap.write(response.content)
-
-            etau.extract_zip(annot_path)
-            cvat_task_labels = load_cvat_image_annotations(annot_xml_path)
-
-        return cvat_task_labels
+        return results
 
     def delete_task(self, task_id):
         response = self._session.delete(self.task_url(task_id))
@@ -2896,12 +2959,127 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
             url = self.base_url
         webbrowser.open(url, new=2)
 
+    def parse_attribute(self, attribute):
+        if attribute in ["", "None"]:
+            return None
+        try:
+            return float(attribute)
+        except:
+            return attribute
+
+    def create_shapes(self, samples, label_field):
+        schema = samples.get_field_schema()
+        field = schema[label_field]
+        try:
+            label_type = field.document_type
+        except:
+            label_type = field
+
+        if label_type == fol.Detections:
+            samples.compute_metadata()
+            shapes = []
+            for sample in samples:
+                frame_id = len(self._frame_id_map)
+                self._frame_id_map[frame_id] = sample.id
+                detections = sample[label_field].detections
+                metadata = sample.metadata
+                shapes.extend(
+                    self.create_box_shapes(detections, metadata, frame_id)
+                )
+
+        else:
+            raise ValueError(
+                "Label type %s of field %s is not supported"
+                % (str(label_type), label_field)
+            )
+
+        return shapes
+
+    def create_box_shapes(self, detections, metadata, frame_id=0):
+        shapes = []
+        width = metadata.width
+        height = metadata.height
+        for det in detections:
+            attributes = self.create_box_attributes(det)
+
+            x, y, w, h = det.bounding_box
+            xtl = float(round(x * width))
+            ytl = float(round(y * height))
+            xbr = float(round((x + w) * width))
+            ybr = float(round((y + h) * height))
+
+            bbox = [xtl, ytl, xbr, ybr]
+
+            shape_id = len(self._label_id_map) + 1
+            self._label_id_map[shape_id] = det.id
+
+            shape = {
+                "type": "rectangle",
+                "occluded": False,
+                "z_order": 0,
+                "points": bbox,
+                "label_id": "Object",
+                "group": 0,
+                "frame": frame_id,
+                "source": "manual",
+                "attributes": attributes,
+            }
+            shapes.append(shape)
+
+        return shapes
+
+    def create_box_attributes(self, label):
+        self.default_fields = [
+            "_cls",
+            "_id",
+            "attributes",
+            "bounding_box",
+            "index",
+            "mask",
+            "tags",
+        ]
+        # if self._attr_spec_ids is None:
+        #    raise ValueError("You must first call `upload_samples` to "
+        #    "create a task and populate the `_attr_spec_ids` mapping")
+        fields = label._fields_ordered
+        attributes = [{"spec_id": "label_id", "value": label.id}]
+        for field in fields:
+            if field not in self.default_fields:
+                self.update_label_attributes(field)
+                value = label[field]
+                attributes.append({"spec_id": field, "value": str(value)})
+        for attr in label.attributes.keys():
+            self.update_label_attributes("attribute:" + attr)
+            value = label.get_attribute_value(attr)
+            attributes.append(
+                {"spec_id": "attribute:" + attr, "value": str(value)}
+            )
+
+        return attributes
+
+    def update_label_attributes(self, attr_name):
+        if attr_name not in self._label_attributes:
+            self._label_attributes[attr_name] = {
+                "name": attr_name,
+                "mutable": True,
+                "input_type": "text",
+            }
+
+    def remap_shape_ids(self, shapes, object_label_id):
+        for shape in shapes:
+            shape["label_id"] = object_label_id
+            for attr in shape["attributes"]:
+                attr_name = attr["spec_id"]
+                attr["spec_id"] = self._attribute_id_map[attr_name]
+        return shapes
+
 
 class CVATAnnotationInfo(foua.AnnotationInfo):
-    def __init__(self, api, task_id, job_id):
+    def __init__(self, label_field, api, task_id, job_ids):
+        super().__init__(label_field=label_field, backend="cvat")
         self.api = api
         self.task_id = task_id
-        self.job_id = job_id
+        self.job_ids = job_ids
 
 
 def annotate(
@@ -2910,20 +3088,32 @@ def annotate(
     url="cvat.org",
     https=True,
     auth=None,
+    segment_size=None,
+    image_quality=75,
     **kwargs,
 ):
-    api = CVATAnnotationAPI(url=url, https=https, auth=auth)
-    task_id, job_id = api.upload_samples(samples, label_field=label_field)
-    api.launch_annotator(url=api.base_job_url(task_id, job_id))
-    return CVATAnnotationInfo(api, task_id, job_id)
+    api = CVATAnnotationAPI(
+        url=url,
+        https=https,
+        auth=auth,
+        segment_size=segment_size,
+        image_quality=image_quality,
+    )
+    task_id, job_ids = api.upload_samples(samples, label_field=label_field)
+    info = CVATAnnotationInfo(label_field, api, task_id, job_ids)
+    info.store_label_ids(samples)
+    api.launch_annotator(url=api.base_job_url(task_id, job_ids[0]))
+    return info
 
 
-def load_annotations(info):
+def load_annotations(info, delete_task=True):
     api = info.api
     task_id = info.task_id
-    job_id = info.job_id
-    annotations = api.download_annotations(task_id, job_id)
-    api.delete_task(task_id)
+    job_ids = info.job_ids
+    label_field = info.label_field
+    annotations = api.download_annotations(label_field, task_id, job_ids)
+    if delete_task:
+        api.delete_task(task_id)
     return annotations
 
 
