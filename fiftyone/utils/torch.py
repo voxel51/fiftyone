@@ -176,8 +176,8 @@ class TorchImageModel(
     """Wrapper for evaluating a Torch model on images.
 
     This wrapper assumes that ``config.entrypoint_fcn`` returns a
-    :class:`torch:torch.nn.Module`` whose ``__call__()`` method directly
-    accepts Torch tensors (NCHW) as input.
+    :class:`torch:torch.nn.Module` whose ``__call__()`` method directly accepts
+    Torch tensors (NCHW) as input.
 
     Args:
         config: an :class:`TorchImageModelConfig`
@@ -251,8 +251,8 @@ class TorchImageModel(
 
     @property
     def transforms(self):
-        """The :mod:`torchvision:torchvision.transforms`` function that
-        will/must be applied to each input before prediction.
+        """The `torchvision.transforms <https://pytorch.org/vision/stable/transforms.html>`
+        function that will/must be applied to each input before prediction.
         """
         return self._transforms
 
@@ -272,7 +272,7 @@ class TorchImageModel(
 
     @property
     def device(self):
-        """The :class:`torch:torch.device` that the model is using."""
+        """The :class:`torch:torch.torch.device` that the model is using."""
         return self._device
 
     @property
@@ -454,7 +454,7 @@ class MinResize(object):
         min_output_size: Desired minimum output dimensions. Can either be a
             ``(min_height, min_width)`` tuple or a single ``min_dim``
         interpolation (None): Optional interpolation mode. Passed directly to
-            :meth:`torchvision:torchvision.transforms.functional.resize`
+            :func:`torchvision:torchvision.transforms.functional.resize`
     """
 
     def __init__(self, min_output_size, interpolation=None):
