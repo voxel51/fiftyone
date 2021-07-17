@@ -1002,6 +1002,20 @@ class SampleCollection(object):
                 )
 
             value = _get_non_none_value(itertools.chain.from_iterable(values))
+
+            if value is None:
+                if list(values):
+                    raise ValueError(
+                        "Cannot infer an appropriate type for new frame "
+                        "field '%s' because all provided values are None"
+                        % field_name
+                    )
+                else:
+                    raise ValueError(
+                        "Cannot infer an appropriate type for new frame "
+                        "field '%s' from empty values" % field_name
+                    )
+
             self._dataset._add_implied_frame_field(field_name, value)
         else:
             schema = self._dataset.get_field_schema(include_private=True)
@@ -1017,6 +1031,20 @@ class SampleCollection(object):
                 )
 
             value = _get_non_none_value(values)
+
+            if value is None:
+                if list(values):
+                    raise ValueError(
+                        "Cannot infer an appropriate type for new sample "
+                        "field '%s' because all provided values are None"
+                        % field_name
+                    )
+                else:
+                    raise ValueError(
+                        "Cannot infer an appropriate type for new sample "
+                        "field '%s' from empty values" % field_name
+                    )
+
             self._dataset._add_implied_sample_field(field_name, value)
 
     def _set_sample_values(
