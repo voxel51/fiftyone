@@ -2,7 +2,7 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 
-import { ItemData, RowData } from "./state";
+import { ItemData, Render, RowData, Section } from "./state";
 
 import {
   flashLightItem,
@@ -10,20 +10,17 @@ import {
   flashlightSectionContainer,
 } from "./styles.module.css";
 
-export class Section {
+export default class SectionElement implements Section {
   private attached: boolean = false;
   private top: number;
   private width: number;
   private margin: number;
+  private height: number;
   private readonly container: HTMLDivElement = document.createElement("div");
   private readonly section: HTMLDivElement = document.createElement("div");
   private readonly rows: [number, [HTMLElement, ItemData][]][];
 
-  constructor(
-    parent: HTMLDivElement,
-    rows: RowData[],
-    render: (key: string, element: HTMLDivElement) => void
-  ) {
+  constructor(parent: HTMLDivElement, rows: RowData[], render: Render) {
     this.container.classList.add(flashlightSectionContainer);
     this.section.classList.add(flashlightSection);
     this.rows = rows.map(({ aspectRatio, items }) => {
@@ -39,6 +36,18 @@ export class Section {
     });
 
     parent.appendChild(this.container);
+  }
+
+  get target() {
+    return this.container;
+  }
+
+  getHeight() {
+    return this.height;
+  }
+
+  isShown() {
+    return this.attached;
   }
 
   show(top: number, width: number, margin: number): void {
@@ -70,6 +79,12 @@ export class Section {
           localTop += left += width + margin;
         });
       });
+
+      if (this.width !== width) {
+        this.height = localTop;
+        this.container.style.height = `${localTop}px`;
+      }
+
       this.width = width;
       this.margin = margin;
     }
