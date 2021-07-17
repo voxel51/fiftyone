@@ -780,11 +780,12 @@ class MediaExporter(object):
     for populating a directory or manifest of media files.
 
     This class is designed for populating a single, flat directory or manifest
-    of media files, and automatically takes care of things like name clashes.
+    of media files, and automatically takes care of things like name clashes
+    as necessary.
 
     The export strategy used is defined by the ``export_mode`` parameter, and
-    users can restrict the available options via the ``supported_modes``
-    parameter.
+    users of this class can restrict the available options via the
+    ``supported_modes`` parameter.
 
     Args:
         export_mode: the export mode to use. The supported values are:
