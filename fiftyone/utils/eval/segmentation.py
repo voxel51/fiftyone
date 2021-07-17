@@ -14,6 +14,7 @@ import sklearn.metrics as skm
 import eta.core.image as etai
 
 import fiftyone.core.evaluation as foe
+import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.utils as fou
 import fiftyone.core.validation as fov
@@ -153,15 +154,19 @@ class SegmentationEvaluation(foe.EvaluationMethod):
 
     def get_fields(self, samples, eval_key):
         fields = [
-            "%s_tp" % eval_key,
-            "%s_fp" % eval_key,
-            "%s_fn" % eval_key,
+            "%s_accuracy" % eval_key,
+            "%s_precision" % eval_key,
+            "%s_recall" % eval_key,
         ]
 
         if samples._is_frame_field(self.config.gt_field):
             prefix = samples._FRAMES_PREFIX + eval_key
             fields.extend(
-                ["%s_tp" % prefix, "%s_fp" % prefix, "%s_fn" % prefix]
+                [
+                    "%s_accuracy" % prefix,
+                    "%s_precision" % prefix,
+                    "%s_recall" % prefix,
+                ]
             )
 
         return fields
@@ -228,8 +233,7 @@ class SimpleEvaluation(SegmentationEvaluation):
             values = _get_mask_values(samples, pred_field, gt_field)
             classes = [str(v) for v in values]
 
-        iter_samples = samples.select_fields([gt_field, pred_field])
-
+        _samples = samples.select_fields([gt_field, pred_field])
         pred_field, processing_frames = samples._handle_frame_field(pred_field)
         gt_field, _ = samples._handle_frame_field(gt_field)
 
@@ -244,56 +248,75 @@ class SimpleEvaluation(SegmentationEvaluation):
             pre_field = "%s_precision" % eval_key
             rec_field = "%s_recall" % eval_key
 
+            # note: fields are manually declared so they'll exist even when
+            # `samples` is empty
+            dataset = samples._dataset
+            dataset._add_sample_field_if_necessary(acc_field, fof.FloatField)
+            dataset._add_sample_field_if_necessary(pre_field, fof.FloatField)
+            dataset._add_sample_field_if_necessary(rec_field, fof.FloatField)
+            if processing_frames:
+                dataset._add_frame_field_if_necessary(
+                    acc_field, fof.FloatField
+                )
+                dataset._add_frame_field_if_necessary(
+                    pre_field, fof.FloatField
+                )
+                dataset._add_frame_field_if_necessary(
+                    rec_field, fof.FloatField
+                )
+
         logger.info("Evaluating segmentations...")
-        with fou.ProgressBar() as pb:
-            for sample in pb(iter_samples):
-                if processing_frames:
-                    images = sample.frames.values()
-                else:
-                    images = [sample]
+        for sample in _samples.iter_samples(progress=True):
+            if processing_frames:
+                images = sample.frames.values()
+            else:
+                images = [sample]
 
-                sample_conf_mat = np.zeros((nc, nc), dtype=int)
-                for image in images:
-                    pred_mask = image[pred_field].mask
-                    gt_mask = image[gt_field].mask
+            sample_conf_mat = np.zeros((nc, nc), dtype=int)
+            for image in images:
+                gt_seg = image[gt_field]
+                if gt_seg is None or gt_seg.mask is None:
+                    msg = "Skipping sample with missing ground truth mask"
+                    warnings.warn(msg)
+                    continue
 
-                    if gt_mask is None:
-                        msg = "Skipping sample with missing ground truth mask"
-                        warnings.warn(msg)
-                        continue
+                pred_seg = image[pred_field]
+                if pred_seg is None or pred_seg.mask is None:
+                    msg = "Skipping sample with missing prediction mask"
+                    warnings.warn(msg)
+                    continue
 
-                    if pred_mask is None:
-                        msg = "Skipping sample with missing prediction mask"
-                        warnings.warn(msg)
-                        continue
+                image_conf_mat = _compute_pixel_confusion_matrix(
+                    pred_seg.mask, gt_seg.mask, values, bandwidth=bandwidth
+                )
+                sample_conf_mat += image_conf_mat
 
-                    image_conf_mat = _compute_pixel_confusion_matrix(
-                        pred_mask, gt_mask, values, bandwidth=bandwidth
+                # Record frame stats, if requested
+                if processing_frames and eval_key is not None:
+                    facc, fpre, frec = _compute_accuracy_precision_recall(
+                        image_conf_mat, values, average
                     )
-                    sample_conf_mat += image_conf_mat
+                    image[acc_field] = facc
+                    image[pre_field] = fpre
+                    image[rec_field] = frec
 
-                    # Record frame stats, if requested
-                    if processing_frames and eval_key is not None:
-                        facc, fpre, frec = _compute_accuracy_precision_recall(
-                            image_conf_mat, values, average
-                        )
-                        image[acc_field] = facc
-                        image[pre_field] = fpre
-                        image[rec_field] = frec
+            confusion_matrix += sample_conf_mat
 
-                confusion_matrix += sample_conf_mat
+            # Record sample stats, if requested
+            if eval_key is not None:
+                sacc, spre, srec = _compute_accuracy_precision_recall(
+                    sample_conf_mat, values, average
+                )
+                sample[acc_field] = sacc
+                sample[pre_field] = spre
+                sample[rec_field] = srec
+                sample.save()
 
-                # Record sample stats, if requested
-                if eval_key is not None:
-                    sacc, spre, srec = _compute_accuracy_precision_recall(
-                        sample_conf_mat, values, average
-                    )
-                    sample[acc_field] = sacc
-                    sample[pre_field] = spre
-                    sample[rec_field] = srec
-                    sample.save()
+        if nc > 0:
+            missing = classes[0] if values[0] == 0 else None
+        else:
+            missing = None
 
-        missing = classes[0] if values[0] == 0 else None
         return SegmentationResults(
             confusion_matrix,
             classes,
@@ -434,30 +457,22 @@ def _compute_accuracy_precision_recall(confusion_matrix, values, average):
 
 
 def _get_mask_values(samples, pred_field, gt_field):
+    _samples = samples.select_fields([gt_field, pred_field])
     pred_field, processing_frames = samples._handle_frame_field(pred_field)
     gt_field, _ = samples._handle_frame_field(gt_field)
 
-    if not processing_frames:
-        iter_samples = samples.select_fields([gt_field, pred_field])
-    else:
-        iter_samples = samples
-
     values = set()
 
-    with fou.ProgressBar() as pb:
-        for sample in pb(iter_samples):
-            if processing_frames:
-                images = sample.frames.values()
-            else:
-                images = [sample]
+    for sample in _samples.iter_samples(progress=True):
+        if processing_frames:
+            images = sample.frames.values()
+        else:
+            images = [sample]
 
-            for image in images:
-                pred_mask = image[pred_field].mask
-                if pred_mask is not None:
-                    values.update(pred_mask.ravel())
-
-                gt_mask = image[gt_field].mask
-                if gt_mask is not None:
-                    values.update(gt_mask.ravel())
+        for image in images:
+            for field in (pred_field, gt_field):
+                seg = image[field]
+                if seg is not None and seg.mask is not None:
+                    values.update(seg.mask.ravel())
 
     return sorted(values)

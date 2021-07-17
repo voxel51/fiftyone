@@ -183,8 +183,6 @@ class OpenImagesEvaluation(DetectionEvaluation):
         preds = sample_or_frame[self.pred_field]
 
         pos_labs = None
-        neg_labs = None
-
         if self.config.pos_label_field:
             pos_labs = sample_or_frame[self.config.pos_label_field]
             if pos_labs is None:
@@ -194,6 +192,7 @@ class OpenImagesEvaluation(DetectionEvaluation):
                 if self.config.expand_gt_hierarchy:
                     pos_labs = _expand_label_hierarchy(pos_labs, self.config)
 
+        neg_labs = None
         if self.config.neg_label_field:
             neg_labs = sample_or_frame[self.config.neg_label_field]
             if neg_labs is None:
@@ -208,8 +207,8 @@ class OpenImagesEvaluation(DetectionEvaluation):
         if eval_key is None:
             # Don't save results on user's data
             eval_key = "eval"
-            gts = gts.copy()
-            preds = preds.copy()
+            gts = _copy_labels(gts)
+            preds = _copy_labels(preds)
 
         return _open_images_evaluation_single_iou(
             gts, preds, eval_key, self.config, pos_labs, neg_labs,
@@ -230,9 +229,9 @@ class OpenImagesEvaluation(DetectionEvaluation):
                 matches. Either label can be ``None`` to indicate an unmatched
                 object
             eval_key (None): the evaluation key for this evaluation
-            classes (None): the list of classes to evaluate. If not provided,
-                the observed ground truth/predicted labels are used for
-                results purposes
+            classes (None): the list of possible classes. If not provided, the
+                observed ground truth/predicted labels are used for results
+                purposes
             missing (None): a missing label string. Any unmatched objects are
                 given this label for results purposes
 
@@ -243,23 +242,22 @@ class OpenImagesEvaluation(DetectionEvaluation):
         gt_field = self.config.gt_field
 
         class_matches = {}
-        if classes is None:
-            _classes = []
-        else:
-            _classes = classes
 
-        # For crowds, gts are only counted once
+        if classes is None:
+            _classes = set()
+        else:
+            _classes = None
+
+        # For crowds, GTs are only counted once
         counted_gts = []
 
         # Sort matches
         for m in matches:
             # m = (gt_label, pred_label, iou, confidence, gt.id, pred.id)
             c = m[0] if m[0] != None else m[1]
-            if c not in _classes:
-                if classes is None:
-                    _classes.append(c)
-                else:
-                    continue
+
+            if _classes is not None:
+                _classes.add(c)
 
             if c not in class_matches:
                 class_matches[c] = {
@@ -276,6 +274,9 @@ class OpenImagesEvaluation(DetectionEvaluation):
             if m[0] and m[4] not in counted_gts:
                 class_matches[c]["num_gt"] += 1
                 counted_gts.append(m[4])
+
+        if _classes is not None:
+            classes = sorted(_classes)
 
         # Compute precision-recall array
         precision = {}
@@ -312,7 +313,7 @@ class OpenImagesEvaluation(DetectionEvaluation):
             matches,
             precision,
             recall,
-            _classes,
+            classes,
             missing=missing,
             gt_field=gt_field,
             pred_field=pred_field,
@@ -494,10 +495,9 @@ def _expand_detection_hierarchy(cats, obj, config, label_type):
     keyed_children = config._hierarchy_keyed_child
     for parent in keyed_children[obj.label]:
         new_obj = obj.copy()
+        new_obj._id = obj._id  # we need ID to stay the same
         new_obj.label = parent
         cats[parent][label_type].append(new_obj)
-
-    return cats
 
 
 def _open_images_evaluation_single_iou(
@@ -534,8 +534,6 @@ def _open_images_evaluation_single_iou(
 def _open_images_evaluation_setup(
     gts, preds, id_key, iou_key, config, pos_labs, neg_labs, max_preds=None
 ):
-    field = gts._LABEL_LIST_FIELD
-
     if pos_labs is None:
         relevant_labs = neg_labs
     elif neg_labs is None:
@@ -554,29 +552,33 @@ def _open_images_evaluation_setup(
     if config.use_boxes:
         iou_kwargs.update(use_boxes=True)
 
-    # Organize preds and GT by category
+    # Organize ground truth and predictions by category
+
     cats = defaultdict(lambda: defaultdict(list))
-    for obj in preds[field]:
-        if relevant_labs is None or obj.label in relevant_labs:
-            obj[iou_key] = _NO_MATCH_IOU
-            obj[id_key] = _NO_MATCH_ID
 
-            label = obj.label if classwise else "all"
-            cats[label]["preds"].append(obj)
+    if gts is not None:
+        for obj in gts[gts._LABEL_LIST_FIELD]:
+            if relevant_labs is None or obj.label in relevant_labs:
+                obj[iou_key] = _NO_MATCH_IOU
+                obj[id_key] = _NO_MATCH_ID
 
-            if config.expand_pred_hierarchy and label != "all":
-                cats = _expand_detection_hierarchy(cats, obj, config, "preds")
+                label = obj.label if classwise else "all"
+                cats[label]["gts"].append(obj)
 
-    for obj in gts[field]:
-        if relevant_labs is None or obj.label in relevant_labs:
-            obj[iou_key] = _NO_MATCH_IOU
-            obj[id_key] = _NO_MATCH_ID
+                if config.expand_gt_hierarchy and label != "all":
+                    _expand_detection_hierarchy(cats, obj, config, "gts")
 
-            label = obj.label if classwise else "all"
-            cats[label]["gts"].append(obj)
+    if preds is not None:
+        for obj in preds[preds._LABEL_LIST_FIELD]:
+            if relevant_labs is None or obj.label in relevant_labs:
+                obj[iou_key] = _NO_MATCH_IOU
+                obj[id_key] = _NO_MATCH_ID
 
-            if config.expand_gt_hierarchy and label != "all":
-                cats = _expand_detection_hierarchy(cats, obj, config, "gts")
+                label = obj.label if classwise else "all"
+                cats[label]["preds"].append(obj)
+
+                if config.expand_pred_hierarchy and label != "all":
+                    _expand_detection_hierarchy(cats, obj, config, "preds")
 
     # Compute IoUs within each category
     pred_ious = {}
@@ -642,7 +644,7 @@ def _compute_matches(
                     if gt_iscrowd and gt.label != pred.label:
                         continue
 
-                    # Crowds are last in order of gts
+                    # Crowds are last in order of GTs
                     # If we already matched a non-crowd and are on a crowd,
                     # then break
                     if (
@@ -652,7 +654,7 @@ def _compute_matches(
                     ):
                         break
 
-                    # If you already perfectly matched a gt
+                    # If you already perfectly matched a GT
                     # then there is no reason to continue looking
                     # if you match multiple crowds with iou=1, choose the first
                     if best_match_iou == 1:
@@ -669,9 +671,9 @@ def _compute_matches(
                         gt_map[best_match]
                     ):
                         # Note: This differs from COCO in that Open Images
-                        # objects are only matched with the highest IoU gt or a
+                        # objects are only matched with the highest IoU GT or a
                         # crowd. An object will not be matched with a secondary
-                        # highest IoU gt if the highest IoU gt was already
+                        # highest IoU GT if the highest IoU GT was already
                         # matched with a different object
 
                         best_match = None
@@ -734,6 +736,20 @@ def _compute_matches(
                 matches.append((gt.label, None, None, None, gt.id, None))
 
     return matches
+
+
+def _copy_labels(labels):
+    if labels is None:
+        return None
+
+    field = labels._LABEL_LIST_FIELD
+    _labels = labels.copy()
+
+    # We need the IDs to stay the same
+    for _label, label in zip(_labels[field], labels[field]):
+        _label._id = label._id
+
+    return _labels
 
 
 # Parse hierarchy, code from:

@@ -228,6 +228,8 @@ class SimpleEvaluation(ClassificationEvaluation):
         if eval_key is None:
             return results
 
+        # note: fields are manually declared so they'll exist even when
+        # `samples` is empty
         dataset = samples._dataset
         if is_frame_field:
             eval_frame = samples._FRAMES_PREFIX + eval_key
@@ -347,16 +349,22 @@ class TopKEvaluation(ClassificationEvaluation):
         if eval_key is None:
             return results
 
+        # note: fields are manually declared so they'll exist even when
+        # `samples` is empty
+        dataset = samples._dataset
         if is_frame_field:
             eval_frame = samples._FRAMES_PREFIX + eval_key
 
             # Sample-level accuracies
+            dataset._add_sample_field_if_necessary(eval_key, fof.FloatField)
             samples.set_values(eval_key, [np.mean(c) for c in correct])
 
             # Per-frame accuracies
+            dataset._add_frame_field_if_necessary(eval_key, fof.FloatField)
             samples.set_values(eval_frame, correct)
         else:
             # Per-sample accuracies
+            dataset._add_sample_field_if_necessary(eval_key, fof.FloatField)
             samples.set_values(eval_key, correct)
 
         return results
@@ -481,6 +489,8 @@ class BinaryEvaluation(ClassificationEvaluation):
         if eval_key is None:
             return results
 
+        # note: fields are manually declared so they'll exist even when
+        # `samples` is empty
         dataset = samples._dataset
         if is_frame_field:
             eval_frame = samples._FRAMES_PREFIX + eval_key
