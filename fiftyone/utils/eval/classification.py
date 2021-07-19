@@ -610,6 +610,20 @@ class ClassificationResults(foe.EvaluationResults):
             a dict
         """
         labels = self._get_labels(classes, include_missing=False)
+
+        if not labels:
+            empty = {
+                "precision": 0.0,
+                "recall": 0.0,
+                "f1-score": 0.0,
+                "support": 0,
+            }
+            return {
+                "micro avg": empty.copy(),
+                "macro avg": empty.copy(),
+                "weighted avg": empty.copy(),
+            }
+
         return skm.classification_report(
             self.ytrue,
             self.ypred,
@@ -637,17 +651,16 @@ class ClassificationResults(foe.EvaluationResults):
         """
         labels = self._get_labels(classes, include_missing=False)
 
-        try:
-            accuracy = skm.accuracy_score(
-                self.ytrue,
-                self.ypred,
-                normalize=True,
-                sample_weight=self.weights,
-            )
-        except ZeroDivisionError:
-            accuracy = 0.0
+        accuracy = _compute_accuracy(
+            self.ytrue, self.ypred, labels=labels, weights=self.weights
+        )
 
-        precision, recall, fscore, _ = skm.precision_recall_fscore_support(
+        (
+            precision,
+            recall,
+            fscore,
+            support,
+        ) = skm.precision_recall_fscore_support(
             self.ytrue,
             self.ypred,
             average=average,
@@ -656,12 +669,15 @@ class ClassificationResults(foe.EvaluationResults):
             sample_weight=self.weights,
             zero_division=0,
         )
+        if support is None:
+            support = 0
 
         return {
             "accuracy": accuracy,
             "precision": precision,
             "recall": recall,
             "fscore": fscore,
+            "support": support,
         }
 
     def print_report(self, classes=None, digits=2):
@@ -674,6 +690,10 @@ class ClassificationResults(foe.EvaluationResults):
             digits (2): the number of digits of precision to print
         """
         labels = self._get_labels(classes, include_missing=False)
+        if not labels:
+            print("No classes to analyze")
+            return
+
         report_str = skm.classification_report(
             self.ytrue,
             self.ypred,
@@ -1083,6 +1103,25 @@ def _to_binary_scores(y, confs, pos_label):
         scores.append(score)
 
     return scores
+
+
+def _compute_accuracy(ytrue, ypred, labels=None, weights=None):
+    if labels is not None:
+        labels = set(labels)
+        found = np.array([y in labels for y in ytrue], dtype=bool)
+        ytrue = ytrue[found]
+        ypred = ypred[found]
+        if weights is not None:
+            weights = weights[found]
+
+    if ytrue.size == 0:
+        return 0.0
+
+    correct = ytrue == ypred
+    if weights is not None:
+        correct *= weights
+
+    return np.mean(correct)
 
 
 def _compute_confusion_matrix(
