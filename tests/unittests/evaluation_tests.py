@@ -464,6 +464,89 @@ class DetectionTests(unittest.TestCase):
         self.assertTrue((actual == expected).all())
 
 
+class SegmentationTests(unittest.TestCase):
+    def _make_segmentation_dataset(self):
+        dataset = fo.Dataset()
+
+        sample1 = fo.Sample(filepath="image1.jpg")
+        sample2 = fo.Sample(
+            filepath="image2.jpg",
+            ground_truth=fo.Segmentation(mask=np.array([[0, 0], [1, 2]])),
+            predictions=None,
+        )
+        sample3 = fo.Sample(
+            filepath="image3.jpg",
+            ground_truth=None,
+            predictions=fo.Segmentation(mask=np.array([[0, 0], [1, 2]])),
+        )
+        sample4 = fo.Sample(
+            filepath="image4.jpg",
+            ground_truth=fo.Segmentation(mask=np.array([[0, 0], [1, 2]])),
+            predictions=fo.Segmentation(mask=np.array([[0, 0], [1, 2]])),
+        )
+        sample5 = fo.Sample(
+            filepath="image5.jpg",
+            ground_truth=fo.Segmentation(mask=np.array([[0, 0], [1, 2]])),
+            predictions=fo.Segmentation(mask=np.array([[1, 2], [0, 0]])),
+        )
+
+        dataset.add_samples([sample1, sample2, sample3, sample4, sample5])
+
+        return dataset
+
+    @drop_datasets
+    def test_evaluate_segmentations_simple(self):
+        dataset = self._make_segmentation_dataset()
+
+        #
+        # Test empty view
+        #
+
+        empty_view = dataset.limit(0)
+        self.assertEqual(len(empty_view), 0)
+
+        results = empty_view.evaluate_segmentations(
+            "predictions",
+            gt_field="ground_truth",
+            eval_key="eval",
+            method="simple",
+        )
+
+        results.report()
+        results.print_report()
+
+        metrics = results.metrics()
+        self.assertEqual(metrics["support"], 0)
+
+        actual = results.confusion_matrix()
+        self.assertEqual(actual.shape, (0, 0))
+
+        #
+        # Test evaluation (including missing data)
+        #
+
+        results = dataset.evaluate_segmentations(
+            "predictions",
+            gt_field="ground_truth",
+            eval_key="eval",
+            method="simple",
+            mask_targets={0: "background", 1: "cat", 2: "dog"},
+        )
+
+        results.report()
+        results.print_report()
+
+        metrics = results.metrics()
+        self.assertEqual(metrics["support"], 4)
+
+        # rows = GT, cols = predicted, labels = [background, cat, dog]
+        actual = results.confusion_matrix()
+        expected = np.array([[2, 1, 1], [1, 1, 0], [1, 0, 1]], dtype=int)
+
+        self.assertEqual(actual.shape, expected.shape)
+        self.assertTrue((actual == expected).all())
+
+
 if __name__ == "__main__":
     fo.config.show_progress_bars = False
     unittest.main(verbosity=2)
