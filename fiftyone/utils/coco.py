@@ -187,7 +187,7 @@ def add_coco_labels(
     labels = []
     for coco_id, height, width in zip(coco_ids, heights, widths):
         coco_objects = coco_objects_map[coco_id]
-        frame_size = (height, width)
+        frame_size = (width, height)
 
         if label_type == "detections":
             _labels = _coco_objects_to_detections(
