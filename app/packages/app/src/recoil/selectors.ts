@@ -1,4 +1,3 @@
-import mime from "mime";
 import { selector, selectorFamily, SerializableParam } from "recoil";
 
 import * as atoms from "./atoms";
@@ -651,41 +650,6 @@ export const selectedLabelIds = selector<Set<string>>({
   },
 });
 
-export const currentSamples = selector<string[]>({
-  key: "currentSamples",
-  get: ({ get }) => {
-    const { rows } = get(atoms.gridRows);
-    return rows
-      .map((r) => r.samples.map(({ id }) => id))
-      .flat()
-      .filter((id) => Boolean(id));
-  },
-});
-
-export const sampleIndices = selector<{ [key: string]: number }>({
-  key: "sampleIndices",
-  get: ({ get }) =>
-    Object.fromEntries(get(currentSamples).map((id, i) => [id, i])),
-});
-
-export const sampleIds = selector<{ [key: number]: string }>({
-  key: "sampleIdx",
-  get: ({ get }) =>
-    Object.fromEntries(get(currentSamples).map((id, i) => [i, id])),
-});
-
-export const selectedLoading = selector({
-  key: "selectedLoading",
-  get: ({ get }) => {
-    const ids = get(atoms.selectedSamples);
-    let loading = false;
-    ids.forEach((id) => {
-      loading = get(atoms.sample(id)) === null;
-    });
-    return loading;
-  },
-});
-
 export const anyTagging = selector<boolean>({
   key: "anyTagging",
   get: ({ get }) => {
@@ -710,13 +674,6 @@ export const hiddenLabelIds = selector({
   key: "hiddenLabelIds",
   get: ({ get }) => {
     return new Set(Object.keys(get(atoms.hiddenLabels)));
-  },
-});
-
-export const currentSamplesSize = selector<number>({
-  key: "currentSamplesSize",
-  get: ({ get }) => {
-    return get(currentSamples).length;
   },
 });
 
@@ -773,27 +730,6 @@ export const fieldType = selectorFamily<string, string>({
     return frame
       ? entry[path.slice("frames.".length)].ftype
       : entry[path].ftype;
-  },
-});
-
-export const sampleMimeType = selectorFamily<string, string>({
-  key: "sampleMimeType",
-  get: (id) => ({ get }) => {
-    const sample = get(atoms.sample(id));
-    return (
-      (sample.metadata && sample.metadata.mime_type) ||
-      mime.getType(sample.filepath) ||
-      "image/jpg"
-    );
-  },
-});
-
-export const sampleSrc = selectorFamily<string, string>({
-  key: "sampleSrc",
-  get: (id) => ({ get }) => {
-    return `${http}/filepath/${encodeURI(
-      get(atoms.sample(id)).filepath
-    )}?id=${id}`;
   },
 });
 

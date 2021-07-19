@@ -141,29 +141,6 @@ export const gridRows = atom({
   },
 });
 
-export const sample = atomFamily<SerializableParam, string>({
-  key: "sample",
-  default: null,
-});
-
-export const sampleMetadata = atomFamily<
-  {
-    width: number | null;
-    height: number;
-    frameRate?: number;
-    aspectRatio: number;
-  },
-  string
->({
-  key: "sampleMetadata",
-  default: {
-    width: null,
-    height: null,
-    frameRate: null,
-    aspectRatio: null,
-  },
-});
-
 export const viewCounter = atom({
   key: "viewCounter",
   default: 0,

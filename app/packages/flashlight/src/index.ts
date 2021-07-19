@@ -19,7 +19,6 @@ export interface FlashlightConfig<K> {
 export default class Flashlight<K> {
   private container: HTMLDivElement = document.createElement("div");
   private state: State<K>;
-  private resizeObserver: ResizeObserver;
   private intersectionObserver: IntersectionObserver;
 
   constructor(config: FlashlightConfig<K>) {
@@ -35,8 +34,10 @@ export default class Flashlight<K> {
       items: [],
       sections: [],
       sectionMap: new Map(),
-      currentTop: 0,
+      topMap: new Map(),
     };
+
+    this.get();
   }
 
   attach(element: HTMLElement | string): void {
@@ -55,7 +56,6 @@ export default class Flashlight<K> {
   reset() {
     requestAnimationFrame(() => {
       this.intersectionObserver && this.intersectionObserver.disconnect();
-      this.resizeObserver && this.resizeObserver.disconnect();
       const newContainer = document.createElement("div");
       newContainer.classList.add(flashlight);
       this.container.replaceWith(newContainer);
@@ -98,33 +98,35 @@ export default class Flashlight<K> {
         }
 
         sections.forEach((rows) => {
-          const sectionElement = new SectionElement(
-            this.container,
-            rows,
-            this.state.render
-          );
-          this.state.sectionMap.set(sectionElement.target, {
-            top: sectionElement.computeHeight(this.state.width),
-            section: sectionElement,
-          });
+          const sectionElement = new SectionElement(rows, this.state.render);
+          this.state.sectionMap.set(sectionElement.target, sectionElement);
           this.state.sections.push(sectionElement);
+          this.state.topMap.set(
+            sectionElement.target,
+            sectionElement.getHeight(
+              this.state.width,
+              this.state.options.margin
+            )
+          );
           this.intersectionObserver.observe(sectionElement.target);
+          this.container.appendChild(sectionElement.target);
         });
       });
   }
 
   private setObservers() {
-    this.resizeObserver = new ResizeObserver(() => {});
     this.intersectionObserver = new IntersectionObserver(
       (entries) => {
         entries.forEach(({ target }) => {
-          const { top, section } = this.state.sectionMap.get(
-            target as HTMLDivElement
-          );
+          const section = this.state.sectionMap.get(target as HTMLDivElement);
           if (section.isShown()) {
             section.hide();
           } else {
-            section.show(this.state.options.margin, top, this.state.width);
+            section.show(
+              this.state.options.margin,
+              this.state.topMap.get(target as HTMLDivElement),
+              this.state.width
+            );
           }
         });
       },
@@ -133,9 +135,5 @@ export default class Flashlight<K> {
         threshold: 0,
       }
     );
-  }
-
-  private retile() {
-    let top = 0;
   }
 }

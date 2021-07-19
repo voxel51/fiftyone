@@ -15,12 +15,11 @@ export default class SectionElement implements Section {
   private top: number;
   private width: number;
   private margin: number;
-  private height: number;
   private readonly container: HTMLDivElement = document.createElement("div");
   private readonly section: HTMLDivElement = document.createElement("div");
   private readonly rows: [number, [HTMLElement, ItemData][]][];
 
-  constructor(parent: HTMLDivElement, rows: RowData[], render: Render) {
+  constructor(rows: RowData[], render: Render) {
     this.container.classList.add(flashlightSectionContainer);
     this.section.classList.add(flashlightSection);
     this.rows = rows.map(({ aspectRatio, items }) => {
@@ -34,20 +33,24 @@ export default class SectionElement implements Section {
         }),
       ];
     });
-
-    parent.appendChild(this.container);
   }
 
   get target() {
     return this.container;
   }
 
-  getHeight() {
-    return this.height;
-  }
-
   isShown() {
     return this.attached;
+  }
+
+  getHeight(width: number, margin: number): number {
+    let sectionHeight = 0;
+    this.rows.forEach(([rowAspectRatio, items]) => {
+      sectionHeight +=
+        (width - (items.length - 1) * margin) / rowAspectRatio + margin;
+    });
+
+    return sectionHeight;
   }
 
   show(top: number, width: number, margin: number): void {
@@ -76,12 +79,13 @@ export default class SectionElement implements Section {
           item.style.left = `${left}px`;
           item.style.top = `${localTop}px`;
 
-          localTop += left += width + margin;
+          left += width + margin;
         });
+
+        localTop += height + margin;
       });
 
       if (this.width !== width) {
-        this.height = localTop;
         this.container.style.height = `${localTop}px`;
       }
 

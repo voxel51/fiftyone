@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { atom, selector } from "recoil";
+import { atom, selector, useRecoilValue } from "recoil";
 import styled from "styled-components";
 import { v4 as uuid } from "uuid";
 
@@ -49,9 +49,14 @@ const Container = styled.div`
 
 export default React.memo(() => {
   const [id] = useState(() => uuid());
+  const zoom = useRecoilValue(gridRowAspectRatio);
   const [flashlight] = useState(() => {
     return new Flashlight<number>({
-      margin: MARGIN,
+      initialRequestKey: 1,
+      options: {
+        margin: MARGIN,
+        rowAspectRatioThreshold: zoom,
+      },
       get: (page) =>
         fetch(`${url}page=${page}`)
           .then((response) => response.json())

@@ -46,15 +46,9 @@ export interface State<K> {
   currentRequestKey: K;
   currentRemainder: ItemData[];
   currentRowRemainder: RowData[];
-  currentTop: number;
   items: ItemData[];
   sections: Section[];
-  sectionMap: Map<
-    HTMLDivElement,
-    {
-      top: number;
-      section: Section;
-    }
-  >;
+  sectionMap: Map<HTMLDivElement, Section>;
+  topMap: Map<HTMLDivElement, number>;
   options: Options;
 }
