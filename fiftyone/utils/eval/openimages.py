@@ -639,6 +639,7 @@ def _compute_matches(
                             if iou > best_match_iou:
                                 best_match = None
                                 best_match_iou = iou_thresh
+
                         continue
 
                     # If matching classwise=False
@@ -682,26 +683,25 @@ def _compute_matches(
 
                 if best_match:
                     gt = gt_map[best_match]
-                    tag = "tp" if gt.label == pred.label else "fp"
-                    skip_match = False
 
-                    # This only occurs when matching more than 1 prediction to
-                    # a crowd. Only the first match counts as a TP, the rest
-                    # are ignored in mAP calculation
-                    if gt[id_key] != _NO_MATCH_ID:
-                        skip_match = True
-                        tag = "crowd"
+                    # For crowd GTs, record info for first (highest confidence)
+                    # matching prediction on the GT object
+                    if gt[id_key] == _NO_MATCH_ID:
+                        record_match = True
 
-                    else:
-                        gt[eval_key] = tag
+                        gt[eval_key] = "tp" if gt.label == pred.label else "fn"
                         gt[id_key] = pred.id
                         gt[iou_key] = best_match_iou
+                    else:
+                        # In Open Images-style evaluation, only the first match
+                        # for a crowd GT is recorded in `matches`
+                        record_match = False
 
-                    pred[eval_key] = tag
+                    pred[eval_key] = "tp" if gt.label == pred.label else "fp"
                     pred[id_key] = best_match
                     pred[iou_key] = best_match_iou
 
-                    if not skip_match:
+                    if record_match:
                         matches.append(
                             (
                                 gt.label,
@@ -724,7 +724,6 @@ def _compute_matches(
                             pred.id,
                         )
                     )
-
             elif pred.label == cat:
                 pred[eval_key] = "fp"
                 matches.append(

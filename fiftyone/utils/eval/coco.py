@@ -589,7 +589,7 @@ def _compute_matches(
                     if gt_iscrowd and gt.label != pred.label:
                         continue
 
-                    # Crowds are last in order of gts
+                    # Crowds are last in order of GTs
                     # If we already matched a non-crowd and are on a crowd,
                     # then break
                     if (
@@ -607,13 +607,18 @@ def _compute_matches(
 
                 if best_match:
                     gt = gt_map[best_match]
-                    tag = "tp" if gt.label == pred.label else "fp"
-                    gt[eval_key] = tag
-                    gt[id_key] = pred.id
-                    gt[iou_key] = best_match_iou
-                    pred[eval_key] = tag
+
+                    # For crowd GTs, record info for first (highest confidence)
+                    # matching prediction on the GT object
+                    if gt[id_key] == _NO_MATCH_ID:
+                        gt[eval_key] = "tp" if gt.label == pred.label else "fn"
+                        gt[id_key] = pred.id
+                        gt[iou_key] = best_match_iou
+
+                    pred[eval_key] = "tp" if gt.label == pred.label else "fp"
                     pred[id_key] = best_match
                     pred[iou_key] = best_match_iou
+
                     matches.append(
                         (
                             gt.label,
