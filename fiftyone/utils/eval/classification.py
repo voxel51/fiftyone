@@ -600,7 +600,7 @@ class ClassificationResults(foe.EvaluationResults):
 
     def report(self, classes=None):
         """Generates a classification report for the results via
-        ``sklearn.metrics.classification_report``.
+        :func:`sklearn:sklearn.metrics.classification_report`.
 
         Args:
             classes (None): an optional list of ground truth classes to include
@@ -637,8 +637,9 @@ class ClassificationResults(foe.EvaluationResults):
         """Computes classification metrics for the results, including accuracy,
         precision, recall, and F-beta score.
 
-        See ``sklearn.metrics.accuracy_score`` and
-        ``sklearn.metrics.precision_recall_fscore_support`` for details.
+        See :func:`sklearn:sklearn.metrics.accuracy_score` and
+        :func:`sklearn:sklearn.metrics.precision_recall_fscore_support` for
+        details.
 
         Args:
             classes (None): an optional list of ground truth classes to include
@@ -682,7 +683,7 @@ class ClassificationResults(foe.EvaluationResults):
 
     def print_report(self, classes=None, digits=2):
         """Prints a classification report for the results via
-        ``sklearn.metrics.classification_report``.
+        :func:`sklearn:sklearn.metrics.classification_report`.
 
         Args:
             classes (None): an optional list of ground truth classes to include
@@ -706,7 +707,7 @@ class ClassificationResults(foe.EvaluationResults):
 
     def confusion_matrix(self, classes=None, include_other=False):
         """Generates a confusion matrix for the results via
-        ``sklearn.metrics.confusion_matrix``.
+        :func:`sklearn:sklearn.metrics.confusion_matrix`.
 
         The rows of the confusion matrix represent ground truth and the columns
         represent predictions.
@@ -937,7 +938,7 @@ class BinaryClassificationResults(ClassificationResults):
 
     def average_precision(self, average="micro"):
         """Computes the average precision for the results via
-        ``sklearn.metrics.average_precision_score``.
+        :func:`sklearn:sklearn.metrics.average_precision_score`.
 
         Args:
             average ("micro"): the averaging strategy to use
