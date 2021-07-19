@@ -17,7 +17,7 @@ export interface FlashlightConfig<K> {
 }
 
 export default class Flashlight<K> {
-  private loading: boolean = true;
+  private loading: boolean = false;
   private container: HTMLDivElement = document.createElement("div");
   private state: State<K>;
   private intersectionObserver: IntersectionObserver;
@@ -36,6 +36,7 @@ export default class Flashlight<K> {
       sections: [],
       sectionMap: new Map(),
       topMap: new Map(),
+      indexMap: new Map(),
     };
 
     this.setObservers();
@@ -48,7 +49,7 @@ export default class Flashlight<K> {
     }
 
     const { width, height } = element.getBoundingClientRect();
-    this.state.width = width;
+    this.state.width = width - 16;
     this.state.containerHeight = height;
 
     element.appendChild(this.container);
@@ -68,6 +69,10 @@ export default class Flashlight<K> {
   updateOptions(options: Optional<Options>) {}
 
   private get() {
+    if (this.loading) {
+      return;
+    }
+
     this.loading = true;
     this.state
       .get(this.state.currentRequestKey)
@@ -103,25 +108,38 @@ export default class Flashlight<K> {
 
         const targets = [];
         sections.forEach((rows) => {
-          const sectionElement = new SectionElement(rows, this.state.render);
-          this.state.sectionMap.set(sectionElement.target, sectionElement);
-          this.state.sections.push(sectionElement);
-          const sectionHeight = sectionElement.getHeight(
+          const sectionElement = new SectionElement(
+            this.state.sections.length,
+            rows,
+            this.state.render
+          );
+          sectionElement.set(
+            this.state.height,
             this.state.width,
             this.state.options.margin
           );
-          this.state.topMap.set(sectionElement.target, this.state.height);
+          this.state.sections.push(sectionElement);
           this.container.appendChild(sectionElement.target);
 
-          this.state.height += sectionHeight;
+          this.state.height += sectionElement.getHeight();
           targets.push(sectionElement.target);
         });
 
-        this.container.style.height = `${this.state.height}px`;
+        if (sections.length) {
+          this.container.style.height = `${this.state.height}px`;
+        }
+
         this.state.currentRequestKey = nextRequestKey;
 
         targets.forEach((target) => this.intersectionObserver.observe(target));
         this.loading = false;
+
+        if (
+          this.state.height <= this.state.containerHeight ||
+          (!sections.length && nextRequestKey)
+        ) {
+          this.get();
+        }
       });
   }
 
@@ -130,31 +148,25 @@ export default class Flashlight<K> {
       (entries) => {
         entries.forEach((entry) => {
           const { target } = entry;
-          const section = this.state.sectionMap.get(target as HTMLDivElement);
-          if (entry.isIntersecting) {
-            section.show(
-              this.state.topMap.get(target as HTMLDivElement),
-              this.state.width,
-              this.state.options.margin
-            );
+          const section = this.state.sections[
+            parseInt((target as HTMLDivElement).dataset.index, 10)
+          ];
 
+          if (entry.intersectionRatio > 0) {
             const lastSection = this.state.sections[
               this.state.sections.length - 1
             ];
-            if (
-              !this.loading &&
-              this.state.currentRequestKey &&
-              lastSection.target === target
-            ) {
+            if (this.state.currentRequestKey && lastSection.target === target) {
               this.get();
             }
-          } else {
+            section.show();
+          } else if (section.isShown()) {
             section.hide();
           }
         });
       },
       {
-        root: this.container,
+        root: this.container.parentElement,
         threshold: 0,
       }
     );

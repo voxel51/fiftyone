@@ -5,7 +5,6 @@
 import { ItemData, Render, RowData, Section } from "./state";
 
 import {
-  flashLightItem,
   flashlightSection,
   flashlightSectionContainer,
 } from "./styles.module.css";
@@ -15,16 +14,24 @@ export default class SectionElement implements Section {
   private top: number;
   private width: number;
   private margin: number;
+  private height: number;
+  readonly index: number;
   private readonly container: HTMLDivElement = document.createElement("div");
   private readonly section: HTMLDivElement = document.createElement("div");
-  private readonly rows: [number, [HTMLElement, ItemData][]][];
+  private readonly rows: [
+    { aspectRatio: number; extraMargins: number },
+    [HTMLElement, ItemData][]
+  ][];
 
-  constructor(rows: RowData[], render: Render) {
+  constructor(index: number, rows: RowData[], render: Render) {
+    this.index = index;
     this.container.classList.add(flashlightSectionContainer);
+    this.container.dataset.index = String(index);
+
     this.section.classList.add(flashlightSection);
-    this.rows = rows.map(({ aspectRatio, items }) => {
+    this.rows = rows.map(({ aspectRatio, extraMargins, items }) => {
       return [
-        aspectRatio,
+        { aspectRatio, extraMargins },
         items.map((itemData) => {
           const itemElement = document.createElement("div");
           this.section.appendChild(itemElement);
@@ -35,73 +42,74 @@ export default class SectionElement implements Section {
     });
   }
 
-  get target() {
-    return this.container;
-  }
-
-  isShown() {
-    return this.attached;
-  }
-
-  getHeight(width: number, margin: number): number {
-    let sectionHeight = 0;
-    this.rows.forEach(([rowAspectRatio, items]) => {
-      sectionHeight +=
-        (width - (items.length - 1) * margin) / rowAspectRatio + margin;
-    });
-
-    return sectionHeight;
-  }
-
-  show(top: number, width: number, margin: number): void {
-    const layout =
-      top === this.top && width && this.width && margin === this.margin;
-
-    if (layout && this.attached) {
-      return;
-    }
-
+  set(top: number, width: number, margin: number) {
     if (this.top !== top) {
       this.container.style.top = `${top}px`;
 
       this.top = top;
     }
 
-    if (!layout) {
+    const layout = this.width !== width || this.margin !== margin;
+    if (layout) {
       let localTop = 0;
-      this.rows.forEach(([rowAspectRatio, items]) => {
-        const height = (width - (items.length - 1) * margin) / rowAspectRatio;
-        let left = 0;
-        items.forEach(([item, { aspectRatio }]) => {
-          const itemWidth = height * aspectRatio;
-          item.style.height = `${height}px`;
-          item.style.width = `${itemWidth}px`;
-          item.style.left = `${left}px`;
-          item.style.top = `${localTop}px`;
+      this.rows.forEach(
+        ([{ extraMargins, aspectRatio: rowAspectRatio }, items]) => {
+          extraMargins = extraMargins ? extraMargins : 0;
+          const height =
+            (width - (items.length - 1 + extraMargins) * margin) /
+            rowAspectRatio;
+          let left = 0;
+          items.forEach(([item, { aspectRatio }]) => {
+            const itemWidth = height * aspectRatio;
+            item.style.height = `${height}px`;
+            item.style.width = `${itemWidth}px`;
+            item.style.left = `${left}px`;
+            item.style.top = `${localTop}px`;
 
-          left += itemWidth + margin;
-        });
+            left += itemWidth + margin;
+          });
 
-        localTop += height + margin;
-      });
+          localTop += height + margin;
+        }
+      );
 
       if (this.width !== width) {
         this.container.style.height = `${localTop}px`;
       }
 
+      this.margin = margin;
       this.width = width;
+      this.height = localTop;
       this.margin = margin;
     }
+  }
 
-    if (!this.attached) {
-      this.container.appendChild(this.section);
-    }
+  get target() {
+    return this.container;
+  }
 
-    this.attached = true;
+  getHeight() {
+    return this.height;
+  }
+  getTop() {
+    return this.top;
   }
 
   hide(): void {
-    this.container.removeChild(this.section);
-    this.attached = false;
+    if (this.attached) {
+      this.container.removeChild(this.section);
+      this.attached = false;
+    }
+  }
+
+  isShown() {
+    return this.attached;
+  }
+
+  show(): void {
+    if (!this.attached) {
+      this.container.appendChild(this.section);
+      this.attached = true;
+    }
   }
 }

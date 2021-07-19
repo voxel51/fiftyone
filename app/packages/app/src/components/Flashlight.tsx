@@ -45,9 +45,10 @@ const url = (() => {
 const Container = styled.div`
   width: 100%;
   height: 100%;
+  display: block;
+  position: relative;
 
-  overflow-y: auto;
-  overflow-x: hidden;
+  overflow-y: scroll;
 
   ${scrollbarStyles}
 `;

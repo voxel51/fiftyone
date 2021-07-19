@@ -7,7 +7,11 @@ export type Optional<T> = {
 };
 
 export interface Section {
-  show: (margin: number, top: number, width: number) => void;
+  getTop: () => number;
+  getHeight: () => number;
+  index: number;
+  set: (margin: number, top: number, width: number) => void;
+  show: () => void;
   hide: () => void;
   target: HTMLDivElement;
   isShown: () => boolean;
@@ -21,6 +25,7 @@ export interface ItemData {
 export interface RowData {
   items: ItemData[];
   aspectRatio: number;
+  extraMargins?: number;
 }
 
 export interface Response<K> {
@@ -48,7 +53,5 @@ export interface State<K> {
   currentRowRemainder: RowData[];
   items: ItemData[];
   sections: Section[];
-  sectionMap: Map<HTMLDivElement, Section>;
-  topMap: Map<HTMLDivElement, number>;
   options: Options;
 }

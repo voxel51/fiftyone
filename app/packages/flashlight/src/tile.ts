@@ -3,11 +3,14 @@ import { ItemData, RowData } from "./state";
 const lastRow = ({ items }: RowData, threshold: number): RowData => {
   const aspectRatios = new Set(items.map(({ aspectRatio }) => aspectRatio));
   if (aspectRatios.size === 1) {
-    let aspectRatio = aspectRatios.values()[0] * items.length;
+    let aspectRatio = [...aspectRatios.values()][0];
+    let singleAR = aspectRatio;
+    let counter = 1;
     while (aspectRatio < threshold) {
-      aspectRatio += aspectRatio;
+      aspectRatio += singleAR;
+      counter += 1;
     }
-    return { items, aspectRatio };
+    return { items, aspectRatio, extraMargins: counter - items.length };
   }
   return {
     items,
