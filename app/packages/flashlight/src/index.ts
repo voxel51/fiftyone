@@ -21,6 +21,7 @@ export default class Flashlight<K> {
   private container: HTMLDivElement = document.createElement("div");
   private state: State<K>;
   private intersectionObserver: IntersectionObserver;
+  private resizeObserver: ResizeObserver;
 
   constructor(config: FlashlightConfig<K>) {
     this.container.classList.add(flashlight);
@@ -34,9 +35,7 @@ export default class Flashlight<K> {
       currentRowRemainder: [],
       items: [],
       sections: [],
-      sectionMap: new Map(),
-      topMap: new Map(),
-      indexMap: new Map(),
+      activeSection: 0,
     };
 
     this.setObservers();
@@ -160,6 +159,7 @@ export default class Flashlight<K> {
               this.get();
             }
             section.show();
+            this.state.activeSection = section.index;
           } else if (section.isShown()) {
             section.hide();
           }
@@ -170,5 +170,29 @@ export default class Flashlight<K> {
         threshold: 0,
       }
     );
+
+    let attached = false;
+    this.resizeObserver = new ResizeObserver(() => {
+      if (!attached) {
+        attached = true;
+        return;
+      }
+
+      requestAnimationFrame(() => {
+        const { width } = this.container.getBoundingClientRect();
+        const activeSection = this.state.sections[this.state.activeSection];
+        let height = 0;
+        this.state.sections.forEach((section) => {
+          section.set(height, width, this.state.options.margin);
+          height += section.getHeight();
+        });
+
+        this.container.style.height = `${height}px`;
+
+        activeSection.target.scrollTo();
+      });
+    });
+
+    this.resizeObserver.observe(this.container);
   }
 }

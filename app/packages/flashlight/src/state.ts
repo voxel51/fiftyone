@@ -54,4 +54,5 @@ export interface State<K> {
   items: ItemData[];
   sections: Section[];
   options: Options;
+  activeSection: number;
 }
