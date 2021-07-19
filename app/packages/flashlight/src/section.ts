@@ -71,15 +71,15 @@ export default class SectionElement implements Section {
       let localTop = 0;
       this.rows.forEach(([rowAspectRatio, items]) => {
         const height = (width - (items.length - 1) * margin) / rowAspectRatio;
-        let left: 0;
+        let left = 0;
         items.forEach(([item, { aspectRatio }]) => {
-          const width = height * aspectRatio;
+          const itemWidth = height * aspectRatio;
           item.style.height = `${height}px`;
-          item.style.width = `${width}px`;
+          item.style.width = `${itemWidth}px`;
           item.style.left = `${left}px`;
           item.style.top = `${localTop}px`;
 
-          left += width + margin;
+          left += itemWidth + margin;
         });
 
         localTop += height + margin;
@@ -93,7 +93,9 @@ export default class SectionElement implements Section {
       this.margin = margin;
     }
 
-    !this.attached && this.container.appendChild(this.section);
+    if (!this.attached) {
+      this.container.appendChild(this.section);
+    }
 
     this.attached = true;
   }

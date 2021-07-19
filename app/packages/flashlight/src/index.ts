@@ -17,6 +17,7 @@ export interface FlashlightConfig<K> {
 }
 
 export default class Flashlight<K> {
+  private loading: boolean = true;
   private container: HTMLDivElement = document.createElement("div");
   private state: State<K>;
   private intersectionObserver: IntersectionObserver;
@@ -37,6 +38,7 @@ export default class Flashlight<K> {
       topMap: new Map(),
     };
 
+    this.setObservers();
     this.get();
   }
 
@@ -46,7 +48,6 @@ export default class Flashlight<K> {
     }
 
     const { width, height } = element.getBoundingClientRect();
-
     this.state.width = width;
     this.state.containerHeight = height;
 
@@ -67,6 +68,7 @@ export default class Flashlight<K> {
   updateOptions(options: Optional<Options>) {}
 
   private get() {
+    this.loading = true;
     this.state
       .get(this.state.currentRequestKey)
       .then(({ items, nextRequestKey }) => {
@@ -82,9 +84,9 @@ export default class Flashlight<K> {
 
         rows = [...this.state.currentRowRemainder, ...rows];
 
-        let sections = new Array(
-          Math.ceil(rows.length / NUM_ROWS_PER_SECTION)
-        ).map((_) => rows.splice(0, NUM_ROWS_PER_SECTION));
+        let sections = new Array(Math.ceil(rows.length / NUM_ROWS_PER_SECTION))
+          .fill(0)
+          .map((_) => rows.splice(0, NUM_ROWS_PER_SECTION));
 
         const lastSection = sections[sections.length - 1];
         if (
@@ -93,40 +95,61 @@ export default class Flashlight<K> {
         ) {
           this.state.currentRowRemainder = lastSection;
           sections = sections.slice(0, -1);
+
+          sections.length === 0 && this.get();
         } else {
           this.state.currentRowRemainder = [];
         }
 
+        const targets = [];
         sections.forEach((rows) => {
           const sectionElement = new SectionElement(rows, this.state.render);
           this.state.sectionMap.set(sectionElement.target, sectionElement);
           this.state.sections.push(sectionElement);
-          this.state.topMap.set(
-            sectionElement.target,
-            sectionElement.getHeight(
-              this.state.width,
-              this.state.options.margin
-            )
+          const sectionHeight = sectionElement.getHeight(
+            this.state.width,
+            this.state.options.margin
           );
-          this.intersectionObserver.observe(sectionElement.target);
+          this.state.topMap.set(sectionElement.target, this.state.height);
           this.container.appendChild(sectionElement.target);
+
+          this.state.height += sectionHeight;
+          targets.push(sectionElement.target);
         });
+
+        this.container.style.height = `${this.state.height}px`;
+        this.state.currentRequestKey = nextRequestKey;
+
+        targets.forEach((target) => this.intersectionObserver.observe(target));
+        this.loading = false;
       });
   }
 
   private setObservers() {
     this.intersectionObserver = new IntersectionObserver(
       (entries) => {
-        entries.forEach(({ target }) => {
+        entries.forEach((entry) => {
+          const { target } = entry;
           const section = this.state.sectionMap.get(target as HTMLDivElement);
-          if (section.isShown()) {
-            section.hide();
-          } else {
+          if (entry.isIntersecting) {
             section.show(
-              this.state.options.margin,
               this.state.topMap.get(target as HTMLDivElement),
-              this.state.width
+              this.state.width,
+              this.state.options.margin
             );
+
+            const lastSection = this.state.sections[
+              this.state.sections.length - 1
+            ];
+            if (
+              !this.loading &&
+              this.state.currentRequestKey &&
+              lastSection.target === target
+            ) {
+              this.get();
+            }
+          } else {
+            section.hide();
           }
         });
       },

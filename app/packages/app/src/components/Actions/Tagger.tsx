@@ -357,7 +357,7 @@ const useTagCallback = (modal, targetLabels, lookerRef = null) => {
       if (modal) {
         socket.send(
           packageModal({
-            sample_id: (await snapshot.getPromise(selectors.modalSample))._id,
+            sample_id: (await snapshot.getPromise(atoms.modalSample))._id,
             changes,
             labels: targetLabels,
             activeLabels,

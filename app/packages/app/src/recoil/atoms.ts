@@ -170,3 +170,8 @@ export const savedLookerOptions = atom({
   key: "savedLookerOptions",
   default: {},
 });
+
+export const modalSample = atom({
+  key: "modalSample",
+  default: null,
+});

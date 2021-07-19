@@ -44,7 +44,6 @@ function Dataset() {
     ? { background: theme.backgroundDark }
     : {};
   const hasDataset = useRecoilValue(selectors.hasDataset);
-  const currentSamples = useRecoilValue(selectors.currentSamples);
   const clearModal = useClearModal();
   useGA();
   useSampleUpdate();
@@ -53,22 +52,6 @@ function Dataset() {
   useEffect(() => {
     document.body.classList.toggle("noscroll", modal.visible);
   }, [modal.visible]);
-
-  const hideModal = useMemo(() => {
-    return modal.visible && !currentSamples.some((id) => id === modal.sampleId);
-  }, [currentSamples]);
-
-  useEffect(() => {
-    hideModal && clearModal();
-    if (!hideModal && modal.visible) {
-      setModal({
-        ...modal,
-        sampleId: currentSamples.filter((id) => id === modal.sampleId)[0],
-      });
-    }
-  }, [hideModal]);
-
-  useSendMessage("set_selected_labels", { selected_labels: [] }, !hideModal);
   const ref = useRef();
 
   useOutsideClick(ref, clearModal);

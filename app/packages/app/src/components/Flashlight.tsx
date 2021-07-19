@@ -6,6 +6,9 @@ import { v4 as uuid } from "uuid";
 import Flashlight from "@fiftyone/flashlight";
 
 import * as selectors from "../recoil/selectors";
+import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
+import { http } from "../shared/connection";
+import { scrollbarStyles } from "./utils";
 
 export const gridZoom = atom<number | null>({
   key: "gridZoom",
@@ -26,10 +29,7 @@ const pageSize = selector<number>({
 
 const MARGIN = 3;
 
-const samples = new Map<
-  string,
-  { sample: any; width: number; height: number; fps?: number }
->();
+const lookers = new Map<string, ImageLooker | FrameLooker | VideoLooker>();
 
 const url = (() => {
   let origin = window.location.origin;
@@ -45,6 +45,11 @@ const url = (() => {
 const Container = styled.div`
   width: 100%;
   height: 100%;
+
+  overflow-y: auto;
+  overflow-x: hidden;
+
+  ${scrollbarStyles}
 `;
 
 export default React.memo(() => {
@@ -63,7 +68,21 @@ export default React.memo(() => {
           .then(({ results, more }) => {
             return {
               items: results.map((result) => {
-                samples.set(result.sample._id, result);
+                lookers.set(
+                  result.sample._id,
+                  new ImageLooker(
+                    result.sample,
+                    {
+                      src: `${http}/filepath/${encodeURI(
+                        result.sample.filepath
+                      )}?id=${id}`,
+                      thumbnail: true,
+                      dimensions: [result.width, result.height],
+                      sampleId: result.sample._id,
+                    },
+                    null
+                  )
+                );
                 return {
                   id: result.sample._id,
                   aspectRatio: result.width / result.height,
@@ -72,7 +91,9 @@ export default React.memo(() => {
               nextRequestKey: more ? page + 1 : null,
             };
           }),
-      render: (sampleId, element) => {},
+      render: (sampleId, element) => {
+        lookers.get(sampleId).attach(element);
+      },
     });
   });
 

@@ -79,7 +79,7 @@ export const genSort = (a, b, asc) => {
   return asc ? -1 : 1;
 };
 
-export const getMediaType = (sample: any) => {
+export const getMimeType = (sample: any) => {
   return (
     (sample.metadata && sample.metadata.mime_type) ||
     mime.getType(sample.filepath) ||

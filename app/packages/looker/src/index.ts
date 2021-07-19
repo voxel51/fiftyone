@@ -82,7 +82,7 @@ export abstract class Looker<
   constructor(
     sample: Sample,
     config: State["config"],
-    options: Optional<State["options"]>
+    options?: Optional<State["options"]>
   ) {
     this.sample = sample;
     this.loadSample(sample);

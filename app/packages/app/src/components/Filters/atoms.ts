@@ -352,7 +352,7 @@ export const scalarCounts = selectorFamily<
   key: "scalarCounts",
   get: (modal) => ({ get }) => {
     if (modal) {
-      return get(selectors.modalSample);
+      return get(atoms.modalSample);
     }
 
     const names = get(selectors.scalarNames("sample"));

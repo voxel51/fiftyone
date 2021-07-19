@@ -14,6 +14,7 @@ import * as labelAtoms from "./Filters/utils";
 import { ContentDiv, ContentHeader } from "./utils";
 import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
 import { useEventHandler, useTheme } from "../utils/hooks";
+import { getMimeType } from "../utils/generic";
 
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
@@ -28,10 +29,10 @@ import { Warning } from "@material-ui/icons";
 
 type LookerTypes = typeof FrameLooker | typeof ImageLooker | typeof VideoLooker;
 
-const lookerType = selectorFamily<LookerTypes, string>({
+const lookerType = selector<LookerTypes>({
   key: "lookerType",
-  get: (sampleId) => ({ get }) => {
-    const video = get(selectors.sampleMimeType(sampleId)).startsWith("video/");
+  get: ({ get }) => {
+    const video = getMimeType(get(atoms.modalSample)).startsWith("video/");
     const isFrame = get(selectors.isFramesView);
     const isPatch = get(selectors.isPatchesView);
     if (video && (isFrame || isPatch)) {
@@ -402,9 +403,8 @@ const useFullscreen = () => {
   });
 };
 
-const useErrorHandler = (looker, sampleId) => {
+const useErrorHandler = (looker, mimetype) => {
   const [error, setError] = useState(null);
-  const mimetype = useRecoilValue(selectors.sampleMimeType(sampleId));
   const video = mimetype.startsWith("video/");
 
   useEventHandler(looker, "error", () =>
@@ -457,8 +457,10 @@ const Looker = ({
   sampleId,
   style,
 }: LookerProps) => {
+  return null;
   const [id] = useState(() => uuid());
-  let sample = useRecoilValue(atoms.sample(sampleId));
+  let sample = useRecoilValue(atoms.modalSample);
+  const mimetype = getMediaType(sample);
   const sampleSrc = useRecoilValue(selectors.sampleSrc(sampleId));
   const options = useRecoilValue(lookerModalOptions);
   const activeLabels = useRecoilValue(labelAtoms.activeModalFields);
@@ -501,7 +503,7 @@ const Looker = ({
 
   lookerRef && (lookerRef.current = looker);
 
-  const error = useErrorHandler(looker, sampleId);
+  const error = useErrorHandler(looker, mimetype);
   useEventHandler(looker, "options", useLookerOptionsUpdate());
   useEventHandler(looker, "fullscreen", useFullscreen());
   onNext && useEventHandler(looker, "next", onNext);

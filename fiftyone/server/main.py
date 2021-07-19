@@ -228,10 +228,10 @@ class PageHandler(tornado.web.RequestHandler):
         self.set_header("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
         self.set_header("x-colab-notebook-cache-control", "no-cache")
 
-    async def get(self, page, page_length=20):
+    async def get(self):
         # pylint: disable=no-value-for-parameter
-        page = self.get_argument("page", None)
-        page_length = self.get_argument("page_length", 20)
+        page = int(self.get_argument("page", 1))
+        page_length = int(self.get_argument("page_length", 20))
 
         state = fos.StateDescription.from_dict(StateHandler.state)
         if state.view is not None:
@@ -240,6 +240,7 @@ class PageHandler(tornado.web.RequestHandler):
             view = state.dataset
         else:
             self.write({"results": [], "more": False})
+            return
 
         view = get_extended_view(view, state.filters, count_labels_tags=True)
         view = view.skip((page - 1) * page_length)
