@@ -82,7 +82,7 @@ export abstract class Looker<
   constructor(
     sample: Sample,
     config: State["config"],
-    options?: Optional<State["options"]>
+    options: Optional<State["options"]> = {}
   ) {
     this.sample = sample;
     this.loadSample(sample);
@@ -416,7 +416,7 @@ export class FrameLooker extends Looker<FrameState> {
   constructor(
     sample: BaseSample,
     config: FrameState["config"],
-    options: FrameState["options"]
+    options: Optional<FrameState["options"]> = {}
   ) {
     super(sample, config, options);
     this.overlays = [];
@@ -510,7 +510,7 @@ export class ImageLooker extends Looker<ImageState> {
   constructor(
     sample: BaseSample,
     config: ImageState["config"],
-    options: ImageState["options"]
+    options: Optional<ImageState["options"]> = {}
   ) {
     super(sample, config, options);
     this.overlays = [];
@@ -759,7 +759,7 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
   constructor(
     sample: VideoSample,
     config: VideoState["config"],
-    options: VideoState["options"]
+    options: Optional<VideoState["options"]> = {}
   ) {
     super(sample, config, options);
   }

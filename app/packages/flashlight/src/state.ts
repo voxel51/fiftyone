@@ -15,6 +15,7 @@ export interface Section {
   hide: () => void;
   target: HTMLDivElement;
   isShown: () => boolean;
+  getItems: () => string[];
 }
 
 export interface ItemData {
@@ -55,4 +56,7 @@ export interface State<K> {
   sections: Section[];
   options: Options;
   activeSection: number;
+  clean: Set<number>;
+  updater?: (id: string) => void;
+  shownSections: Set<number>;
 }

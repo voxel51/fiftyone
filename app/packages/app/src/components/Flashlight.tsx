@@ -1,14 +1,25 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { atom, selector, useRecoilValue } from "recoil";
 import styled from "styled-components";
 import { v4 as uuid } from "uuid";
 
-import Flashlight from "@fiftyone/flashlight";
+import Flashlight, {
+  FlashlightConfig,
+  FlashlightOptions,
+} from "@fiftyone/flashlight";
 
 import * as selectors from "../recoil/selectors";
-import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
+import {
+  FrameLooker,
+  ImageLooker,
+  VideoLooker,
+  zoomAspectRatio,
+} from "@fiftyone/looker";
 import { http } from "../shared/connection";
 import { scrollbarStyles } from "./utils";
+import { activeFields } from "./Filters/utils";
+import { labelFilters } from "./Filters/LabelFieldFilters.state";
+import * as atoms from "../recoil/atoms";
 
 export const gridZoom = atom<number | null>({
   key: "gridZoom",
@@ -53,16 +64,30 @@ const Container = styled.div`
   ${scrollbarStyles}
 `;
 
+const flashlightOptions = selector<FlashlightOptions>({
+  key: "flashlightOptions",
+  get: ({ get }) => {
+    return {
+      rowAspectRatioThreshold: get(gridRowAspectRatio),
+      margin: MARGIN,
+    };
+  },
+});
+
 export default React.memo(() => {
   const [id] = useState(() => uuid());
   const zoom = useRecoilValue(gridRowAspectRatio);
+  const activeLabels = useRecoilValue(activeFields);
+  const filter = useRecoilValue(labelFilters(false));
+  const colorMap = useRecoilValue(selectors.colorMap(false));
+  const colorByLabel = useRecoilValue(atoms.colorByLabel(false));
+  const options = useRecoilValue(flashlightOptions);
+  const initialRender = useRef(true);
+
   const [flashlight] = useState(() => {
     return new Flashlight<number>({
       initialRequestKey: 1,
-      options: {
-        margin: MARGIN,
-        rowAspectRatioThreshold: zoom,
-      },
+      options,
       get: (page) =>
         fetch(`${url}page=${page}`)
           .then((response) => response.json())
@@ -81,9 +106,15 @@ export default React.memo(() => {
                       dimensions: [result.width, result.height],
                       sampleId: result.sample._id,
                     },
-                    null
+                    {
+                      activeLabels,
+                      filter,
+                      colorMap,
+                      colorByLabel: false,
+                    }
                   )
                 );
+
                 return {
                   id: result.sample._id,
                   aspectRatio: result.width / result.height,
@@ -99,6 +130,15 @@ export default React.memo(() => {
   });
 
   useEffect(() => flashlight.attach(id), [id]);
+
+  useEffect(() => {
+    if (initialRender.current) {
+      return;
+    }
+    flashlight.updateOptions(options);
+  }, [options]);
+
+  initialRender.current = false;
 
   return <Container id={id}></Container>;
 });

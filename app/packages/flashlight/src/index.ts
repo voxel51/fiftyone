@@ -9,11 +9,13 @@ import { Get, Optional, Options, State } from "./state";
 import { flashlight } from "./styles.module.css";
 import tile from "./tile";
 
+export interface FlashlightOptions extends Optional<Options> {}
+
 export interface FlashlightConfig<K> {
   get: Get<K>;
   render: (id: string, element: HTMLDivElement) => void;
   initialRequestKey: K;
-  options: Options;
+  options: FlashlightOptions;
 }
 
 export default class Flashlight<K> {
@@ -22,21 +24,12 @@ export default class Flashlight<K> {
   private state: State<K>;
   private intersectionObserver: IntersectionObserver;
   private resizeObserver: ResizeObserver;
+  private readonly config: FlashlightConfig<K>;
 
   constructor(config: FlashlightConfig<K>) {
     this.container.classList.add(flashlight);
-    this.state = {
-      currentRequestKey: config.initialRequestKey,
-      containerHeight: null,
-      width: null,
-      height: 0,
-      ...config,
-      currentRemainder: [],
-      currentRowRemainder: [],
-      items: [],
-      sections: [],
-      activeSection: 0,
-    };
+    this.config = config;
+    this.state = this.getEmptyState(config);
 
     this.setObservers();
     this.get();
@@ -52,10 +45,13 @@ export default class Flashlight<K> {
     this.state.containerHeight = height;
 
     element.appendChild(this.container);
+
+    this.resizeObserver.observe(element);
   }
 
   reset() {
     requestAnimationFrame(() => {
+      this.state = this.getEmptyState(this.config);
       this.intersectionObserver && this.intersectionObserver.disconnect();
       const newContainer = document.createElement("div");
       newContainer.classList.add(flashlight);
@@ -65,7 +61,23 @@ export default class Flashlight<K> {
     });
   }
 
-  updateOptions(options: Optional<Options>) {}
+  updateOptions(options: Optional<Options>) {
+    this.state.options = {
+      ...this.state.options,
+      ...options,
+    };
+  }
+
+  updateItems(updater: (id: string) => void) {
+    requestAnimationFrame(() => {
+      this.state.clean = new Set();
+      this.state.shownSections.forEach((index) => {
+        const section = this.state.sections[index];
+        section.getItems().forEach((id) => updater(id));
+      });
+      this.state.updater = updater;
+    });
+  }
 
   private get() {
     if (this.loading) {
@@ -122,6 +134,7 @@ export default class Flashlight<K> {
 
           this.state.height += sectionElement.getHeight();
           targets.push(sectionElement.target);
+          this.state.clean.add(sectionElement.index);
         });
 
         if (sections.length) {
@@ -158,10 +171,16 @@ export default class Flashlight<K> {
             if (this.state.currentRequestKey && lastSection.target === target) {
               this.get();
             }
+
+            if (!this.state.clean.has(section.index)) {
+              section.getItems().forEach((id) => this.state.updater(id));
+            }
             section.show();
+            this.state.shownSections.add(section.index);
             this.state.activeSection = section.index;
           } else if (section.isShown()) {
             section.hide();
+            this.state.shownSections.delete(section.index);
           }
         });
       },
@@ -172,27 +191,60 @@ export default class Flashlight<K> {
     );
 
     let attached = false;
-    this.resizeObserver = new ResizeObserver(() => {
-      if (!attached) {
-        attached = true;
+
+    this.resizeObserver = new ResizeObserver(
+      ([
+        {
+          contentRect: { width },
+        },
+      ]: ResizeObserverEntry[]) => {
+        if (!attached) {
+          attached = true;
+          return;
+        }
+
+        this.reposition(width);
+      }
+    );
+  }
+
+  private reposition(width: number) {
+    requestAnimationFrame(() => {
+      const activeSection = this.state.sections[this.state.activeSection];
+      if (width === this.state.width) {
         return;
       }
 
-      requestAnimationFrame(() => {
-        const { width } = this.container.getBoundingClientRect();
-        const activeSection = this.state.sections[this.state.activeSection];
-        let height = 0;
-        this.state.sections.forEach((section) => {
-          section.set(height, width, this.state.options.margin);
-          height += section.getHeight();
-        });
-
-        this.container.style.height = `${height}px`;
-
-        activeSection.target.scrollTo();
+      this.state.width = width;
+      let height = 0;
+      this.state.sections.forEach((section) => {
+        section.set(height, width, this.state.options.margin);
+        height += section.getHeight();
       });
-    });
 
-    this.resizeObserver.observe(this.container);
+      this.container.style.height = `${height}px`;
+      activeSection.target.scrollTo();
+    });
+  }
+
+  private getEmptyState(config: FlashlightConfig<K>): State<K> {
+    return {
+      currentRequestKey: config.initialRequestKey,
+      containerHeight: null,
+      width: null,
+      height: 0,
+      ...config,
+      currentRemainder: [],
+      currentRowRemainder: [],
+      items: [],
+      sections: [],
+      activeSection: 0,
+      options: {
+        rowAspectRatioThreshold: 5,
+        margin: 3,
+      },
+      clean: new Set(),
+      shownSections: new Set(),
+    };
   }
 }

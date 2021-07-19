@@ -42,6 +42,10 @@ export default class SectionElement implements Section {
     });
   }
 
+  getItems() {
+    return this.rows.map(([_, row]) => row.map(([_, { id }]) => id)).flat();
+  }
+
   set(top: number, width: number, margin: number) {
     if (this.top !== top) {
       this.container.style.top = `${top}px`;
