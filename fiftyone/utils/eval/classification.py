@@ -634,8 +634,8 @@ class ClassificationResults(foe.EvaluationResults):
         :func:`sklearn:sklearn.metrics.classification_report`.
 
         Args:
-            classes (None): an optional list of ground truth classes to include
-                in the report
+            classes (None): an optional list of classes to include in the
+                report
 
         Returns:
             a dict
@@ -673,13 +673,12 @@ class ClassificationResults(foe.EvaluationResults):
         """Computes classification metrics for the results, including accuracy,
         precision, recall, and F-beta score.
 
-        See :func:`sklearn:sklearn.metrics.accuracy_score` and
-        :func:`sklearn:sklearn.metrics.precision_recall_fscore_support` for
+        See :func:`sklearn:sklearn.metrics.precision_recall_fscore_support` for
         details.
 
         Args:
-            classes (None): an optional list of ground truth classes to include
-                in the calculations
+            classes (None): an optional list of classes to include in the
+                calculations
             average ("micro"): the averaging strategy to use
             beta (1.0): the F-beta value to use
 
@@ -688,7 +687,7 @@ class ClassificationResults(foe.EvaluationResults):
         """
         labels = self._get_labels(classes, include_missing=False)
 
-        accuracy, support = _compute_accuracy_and_support(
+        accuracy = _compute_accuracy(
             self.ytrue, self.ypred, labels=labels, weights=self.weights
         )
 
@@ -700,6 +699,10 @@ class ClassificationResults(foe.EvaluationResults):
             beta=beta,
             sample_weight=self.weights,
             zero_division=0,
+        )
+
+        support = _compute_support(
+            self.ytrue, labels=labels, weights=self.weights
         )
 
         return {
@@ -715,8 +718,8 @@ class ClassificationResults(foe.EvaluationResults):
         :func:`sklearn:sklearn.metrics.classification_report`.
 
         Args:
-            classes (None): an optional list of ground truth classes to include
-                in the report
+            classes (None): an optional list of classes to include in the
+                report
             digits (2): the number of digits of precision to print
         """
         labels = self._get_labels(classes, include_missing=False)
@@ -1136,18 +1139,19 @@ def _to_binary_scores(y, confs, pos_label):
     return scores
 
 
-def _compute_accuracy_and_support(ytrue, ypred, labels=None, weights=None):
+def _compute_accuracy(ytrue, ypred, labels=None, weights=None):
     if labels is not None:
         labels = set(labels)
-        found = np.array([y in labels for y in ytrue], dtype=bool)
+        found = np.array(
+            [yt in labels or yp in labels for yt, yp in zip(ytrue, ypred)],
+            dtype=bool,
+        )
         ytrue = ytrue[found]
         ypred = ypred[found]
         if weights is not None:
             weights = weights[found]
 
-    support = len(ytrue)
-
-    if support > 0:
+    if ytrue.size > 0:
         scores = ytrue == ypred
         if weights is not None:
             scores = weights * scores
@@ -1156,7 +1160,23 @@ def _compute_accuracy_and_support(ytrue, ypred, labels=None, weights=None):
     else:
         accuracy = 0.0
 
-    return accuracy, support
+    return accuracy
+
+
+def _compute_support(ytrue, labels=None, weights=None):
+    if labels is not None:
+        labels = set(labels)
+        found = np.array([y in labels for y in ytrue], dtype=bool)
+        ytrue = ytrue[found]
+        if weights is not None:
+            weights = weights[found]
+
+    if weights is not None:
+        support = np.sum(weights)
+    else:
+        support = ytrue.size
+
+    return support
 
 
 def _compute_confusion_matrix(
