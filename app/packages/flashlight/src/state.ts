@@ -15,7 +15,7 @@ export interface Section {
   hide: () => void;
   target: HTMLDivElement;
   isShown: () => boolean;
-  getItems: () => string[];
+  getItems: () => ItemData[];
 }
 
 export interface ItemData {

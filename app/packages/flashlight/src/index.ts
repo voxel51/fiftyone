@@ -4,7 +4,7 @@
 
 import { NUM_ROWS_PER_SECTION } from "./constants";
 import SectionElement from "./section";
-import { Get, Optional, Options, State } from "./state";
+import { Get, Optional, Options, RowData, State } from "./state";
 
 import { flashlight } from "./styles.module.css";
 import tile from "./tile";
@@ -24,15 +24,30 @@ export default class Flashlight<K> {
   private state: State<K>;
   private intersectionObserver: IntersectionObserver;
   private resizeObserver: ResizeObserver;
-  private readonly config: FlashlightConfig<K>;
 
   constructor(config: FlashlightConfig<K>) {
     this.container.classList.add(flashlight);
-    this.config = config;
     this.state = this.getEmptyState(config);
 
     this.setObservers();
     this.get();
+
+    let attached = false;
+
+    this.resizeObserver = new ResizeObserver(
+      ([
+        {
+          contentRect: { width },
+        },
+      ]: ResizeObserverEntry[]) => {
+        if (!attached) {
+          attached = true;
+          return;
+        }
+
+        this.reposition(width);
+      }
+    );
   }
 
   attach(element: HTMLElement | string): void {
@@ -49,23 +64,59 @@ export default class Flashlight<K> {
     this.resizeObserver.observe(element);
   }
 
-  reset() {
-    requestAnimationFrame(() => {
-      this.state = this.getEmptyState(this.config);
-      this.intersectionObserver && this.intersectionObserver.disconnect();
-      const newContainer = document.createElement("div");
-      newContainer.classList.add(flashlight);
-      this.container.replaceWith(newContainer);
-      this.container = newContainer;
-      this.setObservers();
-    });
-  }
-
   updateOptions(options: Optional<Options>) {
+    const retile = Object.entries(options).some(
+      ([k, v]) => this.state.options[k] != v
+    );
+
     this.state.options = {
       ...this.state.options,
       ...options,
     };
+
+    if (retile) {
+      requestAnimationFrame(() => {
+        const sections = this.tile(
+          this.state.sections.map((section) => section.getItems())
+        );
+        this.intersectionObserver.disconnect();
+
+        this.intersectionObserver && this.intersectionObserver.disconnect();
+        this.setObservers();
+        const newContainer = document.createElement("div");
+        newContainer.classList.add(flashlight);
+
+        this.state.height = 0;
+        this.state.sections = [];
+        this.state.shownSections = new Set();
+        this.state.clean = new Set();
+
+        const targets = [];
+        sections.forEach((rows) => {
+          const sectionElement = new SectionElement(
+            this.state.sections.length,
+            rows,
+            this.state.render
+          );
+          sectionElement.set(
+            this.state.height,
+            this.state.width,
+            this.state.options.margin
+          );
+          this.state.sections.push(sectionElement);
+          newContainer.appendChild(sectionElement.target);
+
+          this.state.height += sectionElement.getHeight();
+          targets.push(sectionElement.target);
+        });
+        targets.forEach((target) => this.intersectionObserver.observe(target));
+
+        newContainer.style.height = `${this.state.height}px`;
+
+        this.container.replaceWith(newContainer);
+        this.container = newContainer;
+      });
+    }
   }
 
   updateItems(updater: (id: string) => void) {
@@ -73,7 +124,10 @@ export default class Flashlight<K> {
       this.state.clean = new Set();
       this.state.shownSections.forEach((index) => {
         const section = this.state.sections[index];
-        section.getItems().forEach((id) => updater(id));
+        section
+          .getItems()
+          .map(({ id }) => id)
+          .forEach((id) => updater(id));
       });
       this.state.updater = updater;
     });
@@ -88,21 +142,11 @@ export default class Flashlight<K> {
     this.state
       .get(this.state.currentRequestKey)
       .then(({ items, nextRequestKey }) => {
+        this.state.currentRequestKey = nextRequestKey;
+
         items = [...this.state.currentRemainder, ...items];
 
-        let { rows, remainder } = tile(
-          items,
-          this.state.options.rowAspectRatioThreshold,
-          Boolean(nextRequestKey)
-        );
-
-        this.state.currentRemainder = remainder;
-
-        rows = [...this.state.currentRowRemainder, ...rows];
-
-        let sections = new Array(Math.ceil(rows.length / NUM_ROWS_PER_SECTION))
-          .fill(0)
-          .map((_) => rows.splice(0, NUM_ROWS_PER_SECTION));
+        let sections = this.tile(items);
 
         const lastSection = sections[sections.length - 1];
         if (
@@ -173,7 +217,10 @@ export default class Flashlight<K> {
             }
 
             if (!this.state.clean.has(section.index)) {
-              section.getItems().forEach((id) => this.state.updater(id));
+              section
+                .getItems()
+                .map(({ id }) => id)
+                .forEach((id) => this.state.updater(id));
             }
             section.show();
             this.state.shownSections.add(section.index);
@@ -189,23 +236,22 @@ export default class Flashlight<K> {
         threshold: 0,
       }
     );
+  }
 
-    let attached = false;
-
-    this.resizeObserver = new ResizeObserver(
-      ([
-        {
-          contentRect: { width },
-        },
-      ]: ResizeObserverEntry[]) => {
-        if (!attached) {
-          attached = true;
-          return;
-        }
-
-        this.reposition(width);
-      }
+  private tile(items): RowData[][] {
+    let { rows, remainder } = tile(
+      items,
+      this.state.options.rowAspectRatioThreshold,
+      Boolean(this.state.currentRequestKey)
     );
+
+    this.state.currentRemainder = remainder;
+
+    rows = [...this.state.currentRowRemainder, ...rows];
+
+    return new Array(Math.ceil(rows.length / NUM_ROWS_PER_SECTION))
+      .fill(0)
+      .map((_) => rows.splice(0, NUM_ROWS_PER_SECTION));
   }
 
   private reposition(width: number) {
@@ -242,6 +288,7 @@ export default class Flashlight<K> {
       options: {
         rowAspectRatioThreshold: 5,
         margin: 3,
+        ...config.options,
       },
       clean: new Set(),
       shownSections: new Set(),

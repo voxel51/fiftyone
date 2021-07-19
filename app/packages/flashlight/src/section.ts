@@ -43,7 +43,7 @@ export default class SectionElement implements Section {
   }
 
   getItems() {
-    return this.rows.map(([_, row]) => row.map(([_, { id }]) => id)).flat();
+    return this.rows.map(([_, row]) => row.map(([_, data]) => data)).flat();
   }
 
   set(top: number, width: number, margin: number) {

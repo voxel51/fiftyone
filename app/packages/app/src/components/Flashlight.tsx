@@ -74,14 +74,26 @@ const flashlightOptions = selector<FlashlightOptions>({
   },
 });
 
+const flashlightLookerOptions = selector({
+  key: "flashlightLookerOptions",
+  get: ({ get }) => {
+    return {
+      colorByLabel: get(atoms.colorByLabel(false)),
+      colorMap: get(selectors.colorMap(false)),
+      filter: get(labelFilters(false)),
+      activeLabels: get(activeFields),
+      zoom: get(selectors.isPatchesView) && get(atoms.cropToContent(false)),
+    };
+  },
+});
+
 export default React.memo(() => {
   const [id] = useState(() => uuid());
-  const zoom = useRecoilValue(gridRowAspectRatio);
-  const activeLabels = useRecoilValue(activeFields);
-  const filter = useRecoilValue(labelFilters(false));
-  const colorMap = useRecoilValue(selectors.colorMap(false));
-  const colorByLabel = useRecoilValue(atoms.colorByLabel(false));
   const options = useRecoilValue(flashlightOptions);
+  const lookerOptions = useRecoilValue(flashlightLookerOptions);
+  const lookerOptionsRef = useRef<any>();
+  lookerOptionsRef.current = lookerOptions;
+
   const initialRender = useRef(true);
 
   const [flashlight] = useState(() => {
@@ -106,12 +118,7 @@ export default React.memo(() => {
                       dimensions: [result.width, result.height],
                       sampleId: result.sample._id,
                     },
-                    {
-                      activeLabels,
-                      filter,
-                      colorMap,
-                      colorByLabel: false,
-                    }
+                    lookerOptionsRef.current
                   )
                 );
 
@@ -124,7 +131,7 @@ export default React.memo(() => {
             };
           }),
       render: (sampleId, element) => {
-        lookers.get(sampleId).attach(element);
+        // lookers.get(sampleId).attach(element);
       },
     });
   });
@@ -135,8 +142,19 @@ export default React.memo(() => {
     if (initialRender.current) {
       return;
     }
+
     flashlight.updateOptions(options);
   }, [options]);
+
+  useEffect(() => {
+    if (initialRender.current) {
+      return;
+    }
+
+    flashlight.updateItems((id) => {
+      lookers.get(id).updateOptions(lookerOptions);
+    });
+  }, [lookerOptions]);
 
   initialRender.current = false;
 

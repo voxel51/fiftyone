@@ -220,6 +220,11 @@ export abstract class Looker<
       element = document.getElementById(element);
     }
 
+    this.lookerElement.element.parentElement &&
+      this.lookerElement.element.parentElement.removeChild(
+        this.lookerElement.element
+      );
+
     this.updater({ windowBBox: getElementBBox(element) });
     element.appendChild(this.lookerElement.element);
     this.resizeObserver.observe(this.lookerElement.element);
