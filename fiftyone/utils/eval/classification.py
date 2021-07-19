@@ -360,11 +360,11 @@ class TopKEvaluation(ClassificationEvaluation):
             samples.set_values(eval_key, [np.mean(c) for c in correct])
 
             # Per-frame accuracies
-            dataset._add_frame_field_if_necessary(eval_key, fof.FloatField)
+            dataset._add_frame_field_if_necessary(eval_key, fof.BooleanField)
             samples.set_values(eval_frame, correct)
         else:
             # Per-sample accuracies
-            dataset._add_sample_field_if_necessary(eval_key, fof.FloatField)
+            dataset._add_sample_field_if_necessary(eval_key, fof.BooleanField)
             samples.set_values(eval_key, correct)
 
         return results
